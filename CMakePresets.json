@@ -1,0 +1,46 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "build"
+        },
+        {
+            "name": "Windows",
+            "inherits": "base",
+            "generator": "Visual Studio 17 2022",
+            "toolchainFile": "cmake/toolchains/windows.cmake"
+        },
+        {
+            "name": "macOS",
+            "generator": "Xcode",
+            "inherits": "base",
+            "toolchainFile": "cmake/toolchains/macos.cmake"
+        },
+        {
+            "name": "macOS-brew-llvm",
+            "inherits": "base",
+            "generator": "Ninja Multi-Config",
+            "toolchainFile": "cmake/toolchains/macos.cmake",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+                "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+                "CMAKE_AR": "/opt/homebrew/opt/llvm/bin/llvm-ar",
+                "CMAKE_RANLIB": "/opt/homebrew/opt/llvm/bin/llvm-ranlib"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "macOS-Debug",
+            "configurePreset": "macOS",
+            "configuration": "Debug"
+        },
+        {
+            "name": "macOS-brew-llvm-Debug",
+            "configurePreset": "macOS-brew-llvm",
+            "configuration": "Debug"
+        }
+    ]
+}
