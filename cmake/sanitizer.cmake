@@ -8,8 +8,8 @@ INTERFACE
     -fsanitize=address
 )
 
-function(rt_apply_sanitizer target)
-    if(RENDERTOY_ENABLE_ASAN AND NOT MSVC)
+function(crowy_apply_sanitizer target)
+    if(CROWY_ENABLE_ASAN AND NOT MSVC)
         target_link_libraries(${target} PRIVATE sanitizer)
     endif()
 endfunction()
