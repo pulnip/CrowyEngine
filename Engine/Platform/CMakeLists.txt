@@ -2,7 +2,7 @@ add_library(CrowyPlatform STATIC)
 
 target_sources(CrowyPlatform
 PRIVATE
-    Private/Window.cpp
+    Private/OS.cpp
 )
 
 target_include_directories(CrowyPlatform
@@ -15,4 +15,24 @@ PRIVATE
     SDL3::SDL3
 )
 
+if(APPLE)
+    target_link_libraries(CrowyPlatform
+    PRIVATE
+        Crowy::MetalRHI
+    )
+endif()
+
 add_library(Crowy::Platform ALIAS CrowyPlatform)
+
+add_executable(Crowy)
+
+target_sources(Crowy
+PRIVATE
+    Private/main.cpp
+)
+
+target_link_libraries(Crowy
+PRIVATE
+    Crowy::Main
+    Crowy::Platform
+)

@@ -13,11 +13,22 @@
             "windowsSdkVersion": "10.0.22621.0",
             "cStandard": "c23",
             "cppStandard": "c++26",
-            "intelliSenseMode": "windows-msvc-x64",
+            "intelliSenseMode": "windows-msvc-x64"
+        },
+        {
+            "name": "macOS",
+            "includePath": [
+                "${workspaceFolder}/Core/include"
+            ],
+            "defines": [],
+            "cStandard": "c23",
+            "cppStandard": "c++26",
+            "compilerPath": "/usr/bin/clang++",
+            "intelliSenseMode": "macos-clang-arm64",
             "configurationProvider": "ms-vscode.cmake-tools"
         },
         {
-            "name": "Mac",
+            "name": "macOS-brew-llvm",
             "includePath": [
                 "${workspaceFolder}/Core/include"
             ],
