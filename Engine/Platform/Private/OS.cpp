@@ -3,6 +3,8 @@
 #include <SDL3/SDL_video.h>
 #include "OS.hpp"
 #include "MainLoop.hpp"
+#include "Logger.hpp"
+#include "ConsoleSink.hpp"
 
 namespace Crowy
 {
@@ -38,12 +40,14 @@ namespace Crowy
     };
 
     OS::OS(){
-        if(!SDL_SetAppMetadata("ModernBoy", "1.0", "com.example.game0")){
+        if(!SDL_SetAppMetadata("Crowy", "1.0", "com.example.crowy")){
             throw;
         }
         if(!SDL_Init(SDL_INIT_VIDEO)){
             throw;
         }
+
+        Logger::instance().addSink(std::make_unique<ConsoleSink>());
 
         impl = std::make_unique<Impl>(WindowConfig{});
 

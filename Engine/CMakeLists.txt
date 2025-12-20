@@ -1,4 +1,7 @@
 add_subdirectory(App)
+add_subdirectory(ECS)
+add_subdirectory(Log)
 add_subdirectory(MetalRHI)
 add_subdirectory(Platform)
+add_subdirectory(Resource)
 add_subdirectory(RHI)

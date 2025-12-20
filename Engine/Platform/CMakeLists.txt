@@ -3,6 +3,7 @@ add_library(CrowyPlatform STATIC)
 target_sources(CrowyPlatform
 PRIVATE
     Private/OS.cpp
+    Private/SDLSink.cpp
 )
 
 target_include_directories(CrowyPlatform
@@ -12,6 +13,7 @@ PUBLIC
 
 target_link_libraries(CrowyPlatform
 PRIVATE
+    Crowy::Log
     SDL3::SDL3
 )
 
