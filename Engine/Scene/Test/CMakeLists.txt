@@ -9,7 +9,7 @@ target_link_libraries(CrowySceneTest
 PRIVATE
     GTest::gtest_main
     GTest::gmock_main
-    Crowy::Scene
+    CrowyScene_Private
 )
 
 include(GoogleTest)

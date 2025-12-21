@@ -1,123 +1,82 @@
 #pragma once
 
 #include "concepts.hpp"
+#include "math.hpp"
 #include "ECSDefinitions.hpp"
 #include "ResourceDefinitions.hpp"
 
 namespace Crowy
 {
-    #define DEFINE_COMPONENT(name, ...) \
-        struct name{ \
-            EntityID entity; \
-            bool isActive; \
-            __VA_ARGS__ \
-        }
-
-    DEFINE_COMPONENT(Transform,
+    struct TransformComponent{
         Vec3 position = zeros();
         Vec4 rotation = unitQuat();
         Vec3 scale = ones();
-    );
-    DEFINE_COMPONENT(Camera,
+    };
+
+    struct CameraComponent{
         CameraType type;
         float fov;
         float nearPlane;
         float farPlane;
         Projection proj;
-    );
-    DEFINE_COMPONENT(Color,
+    };
+
+    struct ColorComponent{
         Vec4 color;
-    );
-    DEFINE_COMPONENT(RenderObject,
+    };
+
+    struct RenderObjectComponent{
         float alpha;
         MeshHandle mesh;
         MaterialSetHandle materialSet;
         ShaderHandle shader;
-    );
-    // DEFINE_COMPONENT(ScriptObject,
-    //     Script handle;
-    // );
-    DEFINE_COMPONENT(LifeSpan,
-        bool isAlive;
-    );
-    DEFINE_COMPONENT(Rigidbody,
+    };
+    struct RigidbodyComponent{
         Vec3 velocity;
         bool useGravity;
         float mass;
-    );
-    struct PhysicsMaterial{
-        float bounciness;
-        float friction;
     };
-    DEFINE_COMPONENT(SphereCollider,
+    struct SphereColliderComponent{
         Vec3 position;
         float radius;
 
-        PhysicsMaterial material;
-    );
-    DEFINE_COMPONENT(FixedBoxCollider,
-        Vec3 position;
-        Vec3 scale;
-
-        PhysicsMaterial material;
-    );
-    DEFINE_COMPONENT(BoxCollider,
+        // physical material
+        float bounciness;
+        float friction;
+    };
+    struct BoxColliderComponent{
         Vec3 position = zeros();
         Vec4 rotation = unitQuat();
         Vec3 scale = ones();
-        PhysicsMaterial material;
-    );
+
+        // physical material
+        float bounciness;
+        float friction;
+    };
 
     // Entity Type? Property? Tags (kept in Long-term)
-    DEFINE_COMPONENT(Player,);
-    DEFINE_COMPONENT(Editor,);
-    DEFINE_COMPONENT(Attachable,);
-    DEFINE_COMPONENT(Climbable,);
-    DEFINE_COMPONENT(Inventory,);
-    DEFINE_COMPONENT(Lootable,);
-    DEFINE_COMPONENT(LootMagnet,);
-
-    // Entity Temporal State Tags (kept in Short-term)
-    DEFINE_COMPONENT(Attached,
-        EntityID target;
-    );
-    DEFINE_COMPONENT(Climbed,
-        EntityID climbable;
-    );
-    DEFINE_COMPONENT(Collided,);
-    DEFINE_COMPONENT(Grounded,);
-    DEFINE_COMPONENT(Walked,);
-    DEFINE_COMPONENT(Ran,);
+    struct PlayerComponent{};
+    struct EditorComponent{};
+    struct AttachableComponent{};
 
     // Entity-to-Entity Event Tags
-    DEFINE_COMPONENT(PhysicalCollision,
+    struct ImpulseComponent{
         Vec3 force;
-    );
+        float dt;
+    };
 
     #define ARCHETYPE_PAIRS \
-        X(        Transform,        TRANSFORM) \
-        X(           Camera,           CAMERA) \
-        X(            Color,            COLOR) \
-        X(     RenderObject,    RENDER_OBJECT) \
-        X(         LifeSpan,         LIFESPAN) \
-        X(        Rigidbody,        RIGIDBODY) \
-        X(   SphereCollider,   SPHERECOLLIDER) \
-        X( FixedBoxCollider, FIXEDBOXCOLLIDER) \
-        X(      BoxCollider,      BOXCOLLIDER) \
-        X(PhysicalCollision,        COLLISION) \
-        X(         Collided,         COLLIDED) \
-        X(           Player,           PLAYER) \
-        X(           Editor,           EDITOR) \
-        X(       Attachable,       ATTACHABLE) \
-        X(        Climbable,        CLIMBABLE) \
-        X(        Inventory,        INVENTORY) \
-        X(         Lootable,         LOOTABLE) \
-        X(       LootMagnet,       LOOTMAGNET) \
-        X(         Attached,         ATTACHED) \
-        X(          Climbed,          CLIMBED) \
-        X(         Grounded,         GROUNDED) \
-        X(           Walked,           WALKED) \
-        X(              Ran,              RAN)
+        X(     TransformComponent,      TRANSFORM) \
+        X(        CameraComponent,         CAMERA) \
+        X(         ColorComponent,          COLOR) \
+        X(  RenderObjectComponent,  RENDER_OBJECT) \
+        X(     RigidbodyComponent,      RIGIDBODY) \
+        X(SphereColliderComponent, SPHERECOLLIDER) \
+        X(   BoxColliderComponent,    BOXCOLLIDER) \
+        X(       ImpulseComponent,        IMPULSE) \
+        X(        PlayerComponent,         PLAYER) \
+        X(        EditorComponent,         EDITOR) \
+        X(    AttachableComponent,     ATTACHABLE)
 
     #define X(type, name) static_assert(std::is_trivially_copyable_v<type>);
     ARCHETYPE_PAIRS
