@@ -25,7 +25,7 @@ namespace Crowy
         void log(LogMessage&& msg);
 
     private:
-        Logger() = default;
+        Logger();
 
         std::vector<SinkPtr> sinks;
         LogLevel minLevel = LogLevel::Debug;

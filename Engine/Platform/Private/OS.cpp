@@ -4,7 +4,6 @@
 #include "OS.hpp"
 #include "MainLoop.hpp"
 #include "Logger.hpp"
-#include "ConsoleSink.hpp"
 
 namespace Crowy
 {
@@ -46,8 +45,6 @@ namespace Crowy
         if(!SDL_Init(SDL_INIT_VIDEO)){
             throw;
         }
-
-        Logger::instance().addSink(std::make_unique<ConsoleSink>());
 
         impl = std::make_unique<Impl>(WindowConfig{});
 

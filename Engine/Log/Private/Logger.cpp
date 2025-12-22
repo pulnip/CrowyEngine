@@ -1,3 +1,4 @@
+#include "ConsoleSink.hpp"
 #include "Logger.hpp"
 
 namespace Crowy
@@ -5,6 +6,10 @@ namespace Crowy
     Logger& Logger::instance(){
         static Logger logger;
         return logger;
+    }
+
+    Logger::Logger(){
+        addSink(std::make_unique<ConsoleSink>());
     }
 
     void Logger::addSink(Logger::SinkPtr sink){
