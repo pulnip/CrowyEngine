@@ -2,7 +2,11 @@ add_library(CrowyResource STATIC)
 
 target_sources(CrowyResource
 PRIVATE
-    Private/dummy.cpp
+    Private/Material.cpp
+    Private/MaterialSet.cpp
+    Private/Mesh.cpp
+    Private/Shader.cpp
+    Private/Submesh.cpp
 )
 
 target_include_directories(CrowyResource

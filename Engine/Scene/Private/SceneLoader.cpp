@@ -1,11 +1,13 @@
-#include "SceneInstantiator.hpp"
+#include "ResourceHub.hpp"
+#include "SceneLoader.hpp"
 #include "SceneParser.hpp"
 
 namespace Crowy
 {
-    std::vector<EntityID> instantiateScene(
+    void loadScene(
         const SceneSpec& scene,
-        EntityRegistry& registry
+        EntityRegistry& registry,
+        ResourceHub& hub
     ){
         // TODO
         throw std::runtime_error("Not implemented");

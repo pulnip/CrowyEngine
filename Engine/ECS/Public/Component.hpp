@@ -3,7 +3,9 @@
 #include "concepts.hpp"
 #include "math.hpp"
 #include "ECSDefinitions.hpp"
-#include "ResourceDefinitions.hpp"
+#include "Mesh.hpp"
+#include "MaterialSet.hpp"
+#include "Shader.hpp"
 
 namespace Crowy
 {

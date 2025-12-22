@@ -4,7 +4,7 @@ target_sources(CrowyScene
 PRIVATE
     Private/BinderRegistry.cpp
     Private/InternalComponentBinder.cpp
-    Private/SceneInstantiator.cpp
+    Private/SceneLoader.cpp
     Private/SceneParser.cpp
 )
 
@@ -17,8 +17,9 @@ target_link_libraries(CrowyScene
 PUBLIC
     Crowy::Core
     Crowy::ECS
-    Crowy::Log
 PRIVATE
+    Crowy::Log
+    Crowy::Resource
     tomlplusplus::tomlplusplus
 )
 

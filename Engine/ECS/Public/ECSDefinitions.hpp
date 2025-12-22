@@ -9,7 +9,6 @@ namespace Crowy
 {
     using ArchetypeBit = uint64_t;
     using EntityID = uint32_t;
-    using UUID = uint64_t;
 
     enum class CameraType: uint8_t{
         UNKNOWN     = uint8_t(-1),

@@ -5,8 +5,6 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-#include "generic_handle.hpp"
-
 extern "C"{
 #endif
 
@@ -25,6 +23,10 @@ typedef struct{
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+#include "generic_handle.hpp"
 
 namespace Crowy
 {
@@ -48,12 +50,12 @@ namespace Crowy
     using RHIFenceHandle = generic_handle<RHIFence>;
 
     // Hash functors for using handles in unordered containers
-    using RHIBufferHandleHash = generic_handleHash<RHIBuffer>;
-    using RHITextureHandleHash = generic_handleHash<RHITexture>;
-    using RHIShaderHandleHash = generic_handleHash<RHIShader>;
-    using RHIPipelineStateHandleHash = generic_handleHash<RHIPipelineState>;
-    using RHISwapchainHandleHash = generic_handleHash<RHISwapchain>;
-    using RHIFenceHandleHash = generic_handleHash<RHIFence>;
+    using RHIBufferHandleHash = generic_handle_hash<RHIBuffer>;
+    using RHITextureHandleHash = generic_handle_hash<RHITexture>;
+    using RHIShaderHandleHash = generic_handle_hash<RHIShader>;
+    using RHIPipelineStateHandleHash = generic_handle_hash<RHIPipelineState>;
+    using RHISwapchainHandleHash = generic_handle_hash<RHISwapchain>;
+    using RHIFenceHandleHash = generic_handle_hash<RHIFence>;
 
     // Invalid handle constants
     constexpr RHIBufferHandle RHI_INVALID_BUFFER_HANDLE = {};

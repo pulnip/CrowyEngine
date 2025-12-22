@@ -1,15 +1,16 @@
 #pragma once
 
 #include <vector>
-#include "ECSDefinitions.hpp"
 
 namespace Crowy
 {
     struct SceneSpec;
     class EntityRegistry;
+    struct ResourceHub;
 
-    std::vector<EntityID> instantiateScene(
+    void loadScene(
         const SceneSpec& scene,
-        EntityRegistry& registry
+        EntityRegistry& registry,
+        ResourceHub& hub
     );
 }

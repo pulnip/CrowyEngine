@@ -1,19 +1,21 @@
 #pragma once
 
+#include <cstdint>
+#include <unordered_map>
 #include "slot_map.hpp"
-#include "ResourceDefinitions.hpp"
 
 namespace Crowy
 {
+    struct LoadContext;
+
     template<typename T>
     class ResourceManager{
     public:
-        using Traits     = ResourceTraits<T>;
-        using Request    = typename Traits::Request;
-        using Key        = typename Traits::Key;
-        using KeyHash    = typename Traits::KeyHash;
+        using Request    = typename T::Request;
+        using Key        = typename Request::Key;
+        using KeyHash    = typename Request::KeyHash;
         using Handle     = generic_handle<T>;
-        using HandleHash = generic_handleHash<T>;
+        using HandleHash = generic_handle_hash<T>;
 
     private:
         slot_map<T> pool;
@@ -22,15 +24,14 @@ namespace Crowy
         std::unordered_map<Handle, Key, HandleHash> handleToKey;
 
     public:
-        Handle getOrLoad(const Request& request){
-            Key key = Traits::makeKey(request);
+        Handle getOrLoad(const Request& request, LoadContext& ctx){
+            auto key = request.key();
 
             if(auto it = keyToHandle.find(key); it != keyToHandle.end()){
                 return it->second;
             }
 
-            // Load via ResourceTraits
-            auto resource = Traits::load(request);
+            auto resource = T::make(request, ctx);
             auto handle = pool.push(std::move(resource));
 
             keyToHandle.emplace(key, handle);
