@@ -6,7 +6,7 @@
 
 namespace Crowy
 {
-    struct LoadContext;
+    class LoadContext;
 
     template<typename T>
     class ResourceManager{
@@ -31,7 +31,7 @@ namespace Crowy
                 return it->second;
             }
 
-            auto resource = T::make(request, ctx);
+            auto resource = instantiate(request, ctx);
             auto handle = pool.push(std::move(resource));
 
             keyToHandle.emplace(key, handle);
