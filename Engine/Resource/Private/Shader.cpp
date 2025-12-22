@@ -13,7 +13,7 @@ namespace Crowy
     };
 
     ShaderManager::ShaderManager()
-        :impl(std::unique_ptr<Impl>()){}
+        :impl(std::make_unique<Impl>()){}
     ShaderManager::~ShaderManager(){}
 
     ShaderHandle ShaderManager::getOrLoad(

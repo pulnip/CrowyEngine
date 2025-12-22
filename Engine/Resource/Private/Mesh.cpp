@@ -13,7 +13,7 @@ namespace Crowy
     };
 
     MeshManager::MeshManager()
-        :impl(std::unique_ptr<Impl>()){}
+        :impl(std::make_unique<Impl>()){}
     MeshManager::~MeshManager(){}
 
     MeshHandle MeshManager::getOrLoad(

@@ -32,13 +32,15 @@ namespace Crowy
         const char* const name;
     };
 
-    inline constexpr LogCategory LOG_CORE { "Core" };
-    inline constexpr LogCategory LOG_RENDER { "Render" };
-    inline constexpr LogCategory LOG_SCENE { "Scene" };
+    inline constexpr LogCategory LOG_CORE     { "Core"     };
+    inline constexpr LogCategory LOG_APP      { "App"      };
+    inline constexpr LogCategory LOG_ECS      { "ECS"      };
+    inline constexpr LogCategory LOG_METAL    { "Metal"    };
+    inline constexpr LogCategory LOG_PLATFORM { "Platform" };
+    inline constexpr LogCategory LOG_RENDER   { "Render"   };
     inline constexpr LogCategory LOG_RESOURCE { "Resource" };
-    inline constexpr LogCategory LOG_RHI { "RHI" };
-    inline constexpr LogCategory LOG_D3D12 { "D3D12" };
-    inline constexpr LogCategory LOG_METAL { "Metal" };
+    inline constexpr LogCategory LOG_RHI      { "RHI"      };
+    inline constexpr LogCategory LOG_SCENE    { "Scene"    };
 
     struct LogMessage{
         LogLevel level;

@@ -13,7 +13,7 @@ namespace Crowy
     };
 
     SubmeshManager::SubmeshManager()
-        :impl(std::unique_ptr<Impl>()){}
+        :impl(std::make_unique<Impl>()){}
     SubmeshManager::~SubmeshManager(){}
 
     SubmeshHandle SubmeshManager::getOrLoad(

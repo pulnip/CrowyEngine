@@ -30,11 +30,13 @@ namespace Crowy
     };
 
     MetalDevice::MetalDevice()
-        :impl(std::make_unique<Impl>()){
-
-        }
+        :impl(std::make_unique<Impl>()){}
 
     MetalDevice::~MetalDevice(){}
+
+    RHICapabilities MetalDevice::getCapabilities() const{
+        return { .flipTextureV = true, .clipSpaceMinZ = 0.0f };
+    }
 }
 
 #endif

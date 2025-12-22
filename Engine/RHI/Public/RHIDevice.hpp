@@ -4,9 +4,16 @@
 
 namespace Crowy
 {
+    struct RHICapabilities{
+        bool flipTextureV;
+        float clipSpaceMinZ;
+    };
+
     class RHIDevice{
     public:
         virtual ~RHIDevice() = default;
+
+        virtual RHICapabilities getCapabilities() const = 0;
     };
 
     // each platform should implement this function

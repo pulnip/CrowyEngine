@@ -13,7 +13,7 @@ namespace Crowy
     };
 
     MaterialManager::MaterialManager()
-        :impl(std::unique_ptr<Impl>()){}
+        :impl(std::make_unique<Impl>()){}
     MaterialManager::~MaterialManager(){}
 
     MaterialHandle MaterialManager::getOrLoad(

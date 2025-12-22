@@ -12,6 +12,8 @@ namespace Crowy
         MetalDevice();
         ~MetalDevice();
 
+        RHICapabilities getCapabilities() const override;
+
     private:
         struct Impl;
         std::unique_ptr<Impl> impl;

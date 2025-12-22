@@ -12,7 +12,6 @@ typedef enum{
     BUF_None             = 0,
 } RHIBufferUsageFlags;
 
-// Buffer creation descriptor
 typedef struct{
     size_t size;
     RHIBufferUsageFlags usage;
@@ -20,6 +19,14 @@ typedef struct{
     const void* initialData;
     const char* debugName;
 } RHIBufferCreateDesc;
+
+typedef enum{
+    PointList     = 0,
+    LineList      = 1,
+    LineStrip     = 2,
+    TriangleList  = 3,
+    TriangleStrip = 4,
+} RHIPrimitiveTopology;
 
 #ifdef __cplusplus
 }

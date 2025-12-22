@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include "generic_handle.hpp"
-#include "math.hpp"
 #include "Material.hpp"
 
 namespace Crowy
