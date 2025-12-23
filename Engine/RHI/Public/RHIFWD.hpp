@@ -7,15 +7,17 @@ namespace Crowy
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
         class MetalDevice;
+        class MetalBuffer;
 
         using RHIDevice = MetalDevice;
+        using RHIBuffer = MetalBuffer;
     #endif
 #else
     class RHIDevice;
+    class RHIBuffer;
 #endif
     class RHICommandList;
     class RHIResource;
-    class RHIBuffer;
     class RHITexture;
     class RHIShader;
     class RHIPipelineState;

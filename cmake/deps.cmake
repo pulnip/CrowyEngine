@@ -56,7 +56,15 @@ if(NOT assimp_FOUND)
     FetchContent_MakeAvailable(assimp)
 endif()
 
-# set(ImGui_RENDER_BACKEND ${CROWY_RENDER_BACKEND})
+if(RENDER_BACKEND STREQUAL "Metal")
+    FetchContent_Declare(
+        metal-cpp
+        URL https://developer.apple.com/metal/cpp/files/metal-cpp_macOS15_iOS18.zip
+    )
+    FetchContent_MakeAvailable(metal-cpp)
+endif()
+
+# set(ImGui_RENDER_BACKEND ${RENDER_BACKEND})
 # include(cmake/ImGui.cmake)
 
 if(CROWY_ENABLE_TEST)

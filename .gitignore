@@ -41,5 +41,4 @@
 *.dwo
 
 build/
-.build/
 .DS_Store

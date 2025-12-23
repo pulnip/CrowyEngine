@@ -22,6 +22,8 @@ namespace Crowy
         MetalDevice();
         ~MetalDevice();
 
+        std::unique_ptr<RHIBuffer> createBuffer(const RHIBufferCreateDesc&) RHI_OVERRIDE;
+
         RHICapabilities getCapabilities() const RHI_OVERRIDE;
 
     private:

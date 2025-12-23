@@ -1,16 +1,6 @@
+#include "Metal/Metal.hpp"
 #include "MetalDevice.hpp"
-#include "MetalRHIDefinitions.h"
-
-#ifdef __APPLE__
-
-// MetalDevice C Bridge Functions
-extern "C"{
-MetalDevicePtr MetalDevice_create(
-);
-void MetalDevice_destroy(
-    MetalDevicePtr device
-);
-}
+#include "MetalBuffer.hpp"
 
 namespace Crowy
 {
@@ -25,13 +15,49 @@ namespace Crowy
 #endif
 
     struct MetalDevice::Impl{
-        MetalDevicePtr const devicePtr;
+        MTL::Device* device;
+        MTL::CommandQueue* commandQueue;
 
-        Impl()
-            :devicePtr(MetalDevice_create()){}
+        MTL::SamplerState* defaultSampler;
+
+        Impl(){
+            device = MTL::CreateSystemDefaultDevice();
+            if(!device){
+                throw std::runtime_error("No GPU available");
+            }
+
+            commandQueue = device->newCommandQueue();
+            if(!commandQueue){
+                throw std::runtime_error("Failed to create command queue");
+            }
+
+            auto* samplerDesc = MTL::SamplerDescriptor::alloc()->init();
+            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
+            samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
+            samplerDesc->setMipFilter(MTL::SamplerMipFilterLinear);
+            samplerDesc->setSAddressMode(MTL::SamplerAddressModeRepeat);
+            samplerDesc->setTAddressMode(MTL::SamplerAddressModeRepeat);
+            samplerDesc->setRAddressMode(MTL::SamplerAddressModeRepeat);
+            samplerDesc->setMaxAnisotropy(16);
+
+            defaultSampler = device->newSamplerState(samplerDesc);
+            samplerDesc->release();
+
+            if(!defaultSampler){
+                throw std::runtime_error("Failed to create default sampler");
+            }
+        }
 
         ~Impl(){
-            MetalDevice_destroy(devicePtr);
+            defaultSampler->release();
+            commandQueue->release();
+            device->release();
+        }
+
+        std::unique_ptr<RHIBuffer> createBuffer(
+            const RHIBufferCreateDesc& desc
+        ){
+            return std::make_unique<MetalBuffer>(device, desc);
         }
     };
 
@@ -40,9 +66,16 @@ namespace Crowy
 
     MetalDevice::~MetalDevice(){}
 
+    std::unique_ptr<RHIBuffer> MetalDevice::createBuffer(
+        const RHIBufferCreateDesc& desc
+    ){
+        return impl->createBuffer(desc);
+    }
+
     RHICapabilities MetalDevice::getCapabilities() const{
-        return { .flipTextureV = true, .clipSpaceMinZ = 0.0f };
+        return {
+            .flipTextureV = true,
+            .clipSpaceMinZ = 0.0f
+        };
     }
 }
-
-#endif
