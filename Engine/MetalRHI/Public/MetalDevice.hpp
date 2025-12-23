@@ -1,23 +1,31 @@
 #pragma once
 
-#if defined(__APPLE__)
-
 #include <memory>
-#include "RHIDevice.hpp"
+#ifdef USE_STATIC_RHI
+    #include "RHIDefinitions.h"
+
+    #define RHI_OVERRIDE
+#else
+    #include "RHIDevice.hpp"
+
+    #define RHI_OVERRIDE override
+#endif
 
 namespace Crowy
 {
-    class MetalDevice: public RHIDevice{
+    class MetalDevice
+#ifndef USE_STATIC_RHI
+        : public RHIDevice
+#endif
+    {
     public:
         MetalDevice();
         ~MetalDevice();
 
-        RHICapabilities getCapabilities() const override;
+        RHICapabilities getCapabilities() const RHI_OVERRIDE;
 
     private:
         struct Impl;
         std::unique_ptr<Impl> impl;
     };
 }
-
-#endif

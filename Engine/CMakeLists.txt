@@ -1,3 +1,5 @@
+option(CROWY_STATIC_RHI "Use STATIC RHI model" OFF)
+
 add_subdirectory(App)
 add_subdirectory(ECS)
 add_subdirectory(Log)

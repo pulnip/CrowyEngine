@@ -6,6 +6,7 @@
 #include <string>
 #include "math.hpp"
 #include "RHIDefinitions.h"
+#include "RHIFWD.hpp"
 #include "ResourceHandle.hpp"
 #include "ResourceRequest.hpp"
 
@@ -68,7 +69,7 @@ namespace Crowy
         }
     };
 
-    void initResourceModule(class RHIDevice&);
+    void initResourceModule(RHIDevice&);
     void deinitResourceModule();
 
     MeshHandle        getOrLoad(       MeshRequest);

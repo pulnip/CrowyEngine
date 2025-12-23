@@ -1,7 +1,7 @@
 #include "MetalDevice.hpp"
 #include "MetalRHIDefinitions.h"
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 
 // MetalDevice C Bridge Functions
 extern "C"{
@@ -14,9 +14,15 @@ void MetalDevice_destroy(
 
 namespace Crowy
 {
+#ifdef USE_STATIC_RHI
+    std::unique_ptr<MetalDevice> createDevice(){
+        return std::make_unique<MetalDevice>();
+    }
+#else
     std::unique_ptr<RHIDevice> createDevice(){
         return std::make_unique<MetalDevice>();
     }
+#endif
 
     struct MetalDevice::Impl{
         MetalDevicePtr const devicePtr;

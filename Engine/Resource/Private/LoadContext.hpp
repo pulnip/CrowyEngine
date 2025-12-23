@@ -1,8 +1,10 @@
 #pragma once
 
+#include "RHIFWD.hpp"
+
 namespace Crowy
 {
     struct LoadContext{
-        class RHIDevice* device;
+        RHIDevice* device;
     };
 }

@@ -26,7 +26,7 @@ find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
 
 target_link_libraries(CrowyMetalSwiftRHI
 PUBLIC
-    Crowy::RHI
+    Crowy::CommonRHI
 PRIVATE
     ${METAL_LIBRARY}
     ${METALKIT_LIBRARY}
@@ -49,9 +49,15 @@ PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/Public"
 )
 
+if(CROWY_USE_STATIC_RHI)
+    target_compile_definitions(CrowyMetalRHI PUBLIC USE_STATIC_RHI)
+else()
+    target_link_libraries(CrowyMetalRHI PUBLIC Crowy::RHI)
+endif()
+
 target_link_libraries(CrowyMetalRHI
 PUBLIC
-    Crowy::RHI
+    Crowy::CommonRHI
 PRIVATE
     Crowy::MetalSwiftRHI
 )

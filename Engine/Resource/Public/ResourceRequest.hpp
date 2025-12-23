@@ -10,9 +10,9 @@ namespace Crowy
         using Key     = std::string;
         using KeyHash = std::hash<std::string>;
 
-        std::string path;
+        std::string uri;
 
-        inline Key key() const{ return path; }
+        inline Key key() const{ return uri; }
     };
 
     struct MaterialSetRequest{
