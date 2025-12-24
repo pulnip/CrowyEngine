@@ -40,7 +40,18 @@ namespace Crowy
         if(!modelData.has_value())
             throw std::runtime_error("impossible to import mesh");
 
-        auto meshData = modelData.value();
+        auto meshHandle = MeshManager::singleton()->getOrLoad(
+            MeshRequest{
+                .uri = request.uri,
+                .data = modelData->submeshes
+            }, context
+        );
+        auto materialSetHandle = MaterialSetManager::singleton()->getOrLoad(
+            MaterialSetRequest{
+
+            }, context
+        );
+        return {meshHandle, materialSetHandle};
     }
     ShaderHandle getOrLoad(ShaderRequest request){
         LoadContext context{

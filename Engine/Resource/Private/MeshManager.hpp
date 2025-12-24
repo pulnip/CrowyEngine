@@ -4,6 +4,7 @@
 #include <vector>
 #include "generic_handle.hpp"
 #include "semantics.hpp"
+#include "ModelData.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
 
@@ -14,6 +15,7 @@ namespace Crowy
         using KeyHash = std::hash<std::string>;
 
         std::string uri;
+        std::span<const SubmeshData> data;
 
         inline Key key() const{ return uri; }
     };
