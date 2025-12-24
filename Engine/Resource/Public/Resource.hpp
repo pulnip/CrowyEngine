@@ -76,7 +76,7 @@ namespace Crowy
     ShaderHandle                             getOrLoad(ShaderRequest);
 
     using        MeshView = std::span<const  Submesh>;
-    using MaterialSetView = std::span<const Material>;
+    using MaterialSetView = std::unordered_map<std::string, RHITexture*>;
 
     MeshView        get(       MeshHandle);
     MaterialSetView get(MaterialSetHandle);

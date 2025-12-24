@@ -15,7 +15,14 @@ namespace Crowy
         int height = 0;
         int channels = 0;
 
-        inline bool isValid() const {
+        inline uint32_t getWidth() const{
+            return static_cast<uint32_t>(width);
+        }
+        inline uint32_t getHeight() const{
+            return static_cast<uint32_t>(height);
+        }
+
+        inline bool isValid() const{
             return !pixels.empty() &&
             width > 0 && height > 0;
         }

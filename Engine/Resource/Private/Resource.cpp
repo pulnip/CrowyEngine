@@ -48,7 +48,8 @@ namespace Crowy
         );
         auto materialSetHandle = MaterialSetManager::singleton()->getOrLoad(
             MaterialSetRequest{
-
+                .uri = request.uri,
+                .data = std::move(modelData->materials)
             }, context
         );
         return {meshHandle, materialSetHandle};
@@ -67,8 +68,13 @@ namespace Crowy
     }
     MaterialSetView get(MaterialSetHandle handle){
         auto materialSet = MaterialSetManager::singleton()->get(handle);
+        MaterialSetView view;
 
-        return materialSet->materials;
+        for(const auto& material: materialSet->materials){
+            view.emplace(material.first, material.second.get());
+        }
+
+        return view;
     }
     Shader* get(ShaderHandle handle){
         return ShaderManager::singleton()->get(handle);

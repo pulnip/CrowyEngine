@@ -2,9 +2,10 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+#include <unordered_map>
 #include "generic_handle.hpp"
 #include "semantics.hpp"
+#include "ModelData.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
 
@@ -14,17 +15,18 @@ namespace Crowy
         using Key     = std::string;
         using KeyHash = std::hash<std::string>;
 
-        std::string meshKey;
-        // Pre-loaded material handles
-        // std::vector<MaterialHandle> materialHandles;
+        std::string uri;
+        std::unordered_map<std::string, MaterialRef> data;
 
-        inline Key key() const{ return meshKey; }
+        inline Key key() const{ return uri; }
     };
+
+    using TextureMap = std::unordered_map<std::string, RHITexturePtr>;
 
     struct MaterialSet{
         using Request = MaterialSetRequest;
 
-        std::vector<Material> materials;
+        TextureMap materials;
 
         inline auto materialCount() const{
             return materials.size();

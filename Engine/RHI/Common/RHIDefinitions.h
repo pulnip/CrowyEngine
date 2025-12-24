@@ -168,6 +168,7 @@ typedef struct{
     RHIResourceState initialState;
     RHIClearColor clearColor;
     RHIClearDepthStencil clearDepthStencil;
+    const void* initialData;
     const char* debugName;
 } RHITextureCreateDesc;
 

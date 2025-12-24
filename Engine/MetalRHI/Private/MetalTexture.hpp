@@ -10,7 +10,7 @@
 #endif
 
 namespace{
-    auto convertTextureFormat(RHITextureFormat format){
+    static auto convertTextureFormat(RHITextureFormat format){
         switch(format){
         case RHITextureFormat::Unknown:           return MTL::PixelFormatInvalid;
         // 8-bit formats
@@ -73,7 +73,7 @@ namespace{
         default:                                  return MTL::PixelFormatInvalid;
         }
     }
-    auto convertTextureUsage(RHITextureUsageFlags usage){
+    static auto convertTextureUsage(RHITextureUsageFlags usage){
         MTL::TextureUsage mtlUsage = 0;
 
         if((usage & TEX_ShaderResource ) != 0){ mtlUsage |= MTL::TextureUsageShaderRead;   }
@@ -82,6 +82,64 @@ namespace{
         if((usage & TEX_UnorderedAccess) != 0){ mtlUsage |= MTL::TextureUsageShaderWrite;  }
 
         return mtlUsage;
+    }
+
+    static auto getBytesPerPixel(RHITextureFormat format){
+        switch(format){
+        case R8_UNORM:          [[fallthrough]];
+        case R8_SNORM:          [[fallthrough]];
+        case R8_UINT:           [[fallthrough]];
+        case R8_SINT:
+            return 1;
+        case R16_UNORM:         [[fallthrough]];
+        case R16_SNORM:         [[fallthrough]];
+        case R16_UINT:          [[fallthrough]];
+        case R16_SINT:          [[fallthrough]];
+        case R16_FLOAT:         [[fallthrough]];
+        case RG8_UNORM:         [[fallthrough]];
+        case RG8_SNORM:         [[fallthrough]];
+        case RG8_UINT:          [[fallthrough]];
+        case RG8_SINT:
+            return 2;
+        case R32_UINT:          [[fallthrough]];
+        case R32_SINT:          [[fallthrough]];
+        case R32_FLOAT:         [[fallthrough]];
+        case RG16_UNORM:        [[fallthrough]];
+        case RG16_SNORM:        [[fallthrough]];
+        case RG16_UINT:         [[fallthrough]];
+        case RG16_SINT:         [[fallthrough]];
+        case RG16_FLOAT:        [[fallthrough]];
+        case RGBA8_UNORM:       [[fallthrough]];
+        case RGBA8_UNORM_SRGB:  [[fallthrough]];
+        case RGBA8_SNORM:       [[fallthrough]];
+        case RGBA8_UINT:        [[fallthrough]];
+        case RGBA8_SINT:        [[fallthrough]];
+        case BGRA8_UNORM:       [[fallthrough]];
+        case BGRA8_UNORM_SRGB:
+            return 4;
+        case RG32_UINT:         [[fallthrough]];
+        case RG32_SINT:         [[fallthrough]];
+        case RG32_FLOAT:        [[fallthrough]];
+        case RGBA16_UNORM:      [[fallthrough]];
+        case RGBA16_SNORM:      [[fallthrough]];
+        case RGBA16_UINT:       [[fallthrough]];
+        case RGBA16_SINT:       [[fallthrough]];
+        case RGBA16_FLOAT:
+            return 8;
+        case RGBA32_UINT:       [[fallthrough]];
+        case RGBA32_SINT:       [[fallthrough]];
+        case RGBA32_FLOAT:
+            return 16;
+        case D16_UNORM:
+            return 2;
+        case D24_UNORM_S8_UINT: [[fallthrough]];
+        case D32_FLOAT:
+            return 4;
+        case D32_FLOAT_S8_UINT:
+            return 8;
+        default:
+            return 4;
+        }
     }
 }
 
@@ -116,12 +174,31 @@ namespace Crowy
             texDesc->setUsage(convertTextureUsage(desc.usage));
             texDesc->setStorageMode(MTL::StorageModeShared);
 
-            device->newTexture(texDesc);
+            texture = device->newTexture(texDesc);
             texDesc->release();
 
+            if(desc.initialData)
+                uploadData(desc.initialData);
         }
         ~MetalTexture(){
             texture->release();
+        }
+
+        void uploadData(const void* data,
+            uint32_t mipLevel = 0, uint32_t arraySlice = 0
+        ) RHI_OVERRIDE{
+            auto bytesPerPixel = getBytesPerPixel(format);
+            auto bytesPerRow = width * bytesPerPixel;
+            auto region = MTL::Region::Make2D(0, 0, width, height);
+
+            texture->replaceRegion(
+                region,
+                mipLevel,
+                arraySlice,
+                data,
+                bytesPerRow,
+                0
+            );
         }
 
         void* getNativeResource() RHI_OVERRIDE{
