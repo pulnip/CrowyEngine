@@ -3,9 +3,9 @@ add_library(CrowyResource STATIC)
 target_sources(CrowyResource
 PRIVATE
     Private/MaterialSetManager.cpp
-    Private/MeshImporter.cpp
     Private/MeshManager.cpp
-    Private/MeshSerializer.cpp
+    Private/ModelImporter.cpp
+    Private/ModelSerializer.cpp
     Private/Resource.cpp
     Private/ShaderManager.cpp
     Private/TextureImporter.cpp

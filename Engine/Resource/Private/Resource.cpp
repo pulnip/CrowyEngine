@@ -1,7 +1,11 @@
 #include "LoadContext.hpp"
 #include "MaterialSetManager.hpp"
 #include "MeshManager.hpp"
+#include "ModelImporter.hpp"
 #include "Resource.hpp"
+#include "RHIBuffer.hpp"
+#include "RHIShader.hpp"
+#include "RHITexture.hpp"
 #include "ShaderManager.hpp"
 
 namespace Crowy
@@ -26,17 +30,17 @@ namespace Crowy
         MeshManager::instance        = nullptr;
     }
 
-    MeshHandle getOrLoad(MeshRequest request){
+    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest request){
         LoadContext context{
             .device = Crowy::device,
         };
-        return MeshManager::singleton()->getOrLoad(request, context);
-    }
-    MaterialSetHandle getOrLoad(MaterialSetRequest request){
-        LoadContext context{
-            .device = Crowy::device,
-        };
-        return MaterialSetManager::singleton()->getOrLoad(request, context);
+
+        auto modelData = importModel(request.uri, Crowy::device->getCapabilities());
+
+        if(!modelData.has_value())
+            throw std::runtime_error("impossible to import mesh");
+
+        auto meshData = modelData.value();
     }
     ShaderHandle getOrLoad(ShaderRequest request){
         LoadContext context{

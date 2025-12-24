@@ -5,12 +5,19 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "Log.hpp"
-#include "MeshImporter.hpp"
+#include "ModelImporter.hpp"
 #include "RHIDevice.hpp"
 
 namespace Crowy
 {
-    std::pair<SchemeKind, std::string> splitSchemeAndPath(const std::string& uri){
+    enum class SchemeKind{
+        File     = 0,
+        Embedded = 1,
+        Unknown  = 2
+    };
+
+    // "scheme:path" -> {scheme, path}
+    static std::pair<SchemeKind, std::string> splitSchemeAndPath(const std::string& uri){
         auto colon_pos = uri.find(':');
         if(colon_pos == std::string::npos)
             return {SchemeKind::Unknown, ""};
@@ -26,8 +33,8 @@ namespace Crowy
             return {SchemeKind::Unknown, pathStr};
     }
 
-    static MeshData createEmbeddedCube(){
-        MeshData mesh;
+    static ModelData createEmbeddedCube(){
+        ModelData model;
 
         // Create single submesh
         SubmeshData submesh;
@@ -89,19 +96,19 @@ namespace Crowy
             21, 20, 22, 22, 20, 23
         };
 
-        mesh.submeshes.push_back(submesh);
+        model.submeshes.push_back(submesh);
 
         // Compute AABB
-        mesh.bounds.min = Vec3{-0.5f, -0.5f, -0.5f};
-        mesh.bounds.max = Vec3{ 0.5f,  0.5f,  0.5f};
+        model.bounds.min = Vec3{-0.5f, -0.5f, -0.5f};
+        model.bounds.max = Vec3{ 0.5f,  0.5f,  0.5f};
 
-        return mesh;
+        return model;
     }
 
-    static MeshData createEmbeddedSphere(
+    static ModelData createEmbeddedSphere(
         float radius=1.0f, int slices=32, int stacks=16
     ){
-        MeshData mesh;
+        ModelData model;
 
         SubmeshData submesh;
         submesh.primitiveType = RHIPrimitiveTopology::TriangleList;
@@ -159,17 +166,17 @@ namespace Crowy
             }
         }
 
-        mesh.submeshes.push_back(submesh);
+        model.submeshes.push_back(submesh);
 
         // Compute AABB
-        mesh.bounds.min = Vec3{-radius, -radius, -radius};
-        mesh.bounds.max = Vec3{ radius,  radius,  radius};
+        model.bounds.min = Vec3{-radius, -radius, -radius};
+        model.bounds.max = Vec3{ radius,  radius,  radius};
 
-        return mesh;
+        return model;
     }
 
-    static MeshData createEmbeddedPlane(){
-        MeshData mesh;
+    static ModelData createEmbeddedPlane(){
+        ModelData model;
 
         SubmeshData submesh;
         submesh.primitiveType = RHIPrimitiveTopology::TriangleList;
@@ -188,16 +195,17 @@ namespace Crowy
             0, 3, 2
         };
 
-        mesh.submeshes.push_back(submesh);
+        model.submeshes.push_back(submesh);
 
         // Compute AABB
-        mesh.bounds.min = Vec3{-0.5f, 0.0f, -0.5f};
-        mesh.bounds.max = Vec3{ 0.5f, 0.0f,  0.5f};
+        model.bounds.min = Vec3{-0.5f, 0.0f, -0.5f};
+        model.bounds.max = Vec3{ 0.5f, 0.0f,  0.5f};
 
-        return mesh;
+        return model;
     }
 
-    std::optional<MeshData> importMesh(
+    // 3D Model Files to MeshData
+    static std::optional<ModelData> loadModel(
         const std::string& filePath, RHICapabilities cap
     ){
         Assimp::Importer importer;
@@ -233,7 +241,7 @@ namespace Crowy
         LOG_INFO(LOG_RESOURCE, "  Materials: {}", scene->mNumMaterials);
         LOG_INFO(LOG_RESOURCE, "  Textures: {}", scene->mNumTextures);
 
-        MeshData meshData;
+        ModelData modelData;
         Vec3 globalMin{
             std::numeric_limits<float>::max(),
             std::numeric_limits<float>::max(),
@@ -308,12 +316,12 @@ namespace Crowy
                 material.textures[TextureUsage::Normal] = texRef;
             }
 
-            meshData.materials[material.name] = material;
+            modelData.materials[material.name] = material;
         }
 
         LOG_DEBUG(LOG_RESOURCE, "\n=== Final Materials ===");
-        LOG_DEBUG(LOG_RESOURCE, "Loaded {} materials", meshData.materials.size());
-        for(const auto& [name, mat]: meshData.materials){
+        LOG_DEBUG(LOG_RESOURCE, "Loaded {} materials", modelData.materials.size());
+        for(const auto& [name, mat]: modelData.materials){
             LOG_DEBUG(LOG_RESOURCE, "  Material: '{}'", name);
         }
 
@@ -416,21 +424,21 @@ namespace Crowy
                 submesh.materialSlotName
             );
 
-            meshData.submeshes.push_back(submesh);
+            modelData.submeshes.push_back(submesh);
         }
 
         LOG_DEBUG(LOG_RESOURCE, "\n=== Summary ===");
-        LOG_DEBUG(LOG_RESOURCE, "Total submeshes: {}", meshData.submeshes.size());
-        LOG_DEBUG(LOG_RESOURCE, "Total materials: {}", meshData.materials.size());
+        LOG_DEBUG(LOG_RESOURCE, "Total submeshes: {}", modelData.submeshes.size());
+        LOG_DEBUG(LOG_RESOURCE, "Total materials: {}", modelData.materials.size());
 
         // Set global AABB
-        meshData.bounds.min = globalMin;
-        meshData.bounds.max = globalMax;
+        modelData.bounds.min = globalMin;
+        modelData.bounds.max = globalMax;
 
-        return meshData;
+        return modelData;
     }
 
-    std::optional<MeshData> loadEmbeddedMesh(const std::string& name){
+    static std::optional<ModelData> loadEmbeddedModel(const std::string& name){
         if(name == "cube")
             return createEmbeddedCube();
         else if(name == "sphere")
@@ -439,5 +447,20 @@ namespace Crowy
             return createEmbeddedPlane();
         else
             return std::nullopt;
+    }
+
+    std::optional<ModelData> importModel(const std::string& uri, RHICapabilities cap){
+        auto [scheme, path] = splitSchemeAndPath(uri);
+
+        switch(scheme){
+        case SchemeKind::File:
+            return loadModel(path, cap);
+        case SchemeKind::Embedded:
+            return loadEmbeddedModel(path);
+        default:
+            LOG_DEBUG(LOG_RESOURCE, "met Undefined Scheme");
+        }
+
+        return std::nullopt;
     }
 }

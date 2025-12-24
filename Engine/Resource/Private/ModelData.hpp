@@ -124,7 +124,7 @@ namespace Crowy
 
     // Runtime mesh representation
     // A mesh can contain multiple submeshes with different materials
-    struct MeshData{
+    struct ModelData{
         // Metadata
         AxisInfo axisInfo;
         AABB bounds;

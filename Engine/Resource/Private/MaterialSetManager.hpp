@@ -10,6 +10,17 @@
 
 namespace Crowy
 {
+    struct MaterialSetRequest{
+        using Key     = std::string;
+        using KeyHash = std::hash<std::string>;
+
+        std::string meshKey;
+        // Pre-loaded material handles
+        // std::vector<MaterialHandle> materialHandles;
+
+        inline Key key() const{ return meshKey; }
+    };
+
     struct MaterialSet{
         using Request = MaterialSetRequest;
 

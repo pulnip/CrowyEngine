@@ -13,7 +13,7 @@ namespace Crowy
         return std::make_unique<MetalDevice>();
     }
 #else
-    std::unique_ptr<RHIDevice> createDevice(){
+    RHIDevicePtr createDevice(){
         return std::make_unique<MetalDevice>();
     }
 #endif
@@ -58,13 +58,13 @@ namespace Crowy
             device->release();
         }
 
-        std::unique_ptr<RHIBuffer> createBuffer(
+        RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc& desc
         ){
             return std::make_unique<MetalBuffer>(device, desc);
         }
 
-        std::unique_ptr<RHITexture> createTexture(
+        RHITexturePtr createTexture(
             const RHITextureCreateDesc& desc
         ){
             return std::make_unique<MetalTexture>(device, desc);
@@ -76,7 +76,7 @@ namespace Crowy
 
     MetalDevice::~MetalDevice(){}
 
-    std::unique_ptr<RHIBuffer> MetalDevice::createBuffer(
+    RHIBufferPtr MetalDevice::createBuffer(
         const RHIBufferCreateDesc& desc
     ){
         return impl->createBuffer(desc);

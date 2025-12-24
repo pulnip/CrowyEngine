@@ -9,6 +9,15 @@
 
 namespace Crowy
 {
+    struct MeshRequest{
+        using Key     = std::string;
+        using KeyHash = std::hash<std::string>;
+
+        std::string uri;
+
+        inline Key key() const{ return uri; }
+    };
+
     struct Mesh{
         using Request = MeshRequest;
 

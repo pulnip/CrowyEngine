@@ -13,19 +13,19 @@
 namespace Crowy
 {
     struct Submesh{
-        RHIBufferHandle vertexBuffer;
-        RHIBufferHandle indexBuffer;
+        RHIBufferPtr vertexBuffer;
+        RHIBufferPtr indexBuffer;
         uint32_t vertexCount = 0;
         uint32_t indexCount = 0;
         uint32_t vertexStride = 0;
 
         inline bool isValid() const{
-            return vertexBuffer.isValid() &&
+            return vertexBuffer != nullptr &&
                    vertexCount > 0;
         }
 
         inline bool hasIndices() const{
-            return indexBuffer.isValid() &&
+            return indexBuffer != nullptr &&
                    indexCount > 0;
         }
     };
@@ -38,43 +38,42 @@ namespace Crowy
         float alpha = 1.0f;
 
         // Texture maps (optional)
-        RHITextureHandle albedoMap;
-        RHITextureHandle normalMap;
-        RHITextureHandle metallicRoughnessMap;
-        RHITextureHandle emissiveMap;
+        RHITexturePtr albedoMap;
+        RHITexturePtr normalMap;
+        RHITexturePtr metallicRoughnessMap;
+        RHITexturePtr emissiveMap;
 
         inline bool hasAlbedoMap() const{
-            return albedoMap.isValid();
+            return albedoMap != nullptr;
         }
         inline bool hasNormalMap() const{
-            return normalMap.isValid();
+            return normalMap != nullptr;
         }
         inline bool hasMetallicRoughnessMap() const{
-            return metallicRoughnessMap.isValid();
+            return metallicRoughnessMap != nullptr;
         }
         inline bool hasEmissiveMap() const{
-            return emissiveMap.isValid();
+            return emissiveMap != nullptr;
         }
     };
 
     struct Shader{
         using Request = ShaderRequest;
 
-        RHIShaderHandle vertexShader;
-        RHIShaderHandle fragmentShader;
+        RHIShaderPtr vertexShader;
+        RHIShaderPtr fragmentShader;
 
         inline bool isValid() const{
-            return vertexShader.isValid() &&
-                   fragmentShader.isValid();
+            return vertexShader   != nullptr &&
+                   fragmentShader != nullptr;
         }
     };
 
     void initResourceModule(RHIDevice&);
     void deinitResourceModule();
 
-    MeshHandle        getOrLoad(       MeshRequest);
-    MaterialSetHandle getOrLoad(MaterialSetRequest);
-    ShaderHandle      getOrLoad(     ShaderRequest);
+    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest);
+    ShaderHandle                             getOrLoad(ShaderRequest);
 
     using        MeshView = std::span<const  Submesh>;
     using MaterialSetView = std::span<const Material>;

@@ -1,6 +1,6 @@
 #include <cstring>
 #include <algorithm>
-#include "MeshSerializer.hpp"
+#include "ModelSerializer.hpp"
 
 namespace {
     // Align offset to 16 bytes
@@ -68,15 +68,15 @@ namespace Crowy
     };
     static_assert(sizeof(MeshFileHeader) % 16 == 0, "Header should be 16-byte aligned");
 
-    std::vector<uint8_t> serializeMesh(const MeshData& mesh){
+    std::vector<uint8_t> serializeModel(const ModelData& model){
         // Calculate sizes
-        const uint32_t submeshCount = mesh.submeshCount();
-        const uint32_t totalVertices = mesh.totalVertexCount();
-        const uint32_t totalIndices = mesh.totalIndexCount();
+        const uint32_t submeshCount = model.submeshCount();
+        const uint32_t totalVertices = model.totalVertexCount();
+        const uint32_t totalIndices = model.totalIndexCount();
 
         // Calculate string blob size (material slot names)
         uint32_t stringBlobSize = 0;
-        for (const auto& submesh : mesh.submeshes) {
+        for (const auto& submesh : model.submeshes) {
             stringBlobSize += static_cast<uint32_t>(submesh.materialSlotName.size() + 1);  // +1 for null terminator
         }
 
@@ -106,8 +106,8 @@ namespace Crowy
         header.totalIndexCount = totalIndices;
         header.materialCount = 0;  // Not implemented yet
         header.stringBlobSize = stringBlobSize;
-        header.axisInfo = mesh.axisInfo;
-        header.bounds = mesh.bounds;
+        header.axisInfo = model.axisInfo;
+        header.bounds = model.bounds;
 
         writeAt(buffer, 0, header);
 
@@ -116,8 +116,8 @@ namespace Crowy
         uint32_t currentIndexOffset = 0;
         uint32_t currentStringOffset = 0;
 
-        for(size_t i = 0; i < mesh.submeshes.size(); ++i){
-            const auto& submesh = mesh.submeshes[i];
+        for(size_t i = 0; i < model.submeshes.size(); ++i){
+            const auto& submesh = model.submeshes[i];
 
             // Write submesh table entry
             SubmeshTableEntry entry{};
@@ -159,7 +159,7 @@ namespace Crowy
         return buffer;
     }
 
-    std::optional<MeshData> deserializeMesh(std::span<const uint8_t> data){
+    std::optional<ModelData> deserializeModel(std::span<const uint8_t> data){
         // Validate minimum size
         if(data.size() < sizeof(MeshFileHeader)){
             return std::nullopt;
@@ -187,10 +187,10 @@ namespace Crowy
             return std::nullopt;
         }
 
-        // Create mesh
-        MeshData mesh;
-        mesh.axisInfo = header.axisInfo;
-        mesh.bounds = header.bounds;
+        // Create model
+        ModelData model;
+        model.axisInfo = header.axisInfo;
+        model.bounds = header.bounds;
 
         const uint8_t* bufferPtr = data.data();
 
@@ -223,9 +223,9 @@ namespace Crowy
             const char* namePtr = reinterpret_cast<const char*>(bufferPtr + stringReadOffset);
             submesh.materialSlotName = std::string(namePtr, entry.materialSlotNameLength);
 
-            mesh.submeshes.push_back(std::move(submesh));
+            model.submeshes.push_back(std::move(submesh));
         }
 
-        return mesh;
+        return model;
     }
 }

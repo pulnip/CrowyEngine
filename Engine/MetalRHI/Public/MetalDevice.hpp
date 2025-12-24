@@ -19,8 +19,8 @@ namespace Crowy
         MetalDevice();
         ~MetalDevice();
 
-        std::unique_ptr<RHIBuffer> createBuffer(const RHIBufferCreateDesc&) RHI_OVERRIDE;
-        std::unique_ptr<RHITexture> createTexture(const RHITextureCreateDesc&) RHI_OVERRIDE;
+        RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) RHI_OVERRIDE;
+        RHITexturePtr createTexture(const RHITextureCreateDesc&) RHI_OVERRIDE;
 
         RHICapabilities getCapabilities() const RHI_OVERRIDE;
 

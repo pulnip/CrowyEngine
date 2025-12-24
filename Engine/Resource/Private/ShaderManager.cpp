@@ -1,4 +1,5 @@
 #include "LoadContext.hpp"
+#include "RHIShader.hpp"
 #include "ShaderManager.hpp"
 
 namespace Crowy

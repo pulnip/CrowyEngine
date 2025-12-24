@@ -1,5 +1,7 @@
 #include "SceneLoader.hpp"
 #include "SceneParser.hpp"
+#include "Component.hpp"
+#include "Resource.hpp"
 
 namespace Crowy
 {

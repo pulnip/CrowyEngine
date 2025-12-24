@@ -1,5 +1,6 @@
 #include "LoadContext.hpp"
 #include "MaterialSetManager.hpp"
+#include "RHITexture.hpp"
 
 namespace Crowy
 {
