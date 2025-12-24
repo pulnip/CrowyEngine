@@ -131,7 +131,7 @@ typedef enum{
     TEX_UnorderedAccess = 1 << 3,
     TEX_CopySource      = 1 << 4,
     TEX_CopyDest        = 1 << 5,
-} RHITextureUsageFlags;
+} RHITextureUsage;
 
 typedef enum{
     Common,
@@ -164,7 +164,7 @@ typedef struct{
     uint32_t mipLevels;
     uint32_t arraySize;
     RHITextureFormat format;
-    RHITextureUsageFlags usage;
+    RHITextureUsage usage;
     RHIResourceState initialState;
     RHIClearColor clearColor;
     RHIClearDepthStencil clearDepthStencil;

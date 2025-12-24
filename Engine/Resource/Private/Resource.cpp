@@ -71,8 +71,8 @@ namespace Crowy
         auto materialSet = MaterialSetManager::singleton()->get(handle);
         MaterialSetView view;
 
-        for(const auto& material: materialSet->materials){
-            view.emplace(material.first, material.second.get());
+        for(const auto& [slot, material]: materialSet->materials){
+            view.emplace(slot, &material);
         }
 
         return view;

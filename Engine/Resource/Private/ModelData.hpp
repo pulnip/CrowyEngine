@@ -56,8 +56,21 @@ namespace Crowy
         PBR   = 1, // Physically-Based Rendering
     };
 
+    enum TextureFlags: uint16_t{
+        TEX_None         = 0,
+        TEX_SRGB         = 1 << 0, // Texture is in sRGB color space
+        TEX_GenerateMips = 1 << 1  // Generate mipmaps
+    };
+
+    // Texture reference in a material
+    struct TextureRef{
+        std::string path;  // Path to texture file
+        // TextureUsage usage;
+        uint16_t flags = TEX_None;
+    };
+
     // Texture usage semantic
-    enum class TextureUsage: uint8_t{
+    enum class TextureSemantic: uint8_t{
         BaseColor         = 0, // Albedo / Diffuse
         Normal            = 1, // Normal map (tangent space)
         MetallicRoughness = 2, // R=unused, G=Roughness, B=Metallic (glTF 2.0 convention)
@@ -68,36 +81,23 @@ namespace Crowy
         // Height, Opacity, etc.
     };
 
-    enum TextureFlags: uint16_t{
-        TEX_None         = 0,
-        TEX_SRGB         = 1 << 0, // Texture is in sRGB color space
-        TEX_GenerateMips = 1 << 1  // Generate mipmaps
-    };
-
-    // Texture reference in a material
-    struct TextureRef{
-        std::string uri;  // Path to texture file
-        TextureUsage usage;
-        uint16_t flags = TEX_None;
-    };
-
     // Describes how a surface should be shaded
     struct MaterialRef{
         std::string name;
         MaterialType type = MaterialType::PBR;
 
         // Textures keyed by usage
-        std::unordered_map<TextureUsage, TextureRef> textures;
+        std::unordered_map<TextureSemantic, TextureRef> textures;
 
         // Material parameters (when textures are not present)
-        Vec4 baseColorFactor = Vec4{1.0f, 1.0f, 1.0f, 1.0f};
-        double metallicFactor = 0.0f;
-        double roughnessFactor = 1.0f;
-        Vec3 emissiveFactor = zeros();
+        Vec4 baseColor = Vec4{1.0f, 1.0f, 1.0f, 1.0f};
+        float metallic = 0.0f;
+        float roughness = 1.0f;
+        Vec3 emissive = zeros();
 
         // Check if material has a specific texture
-        inline bool hasTexture(TextureUsage usage) const{
-            return textures.find(usage) != textures.end();
+        inline bool hasTexture(TextureSemantic semantic) const{
+            return textures.find(semantic) != textures.end();
         }
     };
 

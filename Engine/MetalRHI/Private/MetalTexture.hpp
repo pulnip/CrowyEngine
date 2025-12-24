@@ -73,7 +73,7 @@ namespace{
         default:                                  return MTL::PixelFormatInvalid;
         }
     }
-    static auto convertTextureUsage(RHITextureUsageFlags usage){
+    static auto convertTextureUsage(RHITextureUsage usage){
         MTL::TextureUsage mtlUsage = 0;
 
         if((usage & TEX_ShaderResource ) != 0){ mtlUsage |= MTL::TextureUsageShaderRead;   }

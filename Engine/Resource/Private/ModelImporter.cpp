@@ -204,6 +204,10 @@ namespace Crowy
         return model;
     }
 
+    static Vec4 toVec4(const aiColor4D& v){
+        return {v.r, v.g, v.b, v.a};
+    }
+
     // 3D Model Files to MeshData
     static std::optional<ModelData> loadModel(
         const std::string& filePath, RHICapabilities cap
@@ -275,10 +279,10 @@ namespace Crowy
             // Get base color factor
             aiColor4D baseColor;
             if(aiMat->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS){
-                material.baseColorFactor = Vec4{baseColor.r, baseColor.g, baseColor.b, baseColor.a};
+                material.baseColor = toVec4(baseColor);
             }
             else if(aiMat->Get(AI_MATKEY_COLOR_DIFFUSE, baseColor) == AI_SUCCESS){
-                material.baseColorFactor = Vec4{baseColor.r, baseColor.g, baseColor.b, baseColor.a};
+                material.baseColor = toVec4(baseColor);
             }
 
             // Print all texture types in this material
@@ -299,10 +303,9 @@ namespace Crowy
             if(aiMat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS){
                 TextureRef texRef;
                 std::filesystem::path texFilePath = modelDir / texPath.C_Str();
-                texRef.uri = texFilePath.string();
-                texRef.usage = TextureUsage::BaseColor;
+                texRef.path = texFilePath.string();
                 texRef.flags = TEX_SRGB | TEX_GenerateMips;
-                material.textures[TextureUsage::BaseColor] = texRef;
+                material.textures[TextureSemantic::BaseColor] = texRef;
                 LOG_DEBUG(LOG_RESOURCE, "      -> Loaded DIFFUSE: {}", texPath.C_Str());
             }
 
@@ -310,10 +313,9 @@ namespace Crowy
             if(aiMat->GetTexture(aiTextureType_NORMALS, 0, &texPath) == AI_SUCCESS){
                 TextureRef texRef;
                 std::filesystem::path texFilePath = modelDir / texPath.C_Str();
-                texRef.uri = texFilePath.string();
-                texRef.usage = TextureUsage::Normal;
+                texRef.path = texFilePath.string();
                 texRef.flags = TEX_GenerateMips;
-                material.textures[TextureUsage::Normal] = texRef;
+                material.textures[TextureSemantic::Normal] = texRef;
             }
 
             modelData.materials[material.name] = material;

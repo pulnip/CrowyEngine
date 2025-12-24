@@ -1,4 +1,5 @@
 #include "LoadContext.hpp"
+#include "Log.hpp"
 #include "MaterialSetManager.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
@@ -8,37 +9,93 @@ namespace Crowy
 {
     MaterialSetManager* MaterialSetManager::instance = nullptr;
 
-    MaterialSet instantiate(const MaterialSetRequest& request, LoadContext& ctx){
-        TextureMap textureMap;
+    static RHITexturePtr instantiate(const TextureRef& ref, LoadContext& ctx){
+        auto textureData = importTexture(ref.path);
+        if(!textureData.has_value())
+            return nullptr;
 
-        for(const auto& [slot, matDesc]: request.data){
-            for(const auto& [usage, texDesc]: matDesc.textures){
-                auto textureData = importTexture(texDesc.uri);
-                if(!textureData.has_value())
-                    continue;
+        uint32_t mipLevels = 1;
+        if(ref.flags & TEX_GenerateMips){
+            mipLevels = static_cast<uint32_t>(
+                std::floor(std::log2(std::max(
+                    textureData->width, textureData->height
+                )))
+            ) + 1;
+        }
 
-                auto texture = ctx.device->createTexture(
-                    RHITextureCreateDesc{
-                        .width = textureData->getWidth(),
-                        .height = textureData->getHeight(),
-                        .depth = 1,
-                        .mipLevels = 1,
-                        .arraySize = 1,
-                        .format = RHITextureFormat::RGBA8_UNORM,
-                        .usage = RHITextureUsageFlags::TEX_ShaderResource,
-                        .initialState = RHIResourceState::ShaderResource,
-                        .clearColor = {},
-                        .clearDepthStencil = {},
-                        .initialData = textureData->pixels.data()
-                    }
-                );
+        RHITextureFormat format = (ref.flags & TEX_SRGB) 
+            ? RHITextureFormat::RGBA8_UNORM_SRGB 
+            : RHITextureFormat::RGBA8_UNORM;
 
-                textureMap.emplace(slot, std::move(texture));
+        return ctx.device->createTexture(
+            RHITextureCreateDesc{
+                .width = textureData->getWidth(),
+                .height = textureData->getHeight(),
+                .depth = 1,
+                .mipLevels = mipLevels,
+                .arraySize = 1,
+                .format = format,
+                .usage = RHITextureUsage::TEX_ShaderResource,
+                .initialState = RHIResourceState::ShaderResource,
+                .clearColor = {},
+                .clearDepthStencil = {},
+                .initialData = textureData->pixels.data()
+            }
+        );
+    }
+
+    static Material instantiate(const MaterialRef& ref, LoadContext& ctx){
+        Material material{
+            .baseColor = ref.baseColor,
+            .metallic  = ref.metallic,
+            .roughness = ref.roughness,
+            .emissive  = ref.emissive,
+            .baseColorMap         = nullptr,
+            .normalMap            = nullptr,
+            .metallicRoughnessMap = nullptr,
+            .emissiveMap          = nullptr,
+            .occlusionMap         = nullptr
+        };
+
+        for(const auto& [semantic, texRef]: ref.textures){
+            auto texture = instantiate(texRef, ctx);
+
+            if(!texture)
+                continue;
+
+            switch(semantic){
+            case TextureSemantic::BaseColor:
+                material.baseColorMap = std::move(texture);
+                break;
+            case TextureSemantic::Normal:
+                material.normalMap = std::move(texture);
+                break;
+            case TextureSemantic::MetallicRoughness:
+                material.metallicRoughnessMap = std::move(texture);
+                break;
+            case TextureSemantic::Emissive:
+                material.emissiveMap = std::move(texture);
+                break;
+            case TextureSemantic::Occlusion:
+                material.occlusionMap = std::move(texture);
+                break;
+            default:
+                LOG_WARN(LOG_RESOURCE, "Unsupported Texture type");
             }
         }
 
+        return material;
+    }
+
+    MaterialSet instantiate(const MaterialSetRequest& request, LoadContext& ctx){
+        MaterialMap materialMap;
+
+        for(const auto& [slot, matRef]: request.data){
+            materialMap.emplace(slot, instantiate(matRef, ctx));
+        }
+
         return MaterialSet{
-            .materials = std::move(textureMap)
+            .materials = std::move(materialMap)
         };
     }
 }

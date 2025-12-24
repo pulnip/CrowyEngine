@@ -21,12 +21,12 @@ namespace Crowy
         inline Key key() const{ return uri; }
     };
 
-    using TextureMap = std::unordered_map<std::string, RHITexturePtr>;
+    using MaterialMap = std::unordered_map<std::string, Material>;
 
     struct MaterialSet{
         using Request = MaterialSetRequest;
 
-        TextureMap materials;
+        MaterialMap materials;
 
         inline auto materialCount() const{
             return materials.size();

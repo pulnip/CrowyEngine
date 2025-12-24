@@ -31,20 +31,21 @@ namespace Crowy
     };
 
     struct Material{
-        // PBR parameters
-        Vec4 albedo = Vec4{1.0f, 1.0f, 1.0f, 1.0f};
+        // fallback Parameters
+        Vec4 baseColor = Vec4{1.0f, 1.0f, 1.0f, 1.0f};
         float metallic = 0.0f;
-        float roughness = 0.5f;
-        float alpha = 1.0f;
+        float roughness = 1.0f;
+        Vec3 emissive = zeros();
 
-        // Texture maps (optional)
-        RHITexturePtr albedoMap;
+        // Texture maps
+        RHITexturePtr baseColorMap;
         RHITexturePtr normalMap;
         RHITexturePtr metallicRoughnessMap;
         RHITexturePtr emissiveMap;
+        RHITexturePtr occlusionMap;
 
-        inline bool hasAlbedoMap() const{
-            return albedoMap != nullptr;
+        inline bool hasBaseColorMap() const{
+            return baseColorMap != nullptr;
         }
         inline bool hasNormalMap() const{
             return normalMap != nullptr;
@@ -54,6 +55,9 @@ namespace Crowy
         }
         inline bool hasEmissiveMap() const{
             return emissiveMap != nullptr;
+        }
+        inline bool hasOcclusionMap() const{
+            return occlusionMap != nullptr;
         }
     };
 
@@ -76,7 +80,7 @@ namespace Crowy
     ShaderHandle                             getOrLoad(ShaderRequest);
 
     using        MeshView = std::span<const  Submesh>;
-    using MaterialSetView = std::unordered_map<std::string, RHITexture*>;
+    using MaterialSetView = std::unordered_map<std::string, const Material*>;
 
     MeshView        get(       MeshHandle);
     MaterialSetView get(MaterialSetHandle);
