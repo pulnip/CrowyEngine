@@ -13,6 +13,7 @@ PUBLIC
 
 target_link_libraries(CrowyPlatform
 PRIVATE
+    Crowy::Core
     Crowy::Log
     SDL3::SDL3
 )

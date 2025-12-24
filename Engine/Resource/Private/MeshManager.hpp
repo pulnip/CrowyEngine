@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "generic_handle.hpp"
+#include "semantics.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
 
@@ -32,6 +33,7 @@ namespace Crowy
     public:
         MeshManager() = default;
         ~MeshManager() = default;
+        DECLARE_PINNED(MeshManager)
 
         inline static auto singleton(){ return instance; }
 

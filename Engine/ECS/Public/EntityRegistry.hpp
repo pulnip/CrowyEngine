@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include "dynamic_vector.hpp"
+#include "semantics.hpp"
 #include "Component.hpp"
 #include "ECSDefinitions.hpp"
 #include "Log.hpp"
@@ -245,10 +246,7 @@ namespace Crowy
     public:
         EntityRegistry() = default;
         ~EntityRegistry() = default;
-        EntityRegistry(const EntityRegistry&) = delete;
-        EntityRegistry(EntityRegistry&&) = delete;
-        auto operator=(const EntityRegistry&)->EntityRegistry& = delete;
-        auto operator=(EntityRegistry&&)->EntityRegistry& = delete;
+        DECLARE_PINNED(EntityRegistry)
 
     private:
         auto issueID(){ return id_seed++; }

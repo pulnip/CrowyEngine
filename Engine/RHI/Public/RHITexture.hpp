@@ -1,5 +1,6 @@
 #pragma once
 
+#include "semantics.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDefinitions.h"
 
@@ -20,12 +21,7 @@ namespace Crowy
 #else
     class RHITexture{
     public:
-        RHITexture() = default;
-        virtual ~RHITexture() = default;
-        RHITexture(const RHITexture&) = delete;
-        RHITexture(RHITexture&&) = default;
-        RHITexture& operator=(const RHITexture&) = delete;
-        RHITexture& operator=(RHITexture&&) = default;
+        DECLARE_INTERFACE(RHITexture)
 
         // Platform-specific resource getter (for interop)
         virtual void* getNativeResource() = 0;

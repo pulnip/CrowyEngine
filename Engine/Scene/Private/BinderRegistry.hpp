@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "semantics.hpp"
 #include "Component.hpp"
 #include "SceneSpec.hpp"
 #include "SourceLocation.hpp"
@@ -81,7 +82,8 @@ namespace Crowy
     // component binder interface
     class IComponentBinder{
     public:
-        virtual ~IComponentBinder() = default;
+        DECLARE_INTERFACE(IComponentBinder);
+
         virtual void validateAndPlan(const ValueArena&,
             const VTable&, size_t entityIndex, BindPlan&)=0;
     };

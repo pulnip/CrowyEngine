@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "generic_handle.hpp"
+#include "semantics.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
 
@@ -33,6 +34,7 @@ namespace Crowy
     public:
         MaterialSetManager() = default;
         ~MaterialSetManager() = default;
+        DECLARE_PINNED(MaterialSetManager)
 
         inline static auto singleton(){ return instance; }
 

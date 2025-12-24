@@ -1,10 +1,12 @@
 #pragma once
 
+#include "semantics.hpp"
+
 namespace Crowy
 {
     class MainLoop{
     public:
-        virtual ~MainLoop() = default;
+        DECLARE_INTERFACE(MainLoop)
 
         virtual void initialize(){}
         virtual bool update(float dt){ return true; }

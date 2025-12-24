@@ -11,4 +11,9 @@ PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/Public"
 )
 
+target_link_libraries(CrowyLog
+PUBLIC
+    Crowy::Core
+)
+
 add_library(Crowy::Log ALIAS CrowyLog)

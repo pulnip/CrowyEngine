@@ -1,5 +1,6 @@
 #pragma once
 
+#include "semantics.hpp"
 #include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
@@ -18,12 +19,7 @@ namespace Crowy
 #else
     class RHIBuffer{
     public:
-        RHIBuffer() = default;
-        virtual ~RHIBuffer() = default;
-        RHIBuffer(const RHIBuffer&) = delete;
-        RHIBuffer(RHIBuffer&&) = default;
-        RHIBuffer& operator=(const RHIBuffer&) = delete;
-        RHIBuffer& operator=(RHIBuffer&&) = default;
+        DECLARE_INTERFACE(RHIBuffer)
     };
 #endif
 }

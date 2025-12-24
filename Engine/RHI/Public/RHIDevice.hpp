@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "semantics.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDefinitions.h"
 
@@ -22,12 +23,7 @@ namespace Crowy
 #else
     class RHIDevice{
     public:
-        RHIDevice() = default;
-        virtual ~RHIDevice() = default;
-        RHIDevice(const RHIDevice&) = delete;
-        RHIDevice(RHIDevice&&) = default;
-        RHIDevice& operator=(const RHIDevice&) = delete;
-        RHIDevice& operator=(RHIDevice&&) = default;
+        DECLARE_INTERFACE(RHIDevice)
 
         virtual std::unique_ptr<RHIBuffer> createBuffer(const RHIBufferCreateDesc&) = 0;
         virtual std::unique_ptr<RHITexture> createTexture(const RHITextureCreateDesc&) = 0;

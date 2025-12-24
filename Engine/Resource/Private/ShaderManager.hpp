@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generic_handle.hpp"
+#include "semantics.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
 
@@ -14,6 +15,7 @@ namespace Crowy
     public:
         ShaderManager() = default;
         ~ShaderManager() = default;
+        DECLARE_PINNED(ShaderManager)
 
         inline static auto singleton(){ return instance; }
 
