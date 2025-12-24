@@ -28,3 +28,7 @@ PRIVATE
 )
 
 add_library(Crowy::Resource ALIAS CrowyResource)
+
+if(CROWY_ENABLE_TEST)
+    add_subdirectory(Test)
+endif()

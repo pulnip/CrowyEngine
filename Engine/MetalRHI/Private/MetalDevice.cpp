@@ -82,6 +82,12 @@ namespace Crowy
         return impl->createBuffer(desc);
     }
 
+    RHITexturePtr MetalDevice::createTexture(
+        const RHITextureCreateDesc& desc
+    ){
+        return impl->createTexture(desc);
+    }
+
     RHICapabilities MetalDevice::getCapabilities() const{
         return {
             .flipTextureV = true,
