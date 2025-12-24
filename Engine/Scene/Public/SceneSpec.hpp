@@ -19,15 +19,15 @@ namespace Crowy
         std::string vsFunc;
         std::string fsFunc;
     };
-    struct MeshSpec{
-        std::string id;
+    struct RenderObjectSpec{
+        std::string uri;
         std::vector<MaterialSpec> material_override;
-        ShaderSpec shader;
+        ShaderSpec shaderSpec;
     };
 
     using TransformComponents = std::vector<TransformComponent>;
     using MaterialSpecs = std::vector<MaterialSpec>;
-    using MeshSpecs = std::vector<MeshSpec>;
+    using RenderObjectSpecs = std::vector<RenderObjectSpec>;
     using RigidbodyComponents = std::vector<RigidbodyComponent>;
     using BoxColliderComponents = std::vector<BoxColliderComponent>;
     using SphereColliderComponents = std::vector<SphereColliderComponent>;
@@ -41,7 +41,7 @@ namespace Crowy
         std::string name;
         std::bitset<(size_t)8> mask;
         uint32_t transformIndex      = INVALID_INDEX;
-        uint32_t meshIndex           = INVALID_INDEX;
+        uint32_t renderObjectIndex   = INVALID_INDEX;
         uint32_t rigidbodyIndex      = INVALID_INDEX;
         uint32_t boxColliderIndex    = INVALID_INDEX;
         uint32_t sphereColliderIndex = INVALID_INDEX;
@@ -55,7 +55,7 @@ namespace Crowy
     struct SceneSpec{
         // SoA
         TransformComponents transforms;
-        MeshSpecs meshes;
+        RenderObjectSpecs renderObjects;
         RigidbodyComponents rigidbodies;
         BoxColliderComponents boxColliders;
         SphereColliderComponents sphereColliders;

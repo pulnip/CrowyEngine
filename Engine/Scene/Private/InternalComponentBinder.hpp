@@ -14,7 +14,7 @@ namespace Crowy
         static void freeze(SceneSpec& spec, BindPlan& plan);
     };
 
-    class MeshBinder: public IComponentBinder{
+    class RenderObjectBinder: public IComponentBinder{
     private:
         static std::optional<std::vector<MaterialSpec>> readMaterial(
             const ValueArena& arena, const VTable& src, BindPlan& plan

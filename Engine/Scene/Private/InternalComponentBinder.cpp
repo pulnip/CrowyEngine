@@ -46,7 +46,7 @@ namespace Crowy
         }
     }
 
-    std::optional<std::vector<MaterialSpec>> MeshBinder::readMaterial(
+    std::optional<std::vector<MaterialSpec>> RenderObjectBinder::readMaterial(
         const ValueArena& arena, const VTable& src, BindPlan& plan
     ){
         if(const VNode* n = findField(arena, src, "material_override")){
@@ -79,7 +79,7 @@ namespace Crowy
 
         return std::nullopt;
     }
-    std::optional<ShaderSpec> MeshBinder::readShader(
+    std::optional<ShaderSpec> RenderObjectBinder::readShader(
         const ValueArena& arena, const VTable& src, BindPlan& plan
     ){
         if(const VNode* n = findField(arena, src, "shader")){
@@ -108,37 +108,37 @@ namespace Crowy
         return std::nullopt;
     }
 
-    void MeshBinder::validateAndPlan(const ValueArena& arena,
+    void RenderObjectBinder::validateAndPlan(const ValueArena& arena,
         const VTable& src, size_t entityIndex, BindPlan& plan
     ){
-        auto msh = readString(arena, src, plan, "id", "embedded:cube");
+        auto msh = readString(arena, src, plan, "uri", "embedded:cube");
 
         if(!msh)
             return;
 
-        MeshSpec spec{
-            .id = *msh
+        RenderObjectSpec spec{
+            .uri = *msh
         };
 
         if(auto mat = readMaterial(arena, src, plan))
             spec.material_override = *mat;
 
         if(auto sh = readShader(arena, src, plan))
-            spec.shader = *sh;
+            spec.shaderSpec = *sh;
 
-        plan.meshes.push_back(PlannedMesh{
+        plan.renderObjects.push_back({
             .spec = spec,
             .entityIndex = entityIndex,
             .location = src.location
         });
     }
 
-    void MeshBinder::freeze(SceneSpec& spec, BindPlan& plan){
-        for(const auto& p: plan.meshes){
+    void RenderObjectBinder::freeze(SceneSpec& spec, BindPlan& plan){
+        for(const auto& p: plan.renderObjects){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.meshes.push_back(p.spec);
-            entity.meshIndex = static_cast<uint32_t>(spec.meshes.size() - 1);
+            spec.renderObjects.push_back(p.spec);
+            entity.renderObjectIndex = static_cast<uint32_t>(spec.renderObjects.size() - 1);
             entity.mask.set((size_t)ComponentKind::Mesh);
         }
     }
@@ -322,7 +322,7 @@ namespace Crowy
     BinderRegistry makeDefaultBinderRegistry(){
         BinderRegistry reg;
         reg.emplace("transform", std::make_unique<TransformBinder>());
-        reg.emplace("mesh", std::make_unique<MeshBinder>());
+        reg.emplace("renderObject", std::make_unique<RenderObjectBinder>());
         reg.emplace("rigidbody", std::make_unique<RigidbodyBinder>());
         reg.emplace("boxCollider", std::make_unique<BoxColliderBinder>());
         reg.emplace("sphereCollider", std::make_unique<SphereColliderBinder>());

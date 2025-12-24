@@ -31,8 +31,8 @@ namespace Crowy
         size_t entityIndex = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };
-    struct PlannedMesh{
-        MeshSpec spec;
+    struct PlannedRenderObject{
+        RenderObjectSpec spec;
         size_t entityIndex = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };
@@ -69,7 +69,7 @@ namespace Crowy
 
     struct BindPlan{
         std::vector<PlannedTransform> transforms;
-        std::vector<PlannedMesh> meshes;
+        std::vector<PlannedRenderObject> renderObjects;
         std::vector<PlannedRigidbody> rigidbodies;
         std::vector<PlannedBoxCollider> boxColliders;
         std::vector<PlannedSphereCollider> sphereColliders;

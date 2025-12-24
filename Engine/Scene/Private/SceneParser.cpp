@@ -189,7 +189,7 @@ namespace Crowy
 
         // Freeze(Create SoA + connect index)
         TransformBinder::freeze(out, plan);
-        MeshBinder::freeze(out, plan);
+        RenderObjectBinder::freeze(out, plan);
         RigidbodyBinder::freeze(out, plan);
         BoxColliderBinder::freeze(out, plan);
         SphereColliderBinder::freeze(out, plan);
