@@ -6,6 +6,7 @@
 #include <assimp/postprocess.h>
 #include "Log.hpp"
 #include "ModelImporter.hpp"
+#include "PathUtils.hpp"
 #include "RHIDevice.hpp"
 
 namespace Crowy
@@ -210,8 +211,10 @@ namespace Crowy
 
     // 3D Model Files to MeshData
     static std::optional<ModelData> loadModel(
-        const std::string& filePath, RHICapabilities cap
+        const std::string& path, RHICapabilities cap
     ){
+        auto resolvedPath = resolveAssetPath(path).string();
+
         Assimp::Importer importer;
 
         // Configure post-processing flags
@@ -226,7 +229,7 @@ namespace Crowy
             aiProcess_ValidateDataStructure;     // Validate the loaded data
 
         // Load the mesh file
-        const aiScene* scene = importer.ReadFile(filePath, flags);
+        const aiScene* scene = importer.ReadFile(resolvedPath, flags);
 
         // Check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode){
@@ -258,8 +261,7 @@ namespace Crowy
         };
 
         // Get the directory of the model file for resolving texture paths
-        std::filesystem::path modelPath(filePath);
-        std::filesystem::path modelDir = modelPath.parent_path();
+        auto modelDir = std::filesystem::path(path).parent_path();
 
         // Process materials first
         for(unsigned int matIdx = 0; matIdx < scene->mNumMaterials; ++matIdx){

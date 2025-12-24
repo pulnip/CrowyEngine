@@ -6,6 +6,7 @@ PRIVATE
     Private/MeshManager.cpp
     Private/ModelImporter.cpp
     Private/ModelSerializer.cpp
+    Private/PathUtils.cpp
     Private/Resource.cpp
     Private/ShaderManager.cpp
     Private/TextureImporter.cpp
