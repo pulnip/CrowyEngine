@@ -47,3 +47,27 @@ TEST_F(ResourceModuleTest, LoadModelFile){
     EXPECT_TRUE(mesh.isValid());
     EXPECT_TRUE(mat.isValid());
 }
+
+TEST_F(ResourceModuleTest, RequestWrongUri){
+    {
+        const auto [mesh, mat] = Crowy::getOrLoad(
+            Crowy::ModelRequest{
+                .uri = "WrongUri"
+            }
+        );
+
+        EXPECT_FALSE(mesh.isValid());
+        EXPECT_FALSE(mat.isValid());
+    }
+
+    {
+        const auto [mesh, mat] = Crowy::getOrLoad(
+            Crowy::ModelRequest{
+                .uri = "WrongScheme:cube"
+            }
+        );
+
+        EXPECT_FALSE(mesh.isValid());
+        EXPECT_FALSE(mat.isValid());
+    }
+}

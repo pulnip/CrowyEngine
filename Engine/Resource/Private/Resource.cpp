@@ -37,8 +37,9 @@ namespace Crowy
 
         auto modelData = importModel(request.uri, Crowy::device->getCapabilities());
 
-        if(!modelData.has_value())
-            throw std::runtime_error("impossible to import mesh");
+        if(!modelData.has_value()){
+            return {MeshHandle::invalidHandle(), MaterialSetHandle::invalidHandle()};
+        }
 
         auto meshHandle = MeshManager::singleton()->getOrLoad(
             MeshRequest{
