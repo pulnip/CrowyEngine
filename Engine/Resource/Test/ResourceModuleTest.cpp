@@ -35,6 +35,7 @@ TEST_F(ResourceModuleTest, LoadEmbedded){
     );
 
     EXPECT_TRUE(mesh.isValid());
+    EXPECT_TRUE( mat.isValid());
 }
 
 TEST_F(ResourceModuleTest, LoadModelFile){

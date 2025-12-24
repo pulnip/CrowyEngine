@@ -443,14 +443,28 @@ namespace Crowy
     }
 
     static std::optional<ModelData> loadEmbeddedModel(const std::string& name){
+        ModelData meshData;
+
         if(name == "cube")
-            return createEmbeddedCube();
+            meshData = createEmbeddedCube();
         else if(name == "sphere")
-            return createEmbeddedSphere();
+            meshData = createEmbeddedSphere();
         else if(name == "plane")
-            return createEmbeddedPlane();
+            meshData = createEmbeddedPlane();
         else
             return std::nullopt;
+
+        meshData.materials.emplace("default",
+            MaterialRef{
+                .name = "default",
+                .type = MaterialType::PBR,
+                .textures = {},  // 비어있음 → 텍스처 로드 안 함
+                .baseColor = Vec4{0.8f, 0.8f, 0.8f, 1.0f},
+                .roughness = 0.5f
+            }
+        );
+
+        return meshData;
     }
 
     std::optional<ModelData> importModel(const std::string& uri, RHICapabilities cap){
