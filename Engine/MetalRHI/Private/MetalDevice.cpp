@@ -1,6 +1,10 @@
-#include "Metal/Metal.hpp"
-#include "MetalDevice.hpp"
+#define NS_PRIVATE_IMPLEMENTATION
+#define MTL_PRIVATE_IMPLEMENTATION
+#define CA_PRIVATE_IMPLEMENTATION
+#include <Metal/Metal.hpp>
 #include "MetalBuffer.hpp"
+#include "MetalDevice.hpp"
+#include "MetalTexture.hpp"
 
 namespace Crowy
 {
@@ -31,7 +35,7 @@ namespace Crowy
                 throw std::runtime_error("Failed to create command queue");
             }
 
-            auto* samplerDesc = MTL::SamplerDescriptor::alloc()->init();
+            auto samplerDesc = MTL::SamplerDescriptor::alloc()->init();
             samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
             samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
             samplerDesc->setMipFilter(MTL::SamplerMipFilterLinear);
@@ -58,6 +62,12 @@ namespace Crowy
             const RHIBufferCreateDesc& desc
         ){
             return std::make_unique<MetalBuffer>(device, desc);
+        }
+
+        std::unique_ptr<RHITexture> createTexture(
+            const RHITextureCreateDesc& desc
+        ){
+            return std::make_unique<MetalTexture>(device, desc);
         }
     };
 

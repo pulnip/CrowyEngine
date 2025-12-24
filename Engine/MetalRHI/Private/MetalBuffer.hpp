@@ -2,14 +2,11 @@
 
 #include <cstddef>
 #include <memory>
-#include "Metal/Metal.hpp"
+#include <Metal/Metal.hpp>
+#include "RHIAPI.h"
 #include "RHIDefinitions.h"
-#ifdef USE_STATIC_RHI
-    #define RHI_OVERRIDE
-#else
+#ifndef USE_STATIC_RHI
     #include "RHIBuffer.hpp"
-
-    #define RHI_OVERRIDE override
 #endif
 
 namespace Crowy

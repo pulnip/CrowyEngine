@@ -1,14 +1,11 @@
 #pragma once
 
 #include <memory>
+#include "RHIAPI.h"
 #ifdef USE_STATIC_RHI
     #include "RHIDefinitions.h"
-
-    #define RHI_OVERRIDE
 #else
     #include "RHIDevice.hpp"
-
-    #define RHI_OVERRIDE override
 #endif
 
 namespace Crowy
@@ -23,6 +20,7 @@ namespace Crowy
         ~MetalDevice();
 
         std::unique_ptr<RHIBuffer> createBuffer(const RHIBufferCreateDesc&) RHI_OVERRIDE;
+        std::unique_ptr<RHITexture> createTexture(const RHITextureCreateDesc&) RHI_OVERRIDE;
 
         RHICapabilities getCapabilities() const RHI_OVERRIDE;
 

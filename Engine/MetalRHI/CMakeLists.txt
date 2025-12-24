@@ -2,7 +2,6 @@ add_library(CrowyMetalRHI STATIC)
 
 target_sources(CrowyMetalRHI
 PRIVATE
-    Private/MetalCppImpl.cpp
     Private/MetalDevice.cpp
 )
 

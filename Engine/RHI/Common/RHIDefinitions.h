@@ -39,6 +39,138 @@ typedef enum{
     TriangleStrip = 4,
 } RHIPrimitiveTopology;
 
+typedef enum{
+    Unknown = 0,
+
+    // 8-bit formats
+    R8_UNORM,
+    R8_SNORM,
+    R8_UINT,
+    R8_SINT,
+
+    // 16-bit formats
+    R16_UNORM,
+    R16_SNORM,
+    R16_UINT,
+    R16_SINT,
+    R16_FLOAT,
+
+    RG8_UNORM,
+    RG8_SNORM,
+    RG8_UINT,
+    RG8_SINT,
+
+    // 32-bit formats
+    R32_UINT,
+    R32_SINT,
+    R32_FLOAT,
+
+    RG16_UNORM,
+    RG16_SNORM,
+    RG16_UINT,
+    RG16_SINT,
+    RG16_FLOAT,
+
+    RGBA8_UNORM,
+    RGBA8_UNORM_SRGB,
+    RGBA8_SNORM,
+    RGBA8_UINT,
+    RGBA8_SINT,
+
+    BGRA8_UNORM,
+    BGRA8_UNORM_SRGB,
+
+    // 64-bit formats
+    RG32_UINT,
+    RG32_SINT,
+    RG32_FLOAT,
+
+    // 96-bit formats
+    RGB32_FLOAT,
+
+    RGBA16_UNORM,
+    RGBA16_SNORM,
+    RGBA16_UINT,
+    RGBA16_SINT,
+    RGBA16_FLOAT,
+
+    // 128-bit formats
+    RGBA32_UINT,
+    RGBA32_SINT,
+    RGBA32_FLOAT,
+
+    // Depth/stencil formats
+    D16_UNORM,
+    D24_UNORM_S8_UINT,
+    D32_FLOAT,
+    D32_FLOAT_S8_UINT,
+
+    // Compressed formats
+    BC1_UNORM,
+    BC1_UNORM_SRGB,
+    BC2_UNORM,
+    BC2_UNORM_SRGB,
+    BC3_UNORM,
+    BC3_UNORM_SRGB,
+    BC4_UNORM,
+    BC4_SNORM,
+    BC5_UNORM,
+    BC5_SNORM,
+    BC6H_UF16,
+    BC6H_SF16,
+    BC7_UNORM,
+    BC7_UNORM_SRGB,
+} RHITextureFormat;
+
+
+typedef enum{
+    TEX_None            = 0,
+    TEX_ShaderResource  = 1 << 0,
+    TEX_RenderTarget    = 1 << 1,
+    TEX_DepthStencil    = 1 << 2,
+    TEX_UnorderedAccess = 1 << 3,
+    TEX_CopySource      = 1 << 4,
+    TEX_CopyDest        = 1 << 5,
+} RHITextureUsageFlags;
+
+typedef enum{
+    Common,
+    VertexBuffer,
+    IndexBuffer,
+    ConstantBuffer,
+    ShaderResource,
+    UnorderedAccess,
+    RenderTarget,
+    DepthStencilWrite,
+    DepthStencilRead,
+    CopySource,
+    CopyDest,
+    Present,
+} RHIResourceState;
+
+typedef struct{
+    float r, g, b, a;
+} RHIClearColor;
+
+typedef struct{
+    float depth;
+    uint8_t stencil;
+} RHIClearDepthStencil;
+
+typedef struct{
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+    uint32_t mipLevels;
+    uint32_t arraySize;
+    RHITextureFormat format;
+    RHITextureUsageFlags usage;
+    RHIResourceState initialState;
+    RHIClearColor clearColor;
+    RHIClearDepthStencil clearDepthStencil;
+    const char* debugName;
+} RHITextureCreateDesc;
+
 #ifdef __cplusplus
 }
 

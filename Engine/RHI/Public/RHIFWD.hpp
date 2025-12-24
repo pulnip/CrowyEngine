@@ -8,17 +8,19 @@ namespace Crowy
     #ifdef USE_METAL_BACKEND
         class MetalDevice;
         class MetalBuffer;
+        class MetalTexture;
 
         using RHIDevice = MetalDevice;
         using RHIBuffer = MetalBuffer;
+        using RHITexture = MetalTexture;
     #endif
 #else
     class RHIDevice;
     class RHIBuffer;
+    class RHITexture;
 #endif
     class RHICommandList;
     class RHIResource;
-    class RHITexture;
     class RHIShader;
     class RHIPipelineState;
     class RHISwapchain;

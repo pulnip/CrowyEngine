@@ -30,6 +30,7 @@ namespace Crowy
         RHIDevice& operator=(RHIDevice&&) = default;
 
         virtual std::unique_ptr<RHIBuffer> createBuffer(const RHIBufferCreateDesc&) = 0;
+        virtual std::unique_ptr<RHITexture> createTexture(const RHITextureCreateDesc&) = 0;
 
         virtual RHICapabilities getCapabilities() const = 0;
     };
