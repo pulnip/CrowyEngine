@@ -29,6 +29,15 @@ PRIVATE
 
 add_library(Crowy::Resource ALIAS CrowyResource)
 
+add_library(CrowyResource_Private INTERFACE)
+
+target_include_directories(CrowyResource_Private INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private"
+)
+
+target_link_libraries(CrowyResource_Private INTERFACE Crowy::Resource)
+
+
 if(CROWY_ENABLE_TEST)
     add_subdirectory(Test)
 endif()

@@ -2,6 +2,7 @@ add_executable(CrowyResourceTest)
 
 target_sources(CrowyResourceTest
 PRIVATE
+    ModelSerializerTest.cpp
     ResourceModuleTest.cpp
 )
 
@@ -9,7 +10,7 @@ target_link_libraries(CrowyResourceTest
 PRIVATE
     GTest::gtest_main
     GTest::gmock_main
-    CrowyResource
+    CrowyResource_Private
 )
 
 if(APPLE)

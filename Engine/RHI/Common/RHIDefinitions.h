@@ -178,8 +178,8 @@ typedef struct{
 namespace Crowy
 {
     struct RHICapabilities{
-        bool flipTextureV;
-        float clipSpaceMinZ;
+        bool flipTextureV = true;
+        float clipSpaceMinZ = 0.0f;
     };
 }
 #endif

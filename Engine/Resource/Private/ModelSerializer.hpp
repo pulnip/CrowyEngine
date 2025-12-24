@@ -8,6 +8,6 @@
 
 namespace Crowy
 {
-    std::vector<uint8_t> serializeMesh(const ModelData&);
-    std::optional<ModelData> deserializeMesh(std::span<const uint8_t>);
+    std::vector<uint8_t> serializeModel(const ModelData&);
+    std::optional<ModelData> deserializeModel(std::span<const uint8_t>);
 }
