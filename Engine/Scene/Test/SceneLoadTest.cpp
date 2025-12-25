@@ -5,9 +5,9 @@
 
 using Crowy::parseSceneFromString;
 using Crowy::loadScene, Crowy::EntityRegistry;
-using Crowy::TransformComponent;
+using Crowy::TransformComponent, Crowy::RenderObjectComponent;
 
-TEST_F(SceneModuleTest, LoadScene){
+TEST_F(SceneModuleTest, EntityWithTransformComponent){
     std::string tomlText = R"(
         [[entities]]
         name = "Entity1"
@@ -66,4 +66,43 @@ TEST_F(SceneModuleTest, LoadScene){
     }
 
     EXPECT_EQ(entityCount, 3);
+}
+
+TEST_F(SceneModuleTest, EntityWithRenderObjectComponent){
+    std::string tomlText = R"(
+        [[entities]]
+        name = "Cube"
+        [entities.transform]
+        position = [0, 0, 0]
+        rotation = [0, 0, 0, 1]
+        scale = [1, 1, 1]
+        [entities.renderObject]
+        uri = "embedded:cube"
+        renderType = "unlit"
+        [[entities.renderObject.material_override]]
+            baseColor = "embedded:red"
+            targetSlot = "*"
+    )";
+
+    auto sceneSpec = parseSceneFromString(tomlText);
+
+    EntityRegistry registry;
+    loadScene(sceneSpec, registry);
+
+    int entityCount = 0;
+    for(const auto& [id, bit, transform, renderObject]
+        : registry.query<TransformComponent, RenderObjectComponent>()
+    ){
+        EXPECT_EQ(transform.position, Crowy::zeros());
+        EXPECT_EQ(transform.rotation, Crowy::unitQuat());
+        EXPECT_EQ(transform.scale   , Crowy::ones());
+
+        EXPECT_EQ(renderObject.renderType, Crowy::RenderType::Unlit);
+        EXPECT_TRUE(renderObject.mesh.isValid());
+        EXPECT_TRUE(renderObject.materialSet.isValid());
+
+        ++entityCount;
+    }
+
+    EXPECT_EQ(entityCount, 1);
 }
