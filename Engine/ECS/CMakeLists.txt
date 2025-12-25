@@ -15,6 +15,7 @@ target_link_libraries(CrowyECS
 PUBLIC
     Crowy::Core
     Crowy::Log
+    Crowy::Render
     Crowy::Resource
 )
 

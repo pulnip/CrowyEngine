@@ -1,0 +1,16 @@
+#include "SceneModuleTest.hpp"
+#include "Resource.hpp"
+
+Crowy::RHIDevicePtr SceneModuleTest::device = nullptr;
+
+void SceneModuleTest::SetUpTestSuite(){
+    device = Crowy::createDevice();
+}
+
+void SceneModuleTest::SetUp(){
+    Crowy::initResourceModule(*device);
+}
+
+void SceneModuleTest::TearDown(){
+    Crowy::deinitResourceModule();
+}

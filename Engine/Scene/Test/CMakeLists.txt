@@ -3,6 +3,8 @@ crowy_link_assets(CrowySceneTest)
 
 target_sources(CrowySceneTest
 PRIVATE
+    SceneModuleTest.cpp
+    SceneLoadTest.cpp
     SceneParserTest.cpp
 )
 
@@ -12,6 +14,13 @@ PRIVATE
     GTest::gmock_main
     CrowyScene_Private
 )
+
+if(APPLE)
+    target_link_libraries(CrowySceneTest
+    PRIVATE
+        Crowy::MetalRHI
+    )
+endif()
 
 include(GoogleTest)
 add_test(

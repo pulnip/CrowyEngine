@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <bitset>
 #include <limits>
 #include <string>
 #include <vector>
@@ -14,15 +13,10 @@ namespace Crowy
         std::string baseColor;
         std::string targetSlot;
     };
-    struct ShaderSpec{
-        std::string module_;
-        std::string vsFunc;
-        std::string fsFunc;
-    };
     struct RenderObjectSpec{
         std::string uri;
         std::vector<MaterialSpec> material_override;
-        ShaderSpec shaderSpec;
+        std::string renderType;
     };
 
     using TransformComponents = std::vector<TransformComponent>;
@@ -39,7 +33,6 @@ namespace Crowy
 
     struct EntitySpec{
         std::string name;
-        std::bitset<(size_t)8> mask;
         uint32_t transformIndex      = INVALID_INDEX;
         uint32_t renderObjectIndex   = INVALID_INDEX;
         uint32_t rigidbodyIndex      = INVALID_INDEX;
@@ -54,14 +47,14 @@ namespace Crowy
 
     struct SceneSpec{
         // SoA
-        TransformComponents transforms;
-        RenderObjectSpecs renderObjects;
-        RigidbodyComponents rigidbodies;
-        BoxColliderComponents boxColliders;
-        SphereColliderComponents sphereColliders;
-        CameraComponents cameras;
-        PlayerComponents players;
-        EditorComponents editors;
+        TransformComponents      transformSpecs;
+        RenderObjectSpecs        renderObjectSpecs;
+        RigidbodyComponents      rigidbodySpecs;
+        BoxColliderComponents    boxColliderSpecs;
+        SphereColliderComponents sphereColliderSpecs;
+        CameraComponents         cameraSpecs;
+        PlayerComponents         playerSpecs;
+        EditorComponents         editorSpecs;
 
         EntitySpecs entities;
     };

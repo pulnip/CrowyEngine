@@ -19,9 +19,6 @@ namespace Crowy
         static std::optional<std::vector<MaterialSpec>> readMaterial(
             const ValueArena& arena, const VTable& src, BindPlan& plan
         );
-        static std::optional<ShaderSpec> readShader(
-            const ValueArena& arena, const VTable& src, BindPlan& plan
-        );
 
     public:
         void validateAndPlan(const ValueArena& arena,

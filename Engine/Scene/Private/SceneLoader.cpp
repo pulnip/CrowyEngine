@@ -1,3 +1,5 @@
+#include "string.hpp"
+#include "EntityRegistry.hpp"
 #include "SceneLoader.hpp"
 #include "SceneParser.hpp"
 #include "Component.hpp"
@@ -5,11 +7,73 @@
 
 namespace Crowy
 {
+    static RenderType toRenderType(const std::string& str){
+        auto upper = toUpper(str);
+
+        if     (upper == "OPAQUE"     ) return RenderType::Opaque;
+        else if(upper == "TRANSPARENT") return RenderType::Transparent;
+        else if(upper == "UNLIT"      ) return RenderType::Unlit;
+        else throw std::runtime_error("enum parse error");
+    }
+
+    static RenderObjectComponent loadComponent(const RenderObjectSpec& spec){
+        auto renderType = toRenderType(spec.renderType);
+
+        auto [meshHandle, materialSetHandle] = getOrLoad(
+            ModelRequest{.uri = spec.uri}
+        );
+
+        return RenderObjectComponent{
+            .mesh = meshHandle,
+            .materialSet = materialSetHandle,
+            .renderType = renderType
+        };
+    }
+
     void loadScene(
         const SceneSpec& scene,
         EntityRegistry& registry
     ){
-        // TODO
-        throw std::runtime_error("Not implemented");
+        for(const auto& entitySpec: scene.entities){
+            std::optional<TransformComponent>      transformComponent      = std::nullopt;
+            std::optional<RenderObjectComponent>   renderObjectComponent   = std::nullopt;
+            std::optional<RigidbodyComponent>      rigidbodyComponent      = std::nullopt;
+            std::optional<BoxColliderComponent>    boxColliderComponent    = std::nullopt;
+            std::optional<SphereColliderComponent> sphereColliderComponent = std::nullopt;
+            std::optional<CameraComponent>         cameraComponent         = std::nullopt;
+            std::optional<PlayerComponent>         playerComponent         = std::nullopt;
+            std::optional<EditorComponent>         editorComponent         = std::nullopt;
+
+        #define LOAD_COMPONENT(name) \
+            if(entitySpec.name##Index != INVALID_INDEX) \
+                name##Component = scene.name##Specs[entitySpec.name##Index];
+
+            LOAD_COMPONENT(transform)
+            if(entitySpec.renderObjectIndex != INVALID_INDEX)
+                renderObjectComponent = loadComponent(
+                    scene.renderObjectSpecs[entitySpec.renderObjectIndex]
+                );
+            LOAD_COMPONENT(rigidbody)
+            LOAD_COMPONENT(boxCollider)
+            LOAD_COMPONENT(sphereCollider)
+            LOAD_COMPONENT(camera)
+            LOAD_COMPONENT(player)
+            LOAD_COMPONENT(editor)
+        #undef LOAD_COMPONENT
+
+            // TODO
+            // later, check component mutual exclusion here
+
+            registry.createEntity(
+                transformComponent,
+                renderObjectComponent,
+                rigidbodyComponent,
+                boxColliderComponent,
+                sphereColliderComponent,
+                cameraComponent,
+                playerComponent,
+                editorComponent
+            );
+        }
     }
 }

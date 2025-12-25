@@ -153,16 +153,15 @@ namespace Crowy
     };
 
     template<value_type T>
-    void emplace_component(EntityID id, void* chunk, ArchetypeBit bit, T&& t){
+    void emplace_component(void* chunk, ArchetypeBit bit, T&& t){
         using U = std::remove_cvref_t<T>;
 
         auto offset = offset_of<U>(bit);
         auto dst = ptrAdd(chunk, offset);
         *static_cast<U*>(dst) = std::forward<T>(t);
-        static_cast<U*>(dst)->entity = id;
     }
     template<value_type T1, all_value... TN>
-    void emplace_component(EntityID id, void* chunk, ArchetypeBit bit,
+    void emplace_component(void* chunk, ArchetypeBit bit,
         T1&& t1, TN&&... tn
     ){
         using U = std::remove_cvref_t<T1>;
@@ -170,21 +169,19 @@ namespace Crowy
         auto offset = offset_of<U>(bit);
         auto dst = ptrAdd(chunk, offset);
         *static_cast<U*>(dst) = std::forward<T1>(t1);
-        static_cast<U*>(dst)->entity = id;
 
-        emplace_component(id, chunk, bit, std::forward<TN>(tn)...);
+        emplace_component(chunk, bit, std::forward<TN>(tn)...);
     }
     template<pointer_type T>
-    void emplace_component(EntityID id, void* chunk, ArchetypeBit bit, const T t){
+    void emplace_component(void* chunk, ArchetypeBit bit, const T t){
         using U = std::remove_pointer_t<std::remove_cvref_t<T>>;
 
         auto offset = offset_of<U>(bit);
         auto dst = ptrAdd(chunk, offset);
         *static_cast<U>(dst) = *t;
-        static_cast<U>(dst)->entity = id;
     }
     template<pointer_type T1, all_pointer... TN>
-    void emplace_component(EntityID id, void* chunk, ArchetypeBit bit,
+    void emplace_component(void* chunk, ArchetypeBit bit,
         const T1 t1, const TN... tn
     ){
         using U = std::remove_pointer_t<std::remove_cvref_t<T1>>;
@@ -192,23 +189,21 @@ namespace Crowy
         auto offset = offset_of<U>(bit);
         auto dst = ptrAdd(chunk, offset);
         *static_cast<U>(dst) = *t1;
-        static_cast<U>(dst)->entity = id;
 
-        emplace_component(id, chunk, bit, tn...);
+        emplace_component(chunk, bit, tn...);
     }
     template<optional_type T>
-    void emplace_component(EntityID id, void* chunk, ArchetypeBit bit, T&& t){
+    void emplace_component(void* chunk, ArchetypeBit bit, T&& t){
         using U = remove_optional_t<std::remove_cvref_t<T>>;
 
         if(t.has_value()){
             auto offset = offset_of<U>(bit);
             auto dst = ptrAdd(chunk, offset);
             *static_cast<U*>(dst) = t.value();
-            static_cast<U*>(dst)->entity = id;
         }
     }
     template<optional_type T1, all_optional... TN>
-    void emplace_component(EntityID id, void* chunk, ArchetypeBit bit,
+    void emplace_component(void* chunk, ArchetypeBit bit,
         const T1 t1, const TN... tn
     ){
         using U = remove_optional_t<std::remove_cvref_t<T1>>;
@@ -217,10 +212,9 @@ namespace Crowy
             auto offset = offset_of<U>(bit);
             auto dst = ptrAdd(chunk, offset);
             *static_cast<U*>(dst) = t1.value();
-            static_cast<U*>(dst)->entity = id;
         }
 
-        emplace_component(id, chunk, bit, tn...);
+        emplace_component(chunk, bit, tn...);
     }
 
     struct EntityInfo{
@@ -270,7 +264,7 @@ namespace Crowy
                 .bit = bit, .chunkIndex = index
             });
             *static_cast<EntityID*>(chunk) = entity_id;
-            emplace_component(entity_id, chunk, bit, std::forward<Args>(args)...);
+            emplace_component(chunk, bit, std::forward<Args>(args)...);
 
             return entity_id;
         }

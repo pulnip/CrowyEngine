@@ -3,6 +3,7 @@
 #include "concepts.hpp"
 #include "math.hpp"
 #include "ECSDefinitions.hpp"
+#include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
 
 namespace Crowy
@@ -26,10 +27,9 @@ namespace Crowy
     };
 
     struct RenderObjectComponent{
-        float alpha;
         MeshHandle mesh;
         MaterialSetHandle materialSet;
-        ShaderHandle shader;
+        RenderType renderType;
     };
     struct RigidbodyComponent{
         Vec3 velocity;

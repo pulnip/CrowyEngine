@@ -40,9 +40,8 @@ namespace Crowy
         for(const auto& p: plan.transforms){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.transforms.push_back(p.comp);
-            entity.transformIndex = static_cast<uint32_t>(spec.transforms.size() - 1);
-            entity.mask.set((size_t)ComponentKind::Transform);
+            spec.transformSpecs.push_back(p.comp);
+            entity.transformIndex = static_cast<uint32_t>(spec.transformSpecs.size() - 1);
         }
     }
 
@@ -79,34 +78,6 @@ namespace Crowy
 
         return std::nullopt;
     }
-    std::optional<ShaderSpec> RenderObjectBinder::readShader(
-        const ValueArena& arena, const VTable& src, BindPlan& plan
-    ){
-        if(const VNode* n = findField(arena, src, "shader")){
-            if(const VTable* mt = std::get_if<VTable>(n)){
-                auto mod = readString(arena, *mt, plan,
-                    "module", "file:shader/Crowy.metallib");
-                auto vs = readString(arena, *mt, plan,
-                    "vsFunc", "vertex_main");
-                auto fs = readString(arena, *mt, plan,
-                    "fsFunc", "fragment_main");
-
-                if(!mod || !vs || !fs)
-                    return std::nullopt;
-
-                ShaderSpec ss{
-                    .module_ = *mod,
-                    .vsFunc = *vs,
-                    .fsFunc = *fs
-                };
-                return ss;
-            } else{
-                plan.errors.push_back({"shader must be a table", getLoc(*n)});
-            }
-        }
-
-        return std::nullopt;
-    }
 
     void RenderObjectBinder::validateAndPlan(const ValueArena& arena,
         const VTable& src, size_t entityIndex, BindPlan& plan
@@ -123,8 +94,8 @@ namespace Crowy
         if(auto mat = readMaterial(arena, src, plan))
             spec.material_override = *mat;
 
-        if(auto sh = readShader(arena, src, plan))
-            spec.shaderSpec = *sh;
+        if(auto sh = readString(arena, src, plan, "renderType", "unlit"))
+            spec.renderType = *sh;
 
         plan.renderObjects.push_back({
             .spec = spec,
@@ -137,9 +108,8 @@ namespace Crowy
         for(const auto& p: plan.renderObjects){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.renderObjects.push_back(p.spec);
-            entity.renderObjectIndex = static_cast<uint32_t>(spec.renderObjects.size() - 1);
-            entity.mask.set((size_t)ComponentKind::Mesh);
+            spec.renderObjectSpecs.push_back(p.spec);
+            entity.renderObjectIndex = static_cast<uint32_t>(spec.renderObjectSpecs.size() - 1);
         }
     }
 
@@ -168,9 +138,8 @@ namespace Crowy
         for(const auto& p: plan.rigidbodies){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.rigidbodies.push_back(p.comp);
-            entity.rigidbodyIndex = static_cast<uint32_t>(spec.rigidbodies.size() - 1);
-            entity.mask.set((size_t)ComponentKind::Rigidbody);
+            spec.rigidbodySpecs.push_back(p.comp);
+            entity.rigidbodyIndex = static_cast<uint32_t>(spec.rigidbodySpecs.size() - 1);
         }
     }
 
@@ -204,9 +173,8 @@ namespace Crowy
         for(const auto& p: plan.boxColliders){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.boxColliders.push_back(p.comp);
-            entity.boxColliderIndex = static_cast<uint32_t>(spec.boxColliders.size() - 1);
-            entity.mask.set((size_t)ComponentKind::BoxCollider);
+            spec.boxColliderSpecs.push_back(p.comp);
+            entity.boxColliderIndex = static_cast<uint32_t>(spec.boxColliderSpecs.size() - 1);
         }
     }
 
@@ -238,9 +206,8 @@ namespace Crowy
         for(const auto& p: plan.sphereColliders){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.sphereColliders.push_back(p.comp);
-            entity.sphereColliderIndex = static_cast<uint32_t>(spec.sphereColliders.size() - 1);
-            entity.mask.set((size_t)ComponentKind::SphereCollider);
+            spec.sphereColliderSpecs.push_back(p.comp);
+            entity.sphereColliderIndex = static_cast<uint32_t>(spec.sphereColliderSpecs.size() - 1);
         }
     }
 
@@ -273,9 +240,8 @@ namespace Crowy
         for(const auto& p: plan.cameras){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.cameras.push_back(p.comp);
-            entity.cameraIndex = static_cast<uint32_t>(spec.cameras.size() - 1);
-            entity.mask.set((size_t)ComponentKind::Camera);
+            spec.cameraSpecs.push_back(p.comp);
+            entity.cameraIndex = static_cast<uint32_t>(spec.cameraSpecs.size() - 1);
         }
     }
 
@@ -293,9 +259,8 @@ namespace Crowy
         for(const auto& p: plan.players){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.players.push_back(p.comp);
-            entity.playerIndex = static_cast<uint32_t>(spec.players.size() - 1);
-            entity.mask.set((size_t)ComponentKind::Player);
+            spec.playerSpecs.push_back(p.comp);
+            entity.playerIndex = static_cast<uint32_t>(spec.playerSpecs.size() - 1);
         }
     }
 
@@ -313,9 +278,8 @@ namespace Crowy
         for(const auto& p: plan.editors){
             auto& entity = spec.entities[p.entityIndex];
 
-            spec.editors.push_back(p.comp);
-            entity.editorIndex = static_cast<uint32_t>(spec.editors.size() - 1);
-            entity.mask.set((size_t)ComponentKind::Editor);
+            spec.editorSpecs.push_back(p.comp);
+            entity.editorIndex = static_cast<uint32_t>(spec.editorSpecs.size() - 1);
         }
     }
 
