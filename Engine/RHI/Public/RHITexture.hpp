@@ -7,6 +7,8 @@
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
         #include "MetalTexture.hpp"
+    #else
+        #include "NullTexture.hpp"
     #endif
 #endif
 

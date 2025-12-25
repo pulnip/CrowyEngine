@@ -12,15 +12,9 @@ target_link_libraries(CrowySceneTest
 PRIVATE
     GTest::gtest_main
     GTest::gmock_main
+    Crowy::NullRHI
     CrowyScene_Private
 )
-
-if(APPLE)
-    target_link_libraries(CrowySceneTest
-    PRIVATE
-        Crowy::MetalRHI
-    )
-endif()
 
 include(GoogleTest)
 add_test(

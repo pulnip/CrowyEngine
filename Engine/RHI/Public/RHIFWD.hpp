@@ -14,6 +14,14 @@ namespace Crowy
         using RHIDevice = MetalDevice;
         using RHIBuffer = MetalBuffer;
         using RHITexture = MetalTexture;
+    #else
+        class NullDevice;
+        class NullBuffer;
+        class NullTexture;
+
+        using RHIDevice = NullDevice;
+        using RHIBuffer = NullBuffer;
+        using RHITexture = NullTexture;
     #endif
 #else
     class RHIDevice;

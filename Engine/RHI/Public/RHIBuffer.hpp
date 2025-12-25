@@ -6,6 +6,8 @@
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
         #include "MetalBuffer.hpp"
+    #else
+        #include "NullBuffer.hpp"
     #endif
 #endif
 

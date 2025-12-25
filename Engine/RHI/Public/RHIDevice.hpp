@@ -8,6 +8,8 @@
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
         #include "MetalDevice.hpp"
+    #else
+        #include "NullDevice.hpp"
     #endif
 #endif
 

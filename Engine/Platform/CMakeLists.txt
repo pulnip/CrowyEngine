@@ -23,6 +23,11 @@ if(APPLE)
     PRIVATE
         Crowy::MetalRHI
     )
+else()
+    target_link_libraries(CrowyPlatform
+    PRIVATE
+        Crowy::NullRHI
+    )
 endif()
 
 add_library(Crowy::Platform ALIAS CrowyPlatform)

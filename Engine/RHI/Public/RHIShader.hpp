@@ -6,6 +6,8 @@
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
         #include "MetalShader.hpp"
+    #else
+        #include "NullShader.hpp"
     #endif
 #endif
 
