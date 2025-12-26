@@ -1,5 +1,6 @@
 #include "NullBuffer.hpp"
 #include "NullDevice.hpp"
+#include "NullShader.hpp"
 #include "NullTexture.hpp"
 
 namespace Crowy
@@ -24,6 +25,12 @@ namespace Crowy
         const RHITextureCreateDesc& desc
     ){
         return std::make_unique<NullTexture>(desc);
+    }
+
+    RHIShaderPtr NullDevice::createShader(
+        const RHIShaderCreateDesc& desc
+    ){
+        return std::make_unique<NullShader>(desc);
     }
 
     RHICapabilities NullDevice::getCapabilities() const{

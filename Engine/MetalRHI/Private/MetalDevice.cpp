@@ -4,6 +4,7 @@
 #include <Metal/Metal.hpp>
 #include "MetalBuffer.hpp"
 #include "MetalDevice.hpp"
+#include "MetalShader.hpp"
 #include "MetalTexture.hpp"
 
 namespace Crowy
@@ -69,6 +70,12 @@ namespace Crowy
         ){
             return std::make_unique<MetalTexture>(device, desc);
         }
+
+        RHIShaderPtr createShader(
+            const RHIShaderCreateDesc& desc
+        ){
+            return std::make_unique<MetalShader>(device, desc);
+        }
     };
 
     MetalDevice::MetalDevice()
@@ -86,6 +93,12 @@ namespace Crowy
         const RHITextureCreateDesc& desc
     ){
         return impl->createTexture(desc);
+    }
+
+    RHIShaderPtr MetalDevice::createShader(
+        const RHIShaderCreateDesc& desc
+    ){
+        return impl->createShader(desc);
     }
 
     RHICapabilities MetalDevice::getCapabilities() const{

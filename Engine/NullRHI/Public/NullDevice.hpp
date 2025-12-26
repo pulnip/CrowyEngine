@@ -20,6 +20,7 @@ namespace Crowy
 
         RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) RHI_OVERRIDE;
         RHITexturePtr createTexture(const RHITextureCreateDesc&) RHI_OVERRIDE;
+        RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) RHI_OVERRIDE;
 
         RHICapabilities getCapabilities() const RHI_OVERRIDE;
     };

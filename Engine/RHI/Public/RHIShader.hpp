@@ -1,6 +1,7 @@
 #pragma once
 
 #include "semantics.hpp"
+#include "RHIDefinitions.h"
 #include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
@@ -22,6 +23,8 @@ namespace Crowy
     class RHIShader{
     public:
         DECLARE_INTERFACE(RHIShader)
+
+        virtual RHIShaderStage getStage() const = 0;
     };
 #endif
 }

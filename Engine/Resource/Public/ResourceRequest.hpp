@@ -14,8 +14,14 @@ namespace Crowy
         using Key     = std::string;
         using KeyHash = std::hash<std::string>;
 
-        std::string path;
+        std::string vsFilePath; // both binary and source file
+        std::string vsFuncName;
+        std::string fsFilePath; // both binary and source file
+        std::string fsFuncName;
 
-        inline Key key() const{ return path; }
+        inline Key key() const{
+            return vsFilePath + ':' + vsFuncName + ',' +
+                   fsFilePath + ':' + fsFuncName;
+        }
     };
 }

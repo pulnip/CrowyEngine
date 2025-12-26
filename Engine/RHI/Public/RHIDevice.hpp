@@ -27,8 +27,9 @@ namespace Crowy
     public:
         DECLARE_INTERFACE(RHIDevice)
 
-        virtual RHIBufferPtr  createBuffer(const RHIBufferCreateDesc&)   = 0;
+        virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) = 0;
         virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) = 0;
+        virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) = 0;
 
         virtual RHICapabilities getCapabilities() const = 0;
     };

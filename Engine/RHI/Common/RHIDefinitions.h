@@ -21,11 +21,11 @@ typedef enum{
     BUF_CopyDest         = 1 << 8,
     BUF_CPUWrite         = 1 << 9,
     BUF_TransferSrc      = 1 << 10
-} RHIBufferUsageFlags;
+} RHIBufferUsage;
 
 typedef struct{
     size_t size;
-    RHIBufferUsageFlags usage;
+    RHIBufferUsage usage;
     uint32_t stride; // For structured buffers
     const void* initialData;
     const char* debugName;
@@ -171,6 +171,19 @@ typedef struct{
     const void* initialData;
     const char* debugName;
 } RHITextureCreateDesc;
+
+typedef enum{
+    VertexShader   = 0,
+    FragmentShader = 1,
+    ComputeShader  = 2,
+} RHIShaderStage;
+
+typedef struct{
+    const char* file; // source or binary file path
+    const char* entry;
+    RHIShaderStage stage;
+    const char* debugName;
+} RHIShaderCreateDesc;
 
 #ifdef __cplusplus
 }

@@ -29,7 +29,7 @@ namespace Crowy
 
     private:
         size_t size = 0;
-        RHIBufferUsageFlags usage = RHIBufferUsageFlags::BUF_None;
+        RHIBufferUsage usage = RHIBufferUsage::BUF_None;
         bool isCPUAccessible = false;
     };
 }
