@@ -6,7 +6,7 @@
 #include "semantics.hpp"
 #include "Component.hpp"
 #include "SourceLocation.hpp"
-#include "TempScene.hpp"
+#include "ParseResult.hpp"
 
 namespace Crowy
 {
@@ -61,5 +61,9 @@ namespace Crowy
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
         std::optional<std::string> def = std::nullopt
+    );
+    std::optional<std::vector<std::string>> readStringArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
     );
 }

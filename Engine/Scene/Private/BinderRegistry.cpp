@@ -15,10 +15,17 @@ namespace Crowy
     }
 
     static std::optional<float> asFloat(const VNode& n){
-        if (auto f = std::get_if<VFloat>(&n))
+        if(auto f = std::get_if<VFloat>(&n))
             return static_cast<float>(f->v);
-        if (auto i = std::get_if<VInt>(&n))  
+        if(auto i = std::get_if<VInt>(&n))  
             return static_cast<float>(i->v);
+        return std::nullopt;
+    }
+
+    static std::optional<std::string> asString(const VNode& n){
+        if(auto s = std::get_if<VString>(&n)){
+            return s->v;
+        }
         return std::nullopt;
     }
 
@@ -142,6 +149,40 @@ namespace Crowy
 
         errors.push_back({
             std::format("{} should be string", key),
+            getLoc(*n)
+        });
+        return std::nullopt;
+    }
+
+    std::optional<std::vector<std::string>> readStringArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n)
+            return std::nullopt;
+
+        if(auto arr = std::get_if<VArray>(n)){
+            std::vector<std::string> v;
+
+            for(int i=0; i<arr->elements.size(); ++i){
+                const VNode& elem = arena.nodes[arr->elements[i]];
+                auto f = asString(elem);
+                if(!f){
+                    errors.push_back({
+                        "element of StringArray should be String",
+                        getLoc(elem)
+                    });
+                    return std::nullopt;
+                }
+                v[i] = *f;
+            }
+
+            return v;
+        }
+
+        errors.push_back({
+            std::format("{} should be array", key),
             getLoc(*n)
         });
         return std::nullopt;

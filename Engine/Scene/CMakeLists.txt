@@ -4,6 +4,8 @@ target_sources(CrowyScene
 PRIVATE
     Private/BinderRegistry.cpp
     Private/InternalComponentBinder.cpp
+    Private/RenderParser.cpp
+    Private/RenderPassBinder.cpp
     Private/SceneLoader.cpp
     Private/SceneParser.cpp
 )

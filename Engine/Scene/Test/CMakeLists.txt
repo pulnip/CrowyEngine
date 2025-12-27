@@ -3,8 +3,9 @@ crowy_link_assets(CrowySceneTest)
 
 target_sources(CrowySceneTest
 PRIVATE
-    SceneModuleTest.cpp
+    RenderParserTest.cpp
     SceneLoadTest.cpp
+    SceneModuleTest.cpp
     SceneParserTest.cpp
 )
 

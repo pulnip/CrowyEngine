@@ -52,13 +52,13 @@ namespace Crowy
     };
 
     // parse result
-    struct TempEntity{
+    struct ParseElement{
         std::string name;
-        size_t componentsTableIndex = std::numeric_limits<size_t>::max();
+        size_t index = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };
-    struct TempScene{
+    struct ParseResult{
         ValueArena arena;
-        std::vector<TempEntity> entities;
+        std::vector<ParseElement> elements;
     };
 }
