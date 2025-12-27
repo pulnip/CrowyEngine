@@ -31,7 +31,7 @@ namespace Crowy
 
     std::optional<bool> readBool(
         const ValueArena& arena, const VTable& table,
-        BindPlan& plan, const char* key,
+        std::vector<BindError>& errors, const char* key,
         std::optional<bool> def
     ){
         const VNode* n = findField(arena, table, key);
@@ -41,7 +41,7 @@ namespace Crowy
         if(auto bl = std::get_if<VBool>(n))
             return bl->v;
 
-        plan.errors.push_back({
+        errors.push_back({
             std::format("{} should be boolean", key),
             getLoc(*n)
         });
@@ -50,7 +50,7 @@ namespace Crowy
 
     std::optional<double> readFloat(
         const ValueArena& arena, const VTable& table,
-        BindPlan& plan, const char* key,
+        std::vector<BindError>& errors, const char* key,
         std::optional<double> def
     ){
         const VNode* n = findField(arena, table, key);
@@ -62,7 +62,7 @@ namespace Crowy
         else if(auto num = std::get_if<VInt>(n))
             return num->v;
 
-        plan.errors.push_back({
+        errors.push_back({
             std::format("{} should be number", key),
             getLoc(*n)
         });
@@ -72,7 +72,7 @@ namespace Crowy
     template<unsigned N>
     static std::optional<std::conditional_t<N==3, Vec3, Vec4>> readVec(
         const ValueArena& arena, const VTable& table,
-        BindPlan& plan, const char* key,
+        std::vector<BindError>& errors, const char* key,
         std::optional<std::conditional_t<N==3, Vec3, Vec4>> def = std::nullopt
     ){
         const VNode* n = findField(arena, table, key);
@@ -81,7 +81,7 @@ namespace Crowy
 
         if(auto arr = std::get_if<VArray>(n)){
             if(arr->elements.size() != N){
-                plan.errors.push_back({
+                errors.push_back({
                     std::format("{} should be {}", key, N),
                     arr->location
                 });
@@ -93,7 +93,7 @@ namespace Crowy
                 const VNode& elem = arena.nodes[arr->elements[i]];
                 auto f = asFloat(elem);
                 if(!f){
-                    plan.errors.push_back({
+                    errors.push_back({
                         "element of Vec should be number",
                         getLoc(elem)
                     });
@@ -105,7 +105,7 @@ namespace Crowy
             return v;
         }
 
-        plan.errors.push_back({
+        errors.push_back({
             std::format("{} should be array", key),
             getLoc(*n)
         });
@@ -114,23 +114,23 @@ namespace Crowy
 
     std::optional<Vec3> readVec3(
         const ValueArena& arena, const VTable& table,
-        BindPlan& plan, const char* key,
+        std::vector<BindError>& errors, const char* key,
         std::optional<Vec3> def
     ){
-        return readVec<3>(arena, table, plan, key, def);
+        return readVec<3>(arena, table, errors, key, def);
     }
 
     std::optional<Vec4> readVec4(
         const ValueArena& arena, const VTable& table,
-        BindPlan& plan, const char* key,
+        std::vector<BindError>& errors, const char* key,
         std::optional<Vec4> def
     ){
-        return readVec<4>(arena, table, plan, key, def);
+        return readVec<4>(arena, table, errors, key, def);
     }
 
     std::optional<std::string> readString(
         const ValueArena& arena, const VTable& table,
-        BindPlan& plan, const char* key,
+        std::vector<BindError>& errors, const char* key,
         std::optional<std::string> def
     ){
         const VNode* n = findField(arena, table, key);
@@ -140,7 +140,7 @@ namespace Crowy
         if(auto str = std::get_if<VString>(n))
             return str->v;
 
-        plan.errors.push_back({
+        errors.push_back({
             std::format("{} should be string", key),
             getLoc(*n)
         });

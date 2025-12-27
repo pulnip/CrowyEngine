@@ -16,11 +16,11 @@ namespace Crowy
     };
 
     void TransformBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto pos = readVec3(arena, src, plan, "position", zeros());
-        auto rot = readVec4(arena, src, plan, "rotation", unitQuat());
-        auto scl = readVec3(arena, src, plan, "scale", ones());
+        auto pos = readVec3(arena, src, plan.errors, "position", zeros());
+        auto rot = readVec4(arena, src, plan.errors, "rotation", unitQuat());
+        auto scl = readVec3(arena, src, plan.errors, "scale", ones());
 
         if(!pos || !rot || !scl)
             return;
@@ -36,7 +36,7 @@ namespace Crowy
         });
     }
 
-    void TransformBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void TransformBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.transforms){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -46,7 +46,7 @@ namespace Crowy
     }
 
     std::optional<std::vector<MaterialSpec>> RenderObjectBinder::readMaterial(
-        const ValueArena& arena, const VTable& src, BindPlan& plan
+        const ValueArena& arena, const VTable& src, ComponentBindPlan& plan
     ){
         if(const VNode* n = findField(arena, src, "material_override")){
             if(const VArray* arr = std::get_if<VArray>(n)){
@@ -56,8 +56,8 @@ namespace Crowy
                     const VNode& elm = arena.nodes[idx];
 
                     if(const VTable* t = std::get_if<VTable>(&elm)){
-                        auto base = readString(arena, *t, plan, "baseColor");
-                        auto tgt = readString(arena, *t, plan, "targetSlot");
+                        auto base = readString(arena, *t, plan.errors, "baseColor");
+                        auto tgt = readString(arena, *t, plan.errors, "targetSlot");
                         if(!base || !tgt)
                             return std::nullopt;
 
@@ -80,9 +80,9 @@ namespace Crowy
     }
 
     void RenderObjectBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto msh = readString(arena, src, plan, "uri", "embedded:cube");
+        auto msh = readString(arena, src, plan.errors, "uri", "embedded:cube");
 
         if(!msh)
             return;
@@ -94,7 +94,7 @@ namespace Crowy
         if(auto mat = readMaterial(arena, src, plan))
             spec.material_override = *mat;
 
-        if(auto sh = readString(arena, src, plan, "renderType", "unlit"))
+        if(auto sh = readString(arena, src, plan.errors, "renderType", "unlit"))
             spec.renderType = *sh;
 
         plan.renderObjects.push_back({
@@ -104,7 +104,7 @@ namespace Crowy
         });
     }
 
-    void RenderObjectBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void RenderObjectBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.renderObjects){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -114,11 +114,11 @@ namespace Crowy
     }
 
     void RigidbodyBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto vel = readVec3(arena, src, plan, "velocity", zeros());
-        auto ug = readBool(arena, src, plan, "useGravity", false);
-        auto ms = readFloat(arena, src, plan, "mass", 1);
+        auto vel = readVec3(arena, src, plan.errors, "velocity", zeros());
+        auto ug = readBool(arena, src, plan.errors, "useGravity", false);
+        auto ms = readFloat(arena, src, plan.errors, "mass", 1);
 
         if(!vel || !ug || !ms)
             return;
@@ -134,7 +134,7 @@ namespace Crowy
         });
     }
 
-    void RigidbodyBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void RigidbodyBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.rigidbodies){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -144,14 +144,14 @@ namespace Crowy
     }
 
     void BoxColliderBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto pos = readVec3(arena, src, plan, "position", zeros());
-        auto rot = readVec4(arena, src, plan, "rotation", unitQuat());
-        auto scl = readVec3(arena, src, plan, "scale", ones());
+        auto pos = readVec3(arena, src, plan.errors, "position", zeros());
+        auto rot = readVec4(arena, src, plan.errors, "rotation", unitQuat());
+        auto scl = readVec3(arena, src, plan.errors, "scale", ones());
 
-        auto bc = readFloat(arena, src, plan, "bounciness");
-        auto fr = readFloat(arena, src, plan, "friction");
+        auto bc = readFloat(arena, src, plan.errors, "bounciness");
+        auto fr = readFloat(arena, src, plan.errors, "friction");
 
         if(!pos || !rot || !scl || !bc || !fr)
             return;
@@ -169,7 +169,7 @@ namespace Crowy
         });
     }
 
-    void BoxColliderBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void BoxColliderBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.boxColliders){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -179,13 +179,13 @@ namespace Crowy
     }
 
     void SphereColliderBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto pos = readVec3(arena, src, plan, "position", zeros());
-        auto rad = readFloat(arena, src, plan, "radius");
+        auto pos = readVec3(arena, src, plan.errors, "position", zeros());
+        auto rad = readFloat(arena, src, plan.errors, "radius");
 
-        auto bc = readFloat(arena, src, plan, "bounciness");
-        auto fr = readFloat(arena, src, plan, "friction");
+        auto bc = readFloat(arena, src, plan.errors, "bounciness");
+        auto fr = readFloat(arena, src, plan.errors, "friction");
 
         if(!pos || !rad)
             return;
@@ -202,7 +202,7 @@ namespace Crowy
         });
     }
 
-    void SphereColliderBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void SphereColliderBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.sphereColliders){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -212,13 +212,13 @@ namespace Crowy
     }
 
     void CameraBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto tp = readString(arena, src, plan, "type");
-        auto fv = readFloat(arena, src, plan, "fov");
-        auto np = readFloat(arena, src, plan, "nearPlane", 0.1);
-        auto fp = readFloat(arena, src, plan, "farPlane", 100.0);
-        auto pj = readString(arena, src, plan, "projection");
+        auto tp = readString(arena, src, plan.errors, "type");
+        auto fv = readFloat(arena, src, plan.errors, "fov");
+        auto np = readFloat(arena, src, plan.errors, "nearPlane", 0.1);
+        auto fp = readFloat(arena, src, plan.errors, "farPlane", 100.0);
+        auto pj = readString(arena, src, plan.errors, "projection");
 
         if(!tp || !fv || !np || !fp || !pj)
             return;
@@ -236,7 +236,7 @@ namespace Crowy
         });
     }
 
-    void CameraBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void CameraBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.cameras){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -246,7 +246,7 @@ namespace Crowy
     }
 
     void PlayerBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
         plan.players.push_back({
             .comp = {},
@@ -255,7 +255,7 @@ namespace Crowy
         });
     }
 
-    void PlayerBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void PlayerBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.players){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -265,7 +265,7 @@ namespace Crowy
     }
 
     void EditorBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t entityIndex, BindPlan& plan
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
         plan.editors.push_back({
             .comp = {},
@@ -274,7 +274,7 @@ namespace Crowy
         });
     }
 
-    void EditorBinder::freeze(SceneSpec& spec, BindPlan& plan){
+    void EditorBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
         for(const auto& p: plan.editors){
             auto& entity = spec.entities[p.entityIndex];
 
@@ -283,8 +283,8 @@ namespace Crowy
         }
     }
 
-    BinderRegistry makeDefaultBinderRegistry(){
-        BinderRegistry reg;
+    ComponentBinderRegistry makeDefaultComponentBinderRegistry(){
+        ComponentBinderRegistry reg;
         reg.emplace("transform", std::make_unique<TransformBinder>());
         reg.emplace("renderObject", std::make_unique<RenderObjectBinder>());
         reg.emplace("rigidbody", std::make_unique<RigidbodyBinder>());

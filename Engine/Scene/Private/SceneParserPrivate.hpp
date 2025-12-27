@@ -18,9 +18,9 @@ namespace Crowy
      * SceneSpec
      */
     SceneSpec parseCustomSceneFromFile(std::string_view sceneFile,
-        const BinderRegistry& binderRegistry
+        const ComponentBinderRegistry& binderRegistry
     );
     SceneSpec parseCustomSceneFromString(std::string_view sceneText,
-        const BinderRegistry& binderRegistry
+        const ComponentBinderRegistry& binderRegistry
     );
 }

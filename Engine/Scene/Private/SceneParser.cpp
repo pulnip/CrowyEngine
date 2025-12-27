@@ -130,7 +130,7 @@ namespace Crowy
         return out;
     }
 
-    SceneSpec buildScene(const TempScene& temp, const BinderRegistry& registry){
+    SceneSpec buildScene(const TempScene& temp, const ComponentBinderRegistry& registry){
         SceneSpec out;
         // reserve entity slot and copy.
         out.entities.resize(temp.entities.size());
@@ -139,7 +139,7 @@ namespace Crowy
         }
 
         // Binding (Validate & Plan)
-        BindPlan plan;
+        ComponentBindPlan plan;
 
         for(size_t ei = 0; ei < temp.entities.size(); ++ei){
             const auto& te = temp.entities[ei];
@@ -202,7 +202,7 @@ namespace Crowy
     }
 
     SceneSpec parseCustomSceneFromFile(std::string_view sceneFile,
-        const BinderRegistry& binderRegistry
+        const ComponentBinderRegistry& binderRegistry
     ){
         toml::parse_result pr = toml::parse_file(sceneFile);
         if(pr.empty())
@@ -213,7 +213,7 @@ namespace Crowy
     }
 
     SceneSpec parseCustomSceneFromString(std::string_view tomlText,
-        const BinderRegistry& binderRegistry
+        const ComponentBinderRegistry& binderRegistry
     ){
         toml::parse_result pr = toml::parse(tomlText);
         if(pr.empty())
@@ -224,13 +224,13 @@ namespace Crowy
     }
 
     SceneSpec parseSceneFromFile(std::string_view sceneFile){
-        auto defaultBinderRegistry = makeDefaultBinderRegistry();
+        auto defaultBinderRegistry = makeDefaultComponentBinderRegistry();
 
         return parseCustomSceneFromFile(sceneFile, defaultBinderRegistry);
     }
 
     SceneSpec parseSceneFromString(std::string_view sceneText){
-        auto defaultBinderRegistry = makeDefaultBinderRegistry();
+        auto defaultBinderRegistry = makeDefaultComponentBinderRegistry();
 
         return parseCustomSceneFromString(sceneText, defaultBinderRegistry);
     }
