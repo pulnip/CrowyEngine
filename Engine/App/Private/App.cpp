@@ -6,10 +6,6 @@ namespace Crowy
 {
     auto App::mainLoop = std::make_unique<MainLoop>();
 
-    App::App(){}
-
-    App::~App(){}
-
     Error App::setup(int argc, char* argv[]){
         return Error::OK;
     }

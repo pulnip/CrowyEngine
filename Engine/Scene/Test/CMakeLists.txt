@@ -14,6 +14,7 @@ PRIVATE
     GTest::gtest_main
     GTest::gmock_main
     Crowy::NullRHI
+    Crowy::Resource
     CrowyScene_Private
 )
 

@@ -22,6 +22,7 @@ PRIVATE
 target_link_libraries(CrowyResource
 PUBLIC
     Crowy::Core
+    Crowy::ECS
     Crowy::RHI
 PRIVATE
     Crowy::Log

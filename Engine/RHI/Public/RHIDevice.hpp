@@ -17,9 +17,16 @@ namespace Crowy
 {
 #ifdef USE_STATIC_RHI
     template<typename T>
-    concept RHIDeviceType = requires(T device){
+    concept RHIDeviceType = requires(T device,
+        RHIBufferCreateDesc bufDesc,
+        RHITextureCreateDesc texDesc,
+        RHIShaderCreateDesc shaderDesc
+    ){
+        { device.createBuffer(bufDesc) } -> std::same_as<RHIBufferPtr>;
+        { device.createTexture(texDesc) } -> std::same_as<RHITexturePtr>;
+        { device.createShader(shaderDesc) } -> std::same_as<RHIShaderPtr>;
+
         { device.getCapabilities() } -> std::same_as<RHICapabilities>;
-        { device.createBuffer() } -> std::same_as<std::unique_ptr<RHIBuffer>>;
     };
     static_assert(RHIDeviceType<RHIDevice>);
 #else

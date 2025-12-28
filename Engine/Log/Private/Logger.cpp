@@ -18,10 +18,10 @@ namespace Crowy
     }
 
     void Logger::log(LogMessage&& msg){
+        std::lock_guard lock(mtx);
         if(msg.level < minLevel)
             return;
 
-        std::lock_guard lock(mtx);
         for(auto& s: sinks){
             s->write(msg);
         }

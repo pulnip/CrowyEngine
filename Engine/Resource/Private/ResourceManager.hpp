@@ -34,8 +34,15 @@ namespace Crowy
             auto resource = instantiate(request, ctx);
             auto handle = pool.push(std::move(resource));
 
-            keyToHandle.emplace(key, handle);
-            handleToKey.emplace(handle, key);
+            try{
+                keyToHandle.emplace(key, handle);
+                handleToKey.emplace(handle, key);
+            }
+            catch(...){
+                pool.remove(handle);
+                throw;
+            }
+
             return handle;
         }
 

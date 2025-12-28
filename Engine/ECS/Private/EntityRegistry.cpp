@@ -18,8 +18,16 @@ namespace Crowy
         }
 
         auto& vec = arch_it->second;
-        vec.swap_remove(info.chunkIndex);
+        auto removedIndex = info.chunkIndex;
 
+        if(vec.size() > 1 && removedIndex != vec.size() - 1){
+            auto swapped_it = findEntityFromProperty(info.bit, vec.size() - 1);
+            if(swapped_it != entityTable.end()){
+                swapped_it->second.chunkIndex = removedIndex;
+            }
+        }
+
+        vec.swap_remove(info.chunkIndex);
         entityTable.erase(id);
     }
 

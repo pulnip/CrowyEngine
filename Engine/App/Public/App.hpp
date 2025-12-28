@@ -9,8 +9,8 @@ namespace Crowy
 
     class App{
     public:
-        App();
-        ~App();
+        // Just Singleton
+        App() = delete;
 
         static Error setup(int argc, char* argv[]);
         static bool start();

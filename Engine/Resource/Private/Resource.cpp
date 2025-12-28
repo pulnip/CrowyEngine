@@ -1,4 +1,5 @@
 #include "LoadContext.hpp"
+#include "Log.hpp"
 #include "MaterialSetManager.hpp"
 #include "MeshManager.hpp"
 #include "ModelImporter.hpp"
@@ -31,6 +32,14 @@ namespace Crowy
     }
 
     std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest request){
+        if(!Crowy::device){
+            LOG_ERROR(LOG_RESOURCE, "Resource module not initialized");
+            return {
+                MeshHandle::invalidHandle(),
+                MaterialSetHandle::invalidHandle()
+            };
+        }
+
         LoadContext context{
             .device = Crowy::device,
         };
@@ -56,6 +65,11 @@ namespace Crowy
         return {meshHandle, materialSetHandle};
     }
     ShaderHandle getOrLoad(ShaderRequest request){
+        if(!Crowy::device){
+            LOG_ERROR(LOG_RESOURCE, "Resource module not initialized");
+            return ShaderHandle::invalidHandle();
+        }
+
         LoadContext context{
             .device = Crowy::device,
         };

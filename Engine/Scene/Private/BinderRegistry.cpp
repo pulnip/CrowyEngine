@@ -164,6 +164,7 @@ namespace Crowy
 
         if(auto arr = std::get_if<VArray>(n)){
             std::vector<std::string> v;
+            v.resize(arr->elements.size());
 
             for(int i=0; i<arr->elements.size(); ++i){
                 const VNode& elem = arena.nodes[arr->elements[i]];

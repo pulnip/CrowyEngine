@@ -67,8 +67,8 @@ namespace Crowy
             processEvents();
 
             auto ticks = SDL_GetTicks();
-            auto ticks_epalsed = ticks - lastTicks;
-            auto step = (float)ticks_epalsed / 1'000.0;
+            auto ticks_elapsed = ticks - lastTicks;
+            auto step = static_cast<float>(ticks_elapsed) / 1'000.0;
 
             lastTicks = ticks;
 

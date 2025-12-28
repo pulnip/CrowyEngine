@@ -13,6 +13,7 @@ PUBLIC
 target_link_libraries(CrowyRender
 PRIVATE
     Crowy::RHI
+    Crowy::ECS
 )
 
 add_library(Crowy::Render ALIAS CrowyRender)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+#include <optional>
 #include <unordered_map>
 #include "dynamic_vector.hpp"
 #include "semantics.hpp"
@@ -287,16 +289,14 @@ namespace Crowy
             );
         }
         template<typename T>
-        auto query_safe(EntityID id)->std::pair<T&, bool>{
+        auto query_safe(EntityID id)->std::optional<std::reference_wrapper<T>>{
             const auto& info = entityTable.at(id);
+            if(!isSubset(bit_of<T>(), info.bit))
+                return std::nullopt;
+
             auto& vec = archetypeMap.at(info.bit);
             auto chunk = vec[info.chunkIndex];
-
-            auto offset = offset_of<T>(info.bit);
-            return {
-                *static_cast<T*>(ptrAdd(chunk, offset)),
-                offset != std::numeric_limits<size_t>::max()
-            };
+            return *static_cast<T*>(ptrAdd(chunk, offset_of<T>(info.bit)));
         }
         auto query(EntityID id)->Entity;
 

@@ -37,7 +37,7 @@ namespace Crowy
             }
             else{
                 buffer = device->newBuffer(
-                    desc.initialData, desc.size,
+                    desc.size,
                     isCPUAccessible ? MTL::StorageModeShared :
                                       MTL::StorageModePrivate
                 );
