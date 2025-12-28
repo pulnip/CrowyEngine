@@ -1,21 +1,11 @@
-#include "string.hpp"
+#include "ComponentDefinitions.hpp"
 #include "EntityRegistry.hpp"
+#include "Resource.hpp"
 #include "SceneLoader.hpp"
 #include "SceneParser.hpp"
-#include "Component.hpp"
-#include "Resource.hpp"
 
 namespace Crowy
 {
-    static RenderType toRenderType(const std::string& str){
-        auto upper = toUpper(str);
-
-        if     (upper == "OPAQUE"     ) return RenderType::Opaque;
-        else if(upper == "TRANSPARENT") return RenderType::Transparent;
-        else if(upper == "UNLIT"      ) return RenderType::Unlit;
-        else throw std::runtime_error("enum parse error");
-    }
-
     static RenderObjectComponent loadComponent(const RenderObjectSpec& spec){
         auto renderType = toRenderType(spec.renderType);
 

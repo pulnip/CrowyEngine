@@ -1,5 +1,4 @@
 #include <format>
-#include <memory>
 #include "BinderRegistry.hpp"
 
 namespace Crowy

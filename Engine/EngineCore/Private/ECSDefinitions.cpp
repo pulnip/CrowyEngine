@@ -1,3 +1,5 @@
+#include <unordered_map>
+#include "string.hpp"
 #include "ECSDefinitions.hpp"
 
 namespace Crowy
@@ -8,8 +10,9 @@ namespace Crowy
             { "SUBCAMERA",  CameraType::SubCamera},
         };
         auto upper = toUpper(text);
+
         auto it = text2camera.find(upper);
-        if (it == text2camera.end()){
+        if(it == text2camera.end()){
             return CameraType::UNKNOWN;
         }
         return it->second;
@@ -21,8 +24,9 @@ namespace Crowy
             {"ORTHOGRAPHIC",  Projection::ORTHOGRAPHIC},
         };
         auto upper = toUpper(text);
+
         auto it = text2projection.find(upper);
-        if (it == text2projection.end()){
+        if(it == text2projection.end()){
             return Projection::UNKNOWN;
         }
         return it->second;

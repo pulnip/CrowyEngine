@@ -3,10 +3,8 @@ crowy_link_assets(CrowySceneTest)
 
 target_sources(CrowySceneTest
 PRIVATE
-    RenderParserTest.cpp
     SceneLoadTest.cpp
     SceneModuleTest.cpp
-    SceneParserTest.cpp
 )
 
 target_link_libraries(CrowySceneTest
@@ -14,7 +12,6 @@ PRIVATE
     GTest::gtest_main
     GTest::gmock_main
     Crowy::NullRHI
-    Crowy::Resource
     CrowyScene_Private
 )
 

@@ -2,7 +2,6 @@ add_library(CrowyECS STATIC)
 
 target_sources(CrowyECS
 PRIVATE
-    Private/ECSDefinitions.cpp
     Private/EntityRegistry.cpp
 )
 
@@ -14,6 +13,8 @@ PUBLIC
 target_link_libraries(CrowyECS
 PUBLIC
     Crowy::Core
+    # NOTE: ARCHETYPES Definitions
+    Crowy::EngineCore
     Crowy::Log
 )
 

@@ -2,14 +2,19 @@ add_library(CrowyResource STATIC)
 
 target_sources(CrowyResource
 PRIVATE
+    Private/BinderRegistry.cpp
+    Private/InternalComponentBinder.cpp
     Private/MaterialSetManager.cpp
     Private/MeshManager.cpp
     Private/ModelImporter.cpp
     Private/ModelSerializer.cpp
     Private/PathUtils.cpp
     Private/Resource.cpp
-    Private/ShaderManager.cpp
+    Private/RenderParser.cpp
+    Private/RenderPassBinder.cpp
     Private/TextureImporter.cpp
+    Private/SceneParser.cpp
+    Private/ShaderManager.cpp
 )
 
 target_include_directories(CrowyResource
@@ -22,11 +27,12 @@ PRIVATE
 target_link_libraries(CrowyResource
 PUBLIC
     Crowy::Core
-    Crowy::ECS
+    Crowy::EngineCore
     Crowy::RHI
 PRIVATE
     Crowy::Log
     assimp::assimp
+    tomlplusplus::tomlplusplus
 )
 
 add_library(Crowy::Resource ALIAS CrowyResource)

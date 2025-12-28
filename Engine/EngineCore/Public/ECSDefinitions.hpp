@@ -1,15 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_map>
 #include "math.hpp"
-#include "string.hpp"
 
 namespace Crowy
 {
-    using ArchetypeBit = uint64_t;
-    using EntityID = uint32_t;
-
     enum class CameraType: uint8_t{
         UNKNOWN     = uint8_t(-1),
         MainCamera  =  0,
@@ -36,10 +31,6 @@ namespace Crowy
         float radius;
         Vec4 color;
     };
-
-    inline constexpr bool isSubset(ArchetypeBit lhs, ArchetypeBit rhs){
-        return (lhs & rhs) == lhs;
-    }
 
     CameraType toCameraType(const std::string& text);
     Projection toProjection(const std::string& text);

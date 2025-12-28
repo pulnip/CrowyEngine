@@ -2,7 +2,7 @@
 
 #include <string_view>
 #include "SceneSpec.hpp"
-#include "BinderRegistry.hpp"
+#include "InternalComponentBinder.hpp"
 
 namespace Crowy
 {

@@ -1,82 +1,17 @@
 #pragma once
 
+#include <cstdint>
 #include "concepts.hpp"
-#include "math.hpp"
-#include "ECSDefinitions.hpp"
-#include "RenderDefinitions.hpp"
-#include "ResourceHandle.hpp"
+#include "ComponentDefinitions.hpp"
 
 namespace Crowy
 {
-    struct TransformComponent{
-        Vec3 position = zeros();
-        Vec4 rotation = unitQuat();
-        Vec3 scale = ones();
-    };
+    using ArchetypeBit = uint64_t;
+    using EntityID = uint32_t;
 
-    struct CameraComponent{
-        CameraType type;
-        float fov;
-        float nearPlane;
-        float farPlane;
-        Projection proj;
-    };
-
-    struct ColorComponent{
-        Vec4 color;
-    };
-
-    struct RenderObjectComponent{
-        MeshHandle mesh;
-        MaterialSetHandle materialSet;
-        RenderType renderType;
-    };
-    struct RigidbodyComponent{
-        Vec3 velocity;
-        bool useGravity;
-        float mass;
-    };
-    struct SphereColliderComponent{
-        Vec3 position;
-        float radius;
-
-        // physical material
-        float bounciness;
-        float friction;
-    };
-    struct BoxColliderComponent{
-        Vec3 position = zeros();
-        Vec4 rotation = unitQuat();
-        Vec3 scale = ones();
-
-        // physical material
-        float bounciness;
-        float friction;
-    };
-
-    // Entity Type? Property? Tags (kept in Long-term)
-    struct PlayerComponent{};
-    struct EditorComponent{};
-    struct AttachableComponent{};
-
-    // Entity-to-Entity Event Tags
-    struct ImpulseComponent{
-        Vec3 force;
-        float dt;
-    };
-
-    #define ARCHETYPES \
-        X(     TransformComponent) \
-        X(        CameraComponent) \
-        X(         ColorComponent) \
-        X(  RenderObjectComponent) \
-        X(     RigidbodyComponent) \
-        X(SphereColliderComponent) \
-        X(   BoxColliderComponent) \
-        X(       ImpulseComponent) \
-        X(        PlayerComponent) \
-        X(        EditorComponent) \
-        X(    AttachableComponent)
+    inline constexpr bool isSubset(ArchetypeBit lhs, ArchetypeBit rhs){
+        return (lhs & rhs) == lhs;
+    }
 
     #define X(type) static_assert(std::is_trivially_copyable_v<type>);
     ARCHETYPES

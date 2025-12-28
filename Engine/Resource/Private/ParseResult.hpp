@@ -7,7 +7,6 @@
 #include <variant>
 #include <vector>
 #include "SourceLocation.hpp"
-#include "SceneSpec.hpp"
 
 namespace Crowy
 {

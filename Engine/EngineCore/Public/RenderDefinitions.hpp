@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace Crowy
 {
     enum class RenderType{
@@ -7,4 +9,6 @@ namespace Crowy
         Transparent,
         Unlit,
     };
+
+    RenderType toRenderType(const std::string& text);
 }

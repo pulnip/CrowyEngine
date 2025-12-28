@@ -1,10 +1,5 @@
-#include <format>
-#include <optional>
-#include <type_traits>
-#include <unordered_set>
 #include <toml++/toml.hpp>
 #include "InternalComponentBinder.hpp"
-#include "Log.hpp"
 #include "ParserCommon.hpp"
 #include "SceneParser.hpp"
 #include "SceneParserPrivate.hpp"

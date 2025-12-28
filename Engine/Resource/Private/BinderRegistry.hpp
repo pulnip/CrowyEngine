@@ -3,8 +3,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "math.hpp"
 #include "semantics.hpp"
-#include "Component.hpp"
 #include "SourceLocation.hpp"
 #include "ParseResult.hpp"
 

@@ -2,12 +2,7 @@ add_library(CrowyScene STATIC)
 
 target_sources(CrowyScene
 PRIVATE
-    Private/BinderRegistry.cpp
-    Private/InternalComponentBinder.cpp
-    Private/RenderParser.cpp
-    Private/RenderPassBinder.cpp
     Private/SceneLoader.cpp
-    Private/SceneParser.cpp
 )
 
 target_include_directories(CrowyScene
@@ -18,11 +13,11 @@ PUBLIC
 target_link_libraries(CrowyScene
 PUBLIC
     Crowy::Core
+    Crowy::EngineCore
     Crowy::ECS
+    Crowy::Resource
 PRIVATE
     Crowy::Log
-    Crowy::Resource
-    tomlplusplus::tomlplusplus
 )
 
 add_library(Crowy::Scene ALIAS CrowyScene)

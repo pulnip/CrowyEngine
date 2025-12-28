@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
 #include <vector>
-#include "Component.hpp"
+#include "ComponentDefinitions.hpp"
 
 namespace Crowy
 {

@@ -1,4 +1,8 @@
+#include <cstddef>
+#include <format>
+#include <unordered_set>
 #include <toml++/toml.hpp>
+#include "BinderRegistry.hpp"
 #include "Log.hpp"
 #include "ParseResult.hpp"
 #include "SourceLocation.hpp"

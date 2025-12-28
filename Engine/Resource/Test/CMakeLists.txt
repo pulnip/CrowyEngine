@@ -5,6 +5,8 @@ target_sources(CrowyResourceTest
 PRIVATE
     ModelSerializerTest.cpp
     ResourceModuleTest.cpp
+    RenderParserTest.cpp
+    SceneParserTest.cpp
 )
 
 target_link_libraries(CrowyResourceTest

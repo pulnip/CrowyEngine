@@ -1,11 +1,6 @@
-#include <format>
-#include <optional>
-#include <type_traits>
-#include <unordered_set>
 #include <toml++/toml.hpp>
-#include "RenderPassBinder.hpp"
-#include "Log.hpp"
 #include "ParserCommon.hpp"
+#include "RenderPassBinder.hpp"
 #include "RenderParser.hpp"
 
 namespace Crowy
