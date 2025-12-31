@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <memory>
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIShader.hpp"
 #endif

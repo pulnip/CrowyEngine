@@ -15,7 +15,7 @@ namespace Crowy
             return nullptr;
 
         uint32_t mipLevels = 1;
-        if(ref.flags & TEX_GenerateMips){
+        if(hasFlag(ref.flags, TextureFlags::GenerateMips)){
             mipLevels = static_cast<uint32_t>(
                 std::floor(std::log2(std::max(
                     textureData->width, textureData->height
@@ -23,7 +23,7 @@ namespace Crowy
             ) + 1;
         }
 
-        RHITextureFormat format = (ref.flags & TEX_SRGB) 
+        RHITextureFormat format = hasFlag(ref.flags, TextureFlags::SRGB) 
             ? RHITextureFormat::RGBA8_UNORM_SRGB 
             : RHITextureFormat::RGBA8_UNORM;
 
@@ -35,7 +35,7 @@ namespace Crowy
                 .mipLevels = mipLevels,
                 .arraySize = 1,
                 .format = format,
-                .usage = RHITextureUsage::TEX_ShaderResource,
+                .usage = RHITextureUsage::ShaderResource,
                 .initialState = RHIResourceState::ShaderResource,
                 .clearColor = {},
                 .clearDepthStencil = {},

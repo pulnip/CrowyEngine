@@ -3,9 +3,10 @@
 #define CA_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
 #include "MetalBuffer.hpp"
+#include "MetalCommandList.hpp"
+#include "MetalDevice.hpp"
 #include "MetalFence.hpp"
 #include "MetalPipelineState.hpp"
-#include "MetalDevice.hpp"
 #include "MetalShader.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
@@ -27,6 +28,8 @@ namespace Crowy
         MTL::CommandQueue* commandQueue;
 
         MTL::SamplerState* defaultSampler;
+
+        MTL::CommandBuffer* pendingCommandBuffer = nullptr;
 
         Impl(){
             device = MTL::CreateSystemDefaultDevice();
@@ -98,8 +101,28 @@ namespace Crowy
             return std::make_unique<MetalSwapchain>(device, desc);
         }
 
+        RHICommandListPtr createCommandList(){
+            return std::make_unique<MetalCommandList>(commandQueue, defaultSampler);
+        }
+
         RHIFencePtr createFence(uint64_t initialValue){
             return std::make_unique<MetalFence>(device, initialValue);
+        }
+
+        void submit(RHICommandList* cmdList, RHISwapchain* swapchain){
+            auto mtlCmdList = static_cast<MetalCommandList*>(cmdList);
+            auto cmdBuffer = mtlCmdList->getCommandBuffer();
+
+            if(!cmdBuffer) return;
+
+            if(swapchain){
+                auto mtlSwapchain = static_cast<MetalSwapchain*>(swapchain);
+                auto drawable = mtlSwapchain->getCurrentDrawable();
+                if(drawable)
+                    cmdBuffer->presentDrawable(drawable);
+            }
+
+            cmdBuffer->commit();
         }
     };
 
@@ -138,6 +161,10 @@ namespace Crowy
         return impl->createComputePipelineState(desc);
     }
 
+    RHICommandListPtr MetalDevice::createCommandList(){
+        return impl->createCommandList();
+    }
+
     RHIFencePtr MetalDevice::createFence(uint64_t initialValue){
         return impl->createFence(initialValue);
     }
@@ -147,5 +174,9 @@ namespace Crowy
             .flipTextureV = true,
             .clipSpaceMinZ = 0.0f
         };
+    }
+
+    void MetalDevice::submit(RHICommandList* cmdList, RHISwapchain* swapchain){
+        impl->submit(cmdList, swapchain);
     }
 }

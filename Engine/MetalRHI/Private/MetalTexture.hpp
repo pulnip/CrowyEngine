@@ -3,153 +3,40 @@
 #include <cstddef>
 #include <memory>
 #include <Metal/Metal.hpp>
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "MetalUtil.hpp"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHITexture.hpp"
 #endif
 
-namespace{
-    static auto convertTextureFormat(RHITextureFormat format){
-        switch(format){
-        case RHITextureFormat::Unknown:           return MTL::PixelFormatInvalid;
-        // 8-bit formats
-        case RHITextureFormat::R8_UNORM:          return MTL::PixelFormatR8Unorm;
-        case RHITextureFormat::R8_SNORM:          return MTL::PixelFormatR8Snorm;
-        case RHITextureFormat::R8_UINT:           return MTL::PixelFormatR8Uint;
-        case RHITextureFormat::R8_SINT:           return MTL::PixelFormatR8Sint;
-        // 16-bit formats
-        case RHITextureFormat::R16_UNORM:         return MTL::PixelFormatR16Unorm;
-        case RHITextureFormat::R16_SNORM:         return MTL::PixelFormatR16Snorm;
-        case RHITextureFormat::R16_UINT:          return MTL::PixelFormatR16Uint;
-        case RHITextureFormat::R16_SINT:          return MTL::PixelFormatR16Sint;
-        case RHITextureFormat::R16_FLOAT:         return MTL::PixelFormatR16Float;
-
-        case RHITextureFormat::RG8_UNORM:         return MTL::PixelFormatRG8Unorm;
-        case RHITextureFormat::RG8_SNORM:         return MTL::PixelFormatRG8Snorm;
-        case RHITextureFormat::RG8_UINT:          return MTL::PixelFormatRG8Uint;
-        case RHITextureFormat::RG8_SINT:          return MTL::PixelFormatRG8Sint;
-        // 32-bit formats
-        case RHITextureFormat::R32_UINT:          return MTL::PixelFormatR32Uint;
-        case RHITextureFormat::R32_SINT:          return MTL::PixelFormatR32Sint;
-        case RHITextureFormat::R32_FLOAT:         return MTL::PixelFormatR32Float;
-
-        case RHITextureFormat::RG16_UNORM:        return MTL::PixelFormatRG16Unorm;
-        case RHITextureFormat::RG16_SNORM:        return MTL::PixelFormatRG16Snorm;
-        case RHITextureFormat::RG16_UINT:         return MTL::PixelFormatRG16Uint;
-        case RHITextureFormat::RG16_SINT:         return MTL::PixelFormatRG16Sint;
-        case RHITextureFormat::RG16_FLOAT:        return MTL::PixelFormatRG16Float;
-
-        case RHITextureFormat::RGBA8_UNORM:       return MTL::PixelFormatRGBA8Unorm;
-        case RHITextureFormat::RGBA8_UNORM_SRGB:  return MTL::PixelFormatRGBA8Unorm_sRGB;
-        case RHITextureFormat::RGBA8_SNORM:       return MTL::PixelFormatRGBA8Snorm;
-        case RHITextureFormat::RGBA8_UINT:        return MTL::PixelFormatRGBA8Uint;
-        case RHITextureFormat::RGBA8_SINT:        return MTL::PixelFormatRGBA8Sint;
-
-        case RHITextureFormat::BGRA8_UNORM:       return MTL::PixelFormatBGRA8Unorm;
-        case RHITextureFormat::BGRA8_UNORM_SRGB:  return MTL::PixelFormatBGRA8Unorm_sRGB;
-
-        // 64-bit formats
-        case RHITextureFormat::RG32_UINT:         return MTL::PixelFormatRG32Uint;
-        case RHITextureFormat::RG32_SINT:         return MTL::PixelFormatRG32Sint;
-        case RHITextureFormat::RG32_FLOAT:        return MTL::PixelFormatRG32Float;
-
-        case RHITextureFormat::RGBA16_UNORM:      return MTL::PixelFormatRGBA16Unorm;
-        case RHITextureFormat::RGBA16_SNORM:      return MTL::PixelFormatRGBA16Snorm;
-        case RHITextureFormat::RGBA16_UINT:       return MTL::PixelFormatRGBA16Uint;
-        case RHITextureFormat::RGBA16_SINT:       return MTL::PixelFormatRGBA16Sint;
-        case RHITextureFormat::RGBA16_FLOAT:      return MTL::PixelFormatRGBA16Float;
-
-        // 128-bit formats
-        case RHITextureFormat::RGBA32_UINT:       return MTL::PixelFormatRGBA32Uint;
-        case RHITextureFormat::RGBA32_SINT:       return MTL::PixelFormatRGBA32Sint;
-        case RHITextureFormat::RGBA32_FLOAT:      return MTL::PixelFormatRGBA32Float;
-
-        // Depth/stencil formats
-        case RHITextureFormat::D16_UNORM:         return MTL::PixelFormatDepth16Unorm;
-        case RHITextureFormat::D24_UNORM_S8_UINT: return MTL::PixelFormatDepth24Unorm_Stencil8;
-        case RHITextureFormat::D32_FLOAT:         return MTL::PixelFormatDepth32Float;
-        case RHITextureFormat::D32_FLOAT_S8_UINT: return MTL::PixelFormatDepth32Float_Stencil8;
-        default:                                  return MTL::PixelFormatInvalid;
-        }
-    }
+namespace Crowy
+{
     static auto convertTextureUsage(RHITextureUsage usage){
         MTL::TextureUsage mtlUsage = 0;
 
-        if((usage & TEX_ShaderResource ) != 0){ mtlUsage |= MTL::TextureUsageShaderRead;   }
-        if((usage & TEX_RenderTarget   ) != 0){ mtlUsage |= MTL::TextureUsageRenderTarget; }
-        if((usage & TEX_DepthStencil   ) != 0){ mtlUsage |= MTL::TextureUsageRenderTarget; }
-        if((usage & TEX_UnorderedAccess) != 0){ mtlUsage |= MTL::TextureUsageShaderWrite;  }
+        if(hasFlag(usage, RHITextureUsage::ShaderResource))
+            mtlUsage |= MTL::TextureUsageShaderRead;
+        if(hasFlag(usage, RHITextureUsage::RenderTarget))
+            mtlUsage |= MTL::TextureUsageRenderTarget;
+        if(hasFlag(usage, RHITextureUsage::DepthStencil))
+            mtlUsage |= MTL::TextureUsageRenderTarget;
+        if(hasFlag(usage, RHITextureUsage::UnorderedAccess))
+            mtlUsage |= MTL::TextureUsageShaderWrite;
 
         return mtlUsage;
     }
 
-    static auto getBytesPerPixel(RHITextureFormat format){
-        switch(format){
-        case R8_UNORM:          [[fallthrough]];
-        case R8_SNORM:          [[fallthrough]];
-        case R8_UINT:           [[fallthrough]];
-        case R8_SINT:
-            return 1;
-        case R16_UNORM:         [[fallthrough]];
-        case R16_SNORM:         [[fallthrough]];
-        case R16_UINT:          [[fallthrough]];
-        case R16_SINT:          [[fallthrough]];
-        case R16_FLOAT:         [[fallthrough]];
-        case RG8_UNORM:         [[fallthrough]];
-        case RG8_SNORM:         [[fallthrough]];
-        case RG8_UINT:          [[fallthrough]];
-        case RG8_SINT:
-            return 2;
-        case R32_UINT:          [[fallthrough]];
-        case R32_SINT:          [[fallthrough]];
-        case R32_FLOAT:         [[fallthrough]];
-        case RG16_UNORM:        [[fallthrough]];
-        case RG16_SNORM:        [[fallthrough]];
-        case RG16_UINT:         [[fallthrough]];
-        case RG16_SINT:         [[fallthrough]];
-        case RG16_FLOAT:        [[fallthrough]];
-        case RGBA8_UNORM:       [[fallthrough]];
-        case RGBA8_UNORM_SRGB:  [[fallthrough]];
-        case RGBA8_SNORM:       [[fallthrough]];
-        case RGBA8_UINT:        [[fallthrough]];
-        case RGBA8_SINT:        [[fallthrough]];
-        case BGRA8_UNORM:       [[fallthrough]];
-        case BGRA8_UNORM_SRGB:
-            return 4;
-        case RG32_UINT:         [[fallthrough]];
-        case RG32_SINT:         [[fallthrough]];
-        case RG32_FLOAT:        [[fallthrough]];
-        case RGBA16_UNORM:      [[fallthrough]];
-        case RGBA16_SNORM:      [[fallthrough]];
-        case RGBA16_UINT:       [[fallthrough]];
-        case RGBA16_SINT:       [[fallthrough]];
-        case RGBA16_FLOAT:
-            return 8;
-        case RGBA32_UINT:       [[fallthrough]];
-        case RGBA32_SINT:       [[fallthrough]];
-        case RGBA32_FLOAT:
-            return 16;
-        case D16_UNORM:
-            return 2;
-        case D24_UNORM_S8_UINT: [[fallthrough]];
-        case D32_FLOAT:
-            return 4;
-        case D32_FLOAT_S8_UINT:
-            return 8;
-        default:
-            return 4;
-        }
-    }
-}
-
-namespace Crowy
-{
     class MetalTexture
 #ifndef USE_STATIC_RHI
         : public RHITexture
 #endif
     {
+    private:
+        MTL::Texture* texture;
+        size_t width, height;
+        RHITextureFormat format = RHITextureFormat::Unknown;
+
     public:
         MetalTexture(
             MTL::Device* device,
@@ -201,13 +88,6 @@ namespace Crowy
             );
         }
 
-        void* getNativeResource() RHI_OVERRIDE{
-            return texture;
-        }
-
-    private:
-        MTL::Texture* texture;
-        size_t width, height;
-        RHITextureFormat format = Unknown;
+        MTL::Texture* get() const{ return texture; }
     };
 }

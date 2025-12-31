@@ -1,7 +1,7 @@
 #pragma once
 
 #include "semantics.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
@@ -42,16 +42,8 @@ namespace Crowy
             return currentBufferIndex;
         }
 
-        // Get current backbuffer for rendering
-        virtual RHITexture* getCurrentBackbuffer() = 0;
+        virtual bool acquireNextImage() = 0;
 
-        // Present rendered image to screen
-        virtual void present(bool vsync = true) = 0;
-
-        // Resize swapchain (window resize)
         virtual void resize(uint32_t newWidth, uint32_t newHeight) = 0;
-
-        // Platform-specific swapchain getter
-        virtual void* getNative() = 0;
     };
 }

@@ -2,7 +2,7 @@
 
 #include "semantics.hpp"
 #include "RHIFWD.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -24,20 +24,8 @@ namespace Crowy
     static_assert(RHIPipelineStateType<RHIPipelineState>);
 #else
     class RHIPipelineState{
-    protected:
-        bool isCompute = false;
-
     public:
-        RHIPipelineState(bool isCompute)
-            : isCompute(isCompute) {}
-
         DECLARE_INTERFACE(RHIPipelineState)
-
-        bool isComputePipeline() const{ return isCompute; }
-        bool isGraphicsPipeline() const{ return !isCompute; }
-
-        // Platform-specific PSO getter
-        virtual void* getNative() = 0;
     };
 #endif
 }

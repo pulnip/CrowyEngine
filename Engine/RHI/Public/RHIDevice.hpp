@@ -3,7 +3,7 @@
 #include <memory>
 #include "semantics.hpp"
 #include "RHIFWD.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -56,9 +56,13 @@ namespace Crowy
             const RHISwapchainCreateDesc&
         ) = 0;
 
+        virtual RHICommandListPtr createCommandList() = 0;
+
         virtual RHIFencePtr createFence(uint64_t initialValue = 0) = 0;
 
         virtual RHICapabilities getCapabilities() const = 0;
+
+        virtual void submit(RHICommandList*, RHISwapchain* presentTarget = nullptr) = 0;
     };
 #endif
 

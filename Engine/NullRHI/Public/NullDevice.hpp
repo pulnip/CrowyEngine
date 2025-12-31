@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RHIAPI.h"
+#include "RHIAPI.hpp"
 #ifdef USE_STATIC_RHI
-    #include "RHIDefinitions.h"
+    #include "RHIDefinitions.hpp"
 #else
     #include "RHIDevice.hpp"
 #endif
@@ -33,8 +33,15 @@ namespace Crowy
             const RHISwapchainCreateDesc&
         ) RHI_OVERRIDE; 
 
+        RHICommandListPtr createCommandList() RHI_OVERRIDE;
+
         RHIFencePtr createFence(uint64_t initialValue = 0) RHI_OVERRIDE;
 
         RHICapabilities getCapabilities() const RHI_OVERRIDE;
+
+        void submit(
+            RHICommandList*,
+            RHISwapchain* presentTarget
+        ) RHI_OVERRIDE;
     };
 }

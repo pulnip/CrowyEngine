@@ -1,7 +1,7 @@
 #pragma once
 
 #include "semantics.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
@@ -39,31 +39,26 @@ namespace Crowy
             RHILoadStoreAction storeAction = RHILoadStoreAction::Store,
             const RHIClearColor& clearColor = {
                 .r=0.0f, .g=0.0f, .b=0.0f, .a=1.0f
+            },
+            const RHIClearDepthStencil& clearDS = {
+                .depth = 1.0f, .stencil = 0
             }
         ) = 0;
 
         virtual void beginRenderPass(
-            const RHITexture* renderTargets,
-            uint32_t renderTargetCount,
+            RHISwapchain*,
             RHITexture* depthStencil = nullptr,
             RHILoadStoreAction loadAction  = RHILoadStoreAction::Load,
             RHILoadStoreAction storeAction = RHILoadStoreAction::Store,
-            const RHIClearColor* clearColors = nullptr
+            const RHIClearColor& clearColor = {
+                .r=0.0f, .g=0.0f, .b=0.0f, .a=1.0f
+            },
+            const RHIClearDepthStencil& clearDS = {
+                .depth = 1.0f, .stencil = 0
+            }
         ) = 0;
 
         virtual void endRenderPass() = 0;
-
-        // Clear operations
-        virtual void clearRenderTarget(
-            RHITexture* renderTarget,
-            const RHIClearColor& color
-        ) = 0;
-
-        virtual void clearDepthStencil(
-            RHITexture* depthStencil,
-            float depth,
-            uint8_t stencil = 0
-        ) = 0;
 
         // Pipeline state
         virtual void setPipelineState(RHIPipelineState* pso) = 0;
@@ -106,16 +101,8 @@ namespace Crowy
         virtual void setViewport(
             const RHIViewport& viewport
         ) = 0;
-        virtual void setViewports(
-            const RHIViewport* viewports,
-            uint32_t count
-        ) = 0;
         virtual void setScissorRect(
             const RHIScissorRect& scissor
-        ) = 0;
-        virtual void setScissorRects(
-            const RHIScissorRect* scissors,
-            uint32_t count
         ) = 0;
 
         // Draw commands
@@ -153,6 +140,12 @@ namespace Crowy
             RHIResourceState before,
             RHIResourceState after
         ) = 0;
+
+        virtual void uavBarrier(RHITexture*) = 0;
+        virtual void uavBarrier(RHIBuffer*) = 0;
+
+        virtual void signalFence(RHIFence*, uint64_t value) = 0;
+        virtual void waitFence(RHIFence*, uint64_t value) = 0;
 
         // Copy operations
         virtual void copyBuffer(

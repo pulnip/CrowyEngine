@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy

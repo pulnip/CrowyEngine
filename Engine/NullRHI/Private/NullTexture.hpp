@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <memory>
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHITexture.hpp"
 #endif
@@ -15,6 +15,10 @@ namespace Crowy
         : public RHITexture
 #endif
     {
+    private:
+        size_t width, height;
+        RHITextureFormat format = RHITextureFormat::Unknown;
+
     public:
         NullTexture(const RHITextureCreateDesc& desc)
             : width(desc.width), height(desc.height)
@@ -27,13 +31,5 @@ namespace Crowy
         ) RHI_OVERRIDE{
             // No-Op
         }
-
-        void* getNativeResource() RHI_OVERRIDE{
-            return nullptr;
-        }
-
-    private:
-        size_t width, height;
-        RHITextureFormat format = Unknown;
     };
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIPipelineState.hpp"
 #endif
@@ -16,14 +16,14 @@ namespace Crowy
     public:
         NullPipelineState(
             const RHIGraphicsPipelineStateDesc& desc
-        ) : RHIPipelineState(false){}
+        ){
+
+        }
 
         NullPipelineState(
             const RHIComputePipelineStateDesc& desc
-        ): RHIPipelineState(true){}
-
-        void* getNative() RHI_OVERRIDE{
-            return nullptr;
+        ){
+            
         }
     };
 }

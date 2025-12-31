@@ -1,7 +1,8 @@
 #include "NullBuffer.hpp"
+#include "NullCommandList.hpp"
+#include "NullDevice.hpp"
 #include "NullFence.hpp"
 #include "NullPipelineState.hpp"
-#include "NullDevice.hpp"
 #include "NullShader.hpp"
 #include "NullSwapchain.hpp"
 #include "NullTexture.hpp"
@@ -58,7 +59,18 @@ namespace Crowy
         return std::make_unique<NullFence>(initialValue);
     }
 
+    RHICommandListPtr NullDevice::createCommandList(){
+        return std::make_unique<NullCommandList>();
+    }
+
     RHICapabilities NullDevice::getCapabilities() const{
         return {};
+    }
+
+    void NullDevice::submit(
+        RHICommandList*,
+        RHISwapchain* presentTarget
+    ){
+
     }
 }

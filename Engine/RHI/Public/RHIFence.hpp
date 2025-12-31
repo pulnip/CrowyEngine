@@ -23,19 +23,8 @@ namespace Crowy
 #else
     // GPU fence for CPU/GPU synchronization
     class RHIFence{
-    protected:
-        uint64_t currentValue;
-
     public:
-        RHIFence(uint64_t initialValue = 0)
-            :currentValue(initialValue){}
-
         DECLARE_INTERFACE(RHIFence)
-
-        virtual void waitFor(uint64_t value) = 0;
-
-        // Signal fence from GPU (increments to signalValue when GPU work completes)
-        virtual void signal(uint64_t signalValue) = 0;
 
         // Wait on CPU until fence reaches waitValue
         virtual void waitCPU(uint64_t waitValue, uint64_t timeoutMs = 0) = 0;
@@ -44,12 +33,7 @@ namespace Crowy
         virtual uint64_t getValue() = 0;
 
         // Check if fence has reached a value
-        inline bool hasReached(uint64_t value){
-            return getValue() >= value;
-        }
-
-        // Platform-specific fence getter
-        virtual void* getNative() = 0;
+        virtual bool isComplete(uint64_t) = 0;
     };
 #endif
 }

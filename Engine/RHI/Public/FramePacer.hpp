@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include "semantics.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy

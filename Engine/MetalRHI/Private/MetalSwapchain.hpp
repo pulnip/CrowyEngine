@@ -1,8 +1,10 @@
 #pragma once
 
 #include <Metal/Metal.hpp>
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include <QuartzCore/QuartzCore.hpp>
+#include "MetalUtil.hpp"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHISwapchain.hpp"
 #endif
@@ -14,26 +16,53 @@ namespace Crowy
         : public RHISwapchain
 #endif
     {
+    private:
+        MTL::Device* device = nullptr;
+        CA::MetalLayer* metalLayer = nullptr;
+        CA::MetalDrawable* currentDrawable = nullptr;
+
+        uint32_t width = 0;
+        uint32_t height = 0;
+        RHITextureFormat format = RHITextureFormat::Unknown;
+
     public:
         MetalSwapchain(
             MTL::Device* device,
             const RHISwapchainCreateDesc& desc
-        ){}
+        ){
+            metalLayer = static_cast<CA::MetalLayer*>(desc.windowHandle);
+            if(!metalLayer){
+                throw std::runtime_error("Swapchain window handle is null");
+            }
 
-        RHITexture* getCurrentBackbuffer() RHI_OVERRIDE{
-
+            metalLayer->setDevice(device);
+            metalLayer->setPixelFormat(convertTextureFormat(desc.format));
+            metalLayer->setFramebufferOnly(true);
+            metalLayer->setDrawableSize(CGSizeMake(desc.width, desc.height));
         }
 
-        void present(bool vsync = true) RHI_OVERRIDE{
+        ~MetalSwapchain(){
+            currentDrawable = nullptr;
+        }
 
+        bool acquireNextImage() RHI_OVERRIDE{
+            currentDrawable = metalLayer->nextDrawable();
+            return currentDrawable != nullptr;
         }
 
         void resize(uint32_t newWidth, uint32_t newHeight) RHI_OVERRIDE{
-
+            width = newWidth;
+            height = newHeight;
+            metalLayer->setDrawableSize(CGSizeMake(newWidth, newHeight));
+            currentDrawable = nullptr;
         }
 
-        void* getNative() RHI_OVERRIDE{
-            return nullptr;
+        MTL::Texture* getCurrentTexture() const{
+            return currentDrawable ? currentDrawable->texture() : nullptr;
+        }
+
+        CA::MetalDrawable* getCurrentDrawable() const{ 
+            return currentDrawable; 
         }
     };
 }

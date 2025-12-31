@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <memory>
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIBuffer.hpp"
 #endif
@@ -20,16 +20,16 @@ namespace Crowy
             : usage(desc.usage)
             , size(desc.size)
         {
-            auto hasVertexUsage = (desc.usage & BUF_VertexBuffer) != 0;
-            auto hasIndexUsage = (desc.usage & BUF_IndexBuffer) != 0;
-            auto hasConstantUsage = (desc.usage & BUF_ConstantBuffer) != 0;
+            auto hasVertexUsage = hasFlag(desc.usage, RHIBufferUsage::VertexBuffer);
+            auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
+            auto hasConstantUsage = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer);
             isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
         }
         ~NullBuffer() = default;
 
     private:
         size_t size = 0;
-        RHIBufferUsage usage = RHIBufferUsage::BUF_None;
+        RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
     };
 }

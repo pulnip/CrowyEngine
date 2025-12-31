@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHISwapchain.hpp"
 #endif
@@ -18,20 +18,12 @@ namespace Crowy
             const RHISwapchainCreateDesc& desc
         ){}
 
-        RHITexture* getCurrentBackbuffer() RHI_OVERRIDE{
-
-        }
-
-        void present(bool vsync = true) RHI_OVERRIDE{
-
+        bool acquireNextImage() RHI_OVERRIDE{
+            
         }
 
         void resize(uint32_t newWidth, uint32_t newHeight) RHI_OVERRIDE{
 
-        }
-
-        void* getNative() RHI_OVERRIDE{
-            return nullptr;
         }
     };
 }

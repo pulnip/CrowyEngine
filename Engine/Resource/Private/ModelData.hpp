@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include "math.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
@@ -58,17 +58,17 @@ namespace Crowy
         PBR   = 1, // Physically-Based Rendering
     };
 
-    enum TextureFlags: uint16_t{
-        TEX_None         = 0,
-        TEX_SRGB         = 1 << 0, // Texture is in sRGB color space
-        TEX_GenerateMips = 1 << 1  // Generate mipmaps
+    enum class TextureFlags: uint8_t{
+        None         = 0,
+        SRGB         = 1 << 0, // Texture is in sRGB color space
+        GenerateMips = 1 << 1  // Generate mipmaps
     };
 
     // Texture reference in a material
     struct TextureRef{
         std::string path;  // Path to texture file
         // TextureUsage usage;
-        uint16_t flags = TEX_None;
+        TextureFlags flags = TextureFlags::None;
     };
 
     // Texture usage semantic

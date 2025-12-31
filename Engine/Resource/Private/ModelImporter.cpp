@@ -306,7 +306,7 @@ namespace Crowy
                 TextureRef texRef;
                 std::filesystem::path texFilePath = modelDir / texPath.C_Str();
                 texRef.path = texFilePath.string();
-                texRef.flags = TEX_SRGB | TEX_GenerateMips;
+                texRef.flags = combine(TextureFlags::SRGB, TextureFlags::GenerateMips);
                 material.textures[TextureSemantic::BaseColor] = texRef;
                 LOG_DEBUG(LOG_RESOURCE, "      -> Loaded DIFFUSE: {}", texPath.C_Str());
             }
@@ -316,7 +316,7 @@ namespace Crowy
                 TextureRef texRef;
                 std::filesystem::path texFilePath = modelDir / texPath.C_Str();
                 texRef.path = texFilePath.string();
-                texRef.flags = TEX_GenerateMips;
+                texRef.flags = TextureFlags::GenerateMips;
                 material.textures[TextureSemantic::Normal] = texRef;
             }
 

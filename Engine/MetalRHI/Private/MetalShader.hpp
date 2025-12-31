@@ -7,8 +7,8 @@
 #include <memory>
 #include <string>
 #include <Metal/Metal.hpp>
-#include "RHIAPI.h"
-#include "RHIDefinitions.h"
+#include "RHIAPI.hpp"
+#include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIShader.hpp"
 #endif
@@ -20,6 +20,10 @@ namespace Crowy
         : public RHIShader
 #endif
     {
+    private:
+        MTL::Function* function;
+        const RHIShaderStage stage;
+
     public:
         MetalShader(
             MTL::Device* device,
@@ -78,8 +82,6 @@ namespace Crowy
             return stage;
         }
 
-    private:
-        MTL::Function* function;
-        const RHIShaderStage stage;
+        MTL::Function* get() const{ return function; }
     };
 }

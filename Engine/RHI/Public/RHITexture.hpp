@@ -2,7 +2,7 @@
 
 #include "semantics.hpp"
 #include "RHIFWD.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -28,9 +28,6 @@ namespace Crowy
         virtual void uploadData(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) = 0;
-
-        // Platform-specific resource getter (for interop)
-        virtual void* getNativeResource() = 0;
     };
 #endif
 }

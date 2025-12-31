@@ -1,7 +1,7 @@
 #pragma once
 
 #include "semantics.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI

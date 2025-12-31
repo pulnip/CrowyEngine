@@ -14,7 +14,7 @@ namespace Crowy
             auto vbuffer = ctx.device->createBuffer(
                 RHIBufferCreateDesc{
                     .size = submeshData.vertices.size() * sizeof(Vertex),
-                    .usage = RHIBufferUsage::BUF_VertexBuffer,
+                    .usage = RHIBufferUsage::VertexBuffer,
                     .stride = 0,
                     .initialData = submeshData.vertices.data()
                 }
@@ -22,7 +22,7 @@ namespace Crowy
             auto ibuffer = ctx.device->createBuffer(
                 RHIBufferCreateDesc{
                     .size = submeshData.indices.size() * sizeof(uint32_t),
-                    .usage = RHIBufferUsage::BUF_IndexBuffer,
+                    .usage = RHIBufferUsage::IndexBuffer,
                     .stride = 0,
                     .initialData = submeshData.indices.data()
                 }

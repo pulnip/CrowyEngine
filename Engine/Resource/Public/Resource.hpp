@@ -5,7 +5,7 @@
 #include <span>
 #include <string>
 #include "math.hpp"
-#include "RHIDefinitions.h"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 #include "ResourceHandle.hpp"
 #include "ResourceRequest.hpp"
