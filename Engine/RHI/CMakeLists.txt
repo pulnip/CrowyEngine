@@ -1,5 +1,12 @@
 add_library(CrowyCommonRHI INTERFACE)
 
+file(GLOB COMMON_SOURCES "Common/*.h")
+
+target_sources(CrowyCommonRHI
+INTERFACE
+    ${COMMON_SOURCES}
+)
+
 target_include_directories(CrowyCommonRHI
 INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/Common"
@@ -7,8 +14,21 @@ INTERFACE
 
 add_library(Crowy::CommonRHI ALIAS CrowyCommonRHI)
 
+file(GLOB PUBLIC_SOURCES
+    "Public/*.hpp"
+)
+file(GLOB PRIVATE_SOURCES
+    "Private/*.hpp"
+    "Private/*.cpp"
+)
+
 if(CROWY_USE_STATIC_RHI)
     add_library(CrowyRHI INTERFACE)
+
+    target_sources(CrowyRHI
+    INTERFACE
+        ${PUBLIC_SOURCES}
+    )
 
     target_include_directories(CrowyRHI
     INTERFACE
@@ -31,8 +51,10 @@ else()
     add_library(CrowyRHI STATIC)
 
     target_sources(CrowyRHI
+    PUBLIC
+        ${PUBLIC_SOURCES}
     PRIVATE
-        Private/RHIDevice.cpp
+        ${PRIVATE_SOURCES}
     )
 
     target_include_directories(CrowyRHI
@@ -44,6 +66,8 @@ else()
     PUBLIC
         Crowy::CommonRHI
         Crowy::Core
+    PRIVATE
+        Crowy::Log
     )
 endif()
 

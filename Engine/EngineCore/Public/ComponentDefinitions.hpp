@@ -28,7 +28,7 @@ namespace Crowy
     struct RenderObjectComponent{
         MeshHandle mesh;
         MaterialSetHandle materialSet;
-        RenderType renderType;
+        RenderTypeHash renderType;
     };
     struct RigidbodyComponent{
         Vec3 velocity;

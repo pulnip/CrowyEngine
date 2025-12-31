@@ -20,11 +20,18 @@ namespace Crowy
     concept RHIDeviceType = requires(T device,
         RHIBufferCreateDesc bufDesc,
         RHITextureCreateDesc texDesc,
-        RHIShaderCreateDesc shaderDesc
+        RHIShaderCreateDesc shaderDesc,
+        RHIGraphicsPipelineStateDesc gpsDesc,
+        RHIComputePipelineStateDesc cpsDesc
     ){
         { device.createBuffer(bufDesc) } -> std::same_as<RHIBufferPtr>;
         { device.createTexture(texDesc) } -> std::same_as<RHITexturePtr>;
         { device.createShader(shaderDesc) } -> std::same_as<RHIShaderPtr>;
+
+        { device.createGraphicsPipelineState(gpsDesc) } -> std::same_as<RHIPipelineStatePtr>;
+        { device.createComputePipelineState(cpsDesc) } -> std::same_as<RHIPipelineStatePtr>;
+
+        { device.createFence(uint64_t(0)) } -> std::same_as<RHIFencePtr>;
 
         { device.getCapabilities() } -> std::same_as<RHICapabilities>;
     };
@@ -37,6 +44,19 @@ namespace Crowy
         virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) = 0;
         virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) = 0;
         virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) = 0;
+
+        virtual RHIPipelineStatePtr createGraphicsPipelineState(
+            const RHIGraphicsPipelineStateDesc&
+        ) = 0;
+        virtual RHIPipelineStatePtr createComputePipelineState(
+            const RHIComputePipelineStateDesc&
+        ) = 0;
+
+        virtual RHISwapchainPtr createSwapchain(
+            const RHISwapchainCreateDesc&
+        ) = 0;
+
+        virtual RHIFencePtr createFence(uint64_t initialValue = 0) = 0;
 
         virtual RHICapabilities getCapabilities() const = 0;
     };

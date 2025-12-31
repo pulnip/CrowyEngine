@@ -1,14 +1,20 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include "math.hpp"
+#include "ResourceHandle.hpp"
 
 namespace Crowy
 {
-    enum class RenderType{
-        Opaque,
-        Transparent,
-        Unlit,
-    };
+    using RenderType = std::string;
+    using RenderTypeHash = std::invoke_result_t<std::hash<RenderType>, RenderType>;
 
-    RenderType toRenderType(const std::string& text);
+    struct RenderItem{
+        MeshHandle mesh;
+        MaterialSetHandle materials;
+        Mat4 world;
+        RenderType type;
+    };
+    using RenderQueue = std::vector<RenderItem>;
 }

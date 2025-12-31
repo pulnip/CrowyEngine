@@ -1,20 +1,18 @@
 add_library(CrowyResource STATIC)
 
+file(GLOB PUBLIC_SOURCES
+    "Public/*.hpp"
+)
+file(GLOB PRIVATE_SOURCES
+    "Private/*.hpp"
+    "Private/*.cpp"
+)
+
 target_sources(CrowyResource
+PUBLIC
+    ${PUBLIC_SOURCES}
 PRIVATE
-    Private/BinderRegistry.cpp
-    Private/InternalComponentBinder.cpp
-    Private/MaterialSetManager.cpp
-    Private/MeshManager.cpp
-    Private/ModelImporter.cpp
-    Private/ModelSerializer.cpp
-    Private/PathUtils.cpp
-    Private/Resource.cpp
-    Private/RenderParser.cpp
-    Private/RenderPassBinder.cpp
-    Private/TextureImporter.cpp
-    Private/SceneParser.cpp
-    Private/ShaderManager.cpp
+    ${PRIVATE_SOURCES}
 )
 
 target_include_directories(CrowyResource

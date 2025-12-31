@@ -97,7 +97,7 @@ TEST_F(SceneModuleTest, EntityWithRenderObjectComponent){
         EXPECT_EQ(transform.rotation, Crowy::unitQuat());
         EXPECT_EQ(transform.scale   , Crowy::ones());
 
-        EXPECT_EQ(renderObject.renderType, Crowy::RenderType::Unlit);
+        EXPECT_EQ(renderObject.renderType, std::hash<Crowy::RenderType>()("unlit"));
         EXPECT_TRUE(renderObject.mesh.isValid());
         EXPECT_TRUE(renderObject.materialSet.isValid());
 

@@ -23,6 +23,19 @@ namespace Crowy
         RHITexturePtr createTexture(const RHITextureCreateDesc&) RHI_OVERRIDE;
         RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) RHI_OVERRIDE;
 
+        RHIPipelineStatePtr createGraphicsPipelineState(
+            const RHIGraphicsPipelineStateDesc&
+        ) RHI_OVERRIDE;
+        RHIPipelineStatePtr createComputePipelineState(
+            const RHIComputePipelineStateDesc&
+        ) RHI_OVERRIDE;
+
+        RHISwapchainPtr createSwapchain(
+            const RHISwapchainCreateDesc&
+        ) RHI_OVERRIDE;
+
+        RHIFencePtr createFence(uint64_t initialValue = 0) RHI_OVERRIDE;
+
         RHICapabilities getCapabilities() const RHI_OVERRIDE;
 
     private:

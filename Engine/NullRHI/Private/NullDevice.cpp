@@ -1,6 +1,9 @@
 #include "NullBuffer.hpp"
+#include "NullFence.hpp"
+#include "NullPipelineState.hpp"
 #include "NullDevice.hpp"
 #include "NullShader.hpp"
+#include "NullSwapchain.hpp"
 #include "NullTexture.hpp"
 
 namespace Crowy
@@ -31,6 +34,28 @@ namespace Crowy
         const RHIShaderCreateDesc& desc
     ){
         return std::make_unique<NullShader>(desc);
+    }
+
+    RHIPipelineStatePtr NullDevice::createGraphicsPipelineState(
+        const RHIGraphicsPipelineStateDesc& desc
+    ){
+        return std::make_unique<NullPipelineState>(desc);
+    }
+
+    RHIPipelineStatePtr NullDevice::createComputePipelineState(
+        const RHIComputePipelineStateDesc& desc
+    ){
+        return std::make_unique<NullPipelineState>(desc);
+    }
+
+    RHISwapchainPtr NullDevice::createSwapchain(
+        const RHISwapchainCreateDesc& desc
+    ){
+        return std::make_unique<NullSwapchain>(desc);
+    }
+
+    RHIFencePtr NullDevice::createFence(uint64_t initialValue){
+        return std::make_unique<NullFence>(initialValue);
     }
 
     RHICapabilities NullDevice::getCapabilities() const{

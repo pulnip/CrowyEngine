@@ -7,7 +7,7 @@
 namespace Crowy
 {
     static RenderObjectComponent loadComponent(const RenderObjectSpec& spec){
-        auto renderType = toRenderType(spec.renderType);
+        auto renderType = std::hash<RenderType>()(spec.renderType);
 
         auto [meshHandle, materialSetHandle] = getOrLoad(
             ModelRequest{.uri = spec.uri}

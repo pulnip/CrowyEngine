@@ -1,8 +1,16 @@
 add_library(CrowyMetalRHI STATIC)
 
 target_sources(CrowyMetalRHI
+PUBLIC
+    Public/MetalDevice.hpp
 PRIVATE
     Private/MetalDevice.cpp
+    Private/MetalBuffer.hpp
+    Private/MetalFence.hpp
+    Private/MetalPipelineState.hpp
+    Private/MetalShader.hpp
+    Private/MetalSwapchain.hpp
+    Private/MetalTexture.hpp
 )
 
 target_include_directories(CrowyMetalRHI

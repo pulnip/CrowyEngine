@@ -1,8 +1,14 @@
 add_library(CrowyRender STATIC)
 
 target_sources(CrowyRender
+PUBLIC
+    Public/Renderer.hpp
+    Public/RenderGraph.hpp
+    Public/RenderPass.hpp
 PRIVATE
-    Private/RenderPass.cpp
+    Private/Renderer.cpp
+    Private/RenderTargetPool.cpp
+    Private/RenderTargetPool.hpp
 )
 
 target_include_directories(CrowyRender
@@ -11,9 +17,12 @@ PUBLIC
 )
 
 target_link_libraries(CrowyRender
+PUBLIC
+    Crowy::EngineCore
 PRIVATE
-    Crowy::RHI
     Crowy::ECS
+    Crowy::Resource
+    Crowy::RHI
 )
 
 add_library(Crowy::Render ALIAS CrowyRender)

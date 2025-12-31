@@ -1,8 +1,16 @@
 add_library(CrowyNullRHI STATIC)
 
 target_sources(CrowyNullRHI
+PUBLIC
+    Public/NullDevice.hpp
 PRIVATE
     Private/NullDevice.cpp
+    Private/NullBuffer.hpp
+    Private/NullFence.hpp
+    Private/NullPipelineState.hpp
+    Private/NullShader.hpp
+    Private/NullSwapchain.hpp
+    Private/NullTexture.hpp
 )
 
 target_include_directories(CrowyNullRHI

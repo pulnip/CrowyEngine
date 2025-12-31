@@ -8,6 +8,11 @@
 extern "C"{
 #endif
 
+typedef struct{
+    bool flipTextureV;
+    float clipSpaceMinZ;
+} RHICapabilities;
+
 typedef enum{
     BUF_None            = 0,
     BUF_VertexBuffer     = 1 << 0,
@@ -122,7 +127,6 @@ typedef enum{
     BC7_UNORM_SRGB,
 } RHITextureFormat;
 
-
 typedef enum{
     TEX_None            = 0,
     TEX_ShaderResource  = 1 << 0,
@@ -185,14 +189,168 @@ typedef struct{
     const char* debugName;
 } RHIShaderCreateDesc;
 
-#ifdef __cplusplus
-}
+typedef enum{
+    Load,     // Preserve existing contents
+    Store,    // Save contents
+    Clear,    // Clear to specified color
+    DontCare, // Don't care about existing contents
+} RHILoadStoreAction;
 
-namespace Crowy
-{
-    struct RHICapabilities{
-        bool flipTextureV = true;
-        float clipSpaceMinZ = 0.0f;
-    };
+typedef enum{
+    IDX_UInt16,
+    IDX_UInt32,
+} RHIIndexFormat;
+
+typedef struct{
+    float x, y;
+    float width, height;
+    float minDepth, maxDepth;
+} RHIViewport;
+
+typedef struct{
+    int32_t left, top;
+    int32_t right, bottom;
+} RHIScissorRect;
+
+typedef enum{
+    PerVertex,
+    PerInstance,
+} RHIInputClassification;
+
+typedef struct{
+    const char* semanticName;
+    uint32_t semanticIndex;
+    RHITextureFormat format;
+    uint32_t inputSlot;
+    uint32_t alignedByteOffset;
+    RHIInputClassification classification;
+    uint32_t instanceDataStepRate; // For per-instance data
+} RHIVertexElement;
+
+typedef struct{
+    const RHIVertexElement* elements;
+    uint32_t elementCount;
+} RHIVertexLayout;
+
+typedef enum{
+    CullNone,
+    Front,
+    Back,
+} RHICullMode;
+
+typedef enum{
+    Solid,
+    Wireframe,
+} RHIFillMode;
+
+typedef struct{
+    RHIFillMode fillMode;
+    RHICullMode cullMode;
+    bool frontCounterClockwise;
+    int32_t depthBias;
+    float depthBiasClamp;
+    float slopeScaledDepthBias;
+    bool depthClipEnable;
+    bool multisampleEnable;
+    bool antialiasedLineEnable;
+} RHIRasterizerState;
+
+typedef enum{
+    Never,
+    Less,
+    Equal,
+    LessEqual,
+    Greater,
+    NotEqual,
+    GreaterEqual,
+    Always,
+} RHIComparisonFunc;
+
+typedef struct{
+    bool depthEnable;
+    bool depthWriteEnable;
+    RHIComparisonFunc depthFunc;
+    bool stencilEnable;
+    uint8_t stencilReadMask;
+    uint8_t stencilWriteMask;
+} RHIDepthStencilState;
+
+typedef enum{
+    Zero,
+    One,
+    SrcColor,
+    InvSrcColor,
+    SrcAlpha,
+    InvSrcAlpha,
+    DestAlpha,
+    InvDestAlpha,
+    DestColor,
+    InvDestColor,
+    SrcAlphaSat,
+    BlendFactor,
+    InvBlendFactor,
+} RHIBlend;
+
+typedef enum{
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max,
+} RHIBlendOp;
+
+typedef struct{
+    bool blendEnable;
+    RHIBlend srcBlend;
+    RHIBlend dstBlend;
+    RHIBlendOp blendOp;
+    RHIBlend srcBlendAlpha;
+    RHIBlend dstBlendAlpha;
+    RHIBlendOp blendOpAlpha;
+    uint8_t renderTargetWriteMask; // RGBA
+} RHIRenderTargetBlendState;
+
+typedef struct{
+    bool alphaToCoverageEnable;
+    bool independentBlendEnable;
+    RHIRenderTargetBlendState renderTargets[8];
+} RHIBlendState;
+
+constexpr auto RHI_MAX_RENDER_TARGETS = 8;
+
+typedef struct{
+    uint64_t vertexShaderIndex;
+    uint64_t pixelShaderIndex;
+
+    RHIVertexLayout vertexLayout;
+    RHIPrimitiveTopology topology;
+
+    RHIRasterizerState rasterizer;
+    RHIDepthStencilState depthStencil;
+    RHIBlendState blend;
+
+    RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS];
+    uint32_t renderTargetCount;
+    RHITextureFormat depthStencilFormat;
+    const char* debugName;
+} RHIGraphicsPipelineStateDesc;
+
+typedef struct{
+    uint64_t computeShader;
+    const char* debugName;
+} RHIComputePipelineStateDesc;
+
+typedef struct{
+    void* windowHandle;   // Platform-specific window handle
+    uint32_t width;
+    uint32_t height;
+    RHITextureFormat format;
+    uint32_t bufferCount; // Triple buffering
+    bool vsync;           // VSync enabled by default
+    bool allowTearing;    // Variable refresh rate
+    const char* debugName;
+} RHISwapchainCreateDesc;
+
+#ifdef __cplusplus
 }
 #endif

@@ -1,8 +1,18 @@
 add_library(CrowyScene STATIC)
 
+file(GLOB PUBLIC_SOURCES
+    "Public/*.hpp"
+)
+file(GLOB PRIVATE_SOURCES
+    "Private/*.hpp"
+    "Private/*.cpp"
+)
+
 target_sources(CrowyScene
+PUBLIC
+    ${PUBLIC_SOURCES}
 PRIVATE
-    Private/SceneLoader.cpp
+    ${PRIVATE_SOURCES}
 )
 
 target_include_directories(CrowyScene

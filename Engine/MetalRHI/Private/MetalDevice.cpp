@@ -3,8 +3,11 @@
 #define CA_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
 #include "MetalBuffer.hpp"
+#include "MetalFence.hpp"
+#include "MetalPipelineState.hpp"
 #include "MetalDevice.hpp"
 #include "MetalShader.hpp"
+#include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 
 namespace Crowy
@@ -76,6 +79,28 @@ namespace Crowy
         ){
             return std::make_unique<MetalShader>(device, desc);
         }
+
+        RHIPipelineStatePtr createGraphicsPipelineState(
+            const RHIGraphicsPipelineStateDesc& desc
+        ){
+            return std::make_unique<MetalPipelineState>(device, desc);
+        }
+
+        RHIPipelineStatePtr createComputePipelineState(
+            const RHIComputePipelineStateDesc& desc
+        ){
+            return std::make_unique<MetalPipelineState>(device, desc);
+        }
+
+        RHISwapchainPtr createSwapchain(
+            const RHISwapchainCreateDesc& desc
+        ){
+            return std::make_unique<MetalSwapchain>(device, desc);
+        }
+
+        RHIFencePtr createFence(uint64_t initialValue){
+            return std::make_unique<MetalFence>(device, initialValue);
+        }
     };
 
     MetalDevice::MetalDevice()
@@ -99,6 +124,22 @@ namespace Crowy
         const RHIShaderCreateDesc& desc
     ){
         return impl->createShader(desc);
+    }
+
+    RHIPipelineStatePtr MetalDevice::createGraphicsPipelineState(
+        const RHIGraphicsPipelineStateDesc& desc
+    ){
+        return impl->createGraphicsPipelineState(desc);
+    }
+
+    RHIPipelineStatePtr MetalDevice::createComputePipelineState(
+        const RHIComputePipelineStateDesc& desc
+    ){
+        return impl->createComputePipelineState(desc);
+    }
+
+    RHIFencePtr MetalDevice::createFence(uint64_t initialValue){
+        return impl->createFence(initialValue);
     }
 
     RHICapabilities MetalDevice::getCapabilities() const{
