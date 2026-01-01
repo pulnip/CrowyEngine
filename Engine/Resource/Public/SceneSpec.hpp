@@ -28,18 +28,18 @@ namespace Crowy
     using PlayerComponents = std::vector<PlayerComponent>;
     using EditorComponents = std::vector<EditorComponent>;
 
-    constexpr auto INVALID_INDEX = std::numeric_limits<uint32_t>::max();
+    constexpr auto INVALID_COMPONENT = std::numeric_limits<uint32_t>::max();
 
     struct EntitySpec{
         std::string name;
-        uint32_t transformIndex      = INVALID_INDEX;
-        uint32_t renderObjectIndex   = INVALID_INDEX;
-        uint32_t rigidbodyIndex      = INVALID_INDEX;
-        uint32_t boxColliderIndex    = INVALID_INDEX;
-        uint32_t sphereColliderIndex = INVALID_INDEX;
-        uint32_t cameraIndex         = INVALID_INDEX;
-        uint32_t playerIndex         = INVALID_INDEX;
-        uint32_t editorIndex         = INVALID_INDEX;
+        uint32_t transformIndex      = INVALID_COMPONENT;
+        uint32_t renderObjectIndex   = INVALID_COMPONENT;
+        uint32_t rigidbodyIndex      = INVALID_COMPONENT;
+        uint32_t boxColliderIndex    = INVALID_COMPONENT;
+        uint32_t sphereColliderIndex = INVALID_COMPONENT;
+        uint32_t cameraIndex         = INVALID_COMPONENT;
+        uint32_t playerIndex         = INVALID_COMPONENT;
+        uint32_t editorIndex         = INVALID_COMPONENT;
     };
 
     using EntitySpecs = std::vector<EntitySpec>;

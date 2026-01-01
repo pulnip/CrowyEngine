@@ -18,7 +18,7 @@ namespace Crowy
         bool flipTexCoordV = true; // Flip V coordinate (OpenGL vs DirectX)
         double unitScale = 0.01f;  // Conversion factor (e.g., 0.01 for cm to meters)
 
-        inline bool operator<=>(const AxisInfo&) const = default;
+        inline auto operator<=>(const AxisInfo&) const = default;
     };
 
     // Axis-Aligned Bounding Box

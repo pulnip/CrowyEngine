@@ -14,7 +14,7 @@
 using namespace Crowy;
 
 int main(int argc, char* argv[]){
-    Logger::instance().setMinLevel(LogLevel::Warn);
+    // Logger::instance().setMinLevel(LogLevel::Warn);
 
     auto window = SDL_CreateWindow("Triangle", 800, 600, 0);
 #ifdef __APPLE__
@@ -27,6 +27,12 @@ int main(int argc, char* argv[]){
         RHISwapchainCreateDesc{
         #ifdef __APPLE__
             .windowHandle = SDL_Metal_GetLayer(view),
+        #elif _WIN32
+            .windowHandle = SDL_GetPointerProperty(
+                SDL_GetWindowProperties(window),
+                SDL_PROP_WINDOW_WIN32_HWND_POINTER,
+                nullptr
+            ),
         #endif
             .width = 800,
             .height = 600,
@@ -50,10 +56,17 @@ int main(int argc, char* argv[]){
 
     auto shaderHandle = getOrLoad(
         ShaderRequest{
+        #ifdef __APPLE__
             .vsFilePath = "asset/Shaders/triangle.metal",
             .vsFuncName = "vs_main",
             .fsFilePath = "asset/Shaders/triangle.metal",
             .fsFuncName = "fs_textured"
+        #elif _WIN32
+            .vsFilePath = "asset/Shaders/standard_vs.hlsl",
+            .vsFuncName = "vs_main",
+            .fsFilePath = "asset/Shaders/standard_ps.hlsl",
+            .fsFuncName = "ps_textured"
+        #endif
         }
     );
     auto shader = get(shaderHandle);

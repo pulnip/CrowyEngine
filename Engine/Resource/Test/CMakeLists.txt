@@ -1,5 +1,4 @@
 add_executable(CrowyResourceTest)
-crowy_link_assets(CrowyResourceTest)
 
 target_sources(CrowyResourceTest
 PRIVATE

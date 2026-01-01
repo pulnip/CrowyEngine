@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 #include <d3d12.h>
 #include <wrl/client.h>
 #include "RHIAPI.hpp"

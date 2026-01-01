@@ -20,7 +20,7 @@ TEST(SceneParser, ParseSimpleTransform){
 
     ASSERT_EQ(scene.entities.size(), 1);
     EXPECT_EQ(scene.entities[0].name, "Box");
-    EXPECT_NE(scene.entities[0].transformIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].transformIndex, INVALID_COMPONENT);
     EXPECT_EQ(scene.transformSpecs[0].position, position);
     EXPECT_EQ(scene.transformSpecs[0].rotation, rotation);
     EXPECT_EQ(scene.transformSpecs[0].scale, scale);
@@ -38,7 +38,7 @@ TEST(SceneParser, ParseSimpleMesh){
 
     ASSERT_EQ(scene.entities.size(), 1);
     EXPECT_EQ(scene.entities[0].name, "Box");
-    EXPECT_NE(scene.entities[0].renderObjectIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].renderObjectIndex, INVALID_COMPONENT);
     EXPECT_EQ(scene.renderObjectSpecs[0].uri, uri);
 }
 TEST(SceneParser, ParseComplexMesh){
@@ -57,7 +57,7 @@ TEST(SceneParser, ParseComplexMesh){
 
     ASSERT_EQ(scene.entities.size(), 1);
     EXPECT_EQ(scene.entities[0].name, "Box");
-    EXPECT_NE(scene.entities[0].renderObjectIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].renderObjectIndex, INVALID_COMPONENT);
     EXPECT_EQ(scene.renderObjectSpecs[0].uri, std::string("embedded:cube"));
     EXPECT_EQ(scene.renderObjectSpecs[0].renderType, std::string("unlit"));
     EXPECT_TRUE(scene.renderObjectSpecs[0].material_override.size() > 0);
@@ -73,7 +73,7 @@ TEST(SceneParser, ParseEntityWithoutComponent){
 
     ASSERT_EQ(scene.entities.size(), 1);
     EXPECT_EQ(scene.entities[0].name, "Light");
-    EXPECT_EQ(scene.entities[0].transformIndex, INVALID_INDEX);
+    EXPECT_EQ(scene.entities[0].transformIndex, INVALID_COMPONENT);
 }
 
 TEST(SceneParser, ParseMultipleEntities){
@@ -94,9 +94,9 @@ TEST(SceneParser, ParseMultipleEntities){
     EXPECT_EQ(scene.entities[0].name, "Box");
     EXPECT_EQ(scene.entities[1].name, "Lamp");
     // First entity has a valid transform
-    EXPECT_NE(scene.entities[0].transformIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].transformIndex, INVALID_COMPONENT);
     // Second entity does not have a transform
-    EXPECT_EQ(scene.entities[1].transformIndex, INVALID_INDEX);
+    EXPECT_EQ(scene.entities[1].transformIndex, INVALID_COMPONENT);
     // Check transform values for the first entity
     ASSERT_FALSE(scene.transformSpecs.empty());
     auto& tr = scene.transformSpecs[scene.entities[0].transformIndex];
@@ -122,7 +122,7 @@ TEST(SceneParser, ParseMultipleProperties){
 
     ASSERT_EQ(scene.entities.size(), 1);
     EXPECT_EQ(scene.entities[0].name, "Box");
-    EXPECT_NE(scene.entities[0].transformIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].transformIndex, INVALID_COMPONENT);
     ASSERT_FALSE(scene.transformSpecs.empty());
     auto& tr = scene.transformSpecs[scene.entities[0].transformIndex];
     EXPECT_EQ(tr.position, (Vec3{10, 20, 30}));
@@ -158,10 +158,10 @@ TEST(SceneParser, ParseMultipleEntitiesWithMultipleProperties){
     ASSERT_EQ(scene.entities.size(), 2);
     EXPECT_EQ(scene.entities[0].name, "Box");
     EXPECT_EQ(scene.entities[1].name, "Lamp");
-    EXPECT_NE(scene.entities[0].transformIndex, INVALID_INDEX);
-    EXPECT_NE(scene.entities[0].renderObjectIndex, INVALID_INDEX);
-    EXPECT_NE(scene.entities[1].transformIndex, INVALID_INDEX);
-    EXPECT_NE(scene.entities[1].renderObjectIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].transformIndex, INVALID_COMPONENT);
+    EXPECT_NE(scene.entities[0].renderObjectIndex, INVALID_COMPONENT);
+    EXPECT_NE(scene.entities[1].transformIndex, INVALID_COMPONENT);
+    EXPECT_NE(scene.entities[1].renderObjectIndex, INVALID_COMPONENT);
 
     ASSERT_FALSE(scene.transformSpecs.empty());
     ASSERT_FALSE(scene.renderObjectSpecs.empty());

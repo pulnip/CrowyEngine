@@ -1,8 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "math.hpp"
 #include "semantics.hpp"
 #include "SourceLocation.hpp"

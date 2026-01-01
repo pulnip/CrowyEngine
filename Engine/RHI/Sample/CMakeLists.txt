@@ -1,5 +1,4 @@
 add_executable(CrowyRHISample)
-crowy_link_assets(CrowyRHISample)
 
 file(GLOB SAMPLE_SOURCES
     "*.hpp"
