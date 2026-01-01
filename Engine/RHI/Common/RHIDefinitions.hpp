@@ -217,8 +217,21 @@ namespace Crowy
         PerInstance,
     };
 
+    // Standard vertex format
+    // Matches common 3D model formats (glTF, FBX, OBJ)
+    struct Vertex{
+        Vec3 position;
+        Vec3 normal;
+        Vec2 texCoord;
+        Vec4 tangent;  // xyz = tangent direction, w = handedness sign
+
+        // Optional: vertex colors, bone weights, etc. can be added later
+    };
+    static_assert(sizeof(Vertex) == 48, "Vertex should be 48 bytes");
+    static_assert(std::is_trivially_copyable_v<Vertex>, "Vertex must be trivially copyable");
+
     struct RHIVertexElement{
-        const char* semanticName;
+        const char* semanticName = nullptr;
         uint32_t semanticIndex;
         RHITextureFormat format;
         uint32_t inputSlot;
@@ -228,8 +241,51 @@ namespace Crowy
     };
 
     struct RHIVertexLayout{
-        const RHIVertexElement* elements;
-        uint32_t elementCount;
+        const RHIVertexElement* elements = nullptr;
+        uint32_t elementCount = 0;
+    };
+
+    constexpr RHIVertexElement DEFAULT_VERTEX_ELEMENTS[] = {
+        {
+            .semanticName = "POSITION",
+            .semanticIndex = 0,
+            .format = RHITextureFormat::RGB32_FLOAT,  // float3 (12 bytes)
+            .inputSlot = 0,
+            .alignedByteOffset = 0,
+            .classification = RHIInputClassification::PerVertex,
+            .instanceDataStepRate = 0
+        },
+        {
+            .semanticName = "NORMAL",
+            .semanticIndex = 0,
+            .format = RHITextureFormat::RGB32_FLOAT,  // float3 (12 bytes)
+            .inputSlot = 0,
+            .alignedByteOffset = 12,
+            .classification = RHIInputClassification::PerVertex,
+            .instanceDataStepRate = 0
+        },
+        {
+            .semanticName = "TEXCOORD",
+            .semanticIndex = 0,
+            .format = RHITextureFormat::RG32_FLOAT,
+            .inputSlot = 0,
+            .alignedByteOffset = 24,
+            .classification = RHIInputClassification::PerVertex,
+            .instanceDataStepRate = 0
+        },
+        {
+            .semanticName = "TANGENT",
+            .semanticIndex = 0,
+            .format = RHITextureFormat::RGBA32_FLOAT,
+            .inputSlot = 0,
+            .alignedByteOffset = 32,
+            .classification = RHIInputClassification::PerVertex,
+            .instanceDataStepRate = 0
+        }
+    };
+    constexpr RHIVertexLayout DEFAULT_VERTEX_LAYOUT{
+        .elements = DEFAULT_VERTEX_ELEMENTS,
+        .elementCount = sizeof(DEFAULT_VERTEX_ELEMENTS) / sizeof(RHIVertexElement)
     };
 
     enum class RHICullMode{
@@ -244,15 +300,15 @@ namespace Crowy
     };
 
     struct RHIRasterizerState{
-        RHIFillMode fillMode;
-        RHICullMode cullMode;
-        bool frontCounterClockwise;
-        int32_t depthBias;
-        float depthBiasClamp;
-        float slopeScaledDepthBias;
-        bool depthClipEnable;
-        bool multisampleEnable;
-        bool antialiasedLineEnable;
+        RHIFillMode fillMode = RHIFillMode::Solid;
+        RHICullMode cullMode = RHICullMode::Back;
+        bool frontCounterClockwise = true;
+        int32_t depthBias = 0;
+        float depthBiasClamp = 0.0f;
+        float slopeScaledDepthBias = 0.0f;
+        bool depthClipEnable = true;
+        bool multisampleEnable = false;
+        bool antialiasedLineEnable = false;
     };
 
     enum class RHIComparisonFunc{
@@ -267,12 +323,12 @@ namespace Crowy
     };
 
     struct RHIDepthStencilState{
-        bool depthEnable;
-        bool depthWriteEnable;
-        RHIComparisonFunc depthFunc;
-        bool stencilEnable;
-        uint8_t stencilReadMask;
-        uint8_t stencilWriteMask;
+        bool depthEnable = true;
+        bool depthWriteEnable = true;
+        RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
+        bool stencilEnable = false;
+        uint8_t stencilReadMask = 0xFF;
+        uint8_t stencilWriteMask = 0xFF;
     };
 
     enum class RHIBlend{
@@ -300,39 +356,39 @@ namespace Crowy
     };
 
     struct RHIRenderTargetBlendState{
-        bool blendEnable;
-        RHIBlend srcBlend;
-        RHIBlend dstBlend;
-        RHIBlendOp blendOp;
-        RHIBlend srcBlendAlpha;
-        RHIBlend dstBlendAlpha;
-        RHIBlendOp blendOpAlpha;
-        uint8_t renderTargetWriteMask; // RGBA
+        bool blendEnable = false;
+        RHIBlend srcBlend = RHIBlend::One;
+        RHIBlend dstBlend = RHIBlend::Zero;
+        RHIBlendOp blendOp = RHIBlendOp::Add;
+        RHIBlend srcBlendAlpha = RHIBlend::One;
+        RHIBlend dstBlendAlpha = RHIBlend::Zero;
+        RHIBlendOp blendOpAlpha = RHIBlendOp::Add;
+        uint8_t renderTargetWriteMask = 0b1111; // RGBA
     };
 
     struct RHIBlendState{
-        bool alphaToCoverageEnable;
-        bool independentBlendEnable;
+        bool alphaToCoverageEnable = false;
+        bool independentBlendEnable = false;
         RHIRenderTargetBlendState renderTargets[8];
     };
 
     constexpr auto RHI_MAX_RENDER_TARGETS = 8;
 
     struct RHIGraphicsPipelineStateDesc{
-        RHIShader* vertexShader;
-        RHIShader* pixelShader;
+        RHIShader* vertexShader = nullptr;
+        RHIShader* pixelShader = nullptr;
 
-        RHIVertexLayout vertexLayout;
-        RHIPrimitiveTopology topology;
+        RHIVertexLayout vertexLayout = DEFAULT_VERTEX_LAYOUT;
+        RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
 
-        RHIRasterizerState rasterizer;
-        RHIDepthStencilState depthStencil;
-        RHIBlendState blend;
+        RHIRasterizerState rasterizer = {};
+        RHIDepthStencilState depthStencil = {};
+        RHIBlendState blend = {};
 
-        RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS];
-        uint32_t renderTargetCount;
-        RHITextureFormat depthStencilFormat;
-        const char* debugName;
+        RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHITextureFormat::RGBA8_UNORM};
+        uint32_t renderTargetCount = 1;
+        RHITextureFormat depthStencilFormat = RHITextureFormat::D32_FLOAT;
+        const char* debugName = nullptr;
     };
 
     struct RHIComputePipelineStateDesc{
@@ -393,6 +449,8 @@ namespace Crowy
         case RHITextureFormat::RGBA16_SINT:       [[fallthrough]];
         case RHITextureFormat::RGBA16_FLOAT:
             return 8;
+        case RHITextureFormat::RGB32_FLOAT:
+            return 12;
         case RHITextureFormat::RGBA32_UINT:       [[fallthrough]];
         case RHITextureFormat::RGBA32_SINT:       [[fallthrough]];
         case RHITextureFormat::RGBA32_FLOAT:

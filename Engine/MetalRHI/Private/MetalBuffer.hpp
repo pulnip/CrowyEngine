@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <memory>
 #include <Metal/Metal.hpp>
+#include <TargetConditionals.h>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -38,7 +39,11 @@ namespace Crowy
             if(desc.initialData){
                 buffer = device->newBuffer(
                     desc.initialData, desc.size,
-                    MTL::ResourceStorageModeShared
+                #if TARGET_OS_OSX
+                    MTL::StorageModeManaged  // macOS: 성능상 이점 가능
+                #else
+                    MTL::StorageModeShared   // iOS/iPadOS: 이것만 가능
+                #endif
                 );
             }
             else{
@@ -53,6 +58,21 @@ namespace Crowy
         ~MetalBuffer(){
             buffer->release();
         }
+
+        void update(
+            const void* data, size_t size,
+            size_t offset
+        ) RHI_OVERRIDE{
+            if(isCPUAccessible){
+                void* ptr = buffer->contents();
+                memcpy(static_cast<uint8_t*>(ptr) + offset, data, size);
+
+            #if TARGET_OS_OSX
+                buffer->didModifyRange(NS::Range::Make(offset, size));
+            #endif
+            }
+        }
+
 
         MTL::Buffer* get() const{ return buffer; }
     };

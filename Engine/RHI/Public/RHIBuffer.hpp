@@ -22,6 +22,8 @@ namespace Crowy
     class RHIBuffer{
     public:
         DECLARE_INTERFACE(RHIBuffer)
+
+        virtual void update(const void* data, size_t size, size_t offset = 0) = 0;
     };
 #endif
 }

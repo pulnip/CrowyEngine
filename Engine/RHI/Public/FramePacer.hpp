@@ -42,5 +42,8 @@ namespace Crowy
         // Get fence for current frame
         RHIFence* getCurrentFence();
         const RHIFence* getCurrentFence() const;
+
+        // Get the fence value to signal for the current frame
+        uint64_t getNextFenceValue() const;
     };
 }

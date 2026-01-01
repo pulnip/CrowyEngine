@@ -15,6 +15,11 @@ namespace Crowy
         : public RHIBuffer
 #endif
     {
+    private:
+        size_t size = 0;
+        RHIBufferUsage usage = RHIBufferUsage::None;
+        bool isCPUAccessible = false;
+
     public:
         NullBuffer(const RHIBufferCreateDesc& desc)
             : usage(desc.usage)
@@ -27,9 +32,8 @@ namespace Crowy
         }
         ~NullBuffer() = default;
 
-    private:
-        size_t size = 0;
-        RHIBufferUsage usage = RHIBufferUsage::None;
-        bool isCPUAccessible = false;
+        void update(const void* data, size_t size, size_t offset) RHI_OVERRIDE{
+            
+        }
     };
 }

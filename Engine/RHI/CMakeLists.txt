@@ -72,3 +72,7 @@ else()
 endif()
 
 add_library(Crowy::RHI ALIAS CrowyRHI)
+
+if(CROWY_ENABLE_TEST)
+    add_subdirectory(Sample)
+endif()

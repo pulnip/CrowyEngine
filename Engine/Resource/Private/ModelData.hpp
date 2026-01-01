@@ -10,19 +10,6 @@
 
 namespace Crowy
 {
-    // Standard vertex format
-    // Matches common 3D model formats (glTF, FBX, OBJ)
-    struct Vertex{
-        Vec3 position;
-        Vec3 normal;
-        Vec2 texCoord;
-        Vec4 tangent;  // xyz = tangent direction, w = handedness sign
-
-        // Optional: vertex colors, bone weights, etc. can be added later
-    };
-    static_assert(sizeof(Vertex) == 48, "Vertex should be 48 bytes");
-    static_assert(std::is_trivially_copyable_v<Vertex>, "Vertex must be trivially copyable");
-
     // Different 3D tools use different conventions
     struct AxisInfo{
         bool leftHanded = true;

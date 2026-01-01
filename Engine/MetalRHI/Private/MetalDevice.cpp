@@ -161,6 +161,12 @@ namespace Crowy
         return impl->createComputePipelineState(desc);
     }
 
+    RHISwapchainPtr MetalDevice::createSwapchain(
+        const RHISwapchainCreateDesc& desc
+    ){
+        return impl->createSwapchain(desc);
+    }
+
     RHICommandListPtr MetalDevice::createCommandList(){
         return impl->createCommandList();
     }

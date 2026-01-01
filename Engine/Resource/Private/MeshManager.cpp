@@ -32,7 +32,8 @@ namespace Crowy
                 .indexBuffer = std::move(ibuffer),
                 .vertexCount = submeshData.vertexCount(),
                 .indexCount = submeshData.indexCount(),
-                .vertexStride = 0
+                .vertexStride = 0,
+                .materialSlotName = submeshData.materialSlotName
             });
         }
 

@@ -63,4 +63,5 @@ namespace Crowy
     using RHIFencePtr         = std::unique_ptr<RHIFence>;
     using RHIPipelineStatePtr = std::unique_ptr<RHIPipelineState>;
     using RHISwapchainPtr     = std::unique_ptr<RHISwapchain>;
+    using FramePacerPtr       = std::unique_ptr<FramePacer>;
 }

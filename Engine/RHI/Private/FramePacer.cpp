@@ -150,6 +150,11 @@ namespace Crowy
         const RHIFence* getCurrentFence() const{
             return fenceManager.getCurrentFence();
         }
+
+        uint64_t getNextFenceValue() const{
+            // Return the next fence value that will be used after endFrame()
+            return fenceManager.getCurrentFenceValue() + 1;
+        }
     };
 
     FramePacer::FramePacer(RHIDevice* device)
@@ -190,5 +195,9 @@ namespace Crowy
     }
     const RHIFence* FramePacer::getCurrentFence() const{
         return impl->getCurrentFence();
+    }
+
+    uint64_t FramePacer::getNextFenceValue() const{
+        return impl->getNextFenceValue();
     }
 }

@@ -7,7 +7,7 @@
 
 namespace Crowy
 {
-        enum LogLevel{
+    enum class LogLevel{
         Trace,
         Debug,
         Info,

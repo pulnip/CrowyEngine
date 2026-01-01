@@ -60,6 +60,8 @@ namespace Crowy
 
         virtual RHIFencePtr createFence(uint64_t initialValue = 0) = 0;
 
+        FramePacerPtr createFramePacer();
+
         virtual RHICapabilities getCapabilities() const = 0;
 
         virtual void submit(RHICommandList*, RHISwapchain* presentTarget = nullptr) = 0;

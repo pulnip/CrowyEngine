@@ -18,6 +18,7 @@ namespace Crowy
         uint32_t vertexCount = 0;
         uint32_t indexCount = 0;
         uint32_t vertexStride = 0;
+        std::string materialSlotName;
 
         inline bool isValid() const{
             return vertexBuffer != nullptr &&

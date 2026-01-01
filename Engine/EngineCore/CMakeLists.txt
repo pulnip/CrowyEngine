@@ -1,13 +1,18 @@
 add_library(CrowyEngineCore STATIC)
 
+file(GLOB PUBLIC_SOURCES
+    "Public/*.hpp"
+)
+file(GLOB PRIVATE_SOURCES
+    "Private/*.hpp"
+    "Private/*.cpp"
+)
+
 target_sources(CrowyEngineCore
 PUBLIC
-    Public/ComponentDefinitions.hpp
-    Public/ECSDefinitions.hpp
-    Public/RenderDefinitions.hpp
-    Public/ResourceHandle.hpp
+    ${PUBLIC_SOURCES}
 PRIVATE
-    Private/ECSDefinitions.cpp
+    ${PRIVATE_SOURCES}
 )
 
 target_include_directories(CrowyEngineCore
