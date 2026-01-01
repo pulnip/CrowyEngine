@@ -304,8 +304,7 @@ namespace Crowy
             aiString texPath;
             if(aiMat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS){
                 TextureRef texRef;
-                std::filesystem::path texFilePath = modelDir / texPath.C_Str();
-                texRef.path = texFilePath.string();
+                texRef.path = modelDir / toPath(texPath.C_Str());
                 texRef.flags = combine(TextureFlags::SRGB, TextureFlags::GenerateMips);
                 material.textures[TextureSemantic::BaseColor] = texRef;
                 LOG_DEBUG(LOG_RESOURCE, "      -> Loaded DIFFUSE: {}", texPath.C_Str());

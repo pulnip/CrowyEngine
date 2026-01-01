@@ -36,4 +36,24 @@ namespace Crowy
 
         return getExecutableDir() / path;
     }
+
+    std::filesystem::path toPath(const char* utf8Str){
+    #ifdef _WIN32
+        int len = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, nullptr, 0);
+        std::wstring wide(len - 1, 0);
+        MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, wide.data(), len);
+        return std::filesystem::path(wide);
+    #else
+        return std::filesystem::path(utf8Str);
+    #endif
+    }
+
+    std::string toUtf8String(const std::filesystem::path& path){
+    #ifdef __cpp_char8_t
+        auto u8str = path.u8string();
+        return std::string(u8str.begin(), u8str.end());
+    #else
+        return path.u8string();
+    #endif
+    }
 }
