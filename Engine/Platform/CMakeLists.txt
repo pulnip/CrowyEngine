@@ -23,6 +23,11 @@ if(APPLE)
     PRIVATE
         Crowy::MetalRHI
     )
+elseif(WIN32)
+    target_link_libraries(CrowyPlatform
+    PRIVATE
+        Crowy::D3D12RHI
+    )
 else()
     target_link_libraries(CrowyPlatform
     PRIVATE
