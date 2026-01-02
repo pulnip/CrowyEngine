@@ -35,11 +35,11 @@ namespace Crowy
             std::optional<EditorComponent>         editorComponent         = std::nullopt;
 
         #define LOAD_COMPONENT(name) \
-            if(entitySpec.name##Index != INVALID_INDEX) \
+            if(entitySpec.name##Index != INVALID_COMPONENT) \
                 name##Component = scene.name##Specs[entitySpec.name##Index];
 
             LOAD_COMPONENT(transform)
-            if(entitySpec.renderObjectIndex != INVALID_INDEX)
+            if(entitySpec.renderObjectIndex != INVALID_COMPONENT)
                 renderObjectComponent = loadComponent(
                     scene.renderObjectSpecs[entitySpec.renderObjectIndex]
                 );
