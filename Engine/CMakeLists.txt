@@ -16,7 +16,7 @@ endif()
 
 # Layer 2: High-Level Systems
 # add_subdirectory(Audio)
-# add_subdirectory(Input)
+add_subdirectory(Input)
 # add_subdirectory(Physics)
 add_subdirectory(Resource)
 add_subdirectory(Render)
