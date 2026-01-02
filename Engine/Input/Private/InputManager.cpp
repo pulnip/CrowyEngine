@@ -1,5 +1,4 @@
 #include <format>
-#include "enum_traits.hpp"
 #include "InputManager.hpp"
 
 namespace Crowy
@@ -18,22 +17,22 @@ namespace Crowy
 
     bool InputManager::isNone(KeyCode keyCode) const{
         auto keyState = getKeyState(keyCode);
-        return hasFlag(keyState, KeyState::None);
+        return keyState == KeyState::None;
     }
 
     bool InputManager::isPressed(KeyCode keyCode) const{
         auto keyState = getKeyState(keyCode);
-        return hasFlag(keyState, KeyState::Pressed);
+        return keyState == KeyState::Pressed;
     }
 
     bool InputManager::isReleased(KeyCode keyCode) const{
         auto keyState = getKeyState(keyCode);
-        return hasFlag(keyState, KeyState::Released);
+        return keyState == KeyState::Released;
     }
 
     bool InputManager::isHeld(KeyCode keyCode) const{
         auto keyState = getKeyState(keyCode);
-        return hasFlag(keyState, KeyState::Held);
+        return keyState == KeyState::Held;
     }
 
     bool InputManager::isAction(std::string_view action) const{

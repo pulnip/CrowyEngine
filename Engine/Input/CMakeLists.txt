@@ -26,3 +26,7 @@ PUBLIC
 )
 
 add_library(Crowy::Input ALIAS CrowyInput)
+
+if(CROWY_ENABLE_TEST)
+    add_subdirectory(Test)
+endif()
