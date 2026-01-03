@@ -16,8 +16,8 @@ namespace Crowy
         InputManager::instance = nullptr;
     }
 
-    void loadInputConfig(const InputSpec&){
-        // TODO. Need InputMap
+    void loadInputConfig(const InputSpec& spec){
+        InputManager::singleton()->loadConfig(spec);
     }
 
     void pollInput(){

@@ -1,12 +1,14 @@
 add_executable(CrowyResourceTest)
 crowy_link_assets(CrowyResourceTest)
 
+file(GLOB ALL_SOURCES
+    "*.hpp"
+    "*.cpp"
+)
+
 target_sources(CrowyResourceTest
 PRIVATE
-    ModelSerializerTest.cpp
-    ResourceModuleTest.cpp
-    RenderParserTest.cpp
-    SceneParserTest.cpp
+    ${ALL_SOURCES}
 )
 
 target_link_libraries(CrowyResourceTest

@@ -7,6 +7,7 @@
 #include <vector>
 #include "string.hpp"
 #include "InputProvider.hpp"
+#include "InputSpec.hpp"
 
 namespace Crowy
 {
@@ -18,12 +19,6 @@ namespace Crowy
         friend void initInputModule(std::unique_ptr<InputProvider>);
         friend void deinitInputModule();
 
-        struct InputSource{
-            KeyCode keyCode;
-            KeyState keyState;
-        };
-        using InputBindings = std::vector<InputSource>;
-        using Action = std::string;
         using ActionMap = std::unordered_map<Action, InputBindings, StringHash, std::equal_to<>>;
         ActionMap actionMap;
 
@@ -34,6 +29,8 @@ namespace Crowy
         DECLARE_PINNED(InputManager)
 
         inline static auto singleton(){ return instance; }
+
+        void loadConfig(const InputSpec&);
 
         void pollInput();
         bool isDown(KeyCode) const;

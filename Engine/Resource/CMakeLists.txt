@@ -26,6 +26,7 @@ target_link_libraries(CrowyResource
 PUBLIC
     Crowy::Core
     Crowy::EngineCore
+    Crowy::Input
     Crowy::RHI
 PRIVATE
     Crowy::Log

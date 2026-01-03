@@ -3,6 +3,12 @@
 
 namespace Crowy
 {
+    void InputManager::loadConfig(const InputSpec& spec){
+        for(const auto& action: spec.actions){
+            actionMap[action.name] = action.bindings;
+        }
+    }
+
     void InputManager::pollInput(){
         provider->poll();
     }
@@ -42,8 +48,16 @@ namespace Crowy
                 "Unregistered action: {}", action
             ));
 
+        struct InputBindingVisitor{
+            const InputManager& manager;
+
+            bool operator()(const KeyboardBinding& source) const{
+                return manager.getKeyState(source.keyCode) == source.keyState;
+            }
+        };
+
         for(const auto& source: it->second){
-            if(getKeyState(source.keyCode) == source.keyState)
+            if(std::visit(InputBindingVisitor{.manager = *this}, source))
                 return true;
         }
 
