@@ -36,17 +36,12 @@ TEST_F(InputModuleTest, KeyStateLifecycle){
         SCOPED_TRACE("Frame 0");
         pollInput();
 
+        // input occured, but applied at next frame.
+        provider->pressKey(KeyCode::A);
+
         EXPECT_FALSE(isDown(KeyCode::A));
         EXPECT_TRUE(isNone(KeyCode::A));
         EXPECT_FALSE(isPressed(KeyCode::A));
-        EXPECT_FALSE(isReleased(KeyCode::A));
-        EXPECT_FALSE(isHeld(KeyCode::A));
-
-        provider->pressKey(KeyCode::A);
-
-        EXPECT_TRUE(isDown(KeyCode::A));
-        EXPECT_FALSE(isNone(KeyCode::A));
-        EXPECT_TRUE(isPressed(KeyCode::A));
         EXPECT_FALSE(isReleased(KeyCode::A));
         EXPECT_FALSE(isHeld(KeyCode::A));
     }
@@ -57,11 +52,27 @@ TEST_F(InputModuleTest, KeyStateLifecycle){
 
         EXPECT_TRUE(isDown(KeyCode::A));
         EXPECT_FALSE(isNone(KeyCode::A));
+        EXPECT_TRUE(isPressed(KeyCode::A));
+        EXPECT_FALSE(isReleased(KeyCode::A));
+        EXPECT_FALSE(isHeld(KeyCode::A));
+    }
+
+    {
+        SCOPED_TRACE("Frame 2");
+        pollInput();
+
+        provider->releaseKey(KeyCode::A);
+
+        EXPECT_TRUE(isDown(KeyCode::A));
+        EXPECT_FALSE(isNone(KeyCode::A));
         EXPECT_FALSE(isPressed(KeyCode::A));
         EXPECT_FALSE(isReleased(KeyCode::A));
         EXPECT_TRUE(isHeld(KeyCode::A));
+    }
 
-        provider->releaseKey(KeyCode::A);
+    {
+        SCOPED_TRACE("Frame 3");
+        pollInput();
 
         EXPECT_FALSE(isDown(KeyCode::A));
         EXPECT_FALSE(isNone(KeyCode::A));
@@ -71,7 +82,7 @@ TEST_F(InputModuleTest, KeyStateLifecycle){
     }
 
     {
-        SCOPED_TRACE("Frame 2");
+        SCOPED_TRACE("Frame 4");
         pollInput();
 
         EXPECT_FALSE(isDown(KeyCode::A));
@@ -102,8 +113,10 @@ TEST_F(InputModuleTest, InputAction){
     loadInputConfig(spec);
 
     {
-        SCOPED_TRACE("Frame 1");
+        SCOPED_TRACE("Frame 0");
         pollInput();
+
+        provider->pressKey(KeyCode::A);
 
         EXPECT_TRUE(isNone(KeyCode::A));
         EXPECT_TRUE(isNone(KeyCode::B));
@@ -111,10 +124,10 @@ TEST_F(InputModuleTest, InputAction){
     }
 
     {
-        SCOPED_TRACE("Frame 2");
+        SCOPED_TRACE("Frame 1");
         pollInput();
 
-        provider->pressKey(KeyCode::A);
+        provider->pressKey(KeyCode::B);
 
         EXPECT_TRUE(isPressed(KeyCode::A));
         EXPECT_TRUE(isNone(KeyCode::B));
@@ -123,10 +136,10 @@ TEST_F(InputModuleTest, InputAction){
     }
 
     {
-        SCOPED_TRACE("Frame 3");
+        SCOPED_TRACE("Frame 2");
         pollInput();
 
-        provider->pressKey(KeyCode::B);
+        provider->releaseKey(KeyCode::A);
 
         EXPECT_TRUE(isHeld(KeyCode::A));
         EXPECT_TRUE(isPressed(KeyCode::B));
@@ -134,10 +147,10 @@ TEST_F(InputModuleTest, InputAction){
     }
 
     {
-        SCOPED_TRACE("Frame 4");
+        SCOPED_TRACE("Frame 3");
         pollInput();
 
-        provider->releaseKey(KeyCode::A);
+        provider->releaseKey(KeyCode::B);
 
         EXPECT_TRUE(isReleased(KeyCode::A));
         EXPECT_TRUE(isHeld(KeyCode::B));
@@ -145,10 +158,8 @@ TEST_F(InputModuleTest, InputAction){
     }
 
     {
-        SCOPED_TRACE("Frame 5");
+        SCOPED_TRACE("Frame 4");
         pollInput();
-
-        provider->releaseKey(KeyCode::B);
 
         EXPECT_TRUE(isNone(KeyCode::A));
         EXPECT_TRUE(isReleased(KeyCode::B));

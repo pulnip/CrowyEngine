@@ -74,30 +74,15 @@ namespace Crowy
     }
 
     SDLInputProvider::SDLInputProvider()
-        :currentKeys(SDL_GetKeyboardState(nullptr))
+        :transitionKeys(SDL_GetKeyboardState(nullptr))
     {}
 
     void SDLInputProvider::poll(){
+        previousKeys = currentKeys;
+
         for(size_t i=0; i<NUM_KEY; ++i){
             auto sdlKey = convert(static_cast<KeyCode>(i));
-            previousKeys[i] = currentKeys[sdlKey];
+            currentKeys[i] = transitionKeys[sdlKey];
         }
-    }
-
-    bool SDLInputProvider::isKeyDown(KeyCode keyCode) const{
-        auto sdlKey = convert(keyCode);
-        return currentKeys[sdlKey];
-    }
-
-    KeyState SDLInputProvider::getKeyState(KeyCode keyCode) const{
-        auto sdlKey = convert(keyCode);
-        auto ordKey = static_cast<size_t>(keyCode);
-
-        auto currentKeyState  = currentKeys[sdlKey] ?
-            KeyState::Pressed  : KeyState::None;
-        auto previousKeyState = previousKeys.test(ordKey) ?
-            KeyState::Released : KeyState::None;
-
-        return combine(currentKeyState, previousKeyState);
     }
 }
