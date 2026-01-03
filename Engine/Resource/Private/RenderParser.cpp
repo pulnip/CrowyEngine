@@ -37,7 +37,6 @@ namespace Crowy
         if(pr.empty())
             return {};
 
-        std::printf("Hello\n");
         auto tempRender = parseFromTable(*pr.as_table(), "passes");
         return buildScene(tempRender, binderRegistry);
     }
