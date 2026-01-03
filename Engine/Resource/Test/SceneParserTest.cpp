@@ -73,7 +73,7 @@ TEST(SceneParser, ParseEntityWithoutComponent){
 
     ASSERT_EQ(scene.entities.size(), 1);
     EXPECT_EQ(scene.entities[0].name, "Light");
-    EXPECT_EQ(scene.entities[0].transformIndex, INVALID_INDEX);
+    EXPECT_EQ(scene.entities[0].transformIndex, INVALID_COMPONENT);
 }
 
 TEST(SceneParser, ParseMultipleEntities){
@@ -94,9 +94,9 @@ TEST(SceneParser, ParseMultipleEntities){
     EXPECT_EQ(scene.entities[0].name, "Box");
     EXPECT_EQ(scene.entities[1].name, "Lamp");
     // First entity has a valid transform
-    EXPECT_NE(scene.entities[0].transformIndex, INVALID_INDEX);
+    EXPECT_NE(scene.entities[0].transformIndex, INVALID_COMPONENT);
     // Second entity does not have a transform
-    EXPECT_EQ(scene.entities[1].transformIndex, INVALID_INDEX);
+    EXPECT_EQ(scene.entities[1].transformIndex, INVALID_COMPONENT);
     // Check transform values for the first entity
     ASSERT_FALSE(scene.transformSpecs.empty());
     auto& tr = scene.transformSpecs[scene.entities[0].transformIndex];
