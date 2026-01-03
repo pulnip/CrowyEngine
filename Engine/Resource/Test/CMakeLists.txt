@@ -15,6 +15,7 @@ target_link_libraries(CrowyResourceTest
 PRIVATE
     GTest::gtest_main
     GTest::gmock_main
+    Crowy::Log
     Crowy::NullRHI
     CrowyResource_Private
 )

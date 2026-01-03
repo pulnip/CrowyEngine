@@ -7,9 +7,11 @@ namespace Crowy
 {
     InputSpec buildScene(const ParseResult& temp, const InputBinderRegistry& registry){
         InputSpec out;
-
-        // TODO
-        throw std::runtime_error("Not Implemented");
+        // reserve pass slot and copy name.
+        out.actions.resize(temp.elements.size());
+        for(size_t i=0; i<temp.elements.size(); ++i){
+            out.actions[i].name = temp.elements[i].name;
+        }
 
         auto plan = bindAndErrorReport(temp, registry);
 

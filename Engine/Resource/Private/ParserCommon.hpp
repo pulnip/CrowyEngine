@@ -50,6 +50,10 @@ namespace Crowy
                 size_t childIdx = convertTomlNodeToArena(*child, arena);
                 vt.fields.emplace(key, childIdx);
             }
+            else if(const toml::array* child = v.as_array()){
+                size_t childIdx = convertTomlArrayToArena(*child, arena);
+                vt.fields.emplace(key, childIdx);
+            }
         }
         return arena.emplace(std::move(vt));
     }
@@ -152,15 +156,19 @@ namespace Crowy
                 }
 
                 const VNode& n = temp.arena.nodes[valueIdx];
-                const VTable* table = std::get_if<VTable>(&n);
-                if(!table){
+                if(auto table = std::get_if<VTable>(&n)){
+                    it->second->validateAndPlan(temp.arena, *table, ei, plan);
+                }
+                else if(auto array = std::get_if<VArray>(&n)){
+                    it->second->validateAndPlanArray(temp.arena, *array, ei, plan);
+                }
+                else{
                     plan.errors.push_back({
-                        std::format("element '{}' must be a table", name),
-                        std::visit([](auto const& x){ return x.location; }, n)});
-                    continue;
+                        std::format("element '{}' must be a table or array", name),
+                        std::visit([](auto const& x){ return x.location; }, n)
+                    });
                 }
 
-                it->second->validateAndPlan(temp.arena, *table, ei, plan);
             }
         }
 

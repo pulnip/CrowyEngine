@@ -5,14 +5,14 @@
 
 namespace Crowy
 {
-    struct PlannedBinding{
-        InputBinding spec;
+    struct PlannedBindings{
+        InputBindings spec;
         size_t index = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };
 
     struct InputElementBindPlan{
-        std::vector<PlannedBinding> bindings;
+        std::vector<PlannedBindings> allBindings;
         std::vector<BindError> errors;
     };
 
@@ -24,6 +24,9 @@ namespace Crowy
     public:
         void validateAndPlan(const ValueArena& arena,
             const VTable& src, size_t index, InputElementBindPlan& plan
+        ) override;
+        void validateAndPlanArray(const ValueArena& arena,
+            const VArray& src, size_t index, InputElementBindPlan& plan
         ) override;
 
         static void freeze(InputSpec&, InputElementBindPlan&);

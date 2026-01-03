@@ -16,14 +16,23 @@ namespace Crowy
         SourceLocation location;
     };
 
-    // component binder interface
+    // element binder interface
     template<typename BindPlan>
     class Binder{
     public:
         DECLARE_INTERFACE(Binder);
 
         virtual void validateAndPlan(const ValueArena&,
-            const VTable&, size_t entityIndex, BindPlan&)=0;
+            const VTable&, size_t elmIndex, BindPlan&)=0;
+
+        virtual void validateAndPlanArray(const ValueArena& arena,
+            const VArray& array, size_t elmIndex, BindPlan& plan
+        ){
+            for(size_t i: array.elements){
+                if(auto table = std::get_if<VTable>(&arena.nodes[i]))
+                    validateAndPlan(arena, *table, elmIndex, plan);
+            }
+        }
     };
 
     template<typename BindPlan>
