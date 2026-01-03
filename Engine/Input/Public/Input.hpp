@@ -12,6 +12,7 @@ namespace Crowy
     void deinitInputModule();
 
     void loadInputConfig(const InputSpec&);
+    void unloadInputConfig();
 
     void pollInput();
 

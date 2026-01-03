@@ -9,6 +9,10 @@ namespace Crowy
         }
     }
 
+    void InputManager::unloadConfig(){
+        actionMap.clear();
+    }
+
     void InputManager::pollInput(){
         provider->poll();
     }

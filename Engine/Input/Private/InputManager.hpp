@@ -31,6 +31,7 @@ namespace Crowy
         inline static auto singleton(){ return instance; }
 
         void loadConfig(const InputSpec&);
+        void unloadConfig();
 
         void pollInput();
         bool isDown(KeyCode) const;

@@ -20,6 +20,10 @@ namespace Crowy
         InputManager::singleton()->loadConfig(spec);
     }
 
+    void unloadInputConfig(){
+        InputManager::singleton()->unloadConfig();
+    }
+
     void pollInput(){
         InputManager::singleton()->pollInput();
     }
