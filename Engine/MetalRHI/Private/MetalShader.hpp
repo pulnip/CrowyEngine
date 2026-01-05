@@ -2,11 +2,11 @@
 
 #include <cstddef>
 #include <filesystem>
-#include <fstream>
 #include <sstream>
 #include <memory>
 #include <string>
 #include <Metal/Metal.hpp>
+#include "string.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -37,12 +37,9 @@ namespace Crowy
             auto ext = std::filesystem::path(desc.file).extension().string();
 
             if(ext == ".metal"){
-                std::ifstream file(desc.file);
-                std::stringstream buffer;
-                buffer << file.rdbuf();
-                auto str = buffer.str();
+                auto code = readFileAsString(desc.file);
 
-                auto source = NS::String::string(str.c_str(), NS::UTF8StringEncoding);
+                auto source = NS::String::string(code.c_str(), NS::UTF8StringEncoding);
                 library = device->newLibrary(source, nullptr, &error);
             }
             else if(ext == ".metallib"){
