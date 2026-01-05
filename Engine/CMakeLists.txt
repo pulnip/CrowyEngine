@@ -21,7 +21,7 @@ add_subdirectory(Input)
 add_subdirectory(Resource)
 add_subdirectory(Render)
 add_subdirectory(Scene)
-# add_subdirectory(Script)
+add_subdirectory(Script)
 
 # Layer 3: Application
 add_subdirectory(App)

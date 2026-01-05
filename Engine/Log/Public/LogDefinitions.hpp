@@ -41,6 +41,7 @@ namespace Crowy
     inline constexpr LogCategory LOG_RESOURCE { "Resource" };
     inline constexpr LogCategory LOG_RHI      { "RHI"      };
     inline constexpr LogCategory LOG_SCENE    { "Scene"    };
+    inline constexpr LogCategory LOG_SCRIPT   { "Script"   };
 
     struct LogMessage{
         LogLevel level;

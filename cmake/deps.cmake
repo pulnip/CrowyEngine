@@ -56,6 +56,32 @@ if(NOT assimp_FOUND)
     FetchContent_MakeAvailable(assimp)
 endif()
 
+# angelscript - scripting library
+find_package(angelscript QUIET)
+if(NOT angelscript_FOUND)
+    FetchContent_Declare(
+        angelscript
+        URL https://www.angelcode.com/angelscript/sdk/files/angelscript_2.38.0.zip
+    )
+    FetchContent_MakeAvailable(angelscript)
+    add_subdirectory(
+        ${angelscript_SOURCE_DIR}/angelscript/projects/cmake
+        ${angelscript_BINARY_DIR}
+    )
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(angelscript
+        PRIVATE
+            -fno-strict-aliasing
+        )
+    endif()
+    if(APPLE)
+        target_compile_options(angelscript
+        PRIVATE
+            -Wno-deprecated-declarations
+        )
+    endif()
+endif()
+
 if(RENDER_BACKEND STREQUAL "Metal")
     FetchContent_Declare(
         metal-cpp
