@@ -4,9 +4,9 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include "path_util.hpp"
 #include "Log.hpp"
 #include "ModelImporter.hpp"
-#include "PathUtils.hpp"
 #include "RHIDevice.hpp"
 
 namespace Crowy
@@ -213,7 +213,7 @@ namespace Crowy
     static std::optional<ModelData> loadModel(
         const std::string& path, RHICapabilities cap
     ){
-        auto resolvedPath = resolveAssetPath(path).string();
+        auto resolvedPath = get_absolute_path(path).string();
 
         Assimp::Importer importer;
 
@@ -304,7 +304,7 @@ namespace Crowy
             aiString texPath;
             if(aiMat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS){
                 TextureRef texRef;
-                texRef.path = modelDir / toPath(texPath.C_Str());
+                texRef.path = modelDir / to_path(texPath.C_Str());
                 texRef.flags = combine(TextureFlags::SRGB, TextureFlags::GenerateMips);
                 material.textures[TextureSemantic::BaseColor] = texRef;
                 LOG_DEBUG(LOG_RESOURCE, "      -> Loaded DIFFUSE: {}", texPath.C_Str());

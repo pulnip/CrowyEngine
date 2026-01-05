@@ -1,23 +1,17 @@
-#include <fstream>
 #include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include "path_util.hpp"
+#include "string.hpp"
 #include "Log.hpp"
-#include "PathUtils.hpp"
 #include "TextureImporter.hpp"
 
 namespace Crowy
 {
     std::optional<TextureData> importTexture(const std::filesystem::path& path){
-        auto resolvedPath = resolveAssetPath(path);
+        auto resolvedPath = get_absolute_path(path);
 
-        std::ifstream file(resolvedPath, std::ios::binary | std::ios::ate);
-        if(!file) return std::nullopt;
-
-        auto size = file.tellg();
-        file.seekg(0);
-        std::vector<uint8_t> buffer(size);
-        file.read(reinterpret_cast<char*>(buffer.data()), size);
+        auto buffer = readFileAsBinary(resolvedPath);
 
         int width, height, channels;
         // Force RGBA output (4 channels)
