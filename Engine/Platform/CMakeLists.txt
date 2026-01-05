@@ -40,7 +40,7 @@ endif()
 add_library(Crowy::Platform ALIAS CrowyPlatform)
 
 add_executable(Crowy)
-crowy_link_assets(Crowy)
+crowy_link_folder(Crowy asset)
 
 target_sources(Crowy
 PRIVATE

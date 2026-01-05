@@ -39,3 +39,7 @@ PRIVATE
 )
 
 add_library(Crowy::Script ALIAS CrowyScript)
+
+if(CROWY_ENABLE_TEST)
+    add_subdirectory(Test)
+endif()

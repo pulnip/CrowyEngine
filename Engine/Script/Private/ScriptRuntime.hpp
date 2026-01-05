@@ -13,6 +13,10 @@ namespace Crowy
 
     class ScriptRuntime{
     private:
+        static ScriptRuntime* instance;
+        friend void initScriptModule();
+        friend void deinitScriptModule();
+
         asIScriptEngine* engine;
         std::unordered_map<std::string, asIScriptModule*> modules;
         std::unordered_map<std::string, asITypeInfo*> types;
@@ -25,13 +29,20 @@ namespace Crowy
         ScriptRuntime();
         ~ScriptRuntime();
 
+        inline static auto singleton(){ return instance; }
+
         void load(const ScriptSpec&);
+        void unload();
 
         ScriptHandle create(const ScriptInstanceSpec&);
         void destroy(ScriptHandle);
 
         EntityScript* find(ScriptHandle);
         const EntityScript* find(ScriptHandle) const;
+
+        void start(ScriptHandle);
+        void update(ScriptHandle, float dt);
+        void finish(ScriptHandle);
 
         void startAll();
         void updateAll(float dt);

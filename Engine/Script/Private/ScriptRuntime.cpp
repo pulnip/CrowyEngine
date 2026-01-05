@@ -1,8 +1,11 @@
 #include <cassert>
+#include <format>
 #include <print>
+#include <stdexcept>
 #include <scriptarray.h>
 #include <scriptmath.h>
 #include <scriptstdstring.h>
+#include "path_util.hpp"
 #include "string.hpp"
 #include "Log.hpp"
 #include "ScriptRuntime.hpp"
@@ -52,7 +55,7 @@ namespace Crowy
     }
 
     ScriptRuntime::~ScriptRuntime(){
-        scripts.clear();
+        unload();
         context->Release();
         engine->ShutDownAndRelease();
     }
@@ -62,8 +65,9 @@ namespace Crowy
             auto mod = engine->GetModule(moduleSpec.name.c_str(), asGM_ALWAYS_CREATE);
 
             for(const auto& file: moduleSpec.files){
-                auto code = readFileAsString(file);
-                mod->AddScriptSection(file.c_str(), code.c_str(), code.size());
+                auto resolvedPath = get_absolute_path(file);
+                auto code = readFileAsString(resolvedPath);
+                mod->AddScriptSection(resolvedPath.c_str(), code.c_str(), code.size());
             }
 
             mod->Build();
@@ -76,6 +80,11 @@ namespace Crowy
         }
     }
 
+    void ScriptRuntime::unload(){
+        scripts.clear();
+        types.clear();
+        modules.clear();
+    }
 
     ScriptHandle ScriptRuntime::create(const ScriptInstanceSpec& spec){
         EntityScript entityScript;
@@ -83,7 +92,9 @@ namespace Crowy
         for(const auto& monoScript: spec.monoScripts){
             auto it = types.find(monoScript);
             if(it == types.end())
-                continue;
+                throw std::runtime_error(std::format(
+                    "Type {} Not Found", monoScript
+                ));
 
             auto type = it->second;
             auto factory = type->GetFactoryByIndex(0);
@@ -116,6 +127,30 @@ namespace Crowy
 
     const EntityScript* ScriptRuntime::find(ScriptHandle handle) const{
         return scripts.find(handle);
+    }
+
+    void ScriptRuntime::start(ScriptHandle handle){
+        auto script = find(handle);
+        if(!script)
+            return;
+
+        script->start(context);
+    }
+
+    void ScriptRuntime::update(ScriptHandle handle, float dt){
+        auto script = find(handle);
+        if(!script)
+            return;
+
+        script->update(context, dt);
+    }
+
+    void ScriptRuntime::finish(ScriptHandle handle){
+        auto script = find(handle);
+        if(!script)
+            return;
+
+        script->finish(context);
     }
 
     void ScriptRuntime::startAll(){

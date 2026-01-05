@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <angelscript.h>
+#include "semantics.hpp"
 #include "string.hpp"
 
 namespace Crowy
@@ -21,7 +22,11 @@ namespace Crowy
         std::unordered_map<std::string, MonoScript, StringHash, std::equal_to<>> monoScripts;
 
     public:
+        EntityScript() = default;
         ~EntityScript();
+        DECLARE_NON_COPYABLE(EntityScript)
+        EntityScript(EntityScript&&);
+        EntityScript& operator=(EntityScript&&);
 
         void attach(std::string name, MonoScript);
         void detach(std::string_view name);
