@@ -63,7 +63,7 @@ namespace Crowy
 
     private:
         static MeshManager* instance;
-        friend void initResourceModule(RHIDevice&);
+        friend void initResourceModule(RHIDevice*);
         friend void deinitResourceModule();
 
         ResourceManager<Mesh> manager;

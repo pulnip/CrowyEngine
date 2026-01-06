@@ -13,18 +13,18 @@ namespace Crowy
 {
     class InputManager{
     private:
-        std::unique_ptr<InputProvider> provider;
+        InputProvider* provider;
 
         static InputManager* instance;
-        friend void initInputModule(std::unique_ptr<InputProvider>);
+        friend void initInputModule(InputProvider*);
         friend void deinitInputModule();
 
         using ActionMap = std::unordered_map<Action, InputBindings, StringHash, std::equal_to<>>;
         ActionMap actionMap;
 
     public:
-        InputManager(std::unique_ptr<InputProvider> provider)
-            : provider(std::move(provider)) {}
+        InputManager(InputProvider* provider)
+            :provider(provider){}
         ~InputManager() = default;
         DECLARE_PINNED(InputManager)
 

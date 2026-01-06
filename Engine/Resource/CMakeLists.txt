@@ -24,14 +24,15 @@ PRIVATE
 
 target_link_libraries(CrowyResource
 PUBLIC
+    Crowy::CommonRHI
     Crowy::Core
     Crowy::EngineCore
     Crowy::Input
-    Crowy::RHI
 PRIVATE
-    Crowy::Log
     assimp::assimp
     tomlplusplus::tomlplusplus
+    Crowy::Log
+    Crowy::RHI
 )
 
 add_library(Crowy::Resource ALIAS CrowyResource)

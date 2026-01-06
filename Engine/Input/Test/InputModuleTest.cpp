@@ -8,12 +8,11 @@ using namespace Crowy;
 
 class InputModuleTest: public ::testing::Test{
 protected:
-    static MockInputProvider* provider;
+    static std::unique_ptr<MockInputProvider> provider;
 
     static void SetUpTestSuite(){
-        auto provider = std::make_unique<MockInputProvider>();
-        InputModuleTest::provider = provider.get();
-        initInputModule(std::move(provider));
+        provider = std::make_unique<MockInputProvider>();
+        initInputModule(provider.get());
     }
 
     void SetUp() override{
@@ -29,7 +28,7 @@ protected:
     }
 };
 
-MockInputProvider* InputModuleTest::provider = nullptr;
+std::unique_ptr<MockInputProvider> InputModuleTest::provider = nullptr;
 
 TEST_F(InputModuleTest, KeyStateLifecycle){
     {

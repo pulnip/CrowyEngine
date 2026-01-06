@@ -21,7 +21,7 @@ int main(int argc, char* argv[]){
     auto view = SDL_Metal_CreateView(window);
 #endif
     auto device = createDevice();
-    initResourceModule(*device);
+    initResourceModule(device.get());
 
     auto swapchain = device->createSwapchain(
         RHISwapchainCreateDesc{

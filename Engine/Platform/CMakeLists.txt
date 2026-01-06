@@ -1,15 +1,18 @@
 add_library(CrowyPlatform STATIC)
 
+file(GLOB PUBLIC_SOURCES
+    "Public/*.hpp"
+)
+file(GLOB PRIVATE_SOURCES
+    "Private/*.hpp"
+    "Private/*.cpp"
+)
+
 target_sources(CrowyPlatform
 PUBLIC
-    Public/MainLoop.hpp
-    Public/OS.hpp
+    ${PUBLIC_SOURCES}
 PRIVATE
-    Private/OS.cpp
-    Private/SDLInputProvider.cpp
-    Private/SDLSink.cpp
-    Private/SDLInputProvider.hpp
-    Private/SDLSink.hpp
+    ${PRIVATE_SOURCES}
 )
 
 target_include_directories(CrowyPlatform
@@ -18,11 +21,14 @@ PUBLIC
 )
 
 target_link_libraries(CrowyPlatform
+PUBLIC
+    Crowy::CommonRHI
 PRIVATE
+    SDL3::SDL3
     Crowy::Core
     Crowy::Input
     Crowy::Log
-    SDL3::SDL3
+    Crowy::RHI
 )
 
 if(APPLE)
@@ -38,17 +44,3 @@ else()
 endif()
 
 add_library(Crowy::Platform ALIAS CrowyPlatform)
-
-add_executable(Crowy)
-crowy_link_folder(Crowy asset)
-
-target_sources(Crowy
-PRIVATE
-    Private/main.cpp
-)
-
-target_link_libraries(Crowy
-PRIVATE
-    Crowy::Main
-    Crowy::Platform
-)

@@ -13,8 +13,8 @@ namespace Crowy
 {
     static RHIDevice* device = nullptr;
 
-    void initResourceModule(RHIDevice& device){
-        Crowy::device = &device;
+    void initResourceModule(RHIDevice* device){
+        Crowy::device = device;
 
         MeshManager::instance        = new MeshManager();
         MaterialSetManager::instance = new MaterialSetManager();
@@ -29,6 +29,8 @@ namespace Crowy
         ShaderManager::instance      = nullptr;
         MaterialSetManager::instance = nullptr;
         MeshManager::instance        = nullptr;
+
+        Crowy::device = device;
     }
 
     std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest request){

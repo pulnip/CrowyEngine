@@ -66,7 +66,7 @@ namespace Crowy
 
     private:
         static MaterialSetManager* instance;
-        friend void initResourceModule(RHIDevice&);
+        friend void initResourceModule(RHIDevice*);
         friend void deinitResourceModule();
 
         ResourceManager<MaterialSet> manager;

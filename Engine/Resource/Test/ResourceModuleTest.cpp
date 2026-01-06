@@ -13,7 +13,7 @@ protected:
     }
 
     void SetUp() override{
-        Crowy::initResourceModule(*device);
+        Crowy::initResourceModule(device.get());
     }
 
     void TearDown() override{

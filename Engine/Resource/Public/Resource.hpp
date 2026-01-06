@@ -74,7 +74,7 @@ namespace Crowy
         }
     };
 
-    void initResourceModule(RHIDevice&);
+    void initResourceModule(RHIDevice*);
     void deinitResourceModule();
 
     std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest);

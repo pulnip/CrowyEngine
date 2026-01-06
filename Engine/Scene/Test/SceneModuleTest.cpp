@@ -8,7 +8,7 @@ void SceneModuleTest::SetUpTestSuite(){
 }
 
 void SceneModuleTest::SetUp(){
-    Crowy::initResourceModule(*device);
+    Crowy::initResourceModule(device.get());
 }
 
 void SceneModuleTest::TearDown(){

@@ -34,7 +34,7 @@ namespace Crowy
 
     private:
         static ShaderManager* instance;
-        friend void initResourceModule(RHIDevice&);
+        friend void initResourceModule(RHIDevice*);
         friend void deinitResourceModule();
 
         ResourceManager<Shader> manager;

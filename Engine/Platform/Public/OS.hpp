@@ -2,12 +2,25 @@
 
 #include <cstdint>
 #include <memory>
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
+    class InputProvider;
     class MainLoop;
 
     class OS{
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> impl;
+
+        // singleton object
+        static OS* instance;
+
+        MainLoop* mainLoop = nullptr;
+        bool forceQuit = false;
+        int exitCode = 0;
+
     public:
         OS();
         virtual ~OS();
@@ -23,21 +36,13 @@ namespace Crowy
         virtual uint64_t getTicks_ms();
         virtual uint64_t getTicks_ns();
 
-        inline static OS* get(){ return os; }
+        inline static OS* singleton(){ return instance; }
 
         inline void setMainLoop(MainLoop* mainLoop){
             this->mainLoop = mainLoop;
         }
 
-    private:
-        struct Impl;
-        std::unique_ptr<Impl> impl;
-
-        // singleton object
-        static OS* os;
-
-        MainLoop* mainLoop = nullptr;
-        bool forceQuit = false;
-        int exitCode = 0;
+        RHIDevice* getDevice();
+        InputProvider* getInputProvider();
     };
 }

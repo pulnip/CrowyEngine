@@ -8,7 +8,7 @@ namespace Crowy
 {
     struct InputSpec;
 
-    void initInputModule(std::unique_ptr<InputProvider>);
+    void initInputModule(InputProvider*);
     void deinitInputModule();
 
     void loadInputConfig(const InputSpec&);

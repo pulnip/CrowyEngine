@@ -6,8 +6,8 @@ namespace Crowy
 {
     InputManager* InputManager::instance = nullptr;
 
-    void initInputModule(std::unique_ptr<InputProvider> provider){
-        InputManager::instance = new InputManager(std::move(provider));
+    void initInputModule(InputProvider* provider){
+        InputManager::instance = new InputManager(provider);
     }
 
     void deinitInputModule(){
