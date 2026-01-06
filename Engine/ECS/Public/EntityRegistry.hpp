@@ -2,12 +2,13 @@
 
 #include <functional>
 #include <optional>
+#include <type_traits>
 #include <unordered_map>
+#include "assert.hpp"
 #include "dynamic_vector.hpp"
 #include "semantics.hpp"
 #include "Component.hpp"
 #include "ECSDefinitions.hpp"
-#include "Log.hpp"
 
 namespace Crowy
 {
@@ -34,7 +35,7 @@ namespace Crowy
                 advance_to_valid_archetype();
             }
 
-            auto operator*(){
+            auto operator*() noexcept{
                 assert(!at_end());
                 auto bit = map_it->first;
                 auto& vec = map_it->second;
@@ -49,7 +50,7 @@ namespace Crowy
                     )...
                 );
             }
-            auto operator++()->iterator&{
+            iterator& operator++() noexcept{
                 auto& vec = map_it->second;
                 ++vec_index;
                 if(vec_index >= vec.size()){
@@ -67,7 +68,7 @@ namespace Crowy
             }
 
         private:
-            void advance_to_valid_archetype(){
+            void advance_to_valid_archetype() noexcept{
                 while(map_it != map_end){
                     if( isSubset(required_bit, map_it->first) &&
                         map_it->second.size() > 0)
@@ -90,7 +91,7 @@ namespace Crowy
                 advance_to_valid_archetype();
             }
 
-            auto operator*(){
+            auto operator*() noexcept{
                 assert(!at_end());
                 auto bit = map_it->first;
                 auto& vec = map_it->second;
@@ -105,7 +106,7 @@ namespace Crowy
                     )...
                 );
             }
-            auto operator++()->const_iterator&{
+            const_iterator& operator++() noexcept{
                 auto& vec = map_it->second;
                 ++vec_index;
                 if(vec_index >= vec.size()){
@@ -123,7 +124,7 @@ namespace Crowy
             }
 
         private:
-            void advance_to_valid_archetype(){
+            void advance_to_valid_archetype() noexcept{
                 while(map_it != map_end){
                     if(isSubset(required_bit, map_it->first) &&
                         map_it->second.size() > 0)
@@ -155,7 +156,7 @@ namespace Crowy
     };
 
     template<value_type T>
-    void emplace_component(void* chunk, ArchetypeBit bit, T&& t){
+    void emplace_component(void* chunk, ArchetypeBit bit, T&& t) noexcept{
         using U = std::remove_cvref_t<T>;
 
         auto offset = offset_of<U>(bit);
@@ -165,7 +166,7 @@ namespace Crowy
     template<value_type T1, all_value... TN>
     void emplace_component(void* chunk, ArchetypeBit bit,
         T1&& t1, TN&&... tn
-    ){
+    ) noexcept{
         using U = std::remove_cvref_t<T1>;
 
         auto offset = offset_of<U>(bit);
@@ -175,7 +176,7 @@ namespace Crowy
         emplace_component(chunk, bit, std::forward<TN>(tn)...);
     }
     template<pointer_type T>
-    void emplace_component(void* chunk, ArchetypeBit bit, const T t){
+    void emplace_component(void* chunk, ArchetypeBit bit, const T t) noexcept{
         using U = std::remove_pointer_t<std::remove_cvref_t<T>>;
 
         auto offset = offset_of<U>(bit);
@@ -185,7 +186,7 @@ namespace Crowy
     template<pointer_type T1, all_pointer... TN>
     void emplace_component(void* chunk, ArchetypeBit bit,
         const T1 t1, const TN... tn
-    ){
+    ) noexcept{
         using U = std::remove_pointer_t<std::remove_cvref_t<T1>>;
 
         auto offset = offset_of<U>(bit);
@@ -195,7 +196,7 @@ namespace Crowy
         emplace_component(chunk, bit, tn...);
     }
     template<optional_type T>
-    void emplace_component(void* chunk, ArchetypeBit bit, T&& t){
+    void emplace_component(void* chunk, ArchetypeBit bit, T&& t) noexcept{
         using U = remove_optional_t<std::remove_cvref_t<T>>;
 
         if(t.has_value()){
@@ -207,7 +208,7 @@ namespace Crowy
     template<optional_type T1, all_optional... TN>
     void emplace_component(void* chunk, ArchetypeBit bit,
         const T1 t1, const TN... tn
-    ){
+    ) noexcept{
         using U = remove_optional_t<std::remove_cvref_t<T1>>;
 
         if(t1.has_value()){
@@ -245,11 +246,11 @@ namespace Crowy
         DECLARE_PINNED(EntityRegistry)
 
     private:
-        auto issueID(){ return id_seed++; }
+        auto issueID() noexcept{ return id_seed++; }
 
     public:
         template<typename... Args>
-        auto createEntity(Args&&... args){
+        EntityID createEntity(Args&&... args){
             auto bit = bits_of(args...);
             // auto bit = bits_of<remove_optional_t<std::remove_cvref_t<Args>>...>();
 
@@ -270,14 +271,14 @@ namespace Crowy
 
             return entity_id;
         }
-        void destroyEntity(EntityID);
+        bool destroyEntity(EntityID);
 
         template<typename... Ts>
-        auto query(){
+        auto query() noexcept{
             return ArchetypeView<Ts...>(archetypeMap);
         }
         template<typename... Ts>
-        auto query(EntityID id)->std::tuple<Ts&...>{
+        std::tuple<Ts&...> query_unsafe(EntityID id) noexcept{
             const auto& info = entityTable.at(id);
             auto& vec = archetypeMap.at(info.bit);
             auto chunk = vec[info.chunkIndex];
@@ -289,7 +290,7 @@ namespace Crowy
             );
         }
         template<typename T>
-        auto query_safe(EntityID id)->std::optional<std::reference_wrapper<T>>{
+        std::optional<std::reference_wrapper<T>> query(EntityID id) noexcept{
             const auto& info = entityTable.at(id);
             if(!isSubset(bit_of<T>(), info.bit))
                 return std::nullopt;
@@ -298,53 +299,59 @@ namespace Crowy
             auto chunk = vec[info.chunkIndex];
             return *static_cast<T*>(ptrAdd(chunk, offset_of<T>(info.bit)));
         }
-        auto query(EntityID id)->Entity;
+        std::optional<Entity> query(EntityID id) noexcept;
 
         template<typename T>
-        void appendComponent(EntityID id, T&& component){
+        bool appendComponent(EntityID id, T&& component){
             auto entity_it = entityTable.find(id);
-            if(entity_it == entityTable.end()){
-                LOG_WARN(LOG_CORE, "Entity {} not exist. component cannot be added", id);
-                return;
-            }
+
+            CROWY_ASSERT(entity_it != entityTable.end(),
+                "Cannot add component: Entity {} does not exist", id);
+            if(entity_it == entityTable.end())
+                return false;
 
             auto& info = entity_it->second;
 
-            if(isSubset(bit_of<T>(), info.bit)){
-                LOG_WARN(LOG_CORE, "Component {} already exist. (entity: {}, archetype: {})",
-                    bit_of<T>(), id, info.bit);
-                return;
-            }
+            CROWY_ASSERT(!isSubset(bit_of<T>(), info.bit),
+                "Cannot add component: {} already exists on entity {} (archetype: {:#x})",
+                name_of<T>(), id, info.bit);
+            if(isSubset(bit_of<T>(), info.bit))
+                return false;
 
             auto [new_index, old_vec] = moveChunk(info,
                 std::forward<T>(component));
             updateEntityInfo(info, old_vec,
                 info.bit | bit_of<T>(), new_index
             );
+
+            return true;
         }
         template<typename T>
-        void removeComponent(EntityID id){
+        bool removeComponent(EntityID id){
             auto entity_it = entityTable.find(id);
-            if(entity_it == entityTable.end()){
-                LOG_WARN(LOG_CORE, "Entity {} not exist. component cannot be added", id);
-                return;
-            }
+
+            CROWY_ASSERT(entity_it != entityTable.end(),
+                "Cannot remove component: Entity {} does not exist", id);
+            if(entity_it == entityTable.end())
+                return false;
 
             auto& info = entity_it->second;
 
-            if(!isSubset(bit_of<T>(), info.bit)){
-                LOG_WARN(LOG_CORE, "{} not exist. (entity: {}, archetype: {})",
-                    name_of<T>(), id, info.bit);
-                return;
-            }
+            CROWY_ASSERT(isSubset(bit_of<T>(), info.bit),
+                "Cannot remove component: {} does not exist on entity {} (archetype: {:#x})",
+                name_of<T>(), id, info.bit);
+            if(!isSubset(bit_of<T>(), info.bit))
+                return false;
 
             auto [new_index, old_vec] = moveChunk<T>(info);
             updateEntityInfo(info, old_vec,
                 info.bit & (~bit_of<T>()), new_index);
+
+            return true;
         }
 
     private:
-        auto getVector(ArchetypeBit)->dynamic_vector&;
+        dynamic_vector& getVector(ArchetypeBit);
 
         template<typename T>
         auto moveChunk(EntityInfo& info, T&& component){
@@ -401,8 +408,9 @@ namespace Crowy
         }
 
         void updateEntityInfo(EntityInfo& updated, dynamic_vector& swapped,
-            ArchetypeBit updated_bit, Index updated_index);
+            ArchetypeBit updated_bit, Index updated_index) noexcept;
 
-        auto findEntityFromProperty(ArchetypeBit bit, Index chunkIndex)->EntityTable::iterator;
+        EntityTable::iterator findEntityFromProperty(
+            ArchetypeBit bit, Index chunkIndex) noexcept;
     };
 }

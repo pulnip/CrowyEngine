@@ -25,7 +25,10 @@ PUBLIC
     Crowy::Core
     # NOTE: ARCHETYPES Definitions
     Crowy::EngineCore
-    Crowy::Log
 )
 
 add_library(Crowy::ECS ALIAS CrowyECS)
+
+if(CROWY_ENABLE_TEST)
+    add_subdirectory(Test)
+endif()

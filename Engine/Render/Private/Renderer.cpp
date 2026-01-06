@@ -1,4 +1,5 @@
 #include "EntityRegistry.hpp"
+#include "Log.hpp"
 #include "Renderer.hpp"
 #include "RenderSpec.hpp"
 #include "Resource.hpp"

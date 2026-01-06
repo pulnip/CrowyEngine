@@ -3,19 +3,22 @@
 
 namespace Crowy
 {
-    void EntityRegistry::destroyEntity(EntityID id){
+    bool EntityRegistry::destroyEntity(EntityID id){
         auto entity_it = entityTable.find(id);
-        if(entity_it == entityTable.end()){
-            LOG_WARN(LOG_CORE, "Entity {} not exist.", id);
-            return;
-        }
+
+        CROWY_ASSERT(entity_it != entityTable.end(),
+            "Cannot destroy entity: Entity {} does not exist", id);
+        if(entity_it == entityTable.end())
+            return false;
 
         const auto& info = entity_it->second;
         auto arch_it = archetypeMap.find(info.bit);
-        if(arch_it == archetypeMap.end()){
-            LOG_FATAL(LOG_CORE, "Archetype of Entity {}: {}, but ArchetypeVector not exist", id, info.bit);
-            return;
-        }
+
+        CROWY_ASSERT(arch_it != archetypeMap.end(),
+            "Cannot destroy entity: Missing ArchetypeVector (archetype: {:#x})",
+            info.bit);
+        if(arch_it == archetypeMap.end())
+            return false;
 
         auto& vec = arch_it->second;
         auto removedIndex = info.chunkIndex;
@@ -29,20 +32,23 @@ namespace Crowy
 
         vec.swap_remove(info.chunkIndex);
         entityTable.erase(id);
+
+        return true;
     }
 
-    auto EntityRegistry::query(EntityID id)->Entity{
+    std::optional<Entity> EntityRegistry::query(EntityID id) noexcept{
         auto entity_it = entityTable.find(id);
         if(entity_it == entityTable.end()){
-            LOG_WARN(LOG_CORE, "Entity {} not exist.", id);
-            return {};
+            return std::nullopt;
         }
         const auto& info = entity_it->second;
 
         auto arch_it = archetypeMap.find(info.bit);
+        CROWY_ASSERT(arch_it != archetypeMap.end(),
+            "Cannot query entity: Missing ArchetypeVector (archetype: {:#x})",
+            info.bit);
         if(arch_it == archetypeMap.end()){
-            LOG_FATAL(LOG_CORE, "Archetype of Entity {}: {}, but ArchetypeVector not exist", id, info.bit);
-            return {};
+            return std::nullopt;
         }
         auto& vec = arch_it->second;
 
@@ -52,7 +58,7 @@ namespace Crowy
         };
     }
 
-    auto EntityRegistry::getVector(ArchetypeBit bit)->dynamic_vector&{
+    dynamic_vector& EntityRegistry::getVector(ArchetypeBit bit){
         auto it = archetypeMap.find(bit);
         if(it != archetypeMap.end())
             return it->second;
@@ -61,15 +67,12 @@ namespace Crowy
         return new_it->second;
     }
 
-    void EntityRegistry::updateEntityInfo(EntityInfo& updated, dynamic_vector& swapped,
+    void EntityRegistry::updateEntityInfo(
+        EntityInfo& updated, dynamic_vector& swapped,
         ArchetypeBit updated_bit, Index updated_index
-    ){
+    ) noexcept{
         if(swapped.size() > 0){
             auto it = findEntityFromProperty(updated.bit, swapped.size());
-
-            if(it == entityTable.end()){
-                throw std::runtime_error("Entity Table integrity Broken!");
-            }
 
             auto& swapped_entity = it->second;
             swapped_entity.chunkIndex = updated.chunkIndex;
@@ -78,9 +81,9 @@ namespace Crowy
         updated.chunkIndex = updated_index;
     }
 
-    auto EntityRegistry::findEntityFromProperty(
+    EntityRegistry::EntityTable::iterator EntityRegistry::findEntityFromProperty(
         ArchetypeBit bit, Index chunkIndex
-    )->EntityRegistry::EntityTable::iterator{
+    ) noexcept{
         // TODO. might be replace to entity tag component
         auto it = std::ranges::find_if(entityTable,
             [bit, chunkIndex](const auto& pair){
@@ -88,9 +91,10 @@ namespace Crowy
                 return info.bit == bit && info.chunkIndex == chunkIndex;
             }
         );
-        if(it == entityTable.end()){
-            LOG_FATAL(LOG_CORE, "Entity with archetype {}, index {} not in entity table!", bit, chunkIndex);
-        }
+
+        CROWY_ASSERT(it != entityTable.end(),
+            "Entity Table integrity Broken!");
+
         return it;
     }
 }
