@@ -1,3 +1,4 @@
+#include <utility>
 #include <SDL3/SDL_log.h>
 #include "SDLSink.hpp"
 
@@ -12,7 +13,8 @@ namespace{
         case LogLevel::Warn:  return SDL_LOG_PRIORITY_WARN;
         case LogLevel::Error: return SDL_LOG_PRIORITY_ERROR;
         case LogLevel::Fatal: return SDL_LOG_PRIORITY_CRITICAL;
-        default:              return SDL_LOG_PRIORITY_INFO;
+        default:
+            std::unreachable();
         }
     }
 }

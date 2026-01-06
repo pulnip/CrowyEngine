@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <utility>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 #include "MetalBuffer.hpp"
@@ -22,7 +23,8 @@ namespace Crowy
         case RHILoadStoreAction::Load:     return MTL::LoadActionLoad;
         case RHILoadStoreAction::Clear:    return MTL::LoadActionClear;
         case RHILoadStoreAction::DontCare: return MTL::LoadActionDontCare;
-        default:                           return MTL::LoadActionDontCare;
+        default:
+            std::unreachable();
         }
     }
 
@@ -30,7 +32,8 @@ namespace Crowy
         switch(action){
         case RHILoadStoreAction::Store:    return MTL::StoreActionStore;
         case RHILoadStoreAction::DontCare: return MTL::StoreActionDontCare;
-        default:                           return MTL::StoreActionStore;
+        default:
+            std::unreachable();
         }
     }
 
@@ -39,7 +42,8 @@ namespace Crowy
         case RHICullMode::CullNone: return MTL::CullModeNone;
         case RHICullMode::Front:    return MTL::CullModeFront;
         case RHICullMode::Back:     return MTL::CullModeBack;
-        default:                    return MTL::CullModeNone;
+        default:
+            std::unreachable();
         }
     }
 
@@ -50,7 +54,8 @@ namespace Crowy
         case RHIPrimitiveTopology::LineStrip:     return MTL::PrimitiveTypeLineStrip;
         case RHIPrimitiveTopology::TriangleList:  return MTL::PrimitiveTypeTriangle;
         case RHIPrimitiveTopology::TriangleStrip: return MTL::PrimitiveTypeTriangleStrip;
-        default:                                  return MTL::PrimitiveTypeTriangle;
+        default:
+            std::unreachable();
         }
     }
 

@@ -1,5 +1,5 @@
+#include <utility>
 #include "LoadContext.hpp"
-#include "Log.hpp"
 #include "MaterialSetManager.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
@@ -82,7 +82,7 @@ namespace Crowy
                 material.occlusionMap = std::move(texture);
                 break;
             default:
-                LOG_WARN(LOG_RESOURCE, "Unsupported Texture type");
+                std::unreachable();
             }
         }
 

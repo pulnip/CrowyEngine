@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 #include "enum_traits.hpp"
 #include "math.hpp"
 #include "RHIFWD.hpp"
@@ -463,7 +464,7 @@ namespace Crowy
         case RHITextureFormat::D32_FLOAT_S8_UINT:
             return 8;
         default:
-            return 0;
+            std::unreachable();
         }
     }
 }

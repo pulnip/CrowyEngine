@@ -1,6 +1,7 @@
 #include <cmath>
 #include <numbers>
 #include <filesystem>
+#include <utility>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -476,7 +477,7 @@ namespace Crowy
         case SchemeKind::Embedded:
             return loadEmbeddedModel(path);
         default:
-            LOG_DEBUG(LOG_RESOURCE, "met Undefined Scheme");
+            std::unreachable();
         }
 
         return std::nullopt;

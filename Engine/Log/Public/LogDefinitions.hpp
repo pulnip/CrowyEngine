@@ -4,6 +4,7 @@
 #include <string>
 #include <source_location>
 #include <thread>
+#include <utility>
 
 namespace Crowy
 {
@@ -24,7 +25,8 @@ namespace Crowy
         case LogLevel::Warn:  return "Warn";
         case LogLevel::Error: return "Error";
         case LogLevel::Fatal: return "Fatal";
-        default:              return "Unknown";
+        default:
+            std::unreachable();
         }
     }
 

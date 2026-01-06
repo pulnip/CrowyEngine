@@ -1,5 +1,6 @@
 #pragma once
 
+#include <utility>
 #include <Metal/Metal.hpp>
 #include "MetalShader.hpp"
 #include "MetalUtil.hpp"
@@ -28,7 +29,8 @@ namespace Crowy
         case RHITextureFormat::RGBA16_FLOAT: return MTL::VertexFormatHalf4;
         case RHITextureFormat::RGBA8_UNORM:  return MTL::VertexFormatUChar4Normalized;
         case RHITextureFormat::RGBA8_UINT:   return MTL::VertexFormatUChar4;
-        default:                             return MTL::VertexFormatInvalid;
+        default:
+            std::unreachable();
         }
     }
 
@@ -42,7 +44,8 @@ namespace Crowy
         case RHIComparisonFunc::NotEqual:     return MTL::CompareFunctionNotEqual;
         case RHIComparisonFunc::GreaterEqual: return MTL::CompareFunctionGreaterEqual;
         case RHIComparisonFunc::Always:       return MTL::CompareFunctionAlways;
-        default:                              return MTL::CompareFunctionAlways;
+        default:
+            std::unreachable();
         }
     }
 
@@ -61,7 +64,8 @@ namespace Crowy
         case RHIBlend::SrcAlphaSat:    return MTL::BlendFactorSourceAlphaSaturated;
         case RHIBlend::BlendFactor:    return MTL::BlendFactorBlendColor;
         case RHIBlend::InvBlendFactor: return MTL::BlendFactorOneMinusBlendColor;
-        default:                       return MTL::BlendFactorZero;
+        default:
+            std::unreachable();
         }
     }
 
@@ -72,7 +76,8 @@ namespace Crowy
         case RHIBlendOp::ReverseSubtract: return MTL::BlendOperationReverseSubtract;
         case RHIBlendOp::Min:             return MTL::BlendOperationMin;
         case RHIBlendOp::Max:             return MTL::BlendOperationMax;
-        default:                          return MTL::BlendOperationAdd;
+        default:
+            std::unreachable();
         }
     }
 

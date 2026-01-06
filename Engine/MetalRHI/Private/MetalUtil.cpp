@@ -1,3 +1,4 @@
+#include <utility>
 #include "MetalUtil.hpp"
 
 namespace Crowy
@@ -62,7 +63,8 @@ namespace Crowy
         case RHITextureFormat::D24_UNORM_S8_UINT: return MTL::PixelFormatDepth24Unorm_Stencil8;
         case RHITextureFormat::D32_FLOAT:         return MTL::PixelFormatDepth32Float;
         case RHITextureFormat::D32_FLOAT_S8_UINT: return MTL::PixelFormatDepth32Float_Stencil8;
-        default:                                  return MTL::PixelFormatInvalid;
+        default:
+            std::unreachable();
         }
     }
 }

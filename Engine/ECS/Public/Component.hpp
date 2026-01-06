@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 #include "concepts.hpp"
 #include "ComponentDefinitions.hpp"
 
@@ -124,7 +125,7 @@ namespace Crowy
         ARCHETYPES
         #undef X
         default:
-            return "Unnamed";
+            std::unreachable();
         }
     }
 

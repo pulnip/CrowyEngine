@@ -1,3 +1,4 @@
+#include <utility>
 #include "enum_traits.hpp"
 #include <SDL3/SDL_keyboard.h>
 #include "SDLInputProvider.hpp"
@@ -69,7 +70,8 @@ namespace Crowy
         // Sentinel
         case KeyCode::Unknown: [[fallthrough]];
         case KeyCode::Count:   [[fallthrough]];
-        default:       return SDL_SCANCODE_UNKNOWN;
+        default:
+            std::unreachable();
         }
     }
 
