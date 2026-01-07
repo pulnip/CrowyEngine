@@ -46,8 +46,8 @@ namespace Crowy
             return handle;
         }
 
-        T*       get(Handle handle)      { return &pool[handle]; }
-        const T* get(Handle handle) const{ return &pool[handle]; }
+        T*       get(Handle handle)      { return pool.find(handle); }
+        const T* get(Handle handle) const{ return pool.find(handle); }
 
         void unload(Handle handle){
             if(auto it = handleToKey.find(handle); it != handleToKey.end()){
