@@ -476,10 +476,11 @@ namespace Crowy
             return loadModel(path, cap);
         case SchemeKind::Embedded:
             return loadEmbeddedModel(path);
+        case SchemeKind::Unknown:
+            return std::nullopt;
         default:
             std::unreachable();
         }
 
-        return std::nullopt;
     }
 }
