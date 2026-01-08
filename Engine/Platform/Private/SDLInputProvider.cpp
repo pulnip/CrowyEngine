@@ -69,7 +69,6 @@ namespace Crowy
         case KeyCode::Escape:  return SDL_SCANCODE_ESCAPE;
         // Sentinel
         case KeyCode::Unknown: [[fallthrough]];
-        case KeyCode::Count:   [[fallthrough]];
         default:
             std::unreachable();
         }

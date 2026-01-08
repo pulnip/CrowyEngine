@@ -20,10 +20,9 @@ namespace Crowy
         // Special
         Tab, Space, Enter, Escape,
         // Sentinel
-        Unknown,
-        Count
+        Unknown
     };
-    constexpr auto NUM_KEY = static_cast<size_t>(KeyCode::Count);
+    constexpr auto NUM_KEY = static_cast<size_t>(KeyCode::Unknown);
 
     enum class KeyState{
         None     = 0b00,
