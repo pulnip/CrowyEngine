@@ -1,7 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
+#include "path_util.hpp"
 
 namespace Crowy
 {
@@ -13,14 +15,14 @@ namespace Crowy
         using Key     = std::string;
         using KeyHash = std::hash<std::string>;
 
-        std::string vsFilePath; // both binary and source file
+        std::filesystem::path vsFilePath; // both binary and source file
         std::string vsFuncName;
-        std::string fsFilePath; // both binary and source file
+        std::filesystem::path fsFilePath; // both binary and source file
         std::string fsFuncName;
 
         inline Key key() const{
-            return vsFilePath + ':' + vsFuncName + ',' +
-                   fsFilePath + ':' + fsFuncName;
+            return to_utf8String(vsFilePath) + ':' + vsFuncName + ',' +
+                   to_utf8String(fsFilePath) + ':' + fsFuncName;
         }
     };
 }

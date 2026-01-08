@@ -1,3 +1,4 @@
+#include "path_util.hpp"
 #include <toml++/toml.hpp>
 #include "ParserCommon.hpp"
 #include "InputBinder.hpp"
@@ -21,9 +22,10 @@ namespace Crowy
         return out;
     }
 
-    InputSpec parseInputFromFile(std::string_view inputFile){
+    InputSpec parseInputFromFile(std::filesystem::path inputFile){
+        auto u8strPath = to_utf8String(inputFile);
         auto binderRegistry = makeInputBinderRegistry();
-        toml::parse_result pr = toml::parse_file(inputFile);
+        toml::parse_result pr = toml::parse_file(u8strPath);
         if(pr.empty())
             return {};
 

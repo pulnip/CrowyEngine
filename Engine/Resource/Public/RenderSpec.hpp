@@ -1,5 +1,7 @@
 #pragma once
 
+#include "path_util.hpp"
+#include <filesystem>
 #include <string>
 #include <vector>
 #include "RenderDefinitions.hpp"
@@ -7,9 +9,9 @@
 namespace Crowy
 {
     struct ShaderSpec{
-        std::string vsFilePath;
+        std::filesystem::path vsFilePath;
         std::string vsFuncName;
-        std::string fsFilePath;
+        std::filesystem::path fsFilePath;
         std::string fsFuncName;
     };
 

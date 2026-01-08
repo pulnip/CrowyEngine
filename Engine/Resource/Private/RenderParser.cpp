@@ -1,3 +1,4 @@
+#include "path_util.hpp"
 #include <toml++/toml.hpp>
 #include "ParserCommon.hpp"
 #include "RenderPassBinder.hpp"
@@ -21,9 +22,10 @@ namespace Crowy
         return out;
     }
 
-    RenderSpec parseRenderFromFile(std::string_view renderFile){
+    RenderSpec parseRenderFromFile(const std::filesystem::path& renderFile){
+        auto u8strPath = to_utf8String(renderFile);
         auto binderRegistry = makeRenderPassBinderRegistry();
-        toml::parse_result pr = toml::parse_file(renderFile);
+        toml::parse_result pr = toml::parse_file(u8strPath);
         if(pr.empty())
             return {};
 

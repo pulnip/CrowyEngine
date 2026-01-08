@@ -1,4 +1,5 @@
 #include <toml++/toml.hpp>
+#include "path_util.hpp"
 #include "InternalComponentBinder.hpp"
 #include "ParserCommon.hpp"
 #include "SceneParser.hpp"
@@ -30,10 +31,11 @@ namespace Crowy
         return out;
     }
 
-    SceneSpec parseCustomSceneFromFile(std::string_view sceneFile,
+    SceneSpec parseCustomSceneFromFile(const std::filesystem::path& sceneFile,
         const ComponentBinderRegistry& binderRegistry
     ){
-        toml::parse_result pr = toml::parse_file(sceneFile);
+        auto u8strPath = to_utf8String(sceneFile);
+        toml::parse_result pr = toml::parse_file(u8strPath);
         if(pr.empty())
             return {};
 
@@ -52,7 +54,7 @@ namespace Crowy
         return buildScene(tempScene, binderRegistry);
     }
 
-    SceneSpec parseSceneFromFile(std::string_view sceneFile){
+    SceneSpec parseSceneFromFile(const std::filesystem::path& sceneFile){
         auto defaultBinderRegistry = makeDefaultComponentBinderRegistry();
 
         return parseCustomSceneFromFile(sceneFile, defaultBinderRegistry);

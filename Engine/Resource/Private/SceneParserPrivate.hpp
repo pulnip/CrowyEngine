@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string_view>
 #include "SceneSpec.hpp"
 #include "InternalComponentBinder.hpp"
@@ -17,7 +18,7 @@ namespace Crowy
      *     ↓ freeze()
      * SceneSpec
      */
-    SceneSpec parseCustomSceneFromFile(std::string_view sceneFile,
+    SceneSpec parseCustomSceneFromFile(const std::filesystem::path& sceneFile,
         const ComponentBinderRegistry& binderRegistry
     );
     SceneSpec parseCustomSceneFromString(std::string_view sceneText,
