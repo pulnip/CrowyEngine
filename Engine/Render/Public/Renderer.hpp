@@ -6,12 +6,11 @@
 #include <unordered_map>
 #include <vector>
 #include "RenderPass.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
     struct RenderSpec;
-    class RHIDevice;
-    class RHICommandList;
 
     class Renderer{
     private:

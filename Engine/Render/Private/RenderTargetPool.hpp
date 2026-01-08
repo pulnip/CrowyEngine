@@ -8,8 +8,6 @@
 
 namespace Crowy
 {
-    class RHIDevice;
-
     class RenderTargetPool{
     private:
         RHIDevice* device;

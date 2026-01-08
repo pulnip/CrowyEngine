@@ -7,11 +7,10 @@
 #include "math.hpp"
 #include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
-    class RHICommandList;
-
     enum class ResourceUsage: uint8_t{
         Read,
         Write,
