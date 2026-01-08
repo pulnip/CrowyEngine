@@ -225,11 +225,20 @@ namespace Crowy
 
         plan.cameras.push_back({
             .comp = CameraComponent{
-                .type = toCameraType(*tp),
                 .fov = static_cast<float>(*fv),
                 .nearPlane = static_cast<float>(*np),
                 .farPlane = static_cast<float>(*fp),
-                .proj = toProjection(*pj)
+                .proj = toProjection(*pj),
+                // TODO. parse later
+                .viewport = RHIViewport{
+                    .x = 0.0f,
+                    .y = 0.0f,
+                    // for fullscreen
+                    .width  = 0.0f,
+                    .height = 0.0f,
+                    .minDepth = 0.0f,
+                    .maxDepth = 1.0f
+                }
             },
             .entityIndex = entityIndex,
             .location = src.location

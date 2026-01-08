@@ -24,6 +24,7 @@ namespace Crowy
     class OS::Impl{
     private:
         SDL_Window* window = nullptr;
+        int width, height;
     #ifdef __APPLE__
         SDL_MetalView view;
     #endif
@@ -50,6 +51,7 @@ namespace Crowy
                 (config.borderless    ? SDL_WINDOW_BORDERLESS    : 0) |
                 (config.always_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0)
             ))
+            ,width(config.width), height(config.height)
             ,device(createDevice())
             ,inputProvider(std::make_unique<SDLInputProvider>())
         {
@@ -149,21 +151,13 @@ namespace Crowy
             }
         }
 
-        int getExitCode() const{
-            return exitCode;
-        }
+        int getWidth   () const{ return width;    }
+        int getHeight  () const{ return height;   }
+        int getExitCode() const{ return exitCode; }
 
-        InputProvider* getInputProvider(){
-            return inputProvider.get();
-        }
-
-        RHIDevice* getDevice(){
-            return device.get();
-        }
-
-        RHICommandList* getCommandList(){
-            return cmdList.get();
-        }
+        InputProvider*  getInputProvider(){ return inputProvider.get(); }
+        RHIDevice*      getDevice       (){ return        device.get(); }
+        RHICommandList* getCommandList  (){ return       cmdList.get(); }
 
         void setMainLoop(MainLoop* mainLoop){
             this->mainLoop = mainLoop;
@@ -194,10 +188,13 @@ namespace Crowy
     void OS::run(){ impl->run(); }
     void OS::processEvents(){ impl->processEvents(); }
 
+    int      OS::getWidth   () const{ return impl->getWidth();    }
+    int      OS::getHeight  () const{ return impl->getHeight();   }
     int      OS::getExitCode() const{ return impl->getExitCode(); }
+
     InputProvider*  OS::getInputProvider(){ return impl->getInputProvider(); }
-    RHIDevice*      OS::getDevice()       { return impl->getDevice();        }
-    RHICommandList* OS::getCommandList()  { return impl->getCommandList();   }
+    RHIDevice*      OS::getDevice       (){ return impl->getDevice();        }
+    RHICommandList* OS::getCommandList  (){ return impl->getCommandList();   }
 
     void OS::setMainLoop(MainLoop* mainLoop){ impl->setMainLoop(mainLoop); }
 }

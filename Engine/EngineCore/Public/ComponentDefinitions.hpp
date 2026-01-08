@@ -4,6 +4,7 @@
 #include "ECSDefinitions.hpp"
 #include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
+#include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
@@ -14,11 +15,13 @@ namespace Crowy
     };
 
     struct CameraComponent{
-        CameraType type;
         float fov;
         float nearPlane;
         float farPlane;
         Projection proj;
+        RHIViewport viewport;
+        // TODO. multi window support
+        // add RenderTarget(RHITexture) info later.
     };
 
     struct ColorComponent{

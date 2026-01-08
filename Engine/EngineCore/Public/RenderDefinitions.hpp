@@ -14,7 +14,6 @@ namespace Crowy
         MeshHandle mesh;
         MaterialSetHandle materials;
         Mat4 world;
-        RenderType type;
+        RenderTypeHash type;
     };
-    using RenderQueue = std::vector<RenderItem>;
 }

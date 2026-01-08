@@ -123,7 +123,7 @@ namespace Crowy
         const RenderContext& ctx,
         const RenderType& type
     ){
-        if(!ctx.queue.empty()) return;
+        if(!ctx.renderItems.empty()) return;
     }
 
     void Renderer::drawFullscreenQuad(RHICommandList& cmdList){

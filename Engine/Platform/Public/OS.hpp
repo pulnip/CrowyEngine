@@ -36,9 +36,12 @@ namespace Crowy
 
         inline static OS* singleton(){ return instance; }
 
+        int getWidth   () const;
+        int getHeight  () const;
         int getExitCode() const;
-        InputProvider* getInputProvider();
-        RHIDevice* getDevice();
+
+        InputProvider*  getInputProvider();
+        RHIDevice*      getDevice();
         RHICommandList* getCommandList();
 
         void setMainLoop(MainLoop*);

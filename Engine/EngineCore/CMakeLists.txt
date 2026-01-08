@@ -23,6 +23,7 @@ PUBLIC
 target_link_libraries(CrowyEngineCore
 PUBLIC
     Crowy::Core
+    Crowy::CommonRHI
 )
 
 add_library(Crowy::EngineCore ALIAS CrowyEngineCore)

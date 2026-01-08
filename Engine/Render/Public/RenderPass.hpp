@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <span>
 #include <string>
 #include <vector>
 #include "math.hpp"
@@ -18,13 +19,10 @@ namespace Crowy
     };
 
     struct RenderContext{
-        RenderQueue queue;
-
+        std::span<const RenderItem> renderItems;
         // Camera Information
         Mat4 view, proj;
-
-        float deltaTime = 0.0f;
-        uint64_t currentFrame = 0;
+        RHIViewport viewport;
     };
 
     struct ResourceBinding{
