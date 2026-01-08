@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Game",
+            "type": "lldb-dap",
+            "request": "launch",
+            "program": "${workspaceFolder}/Game/Crowy",
+            "args": [
+                "--width=1280", "--height=720",
+                "--scene=scene.toml",
+                "--render=render.macos.toml"
+            ],
+            "cwd": "${workspaceFolder}/Game",
+            "console": "integratedTerminal"
+        }
+    ]
+}

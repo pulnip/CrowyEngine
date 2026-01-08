@@ -1,41 +1,47 @@
+#include <format>
+#include <stdexcept>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #ifdef __APPLE__
     #include <SDL3/SDL_metal.h>
 #endif
+#include "FramePacer.hpp"
 #include "Input.hpp"
 #include "SDLInputProvider.hpp"
 #include "Logger.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
+#include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHISwapchain.hpp"
+#include "SDLTimer.hpp"
 
 namespace Crowy
 {
-    struct WindowConfig{
-        const char* title = "Crowy";
-        int width = 800;
-        int height = 600;
-        bool fullscreen = false;
-        bool resizable = true;
-        bool borderless = false;
-        bool always_on_top = false;
-    };
-
     OS* OS::instance = nullptr;
 
-    struct OS::Impl{
+    class OS::Impl{
+    private:
         SDL_Window* window = nullptr;
     #ifdef __APPLE__
         SDL_MetalView view;
     #endif
 
+        SDLTimer timer;
+
+        MainLoop* mainLoop = nullptr;
+        bool forceQuit = false;
+        int exitCode = 0;
+
         std::unique_ptr<InputProvider> inputProvider;
+
         RHIDevicePtr device;
         RHISwapchainPtr swapchain;
+        RHICommandListPtr cmdList;
+        FramePacerPtr framePacer;
 
+    public:
         Impl(const WindowConfig& config)
             :window(SDL_CreateWindow(config.title,
                 config.width, config.height,
@@ -44,90 +50,154 @@ namespace Crowy
                 (config.borderless    ? SDL_WINDOW_BORDERLESS    : 0) |
                 (config.always_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0)
             ))
-            ,view(SDL_Metal_CreateView(window))
             ,device(createDevice())
-            ,inputProvider(std::make_unique<SDLInputProvider>()){}
+            ,inputProvider(std::make_unique<SDLInputProvider>())
+        {
+            if(window == nullptr){
+                throw std::runtime_error(std::format(
+                    "Couldn't create window: {}",
+                    SDL_GetError()
+                ));
+            }
+        #ifdef __APPLE__
+            view = SDL_Metal_CreateView(window);
+        #endif
+
+            if(device == nullptr)
+                throw std::runtime_error("Couldn't create device");
+            if(inputProvider == nullptr)
+                throw std::runtime_error("Couldn't create input provider");
+
+            swapchain = device->createSwapchain(RHISwapchainCreateDesc{
+            #ifdef __APPLE__
+                .windowHandle = SDL_Metal_GetLayer(view),
+            #endif
+                .width  = static_cast<uint32_t>(config.width),
+                .height = static_cast<uint32_t>(config.height),
+                .format = RHITextureFormat::RGBA8_UNORM,
+                // triple buffering
+                .bufferCount = 3,
+                .vsync = true,
+                .allowTearing = false,
+                .debugName = "RHISwapchain"
+            });
+            cmdList = device->createCommandList();
+            framePacer = device->createFramePacer();
+        }
 
         ~Impl(){
-            if(window){
+            if(window != nullptr){
                 SDL_DestroyWindow(window);
             }
         }
+
+        void run(){
+            if(!mainLoop) return;
+
+            forceQuit = false;
+            mainLoop->initialize();
+
+            timer.reset();
+
+            while(!forceQuit){
+                processEvents();
+
+                timer.newFrame();
+                auto deltaTime = timer.getScaledDeltaTime();
+                auto totalTime = timer.getTotalTime();
+
+                if(!framePacer->beginFrame())
+                    continue;
+                if(!swapchain->acquireNextImage()){
+                    framePacer->endFrame();
+                    continue;
+                }
+
+                cmdList->reset();
+                cmdList->begin();
+
+                if(!mainLoop->update(deltaTime, totalTime))
+                    break;
+
+                cmdList->signalFence(
+                    framePacer->getCurrentFence(),
+                    framePacer->getNextFenceValue()
+                );
+                cmdList->close();
+                device->submit(cmdList.get(), swapchain.get());
+
+                framePacer->endFrame();
+            }
+
+            framePacer->waitForIdle();
+
+            mainLoop->finalize();
+        }
+
+        void processEvents(){
+            SDL_Event event;
+            while(SDL_PollEvent(&event)){
+                switch(event.type){
+                case SDL_EVENT_QUIT:
+                    forceQuit = true;
+                    break;
+                case SDL_EVENT_KEY_DOWN:
+                    [[fallthrough]];
+                case SDL_EVENT_KEY_UP:
+                    pollInput();
+                }
+            }
+        }
+
+        int getExitCode() const{
+            return exitCode;
+        }
+
+        InputProvider* getInputProvider(){
+            return inputProvider.get();
+        }
+
+        RHIDevice* getDevice(){
+            return device.get();
+        }
+
+        RHICommandList* getCommandList(){
+            return cmdList.get();
+        }
+
+        void setMainLoop(MainLoop* mainLoop){
+            this->mainLoop = mainLoop;
+        }
     };
 
-    OS::OS(){
-        if(!SDL_SetAppMetadata("Crowy", "1.0", "com.example.crowy")){
-            throw;
+    OS::OS(const WindowConfig& config){
+        if(!SDL_SetAppMetadata("Crowy", "1.0", "io.github.pulnip.crowy")){
+            throw std::runtime_error(std::format(
+                "Couldn't set app metadata: {}",
+                SDL_GetError()
+            ));
         }
-        if(!SDL_Init(SDL_INIT_VIDEO)){
-            throw;
+        if(!SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO)){
+            throw std::runtime_error(std::format(
+                "Couldn't initialize SDL: {}",
+                SDL_GetError()
+            ));
         }
 
-        impl = std::make_unique<Impl>(WindowConfig{});
+        impl = std::make_unique<Impl>(config);
 
         instance = this;
     }
 
-    OS::~OS(){
-        instance = nullptr;
-    }
+    OS::~OS(){ instance = nullptr; }
 
-    void OS::run(){
-        if(!mainLoop) return;
+    void OS::run(){ impl->run(); }
+    void OS::processEvents(){ impl->processEvents(); }
 
-        forceQuit = false;
-        mainLoop->initialize();
+    int      OS::getExitCode() const{ return impl->getExitCode(); }
+    InputProvider*  OS::getInputProvider(){ return impl->getInputProvider(); }
+    RHIDevice*      OS::getDevice()       { return impl->getDevice();        }
+    RHICommandList* OS::getCommandList()  { return impl->getCommandList();   }
 
-        auto lastTicks = SDL_GetTicks();
-
-        while(!forceQuit){
-            processEvents();
-
-            auto ticks = SDL_GetTicks();
-            auto ticks_elapsed = ticks - lastTicks;
-            auto step = static_cast<float>(ticks_elapsed) / 1'000.0;
-
-            lastTicks = ticks;
-
-            if(!mainLoop->update(step))
-                break;
-        }
-
-        mainLoop->finalize();
-    }
-
-    void OS::processEvents(){
-        SDL_Event event;
-        while(SDL_PollEvent(&event)){
-            switch(event.type){
-            case SDL_EVENT_QUIT:
-                forceQuit = true;
-                break;
-            case SDL_EVENT_KEY_DOWN:
-                [[fallthrough]];
-            case SDL_EVENT_KEY_UP:
-                pollInput();
-            }
-        }
-    }
-
-    uint64_t OS::getTicks_ms(){
-        return SDL_GetTicks();
-    }
-
-    uint64_t OS::getTicks_us(){
-        return SDL_GetTicksNS() / 1'000;
-    }
-
-    uint64_t OS::getTicks_ns(){
-        return SDL_GetTicksNS();
-    }
-
-    RHIDevice* OS::getDevice(){
-        return impl->device.get();
-    }
-
-    InputProvider* OS::getInputProvider(){
-        return impl->inputProvider.get();
-    }
+    void OS::setMainLoop(MainLoop* mainLoop){ impl->setMainLoop(mainLoop); }
 }

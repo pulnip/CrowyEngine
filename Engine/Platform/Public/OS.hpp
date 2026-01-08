@@ -9,40 +9,38 @@ namespace Crowy
     class InputProvider;
     class MainLoop;
 
+    struct WindowConfig{
+        const char* title = "Crowy";
+        int width = 800;
+        int height = 600;
+        bool fullscreen = false;
+        bool resizable = true;
+        bool borderless = false;
+        bool always_on_top = false;
+    };
+
     class OS{
     private:
-        struct Impl;
+        class Impl;
         std::unique_ptr<Impl> impl;
 
         // singleton object
         static OS* instance;
 
-        MainLoop* mainLoop = nullptr;
-        bool forceQuit = false;
-        int exitCode = 0;
-
     public:
-        OS();
+        OS(const WindowConfig&);
         virtual ~OS();
 
         virtual void run();
         virtual void processEvents();
 
-        int getExitCode() const{
-            return exitCode;
-        }
-
-        virtual uint64_t getTicks_us();
-        virtual uint64_t getTicks_ms();
-        virtual uint64_t getTicks_ns();
-
         inline static OS* singleton(){ return instance; }
 
-        inline void setMainLoop(MainLoop* mainLoop){
-            this->mainLoop = mainLoop;
-        }
-
-        RHIDevice* getDevice();
+        int getExitCode() const;
         InputProvider* getInputProvider();
+        RHIDevice* getDevice();
+        RHICommandList* getCommandList();
+
+        void setMainLoop(MainLoop*);
     };
 }

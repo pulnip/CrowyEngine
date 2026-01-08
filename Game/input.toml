@@ -1,0 +1,6 @@
+[[actions]]
+name = "jump"
+    [[actions.bindings]]
+    device = "keyboard"
+    keyCode = "space"
+    keyState = "Pressed"

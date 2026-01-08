@@ -6,14 +6,14 @@
 namespace Crowy
 {
     class MainLoop;
+    struct AppConfig;
 
     class App{
     public:
         // Just Singleton
         App() = delete;
 
-        static Error setup(int argc, char* argv[]);
-        static bool start();
+        static Error setup(const AppConfig&);
         static void cleanup();
 
     private:

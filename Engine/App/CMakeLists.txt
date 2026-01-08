@@ -29,6 +29,7 @@ PRIVATE
     Crowy::Input
     Crowy::Render
     Crowy::Resource
+    Crowy::Scene
     Crowy::Script
 )
 

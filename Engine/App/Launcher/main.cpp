@@ -1,15 +1,15 @@
 #include "App.hpp"
+#include "AppConfig.hpp"
 #include "OS.hpp"
 
 using namespace Crowy;
 
 int main(int argc, char* argv[]){
-    OS os;
+    auto config = parseCommandLine(argc, argv);
 
-    if(App::setup(argc, argv) != Error::OK)
-        return 1;
+    OS os(config.window);
 
-    if(App::start())
+    if(App::setup(config) == Error::OK)
         os.run();
 
     App::cleanup();

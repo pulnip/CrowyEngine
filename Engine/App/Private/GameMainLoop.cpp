@@ -1,6 +1,8 @@
 #include "ECSSystem.hpp"
 #include "GameMainLoop.hpp"
+#include "OS.hpp"
 #include "Resource.hpp"
+#include "SceneLoader.hpp"
 
 namespace Crowy
 {
@@ -8,15 +10,29 @@ namespace Crowy
         scheduler.attach(std::make_unique<RenderSystem>());
     }
 
+    GameMainLoop::GameMainLoop(
+        const SceneSpec& sceneSpec,
+        const RenderSpec& renderSpec
+    )
+        :renderer(OS::singleton()->getDevice())
+    {
+        loadScene(sceneSpec, registry);
+
+        renderer.loadPasses(renderSpec);
+    }
+
     void GameMainLoop::initialize(){
         attachDefaultECSSystems(scheduler);
     }
 
-    bool GameMainLoop::update(float dt){
+    bool GameMainLoop::update(float deltaTime, float totalTime){
         UpdateContext context{
-            .dt = 1.0f / 60
+            .deltaTime = deltaTime,
+            .totalTime = totalTime
         };
         scheduler.update(registry, context);
+
+
 
         return true;
     }

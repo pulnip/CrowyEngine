@@ -3,6 +3,7 @@
 namespace Crowy
 {
     struct UpdateContext{
-        const float dt;
+        const float deltaTime;
+        const float totalTime;
     };
 }

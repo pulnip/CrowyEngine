@@ -1,0 +1,7 @@
+[[passes]]
+name = "forward_opaque"
+    [passes.shader]
+    vs_file = "asset/Shaders/triangle.metal"
+    vs_func = "vs_main"
+    fs_file = "asset/Shaders/triangle.metal"
+    fs_func = "fs_textured"
