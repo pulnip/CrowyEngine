@@ -383,7 +383,7 @@ namespace Crowy
                 }
 
                 // Texture coordinates (use first UV channel)
-                // Flip V coordinate for Metal/OpenGL (DirectX uses top-left origin, Metal uses bottom-left)
+                // Flip V coordinate for D3D12/Metal (both use top-left origin, model UV is usually bottom-left)
                 if(aiMesh->HasTextureCoords(0)){
                     vertex.texCoord.x = aiMesh->mTextureCoords[0][i].x;
                     vertex.texCoord.y = cap.flipTextureV ?

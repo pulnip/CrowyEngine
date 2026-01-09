@@ -15,7 +15,7 @@ namespace Crowy
     private:
         RHIDevice* device;
         RHIFencePtr fence;
-        uint64_t currentFenceValue;
+        uint64_t currentFenceValue = 0;
         uint32_t currentFrame = 0;
 
     public:
