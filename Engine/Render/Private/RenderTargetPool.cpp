@@ -4,30 +4,27 @@
 
 namespace Crowy
 {
-    RenderTargetPool::RenderTargetPool(RHIDevice& device)
-        :device(&device){}
-
-    RHITexture* RenderTargetPool::acquire(
+    RHITexture* RenderTargetPool::create(
         const std::string& name,
-        uint32_t width,
-        uint32_t height,
-        RHITextureFormat format
+        const RHITextureCreateDesc& desc,
+        RHIDevice& device
     ){
         auto it = targets.find(name);
         if(it != targets.end()){
             return it->second.get();
         }
 
-        auto newTexture = device->createTexture(
-            RHITextureCreateDesc{
-                .width = width,
-                .height = height,
-                .format = format,
-            }
-        );
+        auto newTexture = device.createTexture(desc);
         auto ref = newTexture.get();
         targets.emplace(name, std::move(newTexture));
 
         return ref;
+    }
+
+    const RHITexture* RenderTargetPool::get(const std::string& name) const{
+        if(auto it = targets.find(name); it != targets.end()){
+            return it->second.get();
+        }
+        return nullptr;
     }
 }

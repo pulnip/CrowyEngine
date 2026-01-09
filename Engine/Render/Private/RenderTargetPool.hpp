@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include "semantics.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
@@ -10,18 +11,17 @@ namespace Crowy
 {
     class RenderTargetPool{
     private:
-        RHIDevice* device;
-
         std::unordered_map<std::string, RHITexturePtr> targets;
 
     public:
-        RenderTargetPool(RHIDevice&);
+        RenderTargetPool() = default;
+        ~RenderTargetPool() = default;
+        DECLARE_MOVE_ONLY(RenderTargetPool)
 
-        RHITexture* acquire(
+        RHITexture* create(
             const std::string& name,
-            uint32_t width,
-            uint32_t height,
-            RHITextureFormat format
+            const RHITextureCreateDesc&,
+            RHIDevice&
         );
 
         inline RHITexture* get(const std::string& name){
@@ -31,9 +31,7 @@ namespace Crowy
         }
         const RHITexture* get(const std::string& name) const;
 
-        void onResize(uint32_t newWidth, uint32_t newHeight);
-
-        // clean-up transient resource
-        void endFrame();
+        // TODO. clean-up transient resource
+        // void endFrame();
     };
 }

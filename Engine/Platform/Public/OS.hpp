@@ -42,6 +42,7 @@ namespace Crowy
 
         InputProvider*  getInputProvider();
         RHIDevice*      getDevice();
+        RHISwapchain*   getSwapchain();
         RHICommandList* getCommandList();
 
         void setMainLoop(MainLoop*);

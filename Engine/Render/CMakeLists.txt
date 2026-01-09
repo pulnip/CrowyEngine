@@ -26,6 +26,7 @@ PUBLIC
     Crowy::EngineCore
 PRIVATE
     Crowy::Log
+    Crowy::Resource
     Crowy::RHI
 )
 

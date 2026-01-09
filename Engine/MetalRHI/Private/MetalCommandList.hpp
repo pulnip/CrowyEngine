@@ -121,13 +121,13 @@ private:
         }
 
         void beginRenderPass(
-            RHITexture* renderTarget,
+            MTL::Texture* tex,
             RHITexture* depthStencil,
             RHILoadStoreAction loadAction,
             RHILoadStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS
-        ) RHI_OVERRIDE{
+        ){
             if(!isRecording || renderEncoder) return;
 
             auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
@@ -135,16 +135,8 @@ private:
             // Color Attachment
             auto colorAttach = passDesc->colorAttachments()->object(0);
 
-            MTL::Texture* colorTex = nullptr;
-            if(renderTarget){
-                colorTex = static_cast<MetalTexture*>(renderTarget)->get();
-            }
-            else if(currentDrawable){
-                colorTex = currentDrawable->texture();
-            }
-
-            if(colorTex){
-                colorAttach->setTexture(colorTex);
+            if(tex){
+                colorAttach->setTexture(tex);
                 colorAttach->setLoadAction(convertLoadAction(loadAction));
                 colorAttach->setStoreAction(convertStoreAction(storeAction));
                 colorAttach->setClearColor(MTL::ClearColor::Make(
@@ -178,6 +170,26 @@ private:
         }
 
         void beginRenderPass(
+            RHITexture* renderTarget,
+            RHITexture* depthStencil,
+            RHILoadStoreAction loadAction,
+            RHILoadStoreAction storeAction,
+            const RHIClearColor& clearColor,
+            const RHIClearDepthStencil& clearDS
+        ) RHI_OVERRIDE{
+            if(!renderTarget) return;
+
+            MTL::Texture* tex = static_cast<MetalTexture*>(renderTarget)->get();
+
+            beginRenderPass(
+                tex,
+                depthStencil,
+                loadAction, storeAction,
+                clearColor, clearDS
+            );
+        }
+
+        void beginRenderPass(
             RHISwapchain* swapchain,
             RHITexture* depthStencil,
             RHILoadStoreAction loadAction,
@@ -188,10 +200,9 @@ private:
             if(!swapchain) return;
 
             auto mtlSwapchain = static_cast<MetalSwapchain*>(swapchain);
-            currentDrawable = mtlSwapchain->getCurrentDrawable();
-    
+
             beginRenderPass(
-                static_cast<RHITexture*>(nullptr),
+                mtlSwapchain->getCurrentDrawable()->texture(),
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS
@@ -615,10 +626,6 @@ private:
             else if(blitEncoder){
                 blitEncoder->insertDebugSignpost(str);
             }
-        }
-
-        void setDrawable(CA::MetalDrawable* drawable) {
-            currentDrawable = drawable;
         }
 
         MTL::CommandBuffer* getCommandBuffer() const{

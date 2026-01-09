@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 #include "ResourceHandle.hpp"
@@ -9,28 +10,20 @@
 
 namespace Crowy
 {
-    enum class ResourceUsage: uint8_t{
-        Read,
-        Write,
-        ReadWrite
-    };
-
-    struct ResourceBinding{
-        // "GBuffer_Albedo", "SceneDepth", etc...
-        std::string name;
-        ResourceUsage usage;
-    };
-
     struct RenderPass{
         std::string name;
-        RenderType renderType;
+        std::optional<RenderTypeHash> renderType;
         RHIShaderPtr vs, fs;
         RHIPipelineStatePtr pipeline;
 
-        std::vector<ResourceBinding> bindings;
+        // input Texture
+        std::vector<std::string> inputs;
+        // output RenderTarget
+        std::vector<std::string> targets;
+        std::string depthTarget;
 
         inline bool isFullscreenPass() const{
-            return renderType.empty();
+            return !renderType.has_value();
         }
     };
 }

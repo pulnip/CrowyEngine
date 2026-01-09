@@ -4,12 +4,20 @@
 #include <span>
 #include "math.hpp"
 #include "RenderDefinitions.hpp"
+#include "ResourceHandle.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy
 {
     struct RenderSpec;
+
+    struct RenderItem{
+        MeshHandle mesh;
+        MaterialSetHandle materials;
+        Mat4 world;
+        RenderTypeHash type;
+    };
 
     struct RenderContext{
         std::span<const RenderItem> renderItems;
@@ -30,12 +38,14 @@ namespace Crowy
         // execute all passes
         void render(
             RHICommandList&,
-            const RenderContext&
+            const RenderContext&,
+            RHISwapchain*
         );
         // TODO. execute specific render pass
         // void render(
         //     RHICommandList&, 
         //     const RenderContext&,
+        //     RHISwapchain*
         //     const std::string& passName
         // );
     };

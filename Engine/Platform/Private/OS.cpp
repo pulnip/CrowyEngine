@@ -157,6 +157,7 @@ namespace Crowy
 
         InputProvider*  getInputProvider(){ return inputProvider.get(); }
         RHIDevice*      getDevice       (){ return        device.get(); }
+        RHISwapchain*   getSwapchain    (){ return     swapchain.get(); }
         RHICommandList* getCommandList  (){ return       cmdList.get(); }
 
         void setMainLoop(MainLoop* mainLoop){
@@ -194,6 +195,7 @@ namespace Crowy
 
     InputProvider*  OS::getInputProvider(){ return impl->getInputProvider(); }
     RHIDevice*      OS::getDevice       (){ return impl->getDevice();        }
+    RHISwapchain*   OS::getSwapchain    (){ return impl->getSwapchain();     }
     RHICommandList* OS::getCommandList  (){ return impl->getCommandList();   }
 
     void OS::setMainLoop(MainLoop* mainLoop){ impl->setMainLoop(mainLoop); }

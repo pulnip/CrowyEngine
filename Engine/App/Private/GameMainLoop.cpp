@@ -2,7 +2,6 @@
 #include "ECSSystem.hpp"
 #include "GameMainLoop.hpp"
 #include "OS.hpp"
-#include "Resource.hpp"
 #include "SceneLoader.hpp"
 
 namespace Crowy
@@ -79,7 +78,8 @@ namespace Crowy
                     .view = transpose(view),
                     .proj = transpose(proj),
                     .viewport = c.viewport
-                }
+                },
+                OS::singleton()->getSwapchain()
             );
         }
         return true;
