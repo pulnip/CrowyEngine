@@ -78,12 +78,10 @@ namespace Crowy
     void deinitResourceModule();
 
     std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest);
-    ShaderHandle                             getOrLoad(ShaderRequest);
 
     using        MeshView = std::span<const  Submesh>;
     using MaterialSetView = std::unordered_map<std::string, const Material*>;
 
     MeshView        get(       MeshHandle);
     MaterialSetView get(MaterialSetHandle);
-    Shader*         get(     ShaderHandle);
 }

@@ -7,7 +7,6 @@
 #include "RHIBuffer.hpp"
 #include "RHIShader.hpp"
 #include "RHITexture.hpp"
-#include "ShaderManager.hpp"
 
 namespace Crowy
 {
@@ -18,15 +17,12 @@ namespace Crowy
 
         MeshManager::instance        = new MeshManager();
         MaterialSetManager::instance = new MaterialSetManager();
-        ShaderManager::instance      = new ShaderManager();
     }
 
     void deinitResourceModule(){
-        delete ShaderManager::instance;
         delete MaterialSetManager::instance;
         delete MeshManager::instance;
 
-        ShaderManager::instance      = nullptr;
         MaterialSetManager::instance = nullptr;
         MeshManager::instance        = nullptr;
 
@@ -66,17 +62,6 @@ namespace Crowy
         );
         return {meshHandle, materialSetHandle};
     }
-    ShaderHandle getOrLoad(ShaderRequest request){
-        if(!Crowy::device){
-            LOG_ERROR(LOG_RESOURCE, "Resource module not initialized");
-            return ShaderHandle::invalidHandle();
-        }
-
-        LoadContext context{
-            .device = Crowy::device,
-        };
-        return ShaderManager::singleton()->getOrLoad(request, context);
-    }
 
     MeshView get(MeshHandle handle){
         auto mesh = MeshManager::singleton()->get(handle);
@@ -92,8 +77,5 @@ namespace Crowy
         }
 
         return view;
-    }
-    Shader* get(ShaderHandle handle){
-        return ShaderManager::singleton()->get(handle);
     }
 }

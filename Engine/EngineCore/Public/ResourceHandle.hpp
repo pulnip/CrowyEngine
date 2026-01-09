@@ -6,6 +6,5 @@ namespace Crowy
 {
     using         MeshHandle = generic_handle<struct         Mesh>;
     using  MaterialSetHandle = generic_handle<struct  MaterialSet>;
-    using       ShaderHandle = generic_handle<struct       Shader>;
     using       ScriptHandle = generic_handle<struct EntityScript>;
 }

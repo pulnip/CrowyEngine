@@ -28,6 +28,7 @@ PUBLIC
     Crowy::Core
     Crowy::EngineCore
     Crowy::Input
+    Crowy::Render
 PRIVATE
     assimp::assimp
     tomlplusplus::tomlplusplus

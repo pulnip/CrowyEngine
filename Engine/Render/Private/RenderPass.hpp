@@ -1,14 +1,11 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
-#include <span>
 #include <string>
 #include <vector>
-#include "math.hpp"
-#include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
-#include "RHIFWD.hpp"
+#include "RHIPipelineState.hpp"
+#include "RHIShader.hpp"
 
 namespace Crowy
 {
@@ -16,13 +13,6 @@ namespace Crowy
         Read,
         Write,
         ReadWrite
-    };
-
-    struct RenderContext{
-        std::span<const RenderItem> renderItems;
-        // Camera Information
-        Mat4 view, proj;
-        RHIViewport viewport;
     };
 
     struct ResourceBinding{
@@ -33,9 +23,9 @@ namespace Crowy
 
     struct RenderPass{
         std::string name;
-        ShaderHandle shader;
-
         RenderType renderType;
+        RHIShaderPtr vs, fs;
+        RHIPipelineStatePtr pipeline;
 
         std::vector<ResourceBinding> bindings;
 

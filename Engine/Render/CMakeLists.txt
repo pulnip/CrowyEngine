@@ -1,14 +1,18 @@
 add_library(CrowyRender STATIC)
 
+file(GLOB PUBLIC_SOURCES
+    "Public/*.hpp"
+)
+file(GLOB PRIVATE_SOURCES
+    "Private/*.hpp"
+    "Private/*.cpp"
+)
+
 target_sources(CrowyRender
 PUBLIC
-    Public/Renderer.hpp
-    Public/RenderGraph.hpp
-    Public/RenderPass.hpp
+    ${PUBLIC_SOURCES}
 PRIVATE
-    Private/Renderer.cpp
-    Private/RenderTargetPool.cpp
-    Private/RenderTargetPool.hpp
+    ${PRIVATE_SOURCES}
 )
 
 target_include_directories(CrowyRender
@@ -18,11 +22,10 @@ PUBLIC
 
 target_link_libraries(CrowyRender
 PUBLIC
+    Crowy::CommonRHI
     Crowy::EngineCore
 PRIVATE
-    Crowy::ECS
     Crowy::Log
-    Crowy::Resource
     Crowy::RHI
 )
 
