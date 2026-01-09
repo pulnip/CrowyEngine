@@ -75,4 +75,5 @@ add_library(Crowy::RHI ALIAS CrowyRHI)
 
 if(CROWY_ENABLE_TEST)
     add_subdirectory(Sample)
+    add_subdirectory(Test)
 endif()

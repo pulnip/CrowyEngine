@@ -72,16 +72,3 @@ TEST_F(ResourceModuleTest, RequestWrongUri){
         EXPECT_FALSE(mat.isValid());
     }
 }
-
-TEST_F(ResourceModuleTest, LoadShaderFile){
-    const auto shader = Crowy::getOrLoad(
-        Crowy::ShaderRequest{
-            .vsFilePath = "asset/vs.metal",
-            .vsFuncName = "vertex_main",
-            .fsFilePath = "asset/fs.metal",
-            .fsFuncName = "fragment_main"
-        }
-    );
-
-    EXPECT_TRUE(shader.isValid());
-}

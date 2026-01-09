@@ -6,6 +6,7 @@
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
+#include "RHIShader.hpp"
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
 #include "Resource.hpp"
@@ -48,15 +49,20 @@ int main(int argc, char* argv[]){
     auto mesh = get(meshHandle);
     auto materialSet = get(materialSetHandle);
 
-    auto shaderHandle = getOrLoad(
-        ShaderRequest{
-            .vsFilePath = "asset/Shaders/triangle.metal",
-            .vsFuncName = "vs_main",
-            .fsFilePath = "asset/Shaders/triangle.metal",
-            .fsFuncName = "fs_textured"
-        }
-    );
-    auto shader = get(shaderHandle);
+#ifdef __APPLE__
+    auto vertexShader = device->createShader(RHIShaderCreateDesc{
+        .file = "asset/Shaders/triangle.metal",
+        .entry = "vs_main",
+        .stage = RHIShaderStage::VertexShader,
+        .debugName = "asset/Shaders/triangle.metal"
+    });
+    auto fragmentShader = device->createShader(RHIShaderCreateDesc{
+        .file = "asset/Shaders/triangle.metal",
+        .entry = "fs_textured",
+        .stage = RHIShaderStage::FragmentShader,
+        .debugName = "asset/Shaders/triangle.metal"
+    });
+#endif
 
     auto uniformBuffer = device->createBuffer({
         .size = sizeof(Mat4),
@@ -81,8 +87,8 @@ int main(int argc, char* argv[]){
     });
 
     auto pipelineState = device->createGraphicsPipelineState({
-        .vertexShader = shader->vertexShader.get(),
-        .pixelShader = shader->fragmentShader.get(),
+        .vertexShader = vertexShader.get(),
+        .pixelShader = fragmentShader.get(),
         .debugName = "Mesh Pipeline"
     });
 
