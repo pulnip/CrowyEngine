@@ -1,4 +1,5 @@
 {
+    "cmake.useVsDeveloperEnvironment": "always",
     "files.associations": {
         "*.h": "c",
         "*.c": "c",

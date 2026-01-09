@@ -23,7 +23,7 @@ namespace Crowy
 #else
     class RHITexture{
     public:
-        DECLARE_INTERFACE(RHITexture)
+        CROWY_DECLARE_INTERFACE(RHITexture)
 
         virtual void uploadData(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0

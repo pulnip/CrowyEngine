@@ -1,5 +1,13 @@
 add_library(CrowyD3D12RHI STATIC)
 
+target_precompile_headers(CrowyD3D12RHI
+PRIVATE
+    <d3d12.h>
+    <d3dcompiler.h>
+    <dxgi1_6.h>
+    <wrl/client.h>
+)
+
 file(GLOB PUBLIC_SOURCES
     "Public/*.hpp"
 )

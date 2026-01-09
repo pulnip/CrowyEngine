@@ -73,6 +73,12 @@ namespace Crowy
             swapchain = device->createSwapchain(RHISwapchainCreateDesc{
             #ifdef __APPLE__
                 .windowHandle = SDL_Metal_GetLayer(view),
+            #elif _WIN32
+                .windowHandle = SDL_GetPointerProperty(
+                    SDL_GetWindowProperties(window),
+                    SDL_PROP_WINDOW_WIN32_HWND_POINTER,
+                    nullptr
+                ),
             #endif
                 .width  = static_cast<uint32_t>(config.width),
                 .height = static_cast<uint32_t>(config.height),

@@ -25,7 +25,7 @@
             "configurationProvider": "ms-vscode.cmake-tools"
         },
         {
-            "name": "Win32",
+            "name": "Win32-llvm",
             "includePath": [
                 "${workspaceFolder}/Core/include"
             ],
@@ -37,7 +37,8 @@
             "windowsSdkVersion": "10.0.26100.0",
             "cStandard": "c23",
             "cppStandard": "c++26",
-            "intelliSenseMode": "windows-msvc-x64",
+            "intelliSenseMode": "windows-clang-x64",
+            "compilerPath": "C:/Program Files/LLVM/bin/clang-cl.exe",
             "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],

@@ -60,17 +60,19 @@ namespace Crowy
 
         void loadPasses(const RenderSpec& spec){
             for(const auto& passSpec: spec.passes){
+
+
                 auto vs = device->createShader(RHIShaderCreateDesc{
                     .file = passSpec.shader.vsFilePath.c_str(),
                     .entry = passSpec.shader.vsFuncName.c_str(),
                     .stage = RHIShaderStage::VertexShader,
-                    .debugName = passSpec.shader.vsFilePath.c_str()
+                    .debugName = nullptr
                 });
                 auto fs = device->createShader(RHIShaderCreateDesc{
                     .file = passSpec.shader.fsFilePath.c_str(),
                     .entry = passSpec.shader.fsFuncName.c_str(),
                     .stage = RHIShaderStage::FragmentShader,
-                    .debugName = passSpec.shader.fsFilePath.c_str()
+                    .debugName = nullptr
                 });
 
                 auto pipeline = createGraphicsPipelineStateHelper(

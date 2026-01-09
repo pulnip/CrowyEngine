@@ -32,7 +32,7 @@ namespace Crowy
             ,bufferCount(bufferCount), format(format)
             ,currentBufferIndex(0){}
 
-        DECLARE_INTERFACE(RHISwapchain)
+        CROWY_DECLARE_INTERFACE(RHISwapchain)
 
         inline uint32_t getWidth() const { return width; }
         inline uint32_t getHeight() const { return height; }

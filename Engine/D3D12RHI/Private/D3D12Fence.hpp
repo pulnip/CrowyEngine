@@ -44,7 +44,7 @@ namespace Crowy
             }
         }
 
-        DECLARE_NON_COPYABLE(D3D12Fence)
+        CROWY_DECLARE_NON_COPYABLE(D3D12Fence)
 
         void waitCPU(uint64_t waitValue, uint64_t timeoutMs) RHI_OVERRIDE{
             if(fence->GetCompletedValue() < waitValue){

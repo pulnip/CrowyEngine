@@ -16,7 +16,7 @@ namespace Crowy
     public:
         RenderTargetPool() = default;
         ~RenderTargetPool() = default;
-        DECLARE_MOVE_ONLY(RenderTargetPool)
+        CROWY_DECLARE_MOVE_ONLY(RenderTargetPool)
 
         RHITexture* create(
             const std::string& name,

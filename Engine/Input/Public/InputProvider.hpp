@@ -12,7 +12,7 @@ namespace Crowy
         std::bitset<NUM_KEY> previousKeys;
 
     public:
-        DECLARE_INTERFACE(InputProvider)
+        CROWY_DECLARE_INTERFACE(InputProvider)
 
         virtual void poll() = 0;
         // only check current state

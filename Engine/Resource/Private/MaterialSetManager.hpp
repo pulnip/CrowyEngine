@@ -47,7 +47,7 @@ namespace Crowy
     public:
         MaterialSetManager() = default;
         ~MaterialSetManager() = default;
-        DECLARE_PINNED(MaterialSetManager)
+        CROWY_DECLARE_PINNED(MaterialSetManager)
 
         inline static auto singleton(){ return instance; }
 

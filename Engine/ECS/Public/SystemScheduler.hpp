@@ -18,7 +18,7 @@ namespace Crowy
     public:
         SystemScheduler() = default;
         ~SystemScheduler() = default;
-        DECLARE_PINNED(SystemScheduler)
+        CROWY_DECLARE_PINNED(SystemScheduler)
 
         void attach(SystemPtr system){
             systems.push_back(std::move(system));

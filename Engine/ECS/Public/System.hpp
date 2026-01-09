@@ -9,7 +9,7 @@ namespace Crowy
     template<typename Context>
     class System{
     public:
-        DECLARE_INTERFACE(System)
+        CROWY_DECLARE_INTERFACE(System)
 
         virtual void update(EntityRegistry&, Context&) = 0;
     };

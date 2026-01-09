@@ -184,7 +184,11 @@ namespace Crowy
     };
 
     struct RHIShaderCreateDesc{
+    #ifdef _WIN32
+        const wchar_t* file;
+    #else
         const char* file; // source or binary file path
+    #endif
         const char* entry;
         RHIShaderStage stage;
         const char* debugName;

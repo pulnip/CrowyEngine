@@ -39,7 +39,7 @@ namespace Crowy
 #else
     class RHIDevice{
     public:
-        DECLARE_INTERFACE(RHIDevice)
+        CROWY_DECLARE_INTERFACE(RHIDevice)
 
         virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) = 0;
         virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) = 0;

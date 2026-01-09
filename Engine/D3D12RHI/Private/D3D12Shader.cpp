@@ -34,15 +34,13 @@ namespace Crowy
             Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
             Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
 
-            auto wpath = std::filesystem::path(desc.file).wstring();
-
             UINT compileFlags = 0;
         #if defined(_DEBUG)
             compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
         #endif
 
             HRESULT hr = D3DCompileFromFile(
-                wpath.c_str(),
+                desc.file,
                 nullptr,
                 D3D_COMPILE_STANDARD_FILE_INCLUDE,
                 desc.entry,
@@ -70,7 +68,7 @@ namespace Crowy
         }
 
         if(bytecode.empty()){
-            throw std::runtime_error("Shader bytecode is empty: " + std::string(desc.file));
+            throw std::runtime_error("Shader bytecode is empty");
         }
     }
 }

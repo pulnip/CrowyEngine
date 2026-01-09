@@ -44,7 +44,7 @@ namespace Crowy
     public:
         MeshManager() = default;
         ~MeshManager() = default;
-        DECLARE_PINNED(MeshManager)
+        CROWY_DECLARE_PINNED(MeshManager)
 
         inline static auto singleton(){ return instance; }
 

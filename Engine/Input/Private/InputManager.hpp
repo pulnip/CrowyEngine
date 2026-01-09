@@ -26,7 +26,7 @@ namespace Crowy
         InputManager(InputProvider* provider)
             :provider(provider){}
         ~InputManager() = default;
-        DECLARE_PINNED(InputManager)
+        CROWY_DECLARE_PINNED(InputManager)
 
         inline static auto singleton(){ return instance; }
 

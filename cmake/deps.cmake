@@ -45,6 +45,7 @@ if(NOT assimp_FOUND)
         GIT_TAG "v6.0.2"
         GIT_SHALLOW TRUE
     )
+    set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
     set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
@@ -54,6 +55,12 @@ if(NOT assimp_FOUND)
     set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_MMD_IMPORTER ON CACHE BOOL "" FORCE)  # PMX/PMD support
     FetchContent_MakeAvailable(assimp)
+
+    if(TARGET zlibstatic)
+        target_compile_options(zlibstatic PRIVATE
+            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-non-prototype>
+        )
+    endif()
 endif()
 
 # angelscript - scripting library
@@ -103,6 +110,11 @@ if(CROWY_ENABLE_TEST)
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
         )
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(GTEST_HAS_ABSL OFF CACHE BOOL "" FORCE)
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            add_compile_options(-Wno-character-conversion)
+        endif()
         FetchContent_MakeAvailable(GTest)
     endif()
     include(CTest)

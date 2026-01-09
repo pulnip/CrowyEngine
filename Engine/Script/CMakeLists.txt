@@ -22,7 +22,7 @@ PRIVATE
 target_include_directories(CrowyScript
 PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/Public"
-PRIVATE
+SYSTEM PRIVATE
     ${angelscript_SOURCE_DIR}/add_on/scriptarray
     ${angelscript_SOURCE_DIR}/add_on/scriptmath
     ${angelscript_SOURCE_DIR}/add_on/scriptstdstring

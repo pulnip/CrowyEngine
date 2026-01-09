@@ -243,7 +243,7 @@ namespace Crowy
     public:
         EntityRegistry() = default;
         ~EntityRegistry() = default;
-        DECLARE_PINNED(EntityRegistry)
+        CROWY_DECLARE_PINNED(EntityRegistry)
 
     private:
         auto issueID() noexcept{ return id_seed++; }

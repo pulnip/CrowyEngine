@@ -18,7 +18,7 @@ PRIVATE
 target_include_directories(CrowyMetalRHI
 PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/Public"
-PRIVATE
+SYSTEM PRIVATE
     "${metal-cpp_SOURCE_DIR}"
 )
 

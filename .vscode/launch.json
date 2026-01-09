@@ -3,16 +3,18 @@
     "configurations": [
         {
             "name": "Game",
-            "type": "lldb-dap",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/Game/Crowy",
+            "windows": {
+                "program": "${workspaceFolder}/Game/Crowy.exe",
+            },
             "args": [
                 "--width=1280", "--height=720",
                 "--scene=scene.toml",
                 "--render=render.macos.toml"
             ],
             "cwd": "${workspaceFolder}/Game",
-            "console": "integratedTerminal"
         }
     ]
 }

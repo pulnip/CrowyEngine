@@ -33,7 +33,7 @@ namespace Crowy
             if(sharedEvent) sharedEvent->release();
         }
 
-        DECLARE_NON_COPYABLE(MetalFence)
+        CROWY_DECLARE_NON_COPYABLE(MetalFence)
 
         void waitCPU(uint64_t waitValue, uint64_t timeoutMs) RHI_OVERRIDE{
             using namespace std::chrono;

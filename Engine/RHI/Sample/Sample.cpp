@@ -60,7 +60,7 @@ int main(int argc, char* argv[]){
         .file = "asset/Shaders/triangle.metal",
         .entry = "vs_main",
 #elif _WIN32
-        .file = "asset/Shaders/standard_vs.hlsl",
+        .file = L"asset/Shaders/standard_vs.hlsl",
         .entry = "vs_main",
 #endif
         .stage = RHIShaderStage::VertexShader,
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]){
         .file = "asset/Shaders/triangle.metal",
         .entry = "fs_textured",
 #elif _WIN32
-        .file = "asset/Shaders/standard_ps.hlsl",
+        .file = L"asset/Shaders/standard_ps.hlsl",
         .entry = "ps_textured",
 #endif
         .stage = RHIShaderStage::FragmentShader,

@@ -29,6 +29,18 @@
             "inherits": "base",
             "generator": "Visual Studio 17 2022",
             "toolchainFile": "cmake/toolchains/windows.cmake"
+        },
+        {
+            "name": "Windows-llvm",
+            "inherits": "base",
+            "generator": "Ninja Multi-Config",
+            "toolchainFile": "cmake/toolchains/windows.cmake",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_C_FLAGS": "--target=x86_64-pc-windows-msvc",
+                "CMAKE_CXX_FLAGS": "--target=x86_64-pc-windows-msvc"
+            }
         }
     ],
     "buildPresets": [
@@ -45,6 +57,11 @@
         {
             "name": "Windows-Debug",
             "configurePreset": "Windows",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Windows-llvm-Debug",
+            "configurePreset": "Windows-llvm",
             "configuration": "Debug"
         }
     ]

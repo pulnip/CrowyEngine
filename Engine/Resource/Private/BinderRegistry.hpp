@@ -22,7 +22,7 @@ namespace Crowy
     template<typename BindPlan>
     class Binder{
     public:
-        DECLARE_INTERFACE(Binder);
+        CROWY_DECLARE_INTERFACE(Binder);
 
         virtual void validateAndPlan(const ValueArena&,
             const VTable&, size_t elmIndex, BindPlan&)=0;

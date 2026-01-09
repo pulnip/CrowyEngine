@@ -24,7 +24,7 @@ namespace Crowy
     public:
         EntityScript() = default;
         ~EntityScript();
-        DECLARE_NON_COPYABLE(EntityScript)
+        CROWY_DECLARE_NON_COPYABLE(EntityScript)
         EntityScript(EntityScript&&);
         EntityScript& operator=(EntityScript&&);
 
