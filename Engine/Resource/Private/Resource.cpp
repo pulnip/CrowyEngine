@@ -5,6 +5,7 @@
 #include "ModelImporter.hpp"
 #include "Resource.hpp"
 #include "RHIBuffer.hpp"
+#include "RHIDevice.hpp"
 #include "RHIShader.hpp"
 #include "RHITexture.hpp"
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include "ModelData.hpp"
-#include "RHIDevice.hpp"
+#include "RHIDefinitions.hpp"
 
 namespace Crowy
 {

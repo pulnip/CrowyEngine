@@ -15,7 +15,6 @@ target_link_libraries(CrowyRHITest
 PRIVATE
     GTest::gtest_main
     GTest::gmock_main
-    Crowy::Log
     Crowy::RHI
 )
 if(APPLE)

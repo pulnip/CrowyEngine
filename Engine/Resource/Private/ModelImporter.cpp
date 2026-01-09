@@ -8,7 +8,6 @@
 #include "Log.hpp"
 #include "ModelImporter.hpp"
 #include "PathUtils.hpp"
-#include "RHIDevice.hpp"
 
 namespace Crowy
 {
