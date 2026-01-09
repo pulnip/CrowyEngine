@@ -1,5 +1,4 @@
 add_executable(CrowyRHISample)
-crowy_link_folder(CrowyRHISample asset)
 
 file(GLOB SAMPLE_SOURCES
     "*.hpp"
@@ -21,6 +20,11 @@ if(APPLE)
     target_link_libraries(CrowyRHISample
     PRIVATE
         Crowy::MetalRHI
+    )
+elseif(WIN32)
+    target_link_libraries(CrowyRHISample
+    PRIVATE
+        Crowy::D3D12RHI
     )
 else()
     target_link_libraries(CrowyRHISample

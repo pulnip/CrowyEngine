@@ -8,6 +8,11 @@ file(GLOB PRIVATE_SOURCES
     "Private/*.cpp"
 )
 
+target_compile_definitions(CrowyResource
+PRIVATE
+    TOML_EXCEPTIONS=1
+)
+
 target_sources(CrowyResource
 PUBLIC
     ${PUBLIC_SOURCES}

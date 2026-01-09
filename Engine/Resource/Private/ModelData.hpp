@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -18,7 +19,7 @@ namespace Crowy
         bool flipTexCoordV = true; // Flip V coordinate (OpenGL vs DirectX)
         double unitScale = 0.01f;  // Conversion factor (e.g., 0.01 for cm to meters)
 
-        inline bool operator<=>(const AxisInfo&) const = default;
+        inline auto operator<=>(const AxisInfo&) const = default;
     };
 
     // Axis-Aligned Bounding Box
@@ -53,7 +54,8 @@ namespace Crowy
 
     // Texture reference in a material
     struct TextureRef{
-        std::string path;  // Path to texture file
+        // Path to texture file
+        std::filesystem::path path;
         // TextureUsage usage;
         TextureFlags flags = TextureFlags::None;
     };

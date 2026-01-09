@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake Build",
+            "type": "shell",
+            "command": "cmake",
+            "windows": {
+                "args": [
+                    "--build",
+                    "--preset", "Windows-Debug"
+                ],
+                "problemMatcher": "$msCompile",
+            },
+            "osx": {
+                "args": [
+                    "--build",
+                    "--preset", "macOS-Debug"
+                ],
+                "problemMatcher": "$gcc"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        }
+    ]
+}

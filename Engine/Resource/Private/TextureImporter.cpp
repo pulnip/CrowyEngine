@@ -1,17 +1,24 @@
+#include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include "path_util.hpp"
+#include "string.hpp"
 #include "Log.hpp"
-#include "PathUtils.hpp"
 #include "TextureImporter.hpp"
 
 namespace Crowy
 {
-    std::optional<TextureData> importTexture(const std::string& path){
-        auto resolvedPath = resolveAssetPath(path).string();
-        int width, height, channels;
+    std::optional<TextureData> importTexture(const std::filesystem::path& path){
+        auto resolvedPath = get_absolute_path(path);
 
+        auto buffer = readFileAsBinary(resolvedPath);
+
+        int width, height, channels;
         // Force RGBA output (4 channels)
-        uint8_t* data = stbi_load(resolvedPath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        uint8_t* data = stbi_load_from_memory(
+            buffer.data(), static_cast<int>(buffer.size()),
+            &width, &height, &channels, STBI_rgb_alpha
+        );
 
         if(!data){
             LOG_ERROR(LOG_RESOURCE, "Failed to load image: {} - {}",

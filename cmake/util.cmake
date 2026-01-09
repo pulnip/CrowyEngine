@@ -1,21 +1,25 @@
-function(crowy_link_folder TARGET)
-    foreach(FOLDER IN LISTS ARGN)
-        set(FOLDER_SOURCE "${CMAKE_SOURCE_DIR}/${FOLDER}")
-        set(FOLDER_LINK "$<TARGET_FILE_DIR:${TARGET}>/${FOLDER}")
+set(ASSET_SOURCE "${CMAKE_SOURCE_DIR}/asset")
+set(ASSET_DEST "${CMAKE_BINARY_DIR}/bin/asset")
 
-        if(WIN32)
-            add_custom_command(TARGET ${TARGET} POST_BUILD
-                COMMAND cmd /c if not exist "${FOLDER_LINK}" mklink /J "${FOLDER_LINK}" "${FOLDER_SOURCE}"
-                COMMENT "Linking ${FOLDER} folder for ${TARGET}"
-            )
-        else()
-            # macOS/Linux: symlink
-            add_custom_command(TARGET ${TARGET} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E create_symlink
-                    "${FOLDER_SOURCE}"
-                    "${FOLDER_LINK}"
-                COMMENT "Linking ${FOLDER} folder for ${TARGET}"
-            )
-        endif()
-    endforeach()
-endfunction()
+if(EXISTS "${ASSET_DEST}")
+    return()
+endif()
+
+# try to link asset folder
+if(WIN32)
+    execute_process(
+        COMMAND cmd /c mklink /J "${ASSET_DEST}" "${ASSET_SOURCE}"
+        RESULT_VARIABLE LINK_RESULT
+    )
+else()
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E create_symlink "${ASSET_SOURCE}" "${ASSET_DEST}"
+        RESULT_VARIABLE LINK_RESULT
+    )
+endif()
+
+# fallback: copy asset folder
+if(NOT LINK_RESULT EQUAL 0)
+    message(MESSAGE "Symlink failed, falling back to copy...")
+    file(COPY "${ASSET_SOURCE}" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+endif()

@@ -1,5 +1,4 @@
 add_executable(Crowy)
-crowy_link_folder(Crowy asset)
 
 set_target_properties(Crowy PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/Game"

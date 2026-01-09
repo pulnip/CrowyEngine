@@ -5,9 +5,9 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include "path_util.hpp"
 #include "Log.hpp"
 #include "ModelImporter.hpp"
-#include "PathUtils.hpp"
 
 namespace Crowy
 {
@@ -213,7 +213,7 @@ namespace Crowy
     static std::optional<ModelData> loadModel(
         const std::string& path, RHICapabilities cap
     ){
-        auto resolvedPath = resolveAssetPath(path).string();
+        auto resolvedPath = get_absolute_path(path).string();
 
         Assimp::Importer importer;
 
@@ -304,8 +304,7 @@ namespace Crowy
             aiString texPath;
             if(aiMat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS){
                 TextureRef texRef;
-                std::filesystem::path texFilePath = modelDir / texPath.C_Str();
-                texRef.path = texFilePath.string();
+                texRef.path = modelDir / to_path(texPath.C_Str());
                 texRef.flags = combine(TextureFlags::SRGB, TextureFlags::GenerateMips);
                 material.textures[TextureSemantic::BaseColor] = texRef;
                 LOG_DEBUG(LOG_RESOURCE, "      -> Loaded DIFFUSE: {}", texPath.C_Str());
@@ -384,7 +383,7 @@ namespace Crowy
                 }
 
                 // Texture coordinates (use first UV channel)
-                // Flip V coordinate for Metal/OpenGL (DirectX uses top-left origin, Metal uses bottom-left)
+                // Flip V coordinate for D3D12/Metal (both use top-left origin, model UV is usually bottom-left)
                 if(aiMesh->HasTextureCoords(0)){
                     vertex.texCoord.x = aiMesh->mTextureCoords[0][i].x;
                     vertex.texCoord.y = cap.flipTextureV ?

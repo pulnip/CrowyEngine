@@ -1,5 +1,4 @@
 add_executable(CrowySceneTest)
-crowy_link_folder(CrowySceneTest asset)
 
 target_sources(CrowySceneTest
 PRIVATE

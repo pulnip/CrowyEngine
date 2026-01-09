@@ -19,7 +19,7 @@ namespace Crowy
         ){}
 
         bool acquireNextImage() RHI_OVERRIDE{
-            
+            return true;
         }
 
         void resize(uint32_t newWidth, uint32_t newHeight) RHI_OVERRIDE{

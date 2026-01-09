@@ -1,5 +1,4 @@
 add_executable(CrowyRHITest)
-crowy_link_folder(CrowyRHITest asset)
 
 file(GLOB ALL_SOURCES
     "*.hpp"

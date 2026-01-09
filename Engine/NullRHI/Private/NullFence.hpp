@@ -23,11 +23,11 @@ namespace Crowy
         }
 
         uint64_t getValue() RHI_OVERRIDE{
-
+            return 0;
         }
 
         bool isComplete(uint64_t value) RHI_OVERRIDE{
-
+            return true;
         }
     };
 }

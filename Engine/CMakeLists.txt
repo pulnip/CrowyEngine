@@ -9,6 +9,8 @@ add_subdirectory(RHI)
 # RHI Implementations
 if(APPLE)
     add_subdirectory(MetalRHI)
+elseif(WIN32)
+    add_subdirectory(D3D12RHI)
 else()
     # Null RHI as fallback
     set(USE_NULL_RHI ON)

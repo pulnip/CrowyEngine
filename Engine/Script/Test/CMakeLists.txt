@@ -1,5 +1,4 @@
 add_executable(CrowyScriptTest)
-crowy_link_folder(CrowyScriptTest asset)
 
 file(GLOB ALL_SOURCES
     "*.hpp"

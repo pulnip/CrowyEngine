@@ -15,7 +15,7 @@
 using namespace Crowy;
 
 int main(int argc, char* argv[]){
-    Logger::instance().setMinLevel(LogLevel::Warn);
+    // Logger::instance().setMinLevel(LogLevel::Warn);
 
     auto window = SDL_CreateWindow("Triangle", 800, 600, 0);
 #ifdef __APPLE__
@@ -28,6 +28,12 @@ int main(int argc, char* argv[]){
         RHISwapchainCreateDesc{
         #ifdef __APPLE__
             .windowHandle = SDL_Metal_GetLayer(view),
+        #elif _WIN32
+            .windowHandle = SDL_GetPointerProperty(
+                SDL_GetWindowProperties(window),
+                SDL_PROP_WINDOW_WIN32_HWND_POINTER,
+                nullptr
+            ),
         #endif
             .width = 800,
             .height = 600,
@@ -49,20 +55,28 @@ int main(int argc, char* argv[]){
     auto mesh = get(meshHandle);
     auto materialSet = get(materialSetHandle);
 
-#ifdef __APPLE__
     auto vertexShader = device->createShader(RHIShaderCreateDesc{
+#ifdef __APPLE__
         .file = "asset/Shaders/triangle.metal",
         .entry = "vs_main",
+#elif _WIN32
+        .file = "asset/Shaders/standard_vs.hlsl",
+        .entry = "vs_main",
+#endif
         .stage = RHIShaderStage::VertexShader,
-        .debugName = "asset/Shaders/triangle.metal"
+        .debugName = "VertexShader"
     });
     auto fragmentShader = device->createShader(RHIShaderCreateDesc{
+#ifdef __APPLE__
         .file = "asset/Shaders/triangle.metal",
         .entry = "fs_textured",
-        .stage = RHIShaderStage::FragmentShader,
-        .debugName = "asset/Shaders/triangle.metal"
-    });
+#elif _WIN32
+        .file = "asset/Shaders/standard_ps.hlsl",
+        .entry = "ps_textured",
 #endif
+        .stage = RHIShaderStage::FragmentShader,
+        .debugName = "FragmentShader"
+    });
 
     auto uniformBuffer = device->createBuffer({
         .size = sizeof(Mat4),
@@ -89,6 +103,9 @@ int main(int argc, char* argv[]){
     auto pipelineState = device->createGraphicsPipelineState({
         .vertexShader = vertexShader.get(),
         .pixelShader = fragmentShader.get(),
+        .renderTargetFormats = {RHITextureFormat::BGRA8_UNORM},
+        .renderTargetCount = 1,
+        .depthStencilFormat = RHITextureFormat::D32_FLOAT,
         .debugName = "Mesh Pipeline"
     });
 

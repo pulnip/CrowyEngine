@@ -7,12 +7,6 @@
             "binaryDir": "build"
         },
         {
-            "name": "Windows",
-            "inherits": "base",
-            "generator": "Visual Studio 17 2022",
-            "toolchainFile": "cmake/toolchains/windows.cmake"
-        },
-        {
             "name": "macOS",
             "generator": "Xcode",
             "inherits": "base",
@@ -29,6 +23,12 @@
                 "CMAKE_AR": "/opt/homebrew/opt/llvm/bin/llvm-ar",
                 "CMAKE_RANLIB": "/opt/homebrew/opt/llvm/bin/llvm-ranlib"
             }
+        },
+        {
+            "name": "Windows",
+            "inherits": "base",
+            "generator": "Visual Studio 17 2022",
+            "toolchainFile": "cmake/toolchains/windows.cmake"
         }
     ],
     "buildPresets": [
@@ -40,6 +40,11 @@
         {
             "name": "macOS-brew-llvm-Debug",
             "configurePreset": "macOS-brew-llvm",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Windows-Debug",
+            "configurePreset": "Windows",
             "configuration": "Debug"
         }
     ]
