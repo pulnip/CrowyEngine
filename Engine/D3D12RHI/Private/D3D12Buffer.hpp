@@ -48,7 +48,8 @@ namespace Crowy
             D3D12_RESOURCE_DESC resourceDesc = {};
             resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
             resourceDesc.Alignment = 0;
-            resourceDesc.Width = desc.size;
+            resourceDesc.Width = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer) ?
+                (desc.size + 255) & ~255 : desc.size;
             resourceDesc.Height = 1;
             resourceDesc.DepthOrArraySize = 1;
             resourceDesc.MipLevels = 1;
@@ -77,12 +78,12 @@ namespace Crowy
                 throw std::runtime_error("Failed to create buffer");
             }
 
-            if(desc.initialData){
-                update(desc.initialData, desc.size, 0);
-            }
-
             if(isCPUAccessible){
                 buffer->Map(0, nullptr, &mappedData);
+            }
+
+            if(desc.initialData){
+                update(desc.initialData, desc.size, 0);
             }
         }
 

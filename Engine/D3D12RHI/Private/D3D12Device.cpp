@@ -27,20 +27,25 @@ namespace Crowy
     struct D3D12Device::Impl{
         ComPtr<ID3D12Device> device;
         ComPtr<ID3D12CommandQueue> commandQueue;
+        ComPtr<IDXGIFactory4> factory;
 
         Impl(){
             UINT dxgiFactoryFlags = 0;
 
-#if defined(_DEBUG)
+        #ifdef _DEBUG
             // Enable debug layer
             ComPtr<ID3D12Debug> debugController;
             if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))){
                 debugController->EnableDebugLayer();
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-            }
-#endif
 
-            ComPtr<IDXGIFactory4> factory;
+                ComPtr<ID3D12Debug1> debugController1;
+                if(SUCCEEDED(debugController.As(&debugController1))){
+                    debugController1->SetEnableGPUBasedValidation(TRUE);
+                }
+            }
+        #endif
+
             if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)))){
                 throw std::runtime_error("Failed to create DXGI factory");
             }
@@ -85,8 +90,7 @@ namespace Crowy
             }
         }
 
-        ~Impl(){
-        }
+        ~Impl() = default;
 
         RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc& desc
@@ -97,7 +101,7 @@ namespace Crowy
         RHITexturePtr createTexture(
             const RHITextureCreateDesc& desc
         ){
-            return std::make_unique<D3D12Texture>(device.Get(), desc);
+            return std::make_unique<D3D12Texture>(device.Get(), commandQueue.Get(), desc);
         }
 
         RHIShaderPtr createShader(
@@ -125,7 +129,7 @@ namespace Crowy
         }
 
         RHICommandListPtr createCommandList(){
-            return std::make_unique<D3D12CommandList>(device.Get());
+            return std::make_unique<D3D12CommandList>(device.Get(), commandQueue.Get());
         }
 
         RHIFencePtr createFence(uint64_t initialValue){
@@ -137,9 +141,17 @@ namespace Crowy
             ID3D12CommandList* cmdLists[] = { d3dCmdList->get() };
             commandQueue->ExecuteCommandLists(1, cmdLists);
 
+            // Signal internal fence for allocator synchronization
+            d3dCmdList->signalAllocatorFence();
+
             if(swapchain){
                 auto d3dSwapchain = static_cast<D3D12Swapchain*>(swapchain);
                 d3dSwapchain->get()->Present(1, 0);
+            }
+
+            if(auto fence = d3dCmdList->getPendingFence()){
+                auto d3dFence = static_cast<D3D12Fence*>(fence);
+                commandQueue->Signal(d3dFence->get(), d3dCmdList->getPendingFenceValue());
             }
         }
     };
@@ -195,7 +207,7 @@ namespace Crowy
 
     RHICapabilities D3D12Device::getCapabilities() const{
         return {
-            .flipTextureV = false,
+            .flipTextureV = true,
             .clipSpaceMinZ = 0.0f
         };
     }

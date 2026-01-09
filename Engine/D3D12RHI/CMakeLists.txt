@@ -29,6 +29,8 @@ endif()
 target_link_libraries(CrowyD3D12RHI
 PUBLIC
     Crowy::CommonRHI
+PRIVATE
+    Crowy::Log
 )
 
 # D3D12 specific libraries (Windows only)

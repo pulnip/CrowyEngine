@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <d3d12.h>
@@ -10,6 +11,7 @@
 #include "D3D12Swapchain.hpp"
 #include "D3D12Texture.hpp"
 #include "D3D12Util.hpp"
+#include "Log.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -20,23 +22,40 @@ using Microsoft::WRL::ComPtr;
 
 namespace Crowy
 {
+    constexpr uint32_t D3D12_FRAMES_IN_FLIGHT = 3;
+
     class D3D12CommandList
 #ifndef USE_STATIC_RHI
         : public RHICommandList
 #endif
     {
     private:
-        ComPtr<ID3D12CommandAllocator> commandAllocator;
+        ID3D12Device* device = nullptr;
+        ID3D12CommandQueue* commandQueue = nullptr;
+        std::array<ComPtr<ID3D12CommandAllocator>, D3D12_FRAMES_IN_FLIGHT> commandAllocators;
         ComPtr<ID3D12GraphicsCommandList> commandList;
         ComPtr<ID3D12DescriptorHeap> rtvHeap;
         ComPtr<ID3D12DescriptorHeap> dsvHeap;
-        ComPtr<ID3D12DescriptorHeap> srvHeap;
+        std::array<ComPtr<ID3D12DescriptorHeap>, D3D12_FRAMES_IN_FLIGHT> srvHeaps;
+
+        // Internal fence for allocator synchronization
+        ComPtr<ID3D12Fence> internalFence;
+        std::array<uint64_t, D3D12_FRAMES_IN_FLIGHT> allocatorFenceValues = {};
+        uint64_t nextFenceValue = 1;
+
+        // Linear descriptor allocator for SRV heap
+        uint32_t srvHeapOffset = 0;
+        static constexpr uint32_t SRV_HEAP_SIZE = 256;
 
         ID3D12Resource* currentRenderTarget = nullptr;
         ID3D12Resource* currentDepthStencil = nullptr;
 
         RHIPrimitiveTopology currentTopology = RHIPrimitiveTopology::TriangleList;
         bool isRecording = false;
+        uint32_t currentAllocatorIndex = 0;
+
+        RHIFence* pendingFence = nullptr;
+        uint64_t pendingFenceValue = 0;
 
         UINT rtvDescriptorSize = 0;
         UINT dsvDescriptorSize = 0;
@@ -44,17 +63,29 @@ namespace Crowy
 
     public:
         D3D12CommandList(
-            ID3D12Device* device
-        ){
-            if(FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator)))){
-                throw std::runtime_error("Failed to create command allocator");
+            ID3D12Device* device,
+            ID3D12CommandQueue* commandQueue
+        )
+            : device(device)
+            , commandQueue(commandQueue)
+        {
+            // Create multiple command allocators for triple buffering
+            for(uint32_t i = 0; i < D3D12_FRAMES_IN_FLIGHT; ++i){
+                if(FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocators[i])))){
+                    throw std::runtime_error("Failed to create command allocator");
+                }
             }
 
-            if(FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList)))){
+            if(FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&commandList)))){
                 throw std::runtime_error("Failed to create command list");
             }
 
             commandList->Close();
+
+            // Create internal fence for allocator synchronization
+            if(FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&internalFence)))){
+                throw std::runtime_error("Failed to create internal fence");
+            }
 
             // Create descriptor heaps
             D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
@@ -77,8 +108,10 @@ namespace Crowy
             srvHeapDesc.NumDescriptors = 256;
             srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-            if(FAILED(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvHeap)))){
-                throw std::runtime_error("Failed to create SRV descriptor heap");
+            for(uint32_t i = 0; i < D3D12_FRAMES_IN_FLIGHT; ++i){
+                if(FAILED(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvHeaps[i])))){
+                    throw std::runtime_error("Failed to create SRV descriptor heap");
+                }
             }
 
             rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -92,11 +125,26 @@ namespace Crowy
         void begin() RHI_OVERRIDE{
             if(isRecording) return;
 
-            commandAllocator->Reset();
-            commandList->Reset(commandAllocator.Get(), nullptr);
+            // Wait for this allocator's previous work to complete
+            uint64_t waitValue = allocatorFenceValues[currentAllocatorIndex];
+            if(internalFence->GetCompletedValue() < waitValue){
+                HANDLE event = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
+                if(event){
+                    internalFence->SetEventOnCompletion(waitValue, event);
+                    WaitForSingleObject(event, INFINITE);
+                    CloseHandle(event);
+                }
+            }
+
+            auto& allocator = commandAllocators[currentAllocatorIndex];
+            allocator->Reset();
+            commandList->Reset(allocator.Get(), nullptr);
             isRecording = true;
 
-            ID3D12DescriptorHeap* heaps[] = { srvHeap.Get() };
+            // Reset linear descriptor allocator
+            srvHeapOffset = 0;
+
+            ID3D12DescriptorHeap* heaps[] = { srvHeaps[currentAllocatorIndex].Get() };
             commandList->SetDescriptorHeaps(1, heaps);
         }
 
@@ -106,10 +154,21 @@ namespace Crowy
             isRecording = false;
         }
 
+        // Called by Device::submit() after ExecuteCommandLists
+        void signalAllocatorFence(){
+            allocatorFenceValues[currentAllocatorIndex] = nextFenceValue;
+            commandQueue->Signal(internalFence.Get(), nextFenceValue);
+            ++nextFenceValue;
+
+            // Cycle to next allocator
+            currentAllocatorIndex = (currentAllocatorIndex + 1) % D3D12_FRAMES_IN_FLIGHT;
+        }
+
         void reset() RHI_OVERRIDE{
             currentRenderTarget = nullptr;
             currentDepthStencil = nullptr;
-            isRecording = false;
+            pendingFence = nullptr;
+            pendingFenceValue = 0;
         }
 
         void beginRenderPass(
@@ -125,12 +184,17 @@ namespace Crowy
             auto d3dRT = renderTarget ? static_cast<D3D12Texture*>(renderTarget)->get() : nullptr;
             auto d3dDS = depthStencil ? static_cast<D3D12Texture*>(depthStencil)->get() : nullptr;
 
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = {};
+            D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = {};
+
             if(d3dRT){
                 // Transition to render target
                 transitionResource(d3dRT, static_cast<D3D12Texture*>(renderTarget)->getState(), D3D12_RESOURCE_STATE_RENDER_TARGET);
                 static_cast<D3D12Texture*>(renderTarget)->getState() = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-                D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+                rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+                device->CreateRenderTargetView(d3dRT, nullptr, rtvHandle);
+
                 // Note: Should use proper descriptor management in production
                 if(loadAction == RHILoadStoreAction::Clear){
                     float clearColorArray[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
@@ -142,11 +206,21 @@ namespace Crowy
                 transitionResource(d3dDS, static_cast<D3D12Texture*>(depthStencil)->getState(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
                 static_cast<D3D12Texture*>(depthStencil)->getState() = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
+                dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+                device->CreateDepthStencilView(d3dDS, nullptr, dsvHandle);
+
                 if(loadAction == RHILoadStoreAction::Clear){
                     D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
                     commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, clearDS.depth, clearDS.stencil, 0, nullptr);
                 }
             }
+
+            commandList->OMSetRenderTargets(
+                d3dRT ? 1 : 0,
+                d3dRT ? &rtvHandle : nullptr,
+                FALSE,
+                d3dDS ? &dsvHandle : nullptr
+            );
 
             currentRenderTarget = d3dRT;
             currentDepthStencil = d3dDS;
@@ -168,7 +242,10 @@ namespace Crowy
             // Transition swapchain to render target
             transitionResource(backBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
+            // Create RTV for back buffer
             D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+            device->CreateRenderTargetView(backBuffer, nullptr, rtvHandle);
+
             if(loadAction == RHILoadStoreAction::Clear){
                 float clearColorArray[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
                 commandList->ClearRenderTargetView(rtvHandle, clearColorArray, 0, nullptr);
@@ -180,7 +257,10 @@ namespace Crowy
                 transitionResource(d3dDS, static_cast<D3D12Texture*>(depthStencil)->getState(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
                 static_cast<D3D12Texture*>(depthStencil)->getState() = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
+                // Create DSV for depth buffer
                 dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+                device->CreateDepthStencilView(d3dDS, nullptr, dsvHandle);
+
                 if(loadAction == RHILoadStoreAction::Clear){
                     commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, clearDS.depth, clearDS.stencil, 0, nullptr);
                 }
@@ -251,9 +331,13 @@ namespace Crowy
             if(!buffer || !isRecording) return;
 
             auto d3dBuffer = static_cast<D3D12Buffer*>(buffer)->get();
+            if(!d3dBuffer) return;
+
             D3D12_GPU_VIRTUAL_ADDRESS cbvAddress = d3dBuffer->GetGPUVirtualAddress();
 
-            // Use root descriptor for CBV (slot + 1 to skip descriptor table at root param 0)
+            // Root Param 0: CBV at b1 for Vertex Shader
+            // Root Param 1: CBV at b2 for Pixel Shader
+            // Root Param 2: SRV descriptor table at t0 for Pixel Shader
             if(stage == RHIShaderStage::VertexShader){
                 commandList->SetGraphicsRootConstantBufferView(0, cbvAddress);
             }
@@ -269,10 +353,50 @@ namespace Crowy
         ) RHI_OVERRIDE{
             if(!texture || !isRecording) return;
 
-            // Note: Requires proper SRV creation in descriptor heap
-            // For now, set descriptor table (simplified)
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = srvHeap->GetGPUDescriptorHandleForHeapStart();
-            commandList->SetGraphicsRootDescriptorTable(2, srvHandle);
+            auto d3dTexture = static_cast<D3D12Texture*>(texture);
+            auto texResource = d3dTexture->get();
+            if(!texResource) return;
+
+            auto texDesc = texResource->GetDesc();
+
+            // Transition to shader resource state
+            if(d3dTexture->getState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE){
+                transitionResource(
+                    texResource,
+                    d3dTexture->getState(),
+                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+                );
+                d3dTexture->getState() = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            }
+
+            // Use linear allocator pattern - each setTexture call gets a new descriptor slot
+            if(srvHeapOffset >= SRV_HEAP_SIZE){
+                // Heap exhausted, wrap around (should not happen in normal usage)
+                srvHeapOffset = 0;
+            }
+
+            auto& currentSrvHeap = srvHeaps[currentAllocatorIndex];
+            D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle = currentSrvHeap->GetCPUDescriptorHandleForHeapStart();
+            srvCpuHandle.ptr += srvHeapOffset * srvDescriptorSize;
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = texDesc.Format;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
+            srvDesc.Texture2D.MostDetailedMip = 0;
+            srvDesc.Texture2D.PlaneSlice = 0;
+            srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+            device->CreateShaderResourceView(texResource, &srvDesc, srvCpuHandle);
+
+            // Set descriptor table
+            D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle = currentSrvHeap->GetGPUDescriptorHandleForHeapStart();
+            srvGpuHandle.ptr += srvHeapOffset * srvDescriptorSize;
+            commandList->SetGraphicsRootDescriptorTable(2, srvGpuHandle);
+
+            // Advance to next slot
+            ++srvHeapOffset;
         }
 
         void setBuffer(
@@ -387,8 +511,8 @@ namespace Crowy
         }
 
         void signalFence(RHIFence* fence, uint64_t value) RHI_OVERRIDE{
-            // Note: Fence signaling is done via command queue, not command list
-            // This is handled in the device submit
+            pendingFence = fence;
+            pendingFenceValue = value;
         }
 
         void waitFence(RHIFence* fence, uint64_t value) RHI_OVERRIDE{
@@ -463,6 +587,14 @@ namespace Crowy
 
         ID3D12GraphicsCommandList* get() const{
             return commandList.Get();
+        }
+
+        RHIFence* getPendingFence() const{
+            return pendingFence;
+        }
+
+        uint64_t getPendingFenceValue() const{
+            return pendingFenceValue;
         }
 
     private:
