@@ -3,12 +3,15 @@ if(NOT DEFINED RENDER_BACKEND)
 endif()
 
 if(RENDER_BACKEND STREQUAL "D3D12")
+    file(GLOB WINDOWS_SDK_BIN_PATHS
+        "$ENV{WindowsSdkDir}/bin/*/x64"
+        "C:/Program Files (x86)/Windows Kits/10/bin/*/x64"
+    )
+    list(SORT WINDOWS_SDK_BIN_PATHS ORDER DESCENDING)
+
     find_program(SHADER_COMPILER NAMES fxc HINTS
         "$ENV{VCToolsInstallDir}/bin/Hostx64/x64"
-        "$ENV{WindowsSdkBinPath}/x64"
-        "$ENV{ProgramFiles\(x86\)}/Windows Kits/10/bin/x64"
-        "$ENV{ProgramFiles\(x86\)}/Windows Kits/10/bin"
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64"
+        ${WINDOWS_SDK_BIN_PATHS}
     )
     if(NOT SHADER_COMPILER)
         message(FATAL_ERROR
