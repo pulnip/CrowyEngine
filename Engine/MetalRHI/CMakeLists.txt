@@ -1,23 +1,6 @@
-add_library(CrowyMetalRHI STATIC)
-
-file(GLOB PUBLIC_SOURCES
-    "Public/*.hpp"
-)
-file(GLOB PRIVATE_SOURCES
-    "Private/*.hpp"
-    "Private/*.cpp"
-)
-
-target_sources(CrowyMetalRHI
-PUBLIC
-    ${PUBLIC_SOURCES}
-PRIVATE
-    ${PRIVATE_SOURCES}
-)
+crowy_declare_module(MetalRHI)
 
 target_include_directories(CrowyMetalRHI
-PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/Public"
 SYSTEM PRIVATE
     "${metal-cpp_SOURCE_DIR}"
 )
@@ -42,5 +25,3 @@ PRIVATE
     ${QUARTZCORE_LIBRARY}
     ${FOUNDATION_LIBRARY}
 )
-
-add_library(Crowy::MetalRHI ALIAS CrowyMetalRHI)

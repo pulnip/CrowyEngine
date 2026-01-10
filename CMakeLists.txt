@@ -13,14 +13,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(CROWY_ENABLE_TEST "Enable Tests" ON)
 option(CROWY_STATIC_RHI "Use STATIC RHI model" OFF)
 
-list(APPEND CMAKE_PREFIX_PATH ${CMAK_CURRENT_LIST_DIR}/cmake)
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-include(cmake/config.cmake)
+include(config)
 
 add_subdirectory(Core)
 add_subdirectory(Engine)
-
-if(CROWY_ENABLE_TEST)
-    # add_subdirectory(Test)
-endif()

@@ -1,28 +1,11 @@
-add_library(CrowyResource STATIC)
-
-file(GLOB PUBLIC_SOURCES
-    "Public/*.hpp"
-)
-file(GLOB PRIVATE_SOURCES
-    "Private/*.hpp"
-    "Private/*.cpp"
-)
+crowy_declare_module(Resource)
 
 target_compile_definitions(CrowyResource
 PRIVATE
     TOML_EXCEPTIONS=1
 )
 
-target_sources(CrowyResource
-PUBLIC
-    ${PUBLIC_SOURCES}
-PRIVATE
-    ${PRIVATE_SOURCES}
-)
-
 target_include_directories(CrowyResource
-PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/Public"
 SYSTEM PRIVATE
     "${stb_SOURCE_DIR}"
 )
@@ -39,17 +22,14 @@ PRIVATE
     Crowy::RHI
 )
 
-add_library(Crowy::Resource ALIAS CrowyResource)
-
-add_library(CrowyResource_Private INTERFACE)
-
-target_include_directories(CrowyResource_Private INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-)
-
-target_link_libraries(CrowyResource_Private INTERFACE Crowy::Resource)
-
+crowy_declare_private_interface(Resource)
 
 if(CROWY_ENABLE_TEST)
-    add_subdirectory(Test)
+    crowy_declare_test(Resource
+        DIRECTORY Test
+        DEPENDS CrowyResource_Private
+                Crowy::Log
+                Crowy::NullRHI
+        LABELS "unit"
+    )
 endif()

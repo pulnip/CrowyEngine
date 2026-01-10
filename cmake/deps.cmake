@@ -18,7 +18,7 @@ if(NOT stb_FOUND)
     FetchContent_Declare(
         stb
         GIT_REPOSITORY "https://github.com/nothings/stb.git"
-        GIT_TAG "master"
+        GIT_TAG "f1c79c02822848a9bed4315b12c8c8f3761e1296"
         GIT_SHALLOW TRUE
     )
     FetchContent_MakeAvailable(stb)
@@ -117,6 +117,4 @@ if(CROWY_ENABLE_TEST)
         endif()
         FetchContent_MakeAvailable(GTest)
     endif()
-    include(CTest)
-    enable_testing()
 endif()

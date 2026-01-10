@@ -1,38 +1,10 @@
-add_library(CrowyCommonRHI INTERFACE)
-
-file(GLOB COMMON_SOURCES "Common/*.h")
-
-target_sources(CrowyCommonRHI
-INTERFACE
-    ${COMMON_SOURCES}
-)
-
-target_include_directories(CrowyCommonRHI
-INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/Common"
-)
-
-add_library(Crowy::CommonRHI ALIAS CrowyCommonRHI)
-
-file(GLOB PUBLIC_SOURCES
-    "Public/*.hpp"
-)
-file(GLOB PRIVATE_SOURCES
-    "Private/*.hpp"
-    "Private/*.cpp"
+crowy_declare_interface(CommonRHI
+    DIRECTORY Common
 )
 
 if(CROWY_USE_STATIC_RHI)
-    add_library(CrowyRHI INTERFACE)
-
-    target_sources(CrowyRHI
-    INTERFACE
-        ${PUBLIC_SOURCES}
-    )
-
-    target_include_directories(CrowyRHI
-    INTERFACE
-        "${CMAKE_CURRENT_SOURCE_DIR}/Public"
+    crowy_declare_interface(RHI
+        DIRECTORY Public
     )
 
     target_link_libraries(CrowyRHI
@@ -48,19 +20,7 @@ if(CROWY_USE_STATIC_RHI)
         target_link_libraries(CrowyRHI INTERFACE Crowy::NullRHI)
     endif()
 else()
-    add_library(CrowyRHI STATIC)
-
-    target_sources(CrowyRHI
-    PUBLIC
-        ${PUBLIC_SOURCES}
-    PRIVATE
-        ${PRIVATE_SOURCES}
-    )
-
-    target_include_directories(CrowyRHI
-    PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/Public"
-    )
+    crowy_declare_module(RHI)
 
     target_link_libraries(CrowyRHI
     PUBLIC
@@ -71,9 +31,12 @@ else()
     )
 endif()
 
-add_library(Crowy::RHI ALIAS CrowyRHI)
-
 if(CROWY_ENABLE_TEST)
     add_subdirectory(Sample)
-    add_subdirectory(Test)
+
+    crowy_declare_test(RHI
+        DIRECTORY Test
+        DEPENDS $<IF:$<PLATFORM_ID:Darwin>,Crowy::MetalRHI,Crowy::NullRHI>
+        LABELS "unit"
+    )
 endif()
