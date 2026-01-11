@@ -50,9 +50,29 @@
             "configuration": "Debug"
         },
         {
+            "name": "macOS-RelWithDebInfo",
+            "configurePreset": "macOS",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "macOS-Release",
+            "configurePreset": "macOS",
+            "configuration": "Release"
+        },
+        {
             "name": "macOS-brew-llvm-Debug",
             "configurePreset": "macOS-brew-llvm",
             "configuration": "Debug"
+        },
+        {
+            "name": "macOS-brew-llvm-RelWithDebInfo",
+            "configurePreset": "macOS-brew-llvm",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "macOS-brew-llvm-Release",
+            "configurePreset": "macOS-brew-llvm",
+            "configuration": "Release"
         },
         {
             "name": "Windows-Debug",
@@ -60,9 +80,29 @@
             "configuration": "Debug"
         },
         {
+            "name": "Windows-RelWithDebInfo",
+            "configurePreset": "Windows",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "Windows-Release",
+            "configurePreset": "Windows",
+            "configuration": "Release"
+        },
+        {
             "name": "Windows-llvm-Debug",
             "configurePreset": "Windows-llvm",
             "configuration": "Debug"
+        },
+        {
+            "name": "Windows-llvm-RelWithDebInfo",
+            "configurePreset": "Windows-llvm",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "Windows-llvm-Release",
+            "configurePreset": "Windows-llvm",
+            "configuration": "Release"
         }
     ]
 }
