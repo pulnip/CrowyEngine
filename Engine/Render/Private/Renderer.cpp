@@ -35,6 +35,7 @@ namespace Crowy
 
         for(int i=0; i<spec.targets.size(); ++i){
             const auto& targetName = spec.targets[i];
+
             if(auto it=renderTargets.find(targetName); it!=renderTargets.end()){
                 desc.renderTargetFormats[i] = it->second.format;
             }
@@ -146,7 +147,6 @@ namespace Crowy
         ){
             RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 1.0f};
 
-            cmdList.setPipelineState(pass.pipeline.get());
             // set RenderTarget
             // TODO. multi render target
             const auto& renderTargetName = pass.targets[0];
@@ -172,6 +172,7 @@ namespace Crowy
                     clearColor
                 );
             }
+            cmdList.setPipelineState(pass.pipeline.get());
 
             cmdList.setViewport(ctx.viewport);
             cmdList.setScissorRect(RHIScissorRect{
@@ -180,8 +181,6 @@ namespace Crowy
                 .right  = static_cast<int32_t>(ctx.viewport.width ),
                 .bottom = static_cast<int32_t>(ctx.viewport.height)
             });
-
-            cmdList.setPipelineState(pass.pipeline.get());
 
             // draw
             if(pass.isFullscreenPass()){
@@ -212,6 +211,9 @@ namespace Crowy
                 auto mvp = transpose(ctx.proj * ctx.view * renderItem.world);
                 // TODO. use offset later
                 uniformBuffer->update(mvp.data(), sizeof(Mat4));
+
+                // TODO. need to fit in appropriate slot
+                cmdList.setConstantBuffer(RHIShaderStage::VertexShader, 1, uniformBuffer.get());
 
                 for(const auto& submesh: mesh){
                     // TODO. hide slot number (bc it's for Metal)

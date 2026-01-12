@@ -17,7 +17,8 @@ using namespace Crowy;
 int main(int argc, char* argv[]){
     // Logger::instance().setMinLevel(LogLevel::Warn);
 
-    auto window = SDL_CreateWindow("Triangle", 800, 600, 0);
+    int width = 800, height = 600;
+    auto window = SDL_CreateWindow("Triangle", width, height, 0);
 #ifdef __APPLE__
     auto view = SDL_Metal_CreateView(window);
 #endif
@@ -35,9 +36,11 @@ int main(int argc, char* argv[]){
                 nullptr
             ),
         #endif
-            .width = 800,
-            .height = 600,
-            .format = RHITextureFormat::BGRA8_UNORM,
+            .bufferDesc = RHITextureCreateDesc{
+                .width = static_cast<uint32_t>(width),
+                .height = static_cast<uint32_t>(height),
+                .format = RHITextureFormat::BGRA8_UNORM
+            },
             .bufferCount = 3,
             .vsync = true,
             .allowTearing = false,
@@ -87,8 +90,8 @@ int main(int argc, char* argv[]){
     });
 
     auto depthBuffer = device->createTexture({
-        .width = 800,
-        .height = 600,
+        .width = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
         .depth = 1,
         .mipLevels = 1,
         .arraySize = 1,
@@ -135,7 +138,7 @@ int main(int argc, char* argv[]){
             }
 
             if(cmdList){
-                auto aspect = float(800)/600;
+                auto aspect = float(width)/height;
                 auto model = rotateYMat(0.5f * et);
 
                 auto camX = std::sin(0.3f * et) * cameraDistance;
@@ -164,15 +167,17 @@ int main(int argc, char* argv[]){
                     clearColor
                 );
 
-                cmdList->setViewport({0, 0, 800, 600, 0.0f, 1.0f});
-                cmdList->setScissorRect({0, 0, 800, 600});
+                cmdList->setPipelineState(pipelineState.get());
+
+                cmdList->setViewport({0, 0, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f});
+                cmdList->setScissorRect({0, 0, width, height});
+
+                cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, uniformBuffer.get());
 
                 for(const auto& submesh: mesh){
-                    cmdList->setPipelineState(pipelineState.get());
                     cmdList->setVertexBuffer(0, submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
                     cmdList->setIndexBuffer(submesh.indexBuffer.get(),
                         RHIIndexFormat::UInt32, 0);
-                    cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, uniformBuffer.get());
 
                     auto it = materialSet.find(submesh.materialSlotName);
                     if(it == materialSet.end())

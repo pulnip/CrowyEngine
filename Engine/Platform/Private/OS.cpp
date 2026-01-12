@@ -70,6 +70,12 @@ namespace Crowy
             if(inputProvider == nullptr)
                 throw std::runtime_error("Couldn't create input provider");
 
+            RHITextureCreateDesc backBufferDesc{
+                .width = static_cast<uint32_t>(config.width),
+                .height = static_cast<uint32_t>(config.height),
+                .format = RHITextureFormat::RGBA8_UNORM
+            };
+
             swapchain = device->createSwapchain(RHISwapchainCreateDesc{
             #ifdef __APPLE__
                 .windowHandle = SDL_Metal_GetLayer(view),
@@ -80,9 +86,7 @@ namespace Crowy
                     nullptr
                 ),
             #endif
-                .width  = static_cast<uint32_t>(config.width),
-                .height = static_cast<uint32_t>(config.height),
-                .format = RHITextureFormat::RGBA8_UNORM,
+                .bufferDesc = backBufferDesc,
                 // triple buffering
                 .bufferCount = 3,
                 .vsync = true,

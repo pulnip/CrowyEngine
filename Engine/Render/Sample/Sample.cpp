@@ -25,6 +25,12 @@ int main(int argc, char* argv[]){
     auto device = createDevice();
     initResourceModule(device.get());
 
+    RHITextureCreateDesc backBufferDesc{
+        .width = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
+        .format = RHITextureFormat::BGRA8_UNORM
+    };
+
     auto swapchain = device->createSwapchain(
         RHISwapchainCreateDesc{
         #ifdef __APPLE__
@@ -36,9 +42,7 @@ int main(int argc, char* argv[]){
                 nullptr
             ),
         #endif
-            .width = static_cast<uint32_t>(width),
-            .height = static_cast<uint32_t>(height),
-            .format = RHITextureFormat::BGRA8_UNORM,
+            .bufferDesc = backBufferDesc,
             // triple buffering
             .bufferCount = 3,
             .vsync = true,
@@ -59,8 +63,8 @@ int main(int argc, char* argv[]){
         RenderItem{
             .mesh = meshHandle,
             .materials = materialSetHandle,
-            .type = std::hash<RenderType>{}("type0"),
-            .world = unitMat()
+            .world = unitMat(),
+            .type = std::hash<RenderType>{}("type0")
         }
     };
 
@@ -75,6 +79,28 @@ int main(int argc, char* argv[]){
     Renderer renderer(device.get());
 
     RenderSpec spec{
+        .renderTargets = {
+            {
+                "BackBuffer",
+                backBufferDesc
+            },
+            {
+                "depth",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::D32_FLOAT,
+                    .usage = RHITextureUsage::DepthStencil,
+                    .initialState = RHIResourceState::DepthStencilWrite,
+                    .clearColor = {},
+                    .clearDepthStencil = {1.0f, 0},
+                    .debugName = "Depth Buffer"
+                },
+            }
+        },
         .passes = {
             RenderPassSpec{
                 .name = "default",
@@ -99,32 +125,9 @@ int main(int argc, char* argv[]){
                 },
                 .renderType = "type0",
                 .rasterizer = RHIRasterizerState{},
+                .depthStencil = RHIDepthStencilState{},
                 .blend = RHIBlendState{}
             },
-        },
-        .renderTargets = {
-            {
-                // unique identifier of swapchain buffer
-                "BackBuffer",
-                // just placeholder
-                RHITextureCreateDesc{}
-            },
-            {
-                "depth",
-                RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
-                    .format = RHITextureFormat::D32_FLOAT,
-                    .usage = RHITextureUsage::DepthStencil,
-                    .initialState = RHIResourceState::DepthStencilWrite,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
-                    .debugName = "Depth Buffer"
-                },
-            }
         }
     };
     renderer.loadPasses(spec);
@@ -156,7 +159,7 @@ int main(int argc, char* argv[]){
             }
 
             if(cmdList){
-                auto aspect = float(800)/600;
+                auto aspect = float(width)/height;
                 renderItems[0].world = rotateYMat(0.5f * et);
 
                 auto camX = std::sin(0.3f * et) * cameraDistance;

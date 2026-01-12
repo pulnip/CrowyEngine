@@ -36,9 +36,9 @@ namespace Crowy
             }
 
             metalLayer->setDevice(device);
-            metalLayer->setPixelFormat(convertTextureFormat(desc.format));
+            metalLayer->setPixelFormat(convertTextureFormat(desc.bufferDesc.format));
             metalLayer->setFramebufferOnly(true);
-            metalLayer->setDrawableSize(CGSizeMake(desc.width, desc.height));
+            metalLayer->setDrawableSize(CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height));
         }
 
         ~MetalSwapchain(){

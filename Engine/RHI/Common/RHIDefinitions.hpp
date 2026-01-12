@@ -403,9 +403,7 @@ namespace Crowy
 
     struct RHISwapchainCreateDesc{
         void* windowHandle;   // Platform-specific window handle
-        uint32_t width;
-        uint32_t height;
-        RHITextureFormat format;
+        RHITextureCreateDesc bufferDesc;
         uint32_t bufferCount; // Triple buffering
         bool vsync;           // VSync enabled by default
         bool allowTearing;    // Variable refresh rate
