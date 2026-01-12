@@ -11,11 +11,6 @@ else()
     target_link_libraries(CrowyMetalRHI PUBLIC Crowy::RHI)
 endif()
 
-find_library(METAL_LIBRARY Metal REQUIRED)
-find_library(METALKIT_LIBRARY MetalKit REQUIRED)
-find_library(QUARTZCORE_LIBRARY QuartzCore REQUIRED)
-find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
-
 target_link_libraries(CrowyMetalRHI
 PUBLIC
     Crowy::CommonRHI

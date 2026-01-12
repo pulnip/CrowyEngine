@@ -89,6 +89,7 @@ if(NOT angelscript_FOUND)
     endif()
 endif()
 
+# Metal-cpp
 if(RENDER_BACKEND STREQUAL "Metal")
     FetchContent_Declare(
         metal-cpp
@@ -97,8 +98,64 @@ if(RENDER_BACKEND STREQUAL "Metal")
     FetchContent_MakeAvailable(metal-cpp)
 endif()
 
-# set(ImGui_RENDER_BACKEND ${RENDER_BACKEND})
-# include(cmake/ImGui.cmake)
+# Dear ImGui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        "v1.92.5"
+)
+FetchContent_MakeAvailable(imgui)
+
+add_library(imgui STATIC)
+
+target_sources(imgui
+PUBLIC
+    ${imgui_SOURCE_DIR}/imgui.h
+PRIVATE
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    $<$<BOOL:${CROWY_ENABLE_TEST}>:${imgui_SOURCE_DIR}/imgui_demo.cpp>
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+)
+
+target_include_directories(imgui
+PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+)
+
+target_link_libraries(imgui
+PRIVATE
+    SDL3::SDL3
+)
+
+if(RENDER_BACKEND STREQUAL "Metal")
+    target_compile_options(imgui
+    PRIVATE
+        -Wno-deprecated-declarations
+        -Wno-arc-bridge-casts-disallowed-in-nonarc
+    )
+
+    target_compile_definitions(imgui
+    PUBLIC
+        IMGUI_IMPL_METAL_CPP
+    )
+
+    target_sources(imgui
+    PRIVATE
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_metal.mm
+    )
+    target_include_directories(imgui
+    SYSTEM PUBLIC
+        "${metal-cpp_SOURCE_DIR}"
+    )
+    target_link_libraries(imgui
+    PRIVATE
+        ${METAL_LIBRARY}
+    )
+endif()
 
 if(CROWY_ENABLE_TEST)
     find_package(GTest QUIET)

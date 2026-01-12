@@ -9,14 +9,12 @@
         {
             "name": "macOS",
             "generator": "Xcode",
-            "inherits": "base",
-            "toolchainFile": "cmake/toolchains/macos.cmake"
+            "inherits": "base"
         },
         {
             "name": "macOS-brew-llvm",
             "inherits": "base",
             "generator": "Ninja Multi-Config",
-            "toolchainFile": "cmake/toolchains/macos.cmake",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
                 "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
@@ -27,14 +25,12 @@
         {
             "name": "Windows",
             "inherits": "base",
-            "generator": "Visual Studio 17 2022",
-            "toolchainFile": "cmake/toolchains/windows.cmake"
+            "generator": "Visual Studio 17 2022"
         },
         {
             "name": "Windows-llvm",
             "inherits": "base",
             "generator": "Ninja Multi-Config",
-            "toolchainFile": "cmake/toolchains/windows.cmake",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl",

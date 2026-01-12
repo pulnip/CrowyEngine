@@ -17,7 +17,7 @@ if(NOT EXISTS "${ASSET_DST}")
 
     # fallback: copy asset folder
     if(NOT LINK_RESULT EQUAL 0)
-        message(MESSAGE "Symlink failed, falling back to copy...")
+        message(STATUS "Symlink failed, falling back to copy...")
         file(COPY "${ASSET_SRC}" DESTINATION "${CMAKE_BINARY_DIR}/bin")
     endif()
 endif()
