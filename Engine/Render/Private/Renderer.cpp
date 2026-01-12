@@ -19,7 +19,7 @@ namespace Crowy
         const RenderPassSpec& spec,
         RHIShader* vertexShader,
         RHIShader* fragmentShader,
-        const std::unordered_map<std::string, RenderTargetSpec>& renderTargets
+        const std::unordered_map<std::string, RHITextureCreateDesc>& renderTargets
     ){
         RHIGraphicsPipelineStateDesc desc{
             .vertexShader = vertexShader,
@@ -35,11 +35,11 @@ namespace Crowy
         for(int i=0; i<spec.targets.size(); ++i){
             const auto& targetName = spec.targets[i];
             if(auto it=renderTargets.find(targetName); it!=renderTargets.end()){
-                desc.renderTargetFormats[i] = it->second.desc.format;
+                desc.renderTargetFormats[i] = it->second.format;
             }
         }
         if(auto it=renderTargets.find(spec.depthTarget); it!=renderTargets.end()){
-            desc.depthStencilFormat = it->second.desc.format;
+            desc.depthStencilFormat = it->second.format;
         }
 
         return device.createGraphicsPipelineState(desc);
@@ -99,7 +99,7 @@ namespace Crowy
 
             for(const auto& [name, renderTarget]: spec.renderTargets){
                 if(name != "BackBuffer")
-                    renderTargetPool.create(name, renderTarget.desc, *device);
+                    renderTargetPool.create(name, renderTarget, *device);
             }
         }
 

@@ -9,3 +9,7 @@ PRIVATE
     Crowy::Resource
     Crowy::RHI
 )
+
+if(CROWY_ENABLE_TEST)
+    add_subdirectory(Sample)
+endif()

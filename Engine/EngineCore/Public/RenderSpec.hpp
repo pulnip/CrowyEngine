@@ -33,18 +33,8 @@ namespace Crowy
         RHIBlendState blend = {};
     };
 
-    struct RenderTargetSpec{
-        std::string name;
-        // 0 for same as screen
-        RHITextureCreateDesc desc;
-
-        inline bool isScreenRelative() const{
-            return desc.width == 0 || desc.height == 0;
-        }
-    };
-
     struct RenderSpec{
-        std::unordered_map<std::string, RenderTargetSpec> renderTargets;
+        std::unordered_map<std::string, RHITextureCreateDesc> renderTargets;
         std::vector<RenderPassSpec> passes;
     };
 }
