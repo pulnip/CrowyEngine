@@ -79,9 +79,10 @@ namespace Crowy
 
         // Constant buffers
         virtual void setConstantBuffer(
+            RHIShaderStage stage,
             uint32_t slot,
             RHIBuffer* buffer,
-            RHIShaderStage stage
+            uint32_t offset = 0
         ) = 0;
 
         // Shader resources (textures, buffers)

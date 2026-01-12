@@ -295,9 +295,10 @@ private:
         }
 
         void setConstantBuffer(
+            RHIShaderStage stage,
             uint32_t slot,
             RHIBuffer* buffer,
-            RHIShaderStage stage
+            uint32_t offset = 0
         ) RHI_OVERRIDE{
             if(!buffer) return;
 

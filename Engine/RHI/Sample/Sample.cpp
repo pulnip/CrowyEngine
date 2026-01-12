@@ -172,8 +172,7 @@ int main(int argc, char* argv[]){
                     cmdList->setVertexBuffer(0, submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
                     cmdList->setIndexBuffer(submesh.indexBuffer.get(),
                         RHIIndexFormat::UInt32, 0);
-                    cmdList->setConstantBuffer(1, uniformBuffer.get(),
-                        RHIShaderStage::VertexShader);
+                    cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, uniformBuffer.get());
 
                     auto it = materialSet.find(submesh.materialSlotName);
                     if(it == materialSet.end())
