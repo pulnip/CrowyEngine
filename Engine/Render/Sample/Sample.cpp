@@ -15,7 +15,9 @@ using namespace Crowy;
 int main(int argc, char* argv[]){
     // Logger::instance().setMinLevel(LogLevel::Warn);
 
-    auto window = SDL_CreateWindow("Triangle", 800, 600, 0);
+    int width = 800, height = 600;
+
+    auto window = SDL_CreateWindow("RendererSample", width, height, 0);
 #ifdef __APPLE__
     auto view = SDL_Metal_CreateView(window);
 #endif
@@ -34,9 +36,10 @@ int main(int argc, char* argv[]){
                 nullptr
             ),
         #endif
-            .width = 800,
-            .height = 600,
+            .width = static_cast<uint32_t>(width),
+            .height = static_cast<uint32_t>(height),
             .format = RHITextureFormat::BGRA8_UNORM,
+            // triple buffering
             .bufferCount = 3,
             .vsync = true,
             .allowTearing = false,
@@ -51,16 +54,23 @@ int main(int argc, char* argv[]){
             .uri = "file:asset/Stelle/Stelle.pmx"
         }
     );
-    auto mesh = get(meshHandle);
-    auto materialSet = get(materialSetHandle);
 
-    auto uniformBuffer = device->createBuffer({
-        .size = sizeof(Mat4),
-        .usage = RHIBufferUsage::ConstantBuffer,
-        .stride = 0,
-        .initialData = nullptr,
-        .debugName = "MVP Uniform Buffer"
-    });
+    std::vector<RenderItem> renderItems = {
+        RenderItem{
+            .mesh = meshHandle,
+            .materials = materialSetHandle,
+            .type = std::hash<RenderType>{}("type0"),
+            .world = unitMat()
+        }
+    };
+
+    // auto uniformBuffer = device->createBuffer({
+    //     .size = sizeof(Mat4),
+    //     .usage = RHIBufferUsage::ConstantBuffer,
+    //     .stride = 0,
+    //     .initialData = nullptr,
+    //     .debugName = "MVP Uniform Buffer"
+    // });
 
     Renderer renderer(device.get());
 
@@ -68,11 +78,10 @@ int main(int argc, char* argv[]){
         .passes = {
             RenderPassSpec{
                 .name = "default",
-                .inputs = {
-
-                },
+                // no input texture
+                .inputs = {},
                 .targets = {
-
+                    "BackBuffer"
                 },
                 .depthTarget = "depth",
                 .shader = ShaderSpec{
@@ -95,10 +104,16 @@ int main(int argc, char* argv[]){
         },
         .renderTargets = {
             {
+                // unique identifier of swapchain buffer
+                "BackBuffer",
+                // just placeholder
+                RHITextureCreateDesc{}
+            },
+            {
                 "depth",
                 RHITextureCreateDesc{
-                    .width = 800,
-                    .height = 600,
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
                     .depth = 1,
                     .mipLevels = 1,
                     .arraySize = 1,
@@ -142,7 +157,7 @@ int main(int argc, char* argv[]){
 
             if(cmdList){
                 auto aspect = float(800)/600;
-                auto model = rotateYMat(0.5f * et);
+                renderItems[0].world = rotateYMat(0.5f * et);
 
                 auto camX = std::sin(0.3f * et) * cameraDistance;
                 auto camZ = std::cos(0.3f * et) * cameraDistance;
@@ -155,10 +170,18 @@ int main(int argc, char* argv[]){
                 float fovRad = 45.0f * 3.14159265f / 180.0f;
                 auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
 
-                auto mvp = transpose(proj * view * model);
-                uniformBuffer->update(mvp.data(), sizeof(Mat4));
-
-                RenderContext ctx;
+                RenderContext ctx{
+                    .renderItems = renderItems,
+                    .view = view,
+                    .proj = proj,
+                    .viewport = RHIViewport{
+                        .x = 0, .y = 0,
+                        .width = static_cast<float>(width),
+                        .height = static_cast<float>(height),
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f,
+                    }
+                };
 
                 cmdList->reset();
                 cmdList->begin();

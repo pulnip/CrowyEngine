@@ -8,6 +8,7 @@
 #include "RenderSpec.hpp"
 #include "RenderTargetPool.hpp"
 #include "Resource.hpp"
+#include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
@@ -52,6 +53,8 @@ namespace Crowy
         std::unordered_map<std::string, size_t> passIndex;
         RenderTargetPool renderTargetPool;
 
+        RHIBufferPtr uniformBuffer;
+
     public:
         Impl(RHIDevice* device)
             :device(device)
@@ -60,8 +63,6 @@ namespace Crowy
 
         void loadPasses(const RenderSpec& spec){
             for(const auto& passSpec: spec.passes){
-
-
                 auto vs = device->createShader(RHIShaderCreateDesc{
                     .file = passSpec.shader.vsFilePath.c_str(),
                     .entry = passSpec.shader.vsFuncName.c_str(),
@@ -96,6 +97,15 @@ namespace Crowy
                     .depthTarget = passSpec.depthTarget
                 });
             }
+
+            uniformBuffer = device->createBuffer({
+                // TODO. use Unified Constant buffer + offset later.
+                .size = sizeof(Mat4),
+                .usage = RHIBufferUsage::ConstantBuffer,
+                .stride = 0,
+                .initialData = nullptr,
+                .debugName = "MVP Uniform Buffer"
+            });
 
             for(const auto& [name, renderTarget]: spec.renderTargets){
                 if(name != "BackBuffer")
@@ -180,6 +190,8 @@ namespace Crowy
             else{
                 drawObjectsWithType(cmdList, ctx, *pass.renderType);
             }
+
+            cmdList.endRenderPass();
         }
 
         void drawObjectsWithType(
@@ -196,6 +208,25 @@ namespace Crowy
 
                 auto mesh = get(renderItem.mesh);
                 auto materialSet = get(renderItem.materials);
+
+                auto mvp = transpose(ctx.proj * ctx.view * renderItem.world);
+                // TODO. use offset later
+                uniformBuffer->update(mvp.data(), sizeof(Mat4));
+
+                for(const auto& submesh: mesh){
+                    // TODO. hide slot number (bc it's for Metal)
+                    cmdList.setVertexBuffer(0, submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
+                    cmdList.setIndexBuffer(submesh.indexBuffer.get(),
+                        RHIIndexFormat::UInt32, 0);
+
+                    auto it = materialSet.find(submesh.materialSlotName);
+                    if(it == materialSet.end())
+                        continue;
+                    cmdList.setTexture(0, it->second->baseColorMap.get(),
+                        RHIShaderStage::FragmentShader);
+
+                    cmdList.drawIndexed(submesh.indexCount, 1);
+                }
             }
         }
 
