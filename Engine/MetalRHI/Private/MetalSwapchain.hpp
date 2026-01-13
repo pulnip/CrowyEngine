@@ -64,5 +64,9 @@ namespace Crowy
         CA::MetalDrawable* getCurrentDrawable() const{ 
             return currentDrawable; 
         }
+
+        void* getCurrentNativeTexture() const RHI_OVERRIDE{
+            return getCurrentTexture();
+        }
     };
 }

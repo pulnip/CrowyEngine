@@ -42,6 +42,8 @@ namespace Crowy
 
         void submit(RHICommandList*, RHISwapchain*) RHI_OVERRIDE;
 
+        void* getNative() RHI_OVERRIDE;
+
     private:
         struct Impl;
         std::unique_ptr<Impl> impl;

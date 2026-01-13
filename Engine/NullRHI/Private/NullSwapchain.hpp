@@ -25,5 +25,9 @@ namespace Crowy
         void resize(uint32_t newWidth, uint32_t newHeight) RHI_OVERRIDE{
 
         }
+
+        void* getCurrentNativeTexture() const RHI_OVERRIDE{
+            return nullptr;
+        }
     };
 }

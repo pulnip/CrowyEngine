@@ -45,5 +45,7 @@ namespace Crowy
         virtual bool acquireNextImage() = 0;
 
         virtual void resize(uint32_t newWidth, uint32_t newHeight) = 0;
+
+        virtual void* getCurrentNativeTexture() const = 0;
     };
 }

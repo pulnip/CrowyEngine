@@ -633,6 +633,10 @@ private:
             return commandBuffer;
         }
 
+        void* getNativeCommandBuffer() const RHI_OVERRIDE{
+            return getCommandBuffer();
+        }
+
     private:
         void endCurrentEncoder(){
             if(renderEncoder){

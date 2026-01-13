@@ -124,6 +124,8 @@ namespace Crowy
 
             cmdBuffer->commit();
         }
+
+        MTL::Device* getNative(){ return device; }
     };
 
     MetalDevice::MetalDevice()
@@ -184,5 +186,9 @@ namespace Crowy
 
     void MetalDevice::submit(RHICommandList* cmdList, RHISwapchain* swapchain){
         impl->submit(cmdList, swapchain);
+    }
+
+    void* MetalDevice::getNative(){
+        return impl->getNative();
     }
 }

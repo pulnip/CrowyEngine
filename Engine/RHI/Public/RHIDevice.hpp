@@ -65,6 +65,8 @@ namespace Crowy
         virtual RHICapabilities getCapabilities() const = 0;
 
         virtual void submit(RHICommandList*, RHISwapchain* presentTarget = nullptr) = 0;
+
+        virtual void* getNative() = 0;
     };
 #endif
 

@@ -207,5 +207,9 @@ namespace Crowy
         void setMarker(const char* name) RHI_OVERRIDE{
 
         }
+
+        void* getNativeCommandBuffer() const RHI_OVERRIDE{
+            return nullptr;
+        }
     };
 }

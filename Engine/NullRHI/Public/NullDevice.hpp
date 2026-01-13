@@ -43,5 +43,7 @@ namespace Crowy
             RHICommandList*,
             RHISwapchain* presentTarget
         ) RHI_OVERRIDE;
+
+        void* getNative() RHI_OVERRIDE{ return nullptr; }
     };
 }

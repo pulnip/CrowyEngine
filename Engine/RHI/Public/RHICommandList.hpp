@@ -173,6 +173,8 @@ namespace Crowy
         virtual void beginEvent(const char* name) = 0;
         virtual void endEvent() = 0;
         virtual void setMarker(const char* name) = 0;
+
+        virtual void* getNativeCommandBuffer() const = 0;
     };
 #endif
 }
