@@ -1,3 +1,6 @@
+#include <imgui.h>
+#include <imgui_impl_metal.h>
+#include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
 #include "FramePacer.hpp"
 #include "Log.hpp"
@@ -18,13 +21,31 @@ int main(int argc, char* argv[]){
     int width = 800, height = 600;
 
     auto window = SDL_CreateWindow("RendererSample", width, height, 0);
-#ifdef __APPLE__
-    auto view = SDL_Metal_CreateView(window);
-#endif
-
     auto device = createDevice();
+
     initResourceModule(device.get());
 
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+#ifdef __APPLE__
+    ImGui_ImplSDL3_InitForMetal(window);
+    ImGui_ImplMetal_Init(static_cast<MTL::Device*>(device->getNative()));
+
+    auto uiPassDesc = MTL::RenderPassDescriptor::alloc()->init();
+    auto colorAttachment = uiPassDesc->colorAttachments()->object(0);
+    colorAttachment->setLoadAction(MTL::LoadActionLoad);
+    colorAttachment->setStoreAction(MTL::StoreActionStore);
+
+    auto view = SDL_Metal_CreateView(window);
+#endif
     RHITextureCreateDesc backBufferDesc{
         .width = static_cast<uint32_t>(width),
         .height = static_cast<uint32_t>(height),
@@ -67,14 +88,6 @@ int main(int argc, char* argv[]){
             .type = std::hash<RenderType>{}("type0")
         }
     };
-
-    // auto uniformBuffer = device->createBuffer({
-    //     .size = sizeof(Mat4),
-    //     .usage = RHIBufferUsage::ConstantBuffer,
-    //     .stride = 0,
-    //     .initialData = nullptr,
-    //     .debugName = "MVP Uniform Buffer"
-    // });
 
     Renderer renderer(device.get());
 
@@ -142,6 +155,7 @@ int main(int argc, char* argv[]){
     while(isRunning){
         SDL_Event event;
         while(SDL_PollEvent(&event)){
+            ImGui_ImplSDL3_ProcessEvent(&event);
             switch(event.type){
             case SDL_EVENT_QUIT:
                 isRunning = false;
@@ -189,7 +203,30 @@ int main(int argc, char* argv[]){
                 cmdList->reset();
                 cmdList->begin();
 
+            #ifdef __APPLE__
+                // Start the Dear ImGui frame
+                ImGui_ImplMetal_NewFrame(uiPassDesc);
+                ImGui_ImplSDL3_NewFrame();
+            #endif
+                ImGui::NewFrame();
+
                 renderer.render(*cmdList.get(), ctx, swapchain.get());
+
+                ImGui::ShowDemoWindow();
+
+                ImGui::Render();
+                ImDrawData* draw_data = ImGui::GetDrawData();
+            #ifdef __APPLE__
+                colorAttachment->setTexture(static_cast<MTL::Texture*>(
+                    swapchain->getCurrentNativeTexture()
+                ));
+
+                auto commandBuffer = static_cast<MTL::CommandBuffer*>(cmdList->getNativeCommandBuffer());
+                auto uiRenderEncoder = commandBuffer->renderCommandEncoder(uiPassDesc);
+                ImGui_ImplMetal_RenderDrawData(draw_data, commandBuffer, uiRenderEncoder);
+
+                uiRenderEncoder->endEncoding();
+            #endif
 
                 // Signal fence for frame synchronization
                 cmdList->signalFence(
@@ -206,6 +243,14 @@ int main(int argc, char* argv[]){
     }
 
     framePacer->waitForIdle();
+
+#ifdef __APPLE__
+    uiPassDesc->release();
+
+    ImGui_ImplMetal_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+#endif
 
     deinitResourceModule();
 

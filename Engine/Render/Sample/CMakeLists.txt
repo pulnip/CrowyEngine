@@ -13,6 +13,7 @@ PRIVATE
 target_link_libraries(CrowyRenderSample
 PRIVATE
     SDL3::SDL3
+    imgui
     Crowy::Log
     Crowy::Render
     Crowy::Resource
