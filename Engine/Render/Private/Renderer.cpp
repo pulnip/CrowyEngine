@@ -47,6 +47,11 @@ namespace Crowy
         return device.createGraphicsPipelineState(desc);
     }
 
+    struct PixelateParams{
+        Vec2 resolution;
+        Vec2 pixelSize;
+    };
+
     class Renderer::Impl{
     private:
         RHIDevice* device = nullptr;
@@ -55,6 +60,7 @@ namespace Crowy
         RenderTargetPool renderTargetPool;
 
         RHIBufferPtr uniformBuffer;
+        RHIBufferPtr postProcessUniformBuffer;
 
     public:
         Impl(RHIDevice* device)
@@ -106,6 +112,13 @@ namespace Crowy
                 .stride = 0,
                 .initialData = nullptr,
                 .debugName = "MVP Uniform Buffer"
+            });
+            postProcessUniformBuffer = device->createBuffer({
+                .size = sizeof(PixelateParams),
+                .usage = RHIBufferUsage::ConstantBuffer,
+                .stride = 0,
+                .initialData = nullptr,
+                .debugName = "PostProcess Uniform Buffer"
             });
 
             for(const auto& [name, renderTarget]: spec.renderTargets){
@@ -167,12 +180,26 @@ namespace Crowy
                 cmdList.beginRenderPass(
                     backBuffer,
                     depthTarget,
-                    RHILoadStoreAction::Clear,
+                    RHILoadStoreAction::Load,
                     RHILoadStoreAction::Store,
                     clearColor
                 );
             }
             cmdList.setPipelineState(pass.pipeline.get());
+
+            // bind input texture
+            for(size_t i=0; i<pass.inputs.size(); ++i){
+                auto inputTarget = renderTargetPool.get(pass.inputs[i]);
+                if(inputTarget == nullptr)
+                    continue;
+
+                // TODO. select shader stage for advanced rendering technique
+                cmdList.setTexture(
+                    static_cast<uint32_t>(i),
+                    inputTarget,
+                    RHIShaderStage::FragmentShader
+                );
+            }
 
             cmdList.setViewport(ctx.viewport);
             cmdList.setScissorRect(RHIScissorRect{
@@ -184,7 +211,7 @@ namespace Crowy
 
             // draw
             if(pass.isFullscreenPass()){
-                drawFullscreenQuad(cmdList);
+                drawFullscreenQuad(cmdList, ctx);
             }
             else{
                 drawObjectsWithType(cmdList, ctx, *pass.renderType);
@@ -232,9 +259,23 @@ namespace Crowy
             }
         }
 
-        void drawFullscreenQuad(RHICommandList& cmdList){
-            // TODO. fullscreen triangle (created from vertex shader)
-            // cmdList.draw(3);
+        void drawFullscreenQuad(
+            RHICommandList& cmdList,
+            const RenderContext& ctx
+        ){
+            PixelateParams params{
+                .resolution = {ctx.viewport.width, ctx.viewport.height},
+                .pixelSize = {4.0f, 4.0f}
+            };
+            postProcessUniformBuffer->update(&params, sizeof(PixelateParams));
+
+            cmdList.setConstantBuffer(
+                // TODO. slot number
+                RHIShaderStage::FragmentShader, 0,
+                postProcessUniformBuffer.get()
+            );
+
+            cmdList.draw(6, 1);
         }
     };
 

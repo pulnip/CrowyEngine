@@ -93,9 +93,22 @@ int main(int argc, char* argv[]){
 
     RenderSpec spec{
         .renderTargets = {
+            {"BackBuffer", backBufferDesc},
             {
-                "BackBuffer",
-                backBufferDesc
+                "sceneColor",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialState = RHIResourceState::ShaderResource,
+                    .clearColor = {},
+                    .clearDepthStencil = {1.0f, 0},
+                    .debugName = "Scene Color"
+                },
             },
             {
                 "depth",
@@ -116,12 +129,10 @@ int main(int argc, char* argv[]){
         },
         .passes = {
             RenderPassSpec{
-                .name = "default",
+                .name = "scene",
                 // no input texture
                 .inputs = {},
-                .targets = {
-                    "BackBuffer"
-                },
+                .targets = {"sceneColor"},
                 .depthTarget = "depth",
                 .shader = ShaderSpec{
                 #ifdef __APPLE__
@@ -141,6 +152,19 @@ int main(int argc, char* argv[]){
                 .depthStencil = RHIDepthStencilState{},
                 .blend = RHIBlendState{}
             },
+            RenderPassSpec{
+                .name = "pixelate",
+                .inputs = {"sceneColor"},
+                .targets = {"BackBuffer"},
+                .shader = ShaderSpec{
+                #ifdef __APPLE__
+                    .vsFilePath = "asset/Shaders/pixelate.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/pixelate.metal",
+                    .fsFuncName = "fs_pixelate"
+                #endif
+                },
+            }
         }
     };
     renderer.loadPasses(spec);
