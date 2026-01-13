@@ -9,7 +9,7 @@ namespace Crowy
     void log(LogLevel level, LogCategory category,
         std::source_location location,
         std::format_string<Args...> fmt, Args&&... args
-    ){
+    ) noexcept{
         LogMessage msg{
             .level = level,
             .category = category,

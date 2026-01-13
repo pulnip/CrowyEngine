@@ -18,15 +18,15 @@ namespace Crowy
             const RHISwapchainCreateDesc& desc
         ){}
 
-        bool acquireNextImage() RHI_OVERRIDE{
+        bool acquireNextImage() noexcept RHI_OVERRIDE{
             return true;
         }
 
-        void resize(uint32_t newWidth, uint32_t newHeight) RHI_OVERRIDE{
+        void resize(uint32_t newWidth, uint32_t newHeight) noexcept RHI_OVERRIDE{
 
         }
 
-        void* getCurrentNativeTexture() const RHI_OVERRIDE{
+        void* getCurrentNativeTexture() const noexcept RHI_OVERRIDE{
             return nullptr;
         }
     };

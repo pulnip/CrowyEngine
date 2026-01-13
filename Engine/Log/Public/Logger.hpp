@@ -11,21 +11,21 @@ namespace Crowy
         using SinkPtr = std::unique_ptr<Sink>;
 
     public:
-        static Logger& instance();
+        static Logger& instance() noexcept;
 
-        void addSink(SinkPtr sink);
+        void addSink(SinkPtr sink) noexcept;
 
-        void setMinLevel(LogLevel level){
+        void setMinLevel(LogLevel level) noexcept{
             minLevel = level;
         }
-        LogLevel getMinLevel() const{
+        LogLevel getMinLevel() const noexcept{
             return minLevel;
         }
 
-        void log(LogMessage&& msg);
+        void log(LogMessage&& msg) noexcept;
 
     private:
-        Logger();
+        Logger() noexcept;
 
         std::vector<SinkPtr> sinks;
         LogLevel minLevel = LogLevel::Debug;

@@ -25,7 +25,7 @@ namespace Crowy
 #else
     class RHIPipelineState{
     public:
-        CROWY_DECLARE_INTERFACE(RHIPipelineState)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIPipelineState)
     };
 #endif
 }

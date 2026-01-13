@@ -194,10 +194,14 @@ namespace Crowy
         const char* debugName;
     };
 
-    enum class RHILoadStoreAction{
-        Load,     // Preserve existing contents
+    enum class RHILoadAction{
+        Load,    // Preserve existing contents
+        Clear,   // Clear to specified color
+        DontCare // Don't care about existing contents
+    };
+
+    enum class RHIStoreAction{
         Store,    // Save contents
-        Clear,    // Clear to specified color
         DontCare, // Don't care about existing contents
     };
 

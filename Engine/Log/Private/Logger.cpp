@@ -3,21 +3,21 @@
 
 namespace Crowy
 {
-    Logger& Logger::instance(){
+    Logger& Logger::instance() noexcept{
         static Logger logger;
         return logger;
     }
 
-    Logger::Logger(){
+    Logger::Logger() noexcept{
         addSink(std::make_unique<ConsoleSink>());
     }
 
-    void Logger::addSink(Logger::SinkPtr sink){
+    void Logger::addSink(Logger::SinkPtr sink) noexcept{
         std::lock_guard lock(mtx);
         sinks.push_back(std::move(sink));
     }
 
-    void Logger::log(LogMessage&& msg){
+    void Logger::log(LogMessage&& msg) noexcept{
         std::lock_guard lock(mtx);
         if(msg.level < minLevel)
             return;

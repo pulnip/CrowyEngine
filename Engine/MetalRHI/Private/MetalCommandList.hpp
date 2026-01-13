@@ -5,6 +5,7 @@
 #include <utility>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
+#include "assert.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalFence.hpp"
 #include "MetalPipelineState.hpp"
@@ -18,20 +19,20 @@
 
 namespace Crowy
 {
-    static MTL::LoadAction convertLoadAction(RHILoadStoreAction action){
+    static MTL::LoadAction convertLoadAction(RHILoadAction action){
         switch(action){
-        case RHILoadStoreAction::Load:     return MTL::LoadActionLoad;
-        case RHILoadStoreAction::Clear:    return MTL::LoadActionClear;
-        case RHILoadStoreAction::DontCare: return MTL::LoadActionDontCare;
+        case RHILoadAction::Load:     return MTL::LoadActionLoad;
+        case RHILoadAction::Clear:    return MTL::LoadActionClear;
+        case RHILoadAction::DontCare: return MTL::LoadActionDontCare;
         default:
             std::unreachable();
         }
     }
 
-    static MTL::StoreAction convertStoreAction(RHILoadStoreAction action){
+    static MTL::StoreAction convertStoreAction(RHIStoreAction action){
         switch(action){
-        case RHILoadStoreAction::Store:    return MTL::StoreActionStore;
-        case RHILoadStoreAction::DontCare: return MTL::StoreActionDontCare;
+        case RHIStoreAction::Store:    return MTL::StoreActionStore;
+        case RHIStoreAction::DontCare: return MTL::StoreActionDontCare;
         default:
             std::unreachable();
         }
@@ -86,7 +87,7 @@ private:
         MetalCommandList(
             MTL::CommandQueue* queue,
             MTL::SamplerState* defaultSampler = nullptr
-        )
+        ) noexcept
             : commandQueue(queue)
             , defaultSampler(defaultSampler)
         {}
@@ -94,8 +95,8 @@ private:
             reset();
         }
 
-        void begin() RHI_OVERRIDE{
-            if(isRecording) return;
+        void begin() noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(!isRecording);
 
             commandBuffer = commandQueue->commandBuffer();
             commandBuffer->setLabel(
@@ -104,42 +105,44 @@ private:
             isRecording = true;
         }
 
-        void close() RHI_OVERRIDE{
-            if(!isRecording) return;
+        void close() noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording);
 
             endCurrentEncoder();
 
             isRecording = false;
         }
 
-        void reset() RHI_OVERRIDE{
-            endCurrentEncoder();
-            commandBuffer = nullptr;
-            currentDrawable = nullptr;
-            currentIndexBuffer = nullptr;
-            isRecording = false;
+        void reset() noexcept RHI_OVERRIDE{
+            if(isRecording){
+                endCurrentEncoder();
+    
+                isRecording = false;
+            }
         }
 
         void beginRenderPass(
             MTL::Texture* tex,
             RHITexture* depthStencil,
-            RHILoadStoreAction loadAction,
-            RHILoadStoreAction storeAction,
+            RHILoadAction loadAction,
+            RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS
-        ){
-            if(!isRecording || renderEncoder) return;
+        ) noexcept{
+            CROWY_ASSERT(renderEncoder == nullptr,
+                "Did you call RHICommandList::endRenderPass()?"
+            );
+            CROWY_ASSERT(computeEncoder == nullptr);
 
             auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
 
             // Color Attachment
-            auto colorAttach = passDesc->colorAttachments()->object(0);
-
             if(tex){
-                colorAttach->setTexture(tex);
-                colorAttach->setLoadAction(convertLoadAction(loadAction));
-                colorAttach->setStoreAction(convertStoreAction(storeAction));
-                colorAttach->setClearColor(MTL::ClearColor::Make(
+                auto& colorAttach = *passDesc->colorAttachments()->object(0);
+                colorAttach.setTexture(tex);
+                colorAttach.setLoadAction(convertLoadAction(loadAction));
+                colorAttach.setStoreAction(convertStoreAction(storeAction));
+                colorAttach.setClearColor(MTL::ClearColor::Make(
                     clearColor.r, clearColor.g, clearColor.b, clearColor.a
                 ));
             }
@@ -147,18 +150,18 @@ private:
             // Depth Attachment
             if(depthStencil){
                 auto depthTex = static_cast<MTL::Texture*>(
-                    static_cast<MetalTexture*>(depthStencil)->get()
+                    static_cast<MetalTexture&>(*depthStencil).get()
                 );
-                auto depthAttach = passDesc->depthAttachment();
-                depthAttach->setTexture(depthTex);
-                depthAttach->setLoadAction(convertLoadAction(loadAction));
-                depthAttach->setStoreAction(convertStoreAction(storeAction));
-                depthAttach->setClearDepth(clearDS.depth);
+                auto& depthAttach = *passDesc->depthAttachment();
+                depthAttach.setTexture(depthTex);
+                depthAttach.setLoadAction(convertLoadAction(loadAction));
+                depthAttach.setStoreAction(convertStoreAction(storeAction));
+                depthAttach.setClearDepth(clearDS.depth);
             }
 
             renderEncoder = commandBuffer->renderCommandEncoder(passDesc);
             renderEncoder->setLabel(
-                NS::String::string("RenderToy Render Pass", NS::UTF8StringEncoding)
+                NS::String::string("Crowy Render Pass", NS::UTF8StringEncoding)
             );
 
             // 기본 sampler 설정
@@ -172,14 +175,15 @@ private:
         void beginRenderPass(
             RHITexture* renderTarget,
             RHITexture* depthStencil,
-            RHILoadStoreAction loadAction,
-            RHILoadStoreAction storeAction,
+            RHILoadAction loadAction,
+            RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS
-        ) RHI_OVERRIDE{
-            if(!renderTarget) return;
+        ) noexcept RHI_OVERRIDE{
+            MTL::Texture* tex = nullptr;
 
-            MTL::Texture* tex = static_cast<MetalTexture*>(renderTarget)->get();
+            if(renderTarget != nullptr)
+                tex = static_cast<MetalTexture*>(renderTarget)->get();
 
             beginRenderPass(
                 tex,
@@ -190,105 +194,106 @@ private:
         }
 
         void beginRenderPass(
-            RHISwapchain* swapchain,
+            RHISwapchain& swapchain,
             RHITexture* depthStencil,
-            RHILoadStoreAction loadAction,
-            RHILoadStoreAction storeAction,
+            RHILoadAction loadAction,
+            RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS
-        ) RHI_OVERRIDE{
-            if(!swapchain) return;
-
-            auto mtlSwapchain = static_cast<MetalSwapchain*>(swapchain);
+        ) noexcept RHI_OVERRIDE{
+            auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
 
             beginRenderPass(
-                mtlSwapchain->getCurrentDrawable()->texture(),
+                mtlSwapchain.getCurrentDrawable()->texture(),
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS
             );
         }
 
-        void endRenderPass() RHI_OVERRIDE{
-            if(renderEncoder){
-                renderEncoder->endEncoding();
-                renderEncoder = nullptr;
-            }
+        void endRenderPass() noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
+
+            renderEncoder->endEncoding();
+            renderEncoder = nullptr;
         }
 
-        void setPipelineState(RHIPipelineState* pso) RHI_OVERRIDE{
-            if(!pso) return;
-
+        void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
             auto metalPSO = static_cast<MetalPipelineState*>(pso);
             currentTopology = metalPSO->getTopology();
 
             if(metalPSO->isComputePipeline()){
-                endCurrentEncoder();
+                CROWY_ASSERT(computeEncoder != nullptr,
+                    "Did you call RHICommandList::beginCompute()?"
+                );
 
-                if(!computeEncoder){
-                    computeEncoder = commandBuffer->computeCommandEncoder();
-                }
                 computeEncoder->setComputePipelineState(
                     metalPSO->getComputePipeline()
                 );
             }
             else{
-                if(renderEncoder){
-                    renderEncoder->setRenderPipelineState(
-                        metalPSO->getRenderPipeline()
-                    );
-
-                    if(auto ds = metalPSO->getDepthStencilState()){
-                        renderEncoder->setDepthStencilState(ds);
-                    }
-
-                    // Rasterizer state
-                    const auto& raster = metalPSO->getRasterizerState();
-                    renderEncoder->setCullMode(convertCullMode(raster.cullMode));
-                    renderEncoder->setFrontFacingWinding(
-                        raster.frontCounterClockwise ? 
-                            MTL::WindingCounterClockwise : 
-                            MTL::WindingClockwise
-                    );
-                    renderEncoder->setTriangleFillMode(
-                        raster.fillMode == RHIFillMode::Wireframe ?
-                            MTL::TriangleFillModeLines :
-                            MTL::TriangleFillModeFill
-                    );
-                    renderEncoder->setDepthBias(
-                        raster.depthBias,
-                        raster.slopeScaledDepthBias,
-                        raster.depthBiasClamp
-                    );
-                    renderEncoder->setDepthClipMode(
-                        raster.depthClipEnable ?
-                            MTL::DepthClipModeClip :
-                            MTL::DepthClipModeClamp
-                    );
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setRenderPipelineState(
+                    metalPSO->getRenderPipeline()
+                );
+                if(auto ds = metalPSO->getDepthStencilState()){
+                    renderEncoder->setDepthStencilState(ds);
                 }
+
+                // Rasterizer state
+                const auto& raster = metalPSO->getRasterizerState();
+                renderEncoder->setCullMode(convertCullMode(raster.cullMode));
+                renderEncoder->setFrontFacingWinding(
+                    raster.frontCounterClockwise ? 
+                        MTL::WindingCounterClockwise : 
+                        MTL::WindingClockwise
+                );
+                renderEncoder->setTriangleFillMode(
+                    raster.fillMode == RHIFillMode::Wireframe ?
+                        MTL::TriangleFillModeLines :
+                        MTL::TriangleFillModeFill
+                );
+                renderEncoder->setDepthBias(
+                    raster.depthBias,
+                    raster.slopeScaledDepthBias,
+                    raster.depthBiasClamp
+                );
+                renderEncoder->setDepthClipMode(
+                    raster.depthClipEnable ?
+                        MTL::DepthClipModeClip :
+                        MTL::DepthClipModeClamp
+                );
             }
         }
 
         void setVertexBuffer(
             uint32_t slot,
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             uint32_t stride,
             uint32_t offset = 0
-        ) RHI_OVERRIDE{
-            if(!renderEncoder || !buffer) return;
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
-            auto mtlBuffer = static_cast<MetalBuffer*>(buffer)->get();
+            auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
             renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
         }
 
         void setIndexBuffer(
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             RHIIndexFormat format,
             uint32_t offset = 0
-        ) RHI_OVERRIDE{
-            if(!buffer) return;
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
-            currentIndexBuffer = static_cast<MetalBuffer*>(buffer)->get();
+            currentIndexBuffer = static_cast<MetalBuffer&>(buffer).get();
             currentIndexBufferOffset = offset;
             currentIndexFormat = (format == RHIIndexFormat::UInt16) ?
                 MTL::IndexTypeUInt16 : MTL::IndexTypeUInt32;
@@ -297,58 +302,77 @@ private:
         void setConstantBuffer(
             RHIShaderStage stage,
             uint32_t slot,
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             uint32_t offset = 0
-        ) RHI_OVERRIDE{
-            if(!buffer) return;
+        ) noexcept RHI_OVERRIDE{
+            auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
 
-            auto mtlBuffer = static_cast<MetalBuffer*>(buffer)->get();
-
-            if(renderEncoder){
-                if(stage == RHIShaderStage::VertexShader){
-                    renderEncoder->setVertexBuffer(mtlBuffer, 0, slot);
-                }
-                else if(stage == RHIShaderStage::FragmentShader){
-                    renderEncoder->setFragmentBuffer(mtlBuffer, 0, slot);
-                }
-            }
-            else if(computeEncoder && stage == RHIShaderStage::ComputeShader){
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setVertexBuffer(mtlBuffer, 0, slot);
+                break;
+            case RHIShaderStage::FragmentShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setFragmentBuffer(mtlBuffer, 0, slot);
+                break;
+            case RHIShaderStage::ComputeShader:
+                CROWY_ASSERT(computeEncoder != nullptr,
+                    "Did you call RHICommandList::beginCompute()?"
+                );
                 computeEncoder->setBuffer(mtlBuffer, 0, slot);
+                break;
+            default:
+                std::unreachable();
             }
         }
 
         void setTexture(
             uint32_t slot,
-            RHITexture* texture,
+            RHITexture& texture,
             RHIShaderStage stage
-        ) RHI_OVERRIDE{
-            if(!texture) return;
+        ) noexcept RHI_OVERRIDE{
+            auto mtlTexture = static_cast<MetalTexture&>(texture).get();
 
-            auto mtlTexture = static_cast<MetalTexture*>(texture)->get();
-
-            if(renderEncoder){
-                if(stage == RHIShaderStage::VertexShader){
-                    renderEncoder->setVertexTexture(mtlTexture, slot);
-                }
-                else if(stage == RHIShaderStage::FragmentShader){
-                    renderEncoder->setFragmentTexture(mtlTexture, slot);
-                }
-            }
-            else if(computeEncoder && stage == RHIShaderStage::ComputeShader){
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setVertexTexture(mtlTexture, slot);
+                break;
+            case RHIShaderStage::FragmentShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setFragmentTexture(mtlTexture, slot);
+                break;
+            case RHIShaderStage::ComputeShader:
+                CROWY_ASSERT(computeEncoder != nullptr,
+                    "Did you call RHICommandList::beginCompute()?"
+                );
                 computeEncoder->setTexture(mtlTexture, slot);
+                break;
+            default:
+                std::unreachable();
             }
         }
 
         void setBuffer(
             uint32_t slot,
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             RHIShaderStage stage
-        ) RHI_OVERRIDE{
-            if(!buffer) return;
+        ) noexcept RHI_OVERRIDE{
+            auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
 
-            auto mtlBuffer = static_cast<MetalBuffer*>(buffer)->get();
-
-            if(computeEncoder && stage == RHIShaderStage::ComputeShader){
+            if(stage == RHIShaderStage::ComputeShader){
+                CROWY_ASSERT(computeEncoder != nullptr,
+                    "Did you call RHICommandList::beginCompute()?"
+                );
                 computeEncoder->setBuffer(mtlBuffer, 0, slot);
             }
         }
@@ -357,24 +381,37 @@ private:
             MTL::SamplerState* sampler,
             uint32_t slot,
             RHIShaderStage stage
-        ){
-            if(!sampler) return;
-            
-            if(renderEncoder){
-                if(stage == RHIShaderStage::VertexShader){
-                    renderEncoder->setVertexSamplerState(sampler, slot);
-                }
-                else if(stage == RHIShaderStage::FragmentShader){
-                    renderEncoder->setFragmentSamplerState(sampler, slot);
-                }
-            }
-            else if(computeEncoder && stage == RHIShaderStage::ComputeShader){
+        ) noexcept{
+            CROWY_ASSERT(sampler != nullptr);
+
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setVertexSamplerState(sampler, slot);
+                break;
+            case RHIShaderStage::FragmentShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                renderEncoder->setFragmentSamplerState(sampler, slot);
+                break;
+            case RHIShaderStage::ComputeShader:
+                CROWY_ASSERT(computeEncoder != nullptr,
+                    "Did you call RHICommandList::beginCompute()?"
+                );
                 computeEncoder->setSamplerState(sampler, slot);
+                break;
+            default:
+                std::unreachable();
             }
         }
 
-        void setViewport(const RHIViewport& viewport) RHI_OVERRIDE{
-            if(!renderEncoder) return;
+        void setViewport(const RHIViewport& viewport) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
             MTL::Viewport vp{
                 viewport.x, viewport.y,
@@ -384,8 +421,10 @@ private:
             renderEncoder->setViewport(vp);
         }
 
-        void setScissorRect(const RHIScissorRect& scissor) RHI_OVERRIDE{
-            if(!renderEncoder) return;
+        void setScissorRect(const RHIScissorRect& scissor) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
             MTL::ScissorRect rect{
                 static_cast<NS::UInteger>(scissor.left),
@@ -401,8 +440,10 @@ private:
             uint32_t instanceCount = 1,
             uint32_t startVertex = 0,
             uint32_t startInstance = 0
-        ) RHI_OVERRIDE{
-            if(!renderEncoder) return;
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
             renderEncoder->drawPrimitives(
                 convertTopology(currentTopology),
@@ -419,8 +460,11 @@ private:
             uint32_t startIndex = 0,
             int32_t baseVertex = 0,
             uint32_t startInstance = 0
-        ) RHI_OVERRIDE{
-            if(!renderEncoder || !currentIndexBuffer) return;
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
+            CROWY_ASSERT(currentIndexBuffer != nullptr);
 
             auto indexSize = (currentIndexFormat == MTL::IndexTypeUInt16) ? 2 : 4;
             auto indexOffset = currentIndexBufferOffset + startIndex * indexSize;
@@ -437,26 +481,32 @@ private:
             );
         }
 
-        void beginCompute(){
-            if(!isRecording || computeEncoder) return;
-            endCurrentEncoder();
+        void beginCompute() noexcept{
+            CROWY_ASSERT(computeEncoder == nullptr,
+                "Did you call RHICommandList::endCompute()?"
+            );
+            CROWY_ASSERT(renderEncoder == nullptr);
 
             computeEncoder = commandBuffer->computeCommandEncoder();
         }
 
-        void endCompute(){
-            if(computeEncoder){
-                computeEncoder->endEncoding();
-                computeEncoder = nullptr;
-            }
+        void endCompute() noexcept{
+            CROWY_ASSERT(computeEncoder != nullptr,
+                "Did you call RHICommandList::beginCompute()?"
+            );
+
+            computeEncoder->endEncoding();
+            computeEncoder = nullptr;
         }
 
         void dispatch(
             uint32_t threadGroupCountX,
             uint32_t threadGroupCountY,
             uint32_t threadGroupCountZ
-        ) RHI_OVERRIDE{
-            if(!computeEncoder) return;
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(computeEncoder != nullptr,
+                "Did you call RHICommandList::beginCompute()?"
+            );
 
             // TODO: need proper threadgroup size
             MTL::Size threadgroupSize = MTL::Size::Make(16, 16, 1);
@@ -468,13 +518,16 @@ private:
         }
 
         void transitionBarrier(
-            RHITexture*,
+            RHITexture&,
             RHIResourceState,
             RHIResourceState after
-        ) RHI_OVERRIDE{
-            // basicially no-op for Metal.
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
-            if(renderEncoder && after == RHIResourceState::ShaderResource){
+            // basically no-op for Metal.
+            if(after == RHIResourceState::ShaderResource){
                 renderEncoder->memoryBarrier(
                     MTL::BarrierScopeTextures,
                     MTL::RenderStageFragment,
@@ -484,64 +537,71 @@ private:
         }
 
         void transitionBarrier(
-            RHIBuffer*,
+            RHIBuffer&,
             RHIResourceState,
             RHIResourceState after
-        ) RHI_OVERRIDE{
-            // basicially no-op for Metal.
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
 
-            if(renderEncoder && after == RHIResourceState::ShaderResource){
+            // basically no-op for Metal.
+            if(after == RHIResourceState::ShaderResource){
                 renderEncoder->memoryBarrier(
-                    MTL::BarrierScopeTextures,
+                    MTL::BarrierScopeBuffers,
                     MTL::RenderStageFragment,
                     MTL::RenderStageVertex
                 );
             }
         }
 
-        void uavBarrier(RHITexture*) RHI_OVERRIDE{
-            if(computeEncoder) {
-                computeEncoder->memoryBarrier(MTL::BarrierScopeTextures);
-            }
+        void uavBarrier(RHITexture&) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(computeEncoder != nullptr,
+                "Did you call RHICommandList::beginCompute()?"
+            );
+            computeEncoder->memoryBarrier(MTL::BarrierScopeTextures);
         }
 
-        void uavBarrier(RHIBuffer*) RHI_OVERRIDE{
-            if(computeEncoder) {
-                computeEncoder->memoryBarrier(MTL::BarrierScopeBuffers);
-            }
+        void uavBarrier(RHIBuffer&) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(computeEncoder != nullptr,
+                "Did you call RHICommandList::beginCompute()?"
+            );
+            computeEncoder->memoryBarrier(MTL::BarrierScopeBuffers);
         }
 
-        void signalFence(RHIFence* fence, uint64_t value) RHI_OVERRIDE{
-            if(!fence || !commandBuffer) return;
+        void signalFence(RHIFence& fence, uint64_t value) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(commandBuffer != nullptr,
+                "Did you call RHICommandList::begin()?"
+            );
 
-            auto metalFence = static_cast<MetalFence*>(fence);
+            auto& metalFence = static_cast<MetalFence&>(fence);
             commandBuffer->encodeSignalEvent(
-                metalFence->getSharedEvent(), value
+                metalFence.getSharedEvent(), value
             );
         }
 
-        void waitFence(RHIFence* fence, uint64_t value) RHI_OVERRIDE{
-            if(!fence || !commandBuffer) return;
+        void waitFence(RHIFence& fence, uint64_t value) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(commandBuffer != nullptr,
+                "Did you call RHICommandList::begin()?"
+            );
 
-            auto metalFence = static_cast<MetalFence*>(fence);
+            auto& metalFence = static_cast<MetalFence&>(fence);
             commandBuffer->encodeWait(
-                metalFence->getSharedEvent(), value
+                metalFence.getSharedEvent(), value
             );
         }
 
         void copyBuffer(
-            RHIBuffer* src,
-            RHIBuffer* dst,
+            RHIBuffer& src,
+            RHIBuffer& dst,
             size_t srcOffset,
             size_t dstOffset,
             size_t size
-        ) RHI_OVERRIDE{
-            if(!src || !dst) return;
-
+        ) noexcept RHI_OVERRIDE{
             ensureBlitEncoder();
 
-            auto srcBuf = static_cast<MetalBuffer*>(src)->get();
-            auto dstBuf = static_cast<MetalBuffer*>(dst)->get();
+            auto srcBuf = static_cast<MetalBuffer&>(src).get();
+            auto dstBuf = static_cast<MetalBuffer&>(dst).get();
 
             blitEncoder->copyFromBuffer(
                 srcBuf, srcOffset,
@@ -551,31 +611,27 @@ private:
         }
 
         void copyTexture(
-            RHITexture* src,
-            RHITexture* dst
-        ) RHI_OVERRIDE{
-            if(!src || !dst) return;
-
+            RHITexture& src,
+            RHITexture& dst
+        ) noexcept RHI_OVERRIDE{
             ensureBlitEncoder();
 
-            auto srcTex = static_cast<MetalTexture*>(src)->get();
-            auto dstTex = static_cast<MetalTexture*>(dst)->get();
+            auto srcTex = static_cast<MetalTexture&>(src).get();
+            auto dstTex = static_cast<MetalTexture&>(dst).get();
 
             blitEncoder->copyFromTexture(srcTex, dstTex);
         }
 
         void copyBufferToTexture(
-            RHIBuffer* src,
-            RHITexture* dst,
+            RHIBuffer& src,
+            RHITexture& dst,
             uint32_t mipLevel = 0,
             uint32_t arraySlice = 0
-        ) RHI_OVERRIDE{
-            if(!src || !dst) return;
-
+        ) noexcept RHI_OVERRIDE{
             ensureBlitEncoder();
 
-            auto srcBuf = static_cast<MetalBuffer*>(src)->get();
-            auto dstTex = static_cast<MetalTexture*>(dst)->get();
+            auto srcBuf = static_cast<MetalBuffer&>(src).get();
+            auto dstTex = static_cast<MetalTexture&>(dst).get();
 
             auto width = dstTex->width();
             auto height = dstTex->height();
@@ -591,7 +647,7 @@ private:
             );
         }
 
-        void beginEvent(const char* name) RHI_OVERRIDE{
+        void beginEvent(const char* name) noexcept RHI_OVERRIDE{
             auto str = NS::String::string(name, NS::UTF8StringEncoding);
             if(renderEncoder){
                 renderEncoder->pushDebugGroup(str);
@@ -604,7 +660,7 @@ private:
             }
         }
 
-        void endEvent() RHI_OVERRIDE{
+        void endEvent() noexcept RHI_OVERRIDE{
             if(renderEncoder){
                 renderEncoder->popDebugGroup();
             }
@@ -616,7 +672,7 @@ private:
             }
         }
 
-        void setMarker(const char* name) RHI_OVERRIDE{
+        void setMarker(const char* name) noexcept RHI_OVERRIDE{
             auto str = NS::String::string(name, NS::UTF8StringEncoding);
             if(renderEncoder){
                 renderEncoder->insertDebugSignpost(str);
@@ -629,16 +685,16 @@ private:
             }
         }
 
-        MTL::CommandBuffer* getCommandBuffer() const{
+        MTL::CommandBuffer* getCommandBuffer() const noexcept{
             return commandBuffer;
         }
 
-        void* getNativeCommandBuffer() const RHI_OVERRIDE{
+        void* getNativeCommandBuffer() const noexcept RHI_OVERRIDE{
             return getCommandBuffer();
         }
 
     private:
-        void endCurrentEncoder(){
+        void endCurrentEncoder() noexcept{
             if(renderEncoder){
                 renderEncoder->endEncoding();
                 renderEncoder = nullptr;
@@ -653,7 +709,7 @@ private:
             }
         }
 
-        void ensureBlitEncoder(){
+        void ensureBlitEncoder() noexcept{
             if(blitEncoder) return;
             endCurrentEncoder();
             blitEncoder = commandBuffer->blitCommandEncoder();

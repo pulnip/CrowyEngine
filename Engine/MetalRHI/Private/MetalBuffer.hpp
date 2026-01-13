@@ -4,6 +4,7 @@
 #include <memory>
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
+#include "assert.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -27,9 +28,8 @@ namespace Crowy
         MetalBuffer(
             MTL::Device* device,
             const RHIBufferCreateDesc& desc
-        )
-            : usage(desc.usage)
-            , size(desc.size)
+        ) noexcept
+            :usage(desc.usage),size(desc.size)
         {
             auto hasVertexUsage = hasFlag(desc.usage, RHIBufferUsage::VertexBuffer);
             auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
@@ -62,17 +62,16 @@ namespace Crowy
         void update(
             const void* data, size_t size,
             size_t offset
-        ) RHI_OVERRIDE{
-            if(isCPUAccessible){
-                void* ptr = buffer->contents();
-                memcpy(static_cast<uint8_t*>(ptr) + offset, data, size);
+        ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isCPUAccessible);
 
-            #if TARGET_OS_OSX
-                buffer->didModifyRange(NS::Range::Make(offset, size));
-            #endif
-            }
+            void* ptr = buffer->contents();
+            memcpy(static_cast<uint8_t*>(ptr) + offset, data, size);
+
+        #if TARGET_OS_OSX
+            buffer->didModifyRange(NS::Range::Make(offset, size));
+        #endif
         }
-
 
         MTL::Buffer* get() const{ return buffer; }
     };

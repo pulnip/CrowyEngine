@@ -24,16 +24,16 @@ namespace Crowy
     // GPU fence for CPU/GPU synchronization
     class RHIFence{
     public:
-        CROWY_DECLARE_INTERFACE(RHIFence)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIFence)
 
         // Wait on CPU until fence reaches waitValue
-        virtual void waitCPU(uint64_t waitValue, uint64_t timeoutMs = 0) = 0;
+        virtual void waitCPU(uint64_t waitValue, uint64_t timeoutMs = 0) noexcept = 0;
 
         // Get current fence value (non-blocking query)
-        virtual uint64_t getValue() = 0;
+        virtual uint64_t getValue() noexcept = 0;
 
         // Check if fence has reached a value
-        virtual bool isComplete(uint64_t) = 0;
+        virtual bool isComplete(uint64_t) noexcept = 0;
     };
 #endif
 }

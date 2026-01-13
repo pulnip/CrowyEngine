@@ -21,9 +21,9 @@ namespace Crowy
 #else
     class RHIBuffer{
     public:
-        CROWY_DECLARE_INTERFACE(RHIBuffer)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIBuffer)
 
-        virtual void update(const void* data, size_t size, size_t offset = 0) = 0;
+        virtual void update(const void* data, size_t size, size_t offset = 0) noexcept = 0;
     };
 #endif
 }

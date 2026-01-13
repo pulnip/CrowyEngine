@@ -132,11 +132,11 @@ namespace Crowy
                     break;
 
                 cmdList->signalFence(
-                    framePacer->getCurrentFence(),
+                    *framePacer->getCurrentFence(),
                     framePacer->getNextFenceValue()
                 );
                 cmdList->close();
-                device->submit(cmdList.get(), swapchain.get());
+                device->submit(*cmdList.get(), *swapchain.get());
 
                 framePacer->endFrame();
             }

@@ -22,9 +22,9 @@ namespace Crowy
 #else
     class RHIShader{
     public:
-        CROWY_DECLARE_INTERFACE(RHIShader)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIShader)
 
-        virtual RHIShaderStage getStage() const = 0;
+        virtual RHIShaderStage getStage() const noexcept = 0;
     };
 #endif
 }

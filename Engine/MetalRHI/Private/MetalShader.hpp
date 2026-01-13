@@ -48,7 +48,7 @@ namespace Crowy
                 library = device->newLibrary(url, &error);
             }
             else{
-                std::runtime_error("Unknown file format: " + ext);
+                throw std::runtime_error("Unknown file format: " + ext);
             }
 
             if(!library){
@@ -75,10 +75,10 @@ namespace Crowy
             function->release();
         }
 
-        RHIShaderStage getStage() const RHI_OVERRIDE{
+        RHIShaderStage getStage() const noexcept RHI_OVERRIDE{
             return stage;
         }
 
-        MTL::Function* get() const{ return function; }
+        MTL::Function* get() const noexcept{ return function; }
     };
 }

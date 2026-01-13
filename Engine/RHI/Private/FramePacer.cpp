@@ -19,7 +19,7 @@ namespace Crowy
         uint32_t currentFrame = 0;
 
     public:
-        RHIFrameFenceManager(RHIDevice* device)
+        RHIFrameFenceManager(RHIDevice* device) noexcept
             : device(device)
             , fence(device->createFence(0))
         {
@@ -36,7 +36,7 @@ namespace Crowy
 
         // Begin a new frame
         // Waits for N-2 frame to ensure GPU is done with it
-        void beginFrame(){
+        void beginFrame() noexcept{
             if(currentFenceValue >= RHI_FRAMES_IN_FLIGHT){
                 auto waitValue = currentFenceValue - RHI_FRAMES_IN_FLIGHT;
                 fence->waitCPU(waitValue);
@@ -45,7 +45,7 @@ namespace Crowy
 
         // End the current frame
         // Signals the fence so GPU can indicate when work is done
-        void endFrame(){
+        void endFrame() noexcept{
             // Increment fence value for next wait
             ++currentFenceValue;
 
@@ -54,7 +54,7 @@ namespace Crowy
         }
 
         // Wait for all frames to complete
-        void waitForAll(){
+        void waitForAll() noexcept{
             if(currentFenceValue > 0){
                 fence->waitCPU(currentFenceValue);
             }
@@ -65,17 +65,17 @@ namespace Crowy
         }
 
         // Get current frame index
-        uint32_t getCurrentFrameIndex() const{
+        uint32_t getCurrentFrameIndex() const noexcept{
             return currentFrame;
         }
 
         // Get fence for current frame
-        RHIFence* getCurrentFence() const{
+        RHIFence* getCurrentFence() const noexcept{
             return fence.get();
         }
 
         // Get fence value for current frame
-        uint64_t getCurrentFenceValue() const{
+        uint64_t getCurrentFenceValue() const noexcept{
             return currentFenceValue;
         }
     };
@@ -91,12 +91,12 @@ namespace Crowy
         double frameTimeAccum = 0.0;
         uint32_t frameCount = 0;
 
-        Impl(RHIDevice* device)
+        Impl(RHIDevice* device) noexcept
             : device(device), fenceManager(device){}
 
         ~Impl() = default;
 
-        bool beginFrame(){
+        bool beginFrame() noexcept{
             // Wait for oldest frame to complete
             fenceManager.beginFrame();
 
@@ -125,79 +125,79 @@ namespace Crowy
             return true;
         }
 
-        void endFrame(){
+        void endFrame() noexcept{
             // Signal fence for this frame
             fenceManager.endFrame();
         }
 
-        void waitForIdle(){
+        void waitForIdle() noexcept{
             fenceManager.waitForAll();
             LOG_INFO(LOG_RHI, "Frame pacer idle");
         }
 
-        uint32_t getCurrentFrameIndex() const{
+        uint32_t getCurrentFrameIndex() const noexcept{
             return fenceManager.getCurrentFrameIndex();
         }
 
-        uint64_t getFrameNumber() const{ return frameNumber; }
-        double getDeltaTime() const{ return deltaTime; }
-        double getFPS() const{ return fps; }
-        double getFrameTimeMs() const{ return deltaTime * 1000.0; }
+        uint64_t getFrameNumber() const noexcept{ return frameNumber; }
+        double getDeltaTime() const noexcept{ return deltaTime; }
+        double getFPS() const noexcept{ return fps; }
+        double getFrameTimeMs() const noexcept{ return deltaTime * 1000.0; }
 
-        RHIFence* getCurrentFence(){
+        RHIFence* getCurrentFence() noexcept{
             return fenceManager.getCurrentFence();
         }
-        const RHIFence* getCurrentFence() const{
+        const RHIFence* getCurrentFence() const noexcept{
             return fenceManager.getCurrentFence();
         }
 
-        uint64_t getNextFenceValue() const{
+        uint64_t getNextFenceValue() const noexcept{
             // Return the next fence value that will be used after endFrame()
             return fenceManager.getCurrentFenceValue() + 1;
         }
     };
 
-    FramePacer::FramePacer(RHIDevice* device)
-        : impl(std::make_unique<Impl>(device)){}
+    FramePacer::FramePacer(RHIDevice* device) noexcept
+        :impl(std::make_unique<Impl>(device)){}
 
     FramePacer::~FramePacer() = default;
 
-    bool FramePacer::beginFrame(){
+    bool FramePacer::beginFrame() noexcept{
         return impl->beginFrame();
     }
 
-    void FramePacer::endFrame(){
+    void FramePacer::endFrame() noexcept{
         impl->endFrame();
     }
 
-    void FramePacer::waitForIdle(){
+    void FramePacer::waitForIdle() noexcept{
         impl->waitForIdle();
     }
 
-    uint32_t FramePacer::getCurrentFrameIndex() const{
+    uint32_t FramePacer::getCurrentFrameIndex() const noexcept{
         return impl->getCurrentFrameIndex();
     }
-    uint64_t FramePacer::getFrameNumber() const{
+    uint64_t FramePacer::getFrameNumber() const noexcept{
         return impl->getFrameNumber();
     }
-    double FramePacer::getDeltaTime() const{
+    double FramePacer::getDeltaTime() const noexcept{
         return impl->getDeltaTime();
     }
-    double FramePacer::getFPS() const{
+    double FramePacer::getFPS() const noexcept{
         return impl->getFPS();
     }
-    double FramePacer::getFrameTimeMs() const{
+    double FramePacer::getFrameTimeMs() const noexcept{
         return impl->getFrameTimeMs();
     }
 
-    RHIFence* FramePacer::getCurrentFence(){
+    RHIFence* FramePacer::getCurrentFence() noexcept{
         return impl->getCurrentFence();
     }
-    const RHIFence* FramePacer::getCurrentFence() const{
+    const RHIFence* FramePacer::getCurrentFence() const noexcept{
         return impl->getCurrentFence();
     }
 
-    uint64_t FramePacer::getNextFenceValue() const{
+    uint64_t FramePacer::getNextFenceValue() const noexcept{
         return impl->getNextFenceValue();
     }
 }

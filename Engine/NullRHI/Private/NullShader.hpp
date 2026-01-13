@@ -15,16 +15,16 @@ namespace Crowy
         : public RHIShader
 #endif
     {
+    private:
+        const RHIShaderStage stage;
+
     public:
         NullShader(const RHIShaderCreateDesc& desc)
             : stage(desc.stage){}
         ~NullShader() = default;
 
-        RHIShaderStage getStage() const RHI_OVERRIDE{
+        RHIShaderStage getStage() const noexcept RHI_OVERRIDE{
             return stage;
         }
-
-    private:
-        const RHIShaderStage stage;
     };
 }

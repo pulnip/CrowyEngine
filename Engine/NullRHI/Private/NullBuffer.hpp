@@ -32,7 +32,7 @@ namespace Crowy
         }
         ~NullBuffer() = default;
 
-        void update(const void* data, size_t size, size_t offset) RHI_OVERRIDE{
+        void update(const void* data, size_t size, size_t offset) noexcept RHI_OVERRIDE{
             
         }
     };

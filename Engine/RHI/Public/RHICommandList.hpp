@@ -24,87 +24,83 @@ namespace Crowy
     // Command list for recording GPU commands
     class RHICommandList{
     public:
-        CROWY_DECLARE_INTERFACE(RHICommandList)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHICommandList)
 
         // Command list lifecycle
-        virtual void begin() = 0;
-        virtual void close() = 0;
-        virtual void reset() = 0;
+        virtual void begin() noexcept = 0;
+        virtual void close() noexcept = 0;
+        virtual void reset() noexcept = 0;
 
         // Render pass control
         virtual void beginRenderPass(
             RHITexture* renderTarget,
             RHITexture* depthStencil = nullptr,
-            RHILoadStoreAction loadAction  = RHILoadStoreAction::Load,
-            RHILoadStoreAction storeAction = RHILoadStoreAction::Store,
+            RHILoadAction loadAction  = RHILoadAction::Load,
+            RHIStoreAction storeAction = RHIStoreAction::Store,
             const RHIClearColor& clearColor = {
                 .r=0.0f, .g=0.0f, .b=0.0f, .a=1.0f
             },
             const RHIClearDepthStencil& clearDS = {
                 .depth = 1.0f, .stencil = 0
             }
-        ) = 0;
+        ) noexcept = 0;
 
         virtual void beginRenderPass(
-            RHISwapchain*,
+            RHISwapchain&,
             RHITexture* depthStencil = nullptr,
-            RHILoadStoreAction loadAction  = RHILoadStoreAction::Load,
-            RHILoadStoreAction storeAction = RHILoadStoreAction::Store,
+            RHILoadAction loadAction  = RHILoadAction::Load,
+            RHIStoreAction storeAction = RHIStoreAction::Store,
             const RHIClearColor& clearColor = {
                 .r=0.0f, .g=0.0f, .b=0.0f, .a=1.0f
             },
             const RHIClearDepthStencil& clearDS = {
                 .depth = 1.0f, .stencil = 0
             }
-        ) = 0;
+        ) noexcept = 0;
 
-        virtual void endRenderPass() = 0;
+        virtual void endRenderPass() noexcept = 0;
 
         // Pipeline state
-        virtual void setPipelineState(RHIPipelineState* pso) = 0;
+        virtual void setPipelineState(RHIPipelineState* pso) noexcept = 0;
 
         // Vertex and index buffers
         virtual void setVertexBuffer(
             uint32_t slot,
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             uint32_t stride,
             uint32_t offset = 0
-        ) = 0;
+        ) noexcept = 0;
 
         virtual void setIndexBuffer(
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             RHIIndexFormat format,
             uint32_t offset = 0
-        ) = 0;
+        ) noexcept = 0;
 
         // Constant buffers
         virtual void setConstantBuffer(
             RHIShaderStage stage,
             uint32_t slot,
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             uint32_t offset = 0
-        ) = 0;
+        ) noexcept = 0;
 
         // Shader resources (textures, buffers)
         virtual void setTexture(
             uint32_t slot,
-            RHITexture* texture,
+            RHITexture& texture,
             RHIShaderStage stage
-        ) = 0;
+        ) noexcept = 0;
 
         virtual void setBuffer(
             uint32_t slot,
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             RHIShaderStage stage
-        ) = 0;
+        ) noexcept = 0;
 
         // Viewport and scissor
-        virtual void setViewport(
-            const RHIViewport& viewport
-        ) = 0;
-        virtual void setScissorRect(
-            const RHIScissorRect& scissor
-        ) = 0;
+        virtual void setViewport(const RHIViewport& viewport) noexcept = 0;
+        virtual void setScissorRect(const RHIScissorRect& scissor) noexcept = 0;
 
         // Draw commands
         virtual void draw(
@@ -112,7 +108,7 @@ namespace Crowy
             uint32_t instanceCount = 1,
             uint32_t startVertex = 0,
             uint32_t startInstance = 0
-        ) = 0;
+        ) noexcept = 0;
 
         virtual void drawIndexed(
             uint32_t indexCount,
@@ -120,61 +116,61 @@ namespace Crowy
             uint32_t startIndex = 0,
             int32_t baseVertex = 0,
             uint32_t startInstance = 0
-        ) = 0;
+        ) noexcept = 0;
 
         // Compute dispatch
         virtual void dispatch(
             uint32_t threadGroupCountX,
             uint32_t threadGroupCountY,
             uint32_t threadGroupCountZ
-        ) = 0;
+        ) noexcept = 0;
 
         // Resource barriers (state transitions)
         virtual void transitionBarrier(
-            RHITexture* texture,
+            RHITexture& texture,
             RHIResourceState before,
             RHIResourceState after
-        ) = 0;
+        ) noexcept = 0;
 
         virtual void transitionBarrier(
-            RHIBuffer* buffer,
+            RHIBuffer& buffer,
             RHIResourceState before,
             RHIResourceState after
-        ) = 0;
+        ) noexcept = 0;
 
-        virtual void uavBarrier(RHITexture*) = 0;
-        virtual void uavBarrier(RHIBuffer*) = 0;
+        virtual void uavBarrier(RHITexture&) noexcept = 0;
+        virtual void uavBarrier(RHIBuffer&) noexcept = 0;
 
-        virtual void signalFence(RHIFence*, uint64_t value) = 0;
-        virtual void waitFence(RHIFence*, uint64_t value) = 0;
+        virtual void signalFence(RHIFence&, uint64_t value) noexcept = 0;
+        virtual void waitFence(RHIFence&, uint64_t value) noexcept = 0;
 
         // Copy operations
         virtual void copyBuffer(
-            RHIBuffer* src,
-            RHIBuffer* dst,
+            RHIBuffer& src,
+            RHIBuffer& dst,
             size_t srcOffset,
             size_t dstOffset,
             size_t size
-        ) = 0;
+        ) noexcept = 0;
 
         virtual void copyTexture(
-            RHITexture* src,
-            RHITexture* dst
-        ) = 0;
+            RHITexture& src,
+            RHITexture& dst
+        ) noexcept = 0;
 
         virtual void copyBufferToTexture(
-            RHIBuffer* src,
-            RHITexture* dst,
+            RHIBuffer& src,
+            RHITexture& dst,
             uint32_t mipLevel = 0,
             uint32_t arraySlice = 0
-        ) = 0;
+        ) noexcept = 0;
 
         // Debug markers (for GPU profiling)
-        virtual void beginEvent(const char* name) = 0;
-        virtual void endEvent() = 0;
-        virtual void setMarker(const char* name) = 0;
+        virtual void beginEvent(const char* name) noexcept = 0;
+        virtual void endEvent() noexcept = 0;
+        virtual void setMarker(const char* name) noexcept = 0;
 
-        virtual void* getNativeCommandBuffer() const = 0;
+        virtual void* getNativeCommandBuffer() const noexcept = 0;
     };
 #endif
 }

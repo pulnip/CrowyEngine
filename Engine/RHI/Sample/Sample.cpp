@@ -160,10 +160,10 @@ int main(int argc, char* argv[]){
 
                 RHIClearColor clearColor{ 0.2f, 0.2f, 0.3f, 1.0f };
                 cmdList->beginRenderPass(
-                    swapchain.get(),
+                    *swapchain.get(),
                     depthBuffer.get(),
-                    RHILoadStoreAction::Clear,
-                    RHILoadStoreAction::Store,
+                    RHILoadAction::Clear,
+                    RHIStoreAction::Store,
                     clearColor
                 );
 
@@ -172,18 +172,18 @@ int main(int argc, char* argv[]){
                 cmdList->setViewport({0, 0, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f});
                 cmdList->setScissorRect({0, 0, width, height});
 
-                cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, uniformBuffer.get());
+                cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
 
                 for(const auto& submesh: mesh){
-                    cmdList->setVertexBuffer(0, submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
-                    cmdList->setIndexBuffer(submesh.indexBuffer.get(),
+                    cmdList->setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
+                    cmdList->setIndexBuffer(*submesh.indexBuffer.get(),
                         RHIIndexFormat::UInt32, 0);
 
                     auto it = materialSet.find(submesh.materialSlotName);
                     if(it == materialSet.end())
                         continue;
 
-                    cmdList->setTexture(0, it->second->baseColorMap.get(),
+                    cmdList->setTexture(0, *it->second->baseColorMap.get(),
                         RHIShaderStage::FragmentShader);
                     cmdList->drawIndexed(submesh.indexCount, 1);
                 }
@@ -191,13 +191,13 @@ int main(int argc, char* argv[]){
 
                 // Signal fence for frame synchronization
                 cmdList->signalFence(
-                    framePacer->getCurrentFence(),
+                    *framePacer->getCurrentFence(),
                     framePacer->getNextFenceValue()
                 );
 
                 cmdList->close();
             }
-            device->submit(cmdList.get(), swapchain.get());
+            device->submit(*cmdList.get(), *swapchain.get());
 
             framePacer->endFrame();
         }

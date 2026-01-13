@@ -18,15 +18,15 @@ namespace Crowy
             uint64_t initialValue
         ){}
 
-        void waitCPU(uint64_t waitValue, uint64_t timeoutMs) RHI_OVERRIDE{
+        void waitCPU(uint64_t waitValue, uint64_t timeoutMs) noexcept RHI_OVERRIDE{
 
         }
 
-        uint64_t getValue() RHI_OVERRIDE{
+        uint64_t getValue() noexcept RHI_OVERRIDE{
             return 0;
         }
 
-        bool isComplete(uint64_t value) RHI_OVERRIDE{
+        bool isComplete(uint64_t value) noexcept RHI_OVERRIDE{
             return true;
         }
     };

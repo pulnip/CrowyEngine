@@ -15,35 +15,35 @@ namespace Crowy
         std::unique_ptr<Impl> impl;
 
     public:
-        FramePacer(RHIDevice* device);
+        FramePacer(RHIDevice* device) noexcept;
         ~FramePacer();
 
         // Begin a new frame
         // Returns true if ready to render, false if should skip
-        bool beginFrame();
+        bool beginFrame() noexcept;
 
         // End the current frame
-        void endFrame();
+        void endFrame() noexcept;
 
         // Wait for all frames to complete
-        void waitForIdle();
+        void waitForIdle() noexcept;
 
         // Get current frame index (0 to RHI_FRAMES_IN_FLIGHT-1)
-        uint32_t getCurrentFrameIndex() const;
+        uint32_t getCurrentFrameIndex() const noexcept;
         // Get absolute frame number
-        uint64_t getFrameNumber() const;
+        uint64_t getFrameNumber() const noexcept;
         // Get time since last frame (in seconds)
-        double getDeltaTime() const;
+        double getDeltaTime() const noexcept;
         // Get current FPS
-        double getFPS() const;
+        double getFPS() const noexcept;
         // Get frame time in milliseconds
-        double getFrameTimeMs() const;
+        double getFrameTimeMs() const noexcept;
 
         // Get fence for current frame
-        RHIFence* getCurrentFence();
-        const RHIFence* getCurrentFence() const;
+        RHIFence* getCurrentFence() noexcept;
+        const RHIFence* getCurrentFence() const noexcept;
 
         // Get the fence value to signal for the current frame
-        uint64_t getNextFenceValue() const;
+        uint64_t getNextFenceValue() const noexcept;
     };
 }

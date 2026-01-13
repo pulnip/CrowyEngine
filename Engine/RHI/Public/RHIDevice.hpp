@@ -39,37 +39,37 @@ namespace Crowy
 #else
     class RHIDevice{
     public:
-        CROWY_DECLARE_INTERFACE(RHIDevice)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIDevice)
 
-        virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) = 0;
-        virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) = 0;
-        virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) = 0;
+        virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) noexcept = 0;
+        virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) noexcept = 0;
+        virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) noexcept = 0;
 
         virtual RHIPipelineStatePtr createGraphicsPipelineState(
             const RHIGraphicsPipelineStateDesc&
-        ) = 0;
+        ) noexcept = 0;
         virtual RHIPipelineStatePtr createComputePipelineState(
             const RHIComputePipelineStateDesc&
-        ) = 0;
+        ) noexcept = 0;
 
         virtual RHISwapchainPtr createSwapchain(
             const RHISwapchainCreateDesc&
-        ) = 0;
+        ) noexcept = 0;
 
-        virtual RHICommandListPtr createCommandList() = 0;
+        virtual RHICommandListPtr createCommandList() noexcept = 0;
 
-        virtual RHIFencePtr createFence(uint64_t initialValue = 0) = 0;
+        virtual RHIFencePtr createFence(uint64_t initialValue = 0) noexcept = 0;
 
-        FramePacerPtr createFramePacer();
+        FramePacerPtr createFramePacer() noexcept;
 
-        virtual RHICapabilities getCapabilities() const = 0;
+        virtual RHICapabilities getCapabilities() const noexcept = 0;
 
-        virtual void submit(RHICommandList*, RHISwapchain* presentTarget = nullptr) = 0;
+        virtual void submit(RHICommandList&, RHISwapchain&) noexcept = 0;
 
-        virtual void* getNative() = 0;
+        virtual void* getNative() noexcept = 0;
     };
 #endif
 
     // each platform should implement this function
-    RHIDevicePtr createDevice();
+    RHIDevicePtr createDevice() noexcept;
 }

@@ -41,7 +41,7 @@ namespace Crowy
         MetalTexture(
             MTL::Device* device,
             const RHITextureCreateDesc& desc
-        )
+        ) noexcept
             : width(desc.width), height(desc.height)
             , format(desc.format)
         {
@@ -59,7 +59,14 @@ namespace Crowy
                                         : MTL::TextureType2D)
             );
             texDesc->setUsage(convertTextureUsage(desc.usage));
-            texDesc->setStorageMode(MTL::StorageModeShared);
+        #if TARGET_OS_OSX                                                             
+            bool needsGPUOnly = hasFlag(desc.usage, RHITextureUsage::RenderTarget) || 
+                                hasFlag(desc.usage, RHITextureUsage::DepthStencil);   
+            texDesc->setStorageMode(needsGPUOnly ?
+                MTL::StorageModePrivate : MTL::StorageModeShared);           
+        #else                                                                         
+            texDesc->setStorageMode(MTL::StorageModeShared);                          
+        #endif
 
             texture = device->newTexture(texDesc);
             texDesc->release();
@@ -73,7 +80,7 @@ namespace Crowy
 
         void uploadData(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
-        ) RHI_OVERRIDE{
+        ) noexcept RHI_OVERRIDE{
             auto bytesPerPixel = getBytesPerPixel(format);
             auto bytesPerRow = width * bytesPerPixel;
             auto region = MTL::Region::Make2D(0, 0, width, height);

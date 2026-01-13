@@ -28,7 +28,7 @@ namespace Crowy
 
         void uploadData(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
-        ) RHI_OVERRIDE{
+        ) noexcept RHI_OVERRIDE{
             // No-Op
         }
     };

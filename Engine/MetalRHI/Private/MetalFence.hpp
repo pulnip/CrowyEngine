@@ -24,7 +24,7 @@ namespace Crowy
         MetalFence(
             MTL::Device* device,
             uint64_t initialValue
-        ){
+        ) noexcept{
             sharedEvent = device->newSharedEvent();
             sharedEvent->setSignaledValue(initialValue);
         }
@@ -35,7 +35,7 @@ namespace Crowy
 
         CROWY_DECLARE_NON_COPYABLE(MetalFence)
 
-        void waitCPU(uint64_t waitValue, uint64_t timeoutMs) RHI_OVERRIDE{
+        void waitCPU(uint64_t waitValue, uint64_t timeoutMs) noexcept RHI_OVERRIDE{
             using namespace std::chrono;
 
             auto startTime = high_resolution_clock::now();
@@ -75,15 +75,15 @@ namespace Crowy
             // dispatch_release(sem);
         }
 
-        uint64_t getValue() RHI_OVERRIDE{
+        uint64_t getValue() noexcept RHI_OVERRIDE{
             return sharedEvent->signaledValue();
         }
 
-        bool isComplete(uint64_t value) RHI_OVERRIDE{
+        bool isComplete(uint64_t value) noexcept RHI_OVERRIDE{
             return sharedEvent->signaledValue() >= value;
         }
 
-        MTL::SharedEvent* getSharedEvent() const{
+        MTL::SharedEvent* getSharedEvent() const noexcept{
             return sharedEvent;
         }
     };

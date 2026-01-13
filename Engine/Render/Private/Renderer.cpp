@@ -171,17 +171,17 @@ namespace Crowy
                     depthTarget,
                     // only single pass for now
                     // TODO. use RenderGraph later
-                    RHILoadStoreAction::Clear,
-                    RHILoadStoreAction::Store,
+                    RHILoadAction::Clear,
+                    RHIStoreAction::Store,
                     clearColor
                 );
             }
             else{
                 cmdList.beginRenderPass(
-                    backBuffer,
+                    *backBuffer,
                     depthTarget,
-                    RHILoadStoreAction::Load,
-                    RHILoadStoreAction::Store,
+                    RHILoadAction::Load,
+                    RHIStoreAction::Store,
                     clearColor
                 );
             }
@@ -196,7 +196,7 @@ namespace Crowy
                 // TODO. select shader stage for advanced rendering technique
                 cmdList.setTexture(
                     static_cast<uint32_t>(i),
-                    inputTarget,
+                    *inputTarget,
                     RHIShaderStage::FragmentShader
                 );
             }
@@ -240,18 +240,18 @@ namespace Crowy
                 uniformBuffer->update(mvp.data(), sizeof(Mat4));
 
                 // TODO. need to fit in appropriate slot
-                cmdList.setConstantBuffer(RHIShaderStage::VertexShader, 1, uniformBuffer.get());
+                cmdList.setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
 
                 for(const auto& submesh: mesh){
                     // TODO. hide slot number (bc it's for Metal)
-                    cmdList.setVertexBuffer(0, submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
-                    cmdList.setIndexBuffer(submesh.indexBuffer.get(),
+                    cmdList.setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
+                    cmdList.setIndexBuffer(*submesh.indexBuffer.get(),
                         RHIIndexFormat::UInt32, 0);
 
                     auto it = materialSet.find(submesh.materialSlotName);
                     if(it == materialSet.end())
                         continue;
-                    cmdList.setTexture(0, it->second->baseColorMap.get(),
+                    cmdList.setTexture(0, *it->second->baseColorMap.get(),
                         RHIShaderStage::FragmentShader);
 
                     cmdList.drawIndexed(submesh.indexCount, 1);
@@ -272,7 +272,7 @@ namespace Crowy
             cmdList.setConstantBuffer(
                 // TODO. slot number
                 RHIShaderStage::FragmentShader, 0,
-                postProcessUniformBuffer.get()
+                *postProcessUniformBuffer.get()
             );
 
             cmdList.draw(6, 1);
