@@ -16,12 +16,12 @@ PRIVATE
     Crowy::Log
     Crowy::Resource
 )
-if(APPLE)
+if(RENDER_BACKEND STREQUAL "Metal")
     target_link_libraries(CrowyRHISample
     PRIVATE
         Crowy::MetalRHI
     )
-elseif(WIN32)
+elseif(RENDER_BACKEND STREQUAL "D3D12")
     target_link_libraries(CrowyRHISample
     PRIVATE
         Crowy::D3D12RHI

@@ -7,9 +7,9 @@ add_subdirectory(EngineCore)
 add_subdirectory(Platform)
 add_subdirectory(RHI)
 # RHI Implementations
-if(APPLE)
+if(RENDER_BACKEND STREQUAL "Metal")
     add_subdirectory(MetalRHI)
-elseif(WIN32)
+elseif(RENDER_BACKEND STREQUAL "D3D12")
     add_subdirectory(D3D12RHI)
 else()
     # Null RHI as fallback
