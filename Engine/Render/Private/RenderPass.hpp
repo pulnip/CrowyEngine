@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHIShader.hpp"
@@ -12,6 +13,7 @@ namespace Crowy
 {
     struct RenderPass{
         std::string name;
+        bool enabled = true;
         std::optional<RenderTypeHash> renderType;
         RHIShaderPtr vs, fs;
         RHIPipelineStatePtr pipeline;

@@ -176,6 +176,9 @@ int main(int argc, char* argv[]){
 
     bool isRunning = true;
 
+    // TODO. make this to UI!
+    renderer.setPassEnabled("pixelate", false);
+
     while(isRunning){
         SDL_Event event;
         while(SDL_PollEvent(&event)){
@@ -224,7 +227,6 @@ int main(int argc, char* argv[]){
                     }
                 };
 
-                cmdList->reset();
                 cmdList->begin();
 
             #ifdef __APPLE__

@@ -158,6 +158,11 @@ namespace Crowy
             RHITexture& dst
         ) noexcept = 0;
 
+        virtual void copyTexture(
+            RHITexture& src,
+            RHISwapchain& dst
+        ) noexcept = 0;
+
         virtual void copyBufferToTexture(
             RHIBuffer& src,
             RHITexture& dst,

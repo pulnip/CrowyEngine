@@ -48,5 +48,7 @@ namespace Crowy
         //     RHISwapchain*
         //     const std::string& passName
         // );
+
+        bool setPassEnabled(std::string_view passName, bool enabled);
     };
 }

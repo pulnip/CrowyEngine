@@ -2,6 +2,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "assert.hpp"
+#include "string.hpp"
 #include "Log.hpp"
 #include "Renderer.hpp"
 #include "RenderPass.hpp"
@@ -56,7 +58,7 @@ namespace Crowy
     private:
         RHIDevice* device = nullptr;
         std::vector<RenderPass> passes;
-        std::unordered_map<std::string, size_t> passIndex;
+        std::unordered_map<std::string, size_t, StringHash, std::equal_to<>> passIndex;
         RenderTargetPool renderTargetPool;
 
         RHIBufferPtr uniformBuffer;
@@ -96,6 +98,7 @@ namespace Crowy
                 passIndex[passSpec.name] = index;
                 passes.push_back(RenderPass{
                     .name = passSpec.name,
+                    .enabled = true,
                     .renderType = renderType,
                     .vs = std::move(vs), .fs = std::move(fs),
                     .pipeline = std::move(pipeline),
@@ -134,7 +137,24 @@ namespace Crowy
             RHISwapchain* backBuffer
         ){
             for(const auto& pass: passes){
-                executePass(cmdList, ctx, backBuffer, pass);
+                if(pass.enabled){
+                    executePass(cmdList, ctx, backBuffer, pass);
+                }
+                else{
+                    // bypass for Post-Process, input[0] for bypass target
+                    auto  inputTarget = renderTargetPool.get(pass.inputs[0]);
+                    // TODO. multi render target
+                    CROWY_ASSERT(pass.targets.size() == 1);
+                    const auto& renderTargetName = pass.targets[0];
+
+                    if(renderTargetName != "BackBuffer"){
+                        auto renderTarget = renderTargetPool.get(renderTargetName);
+                        cmdList.copyTexture(*inputTarget, *renderTarget);
+                    }
+                    else{
+                        cmdList.copyTexture(*inputTarget, *backBuffer);
+                    }
+                }
             }
         }
         // execute specific render pass
@@ -151,6 +171,19 @@ namespace Crowy
             }
         }
 
+        bool setPassEnabled(std::string_view passName, bool enabled){
+            if(auto it = passIndex.find(passName); it != passIndex.end()){
+                auto& pass = passes[it->second];
+
+                // TODO. check pass can be disabled
+                pass.enabled = enabled;
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
     private:
         void executePass(
             RHICommandList& cmdList,
@@ -162,6 +195,7 @@ namespace Crowy
 
             // set RenderTarget
             // TODO. multi render target
+            CROWY_ASSERT(pass.targets.size() == 1);
             const auto& renderTargetName = pass.targets[0];
             auto depthTarget = renderTargetPool.get(pass.depthTarget);
             if(renderTargetName != "BackBuffer"){
@@ -287,6 +321,10 @@ namespace Crowy
 
     void Renderer::loadPasses(const RenderSpec& spec){
         impl->loadPasses(spec);
+    }
+
+    bool Renderer::setPassEnabled(std::string_view passName, bool enabled){
+        return impl->setPassEnabled(passName, enabled);
     }
 
     void Renderer::render(

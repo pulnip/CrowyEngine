@@ -68,8 +68,11 @@ namespace Crowy
 private:
         MTL::CommandQueue* commandQueue = nullptr;
         MTL::CommandBuffer* commandBuffer = nullptr;
+        // Begin-End of RenderEncoder should be called explicitly
         MTL::RenderCommandEncoder* renderEncoder = nullptr;
+        // Begin-End of RenderEncoder should be called explicitly
         MTL::ComputeCommandEncoder* computeEncoder = nullptr;
+        // implicitly reuse blit Encoder
         MTL::BlitCommandEncoder* blitEncoder = nullptr;
         MTL::SamplerState* defaultSampler = nullptr;
 
@@ -96,7 +99,9 @@ private:
         }
 
         void begin() noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(!isRecording);
+            CROWY_ASSERT(!isRecording,
+                "Did you call RHICommandList::close()?"
+            );
 
             commandBuffer = commandQueue->commandBuffer();
             commandBuffer->setLabel(
@@ -106,70 +111,47 @@ private:
         }
 
         void close() noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(isRecording);
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
 
-            endCurrentEncoder();
+            CROWY_ASSERT(renderEncoder == nullptr,
+                "Did you call RHICommandList::endRenderPass()?"
+            );
+            CROWY_ASSERT(computeEncoder == nullptr,
+                "Did you call RHICommandList::endCompute()?"
+            );
+            if(blitEncoder != nullptr){
+                blitEncoder->endEncoding();
+                blitEncoder = nullptr;
+            }
 
             isRecording = false;
         }
 
         void reset() noexcept RHI_OVERRIDE{
             if(isRecording){
-                endCurrentEncoder();
-    
+
+                if(renderEncoder){
+                    renderEncoder->endEncoding();
+                    renderEncoder = nullptr;
+                }
+                else if(computeEncoder){
+                    computeEncoder->endEncoding();
+                    computeEncoder = nullptr;
+                }
+                else if(blitEncoder){
+                    blitEncoder->endEncoding();
+                    blitEncoder = nullptr;
+                }
+
                 isRecording = false;
             }
-        }
-
-        void beginRenderPass(
-            MTL::Texture* tex,
-            RHITexture* depthStencil,
-            RHILoadAction loadAction,
-            RHIStoreAction storeAction,
-            const RHIClearColor& clearColor,
-            const RHIClearDepthStencil& clearDS
-        ) noexcept{
-            CROWY_ASSERT(renderEncoder == nullptr,
-                "Did you call RHICommandList::endRenderPass()?"
-            );
-            CROWY_ASSERT(computeEncoder == nullptr);
-
-            auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
-
-            // Color Attachment
-            if(tex){
-                auto& colorAttach = *passDesc->colorAttachments()->object(0);
-                colorAttach.setTexture(tex);
-                colorAttach.setLoadAction(convertLoadAction(loadAction));
-                colorAttach.setStoreAction(convertStoreAction(storeAction));
-                colorAttach.setClearColor(MTL::ClearColor::Make(
-                    clearColor.r, clearColor.g, clearColor.b, clearColor.a
-                ));
+            else{
+                CROWY_ASSERT( renderEncoder == nullptr);
+                CROWY_ASSERT(computeEncoder == nullptr);
+                CROWY_ASSERT(   blitEncoder == nullptr);
             }
-
-            // Depth Attachment
-            if(depthStencil){
-                auto depthTex = static_cast<MTL::Texture*>(
-                    static_cast<MetalTexture&>(*depthStencil).get()
-                );
-                auto& depthAttach = *passDesc->depthAttachment();
-                depthAttach.setTexture(depthTex);
-                depthAttach.setLoadAction(convertLoadAction(loadAction));
-                depthAttach.setStoreAction(convertStoreAction(storeAction));
-                depthAttach.setClearDepth(clearDS.depth);
-            }
-
-            renderEncoder = commandBuffer->renderCommandEncoder(passDesc);
-            renderEncoder->setLabel(
-                NS::String::string("Crowy Render Pass", NS::UTF8StringEncoding)
-            );
-
-            // 기본 sampler 설정
-            if(defaultSampler){
-                renderEncoder->setFragmentSamplerState(defaultSampler, 0);
-            }
-
-            passDesc->release();
         }
 
         void beginRenderPass(
@@ -204,7 +186,7 @@ private:
             auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
 
             beginRenderPass(
-                mtlSwapchain.getCurrentDrawable()->texture(),
+                mtlSwapchain.getCurrentTexture(),
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS
@@ -486,6 +468,10 @@ private:
                 "Did you call RHICommandList::endCompute()?"
             );
             CROWY_ASSERT(renderEncoder == nullptr);
+            if(blitEncoder != nullptr){
+                blitEncoder->endEncoding();
+                blitEncoder = nullptr;
+            }
 
             computeEncoder = commandBuffer->computeCommandEncoder();
         }
@@ -620,6 +606,26 @@ private:
             auto dstTex = static_cast<MetalTexture&>(dst).get();
 
             blitEncoder->copyFromTexture(srcTex, dstTex);
+
+            // TODO. remove this line after impl ui renderer
+            blitEncoder->endEncoding();
+        }
+
+        void copyTexture(
+            RHITexture& src,
+            RHISwapchain& swapchain
+        ) noexcept RHI_OVERRIDE{
+            ensureBlitEncoder();
+
+            auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
+
+            auto srcTex = static_cast<MetalTexture&>(src).get();
+            auto dstTex = mtlSwapchain.getCurrentTexture();
+
+            blitEncoder->copyFromTexture(srcTex, dstTex);
+
+            // TODO. remove this line after impl ui renderer
+            blitEncoder->endEncoding();
         }
 
         void copyBufferToTexture(
@@ -645,6 +651,9 @@ private:
                 dstTex, arraySlice, mipLevel,
                 MTL::Origin::Make(0, 0, 0)
             );
+
+            // TODO. remove this line after impl ui renderer
+            blitEncoder->endEncoding();
         }
 
         void beginEvent(const char* name) noexcept RHI_OVERRIDE{
@@ -694,25 +703,73 @@ private:
         }
 
     private:
-        void endCurrentEncoder() noexcept{
-            if(renderEncoder){
-                renderEncoder->endEncoding();
-                renderEncoder = nullptr;
-            }
-            if(computeEncoder){
-                computeEncoder->endEncoding();
-                computeEncoder = nullptr;
-            }
-            if(blitEncoder){
+        void beginRenderPass(
+            MTL::Texture* tex,
+            RHITexture* depthStencil,
+            RHILoadAction loadAction,
+            RHIStoreAction storeAction,
+            const RHIClearColor& clearColor,
+            const RHIClearDepthStencil& clearDS
+        ) noexcept{
+            CROWY_ASSERT(renderEncoder == nullptr,
+                "Did you call RHICommandList::endRenderPass()?"
+            );
+            CROWY_ASSERT(computeEncoder == nullptr);
+            if(blitEncoder != nullptr){
                 blitEncoder->endEncoding();
                 blitEncoder = nullptr;
             }
+
+            auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
+
+            // Color Attachment
+            if(tex){
+                auto& colorAttach = *passDesc->colorAttachments()->object(0);
+                colorAttach.setTexture(tex);
+                colorAttach.setLoadAction(convertLoadAction(loadAction));
+                colorAttach.setStoreAction(convertStoreAction(storeAction));
+                colorAttach.setClearColor(MTL::ClearColor::Make(
+                    clearColor.r, clearColor.g, clearColor.b, clearColor.a
+                ));
+            }
+
+            // Depth Attachment
+            if(depthStencil){
+                auto depthTex = static_cast<MTL::Texture*>(
+                    static_cast<MetalTexture&>(*depthStencil).get()
+                );
+                auto& depthAttach = *passDesc->depthAttachment();
+                depthAttach.setTexture(depthTex);
+                depthAttach.setLoadAction(convertLoadAction(loadAction));
+                depthAttach.setStoreAction(convertStoreAction(storeAction));
+                depthAttach.setClearDepth(clearDS.depth);
+            }
+
+            renderEncoder = commandBuffer->renderCommandEncoder(passDesc);
+            renderEncoder->setLabel(
+                NS::String::string("Crowy Render Pass", NS::UTF8StringEncoding)
+            );
+
+            // 기본 sampler 설정
+            if(defaultSampler){
+                renderEncoder->setFragmentSamplerState(defaultSampler, 0);
+            }
+
+            passDesc->release();
         }
 
         void ensureBlitEncoder() noexcept{
-            if(blitEncoder) return;
-            endCurrentEncoder();
-            blitEncoder = commandBuffer->blitCommandEncoder();
+            CROWY_ASSERT(renderEncoder == nullptr,
+                "Did you call RHICommandList::endRenderPass()?"
+            );
+            CROWY_ASSERT(computeEncoder == nullptr,
+                "Did you call RHICommandList::endCompute()?"
+            );
+
+            // for reuse blit encoder
+            if(blitEncoder == nullptr){
+                blitEncoder = commandBuffer->blitCommandEncoder();
+            }
         }
     };
 }

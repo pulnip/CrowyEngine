@@ -187,6 +187,13 @@ namespace Crowy
 
         }
 
+        void copyTexture(
+            RHITexture& src,
+            RHISwapchain& dst
+        ) noexcept RHI_OVERRIDE{
+
+        }
+
         void copyBufferToTexture(
             RHIBuffer& src,
             RHITexture& dst,

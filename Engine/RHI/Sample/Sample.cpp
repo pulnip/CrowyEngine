@@ -155,7 +155,6 @@ int main(int argc, char* argv[]){
                 auto mvp = transpose(proj * view * model);
                 uniformBuffer->update(mvp.data(), sizeof(Mat4));
 
-                cmdList->reset();
                 cmdList->begin();
 
                 RHIClearColor clearColor{ 0.2f, 0.2f, 0.3f, 1.0f };
