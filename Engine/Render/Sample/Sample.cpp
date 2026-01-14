@@ -1,5 +1,4 @@
 #include <imgui.h>
-#include <imgui_impl_metal.h>
 #include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
 #include "FramePacer.hpp"
@@ -12,6 +11,7 @@
 #include "RenderSpec.hpp"
 #include "Resource.hpp"
 #include "Timer.hpp"
+#include "UIRenderer.hpp"
 
 using namespace Crowy;
 
@@ -25,25 +25,7 @@ int main(int argc, char* argv[]){
 
     initResourceModule(device.get());
 
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-#ifdef __APPLE__
-    ImGui_ImplSDL3_InitForMetal(window);
-    ImGui_ImplMetal_Init(static_cast<MTL::Device*>(device->getNative()));
-
-    auto uiPassDesc = MTL::RenderPassDescriptor::alloc()->init();
-    auto colorAttachment = uiPassDesc->colorAttachments()->object(0);
-    colorAttachment->setLoadAction(MTL::LoadActionLoad);
-    colorAttachment->setStoreAction(MTL::StoreActionStore);
-
+#ifdef CROWY_METALRHI
     auto view = SDL_Metal_CreateView(window);
 #endif
     RHITextureCreateDesc backBufferDesc{
@@ -54,7 +36,7 @@ int main(int argc, char* argv[]){
 
     auto swapchain = device->createSwapchain(
         RHISwapchainCreateDesc{
-        #ifdef __APPLE__
+        #ifdef CROWY_METALRHI
             .windowHandle = SDL_Metal_GetLayer(view),
         #elif _WIN32
             .windowHandle = SDL_GetPointerProperty(
@@ -90,6 +72,7 @@ int main(int argc, char* argv[]){
     };
 
     Renderer renderer(device.get());
+    UIRenderer uiRenderer(window, device.get());
 
     RenderSpec spec{
         .renderTargets = {
@@ -135,12 +118,12 @@ int main(int argc, char* argv[]){
                 .targets = {"sceneColor"},
                 .depthTarget = "depth",
                 .shader = ShaderSpec{
-                #ifdef __APPLE__
+                #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/triangle.metal",
                     .vsFuncName = "vs_main",
                     .fsFilePath = "asset/Shaders/triangle.metal",
                     .fsFuncName = "fs_textured",
-                #elif _WIN32
+                #elif CROWY_D3D12RHI
                     .vsFilePath = L"asset/Shaders/standard_vs.hlsl",
                     .vsFuncName = "vs_main",
                     .fsFilePath = L"asset/Shaders/standard_ps.hlsl",
@@ -157,7 +140,7 @@ int main(int argc, char* argv[]){
                 .inputs = {"sceneColor"},
                 .targets = {"BackBuffer"},
                 .shader = ShaderSpec{
-                #ifdef __APPLE__
+                #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/pixelate.metal",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/pixelate.metal",
@@ -177,7 +160,8 @@ int main(int argc, char* argv[]){
     bool isRunning = true;
 
     // TODO. make this to UI!
-    renderer.setPassEnabled("pixelate", false);
+    bool enable_pixelate = false;
+    renderer.setPassEnabled("pixelate", enable_pixelate);
 
     while(isRunning){
         SDL_Event event;
@@ -232,28 +216,16 @@ int main(int argc, char* argv[]){
                 renderer.render(*cmdList.get(), ctx, swapchain.get());
                 cmdList->flush();
 
-            #ifdef __APPLE__
-                // Start the Dear ImGui frame
-                ImGui_ImplMetal_NewFrame(uiPassDesc);
-                ImGui_ImplSDL3_NewFrame();
-            #endif
-                ImGui::NewFrame();
-
-                ImGui::ShowDemoWindow();
-
-                ImGui::Render();
-                ImDrawData* draw_data = ImGui::GetDrawData();
-            #ifdef __APPLE__
-                colorAttachment->setTexture(static_cast<MTL::Texture*>(
-                    swapchain->getCurrentNativeTexture()
-                ));
-
-                auto commandBuffer = static_cast<MTL::CommandBuffer*>(cmdList->getNativeCommandBuffer());
-                auto uiRenderEncoder = commandBuffer->renderCommandEncoder(uiPassDesc);
-                ImGui_ImplMetal_RenderDrawData(draw_data, commandBuffer, uiRenderEncoder);
-
-                uiRenderEncoder->endEncoding();
-            #endif
+                uiRenderer.render(
+                    *cmdList.get(),
+                    [&renderer, &enable_pixelate](){
+                        ImGui::Begin("Renderer Sample");
+                        if(ImGui::Checkbox("Pixelate", &enable_pixelate))
+                            renderer.setPassEnabled("pixelate", enable_pixelate);
+                        ImGui::End();
+                    },
+                    swapchain.get()
+                );
 
                 // Signal fence for frame synchronization
                 cmdList->signalFence(
@@ -270,14 +242,6 @@ int main(int argc, char* argv[]){
     }
 
     framePacer->waitForIdle();
-
-#ifdef __APPLE__
-    uiPassDesc->release();
-
-    ImGui_ImplMetal_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
-#endif
 
     deinitResourceModule();
 

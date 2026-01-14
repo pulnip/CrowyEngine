@@ -13,25 +13,21 @@ PRIVATE
 target_link_libraries(CrowyRenderSample
 PRIVATE
     SDL3::SDL3
-    imgui
     Crowy::Log
     Crowy::Render
     Crowy::Resource
+    Crowy::RHI
+    Crowy::UI
 )
+
 if(RENDER_BACKEND STREQUAL "Metal")
-    target_link_libraries(CrowyRenderSample
+    target_compile_definitions(CrowyRenderSample
     PRIVATE
-        Crowy::MetalRHI
+        CROWY_METALRHI
     )
 elseif(RENDER_BACKEND STREQUAL "D3D12")
-    target_link_libraries(CrowyRenderSample
+    target_compile_definitions(CrowyRenderSample
     PRIVATE
-        Crowy::D3D12RHI
-    )
-else()
-    target_link_libraries(CrowyRenderSample
-    PRIVATE
-        Crowy::NullRHI
+        CROWY_D3D12RHI
     )
 endif()
-
