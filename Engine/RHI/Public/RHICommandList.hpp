@@ -28,6 +28,7 @@ namespace Crowy
 
         // Command list lifecycle
         virtual void begin() noexcept = 0;
+        virtual void flush() noexcept = 0;
         virtual void close() noexcept = 0;
         virtual void reset() noexcept = 0;
 

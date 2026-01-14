@@ -23,6 +23,10 @@ namespace Crowy
 
         }
 
+        void flush() noexcept RHI_OVERRIDE{
+
+        }
+
         void close() noexcept RHI_OVERRIDE{
 
         }

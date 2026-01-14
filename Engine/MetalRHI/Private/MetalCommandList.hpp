@@ -110,6 +110,21 @@ private:
             isRecording = true;
         }
 
+        void flush() noexcept RHI_OVERRIDE{
+            if(renderEncoder){
+                renderEncoder->endEncoding();
+                renderEncoder = nullptr;
+            }
+            else if(computeEncoder){
+                computeEncoder->endEncoding();
+                computeEncoder = nullptr;
+            }
+            else if(blitEncoder){
+                blitEncoder->endEncoding();
+                blitEncoder = nullptr;
+            }
+        }
+
         void close() noexcept RHI_OVERRIDE{
             CROWY_ASSERT(isRecording,
                 "Did you call RHICommandList::begin()?"
@@ -131,19 +146,7 @@ private:
 
         void reset() noexcept RHI_OVERRIDE{
             if(isRecording){
-
-                if(renderEncoder){
-                    renderEncoder->endEncoding();
-                    renderEncoder = nullptr;
-                }
-                else if(computeEncoder){
-                    computeEncoder->endEncoding();
-                    computeEncoder = nullptr;
-                }
-                else if(blitEncoder){
-                    blitEncoder->endEncoding();
-                    blitEncoder = nullptr;
-                }
+                flush();
 
                 isRecording = false;
             }
@@ -606,9 +609,6 @@ private:
             auto dstTex = static_cast<MetalTexture&>(dst).get();
 
             blitEncoder->copyFromTexture(srcTex, dstTex);
-
-            // TODO. remove this line after impl ui renderer
-            blitEncoder->endEncoding();
         }
 
         void copyTexture(
@@ -623,9 +623,6 @@ private:
             auto dstTex = mtlSwapchain.getCurrentTexture();
 
             blitEncoder->copyFromTexture(srcTex, dstTex);
-
-            // TODO. remove this line after impl ui renderer
-            blitEncoder->endEncoding();
         }
 
         void copyBufferToTexture(
@@ -651,9 +648,6 @@ private:
                 dstTex, arraySlice, mipLevel,
                 MTL::Origin::Make(0, 0, 0)
             );
-
-            // TODO. remove this line after impl ui renderer
-            blitEncoder->endEncoding();
         }
 
         void beginEvent(const char* name) noexcept RHI_OVERRIDE{

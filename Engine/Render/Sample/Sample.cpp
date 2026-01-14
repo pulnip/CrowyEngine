@@ -229,14 +229,15 @@ int main(int argc, char* argv[]){
 
                 cmdList->begin();
 
+                renderer.render(*cmdList.get(), ctx, swapchain.get());
+                cmdList->flush();
+
             #ifdef __APPLE__
                 // Start the Dear ImGui frame
                 ImGui_ImplMetal_NewFrame(uiPassDesc);
                 ImGui_ImplSDL3_NewFrame();
             #endif
                 ImGui::NewFrame();
-
-                renderer.render(*cmdList.get(), ctx, swapchain.get());
 
                 ImGui::ShowDemoWindow();
 
