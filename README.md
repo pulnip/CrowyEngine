@@ -6,8 +6,13 @@ my Game Engine Project
 ## Samples
 
 <details>
-<summary>pixelate pass enabling</summary>
+  <summary>Pixelate pass enabling</summary>
 
-![demo](./asset/video/pixelate_sample.gif)
+  ![demo1](./asset/video/pixelate_sample.gif)
+</details>
 
+<details>
+  <summary>Pixelate pass + FocusMask</summary>
+
+  ![demo2](./asset/video/pixelate_focusmask.gif)
 </details>
