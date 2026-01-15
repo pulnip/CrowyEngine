@@ -53,6 +53,13 @@ namespace Crowy
         Vec2 resolution;
         Vec2 pixelSize;
     };
+    struct FocusParams{
+        Vec2 focusCenter;
+        float focusRadius;
+        float falloff;
+        float aspectRatio;
+        Vec3 pad_;
+    };
 
     class Renderer::Impl{
     private:
@@ -61,8 +68,10 @@ namespace Crowy
         std::unordered_map<std::string, size_t, StringHash, std::equal_to<>> passIndex;
         RenderTargetPool renderTargetPool;
 
+        // TODO.
         RHIBufferPtr uniformBuffer;
-        RHIBufferPtr postProcessUniformBuffer;
+        RHIBufferPtr pixelateUniformBuffer;
+        RHIBufferPtr focusmaskUniformBuffer;
 
     public:
         Impl(RHIDevice* device)
@@ -116,12 +125,19 @@ namespace Crowy
                 .initialData = nullptr,
                 .debugName = "MVP Uniform Buffer"
             });
-            postProcessUniformBuffer = device->createBuffer({
+            pixelateUniformBuffer = device->createBuffer({
                 .size = sizeof(PixelateParams),
                 .usage = RHIBufferUsage::ConstantBuffer,
                 .stride = 0,
                 .initialData = nullptr,
-                .debugName = "PostProcess Uniform Buffer"
+                .debugName = "Pixelate pass Constant Buffer"
+            });
+            focusmaskUniformBuffer = device->createBuffer({
+                .size = sizeof(FocusParams),
+                .usage = RHIBufferUsage::ConstantBuffer,
+                .stride = 0,
+                .initialData = nullptr,
+                .debugName = "focusmask pass Constant Buffer"
             });
 
             for(const auto& [name, renderTarget]: spec.renderTargets){
@@ -245,7 +261,7 @@ namespace Crowy
 
             // draw
             if(pass.isFullscreenPass()){
-                drawFullscreenQuad(cmdList, ctx);
+                drawFullscreenQuad(cmdList, ctx, pass.name);
             }
             else{
                 drawObjectsWithType(cmdList, ctx, *pass.renderType);
@@ -295,19 +311,37 @@ namespace Crowy
 
         void drawFullscreenQuad(
             RHICommandList& cmdList,
-            const RenderContext& ctx
+            const RenderContext& ctx,
+            std::string_view passName
         ){
-            PixelateParams params{
-                .resolution = {ctx.viewport.width, ctx.viewport.height},
-                .pixelSize = {4.0f, 4.0f}
-            };
-            postProcessUniformBuffer->update(&params, sizeof(PixelateParams));
+            // TODO.
+            if(passName == "pixelate"){
+                PixelateParams params{
+                    .resolution = {ctx.viewport.width, ctx.viewport.height},
+                    .pixelSize = {4.0f, 4.0f}
+                };
+                pixelateUniformBuffer->update(&params, sizeof(PixelateParams));
 
-            cmdList.setConstantBuffer(
-                // TODO. slot number
-                RHIShaderStage::FragmentShader, 0,
-                *postProcessUniformBuffer.get()
-            );
+                cmdList.setConstantBuffer(
+                    // TODO. slot number
+                    RHIShaderStage::FragmentShader, 0,
+                    *pixelateUniformBuffer.get()
+                );
+            }
+            else if(passName == "focusmask"){
+                FocusParams params{
+                    .focusCenter = {0.5f, 0.1f},
+                    .focusRadius = 0.05f,
+                    .falloff = 0.1f,
+                    .aspectRatio = ctx.viewport.width / ctx.viewport.height
+                };
+                focusmaskUniformBuffer->update(&params, sizeof(FocusParams));
+
+                cmdList.setConstantBuffer(
+                    RHIShaderStage::FragmentShader, 0,
+                    *focusmaskUniformBuffer.get()
+                );
+            }
 
             cmdList.draw(6, 1);
         }

@@ -108,7 +108,39 @@ int main(int argc, char* argv[]){
                     .clearDepthStencil = {1.0f, 0},
                     .debugName = "Depth Buffer"
                 },
-            }
+            },
+            {
+                "pixelated",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialState = RHIResourceState::ShaderResource,
+                    .clearColor = {},
+                    .clearDepthStencil = {1.0f, 0},
+                    .debugName = "Scene Color"
+                },
+            },
+            {
+                "focusMask",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialState = RHIResourceState::ShaderResource,
+                    .clearColor = {},
+                    .clearDepthStencil = {1.0f, 0},
+                    .debugName = "Scene Color"
+                },
+            },
         },
         .passes = {
             RenderPassSpec{
@@ -138,21 +170,53 @@ int main(int argc, char* argv[]){
             RenderPassSpec{
                 .name = "pixelate",
                 .inputs = {"sceneColor"},
-                .targets = {"BackBuffer"},
+                .targets = {"pixelated"},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/pixelate.metal",
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/pixelate.metal",
                     .fsFuncName = "fs_pixelate"
                 #endif
                 },
+            },
+            RenderPassSpec{
+                .name = "focusmask",
+                .inputs = {},
+                .targets = {"focusMask"},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/focusmask.metal",
+                    .fsFuncName = "fs_focusmask"
+                #endif
+                }
+            },
+            RenderPassSpec{
+                .name = "composite",
+                .inputs = {
+                    "pixelated",
+                    "sceneColor",
+                    "focusMask"
+                },
+                .targets = {"BackBuffer"},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/composite.metal",
+                    .fsFuncName = "fs_composite"
+                #endif
+                }
             }
         }
     };
     renderer.loadPasses(spec);
 
     float cameraDistance = 30.0f;
+    float mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
 
     Timer timer;
     timer.reset();
@@ -161,7 +225,9 @@ int main(int argc, char* argv[]){
 
     // TODO. make this to UI!
     bool enable_pixelate = false;
+    bool enable_focusmask = false;
     renderer.setPassEnabled("pixelate", enable_pixelate);
+    renderer.setPassEnabled("composite", enable_focusmask);
 
     while(isRunning){
         SDL_Event event;
@@ -170,6 +236,10 @@ int main(int argc, char* argv[]){
             switch(event.type){
             case SDL_EVENT_QUIT:
                 isRunning = false;
+                break;
+            case SDL_EVENT_MOUSE_MOTION:
+                SDL_GetMouseState(&mouseX, &mouseY);
+                break;
             }
         }
 
@@ -218,10 +288,12 @@ int main(int argc, char* argv[]){
 
                 uiRenderer.render(
                     *cmdList.get(),
-                    [&renderer, &enable_pixelate](){
+                    [&renderer, &enable_pixelate, &enable_focusmask](){
                         ImGui::Begin("Renderer Sample");
                         if(ImGui::Checkbox("Pixelate", &enable_pixelate))
                             renderer.setPassEnabled("pixelate", enable_pixelate);
+                        if(ImGui::Checkbox("Focusmask", &enable_focusmask))
+                            renderer.setPassEnabled("composite", enable_focusmask);
                         ImGui::End();
                     },
                     swapchain.get()
