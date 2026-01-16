@@ -158,8 +158,10 @@ namespace Crowy
                 }
                 else{
                     // bypass for Post-Process, input[0] for bypass target
+                    CROWY_ASSERT(pass.inputs.size() > 0);
                     auto  inputTarget = renderTargetPool.get(pass.inputs[0]);
-                    // TODO. multi render target
+
+                    // not support MRT for bypass target
                     CROWY_ASSERT(pass.targets.size() == 1);
                     const auto& renderTargetName = pass.targets[0];
 
@@ -209,15 +211,24 @@ namespace Crowy
         ){
             RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 1.0f};
 
-            // set RenderTarget
-            // TODO. multi render target
-            CROWY_ASSERT(pass.targets.size() == 1);
+            CROWY_ASSERT(pass.targets.size() > 0);
             const auto& renderTargetName = pass.targets[0];
             auto depthTarget = renderTargetPool.get(pass.depthTarget);
             if(renderTargetName != "BackBuffer"){
-                auto renderTarget = renderTargetPool.get(renderTargetName);
+                std::vector<RHITexture*> renderTargets;
+                renderTargets.reserve(pass.targets.size());
+
+                // Multi Render Target support
+                for(const auto& renderTargetName: pass.targets){
+                    CROWY_ASSERT(renderTargetName != "BackBuffer");
+                    auto renderTarget = renderTargetPool.get(renderTargetName);
+                    CROWY_ASSERT(renderTarget != nullptr);
+
+                    renderTargets.push_back(renderTarget);
+                }
+
                 cmdList.beginRenderPass(
-                    renderTarget,
+                    renderTargets,
                     depthTarget,
                     // only single pass for now
                     // TODO. use RenderGraph later

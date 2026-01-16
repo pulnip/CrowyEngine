@@ -36,7 +36,7 @@ namespace Crowy
         }
 
         void beginRenderPass(
-            RHITexture* renderTarget,
+            std::span<RHITexture*> renderTargets,
             RHITexture* depthStencil,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <utility>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
@@ -158,20 +160,27 @@ private:
         }
 
         void beginRenderPass(
-            RHITexture* renderTarget,
+            std::span<RHITexture*> renderTargets,
             RHITexture* depthStencil,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS
         ) noexcept RHI_OVERRIDE{
-            MTL::Texture* tex = nullptr;
+            CROWY_ASSERT(renderTargets.size() > 0);
 
-            if(renderTarget != nullptr)
-                tex = static_cast<MetalTexture*>(renderTarget)->get();
+            std::vector<const MTL::Texture*> texes;
+            texes.reserve(renderTargets.size());
+
+            for(const auto& renderTarget: renderTargets){
+                auto tex = static_cast<MetalTexture*>(renderTarget)->get();
+
+                CROWY_ASSERT(tex != nullptr);
+                texes.push_back(tex);
+            }
 
             beginRenderPass(
-                tex,
+                texes,
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS
@@ -187,9 +196,12 @@ private:
             const RHIClearDepthStencil& clearDS
         ) noexcept RHI_OVERRIDE{
             auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
+            std::array<const MTL::Texture*, 1> renderTarget{
+                mtlSwapchain.getCurrentTexture()
+            };
 
             beginRenderPass(
-                mtlSwapchain.getCurrentTexture(),
+                renderTarget,
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS
@@ -698,7 +710,8 @@ private:
 
     private:
         void beginRenderPass(
-            MTL::Texture* tex,
+            std::span<const MTL::Texture*> texes,
+            // MTL::Texture* tex,
             RHITexture* depthStencil,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
@@ -717,9 +730,9 @@ private:
             auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
 
             // Color Attachment
-            if(tex){
-                auto& colorAttach = *passDesc->colorAttachments()->object(0);
-                colorAttach.setTexture(tex);
+            for(size_t i=0; i<texes.size(); ++i){
+                auto& colorAttach = *passDesc->colorAttachments()->object(i);
+                colorAttach.setTexture(texes[i]);
                 colorAttach.setLoadAction(convertLoadAction(loadAction));
                 colorAttach.setStoreAction(convertStoreAction(storeAction));
                 colorAttach.setClearColor(MTL::ClearColor::Make(

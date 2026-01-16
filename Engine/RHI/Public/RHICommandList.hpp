@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include "semantics.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
@@ -34,7 +35,7 @@ namespace Crowy
 
         // Render pass control
         virtual void beginRenderPass(
-            RHITexture* renderTarget,
+            std::span<RHITexture*> renderTargets,
             RHITexture* depthStencil = nullptr,
             RHILoadAction loadAction  = RHILoadAction::Load,
             RHIStoreAction storeAction = RHIStoreAction::Store,
@@ -47,7 +48,7 @@ namespace Crowy
         ) noexcept = 0;
 
         virtual void beginRenderPass(
-            RHISwapchain&,
+            RHISwapchain& backBuffer,
             RHITexture* depthStencil = nullptr,
             RHILoadAction loadAction  = RHILoadAction::Load,
             RHIStoreAction storeAction = RHIStoreAction::Store,
