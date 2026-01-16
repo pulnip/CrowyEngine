@@ -78,6 +78,34 @@ int main(int argc, char* argv[]){
         .renderTargets = {
             {"BackBuffer", backBufferDesc},
             {
+                "albedo",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialState = RHIResourceState::ShaderResource,
+                    .debugName = "Albedo Texture"
+                },
+            },
+            {
+                "normal",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialState = RHIResourceState::ShaderResource,
+                    .debugName = "Normal Texture"
+                },
+            },
+            {
                 "sceneColor",
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
@@ -143,6 +171,24 @@ int main(int argc, char* argv[]){
             },
         },
         .passes = {
+            RenderPassSpec{
+                .name = "gbuffer",
+                .inputs = {},
+                .targets = {"albedo", "normal"},
+                .depthTarget = "depth",
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/gbuffer.metal",
+                    .vsFuncName = "vs_gbuffer",
+                    .fsFilePath = "asset/Shaders/gbuffer.metal",
+                    .fsFuncName = "fs_gbuffer"
+                #endif
+                },
+                .renderType = "type0",
+                .rasterizer = RHIRasterizerState{},
+                .depthStencil = RHIDepthStencilState{},
+                .blend = RHIBlendState{}
+            },
             RenderPassSpec{
                 .name = "scene",
                 // no input texture
