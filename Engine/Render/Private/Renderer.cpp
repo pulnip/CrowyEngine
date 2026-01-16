@@ -160,6 +160,7 @@ namespace Crowy
                     // bypass for Post-Process, input[0] for bypass target
                     CROWY_ASSERT(pass.inputs.size() > 0);
                     auto  inputTarget = renderTargetPool.get(pass.inputs[0]);
+                    CROWY_ASSERT(inputTarget != nullptr);
 
                     // not support MRT for bypass target
                     CROWY_ASSERT(pass.targets.size() == 1);
@@ -167,6 +168,8 @@ namespace Crowy
 
                     if(renderTargetName != "BackBuffer"){
                         auto renderTarget = renderTargetPool.get(renderTargetName);
+                        CROWY_ASSERT(renderTarget != nullptr);
+
                         cmdList.copyTexture(*inputTarget, *renderTarget);
                     }
                     else{

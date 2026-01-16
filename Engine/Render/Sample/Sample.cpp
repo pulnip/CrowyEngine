@@ -106,6 +106,22 @@ int main(int argc, char* argv[]){
                 },
             },
             {
+                "toonColor",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                    .depth = 1,
+                    .mipLevels = 1,
+                    .arraySize = 1,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialState = RHIResourceState::ShaderResource,
+                    .clearColor = {},
+                    .clearDepthStencil = {1.0f, 0},
+                    .debugName = "Tool Color"
+                },
+            },
+            {
                 "sceneColor",
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
@@ -190,6 +206,23 @@ int main(int argc, char* argv[]){
                 .blend = RHIBlendState{}
             },
             RenderPassSpec{
+                .name = "celshading",
+                .inputs = {"albedo", "normal"},
+                .targets = {"toonColor"},
+                .depthTarget = "depth",
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/cel_shading.metal",
+                    .fsFuncName = "fs_cel_shading"
+                #endif
+                },
+                .rasterizer = RHIRasterizerState{},
+                .depthStencil = RHIDepthStencilState{},
+                .blend = RHIBlendState{}
+            },
+            RenderPassSpec{
                 .name = "scene",
                 // no input texture
                 .inputs = {},
@@ -242,7 +275,7 @@ int main(int argc, char* argv[]){
             RenderPassSpec{
                 .name = "composite",
                 .inputs = {
-                    "pixelated",
+                    "toonColor",
                     "sceneColor",
                     "focusMask"
                 },
