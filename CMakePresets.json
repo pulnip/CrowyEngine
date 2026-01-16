@@ -19,7 +19,10 @@
                 "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
                 "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
                 "CMAKE_AR": "/opt/homebrew/opt/llvm/bin/llvm-ar",
-                "CMAKE_RANLIB": "/opt/homebrew/opt/llvm/bin/llvm-ranlib"
+                "CMAKE_RANLIB": "/opt/homebrew/opt/llvm/bin/llvm-ranlib",
+                "CMAKE_EXE_LINKER_FLAGS_INIT": "-fuse-ld=lld",
+                "CMAKE_SHARED_LINKER_FLAGS_INIT": "-fuse-ld=lld",
+                "CMAKE_MODULE_LINKER_FLAGS_INIT": "-fuse-ld=lld"
             }
         },
         {
@@ -34,6 +37,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_LINKER": "lld-link",
                 "CMAKE_C_FLAGS": "--target=x86_64-pc-windows-msvc",
                 "CMAKE_CXX_FLAGS": "--target=x86_64-pc-windows-msvc"
             }
