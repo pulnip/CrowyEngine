@@ -36,6 +36,7 @@ namespace Crowy
         MTL::Texture* texture;
         size_t width, height;
         RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         MetalTexture(
@@ -44,6 +45,7 @@ namespace Crowy
         ) noexcept
             : width(desc.width), height(desc.height)
             , format(desc.format)
+            , currentState(desc.initialState)
         {
             auto texDesc = MTL::TextureDescriptor::alloc()->init();
             texDesc->setWidth(desc.width);
@@ -96,5 +98,13 @@ namespace Crowy
         }
 
         MTL::Texture* get() const{ return texture; }
+
+        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+            return currentState;
+        }
+
+        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+            currentState = state;
+        }
     };
 }

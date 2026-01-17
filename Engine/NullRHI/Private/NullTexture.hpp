@@ -18,11 +18,13 @@ namespace Crowy
     private:
         size_t width, height;
         RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         NullTexture(const RHITextureCreateDesc& desc)
             : width(desc.width), height(desc.height)
             , format(desc.format)
+            , currentState(desc.initialState)
         {}
         ~NullTexture() = default;
 
@@ -30,6 +32,14 @@ namespace Crowy
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
             // No-Op
+        }
+
+        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+            return currentState;
+        }
+
+        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+            currentState = state;
         }
     };
 }

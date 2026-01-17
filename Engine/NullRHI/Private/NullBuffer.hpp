@@ -19,6 +19,7 @@ namespace Crowy
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
+        RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         NullBuffer(const RHIBufferCreateDesc& desc)
@@ -34,6 +35,14 @@ namespace Crowy
 
         void update(const void* data, size_t size, size_t offset) noexcept RHI_OVERRIDE{
             
+        }
+
+        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+            return currentState;
+        }
+
+        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+            currentState = state;
         }
     };
 }

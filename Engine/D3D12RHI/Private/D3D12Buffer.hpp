@@ -26,6 +26,7 @@ namespace Crowy
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
         void* mappedData = nullptr;
+        RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         D3D12Buffer(
@@ -103,5 +104,13 @@ namespace Crowy
         }
 
         ID3D12Resource* get() const{ return buffer.Get(); }
+
+        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+            return currentState;
+        }
+
+        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+            currentState = state;
+        }
     };
 }

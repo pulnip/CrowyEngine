@@ -23,6 +23,7 @@ namespace Crowy
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
+        RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         MetalBuffer(
@@ -74,5 +75,13 @@ namespace Crowy
         }
 
         MTL::Buffer* get() const{ return buffer; }
+
+        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+            return currentState;
+        }
+
+        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+            currentState = state;
+        }
     };
 }

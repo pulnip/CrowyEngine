@@ -28,7 +28,8 @@ namespace Crowy
         ComPtr<ID3D12Resource> texture;
         size_t width, height;
         RHITextureFormat format = RHITextureFormat::Unknown;
-        D3D12_RESOURCE_STATES currentState;
+        D3D12_RESOURCE_STATES d3d12State;
+        RHIResourceState rhiState = RHIResourceState::Common;
 
     public:
         D3D12Texture(
@@ -39,7 +40,8 @@ namespace Crowy
             : device(device), commandQueue(commandQueue)
             , width(desc.width), height(desc.height)
             , format(desc.format)
-            , currentState(convertResourceState(desc.initialState))
+            , d3d12State(convertResourceState(desc.initialState))
+            , rhiState(desc.initialState)
         {
             D3D12_RESOURCE_DESC resourceDesc = {};
             resourceDesc.Dimension = (desc.depth > 1) ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -102,7 +104,7 @@ namespace Crowy
                 throw std::runtime_error("Failed to create texture");
             }
 
-            currentState = D3D12_RESOURCE_STATE_COMMON;
+            d3d12State = D3D12_RESOURCE_STATE_COMMON;
 
             if(desc.initialData){
                 uploadData(desc.initialData, 0, 0);
@@ -213,11 +215,11 @@ namespace Crowy
             }
 
             // Transition to COPY_DEST if not already in that state
-            if(currentState != D3D12_RESOURCE_STATE_COPY_DEST){
+            if(d3d12State != D3D12_RESOURCE_STATE_COPY_DEST){
                 D3D12_RESOURCE_BARRIER barrier = {};
                 barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                 barrier.Transition.pResource = texture.Get();
-                barrier.Transition.StateBefore = currentState;
+                barrier.Transition.StateBefore = d3d12State;
                 barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
                 barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
                 cmdList->ResourceBarrier(1, &barrier);
@@ -243,7 +245,7 @@ namespace Crowy
             barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             cmdList->ResourceBarrier(1, &barrier);
-            currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            d3d12State = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
             cmdList->Close();
 
@@ -268,6 +270,17 @@ namespace Crowy
 
         ID3D12Resource* get() const{ return texture.Get(); }
 
-        D3D12_RESOURCE_STATES& getState(){ return currentState; }
+        // D3D12 specific
+        D3D12_RESOURCE_STATES& getD3D12State(){ return d3d12State; }
+
+        // RHI interface
+        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+            return rhiState;
+        }
+
+        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+            rhiState = state;
+            d3d12State = convertResourceState(state);
+        }
     };
 }
