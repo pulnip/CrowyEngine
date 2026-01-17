@@ -14,7 +14,10 @@ fragment float4 fs_cel_shading(
 ){
     constexpr sampler s(filter::linear);
 
-    float3 albedo = albedoTex.sample(s, in.texCoord).rgb;
+    float4 albedo = albedoTex.sample(s, in.texCoord);
+    // if background
+    if(albedo.a < 0.01)
+        return albedo;
     float3 normal = normalTex.sample(s, in.texCoord).rgb * 2.0 - 1.0;
 
     // TODO. hard-coded light
@@ -26,7 +29,7 @@ fragment float4 fs_cel_shading(
                    0.4 * step(0.4, ndotl) +
                    0.4 * step(0.6, ndotl);
 
-    float3 color = shadow * albedo;
+    float3 color = shadow * albedo.rgb;
 
     return float4(color, 1.0);
 }

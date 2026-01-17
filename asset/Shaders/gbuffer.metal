@@ -43,7 +43,8 @@ fragment GBufferOut fs_gbuffer(
     GBufferOut out;
 
     // no lighting
-    out.albedo = diffuse.sample(samp, in.texCoord);
+    float4 dif = diffuse.sample(samp, in.texCoord);
+    out.albedo = float4(dif.rgb, 1.0);
 
     // encode to [0, 1]
     float3 n = normalize(in.normal);

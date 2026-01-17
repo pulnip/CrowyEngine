@@ -212,7 +212,7 @@ namespace Crowy
             RHISwapchain* backBuffer,
             const RenderPass& pass
         ){
-            RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 1.0f};
+            RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 0.0f};
 
             CROWY_ASSERT(pass.targets.size() > 0);
             const auto& renderTargetName = pass.targets[0];
