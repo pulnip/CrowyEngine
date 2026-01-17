@@ -332,8 +332,8 @@ namespace Crowy
     };
 
     struct RHIDepthStencilState{
-        bool depthEnable = true;
-        bool depthWriteEnable = true;
+        bool depthEnable = false;
+        bool depthWriteEnable = false;
         RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
         bool stencilEnable = false;
         uint8_t stencilReadMask = 0xFF;
