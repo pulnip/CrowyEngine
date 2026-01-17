@@ -32,4 +32,15 @@ fragment float4 fs_cel_shading(
     float3 color = shadow * albedo.rgb;
 
     return float4(color, 1.0);
+
+    // Rim Lighting
+    // TODO. hard-coded view direction
+    float3 viewDir = normalize(float3(0.0, 0.0, 1.0));
+    float rim = 1.0 - max(dot(normal, viewDir), 0.0);
+    rim = pow(rim, 3.0);
+
+    float3 rimColor = float3(1.0, 1.0, 1.0);
+    float rimStrength = 0.5;
+
+    color += rimStrength * rim * rimColor;
 }
