@@ -257,6 +257,12 @@ namespace Crowy
                 if(inputTarget == nullptr)
                     continue;
 
+                // transition input texture to shader resource state
+                cmdList.transitionBarrier(
+                    *inputTarget,
+                    RHIResourceState::ShaderResource
+                );
+
                 // TODO. select shader stage for advanced rendering technique
                 cmdList.setTexture(
                     static_cast<uint32_t>(i),
