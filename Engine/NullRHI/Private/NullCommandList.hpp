@@ -41,7 +41,8 @@ namespace Crowy
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
-            const RHIClearDepthStencil& clearDS
+            const RHIClearDepthStencil& clearDS,
+            const char* debugName
         ) noexcept RHI_OVERRIDE{
 
         }
@@ -52,7 +53,8 @@ namespace Crowy
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
-            const RHIClearDepthStencil& clearDS
+            const RHIClearDepthStencil& clearDS,
+            const char* debugName
         ) noexcept RHI_OVERRIDE{
 
         }

@@ -23,6 +23,7 @@ namespace Crowy
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
+        bool isManaged = false;
         RHIResourceState currentState = RHIResourceState::Common;
 
     public:
@@ -36,16 +37,20 @@ namespace Crowy
             auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
             auto hasConstantUsage = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer);
             isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
-            
+
             if(desc.initialData){
+            #if TARGET_OS_OSX
+                isManaged = true;
                 buffer = device->newBuffer(
                     desc.initialData, desc.size,
-                #if TARGET_OS_OSX
-                    MTL::StorageModeManaged  // macOS: 성능상 이점 가능
-                #else
-                    MTL::StorageModeShared   // iOS/iPadOS: 이것만 가능
-                #endif
+                    MTL::StorageModeManaged
                 );
+            #else
+                buffer = device->newBuffer(
+                    desc.initialData, desc.size,
+                    MTL::StorageModeShared
+                );
+            #endif
             }
             else{
                 buffer = device->newBuffer(
@@ -69,9 +74,9 @@ namespace Crowy
             void* ptr = buffer->contents();
             memcpy(static_cast<uint8_t*>(ptr) + offset, data, size);
 
-        #if TARGET_OS_OSX
-            buffer->didModifyRange(NS::Range::Make(offset, size));
-        #endif
+            if(isManaged){
+                buffer->didModifyRange(NS::Range::Make(offset, size));
+            }
         }
 
         MTL::Buffer* get() const{ return buffer; }

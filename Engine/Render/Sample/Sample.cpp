@@ -1,6 +1,7 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
+#include "enum_traits.hpp"
 #include "FramePacer.hpp"
 #include "Log.hpp"
 #include "RHIBuffer.hpp"
@@ -86,7 +87,10 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = RHITextureUsage::ShaderResource,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::ShaderResource,
                     .debugName = "Albedo Texture"
                 },
@@ -100,7 +104,10 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = RHITextureUsage::ShaderResource,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::ShaderResource,
                     .debugName = "Normal Texture"
                 },
@@ -114,11 +121,14 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = RHITextureUsage::ShaderResource,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::ShaderResource,
                     .clearColor = {},
                     .clearDepthStencil = {1.0f, 0},
-                    .debugName = "Tool Color"
+                    .debugName = "Toon Color"
                 },
             },
             {
@@ -130,7 +140,10 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = RHITextureUsage::ShaderResource,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::ShaderResource,
                     .clearColor = {},
                     .clearDepthStencil = {1.0f, 0},
@@ -146,7 +159,10 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::D32_FLOAT,
-                    .usage = RHITextureUsage::DepthStencil,
+                    .usage = combine(
+                        RHITextureUsage::DepthStencil,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::DepthStencilWrite,
                     .clearColor = {},
                     .clearDepthStencil = {1.0f, 0},
@@ -162,11 +178,14 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = RHITextureUsage::ShaderResource,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::ShaderResource,
                     .clearColor = {},
                     .clearDepthStencil = {1.0f, 0},
-                    .debugName = "Scene Color"
+                    .debugName = "pixelated"
                 },
             },
             {
@@ -178,11 +197,14 @@ int main(int argc, char* argv[]){
                     .mipLevels = 1,
                     .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = RHITextureUsage::ShaderResource,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
                     .initialState = RHIResourceState::ShaderResource,
                     .clearColor = {},
                     .clearDepthStencil = {1.0f, 0},
-                    .debugName = "Scene Color"
+                    .debugName = "focusMask"
                 },
             },
         },

@@ -44,7 +44,8 @@ namespace Crowy
             },
             const RHIClearDepthStencil& clearDS = {
                 .depth = 1.0f, .stencil = 0
-            }
+            },
+            const char* debugName = nullptr
         ) noexcept = 0;
 
         virtual void beginRenderPass(
@@ -57,7 +58,8 @@ namespace Crowy
             },
             const RHIClearDepthStencil& clearDS = {
                 .depth = 1.0f, .stencil = 0
-            }
+            },
+            const char* debugName = nullptr
         ) noexcept = 0;
 
         virtual void endRenderPass() noexcept = 0;

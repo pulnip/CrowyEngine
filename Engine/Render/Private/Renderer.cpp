@@ -24,14 +24,18 @@ namespace Crowy
         RHIShader* fragmentShader,
         const std::unordered_map<std::string, RHITextureCreateDesc>& renderTargets
     ){
+        // fullscreen pass (no renderType) doesn't need vertex layout
+        bool isFullscreenPass = spec.renderType.empty();
+
         RHIGraphicsPipelineStateDesc desc{
             .vertexShader = vertexShader,
             .pixelShader = fragmentShader,
-            // use default vertex layout and topology
+            .vertexLayout = isFullscreenPass ? RHIVertexLayout{} : DEFAULT_VERTEX_LAYOUT,
             .rasterizer = spec.rasterizer,
             .depthStencil = spec.depthStencil,
             .blend = spec.blend,
             .renderTargetCount = static_cast<uint32_t>(spec.targets.size()),
+            .depthStencilFormat = RHITextureFormat::Unknown,
             .debugName = spec.name.c_str()
         };
 
@@ -213,6 +217,7 @@ namespace Crowy
             const RenderPass& pass
         ){
             RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 0.0f};
+            RHIClearDepthStencil clearDS = {1.0f, 0};
 
             CROWY_ASSERT(pass.targets.size() > 0);
             const auto& renderTargetName = pass.targets[0];
@@ -237,7 +242,9 @@ namespace Crowy
                     // TODO. use RenderGraph later
                     RHILoadAction::Clear,
                     RHIStoreAction::Store,
-                    clearColor
+                    clearColor,
+                    clearDS,
+                    pass.name.c_str()
                 );
             }
             else{
@@ -246,7 +253,9 @@ namespace Crowy
                     depthTarget,
                     RHILoadAction::Load,
                     RHIStoreAction::Store,
-                    clearColor
+                    clearColor,
+                    clearDS,
+                    pass.name.c_str()
                 );
             }
             cmdList.setPipelineState(pass.pipeline.get());

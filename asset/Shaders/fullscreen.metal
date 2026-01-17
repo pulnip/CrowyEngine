@@ -32,3 +32,14 @@ vertex VertexOut vs_fullscreen(
 
     return out;
 }
+
+fragment float4 fs_bypass(
+    VertexOut         in [[ stage_in ]],
+    texture2d<float> tex [[texture(0)]]
+){
+    constexpr sampler s(filter::nearest);
+
+    float4 sampled = tex.sample(s, in.texCoord);
+
+    return float4(sampled.rgb, 1.0);
+}

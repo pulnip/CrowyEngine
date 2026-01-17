@@ -165,7 +165,8 @@ private:
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
-            const RHIClearDepthStencil& clearDS
+            const RHIClearDepthStencil& clearDS,
+            const char* debugName
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(renderTargets.size() > 0);
 
@@ -183,7 +184,8 @@ private:
                 texes,
                 depthStencil,
                 loadAction, storeAction,
-                clearColor, clearDS
+                clearColor, clearDS,
+                debugName
             );
         }
 
@@ -193,7 +195,8 @@ private:
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
-            const RHIClearDepthStencil& clearDS
+            const RHIClearDepthStencil& clearDS,
+            const char* debugName
         ) noexcept RHI_OVERRIDE{
             auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
             std::array<const MTL::Texture*, 1> renderTarget{
@@ -204,7 +207,8 @@ private:
                 renderTarget,
                 depthStencil,
                 loadAction, storeAction,
-                clearColor, clearDS
+                clearColor, clearDS,
+                debugName
             );
         }
 
@@ -522,22 +526,9 @@ private:
             RHITexture& texture,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-
-            RHIResourceState before = texture.getState();
-            if(before == after) return;
-
-            // basically no-op for Metal, but memoryBarrier ensures synchronization
-            if(after == RHIResourceState::ShaderResource){
-                renderEncoder->memoryBarrier(
-                    MTL::BarrierScopeTextures,
-                    MTL::RenderStageFragment,
-                    MTL::RenderStageVertex
-                );
-            }
-
+            // Metal has implicit synchronization between render passes,
+            // so we only need to track state for API consistency.
+            // memoryBarrier is only needed for same-pass synchronization.
             texture.setState(after);
         }
 
@@ -545,22 +536,7 @@ private:
             RHIBuffer& buffer,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-
-            RHIResourceState before = buffer.getState();
-            if(before == after) return;
-
-            // basically no-op for Metal, but memoryBarrier ensures synchronization
-            if(after == RHIResourceState::ShaderResource){
-                renderEncoder->memoryBarrier(
-                    MTL::BarrierScopeBuffers,
-                    MTL::RenderStageFragment,
-                    MTL::RenderStageVertex
-                );
-            }
-
+            // no-op for Metal
             buffer.setState(after);
         }
 
@@ -724,7 +700,8 @@ private:
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
-            const RHIClearDepthStencil& clearDS
+            const RHIClearDepthStencil& clearDS,
+            const char* debugName
         ) noexcept{
             CROWY_ASSERT(renderEncoder == nullptr,
                 "Did you call RHICommandList::endRenderPass()?"
@@ -761,9 +738,11 @@ private:
             }
 
             renderEncoder = commandBuffer->renderCommandEncoder(passDesc);
-            renderEncoder->setLabel(
-                NS::String::string("Crowy Render Pass", NS::UTF8StringEncoding)
-            );
+            if(debugName != nullptr){
+                renderEncoder->setLabel(
+                    NS::String::string(debugName, NS::UTF8StringEncoding)
+                );
+            }
 
             // 기본 sampler 설정
             if(defaultSampler){
