@@ -519,15 +519,17 @@ private:
         }
 
         void transitionBarrier(
-            RHITexture&,
-            RHIResourceState,
+            RHITexture& texture,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
 
-            // basically no-op for Metal.
+            RHIResourceState before = texture.getState();
+            if(before == after) return;
+
+            // basically no-op for Metal, but memoryBarrier ensures synchronization
             if(after == RHIResourceState::ShaderResource){
                 renderEncoder->memoryBarrier(
                     MTL::BarrierScopeTextures,
@@ -535,18 +537,22 @@ private:
                     MTL::RenderStageVertex
                 );
             }
+
+            texture.setState(after);
         }
 
         void transitionBarrier(
-            RHIBuffer&,
-            RHIResourceState,
+            RHIBuffer& buffer,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
 
-            // basically no-op for Metal.
+            RHIResourceState before = buffer.getState();
+            if(before == after) return;
+
+            // basically no-op for Metal, but memoryBarrier ensures synchronization
             if(after == RHIResourceState::ShaderResource){
                 renderEncoder->memoryBarrier(
                     MTL::BarrierScopeBuffers,
@@ -554,6 +560,8 @@ private:
                     MTL::RenderStageVertex
                 );
             }
+
+            buffer.setState(after);
         }
 
         void uavBarrier(RHITexture&) noexcept RHI_OVERRIDE{

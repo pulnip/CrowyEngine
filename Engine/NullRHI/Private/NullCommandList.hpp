@@ -144,7 +144,6 @@ namespace Crowy
 
         void transitionBarrier(
             RHITexture& texture,
-            RHIResourceState before,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
 
@@ -152,7 +151,6 @@ namespace Crowy
 
         void transitionBarrier(
             RHIBuffer& buffer,
-            RHIResourceState before,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
 

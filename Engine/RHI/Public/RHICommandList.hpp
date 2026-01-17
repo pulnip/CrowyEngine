@@ -128,15 +128,14 @@ namespace Crowy
         ) noexcept = 0;
 
         // Resource barriers (state transitions)
+        // Note: 'before' state is obtained from texture.getState() internally
         virtual void transitionBarrier(
             RHITexture& texture,
-            RHIResourceState before,
             RHIResourceState after
         ) noexcept = 0;
 
         virtual void transitionBarrier(
             RHIBuffer& buffer,
-            RHIResourceState before,
             RHIResourceState after
         ) noexcept = 0;
 

@@ -189,8 +189,8 @@ namespace Crowy
 
             if(d3dRT){
                 // Transition to render target
-                transitionResource(d3dRT, static_cast<D3D12Texture*>(renderTarget)->getState(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-                static_cast<D3D12Texture*>(renderTarget)->getState() = D3D12_RESOURCE_STATE_RENDER_TARGET;
+                transitionResource(d3dRT, static_cast<D3D12Texture*>(renderTarget)->getD3D12State(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+                static_cast<D3D12Texture*>(renderTarget)->getD3D12State() = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
                 rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
                 device->CreateRenderTargetView(d3dRT, nullptr, rtvHandle);
@@ -203,8 +203,8 @@ namespace Crowy
             }
 
             if(d3dDS){
-                transitionResource(d3dDS, static_cast<D3D12Texture*>(depthStencil)->getState(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-                static_cast<D3D12Texture*>(depthStencil)->getState() = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                transitionResource(d3dDS, static_cast<D3D12Texture*>(depthStencil)->getD3D12State(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                static_cast<D3D12Texture*>(depthStencil)->getD3D12State() = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
                 dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
                 device->CreateDepthStencilView(d3dDS, nullptr, dsvHandle);
@@ -254,8 +254,8 @@ namespace Crowy
             D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = {};
             if(depthStencil){
                 auto d3dDS = static_cast<D3D12Texture*>(depthStencil)->get();
-                transitionResource(d3dDS, static_cast<D3D12Texture*>(depthStencil)->getState(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-                static_cast<D3D12Texture*>(depthStencil)->getState() = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                transitionResource(d3dDS, static_cast<D3D12Texture*>(depthStencil)->getD3D12State(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                static_cast<D3D12Texture*>(depthStencil)->getD3D12State() = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
                 // Create DSV for depth buffer
                 dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -361,13 +361,13 @@ namespace Crowy
             auto texDesc = texResource->GetDesc();
 
             // Transition to shader resource state
-            if(d3dTexture->getState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE){
+            if(d3dTexture->getD3D12State() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE){
                 transitionResource(
                     texResource,
-                    d3dTexture->getState(),
+                    d3dTexture->getD3D12State(),
                     D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
                 );
-                d3dTexture->getState() = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                d3dTexture->getD3D12State() = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             }
 
             // Use linear allocator pattern - each setTexture call gets a new descriptor slot
@@ -468,25 +468,33 @@ namespace Crowy
         }
 
         void transitionBarrier(
-            RHITexture* texture,
-            RHIResourceState before,
+            RHITexture& texture,
             RHIResourceState after
         ) RHI_OVERRIDE{
-            if(!texture || !isRecording) return;
+            if(!isRecording) return;
 
-            auto d3dTexture = static_cast<D3D12Texture*>(texture)->get();
+            RHIResourceState before = texture.getState();
+            if(before == after) return;
+
+            auto d3dTexture = static_cast<D3D12Texture*>(&texture)->get();
             transitionResource(d3dTexture, convertResourceState(before), convertResourceState(after));
+
+            texture.setState(after);
         }
 
         void transitionBarrier(
-            RHIBuffer* buffer,
-            RHIResourceState before,
+            RHIBuffer& buffer,
             RHIResourceState after
         ) RHI_OVERRIDE{
-            if(!buffer || !isRecording) return;
+            if(!isRecording) return;
 
-            auto d3dBuffer = static_cast<D3D12Buffer*>(buffer)->get();
+            RHIResourceState before = buffer.getState();
+            if(before == after) return;
+
+            auto d3dBuffer = static_cast<D3D12Buffer*>(&buffer)->get();
             transitionResource(d3dBuffer, convertResourceState(before), convertResourceState(after));
+
+            buffer.setState(after);
         }
 
         void uavBarrier(RHITexture* texture) RHI_OVERRIDE{
