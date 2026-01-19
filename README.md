@@ -16,3 +16,9 @@ my Game Engine Project
 
   ![demo2](./asset/video/pixelate_focusmask.gif)
 </details>
+
+<details>
+  <summary>Pixelate pass + Toon Shading on focus</summary>
+
+  ![demo3](./asset/video/pixelate_and_toon_on_focus.gif)
+</details>

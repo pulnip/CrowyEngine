@@ -286,7 +286,7 @@ int main(int argc, char* argv[]){
                 // no input texture
                 .inputs = {},
                 .targets = {"sceneColor"},
-                // .depthTarget = "depth",
+                .depthTarget = "depth",
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/triangle.metal",
@@ -302,7 +302,10 @@ int main(int argc, char* argv[]){
                 },
                 .renderType = "type0",
                 .rasterizer = RHIRasterizerState{},
-                .depthStencil = RHIDepthStencilState{},
+                .depthStencil = RHIDepthStencilState{
+                    .depthEnable = true,
+                    .depthWriteEnable = true
+                },
                 .blend = RHIBlendState{}
             },
             RenderPassSpec{
@@ -334,8 +337,8 @@ int main(int argc, char* argv[]){
             RenderPassSpec{
                 .name = "composite",
                 .inputs = {
+                    "pixelated",
                     "outlined",
-                    "sceneColor",
                     "focusMask"
                 },
                 .targets = {"BackBuffer"},
@@ -432,6 +435,7 @@ int main(int argc, char* argv[]){
                             renderer.setPassEnabled("pixelate", enable_pixelate);
                         if(ImGui::Checkbox("Focusmask", &enable_focusmask))
                             renderer.setPassEnabled("composite", enable_focusmask);
+                        
                         ImGui::End();
                     },
                     swapchain.get()
