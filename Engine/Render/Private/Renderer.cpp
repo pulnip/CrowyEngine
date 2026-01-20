@@ -314,7 +314,7 @@ namespace Crowy
                 auto mesh = get(renderItem.mesh);
                 auto materialSet = get(renderItem.materials);
 
-                auto mvp = transpose(ctx.proj * ctx.view * renderItem.world);
+                auto mvp = ctx.proj * ctx.view * renderItem.world;
                 // TODO. use offset later
                 uniformBuffer->update(mvp.data(), sizeof(Mat4));
 

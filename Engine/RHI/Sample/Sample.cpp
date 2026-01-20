@@ -152,7 +152,7 @@ int main(int argc, char* argv[]){
                 float fovRad = 45.0f * 3.14159265f / 180.0f;
                 auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
 
-                auto mvp = transpose(proj * view * model);
+                auto mvp = proj * view * model;
                 uniformBuffer->update(mvp.data(), sizeof(Mat4));
 
                 cmdList->begin();

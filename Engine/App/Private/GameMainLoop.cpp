@@ -46,8 +46,7 @@ namespace Crowy
             renderItems.push_back(RenderItem{
                 .mesh = r.mesh,
                 .materials = r.materialSet,
-                // TODO. use REAL row-major
-                .world = transpose(model),
+                .world = model,
                 .type = r.renderType
             });
         }
@@ -75,8 +74,8 @@ namespace Crowy
                 *cmdList,
                 RenderContext{
                     .renderItems = renderItems,
-                    .view = transpose(view),
-                    .proj = transpose(proj),
+                    .view = view,
+                    .proj = proj,
                     .viewport = c.viewport
                 },
                 OS::singleton()->getSwapchain()
