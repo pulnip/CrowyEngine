@@ -88,14 +88,12 @@ namespace Crowy
                 auto vs = device->createShader(RHIShaderCreateDesc{
                     .file = passSpec.shader.vsFilePath.c_str(),
                     .entry = passSpec.shader.vsFuncName.c_str(),
-                    .stage = RHIShaderStage::VertexShader,
-                    .debugName = nullptr
+                    .stage = RHIShaderStage::VertexShader
                 });
                 auto fs = device->createShader(RHIShaderCreateDesc{
                     .file = passSpec.shader.fsFilePath.c_str(),
                     .entry = passSpec.shader.fsFuncName.c_str(),
-                    .stage = RHIShaderStage::FragmentShader,
-                    .debugName = nullptr
+                    .stage = RHIShaderStage::FragmentShader
                 });
 
                 auto pipeline = createGraphicsPipelineStateHelper(

@@ -67,7 +67,6 @@ int main(int argc, char* argv[]){
         .entry = "vs_main",
 #endif
         .stage = RHIShaderStage::VertexShader,
-        .debugName = "VertexShader"
     });
     auto fragmentShader = device->createShader(RHIShaderCreateDesc{
 #ifdef __APPLE__
@@ -78,7 +77,6 @@ int main(int argc, char* argv[]){
         .entry = "ps_textured",
 #endif
         .stage = RHIShaderStage::FragmentShader,
-        .debugName = "FragmentShader"
     });
 
     auto uniformBuffer = device->createBuffer({

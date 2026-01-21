@@ -164,17 +164,21 @@ namespace Crowy
 
     struct RHITextureCreateDesc{
         // 0 for same as screen
-        uint32_t width, height;
-        uint32_t depth;
-        uint32_t mipLevels;
-        uint32_t arraySize;
-        RHITextureFormat format;
-        RHITextureUsage usage;
-        RHIResourceState initialState;
-        RHIClearColor clearColor;
-        RHIClearDepthStencil clearDepthStencil;
-        const void* initialData;
-        const char* debugName;
+        uint32_t width = 0, height = 0;
+        uint32_t depth = 1;
+        uint32_t mipLevels = 1;
+        uint32_t arraySize = 1;
+        RHITextureFormat format = RHITextureFormat::BGRA8_UNORM;
+        RHITextureUsage usage = RHITextureUsage::None;
+        RHIResourceState initialState = RHIResourceState::Common;
+        RHIClearColor clearColor{
+            .r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 1.0f
+        };
+        RHIClearDepthStencil clearDepthStencil{
+            .depth = 1.0f, .stencil = 0
+        };
+        const void* initialData = nullptr;
+        const char* debugName = nullptr;
     };
 
     enum class RHIShaderStage{
@@ -191,7 +195,7 @@ namespace Crowy
     #endif
         const char* entry;
         RHIShaderStage stage;
-        const char* debugName;
+        // const char* debugName;
     };
 
     enum class RHILoadAction{
