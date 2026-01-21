@@ -1,0 +1,92 @@
+[[render_targets]]
+# swapchain
+name = "BackBuffer"
+[[render_targets]]
+name = "albedo"
+format = "RGBA8_UNORM"
+[[render_targets]]
+name = "normal"
+format = "RGBA8_UNORM"
+[[render_targets]]
+name = "toonColor"
+format = "RGBA8_UNORM"
+[[render_targets]]
+name = "sceneColor"
+format = "RGBA8_UNORM"
+[[render_targets]]
+name = "depth"
+format = "D32_FLOAT"
+[[render_targets]]
+name = "outlined"
+format = "RGBA8_UNORM"
+[[render_targets]]
+name = "pixelated"
+format = "RGBA8_UNORM"
+[[render_targets]]
+name = "focusMask"
+format = "RGBA8_UNORM"
+
+[[passes]]
+name = "gbuffer"
+targets = ["albedo", "normal"]
+depthTarget = "depth"
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/gbuffer.metal"
+    vs_func = "vs_gbuffer"
+    fs_file = "asset/Shaders/gbuffer.metal"
+    fs_func = "fs_gbuffer"
+renderType = "type0"
+[[passes]]
+name = "celShading"
+inputs = ["albedo", "normal"]
+targets = ["toonColor"]
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/fullscreen.metal"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/cel_shading.metal"
+    fs_func = "fs_cel_shading"
+[[passes]]
+name = "outlining"
+inputs = ["normal", "depth", "toonColor"]
+targets = ["outlined"]
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/fullscreen.metal"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/outline.metal"
+    fs_func = "fs_outline"
+[[passes]]
+name = "scene"
+targets = ["sceneColor"]
+depthTarget = "depth"
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/triangle.metal"
+    vs_func = "vs_main"
+    fs_file = "asset/Shaders/triangle.metal"
+    fs_func = "fs_textured"
+renderType = "type0"
+[[passes]]
+name = "pixelate"
+inputs = ["sceneColor"]
+targets = ["pixelated"]
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/fullscreen.metal"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/pixelate.metal"
+    fs_func = "fs_pixelate"
+[[passes]]
+name = "focusmask"
+targets = ["focusMask"]
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/fullscreen.metal"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/focusmask.metal"
+    fs_func = "fs_focusmask"
+[[passes]]
+name = "composite"
+inputs = ["pixelated", "outlined", "focusMask"]
+targets = ["BackBuffer"]
+    [passes.metal_shader]
+    vs_file = "asset/Shaders/fullscreen.metal"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/composite.metal"
+    fs_func = "fs_composite"

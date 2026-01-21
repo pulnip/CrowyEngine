@@ -12,7 +12,7 @@
             "args": [
                 "--width=1280", "--height=720",
                 "--scene=scene.toml",
-                "--render=render.macos.toml"
+                "--render=render.toml"
             ],
             "cwd": "${workspaceFolder}/Game",
         }
