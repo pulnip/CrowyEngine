@@ -196,6 +196,8 @@ namespace Crowy
                 throw std::runtime_error("Failed to create render pipeline state");
             }
 
+            // NOTE. discard desc.debugName
+
             // Depth Stencil State
             if(desc.depthStencil.depthEnable || desc.depthStencil.stencilEnable){
                 createDepthStencilState(device, desc.depthStencil);
@@ -225,6 +227,8 @@ namespace Crowy
             if(!computePipeline){
                 throw std::runtime_error("Failed to create compute pipeline state");
             }
+
+            // NOTE. discard desc.debugName
         }
 
         ~MetalPipelineState(){

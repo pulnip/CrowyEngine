@@ -37,6 +37,8 @@ namespace Crowy
             metalLayer->setPixelFormat(convertTextureFormat(desc.bufferDesc.format));
             metalLayer->setFramebufferOnly(false);
             metalLayer->setDrawableSize(CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height));
+
+            // NOTE. discard desc.debugName, desc.vsync
         }
 
         ~MetalSwapchain(){

@@ -313,19 +313,19 @@ private:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
-                renderEncoder->setVertexBuffer(mtlBuffer, 0, slot);
+                renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
                 break;
             case RHIShaderStage::FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
-                renderEncoder->setFragmentBuffer(mtlBuffer, 0, slot);
+                renderEncoder->setFragmentBuffer(mtlBuffer, offset, slot);
                 break;
             case RHIShaderStage::ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
-                computeEncoder->setBuffer(mtlBuffer, 0, slot);
+                computeEncoder->setBuffer(mtlBuffer, offset, slot);
                 break;
             default:
                 std::unreachable();
@@ -634,7 +634,7 @@ private:
 
             auto width = dstTex->width();
             auto height = dstTex->height();
-            auto bytesPerRow = width * 4;  // TODO: format에 따라 계산
+            auto bytesPerRow = width * getBytesPerPixel(dst.getFormat());
             auto bytesPerImage = bytesPerRow * height;
 
             blitEncoder->copyFromBuffer(

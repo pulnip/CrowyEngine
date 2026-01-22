@@ -73,6 +73,12 @@ namespace Crowy
             texture = device->newTexture(texDesc);
             texDesc->release();
 
+            if(desc.debugName){
+                texture->setLabel(
+                    NS::String::string(desc.debugName, NS::UTF8StringEncoding)
+                );
+            }
+
             if(desc.initialData)
                 uploadData(desc.initialData);
         }
@@ -98,6 +104,10 @@ namespace Crowy
         }
 
         MTL::Texture* get() const{ return texture; }
+
+        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+            return format;
+        }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;

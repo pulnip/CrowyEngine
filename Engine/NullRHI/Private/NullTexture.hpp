@@ -34,6 +34,10 @@ namespace Crowy
             // No-Op
         }
 
+        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+            return format;
+        }
+
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;
         }

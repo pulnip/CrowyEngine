@@ -36,7 +36,10 @@ namespace Crowy
             auto hasVertexUsage = hasFlag(desc.usage, RHIBufferUsage::VertexBuffer);
             auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
             auto hasConstantUsage = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer);
-            isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
+            auto hasCPUWrite = hasFlag(desc.usage, RHIBufferUsage::CPUWrite);
+
+            isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage ||
+                              hasCPUWrite || desc.initialData != nullptr;
 
             if(desc.initialData){
             #if TARGET_OS_OSX
@@ -57,6 +60,12 @@ namespace Crowy
                     desc.size,
                     isCPUAccessible ? MTL::StorageModeShared :
                                       MTL::StorageModePrivate
+                );
+            }
+
+            if(desc.debugName){
+                buffer->setLabel(
+                    NS::String::string(desc.debugName, NS::UTF8StringEncoding)
                 );
             }
         }

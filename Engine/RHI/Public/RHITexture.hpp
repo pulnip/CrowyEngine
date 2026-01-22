@@ -29,6 +29,8 @@ namespace Crowy
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept = 0;
 
+        virtual RHITextureFormat getFormat() const noexcept = 0;
+
         virtual RHIResourceState getState() const noexcept = 0;
         virtual void setState(RHIResourceState state) noexcept = 0;
     };
