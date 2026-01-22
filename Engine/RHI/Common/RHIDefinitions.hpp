@@ -335,13 +335,36 @@ namespace Crowy
         Always,
     };
 
+    enum class RHIStencilOp{
+        Keep,
+        Zero,
+        Replace,
+        IncrSat,
+        DecrSat,
+        Invert,
+        IncrWrap,
+        DecrWrap,
+    };
+
+    struct RHIStencilOpDesc{
+        RHIComparisonFunc func = RHIComparisonFunc::Always;
+        RHIStencilOp stencilFailOp = RHIStencilOp::Keep;
+        RHIStencilOp depthFailOp = RHIStencilOp::Keep;
+        RHIStencilOp passOp = RHIStencilOp::Keep;
+    };
+
+    struct RHIStencilState{
+        uint8_t readMask = 0xFF;
+        uint8_t writeMask = 0xFF;
+        RHIStencilOpDesc frontFace = {};
+        RHIStencilOpDesc backFace = {};
+    };
+
     struct RHIDepthStencilState{
-        bool depthEnable = false;
+        RHITextureFormat format = RHITextureFormat::D32_FLOAT;
         bool depthWriteEnable = false;
         RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
-        bool stencilEnable = false;
-        uint8_t stencilReadMask = 0xFF;
-        uint8_t stencilWriteMask = 0xFF;
+        std::optional<RHIStencilState> stencil = std::nullopt;
     };
 
     enum class RHIBlend{
@@ -395,12 +418,11 @@ namespace Crowy
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
 
         RHIRasterizerState rasterizer = {};
-        RHIDepthStencilState depthStencil = {};
+        std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         RHIBlendState blend = {};
 
         RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHITextureFormat::RGBA8_UNORM};
         uint32_t renderTargetCount = 1;
-        RHITextureFormat depthStencilFormat = RHITextureFormat::D32_FLOAT;
         const char* debugName = nullptr;
     };
 

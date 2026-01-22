@@ -242,12 +242,10 @@ int main(int argc, char* argv[]){
                 #endif
                 },
                 .renderType = "type0",
-                .rasterizer = RHIRasterizerState{},
                 .depthStencil = RHIDepthStencilState{
-                    .depthEnable = true,
+                    .format = RHITextureFormat::D32_FLOAT,
                     .depthWriteEnable = true
-                },
-                .blend = RHIBlendState{}
+                }
             },
             RenderPassSpec{
                 .name = "celshading",
@@ -260,10 +258,7 @@ int main(int argc, char* argv[]){
                     .fsFilePath = "asset/Shaders/cel_shading.metal",
                     .fsFuncName = "fs_cel_shading"
                 #endif
-                },
-                .rasterizer = RHIRasterizerState{},
-                .depthStencil = RHIDepthStencilState{},
-                .blend = RHIBlendState{}
+                }
             },
             RenderPassSpec{
                 .name = "outlining",
@@ -276,10 +271,7 @@ int main(int argc, char* argv[]){
                     .fsFilePath = "asset/Shaders/outline.metal",
                     .fsFuncName = "fs_outline"
                 #endif
-                },
-                .rasterizer = RHIRasterizerState{},
-                .depthStencil = RHIDepthStencilState{},
-                .blend = RHIBlendState{}
+                }
             },
             RenderPassSpec{
                 .name = "scene",
@@ -301,12 +293,10 @@ int main(int argc, char* argv[]){
                 #endif
                 },
                 .renderType = "type0",
-                .rasterizer = RHIRasterizerState{},
                 .depthStencil = RHIDepthStencilState{
-                    .depthEnable = true,
+                    .format = RHITextureFormat::D32_FLOAT,
                     .depthWriteEnable = true
-                },
-                .blend = RHIBlendState{}
+                }
             },
             RenderPassSpec{
                 .name = "pixelate",

@@ -29,7 +29,7 @@ namespace Crowy
         RenderType renderType;
 
         RHIRasterizerState rasterizer = {};
-        RHIDepthStencilState depthStencil = {};
+        std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         RHIBlendState blend = {};
     };
 

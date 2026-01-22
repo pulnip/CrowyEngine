@@ -35,7 +35,6 @@ namespace Crowy
             .depthStencil = spec.depthStencil,
             .blend = spec.blend,
             .renderTargetCount = static_cast<uint32_t>(spec.targets.size()),
-            .depthStencilFormat = RHITextureFormat::Unknown,
             .debugName = spec.name.c_str()
         };
 
@@ -46,8 +45,11 @@ namespace Crowy
                 desc.renderTargetFormats[i] = it->second.format;
             }
         }
-        if(auto it=renderTargets.find(spec.depthTarget); it!=renderTargets.end()){
-            desc.depthStencilFormat = it->second.format;
+
+        if(desc.depthStencil.has_value()){
+            auto it=renderTargets.find(spec.depthTarget);
+            CROWY_ASSERT(it != renderTargets.end());
+            CROWY_ASSERT(it->second.format == desc.depthStencil->format);
         }
 
         return device.createGraphicsPipelineState(desc);

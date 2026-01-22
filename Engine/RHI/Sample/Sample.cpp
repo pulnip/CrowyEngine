@@ -104,9 +104,12 @@ int main(int argc, char* argv[]){
     auto pipelineState = device->createGraphicsPipelineState({
         .vertexShader = vertexShader.get(),
         .pixelShader = fragmentShader.get(),
+        .depthStencil = RHIDepthStencilState{
+            .format = RHITextureFormat::D32_FLOAT,
+            .depthWriteEnable = true
+        },
         .renderTargetFormats = {RHITextureFormat::BGRA8_UNORM},
         .renderTargetCount = 1,
-        .depthStencilFormat = RHITextureFormat::D32_FLOAT,
         .debugName = "Mesh Pipeline"
     });
 

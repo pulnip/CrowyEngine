@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <Metal/Metal.hpp>
+#include "assert.hpp"
 #include "MetalShader.hpp"
 #include "MetalUtil.hpp"
 #include "RHIAPI.hpp"
@@ -49,6 +50,21 @@ namespace Crowy
         }
     }
 
+    static MTL::StencilOperation convertStencilOp(RHIStencilOp op){
+        switch(op){
+        case RHIStencilOp::Keep:      return MTL::StencilOperationKeep;
+        case RHIStencilOp::Zero:      return MTL::StencilOperationZero;
+        case RHIStencilOp::Replace:   return MTL::StencilOperationReplace;
+        case RHIStencilOp::IncrSat:   return MTL::StencilOperationIncrementClamp;
+        case RHIStencilOp::DecrSat:   return MTL::StencilOperationDecrementClamp;
+        case RHIStencilOp::Invert:    return MTL::StencilOperationInvert;
+        case RHIStencilOp::IncrWrap:  return MTL::StencilOperationIncrementWrap;
+        case RHIStencilOp::DecrWrap:  return MTL::StencilOperationDecrementWrap;
+        default:
+            std::unreachable();
+        }
+    }
+
     static MTL::BlendFactor convertBlendFactor(RHIBlend blend){
         switch(blend){
         case RHIBlend::Zero:           return MTL::BlendFactorZero;
@@ -79,6 +95,16 @@ namespace Crowy
         default:
             std::unreachable();
         }
+    }
+
+    static void configureStencil(
+        MTL::StencilDescriptor& desc,
+        const RHIStencilOpDesc& op
+    ){
+        desc.setStencilCompareFunction(convertCompareFunc(op.func));
+        desc.setStencilFailureOperation(convertStencilOp(op.stencilFailOp));
+        desc.setDepthFailureOperation(convertStencilOp(op.depthFailOp));
+        desc.setDepthStencilPassOperation(convertStencilOp(op.passOp));
     }
 
     class MetalPipelineState
@@ -132,7 +158,7 @@ namespace Crowy
                 auto layout = vertexDesc->layouts()->object(0);
                 layout->setStride(stride);
                 layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
-                
+
                 pipelineDesc->setVertexDescriptor(vertexDesc);
                 vertexDesc->release();
             }
@@ -177,9 +203,12 @@ namespace Crowy
             }
 
             // Depth Stencil Format
-            if(desc.depthStencilFormat != RHITextureFormat::Unknown){
+            if(desc.depthStencil.has_value()){
+                auto depthStencilFormat = desc.depthStencil->format;
+                CROWY_ASSERT(depthStencilFormat != RHITextureFormat::Unknown);
+
                 pipelineDesc->setDepthAttachmentPixelFormat(
-                    convertTextureFormat(desc.depthStencilFormat)
+                    convertTextureFormat(depthStencilFormat)
                 );
             }
 
@@ -199,8 +228,8 @@ namespace Crowy
             // NOTE. discard desc.debugName
 
             // Depth Stencil State
-            if(desc.depthStencil.depthEnable || desc.depthStencil.stencilEnable){
-                createDepthStencilState(device, desc.depthStencil);
+            if(desc.depthStencil.has_value()){
+                createDepthStencilState(device, *desc.depthStencil);
             }
 
             // Store rasterizer state for command list
@@ -267,18 +296,25 @@ namespace Crowy
             const RHIDepthStencilState& desc
         ){
             auto dsDesc = MTL::DepthStencilDescriptor::alloc()->init();
-            
-            dsDesc->setDepthWriteEnabled(desc.depthWriteEnable);
-            
-            if(desc.depthEnable){
-                dsDesc->setDepthCompareFunction(
-                    convertCompareFunc(desc.depthFunc)
-                );
-            } else {
-                dsDesc->setDepthCompareFunction(MTL::CompareFunctionAlways);
-            }
 
-            // TODO: Stencil state 설정
+            dsDesc->setDepthWriteEnabled(desc.depthWriteEnable);
+            dsDesc->setDepthCompareFunction(
+                convertCompareFunc(desc.depthFunc)
+            );
+
+            if(desc.stencil.has_value()){
+                auto mtlDesc = MTL::StencilDescriptor::alloc()->init();
+                mtlDesc->setReadMask(desc.stencil->readMask);
+                mtlDesc->setWriteMask(desc.stencil->writeMask);
+
+                configureStencil(*mtlDesc, desc.stencil->frontFace);
+                dsDesc->setFrontFaceStencil(mtlDesc);
+
+                configureStencil(*mtlDesc, desc.stencil->backFace);
+                dsDesc->setBackFaceStencil(mtlDesc);
+
+                mtlDesc->release();
+            }
 
             depthStencilState = device->newDepthStencilState(dsDesc);
             dsDesc->release();
