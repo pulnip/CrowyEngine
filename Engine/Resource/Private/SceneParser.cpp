@@ -9,13 +9,27 @@ namespace Crowy
 {
     SceneSpec buildScene(const ParseResult& temp, const ComponentBinderRegistry& registry){
         SceneSpec out;
+        ComponentBindPlan plan;
+
         // reserve entity slot and copy name.
         out.entities.resize(temp.elements.size());
         for(size_t i=0; i<temp.elements.size(); ++i){
-            out.entities[i].name = temp.elements[i].name;
+            const auto& elm = temp.elements[i];
+            const auto& node = temp.arena.nodes[elm.index];
+
+            if(auto table = std::get_if<VTable>(&node)){
+                auto name = readString(temp.arena, *table, plan.errors, "name");
+
+                if(name.has_value())
+                    out.entities[i].name = *name;
+            }
+            else{
+                // TODO. write Error
+            }                                                                  
         }
 
-        auto plan = bindAndErrorReport(temp, registry);
+        bindAndErrorReport(temp, registry, plan);
+        reportError(plan.errors);
 
         // Freeze(Create SoA + connect index)
         TransformBinder::freeze(out, plan);

@@ -50,28 +50,48 @@ namespace Crowy
 
     std::optional<bool> readBool(
         const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    bool readBool(
+        const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        std::optional<bool> def = std::nullopt
+        bool def
     );
     std::optional<double> readFloat(
         const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    double readFloat(
+        const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        std::optional<double> def = std::nullopt
+        double def
     );
     std::optional<Vec3> readVec3(
         const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    Vec3 readVec3(
+        const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        std::optional<Vec3> def = std::nullopt
+        Vec3 def
     );
     std::optional<Vec4> readVec4(
         const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    Vec4 readVec4(
+        const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        std::optional<Vec4> def = std::nullopt
+        Vec4 def
     );
     std::optional<std::string> readString(
         const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    std::string readString(
+        const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        std::optional<std::string> def = std::nullopt
+        std::string def
     );
     std::optional<std::vector<std::string>> readStringArray(
         const ValueArena& arena, const VTable& table,

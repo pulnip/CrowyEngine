@@ -52,7 +52,6 @@ namespace Crowy
 
     // parse result
     struct ParseElement{
-        std::string name;
         size_t index = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };

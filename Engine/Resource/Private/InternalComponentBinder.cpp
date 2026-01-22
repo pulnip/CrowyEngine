@@ -22,14 +22,11 @@ namespace Crowy
         auto rot = readVec4(arena, src, plan.errors, "rotation", unitQuat());
         auto scl = readVec3(arena, src, plan.errors, "scale", ones());
 
-        if(!pos || !rot || !scl)
-            return;
-
         plan.transforms.push_back(PlannedTransform{
             .comp = TransformComponent{
-                .position = *pos,
-                .rotation = *rot,
-                .scale = *scl
+                .position = pos,
+                .rotation = rot,
+                .scale = scl
             },
             .entityIndex = entityIndex,
             .location = src.location
@@ -83,19 +80,15 @@ namespace Crowy
         const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
         auto msh = readString(arena, src, plan.errors, "uri", "embedded:cube");
-
-        if(!msh)
-            return;
+        auto renderType = readString(arena, src, plan.errors, "renderType", "unlit");
 
         RenderObjectSpec spec{
-            .uri = *msh
+            .uri = msh,
+            .renderType = renderType
         };
 
         if(auto mat = readMaterial(arena, src, plan))
             spec.material_override = *mat;
-
-        if(auto sh = readString(arena, src, plan.errors, "renderType", "unlit"))
-            spec.renderType = *sh;
 
         plan.renderObjects.push_back({
             .spec = spec,
@@ -120,14 +113,11 @@ namespace Crowy
         auto ug = readBool(arena, src, plan.errors, "useGravity", false);
         auto ms = readFloat(arena, src, plan.errors, "mass", 1);
 
-        if(!vel || !ug || !ms)
-            return;
-
         plan.rigidbodies.push_back({
             .comp = RigidbodyComponent{
-                .velocity = *vel,
-                .useGravity = *ug,
-                .mass = static_cast<float>(*ms)
+                .velocity = vel,
+                .useGravity = ug,
+                .mass = static_cast<float>(ms)
             },
             .entityIndex = entityIndex,
             .location = src.location
@@ -153,14 +143,14 @@ namespace Crowy
         auto bc = readFloat(arena, src, plan.errors, "bounciness");
         auto fr = readFloat(arena, src, plan.errors, "friction");
 
-        if(!pos || !rot || !scl || !bc || !fr)
+        if(!bc || !fr)
             return;
 
         plan.boxColliders.push_back({
             .comp = BoxColliderComponent{
-                .position = *pos,
-                .rotation = *rot,
-                .scale = *scl,
+                .position = pos,
+                .rotation = rot,
+                .scale = scl,
                 .bounciness = static_cast<float>(*bc),
                 .friction = static_cast<float>(*fr)
             },
@@ -187,12 +177,12 @@ namespace Crowy
         auto bc = readFloat(arena, src, plan.errors, "bounciness");
         auto fr = readFloat(arena, src, plan.errors, "friction");
 
-        if(!pos || !rad)
+        if(!rad)
             return;
 
         plan.sphereColliders.push_back({
             .comp = SphereColliderComponent{
-                .position = *pos,
+                .position = pos,
                 .radius = static_cast<float>(*rad),
                 .bounciness = static_cast<float>(*bc),
                 .friction = static_cast<float>(*fr)
@@ -220,14 +210,14 @@ namespace Crowy
         auto fp = readFloat(arena, src, plan.errors, "farPlane", 100.0);
         auto pj = readString(arena, src, plan.errors, "projection");
 
-        if(!tp || !fv || !np || !fp || !pj)
+        if(!tp || !fv || !pj)
             return;
 
         plan.cameras.push_back({
             .comp = CameraComponent{
                 .fov = static_cast<float>(*fv),
-                .nearPlane = static_cast<float>(*np),
-                .farPlane = static_cast<float>(*fp),
+                .nearPlane = static_cast<float>(np),
+                .farPlane = static_cast<float>(fp),
                 .proj = toProjection(*pj),
                 // TODO. parse later
                 .viewport = RHIViewport{

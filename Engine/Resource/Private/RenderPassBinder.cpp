@@ -10,15 +10,15 @@ namespace Crowy
         auto fsFile = readString(arena, src, plan.errors, "fs_file");
         auto fsFunc = readString(arena, src, plan.errors, "fs_func", "fragment_main");
 
-        if(!vsFile || !vsFunc || !fsFile || !fsFunc)
+        if(!vsFile || !fsFile)
             return;
 
         plan.shaders.push_back({
             .spec = ShaderSpec{
                 .vsFilePath = *vsFile,
-                .vsFuncName = *vsFunc,
+                .vsFuncName = vsFunc,
                 .fsFilePath = *fsFile,
-                .fsFuncName = *fsFunc,
+                .fsFuncName = fsFunc,
             },
             .index = index,
             .location = src.location

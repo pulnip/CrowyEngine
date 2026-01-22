@@ -37,12 +37,11 @@ namespace Crowy
 
     std::optional<bool> readBool(
         const ValueArena& arena, const VTable& table,
-        std::vector<BindError>& errors, const char* key,
-        std::optional<bool> def
+        std::vector<BindError>& errors, const char* key
     ){
         const VNode* n = findField(arena, table, key);
         if(!n)
-            return def;
+            return std::nullopt;
 
         if(auto bl = std::get_if<VBool>(n))
             return bl->v;
@@ -54,14 +53,25 @@ namespace Crowy
         return std::nullopt;
     }
 
-    std::optional<double> readFloat(
+    bool readBool(
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        std::optional<double> def
+        bool def
+    ){
+        auto v = readBool(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
+    }
+
+    std::optional<double> readFloat(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
     ){
         const VNode* n = findField(arena, table, key);
         if(!n)
-            return def;
+            return std::nullopt;
 
         if(auto flt = std::get_if<VFloat>(n))
             return flt->v;
@@ -75,15 +85,26 @@ namespace Crowy
         return std::nullopt;
     }
 
+    double readFloat(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        double def
+    ){
+        auto v = readFloat(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
+    }
+
     template<unsigned N>
     static std::optional<std::conditional_t<N==3, Vec3, Vec4>> readVec(
         const ValueArena& arena, const VTable& table,
-        std::vector<BindError>& errors, const char* key,
-        std::optional<std::conditional_t<N==3, Vec3, Vec4>> def = std::nullopt
+        std::vector<BindError>& errors, const char* key
     ){
         const VNode* n = findField(arena, table, key);
         if(!n)
-            return def;
+            return std::nullopt;
 
         if(auto arr = std::get_if<VArray>(n)){
             if(arr->elements.size() != N){
@@ -120,28 +141,49 @@ namespace Crowy
 
     std::optional<Vec3> readVec3(
         const ValueArena& arena, const VTable& table,
-        std::vector<BindError>& errors, const char* key,
-        std::optional<Vec3> def
+        std::vector<BindError>& errors, const char* key
     ){
-        return readVec<3>(arena, table, errors, key, def);
+        return readVec<3>(arena, table, errors, key);
+    }
+
+    Vec3 readVec3(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        Vec3 def
+    ){
+        auto v = readVec3(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
     }
 
     std::optional<Vec4> readVec4(
         const ValueArena& arena, const VTable& table,
-        std::vector<BindError>& errors, const char* key,
-        std::optional<Vec4> def
+        std::vector<BindError>& errors, const char* key
     ){
-        return readVec<4>(arena, table, errors, key, def);
+        return readVec<4>(arena, table, errors, key);
+    }
+
+    Vec4 readVec4(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        Vec4 def
+    ){
+        auto v = readVec4(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
     }
 
     std::optional<std::string> readString(
         const ValueArena& arena, const VTable& table,
-        std::vector<BindError>& errors, const char* key,
-        std::optional<std::string> def
+        std::vector<BindError>& errors, const char* key
     ){
         const VNode* n = findField(arena, table, key);
         if(!n)
-            return def;
+            return std::nullopt;
 
         if(auto str = std::get_if<VString>(n))
             return str->v;
@@ -151,6 +193,18 @@ namespace Crowy
             getLoc(*n)
         });
         return std::nullopt;
+    }
+
+    std::string readString(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::string def
+    ){
+        auto v = readString(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
     }
 
     std::optional<std::vector<std::string>> readStringArray(

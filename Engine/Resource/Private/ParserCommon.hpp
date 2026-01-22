@@ -29,31 +29,14 @@ namespace Crowy
         return arena.emplace(std::move(va));
     }
 
-    inline size_t convertTomlTableToArena(const toml::table& t, ValueArena& arena){
-        VTable vt{};
-        vt.location = toSourceLocation(t.source());
-        for(auto&& [k, v]: t){
+    inline size_t convertElementsToArena(const toml::table& et, ValueArena& arena){
+        VTable vt{
+            .location = toSourceLocation(et.source())
+        };
+
+        for(auto&& [k, v]: et){
             size_t childIdx = convertTomlNodeToArena(v, arena);
             vt.fields.emplace(k.str(), childIdx);
-        }
-        return arena.emplace(std::move(vt));
-    }
-
-    inline size_t convertElementsToArena(const toml::table& et, ValueArena& arena){
-        VTable vt{};
-        vt.location = toSourceLocation(et.source());
-        static const std::unordered_set<std::string> kReserved = {"name", "tags", "id", "uuid"};
-        for(auto&& [k, v]: et){
-            const auto key = std::string(k.str());
-            if(kReserved.count(key)) continue;
-            if(const toml::table* child = v.as_table()){
-                size_t childIdx = convertTomlNodeToArena(*child, arena);
-                vt.fields.emplace(key, childIdx);
-            }
-            else if(const toml::array* child = v.as_array()){
-                size_t childIdx = convertTomlArrayToArena(*child, arena);
-                vt.fields.emplace(key, childIdx);
-            }
         }
         return arena.emplace(std::move(vt));
     }
@@ -61,39 +44,41 @@ namespace Crowy
     inline size_t convertTomlNodeToArena(const toml::node& n, ValueArena& arena){
         // Order: table, array, string, integer, floating, boolean, null
         if(auto t = n.as_table()){
-            return convertTomlTableToArena(*t, arena);
+            return convertElementsToArena(*t, arena);
         }
-        if(auto a = n.as_array()){
+        else if(auto a = n.as_array()){
             return convertTomlArrayToArena(*a, arena);
         }
-        if(auto s = n.as_string()){
+        else if(auto s = n.as_string()){
             VString vs{
                 .v = std::string{s->get()},
                 .location = toSourceLocation(n.source()) };
             return arena.emplace(std::move(vs));
         }
-        if(auto i = n.as_integer()){
+        else if(auto i = n.as_integer()){
             VInt vi{
                 .v = i->get(),
                 .location = toSourceLocation(n.source()) };
             return arena.emplace(std::move(vi));
         }
-        if(auto f = n.as_floating_point()){
+        else if(auto f = n.as_floating_point()){
             VFloat vf{
                 .v = f->get(),
                 .location = toSourceLocation(n.source()) };
             return arena.emplace(std::move(vf));
         }
-        if(auto b = n.as_boolean()){
+        else if(auto b = n.as_boolean()){
             VBool vb{
                 .v = b->get(),
                 .location = toSourceLocation(n.source()) };
             return arena.emplace(std::move(vb));
         }
-        // Fallback: null node with best-effort location
-        VNull vn{
-            .location = toSourceLocation(n.source()) };
-        return arena.emplace(std::move(vn));
+        else{
+            // Fallback: null node with best-effort location
+            VNull vn{
+                .location = toSourceLocation(n.source()) };
+            return arena.emplace(std::move(vn));
+        }
     }
 
     inline ParseResult parseFromTable(const toml::table& root, const char* rootName){
@@ -116,11 +101,7 @@ namespace Crowy
             ParseElement e{};
             e.location = toSourceLocation(et->source());
 
-            // name (optional)
-            if(const auto* ns = (*et)["name"].as_string())
-                e.name = std::string{ns->get()};
-
-            // Treat direct child tables as components
+            // Treat direct child tables as elements
             size_t compIdx = convertElementsToArena(*et, out.arena);
             e.index = compIdx;
 
@@ -132,10 +113,9 @@ namespace Crowy
     }
 
     template<typename BindPlan>
-    inline BindPlan bindAndErrorReport(const ParseResult& temp, const BinderRegistry<BindPlan>& registry){
-        // Binding (Validate & Plan)
-        BindPlan plan;
-
+    inline void bindAndErrorReport(const ParseResult& temp, const BinderRegistry<BindPlan>& registry,
+        BindPlan& plan
+    ){
         for(size_t ei = 0; ei < temp.elements.size(); ++ei){
             const auto& te = temp.elements[ei];
             const VNode& node = temp.arena.nodes[te.index];
@@ -150,10 +130,8 @@ namespace Crowy
                 size_t valueIdx = kv.second;
 
                 auto it = registry.find(name);
-                if(it == registry.end()){
-                    LOG_WARN(LOG_SCENE, "Unknown '{}' on render pass '{}'", name, te.name);
+                if(it == registry.end())
                     continue;
-                }
 
                 const VNode& n = temp.arena.nodes[valueIdx];
                 if(auto table = std::get_if<VTable>(&n)){
@@ -162,30 +140,22 @@ namespace Crowy
                 else if(auto array = std::get_if<VArray>(&n)){
                     it->second->validateAndPlanArray(temp.arena, *array, ei, plan);
                 }
-                else{
-                    plan.errors.push_back({
-                        std::format("element '{}' must be a table or array", name),
-                        std::visit([](auto const& x){ return x.location; }, n)
-                    });
-                }
-
             }
         }
+    }
 
-        // Error Report
-        if(!plan.errors.empty()){
-            for(const auto& e: plan.errors){
-                LOG_WARN(LOG_SCENE, "bind error at {}:{} - {}", e.location.line, e.location.column, e.msg);
-            }
+    inline void reportError(std::span<const BindError> errors){
+        if(errors.empty())
+            return;
 
-            std::string all;
-            all.reserve(plan.errors.size() * 64);
-            for (const auto& e: plan.errors) {
-                all += std::format("{}:{} - {}\n", e.location.line, e.location.column, e.msg);
-            }
-            throw std::runtime_error(all);
+        std::string all;
+        all.reserve(errors.size() * 64);
+
+        for(const auto& e: errors){
+            LOG_WARN(LOG_RESOURCE, "bind error at {}:{} - {}", e.location.line, e.location.column, e.msg);
+            all += std::format("{}:{} - {}\n", e.location.line, e.location.column, e.msg);
         }
 
-        return plan;
+        throw std::runtime_error(all);
     }
 }
