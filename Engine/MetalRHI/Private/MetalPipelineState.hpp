@@ -119,15 +119,12 @@ namespace Crowy
 
         RHIRasterizerState rasterizerState{};
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
-        bool isCompute = false;
 
     public:
         MetalPipelineState(
             MTL::Device* device,
             const RHIGraphicsPipelineStateDesc& desc
-        )
-            : isCompute(false)
-        {
+        ){
             auto pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
 
             // Shaders
@@ -240,9 +237,7 @@ namespace Crowy
         MetalPipelineState(
             MTL::Device* device,
             const RHIComputePipelineStateDesc& desc
-        )
-            : isCompute(true)
-        {
+        ){
             auto cs = static_cast<MetalShader*>(desc.computeShader);
             if(!cs){
                 throw std::runtime_error("Compute shader is null");
@@ -287,7 +282,7 @@ namespace Crowy
         }
 
         bool isComputePipeline() const{
-            return isCompute;
+            return computePipeline != nullptr;
         }
 
     private:
