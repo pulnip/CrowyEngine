@@ -76,8 +76,8 @@ namespace Crowy
 
         void update(
             const void* data, size_t size,
-            size_t offset
-        ) noexcept RHI_OVERRIDE{
+            size_t offset = 0
+        ) noexcept{
             CROWY_ASSERT(isCPUAccessible);
 
             void* ptr = buffer->contents();

@@ -576,6 +576,14 @@ private:
             );
         }
 
+        void updateBuffer(
+            const void* data, size_t size,
+            RHIBuffer& buf
+        ) noexcept RHI_OVERRIDE{
+            auto& mtlBuf = static_cast<MetalBuffer&>(buf);
+            mtlBuf.update(data, size);
+        }
+
         void copyBuffer(
             RHIBuffer& src,
             RHIBuffer& dst,

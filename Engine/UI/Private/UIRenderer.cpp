@@ -40,8 +40,7 @@ namespace Crowy
         #ifdef CROWY_METALRHI
             ImGui_ImplSDL3_InitForMetal(window);
 
-            MetalDevice& mtlDevice = static_cast<MetalDevice&>(device);
-            ImGui_ImplMetal_Init(static_cast<MTL::Device*>(mtlDevice.getNative()));
+            ImGui_ImplMetal_Init(static_cast<MTL::Device*>(device));
 
             uiPassDesc = MTL::RenderPassDescriptor::alloc()->init();
             auto colorAttachment = uiPassDesc->colorAttachments()->object(0);
