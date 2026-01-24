@@ -155,6 +155,11 @@ if(RENDER_BACKEND STREQUAL "Metal")
     PRIVATE
         ${METAL_LIBRARY}
     )
+elseif(RENDER_BACKEND STREQUAL "D3D11")
+    target_sources(imgui
+    PRIVATE
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
+    )
 endif()
 
 if(CROWY_ENABLE_TEST)

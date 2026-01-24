@@ -2,37 +2,65 @@
 
 #include <cstddef>
 #include <memory>
+#include <d3d11.h>
+#include "assert.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHICommandList.hpp"
 #endif
+#include "D3D11Buffer.hpp"
+#include "D3D11PipelineState.hpp"
+#include "D3D11Swapchain.hpp"
+#include "D3D11Texture.hpp"
 
 namespace Crowy
 {
-    class NullCommandList
+    class D3D11CommandList
 #ifndef USE_STATIC_RHI
         : public RHICommandList
 #endif
     {
+    private:
+        // NOTE. Immediate context.
+        ID3D11DeviceContext* context = nullptr;
+        bool isRecording = false;
+        bool isRenderPass = false, isComputePass = false;
+
     public:
-        NullCommandList() = default;
-        ~NullCommandList() = default;
+        D3D11CommandList(ID3D11Device* device){
+            device->GetImmediateContext(&context);
+        }
+        ~D3D11CommandList(){
+            if(context)
+                context->Release();
+        }
 
         void begin() noexcept RHI_OVERRIDE{
-
+            CROWY_ASSERT(!isRecording,
+                "Did you call RHICommandList::close()?"
+            );
+            // NOTE. No-Op for D3D11
+            isRecording = true;
         }
 
         void flush() noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void close() noexcept RHI_OVERRIDE{
-
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            // NOTE. No-Op for D3D11
+            isRecording = false;
         }
 
         void reset() noexcept RHI_OVERRIDE{
-
+            if(isRecording){
+                flush();
+                isRecording = false;
+            }
         }
 
         void beginRenderPass(
@@ -44,7 +72,19 @@ namespace Crowy
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(renderTargets.size() > 0);
 
+            ID3D11RenderTargetView* rtvs[RHI_MAX_RENDER_TARGETS];
+            for(size_t i=0; i<renderTargets.size(); ++i)
+                rtvs[i] = static_cast<D3D11Texture*>(renderTargets[i])->getRTV();
+
+            beginRenderPass(
+                rtvs,
+                depthStencil,
+                loadAction, storeAction,
+                clearColor, clearDS,
+                debugName
+            );
         }
 
         void beginRenderPass(
@@ -56,15 +96,37 @@ namespace Crowy
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept RHI_OVERRIDE{
+            ID3D11RenderTargetView* rtvs[1] = {
+                static_cast<D3D11Swapchain&>(swapchain).getCurrentRTV()
+            };
 
+            beginRenderPass(
+                rtvs,
+                depthStencil,
+                loadAction, storeAction,
+                clearColor, clearDS,
+                debugName
+            );
         }
 
         void endRenderPass() noexcept RHI_OVERRIDE{
-
+            CROWY_ASSERT(isRenderPass,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
+            // NOTE. No-Op for D3D11
+            isRenderPass = false;
         }
 
         void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
+            auto dxPSO = static_cast<D3D11PipelineState*>(pso);
 
+            context->IASetInputLayout(dxPSO->getIL());
+            context->IASetPrimitiveTopology(dxPSO->getTopology());
+            context->VSSetShader(dxPSO->getVS(), nullptr, 0);
+            context->PSSetShader(dxPSO->getPS(), nullptr, 0);
+            context->RSSetState(dxPSO->getRS());
+            context->OMSetDepthStencilState(dxPSO->getDSS(), 0);
+            context->OMSetBlendState(dxPSO->getBS(), nullptr, 0xFFFFFFFF);
         }
 
         void setVertexBuffer(
@@ -148,37 +210,43 @@ namespace Crowy
             RHITexture& texture,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void transitionBarrier(
             RHIBuffer& buffer,
             RHIResourceState after
         ) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void uavBarrier(RHITexture&) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void uavBarrier(RHIBuffer&) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void signalFence(RHIFence&, uint64_t value) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void waitFence(RHIFence&, uint64_t value) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         void updateBuffer(
             const void* data, size_t size,
             RHIBuffer& buf
         ) noexcept RHI_OVERRIDE{
+            D3D11_MAPPED_SUBRESOURCE mapped;
+            D3D11Buffer& dxBuf = static_cast<D3D11Buffer&>(buf);
+            context->Map(dxBuf.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
+            memcpy(mapped.pData, data, size);
+
+            context->Unmap(dxBuf.get(), 0);
         }
 
         void copyBuffer(
@@ -227,7 +295,39 @@ namespace Crowy
         }
 
         void* getNative() const noexcept RHI_OVERRIDE{
-            return nullptr;
+            return context;
+        }
+
+    private:
+        void beginRenderPass(
+            std::span<ID3D11RenderTargetView*> rtvs,
+            RHITexture* depthStencil,
+            RHILoadAction loadAction,
+            RHIStoreAction storeAction,
+            const RHIClearColor& clearColor,
+            const RHIClearDepthStencil& clearDS,
+            const char* debugName
+        ) noexcept{
+            ID3D11DepthStencilView* dsv = nullptr;
+            if(depthStencil != nullptr)
+                dsv = static_cast<D3D11Texture*>(depthStencil)->getDSV();
+
+            context->OMSetRenderTargets(rtvs.size(), rtvs.data(), dsv);
+
+            if(loadAction == RHILoadAction::Clear){
+                float cc[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
+
+                for(size_t i=0; i<rtvs.size(); ++i)
+                    context->ClearRenderTargetView(rtvs[i], cc);
+
+                if(dsv != nullptr)
+                    context->ClearDepthStencilView(dsv,
+                        D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
+                        clearDS.depth, clearDS.stencil
+                    );
+            }
+
+            isRenderPass = true;
         }
     };
 }

@@ -18,7 +18,7 @@ if(APPLE)
     set(CMAKE_OSX_SYSROOT "${MACOSX_SDK_PATH}" CACHE PATH "")
 elseif(WIN32)
     if(NOT DEFINED RENDER_BACKEND)
-        set(RENDER_BACKEND "D3D12")
+        set(RENDER_BACKEND "D3D11")
     elseif(RENDER_BACKEND STREQUAL "Metal")
         message(FATAL_ERROR "Metal is not supported on Windows.")
     endif()
@@ -35,7 +35,7 @@ if(RENDER_BACKEND STREQUAL "Metal")
     find_library(METALKIT_LIBRARY MetalKit REQUIRED)
     find_library(QUARTZCORE_LIBRARY QuartzCore REQUIRED)
     find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
-elseif(RENDER_BACKEND STREQUAL "D3D12")
+elseif(RENDER_BACKEND STREQUAL "D3D12" OR RENDER_BACKEND STREQUAL "D3D11")
     file(GLOB WINDOWS_SDK_BIN_PATHS
         "$ENV{WindowsSdkDir}/bin/*/x64"
         "C:/Program Files (x86)/Windows Kits/10/bin/*/x64"

@@ -688,7 +688,7 @@ private:
             return commandBuffer;
         }
 
-        void* getNativeCommandBuffer() const noexcept RHI_OVERRIDE{
+        void* getNative() const noexcept RHI_OVERRIDE{
             return getCommandBuffer();
         }
 

@@ -18,4 +18,13 @@ if(RENDER_BACKEND STREQUAL "Metal")
     PRIVATE
         Crowy::MetalRHI
     )
+elseif(RENDER_BACKEND STREQUAL "D3D11")
+    target_compile_definitions(CrowyUI
+    PRIVATE
+        CROWY_D3D11RHI
+    )
+    target_link_libraries(CrowyUI
+    PRIVATE
+        Crowy::D3D11RHI
+    )
 endif()

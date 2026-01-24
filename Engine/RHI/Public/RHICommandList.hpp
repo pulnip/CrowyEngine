@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <span>
 #include "semantics.hpp"
 #include "RHIDefinitions.hpp"
@@ -147,6 +148,11 @@ namespace Crowy
         virtual void signalFence(RHIFence&, uint64_t value) noexcept = 0;
         virtual void waitFence(RHIFence&, uint64_t value) noexcept = 0;
 
+        virtual void updateBuffer(
+            const void* data, size_t size,
+            RHIBuffer& buf
+        ) noexcept = 0;
+
         // Copy operations
         virtual void copyBuffer(
             RHIBuffer& src,
@@ -178,7 +184,7 @@ namespace Crowy
         virtual void endEvent() noexcept = 0;
         virtual void setMarker(const char* name) noexcept = 0;
 
-        virtual void* getNativeCommandBuffer() const noexcept = 0;
+        virtual void* getNative() const noexcept = 0;
     };
 #endif
 }

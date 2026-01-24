@@ -25,9 +25,9 @@ if(RENDER_BACKEND STREQUAL "Metal")
     PRIVATE
         CROWY_METALRHI
     )
-elseif(RENDER_BACKEND STREQUAL "D3D12")
+elseif(RENDER_BACKEND STREQUAL "D3D11")
     target_compile_definitions(CrowyRenderSample
     PRIVATE
-        CROWY_D3D12RHI
+        CROWY_D3D11RHI
     )
 endif()
