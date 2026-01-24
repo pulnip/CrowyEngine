@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <d3d11.h>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -21,7 +22,10 @@ namespace Crowy
         RHIResourceState currentState = RHIResourceState::Common;
 
     public:
-        D3D11Texture(const RHITextureCreateDesc& desc)
+        D3D11Texture(
+            ID3D11Device* device,
+            const RHITextureCreateDesc& desc
+        )
             : width(desc.width), height(desc.height)
             , format(desc.format)
             , currentState(desc.initialState)

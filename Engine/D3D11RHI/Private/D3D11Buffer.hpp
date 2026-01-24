@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <d3d11.h>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -22,7 +23,10 @@ namespace Crowy
         RHIResourceState currentState = RHIResourceState::Common;
 
     public:
-        D3D11Buffer(const RHIBufferCreateDesc& desc)
+        D3D11Buffer(
+            ID3D11Device* device,
+            const RHIBufferCreateDesc& desc
+        )
             : usage(desc.usage)
             , size(desc.size)
         {
@@ -34,7 +38,7 @@ namespace Crowy
         ~D3D11Buffer() = default;
 
         void update(const void* data, size_t size, size_t offset) noexcept RHI_OVERRIDE{
-            
+
         }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "RHIAPI.hpp"
 #ifdef USE_STATIC_RHI
     #include "RHIDefinitions.hpp"
@@ -14,9 +15,13 @@ namespace Crowy
         : public RHIDevice
 #endif
     {
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> impl;
+
     public:
-        D3D11Device() = default;
-        ~D3D11Device() = default;
+        D3D11Device();
+        ~D3D11Device();
 
         RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) noexcept RHI_OVERRIDE;
         RHITexturePtr createTexture(const RHITextureCreateDesc&) noexcept RHI_OVERRIDE;
@@ -41,6 +46,6 @@ namespace Crowy
 
         void submit(RHICommandList&, RHISwapchain&) noexcept RHI_OVERRIDE;
 
-        void* getNative() noexcept RHI_OVERRIDE{ return nullptr; }
+        void* getNative() noexcept RHI_OVERRIDE;
     };
 }

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <d3d11.h>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -15,9 +16,17 @@ namespace Crowy
         : public RHICommandList
 #endif
     {
+    private:
+        ID3D11DeviceContext* context = nullptr;
+
     public:
-        D3D11CommandList() = default;
-        ~D3D11CommandList() = default;
+        D3D11CommandList(ID3D11Device* device){
+            device->GetImmediateContext(&context);
+        }
+        ~D3D11CommandList(){
+            if(context)
+                context->Release();
+        }
 
         void begin() noexcept RHI_OVERRIDE{
 
@@ -220,7 +229,7 @@ namespace Crowy
         }
 
         void* getNative() const noexcept RHI_OVERRIDE{
-            return nullptr;
+            return context;
         }
     };
 }
