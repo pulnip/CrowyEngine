@@ -8,6 +8,7 @@
 #ifndef USE_STATIC_RHI
     #include "RHICommandList.hpp"
 #endif
+#include "D3D11Buffer.hpp"
 
 namespace Crowy
 {
@@ -181,6 +182,19 @@ namespace Crowy
 
         void waitFence(RHIFence&, uint64_t value) noexcept RHI_OVERRIDE{
 
+        }
+
+        void updateBuffer(
+            const void* data, size_t size,
+            RHIBuffer& buf
+        ) noexcept RHI_OVERRIDE{
+            D3D11_MAPPED_SUBRESOURCE mapped;
+            D3D11Buffer& dxBuf = static_cast<D3D11Buffer&>(buf);
+            context->Map(dxBuf.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+
+            memcpy(mapped.pData, data, size);
+
+            context->Unmap(dxBuf.get(), 0);
         }
 
         void copyBuffer(

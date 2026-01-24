@@ -174,6 +174,13 @@ namespace Crowy
 
         }
 
+        void updateBuffer(
+            const void* data, size_t size,
+            RHIBuffer& buf
+        ) noexcept RHI_OVERRIDE{
+
+        }
+
         void copyBuffer(
             RHIBuffer& src,
             RHIBuffer& dst,

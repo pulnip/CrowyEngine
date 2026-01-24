@@ -33,10 +33,6 @@ namespace Crowy
         }
         ~NullBuffer() = default;
 
-        void update(const void* data, size_t size, size_t offset) noexcept RHI_OVERRIDE{
-            
-        }
-
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;
         }
