@@ -178,7 +178,7 @@ namespace Crowy
         virtual void endEvent() noexcept = 0;
         virtual void setMarker(const char* name) noexcept = 0;
 
-        virtual void* getNativeCommandBuffer() const noexcept = 0;
+        virtual void* getNative() const noexcept = 0;
     };
 #endif
 }

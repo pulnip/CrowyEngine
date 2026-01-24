@@ -219,7 +219,7 @@ namespace Crowy
 
         }
 
-        void* getNativeCommandBuffer() const noexcept RHI_OVERRIDE{
+        void* getNative() const noexcept RHI_OVERRIDE{
             return nullptr;
         }
     };
