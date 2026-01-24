@@ -69,5 +69,7 @@ namespace Crowy
         void* getCurrentNativeTexture() const noexcept RHI_OVERRIDE{
             return nullptr;
         }
+
+        ID3D11RenderTargetView* getCurrentRTV() const{ return nullptr; }
     };
 }

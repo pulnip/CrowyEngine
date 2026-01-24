@@ -17,9 +17,13 @@ namespace Crowy
 #endif
     {
     private:
+        ID3D11Texture2D* texture = nullptr;
         size_t width, height;
         RHITextureFormat format = RHITextureFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
+        ID3D11RenderTargetView* rtv = nullptr;
+        ID3D11ShaderResourceView* srv = nullptr;
+        ID3D11DepthStencilView* dsv = nullptr;
 
     public:
         D3D11Texture(
@@ -37,6 +41,10 @@ namespace Crowy
         ) noexcept RHI_OVERRIDE{
             // No-Op
         }
+
+        ID3D11RenderTargetView* getRTV() const{ return rtv; }
+        ID3D11ShaderResourceView* getSRV() const{ return srv; }
+        ID3D11DepthStencilView* getDSV() const{ return dsv; }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;

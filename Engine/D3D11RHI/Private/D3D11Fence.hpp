@@ -21,14 +21,16 @@ namespace Crowy
         ){}
 
         void waitCPU(uint64_t waitValue, uint64_t timeoutMs) noexcept RHI_OVERRIDE{
-
+            // NOTE. No-Op for D3D11
         }
 
         uint64_t getValue() noexcept RHI_OVERRIDE{
+            // NOTE. No-Op for D3D11
             return 0;
         }
 
         bool isComplete(uint64_t value) noexcept RHI_OVERRIDE{
+            // NOTE. No-Op for D3D11
             return true;
         }
     };
