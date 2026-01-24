@@ -9,6 +9,8 @@ add_subdirectory(RHI)
 # RHI Implementations
 if(RENDER_BACKEND STREQUAL "Metal")
     add_subdirectory(MetalRHI)
+elseif(RENDER_BACKEND STREQUAL "D3D11")
+    add_subdirectory(D3D11RHI)
 elseif(RENDER_BACKEND STREQUAL "D3D12")
     add_subdirectory(D3D12RHI)
 else()
