@@ -12,7 +12,7 @@ namespace Crowy
         std::unique_ptr<Impl> impl;
 
     public:
-        UIRenderer(void* window, RHIDevice* device);
+        UIRenderer(void* window, RHIDevice&, RHICommandList&);
         ~UIRenderer();
 
         void render(
