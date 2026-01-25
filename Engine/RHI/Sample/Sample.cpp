@@ -1,5 +1,6 @@
 #include <cstring>
 #include <SDL3/SDL.h>
+#include "enum_traits.hpp"
 #include "FramePacer.hpp"
 #include "Log.hpp"
 #include "RHIBuffer.hpp"
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]){
 
     auto uniformBuffer = device->createBuffer({
         .size = sizeof(Mat4),
-        .usage = RHIBufferUsage::ConstantBuffer,
+        .usage = combine(RHIBufferUsage::ConstantBuffer, RHIBufferUsage::CPUWrite),
         .stride = 0,
         .initialData = nullptr,
         .debugName = "MVP Uniform Buffer"

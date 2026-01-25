@@ -30,7 +30,46 @@ namespace Crowy
         }
     }
 
-    static D3D11_BLEND convertBlendFactor(RHIBlend blend) {
+    D3D11_COMPARISON_FUNC convertCompareFunc(RHIComparisonFunc func){
+        switch(func){
+        case RHIComparisonFunc::Never:        return D3D11_COMPARISON_NEVER;
+        case RHIComparisonFunc::Less:         return D3D11_COMPARISON_LESS;
+        case RHIComparisonFunc::Equal:        return D3D11_COMPARISON_EQUAL;
+        case RHIComparisonFunc::LessEqual:    return D3D11_COMPARISON_LESS_EQUAL;
+        case RHIComparisonFunc::Greater:      return D3D11_COMPARISON_GREATER;
+        case RHIComparisonFunc::NotEqual:     return D3D11_COMPARISON_NOT_EQUAL;
+        case RHIComparisonFunc::GreaterEqual: return D3D11_COMPARISON_GREATER_EQUAL;
+        case RHIComparisonFunc::Always:       return D3D11_COMPARISON_ALWAYS;
+        default:
+            std::unreachable();
+        }
+    }
+
+    D3D11_STENCIL_OP convertStencilOp(RHIStencilOp op){
+        switch (op){
+        case RHIStencilOp::Keep:     return D3D11_STENCIL_OP_KEEP;
+        case RHIStencilOp::Zero:     return D3D11_STENCIL_OP_ZERO;
+        case RHIStencilOp::Replace:  return D3D11_STENCIL_OP_REPLACE;
+        case RHIStencilOp::IncrSat:  return D3D11_STENCIL_OP_INCR_SAT;
+        case RHIStencilOp::DecrSat:  return D3D11_STENCIL_OP_DECR_SAT;
+        case RHIStencilOp::Invert:   return D3D11_STENCIL_OP_INVERT;
+        case RHIStencilOp::IncrWrap: return D3D11_STENCIL_OP_INCR;
+        case RHIStencilOp::DecrWrap: return D3D11_STENCIL_OP_DECR;
+        default:
+            std::unreachable();
+        }
+    }
+
+    auto convertStencilOpDesc(const RHIStencilOpDesc& desc) {
+        return D3D11_DEPTH_STENCILOP_DESC{
+            .StencilFailOp = convertStencilOp(desc.stencilFailOp),
+            .StencilDepthFailOp = convertStencilOp(desc.depthFailOp),
+            .StencilPassOp = convertStencilOp(desc.passOp),
+            .StencilFunc = convertCompareFunc(desc.func),
+        };
+    }
+
+    static D3D11_BLEND convertBlendFactor(RHIBlend blend){
         switch (blend) {
         case RHIBlend::Zero:          return D3D11_BLEND_ZERO;
         case RHIBlend::One:           return D3D11_BLEND_ONE;
@@ -49,7 +88,7 @@ namespace Crowy
         }
     }
 
-    static D3D11_BLEND_OP convertBlendOp(RHIBlendOp op) {
+    static D3D11_BLEND_OP convertBlendOp(RHIBlendOp op){
         switch (op) {
         case RHIBlendOp::Add:             return D3D11_BLEND_OP_ADD;
         case RHIBlendOp::Subtract:        return D3D11_BLEND_OP_SUBTRACT;
@@ -116,6 +155,13 @@ namespace Crowy
             ))){
                 throw std::runtime_error("Failed to create ID3D11InputLayout");
             }
+            if(desc.debugName){
+                il->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
+            }
 
             auto dxPS = static_cast<D3D11Shader*>(desc.pixelShader);
             vs = dxVS->getVS();
@@ -139,13 +185,43 @@ namespace Crowy
             if(FAILED(device->CreateRasterizerState(&rsDesc, &rs))){
                 throw std::runtime_error("Failed to create ID3D11RasterizerState");
             }
+            if(desc.debugName){
+                rs->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
+            }
 
             // DepthStencilState
             D3D11_DEPTH_STENCIL_DESC dsDesc{
-                // TODO
+                .DepthEnable = FALSE,
+                .StencilEnable = FALSE
             };
+            if(desc.depthStencil.has_value()){
+                dsDesc.DepthEnable = TRUE;
+                dsDesc.DepthWriteMask = desc.depthStencil->depthWriteEnable ? 
+                    D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+                dsDesc.DepthFunc = convertCompareFunc(desc.depthStencil->depthFunc);
+
+                if(desc.depthStencil->stencil.has_value()){
+                    const auto& stencil = desc.depthStencil->stencil.value();
+                    dsDesc.StencilEnable = TRUE;
+                    dsDesc.StencilReadMask = stencil.readMask;
+                    dsDesc.StencilWriteMask = stencil.writeMask;
+                    dsDesc.FrontFace = convertStencilOpDesc(stencil.frontFace);
+                    dsDesc.BackFace = convertStencilOpDesc(stencil.backFace);
+                }
+            }
             if(FAILED(device->CreateDepthStencilState(&dsDesc, &dss))){
                 throw std::runtime_error("Failed to create ID3D11DepthStencilState");
+            }
+            if(desc.debugName){
+                dss->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
             }
 
             // BlendState
@@ -168,6 +244,13 @@ namespace Crowy
             }
             if(FAILED(device->CreateBlendState(&bsDesc, &bs))){
                 throw std::runtime_error("Failed to create ID3D11BlendState");
+            }
+            if(desc.debugName){
+                bs->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
             }
         }
 

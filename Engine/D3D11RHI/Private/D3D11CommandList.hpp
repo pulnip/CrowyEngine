@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <utility>
 #include <d3d11.h>
 #include "assert.hpp"
 #include "RHIAPI.hpp"
@@ -26,11 +27,18 @@ namespace Crowy
         ID3D11DeviceContext* context = nullptr;
         bool isRecording = false;
         bool isRenderPass = false, isComputePass = false;
+        ID3D11SamplerState* defaultSampler;
 
     public:
-        D3D11CommandList(ID3D11Device* device){
+        D3D11CommandList(
+            ID3D11Device* device,
+            ID3D11SamplerState* defaultSampler = nullptr
+        )
+            :defaultSampler(defaultSampler)
+        {
             device->GetImmediateContext(&context);
         }
+
         ~D3D11CommandList(){
             if(context)
                 context->Release();
@@ -135,7 +143,8 @@ namespace Crowy
             uint32_t stride,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
-
+            ID3D11Buffer* buf = static_cast<D3D11Buffer&>(buffer).get();
+            context->IASetVertexBuffers(slot, 1, &buf, &stride, &offset);
         }
 
         void setIndexBuffer(
@@ -143,7 +152,12 @@ namespace Crowy
             RHIIndexFormat format,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
-
+            context->IASetIndexBuffer(
+                static_cast<D3D11Buffer&>(buffer).get(),
+                format == RHIIndexFormat::UInt16 ?
+                    DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
+                offset
+            );
         }
 
         void setConstantBuffer(
@@ -152,7 +166,21 @@ namespace Crowy
             RHIBuffer& buffer,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
+            auto buf = static_cast<D3D11Buffer&>(buffer).get();
 
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                context->VSSetConstantBuffers(slot, 1, &buf);
+                break;
+            case RHIShaderStage::FragmentShader:
+                context->PSSetConstantBuffers(slot, 1, &buf);
+                break;
+            case RHIShaderStage::ComputeShader:
+                context->CSSetConstantBuffers(slot, 1, &buf);
+                break;
+            default:
+                std::unreachable();
+            }
         }
 
         void setTexture(
@@ -160,7 +188,21 @@ namespace Crowy
             RHITexture& texture,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            auto srv = static_cast<D3D11Texture&>(texture).getSRV();
 
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                context->VSSetShaderResources(slot, 1, &srv);
+                break;
+            case RHIShaderStage::FragmentShader:
+                context->PSSetShaderResources(slot, 1, &srv);
+                break;
+            case RHIShaderStage::ComputeShader:
+                context->CSSetShaderResources(slot, 1, &srv);
+                break;
+            default:
+                std::unreachable();
+            }
         }
 
         void setBuffer(
@@ -168,15 +210,43 @@ namespace Crowy
             RHIBuffer& buffer,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            auto srv = static_cast<D3D11Buffer&>(buffer).getSRV();
 
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                context->VSSetShaderResources(slot, 1, &srv);
+                break;
+            case RHIShaderStage::FragmentShader:
+                context->PSSetShaderResources(slot, 1, &srv);
+                break;
+            case RHIShaderStage::ComputeShader:
+                context->CSSetShaderResources(slot, 1, &srv);
+                break;
+            default:
+                std::unreachable();
+            }   
         }
 
         void setViewport(const RHIViewport& viewport) noexcept RHI_OVERRIDE{
-
+            D3D11_VIEWPORT vp{
+                .TopLeftX = viewport.x,
+                .TopLeftY = viewport.y,
+                .Width = viewport.width,
+                .Height = viewport.height,
+                .MinDepth = viewport.minDepth,
+                .MaxDepth = viewport.maxDepth
+            };
+            context->RSSetViewports(1, &vp);
         }
 
         void setScissorRect(const RHIScissorRect& scissor) noexcept RHI_OVERRIDE{
-
+            D3D11_RECT rect{
+                .left = scissor.left,
+                .top = scissor.top,
+                .right = scissor.right,
+                .bottom = scissor.bottom
+            };
+            context->RSSetScissorRects(1, &rect);
         }
 
         void draw(
@@ -185,7 +255,15 @@ namespace Crowy
             uint32_t startVertex = 0,
             uint32_t startInstance = 0
         ) noexcept RHI_OVERRIDE{
-
+            if(instanceCount > 1)
+                context->DrawInstanced(
+                    vertexCount,
+                    instanceCount,
+                    startVertex,
+                    startInstance
+                );
+            else
+                context->Draw(vertexCount, startVertex);
         }
 
         void drawIndexed(
@@ -195,7 +273,16 @@ namespace Crowy
             int32_t baseVertex = 0,
             uint32_t startInstance = 0
         ) noexcept RHI_OVERRIDE{
-
+            if(instanceCount > 1)
+                context->DrawIndexedInstanced(
+                    indexCount,
+                    instanceCount,
+                    startIndex,
+                    baseVertex,
+                    startInstance
+                );
+        else
+            context->DrawIndexed(indexCount, startIndex, baseVertex);
         }
 
         void dispatch(
@@ -203,7 +290,7 @@ namespace Crowy
             uint32_t threadGroupCountY,
             uint32_t threadGroupCountZ
         ) noexcept RHI_OVERRIDE{
-
+            context->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
         }
 
         void transitionBarrier(
@@ -256,21 +343,41 @@ namespace Crowy
             size_t dstOffset,
             size_t size
         ) noexcept RHI_OVERRIDE{
+            D3D11_BOX box{
+                .left = static_cast<UINT>(srcOffset),
+                .top = 0,
+                .front = 0,
+                .right = static_cast<UINT>(srcOffset + size),
+                .bottom = 1,
+                .back = 1
+            };
 
+            context->CopySubresourceRegion(
+                static_cast<D3D11Buffer&>(dst).get(), 0,
+                dstOffset, 0, 0,
+                static_cast<D3D11Buffer&>(src).get(), 0,
+                &box
+            );
         }
 
         void copyTexture(
             RHITexture& src,
             RHITexture& dst
         ) noexcept RHI_OVERRIDE{
-
+            context->CopyResource(
+                static_cast<D3D11Texture&>(dst).get(),
+                static_cast<D3D11Texture&>(src).get()
+            );
         }
 
         void copyTexture(
             RHITexture& src,
             RHISwapchain& dst
         ) noexcept RHI_OVERRIDE{
-
+            context->CopyResource(
+                static_cast<D3D11Swapchain&>(dst).getCurrentTexture(),
+                static_cast<D3D11Texture&>(src).get()
+            );
         }
 
         void copyBufferToTexture(
@@ -279,19 +386,19 @@ namespace Crowy
             uint32_t mipLevel = 0,
             uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
-
+            // TODO
         }
 
         void beginEvent(const char* name) noexcept RHI_OVERRIDE{
-
+            // TODO
         }
 
         void endEvent() noexcept RHI_OVERRIDE{
-
+            // TODO
         }
 
         void setMarker(const char* name) noexcept RHI_OVERRIDE{
-
+            // TODO
         }
 
         void* getNative() const noexcept RHI_OVERRIDE{
@@ -313,6 +420,10 @@ namespace Crowy
                 dsv = static_cast<D3D11Texture*>(depthStencil)->getDSV();
 
             context->OMSetRenderTargets(rtvs.size(), rtvs.data(), dsv);
+
+            if(defaultSampler != nullptr){
+                context->PSSetSamplers(0, 1, &defaultSampler);
+            }
 
             if(loadAction == RHILoadAction::Clear){
                 float cc[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
