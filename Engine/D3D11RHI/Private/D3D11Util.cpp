@@ -46,6 +46,9 @@ namespace Crowy
         case RHITextureFormat::RG32_SINT:         return DXGI_FORMAT_R32G32_SINT;
         case RHITextureFormat::RG32_FLOAT:        return DXGI_FORMAT_R32G32_FLOAT;
 
+        // 96-bit formats
+        case RHITextureFormat::RGB32_FLOAT:       return DXGI_FORMAT_R32G32B32_FLOAT;
+
         case RHITextureFormat::RGBA16_UNORM:      return DXGI_FORMAT_R16G16B16A16_UNORM;
         case RHITextureFormat::RGBA16_SNORM:      return DXGI_FORMAT_R16G16B16A16_SNORM;
         case RHITextureFormat::RGBA16_UINT:       return DXGI_FORMAT_R16G16B16A16_UINT;
