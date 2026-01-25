@@ -81,6 +81,14 @@ namespace Crowy
                 throw std::runtime_error("Failed to create D3D11 texture");
             }
 
+            if(desc.debugName){
+                texture->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
+            }
+
             if(hasFlag(desc.usage, RHITextureUsage::RenderTarget))
                 device->CreateRenderTargetView(texture, nullptr, &rtv);
             if(hasFlag(desc.usage, RHITextureUsage::ShaderResource))

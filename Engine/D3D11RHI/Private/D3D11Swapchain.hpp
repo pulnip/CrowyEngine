@@ -57,6 +57,14 @@ namespace Crowy
                 &swapchain
             );
             createBackBufferResource();
+
+            if(desc.debugName){
+                swapchain->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
+            }
         }
 
         ~D3D11Swapchain(){

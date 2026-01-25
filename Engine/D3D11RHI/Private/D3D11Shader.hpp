@@ -100,12 +100,27 @@ namespace Crowy
             switch(desc.stage){
             case RHIShaderStage::VertexShader:
                 device->CreateVertexShader(bytecode.data(), bytecode.size(), nullptr, &vs);
+                vs->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.entry)),
+                    desc.entry
+                );
                 break;
             case RHIShaderStage::FragmentShader:
                 device->CreatePixelShader(bytecode.data(), bytecode.size(), nullptr, &ps);
+                ps->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.entry)),
+                    desc.entry
+                );
                 break;
             case RHIShaderStage::ComputeShader:
                 device->CreateComputeShader(bytecode.data(), bytecode.size(), nullptr, &cs);
+                cs->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.entry)),
+                    desc.entry
+                );
                 break;
             default:
                 std::unreachable();
