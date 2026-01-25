@@ -83,9 +83,6 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -100,9 +97,6 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -117,17 +111,12 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
                     .initialState = RHIResourceState::ShaderResource,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
                     .debugName = "Toon Color"
                 },
             },
@@ -136,17 +125,12 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
                     .initialState = RHIResourceState::ShaderResource,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
                     .debugName = "Scene Color"
                 },
             },
@@ -155,17 +139,12 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::D32_FLOAT,
                     .usage = combine(
                         RHITextureUsage::DepthStencil,
                         RHITextureUsage::ShaderResource
                     ),
                     .initialState = RHIResourceState::DepthStencilWrite,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
                     .debugName = "Depth Buffer"
                 },
             },
@@ -174,17 +153,12 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
                     .initialState = RHIResourceState::ShaderResource,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
                     .debugName = "outlined"
                 },
             },
@@ -193,17 +167,12 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
                     .initialState = RHIResourceState::ShaderResource,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
                     .debugName = "pixelated"
                 },
             },
@@ -212,17 +181,12 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = static_cast<uint32_t>(width),
                     .height = static_cast<uint32_t>(height),
-                    .depth = 1,
-                    .mipLevels = 1,
-                    .arraySize = 1,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
                     .initialState = RHIResourceState::ShaderResource,
-                    .clearColor = {},
-                    .clearDepthStencil = {1.0f, 0},
                     .debugName = "focusMask"
                 },
             },
