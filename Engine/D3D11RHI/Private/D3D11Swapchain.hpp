@@ -17,7 +17,11 @@ namespace Crowy
     {
     private:    
         IDXGISwapChain1* swapchain = nullptr;
-        bool vsync;
+        bool vsync, allowTearing;
+        // cache for creating rtv
+        ID3D11Device* device = nullptr;
+        ID3D11Texture2D* backBuffer = nullptr;
+        ID3D11RenderTargetView* rtv = nullptr;
 
     public:
         D3D11Swapchain(
@@ -25,7 +29,8 @@ namespace Crowy
             IDXGIFactory2* factory,
             const RHISwapchainCreateDesc& desc
         )
-            :vsync(desc.vsync)
+            :device(device)
+            ,vsync(desc.vsync), allowTearing(desc.allowTearing)
         {
             DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {
                 .Width = desc.bufferDesc.width,
@@ -51,11 +56,16 @@ namespace Crowy
                 nullptr,
                 &swapchain
             );
+            createBackBufferResource();
         }
 
         ~D3D11Swapchain(){
-            if(swapchain)
+            releaseBackBufferResource();
+
+            if(swapchain){
                 swapchain->Release();
+                swapchain = nullptr;
+            }
         }
 
         bool acquireNextImage() noexcept RHI_OVERRIDE{
@@ -63,13 +73,58 @@ namespace Crowy
         }
 
         void resize(uint32_t newWidth, uint32_t newHeight) noexcept RHI_OVERRIDE{
+            if(newWidth == 0 || newHeight == 0)
+                return;
 
+            releaseBackBufferResource();
+
+            DXGI_SWAP_CHAIN_DESC1 desc;
+            swapchain->GetDesc1(&desc);
+
+            swapchain->ResizeBuffers(
+                0, newWidth, newHeight,
+                DXGI_FORMAT_UNKNOWN, desc.Flags
+            );
+
+            createBackBufferResource();
         }
 
         void* getCurrentNativeTexture() const noexcept RHI_OVERRIDE{
-            return nullptr;
+            return getCurrentTexture();
         }
 
-        ID3D11RenderTargetView* getCurrentRTV() const{ return nullptr; }
+        void present() noexcept{
+            UINT syncInterval = vsync ? 1 : 0;
+            UINT flags = (!vsync && allowTearing) ?
+                DXGI_PRESENT_ALLOW_TEARING : 0;
+
+            swapchain->Present(syncInterval, flags);
+        }
+
+        ID3D11Texture2D* getCurrentTexture() const noexcept{
+            return backBuffer;
+        }
+
+        ID3D11RenderTargetView* getCurrentRTV() const noexcept{
+            return rtv;
+        }
+
+    private:
+        void createBackBufferResource(){
+            swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D),
+                reinterpret_cast<void**>(&backBuffer)
+            );
+            device->CreateRenderTargetView(backBuffer, nullptr, &rtv);
+        }
+        void releaseBackBufferResource(){
+            if(rtv != nullptr){
+                rtv->Release();
+                rtv = nullptr;
+            }
+            if(backBuffer != nullptr){
+                backBuffer->Release();
+                backBuffer = nullptr;
+            }
+        }
     };
 }

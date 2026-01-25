@@ -26,6 +26,7 @@ namespace Crowy
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
         RHIResourceState currentState = RHIResourceState::Common;
+        ID3D11ShaderResourceView* srv = nullptr;
 
     public:
         D3D11Buffer(
@@ -85,9 +86,16 @@ namespace Crowy
                     desc.debugName
                 );
             }
+
+            if(hasFlag(desc.usage, RHIBufferUsage::ShaderResource))
+                device->CreateShaderResourceView(buffer, nullptr, &srv);
         }
 
         ~D3D11Buffer(){
+            if(srv != nullptr){
+                srv->Release();
+                srv = nullptr;
+            }
             if(buffer != nullptr){
                 buffer->Release();
                 buffer = nullptr;
@@ -107,5 +115,7 @@ namespace Crowy
             // NOTE. No-Op for D3D11
             currentState = state;
         }
+
+        ID3D11ShaderResourceView* getSRV() const{ return srv; }
     };
 }
