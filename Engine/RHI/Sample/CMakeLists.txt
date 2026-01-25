@@ -26,6 +26,11 @@ elseif(RENDER_BACKEND STREQUAL "D3D12")
     PRIVATE
         Crowy::D3D12RHI
     )
+elseif(RENDER_BACKEND STREQUAL "D3D11")
+    target_link_libraries(CrowyRHISample
+    PRIVATE
+        Crowy::D3D11RHI
+    )
 else()
     target_link_libraries(CrowyRHISample
     PRIVATE
