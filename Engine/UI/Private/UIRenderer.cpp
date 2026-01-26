@@ -95,7 +95,9 @@ namespace Crowy
 
             uiRenderEncoder->endEncoding();
         #elifdef CROWY_D3D11RHI
+            cmdList.beginRenderPass(*backBuffer);
             ImGui_ImplDX11_RenderDrawData(draw_data);
+            cmdList.endRenderPass();
         #endif
         }
     };

@@ -7,6 +7,7 @@
 #include "D3D11Device.hpp"
 #include "D3D11Fence.hpp"
 #include "D3D11PipelineState.hpp"
+#include "D3D11Sampler.hpp"
 #include "D3D11Shader.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
@@ -140,6 +141,12 @@ namespace Crowy
             return std::make_unique<D3D11Shader>(device, desc);
         }
 
+        RHISamplerPtr createSampler(
+            const RHISamplerState& desc
+        ) noexcept{
+            return std::make_unique<D3D11Sampler>(device, desc);
+        }
+
         RHIPipelineStatePtr createGraphicsPipelineState(
             const RHIGraphicsPipelineStateDesc& desc
         ) noexcept{
@@ -194,6 +201,12 @@ namespace Crowy
         const RHIShaderCreateDesc& desc
     ) noexcept{
         return impl->createShader(desc);
+    }
+
+    RHISamplerPtr D3D11Device::createSampler(
+        const RHISamplerState& desc
+    ) noexcept{
+        return impl->createSampler(desc);
     }
 
     RHIPipelineStatePtr D3D11Device::createGraphicsPipelineState(

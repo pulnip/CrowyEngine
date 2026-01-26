@@ -2,7 +2,7 @@
 
 namespace Crowy
 {
-    DXGI_FORMAT convertTextureFormat(RHITextureFormat format){
+    DXGI_FORMAT convertTextureFormat(RHITextureFormat format, bool isShaderResource, bool isDepthTarget){
         switch(format){
         case RHITextureFormat::Unknown:           return DXGI_FORMAT_UNKNOWN;
         // 8-bit formats
@@ -61,10 +61,33 @@ namespace Crowy
         case RHITextureFormat::RGBA32_FLOAT:      return DXGI_FORMAT_R32G32B32A32_FLOAT;
 
         // Depth/stencil formats
-        case RHITextureFormat::D16_UNORM:         return DXGI_FORMAT_D16_UNORM;
-        case RHITextureFormat::D24_UNORM_S8_UINT: return DXGI_FORMAT_D24_UNORM_S8_UINT;
-        case RHITextureFormat::D32_FLOAT:         return DXGI_FORMAT_D32_FLOAT;
-        case RHITextureFormat::D32_FLOAT_S8_UINT: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+        case RHITextureFormat::D16_UNORM:         return isDepthTarget ?
+            (isShaderResource ? DXGI_FORMAT_R16_TYPELESS : DXGI_FORMAT_D16_UNORM) :
+            DXGI_FORMAT_R16_UNORM;
+        case RHITextureFormat::D24_UNORM_S8_UINT: return isDepthTarget ?
+            (isShaderResource ? DXGI_FORMAT_R24G8_TYPELESS : DXGI_FORMAT_D24_UNORM_S8_UINT) :
+            DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        case RHITextureFormat::D32_FLOAT:         return isDepthTarget ?
+            (isShaderResource ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_D32_FLOAT) :
+            DXGI_FORMAT_R32_FLOAT;
+        case RHITextureFormat::D32_FLOAT_S8_UINT: return isDepthTarget ?
+            (isShaderResource ? DXGI_FORMAT_R32G8X24_TYPELESS : DXGI_FORMAT_D32_FLOAT_S8X24_UINT) :
+            DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+        default:
+            std::unreachable();
+        }
+    }
+
+    D3D11_COMPARISON_FUNC convertCompareFunc(RHIComparisonFunc func){
+        switch(func){
+        case RHIComparisonFunc::Never:        return D3D11_COMPARISON_NEVER;
+        case RHIComparisonFunc::Less:         return D3D11_COMPARISON_LESS;
+        case RHIComparisonFunc::Equal:        return D3D11_COMPARISON_EQUAL;
+        case RHIComparisonFunc::LessEqual:    return D3D11_COMPARISON_LESS_EQUAL;
+        case RHIComparisonFunc::Greater:      return D3D11_COMPARISON_GREATER;
+        case RHIComparisonFunc::NotEqual:     return D3D11_COMPARISON_NOT_EQUAL;
+        case RHIComparisonFunc::GreaterEqual: return D3D11_COMPARISON_GREATER_EQUAL;
+        case RHIComparisonFunc::Always:       return D3D11_COMPARISON_ALWAYS;
         default:
             std::unreachable();
         }

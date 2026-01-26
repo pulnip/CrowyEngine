@@ -12,6 +12,7 @@
 #endif
 #include "D3D11Buffer.hpp"
 #include "D3D11PipelineState.hpp"
+#include "D3D11Sampler.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
 
@@ -87,7 +88,7 @@ namespace Crowy
                 rtvs[i] = static_cast<D3D11Texture*>(renderTargets[i])->getRTV();
 
             beginRenderPass(
-                rtvs,
+                std::span<ID3D11RenderTargetView*>(rtvs, renderTargets.size()),
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS,
@@ -128,7 +129,9 @@ namespace Crowy
         void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
             auto dxPSO = static_cast<D3D11PipelineState*>(pso);
 
-            context->IASetInputLayout(dxPSO->getIL());
+            auto il = dxPSO->getIL();
+            if(il != nullptr)
+                context->IASetInputLayout(dxPSO->getIL());
             context->IASetPrimitiveTopology(dxPSO->getTopology());
             context->VSSetShader(dxPSO->getVS(), nullptr, 0);
             context->PSSetShader(dxPSO->getPS(), nullptr, 0);
@@ -221,6 +224,28 @@ namespace Crowy
                 break;
             case RHIShaderStage::ComputeShader:
                 context->CSSetShaderResources(slot, 1, &srv);
+                break;
+            default:
+                std::unreachable();
+            }   
+        }
+
+        void setSampler(
+            uint32_t slot,
+            RHISampler& sampler,
+            RHIShaderStage stage
+        ) noexcept RHI_OVERRIDE{
+            auto s = static_cast<D3D11Sampler&>(sampler).get();
+
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                context->VSSetSamplers(slot, 1, &s);
+                break;
+            case RHIShaderStage::FragmentShader:
+                context->PSSetSamplers(slot, 1, &s);
+                break;
+            case RHIShaderStage::ComputeShader:
+                context->CSSetSamplers(slot, 1, &s);
                 break;
             default:
                 std::unreachable();

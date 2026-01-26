@@ -103,6 +103,12 @@ namespace Crowy
             RHIShaderStage stage
         ) noexcept = 0;
 
+        virtual void setSampler(
+            uint32_t slot,
+            RHISampler& sampler,
+            RHIShaderStage stage
+        ) noexcept = 0;
+
         // Viewport and scissor
         virtual void setViewport(const RHIViewport& viewport) noexcept = 0;
         virtual void setScissorRect(const RHIScissorRect& scissor) noexcept = 0;

@@ -18,16 +18,17 @@ namespace Crowy
 
     struct RenderPassSpec{
         std::string name;
+
         // input Texture
         std::vector<std::string> inputs;
         // output RenderTarget
         std::vector<std::string> targets;
         // depth buffer
         std::string depthTarget;
+        std::vector<RHISamplerState> fs_samplers;
 
         ShaderSpec shader;
         RenderType renderType;
-
         RHIRasterizerState rasterizer = {};
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         RHIBlendState blend = {};

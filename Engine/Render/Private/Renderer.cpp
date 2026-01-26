@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include "assert.hpp"
+#include "enum_traits.hpp"
 #include "string.hpp"
 #include "Log.hpp"
 #include "Renderer.hpp"
@@ -87,6 +88,13 @@ namespace Crowy
 
         void loadPasses(const RenderSpec& spec){
             for(const auto& passSpec: spec.passes){
+                std::vector<RHISamplerPtr> fs_samplers;
+                fs_samplers.reserve(passSpec.fs_samplers.size());
+                for(const auto& fs_sampler: passSpec.fs_samplers){
+                    auto sampler = device->createSampler(fs_sampler);
+                    fs_samplers.push_back(std::move(sampler));
+                }
+
                 auto vs = device->createShader(RHIShaderCreateDesc{
                     .file = passSpec.shader.vsFilePath.c_str(),
                     .entry = passSpec.shader.vsFuncName.c_str(),
@@ -112,33 +120,43 @@ namespace Crowy
                 passes.push_back(RenderPass{
                     .name = passSpec.name,
                     .enabled = true,
-                    .renderType = renderType,
-                    .vs = std::move(vs), .fs = std::move(fs),
-                    .pipeline = std::move(pipeline),
                     .inputs = passSpec.inputs,
                     .targets = passSpec.targets,
-                    .depthTarget = passSpec.depthTarget
+                    .depthTarget = passSpec.depthTarget,
+                    .fs_samplers = std::move(fs_samplers),
+                    .vs = std::move(vs), .fs = std::move(fs),
+                    .renderType = renderType,
+                    .pipeline = std::move(pipeline)
                 });
             }
 
             uniformBuffer = device->createBuffer({
                 // TODO. use Unified Constant buffer + offset later.
                 .size = sizeof(Mat4),
-                .usage = RHIBufferUsage::ConstantBuffer,
+                .usage = combine(
+                    RHIBufferUsage::ConstantBuffer,
+                    RHIBufferUsage::CPUWrite
+                ),
                 .stride = 0,
                 .initialData = nullptr,
                 .debugName = "MVP Uniform Buffer"
             });
             pixelateUniformBuffer = device->createBuffer({
                 .size = sizeof(PixelateParams),
-                .usage = RHIBufferUsage::ConstantBuffer,
+                .usage = combine(
+                    RHIBufferUsage::ConstantBuffer,
+                    RHIBufferUsage::CPUWrite
+                ),
                 .stride = 0,
                 .initialData = nullptr,
                 .debugName = "Pixelate pass Constant Buffer"
             });
             focusmaskUniformBuffer = device->createBuffer({
                 .size = sizeof(FocusParams),
-                .usage = RHIBufferUsage::ConstantBuffer,
+                .usage = combine(
+                    RHIBufferUsage::ConstantBuffer,
+                    RHIBufferUsage::CPUWrite
+                ),
                 .stride = 0,
                 .initialData = nullptr,
                 .debugName = "focusmask pass Constant Buffer"

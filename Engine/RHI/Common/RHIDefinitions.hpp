@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <optional>
 #include <utility>
 #include "enum_traits.hpp"
 #include "math.hpp"
@@ -429,6 +431,43 @@ namespace Crowy
     struct RHIComputePipelineStateDesc{
         RHIShader* computeShader;
         const char* debugName;
+    };
+
+    enum class RHIFilter{
+        Nearest,
+        Linear
+    };
+
+    enum class RHIAddressMode{
+        Wrap,
+        Clamp,
+        Mirror,
+        Border
+    };
+
+    struct RHISamplerState{
+        RHIFilter minFilter = RHIFilter::Linear;
+        RHIFilter magFilter = RHIFilter::Linear;
+        RHIFilter mipFilter = RHIFilter::Linear;
+
+        RHIAddressMode addressU = RHIAddressMode::Wrap;
+        RHIAddressMode addressV = RHIAddressMode::Wrap;
+        RHIAddressMode addressW = RHIAddressMode::Wrap;
+
+        // mip-map option
+        float mipLODBias = 0.0f;
+        float minLOD = 0.0f, maxLOD = std::numeric_limits<float>::max();
+
+        uint32_t maxAnisotropy = 1;
+        RHIComparisonFunc compareFunc = RHIComparisonFunc::Never;
+        float borderColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    };
+
+    constexpr auto LINEAR_WRAP_SAMPLER = RHISamplerState{};
+    constexpr auto NEAREST_WRAP_SAMPLER = RHISamplerState{
+        .minFilter = RHIFilter::Nearest,
+        .magFilter = RHIFilter::Nearest,
+        .mipFilter = RHIFilter::Nearest
     };
 
     struct RHISwapchainCreateDesc{
