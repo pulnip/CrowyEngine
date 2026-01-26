@@ -8,16 +8,15 @@ struct VertexOut{
 };
 
 fragment float4 fs_composite(
-    VertexOut in            [[ stage_in ]],
+    VertexOut         input [[ stage_in ]],
     texture2d<float> origin [[texture(0)]],
     texture2d<float> masked [[texture(1)]],
-    texture2d<float>   mask [[texture(2)]]
+    texture2d<float>   mask [[texture(2)]],
+    sampler               s [[sampler(0)]]
 ){
-    constexpr sampler s(filter::linear);
-
-    float4  start = origin.sample(s, in.texCoord);
-    float4    end = masked.sample(s, in.texCoord);
-    float4 factor =   mask.sample(s, in.texCoord);
+    float4  start = origin.sample(s, input.texCoord);
+    float4    end = masked.sample(s, input.texCoord);
+    float4 factor =   mask.sample(s, input.texCoord);
 
     return mix(start, end, factor.r);
 }

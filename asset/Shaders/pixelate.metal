@@ -13,15 +13,13 @@ struct PixelateParams{
 };
 
 fragment float4 fs_pixelate(
-    VertexOut in                    [[ stage_in ]],
-    texture2d<float> sceneTexture   [[texture(0)]],
-    constant PixelateParams& params [[ buffer(0)]]
+    VertexOut                 input [[ stage_in ]],
+    texture2d<float>   sceneTexture [[texture(0)]],
+    constant PixelateParams& params [[ buffer(0)]],
+    sampler                       s [[sampler(0)]]
 ){
-    // point sampling
-    constexpr sampler s(filter::nearest);
-
     float2 pixelCount = params.resolution / params.pixelSize;
-    float2 quantizedUV = floor(in.texCoord * pixelCount) / pixelCount;
+    float2 quantizedUV = floor(input.texCoord * pixelCount) / pixelCount;
     // sample from centric point
     quantizedUV += 0.5 / pixelCount;
 

@@ -8,17 +8,16 @@ struct VertexOut{
 };
 
 fragment float4 fs_cel_shading(
-    VertexOut in               [[ stage_in ]],
+    VertexOut            input [[ stage_in ]],
     texture2d<float> albedoTex [[texture(0)]],
-    texture2d<float> normalTex [[texture(1)]]
+    texture2d<float> normalTex [[texture(1)]],
+    sampler                  s [[sampler(0)]]
 ){
-    constexpr sampler s(filter::linear);
-
-    float4 albedo = albedoTex.sample(s, in.texCoord);
+    float4 albedo = albedoTex.sample(s, input.texCoord);
     // if background
     if(albedo.a < 0.01)
         return albedo;
-    float3 normal = normalTex.sample(s, in.texCoord).rgb * 2.0 - 1.0;
+    float3 normal = normalTex.sample(s, input.texCoord).rgb * 2.0 - 1.0;
 
     // TODO. hard-coded light
     float3 lightDir = normalize(float3(0.5, 1.0, 0.5));
