@@ -8,6 +8,7 @@
 #include "MetalDevice.hpp"
 #include "MetalFence.hpp"
 #include "MetalPipelineState.hpp"
+#include "MetalSampler.hpp"
 #include "MetalShader.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
@@ -28,8 +29,6 @@ namespace Crowy
         MTL::Device* device;
         MTL::CommandQueue* commandQueue;
 
-        MTL::SamplerState* defaultSampler;
-
         MTL::CommandBuffer* pendingCommandBuffer = nullptr;
 
         Impl() noexcept{
@@ -40,27 +39,9 @@ namespace Crowy
             CROWY_ASSERT(commandQueue != nullptr,
                 "Failed to create command queue"
             );
-
-            auto samplerDesc = MTL::SamplerDescriptor::alloc()->init();
-            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setMipFilter(MTL::SamplerMipFilterLinear);
-            samplerDesc->setSAddressMode(MTL::SamplerAddressModeRepeat);
-            samplerDesc->setTAddressMode(MTL::SamplerAddressModeRepeat);
-            samplerDesc->setRAddressMode(MTL::SamplerAddressModeRepeat);
-            samplerDesc->setMaxAnisotropy(16);
-
-            defaultSampler = device->newSamplerState(samplerDesc);
-            samplerDesc->release();
-
-            CROWY_ASSERT(defaultSampler != nullptr,
-                "Failed to create default sampler"
-            );
         }
 
         ~Impl(){
-            if(defaultSampler != nullptr)
-                defaultSampler->release();
             if(commandQueue != nullptr)
                 commandQueue->release();
             if(device != nullptr)
@@ -85,6 +66,12 @@ namespace Crowy
             return std::make_unique<MetalShader>(device, desc);
         }
 
+        RHISamplerPtr createSampler(
+            const RHISamplerState& desc
+        ) noexcept{
+            return std::make_unique<MetalSampler>(device, desc);
+        }
+
         RHIPipelineStatePtr createGraphicsPipelineState(
             const RHIGraphicsPipelineStateDesc& desc
         ) noexcept{
@@ -104,7 +91,7 @@ namespace Crowy
         }
 
         RHICommandListPtr createCommandList() noexcept{
-            return std::make_unique<MetalCommandList>(commandQueue, defaultSampler);
+            return std::make_unique<MetalCommandList>(commandQueue);
         }
 
         RHIFencePtr createFence(uint64_t initialValue) noexcept{
@@ -145,6 +132,12 @@ namespace Crowy
         const RHIShaderCreateDesc& desc
     ) noexcept{
         return impl->createShader(desc);
+    }
+
+    RHISamplerPtr MetalDevice::createSampler(
+        const RHISamplerState& desc
+    ) noexcept{
+        return impl->createSampler(desc);
     }
 
     RHIPipelineStatePtr MetalDevice::createGraphicsPipelineState(

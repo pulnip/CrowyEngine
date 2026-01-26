@@ -11,6 +11,7 @@
 #include "MetalBuffer.hpp"
 #include "MetalFence.hpp"
 #include "MetalPipelineState.hpp"
+#include "MetalSampler.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "RHIAPI.hpp"
@@ -76,7 +77,6 @@ private:
         MTL::ComputeCommandEncoder* computeEncoder = nullptr;
         // implicitly reuse blit Encoder
         MTL::BlitCommandEncoder* blitEncoder = nullptr;
-        MTL::SamplerState* defaultSampler = nullptr;
 
         CA::MetalDrawable* currentDrawable = nullptr;
 
@@ -90,11 +90,9 @@ private:
 
     public:
         MetalCommandList(
-            MTL::CommandQueue* queue,
-            MTL::SamplerState* defaultSampler = nullptr
+            MTL::CommandQueue* queue
         ) noexcept
             : commandQueue(queue)
-            , defaultSampler(defaultSampler)
         {}
         ~MetalCommandList(){
             reset();
@@ -379,34 +377,34 @@ private:
         }
 
         void setSampler(
-            MTL::SamplerState* sampler,
             uint32_t slot,
+            RHISampler& sampler,
             RHIShaderStage stage
-        ) noexcept{
-            CROWY_ASSERT(sampler != nullptr);
+        ) noexcept RHI_OVERRIDE{
+            auto mtlSampler = static_cast<MetalSampler&>(sampler).get();
 
             switch(stage){
             case RHIShaderStage::VertexShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
-                renderEncoder->setVertexSamplerState(sampler, slot);
+                renderEncoder->setVertexSamplerState(mtlSampler, slot);
                 break;
             case RHIShaderStage::FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
-                renderEncoder->setFragmentSamplerState(sampler, slot);
+                renderEncoder->setFragmentSamplerState(mtlSampler, slot);
                 break;
             case RHIShaderStage::ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
-                computeEncoder->setSamplerState(sampler, slot);
+                computeEncoder->setSamplerState(mtlSampler, slot);
                 break;
             default:
                 std::unreachable();
-            }
+            }   
         }
 
         void setViewport(const RHIViewport& viewport) noexcept RHI_OVERRIDE{
@@ -750,11 +748,6 @@ private:
                 renderEncoder->setLabel(
                     NS::String::string(debugName, NS::UTF8StringEncoding)
                 );
-            }
-
-            // 기본 sampler 설정
-            if(defaultSampler){
-                renderEncoder->setFragmentSamplerState(defaultSampler, 0);
             }
 
             passDesc->release();

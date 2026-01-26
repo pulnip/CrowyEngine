@@ -6,4 +6,6 @@
 namespace Crowy
 {
     MTL::PixelFormat convertTextureFormat(RHITextureFormat);
+    MTL::CompareFunction convertCompareFunc(RHIComparisonFunc);
+
 }

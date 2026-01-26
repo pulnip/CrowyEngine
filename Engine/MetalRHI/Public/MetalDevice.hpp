@@ -19,9 +19,10 @@ namespace Crowy
         MetalDevice() noexcept;
         ~MetalDevice();
 
-        RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) noexcept RHI_OVERRIDE;
-        RHITexturePtr createTexture(const RHITextureCreateDesc&) noexcept RHI_OVERRIDE;
-        RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) noexcept RHI_OVERRIDE;
+        RHIBufferPtr   createBuffer (const RHIBufferCreateDesc& ) noexcept RHI_OVERRIDE;
+        RHITexturePtr  createTexture(const RHITextureCreateDesc&) noexcept RHI_OVERRIDE;
+        RHIShaderPtr   createShader (const RHIShaderCreateDesc& ) noexcept RHI_OVERRIDE;
+        RHISamplerPtr createSampler (const RHISamplerState& ) noexcept RHI_OVERRIDE;
 
         RHIPipelineStatePtr createGraphicsPipelineState(
             const RHIGraphicsPipelineStateDesc&

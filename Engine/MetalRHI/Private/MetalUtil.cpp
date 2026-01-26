@@ -67,4 +67,19 @@ namespace Crowy
             std::unreachable();
         }
     }
+
+    MTL::CompareFunction convertCompareFunc(RHIComparisonFunc func){
+        switch(func){
+        case RHIComparisonFunc::Never:        return MTL::CompareFunctionNever;
+        case RHIComparisonFunc::Less:         return MTL::CompareFunctionLess;
+        case RHIComparisonFunc::Equal:        return MTL::CompareFunctionEqual;
+        case RHIComparisonFunc::LessEqual:    return MTL::CompareFunctionLessEqual;
+        case RHIComparisonFunc::Greater:      return MTL::CompareFunctionGreater;
+        case RHIComparisonFunc::NotEqual:     return MTL::CompareFunctionNotEqual;
+        case RHIComparisonFunc::GreaterEqual: return MTL::CompareFunctionGreaterEqual;
+        case RHIComparisonFunc::Always:       return MTL::CompareFunctionAlways;
+        default:
+            std::unreachable();
+        }
+    }
 }
