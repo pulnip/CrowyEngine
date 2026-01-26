@@ -88,7 +88,7 @@ namespace Crowy
                 rtvs[i] = static_cast<D3D11Texture*>(renderTargets[i])->getRTV();
 
             beginRenderPass(
-                rtvs,
+                std::span<ID3D11RenderTargetView*>(rtvs, renderTargets.size()),
                 depthStencil,
                 loadAction, storeAction,
                 clearColor, clearDS,
@@ -129,7 +129,9 @@ namespace Crowy
         void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
             auto dxPSO = static_cast<D3D11PipelineState*>(pso);
 
-            context->IASetInputLayout(dxPSO->getIL());
+            auto il = dxPSO->getIL();
+            if(il != nullptr)
+                context->IASetInputLayout(dxPSO->getIL());
             context->IASetPrimitiveTopology(dxPSO->getTopology());
             context->VSSetShader(dxPSO->getVS(), nullptr, 0);
             context->PSSetShader(dxPSO->getPS(), nullptr, 0);

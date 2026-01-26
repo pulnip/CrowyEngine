@@ -39,25 +39,25 @@ namespace Crowy
         {
             CROWY_ASSERT(desc.depth == 1);
 
+            auto isShaderResource  = hasFlag(desc.usage, RHITextureUsage::ShaderResource);
+            auto isRenderTarget    = hasFlag(desc.usage, RHITextureUsage::RenderTarget);
+            auto isDepthTarget     = hasFlag(desc.usage, RHITextureUsage::DepthStencil);
+            auto isUnorderedAccess = hasFlag(desc.usage, RHITextureUsage::UnorderedAccess);
+
             UINT bindFlags = 0;
-            if (hasFlag(desc.usage, RHITextureUsage::ShaderResource))
-                bindFlags |= D3D11_BIND_SHADER_RESOURCE;
-            if (hasFlag(desc.usage, RHITextureUsage::RenderTarget))
-                bindFlags |= D3D11_BIND_RENDER_TARGET;
-            if (hasFlag(desc.usage, RHITextureUsage::DepthStencil))
-                bindFlags |= D3D11_BIND_DEPTH_STENCIL;
-            if (hasFlag(desc.usage, RHITextureUsage::UnorderedAccess))
-                bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
-            bool needsGPUOnly = hasFlag(desc.usage, RHITextureUsage::RenderTarget) || 
-                                hasFlag(desc.usage, RHITextureUsage::DepthStencil) ||
-                                hasFlag(desc.usage, RHITextureUsage::ShaderResource) ||
-                                hasFlag(desc.usage, RHITextureUsage::UnorderedAccess);
+            if(isShaderResource ) bindFlags |= D3D11_BIND_SHADER_RESOURCE;
+            if(isRenderTarget   ) bindFlags |= D3D11_BIND_RENDER_TARGET;
+            if(isDepthTarget    ) bindFlags |= D3D11_BIND_DEPTH_STENCIL;
+            if(isUnorderedAccess) bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+            bool needsGPUOnly = isShaderResource || isRenderTarget || 
+                                isDepthTarget    || isUnorderedAccess;
+
             D3D11_TEXTURE2D_DESC texDesc{
                 .Width = desc.width,
                 .Height = desc.height,
                 .MipLevels = desc.mipLevels,
                 .ArraySize = desc.arraySize,
-                .Format = convertTextureFormat(desc.format),
+                .Format = convertTextureFormat(desc.format, isShaderResource, isDepthTarget),
                 // No MSAA
                 .SampleDesc = {1, 0},
                 .Usage = needsGPUOnly ?
@@ -89,12 +89,37 @@ namespace Crowy
                 );
             }
 
-            if(hasFlag(desc.usage, RHITextureUsage::RenderTarget))
-                device->CreateRenderTargetView(texture, nullptr, &rtv);
-            if(hasFlag(desc.usage, RHITextureUsage::ShaderResource))
-                device->CreateShaderResourceView(texture, nullptr, &srv);
-            if(hasFlag(desc.usage, RHITextureUsage::DepthStencil))
-                device->CreateDepthStencilView(texture, nullptr, &dsv);
+            if(isRenderTarget){
+                D3D11_RENDER_TARGET_VIEW_DESC rtvDesc{
+                    .Format = convertTextureFormat(desc.format),
+                    .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+                    .Texture2D = {
+                        .MipSlice = 0
+                    }
+                };
+                device->CreateRenderTargetView(texture, &rtvDesc, &rtv);
+            }
+            if(isShaderResource){
+                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
+                    .Format = convertTextureFormat(desc.format, true, false),
+                    .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
+                    .Texture2D = {
+                        .MostDetailedMip = 0,
+                        .MipLevels = 1
+                    }
+                };
+                device->CreateShaderResourceView(texture, &srvDesc, &srv);
+            }
+            if(isDepthTarget){
+                D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{
+                    .Format = convertTextureFormat(desc.format, false, true),
+                    .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
+                    .Texture2D = {
+                        .MipSlice = 0
+                    }
+                };
+                device->CreateDepthStencilView(texture, &dsvDesc, &dsv);
+            }
         }
 
         ~D3D11Texture(){

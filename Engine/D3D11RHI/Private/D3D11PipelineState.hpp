@@ -117,35 +117,38 @@ namespace Crowy
         )
             :topology(convertTopology(desc.topology))
         {
-            // Input Layout
-            std::vector<D3D11_INPUT_ELEMENT_DESC> elements(desc.vertexLayout.elementCount);
-            for(uint32_t i=0; i<desc.vertexLayout.elementCount; ++i){
-                const auto& src = desc.vertexLayout.elements[i];
-                auto& dst = elements[i];
-
-                dst.SemanticName = src.semanticName;
-                dst.SemanticIndex = src.semanticIndex;
-                dst.Format = convertTextureFormat(src.format);
-                dst.InputSlot = src.inputSlot;
-                dst.AlignedByteOffset = src.alignedByteOffset;
-                dst.InputSlotClass = src.classification == RHIInputClassification::PerVertex ?
-                    D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA;
-                dst.InstanceDataStepRate = src.instanceDataStepRate;
-            }
             auto dxVS = static_cast<D3D11Shader*>(desc.vertexShader);
-            if(FAILED(device->CreateInputLayout(
-                elements.data(), static_cast<UINT>(elements.size()),
-                dxVS->getBytecodePointer(), dxVS->getBytecodeSize(),
-                &il
-            ))){
-                throw std::runtime_error("Failed to create ID3D11InputLayout");
-            }
-            if(desc.debugName){
-                il->SetPrivateData(
-                    WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
-                );
+
+            // Input Layout
+            if(desc.vertexLayout.elementCount > 0){
+                std::vector<D3D11_INPUT_ELEMENT_DESC> elements(desc.vertexLayout.elementCount);
+                for(uint32_t i=0; i<desc.vertexLayout.elementCount; ++i){
+                    const auto& src = desc.vertexLayout.elements[i];
+                    auto& dst = elements[i];
+    
+                    dst.SemanticName = src.semanticName;
+                    dst.SemanticIndex = src.semanticIndex;
+                    dst.Format = convertTextureFormat(src.format);
+                    dst.InputSlot = src.inputSlot;
+                    dst.AlignedByteOffset = src.alignedByteOffset;
+                    dst.InputSlotClass = src.classification == RHIInputClassification::PerVertex ?
+                        D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA;
+                    dst.InstanceDataStepRate = src.instanceDataStepRate;
+                }
+                if(FAILED(device->CreateInputLayout(
+                    elements.data(), static_cast<UINT>(elements.size()),
+                    dxVS->getBytecodePointer(), dxVS->getBytecodeSize(),
+                    &il
+                ))){
+                    throw std::runtime_error("Failed to create ID3D11InputLayout");
+                }
+                if(desc.debugName){
+                    il->SetPrivateData(
+                        WKPDID_D3DDebugObjectName, 
+                        static_cast<UINT>(strlen(desc.debugName)),
+                        desc.debugName
+                    );
+                }
             }
 
             auto dxPS = static_cast<D3D11Shader*>(desc.pixelShader);
