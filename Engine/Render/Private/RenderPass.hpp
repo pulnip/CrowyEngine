@@ -7,6 +7,7 @@
 #include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
 #include "RHIPipelineState.hpp"
+#include "RHISampler.hpp"
 #include "RHIShader.hpp"
 
 namespace Crowy
@@ -14,15 +15,17 @@ namespace Crowy
     struct RenderPass{
         std::string name;
         bool enabled = true;
-        std::optional<RenderTypeHash> renderType;
-        RHIShaderPtr vs, fs;
-        RHIPipelineStatePtr pipeline;
 
         // input Texture
         std::vector<std::string> inputs;
         // output RenderTarget
         std::vector<std::string> targets;
         std::string depthTarget;
+        std::vector<RHISamplerPtr> fs_samplers;
+
+        RHIShaderPtr vs, fs;
+        std::optional<RenderTypeHash> renderType;
+        RHIPipelineStatePtr pipeline;
 
         inline bool isFullscreenPass() const{
             return !renderType.has_value();

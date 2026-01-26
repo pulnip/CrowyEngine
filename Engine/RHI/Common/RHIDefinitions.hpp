@@ -463,6 +463,13 @@ namespace Crowy
         float borderColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     };
 
+    constexpr auto LINEAR_WRAP_SAMPLER = RHISamplerState{};
+    constexpr auto NEAREST_WRAP_SAMPLER = RHISamplerState{
+        .minFilter = RHIFilter::Nearest,
+        .magFilter = RHIFilter::Nearest,
+        .mipFilter = RHIFilter::Nearest
+    };
+
     struct RHISwapchainCreateDesc{
         void* windowHandle;   // Platform-specific window handle
         RHITextureCreateDesc bufferDesc;

@@ -197,11 +197,17 @@ int main(int argc, char* argv[]){
                 .inputs = {},
                 .targets = {"albedo", "normal"},
                 .depthTarget = "depth",
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/gbuffer.metal",
                     .vsFuncName = "vs_gbuffer",
                     .fsFilePath = "asset/Shaders/gbuffer.metal",
+                    .fsFuncName = "fs_gbuffer"
+                #elifdef CROWY_D3D11RHI
+                    .vsFilePath = L"asset/Shaders/gbuffer.hlsl",
+                    .vsFuncName = "vs_gbuffer",
+                    .fsFilePath = L"asset/Shaders/gbuffer.hlsl",
                     .fsFuncName = "fs_gbuffer"
                 #endif
                 },
@@ -215,11 +221,17 @@ int main(int argc, char* argv[]){
                 .name = "celshading",
                 .inputs = {"albedo", "normal"},
                 .targets = {"toonColor"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/fullscreen.metal",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/cel_shading.metal",
+                    .fsFuncName = "fs_cel_shading"
+                #elifdef CROWY_D3D11RHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/cel_shading.hlsl",
                     .fsFuncName = "fs_cel_shading"
                 #endif
                 }
@@ -228,11 +240,17 @@ int main(int argc, char* argv[]){
                 .name = "outlining",
                 .inputs = {"normal", "depth", "toonColor"},
                 .targets = {"outlined"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/fullscreen.metal",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/outline.metal",
+                    .fsFuncName = "fs_outline"
+                #elifdef CROWY_D3D11RHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/outline.hlsl",
                     .fsFuncName = "fs_outline"
                 #endif
                 }
@@ -243,13 +261,14 @@ int main(int argc, char* argv[]){
                 .inputs = {},
                 .targets = {"sceneColor"},
                 .depthTarget = "depth",
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/triangle.metal",
                     .vsFuncName = "vs_main",
                     .fsFilePath = "asset/Shaders/triangle.metal",
                     .fsFuncName = "fs_textured",
-                #elif CROWY_D3D12RHI
+                #elif CROWY_D3D11RHI
                     .vsFilePath = L"asset/Shaders/standard_vs.hlsl",
                     .vsFuncName = "vs_main",
                     .fsFilePath = L"asset/Shaders/standard_ps.hlsl",
@@ -266,11 +285,17 @@ int main(int argc, char* argv[]){
                 .name = "pixelate",
                 .inputs = {"sceneColor"},
                 .targets = {"pixelated"},
+                .fs_samplers = {NEAREST_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/fullscreen.metal",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/pixelate.metal",
+                    .fsFuncName = "fs_pixelate"
+                #elifdef CROWY_D3D11RHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/pixelate.hlsl",
                     .fsFuncName = "fs_pixelate"
                 #endif
                 },
@@ -285,6 +310,11 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/focusmask.metal",
                     .fsFuncName = "fs_focusmask"
+                #elifdef CROWY_D3D11RHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/focusmask.hlsl",
+                    .fsFuncName = "fs_focusmask"
                 #endif
                 }
             },
@@ -296,11 +326,17 @@ int main(int argc, char* argv[]){
                     "focusMask"
                 },
                 .targets = {"BackBuffer"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/fullscreen.metal",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/composite.metal",
+                    .fsFuncName = "fs_composite"
+                #elifdef CROWY_D3D11RHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/composite.hlsl",
                     .fsFuncName = "fs_composite"
                 #endif
                 }
