@@ -12,6 +12,7 @@
 #endif
 #include "D3D11Buffer.hpp"
 #include "D3D11PipelineState.hpp"
+#include "D3D11Sampler.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
 
@@ -221,6 +222,28 @@ namespace Crowy
                 break;
             case RHIShaderStage::ComputeShader:
                 context->CSSetShaderResources(slot, 1, &srv);
+                break;
+            default:
+                std::unreachable();
+            }   
+        }
+
+        void setSampler(
+            uint32_t slot,
+            RHISampler& sampler,
+            RHIShaderStage stage
+        ) noexcept RHI_OVERRIDE{
+            auto s = static_cast<D3D11Sampler&>(sampler).get();
+
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                context->VSSetSamplers(slot, 1, &s);
+                break;
+            case RHIShaderStage::FragmentShader:
+                context->PSSetSamplers(slot, 1, &s);
+                break;
+            case RHIShaderStage::ComputeShader:
+                context->CSSetSamplers(slot, 1, &s);
                 break;
             default:
                 std::unreachable();

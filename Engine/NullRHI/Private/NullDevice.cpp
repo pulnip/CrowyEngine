@@ -3,6 +3,7 @@
 #include "NullDevice.hpp"
 #include "NullFence.hpp"
 #include "NullPipelineState.hpp"
+#include "NullSampler.hpp"
 #include "NullShader.hpp"
 #include "NullSwapchain.hpp"
 #include "NullTexture.hpp"
@@ -35,6 +36,11 @@ namespace Crowy
         const RHIShaderCreateDesc& desc
     ) noexcept{
         return std::make_unique<NullShader>(desc);
+    }
+    RHISamplerPtr NullDevice::createSampler(
+        const RHISamplerState& desc
+    ) noexcept{
+        return std::make_unique<NullSampler>(desc);
     }
 
     RHIPipelineStatePtr NullDevice::createGraphicsPipelineState(

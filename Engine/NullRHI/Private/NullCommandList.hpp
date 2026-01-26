@@ -109,6 +109,14 @@ namespace Crowy
 
         }
 
+        void setSampler(
+            uint32_t slot,
+            RHISampler& sampler,
+            RHIShaderStage stage
+        ) noexcept RHI_OVERRIDE{
+
+        }
+
         void setViewport(const RHIViewport& viewport) noexcept RHI_OVERRIDE{
 
         }

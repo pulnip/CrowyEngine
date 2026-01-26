@@ -11,6 +11,7 @@ namespace Crowy
         class MetalBuffer;
         class MetalTexture;
         class MetalShader;
+        class MetalSampler;
         class MetalCommandList;
         class MetalFence;
         class MetalPipelineState;
@@ -20,6 +21,7 @@ namespace Crowy
         using RHIBuffer = MetalBuffer;
         using RHITexture = MetalTexture;
         using RHIShader = MetalShader;
+        using RHISampler = MetalSampler;
         using RHICommandList = MetalCommandList;
         using RHIFence = MetalFence;
         using RHIPipelineState = MetalPipelineState;
@@ -29,6 +31,7 @@ namespace Crowy
         class NullBuffer;
         class NullTexture;
         class NullShader;
+        class NullSampler;
         class NullCommandList;
         class NullFence;
         class NullPipelineState;
@@ -38,6 +41,7 @@ namespace Crowy
         using RHIBuffer = NullBuffer;
         using RHITexture = NullTexture;
         using RHIShader = NullShader;
+        using RHISampler = NullSampler;
         using RHICommandList = NullCommandList;
         using RHIFence = NullFence;
         using RHIPipelineState = NullPipelineState;
@@ -48,6 +52,7 @@ namespace Crowy
     class RHIBuffer;
     class RHITexture;
     class RHIShader;
+    class RHISampler;
     class RHICommandList;
     class RHIFence;
     class RHIPipelineState;
@@ -59,6 +64,7 @@ namespace Crowy
     using RHIBufferPtr        = std::unique_ptr<RHIBuffer>;
     using RHITexturePtr       = std::unique_ptr<RHITexture>;
     using RHIShaderPtr        = std::unique_ptr<RHIShader>;
+    using RHISamplerPtr       = std::unique_ptr<RHISampler>;
     using RHICommandListPtr   = std::unique_ptr<RHICommandList>;
     using RHIFencePtr         = std::unique_ptr<RHIFence>;
     using RHIPipelineStatePtr = std::unique_ptr<RHIPipelineState>;

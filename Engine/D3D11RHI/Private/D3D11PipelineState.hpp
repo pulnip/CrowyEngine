@@ -30,21 +30,6 @@ namespace Crowy
         }
     }
 
-    D3D11_COMPARISON_FUNC convertCompareFunc(RHIComparisonFunc func){
-        switch(func){
-        case RHIComparisonFunc::Never:        return D3D11_COMPARISON_NEVER;
-        case RHIComparisonFunc::Less:         return D3D11_COMPARISON_LESS;
-        case RHIComparisonFunc::Equal:        return D3D11_COMPARISON_EQUAL;
-        case RHIComparisonFunc::LessEqual:    return D3D11_COMPARISON_LESS_EQUAL;
-        case RHIComparisonFunc::Greater:      return D3D11_COMPARISON_GREATER;
-        case RHIComparisonFunc::NotEqual:     return D3D11_COMPARISON_NOT_EQUAL;
-        case RHIComparisonFunc::GreaterEqual: return D3D11_COMPARISON_GREATER_EQUAL;
-        case RHIComparisonFunc::Always:       return D3D11_COMPARISON_ALWAYS;
-        default:
-            std::unreachable();
-        }
-    }
-
     D3D11_STENCIL_OP convertStencilOp(RHIStencilOp op){
         switch (op){
         case RHIStencilOp::Keep:     return D3D11_STENCIL_OP_KEEP;

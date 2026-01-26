@@ -6,4 +6,5 @@
 namespace Crowy
 {
     DXGI_FORMAT convertTextureFormat(RHITextureFormat);
+    D3D11_COMPARISON_FUNC convertCompareFunc(RHIComparisonFunc);
 }
