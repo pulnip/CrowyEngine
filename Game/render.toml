@@ -26,52 +26,109 @@ format = "RGBA8_UNORM"
 name = "focusMask"
 format = "RGBA8_UNORM"
 
+[[sampler_presets]]
+name = "LINEAR_WRAP"
+minFilter = "Linear"
+magFilter = "Linear"
+mipFilter = "Linear"
+addressU = "Wrap"
+addressV = "Wrap"
+addressW = "Wrap"
+[[sampler_presets]]
+name = "NEAREST_WRAP"
+minFilter = "Nearest"
+magFilter = "Nearest"
+mipFilter = "Nearest"
+addressU = "Wrap"
+addressV = "Wrap"
+addressW = "Wrap"
+
 [[passes]]
 name = "gbuffer"
 targets = ["albedo", "normal"]
 depthTarget = "depth"
+fs_samplers = [
+    {preset = "LINEAR_WRAP"}
+]
     [passes.metal_shader]
     vs_file = "asset/Shaders/gbuffer.metal"
     vs_func = "vs_gbuffer"
     fs_file = "asset/Shaders/gbuffer.metal"
+    fs_func = "fs_gbuffer"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/gbuffer.hlsl"
+    vs_func = "vs_gbuffer"
+    fs_file = "asset/Shaders/gbuffer.hlsl"
     fs_func = "fs_gbuffer"
 renderType = "type0"
 [[passes]]
 name = "celShading"
 inputs = ["albedo", "normal"]
 targets = ["toonColor"]
+fs_samplers = [
+    {preset = "LINEAR_WRAP"}
+]
     [passes.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/cel_shading.metal"
     fs_func = "fs_cel_shading"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/fullscreen.hlsl"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/cel_shading.hlsl"
+    fs_func = "fs_cel_shading"
 [[passes]]
 name = "outlining"
 inputs = ["normal", "depth", "toonColor"]
 targets = ["outlined"]
+fs_samplers = [
+    {preset = "LINEAR_WRAP"}
+]
     [passes.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/outline.metal"
     fs_func = "fs_outline"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/fullscreen.hlsl"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/outline.hlsl"
+    fs_func = "fs_outline"
 [[passes]]
 name = "scene"
 targets = ["sceneColor"]
 depthTarget = "depth"
+fs_samplers = [
+    {preset = "LINEAR_WRAP"}
+]
     [passes.metal_shader]
     vs_file = "asset/Shaders/triangle.metal"
     vs_func = "vs_main"
     fs_file = "asset/Shaders/triangle.metal"
     fs_func = "fs_textured"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/standard_vs.hlsl"
+    vs_func = "vs_main"
+    fs_file = "asset/Shaders/standard_ps.hlsl"
+    fs_func = "ps_textured"
 renderType = "type0"
 [[passes]]
 name = "pixelate"
 inputs = ["sceneColor"]
 targets = ["pixelated"]
+fs_samplers = [
+    {preset = "NEAREST_WRAP"}
+]
     [passes.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/pixelate.metal"
+    fs_func = "fs_pixelate"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/fullscreen.hlsl"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/pixelate.hlsl"
     fs_func = "fs_pixelate"
 [[passes]]
 name = "focusmask"
@@ -81,12 +138,25 @@ targets = ["focusMask"]
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/focusmask.metal"
     fs_func = "fs_focusmask"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/fullscreen.hlsl"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/focusmask.hlsl"
+    fs_func = "fs_focusmask"
 [[passes]]
 name = "composite"
 inputs = ["pixelated", "outlined", "focusMask"]
 targets = ["BackBuffer"]
+fs_samplers = [
+    {preset = "LINEAR_WRAP"}
+]
     [passes.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/composite.metal"
+    fs_func = "fs_composite"
+    [passes.d3d_shader]
+    vs_file = "asset/Shaders/fullscreen.hlsl"
+    vs_func = "vs_fullscreen"
+    fs_file = "asset/Shaders/composite.hlsl"
     fs_func = "fs_composite"
