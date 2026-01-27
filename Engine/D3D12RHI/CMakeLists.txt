@@ -18,15 +18,9 @@ target_link_libraries(CrowyD3D12RHI
 PUBLIC
     Crowy::CommonRHI
 PRIVATE
+    d3d12.lib
+    dxgi.lib
+    d3dcompiler.lib
+    dxguid.lib
     Crowy::Log
 )
-
-# D3D12 specific libraries (Windows only)
-if(WIN32)
-    target_link_libraries(CrowyD3D12RHI
-    PRIVATE
-        d3d12.lib
-        dxgi.lib
-        d3dcompiler.lib
-    )
-endif()
