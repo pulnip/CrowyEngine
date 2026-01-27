@@ -27,7 +27,6 @@ namespace Crowy
     struct D3D11Device::Impl{
         ID3D11Device* device = nullptr;
         IDXGIFactory2* factory = nullptr;
-        ID3D11SamplerState* defaultSampler = nullptr;
 
         Impl(){
             using Microsoft::WRL::ComPtr;
@@ -99,21 +98,6 @@ namespace Crowy
             ))){
                 throw std::runtime_error("Failed to create D3D11 device");
             }
-
-            D3D11_SAMPLER_DESC samplerDesc{
-                .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
-                .AddressU = D3D11_TEXTURE_ADDRESS_MIRROR,
-                .AddressV = D3D11_TEXTURE_ADDRESS_MIRROR,
-                .AddressW = D3D11_TEXTURE_ADDRESS_MIRROR,
-                .MipLODBias = 0.0f,
-                .MaxAnisotropy = 1,
-                .ComparisonFunc = D3D11_COMPARISON_NEVER,
-                .MinLOD = 0,
-                .MaxLOD = D3D11_FLOAT32_MAX
-            };
-            if(FAILED(device->CreateSamplerState(&samplerDesc, &defaultSampler))){
-                throw std::runtime_error("Failed to create D3D11 Sampler");
-            }
         }
 
         ~Impl(){
@@ -166,7 +150,7 @@ namespace Crowy
         }
 
         RHICommandListPtr createCommandList() noexcept{
-            return std::make_unique<D3D11CommandList>(device, defaultSampler);
+            return std::make_unique<D3D11CommandList>(device);
         }
 
         RHIFencePtr createFence(uint64_t initialValue) noexcept{

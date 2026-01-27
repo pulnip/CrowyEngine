@@ -297,6 +297,14 @@ namespace Crowy
                     RHIShaderStage::FragmentShader
                 );
             }
+            for(size_t i=0; i<pass.fs_samplers.size(); ++i){
+                auto sampler = pass.fs_samplers[i].get();
+
+                cmdList.setSampler(
+                    static_cast<uint32_t>(i), *sampler,
+                    RHIShaderStage::FragmentShader
+                );
+            }
 
             cmdList.setViewport(ctx.viewport);
             cmdList.setScissorRect(RHIScissorRect{

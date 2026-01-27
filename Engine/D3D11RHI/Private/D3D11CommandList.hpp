@@ -28,7 +28,6 @@ namespace Crowy
         ID3D11DeviceContext* context = nullptr;
         bool isRecording = false;
         bool isRenderPass = false, isComputePass = false;
-        ID3D11SamplerState* defaultSampler;
     #ifdef _DEBUG
         uint32_t maxBindedVSSRV = 0;
         uint32_t maxBindedPSSRV = 0;
@@ -37,11 +36,8 @@ namespace Crowy
 
     public:
         D3D11CommandList(
-            ID3D11Device* device,
-            ID3D11SamplerState* defaultSampler = nullptr
-        )
-            :defaultSampler(defaultSampler)
-        {
+            ID3D11Device* device
+        ){
             device->GetImmediateContext(&context);
         }
 
@@ -476,10 +472,6 @@ namespace Crowy
                 dsv = static_cast<D3D11Texture*>(depthStencil)->getDSV();
 
             context->OMSetRenderTargets(rtvs.size(), rtvs.data(), dsv);
-
-            if(defaultSampler != nullptr){
-                context->PSSetSamplers(0, 1, &defaultSampler);
-            }
 
             if(loadAction == RHILoadAction::Clear){
                 float cc[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
