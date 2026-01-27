@@ -29,6 +29,11 @@ namespace Crowy
         bool isRecording = false;
         bool isRenderPass = false, isComputePass = false;
         ID3D11SamplerState* defaultSampler;
+    #ifdef _DEBUG
+        uint32_t maxBindedVSSRV = 0;
+        uint32_t maxBindedPSSRV = 0;
+        uint32_t maxBindedCSSRV = 0;
+    #endif
 
     public:
         D3D11CommandList(
@@ -122,7 +127,24 @@ namespace Crowy
             CROWY_ASSERT(isRenderPass,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
+
             // NOTE. No-Op for D3D11
+        #ifdef _DEBUG
+            // clean-up srv binding for suppress data hazard warning.
+            static ID3D11ShaderResourceView* nullSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
+
+            if(maxBindedVSSRV > 0)
+                context->VSSetShaderResources(0, maxBindedVSSRV, nullSRVs);
+            if(maxBindedPSSRV > 0)
+                context->PSSetShaderResources(0, maxBindedPSSRV, nullSRVs);
+            if(maxBindedCSSRV > 0)
+                context->CSSetShaderResources(0, maxBindedCSSRV, nullSRVs);
+
+            maxBindedVSSRV = 0;
+            maxBindedPSSRV = 0;
+            maxBindedCSSRV = 0;
+        #endif
+
             isRenderPass = false;
         }
 
@@ -195,12 +217,21 @@ namespace Crowy
 
             switch(stage){
             case RHIShaderStage::VertexShader:
+            #ifdef _DEBUG
+                maxBindedVSSRV = std::max(maxBindedVSSRV, slot+1);
+            #endif
                 context->VSSetShaderResources(slot, 1, &srv);
                 break;
             case RHIShaderStage::FragmentShader:
+            #ifdef _DEBUG
+                maxBindedPSSRV = std::max(maxBindedPSSRV, slot+1);
+            #endif
                 context->PSSetShaderResources(slot, 1, &srv);
                 break;
             case RHIShaderStage::ComputeShader:
+            #ifdef _DEBUG
+                maxBindedCSSRV = std::max(maxBindedCSSRV, slot+1);
+            #endif
                 context->CSSetShaderResources(slot, 1, &srv);
                 break;
             default:
