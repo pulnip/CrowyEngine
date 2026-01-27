@@ -109,6 +109,9 @@ namespace Crowy
         D3D11_PRIMITIVE_TOPOLOGY topology;
         ID3D11VertexShader* vs = nullptr;
         ID3D11PixelShader* ps = nullptr;
+    #ifdef _DEBUG
+        const char* debugName = nullptr;
+    #endif
 
     public:
         D3D11PipelineState(
@@ -116,6 +119,9 @@ namespace Crowy
             const RHIGraphicsPipelineStateDesc& desc
         )
             :topology(convertTopology(desc.topology))
+        #ifdef _DEBUG
+            ,debugName(desc.debugName)
+        #endif
         {
             auto dxVS = static_cast<D3D11Shader*>(desc.vertexShader);
 
@@ -125,7 +131,7 @@ namespace Crowy
                 for(uint32_t i=0; i<desc.vertexLayout.elementCount; ++i){
                     const auto& src = desc.vertexLayout.elements[i];
                     auto& dst = elements[i];
-    
+
                     dst.SemanticName = src.semanticName;
                     dst.SemanticIndex = src.semanticIndex;
                     dst.Format = convertTextureFormat(src.format);
@@ -141,13 +147,6 @@ namespace Crowy
                     &il
                 ))){
                     throw std::runtime_error("Failed to create ID3D11InputLayout");
-                }
-                if(desc.debugName){
-                    il->SetPrivateData(
-                        WKPDID_D3DDebugObjectName, 
-                        static_cast<UINT>(strlen(desc.debugName)),
-                        desc.debugName
-                    );
                 }
             }
 
@@ -173,13 +172,6 @@ namespace Crowy
             if(FAILED(device->CreateRasterizerState(&rsDesc, &rs))){
                 throw std::runtime_error("Failed to create ID3D11RasterizerState");
             }
-            if(desc.debugName){
-                rs->SetPrivateData(
-                    WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
-                );
-            }
 
             // DepthStencilState
             D3D11_DEPTH_STENCIL_DESC dsDesc{
@@ -204,13 +196,6 @@ namespace Crowy
             if(FAILED(device->CreateDepthStencilState(&dsDesc, &dss))){
                 throw std::runtime_error("Failed to create ID3D11DepthStencilState");
             }
-            if(desc.debugName){
-                dss->SetPrivateData(
-                    WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
-                );
-            }
 
             // BlendState
             D3D11_BLEND_DESC bsDesc{
@@ -232,13 +217,6 @@ namespace Crowy
             }
             if(FAILED(device->CreateBlendState(&bsDesc, &bs))){
                 throw std::runtime_error("Failed to create ID3D11BlendState");
-            }
-            if(desc.debugName){
-                bs->SetPrivateData(
-                    WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
-                );
             }
         }
 
