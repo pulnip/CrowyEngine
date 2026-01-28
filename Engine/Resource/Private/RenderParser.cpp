@@ -1,3 +1,4 @@
+#include "enum_traits.hpp"
 #include "path_util.hpp"
 #include "string.hpp"
 #include <toml++/toml.hpp>
@@ -218,14 +219,21 @@ namespace Crowy
             const auto& node = tempRTs.arena.nodes[elm.index];
 
             if(auto t = std::get_if<VTable>(&node)){
-                auto name = readString(tempRTs.arena, *t, errors, "name");
-                auto fmt = readString(tempRTs.arena, *t, errors, "format");
+                auto name   = readString(tempRTs.arena, *t, errors,   "name");
+                auto width  = readFloat (tempRTs.arena, *t, errors,  "width", 0);
+                auto height = readFloat (tempRTs.arena, *t, errors, "height", 0);
+                auto fmt    = readString(tempRTs.arena, *t, errors, "format");
 
                 if(!name || !fmt)
                     continue;
 
                 out.emplace(*name, RHITextureCreateDesc{
-                    .format = toTextureFormat(*fmt)
+                    .width  = static_cast<uint32_t>( width),
+                    .height = static_cast<uint32_t>(height),
+                    .format = toTextureFormat(*fmt),
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    .debugName = *name
+                #endif
                 });
             }
         }
@@ -250,6 +258,9 @@ namespace Crowy
                 auto name = readString(tempPasses.arena, *table, plan.errors, "name");
                 auto inputs = readStringArray(tempPasses.arena, *table, plan.errors, "inputs");
                 auto targets = readStringArray(tempPasses.arena, *table, plan.errors, "targets");
+                auto depthTarget = readString(tempPasses.arena, *table, plan.errors, "depthTarget");
+
+                auto renderType = readString(tempPasses.arena, *table, plan.errors, "renderType");
 
                 // TODO. parse rasterizer state, depth stencil state, blend state
 
@@ -260,6 +271,11 @@ namespace Crowy
                     out[i].inputs = *inputs;
                 if(targets.has_value())
                     out[i].targets = *targets;
+                if(depthTarget.has_value())
+                    out[i].depthTarget = *depthTarget;
+
+                if(renderType.has_value())
+                    out[i].renderType = *renderType;
             }
             else{
                 // TODO. write Error
@@ -278,16 +294,54 @@ namespace Crowy
 
     static RenderSpec linkRender(
         std::unordered_map<std::string, RHITextureCreateDesc> renderTargets,
-        std::vector<RenderPassSpec>& passes
+        std::vector<RenderPassSpec> passes
     ){
-        RenderSpec out{
-            .renderTargets = renderTargets,
-            .passes = passes
-        };
+        for(auto& pass: passes){
+            // ShaderResource
+            for(const auto& input: pass.inputs){
+                if(auto it = renderTargets.find(input); it != renderTargets.end()){
+                    auto& texDesc = it->second;
+                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::ShaderResource);
+                }
+                else{
+                    // TODO. ERROR! unresolved texture!
+                }
+            }
+
+            // RenderTarget
+            for(const auto& target: pass.targets){
+                if(auto it = renderTargets.find(target); it != renderTargets.end()){
+                    auto& texDesc = it->second;
+                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::RenderTarget);
+                }
+                else{
+                    // TODO.ERROR! unresolved texture!
+                }
+            }
+
+            // DepthTarget
+            if(!pass.depthTarget.empty()){
+                if(auto it = renderTargets.find(pass.depthTarget); it != renderTargets.end()){
+                    auto& texDesc = it->second;
+                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::DepthStencil);
+
+                    pass.depthStencil = RHIDepthStencilState{
+                        .format = texDesc.format,
+                        .depthWriteEnable = true
+                    };
+                }
+                else{
+                    // TODO. ERROR! unresolved texture!
+                }
+            }
+        }
 
         // TODO
 
-        return out;
+        return RenderSpec{
+            .renderTargets = renderTargets,
+            .passes = passes
+        };
     }
 
     RenderSpec parseRenderFromFile(const std::filesystem::path& renderFile){
