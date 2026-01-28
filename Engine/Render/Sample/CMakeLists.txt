@@ -20,14 +20,4 @@ PRIVATE
     Crowy::UI
 )
 
-if(RENDER_BACKEND STREQUAL "Metal")
-    target_compile_definitions(CrowyRenderSample
-    PRIVATE
-        CROWY_METALRHI
-    )
-elseif(RENDER_BACKEND STREQUAL "D3D11")
-    target_compile_definitions(CrowyRenderSample
-    PRIVATE
-        CROWY_D3D11RHI
-    )
-endif()
+crowy_rhi_macro(RenderSample)

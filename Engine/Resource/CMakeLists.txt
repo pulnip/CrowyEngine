@@ -22,6 +22,7 @@ PRIVATE
     Crowy::RHI
 )
 
+crowy_rhi_macro(Resource)
 crowy_declare_private_interface(Resource)
 
 if(CROWY_ENABLE_TEST)

@@ -117,3 +117,23 @@ function(crowy_declare_test NAME)
     )
 endfunction()
 
+function(crowy_rhi_macro NAME)
+    if(RENDER_BACKEND STREQUAL "Metal")
+        target_compile_definitions(Crowy${NAME}
+        PRIVATE
+            CROWY_METALRHI
+        )
+    elseif(RENDER_BACKEND STREQUAL "D3D11")
+        target_compile_definitions(Crowy${NAME}
+        PRIVATE
+            CROWY_D3DRHI
+            CROWY_D3D11RHI
+        )
+    elseif(RENDER_BACKEND STREQUAL "D3D12")
+        target_compile_definitions(Crowy${NAME}
+        PRIVATE
+            CROWY_D3DRHI
+            CROWY_D3D12RHI
+        )
+    endif()
+endfunction()

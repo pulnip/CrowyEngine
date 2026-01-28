@@ -204,7 +204,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_gbuffer",
                     .fsFilePath = "asset/Shaders/gbuffer.metal",
                     .fsFuncName = "fs_gbuffer"
-                #elifdef CROWY_D3D11RHI
+                #elifdef CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/gbuffer.hlsl",
                     .vsFuncName = "vs_gbuffer",
                     .fsFilePath = L"asset/Shaders/gbuffer.hlsl",
@@ -228,7 +228,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/cel_shading.metal",
                     .fsFuncName = "fs_cel_shading"
-                #elifdef CROWY_D3D11RHI
+                #elifdef CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = L"asset/Shaders/cel_shading.hlsl",
@@ -247,7 +247,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/outline.metal",
                     .fsFuncName = "fs_outline"
-                #elifdef CROWY_D3D11RHI
+                #elifdef CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = L"asset/Shaders/outline.hlsl",
@@ -268,7 +268,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_main",
                     .fsFilePath = "asset/Shaders/triangle.metal",
                     .fsFuncName = "fs_textured",
-                #elif CROWY_D3D11RHI
+                #elif CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/standard_vs.hlsl",
                     .vsFuncName = "vs_main",
                     .fsFilePath = L"asset/Shaders/standard_ps.hlsl",
@@ -292,7 +292,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/pixelate.metal",
                     .fsFuncName = "fs_pixelate"
-                #elifdef CROWY_D3D11RHI
+                #elifdef CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = L"asset/Shaders/pixelate.hlsl",
@@ -310,7 +310,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/focusmask.metal",
                     .fsFuncName = "fs_focusmask"
-                #elifdef CROWY_D3D11RHI
+                #elifdef CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = L"asset/Shaders/focusmask.hlsl",
@@ -333,7 +333,7 @@ int main(int argc, char* argv[]){
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = "asset/Shaders/composite.metal",
                     .fsFuncName = "fs_composite"
-                #elifdef CROWY_D3D11RHI
+                #elifdef CROWY_D3DRHI
                     .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
                     .vsFuncName = "vs_fullscreen",
                     .fsFilePath = L"asset/Shaders/composite.hlsl",

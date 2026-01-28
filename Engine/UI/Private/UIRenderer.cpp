@@ -46,9 +46,11 @@ namespace Crowy
             auto colorAttachment = uiPassDesc->colorAttachments()->object(0);
             colorAttachment->setLoadAction(MTL::LoadActionLoad);
             colorAttachment->setStoreAction(MTL::StoreActionStore);
-        #elifdef CROWY_D3D11RHI
-            ImGui_ImplSDL3_InitForD3D(window);
+        #elifdef CROWY_D3DRHI
+        ImGui_ImplSDL3_InitForD3D(window);
+        #ifdef CROWY_D3D11RHI
             ImGui_ImplDX11_Init(device, context);
+        #endif
         #endif
         }
 

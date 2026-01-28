@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
 
     int width = 800, height = 600;
     auto window = SDL_CreateWindow("Triangle", width, height, 0);
-#ifdef __APPLE__
+#ifdef CROWY_METALRHI
     auto view = SDL_Metal_CreateView(window);
 #endif
     auto device = createDevice();
@@ -60,20 +60,20 @@ int main(int argc, char* argv[]){
     auto materialSet = get(materialSetHandle);
 
     auto vertexShader = device->createShader(RHIShaderCreateDesc{
-#ifdef __APPLE__
+#ifdef CROWY_METALRHI
         .file = "asset/Shaders/triangle.metal",
         .entry = "vs_main",
-#elif _WIN32
+#elif CROWY_D3DRHI
         .file = L"asset/Shaders/standard_vs.hlsl",
         .entry = "vs_main",
 #endif
         .stage = RHIShaderStage::VertexShader,
     });
     auto fragmentShader = device->createShader(RHIShaderCreateDesc{
-#ifdef __APPLE__
+#ifdef CROWY_METALRHI
         .file = "asset/Shaders/triangle.metal",
         .entry = "fs_textured",
-#elif _WIN32
+#elif CROWY_D3DRHI
         .file = L"asset/Shaders/standard_ps.hlsl",
         .entry = "ps_textured",
 #endif
