@@ -18,7 +18,10 @@ namespace Crowy
     {
         loadScene(sceneSpec, registry);
 
-        renderer.loadPasses(renderSpec);
+        renderer.loadPasses(renderSpec,
+            OS::singleton()->getWidth(),
+            OS::singleton()->getHeight()
+        );
     }
 
     void GameMainLoop::initialize(){

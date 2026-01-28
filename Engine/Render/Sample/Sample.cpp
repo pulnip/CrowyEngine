@@ -81,8 +81,6 @@ int main(int argc, char* argv[]){
             {
                 "albedo",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -97,8 +95,6 @@ int main(int argc, char* argv[]){
             {
                 "normal",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -113,8 +109,6 @@ int main(int argc, char* argv[]){
             {
                 "toonColor",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -129,8 +123,6 @@ int main(int argc, char* argv[]){
             {
                 "sceneColor",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -145,8 +137,6 @@ int main(int argc, char* argv[]){
             {
                 "depth",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::D32_FLOAT,
                     .usage = combine(
                         RHITextureUsage::DepthStencil,
@@ -161,8 +151,6 @@ int main(int argc, char* argv[]){
             {
                 "outlined",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -177,8 +165,6 @@ int main(int argc, char* argv[]){
             {
                 "pixelated",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -193,8 +179,6 @@ int main(int argc, char* argv[]){
             {
                 "focusMask",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width),
-                    .height = static_cast<uint32_t>(height),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -359,7 +343,7 @@ int main(int argc, char* argv[]){
             }
         }
     };
-    renderer.loadPasses(spec);
+    renderer.loadPasses(spec, width, height);
 
     float cameraDistance = 30.0f;
     float mouseX, mouseY;

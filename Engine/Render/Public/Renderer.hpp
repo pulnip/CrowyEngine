@@ -34,7 +34,7 @@ namespace Crowy
         Renderer(RHIDevice* device);
         ~Renderer();
 
-        void loadPasses(const RenderSpec&);
+        void loadPasses(const RenderSpec&, int screenWidth, int screenHeight);
         // execute all passes
         void render(
             RHICommandList&,

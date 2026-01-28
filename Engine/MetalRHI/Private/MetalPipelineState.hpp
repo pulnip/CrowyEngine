@@ -204,7 +204,8 @@ namespace Crowy
             pipelineDesc->release();
 
             if(!renderPipeline){
-                throw std::runtime_error("Failed to create render pipeline state");
+                const char* msg = error->localizedDescription()->utf8String();
+                throw std::runtime_error(msg);
             }
 
             // NOTE. discard desc.debugName

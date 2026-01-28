@@ -86,7 +86,7 @@ namespace Crowy
         {}
         ~Impl() = default;
 
-        void loadPasses(const RenderSpec& spec){
+        void loadPasses(const RenderSpec& spec, int screenWidth, int screenHeight){
             for(const auto& passSpec: spec.passes){
                 std::vector<RHISamplerPtr> fs_samplers;
                 fs_samplers.reserve(passSpec.fs_samplers.size());
@@ -163,8 +163,16 @@ namespace Crowy
             });
 
             for(const auto& [name, renderTarget]: spec.renderTargets){
-                if(name != "BackBuffer")
-                    renderTargetPool.create(name, renderTarget, *device);
+                if(name != "BackBuffer"){
+                    auto texDesc = renderTarget;
+                    // fill real width
+                    texDesc.width  = texDesc.width  == 0 ?
+                        screenWidth  : texDesc.width;
+                    texDesc.height = texDesc.height == 0 ?
+                        screenHeight : texDesc.height;
+
+                    renderTargetPool.create(name, texDesc, *device);
+                }
             }
         }
 
@@ -408,8 +416,8 @@ namespace Crowy
 
     Renderer::~Renderer() = default;
 
-    void Renderer::loadPasses(const RenderSpec& spec){
-        impl->loadPasses(spec);
+    void Renderer::loadPasses(const RenderSpec& spec, int screenWidth, int screenHeight){
+        impl->loadPasses(spec, screenWidth, screenHeight);
     }
 
     bool Renderer::setPassEnabled(std::string_view passName, bool enabled){
