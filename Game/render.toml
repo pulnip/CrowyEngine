@@ -46,6 +46,7 @@ depthTarget = "depth"
 fs_samplers = [
     {preset = "LINEAR_WRAP"}
 ]
+renderType = "type0"
     [passes.metal_shader]
     vs_file = "asset/Shaders/gbuffer.metal"
     vs_func = "vs_gbuffer"
@@ -56,7 +57,6 @@ fs_samplers = [
     vs_func = "vs_gbuffer"
     fs_file = "asset/Shaders/gbuffer.hlsl"
     fs_func = "fs_gbuffer"
-renderType = "type0"
 [[passes]]
 name = "celShading"
 inputs = ["albedo", "normal"]
@@ -98,6 +98,7 @@ depthTarget = "depth"
 fs_samplers = [
     {preset = "LINEAR_WRAP"}
 ]
+renderType = "type0"
     [passes.metal_shader]
     vs_file = "asset/Shaders/triangle.metal"
     vs_func = "vs_main"
@@ -108,7 +109,6 @@ fs_samplers = [
     vs_func = "vs_main"
     fs_file = "asset/Shaders/standard_ps.hlsl"
     fs_func = "ps_textured"
-renderType = "type0"
 [[passes]]
 name = "pixelate"
 inputs = ["sceneColor"]

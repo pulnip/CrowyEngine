@@ -4,3 +4,6 @@ name = "Box"
     position = [0, 0, 0]
     rotation = [0, 0, 0, 1]
     scale    = [1, 1, 1]
+    [entities.renderObject]
+    uri = "file:asset/Stelle/Stelle.pmx"
+    renderType = "type0"
