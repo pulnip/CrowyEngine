@@ -36,12 +36,8 @@ addressV = "Wrap"
 addressW = "Wrap"
 [[sampler_presets]]
 name = "NEAREST_WRAP"
-minFilter = "Nearest"
-magFilter = "Nearest"
-mipFilter = "Nearest"
-addressU = "Wrap"
-addressV = "Wrap"
-addressW = "Wrap"
+filter = "Nearest"
+address = "Wrap"
 
 [[passes]]
 name = "gbuffer"

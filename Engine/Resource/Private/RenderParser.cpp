@@ -92,7 +92,123 @@ namespace Crowy
         return it->second;
     }
 
-    std::unordered_map<std::string, RHITextureCreateDesc> buildRenderTarget(
+    static RHIFilter toFilter(std::string_view str){
+        static std::unordered_map<std::string, RHIFilter,
+            StringHash, std::equal_to<>
+        > text2Filter = {
+            {"NEAREST", RHIFilter::Nearest},
+            {"LINEAR" , RHIFilter::Linear}
+        };
+
+        auto upper = toUpper(str);
+
+        auto it = text2Filter.find(upper);
+        if(it == text2Filter.end()){
+            // fallback (or throw error?)
+            return RHIFilter::Nearest;
+        }
+        return it->second;
+    }
+
+    static RHIAddressMode toAddressMode(std::string_view str){
+        static std::unordered_map<std::string, RHIAddressMode,
+            StringHash, std::equal_to<>
+        > text2AddressMode = {
+            {"WRAP"  , RHIAddressMode::Wrap  },
+            {"CLAMP" , RHIAddressMode::Clamp },
+            {"MIRROR", RHIAddressMode::Mirror},
+            {"BORDER", RHIAddressMode::Border}
+        };
+
+        auto upper = toUpper(str);
+
+        auto it = text2AddressMode.find(upper);
+        if(it == text2AddressMode.end()){
+            // fallback (or throw error?)
+            return RHIAddressMode::Wrap;
+        }
+        return it->second;
+    }
+
+    static SamplerPresets buildSamplerPresets(
+        const ParseResult& tempSPs
+    ){
+        SamplerPresets out;
+        std::vector<BindError> errors;
+
+        for(const auto& elm: tempSPs.elements){
+            const auto& node = tempSPs.arena.nodes[elm.index];
+
+            if(auto t = std::get_if<VTable>(&node)){
+                auto name = readString(tempSPs.arena, *t, errors, "name");
+                if(!name.has_value())
+                    continue;
+
+                RHISamplerState desc{};
+
+                auto filter = readString(tempSPs.arena, *t, errors, "filter");
+                auto address = readString(tempSPs.arena, *t, errors, "address");
+
+                if(filter.has_value() && address.has_value()){
+                    desc.minFilter = desc.magFilter = desc.mipFilter = toFilter(*filter);
+                    desc.addressU = desc.addressV = desc.addressW = toAddressMode(*address);
+                }
+                else{
+                    auto minFilter = readString(tempSPs.arena, *t, errors, "minFilter");
+                    auto magFilter = readString(tempSPs.arena, *t, errors, "magFilter");
+                    auto mipFilter = readString(tempSPs.arena, *t, errors, "mipFilter");
+                    auto addressU = readString(tempSPs.arena, *t, errors, "addressU");
+                    auto addressV = readString(tempSPs.arena, *t, errors, "addressV");
+                    auto addressW = readString(tempSPs.arena, *t, errors, "addressW");
+
+                    // filter
+                    if(minFilter.has_value())
+                        desc.minFilter = toFilter(*minFilter);
+                    else if(filter.has_value())
+                        desc.minFilter = toFilter(*minFilter);
+                    // cannot parse sampler preset
+                    else continue;
+
+                    if(magFilter.has_value())
+                        desc.magFilter = toFilter(*magFilter);
+                    else if(filter.has_value())
+                        desc.magFilter = toFilter(*magFilter);
+                    else continue;
+
+                    if(mipFilter.has_value())
+                        desc.mipFilter = toFilter(*mipFilter);
+                    else if(filter.has_value())
+                        desc.mipFilter = toFilter(*mipFilter);
+                    else continue;
+
+                    // address mode
+                    if(addressU.has_value())
+                        desc.addressU = toAddressMode(*addressU);
+                    else if(filter.has_value())
+                        desc.addressU = toAddressMode(*addressU);
+                    else continue;
+
+                    if(addressV.has_value())
+                        desc.addressV = toAddressMode(*addressV);
+                    else if(filter.has_value())
+                        desc.addressV = toAddressMode(*addressV);
+                    else continue;
+
+                    if(addressW.has_value())
+                        desc.addressW = toAddressMode(*addressW);
+                    else if(filter.has_value())
+                        desc.addressW = toAddressMode(*addressW);
+                    else continue;
+                }
+
+                out.emplace(*name, desc);
+            }
+        }
+
+        return out;
+    }
+
+    static std::unordered_map<std::string, RHITextureCreateDesc> buildRenderTarget(
         const ParseResult& tempRTs
     ){
         std::unordered_map<std::string, RHITextureCreateDesc> out;
@@ -108,34 +224,24 @@ namespace Crowy
                 if(!name || !fmt)
                     continue;
 
-                RHITextureCreateDesc desc{
+                out.emplace(*name, RHITextureCreateDesc{
                     .format = toTextureFormat(*fmt)
-                };
-
-                out.emplace(*name, desc);
+                });
             }
-        }
-
-        for(size_t i=0; i<tempRTs.elements.size(); ++i){
-            const auto& elm = tempRTs.elements[i];
-            const auto& node = tempRTs.arena.nodes[elm.index];
-
-            RHITextureCreateDesc desc{};
-
         }
 
         return out;
     }
 
-    RenderSpec buildRender(
-        const ParseResult& tempRenderTargets,
+    static RenderSpec buildRender(
         const ParseResult& tempPasses,
+        const std::unordered_map<std::string, RHITextureCreateDesc>& renderTargets,
         const RenderPassBinderRegistry& registry
     ){
         RenderSpec out;
         RenderPassElementBindPlan plan;
 
-        out.renderTargets = buildRenderTarget(tempRenderTargets);
+        out.renderTargets = renderTargets;
         // reserve pass slot and copy name.
         out.passes.resize(tempPasses.elements.size());
         for(size_t i=0; i<tempPasses.elements.size(); ++i){
@@ -166,6 +272,7 @@ namespace Crowy
         reportError(plan.errors);
 
         // Freeze(Create SoA + connect index)
+        SamplerBinder::freeze(out, plan);
         ShaderBinder::freeze(out, plan);
 
         return out;
@@ -173,24 +280,34 @@ namespace Crowy
 
     RenderSpec parseRenderFromFile(const std::filesystem::path& renderFile){
         auto u8strPath = to_utf8String(renderFile);
-        auto binderRegistry = makeRenderPassBinderRegistry();
         toml::parse_result pr = toml::parse_file(u8strPath);
         if(pr.empty())
             return {};
 
+        auto tempSamplerPresets = parseFromTable(*pr.as_table(), "sampler_presets");
+        auto samplerPresets = buildSamplerPresets(tempSamplerPresets);
+        auto binderRegistry = makeRenderPassBinderRegistry(samplerPresets);
+
         auto tempRenderTargets = parseFromTable(*pr.as_table(), "render_targets");
+        auto renderTargets = buildRenderTarget(tempRenderTargets);
+
         auto tempPasses = parseFromTable(*pr.as_table(), "passes");
-        return buildRender(tempRenderTargets, tempPasses, binderRegistry);
+        return buildRender(tempPasses, renderTargets, binderRegistry);
     }
 
     RenderSpec parseRenderFromString(std::string_view renderText){
-        auto binderRegistry = makeRenderPassBinderRegistry();
         toml::parse_result pr = toml::parse(renderText);
         if(pr.empty())
             return {};
 
+        auto tempSamplerPresets = parseFromTable(*pr.as_table(), "sampler_presets");
+        auto samplerPresets = buildSamplerPresets(tempSamplerPresets);
+        auto binderRegistry = makeRenderPassBinderRegistry(samplerPresets);
+
         auto tempRenderTargets = parseFromTable(*pr.as_table(), "render_targets");
+        auto renderTargets = buildRenderTarget(tempRenderTargets);
+
         auto tempPasses = parseFromTable(*pr.as_table(), "passes");
-        return buildRender(tempRenderTargets, tempPasses, binderRegistry);
+        return buildRender(tempPasses, renderTargets, binderRegistry);
     }
 }

@@ -21,7 +21,12 @@ TEST(RenderParser, ParseSimplePass){
         [[passes]]
         name = "pass1"
         targets = ["BackBuffer"]
-            [passes.shader]
+            [passes.metal_shader]
+            vs_file = "path1"
+            vs_func = "function1"
+            fs_file = "path2"
+            fs_func = "function2"
+            [passes.d3d_shader]
             vs_file = "path1"
             vs_func = "function1"
             fs_file = "path2"
@@ -60,7 +65,12 @@ TEST(RenderParser, ParseMultiplePasses){
         [[passes]]
         name = "pass1"
         targets = ["target1"]
-        [passes.shader]
+            [passes.metal_shader]
+            vs_file = "path1"
+            vs_func = "function1"
+            fs_file = "path2"
+            fs_func = "function2"
+            [passes.d3d_shader]
             vs_file = "path1"
             vs_func = "function1"
             fs_file = "path2"
@@ -69,7 +79,12 @@ TEST(RenderParser, ParseMultiplePasses){
         name = "pass2"
         inputs = ["target1"]
         targets = ["BackBuffer"]
-            [passes.shader]
+            [passes.metal_shader]
+            vs_file = "path3"
+            vs_func = "function3"
+            fs_file = "path4"
+            fs_func = "function4"
+            [passes.d3d_shader]
             vs_file = "path3"
             vs_func = "function3"
             fs_file = "path4"
@@ -112,4 +127,302 @@ TEST(RenderParser, ParseMultiplePasses){
             ))
         )
     ));
+}
+
+TEST(RenderParser, ParseSamplerPresetWithIndividualFilters){
+    std::string tomlText = R"(
+        [[sampler_presets]]
+        name = "LINEAR_WRAP"
+        minFilter = "Linear"
+        magFilter = "Linear"
+        mipFilter = "Linear"
+        addressU = "Wrap"
+        addressV = "Wrap"
+        addressW = "Wrap"
+
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "pass1"
+        targets = ["BackBuffer"]
+        fs_samplers = [
+            {preset = "LINEAR_WRAP"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_EQ(render.passes.size(), 1);
+    ASSERT_EQ(render.passes[0].fs_samplers.size(), 1);
+
+    const auto& sampler = render.passes[0].fs_samplers[0];
+    EXPECT_EQ(sampler.minFilter, RHIFilter::Linear);
+    EXPECT_EQ(sampler.magFilter, RHIFilter::Linear);
+    EXPECT_EQ(sampler.mipFilter, RHIFilter::Linear);
+    EXPECT_EQ(sampler.addressU, RHIAddressMode::Wrap);
+    EXPECT_EQ(sampler.addressV, RHIAddressMode::Wrap);
+    EXPECT_EQ(sampler.addressW, RHIAddressMode::Wrap);
+}
+
+TEST(RenderParser, ParseSamplerPresetWithUnifiedFilter){
+    std::string tomlText = R"(
+        [[sampler_presets]]
+        name = "NEAREST_CLAMP"
+        filter = "Nearest"
+        address = "Clamp"
+
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "pass1"
+        targets = ["BackBuffer"]
+        fs_samplers = [
+            {preset = "NEAREST_CLAMP"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_EQ(render.passes.size(), 1);
+    ASSERT_EQ(render.passes[0].fs_samplers.size(), 1);
+
+    const auto& sampler = render.passes[0].fs_samplers[0];
+    EXPECT_EQ(sampler.minFilter, RHIFilter::Nearest);
+    EXPECT_EQ(sampler.magFilter, RHIFilter::Nearest);
+    EXPECT_EQ(sampler.mipFilter, RHIFilter::Nearest);
+    EXPECT_EQ(sampler.addressU, RHIAddressMode::Clamp);
+    EXPECT_EQ(sampler.addressV, RHIAddressMode::Clamp);
+    EXPECT_EQ(sampler.addressW, RHIAddressMode::Clamp);
+}
+
+TEST(RenderParser, ParseMultipleSamplerPresets){
+    std::string tomlText = R"(
+        [[sampler_presets]]
+        name = "LINEAR_WRAP"
+        filter = "Linear"
+        address = "Wrap"
+        [[sampler_presets]]
+        name = "NEAREST_CLAMP"
+        filter = "Nearest"
+        address = "Clamp"
+
+        [[render_targets]]
+        name = "target1"
+        format = "RGBA8_UNORM"
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "pass1"
+        targets = ["target1"]
+        fs_samplers = [
+            {preset = "LINEAR_WRAP"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+        [[passes]]
+        name = "pass2"
+        inputs = ["target1"]
+        targets = ["BackBuffer"]
+        fs_samplers = [
+            {preset = "NEAREST_CLAMP"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_EQ(render.passes.size(), 2);
+
+    ASSERT_EQ(render.passes[0].fs_samplers.size(), 1);
+    EXPECT_EQ(render.passes[0].fs_samplers[0].minFilter, RHIFilter::Linear);
+    EXPECT_EQ(render.passes[0].fs_samplers[0].addressU, RHIAddressMode::Wrap);
+
+    ASSERT_EQ(render.passes[1].fs_samplers.size(), 1);
+    EXPECT_EQ(render.passes[1].fs_samplers[0].minFilter, RHIFilter::Nearest);
+    EXPECT_EQ(render.passes[1].fs_samplers[0].addressU, RHIAddressMode::Clamp);
+}
+
+TEST(RenderParser, ParseMultipleSamplersInSinglePass){
+    std::string tomlText = R"(
+        [[sampler_presets]]
+        name = "LINEAR_WRAP"
+        filter = "Linear"
+        address = "Wrap"
+        [[sampler_presets]]
+        name = "NEAREST_CLAMP"
+        filter = "Nearest"
+        address = "Clamp"
+
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "pass1"
+        targets = ["BackBuffer"]
+        fs_samplers = [
+            {preset = "LINEAR_WRAP"},
+            {preset = "NEAREST_CLAMP"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_EQ(render.passes.size(), 1);
+    ASSERT_EQ(render.passes[0].fs_samplers.size(), 2);
+
+    EXPECT_EQ(render.passes[0].fs_samplers[0].minFilter, RHIFilter::Linear);
+    EXPECT_EQ(render.passes[0].fs_samplers[0].addressU, RHIAddressMode::Wrap);
+
+    EXPECT_EQ(render.passes[0].fs_samplers[1].minFilter, RHIFilter::Nearest);
+    EXPECT_EQ(render.passes[0].fs_samplers[1].addressU, RHIAddressMode::Clamp);
+}
+
+TEST(RenderParser, IncompletePresetIsIgnored){
+    std::string tomlText = R"(
+        [[sampler_presets]]
+        filter = "Linear"
+        address = "Wrap"
+        [[sampler_presets]]
+        name = "VALID_PRESET"
+        filter = "Linear"
+        address = "Wrap"
+
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "pass1"
+        targets = ["BackBuffer"]
+        fs_samplers = [
+            {preset = "VALID_PRESET"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_EQ(render.passes.size(), 1);
+    ASSERT_EQ(render.passes[0].fs_samplers.size(), 1);
+    EXPECT_EQ(render.passes[0].fs_samplers[0].minFilter, RHIFilter::Linear);
+}
+
+TEST(RenderParser, NonexistentPresetIsIgnored){
+    std::string tomlText = R"(
+        [[sampler_presets]]
+        name = "VALID_PRESET"
+        filter = "Linear"
+        address = "Wrap"
+
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "pass1"
+        targets = ["BackBuffer"]
+        fs_samplers = [
+            {preset = "NONEXISTENT"},
+            {preset = "VALID_PRESET"}
+        ]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_THAT(render.passes.size(), 1);
+    ASSERT_THAT(render.passes[0].fs_samplers.size(), 1);
+    EXPECT_EQ(render.passes[0].fs_samplers[0].minFilter, RHIFilter::Linear);
+}
+
+TEST(RenderParser, PassWithoutSamplers){
+    std::string tomlText = R"(
+        [[render_targets]]
+        name = "BackBuffer"
+        format = "RGBA8_UNORM"
+
+        [[passes]]
+        name = "noSamplerPass"
+        targets = ["BackBuffer"]
+            [passes.metal_shader]
+            vs_file = "vs.metal"
+            vs_func = "vs_main"
+            fs_file = "fs.metal"
+            fs_func = "fs_main"
+            [passes.d3d_shader]
+            vs_file = "vs.hlsl"
+            vs_func = "vs_main"
+            fs_file = "fs.hlsl"
+            fs_func = "fs_main"
+    )";
+    auto render = parseRenderFromString(tomlText);
+
+    ASSERT_EQ(render.passes.size(), 1);
+    EXPECT_TRUE(render.passes[0].fs_samplers.empty());
 }
