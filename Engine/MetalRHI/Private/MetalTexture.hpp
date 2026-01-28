@@ -73,11 +73,13 @@ namespace Crowy
             texture = device->newTexture(texDesc);
             texDesc->release();
 
-            if(desc.debugName){
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(!desc.debugName.empty()){
                 texture->setLabel(
-                    NS::String::string(desc.debugName, NS::UTF8StringEncoding)
+                    NS::String::string(desc.debugName.c_str(), NS::UTF8StringEncoding)
                 );
             }
+        #endif
 
             if(desc.initialData)
                 uploadData(desc.initialData);

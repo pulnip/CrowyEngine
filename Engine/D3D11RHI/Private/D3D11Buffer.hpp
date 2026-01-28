@@ -79,13 +79,15 @@ namespace Crowy
                 throw std::runtime_error("Failed to create D3D11 buffer");
             }
 
-            if(desc.debugName){
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(!desc.debugName.empty()){
                 buffer->SetPrivateData(
                     WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
+                    static_cast<UINT>(desc.debugName.length()),
+                    desc.debugName.c_str()
                 );
             }
+        #endif
 
             if(hasFlag(desc.usage, RHIBufferUsage::ShaderResource))
                 device->CreateShaderResourceView(buffer, nullptr, &srv);

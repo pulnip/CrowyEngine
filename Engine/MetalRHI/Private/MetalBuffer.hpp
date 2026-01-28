@@ -63,11 +63,13 @@ namespace Crowy
                 );
             }
 
-            if(desc.debugName){
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(!desc.debugName.empty()){
                 buffer->setLabel(
-                    NS::String::string(desc.debugName, NS::UTF8StringEncoding)
+                    NS::String::string(desc.debugName.c_str(), NS::UTF8StringEncoding)
                 );
             }
+        #endif
         }
 
         ~MetalBuffer(){

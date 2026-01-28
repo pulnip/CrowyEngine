@@ -32,7 +32,7 @@ namespace Crowy
             using Microsoft::WRL::ComPtr;
 
             UINT dxgiFactoryFlags = 0;
-        #ifdef _DEBUG
+        #if defined(_DEBUG) || !defined(NDEBUG)
             dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
         #endif
 
@@ -75,7 +75,7 @@ namespace Crowy
             }
 
             UINT deviceFlags = 0;
-        #ifdef _DEBUG
+        #if defined(_DEBUG) || !defined(NDEBUG)
             deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
         #endif
             D3D_FEATURE_LEVEL featureLevels[] = {

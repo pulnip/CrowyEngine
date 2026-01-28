@@ -99,7 +99,9 @@ int main(int argc, char* argv[]){
         .initialState = RHIResourceState::DepthStencilWrite,
         .clearColor = {},
         .clearDepthStencil = {1.0f, 0},
+    #if defined(_DEBUG) || !defined(NDEBUG)
         .debugName = "Depth Buffer"
+    #endif
     });
 
     auto pipelineState = device->createGraphicsPipelineState({

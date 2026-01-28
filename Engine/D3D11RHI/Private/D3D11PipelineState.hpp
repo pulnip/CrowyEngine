@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <d3d11.h>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
@@ -109,8 +110,8 @@ namespace Crowy
         D3D11_PRIMITIVE_TOPOLOGY topology;
         ID3D11VertexShader* vs = nullptr;
         ID3D11PixelShader* ps = nullptr;
-    #ifdef _DEBUG
-        const char* debugName = nullptr;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        std::string debugName;
     #endif
 
     public:
@@ -119,7 +120,7 @@ namespace Crowy
             const RHIGraphicsPipelineStateDesc& desc
         )
             :topology(convertTopology(desc.topology))
-        #ifdef _DEBUG
+        #if defined(_DEBUG) || !defined(NDEBUG)
             ,debugName(desc.debugName)
         #endif
         {

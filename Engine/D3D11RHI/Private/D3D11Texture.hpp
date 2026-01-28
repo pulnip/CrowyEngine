@@ -80,14 +80,15 @@ namespace Crowy
             ))){
                 throw std::runtime_error("Failed to create D3D11 texture");
             }
-
-            if(desc.debugName){
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(!desc.debugName.empty()){
                 texture->SetPrivateData(
                     WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
+                    static_cast<UINT>(desc.debugName.length()),
+                    desc.debugName.c_str()
                 );
             }
+        #endif
 
             if(isRenderTarget){
                 D3D11_RENDER_TARGET_VIEW_DESC rtvDesc{

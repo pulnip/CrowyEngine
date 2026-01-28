@@ -28,7 +28,7 @@ namespace Crowy
         ID3D11DeviceContext* context = nullptr;
         bool isRecording = false;
         bool isRenderPass = false, isComputePass = false;
-    #ifdef _DEBUG
+    #if defined(_DEBUG) || !defined(NDEBUG)
         uint32_t maxBindedVSSRV = 0;
         uint32_t maxBindedPSSRV = 0;
         uint32_t maxBindedCSSRV = 0;
@@ -125,7 +125,7 @@ namespace Crowy
             );
 
             // NOTE. No-Op for D3D11
-        #ifdef _DEBUG
+        #if defined(_DEBUG) || !defined(NDEBUG)
             // clean-up srv binding for suppress data hazard warning.
             static ID3D11ShaderResourceView* nullSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
 
@@ -213,19 +213,19 @@ namespace Crowy
 
             switch(stage){
             case RHIShaderStage::VertexShader:
-            #ifdef _DEBUG
+            #if defined(_DEBUG) || !defined(NDEBUG)
                 maxBindedVSSRV = std::max(maxBindedVSSRV, slot+1);
             #endif
                 context->VSSetShaderResources(slot, 1, &srv);
                 break;
             case RHIShaderStage::FragmentShader:
-            #ifdef _DEBUG
+            #if defined(_DEBUG) || !defined(NDEBUG)
                 maxBindedPSSRV = std::max(maxBindedPSSRV, slot+1);
             #endif
                 context->PSSetShaderResources(slot, 1, &srv);
                 break;
             case RHIShaderStage::ComputeShader:
-            #ifdef _DEBUG
+            #if defined(_DEBUG) || !defined(NDEBUG)
                 maxBindedCSSRV = std::max(maxBindedCSSRV, slot+1);
             #endif
                 context->CSSetShaderResources(slot, 1, &srv);

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <string>
 #include <utility>
 #include "enum_traits.hpp"
 #include "math.hpp"
@@ -36,7 +37,9 @@ namespace Crowy
         RHIBufferUsage usage;
         uint32_t stride; // For structured buffers
         const void* initialData;
-        const char* debugName;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        std::string debugName;
+    #endif
     };
 
     enum class RHIPrimitiveTopology{
@@ -180,7 +183,9 @@ namespace Crowy
             .depth = 1.0f, .stencil = 0
         };
         const void* initialData = nullptr;
-        const char* debugName = nullptr;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        std::string debugName;
+    #endif
     };
 
     enum class RHIShaderStage{
@@ -197,7 +202,6 @@ namespace Crowy
     #endif
         const char* entry;
         RHIShaderStage stage;
-        // const char* debugName;
     };
 
     enum class RHILoadAction{
@@ -425,12 +429,16 @@ namespace Crowy
 
         RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHITextureFormat::RGBA8_UNORM};
         uint32_t renderTargetCount = 1;
-        const char* debugName = nullptr;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        std::string debugName;
+    #endif
     };
 
     struct RHIComputePipelineStateDesc{
         RHIShader* computeShader;
-        const char* debugName;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        std::string debugName;
+    #endif
     };
 
     enum class RHIFilter{
@@ -476,7 +484,9 @@ namespace Crowy
         uint32_t bufferCount; // Triple buffering
         bool vsync;           // VSync enabled by default
         bool allowTearing;    // Variable refresh rate
-        const char* debugName;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        std::string debugName;
+    #endif
     };
 
     inline size_t getBytesPerPixel(RHITextureFormat format){
