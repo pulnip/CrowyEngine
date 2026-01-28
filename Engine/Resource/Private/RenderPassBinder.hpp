@@ -39,7 +39,7 @@ namespace Crowy
             const VTable&, size_t index, RenderPassElementBindPlan&
         ) override;
 
-        static void freeze(RenderSpec&, RenderPassElementBindPlan&);
+        static void freeze(std::vector<RenderPassSpec>&, RenderPassElementBindPlan&);
     };
 
     class SamplerBinder: public RenderPassElementBinder{
@@ -59,6 +59,6 @@ namespace Crowy
             const VTable&, size_t index, RenderPassElementBindPlan&
         ) override;
 
-        static void freeze(RenderSpec&, RenderPassElementBindPlan&);
+        static void freeze(std::vector<RenderPassSpec>&, RenderPassElementBindPlan&);
     };
 }

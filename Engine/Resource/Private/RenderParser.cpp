@@ -130,7 +130,7 @@ namespace Crowy
         return it->second;
     }
 
-    static SamplerPresets buildSamplerPresets(
+    static SamplerPresets compileSamplerPresets(
         const ParseResult& tempSPs
     ){
         SamplerPresets out;
@@ -208,7 +208,7 @@ namespace Crowy
         return out;
     }
 
-    static std::unordered_map<std::string, RHITextureCreateDesc> buildRenderTarget(
+    static std::unordered_map<std::string, RHITextureCreateDesc> compileRenderTarget(
         const ParseResult& tempRTs
     ){
         std::unordered_map<std::string, RHITextureCreateDesc> out;
@@ -233,17 +233,15 @@ namespace Crowy
         return out;
     }
 
-    static RenderSpec buildRender(
+    static std::vector<RenderPassSpec> compileRender(
         const ParseResult& tempPasses,
-        const std::unordered_map<std::string, RHITextureCreateDesc>& renderTargets,
         const RenderPassBinderRegistry& registry
     ){
-        RenderSpec out;
+        std::vector<RenderPassSpec> out;
         RenderPassElementBindPlan plan;
 
-        out.renderTargets = renderTargets;
         // reserve pass slot and copy name.
-        out.passes.resize(tempPasses.elements.size());
+        out.resize(tempPasses.elements.size());
         for(size_t i=0; i<tempPasses.elements.size(); ++i){
             const auto& elm = tempPasses.elements[i];
             const auto& node = tempPasses.arena.nodes[elm.index];
@@ -256,12 +254,12 @@ namespace Crowy
                 // TODO. parse rasterizer state, depth stencil state, blend state
 
                 if(name.has_value())
-                    out.passes[i].name = *name;
+                    out[i].name = *name;
 
                 if(inputs.has_value())
-                    out.passes[i].inputs = *inputs;
+                    out[i].inputs = *inputs;
                 if(targets.has_value())
-                    out.passes[i].targets = *targets;
+                    out[i].targets = *targets;
             }
             else{
                 // TODO. write Error
@@ -278,6 +276,20 @@ namespace Crowy
         return out;
     }
 
+    static RenderSpec linkRender(
+        std::unordered_map<std::string, RHITextureCreateDesc> renderTargets,
+        std::vector<RenderPassSpec>& passes
+    ){
+        RenderSpec out{
+            .renderTargets = renderTargets,
+            .passes = passes
+        };
+
+        // TODO
+
+        return out;
+    }
+
     RenderSpec parseRenderFromFile(const std::filesystem::path& renderFile){
         auto u8strPath = to_utf8String(renderFile);
         toml::parse_result pr = toml::parse_file(u8strPath);
@@ -285,14 +297,16 @@ namespace Crowy
             return {};
 
         auto tempSamplerPresets = parseFromTable(*pr.as_table(), "sampler_presets");
-        auto samplerPresets = buildSamplerPresets(tempSamplerPresets);
+        auto samplerPresets = compileSamplerPresets(tempSamplerPresets);
         auto binderRegistry = makeRenderPassBinderRegistry(samplerPresets);
 
         auto tempRenderTargets = parseFromTable(*pr.as_table(), "render_targets");
-        auto renderTargets = buildRenderTarget(tempRenderTargets);
+        auto renderTargets = compileRenderTarget(tempRenderTargets);
 
         auto tempPasses = parseFromTable(*pr.as_table(), "passes");
-        return buildRender(tempPasses, renderTargets, binderRegistry);
+        auto passes = compileRender(tempPasses, binderRegistry);
+
+        return linkRender(renderTargets, passes);
     }
 
     RenderSpec parseRenderFromString(std::string_view renderText){
@@ -301,13 +315,15 @@ namespace Crowy
             return {};
 
         auto tempSamplerPresets = parseFromTable(*pr.as_table(), "sampler_presets");
-        auto samplerPresets = buildSamplerPresets(tempSamplerPresets);
+        auto samplerPresets = compileSamplerPresets(tempSamplerPresets);
         auto binderRegistry = makeRenderPassBinderRegistry(samplerPresets);
 
         auto tempRenderTargets = parseFromTable(*pr.as_table(), "render_targets");
-        auto renderTargets = buildRenderTarget(tempRenderTargets);
+        auto renderTargets = compileRenderTarget(tempRenderTargets);
 
         auto tempPasses = parseFromTable(*pr.as_table(), "passes");
-        return buildRender(tempPasses, renderTargets, binderRegistry);
+        auto passes = compileRender(tempPasses, binderRegistry);
+
+        return linkRender(renderTargets, passes);
     }
 }

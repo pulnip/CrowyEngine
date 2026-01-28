@@ -25,9 +25,9 @@ namespace Crowy
         });
     }
 
-    void ShaderBinder::freeze(RenderSpec& spec, RenderPassElementBindPlan& plan){
+    void ShaderBinder::freeze(std::vector<RenderPassSpec>& passes, RenderPassElementBindPlan& plan){
         for(const auto& p: plan.shaders){
-            auto& pass = spec.passes[p.index];
+            auto& pass = passes[p.index];
 
             pass.shader = p.spec;
         }
@@ -71,9 +71,9 @@ namespace Crowy
         });
     }
 
-    void SamplerBinder::freeze(RenderSpec& spec, RenderPassElementBindPlan& plan){
+    void SamplerBinder::freeze(std::vector<RenderPassSpec>& passes, RenderPassElementBindPlan& plan){
         for(const auto& p: plan.samplers){
-            auto& pass = spec.passes[p.index];
+            auto& pass = passes[p.index];
 
             pass.fs_samplers = p.spec;
         }
