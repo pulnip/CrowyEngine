@@ -27,3 +27,5 @@ else()
         Crowy::NullRHI
     )
 endif()
+
+crowy_rhi_macro(Platform)

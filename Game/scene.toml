@@ -1,5 +1,5 @@
 [[entities]]
-name = "Box"
+name = "Stelle"
     [entities.transform]
     position = [0, 0, 0]
     rotation = [0, 0, 0, 1]
@@ -7,3 +7,15 @@ name = "Box"
     [entities.renderObject]
     uri = "file:asset/Stelle/Stelle.pmx"
     renderType = "type0"
+[[entities]]
+name = "Camera"
+    [entities.transform]
+    position = [0, 10, 30]
+    rotation = [0,  0,  0, 1]
+    scale    = [1,  1,  1]
+    [entities.camera]
+    # 45°
+    fov = 0.7853981625
+    nearPlane = 0.1
+    farPlane = 100.0
+    projection = "perspective"

@@ -204,13 +204,12 @@ namespace Crowy
     void CameraBinder::validateAndPlan(const ValueArena& arena,
         const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
-        auto tp = readString(arena, src, plan.errors, "type");
         auto fv = readFloat(arena, src, plan.errors, "fov");
         auto np = readFloat(arena, src, plan.errors, "nearPlane", 0.1);
         auto fp = readFloat(arena, src, plan.errors, "farPlane", 100.0);
         auto pj = readString(arena, src, plan.errors, "projection");
 
-        if(!tp || !fv || !pj)
+        if(!fv || !pj)
             return;
 
         plan.cameras.push_back({

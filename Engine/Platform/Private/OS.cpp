@@ -77,9 +77,9 @@ namespace Crowy
             };
 
             swapchain = device->createSwapchain(RHISwapchainCreateDesc{
-            #ifdef __APPLE__
+            #ifdef CROWY_METALRHI
                 .windowHandle = SDL_Metal_GetLayer(view),
-            #elif _WIN32
+            #elifdef _WIN32
                 .windowHandle = SDL_GetPointerProperty(
                     SDL_GetWindowProperties(window),
                     SDL_PROP_WINDOW_WIN32_HWND_POINTER,
@@ -100,6 +100,7 @@ namespace Crowy
         ~Impl(){
             if(window != nullptr){
                 SDL_DestroyWindow(window);
+                window = nullptr;
             }
         }
 
@@ -125,11 +126,11 @@ namespace Crowy
                     continue;
                 }
 
-                cmdList->reset();
                 cmdList->begin();
 
                 if(!mainLoop->update(deltaTime, totalTime))
                     break;
+                cmdList->flush();
 
                 cmdList->signalFence(
                     *framePacer->getCurrentFence(),

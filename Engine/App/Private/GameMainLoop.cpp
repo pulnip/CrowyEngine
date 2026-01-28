@@ -79,7 +79,13 @@ namespace Crowy
                     .renderItems = renderItems,
                     .view = view,
                     .proj = proj,
-                    .viewport = c.viewport
+                    .viewport = RHIViewport{
+                        .x = c.viewport.x, .y = c.viewport.y,
+                        .width = width,
+                        .height = height,
+                        .minDepth = c.viewport.minDepth,
+                        .maxDepth = c.viewport.maxDepth
+                    }
                 },
                 OS::singleton()->getSwapchain()
             );
