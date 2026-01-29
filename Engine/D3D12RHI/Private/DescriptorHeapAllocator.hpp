@@ -75,6 +75,15 @@ namespace Crowy
             return index;
         }
 
+        UINT allocate(
+            D3D12_CONSTANT_BUFFER_VIEW_DESC& desc
+        ){
+            auto index = allocateIndex();
+            device->CreateConstantBufferView(&desc, getCPUHandle(index));
+
+            return index;
+        }
+
         UINT allocate(D3D12_SAMPLER_DESC& desc){
             auto index = allocateIndex();
             device->CreateSampler(&desc, getCPUHandle(index));
