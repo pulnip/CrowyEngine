@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <memory>
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -11,6 +12,7 @@
 #include "D3D12Shader.hpp"
 #include "D3D12Swapchain.hpp"
 #include "D3D12Texture.hpp"
+#include "DescriptorHeapAllocator.hpp"
 
 namespace Crowy
 {
@@ -28,6 +30,10 @@ namespace Crowy
         ID3D12Device* device = nullptr;
         IDXGIFactory4* factory = nullptr;
         ID3D12CommandQueue* commandQueue = nullptr;
+        std::unique_ptr<DescriptorHeapAllocator> cbv_srvHeap = nullptr;
+        std::unique_ptr<DescriptorHeapAllocator> rtvHeap = nullptr;
+        std::unique_ptr<DescriptorHeapAllocator> dsvHeap = nullptr;
+        std::unique_ptr<DescriptorHeapAllocator> samplerHeap = nullptr;
 
         Impl(){
             UINT dxgiFactoryFlags = 0;
@@ -90,6 +96,19 @@ namespace Crowy
             ))){
                 throw std::runtime_error("Failed to create command queue");
             }
+
+            cbv_srvHeap = std::make_unique<DescriptorHeapAllocator>(
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4096
+            );
+            rtvHeap = std::make_unique<DescriptorHeapAllocator>(
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 64
+            );
+            dsvHeap = std::make_unique<DescriptorHeapAllocator>(
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 32
+            );
+            samplerHeap = std::make_unique<DescriptorHeapAllocator>(
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 64
+            );
         }
 
         ~Impl(){
@@ -110,13 +129,17 @@ namespace Crowy
         RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc& desc
         ) noexcept{
-            return std::make_unique<D3D12Buffer>(device, desc);
+            return std::make_unique<D3D12Buffer>(device, desc,
+                cbv_srvHeap.get()
+            );
         }
 
         RHITexturePtr createTexture(
             const RHITextureCreateDesc& desc
         ) noexcept{
-            return std::make_unique<D3D12Texture>(device, commandQueue, desc);
+            return std::make_unique<D3D12Texture>(device, desc,
+                cbv_srvHeap.get(), rtvHeap.get(), dsvHeap.get()
+            );
         }
 
         RHIShaderPtr createShader(
@@ -128,7 +151,7 @@ namespace Crowy
         RHISamplerPtr createSampler(
             const RHISamplerState& desc
         ) noexcept{
-            return std::make_unique<D3D12Sampler>(device, desc);
+            return std::make_unique<D3D12Sampler>(samplerHeap.get(), desc);
         }
 
         RHIPipelineStatePtr createGraphicsPipelineState(

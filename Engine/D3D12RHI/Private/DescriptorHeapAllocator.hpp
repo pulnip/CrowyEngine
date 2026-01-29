@@ -18,11 +18,14 @@ namespace Crowy
         DescriptorHeapAllocator(
             ID3D12Device* device,
             D3D12_DESCRIPTOR_HEAP_TYPE type,
-            UINT capacity,
-            bool shaderVisible = true
+            UINT capacity
         )
             : device(device)
         {
+            auto shaderVisible =
+                (type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) ||
+                (type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
             D3D12_DESCRIPTOR_HEAP_DESC desc{
                 .Type = type,
                 .NumDescriptors = capacity,
@@ -34,8 +37,8 @@ namespace Crowy
             descriptorSize = device->GetDescriptorHandleIncrementSize(type);
 
             freeList.reserve(capacity);
-            for(UINT i=capacity-1; i>=0; --i)
-                freeList.push_back(i);
+            for(UINT i=capacity; i>0; --i)
+                freeList.push_back(i-1);
         }
 
         ~DescriptorHeapAllocator(){
