@@ -240,17 +240,17 @@ namespace Crowy
             RHIBuffer& buffer,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
-            auto srv = static_cast<D3D11Buffer&>(buffer).getSRV();
+            auto buf = static_cast<D3D11Buffer&>(buffer).get();
 
             switch(stage){
             case RHIShaderStage::VertexShader:
-                context->VSSetShaderResources(slot, 1, &srv);
+                context->VSSetConstantBuffers(slot, 1, &buf);
                 break;
             case RHIShaderStage::FragmentShader:
-                context->PSSetShaderResources(slot, 1, &srv);
+                context->PSSetConstantBuffers(slot, 1, &buf);
                 break;
             case RHIShaderStage::ComputeShader:
-                context->CSSetShaderResources(slot, 1, &srv);
+                context->CSSetConstantBuffers(slot, 1, &buf);
                 break;
             default:
                 std::unreachable();

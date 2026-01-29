@@ -106,8 +106,6 @@ namespace Crowy
 
         CROWY_DECLARE_PINNED(D3D11Buffer)
 
-        ID3D11Buffer* get() const{ return buffer; }
-
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             // NOTE. No-Op for D3D11
             return currentState;
@@ -118,6 +116,7 @@ namespace Crowy
             currentState = state;
         }
 
+        ID3D11Buffer* get() const{ return buffer; }
         ID3D11ShaderResourceView* getSRV() const{ return srv; }
     };
 }
