@@ -45,6 +45,36 @@ namespace Crowy
             }
         }
 
+        UINT allocate(
+            ID3D12Resource* resource,
+            D3D12_SHADER_RESOURCE_VIEW_DESC& desc
+        ){
+            auto index = allocateIndex();
+            device->CreateShaderResourceView(resource, &desc, getCPUHandle(index));
+
+            return index;
+        }
+
+        UINT allocate(
+            ID3D12Resource* resource,
+            D3D12_RENDER_TARGET_VIEW_DESC& desc
+        ){
+            auto index = allocateIndex();
+            device->CreateRenderTargetView(resource, &desc, getCPUHandle(index));
+
+            return index;
+        }
+
+        UINT allocate(
+            ID3D12Resource* resource,
+            D3D12_DEPTH_STENCIL_VIEW_DESC& desc
+        ){
+            auto index = allocateIndex();
+            device->CreateDepthStencilView(resource, &desc, getCPUHandle(index));
+
+            return index;
+        }
+
         UINT allocate(D3D12_SAMPLER_DESC& desc){
             auto index = allocateIndex();
             device->CreateSampler(&desc, getCPUHandle(index));
