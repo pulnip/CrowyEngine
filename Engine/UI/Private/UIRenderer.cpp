@@ -47,7 +47,7 @@ namespace Crowy
             colorAttachment->setLoadAction(MTL::LoadActionLoad);
             colorAttachment->setStoreAction(MTL::StoreActionStore);
         #elifdef CROWY_D3DRHI
-        ImGui_ImplSDL3_InitForD3D(window);
+            ImGui_ImplSDL3_InitForD3D(window);
         #ifdef CROWY_D3D11RHI
             ImGui_ImplDX11_Init(device, context);
         #endif
@@ -67,8 +67,10 @@ namespace Crowy
         }
 
         void render(
+            std::string_view uiName,
+            Widget& ui,
+            CROWY_UI_CONTEXT& uiCtx,
             RHICommandList& cmdList,
-            std::function<void(void)> uiFunc,
             RHISwapchain* backBuffer
         ){
         #ifdef CROWY_METALRHI
@@ -79,7 +81,11 @@ namespace Crowy
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
 
-            uiFunc();
+            ImGui::Begin(uiName.data());
+            std::visit([&uiCtx](auto& widget){
+                widget.submit(uiCtx);
+            }, ui);
+            ImGui::End();
 
             ImGui::Render();
             ImDrawData* draw_data = ImGui::GetDrawData();
@@ -119,10 +125,12 @@ namespace Crowy
     UIRenderer::~UIRenderer() = default;
 
     void UIRenderer::render(
+        std::string_view uiName,
+        Widget& ui,
+        CROWY_UI_CONTEXT& uiCtx,
         RHICommandList& cmdList,
-        std::function<void(void)> ctx,
         RHISwapchain* backBuffer
     ){
-        impl->render(cmdList, ctx, backBuffer);
+        impl->render(uiName, ui, uiCtx, cmdList, backBuffer);
     }
 }

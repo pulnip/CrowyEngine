@@ -9,60 +9,70 @@ namespace Crowy
         }
     }
 
+    void Checkbox::submit(CROWY_UI_CONTEXT& ctx){
+        if(ImGui::Checkbox(label.c_str(), &v))
+            onChanged(ctx, v);
+    }
+
     void Slider::submit(CROWY_UI_CONTEXT& ctx){
         if(ImGui::SliderFloat(label.c_str(), &v, v_min, v_max))
             onChanged(ctx, v);
     }
 
-    enum class Axis{
-        horizontal,
-        vertical
-    };
+    void Text::submit(CROWY_UI_CONTEXT&){
+        ImGui::Text("%s", data.c_str());
+    }
 
-    struct Flex{
-        Axis axis;
-        std::vector<Widget> children;
-        double spacing = 0.0;
+    void Flex::submit(CROWY_UI_CONTEXT& ctx){
+        ImGui::BeginGroup();
+        for(size_t i = 0; i < children.size(); ++i){
+            if(i > 0 && axis == Axis::horizontal)
+                ImGui::SameLine(0, spacing);
 
-        void submit(CROWY_UI_CONTEXT& ctx){
-            bool first = true;
-
-            ImGui::BeginGroup();
-            for(auto& widget: children){
-                if(!first && axis == Axis::horizontal){
-                    ImGui::SameLine(0, spacing);
-                    first = false;
-                }
-
-                std::visit([&ctx](auto& widget){
-                    widget.submit(ctx);
-                }, widget);
-            }
-            ImGui::EndGroup();
+            std::visit([&ctx](auto& widget){
+                widget.submit(ctx);
+            }, children[i]);
         }
-    };
+        ImGui::EndGroup();
+    }
 
     Widget Row(
         std::vector<Widget>&& children,
         double spacing
     ){
-        return Box<Flex>{
-            .ptr = std::make_unique<Flex>(Flex{
-                .axis = Axis::horizontal,
-                .children = std::move(children)
-            })
-        };
+        return Box<Flex>(Flex{
+            .axis = Axis::horizontal,
+            .children = std::move(children)
+        });
     }
 
     Widget Column(
         std::vector<Widget>&& children,
         double spacing
     ){
-        return Box<Flex>{
-            .ptr = std::make_unique<Flex>(Flex{
-                .axis = Axis::vertical,
-                .children = std::move(children)
-            })
-        };
+        return Box<Flex>(Flex{
+            .axis = Axis::vertical,
+            .children = std::move(children)
+        });
+    }
+
+    Widget demoUI(){
+        return Column({
+            Row({
+                Text{
+                    .data = "Hello, "
+                },
+                Text{
+                    .data = "Widget!"
+                }
+            }),
+            TextButton{
+                .label = "Test Button",
+            },
+            Slider{
+                .label = "Test Slider",
+                .v = 0.5f
+            }
+        });
     }
 }

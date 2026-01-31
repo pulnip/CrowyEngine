@@ -3,7 +3,9 @@
 #include <functional>
 #include <memory>
 #include <span>
+#include <string_view>
 #include "RHIFWD.hpp"
+#include "Widget.hpp"
 
 namespace Crowy
 {
@@ -16,8 +18,10 @@ namespace Crowy
         ~UIRenderer();
 
         void render(
+            std::string_view uiName,
+            Widget& ui,
+            CROWY_UI_CONTEXT&,
             RHICommandList&,
-            std::function<void(void)> ctx,
             RHISwapchain*
         );
     };

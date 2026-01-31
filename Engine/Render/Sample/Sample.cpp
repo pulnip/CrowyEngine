@@ -1,4 +1,3 @@
-#include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
 #include "enum_traits.hpp"
@@ -12,7 +11,15 @@
 #include "RenderSpec.hpp"
 #include "Resource.hpp"
 #include "Timer.hpp"
+#define CROWY_UI_CONTEXT UIContext
 #include "UIRenderer.hpp"
+
+namespace Crowy
+{
+    struct UIContext{
+        Renderer& renderer;
+    };
+}
 
 using namespace Crowy;
 
@@ -74,6 +81,20 @@ int main(int argc, char* argv[]){
 
     Renderer renderer(device.get());
     UIRenderer uiRenderer(window, *device.get(), *cmdList.get());
+    auto ui = Column({
+        Checkbox{
+            .label = "Pixelate",
+            .onChanged = [](UIContext& ctx, bool v){
+                ctx.renderer.setPassEnabled("pixelate", v);
+            }
+        },
+        Checkbox{
+            .label = "Focusmask",
+            .onChanged = [](UIContext& ctx, bool v){
+                ctx.renderer.setPassEnabled("composite", v);
+            }
+        }
+    });
 
     RenderSpec spec{
         .renderTargets = {
@@ -417,17 +438,13 @@ int main(int argc, char* argv[]){
                 renderer.render(*cmdList.get(), ctx, swapchain.get());
                 cmdList->flush();
 
+                UIContext uiContext{
+                    .renderer = renderer
+                };
+
                 uiRenderer.render(
+                    "Renderer Sample", ui, uiContext,
                     *cmdList.get(),
-                    [&renderer, &enable_pixelate, &enable_focusmask](){
-                        ImGui::Begin("Renderer Sample");
-                        if(ImGui::Checkbox("Pixelate", &enable_pixelate))
-                            renderer.setPassEnabled("pixelate", enable_pixelate);
-                        if(ImGui::Checkbox("Focusmask", &enable_focusmask))
-                            renderer.setPassEnabled("composite", enable_focusmask);
-                        
-                        ImGui::End();
-                    },
                     swapchain.get()
                 );
 
