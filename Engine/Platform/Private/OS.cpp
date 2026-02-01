@@ -3,7 +3,7 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
-#ifdef __APPLE__
+#ifdef CROWY_METALRHI
     #include <SDL3/SDL_metal.h>
 #endif
 #include "FramePacer.hpp"
@@ -25,7 +25,7 @@ namespace Crowy
     private:
         SDL_Window* window = nullptr;
         int width, height;
-    #ifdef __APPLE__
+    #ifdef CROWY_METALRHI
         SDL_MetalView view;
     #endif
 
@@ -61,7 +61,7 @@ namespace Crowy
                     SDL_GetError()
                 ));
             }
-        #ifdef __APPLE__
+        #ifdef CROWY_METALRHI
             view = SDL_Metal_CreateView(window);
         #endif
 
@@ -79,7 +79,7 @@ namespace Crowy
             swapchain = device->createSwapchain(RHISwapchainCreateDesc{
             #ifdef CROWY_METALRHI
                 .windowHandle = SDL_Metal_GetLayer(view),
-            #elifdef _WIN32
+            #elifdef CROWY_D3DRHI
                 .windowHandle = SDL_GetPointerProperty(
                     SDL_GetWindowProperties(window),
                     SDL_PROP_WINDOW_WIN32_HWND_POINTER,

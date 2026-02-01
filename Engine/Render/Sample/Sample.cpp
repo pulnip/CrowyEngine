@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
         RHISwapchainCreateDesc{
         #ifdef CROWY_METALRHI
             .windowHandle = SDL_Metal_GetLayer(view),
-        #elif _WIN32
+        #elif CROWY_D3DRHI
             .windowHandle = SDL_GetPointerProperty(
                 SDL_GetWindowProperties(window),
                 SDL_PROP_WINDOW_WIN32_HWND_POINTER,
