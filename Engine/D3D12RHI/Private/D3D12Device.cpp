@@ -130,7 +130,8 @@ namespace Crowy
             const RHIBufferCreateDesc& desc
         ) noexcept{
             return std::make_unique<D3D12Buffer>(device, desc,
-                cbv_srvHeap.get()
+                // TODO. cbv_srvHeap.get()
+                nullptr
             );
         }
 

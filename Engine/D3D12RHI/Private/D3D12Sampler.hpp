@@ -12,7 +12,7 @@
 
 namespace Crowy
 {
-    static D3D12_TEXTURE_ADDRESS_MODE convertAddressMode(RHIAddressMode mode){
+    static D3D12_TEXTURE_ADDRESS_MODE convert(RHIAddressMode mode){
         switch(mode){
         case RHIAddressMode::Wrap  : return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         case RHIAddressMode::Clamp : return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -23,7 +23,7 @@ namespace Crowy
         }
     }
 
-    static D3D12_FILTER convertFilter(
+    static D3D12_FILTER convert(
         RHIFilter min, RHIFilter mag, RHIFilter mip,
         bool anisotropy, bool comparison,
         D3D12_FILTER_REDUCTION_TYPE reduction = D3D12_FILTER_REDUCTION_TYPE_STANDARD
@@ -61,17 +61,17 @@ namespace Crowy
             : allocator(allocator)
         {
             D3D12_SAMPLER_DESC samplerDesc{
-                .Filter = convertFilter(
+                .Filter = convert(
                     desc.minFilter, desc.magFilter, desc.mipFilter,
                     desc.maxAnisotropy > 1,
                     desc.compareFunc != RHIComparisonFunc::Never
                 ),
-                .AddressU = convertAddressMode(desc.addressU),
-                .AddressV = convertAddressMode(desc.addressV),
-                .AddressW = convertAddressMode(desc.addressW),
+                .AddressU = convert(desc.addressU),
+                .AddressV = convert(desc.addressV),
+                .AddressW = convert(desc.addressW),
                 .MipLODBias = desc.mipLODBias,
                 .MaxAnisotropy = desc.maxAnisotropy,
-                .ComparisonFunc = convertCompareFunc(desc.compareFunc),
+                .ComparisonFunc = convert(desc.compareFunc),
                 .BorderColor = {
                     desc.borderColor[0], desc.borderColor[1],
                     desc.borderColor[2], desc.borderColor[3]

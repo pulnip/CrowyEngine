@@ -67,9 +67,9 @@ namespace Crowy
                 .Alignment = 0,
                 .Width = desc.width,
                 .Height = desc.height,
-                .DepthOrArraySize = desc.depth > 1 ? desc.depth : desc.arraySize,
-                .MipLevels = desc.mipLevels,
-                .Format = convertTextureFormat(desc.format),
+                .DepthOrArraySize = static_cast<UINT16>(desc.depth > 1 ? desc.depth : desc.arraySize),
+                .MipLevels = static_cast<UINT16>(desc.mipLevels),
+                .Format = convert(desc.format),
                 // No MSAA
                 .SampleDesc = {1, 0},
                 .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
@@ -83,7 +83,7 @@ namespace Crowy
             };
 
             D3D12_CLEAR_VALUE clearValue{
-                .Format = convertTextureFormat(desc.format)
+                .Format = convert(desc.format)
             };
             D3D12_CLEAR_VALUE* pClearValue = nullptr;
 
@@ -104,7 +104,7 @@ namespace Crowy
                 &heapProp,
                 D3D12_HEAP_FLAG_NONE,
                 &texDesc,
-                convertResourceState(currentState),
+                convert(currentState),
                 pClearValue,
                 IID_PPV_ARGS(&texture)
             ))){
@@ -117,7 +117,7 @@ namespace Crowy
 
             if(isShaderResource){
                 D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{
-                    .Format = convertTextureFormat(desc.format, true, false),
+                    .Format = convert(desc.format, true, false),
                     .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
                     .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                     .Texture2D = {
@@ -131,7 +131,7 @@ namespace Crowy
             }
             if(isRenderTarget){
                 D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{
-                    .Format = convertTextureFormat(desc.format),
+                    .Format = convert(desc.format),
                     .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
                     .Texture2D = {
                         .MipSlice = 0,
@@ -142,7 +142,7 @@ namespace Crowy
             }
             if(isDepthTarget){
                 D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{
-                    .Format = convertTextureFormat(desc.format, false, true),
+                    .Format = convert(desc.format, false, true),
                     .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
                     .Flags = D3D12_DSV_FLAG_NONE,
                     .Texture2D = {

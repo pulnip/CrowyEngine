@@ -6,13 +6,7 @@
 
 namespace Crowy
 {
-    DXGI_FORMAT convertTextureFormat(RHITextureFormat format);
-    D3D12_RESOURCE_STATES convertResourceState(RHIResourceState state);
-    D3D12_COMPARISON_FUNC convertComparisonFunc(RHIComparisonFunc func);
-    D3D12_BLEND convertBlend(RHIBlend blend);
-    D3D12_BLEND_OP convertBlendOp(RHIBlendOp op);
-    D3D12_CULL_MODE convertCullMode(RHICullMode mode);
-    D3D12_FILL_MODE convertFillMode(RHIFillMode mode);
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE convertTopologyType(RHIPrimitiveTopology topology);
-    D3D_PRIMITIVE_TOPOLOGY convertTopology(RHIPrimitiveTopology topology);
+    DXGI_FORMAT convert(RHITextureFormat, bool isShaderResource=true, bool isDepthTarget=false);
+    D3D12_COMPARISON_FUNC convert(RHIComparisonFunc);
+    D3D12_RESOURCE_STATES convert(RHIResourceState);
 }

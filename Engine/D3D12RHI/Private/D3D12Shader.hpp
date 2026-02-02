@@ -94,6 +94,9 @@ namespace Crowy
             return stage;
         }
 
+        auto getBytecodePointer(){ return bytecode.data(); }
+        auto getBytecodeSize   (){ return bytecode.size(); }
+
         auto getBytecode() const{
             return D3D12_SHADER_BYTECODE{
                 .pShaderBytecode = bytecode.data(),

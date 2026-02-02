@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <d3d12.h>
+#include "assert.hpp"
 #include "enum_traits.hpp"
 #include "semantics.hpp"
 #include "RHIAPI.hpp"
@@ -35,7 +36,7 @@ namespace Crowy
         D3D12Buffer(
             ID3D12Device* device,
             const RHIBufferCreateDesc& desc,
-            DescriptorHeapAllocator* allocator
+            DescriptorHeapAllocator* allocator = nullptr
         )
             : usage(desc.usage)
             , size(desc.size)
@@ -70,7 +71,7 @@ namespace Crowy
                 &heapProp,
                 D3D12_HEAP_FLAG_NONE,
                 &bufDesc,
-                convertResourceState(currentState),
+                convert(currentState),
                 nullptr,
                 IID_PPV_ARGS(&buffer)
             ))){
@@ -81,7 +82,7 @@ namespace Crowy
                 // TODO
             }
 
-            if(hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer)){
+            if(hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer) && allocator != nullptr){
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{
                     .BufferLocation = buffer->GetGPUVirtualAddress(),
                     .SizeInBytes = static_cast<UINT>((desc.size + 255) & ~255)
@@ -90,6 +91,8 @@ namespace Crowy
                 cbvIndex = allocator->allocate(cbvDesc);
             }
             if(hasFlag(desc.usage, RHIBufferUsage::ShaderResource)){
+                CROWY_ASSERT(allocator != nullptr);
+
                 // TODO.
                 D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{
                     .Format = DXGI_FORMAT_UNKNOWN,
@@ -135,7 +138,8 @@ namespace Crowy
             currentState = state;
         }
 
-        UINT getCBVHeapIndex() const{ return cbvIndex; }
-        UINT getSRVHeapIndex() const{ return srvIndex; }
+        auto getGPUAddress  () const{ return buffer->GetGPUVirtualAddress(); }
+        auto getCBVHeapIndex() const{ return cbvIndex; }
+        auto getSRVHeapIndex() const{ return srvIndex; }
     };
 }
