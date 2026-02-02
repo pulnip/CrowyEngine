@@ -90,7 +90,7 @@ namespace Crowy
             }
         }
 
-        RHIShaderStage getStage() const RHI_OVERRIDE{
+        RHIShaderStage getStage() const noexcept RHI_OVERRIDE{
             return stage;
         }
 

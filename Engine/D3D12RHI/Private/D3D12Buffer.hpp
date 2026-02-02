@@ -78,9 +78,8 @@ namespace Crowy
                 throw std::runtime_error("Failed to create D3D12 buffer");
             }
 
-            if(desc.initialData != nullptr){
-                // TODO
-            }
+            if(isCPUAccessible && desc.initialData != nullptr)
+                update(desc.initialData, desc.size);
 
             if(hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer) && allocator != nullptr){
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{
@@ -130,6 +129,19 @@ namespace Crowy
 
         CROWY_DECLARE_PINNED(D3D12Buffer)
 
+        void update(
+            const void* data, size_t size,
+            size_t offset = 0
+        ){
+            CROWY_ASSERT(isCPUAccessible);
+
+            BYTE* mapped = nullptr;
+            buffer->Map(0, nullptr,  reinterpret_cast<void**>(&mapped));
+
+            memcpy(mapped, data, size);
+            buffer->Unmap(0, nullptr);
+        }
+
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;
         }
@@ -138,6 +150,7 @@ namespace Crowy
             currentState = state;
         }
 
+        auto get            () const{ return buffer; }
         auto getGPUAddress  () const{ return buffer->GetGPUVirtualAddress(); }
         auto getCBVHeapIndex() const{ return cbvIndex; }
         auto getSRVHeapIndex() const{ return srvIndex; }

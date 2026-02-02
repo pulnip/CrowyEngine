@@ -63,7 +63,7 @@ namespace Crowy
                 // Check if adapter supports D3D12
                 if(SUCCEEDED(D3D12CreateDevice(
                     adapter.Get(),
-                    D3D_FEATURE_LEVEL_11_0,
+                    D3D_FEATURE_LEVEL_12_1,
                     __uuidof(ID3D12Device),
                     nullptr
                 ))){
@@ -80,7 +80,7 @@ namespace Crowy
 
             if(FAILED(D3D12CreateDevice(
                 selectedAdapter.Get(),
-                D3D_FEATURE_LEVEL_11_0,
+                D3D_FEATURE_LEVEL_12_1,
                 IID_PPV_ARGS(&device)
             ))){
                 throw std::runtime_error("Failed to create D3D12 device");
@@ -98,16 +98,16 @@ namespace Crowy
             }
 
             cbv_srvHeap = std::make_unique<DescriptorHeapAllocator>(
-                device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4096
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, UINT(4096)
             );
             rtvHeap = std::make_unique<DescriptorHeapAllocator>(
-                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 64
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, UINT(64)
             );
             dsvHeap = std::make_unique<DescriptorHeapAllocator>(
-                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 32
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, UINT(32)
             );
             samplerHeap = std::make_unique<DescriptorHeapAllocator>(
-                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 64
+                device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, UINT(64)
             );
         }
 
@@ -170,7 +170,12 @@ namespace Crowy
         RHISwapchainPtr createSwapchain(
             const RHISwapchainCreateDesc& desc
         ) noexcept{
-            return std::make_unique<D3D12Swapchain>(commandQueue, desc);
+            return std::make_unique<D3D12Swapchain>(
+                commandQueue,
+                factory,
+                desc,
+                rtvHeap.get()
+            );
         }
 
         RHICommandListPtr createCommandList() noexcept{
