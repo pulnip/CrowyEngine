@@ -5,8 +5,6 @@
 #include "RHIFence.hpp"
 #include "FramePacer.hpp"
 
-constexpr auto RHI_FRAMES_IN_FLIGHT = 3;
-
 namespace Crowy
 {
     // Helper class for managing per-frame fences

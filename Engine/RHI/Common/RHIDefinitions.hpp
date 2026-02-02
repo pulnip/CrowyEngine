@@ -470,12 +470,14 @@ namespace Crowy
         .mipFilter = RHIFilter::Nearest
     };
 
+    constexpr auto RHI_FRAMES_IN_FLIGHT = 3;
+
     struct RHISwapchainCreateDesc{
-        void* windowHandle;   // Platform-specific window handle
+        void* windowHandle; // Platform-specific window handle
         RHITextureCreateDesc bufferDesc;
-        uint32_t bufferCount; // Triple buffering
-        bool vsync;           // VSync enabled by default
-        bool allowTearing;    // Variable refresh rate
+        uint32_t bufferCount = RHI_FRAMES_IN_FLIGHT; // Triple buffering
+        bool vsync = true;                           // VSync enabled by default
+        bool allowTearing = false;                   // Variable refresh rate
         const char* debugName;
     };
 
