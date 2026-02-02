@@ -141,18 +141,25 @@ namespace Crowy
     };
 
     enum class RHIResourceState{
-        Common,
-        VertexBuffer,
-        IndexBuffer,
-        ConstantBuffer,
-        ShaderResource,
-        UnorderedAccess,
-        RenderTarget,
-        DepthStencilWrite,
-        DepthStencilRead,
-        CopySource,
-        CopyDest,
+        Common                    = 0,
+        VertexAndConstantBuffer   = 1 << 0,
+        IndexBuffer               = 1 << 1,
+        RenderTarget              = 1 << 2,
+        UnorderedAccess           = 1 << 3,
+        DepthWrite                = 1 << 4,
+        DepthRead                 = 1 << 5,
+        NonFragmentShaderResource = 1 << 6,
+        FragmentShaderResource    = 1 << 7,
+        StreamOut                 = 1 << 8,
+        IndirectArgument          = 1 << 9,
+        CopyDest                  = 1 << 10,
+        CopySource                = 1 << 11,
+        ResolveDest               = 1 << 12,
+        ResolveSource             = 1 << 13,
+        GenericRead,
+        AllShaderResource,
         Present,
+        Predication
     };
 
     struct RHIClearColor{

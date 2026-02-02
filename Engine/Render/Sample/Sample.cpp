@@ -88,7 +88,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "Albedo Texture"
                 },
             },
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "Normal Texture"
                 },
             },
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "Toon Color"
                 },
             },
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "Scene Color"
                 },
             },
@@ -144,7 +144,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::DepthStencil,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::DepthStencilWrite,
+                    .initialState = RHIResourceState::DepthWrite,
                     .debugName = "Depth Buffer"
                 },
             },
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "outlined"
                 },
             },
@@ -172,7 +172,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "pixelated"
                 },
             },
@@ -186,7 +186,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                     .debugName = "focusMask"
                 },
             },

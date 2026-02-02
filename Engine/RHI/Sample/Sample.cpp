@@ -96,7 +96,7 @@ int main(int argc, char* argv[]){
         .arraySize = 1,
         .format = RHITextureFormat::D32_FLOAT,
         .usage = RHITextureUsage::DepthStencil,
-        .initialState = RHIResourceState::DepthStencilWrite,
+        .initialState = RHIResourceState::DepthWrite,
         .clearColor = {},
         .clearDepthStencil = {1.0f, 0},
         .debugName = "Depth Buffer"
