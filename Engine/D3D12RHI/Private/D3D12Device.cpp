@@ -209,7 +209,8 @@ namespace Crowy
             // static_cast<D3D12Swapchain&>(swapchain).present();
         }
 
-        ID3D12Device* getNative() noexcept{ return device; }
+        ID3D12Device* get() const noexcept{ return device; }
+        ID3D12CommandQueue* getQueue() const noexcept{ return commandQueue; }
     };
 
     D3D12Device::D3D12Device()
@@ -279,6 +280,10 @@ namespace Crowy
     }
 
     void* D3D12Device::getNative() noexcept{
-        return impl->getNative();
+        return impl->get();
+    }
+
+    void* D3D12Device::getContextOrQueue() noexcept{
+        return impl->getQueue();
     }
 }

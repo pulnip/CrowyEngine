@@ -80,7 +80,7 @@ int main(int argc, char* argv[]){
     };
 
     Renderer renderer(device.get());
-    UIRenderer uiRenderer(window, *device.get(), *cmdList.get());
+    UIRenderer uiRenderer(window, *device.get());
     auto ui = Column({
         Checkbox{
             .label = "Pixelate",

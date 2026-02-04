@@ -48,5 +48,6 @@ namespace Crowy
         void submit(RHICommandList&, RHISwapchain&) noexcept RHI_OVERRIDE;
 
         void* getNative() noexcept RHI_OVERRIDE;
+        void* getContextOrQueue() noexcept RHI_OVERRIDE;
     };
 }

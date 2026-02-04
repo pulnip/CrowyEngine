@@ -36,15 +36,13 @@ namespace Crowy
 
     public:
         D3D11CommandList(
-            ID3D11Device* device
-        ){
-            device->GetImmediateContext(&context);
-        }
+            ID3D11Device* device,
+            ID3D11DeviceContext* context
+        )
+            : context(context)
+        {}
 
-        ~D3D11CommandList(){
-            if(context)
-                context->Release();
-        }
+        ~D3D11CommandList() = default;
 
         void begin() noexcept RHI_OVERRIDE{
             CROWY_ASSERT(!isRecording,
@@ -451,10 +449,6 @@ namespace Crowy
 
         void setMarker(const char* name) noexcept RHI_OVERRIDE{
             // TODO
-        }
-
-        void* getNative() const noexcept RHI_OVERRIDE{
-            return context;
         }
 
     private:

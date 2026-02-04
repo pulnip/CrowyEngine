@@ -146,17 +146,17 @@ namespace Crowy
         }
     };
 
-    UIRenderer::UIRenderer(void* window, RHIDevice& device, RHICommandList& cmdList)
+    UIRenderer::UIRenderer(void* window, RHIDevice& device)
         :impl(std::make_unique<Impl>(
             static_cast<SDL_Window*>(window),
         #ifdef CROWY_METALRHI
             static_cast<MTL::Device*>(device.getNative())
         #elifdef CROWY_D3D11RHI
             static_cast<ID3D11Device*>(device.getNative()),
-            static_cast<ID3D11DeviceContext*>(cmdList.getNative())
+            static_cast<ID3D11DeviceContext*>(device.getContextOrQueue())
         #elifdef CROWY_D3D12RHI
             static_cast<ID3D12Device*>(device.getNative()),
-            static_cast<ID3D12CommandQueue*>(nullptr)
+            static_cast<ID3D12CommandQueue*>(device.getContextOrQueue())
         #endif
         ))
     {}

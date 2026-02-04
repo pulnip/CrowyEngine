@@ -101,14 +101,14 @@ namespace Crowy
         void submit(RHICommandList& cmdList, RHISwapchain& swapchain) noexcept{
             auto& mtlCmdList = static_cast<MetalCommandList&>(cmdList);
             auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
-            auto cmdBuffer = mtlCmdList.getCommandBuffer();
+            auto cmdBuffer = mtlCmdList.get();
             auto drawable = mtlSwapchain.getCurrentDrawable();
 
             cmdBuffer->presentDrawable(drawable);
             cmdBuffer->commit();
         }
 
-        MTL::Device* getNative() noexcept{ return device; }
+        MTL::Device* get() noexcept{ return device; }
     };
 
     MetalDevice::MetalDevice() noexcept
@@ -178,6 +178,6 @@ namespace Crowy
     }
 
     void* MetalDevice::getNative() noexcept{
-        return impl->getNative();
+        return impl->get();
     }
 }

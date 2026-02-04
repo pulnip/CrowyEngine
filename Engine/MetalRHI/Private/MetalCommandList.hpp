@@ -690,13 +690,11 @@ private:
             }
         }
 
-        MTL::CommandBuffer* getCommandBuffer() const noexcept{
+        void* getNative() const noexcept RHI_OVERRIDE{
             return commandBuffer;
         }
 
-        void* getNative() const noexcept RHI_OVERRIDE{
-            return getCommandBuffer();
-        }
+        auto get() const noexcept{ return commandBuffer; }
 
     private:
         void beginRenderPass(

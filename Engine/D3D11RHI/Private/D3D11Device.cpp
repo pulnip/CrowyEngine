@@ -25,8 +25,9 @@ namespace Crowy
 #endif
 
     struct D3D11Device::Impl{
-        ID3D11Device* device = nullptr;
         IDXGIFactory2* factory = nullptr;
+        ID3D11Device* device = nullptr;
+        ID3D11DeviceContext* context = nullptr;
 
         Impl(){
             using Microsoft::WRL::ComPtr;
@@ -98,13 +99,23 @@ namespace Crowy
             ))){
                 throw std::runtime_error("Failed to create D3D11 device");
             }
+
+            device->GetImmediateContext(&context);
         }
 
         ~Impl(){
-            if(device != nullptr)
+            if(context != nullptr){
+                context->Release();
+                context = nullptr;
+            }
+            if(device != nullptr){
                 device->Release();
-            if(factory != nullptr)
+                device = nullptr;
+            }
+            if(factory != nullptr){
                 factory->Release();
+                factory = nullptr;
+            }
         }
 
         RHIBufferPtr createBuffer(
@@ -150,7 +161,7 @@ namespace Crowy
         }
 
         RHICommandListPtr createCommandList() noexcept{
-            return std::make_unique<D3D11CommandList>(device);
+            return std::make_unique<D3D11CommandList>(device, context);
         }
 
         RHIFencePtr createFence(uint64_t initialValue) noexcept{
@@ -161,7 +172,8 @@ namespace Crowy
             static_cast<D3D11Swapchain&>(swapchain).present();
         }
 
-        ID3D11Device* getNative() noexcept{ return device; }
+        ID3D11Device* get() noexcept{ return device; }
+        ID3D11DeviceContext* getContext() noexcept{ return context; }
     };
 
     D3D11Device::D3D11Device()
@@ -231,6 +243,9 @@ namespace Crowy
     }
 
     void* D3D11Device::getNative() noexcept{
-        return impl->getNative();
+        return impl->get();
+    }
+    void* D3D11Device::getContextOrQueue() noexcept{
+        return impl->getContext();
     }
 }

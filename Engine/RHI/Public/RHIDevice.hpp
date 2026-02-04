@@ -67,7 +67,11 @@ namespace Crowy
 
         virtual void submit(RHICommandList&, RHISwapchain&) noexcept = 0;
 
+        // for UI
         virtual void* getNative() noexcept = 0;
+        // DeviceContext for D3D11, CommandQueue for D3D12
+        // not used at Metal
+        virtual void* getContextOrQueue() noexcept{ return nullptr; };
     };
 #endif
 

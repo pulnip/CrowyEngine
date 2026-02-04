@@ -233,9 +233,5 @@ namespace Crowy
         void setMarker(const char* name) noexcept RHI_OVERRIDE{
 
         }
-
-        void* getNative() const noexcept RHI_OVERRIDE{
-            return nullptr;
-        }
     };
 }

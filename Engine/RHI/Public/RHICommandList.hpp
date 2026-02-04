@@ -190,7 +190,8 @@ namespace Crowy
         virtual void endEvent() noexcept = 0;
         virtual void setMarker(const char* name) noexcept = 0;
 
-        virtual void* getNative() const noexcept = 0;
+        // for UI, CommandBuffer for Metal, CommandList for D3D12
+        virtual void* getNative() const noexcept{ return nullptr; }
     };
 #endif
 }
