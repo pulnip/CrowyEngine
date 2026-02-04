@@ -200,10 +200,10 @@ namespace Crowy
                         auto renderTarget = renderTargetPool.get(renderTargetName);
                         CROWY_ASSERT(renderTarget != nullptr);
 
-                        cmdList.copyTexture(*inputTarget, *renderTarget);
+                        cmdList.copy(*inputTarget, *renderTarget);
                     }
                     else{
-                        cmdList.copyTexture(*inputTarget, *backBuffer);
+                        cmdList.copy(*inputTarget, *backBuffer);
                     }
                 }
             }
@@ -350,7 +350,7 @@ namespace Crowy
 
                 auto mvp = ctx.proj * ctx.view * renderItem.world;
                 // TODO. use offset later
-                cmdList.updateBuffer(mvp.data(), sizeof(Mat4), *uniformBuffer.get());
+                uniformBuffer->upload(mvp.data(), sizeof(Mat4));
 
                 // TODO. need to fit in appropriate slot
                 cmdList.setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
@@ -383,7 +383,7 @@ namespace Crowy
                     .resolution = {ctx.viewport.width, ctx.viewport.height},
                     .pixelSize = {4.0f, 4.0f}
                 };
-                cmdList.updateBuffer(&params, sizeof(PixelateParams), *pixelateUniformBuffer.get());
+                pixelateUniformBuffer->upload(&params, sizeof(PixelateParams));
 
                 cmdList.setConstantBuffer(
                     // TODO. slot number
@@ -398,7 +398,7 @@ namespace Crowy
                     .falloff = 0.1f,
                     .aspectRatio = ctx.viewport.width / ctx.viewport.height
                 };
-                cmdList.updateBuffer(&params, sizeof(FocusParams), *focusmaskUniformBuffer.get());
+                focusmaskUniformBuffer->upload(&params, sizeof(FocusParams));
 
                 cmdList.setConstantBuffer(
                     RHIShaderStage::FragmentShader, 0,

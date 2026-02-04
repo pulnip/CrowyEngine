@@ -121,13 +121,13 @@ namespace Crowy
         RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc& desc
         ) noexcept{
-            return std::make_unique<D3D11Buffer>(device, desc);
+            return std::make_unique<D3D11Buffer>(device, context, desc);
         }
 
         RHITexturePtr createTexture(
             const RHITextureCreateDesc& desc
         ) noexcept{
-            return std::make_unique<D3D11Texture>(device, desc);
+            return std::make_unique<D3D11Texture>(device, context, desc);
         }
 
         RHIShaderPtr createShader(

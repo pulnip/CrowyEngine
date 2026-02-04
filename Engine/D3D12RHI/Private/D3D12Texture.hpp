@@ -172,10 +172,10 @@ namespace Crowy
             }
         }
 
-        void uploadData(const void* data,
+        void upload(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
-            // Deprecated
+            // TODO
         }
 
         RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{

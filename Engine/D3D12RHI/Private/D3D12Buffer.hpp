@@ -154,10 +154,10 @@ namespace Crowy
 
         CROWY_DECLARE_PINNED(D3D12Buffer)
 
-        void update(
+        void upload(
             const void* data, size_t size,
             size_t offset = 0
-        ){
+        ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(isCPUAccessible);
 
             BYTE* mapped = nullptr;

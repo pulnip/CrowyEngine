@@ -82,13 +82,13 @@ namespace Crowy
         #endif
 
             if(desc.initialData)
-                uploadData(desc.initialData);
+                upload(desc.initialData);
         }
         ~MetalTexture(){
             texture->release();
         }
 
-        void uploadData(const void* data,
+        void upload(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
             auto bytesPerPixel = getBytesPerPixel(format);

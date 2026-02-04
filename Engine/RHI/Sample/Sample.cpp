@@ -157,7 +157,7 @@ int main(int argc, char* argv[]){
         auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
 
         auto mvp = proj * view * model;
-        cmdList->updateBuffer(mvp.data(), sizeof(Mat4), *uniformBuffer.get());
+        uniformBuffer->upload(mvp.data(), sizeof(Mat4));
 
         cmdList->begin();
 

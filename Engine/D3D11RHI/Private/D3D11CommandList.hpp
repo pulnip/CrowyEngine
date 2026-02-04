@@ -373,20 +373,7 @@ namespace Crowy
             // NOTE. No-Op for D3D11
         }
 
-        void updateBuffer(
-            const void* data, size_t size,
-            RHIBuffer& buf
-        ) noexcept RHI_OVERRIDE{
-            D3D11_MAPPED_SUBRESOURCE mapped;
-            D3D11Buffer& dxBuf = static_cast<D3D11Buffer&>(buf);
-            context->Map(dxBuf.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-
-            memcpy(mapped.pData, data, size);
-
-            context->Unmap(dxBuf.get(), 0);
-        }
-
-        void copyBuffer(
+        void copy(
             RHIBuffer& src,
             RHIBuffer& dst,
             size_t srcOffset,
@@ -410,7 +397,7 @@ namespace Crowy
             );
         }
 
-        void copyTexture(
+        void copy(
             RHITexture& src,
             RHITexture& dst
         ) noexcept RHI_OVERRIDE{
@@ -420,7 +407,7 @@ namespace Crowy
             );
         }
 
-        void copyTexture(
+        void copy(
             RHITexture& src,
             RHISwapchain& dst
         ) noexcept RHI_OVERRIDE{
@@ -430,7 +417,7 @@ namespace Crowy
             );
         }
 
-        void copyBufferToTexture(
+        void copy(
             RHIBuffer& src,
             RHITexture& dst,
             uint32_t mipLevel = 0,

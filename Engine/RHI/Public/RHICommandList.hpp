@@ -154,13 +154,8 @@ namespace Crowy
         virtual void signalFence(RHIFence&, uint64_t value) noexcept = 0;
         virtual void waitFence(RHIFence&, uint64_t value) noexcept = 0;
 
-        virtual void updateBuffer(
-            const void* data, size_t size,
-            RHIBuffer& buf
-        ) noexcept = 0;
-
         // Copy operations
-        virtual void copyBuffer(
+        virtual void copy(
             RHIBuffer& src,
             RHIBuffer& dst,
             size_t srcOffset,
@@ -168,17 +163,17 @@ namespace Crowy
             size_t size
         ) noexcept = 0;
 
-        virtual void copyTexture(
+        virtual void copy(
             RHITexture& src,
             RHITexture& dst
         ) noexcept = 0;
 
-        virtual void copyTexture(
+        virtual void copy(
             RHITexture& src,
             RHISwapchain& dst
         ) noexcept = 0;
 
-        virtual void copyBufferToTexture(
+        virtual void copy(
             RHIBuffer& src,
             RHITexture& dst,
             uint32_t mipLevel = 0,

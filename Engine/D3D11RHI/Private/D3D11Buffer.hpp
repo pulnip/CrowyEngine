@@ -22,6 +22,7 @@ namespace Crowy
     {
     private:
         ID3D11Buffer* buffer = nullptr;
+        ID3D11DeviceContext* context = nullptr;
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
@@ -31,10 +32,11 @@ namespace Crowy
     public:
         D3D11Buffer(
             ID3D11Device* device,
+            ID3D11DeviceContext* context,
             const RHIBufferCreateDesc& desc
         )
-            : usage(desc.usage)
-            , size(desc.size)
+            : context(context)
+            , usage(desc.usage), size(desc.size)
         {
             isCPUAccessible = hasFlag(desc.usage, RHIBufferUsage::CPUWrite);
 
@@ -105,6 +107,18 @@ namespace Crowy
         }
 
         CROWY_DECLARE_PINNED(D3D11Buffer)
+
+        void upload(
+            const void* data, size_t size,
+            size_t offset = 0
+        ) noexcept RHI_OVERRIDE{
+            D3D11_MAPPED_SUBRESOURCE mapped;
+            context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+
+            memcpy(mapped.pData, data, size);
+
+            context->Unmap(buffer, 0);
+        }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             // NOTE. No-Op for D3D11

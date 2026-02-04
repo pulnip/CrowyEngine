@@ -509,16 +509,7 @@ namespace Crowy
 
         }
 
-        void updateBuffer(
-            const void* data, size_t size,
-            RHIBuffer& buf
-        ) noexcept RHI_OVERRIDE{
-            auto& d3dBuffer = static_cast<D3D12Buffer&>(buf);
-
-            d3dBuffer.update(data, size);
-        }
-
-        void copyBuffer(
+        void copy(
             RHIBuffer& src,
             RHIBuffer& dst,
             size_t srcOffset,
@@ -531,7 +522,7 @@ namespace Crowy
             commandList->CopyBufferRegion(dstBuf, dstOffset, srcBuf, srcOffset, size);
         }
 
-        void copyTexture(
+        void copy(
             RHITexture& src,
             RHITexture& dst
         ) noexcept RHI_OVERRIDE{
@@ -541,14 +532,14 @@ namespace Crowy
             commandList->CopyResource(srcTex, dstTex);
         }
 
-        void copyTexture(
+        void copy(
             RHITexture& src,
             RHISwapchain& swapchain
         ) noexcept RHI_OVERRIDE{
             auto srcTex = static_cast<D3D12Texture&>(src).get();
         }
 
-        void copyBufferToTexture(
+        void copy(
             RHIBuffer& src,
             RHITexture& dst,
             uint32_t mipLevel = 0,

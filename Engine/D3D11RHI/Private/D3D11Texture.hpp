@@ -21,6 +21,7 @@ namespace Crowy
     {
     private:
         ID3D11Texture2D* texture = nullptr;
+        ID3D11DeviceContext* context = nullptr;
         size_t width, height;
         RHITextureFormat format = RHITextureFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
@@ -31,9 +32,11 @@ namespace Crowy
     public:
         D3D11Texture(
             ID3D11Device* device,
+            ID3D11DeviceContext* context,
             const RHITextureCreateDesc& desc
         )
-            : width(desc.width), height(desc.height)
+            : context(context)
+            , width(desc.width), height(desc.height)
             , format(desc.format)
             , currentState(desc.initialState)
         {
@@ -142,10 +145,10 @@ namespace Crowy
             }
         }
 
-        void uploadData(const void* data,
+        void upload(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
-            // No-Op
+            // TODO
         }
 
         RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{

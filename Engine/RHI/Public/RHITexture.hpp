@@ -25,7 +25,7 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHITexture)
 
-        virtual void uploadData(const void* data,
+        virtual void upload(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept = 0;
 

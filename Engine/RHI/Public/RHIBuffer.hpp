@@ -24,6 +24,11 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIBuffer)
 
+        virtual void upload(
+            const void* data, size_t size,
+            size_t offset = 0
+        ) noexcept = 0;
+
         virtual RHIResourceState getState() const noexcept = 0;
         virtual void setState(RHIResourceState state) noexcept = 0;
     };

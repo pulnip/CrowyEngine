@@ -574,15 +574,7 @@ private:
             );
         }
 
-        void updateBuffer(
-            const void* data, size_t size,
-            RHIBuffer& buf
-        ) noexcept RHI_OVERRIDE{
-            auto& mtlBuf = static_cast<MetalBuffer&>(buf);
-            mtlBuf.update(data, size);
-        }
-
-        void copyBuffer(
+        void copy(
             RHIBuffer& src,
             RHIBuffer& dst,
             size_t srcOffset,
@@ -601,7 +593,7 @@ private:
             );
         }
 
-        void copyTexture(
+        void copy(
             RHITexture& src,
             RHITexture& dst
         ) noexcept RHI_OVERRIDE{
@@ -613,7 +605,7 @@ private:
             blitEncoder->copyFromTexture(srcTex, dstTex);
         }
 
-        void copyTexture(
+        void copy(
             RHITexture& src,
             RHISwapchain& swapchain
         ) noexcept RHI_OVERRIDE{
@@ -627,7 +619,7 @@ private:
             blitEncoder->copyFromTexture(srcTex, dstTex);
         }
 
-        void copyBufferToTexture(
+        void copy(
             RHIBuffer& src,
             RHITexture& dst,
             uint32_t mipLevel = 0,
