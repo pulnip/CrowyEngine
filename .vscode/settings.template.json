@@ -1,0 +1,19 @@
+{
+    "cmake.useVsDeveloperEnvironment": "always",
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c",
+        "*.hpp": "cpp",
+        "*.cpp": "cpp"
+    },
+    "files.exclude": {
+        "**/D3D11RHI/**": true,
+        "**/D3D12RHI/**": true,
+        "**/MetalRHI/**": true
+    },
+    "search.exclude": {
+        "**/D3D11RHI/**": true,
+        "**/D3D12RHI/**": true,
+        "**/MetalRHI/**": true
+    }
+}
