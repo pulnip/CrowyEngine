@@ -160,6 +160,11 @@ elseif(RENDER_BACKEND STREQUAL "D3D11")
     PRIVATE
         ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
     )
+elseif(RENDER_BACKEND STREQUAL "D3D12")
+    target_sources(imgui
+    PRIVATE
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
+    )
 endif()
 
 if(CROWY_ENABLE_TEST)
