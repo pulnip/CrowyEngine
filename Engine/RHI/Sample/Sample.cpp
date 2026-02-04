@@ -28,9 +28,9 @@ int main(int argc, char* argv[]){
 
     auto swapchain = device->createSwapchain(
         RHISwapchainCreateDesc{
-        #ifdef __APPLE__
+        #ifdef CROWY_METALRHI
             .windowHandle = SDL_Metal_GetLayer(view),
-        #elif _WIN32
+        #elif CROWY_D3DRHI
             .windowHandle = SDL_GetPointerProperty(
                 SDL_GetWindowProperties(window),
                 SDL_PROP_WINDOW_WIN32_HWND_POINTER,
@@ -135,75 +135,73 @@ int main(int argc, char* argv[]){
         float dt = timer.deltaSeconds();
         float et = timer.elapsedSeconds();
 
-        if(framePacer->beginFrame()){
-            if(!swapchain->acquireNextImage()){
-                framePacer->endFrame();
-                continue;
-            }
-
-            if(cmdList){
-                auto aspect = float(width)/height;
-                auto model = rotateYMat(0.5f * et);
-
-                auto camX = std::sin(0.3f * et) * cameraDistance;
-                auto camZ = std::cos(0.3f * et) * cameraDistance;
-                auto view = lookAt(
-                    Vec3{camX, 10.0f, camZ},
-                    Vec3{0.0f, 10.0f, 0.0f},
-                    Vec3{0.0f,  1.0f, 0.0f}
-                );
-
-                float fovRad = 45.0f * 3.14159265f / 180.0f;
-                auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
-
-                auto mvp = proj * view * model;
-                cmdList->updateBuffer(mvp.data(), sizeof(Mat4), *uniformBuffer.get());
-
-                cmdList->begin();
-
-                RHIClearColor clearColor{ 0.2f, 0.2f, 0.3f, 1.0f };
-                cmdList->beginRenderPass(
-                    *swapchain.get(),
-                    depthBuffer.get(),
-                    RHILoadAction::Clear,
-                    RHIStoreAction::Store,
-                    clearColor
-                );
-
-                cmdList->setPipelineState(pipelineState.get());
-
-                cmdList->setViewport({0, 0, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f});
-                cmdList->setScissorRect({0, 0, width, height});
-
-                cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
-
-                for(const auto& submesh: mesh){
-                    cmdList->setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
-                    cmdList->setIndexBuffer(*submesh.indexBuffer.get(),
-                        RHIIndexFormat::UInt32, 0);
-
-                    auto it = materialSet.find(submesh.materialSlotName);
-                    if(it == materialSet.end())
-                        continue;
-
-                    cmdList->setTexture(0, *it->second->baseColorMap.get(),
-                        RHIShaderStage::FragmentShader);
-                    cmdList->drawIndexed(submesh.indexCount, 1);
-                }
-                cmdList->endRenderPass();
-
-                // Signal fence for frame synchronization
-                cmdList->signalFence(
-                    *framePacer->getCurrentFence(),
-                    framePacer->getNextFenceValue()
-                );
-
-                cmdList->close();
-            }
-            device->submit(*cmdList.get(), *swapchain.get());
-
+        if(!framePacer->beginFrame())
+            continue;
+        if(!swapchain->acquireNextImage()){
             framePacer->endFrame();
+            continue;
         }
+
+        auto aspect = float(width)/height;
+        auto model = rotateYMat(0.5f * et);
+
+        auto camX = std::sin(0.3f * et) * cameraDistance;
+        auto camZ = std::cos(0.3f * et) * cameraDistance;
+        auto view = lookAt(
+            Vec3{camX, 10.0f, camZ},
+            Vec3{0.0f, 10.0f, 0.0f},
+            Vec3{0.0f,  1.0f, 0.0f}
+        );
+
+        float fovRad = 45.0f * 3.14159265f / 180.0f;
+        auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
+
+        auto mvp = proj * view * model;
+        cmdList->updateBuffer(mvp.data(), sizeof(Mat4), *uniformBuffer.get());
+
+        cmdList->begin();
+
+        RHIClearColor clearColor{ 0.2f, 0.2f, 0.3f, 1.0f };
+        cmdList->beginRenderPass(
+            *swapchain.get(),
+            depthBuffer.get(),
+            RHILoadAction::Clear,
+            RHIStoreAction::Store,
+            clearColor
+        );
+
+        cmdList->setPipelineState(pipelineState.get());
+
+        cmdList->setViewport({0, 0, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f});
+        cmdList->setScissorRect({0, 0, width, height});
+
+        cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
+
+        for(const auto& submesh: mesh){
+            cmdList->setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
+            cmdList->setIndexBuffer(*submesh.indexBuffer.get(),
+                RHIIndexFormat::UInt32, 0);
+
+            auto it = materialSet.find(submesh.materialSlotName);
+            if(it == materialSet.end())
+                continue;
+
+            cmdList->setTexture(0, *it->second->baseColorMap.get(),
+                RHIShaderStage::FragmentShader);
+            cmdList->drawIndexed(submesh.indexCount, 1);
+        }
+        cmdList->endRenderPass();
+
+        // Signal fence for frame synchronization
+        cmdList->signalFence(
+            *framePacer->getCurrentFence(),
+            framePacer->getNextFenceValue()
+        );
+
+        cmdList->close();
+        device->submit(*cmdList.get(), *swapchain.get());
+
+        framePacer->endFrame();
     }
 
     framePacer->waitForIdle();

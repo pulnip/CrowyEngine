@@ -1,4 +1,3 @@
-#include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
 #include "enum_traits.hpp"
@@ -12,7 +11,15 @@
 #include "RenderSpec.hpp"
 #include "Resource.hpp"
 #include "Timer.hpp"
+#define CROWY_UI_CONTEXT UIContext
 #include "UIRenderer.hpp"
+
+namespace Crowy
+{
+    struct UIContext{
+        Renderer& renderer;
+    };
+}
 
 using namespace Crowy;
 
@@ -39,7 +46,7 @@ int main(int argc, char* argv[]){
         RHISwapchainCreateDesc{
         #ifdef CROWY_METALRHI
             .windowHandle = SDL_Metal_GetLayer(view),
-        #elif _WIN32
+        #elif CROWY_D3DRHI
             .windowHandle = SDL_GetPointerProperty(
                 SDL_GetWindowProperties(window),
                 SDL_PROP_WINDOW_WIN32_HWND_POINTER,
@@ -74,6 +81,20 @@ int main(int argc, char* argv[]){
 
     Renderer renderer(device.get());
     UIRenderer uiRenderer(window, *device.get(), *cmdList.get());
+    auto ui = Column({
+        Checkbox{
+            .label = "Pixelate",
+            .onChanged = [](UIContext& ctx, bool v){
+                ctx.renderer.setPassEnabled("pixelate", v);
+            }
+        },
+        Checkbox{
+            .label = "Focusmask",
+            .onChanged = [](UIContext& ctx, bool v){
+                ctx.renderer.setPassEnabled("composite", v);
+            }
+        }
+    });
 
     RenderSpec spec{
         .renderTargets = {
@@ -378,71 +399,65 @@ int main(int argc, char* argv[]){
         float dt = timer.deltaSeconds();
         float et = timer.elapsedSeconds();
 
-        if(framePacer->beginFrame()){
-            if(!swapchain->acquireNextImage()){
-                framePacer->endFrame();
-                continue;
-            }
-
-            if(cmdList){
-                auto aspect = float(width)/height;
-                renderItems[0].world = rotateYMat(0.5f * et);
-
-                auto camX = std::sin(0.3f * et) * cameraDistance;
-                auto camZ = std::cos(0.3f * et) * cameraDistance;
-                auto view = lookAt(
-                    Vec3{camX, 10.0f, camZ},
-                    Vec3{0.0f, 10.0f, 0.0f},
-                    Vec3{0.0f,  1.0f, 0.0f}
-                );
-
-                float fovRad = 45.0f * 3.14159265f / 180.0f;
-                auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
-
-                RenderContext ctx{
-                    .renderItems = renderItems,
-                    .view = view,
-                    .proj = proj,
-                    .viewport = RHIViewport{
-                        .x = 0, .y = 0,
-                        .width = static_cast<float>(width),
-                        .height = static_cast<float>(height),
-                        .minDepth = 0.0f,
-                        .maxDepth = 1.0f,
-                    }
-                };
-
-                cmdList->begin();
-
-                renderer.render(*cmdList.get(), ctx, swapchain.get());
-                cmdList->flush();
-
-                uiRenderer.render(
-                    *cmdList.get(),
-                    [&renderer, &enable_pixelate, &enable_focusmask](){
-                        ImGui::Begin("Renderer Sample");
-                        if(ImGui::Checkbox("Pixelate", &enable_pixelate))
-                            renderer.setPassEnabled("pixelate", enable_pixelate);
-                        if(ImGui::Checkbox("Focusmask", &enable_focusmask))
-                            renderer.setPassEnabled("composite", enable_focusmask);
-                        
-                        ImGui::End();
-                    },
-                    swapchain.get()
-                );
-
-                // Signal fence for frame synchronization
-                cmdList->signalFence(
-                    *framePacer->getCurrentFence(),
-                    framePacer->getNextFenceValue()
-                );
-
-                cmdList->close();
-            }
-            device->submit(*cmdList.get(), *swapchain.get());
-
+        if(!framePacer->beginFrame())
+            continue;
+        if(!swapchain->acquireNextImage()){
             framePacer->endFrame();
+            continue;
         }
+
+        auto aspect = float(width)/height;
+        renderItems[0].world = rotateYMat(0.5f * et);
+
+        auto camX = std::sin(0.3f * et) * cameraDistance;
+        auto camZ = std::cos(0.3f * et) * cameraDistance;
+        auto view = lookAt(
+            Vec3{camX, 10.0f, camZ},
+            Vec3{0.0f, 10.0f, 0.0f},
+            Vec3{0.0f,  1.0f, 0.0f}
+        );
+
+        float fovRad = 45.0f * 3.14159265f / 180.0f;
+        auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
+
+        RenderContext ctx{
+            .renderItems = renderItems,
+            .view = view,
+            .proj = proj,
+            .viewport = RHIViewport{
+                .x = 0, .y = 0,
+                .width = static_cast<float>(width),
+                .height = static_cast<float>(height),
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f,
+            }
+        };
+
+        cmdList->begin();
+
+        renderer.render(*cmdList.get(), ctx, swapchain.get());
+        cmdList->flush();
+
+        UIContext uiContext{
+            .renderer = renderer
+        };
+
+        uiRenderer.render(
+            "Renderer Sample", ui, uiContext,
+            *cmdList.get(),
+            swapchain.get()
+        );
+
+        // Signal fence for frame synchronization
+        cmdList->signalFence(
+            *framePacer->getCurrentFence(),
+            framePacer->getNextFenceValue()
+        );
+
+        cmdList->close();
+        device->submit(*cmdList.get(), *swapchain.get());
+
+        framePacer->endFrame();
     }
 
     framePacer->waitForIdle();
