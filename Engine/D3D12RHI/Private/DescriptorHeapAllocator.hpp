@@ -98,18 +98,6 @@ namespace Crowy
             freeList.push_back(index);
         }
 
-        ID3D12DescriptorHeap* get() const { return heap; }
-
-    private:
-        UINT allocateIndex(){
-            if(freeList.empty())
-                throw std::runtime_error("DescriptorHeap full!");
-
-            UINT index = freeList.back();
-            freeList.pop_back();
-            return index;
-        }
-
         D3D12_CPU_DESCRIPTOR_HANDLE getCPUHandle(UINT index) const{
             auto handle = heap->GetCPUDescriptorHandleForHeapStart();
             auto offset = index * descriptorSize;
@@ -124,6 +112,18 @@ namespace Crowy
             handle.ptr += offset;
 
             return handle;
+        }
+
+        ID3D12DescriptorHeap* get() const { return heap; }
+
+    private:
+        UINT allocateIndex(){
+            if(freeList.empty())
+                throw std::runtime_error("DescriptorHeap full!");
+
+            UINT index = freeList.back();
+            freeList.pop_back();
+            return index;
         }
     };
 }

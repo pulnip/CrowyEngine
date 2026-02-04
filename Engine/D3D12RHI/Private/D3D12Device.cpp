@@ -27,7 +27,7 @@ namespace Crowy
 #endif
 
     struct D3D12Device::Impl{
-        ID3D12Device* device = nullptr;
+        ID3D12Device4* device = nullptr;
         IDXGIFactory4* factory = nullptr;
         ID3D12CommandQueue* commandQueue = nullptr;
         std::unique_ptr<DescriptorHeapAllocator> cbv_srvHeap = nullptr;
@@ -179,7 +179,14 @@ namespace Crowy
         }
 
         RHICommandListPtr createCommandList() noexcept{
-            return std::make_unique<D3D12CommandList>(device, commandQueue);
+            return std::make_unique<D3D12CommandList>(
+                device,
+                commandQueue,
+                cbv_srvHeap.get(),
+                rtvHeap.get(),
+                dsvHeap.get(),
+                samplerHeap.get()
+            );
         }
 
         RHIFencePtr createFence(uint64_t initialValue) noexcept{
@@ -220,6 +227,12 @@ namespace Crowy
         const RHIShaderCreateDesc& desc
     ) noexcept{
         return impl->createShader(desc);
+    }
+
+    RHISamplerPtr D3D12Device::createSampler(
+        const RHISamplerState& desc
+    ) noexcept{
+        return impl->createSampler(desc);
     }
 
     RHIPipelineStatePtr D3D12Device::createGraphicsPipelineState(

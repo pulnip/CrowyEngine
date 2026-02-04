@@ -9,6 +9,7 @@
     #include "RHISwapchain.hpp"
 #endif
 #include "D3D12Util.hpp"
+#include "DescriptorHeapAllocator.hpp"
 
 namespace Crowy
 {
@@ -18,10 +19,12 @@ namespace Crowy
 #endif
     {
     private:
-        IDXGISwapChain1* swapchain = nullptr;
+        IDXGISwapChain3* swapchain = nullptr;
+        DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
         bool vsync, allowTearing = false;
         // cache for creating rtv
         DescriptorHeapAllocator* allocator = nullptr;
+        UINT indexes[RHI_FRAMES_IN_FLIGHT] = {UINT_MAX, UINT_MAX, UINT_MAX};
 
     public:
         D3D12Swapchain(
@@ -30,11 +33,14 @@ namespace Crowy
             const RHISwapchainCreateDesc& desc,
             DescriptorHeapAllocator* allocator
         )
-            :vsync(desc.vsync),allocator(allocator)
+            : format(convert(desc.bufferDesc.format))
+            , vsync(desc.vsync), allocator(allocator)
         {
             if(desc.allowTearing){
-                auto factory5 = dynamic_cast<IDXGIFactory5*>(factory);
-                if(factory5 != nullptr){
+                IDXGIFactory5* factory5 = nullptr;
+                if(SUCCEEDED(factory->QueryInterface(
+                    IID_PPV_ARGS(&factory5)
+                ))){
                     factory5->CheckFeatureSupport(
                         DXGI_FEATURE_PRESENT_ALLOW_TEARING,
                         &allowTearing, sizeof(allowTearing)
@@ -45,7 +51,7 @@ namespace Crowy
             DXGI_SWAP_CHAIN_DESC1 swapchainDesc{
                 .Width = desc.bufferDesc.width,
                 .Height = desc.bufferDesc.height,
-                .Format = convert(desc.bufferDesc.format),
+                .Format = format,
                 .Stereo = FALSE,
                 // No MSAA for swapchain
                 .SampleDesc = {1, 0},
@@ -58,15 +64,37 @@ namespace Crowy
                     DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : UINT(0)
             };
 
+            IDXGISwapChain1* swapchain1 = nullptr;
             if(FAILED(factory->CreateSwapChainForHwnd(
                 commandQueue,
                 static_cast<HWND>(desc.windowHandle),
                 &swapchainDesc,
                 nullptr,
                 nullptr,
-                &swapchain
+                &swapchain1
             ))){
                 throw std::runtime_error("Failed to create swapchain");
+            }
+
+            if(FAILED(swapchain1->QueryInterface(
+                IID_PPV_ARGS(&swapchain)
+            ))){
+                throw std::runtime_error("IDXGISwapChain3 not support");
+            }
+
+            for(UINT i = 0; i < swapchainDesc.BufferCount; ++i){
+                ID3D12Resource* backBuffer = nullptr;
+                swapchain->GetBuffer(i, IID_PPV_ARGS(&backBuffer));
+
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{
+                    .Format = format,
+                    .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+                    .Texture2D = {
+                        .MipSlice = 0,
+                        .PlaneSlice = 0
+                    }
+                };
+                indexes[i] = allocator->allocate(backBuffer, rtvDesc);
             }
 
             if(desc.debugName){
@@ -114,5 +142,8 @@ namespace Crowy
 
             swapchain->Present(syncInterval, flags);
         }
+
+        DXGI_FORMAT getFormat() const{ return format; }
+        UINT getRTVHeapIndex() const{ return indexes[swapchain->GetCurrentBackBufferIndex()]; }
     };
 }
