@@ -295,7 +295,7 @@ namespace Crowy
                 // transition input texture to shader resource state
                 cmdList.transitionBarrier(
                     *inputTarget,
-                    RHIResourceState::ShaderResource
+                    RHIResourceState::AllShaderResource
                 );
 
                 // TODO. select shader stage for advanced rendering technique

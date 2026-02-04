@@ -38,7 +38,7 @@ namespace Crowy
                 .arraySize = 1,
                 .format = format,
                 .usage = RHITextureUsage::ShaderResource,
-                .initialState = RHIResourceState::ShaderResource,
+                .initialState = RHIResourceState::AllShaderResource,
                 .clearColor = {},
                 .clearDepthStencil = {},
                 .initialData = textureData->pixels.data()

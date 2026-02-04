@@ -4,14 +4,16 @@
 #include <memory>
 #include <stdexcept>
 #include <d3d12.h>
-#include <wrl/client.h>
+#include "assert.hpp"
+#include "enum_traits.hpp"
+#include "semantics.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIBuffer.hpp"
 #endif
-
-using Microsoft::WRL::ComPtr;
+#include "D3D12Util.hpp"
+#include "DescriptorHeapAllocator.hpp"
 
 namespace Crowy
 {
@@ -21,96 +23,175 @@ namespace Crowy
 #endif
     {
     private:
-        ComPtr<ID3D12Resource> buffer;
+        struct FrameResource{
+            ID3D12Resource* buffer = nullptr;
+            RHIResourceState currentState = RHIResourceState::Common;
+            UINT cbvIndex = UINT_MAX;
+            UINT srvIndex = UINT_MAX;
+        } buffers[RHI_FRAMES_IN_FLIGHT];
+        int currentIndex = 0;
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
-        void* mappedData = nullptr;
-        RHIResourceState currentState = RHIResourceState::Common;
+        DescriptorHeapAllocator* allocator = nullptr;
+
+        void createBuffer(
+            ID3D12Device* device,
+            const D3D12_RESOURCE_DESC& bufDesc,
+            const D3D12_HEAP_PROPERTIES& heapProp,
+            FrameResource& resource
+        ){
+            if(FAILED(device->CreateCommittedResource(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &bufDesc,
+                convert(resource.currentState),
+                nullptr,
+                IID_PPV_ARGS(&resource.buffer)
+            ))){
+                throw std::runtime_error("Failed to create D3D12 buffer");
+            }
+
+            if(hasFlag(usage, RHIBufferUsage::ConstantBuffer) && allocator != nullptr){
+                D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{
+                    .BufferLocation = resource.buffer->GetGPUVirtualAddress(),
+                    .SizeInBytes = static_cast<UINT>((size + 255) & ~255)
+                };
+
+                resource.cbvIndex = allocator->allocate(cbvDesc);
+            }
+            if(hasFlag(usage, RHIBufferUsage::ShaderResource)){
+                CROWY_ASSERT(allocator != nullptr);
+
+                // TODO.
+                D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{
+                    .Format = DXGI_FORMAT_UNKNOWN,
+                    .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+                    .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+                    .Buffer = {
+                        .FirstElement = 0,
+                        .NumElements = 0,
+                        .StructureByteStride = 0,
+                        .Flags = D3D12_BUFFER_SRV_FLAG_NONE
+                    }
+                };
+
+                resource.srvIndex = allocator->allocate(resource.buffer, srvDesc);
+            }
+        }
 
     public:
         D3D12Buffer(
             ID3D12Device* device,
-            const RHIBufferCreateDesc& desc
+            const RHIBufferCreateDesc& desc,
+            DescriptorHeapAllocator* allocator = nullptr
         )
             : usage(desc.usage)
             , size(desc.size)
+            , allocator(allocator)
         {
-            auto hasVertexUsage = hasFlag(desc.usage, RHIBufferUsage::VertexBuffer);
-            auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
-            auto hasConstantUsage = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer);
-            isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
+            isCPUAccessible = hasFlag(desc.usage, RHIBufferUsage::CPUWrite);
 
-            D3D12_HEAP_PROPERTIES heapProps = {};
-            heapProps.Type = isCPUAccessible ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-            heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-            heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+            D3D12_RESOURCE_DESC bufDesc{
+                .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+                .Alignment = 0,
+                .Width = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer) ?
+                    (desc.size + 255) & ~255 : desc.size,
+                .Height = 1,
+                .DepthOrArraySize = 1,
+                .MipLevels = 1,
+                .Format = DXGI_FORMAT_UNKNOWN,
+                .SampleDesc = {1, 0},
+                .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+                .Flags = hasFlag(desc.usage, RHIBufferUsage::UnorderedAccess) ?
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
+                    D3D12_RESOURCE_FLAG_NONE
+            };
 
-            D3D12_RESOURCE_DESC resourceDesc = {};
-            resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            resourceDesc.Alignment = 0;
-            resourceDesc.Width = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer) ?
-                (desc.size + 255) & ~255 : desc.size;
-            resourceDesc.Height = 1;
-            resourceDesc.DepthOrArraySize = 1;
-            resourceDesc.MipLevels = 1;
-            resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-            resourceDesc.SampleDesc.Count = 1;
-            resourceDesc.SampleDesc.Quality = 0;
-            resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-            resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+            D3D12_HEAP_PROPERTIES heapProp{
+                .Type = isCPUAccessible ?
+                    D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
+                .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+                .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN
+            };
 
-            if(hasFlag(desc.usage, RHIBufferUsage::UnorderedAccess)){
-                resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            if(!isCPUAccessible){
+                for(int i = 0; i < RHI_FRAMES_IN_FLIGHT; ++i){
+                    buffers[i].currentState = RHIResourceState::GenericRead;
+
+                    createBuffer(device, bufDesc, heapProp, buffers[i]);
+                }
+
+                if(desc.initialData != nullptr)
+                    update(desc.initialData, desc.size);
             }
-
-            D3D12_RESOURCE_STATES initialState = isCPUAccessible
-                ? D3D12_RESOURCE_STATE_GENERIC_READ
-                : D3D12_RESOURCE_STATE_COMMON;
-
-            if(FAILED(device->CreateCommittedResource(
-                &heapProps,
-                D3D12_HEAP_FLAG_NONE,
-                &resourceDesc,
-                initialState,
-                nullptr,
-                IID_PPV_ARGS(&buffer)
-            ))){
-                throw std::runtime_error("Failed to create buffer");
-            }
-
-            if(isCPUAccessible){
-                buffer->Map(0, nullptr, &mappedData);
-            }
-
-            if(desc.initialData){
-                update(desc.initialData, desc.size, 0);
+            else{
+                createBuffer(device, bufDesc, heapProp, buffers[currentIndex]);
             }
         }
 
         ~D3D12Buffer(){
-            if(mappedData){
-                buffer->Unmap(0, nullptr);
+            if(allocator != nullptr){
+                for(int i = 0; i < RHI_FRAMES_IN_FLIGHT; ++i){
+                    if(buffers[i].cbvIndex != UINT_MAX){
+                        allocator->free(buffers[i].cbvIndex);
+                        buffers[i].cbvIndex = UINT_MAX;
+                    }
+                    if(buffers[i].srvIndex != UINT_MAX){
+                        allocator->free(buffers[i].srvIndex);
+                        buffers[i].srvIndex = UINT_MAX;
+                    }
+                }
+                allocator = nullptr;
+            }
+            for(int i = 0; i < RHI_FRAMES_IN_FLIGHT; ++i){
+                if(buffers[i].buffer != nullptr){
+                    buffers[i].buffer->Release();
+                    buffers[i].buffer = nullptr;
+                }
             }
         }
+
+        CROWY_DECLARE_PINNED(D3D12Buffer)
 
         void update(
-            const void* data, size_t updateSize,
-            size_t offset
-        ) RHI_OVERRIDE{
-            if(isCPUAccessible && mappedData){
-                memcpy(static_cast<uint8_t*>(mappedData) + offset, data, updateSize);
-            }
+            const void* data, size_t size,
+            size_t offset = 0
+        ){
+            CROWY_ASSERT(isCPUAccessible);
+
+            BYTE* mapped = nullptr;
+            buffers[currentIndex].buffer->Map(
+                0,
+                nullptr,
+                reinterpret_cast<void**>(&mapped)
+            );
+
+            memcpy(mapped, data, size);
+            buffers[currentIndex].buffer->Unmap(0, nullptr);
         }
 
-        ID3D12Resource* get() const{ return buffer.Get(); }
-
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
-            return currentState;
+            return buffers[currentIndex].currentState;
         }
 
         void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
-            currentState = state;
+            buffers[currentIndex].currentState = state;
+        }
+
+        void swap(){
+            CROWY_ASSERT(isCPUAccessible);
+
+            currentIndex = (currentIndex + 1) % RHI_FRAMES_IN_FLIGHT;
+        }
+
+        auto getSize() const noexcept{ return size; }
+
+        auto get            () const noexcept{ return buffers[currentIndex].buffer;   }
+        auto getCBVHeapIndex() const noexcept{ return buffers[currentIndex].cbvIndex; }
+        auto getSRVHeapIndex() const noexcept{ return buffers[currentIndex].srvIndex; }
+        auto getGPUAddress  () const noexcept{
+            return buffers[currentIndex].buffer->GetGPUVirtualAddress();
         }
     };
 }

@@ -144,18 +144,25 @@ namespace Crowy
     };
 
     enum class RHIResourceState{
-        Common,
-        VertexBuffer,
-        IndexBuffer,
-        ConstantBuffer,
-        ShaderResource,
-        UnorderedAccess,
-        RenderTarget,
-        DepthStencilWrite,
-        DepthStencilRead,
-        CopySource,
-        CopyDest,
+        Common                    = 0,
+        VertexAndConstantBuffer   = 1 << 0,
+        IndexBuffer               = 1 << 1,
+        RenderTarget              = 1 << 2,
+        UnorderedAccess           = 1 << 3,
+        DepthWrite                = 1 << 4,
+        DepthRead                 = 1 << 5,
+        NonFragmentShaderResource = 1 << 6,
+        FragmentShaderResource    = 1 << 7,
+        StreamOut                 = 1 << 8,
+        IndirectArgument          = 1 << 9,
+        CopyDest                  = 1 << 10,
+        CopySource                = 1 << 11,
+        ResolveDest               = 1 << 12,
+        ResolveSource             = 1 << 13,
+        GenericRead,
+        AllShaderResource,
         Present,
+        Predication
     };
 
     struct RHIClearColor{
@@ -478,12 +485,14 @@ namespace Crowy
         .mipFilter = RHIFilter::Nearest
     };
 
+    constexpr auto RHI_FRAMES_IN_FLIGHT = 3;
+
     struct RHISwapchainCreateDesc{
-        void* windowHandle;   // Platform-specific window handle
+        void* windowHandle; // Platform-specific window handle
         RHITextureCreateDesc bufferDesc;
-        uint32_t bufferCount; // Triple buffering
-        bool vsync;           // VSync enabled by default
-        bool allowTearing;    // Variable refresh rate
+        uint32_t bufferCount = RHI_FRAMES_IN_FLIGHT; // Triple buffering
+        bool vsync = true;                           // VSync enabled by default
+        bool allowTearing = false;                   // Variable refresh rate
     #if defined(_DEBUG) || !defined(NDEBUG)
         std::string debugName;
     #endif

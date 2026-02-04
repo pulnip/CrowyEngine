@@ -3,15 +3,13 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
-#include <vector>
-#include "D3D12Util.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHISwapchain.hpp"
 #endif
-
-using Microsoft::WRL::ComPtr;
+#include "D3D12Util.hpp"
+#include "DescriptorHeapAllocator.hpp"
 
 namespace Crowy
 {
@@ -21,80 +19,55 @@ namespace Crowy
 #endif
     {
     private:
-        ComPtr<IDXGISwapChain3> swapchain;
-        std::vector<ComPtr<ID3D12Resource>> backBuffers;
-        uint32_t currentBackBufferIndex = 0;
-
-        uint32_t width = 0;
-        uint32_t height = 0;
-        RHITextureFormat format = RHITextureFormat::Unknown;
-        uint32_t bufferCount = 0;
-        bool vsyncEnabled = true;
-        bool tearingSupported = false;
+        IDXGISwapChain3* swapchain = nullptr;
+        DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+        bool vsync, allowTearing = false;
+        // cache for creating rtv
+        DescriptorHeapAllocator* allocator = nullptr;
+        UINT indexes[RHI_FRAMES_IN_FLIGHT] = {UINT_MAX, UINT_MAX, UINT_MAX};
 
     public:
         D3D12Swapchain(
             ID3D12CommandQueue* commandQueue,
-            const RHISwapchainCreateDesc& desc
+            IDXGIFactory4* factory,
+            const RHISwapchainCreateDesc& desc,
+            DescriptorHeapAllocator* allocator
         )
-#ifndef USE_STATIC_RHI
-            : RHISwapchain(desc.width, desc.height, desc.bufferCount, desc.format)
-            ,
-#else
-            :
-#endif
-              width(desc.width)
-            , height(desc.height)
-            , format(desc.format)
-            , bufferCount(desc.bufferCount)
-            , vsyncEnabled(desc.vsync)
+            : format(convert(desc.bufferDesc.format))
+            , vsync(desc.vsync), allocator(allocator)
         {
-            HWND hwnd = static_cast<HWND>(desc.windowHandle);
-            if(!hwnd){
-                throw std::runtime_error("Swapchain window handle is null");
-            }
-
-            UINT dxgiFactoryFlags = 0;
-#if defined(_DEBUG)
-            dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-#endif
-
-            ComPtr<IDXGIFactory4> factory;
-            if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)))){
-                throw std::runtime_error("Failed to create DXGI factory");
-            }
-
             if(desc.allowTearing){
-                ComPtr<IDXGIFactory5> factory5;
-                if(SUCCEEDED(factory.As(&factory5))){
-                    BOOL allowTearing = FALSE;
-                    if(SUCCEEDED(factory5->CheckFeatureSupport(
+                IDXGIFactory5* factory5 = nullptr;
+                if(SUCCEEDED(factory->QueryInterface(
+                    IID_PPV_ARGS(&factory5)
+                ))){
+                    factory5->CheckFeatureSupport(
                         DXGI_FEATURE_PRESENT_ALLOW_TEARING,
                         &allowTearing, sizeof(allowTearing)
-                    ))){
-                        tearingSupported = (allowTearing == TRUE);
-                    }
+                    );
                 }
             }
 
-            DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
-            swapchainDesc.Width = desc.width;
-            swapchainDesc.Height = desc.height;
-            swapchainDesc.Format = convertTextureFormat(desc.format);
-            swapchainDesc.Stereo = FALSE;
-            swapchainDesc.SampleDesc.Count = 1;
-            swapchainDesc.SampleDesc.Quality = 0;
-            swapchainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            swapchainDesc.BufferCount = desc.bufferCount;
-            swapchainDesc.Scaling = DXGI_SCALING_STRETCH;
-            swapchainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-            swapchainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-            swapchainDesc.Flags = tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+            DXGI_SWAP_CHAIN_DESC1 swapchainDesc{
+                .Width = desc.bufferDesc.width,
+                .Height = desc.bufferDesc.height,
+                .Format = format,
+                .Stereo = FALSE,
+                // No MSAA for swapchain
+                .SampleDesc = {1, 0},
+                .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+                .BufferCount = desc.bufferCount,
+                .Scaling = DXGI_SCALING_STRETCH,
+                .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+                .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
+                .Flags = desc.allowTearing ?
+                    DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : UINT(0)
+            };
 
-            ComPtr<IDXGISwapChain1> swapchain1;
+            IDXGISwapChain1* swapchain1 = nullptr;
             if(FAILED(factory->CreateSwapChainForHwnd(
                 commandQueue,
-                hwnd,
+                static_cast<HWND>(desc.windowHandle),
                 &swapchainDesc,
                 nullptr,
                 nullptr,
@@ -103,86 +76,74 @@ namespace Crowy
                 throw std::runtime_error("Failed to create swapchain");
             }
 
-            if(FAILED(swapchain1.As(&swapchain))){
-                throw std::runtime_error("Failed to query IDXGISwapChain3");
+            if(FAILED(swapchain1->QueryInterface(
+                IID_PPV_ARGS(&swapchain)
+            ))){
+                throw std::runtime_error("IDXGISwapChain3 not support");
             }
 
-            factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
+            for(UINT i = 0; i < swapchainDesc.BufferCount; ++i){
+                ID3D12Resource* backBuffer = nullptr;
+                swapchain->GetBuffer(i, IID_PPV_ARGS(&backBuffer));
 
-            createBackBuffers();
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{
+                    .Format = format,
+                    .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+                    .Texture2D = {
+                        .MipSlice = 0,
+                        .PlaneSlice = 0
+                    }
+                };
+                indexes[i] = allocator->allocate(backBuffer, rtvDesc);
+            }
+
+            if(desc.debugName){
+                swapchain->SetPrivateData(
+                    WKPDID_D3DDebugObjectName, 
+                    static_cast<UINT>(strlen(desc.debugName)),
+                    desc.debugName
+                );
+            }
         }
 
-        ~D3D12Swapchain() = default;
+        ~D3D12Swapchain(){
+            if(swapchain){
+                swapchain->Release();
+                swapchain = nullptr;
+            }
+        }
 
-        bool acquireNextImage() RHI_OVERRIDE{
-            currentBackBufferIndex = swapchain->GetCurrentBackBufferIndex();
+        bool acquireNextImage() noexcept RHI_OVERRIDE{
             return true;
         }
 
-        void resize(uint32_t newWidth, uint32_t newHeight) RHI_OVERRIDE{
-            if(newWidth == 0 || newHeight == 0) return;
-            
-            width = newWidth;
-            height = newHeight;
+        void resize(uint32_t newWidth, uint32_t newHeight) noexcept RHI_OVERRIDE{
+            if(newWidth == 0 || newHeight == 0)
+                return;
 
-            for(auto& buffer : backBuffers){
-                buffer.Reset();
-            }
-            backBuffers.clear();
+            DXGI_SWAP_CHAIN_DESC1 desc;
+            swapchain->GetDesc1(&desc);
 
-            UINT flags = tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
-            if(FAILED(swapchain->ResizeBuffers(
-                bufferCount,
-                newWidth,
-                newHeight,
-                convertTextureFormat(format),
-                flags
-            ))){
-                throw std::runtime_error("Failed to resize swapchain");
-            }
-
-            createBackBuffers();
+            swapchain->ResizeBuffers(
+                0, newWidth, newHeight,
+                DXGI_FORMAT_UNKNOWN, desc.Flags
+            );
         }
 
-        IDXGISwapChain3* get() const{
-            return swapchain.Get();
+        void* getCurrentNativeTexture() const noexcept RHI_OVERRIDE{
+            // this api for Metal
+            return nullptr;
         }
 
-        ID3D12Resource* getCurrentBackBuffer() const{
-            return backBuffers[currentBackBufferIndex].Get();
+        void present() noexcept{
+            UINT syncInterval = vsync ? 1 : 0;
+            UINT flags = (!vsync && allowTearing) ?
+                DXGI_PRESENT_ALLOW_TEARING : 0;
+
+            swapchain->Present(syncInterval, flags);
         }
 
-        uint32_t getCurrentBackBufferIndex() const{
-            return currentBackBufferIndex;
-        }
-
-        uint32_t getWidth() const{ return width; }
-        uint32_t getHeight() const{ return height; }
-        
-        // VSync 및 Tearing 관련
-        bool isVSyncEnabled() const{ return vsyncEnabled; }
-        bool isTearingSupported() const{ return tearingSupported; }
-        
-        UINT getPresentFlags() const{
-            if(!vsyncEnabled && tearingSupported){
-                return DXGI_PRESENT_ALLOW_TEARING;
-            }
-            return 0;
-        }
-        
-        UINT getSyncInterval() const{
-            return vsyncEnabled ? 1 : 0;
-        }
-
-    private:
-        void createBackBuffers(){
-            backBuffers.resize(bufferCount);
-            for(uint32_t i = 0; i < bufferCount; ++i){
-                if(FAILED(swapchain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])))){
-                    throw std::runtime_error("Failed to get swapchain back buffer");
-                }
-            }
-            currentBackBufferIndex = swapchain->GetCurrentBackBufferIndex();
-        }
+        DXGI_FORMAT getFormat() const{ return format; }
+        UINT getRTVHeapIndex() const{ return indexes[swapchain->GetCurrentBackBufferIndex()]; }
     };
 }

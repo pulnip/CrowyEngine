@@ -3,6 +3,8 @@
 #include <imgui_impl_metal.h>
 #elifdef CROWY_D3D11RHI
 #include <imgui_impl_dx11.h>
+#elifdef CROWY_D3D12RHI
+#include <imgui_impl_dx12.h>
 #endif
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
@@ -24,6 +26,9 @@ namespace Crowy
         #elifdef CROWY_D3D11RHI
             ID3D11Device* device,
             ID3D11DeviceContext* context
+        #elifdef CROWY_D3D12RHI
+            ID3D12Device* device,
+            ID3D12CommandQueue* queue
         #endif
         ){
             // Setup Dear ImGui context
@@ -50,6 +55,32 @@ namespace Crowy
             ImGui_ImplSDL3_InitForD3D(window);
         #ifdef CROWY_D3D11RHI
             ImGui_ImplDX11_Init(device, context);
+        #elifdef CROWY_D3D12RHI
+            ImGui_ImplSDL3_InitForD3D(window);
+
+            ImGui_ImplDX12_InitInfo init_info = {};
+            init_info.Device = device;
+            init_info.CommandQueue = queue;
+            init_info.NumFramesInFlight = RHI_FRAMES_IN_FLIGHT;
+            init_info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+            init_info.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+            init_info.UserData = nullptr;
+            init_info.SrvDescriptorHeap = nullptr;
+            init_info.SrvDescriptorAllocFn = [](
+                ImGui_ImplDX12_InitInfo* info,
+                D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_desc_handle,
+                D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_desc_handle
+            ){
+
+            };
+            init_info.SrvDescriptorFreeFn = [](
+                ImGui_ImplDX12_InitInfo* info,
+                D3D12_CPU_DESCRIPTOR_HANDLE cpu_desc_handle, 
+                D3D12_GPU_DESCRIPTOR_HANDLE gpu_desc_handle
+            ){
+
+            };
+            ImGui_ImplDX12_Init(&init_info);
         #endif
         #endif
         }
@@ -61,6 +92,8 @@ namespace Crowy
             ImGui_ImplMetal_Shutdown();
         #elifdef CROWY_D3D11RHI
             ImGui_ImplDX11_Shutdown();
+        #elifdef CROWY_D3D12RHI
+            ImGui_ImplDX12_Shutdown();
         #endif
             ImGui_ImplSDL3_Shutdown();
             ImGui::DestroyContext();
@@ -77,6 +110,8 @@ namespace Crowy
             ImGui_ImplMetal_NewFrame(uiPassDesc);
         #elifdef CROWY_D3D11RHI
             ImGui_ImplDX11_NewFrame();
+        #elifdef CROWY_D3D12RHI
+            ImGui_ImplDX12_NewFrame();
         #endif
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
@@ -106,6 +141,9 @@ namespace Crowy
             cmdList.beginRenderPass(*backBuffer);
             ImGui_ImplDX11_RenderDrawData(draw_data);
             cmdList.endRenderPass();
+        #elifdef CROWY_D3D12RHI
+            auto commandList = static_cast<ID3D12GraphicsCommandList*>(cmdList.getNative());
+            ImGui_ImplDX12_RenderDrawData(draw_data, commandList);
         #endif
         }
     };
@@ -118,6 +156,9 @@ namespace Crowy
         #elifdef CROWY_D3D11RHI
             static_cast<ID3D11Device*>(device.getNative()),
             static_cast<ID3D11DeviceContext*>(cmdList.getNative())
+        #elifdef CROWY_D3D12RHI
+            static_cast<ID3D12Device*>(device.getNative()),
+            static_cast<ID3D12CommandQueue*>(nullptr)
         #endif
         ))
     {}

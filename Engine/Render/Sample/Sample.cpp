@@ -107,7 +107,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "Albedo Texture"
                 #endif
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "Normal Texture"
                 #endif
@@ -135,7 +135,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "Toon Color"
                 #endif
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "Scene Color"
                 #endif
@@ -163,7 +163,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::DepthStencil,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::DepthStencilWrite,
+                    .initialState = RHIResourceState::DepthWrite,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "Depth Buffer"
                 #endif
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "outlined"
                 #endif
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "pixelated"
                 #endif
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::ShaderResource,
+                    .initialState = RHIResourceState::AllShaderResource,
                 #if defined(_DEBUG) || !defined(NDEBUG)
                     .debugName = "focusMask"
                 #endif
