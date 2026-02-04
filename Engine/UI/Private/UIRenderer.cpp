@@ -56,8 +56,6 @@ namespace Crowy
         #ifdef CROWY_D3D11RHI
             ImGui_ImplDX11_Init(device, context);
         #elifdef CROWY_D3D12RHI
-            ImGui_ImplSDL3_InitForD3D(window);
-
             ImGui_ImplDX12_InitInfo init_info = {};
             init_info.Device = device;
             init_info.CommandQueue = queue;

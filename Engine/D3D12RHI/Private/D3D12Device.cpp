@@ -48,6 +48,7 @@ namespace Crowy
             Microsoft::WRL::ComPtr<ID3D12Debug> debugController;
             if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
                 debugController->EnableDebugLayer();
+        }
         #endif
 
             if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)))){

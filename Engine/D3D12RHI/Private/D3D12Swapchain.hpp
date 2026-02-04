@@ -97,13 +97,15 @@ namespace Crowy
                 indexes[i] = allocator->allocate(backBuffer, rtvDesc);
             }
 
-            if(desc.debugName){
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(desc.debugName.empty()){
                 swapchain->SetPrivateData(
                     WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(strlen(desc.debugName)),
-                    desc.debugName
+                    static_cast<UINT>(desc.debugName.length()),
+                    desc.debugName.c_str()
                 );
             }
+        #endif
         }
 
         ~D3D12Swapchain(){
