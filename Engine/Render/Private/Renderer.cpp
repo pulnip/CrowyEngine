@@ -35,8 +35,10 @@ namespace Crowy
             .rasterizer = spec.rasterizer,
             .depthStencil = spec.depthStencil,
             .blend = spec.blend,
-            .renderTargetCount = static_cast<uint32_t>(spec.targets.size()),
-            .debugName = spec.name.c_str()
+            .renderTargetCount = static_cast<uint32_t>(spec.targets.size())
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            , .debugName = spec.name
+        #endif
         };
 
         for(int i=0; i<spec.targets.size(); ++i){
@@ -138,8 +140,10 @@ namespace Crowy
                     RHIBufferUsage::CPUWrite
                 ),
                 .stride = 0,
-                .initialData = nullptr,
-                .debugName = "MVP Uniform Buffer"
+                .initialData = nullptr
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = "MVP Uniform Buffer"
+            #endif
             });
             pixelateUniformBuffer = device->createBuffer({
                 .size = sizeof(PixelateParams),
@@ -148,8 +152,10 @@ namespace Crowy
                     RHIBufferUsage::CPUWrite
                 ),
                 .stride = 0,
-                .initialData = nullptr,
-                .debugName = "Pixelate pass Constant Buffer"
+                .initialData = nullptr
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = "Pixelate pass Constant Buffer"
+            #endif
             });
             focusmaskUniformBuffer = device->createBuffer({
                 .size = sizeof(FocusParams),
@@ -158,8 +164,10 @@ namespace Crowy
                     RHIBufferUsage::CPUWrite
                 ),
                 .stride = 0,
-                .initialData = nullptr,
-                .debugName = "focusmask pass Constant Buffer"
+                .initialData = nullptr
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = "focusmask pass Constant Buffer"
+            #endif
             });
 
             for(const auto& [name, renderTarget]: spec.renderTargets){

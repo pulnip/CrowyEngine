@@ -90,8 +90,10 @@ namespace Crowy
                 // triple buffering
                 .bufferCount = 3,
                 .vsync = true,
-                .allowTearing = false,
-                .debugName = "RHISwapchain"
+                .allowTearing = false
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = "RHISwapchain"
+            #endif
             });
             cmdList = device->createCommandList();
             framePacer = device->createFramePacer();

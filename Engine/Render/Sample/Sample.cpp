@@ -57,8 +57,10 @@ int main(int argc, char* argv[]){
             // triple buffering
             .bufferCount = 3,
             .vsync = true,
-            .allowTearing = false,
-            .debugName = "RHISwapchain"
+            .allowTearing = false
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            , .debugName = "RHISwapchain"
+        #endif
         }
     );
     auto cmdList = device->createCommandList();

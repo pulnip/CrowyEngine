@@ -44,8 +44,10 @@ int main(int argc, char* argv[]){
             },
             .bufferCount = 3,
             .vsync = true,
-            .allowTearing = false,
-            .debugName = "RHISwapchain"
+            .allowTearing = false
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            , .debugName = "RHISwapchain"
+        #endif
         }
     );
     auto cmdList = device->createCommandList();
@@ -84,8 +86,10 @@ int main(int argc, char* argv[]){
         .size = sizeof(Mat4),
         .usage = combine(RHIBufferUsage::ConstantBuffer, RHIBufferUsage::CPUWrite),
         .stride = 0,
-        .initialData = nullptr,
-        .debugName = "MVP Uniform Buffer"
+        .initialData = nullptr
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        , .debugName = "MVP Uniform Buffer"
+    #endif
     });
 
     auto depthBuffer = device->createTexture({
@@ -112,8 +116,10 @@ int main(int argc, char* argv[]){
             .depthWriteEnable = true
         },
         .renderTargetFormats = {RHITextureFormat::BGRA8_UNORM},
-        .renderTargetCount = 1,
-        .debugName = "Mesh Pipeline"
+        .renderTargetCount = 1
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        , .debugName = "Mesh Pipeline"
+    #endif
     });
 
     float cameraDistance = 30.0f;
