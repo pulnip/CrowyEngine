@@ -94,15 +94,14 @@ namespace Crowy
         }
     }
 
-    std::optional<CBuffer> readCBufferData(
+    void readCBufferData(
         const ValueArena& arena, const VTable& table,
-        std::vector<BindError>& errors, const char* key
+        std::vector<BindError>& errors, const char* key,
+        CBufferSpec& cbuffer
     ){
         const VNode* n = findField(arena, table, key);
         if(!n)
-            return std::nullopt;
-
-        CBuffer cbuffer;
+            return;
 
         if(auto arr = std::get_if<VArray>(n)){
             for(size_t i: arr->elements){
@@ -156,14 +155,12 @@ namespace Crowy
                 }
             }
         }
-
-        return cbuffer;
     }
 
     void CBufferBinder::validateAndPlanArray(const ValueArena& arena,
         const VArray& src, size_t index, RenderPassElementBindPlan& plan
     ){
-        std::vector<CBuffer> cbufferSpec;
+        std::vector<CBufferSpec> cbufferSpec;
 
         for(size_t i: src.elements){
             auto table = std::get_if<VTable>(&arena.nodes[i]);
@@ -172,7 +169,16 @@ namespace Crowy
 
             auto name = readString(arena, *table, plan.errors, "name");
             auto slot = readFloat(arena, *table, plan.errors, "slot");
-            auto value = readCBufferData(arena, *table, plan.errors, "value");
+            if(!name || !slot)
+                continue;
+
+            CBufferSpec cbuffer{
+                .name = *name,
+                .slot = static_cast<uint32_t>(*slot)
+            };
+            readCBufferData(arena, *table, plan.errors, "value", cbuffer);
+
+            cbufferSpec.push_back(std::move(cbuffer));
         }
 
         plan.cbuffers.push_back({

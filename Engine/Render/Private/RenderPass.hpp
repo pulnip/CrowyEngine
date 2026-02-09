@@ -12,6 +12,18 @@
 
 namespace Crowy
 {
+    struct CBuffer{
+        using FieldName = CBufferFieldName;
+        using FieldType = CBufferFieldType;
+        using FieldOffset = CBufferFieldOffset;
+        using FieldMeta = CBufferFieldMeta;
+
+        std::string name;
+        uint32_t slot;
+        CBufferMeta meta;
+        RHIBufferPtr buffer;
+    };
+
     struct RenderPass{
         std::string name;
         bool enabled = true;
@@ -26,6 +38,8 @@ namespace Crowy
         RHIShaderPtr vs, fs;
         std::optional<RenderTypeHash> renderType;
         RHIPipelineStatePtr pipeline;
+
+        std::vector<CBuffer> fs_cbuffer;
 
         inline bool isFullscreenPass() const{
             return !renderType.has_value();
