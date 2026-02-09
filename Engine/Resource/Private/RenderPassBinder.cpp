@@ -2,6 +2,27 @@
 
 namespace Crowy
 {
+    static CBufferFieldType toCBufferFieldType(std::string_view str){
+        static std::unordered_map<std::string, CBufferFieldType,
+            StringHash, std::equal_to<>
+        > text2FieldType = {
+            {     "INT", CBufferFieldType::Int32   },
+            {   "INT32", CBufferFieldType::Int32   },
+            {   "FLOAT", CBufferFieldType::Float   },
+            {  "FLOAT2", CBufferFieldType::Float2  },
+            {  "FLOAT3", CBufferFieldType::Float3  },
+            {  "FLOAT4", CBufferFieldType::Float4  },
+            {"FLOAT4X4", CBufferFieldType::Float4x4}
+        };
+        auto upper = toUpper(str);
+
+        auto it = text2FieldType.find(upper);
+        if(it == text2FieldType.end()){
+            return CBufferFieldType::Unknown;
+        }
+        return it->second;
+    }
+
     void ShaderBinder::validateAndPlan(const ValueArena& arena,
         const VTable& src, size_t index, RenderPassElementBindPlan& plan
     ){
@@ -31,12 +52,6 @@ namespace Crowy
 
             pass.shader = p.spec;
         }
-    }
-
-    void SamplerBinder::validateAndPlan(const ValueArena& arena,
-        const VTable& src, size_t index, RenderPassElementBindPlan& plan
-    ){
-        // No-op
     }
 
     void SamplerBinder::validateAndPlanArray(const ValueArena& arena,
@@ -79,6 +94,102 @@ namespace Crowy
         }
     }
 
+    std::optional<CBuffer> readCBufferData(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n)
+            return std::nullopt;
+
+        CBuffer cbuffer;
+
+        if(auto arr = std::get_if<VArray>(n)){
+            for(size_t i: arr->elements){
+                auto field = std::get_if<VTable>(&arena.nodes[i]);
+                if(!field)
+                    continue;
+
+                auto name = readString(arena, *field, errors, "name");
+                auto type = readString(arena, *field, errors, "type");
+
+                if(!name || !type)
+                    // TODO. field without name and type is error
+                    continue;;
+
+                auto t = toCBufferFieldType(*type);
+                switch(t){
+                case CBufferFieldType::Unknown:
+                    continue;
+                case CBufferFieldType::Int32: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readFloat(arena, *field, errors, "data"))
+                        proxy = static_cast<int32_t>(*data);
+                } break;
+                case CBufferFieldType::Float: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readFloat(arena, *field, errors, "data"))
+                        proxy = static_cast<float>(*data);
+                } break;
+                case CBufferFieldType::Float2: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readVec2(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                case CBufferFieldType::Float3: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readVec3(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                case CBufferFieldType::Float4: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readVec4(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                case CBufferFieldType::Float4x4: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readMat4(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                default:
+                    std::unreachable();
+                }
+            }
+        }
+
+        return cbuffer;
+    }
+
+    void CBufferBinder::validateAndPlanArray(const ValueArena& arena,
+        const VArray& src, size_t index, RenderPassElementBindPlan& plan
+    ){
+        std::vector<CBuffer> cbufferSpec;
+
+        for(size_t i: src.elements){
+            auto table = std::get_if<VTable>(&arena.nodes[i]);
+            if(!table)
+                continue;
+
+            auto name = readString(arena, *table, plan.errors, "name");
+            auto slot = readFloat(arena, *table, plan.errors, "slot");
+            auto value = readCBufferData(arena, *table, plan.errors, "value");
+        }
+
+        plan.cbuffers.push_back({
+            .spec = cbufferSpec,
+            .index = index,
+            .location = src.location
+        });
+    }
+
+    void CBufferBinder::freeze(std::vector<RenderPassSpec>& passes, RenderPassElementBindPlan& plan){
+        for(const auto& p: plan.cbuffers){
+            auto& pass = passes[p.index];
+
+            pass.fs_cbuffers = p.spec;
+        }
+    }
+
     RenderPassBinderRegistry makeRenderPassBinderRegistry(const SamplerPresets& presets){
         RenderPassBinderRegistry reg;
     #ifdef CROWY_METALRHI
@@ -87,6 +198,7 @@ namespace Crowy
         reg.emplace("d3d_shader", std::make_unique<ShaderBinder>());
     #endif
         reg.emplace("fs_samplers", std::make_unique<SamplerBinder>(presets));
+        reg.emplace("fs_cbuffer", std::make_unique<CBufferBinder>());
 
         return reg;
     }

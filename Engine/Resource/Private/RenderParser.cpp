@@ -288,6 +288,7 @@ namespace Crowy
         // Freeze(Create SoA + connect index)
         SamplerBinder::freeze(out, plan);
         ShaderBinder::freeze(out, plan);
+        CBufferBinder::freeze(out, plan);
 
         return out;
     }

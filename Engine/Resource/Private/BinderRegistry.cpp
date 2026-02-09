@@ -98,7 +98,12 @@ namespace Crowy
     }
 
     template<unsigned N>
-    static std::optional<std::conditional_t<N==3, Vec3, Vec4>> readVec(
+    using Vec = std::conditional_t<N==2, Vec2,
+        std::conditional_t<N==3, Vec3, Vec4>
+    >;
+
+    template<unsigned N>
+    static std::optional<Vec<N>> readVec(
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key
     ){
@@ -115,7 +120,7 @@ namespace Crowy
                 return std::nullopt;
             }
 
-            std::conditional_t<N==3, Vec3, Vec4> v;
+            Vec<N> v;
             for(int i=0; i<N; ++i){
                 const VNode& elem = arena.nodes[arr->elements[i]];
                 auto f = asFloat(elem);
@@ -137,6 +142,25 @@ namespace Crowy
             getLoc(*n)
         });
         return std::nullopt;
+    }
+
+    std::optional<Vec2> readVec2(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        return readVec<2>(arena, table, errors, key);
+    }
+
+    Vec2 readVec2(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        Vec2 def
+    ){
+        auto v = readVec2(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
     }
 
     std::optional<Vec3> readVec3(
@@ -171,6 +195,67 @@ namespace Crowy
         Vec4 def
     ){
         auto v = readVec4(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
+    }
+
+    std::optional<Mat4> readMat4(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n)
+            return std::nullopt;
+
+        if(auto arr = std::get_if<VArray>(n)){
+            if(arr->elements.size() != 4){
+                errors.push_back({
+                    std::format("{} should be {}", key, 4),
+                    arr->location
+                });
+                return std::nullopt;
+            }
+
+            Mat4 v;
+            for(int i=0; i<4; ++i){
+                const VNode* elem = &arena.nodes[arr->elements[i]];
+
+                if(auto varr = std::get_if<VArray>(elem)){
+                    if(varr->elements.size() != 4){
+                        // TODO. report error
+                        return std::nullopt;
+                    }
+
+                    for(int j=0; j<4; ++j){
+                        const VNode& velem = arena.nodes[varr->elements[j]];
+                        auto f = asFloat(velem);
+                        if(!f){
+                            // TODO. report error
+                            return std::nullopt;
+                        }
+                        v[i][j] = *f;
+                    }
+                }
+            }
+
+            return v;
+        }
+
+        errors.push_back({
+            std::format("{} should be array", key),
+            getLoc(*n)
+        });
+        return std::nullopt;
+    }
+
+    Mat4 readMat4(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        Mat4 def
+    ){
+        auto v = readMat4(arena, table, errors, key);
 
         if(v.has_value())
             return *v;

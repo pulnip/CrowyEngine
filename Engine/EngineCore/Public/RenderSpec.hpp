@@ -32,6 +32,8 @@ namespace Crowy
         RHIRasterizerState rasterizer = {};
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         RHIBlendState blend = {};
+
+        std::vector<CBuffer> fs_cbuffers;
     };
 
     struct RenderSpec{

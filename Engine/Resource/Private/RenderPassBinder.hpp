@@ -23,9 +23,16 @@ namespace Crowy
     };
     using SamplerPresets = std::unordered_map<std::string, RHISamplerState>;
 
+    struct PlannedCBuffer{
+        std::vector<CBuffer> spec;
+        size_t index = std::numeric_limits<size_t>::max();
+        SourceLocation location;
+    };
+
     struct RenderPassElementBindPlan{
         std::vector<PlannedShader> shaders;
         std::vector<PlannedSampler> samplers;
+        std::vector<PlannedCBuffer> cbuffers;
         std::vector<BindError> errors;
     };
 
@@ -57,7 +64,20 @@ namespace Crowy
 
         void validateAndPlan(const ValueArena&,
             const VTable&, size_t index, RenderPassElementBindPlan&
+        ) override{}
+
+        static void freeze(std::vector<RenderPassSpec>&, RenderPassElementBindPlan&);
+    };
+
+    class CBufferBinder: public RenderPassElementBinder{
+    public:
+        void validateAndPlanArray(const ValueArena&,
+            const VArray&, size_t index, RenderPassElementBindPlan&
         ) override;
+
+        void validateAndPlan(const ValueArena&,
+            const VTable&, size_t index, RenderPassElementBindPlan&
+        ) override{}
 
         static void freeze(std::vector<RenderPassSpec>&, RenderPassElementBindPlan&);
     };

@@ -121,8 +121,8 @@ fs_samplers = [
     slot = 0
     value = [
         # TODO. use real viewport resolution at runtime
-        {name = "resolution", type = "Vec2", data = [800, 600]},
-        {name = "pixelSize", type = "Vec2", data = [4, 4]}
+        {name = "resolution", type = "Float2", data = [800, 600]},
+        {name = "pixelSize", type = "Float2", data = [4, 4]}
     ]
     [passes.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"

@@ -66,6 +66,15 @@ namespace Crowy
         std::vector<BindError>& errors, const char* key,
         double def
     );
+    std::optional<Vec2> readVec2(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    Vec2 readVec2(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        Vec2 def
+    );
     std::optional<Vec3> readVec3(
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key
@@ -83,6 +92,15 @@ namespace Crowy
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
         Vec4 def
+    );
+    std::optional<Mat4> readMat4(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    Mat4 readMat4(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        Mat4 def
     );
     std::optional<std::string> readString(
         const ValueArena& arena, const VTable& table,
