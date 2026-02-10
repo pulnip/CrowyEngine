@@ -1,7 +1,7 @@
 #pragma once
 
 #include "System.hpp"
-#include "UpdateContext.hpp"
+#include "Context.hpp"
 
 namespace Crowy
 {

@@ -458,12 +458,10 @@ int main(int argc, char* argv[]){
         cmdList->begin();
 
         renderer.render(*cmdList.get(), ctx, swapchain.get());
-        cmdList->flush();
 
         UIContext uiContext{
             .renderer = renderer
         };
-
         uiRenderer.render(
             "Renderer Sample", ui, uiContext,
             *cmdList.get(),

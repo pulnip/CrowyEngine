@@ -104,6 +104,8 @@ namespace Crowy
             RHICommandList& cmdList,
             RHISwapchain* backBuffer
         ){
+            cmdList.flush();
+
         #ifdef CROWY_METALRHI
             ImGui_ImplMetal_NewFrame(uiPassDesc);
         #elifdef CROWY_D3D11RHI
