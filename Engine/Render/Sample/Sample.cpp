@@ -98,6 +98,24 @@ int main(int argc, char* argv[]){
         }
     });
 
+    using enum CBufferFieldType;
+
+    CBufferSpec pixelateParams{
+        .name = "PixelateParams",
+        .slot = 0
+    };
+    pixelateParams.newField("resolution", Float2) = Vec2(800, 600);
+    pixelateParams.newField("pixelSize", Float2) = Vec2(4, 4);
+
+    CBufferSpec focusParams{
+        .name = "FocusParams",
+        .slot = 0
+    };
+    focusParams.newField("focusCenter", Float2) = Vec2{0.5f, 0.1f};
+    focusParams.newField("focusRadius", Float) = 0.05f;
+    focusParams.newField("falloff", Float) = 0.1f;
+    focusParams.newField("aspectRatio", Float) = 1.33f;
+
     RenderSpec spec{
         .renderTargets = {
             {"BackBuffer", backBufferDesc},
@@ -322,6 +340,7 @@ int main(int argc, char* argv[]){
                     .fsFuncName = "fs_pixelate"
                 #endif
                 },
+                .fs_cbuffers = {pixelateParams}
             },
             RenderPassSpec{
                 .name = "focusmask",
@@ -339,7 +358,8 @@ int main(int argc, char* argv[]){
                     .fsFilePath = L"asset/Shaders/focusmask.hlsl",
                     .fsFuncName = "fs_focusmask"
                 #endif
-                }
+                },
+                .fs_cbuffers = {focusParams}
             },
             RenderPassSpec{
                 .name = "composite",

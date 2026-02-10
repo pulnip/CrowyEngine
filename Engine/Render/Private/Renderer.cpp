@@ -5,6 +5,7 @@
 #include "assert.hpp"
 #include "enum_traits.hpp"
 #include "string.hpp"
+#include "LinearAllocator.hpp"
 #include "Log.hpp"
 #include "Renderer.hpp"
 #include "RenderPass.hpp"
@@ -58,16 +59,31 @@ namespace Crowy
         return device.createGraphicsPipelineState(desc);
     }
 
-    struct PixelateParams{
-        Vec2 resolution;
-        Vec2 pixelSize;
-    };
-    struct FocusParams{
-        Vec2 focusCenter;
-        float focusRadius;
-        float falloff;
-        float aspectRatio;
-        Vec3 pad_;
+    static auto createCBufferHelper(RHIDevice& device, const CBufferSpec& spec){
+        auto buffer = device.createBuffer({
+            // TODO. use Unified Constant buffer + offset later.
+            .size = spec.size(),
+            .usage = combine(
+                RHIBufferUsage::ConstantBuffer,
+                RHIBufferUsage::CPUWrite
+            ),
+            .stride = 0,
+            .initialData = spec.data()
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            , .debugName = spec.name
+        #endif
+        });
+
+        return CBuffer{
+            .name = spec.name,
+            .slot = spec.slot,
+            .meta = spec.meta,
+            .buffer = std::move(buffer)
+        };
+    }
+
+    struct PerObjectParam{
+        Mat4 mvp;
     };
 
     class Renderer::Impl{
@@ -77,15 +93,25 @@ namespace Crowy
         std::unordered_map<std::string, size_t, StringHash, std::equal_to<>> passIndex;
         RenderTargetPool renderTargetPool;
 
-        // TODO.
-        RHIBufferPtr uniformBuffer;
-        RHIBufferPtr pixelateUniformBuffer;
-        RHIBufferPtr focusmaskUniformBuffer;
+        // TODO. need to fit in appropriate slot
+        static constexpr uint32_t vsPerObjectCBufferSlot = 1;
+        LinearBufferAllocator vsPerObjectBuffers;
 
     public:
         Impl(RHIDevice* device)
-            :device(device)
-        {}
+            : device(device)
+            , vsPerObjectBuffers(*device, RHIBufferCreateDesc{
+                .size = sizeof(PerObjectParam),
+                .usage = combine(
+                    RHIBufferUsage::ConstantBuffer,
+                    RHIBufferUsage::CPUWrite
+                ),
+                .stride = 0,
+                .initialData = nullptr
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = "Uniform Buffer"
+            #endif
+            }){}
         ~Impl() = default;
 
         void loadPasses(const RenderSpec& spec, int screenWidth, int screenHeight){
@@ -117,6 +143,11 @@ namespace Crowy
                 if(!passSpec.renderType.empty())
                     renderType = std::hash<RenderType>{}(passSpec.renderType);
 
+                std::vector<CBuffer> fs_cbuffers;
+                for(const auto& cbufSpec: passSpec.fs_cbuffers){
+                    fs_cbuffers.push_back(createCBufferHelper(*device, cbufSpec));
+                }
+
                 const auto index = passes.size();
                 passIndex[passSpec.name] = index;
                 passes.push_back(RenderPass{
@@ -128,47 +159,10 @@ namespace Crowy
                     .fs_samplers = std::move(fs_samplers),
                     .vs = std::move(vs), .fs = std::move(fs),
                     .renderType = renderType,
-                    .pipeline = std::move(pipeline)
+                    .pipeline = std::move(pipeline),
+                    .fs_cbuffers = std::move(fs_cbuffers)
                 });
             }
-
-            uniformBuffer = device->createBuffer({
-                // TODO. use Unified Constant buffer + offset later.
-                .size = sizeof(Mat4),
-                .usage = combine(
-                    RHIBufferUsage::ConstantBuffer,
-                    RHIBufferUsage::CPUWrite
-                ),
-                .stride = 0,
-                .initialData = nullptr
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .debugName = "MVP Uniform Buffer"
-            #endif
-            });
-            pixelateUniformBuffer = device->createBuffer({
-                .size = sizeof(PixelateParams),
-                .usage = combine(
-                    RHIBufferUsage::ConstantBuffer,
-                    RHIBufferUsage::CPUWrite
-                ),
-                .stride = 0,
-                .initialData = nullptr
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .debugName = "Pixelate pass Constant Buffer"
-            #endif
-            });
-            focusmaskUniformBuffer = device->createBuffer({
-                .size = sizeof(FocusParams),
-                .usage = combine(
-                    RHIBufferUsage::ConstantBuffer,
-                    RHIBufferUsage::CPUWrite
-                ),
-                .stride = 0,
-                .initialData = nullptr
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .debugName = "focusmask pass Constant Buffer"
-            #endif
-            });
 
             for(const auto& [name, renderTarget]: spec.renderTargets){
                 if(name != "BackBuffer"){
@@ -190,6 +184,9 @@ namespace Crowy
             const RenderContext& ctx,
             RHISwapchain* backBuffer
         ){
+            // reset Per-Frame Buffer
+            vsPerObjectBuffers.reset();
+
             for(const auto& pass: passes){
                 if(pass.enabled){
                     executePass(cmdList, ctx, backBuffer, pass);
@@ -250,6 +247,8 @@ namespace Crowy
             RHISwapchain* backBuffer,
             const RenderPass& pass
         ){
+            using enum RHIShaderStage;
+
             RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 0.0f};
             RHIClearDepthStencil clearDS = {1.0f, 0};
 
@@ -310,7 +309,7 @@ namespace Crowy
                 cmdList.setTexture(
                     static_cast<uint32_t>(i),
                     *inputTarget,
-                    RHIShaderStage::FragmentShader
+                    FragmentShader
                 );
             }
             for(size_t i=0; i<pass.fs_samplers.size(); ++i){
@@ -318,7 +317,13 @@ namespace Crowy
 
                 cmdList.setSampler(
                     static_cast<uint32_t>(i), *sampler,
-                    RHIShaderStage::FragmentShader
+                    FragmentShader
+                );
+            }
+            for(auto& fs_cbuffer: pass.fs_cbuffers){
+                cmdList.setConstantBuffer(
+                    FragmentShader, fs_cbuffer.slot,
+                    *fs_cbuffer.buffer.get()
                 );
             }
 
@@ -346,6 +351,8 @@ namespace Crowy
             const RenderContext& ctx,
             const RenderTypeHash& type
         ){
+            using enum RHIShaderStage;
+
             if(ctx.renderItems.empty())
                 return;
 
@@ -356,24 +363,25 @@ namespace Crowy
                 auto mesh = get(renderItem.mesh);
                 auto materialSet = get(renderItem.materials);
 
-                auto mvp = ctx.proj * ctx.view * renderItem.world;
-                // TODO. use offset later
-                uniformBuffer->upload(mvp.data(), sizeof(Mat4));
+                PerObjectParam perObjectParam{
+                    .mvp = ctx.proj * ctx.view * renderItem.world
+                };
+                auto& buf = vsPerObjectBuffers.acquire();
 
-                // TODO. need to fit in appropriate slot
-                cmdList.setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
+                buf.upload(&perObjectParam, sizeof(PerObjectParam));
+
+                cmdList.setConstantBuffer(VertexShader, vsPerObjectCBufferSlot, buf);
 
                 for(const auto& submesh: mesh){
                     // TODO. hide slot number (bc it's for Metal)
-                    cmdList.setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
+                    cmdList.setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Vertex), 0);
                     cmdList.setIndexBuffer(*submesh.indexBuffer.get(),
                         RHIIndexFormat::UInt32, 0);
 
                     auto it = materialSet.find(submesh.materialSlotName);
                     if(it == materialSet.end())
                         continue;
-                    cmdList.setTexture(0, *it->second->baseColorMap.get(),
-                        RHIShaderStage::FragmentShader);
+                    cmdList.setTexture(0, *it->second->baseColorMap.get(), FragmentShader);
 
                     cmdList.drawIndexed(submesh.indexCount, 1);
                 }
@@ -385,35 +393,6 @@ namespace Crowy
             const RenderContext& ctx,
             std::string_view passName
         ){
-            // TODO.
-            if(passName == "pixelate"){
-                PixelateParams params{
-                    .resolution = {ctx.viewport.width, ctx.viewport.height},
-                    .pixelSize = {4.0f, 4.0f}
-                };
-                pixelateUniformBuffer->upload(&params, sizeof(PixelateParams));
-
-                cmdList.setConstantBuffer(
-                    // TODO. slot number
-                    RHIShaderStage::FragmentShader, 0,
-                    *pixelateUniformBuffer.get()
-                );
-            }
-            else if(passName == "focusmask"){
-                FocusParams params{
-                    .focusCenter = {0.5f, 0.1f},
-                    .focusRadius = 0.05f,
-                    .falloff = 0.1f,
-                    .aspectRatio = ctx.viewport.width / ctx.viewport.height
-                };
-                focusmaskUniformBuffer->upload(&params, sizeof(FocusParams));
-
-                cmdList.setConstantBuffer(
-                    RHIShaderStage::FragmentShader, 0,
-                    *focusmaskUniformBuffer.get()
-                );
-            }
-
             cmdList.draw(6, 1);
         }
     };
