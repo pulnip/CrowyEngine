@@ -39,7 +39,7 @@ namespace Crowy
         std::optional<RenderTypeHash> renderType;
         RHIPipelineStatePtr pipeline;
 
-        std::vector<CBuffer> fs_cbuffer;
+        std::vector<CBuffer> fs_cbuffers;
 
         inline bool isFullscreenPass() const{
             return !renderType.has_value();

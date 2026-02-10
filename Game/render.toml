@@ -117,7 +117,7 @@ fs_samplers = [
     {preset = "NEAREST_WRAP"}
 ]
     [[passes.fs_cbuffer]]
-    name = "PixelateParam"
+    name = "PixelateParams"
     slot = 0
     value = [
         # TODO. use real viewport resolution at runtime
@@ -141,7 +141,7 @@ targets = ["focusMask"]
     name = "FocusParams"
     slot = 0
     value = [
-        {name = "focusCenter", type = "Vec2", data = [0.5, 0.1]},
+        {name = "focusCenter", type = "Float2", data = [0.5, 0.1]},
         {name = "focusRadius", type = "Float", data = 0.05},
         {name = "falloff", type = "Float", data = 0.1},
         # TODO. use real viewport aspect ratio at runtime
