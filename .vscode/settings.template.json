@@ -9,11 +9,17 @@
     "files.exclude": {
         "**/D3D11RHI/**": true,
         "**/D3D12RHI/**": true,
-        "**/MetalRHI/**": true
+        "**/*.hlsli": true,
+        "**/*.hlsl": true,
+        "**/MetalRHI/**": true,
+        "**/*.metal": true
     },
     "search.exclude": {
         "**/D3D11RHI/**": true,
         "**/D3D12RHI/**": true,
-        "**/MetalRHI/**": true
+        "**/*.hlsli": true,
+        "**/*.hlsl": true,
+        "**/MetalRHI/**": true,
+        "**/*.metal": true
     }
 }
