@@ -11,6 +11,7 @@ PRIVATE
     Crowy::Resource
     Crowy::Scene
     Crowy::Script
+    Crowy::UI
 )
 
 add_subdirectory(Launcher)

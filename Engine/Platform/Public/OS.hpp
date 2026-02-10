@@ -40,6 +40,7 @@ namespace Crowy
         int getHeight  () const;
         int getExitCode() const;
 
+        void*           getWindow();
         InputProvider*  getInputProvider();
         RHIDevice*      getDevice();
         RHISwapchain*   getSwapchain();
@@ -47,4 +48,6 @@ namespace Crowy
 
         void setMainLoop(MainLoop*);
     };
+
+    #define OS_ OS::singleton()
 }

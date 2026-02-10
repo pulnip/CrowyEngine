@@ -6,6 +6,7 @@
 #ifdef CROWY_METALRHI
     #include <SDL3/SDL_metal.h>
 #endif
+#include <imgui_impl_sdl3.h>
 #include "FramePacer.hpp"
 #include "Input.hpp"
 #include "SDLInputProvider.hpp"
@@ -152,6 +153,7 @@ namespace Crowy
         void processEvents(){
             SDL_Event event;
             while(SDL_PollEvent(&event)){
+                ImGui_ImplSDL3_ProcessEvent(&event);
                 switch(event.type){
                 case SDL_EVENT_QUIT:
                     forceQuit = true;
@@ -168,6 +170,7 @@ namespace Crowy
         int getHeight  () const{ return height;   }
         int getExitCode() const{ return exitCode; }
 
+        SDL_Window*     getWindow       (){ return              window; }
         InputProvider*  getInputProvider(){ return inputProvider.get(); }
         RHIDevice*      getDevice       (){ return        device.get(); }
         RHISwapchain*   getSwapchain    (){ return     swapchain.get(); }
@@ -206,6 +209,7 @@ namespace Crowy
     int      OS::getHeight  () const{ return impl->getHeight();   }
     int      OS::getExitCode() const{ return impl->getExitCode(); }
 
+    void*           OS::getWindow       (){ return impl->getWindow();        }
     InputProvider*  OS::getInputProvider(){ return impl->getInputProvider(); }
     RHIDevice*      OS::getDevice       (){ return impl->getDevice();        }
     RHISwapchain*   OS::getSwapchain    (){ return impl->getSwapchain();     }

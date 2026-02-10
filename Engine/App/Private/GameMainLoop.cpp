@@ -14,13 +14,14 @@ namespace Crowy
         const SceneSpec& sceneSpec,
         const RenderSpec& renderSpec
     )
-        :renderer(OS::singleton()->getDevice())
+        : renderer(OS_->getDevice())
+        , uiRenderer(OS_->getWindow(), *OS_->getDevice())
     {
         loadScene(sceneSpec, registry);
 
         renderer.loadPasses(renderSpec,
-            OS::singleton()->getWidth(),
-            OS::singleton()->getHeight()
+            OS_->getWidth(),
+            OS_->getHeight()
         );
     }
 
@@ -54,9 +55,8 @@ namespace Crowy
             });
         }
 
-        auto os = OS::singleton();
-        auto screenWidth = os->getWidth(), screenHeight = os->getHeight();
-        auto cmdList = os->getCommandList();
+        auto screenWidth = OS_->getWidth(), screenHeight = OS_->getHeight();
+        auto cmdList = OS_->getCommandList();
 
         for(auto [id, bit, t, c]: registry.query<
             TransformComponent, CameraComponent
@@ -87,7 +87,16 @@ namespace Crowy
                         .maxDepth = c.viewport.maxDepth
                     }
                 },
-                OS::singleton()->getSwapchain()
+                OS_->getSwapchain()
+            );
+
+            UIContext uiContext{
+                .renderer = renderer
+            };
+            uiRenderer.render(
+                "Main UI", ui, uiContext,
+                *OS_->getCommandList(),
+                OS_->getSwapchain()
             );
         }
         return true;

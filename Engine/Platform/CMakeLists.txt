@@ -5,6 +5,7 @@ PUBLIC
     Crowy::CommonRHI
 PRIVATE
     SDL3::SDL3
+    imgui
     Crowy::Core
     Crowy::Input
     Crowy::Log
