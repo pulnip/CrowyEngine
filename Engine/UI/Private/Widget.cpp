@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include "Widget.hpp"
 
 namespace Crowy
@@ -23,24 +24,40 @@ namespace Crowy
         ImGui::Text("%s", data.c_str());
     }
 
-    void Flex::submit(CROWY_UI_CONTEXT& ctx){
-        ImGui::BeginGroup();
-        for(size_t i = 0; i < children.size(); ++i){
-            if(i > 0 && axis == Axis::horizontal)
-                ImGui::SameLine(0, spacing);
-
-            std::visit([&ctx](auto& widget){
-                widget.submit(ctx);
-            }, children[i]);
-        }
-        ImGui::EndGroup();
+    void SearchBar::submit(CROWY_UI_CONTEXT& ctx){
+        if(ImGui::InputText(label.c_str(), &str))
+            onChanged(ctx, str);
     }
+
+    enum class Axis{
+        horizontal,
+        vertical
+    };
+
+    struct Flex{
+        Axis axis;
+        std::vector<Widget> children;
+        double spacing = 0.0;
+
+        void submit(CROWY_UI_CONTEXT& ctx){
+            ImGui::BeginGroup();
+            for(size_t i = 0; i < children.size(); ++i){
+                if(i > 0 && axis == Axis::horizontal)
+                    ImGui::SameLine(0, spacing);
+
+                std::visit([&ctx](auto& widget){
+                    widget.submit(ctx);
+                }, children[i]);
+            }
+            ImGui::EndGroup();
+        }
+    };
 
     Widget Row(
         std::vector<Widget>&& children,
         double spacing
     ){
-        return Box<Flex>(Flex{
+        return Box(Flex{
             .axis = Axis::horizontal,
             .children = std::move(children)
         });
@@ -50,7 +67,7 @@ namespace Crowy
         std::vector<Widget>&& children,
         double spacing
     ){
-        return Box<Flex>(Flex{
+        return Box(Flex{
             .axis = Axis::vertical,
             .children = std::move(children)
         });

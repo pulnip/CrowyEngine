@@ -8,6 +8,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -45,48 +46,68 @@ namespace Crowy
         void submit(CROWY_UI_CONTEXT&);
     };
 
-    template<typename T>
-    struct Box{
-        std::unique_ptr<T> ptr;
+    struct SearchBar{
+        std::string label;
+        std::function<void(CROWY_UI_CONTEXT&, std::string_view)> onChanged = [](CROWY_UI_CONTEXT&, std::string_view){};
+        std::string str;
 
-        Box() = default;
+        void submit(CROWY_UI_CONTEXT&);
+    };
+
+    struct Box{
+    private:
+        class IWidget{
+        public:
+            virtual ~IWidget() = default;
+
+            virtual void submit(CROWY_UI_CONTEXT& ctx) = 0;
+            virtual std::unique_ptr<IWidget> clone() const = 0;
+        };
+
+        template<typename T>
+        class WidgetWrapper: public IWidget{
+        private:
+            T widget;
+
+        public:
+            WidgetWrapper(T widget)
+                : widget(std::move(widget)){}
+            ~WidgetWrapper() = default;
+
+            void submit(CROWY_UI_CONTEXT& ctx) override{
+                widget.submit(ctx);
+            }
+            std::unique_ptr<IWidget> clone() const override{
+                return std::make_unique<WidgetWrapper>(widget);
+            }
+        };
+
+        std::unique_ptr<IWidget> ptr;
+
+    public:
+        template<typename T>
+        Box(T&& widget)
+            : ptr(std::make_unique<WidgetWrapper<std::decay_t<T>>>(std::forward<T>(widget))){}
+
         ~Box() = default;
         Box(Box&&) = default;
         Box& operator=(Box&&) = default;
         Box(const Box& other)
-            : ptr(other.ptr ? std::make_unique<T>(*other.ptr) : nullptr){}
+            : ptr(other.ptr ? other.ptr->clone() : nullptr){}
         Box& operator=(const Box& other){
-            ptr = other.ptr ? std::make_unique<T>(*other.ptr) : nullptr;
+            ptr = other.ptr ? other.ptr->clone() : nullptr;
             return *this;
         }
 
-        Box(T&& widget)
-            :ptr(std::make_unique<T>(std::move(widget))){}
-
-        void submit(CROWY_UI_CONTEXT& ctx){
+        inline void submit(CROWY_UI_CONTEXT& ctx){
             ptr->submit(ctx);
         }
     };
 
-    struct Flex;
-
     using Widget = std::variant<
-        TextButton, Checkbox, Slider, Text,
-        Box<Flex>
+        TextButton, Checkbox, Slider, Text, SearchBar,
+        Box
     >;
-
-        enum class Axis{
-        horizontal,
-        vertical
-    };
-
-    struct Flex{
-        Axis axis;
-        std::vector<Widget> children;
-        double spacing = 0.0;
-
-        void submit(CROWY_UI_CONTEXT& ctx);
-    };
 
     Widget Row(
         std::vector<Widget>&& children,
