@@ -1,6 +1,7 @@
 set(ASSET_SRC "${CMAKE_SOURCE_DIR}/asset")
 set(ASSET_DST "${CMAKE_BINARY_DIR}/bin/asset")
 
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 if(NOT EXISTS "${ASSET_DST}")
     # try to link asset folder
     if(WIN32)
