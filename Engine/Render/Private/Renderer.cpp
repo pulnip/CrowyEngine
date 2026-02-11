@@ -97,6 +97,12 @@ namespace Crowy
         static constexpr uint32_t vsPerObjectCBufferSlot = 1;
         LinearBufferAllocator vsPerObjectBuffers;
 
+        struct CBufferIndex{
+            std::string passName;
+            size_t index;
+        };
+        std::unordered_map<std::string, CBufferIndex, StringHash, std::equal_to<>> cbufferIndexes;
+
     public:
         Impl(RHIDevice* device)
             : device(device)
@@ -145,6 +151,7 @@ namespace Crowy
 
                 std::vector<CBuffer> fs_cbuffers;
                 for(const auto& cbufSpec: passSpec.fs_cbuffers){
+                    cbufferIndexes.emplace(cbufSpec.name, CBufferIndex{.passName = passSpec.name, .index = fs_cbuffers.size()});
                     fs_cbuffers.push_back(createCBufferHelper(*device, cbufSpec));
                 }
 
@@ -238,6 +245,16 @@ namespace Crowy
             else{
                 return false;
             }
+        }
+
+        CBuffer* getCBuffer(std::string_view cbufferName){
+            auto it = cbufferIndexes.find(cbufferName);
+            if(it == cbufferIndexes.end())
+                return nullptr;
+
+            const auto& info = it->second;
+            auto i = passIndex.at(info.passName);
+            return &passes[i].fs_cbuffers[info.index];
         }
 
     private:
@@ -417,5 +434,9 @@ namespace Crowy
         RHISwapchain* backBuffer
     ){
         impl->render(cmdList, ctx, backBuffer);
+    }
+
+    CBuffer* Renderer::getCBuffer(std::string_view cbufferName){
+        return impl->getCBuffer(cbufferName);
     }
 }

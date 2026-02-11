@@ -3,6 +3,7 @@
 #include <memory>
 #include <span>
 #include "math.hpp"
+#include "CBuffer.hpp"
 #include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
 #include "RHIDefinitions.hpp"
@@ -50,5 +51,6 @@ namespace Crowy
         // );
 
         bool setPassEnabled(std::string_view passName, bool enabled);
+        CBuffer* getCBuffer(std::string_view cbufferName);
     };
 }
