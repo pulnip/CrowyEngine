@@ -33,11 +33,18 @@ namespace Crowy
         }
         ~NullBuffer() = default;
 
-        void upload(
+        inline void upload(
             const void* data, size_t size,
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
 
+        }
+
+        inline void* data(
+            size_t offset = 0,
+            size_t size = 0
+        ) noexcept RHI_OVERRIDE{
+            return nullptr;
         }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{

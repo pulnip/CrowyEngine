@@ -29,6 +29,8 @@ namespace Crowy
             size_t offset = 0
         ) noexcept = 0;
 
+        virtual void* data(size_t offset = 0, size_t size = 0) = 0;
+
         virtual RHIResourceState getState() const noexcept = 0;
         virtual void setState(RHIResourceState state) noexcept = 0;
     };
