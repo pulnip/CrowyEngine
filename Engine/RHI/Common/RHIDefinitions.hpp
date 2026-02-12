@@ -159,7 +159,7 @@ namespace Crowy
         CopySource                = 1 << 11,
         ResolveDest               = 1 << 12,
         ResolveSource             = 1 << 13,
-        GenericRead,
+        GenericRead               =(1 << 14),
         AllShaderResource,
         Present,
         Predication
