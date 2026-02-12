@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "path_util.hpp"
+#include "string.hpp"
 #include "RenderDefinitions.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -24,7 +24,10 @@ namespace Crowy
 
         std::string name;
         uint32_t slot;
-        CBufferMeta meta;
+        std::unordered_map<
+            CBufferFieldName, CBufferFieldMeta,
+            StringHash, std::equal_to<>
+        > meta;
         std::vector<std::byte> payload;
 
         struct ConstFieldProxy{

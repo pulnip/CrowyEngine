@@ -5,8 +5,8 @@
 #include "assert.hpp"
 #include "enum_traits.hpp"
 #include "string.hpp"
+#include "CBuffer.hpp"
 #include "LinearAllocator.hpp"
-#include "Log.hpp"
 #include "Renderer.hpp"
 #include "RenderPass.hpp"
 #include "RenderSpec.hpp"
@@ -74,10 +74,22 @@ namespace Crowy
         #endif
         });
 
+        std::vector<CBuffer::Field> fields;
+        std::unordered_map<CBufferFieldName, size_t, StringHash, std::equal_to<>> fieldIndex;
+
+        fields.reserve(spec.meta.size());
+        fieldIndex.reserve(spec.meta.size());
+
+        for(const auto& [name, meta]: spec.meta){
+            fieldIndex.try_emplace(name, fields.size());
+            fields.push_back({.name = name, .meta = meta});
+        }
+
         return CBuffer{
             .name = spec.name,
             .slot = spec.slot,
-            .meta = spec.meta,
+            .fields = std::move(fields),
+            .fieldIndex = std::move(fieldIndex),
             .buffer = std::move(buffer)
         };
     }

@@ -3,7 +3,6 @@
 #include <memory>
 #include <span>
 #include "math.hpp"
-#include "CBuffer.hpp"
 #include "RenderDefinitions.hpp"
 #include "ResourceHandle.hpp"
 #include "RHIDefinitions.hpp"
@@ -12,6 +11,7 @@
 namespace Crowy
 {
     struct RenderSpec;
+    struct CBuffer;
 
     struct RenderItem{
         MeshHandle mesh;

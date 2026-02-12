@@ -2,16 +2,10 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include "math.hpp"
-#include "string.hpp"
-#include "RHIAPI.hpp"
 
 namespace Crowy
 {
@@ -58,8 +52,4 @@ namespace Crowy
         CBufferFieldType type;
         CBufferFieldOffset offset = 0;
     };
-    using CBufferMeta = std::unordered_map<
-        CBufferFieldName, CBufferFieldMeta,
-        StringHash, std::equal_to<>
-    >;
 }
