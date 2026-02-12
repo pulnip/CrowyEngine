@@ -1,14 +1,13 @@
 #pragma once
 
+#include "AppUI.hpp"
 #include "EntityRegistry.hpp"
 #include "MainLoop.hpp"
 #include "Renderer.hpp"
-#include "RHIFWD.hpp"
 #include "SystemScheduler.hpp"
 #include "Context.hpp"
 #define CROWY_UI_CONTEXT UIContext
 #include "UIRenderer.hpp"
-#include "Widget.hpp"
 
 namespace Crowy
 {
@@ -21,7 +20,7 @@ namespace Crowy
         ECSScheduler scheduler;
 
         Renderer renderer;
-        Widget ui = demoUI();
+        Widget ui = cbufferInspector("FocusParams");
         UIRenderer uiRenderer;
 
     public:
