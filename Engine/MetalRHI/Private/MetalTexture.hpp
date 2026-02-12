@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <Metal/Metal.hpp>
 #include "MetalUtil.hpp"
 #include "RHIAPI.hpp"
@@ -12,7 +11,7 @@
 
 namespace Crowy
 {
-    static auto convertTextureUsage(RHITextureUsage usage){
+    inline auto convert(RHITextureUsage usage){
         MTL::TextureUsage mtlUsage = 0;
 
         if(hasFlag(usage, RHITextureUsage::ShaderResource))
@@ -60,7 +59,7 @@ namespace Crowy
                     (desc.arraySize > 1 ? MTL::TextureType2DArray
                                         : MTL::TextureType2D)
             );
-            texDesc->setUsage(convertTextureUsage(desc.usage));
+            texDesc->setUsage(convert(desc.usage));
         #if TARGET_OS_OSX                                                             
             bool needsGPUOnly = hasFlag(desc.usage, RHITextureUsage::RenderTarget) || 
                                 hasFlag(desc.usage, RHITextureUsage::DepthStencil);   

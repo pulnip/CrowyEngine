@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstddef>
-#include <memory>
 #include <span>
 #include <utility>
 #include <Metal/Metal.hpp>
@@ -22,7 +21,7 @@
 
 namespace Crowy
 {
-    static MTL::LoadAction convertLoadAction(RHILoadAction action){
+    inline auto convert(RHILoadAction action){
         switch(action){
         case RHILoadAction::Load:     return MTL::LoadActionLoad;
         case RHILoadAction::Clear:    return MTL::LoadActionClear;
@@ -32,7 +31,7 @@ namespace Crowy
         }
     }
 
-    static MTL::StoreAction convertStoreAction(RHIStoreAction action){
+    inline auto convert(RHIStoreAction action){
         switch(action){
         case RHIStoreAction::Store:    return MTL::StoreActionStore;
         case RHIStoreAction::DontCare: return MTL::StoreActionDontCare;
@@ -41,7 +40,7 @@ namespace Crowy
         }
     }
 
-    static MTL::CullMode convertCullMode(RHICullMode mode){
+    inline auto convert(RHICullMode mode){
         switch(mode){
         case RHICullMode::CullNone: return MTL::CullModeNone;
         case RHICullMode::Front:    return MTL::CullModeFront;
@@ -51,7 +50,7 @@ namespace Crowy
         }
     }
 
-    static MTL::PrimitiveType convertTopology(RHIPrimitiveTopology topology){
+    inline auto convert(RHIPrimitiveTopology topology){
         switch(topology){
         case RHIPrimitiveTopology::PointList:     return MTL::PrimitiveTypePoint;
         case RHIPrimitiveTopology::LineList:      return MTL::PrimitiveTypeLine;
@@ -245,7 +244,7 @@ private:
 
                 // Rasterizer state
                 const auto& raster = metalPSO->getRasterizerState();
-                renderEncoder->setCullMode(convertCullMode(raster.cullMode));
+                renderEncoder->setCullMode(convert(raster.cullMode));
                 renderEncoder->setFrontFacingWinding(
                     raster.frontCounterClockwise ? 
                         MTL::WindingCounterClockwise : 
@@ -445,7 +444,7 @@ private:
             );
 
             renderEncoder->drawPrimitives(
-                convertTopology(currentTopology),
+                convert(currentTopology),
                 startVertex,
                 vertexCount,
                 instanceCount,
@@ -469,7 +468,7 @@ private:
             auto indexOffset = currentIndexBufferOffset + startIndex * indexSize;
 
             renderEncoder->drawIndexedPrimitives(
-                convertTopology(currentTopology),
+                convert(currentTopology),
                 indexCount,
                 currentIndexFormat,
                 currentIndexBuffer,
@@ -714,8 +713,8 @@ private:
             for(size_t i=0; i<texes.size(); ++i){
                 auto& colorAttach = *passDesc->colorAttachments()->object(i);
                 colorAttach.setTexture(texes[i]);
-                colorAttach.setLoadAction(convertLoadAction(loadAction));
-                colorAttach.setStoreAction(convertStoreAction(storeAction));
+                colorAttach.setLoadAction(convert(loadAction));
+                colorAttach.setStoreAction(convert(storeAction));
                 colorAttach.setClearColor(MTL::ClearColor::Make(
                     clearColor.r, clearColor.g, clearColor.b, clearColor.a
                 ));
@@ -728,8 +727,8 @@ private:
                 );
                 auto& depthAttach = *passDesc->depthAttachment();
                 depthAttach.setTexture(depthTex);
-                depthAttach.setLoadAction(convertLoadAction(loadAction));
-                depthAttach.setStoreAction(convertStoreAction(storeAction));
+                depthAttach.setLoadAction(convert(loadAction));
+                depthAttach.setStoreAction(convert(storeAction));
                 depthAttach.setClearDepth(clearDS.depth);
             }
 

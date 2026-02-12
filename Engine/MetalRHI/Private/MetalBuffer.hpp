@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
 #include "assert.hpp"

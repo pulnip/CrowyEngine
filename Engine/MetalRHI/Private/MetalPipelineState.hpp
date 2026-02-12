@@ -5,7 +5,6 @@
 #include "assert.hpp"
 #include "MetalShader.hpp"
 #include "MetalUtil.hpp"
-#include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIPipelineState.hpp"
@@ -13,7 +12,7 @@
 
 namespace Crowy
 {
-    static MTL::VertexFormat convertVertexFormat(RHITextureFormat format){
+    inline auto convertVertexFormat(RHITextureFormat format){
         switch(format){
         case RHITextureFormat::R32_FLOAT:    return MTL::VertexFormatFloat;
         case RHITextureFormat::RG32_FLOAT:   return MTL::VertexFormatFloat2;
@@ -35,7 +34,7 @@ namespace Crowy
         }
     }
 
-    static MTL::StencilOperation convertStencilOp(RHIStencilOp op){
+    inline auto convert(RHIStencilOp op){
         switch(op){
         case RHIStencilOp::Keep:      return MTL::StencilOperationKeep;
         case RHIStencilOp::Zero:      return MTL::StencilOperationZero;
@@ -50,7 +49,7 @@ namespace Crowy
         }
     }
 
-    static MTL::BlendFactor convertBlendFactor(RHIBlend blend){
+    inline auto convert(RHIBlend blend){
         switch(blend){
         case RHIBlend::Zero:           return MTL::BlendFactorZero;
         case RHIBlend::One:            return MTL::BlendFactorOne;
@@ -70,7 +69,7 @@ namespace Crowy
         }
     }
 
-    static MTL::BlendOperation convertBlendOp(RHIBlendOp op){
+    inline auto convert(RHIBlendOp op){
         switch(op){
         case RHIBlendOp::Add:             return MTL::BlendOperationAdd;
         case RHIBlendOp::Subtract:        return MTL::BlendOperationSubtract;
@@ -82,14 +81,14 @@ namespace Crowy
         }
     }
 
-    static void configureStencil(
+    inline void configureStencil(
         MTL::StencilDescriptor& desc,
         const RHIStencilOpDesc& op
     ){
-        desc.setStencilCompareFunction(convertCompareFunc(op.func));
-        desc.setStencilFailureOperation(convertStencilOp(op.stencilFailOp));
-        desc.setDepthFailureOperation(convertStencilOp(op.depthFailOp));
-        desc.setDepthStencilPassOperation(convertStencilOp(op.passOp));
+        desc.setStencilCompareFunction(convert(op.func));
+        desc.setStencilFailureOperation(convert(op.stencilFailOp));
+        desc.setDepthFailureOperation(convert(op.depthFailOp));
+        desc.setDepthStencilPassOperation(convert(op.passOp));
     }
 
     class MetalPipelineState
@@ -157,22 +156,22 @@ namespace Crowy
 
                 if(rtBlend.blendEnable){
                     colorAttach->setSourceRGBBlendFactor(
-                        convertBlendFactor(rtBlend.srcBlend)
+                        convert(rtBlend.srcBlend)
                     );
                     colorAttach->setDestinationRGBBlendFactor(
-                        convertBlendFactor(rtBlend.dstBlend)
+                        convert(rtBlend.dstBlend)
                     );
                     colorAttach->setRgbBlendOperation(
-                        convertBlendOp(rtBlend.blendOp)
+                        convert(rtBlend.blendOp)
                     );
                     colorAttach->setSourceAlphaBlendFactor(
-                        convertBlendFactor(rtBlend.srcBlendAlpha)
+                        convert(rtBlend.srcBlendAlpha)
                     );
                     colorAttach->setDestinationAlphaBlendFactor(
-                        convertBlendFactor(rtBlend.dstBlendAlpha)
+                        convert(rtBlend.dstBlendAlpha)
                     );
                     colorAttach->setAlphaBlendOperation(
-                        convertBlendOp(rtBlend.blendOpAlpha)
+                        convert(rtBlend.blendOpAlpha)
                     );
                 }
 
@@ -280,7 +279,7 @@ namespace Crowy
 
             dsDesc->setDepthWriteEnabled(desc.depthWriteEnable);
             dsDesc->setDepthCompareFunction(
-                convertCompareFunc(desc.depthFunc)
+                convert(desc.depthFunc)
             );
 
             if(desc.stencil.has_value()){

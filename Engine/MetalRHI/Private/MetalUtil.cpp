@@ -68,7 +68,7 @@ namespace Crowy
         }
     }
 
-    MTL::CompareFunction convertCompareFunc(RHIComparisonFunc func){
+    MTL::CompareFunction convert(RHIComparisonFunc func){
         switch(func){
         case RHIComparisonFunc::Never:        return MTL::CompareFunctionNever;
         case RHIComparisonFunc::Less:         return MTL::CompareFunctionLess;

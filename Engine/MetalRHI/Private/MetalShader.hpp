@@ -2,8 +2,6 @@
 
 #include <cstddef>
 #include <filesystem>
-#include <sstream>
-#include <memory>
 #include <string>
 #include <Metal/Metal.hpp>
 #include "string.hpp"

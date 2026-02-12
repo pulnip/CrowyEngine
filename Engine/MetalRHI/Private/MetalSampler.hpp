@@ -2,7 +2,6 @@
 
 #include <utility>
 #include <Metal/Metal.hpp>
-#include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHISampler.hpp"
@@ -11,7 +10,7 @@
 
 namespace Crowy
 {
-    static MTL::SamplerAddressMode convertAddressMode(RHIAddressMode mode){
+    inline auto convert(RHIAddressMode mode){
         switch(mode){
         case RHIAddressMode::Wrap  : return MTL::SamplerAddressModeRepeat;
         case RHIAddressMode::Clamp : return MTL::SamplerAddressModeClampToEdge;
@@ -22,7 +21,7 @@ namespace Crowy
         }
     }
 
-    static MTL::SamplerMinMagFilter convertMinMagFilter(RHIFilter filter){
+    inline auto convertMinMagFilter(RHIFilter filter){
         switch(filter){
         case RHIFilter::Nearest: return MTL::SamplerMinMagFilterNearest;
         case RHIFilter::Linear:  return MTL::SamplerMinMagFilterLinear;
@@ -31,7 +30,7 @@ namespace Crowy
         }
     }
 
-    static MTL::SamplerMipFilter convertMipFilter(RHIFilter filter){
+    inline auto convertMipFilter(RHIFilter filter){
         switch(filter){
         case RHIFilter::Nearest: return MTL::SamplerMipFilterNearest;
         case RHIFilter::Linear:  return MTL::SamplerMipFilterLinear;
@@ -57,13 +56,13 @@ namespace Crowy
             samplerDesc->setMinFilter(convertMinMagFilter(desc.minFilter));
             samplerDesc->setMagFilter(convertMinMagFilter(desc.magFilter));
             samplerDesc->setMipFilter(convertMipFilter(desc.magFilter));
-            samplerDesc->setSAddressMode(convertAddressMode(desc.addressU));
-            samplerDesc->setTAddressMode(convertAddressMode(desc.addressV));
-            samplerDesc->setRAddressMode(convertAddressMode(desc.addressW));
+            samplerDesc->setSAddressMode(convert(desc.addressU));
+            samplerDesc->setTAddressMode(convert(desc.addressV));
+            samplerDesc->setRAddressMode(convert(desc.addressW));
             samplerDesc->setLodMinClamp(desc.minLOD);
             samplerDesc->setLodMaxClamp(desc.maxLOD);
             samplerDesc->setMaxAnisotropy(desc.maxAnisotropy);
-            samplerDesc->setCompareFunction(convertCompareFunc(desc.compareFunc));
+            samplerDesc->setCompareFunction(convert(desc.compareFunc));
 
             sampler = device->newSamplerState(samplerDesc);
             samplerDesc->release();

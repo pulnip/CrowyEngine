@@ -40,5 +40,8 @@
 # debug information files
 *.dwo
 
+# clangd extension
+.cache/
+
 build/
 .DS_Store
