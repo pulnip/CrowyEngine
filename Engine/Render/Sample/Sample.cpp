@@ -3,7 +3,6 @@
 #include "enum_traits.hpp"
 #include "FramePacer.hpp"
 #include "Log.hpp"
-#include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHISwapchain.hpp"
@@ -100,14 +99,14 @@ int main(int argc, char* argv[]){
 
     using enum CBufferFieldType;
 
-    CBufferSpec pixelateParams{
+    CBuffer pixelateParams{
         .name = "PixelateParams",
         .slot = 0
     };
     pixelateParams.newField("resolution", Float2) = Vec2(800, 600);
     pixelateParams.newField("pixelSize", Float2) = Vec2(4, 4);
 
-    CBufferSpec focusParams{
+    CBuffer focusParams{
         .name = "FocusParams",
         .slot = 0
     };

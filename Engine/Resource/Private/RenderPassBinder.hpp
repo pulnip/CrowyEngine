@@ -24,7 +24,7 @@ namespace Crowy
     using SamplerPresets = std::unordered_map<std::string, RHISamplerState>;
 
     struct PlannedCBuffer{
-        std::vector<CBufferSpec> spec;
+        std::vector<CBuffer> spec;
         size_t index = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };

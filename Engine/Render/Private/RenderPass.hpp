@@ -3,12 +3,8 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "CBuffer.hpp"
 #include "RenderDefinitions.hpp"
-#include "ResourceHandle.hpp"
-#include "RHIPipelineState.hpp"
-#include "RHISampler.hpp"
-#include "RHIShader.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {

@@ -40,13 +40,6 @@ namespace Crowy
 
         }
 
-        inline void* data(
-            size_t offset = 0,
-            size_t size = 0
-        ) noexcept RHI_OVERRIDE{
-            return nullptr;
-        }
-
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;
         }

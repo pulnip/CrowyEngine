@@ -2,8 +2,8 @@
 #include <string_view>
 #include <utility>
 #include "AppUI.hpp"
-#include "CBuffer.hpp"
 #include "Context.hpp"
+#include "RenderDefinitions.hpp"
 #include "Renderer.hpp"
 #include "Widget.hpp"
 
@@ -23,17 +23,17 @@ namespace Crowy
                 .str = searchStr
             });
             if(auto cbuf = ctx.renderer.getCBuffer(searchStr)){
-                for(auto v: cbuf->fieldViews()){
-                    switch(v.field.type){
+                for(auto [name, field]: cbuf->fieldViews()){
+                    switch(field.type){
                     case CBufferFieldType::Int32:
                         break;
                     case CBufferFieldType::Float:
                         children.push_back(Slider{
-                            .label = std::string(v.name),
-                            .onChanged = [field = v.field](UIContext&, float v) mutable{
+                            .label = std::string(name),
+                            .onChanged = [field](UIContext&, float v) mutable{
                                 field = v;
                             },
-                            .v = v.field
+                            .v = field
                         });
                         break;
                     case CBufferFieldType::Float2:

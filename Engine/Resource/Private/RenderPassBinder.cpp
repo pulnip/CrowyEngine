@@ -97,7 +97,7 @@ namespace Crowy
     void readCBufferData(
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key,
-        CBufferSpec& cbuffer
+        CBuffer& cbuffer
     ){
         const VNode* n = findField(arena, table, key);
         if(!n)
@@ -160,7 +160,7 @@ namespace Crowy
     void CBufferBinder::validateAndPlanArray(const ValueArena& arena,
         const VArray& src, size_t index, RenderPassElementBindPlan& plan
     ){
-        std::vector<CBufferSpec> cbufferSpec;
+        std::vector<CBuffer> cbuffers;
 
         for(size_t i: src.elements){
             auto table = std::get_if<VTable>(&arena.nodes[i]);
@@ -172,17 +172,17 @@ namespace Crowy
             if(!name || !slot)
                 continue;
 
-            CBufferSpec cbuffer{
+            CBuffer cbuffer{
                 .name = *name,
                 .slot = static_cast<uint32_t>(*slot)
             };
             readCBufferData(arena, *table, plan.errors, "value", cbuffer);
 
-            cbufferSpec.push_back(std::move(cbuffer));
+            cbuffers.push_back(std::move(cbuffer));
         }
 
         plan.cbuffers.push_back({
-            .spec = cbufferSpec,
+            .spec = cbuffers,
             .index = index,
             .location = src.location
         });

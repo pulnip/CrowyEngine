@@ -2,10 +2,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "RHIDefinitions.hpp"
 #include "assert.hpp"
 #include "enum_traits.hpp"
 #include "string.hpp"
-#include "CBuffer.hpp"
 #include "LinearAllocator.hpp"
 #include "Renderer.hpp"
 #include "RenderPass.hpp"
@@ -15,6 +15,9 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
+#include "RHIPipelineState.hpp"
+#include "RHISampler.hpp"
+#include "RHIShader.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
@@ -59,41 +62,6 @@ namespace Crowy
         return device.createGraphicsPipelineState(desc);
     }
 
-    static auto createCBufferHelper(RHIDevice& device, const CBufferSpec& spec){
-        auto buffer = device.createBuffer({
-            // TODO. use Unified Constant buffer + offset later.
-            .size = spec.size(),
-            .usage = combine(
-                RHIBufferUsage::ConstantBuffer,
-                RHIBufferUsage::CPUWrite
-            ),
-            .stride = 0,
-            .initialData = spec.data()
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            , .debugName = spec.name
-        #endif
-        });
-
-        std::vector<CBuffer::Field> fields;
-        std::unordered_map<CBufferFieldName, size_t, StringHash, std::equal_to<>> fieldIndex;
-
-        fields.reserve(spec.meta.size());
-        fieldIndex.reserve(spec.meta.size());
-
-        for(const auto& [name, meta]: spec.meta){
-            fieldIndex.try_emplace(name, fields.size());
-            fields.push_back({.name = name, .meta = meta});
-        }
-
-        return CBuffer{
-            .name = spec.name,
-            .slot = spec.slot,
-            .fields = std::move(fields),
-            .fieldIndex = std::move(fieldIndex),
-            .buffer = std::move(buffer)
-        };
-    }
-
     struct PerObjectParam{
         Mat4 mvp;
     };
@@ -108,6 +76,7 @@ namespace Crowy
         // TODO. need to fit in appropriate slot
         static constexpr uint32_t vsPerObjectCBufferSlot = 1;
         LinearBufferAllocator vsPerObjectBuffers;
+        LinearBufferAllocator passParamBuffers;
 
         struct CBufferIndex{
             std::string passName;
@@ -128,6 +97,18 @@ namespace Crowy
                 .initialData = nullptr
             #if defined(_DEBUG) || !defined(NDEBUG)
                 , .debugName = "Uniform Buffer"
+            #endif
+            })
+            , passParamBuffers(*device, RHIBufferCreateDesc{
+                .size = 256,
+                .usage = combine(
+                    RHIBufferUsage::ConstantBuffer,
+                    RHIBufferUsage::CPUWrite
+                ),
+                .stride = 0,
+                .initialData = nullptr
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = "PassParam Buffer"
             #endif
             }){}
         ~Impl() = default;
@@ -161,10 +142,12 @@ namespace Crowy
                 if(!passSpec.renderType.empty())
                     renderType = std::hash<RenderType>{}(passSpec.renderType);
 
-                std::vector<CBuffer> fs_cbuffers;
-                for(const auto& cbufSpec: passSpec.fs_cbuffers){
-                    cbufferIndexes.emplace(cbufSpec.name, CBufferIndex{.passName = passSpec.name, .index = fs_cbuffers.size()});
-                    fs_cbuffers.push_back(createCBufferHelper(*device, cbufSpec));
+                for(size_t i = 0; i < passSpec.fs_cbuffers.size(); ++i){
+                    const auto& cbuf = passSpec.fs_cbuffers[i];
+                    cbufferIndexes.emplace(cbuf.name, CBufferIndex{
+                        .passName = passSpec.name,
+                        .index = i
+                    });
                 }
 
                 const auto index = passes.size();
@@ -179,7 +162,7 @@ namespace Crowy
                     .vs = std::move(vs), .fs = std::move(fs),
                     .renderType = renderType,
                     .pipeline = std::move(pipeline),
-                    .fs_cbuffers = std::move(fs_cbuffers)
+                    .fs_cbuffers = passSpec.fs_cbuffers
                 });
             }
 
@@ -349,11 +332,13 @@ namespace Crowy
                     FragmentShader
                 );
             }
-            for(auto& fs_cbuffer: pass.fs_cbuffers){
-                cmdList.setConstantBuffer(
-                    FragmentShader, fs_cbuffer.slot,
-                    *fs_cbuffer.buffer.get()
-                );
+
+            for(auto& cbuf: pass.fs_cbuffers){
+                auto& buf = passParamBuffers.acquire();
+
+                buf.upload(cbuf.buffer.data(), cbuf.buffer.size());
+
+                cmdList.setConstantBuffer(FragmentShader, cbuf.slot, buf);
             }
 
             cmdList.setViewport(ctx.viewport);

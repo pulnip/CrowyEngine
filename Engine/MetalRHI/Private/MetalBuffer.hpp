@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
 #include <cstdint>
@@ -20,7 +21,6 @@ namespace Crowy
     {
     private:
         MTL::Buffer* buffer;
-        void* mapped = nullptr;
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
@@ -64,10 +64,6 @@ namespace Crowy
                 );
             }
 
-            if(isCPUAccessible){
-                mapped = buffer->contents();
-            }
-
         #if defined(_DEBUG) || !defined(NDEBUG)
             if(!desc.debugName.empty()){
                 buffer->setLabel(
@@ -78,33 +74,28 @@ namespace Crowy
         }
 
         ~MetalBuffer(){
-            mapped = nullptr;
-            buffer->release();
+            if(buffer != nullptr){
+                buffer->release();
+                buffer = nullptr;
+            }
         }
 
         inline void upload(
             const void* data, size_t size,
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(isCPUAccessible && mapped != nullptr);
+            CROWY_ASSERT(isCPUAccessible);
+            void* mapped = buffer->contents();
 
-            memcpy(static_cast<uint8_t*>(mapped) + offset, data, size);
+            std::memcpy(
+                static_cast<uint8_t*>(mapped) + offset,
+                data, size
+            );
 
             if(isManaged){
                 buffer->didModifyRange(NS::Range::Make(offset, size));
             }
         }
-
-        inline void* data(
-            size_t offset = 0,
-            size_t size = 0
-        ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(isCPUAccessible && mapped != nullptr);
-            CROWY_ASSERT(offset + size <= this->size);
-
-            return static_cast<uint8_t*>(mapped) + offset;
-        }
-
 
         MTL::Buffer* get() const{ return buffer; }
 
