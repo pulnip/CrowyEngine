@@ -5,16 +5,56 @@
 #endif
 
 #include <functional>
-#include <initializer_list>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
+#include "math.hpp"
 
 namespace Crowy
 {
     struct CROWY_UI_CONTEXT;
+
+    struct IntField{
+        std::string label;
+        std::function<void(CROWY_UI_CONTEXT&, int)> onChanged = [](CROWY_UI_CONTEXT&, int){};
+        int v = 0;
+
+        void submit(CROWY_UI_CONTEXT&);
+    };
+
+    struct FloatField{
+        std::string label;
+        std::function<void(CROWY_UI_CONTEXT&, float)> onChanged = [](CROWY_UI_CONTEXT&, float){};
+        float v = 0;
+
+        void submit(CROWY_UI_CONTEXT&);
+    };
+
+    struct Float2Field{
+        std::string label;
+        std::function<void(CROWY_UI_CONTEXT&, Vec2)> onChanged = [](CROWY_UI_CONTEXT&, Vec2){};
+        Vec2 v{0, 0};
+
+        void submit(CROWY_UI_CONTEXT&);
+    };
+
+    struct Float3Field{
+        std::string label;
+        std::function<void(CROWY_UI_CONTEXT&, Vec3)> onChanged = [](CROWY_UI_CONTEXT&, Vec3){};
+        Vec3 v{0, 0, 0};
+
+        void submit(CROWY_UI_CONTEXT&);
+    };
+
+    struct Float4Field{
+        std::string label;
+        std::function<void(CROWY_UI_CONTEXT&, Vec4)> onChanged = [](CROWY_UI_CONTEXT&, Vec4){};
+        Vec4 v{0, 0, 0, 0};
+
+        void submit(CROWY_UI_CONTEXT&);
+    };
 
     struct TextButton{
         std::string label;

@@ -26,9 +26,16 @@ namespace Crowy
                 for(auto [name, field]: cbuf->fieldViews()){
                     switch(field.type){
                     case CBufferFieldType::Int32:
+                        children.push_back(IntField{
+                            .label = std::string(name),
+                            .onChanged = [field](UIContext&, int v) mutable{
+                                field = v;
+                            },
+                            .v = field
+                        });
                         break;
                     case CBufferFieldType::Float:
-                        children.push_back(Slider{
+                        children.push_back(FloatField{
                             .label = std::string(name),
                             .onChanged = [field](UIContext&, float v) mutable{
                                 field = v;
@@ -37,10 +44,31 @@ namespace Crowy
                         });
                         break;
                     case CBufferFieldType::Float2:
+                        children.push_back(Float2Field{
+                            .label = std::string(name),
+                            .onChanged = [field](UIContext&, Vec2 v) mutable{
+                                field = v;
+                            },
+                            .v = field
+                        });
                         break;
                     case CBufferFieldType::Float3:
+                        children.push_back(Float3Field{
+                            .label = std::string(name),
+                            .onChanged = [field](UIContext&, Vec3 v) mutable{
+                                field = v;
+                            },
+                            .v = field
+                        });
                         break;
                     case CBufferFieldType::Float4:
+                        children.push_back(Float4Field{
+                            .label = std::string(name),
+                            .onChanged = [field](UIContext&, Vec4 v) mutable{
+                                field = v;
+                            },
+                            .v = field
+                        });
                         break;
                     case CBufferFieldType::Float4x4:
                         break;

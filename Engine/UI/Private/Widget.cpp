@@ -4,6 +4,45 @@
 
 namespace Crowy
 {
+    void IntField::submit(CROWY_UI_CONTEXT& ctx){
+        if(ImGui::InputInt(label.c_str(), &v)){
+            onChanged(ctx, v);
+        }
+    }
+
+    void FloatField::submit(CROWY_UI_CONTEXT& ctx){
+        if(ImGui::InputFloat(label.c_str(), &v)){
+            onChanged(ctx, v);
+        }
+    }
+
+    void Float2Field::submit(CROWY_UI_CONTEXT& ctx){
+        float arr[] = {v.x, v.y};
+
+        if(ImGui::InputFloat2(label.c_str(), arr)){
+            v = {arr[0], arr[1]};
+            onChanged(ctx, v);
+        }
+    }
+
+    void Float3Field::submit(CROWY_UI_CONTEXT& ctx){
+        float arr[] = {v.x, v.y, v.z};
+
+        if(ImGui::InputFloat3(label.c_str(), arr)){
+            v = {arr[0], arr[1], arr[2]};
+            onChanged(ctx, v);
+        }
+    }
+
+    void Float4Field::submit(CROWY_UI_CONTEXT& ctx){
+        float arr[] = {v.x, v.y, v.z, v.w};
+
+        if(ImGui::InputFloat2(label.c_str(), arr)){
+            v = {arr[0], arr[1], arr[2], arr[3]};
+            onChanged(ctx, v);
+        }
+    }
+
     void TextButton::submit(CROWY_UI_CONTEXT& ctx){
         if(ImGui::Button(label.c_str())){
             onPressed(ctx);
