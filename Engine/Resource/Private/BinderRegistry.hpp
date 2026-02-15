@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -114,5 +115,28 @@ namespace Crowy
     std::optional<std::vector<std::string>> readStringArray(
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key
+    );
+    std::vector<std::string> readStringArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::vector<std::string> def
+    );
+    std::optional<std::filesystem::path> readPath(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    std::filesystem::path readPath(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::filesystem::path def
+    );
+    std::optional<std::vector<std::filesystem::path>> readPathArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    );
+    std::vector<std::filesystem::path> readPathArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::vector<std::filesystem::path> def
     );
 }

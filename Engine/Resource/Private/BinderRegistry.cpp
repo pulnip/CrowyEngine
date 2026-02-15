@@ -1,4 +1,5 @@
 #include <format>
+#include <optional>
 #include "BinderRegistry.hpp"
 
 namespace Crowy
@@ -325,5 +326,87 @@ namespace Crowy
             getLoc(*n)
         });
         return std::nullopt;
+    }
+
+    std::vector<std::string> readStringArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::vector<std::string> def
+    ){
+        auto v = readStringArray(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
+    }
+
+    std::optional<std::filesystem::path> readPath(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        auto stropt = readString(arena, table, errors, key);
+        if(!stropt.has_value())
+            return std::nullopt;
+
+        return stropt.value();
+    }
+
+    std::filesystem::path readPath(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::filesystem::path def
+    ){
+        auto v = readPath(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
+    }
+
+    std::optional<std::vector<std::filesystem::path>> readPathArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n)
+            return std::nullopt;
+
+        if(auto arr = std::get_if<VArray>(n)){
+            std::vector<std::filesystem::path> v;
+            v.resize(arr->elements.size());
+
+            for(int i=0; i<arr->elements.size(); ++i){
+                const VNode& elem = arena.nodes[arr->elements[i]];
+                auto f = asString(elem);
+                if(!f){
+                    errors.push_back({
+                        "element of StringArray should be String",
+                        getLoc(elem)
+                    });
+                    return std::nullopt;
+                }
+                v[i] = *f;
+            }
+
+            return v;
+        }
+
+        errors.push_back({
+            std::format("{} should be array", key),
+            getLoc(*n)
+        });
+        return std::nullopt;
+    }
+
+    std::vector<std::filesystem::path> readPathArray(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        std::vector<std::filesystem::path> def
+    ){
+        auto v = readPathArray(arena, table, errors, key);
+
+        if(v.has_value())
+            return *v;
+        return def;
     }
 }
