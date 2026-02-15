@@ -11,6 +11,8 @@
 
 namespace Crowy
 {
+    struct InputSpec;
+    struct ScriptSpec;
     struct SceneSpec;
     using ECSScheduler = SystemScheduler<UpdateContext>;
 
@@ -24,7 +26,12 @@ namespace Crowy
         UIRenderer uiRenderer;
 
     public:
-        GameMainLoop(const SceneSpec&, const RenderSpec&);
+        GameMainLoop(const RenderSpec&,
+            const InputSpec&, const ScriptSpec&,
+            const SceneSpec&
+        );
+
+        ~GameMainLoop();
 
         void initialize() override;
         bool update(float deltaTime, float totalTime) override;

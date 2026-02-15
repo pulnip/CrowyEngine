@@ -120,9 +120,10 @@ namespace Crowy
         auto borderless    = parser.get("borderless", false);
         auto always_on_top = parser.get("always_on_top", false);
 
-        auto  sceneFile = parser.get<std::filesystem::path>( "scene", "");
         auto renderFile = parser.get<std::filesystem::path>("render", "");
-        auto  inputFIle = parser.get<std::filesystem::path>( "input", "");
+        auto  inputFile = parser.get<std::filesystem::path>( "input", "");
+        auto scriptFile = parser.get<std::filesystem::path>("script", "");
+        auto  sceneFile = parser.get<std::filesystem::path>( "scene", "");
 
         return AppConfig{
             .window = WindowConfig{
@@ -134,8 +135,10 @@ namespace Crowy
                 .borderless    = borderless,
                 .always_on_top = always_on_top
             },
-            .sceneFile  = sceneFile,
-            .renderFile = renderFile
+            .renderFile = std::move(renderFile),
+            .inputFile  = std::move( inputFile),
+            .scriptFile = std::move(scriptFile),
+            .sceneFile  = std::move( sceneFile),
         };
     }
 }

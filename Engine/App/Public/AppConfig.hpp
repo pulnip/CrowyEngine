@@ -7,8 +7,10 @@ namespace Crowy
 {
     struct AppConfig{
         WindowConfig window;
-        std::filesystem::path sceneFile;
         std::filesystem::path renderFile;
+        std::filesystem::path inputFile;
+        std::filesystem::path scriptFile;
+        std::filesystem::path sceneFile;
     };
 
     AppConfig parseCommandLine(int argc, char* argv[]);

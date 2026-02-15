@@ -35,7 +35,7 @@ namespace Crowy
         return out;
     }
 
-    InputSpec parseInputFromFile(std::filesystem::path inputFile){
+    InputSpec parseInputFromFile(const std::filesystem::path& inputFile){
         auto u8strPath = to_utf8String(inputFile);
         auto binderRegistry = makeInputBinderRegistry();
         toml::parse_result pr = toml::parse_file(u8strPath);

@@ -3,6 +3,7 @@
 #include "ConfigParser.hpp"
 #include "GameMainLoop.hpp"
 #include "Input.hpp"
+#include "MainLoop.hpp"
 #include "OS.hpp"
 #include "Resource.hpp"
 #include "Script.hpp"
@@ -18,13 +19,13 @@ namespace Crowy
         initInputModule(os->getInputProvider());
         initScriptModule();
 
-        auto  sceneSpec = parseSceneFromFile(config.sceneFile);
         auto renderSpec = parseRenderFromFile(config.renderFile);
-        // auto scriptSpec = parseScriptFromFile(config.scriptFile);
-        ScriptSpec scriptSpec;
+        auto  inputSpec = parseInputFromFile(config.inputFile);
+        auto scriptSpec = parseScriptFromFile(config.scriptFile);
+        auto  sceneSpec = parseSceneFromFile(config.sceneFile);
 
         mainLoop = std::make_unique<GameMainLoop>(
-            sceneSpec, renderSpec, scriptSpec
+            renderSpec, inputSpec, scriptSpec, sceneSpec
         );
         if(mainLoop == nullptr)
             return Error::FAILED;
@@ -35,8 +36,10 @@ namespace Crowy
     }
 
     void App::cleanup(){
-        deinitInputModule();
+        mainLoop.reset();
+
         deinitScriptModule();
+        deinitInputModule();
         deinitResourceModule();
     }
 }
