@@ -1,7 +1,7 @@
 #include "EntityRegistry.hpp"
 #include "SceneModuleTest.hpp"
 #include "SceneLoader.hpp"
-#include "SceneParser.hpp"
+#include "ConfigParser.hpp"
 
 using Crowy::parseSceneFromString;
 using Crowy::loadScene, Crowy::EntityRegistry;

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
-#include "SceneParser.hpp"
+#include "math.hpp"
+#include "ConfigParser.hpp"
 
 using namespace Crowy;
 

@@ -1,8 +1,8 @@
-#include "path_util.hpp"
 #include <toml++/toml.hpp>
+#include "path_util.hpp"
+#include "ConfigParser.hpp"
 #include "ParserCommon.hpp"
 #include "InputBinder.hpp"
-#include "InputParser.hpp"
 
 namespace Crowy
 {

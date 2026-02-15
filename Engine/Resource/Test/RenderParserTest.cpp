@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "RenderParser.hpp"
+#include "ConfigParser.hpp"
 
 using ::testing::AllOf;
 using ::testing::Contains;

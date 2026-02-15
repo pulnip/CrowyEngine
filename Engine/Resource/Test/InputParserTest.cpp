@@ -1,7 +1,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "type_traits.hpp"
-#include "InputParser.hpp"
+#include "ConfigParser.hpp"
 
 using ::testing::Field;
 using ::testing::SizeIs;

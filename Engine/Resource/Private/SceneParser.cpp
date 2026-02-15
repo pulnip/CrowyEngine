@@ -1,8 +1,8 @@
 #include <toml++/toml.hpp>
 #include "path_util.hpp"
+#include "ConfigParser.hpp"
 #include "InternalComponentBinder.hpp"
 #include "ParserCommon.hpp"
-#include "SceneParser.hpp"
 #include "SceneParserPrivate.hpp"
 
 namespace Crowy

@@ -1,13 +1,11 @@
 #include "App.hpp"
 #include "AppConfig.hpp"
+#include "ConfigParser.hpp"
 #include "GameMainLoop.hpp"
 #include "Input.hpp"
 #include "OS.hpp"
-#include "RenderParser.hpp"
 #include "Resource.hpp"
 #include "Script.hpp"
-#include "SceneParser.hpp"
-#include "SceneLoader.hpp"
 
 namespace Crowy
 {
@@ -22,9 +20,11 @@ namespace Crowy
 
         auto  sceneSpec = parseSceneFromFile(config.sceneFile);
         auto renderSpec = parseRenderFromFile(config.renderFile);
+        // auto scriptSpec = parseScriptFromFile(config.scriptFile);
+        ScriptSpec scriptSpec;
 
         mainLoop = std::make_unique<GameMainLoop>(
-            sceneSpec, renderSpec
+            sceneSpec, renderSpec, scriptSpec
         );
         if(mainLoop == nullptr)
             return Error::FAILED;

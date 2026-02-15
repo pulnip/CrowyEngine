@@ -2,7 +2,7 @@
 #include "EntityRegistry.hpp"
 #include "Resource.hpp"
 #include "SceneLoader.hpp"
-#include "SceneParser.hpp"
+#include "SceneSpec.hpp"
 
 namespace Crowy
 {

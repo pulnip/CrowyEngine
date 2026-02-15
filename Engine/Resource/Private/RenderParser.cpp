@@ -1,10 +1,10 @@
+#include <toml++/toml.hpp>
 #include "enum_traits.hpp"
 #include "path_util.hpp"
 #include "string.hpp"
-#include <toml++/toml.hpp>
 #include "ParserCommon.hpp"
 #include "RenderPassBinder.hpp"
-#include "RenderParser.hpp"
+#include "ConfigParser.hpp"
 
 namespace Crowy
 {
