@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "ComponentDefinitions.hpp"
+#include "ScriptSpec.hpp"
 
 namespace Crowy
 {
@@ -25,6 +26,7 @@ namespace Crowy
     using BoxColliderComponents = std::vector<BoxColliderComponent>;
     using SphereColliderComponents = std::vector<SphereColliderComponent>;
     using CameraComponents = std::vector<CameraComponent>;
+    using ScriptComponents = std::vector<ScriptInstanceSpec>;
     using PlayerComponents = std::vector<PlayerComponent>;
     using EditorComponents = std::vector<EditorComponent>;
 
@@ -38,6 +40,7 @@ namespace Crowy
         uint32_t boxColliderIndex    = INVALID_COMPONENT;
         uint32_t sphereColliderIndex = INVALID_COMPONENT;
         uint32_t cameraIndex         = INVALID_COMPONENT;
+        uint32_t scriptIndex         = INVALID_COMPONENT;
         uint32_t playerIndex         = INVALID_COMPONENT;
         uint32_t editorIndex         = INVALID_COMPONENT;
     };
@@ -52,6 +55,7 @@ namespace Crowy
         BoxColliderComponents    boxColliderSpecs;
         SphereColliderComponents sphereColliderSpecs;
         CameraComponents         cameraSpecs;
+        ScriptComponents         scriptSpecs;
         PlayerComponents         playerSpecs;
         EditorComponents         editorSpecs;
 

@@ -38,6 +38,7 @@ namespace Crowy
         BoxColliderBinder::freeze(out, plan);
         SphereColliderBinder::freeze(out, plan);
         CameraBinder::freeze(out, plan);
+        ScriptBinder::freeze(out, plan);
         PlayerBinder::freeze(out, plan);
         EditorBinder::freeze(out, plan);
         // Other ComponentBinder::freeze...

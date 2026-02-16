@@ -31,8 +31,6 @@ namespace Crowy
             const SceneSpec&
         );
 
-        ~GameMainLoop();
-
         void initialize() override;
         bool update(float deltaTime, float totalTime) override;
         void finalize() override;

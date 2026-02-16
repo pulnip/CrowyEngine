@@ -26,18 +26,16 @@ namespace Crowy
         loadScene(sceneSpec, registry);
     }
 
-    GameMainLoop::~GameMainLoop(){
-        unloadScriptConfig();
-        unloadInputConfig();
-    }
-
     void GameMainLoop::initialize(){
         // Game Logic Phase
+        scheduler.attach(std::make_unique<ScriptSystem>());
 
         // Render Phase
         scheduler.attach(std::make_unique<RenderSystem>(
             renderer, ui, uiRenderer
         ));
+
+        scheduler.start(registry);
     }
 
     bool GameMainLoop::update(float deltaTime, float totalTime){
@@ -51,6 +49,9 @@ namespace Crowy
     }
 
     void GameMainLoop::finalize(){
+        scheduler.finish(registry);
 
+        unloadScriptConfig();
+        unloadInputConfig();
     }
 }

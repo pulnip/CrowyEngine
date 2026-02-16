@@ -7,6 +7,8 @@ name = "Stelle"
     [entities.renderObject]
     uri = "file:asset/Stelle/Stelle.pmx"
     renderType = "type0"
+    [entities.script]
+    monoScripts = ["TestComponent"]
 [[entities]]
 name = "Camera"
     [entities.transform]

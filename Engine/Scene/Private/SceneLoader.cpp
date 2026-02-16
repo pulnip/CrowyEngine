@@ -3,6 +3,8 @@
 #include "Resource.hpp"
 #include "SceneLoader.hpp"
 #include "SceneSpec.hpp"
+#include "Script.hpp"
+#include "ScriptSpec.hpp"
 
 namespace Crowy
 {
@@ -20,6 +22,14 @@ namespace Crowy
         };
     }
 
+    static ScriptComponent loadComponent(const ScriptInstanceSpec& spec){
+        auto handle = createScriptInstance(spec);
+
+        return ScriptComponent{
+            .handle = handle
+        };
+    }
+
     void loadScene(
         const SceneSpec& scene,
         EntityRegistry& registry
@@ -31,6 +41,7 @@ namespace Crowy
             std::optional<BoxColliderComponent>    boxColliderComponent    = std::nullopt;
             std::optional<SphereColliderComponent> sphereColliderComponent = std::nullopt;
             std::optional<CameraComponent>         cameraComponent         = std::nullopt;
+            std::optional<ScriptComponent>         scriptComponent         = std::nullopt;
             std::optional<PlayerComponent>         playerComponent         = std::nullopt;
             std::optional<EditorComponent>         editorComponent         = std::nullopt;
 
@@ -50,6 +61,10 @@ namespace Crowy
             LOAD_COMPONENT(player)
             LOAD_COMPONENT(editor)
         #undef LOAD_COMPONENT
+            if(entitySpec.scriptIndex != INVALID_COMPONENT)
+                scriptComponent = loadComponent(
+                    scene.scriptSpecs[entitySpec.scriptIndex]
+                );
 
             // TODO
             // later, check component mutual exclusion here
@@ -61,6 +76,7 @@ namespace Crowy
                 boxColliderComponent,
                 sphereColliderComponent,
                 cameraComponent,
+                scriptComponent,
                 playerComponent,
                 editorComponent
             );

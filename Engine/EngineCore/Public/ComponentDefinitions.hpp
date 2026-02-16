@@ -33,6 +33,7 @@ namespace Crowy
         MaterialSetHandle materialSet;
         RenderTypeHash renderType;
     };
+
     struct RigidbodyComponent{
         Vec3 velocity;
         bool useGravity;
@@ -56,16 +57,20 @@ namespace Crowy
         float friction;
     };
 
-    // Entity Type? Property? Tags (kept in Long-term)
-    struct PlayerComponent{};
-    struct EditorComponent{};
-    struct AttachableComponent{};
-
     // Entity-to-Entity Event Tags
     struct ImpulseComponent{
         Vec3 force;
         float dt;
     };
+
+    struct ScriptComponent{
+        ScriptHandle handle;
+    };
+
+    // Entity Type? Property? Tags (kept in Long-term)
+    struct PlayerComponent{};
+    struct EditorComponent{};
+    struct AttachableComponent{};
 
     #define ARCHETYPES \
         X(     TransformComponent) \
@@ -76,6 +81,7 @@ namespace Crowy
         X(SphereColliderComponent) \
         X(   BoxColliderComponent) \
         X(       ImpulseComponent) \
+        X(        ScriptComponent) \
         X(        PlayerComponent) \
         X(        EditorComponent) \
         X(    AttachableComponent)

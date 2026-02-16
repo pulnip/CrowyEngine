@@ -10,9 +10,10 @@ namespace Crowy
         BoxCollider = 3,
         SphereCollider = 4,
         Camera = 5,
-        Player = 6,
-        Editor = 7,
-        Count = 8
+        Script = 6,
+        Player = 7,
+        Editor = 8,
+        Count = 9
     };
 
     void TransformBinder::validateAndPlan(const ValueArena& arena,
@@ -243,6 +244,32 @@ namespace Crowy
         }
     }
 
+    void ScriptBinder::validateAndPlan(const ValueArena& arena,
+        const VTable& src, size_t entityIndex, ComponentBindPlan& plan
+    ){
+        auto monoScripts = readStringArray(arena, src, plan.errors, "monoScripts");
+
+        if(!monoScripts)
+            return;
+
+        plan.scripts.push_back({
+            .comp = {
+                .monoScripts = std::move(*monoScripts)
+            },
+            .entityIndex = entityIndex,
+            .location = src.location
+        });
+    }
+
+    void ScriptBinder::freeze(SceneSpec& spec, ComponentBindPlan& plan){
+        for(const auto& p: plan.scripts){
+            auto& entity = spec.entities[p.entityIndex];
+
+            spec.scriptSpecs.push_back(p.comp);
+            entity.scriptIndex = static_cast<uint32_t>(spec.scriptSpecs.size() - 1);
+        }
+    }
+
     void PlayerBinder::validateAndPlan(const ValueArena& arena,
         const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
@@ -289,6 +316,7 @@ namespace Crowy
         reg.emplace("boxCollider", std::make_unique<BoxColliderBinder>());
         reg.emplace("sphereCollider", std::make_unique<SphereColliderBinder>());
         reg.emplace("camera", std::make_unique<CameraBinder>());
+        reg.emplace("script", std::make_unique<ScriptBinder>());
         reg.emplace("player", std::make_unique<PlayerBinder>());
         reg.emplace("editor", std::make_unique<EditorBinder>());
 

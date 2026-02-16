@@ -23,9 +23,19 @@ namespace Crowy
         void attach(SystemPtr system){
             systems.push_back(std::move(system));
         }
+        void start(EntityRegistry& registry){
+            for(const auto& system: systems){
+                system->start(registry);
+            }
+        }
         void update(EntityRegistry& registry, Context& ctx){
             for(const auto& system: systems){
                 system->update(registry, ctx);
+            }
+        }
+        void finish(EntityRegistry& registry){
+            for(const auto& system: systems){
+                system->finish(registry);
             }
         }
     };

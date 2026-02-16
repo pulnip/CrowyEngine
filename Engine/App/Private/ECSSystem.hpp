@@ -7,6 +7,14 @@
 namespace Crowy
 {
     struct UpdateContext;
+
+    class ScriptSystem: public System<UpdateContext>{
+    public:
+        void start(EntityRegistry&) override;
+        void update(EntityRegistry&, UpdateContext&) override;
+        void finish(EntityRegistry&) override;
+    };
+
     class Renderer;
     class UIRenderer;
 

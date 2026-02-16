@@ -2,6 +2,7 @@
 
 #include "BinderRegistry.hpp"
 #include "SceneSpec.hpp"
+#include "ScriptSpec.hpp"
 
 namespace Crowy
 {
@@ -45,6 +46,11 @@ namespace Crowy
         size_t entityIndex = std::numeric_limits<size_t>::max();
         SourceLocation location;
     };
+    struct PlannedScript{
+        ScriptInstanceSpec comp;
+        size_t entityIndex = std::numeric_limits<size_t>::max();
+        SourceLocation location;
+    };
     struct PlannedPlayer{
         PlayerComponent comp;
         size_t entityIndex = std::numeric_limits<size_t>::max();
@@ -63,6 +69,7 @@ namespace Crowy
         std::vector<PlannedBoxCollider> boxColliders;
         std::vector<PlannedSphereCollider> sphereColliders;
         std::vector<PlannedCamera> cameras;
+        std::vector<PlannedScript> scripts;
         std::vector<PlannedPlayer> players;
         std::vector<PlannedEditor> editors;
         std::vector<BindError> errors;
@@ -125,6 +132,15 @@ namespace Crowy
     };
 
     class CameraBinder: public ComponentBinder{
+    public:
+        void validateAndPlan(const ValueArena& arena,
+            const VTable& src, size_t entityIndex, ComponentBindPlan& plan
+        ) override;
+
+        static void freeze(SceneSpec& spec, ComponentBindPlan& plan);
+    };
+
+    class ScriptBinder: public ComponentBinder{
     public:
         void validateAndPlan(const ValueArena& arena,
             const VTable& src, size_t entityIndex, ComponentBindPlan& plan

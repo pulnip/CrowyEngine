@@ -5,11 +5,42 @@
 #include "ECSSystem.hpp"
 #include "OS.hpp"
 #include "Renderer.hpp"
+#include "Script.hpp"
 #define CROWY_UI_CONTEXT UIContext
 #include "UIRenderer.hpp"
 
 namespace Crowy
 {
+    void ScriptSystem::start(EntityRegistry& registry){
+        for(auto [id, bit,
+            script
+        ]: registry.query<
+            ScriptComponent
+        >()){
+            startScript(script.handle);
+        }
+    }
+
+    void ScriptSystem::update(EntityRegistry& registry, UpdateContext& ctx){
+        for(auto [id, bit,
+            script
+        ]: registry.query<
+            ScriptComponent
+        >()){
+            updateScript(script.handle, ctx.deltaTime);
+        }
+    }
+
+    void ScriptSystem::finish(EntityRegistry& registry){
+        for(auto [id, bit,
+            script
+        ]: registry.query<
+            ScriptComponent
+        >()){
+            finishScript(script.handle);
+        }
+    }
+
     void RenderSystem::update(EntityRegistry& registry, UpdateContext& ctx){
         const auto screenWidth = OS_->getWidth();
         const auto screenHeight = OS_->getHeight();

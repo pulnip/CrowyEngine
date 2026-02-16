@@ -13,10 +13,8 @@ namespace Crowy
     std::unique_ptr<MainLoop> App::mainLoop = nullptr;
 
     Error App::setup(const AppConfig& config){
-        auto os = OS::singleton();
-
-        initResourceModule(os->getDevice());
-        initInputModule(os->getInputProvider());
+        initResourceModule(OS_->getDevice());
+        initInputModule(OS_->getInputProvider());
         initScriptModule();
 
         auto renderSpec = parseRenderFromFile(config.renderFile);
@@ -30,7 +28,7 @@ namespace Crowy
         if(mainLoop == nullptr)
             return Error::FAILED;
 
-        OS::singleton()->setMainLoop(mainLoop.get());
+        OS_->setMainLoop(mainLoop.get());
 
         return Error::OK;
     }

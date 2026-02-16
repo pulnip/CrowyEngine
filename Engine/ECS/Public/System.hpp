@@ -11,6 +11,8 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE(System)
 
+        virtual void start(EntityRegistry&){}
         virtual void update(EntityRegistry&, Context&) = 0;
+        virtual void finish(EntityRegistry&){}
     };
 }

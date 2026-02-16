@@ -6,6 +6,7 @@ PUBLIC
     Crowy::EngineCore
     Crowy::ECS
     Crowy::Resource
+    Crowy::Script
 PRIVATE
     Crowy::Log
 )
