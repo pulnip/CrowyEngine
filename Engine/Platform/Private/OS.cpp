@@ -158,12 +158,10 @@ namespace Crowy
                 case SDL_EVENT_QUIT:
                     forceQuit = true;
                     break;
-                case SDL_EVENT_KEY_DOWN:
-                    [[fallthrough]];
-                case SDL_EVENT_KEY_UP:
-                    pollInput();
                 }
             }
+
+            pollInput();
         }
 
         int getWidth   () const{ return width;    }

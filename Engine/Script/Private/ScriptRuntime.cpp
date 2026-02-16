@@ -7,6 +7,7 @@
 #include <scriptstdstring.h>
 #include "path_util.hpp"
 #include "string.hpp"
+#include "Input.hpp"
 #include "Log.hpp"
 #include "ScriptRuntime.hpp"
 #include "ScriptSpec.hpp"
@@ -39,6 +40,55 @@ static void println(const std::string& msg){
 
 namespace Crowy
 {
+    static auto isActionHelper(const std::string& action){
+        return isAction(action);
+    }
+
+    static void registerInput(asIScriptEngine* engine){
+        // register KeyCode
+        engine->RegisterEnum("KeyCode");
+
+    #define KEYCODE(name) \
+        engine->RegisterEnumValue("KeyCode", #name, static_cast<int>(KeyCode::name))
+
+        // Numbers
+        KEYCODE(Num0); KEYCODE(Num1); KEYCODE(Num2); KEYCODE(Num3); KEYCODE(Num4);
+        KEYCODE(Num5); KEYCODE(Num6); KEYCODE(Num7); KEYCODE(Num8); KEYCODE(Num9);
+
+        // Letters
+        KEYCODE(A); KEYCODE(B); KEYCODE(C); KEYCODE(D); KEYCODE(E);
+        KEYCODE(F); KEYCODE(G); KEYCODE(H); KEYCODE(I); KEYCODE(J);
+        KEYCODE(K); KEYCODE(L); KEYCODE(M); KEYCODE(N); KEYCODE(O);
+        KEYCODE(P); KEYCODE(Q); KEYCODE(R); KEYCODE(S); KEYCODE(T);
+        KEYCODE(U); KEYCODE(V); KEYCODE(W); KEYCODE(X); KEYCODE(Y);
+        KEYCODE(Z);
+
+        // Function Keys
+        KEYCODE(F1);  KEYCODE(F2);  KEYCODE(F3);
+        KEYCODE(F4);  KEYCODE(F5);  KEYCODE(F6);
+        KEYCODE(F7);  KEYCODE(F8);  KEYCODE(F9);
+        KEYCODE(F10); KEYCODE(F11); KEYCODE(F12);
+
+        // Modifiers
+        KEYCODE(Ctrl); KEYCODE(Alt); KEYCODE(Shift);
+
+        // Special
+        KEYCODE(Tab); KEYCODE(Space); KEYCODE(Enter); KEYCODE(Escape);
+
+        // Sentinel
+        KEYCODE(Unknown);
+    #undef KEYCODE
+
+        // register key test code
+        engine->RegisterGlobalFunction("bool isDown(KeyCode)", asFUNCTION(isDown), asCALL_CDECL);
+        engine->RegisterGlobalFunction("bool isNone(KeyCode)", asFUNCTION(isNone), asCALL_CDECL);
+        engine->RegisterGlobalFunction("bool isPressed(KeyCode)", asFUNCTION(isPressed), asCALL_CDECL);
+        engine->RegisterGlobalFunction("bool isReleased(KeyCode)", asFUNCTION(isReleased), asCALL_CDECL);
+        engine->RegisterGlobalFunction("bool isHeld(KeyCode)", asFUNCTION(isHeld), asCALL_CDECL);
+
+        engine->RegisterGlobalFunction("bool isAction(const string &in)", asFUNCTION(isActionHelper), asCALL_CDECL);
+    }
+
     ScriptRuntime::ScriptRuntime()
         : engine(asCreateScriptEngine())
         , context(engine->CreateContext())
@@ -52,6 +102,8 @@ namespace Crowy
 
         r = engine->RegisterGlobalFunction("void println(const string &in)", asFUNCTION(println), asCALL_CDECL);
         assert(r >= 0);
+
+        registerInput(engine);
     }
 
     ScriptRuntime::~ScriptRuntime(){

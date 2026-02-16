@@ -4,7 +4,8 @@ class TestComponent{
     }
 
     void onUpdate(float dt){
-        println("updated!");
+        if(isAction("jump"))
+            println("space key pressed");
     }
 
     void onFinish(){
