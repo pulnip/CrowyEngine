@@ -22,8 +22,8 @@ namespace Crowy
         ScriptRuntime::singleton()->unload();
     }
 
-    ScriptHandle createScriptInstance(const ScriptInstanceSpec& spec){
-        return ScriptRuntime::singleton()->create(spec);
+    ScriptHandle createScriptInstance(const ScriptInstanceSpec& spec, EntityHandle handle){
+        return ScriptRuntime::singleton()->create(spec, handle);
     }
 
     void destroyScriptInstance(ScriptHandle handle){

@@ -67,6 +67,13 @@ namespace Crowy
         ScriptHandle handle;
     };
 
+    struct CharacterController{
+        Vec3 velocity = zeros();
+        float slopeLimit = toRadian(45.0);
+        float stepOffset = 0.3f;
+        float skinWidth = 0.08f;
+    };
+
     // Entity Type? Property? Tags (kept in Long-term)
     struct PlayerComponent{};
     struct EditorComponent{};
@@ -82,6 +89,7 @@ namespace Crowy
         X(   BoxColliderComponent) \
         X(       ImpulseComponent) \
         X(        ScriptComponent) \
+        X(    CharacterController) \
         X(        PlayerComponent) \
         X(        EditorComponent) \
         X(    AttachableComponent)

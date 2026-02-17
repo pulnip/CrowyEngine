@@ -1,4 +1,6 @@
+#include <cstddef>
 #include <gtest/gtest.h>
+#include "EntityHandle.hpp"
 #include "Script.hpp"
 #include "ScriptSpec.hpp"
 
@@ -40,7 +42,10 @@ TEST_F(ScriptModuleTest, CallSingleScript){
 
     auto handle = Crowy::ScriptHandle::invalidHandle();
     ASSERT_NO_THROW(
-        handle = Crowy::createScriptInstance(instanceSpec)
+        handle = Crowy::createScriptInstance(instanceSpec, {
+            .ptr = nullptr,
+            .bit = 0
+        });
     );
 
     EXPECT_NO_THROW({

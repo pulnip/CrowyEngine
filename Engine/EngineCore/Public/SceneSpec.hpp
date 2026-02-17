@@ -27,6 +27,7 @@ namespace Crowy
     using SphereColliderComponents = std::vector<SphereColliderComponent>;
     using CameraComponents = std::vector<CameraComponent>;
     using ScriptComponents = std::vector<ScriptInstanceSpec>;
+    using CharacterControllers = std::vector<CharacterController>;
     using PlayerComponents = std::vector<PlayerComponent>;
     using EditorComponents = std::vector<EditorComponent>;
 
@@ -34,15 +35,16 @@ namespace Crowy
 
     struct EntitySpec{
         std::string name;
-        uint32_t transformIndex      = INVALID_COMPONENT;
-        uint32_t renderObjectIndex   = INVALID_COMPONENT;
-        uint32_t rigidbodyIndex      = INVALID_COMPONENT;
-        uint32_t boxColliderIndex    = INVALID_COMPONENT;
-        uint32_t sphereColliderIndex = INVALID_COMPONENT;
-        uint32_t cameraIndex         = INVALID_COMPONENT;
-        uint32_t scriptIndex         = INVALID_COMPONENT;
-        uint32_t playerIndex         = INVALID_COMPONENT;
-        uint32_t editorIndex         = INVALID_COMPONENT;
+        uint32_t transformIndex           = INVALID_COMPONENT;
+        uint32_t renderObjectIndex        = INVALID_COMPONENT;
+        uint32_t rigidbodyIndex           = INVALID_COMPONENT;
+        uint32_t boxColliderIndex         = INVALID_COMPONENT;
+        uint32_t sphereColliderIndex      = INVALID_COMPONENT;
+        uint32_t cameraIndex              = INVALID_COMPONENT;
+        uint32_t scriptIndex              = INVALID_COMPONENT;
+        uint32_t characterControllerIndex = INVALID_COMPONENT;
+        uint32_t playerIndex              = INVALID_COMPONENT;
+        uint32_t editorIndex              = INVALID_COMPONENT;
     };
 
     using EntitySpecs = std::vector<EntitySpec>;
@@ -56,6 +58,7 @@ namespace Crowy
         SphereColliderComponents sphereColliderSpecs;
         CameraComponents         cameraSpecs;
         ScriptComponents         scriptSpecs;
+        CharacterControllers     characterControllerSpecs;
         PlayerComponents         playerSpecs;
         EditorComponents         editorSpecs;
 

@@ -22,14 +22,6 @@ namespace Crowy
         };
     }
 
-    static ScriptComponent loadComponent(const ScriptInstanceSpec& spec){
-        auto handle = createScriptInstance(spec);
-
-        return ScriptComponent{
-            .handle = handle
-        };
-    }
-
     void loadScene(
         const SceneSpec& scene,
         EntityRegistry& registry
@@ -42,6 +34,7 @@ namespace Crowy
             std::optional<SphereColliderComponent> sphereColliderComponent = std::nullopt;
             std::optional<CameraComponent>         cameraComponent         = std::nullopt;
             std::optional<ScriptComponent>         scriptComponent         = std::nullopt;
+            std::optional<CharacterController>     characterControllerComponent = std::nullopt;
             std::optional<PlayerComponent>         playerComponent         = std::nullopt;
             std::optional<EditorComponent>         editorComponent         = std::nullopt;
 
@@ -58,18 +51,17 @@ namespace Crowy
             LOAD_COMPONENT(boxCollider)
             LOAD_COMPONENT(sphereCollider)
             LOAD_COMPONENT(camera)
+            if(entitySpec.scriptIndex != INVALID_COMPONENT)
+                scriptComponent = ScriptComponent{};
+            LOAD_COMPONENT(characterController)
             LOAD_COMPONENT(player)
             LOAD_COMPONENT(editor)
         #undef LOAD_COMPONENT
-            if(entitySpec.scriptIndex != INVALID_COMPONENT)
-                scriptComponent = loadComponent(
-                    scene.scriptSpecs[entitySpec.scriptIndex]
-                );
 
             // TODO
             // later, check component mutual exclusion here
 
-            registry.createEntity(
+            auto entityID = registry.createEntity(
                 transformComponent,
                 renderObjectComponent,
                 rigidbodyComponent,
@@ -77,9 +69,16 @@ namespace Crowy
                 sphereColliderComponent,
                 cameraComponent,
                 scriptComponent,
+                characterControllerComponent,
                 playerComponent,
                 editorComponent
             );
+            auto handle = *registry.query(entityID);
+
+            if(entitySpec.scriptIndex != INVALID_COMPONENT)
+                handle.getComponent<ScriptComponent>()->handle = createScriptInstance(
+                    scene.scriptSpecs[entitySpec.scriptIndex], handle
+                );
         }
     }
 }

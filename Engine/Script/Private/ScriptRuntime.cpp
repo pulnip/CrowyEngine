@@ -2,11 +2,14 @@
 #include <format>
 #include <print>
 #include <stdexcept>
+#include <angelscript.h>
 #include <scriptarray.h>
 #include <scriptmath.h>
 #include <scriptstdstring.h>
+#include "ComponentDefinitions.hpp"
 #include "path_util.hpp"
 #include "string.hpp"
+#include "EntityHandle.hpp"
 #include "Input.hpp"
 #include "Log.hpp"
 #include "ScriptRuntime.hpp"
@@ -40,6 +43,52 @@ static void println(const std::string& msg){
 
 namespace Crowy
 {
+    #define VALUE_OBJ(obj) \
+        engine->RegisterObjectType(#obj, sizeof(obj), \
+            asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<obj>())
+    #define NO_RC_OBJ(obj) \
+        engine->RegisterObjectType(#obj, 0, \
+            asOBJ_REF | asOBJ_NOCOUNT);
+    #define OBJ_PROP(obj, type, name) \
+        engine->RegisterObjectProperty(#obj, #type" "#name, asOFFSET(obj, name))
+    #define OBJ_MEMBER_FUNC(obj, func, sign) \
+        engine->RegisterObjectMethod(#obj, sign, \
+            asMETHOD(obj, func), asCALL_THISCALL);
+    #define OBJ_MEMBER_FUNC_HELPER(obj, func, sign) \
+        engine->RegisterObjectMethod(#obj, sign, \
+            asFUNCTION(func), asCALL_CDECL_OBJFIRST);
+
+    static void registerPrimitive(asIScriptEngine* engine){
+        VALUE_OBJ(Vec2);
+        OBJ_PROP(Vec2, float, x);
+        OBJ_PROP(Vec2, float, y);
+
+        VALUE_OBJ(Vec3);
+        OBJ_PROP(Vec3, float, x);
+        OBJ_PROP(Vec3, float, y);
+        OBJ_PROP(Vec3, float, z);
+
+        VALUE_OBJ(Vec4);
+        OBJ_PROP(Vec4, float, x);
+        OBJ_PROP(Vec4, float, y);
+        OBJ_PROP(Vec4, float, z);
+        OBJ_PROP(Vec4, float, w);
+    }
+
+    static auto registerECS(asIScriptEngine* engine){
+        NO_RC_OBJ(CharacterController);
+        OBJ_PROP(CharacterController, Vec3, velocity);
+        OBJ_PROP(CharacterController, Vec3, velocity);
+
+        VALUE_OBJ(EntityHandle);
+        OBJ_MEMBER_FUNC(EntityHandle, getCharacterController,
+            "CharacterController@ getCharacterController()");
+    }
+
+    #undef OBJ_PROP
+    #undef NO_RC_OBJ
+    #undef VALUE_OBJ
+
     static auto isActionHelper(const std::string& action){
         return isAction(action);
     }
@@ -103,6 +152,8 @@ namespace Crowy
         r = engine->RegisterGlobalFunction("void println(const string &in)", asFUNCTION(println), asCALL_CDECL);
         assert(r >= 0);
 
+        registerPrimitive(engine);
+        registerECS(engine);
         registerInput(engine);
     }
 
@@ -138,7 +189,7 @@ namespace Crowy
         modules.clear();
     }
 
-    ScriptHandle ScriptRuntime::create(const ScriptInstanceSpec& spec){
+    ScriptHandle ScriptRuntime::create(const ScriptInstanceSpec& spec, EntityHandle handle){
         EntityScript entityScript;
 
         for(const auto& monoScript: spec.monoScripts){
@@ -151,6 +202,7 @@ namespace Crowy
             auto type = it->second;
             auto factory = type->GetFactoryByIndex(0);
             context->Prepare(factory);
+            context->SetArgObject(0, &handle);
             context->Execute();
 
             auto obj = *(asIScriptObject**)context->GetAddressOfReturnValue();

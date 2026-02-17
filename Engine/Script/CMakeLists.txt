@@ -19,6 +19,7 @@ target_link_libraries(CrowyScript
 PUBLIC
     Crowy::Core
     Crowy::EngineCore
+    Crowy::ECS
     Crowy::Input
     Crowy::Resource
 PRIVATE

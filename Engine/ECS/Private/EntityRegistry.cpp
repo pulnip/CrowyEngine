@@ -36,7 +36,7 @@ namespace Crowy
         return true;
     }
 
-    std::optional<Entity> EntityRegistry::query(EntityID id) noexcept{
+    std::optional<EntityHandle> EntityRegistry::query(EntityID id) noexcept{
         auto entity_it = entityTable.find(id);
         if(entity_it == entityTable.end()){
             return std::nullopt;
@@ -52,9 +52,9 @@ namespace Crowy
         }
         auto& vec = arch_it->second;
 
-        return Entity{
-            .bit=info.bit,
-            .chunk=vec[info.chunkIndex]
+        return EntityHandle{
+            .ptr = vec[info.chunkIndex],
+            .bit = info.bit
         };
     }
 

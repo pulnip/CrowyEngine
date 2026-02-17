@@ -8,7 +8,7 @@
 #include "dynamic_vector.hpp"
 #include "semantics.hpp"
 #include "Component.hpp"
-#include "ECSDefinitions.hpp"
+#include "EntityHandle.hpp"
 
 namespace Crowy
 {
@@ -225,11 +225,6 @@ namespace Crowy
         Index chunkIndex;
     };
 
-    struct Entity{
-        ArchetypeBit bit = 0;
-        void* chunk = nullptr;
-    };
-
     class EntityRegistry{
     private:
         using ArchetypeMap = std::unordered_map<ArchetypeBit, dynamic_vector>;
@@ -299,7 +294,7 @@ namespace Crowy
             auto chunk = vec[info.chunkIndex];
             return *static_cast<T*>(ptrAdd(chunk, offset_of<T>(info.bit)));
         }
-        std::optional<Entity> query(EntityID id) noexcept;
+        std::optional<EntityHandle> query(EntityID id) noexcept;
 
         template<typename T>
         bool appendComponent(EntityID id, T&& component){
