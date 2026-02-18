@@ -4,16 +4,13 @@
 #include "SceneLoader.hpp"
 #include "SceneSpec.hpp"
 #include "Script.hpp"
-#include "ScriptSpec.hpp"
 
 namespace Crowy
 {
     static RenderObjectComponent loadComponent(const RenderObjectSpec& spec){
         auto renderType = std::hash<RenderType>()(spec.renderType);
 
-        auto [meshHandle, materialSetHandle] = getOrLoad(
-            ModelRequest{.uri = spec.uri}
-        );
+        auto [meshHandle, materialSetHandle] = getOrLoad(spec);
 
         return RenderObjectComponent{
             .mesh = meshHandle,

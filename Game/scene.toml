@@ -21,3 +21,19 @@ name = "Camera"
     nearPlane = 0.1
     farPlane = 100.0
     projection = "perspective"
+[[entities]]
+name = "Floor"
+    [entities.transform]
+    position = [0, 0, 0]
+    rotation = [0, 0, 0, 1]
+    scale    = [100, 1, 100]
+    [entities.renderObject]
+    uri = "embedded:cube"
+    renderType = "type0"
+        [[entities.renderObject.material_override]]
+        baseColor = "asset/metal1.png"
+        targetSlot = "default"
+    [entities.boxCollider]
+    position = [0, 0, 0]
+    rotation = [0, 0, 0, 1]
+    scale    = [1, 1, 1]

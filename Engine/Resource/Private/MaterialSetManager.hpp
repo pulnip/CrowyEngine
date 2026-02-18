@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include "generic_handle.hpp"
@@ -8,12 +7,13 @@
 #include "ModelData.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
+#include "RHITexture.hpp"
 
 namespace Crowy
 {
     struct MaterialSetRequest{
         using Key     = std::string;
-        using KeyHash = std::hash<std::string>;
+        using KeyHash = std::hash<Key>;
 
         std::string uri;
         std::unordered_map<std::string, MaterialRef> data;
@@ -71,4 +71,6 @@ namespace Crowy
 
         ResourceManager<MaterialSet> manager;
     };
+
+    #define MaterialSetManager_ MaterialSetManager::singleton()
 }

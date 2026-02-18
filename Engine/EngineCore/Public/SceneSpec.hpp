@@ -5,20 +5,11 @@
 #include <string>
 #include <vector>
 #include "ComponentDefinitions.hpp"
+#include "RenderSpec.hpp"
 #include "ScriptSpec.hpp"
 
 namespace Crowy
 {
-    struct MaterialSpec{
-        std::string baseColor;
-        std::string targetSlot;
-    };
-    struct RenderObjectSpec{
-        std::string uri;
-        std::vector<MaterialSpec> material_override;
-        std::string renderType;
-    };
-
     using TransformComponents = std::vector<TransformComponent>;
     using MaterialSpecs = std::vector<MaterialSpec>;
     using RenderObjectSpecs = std::vector<RenderObjectSpec>;

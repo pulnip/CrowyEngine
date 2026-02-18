@@ -29,7 +29,7 @@ TEST_F(ResourceModuleTest, InitState){
 
 TEST_F(ResourceModuleTest, LoadEmbedded){
     const auto [mesh, mat] = Crowy::getOrLoad(
-        Crowy::ModelRequest{
+        Crowy::RenderObjectSpec{
             .uri = testEmbeddedUri
         }
     );
@@ -40,7 +40,7 @@ TEST_F(ResourceModuleTest, LoadEmbedded){
 
 TEST_F(ResourceModuleTest, LoadModelFile){
     const auto [mesh, mat] = Crowy::getOrLoad(
-        Crowy::ModelRequest{
+        Crowy::RenderObjectSpec{
             .uri = testModelUri
         }
     );
@@ -52,7 +52,7 @@ TEST_F(ResourceModuleTest, LoadModelFile){
 TEST_F(ResourceModuleTest, RequestWrongUri){
     {
         const auto [mesh, mat] = Crowy::getOrLoad(
-            Crowy::ModelRequest{
+            Crowy::RenderObjectSpec{
                 .uri = "WrongUri"
             }
         );
@@ -63,7 +63,7 @@ TEST_F(ResourceModuleTest, RequestWrongUri){
 
     {
         const auto [mesh, mat] = Crowy::getOrLoad(
-            Crowy::ModelRequest{
+            Crowy::RenderObjectSpec{
                 .uri = "WrongScheme:cube"
             }
         );

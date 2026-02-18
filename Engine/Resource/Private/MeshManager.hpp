@@ -7,12 +7,13 @@
 #include "ModelData.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
+#include "RHIBuffer.hpp"
 
 namespace Crowy
 {
     struct MeshRequest{
         using Key     = std::string;
-        using KeyHash = std::hash<std::string>;
+        using KeyHash = std::hash<Key>;
 
         std::string uri;
         std::span<const SubmeshData> data;
@@ -68,4 +69,6 @@ namespace Crowy
 
         ResourceManager<Mesh> manager;
     };
+
+    #define MeshManager_ MeshManager::singleton()
 }

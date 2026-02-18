@@ -3,16 +3,35 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include "path_util.hpp"
 #include "RenderDefinitions.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
+    struct MaterialSpec{
+        std::string baseColor;
+        std::string targetSlot;
+    };
+    struct RenderObjectSpec{
+        std::string uri;
+        std::vector<MaterialSpec> material_override;
+        std::string renderType;
+    };
+
     struct ShaderSpec{
+        using Key = std::string;
+        using KeyHash = std::hash<Key>;
+
         std::filesystem::path vsFilePath;
         std::string vsFuncName;
         std::filesystem::path fsFilePath;
         std::string fsFuncName;
+
+        inline Key key() const{
+            return to_utf8String(vsFilePath) + ':' + vsFuncName + ',' +
+                   to_utf8String(fsFilePath) + ':' + fsFuncName;
+        }
     };
 
     struct RenderPassSpec{

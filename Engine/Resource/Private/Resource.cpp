@@ -4,10 +4,7 @@
 #include "MeshManager.hpp"
 #include "ModelImporter.hpp"
 #include "Resource.hpp"
-#include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
-#include "RHIShader.hpp"
-#include "RHITexture.hpp"
 
 namespace Crowy
 {
@@ -30,7 +27,7 @@ namespace Crowy
         Crowy::device = device;
     }
 
-    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest request){
+    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(const RenderObjectSpec& spec){
         if(!Crowy::device){
             LOG_ERROR(LOG_RESOURCE, "Resource module not initialized");
             return {
@@ -43,21 +40,33 @@ namespace Crowy
             .device = Crowy::device,
         };
 
-        auto modelData = importModel(request.uri, Crowy::device->getCapabilities());
+        auto modelData = importModel(spec.uri, Crowy::device->getCapabilities());
 
         if(!modelData.has_value()){
             return {MeshHandle::invalidHandle(), MaterialSetHandle::invalidHandle()};
         }
 
-        auto meshHandle = MeshManager::singleton()->getOrLoad(
+        auto meshHandle = MeshManager_->getOrLoad(
             MeshRequest{
-                .uri = request.uri,
+                .uri = spec.uri,
                 .data = modelData->submeshes
             }, context
         );
-        auto materialSetHandle = MaterialSetManager::singleton()->getOrLoad(
+
+        for(const auto& spec: spec.material_override){
+            const auto& baseColor = spec.baseColor;
+            const auto& targetSlot = spec.targetSlot;
+
+            modelData->materials[targetSlot] = MaterialRef{
+                .textures = {
+                    {TextureSemantic::BaseColor, TextureRef{.path = baseColor}}
+                }
+            };
+        }
+
+        auto materialSetHandle = MaterialSetManager_->getOrLoad(
             MaterialSetRequest{
-                .uri = request.uri,
+                .uri = spec.uri,
                 .data = std::move(modelData->materials)
             }, context
         );
@@ -65,12 +74,12 @@ namespace Crowy
     }
 
     MeshView get(MeshHandle handle){
-        auto mesh = MeshManager::singleton()->get(handle);
+        auto mesh = MeshManager_->get(handle);
 
         return mesh->submeshes;
     }
     MaterialSetView get(MaterialSetHandle handle){
-        auto materialSet = MaterialSetManager::singleton()->get(handle);
+        auto materialSet = MaterialSetManager_->get(handle);
         MaterialSetView view;
 
         for(const auto& [slot, material]: materialSet->materials){

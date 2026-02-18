@@ -1,14 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <span>
 #include <string>
 #include "math.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
 #include "ResourceHandle.hpp"
-#include "ResourceRequest.hpp"
+#include "RenderSpec.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
@@ -63,7 +61,7 @@ namespace Crowy
     };
 
     struct Shader{
-        using Request = ShaderRequest;
+        using Request = ShaderSpec;
 
         RHIShaderPtr vertexShader;
         RHIShaderPtr fragmentShader;
@@ -77,7 +75,7 @@ namespace Crowy
     void initResourceModule(RHIDevice*);
     void deinitResourceModule();
 
-    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(ModelRequest);
+    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(const RenderObjectSpec&);
 
     using        MeshView = std::span<const  Submesh>;
     using MaterialSetView = std::unordered_map<std::string, const Material*>;
