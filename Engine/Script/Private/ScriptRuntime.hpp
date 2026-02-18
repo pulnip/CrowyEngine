@@ -49,4 +49,6 @@ namespace Crowy
         void updateAll(float dt);
         void finishAll();
     };
+
+    #define ScriptRuntime_ ScriptRuntime::singleton()
 }

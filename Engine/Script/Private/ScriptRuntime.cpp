@@ -78,7 +78,6 @@ namespace Crowy
     static auto registerECS(asIScriptEngine* engine){
         NO_RC_OBJ(CharacterController);
         OBJ_PROP(CharacterController, Vec3, velocity);
-        OBJ_PROP(CharacterController, Vec3, velocity);
 
         VALUE_OBJ(EntityHandle);
         OBJ_MEMBER_FUNC(EntityHandle, getCharacterController,

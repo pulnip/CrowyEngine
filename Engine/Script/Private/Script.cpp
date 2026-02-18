@@ -15,42 +15,42 @@ namespace Crowy
     }
 
     void loadScriptConfig(const ScriptSpec& spec){
-        ScriptRuntime::singleton()->load(spec);
+        ScriptRuntime_->load(spec);
     }
 
     void unloadScriptConfig(){
-        ScriptRuntime::singleton()->unload();
+        ScriptRuntime_->unload();
     }
 
     ScriptHandle createScriptInstance(const ScriptInstanceSpec& spec, EntityHandle handle){
-        return ScriptRuntime::singleton()->create(spec, handle);
+        return ScriptRuntime_->create(spec, handle);
     }
 
     void destroyScriptInstance(ScriptHandle handle){
-        ScriptRuntime::singleton()->destroy(handle);
+        ScriptRuntime_->destroy(handle);
     }
 
     void startScript(ScriptHandle handle){
-        ScriptRuntime::singleton()->start(handle);
+        ScriptRuntime_->start(handle);
     }
 
     void updateScript(ScriptHandle handle, float dt){
-        ScriptRuntime::singleton()->update(handle, dt);
+        ScriptRuntime_->update(handle, dt);
     }
 
     void finishScript(ScriptHandle handle){
-        ScriptRuntime::singleton()->finish(handle);
+        ScriptRuntime_->finish(handle);
     }
 
     void startAllScript(){
-        ScriptRuntime::singleton()->startAll();
+        ScriptRuntime_->startAll();
     }
 
     void updateAllScript(float dt){
-        ScriptRuntime::singleton()->updateAll(dt);
+        ScriptRuntime_->updateAll(dt);
     }
 
     void finishAllScript(){
-        ScriptRuntime::singleton()->finishAll();
+        ScriptRuntime_->finishAll();
     }
 }
