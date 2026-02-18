@@ -22,7 +22,23 @@ namespace Crowy
         ECSScheduler scheduler;
 
         Renderer renderer;
-        Widget ui = cbufferInspector("FocusParams");
+        Widget ui = Column({
+            Checkbox{
+                .label = "Pixelate",
+                .onChanged = [](UIContext& ctx, bool v){
+                    ctx.renderer.setPassEnabled("pixelate", v);
+                },
+                .v = true
+            },
+            Checkbox{
+                .label = "Focusmask",
+                .onChanged = [](UIContext& ctx, bool v){
+                    ctx.renderer.setPassEnabled("composite", v);
+                },
+                .v = true
+            },
+            cbufferInspector("FocusParams")
+        });
         UIRenderer uiRenderer;
 
     public:

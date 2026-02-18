@@ -7,6 +7,7 @@ PUBLIC
 PRIVATE
     Crowy::ECS
     Crowy::Input
+    Crowy::Log
     Crowy::Render
     Crowy::Resource
     Crowy::Scene

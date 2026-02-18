@@ -3,6 +3,7 @@
 #include "ConfigParser.hpp"
 #include "GameMainLoop.hpp"
 #include "Input.hpp"
+#include "Logger.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
 #include "Resource.hpp"
@@ -13,6 +14,8 @@ namespace Crowy
     std::unique_ptr<MainLoop> App::mainLoop = nullptr;
 
     Error App::setup(const AppConfig& config){
+        Logger::instance().setMinLevel(LogLevel::Warn);
+
         initResourceModule(OS_->getDevice());
         initInputModule(OS_->getInputProvider());
         initScriptModule();
