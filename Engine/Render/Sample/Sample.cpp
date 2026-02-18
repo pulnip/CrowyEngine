@@ -2,10 +2,8 @@
 #include <SDL3/SDL.h>
 #include "enum_traits.hpp"
 #include "FramePacer.hpp"
-#include "Log.hpp"
-#include "RHICommandList.hpp"
+#include "Logger.hpp"
 #include "RHIDevice.hpp"
-#include "RHISwapchain.hpp"
 #include "Renderer.hpp"
 #include "RenderSpec.hpp"
 #include "Resource.hpp"
@@ -23,7 +21,7 @@ namespace Crowy
 using namespace Crowy;
 
 int main(int argc, char* argv[]){
-    // Logger::instance().setMinLevel(LogLevel::Warn);
+    Logger::instance().setMinLevel(LogLevel::Warn);
 
     int width = 800, height = 600;
 
@@ -66,7 +64,7 @@ int main(int argc, char* argv[]){
     auto framePacer = device->createFramePacer();
 
     auto [meshHandle, materialSetHandle] = getOrLoad(
-        ModelRequest{
+        RenderObjectSpec{
             .uri = "file:asset/Stelle/Stelle.pmx"
         }
     );

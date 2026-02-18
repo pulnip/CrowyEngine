@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "semantics.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDefinitions.hpp"
@@ -33,4 +34,6 @@ namespace Crowy
         virtual void setState(RHIResourceState state) noexcept = 0;
     };
 #endif
+
+    using RHIBufferPtr = std::unique_ptr<RHIBuffer>;
 }

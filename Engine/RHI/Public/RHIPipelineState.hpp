@@ -1,8 +1,7 @@
 #pragma once
 
+#include <memory>
 #include "semantics.hpp"
-#include "RHIFWD.hpp"
-#include "RHIDefinitions.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -28,4 +27,6 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIPipelineState)
     };
 #endif
+
+    using RHIPipelineStatePtr = std::unique_ptr<RHIPipelineState>;
 }

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <memory>
 #include "semantics.hpp"
 #include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -27,4 +27,6 @@ namespace Crowy
         virtual RHIShaderStage getStage() const noexcept = 0;
     };
 #endif
+
+    using RHIShaderPtr = std::unique_ptr<RHIShader>;
 }

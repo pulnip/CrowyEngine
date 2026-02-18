@@ -1,8 +1,8 @@
 #pragma once
 
-#include "semantics.hpp"
+#include <memory>
 #include "RHIFWD.hpp"
-#include "RHIDefinitions.hpp"
+#include "semantics.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -25,4 +25,6 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHISampler)
     };
 #endif
+
+    using RHISamplerPtr = std::unique_ptr<RHISampler>;
 }

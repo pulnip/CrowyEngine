@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <span>
+#include "RHIFWD.hpp"
 #include "semantics.hpp"
 #include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -189,4 +190,6 @@ namespace Crowy
         virtual void* getNative() const noexcept{ return nullptr; }
     };
 #endif
+
+    using RHICommandListPtr = std::unique_ptr<RHICommandList>;
 }

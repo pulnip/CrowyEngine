@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include "generic_handle.hpp"
 
 namespace Crowy
 {

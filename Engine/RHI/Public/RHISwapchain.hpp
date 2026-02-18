@@ -1,8 +1,7 @@
 #pragma once
 
+#include <memory>
 #include "semantics.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -25,4 +24,6 @@ namespace Crowy
 
         virtual void* getCurrentNativeTexture() const noexcept = 0;
     };
+
+    using RHISwapchainPtr = std::unique_ptr<RHISwapchain>;
 }

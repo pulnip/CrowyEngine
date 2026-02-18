@@ -2,8 +2,14 @@
 
 #include <memory>
 #include "semantics.hpp"
-#include "RHIFWD.hpp"
-#include "RHIDefinitions.hpp"
+#include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
+#include "RHIFence.hpp"
+#include "RHIPipelineState.hpp"
+#include "RHISampler.hpp"
+#include "RHIShader.hpp"
+#include "RHISwapchain.hpp"
+#include "RHITexture.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -74,6 +80,8 @@ namespace Crowy
         virtual void* getContextOrQueue() noexcept{ return nullptr; };
     };
 #endif
+
+    using RHIDevicePtr = std::unique_ptr<RHIDevice>;
 
     // each platform should implement this function
     RHIDevicePtr createDevice() noexcept;
