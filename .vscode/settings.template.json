@@ -21,5 +21,8 @@
         "**/*.hlsl": true,
         "**/MetalRHI/**": true,
         "**/*.metal": true
+    },
+    "evenBetterToml.schema.associations": {
+        "input\\.toml$": "file:///path/to/.vscode/input.schema.json"
     }
 }

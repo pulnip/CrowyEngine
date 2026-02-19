@@ -76,10 +76,17 @@ namespace Crowy
     }
 
     static auto registerECS(asIScriptEngine* engine){
+        NO_RC_OBJ(TransformComponent);
+        OBJ_PROP(TransformComponent, Vec3, position);
+        OBJ_PROP(TransformComponent, Vec4, rotation);
+        OBJ_PROP(TransformComponent, Vec3, scale);
+
         NO_RC_OBJ(CharacterController);
         OBJ_PROP(CharacterController, Vec3, velocity);
 
         VALUE_OBJ(EntityHandle);
+        OBJ_MEMBER_FUNC(EntityHandle, getTransformComponent,
+            "TransformComponent@ getTransformComponent()");
         OBJ_MEMBER_FUNC(EntityHandle, getCharacterController,
             "CharacterController@ getCharacterController()");
     }

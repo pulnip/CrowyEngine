@@ -28,6 +28,10 @@ namespace Crowy
             );
         }
 
+        TransformComponent* getTransformComponent(){
+            return getComponent<TransformComponent>();
+        }
+
         CharacterController* getCharacterController(){
             return getComponent<CharacterController>();
         }

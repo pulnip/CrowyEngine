@@ -5,6 +5,10 @@ class Component{
         self = handle;
     }
 
+    TransformComponent@ getTransformComponent(){
+        return self.getTransformComponent();
+    }
+
     CharacterController@ getCharacterController(){
         return self.getCharacterController();
     }

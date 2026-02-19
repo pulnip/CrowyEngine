@@ -1,6 +1,36 @@
 [[actions]]
-name = "jump"
+name = "MoveForward"
     [[actions.bindings]]
     device = "keyboard"
-    keyCode = "space"
-    keyState = "Pressed"
+    keyCode = "w"
+    keyState = "Held"
+[[actions]]
+name = "MoveBackward"
+    [[actions.bindings]]
+    device = "keyboard"
+    keyCode = "s"
+    keyState = "Held"
+[[actions]]
+name = "MoveLeft"
+    [[actions.bindings]]
+    device = "keyboard"
+    keyCode = "a"
+    keyState = "Held"
+[[actions]]
+name = "MoveRight"
+    [[actions.bindings]]
+    device = "keyboard"
+    keyCode = "d"
+    keyState = "Held"
+[[actions]]
+name = "MoveUp"
+    [[actions.bindings]]
+    device = "keyboard"
+    keyCode = "r"
+    keyState = "Held"
+[[actions]]
+name = "MoveDown"
+    [[actions.bindings]]
+    device = "keyboard"
+    keyCode = "f"
+    keyState = "Held"
