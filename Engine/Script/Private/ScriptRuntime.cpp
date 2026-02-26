@@ -82,7 +82,7 @@ namespace Crowy
         OBJ_PROP(TransformComponent, Vec3, scale);
 
         NO_RC_OBJ(CharacterController);
-        OBJ_PROP(CharacterController, Vec3, velocity);
+        OBJ_PROP(CharacterController, Vec3, pendingDelta);
 
         VALUE_OBJ(EntityHandle);
         OBJ_MEMBER_FUNC(EntityHandle, getTransformComponent,
