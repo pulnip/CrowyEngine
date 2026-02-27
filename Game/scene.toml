@@ -31,7 +31,7 @@ name = "Floor"
     uri = "embedded:cube"
     renderType = "type0"
         [[entities.renderObject.material_override]]
-        baseColor = "asset/metal1.png"
+        baseColor = "file:asset/metal1.png"
         targetSlot = "default"
     [entities.boxCollider]
     position = [0, 0, 0]

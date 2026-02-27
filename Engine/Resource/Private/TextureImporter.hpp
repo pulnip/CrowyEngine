@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
@@ -34,5 +33,5 @@ namespace Crowy
 
     // Load image from file (supports PNG, JPG, BMP, TGA, etc.)
     // Returns RGBA data (4 channels)
-    std::optional<TextureData> importTexture(const std::filesystem::path& path);
+    std::optional<TextureData> importTexture(const std::string& uri);
 }

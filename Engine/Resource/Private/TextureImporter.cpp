@@ -4,11 +4,12 @@
 #include "path_util.hpp"
 #include "string.hpp"
 #include "Log.hpp"
+#include "SchemeKind.hpp"
 #include "TextureImporter.hpp"
 
 namespace Crowy
 {
-    std::optional<TextureData> importTexture(const std::filesystem::path& path){
+    static std::optional<TextureData> loadTexture(const std::string& path){
         auto resolvedPath = get_absolute_path(path);
 
         auto buffer = readFileAsBinary(resolvedPath);
@@ -40,5 +41,29 @@ namespace Crowy
         stbi_image_free(data);
 
         return result;
+    }
+
+    static std::optional<TextureData> loadEmbeddedTexture(const std::string& name){
+        return TextureData{
+            .pixels = {0xFF, 0x00, 0x00, 0xFF},
+            .width = 1,
+            .height = 1,
+            .channels = 4
+        };
+    }
+
+    std::optional<TextureData> importTexture(const std::string& uri){
+        auto [scheme, path] = splitSchemeAndPath(uri);
+
+        switch(scheme){
+        case SchemeKind::File:
+            return loadTexture(path);
+        case SchemeKind::Embedded:
+            return loadEmbeddedTexture(path);
+        case SchemeKind::Unknown:
+            return std::nullopt;
+        default:
+            std::unreachable();
+        }
     }
 }
