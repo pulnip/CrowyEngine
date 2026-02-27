@@ -22,6 +22,7 @@
         "**/MetalRHI/**": true,
         "**/*.metal": true
     },
+    "clangd.path": "/path/to/clangd",
     "evenBetterToml.schema.associations": {
         "input\\.toml$": "file:///path/to/.vscode/input.schema.json"
     }
