@@ -18,11 +18,6 @@ namespace Crowy
         ORTHOGRAPHIC=  1,
     };
 
-    struct Ray{
-        Vec3 point;
-        Vec3 dir;
-    };
-
     struct alignas(16) Line{
         Vec4 from, to;
         Vec4 color;

@@ -1,237 +1,218 @@
 #pragma once
 
-#include <functional>
 #include <optional>
-#include <type_traits>
+#include <tuple>
 #include <unordered_map>
 #include "assert.hpp"
-#include "dynamic_vector.hpp"
+#include "typeless_vector.hpp"
 #include "semantics.hpp"
 #include "Component.hpp"
 #include "EntityHandle.hpp"
 
 namespace Crowy
 {
+    using ArchetypeTable = typeless_vector<0>;
+    using ArchetypeMap = std::unordered_map<ArchetypeBit, ArchetypeTable>;
+
     template<typename... Ts>
     struct ArchetypeView{
-        using Map = std::unordered_map<ArchetypeBit, dynamic_vector>;
-
     private:
-        Map&         map;
-        static constexpr ArchetypeBit required_bit = bits_of<Ts...>();
+        static constexpr auto requiredBit = bits_of<Ts...>();
+        ArchetypeMap& map;
 
     public:
         struct sentinel{};
         struct iterator{
         private:
-            Map::iterator map_it;
-            Map::iterator map_end;
-            Index         vec_index = 0;
-            static constexpr ArchetypeBit required_bit = ArchetypeView::required_bit;
+            using MapIterator = ArchetypeMap::iterator;
+
+            MapIterator mapIt;
+            std::size_t tableIndex;
+            const MapIterator mapEnd;
+            static constexpr auto requiredBit = ArchetypeView::requiredBit;
 
         public:
-            iterator(Map::iterator map_it, Map::iterator map_end)
-            :map_it(map_it), map_end(map_end){
-                advance_to_valid_archetype();
+            iterator(MapIterator mapIt, std::size_t tableIndex, MapIterator mapEnd)
+                : mapIt(mapIt), tableIndex(tableIndex), mapEnd(mapEnd)
+            {
+                toValidArchetype();
             }
 
-            auto operator*() noexcept{
-                assert(!at_end());
-                auto bit = map_it->first;
-                auto& vec = map_it->second;
-                assert(vec_index < vec.size());
-                auto chunk_ptr = vec[vec_index];
+            std::tuple<EntityID, ArchetypeBit, Ts&...> operator*() noexcept{
+                CROWY_ASSERT(mapIt != mapEnd);
+                auto bit = mapIt->first;
+                auto& table = mapIt->second;
+                CROWY_ASSERT(tableIndex < table.size());
 
-                return std::forward_as_tuple(
-                    *static_cast<EntityID*>(chunk_ptr),
-                    map_it->first,
-                    *static_cast<Ts*>(
-                        ptrAdd(chunk_ptr, offset_of<Ts>(bit))
-                    )...
-                );
+                type_proxy<0> row = table[tableIndex];
+                EntityID id = row.get<EntityID>(0);
+
+                return {id, bit,
+                    row.get<Ts>(sizeof(EntityID) + offset_of<Ts>(bit))...
+                };
             }
             iterator& operator++() noexcept{
-                auto& vec = map_it->second;
-                ++vec_index;
-                if(vec_index >= vec.size()){
-                    vec_index = 0;
-                    ++map_it;
-                    advance_to_valid_archetype();
+                auto& table = mapIt->second;
+                ++tableIndex;
+                if(tableIndex >= table.size()){
+                    ++mapIt;
+                    tableIndex = 0;
+                    toValidArchetype();
                 }
                 return *this;
             }
             auto operator==(sentinel) noexcept{
-                return map_it == map_end;
+                return atEnd();
             }
             auto operator!=(sentinel) noexcept{
                 return !((*this)==sentinel{});
             }
 
         private:
-            void advance_to_valid_archetype() noexcept{
-                while(map_it != map_end){
-                    if( isSubset(required_bit, map_it->first) &&
-                        map_it->second.size() > 0)
+            void toValidArchetype() noexcept{
+                while(!atEnd()){
+                    const auto bit = mapIt->first;
+                    const auto& row = mapIt->second;
+
+                    if(isSubset(requiredBit, bit) && row.size() > 0)
                         return;
-                    ++map_it;
+                    ++mapIt;
                 }
             }
-            auto at_end() const noexcept{ return map_it == map_end; }
+            auto atEnd() const noexcept{ return mapIt == mapEnd; }
         };
         struct const_iterator{
         private:
-            Map::const_iterator map_it;
-            Map::const_iterator map_end;
-            Index               vec_index = 0;
-            static constexpr ArchetypeBit required_bit = ArchetypeView::required_bit;
+            using MapIterator = ArchetypeMap::const_iterator;
+
+            MapIterator mapIt;
+            std::size_t tableIndex;
+            const MapIterator mapEnd;
+            static constexpr auto requiredBit = ArchetypeView::requiredBit;
 
         public:
-            const_iterator(Map::const_iterator map_it, Map::const_iterator map_end)
-            :map_it(map_it), map_end(map_end){
-                advance_to_valid_archetype();
+            const_iterator(MapIterator mapIt, std::size_t tableIndex, MapIterator mapEnd)
+                : mapIt(mapIt), tableIndex(tableIndex), mapEnd(mapEnd)
+            {
+                toValidArchetype();
             }
 
-            auto operator*() noexcept{
-                assert(!at_end());
-                auto bit = map_it->first;
-                auto& vec = map_it->second;
-                assert(vec_index < vec.size());
-                auto chunk_ptr = vec[vec_index];
+            std::tuple<EntityID, ArchetypeBit, const Ts&...> operator*() noexcept{
+                CROWY_ASSERT(mapIt != mapEnd);
+                auto bit = mapIt->first;
+                auto& table = mapIt->second;
+                CROWY_ASSERT(tableIndex < table.size());
 
-                return std::forward_as_tuple(
-                    *static_cast<const EntityID*>(chunk_ptr),
-                    map_it->first,
-                    *static_cast<Ts*>(
-                        ptrAdd(chunk_ptr, offset_of<Ts>(bit))
-                    )...
-                );
+                const_proxy<0> row = table[tableIndex];
+                EntityID id = row.get<EntityID>(0);
+
+                return {id, bit,
+                    row.get<Ts>(sizeof(EntityID) + offset_of<Ts>(bit))...
+                };
             }
             const_iterator& operator++() noexcept{
-                auto& vec = map_it->second;
-                ++vec_index;
-                if(vec_index >= vec.size()){
-                    vec_index = 0;
-                    ++map_it;
-                    advance_to_valid_archetype();
+                auto& table = mapIt->second;
+                ++tableIndex;
+                if(tableIndex >= table.size()){
+                    ++mapIt;
+                    tableIndex = 0;
+                    toValidArchetype();
                 }
                 return *this;
             }
             auto operator==(sentinel) noexcept{
-                return map_it == map_end;
+                return atEnd();
             }
             auto operator!=(sentinel) noexcept{
                 return !((*this)==sentinel{});
             }
 
         private:
-            void advance_to_valid_archetype() noexcept{
-                while(map_it != map_end){
-                    if(isSubset(required_bit, map_it->first) &&
-                        map_it->second.size() > 0)
+            void toValidArchetype() noexcept{
+                while(!atEnd()){
+                    const auto bit = mapIt->first;
+                    const auto& row = mapIt->second;
+
+                    if(isSubset(requiredBit, bit) && row.size() > 0)
                         return;
-                    ++map_it;
+                    ++mapIt;
                 }
             }
-            auto at_end() const noexcept{ return map_it == map_end; }
+            auto atEnd() const noexcept{ return mapIt == mapEnd; }
         };
 
-        ArchetypeView(Map& map):map(map){}
+        ArchetypeView(ArchetypeMap& map):map(map){}
 
-        auto  begin() noexcept{ return iterator{map.begin(), map.end()}; }
-        auto    end() noexcept{ return sentinel{}; }
-        auto  begin() const noexcept{ return const_iterator{map.begin(), map.end()}; }
-        auto    end() const noexcept{ return sentinel{}; }
-        auto cbegin() const noexcept{ return const_iterator{map.begin(), map.end()}; }
-        auto   cend() const noexcept{ return sentinel{}; }
+        auto begin() noexcept{
+            return iterator{map.begin(), 0, map.end()};
+        }
+        auto end() noexcept{
+            return sentinel{};
+        }
+        auto begin() const noexcept{
+            return const_iterator{map.begin(), 0, map.end()};
+        }
+        auto end() const noexcept{
+            return sentinel{};
+        }
+        auto cbegin() const noexcept{
+            return const_iterator{map.begin(), 0, map.end()};
+        }
+        auto cend() const noexcept{
+            return sentinel{};
+        }
 
         size_t size() const noexcept{
             size_t size = 0;
-            for(auto it = map.cbegin(); it != map.cend(); ++it){
-                if(isSubset(required_bit, it->first))
-                    size += it->second.size();
+            for(const auto& [bit, table]: map){
+                if(isSubset(requiredBit, bit))
+                    size += table.size();
             }
 
             return size;
         }
     };
 
-    template<value_type T>
-    void emplace_component(void* chunk, ArchetypeBit bit, T&& t) noexcept{
-        using U = std::remove_cvref_t<T>;
+    template<typename T>
+        requires std::is_trivially_copyable_v<
+            remove_optional_t<std::remove_pointer_t<std::remove_cvref_t<T>>>>
+    void emplaceComponent(void* dst, ArchetypeBit bit, T&& t) noexcept{
+        using U = remove_optional_t<std::remove_pointer_t<std::remove_cvref_t<T>>>;
+        dst = ptrAdd(dst, offset_of<U>(bit));
 
-        auto offset = offset_of<U>(bit);
-        auto dst = ptrAdd(chunk, offset);
-        *static_cast<U*>(dst) = std::forward<T>(t);
-    }
-    template<value_type T1, all_value... TN>
-    void emplace_component(void* chunk, ArchetypeBit bit,
-        T1&& t1, TN&&... tn
-    ) noexcept{
-        using U = std::remove_cvref_t<T1>;
-
-        auto offset = offset_of<U>(bit);
-        auto dst = ptrAdd(chunk, offset);
-        *static_cast<U*>(dst) = std::forward<T1>(t1);
-
-        emplace_component(chunk, bit, std::forward<TN>(tn)...);
-    }
-    template<pointer_type T>
-    void emplace_component(void* chunk, ArchetypeBit bit, const T t) noexcept{
-        using U = std::remove_pointer_t<std::remove_cvref_t<T>>;
-
-        auto offset = offset_of<U>(bit);
-        auto dst = ptrAdd(chunk, offset);
-        *static_cast<U>(dst) = *t;
-    }
-    template<pointer_type T1, all_pointer... TN>
-    void emplace_component(void* chunk, ArchetypeBit bit,
-        const T1 t1, const TN... tn
-    ) noexcept{
-        using U = std::remove_pointer_t<std::remove_cvref_t<T1>>;
-
-        auto offset = offset_of<U>(bit);
-        auto dst = ptrAdd(chunk, offset);
-        *static_cast<U>(dst) = *t1;
-
-        emplace_component(chunk, bit, tn...);
-    }
-    template<optional_type T>
-    void emplace_component(void* chunk, ArchetypeBit bit, T&& t) noexcept{
-        using U = remove_optional_t<std::remove_cvref_t<T>>;
-
-        if(t.has_value()){
-            auto offset = offset_of<U>(bit);
-            auto dst = ptrAdd(chunk, offset);
-            *static_cast<U*>(dst) = t.value();
+        if constexpr(value_type<T>)
+            std::memcpy(dst, &t, sizeof(U));
+        else if constexpr(pointer_type<T>){
+            if(t != nullptr)
+                std::memcpy(dst, t, sizeof(U));
+        }
+        else if constexpr(optional_type<T>){
+            if(t.has_value())
+                std::memcpy(dst, &t.value(), sizeof(U));
         }
     }
-    template<optional_type T1, all_optional... TN>
-    void emplace_component(void* chunk, ArchetypeBit bit,
-        const T1 t1, const TN... tn
-    ) noexcept{
-        using U = remove_optional_t<std::remove_cvref_t<T1>>;
 
-        if(t1.has_value()){
-            auto offset = offset_of<U>(bit);
-            auto dst = ptrAdd(chunk, offset);
-            *static_cast<U*>(dst) = t1.value();
-        }
+    template<typename T1, typename... TN>
+        requires std::is_trivially_copyable_v<
+            remove_optional_t<std::remove_pointer_t<std::remove_cvref_t<T1>>>>
+    void emplaceComponent(void* dst, ArchetypeBit bit, T1&& t1, TN&&... tn){
+        using U = remove_optional_t<std::remove_pointer_t<std::remove_cvref_t<T1>>>;
 
-        emplace_component(chunk, bit, tn...);
+        emplaceComponent(dst, bit, std::forward<T1>(t1));
+        emplaceComponent(dst, bit, std::forward<TN>(tn)...);
     }
 
-    struct EntityInfo{
+    struct EntityIndex{
         ArchetypeBit bit;
-        Index chunkIndex;
+        Index tableIndex;
     };
 
     class EntityRegistry{
     private:
-        using ArchetypeMap = std::unordered_map<ArchetypeBit, dynamic_vector>;
-        using EntityTable = std::unordered_map<EntityID, EntityInfo>;
-
         ArchetypeMap archetypeMap;
-        EntityTable entityTable;
+        static constexpr std::size_t ID_REGION = 0;
+        static constexpr auto COMPONENT_REGION = ID_REGION + sizeof(EntityID);
+        std::unordered_map<EntityID, EntityIndex> entityTable;
 
         EntityID id_seed = 1;
 
@@ -248,23 +229,23 @@ namespace Crowy
         EntityID createEntity(Args&&... args){
             auto bit = bits_of(args...);
             // auto bit = bits_of<remove_optional_t<std::remove_cvref_t<Args>>...>();
+            auto& table = getVector(bit);
+            auto entityId = issueID();
+            auto tableIndex = table.size();
 
-            if(archetypeMap.find(bit) == archetypeMap.end())
-                archetypeMap.emplace(bit, size_of(bit));
-
-            auto& vector = archetypeMap.at(bit);
-            vector.resize(vector.size() + 1);
-            auto index = vector.size() - 1;
-            auto chunk = vector[index];
-
-            auto entity_id = issueID();
-            entityTable.emplace(entity_id, EntityInfo{
-                .bit = bit, .chunkIndex = index
+            entityTable.emplace(entityId, EntityIndex{
+                .bit = bit, .tableIndex = tableIndex
             });
-            *static_cast<EntityID*>(chunk) = entity_id;
-            emplace_component(chunk, bit, std::forward<Args>(args)...);
+            table.resize(table.size() + 1);
 
-            return entity_id;
+            // packing [EntityID + Components] layout
+            auto dst = table[tableIndex].data;
+            mem_pack(ptrAdd(dst, ID_REGION), entityId);
+            emplaceComponent(ptrAdd(dst, COMPONENT_REGION), bit,
+                std::forward<Args>(args)...
+            );
+
+            return entityId;
         }
         bool destroyEntity(EntityID);
 
@@ -275,37 +256,35 @@ namespace Crowy
         template<typename... Ts>
         std::tuple<Ts&...> query_unsafe(EntityID id) noexcept{
             const auto& info = entityTable.at(id);
-            auto& vec = archetypeMap.at(info.bit);
-            auto chunk = vec[info.chunkIndex];
+            auto& table = archetypeMap.at(info.bit);
+            auto row = table[info.tableIndex];
 
-            return std::forward_as_tuple(
-                *static_cast<Ts*>(
-                    ptrAdd(chunk, offset_of<Ts>(info.bit))
-                )...
+            return std::make_tuple(
+                row.get<Ts>(sizeof(EntityID) + offset_of<Ts>(info.bit))...
             );
         }
         template<typename T>
-        std::optional<std::reference_wrapper<T>> query(EntityID id) noexcept{
+        std::optional<type_proxy<sizeof(T)>> query(EntityID id) noexcept{
             const auto& info = entityTable.at(id);
             if(!isSubset(bit_of<T>(), info.bit))
                 return std::nullopt;
 
-            auto& vec = archetypeMap.at(info.bit);
-            auto chunk = vec[info.chunkIndex];
-            return *static_cast<T*>(ptrAdd(chunk, offset_of<T>(info.bit)));
+            auto& table = archetypeMap.at(info.bit);
+            auto row = table[info.tableIndex];
+            return row.get<T>(sizeof(EntityID) + offset_of<T>(info.bit));
         }
         std::optional<EntityHandle> query(EntityID id) noexcept;
 
         template<typename T>
         bool appendComponent(EntityID id, T&& component){
-            auto entity_it = entityTable.find(id);
+            auto entityIt = entityTable.find(id);
 
-            CROWY_ASSERT(entity_it != entityTable.end(),
+            CROWY_ASSERT(entityIt != entityTable.end(),
                 "Cannot add component: Entity {} does not exist", id);
-            if(entity_it == entityTable.end())
+            if(entityIt == entityTable.end())
                 return false;
 
-            auto& info = entity_it->second;
+            auto& info = entityIt->second;
 
             CROWY_ASSERT(!isSubset(bit_of<T>(), info.bit),
                 "Cannot add component: {} already exists on entity {} (archetype: {:#x})",
@@ -313,11 +292,31 @@ namespace Crowy
             if(isSubset(bit_of<T>(), info.bit))
                 return false;
 
-            auto [new_index, old_vec] = moveChunk(info,
-                std::forward<T>(component));
-            updateEntityInfo(info, old_vec,
-                info.bit | bit_of<T>(), new_index
-            );
+            auto srcBit = info.bit;
+            auto& srcTable = archetypeMap.at(info.bit);
+            auto srcTableIndex = info.tableIndex;
+            auto srcRow = srcTable[srcTableIndex];
+
+            ArchetypeBit dstBit = srcBit | bit_of<T>();
+            ArchetypeTable& dstTable = getVector(dstBit);
+            auto dstTableIndex = dstTable.size();
+            dstTable.resize(dstTable.size() + 1);
+            auto dstRow = dstTable[dstTableIndex];
+
+            std::size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(dstBit);
+            std::size_t remain = size_of(dstBit) - (offset_of<T>(dstBit) + sizeof(T));
+            dstRow.get(ID_REGION, midFirst) = srcRow.get(ID_REGION, midFirst);
+            dstRow.get<T>(midFirst) = std::forward<T>(component);
+            dstRow.get(midFirst + sizeof(T), remain) = srcRow.get(midFirst, remain);
+
+            info.tableIndex = dstTableIndex;
+
+            // fill empty row to last element
+            srcRow = srcTable.back();
+            EntityID backEntityId = srcRow.get<EntityID>(ID_REGION);
+            entityTable.at(backEntityId).tableIndex = srcTableIndex;
+
+            srcTable.pop_back();
 
             return true;
         }
@@ -338,74 +337,35 @@ namespace Crowy
             if(!isSubset(bit_of<T>(), info.bit))
                 return false;
 
-            auto [new_index, old_vec] = moveChunk<T>(info);
-            updateEntityInfo(info, old_vec,
-                info.bit & (~bit_of<T>()), new_index);
+            auto srcBit = info.bit;
+            auto& srcTable = archetypeMap.at(info.bit);
+            auto srcTableIndex = info.tableIndex;
+            auto srcRow = srcTable[srcTableIndex];
+
+            ArchetypeBit dstBit = srcBit & ~bit_of<T>();
+            ArchetypeTable& dstTable = getVector(dstBit);
+            auto dstTableIndex = dstTable.size();
+            dstTable.resize(dstTable.size() + 1);
+            auto dstRow = dstTable[dstTableIndex];
+
+            std::size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(srcBit);
+            std::size_t remain = size_of(srcBit) - (offset_of<T>(srcBit) + sizeof(T));
+            dstRow.get(ID_REGION, midFirst) = srcRow.get(ID_REGION, midFirst);
+            dstRow.get(midFirst, remain) = srcRow.get(midFirst + sizeof(T), remain);
+
+            info.tableIndex = dstTableIndex;
+
+            // fill empty row to last element
+            srcRow = srcTable.back();
+            EntityID backEntityId = srcRow.get<EntityID>(ID_REGION);
+            entityTable.at(backEntityId).tableIndex = srcTableIndex;
+
+            srcTable.pop_back();
 
             return true;
         }
 
     private:
-        dynamic_vector& getVector(ArchetypeBit);
-
-        template<typename T>
-        auto moveChunk(EntityInfo& info, T&& component){
-            auto& old_vec = archetypeMap.at(info.bit);
-            auto old_index = info.chunkIndex;
-            auto chunk = old_vec[old_index];
-
-            auto new_bit = info.bit | bit_of<T>();
-            auto& new_vec = getVector(new_bit);
-
-            new_vec.resize(new_vec.size() + 1);
-            auto new_index = new_vec.size() - 1;
-            auto dst = new_vec[new_index];
-
-            // 1. copy new chunk
-            // copy chunk before component
-            dst = ptrWrite(dst, chunk, offset_of<T>(new_bit));
-            chunk = ptrAdd(     chunk, offset_of<T>(new_bit));
-            // copy component
-            dst = ptrWrite(dst, std::forward<T>(component));
-            // copy chunk after component
-            ptrWrite(dst, chunk, size_of(info.bit) - offset_of<T>(new_bit));
-
-            // 2. remove old chunk
-            old_vec.swap_remove(info.chunkIndex);
-
-            return std::tuple<size_t, dynamic_vector&>{new_index, old_vec};
-        }
-        template<typename T>
-        auto moveChunk(EntityInfo& info){
-            auto& old_vec = archetypeMap.at(info.bit);
-            auto old_index = info.chunkIndex;
-            auto chunk = old_vec[old_index];
-
-            auto new_bit = info.bit & (~bit_of<T>());
-            auto& new_vec = getVector(new_bit);
-
-            new_vec.resize(new_vec.size() + 1);
-            auto new_index = new_vec.size() - 1;
-            auto dst = new_vec[new_index];
-
-            // 1. copy new chunk
-            // copy chunk before component
-            dst = ptrWrite(dst, chunk, offset_of<T>(info.bit));
-            // skip target component
-            chunk = ptrAdd(chunk, offset_of<T>(info.bit) + sizeof(T));
-            // copy chunk after component
-            ptrWrite(dst, chunk, size_of(info.bit) - offset_of<T>(info.bit) - sizeof(T));
-
-            // 2. remove old chunk
-            old_vec.swap_remove(info.chunkIndex);
-
-            return std::tuple<Index, dynamic_vector&>{new_index, old_vec};
-        }
-
-        void updateEntityInfo(EntityInfo& updated, dynamic_vector& swapped,
-            ArchetypeBit updated_bit, Index updated_index) noexcept;
-
-        EntityTable::iterator findEntityFromProperty(
-            ArchetypeBit bit, Index chunkIndex) noexcept;
+        ArchetypeTable& getVector(ArchetypeBit);
     };
 }

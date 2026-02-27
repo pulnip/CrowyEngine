@@ -92,7 +92,7 @@ namespace Crowy
     }
 
     constexpr size_t size_of(ArchetypeBit bit){
-        size_t size = sizeof(EntityID);
+        size_t size = 0;
         #define X(type) \
             if(bit & BitOf##type) \
                 size += sizeof(type);
@@ -106,7 +106,7 @@ namespace Crowy
         if(!isSubset(bit_of<T>(), bit))
             return -1;
 
-        size_t offset = sizeof(EntityID);
+        size_t offset = 0;
         #define X(type) \
             if(std::same_as<T, type>) \
                 return offset; \
