@@ -1,9 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
 #include <string>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 #include "math.hpp"
@@ -54,8 +52,8 @@ namespace Crowy
 
     // Texture reference in a material
     struct TextureRef{
-        // Path to texture file
-        std::filesystem::path path;
+        // uri ex.: embedded:red, file:asset/image.png
+        std::string uri;
         // TextureUsage usage;
         TextureFlags flags = TextureFlags::None;
     };

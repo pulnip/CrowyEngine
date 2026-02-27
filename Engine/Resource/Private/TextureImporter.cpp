@@ -10,7 +10,7 @@
 namespace Crowy
 {
     static std::optional<TextureData> loadTexture(const std::string& path){
-        auto resolvedPath = get_absolute_path(path);
+        auto resolvedPath = get_absolute_path(to_path(path.c_str()));
 
         auto buffer = readFileAsBinary(resolvedPath);
 

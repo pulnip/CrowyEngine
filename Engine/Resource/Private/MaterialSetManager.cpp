@@ -10,7 +10,7 @@ namespace Crowy
     MaterialSetManager* MaterialSetManager::instance = nullptr;
 
     static RHITexturePtr instantiate(const TextureRef& ref, LoadContext& ctx){
-        auto textureData = importTexture(ref.path);
+        auto textureData = importTexture(ref.uri);
         if(!textureData.has_value())
             return nullptr;
 

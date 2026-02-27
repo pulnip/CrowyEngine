@@ -59,7 +59,7 @@ namespace Crowy
 
             modelData->materials[targetSlot] = MaterialRef{
                 .textures = {
-                    {TextureSemantic::BaseColor, TextureRef{.path = baseColor}}
+                    {TextureSemantic::BaseColor, TextureRef{.uri = baseColor}}
                 }
             };
         }
