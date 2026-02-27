@@ -1,8 +1,17 @@
 add_executable(Crowy)
 
-set_target_properties(Crowy PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/Game"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/Game"
+set(INSTALL_TARGETS Crowy angelscript assimp)
+
+if(TARGET SDL3-shared)
+    list(APPEND INSTALL_TARGETS SDL3-shared)
+elseif(TARGET SDL3-static)
+    list(APPEND INSTALL_TARGETS SDL3-static)
+endif()
+
+install(TARGETS ${INSTALL_TARGETS}
+    RUNTIME DESTINATION .
+    LIBRARY DESTINATION .
+    ARCHIVE DESTINATION . 
 )
 
 target_sources(Crowy

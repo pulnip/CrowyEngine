@@ -10,6 +10,15 @@ if(NOT SDL3_FOUND)
         GIT_PROGRESS TRUE
     )
     FetchContent_MakeAvailable(SDL3)
+    if(TARGET SDL3-shared)
+        target_compile_options(SDL3-shared PRIVATE
+            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
+        )
+    elseif(TARGET SDL3-static)
+        target_compile_options(SDL3-static PRIVATE
+            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
+        )
+    endif()
 endif()
 
 # stb - header-only image loading library
@@ -48,13 +57,22 @@ if(NOT assimp_FOUND)
     set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-    set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_FBX_IMPORTER ON CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
     set(ASSIMP_BUILD_MMD_IMPORTER ON CACHE BOOL "" FORCE)  # PMX/PMD support
+    set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+    set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(assimp)
+    if(APPLE AND TARGET assimp)
+        get_target_property(_incs assimp INCLUDE_DIRECTORIES)
+        if(_incs)
+            # for Homebrew LLVM
+            list(FILTER _incs EXCLUDE REGEX "MacOSX\\.sdk")
+            set_target_properties(assimp PROPERTIES INCLUDE_DIRECTORIES "${_incs}")
+        endif()
+    endif()
 
     if(TARGET zlibstatic)
         target_compile_options(zlibstatic PRIVATE
@@ -71,20 +89,19 @@ if(NOT angelscript_FOUND)
         URL https://www.angelcode.com/angelscript/sdk/files/angelscript_2.38.0.zip
     )
     FetchContent_MakeAvailable(angelscript)
+    set(AS_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
     add_subdirectory(
         ${angelscript_SOURCE_DIR}/angelscript/projects/cmake
         ${angelscript_BINARY_DIR}
     )
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(angelscript
-        PRIVATE
-            -fno-strict-aliasing
-        )
-    endif()
+    target_compile_options(angelscript
+    PRIVATE
+        $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fno-strict-aliasing>
+    )
     if(APPLE)
         target_compile_options(angelscript
         PRIVATE
-            -Wno-deprecated-declarations
+            $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
         )
     endif()
 endif()
@@ -135,8 +152,8 @@ PRIVATE
 if(RENDER_BACKEND STREQUAL "Metal")
     target_compile_options(imgui
     PRIVATE
-        -Wno-deprecated-declarations
-        -Wno-arc-bridge-casts-disallowed-in-nonarc
+        $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
+        $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-arc-bridge-casts-disallowed-in-nonarc>
     )
 
     target_compile_definitions(imgui
@@ -178,11 +195,12 @@ if(CROWY_ENABLE_TEST)
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
         )
+        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
         set(GTEST_HAS_ABSL OFF CACHE BOOL "" FORCE)
-        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            add_compile_options(-Wno-character-conversion)
-        endif()
+        add_compile_options(
+            $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-character-conversion>
+        )
         FetchContent_MakeAvailable(GTest)
     endif()
 endif()

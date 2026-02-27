@@ -28,6 +28,14 @@
                 "--scene=scene.toml"
             ],
             "cwd": "${workspaceFolder}/Game"
+        },
+        {
+            "name": "CMake Target",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

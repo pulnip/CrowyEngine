@@ -16,6 +16,9 @@ option(CROWY_STATIC_RHI "Use STATIC RHI model" OFF)
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+set(CMAKE_INSTALL_RPATH "@executable_path")
+set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/Game)
+
 include(config)
 
 add_subdirectory(Core)
