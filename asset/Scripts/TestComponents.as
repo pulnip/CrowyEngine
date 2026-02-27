@@ -1,3 +1,21 @@
+class TestComponent: Component{
+    TestComponent(EntityHandle handle){
+        super(handle);
+    }
+
+    void onStart(){
+        println("Start");
+    }
+
+    void onUpdate(float dt){
+        println("Update");
+    }
+
+    void onFinish(){
+        println("Finish");
+    }
+}
+
 class MoveComponent: Component{
     TransformComponent@ transform;
     float v = 5.0f;

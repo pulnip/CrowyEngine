@@ -25,6 +25,7 @@ TEST_F(ScriptModuleTest, CallSingleScript){
             Crowy::ScriptModuleSpec{
                 .name = "TestModule",
                 .files = {
+                    "asset/Scripts/Component.as",
                     "asset/Scripts/TestComponents.as"
                 }
             }
@@ -40,12 +41,13 @@ TEST_F(ScriptModuleTest, CallSingleScript){
         Crowy::loadScriptConfig(moduleSpec);
     );
 
+    Crowy::EntityHandle nullEntity{
+        .ptr = nullptr,
+        .bit = 0
+    };
     auto handle = Crowy::ScriptHandle::invalidHandle();
     ASSERT_NO_THROW(
-        handle = Crowy::createScriptInstance(instanceSpec, {
-            .ptr = nullptr,
-            .bit = 0
-        });
+        handle = Crowy::createScriptInstance(instanceSpec, nullEntity);
     );
 
     EXPECT_NO_THROW({
