@@ -49,7 +49,7 @@ namespace Crowy
         auto& table = mapIt->second;
 
         return EntityHandle{
-            .ptr = table[info.tableIndex],
+            .ptr = table[info.tableIndex].data,
             .bit = info.bit
         };
     }
