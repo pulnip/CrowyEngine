@@ -4,10 +4,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
 
 # OS config
 if(APPLE)
-    if(NOT DEFINED RENDER_BACKEND)
-        set(RENDER_BACKEND "Metal")
-    elseif(RENDER_BACKEND STREQUAL "D3D12")
-        message(FATAL_ERROR "D3D12 is not supported on macOS.")
+    set(RENDER_BACKEND "Metal" CACHE STRING "Rendering backend")
+    if(RENDER_BACKEND STREQUAL "D3D11" OR RENDER_BACKEND STREQUAL "D3D12")
+        message(FATAL_ERROR "D3D11 and D3D12 is not supported on macOS.")
     endif()
 
     execute_process(
@@ -15,11 +14,10 @@ if(APPLE)
         OUTPUT_VARIABLE MACOSX_SDK_PATH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    set(CMAKE_OSX_SYSROOT "${MACOSX_SDK_PATH}" CACHE PATH "")
+    set(CMAKE_OSX_SYSROOT "${MACOSX_SDK_PATH}")
 elseif(WIN32)
-    if(NOT DEFINED RENDER_BACKEND)
-        set(RENDER_BACKEND "D3D11")
-    elseif(RENDER_BACKEND STREQUAL "Metal")
+    set(RENDER_BACKEND "D3D11" CACHE STRING "Rendering backend")
+    if(RENDER_BACKEND STREQUAL "Metal")
         message(FATAL_ERROR "Metal is not supported on Windows.")
     endif()
 
@@ -28,6 +26,8 @@ elseif(WIN32)
         add_compile_definitions(NOMINMAX)
     endif()
 endif()
+
+set_property(CACHE RENDER_BACKEND PROPERTY STRINGS "Metal" "D3D11" "D3D12")
 
 # Graphics API config
 if(RENDER_BACKEND STREQUAL "Metal")

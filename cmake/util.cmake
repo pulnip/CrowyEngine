@@ -10,9 +10,9 @@ if(NOT EXISTS "${ASSET_DST}")
             RESULT_VARIABLE LINK_RESULT
         )
     else()
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E create_symlink "${ASSET_SRC}" "${ASSET_DST}"
-            RESULT_VARIABLE LINK_RESULT
+        file(CREATE_LINK "${ASSET_SRC}" "${ASSET_DST}"
+            RESULT LINK_RESULT
+            SYMBOLIC
         )
     endif()
 
