@@ -12,7 +12,7 @@ namespace Crowy
     static std::optional<TextureData> loadTexture(const std::string& path){
         auto resolvedPath = get_absolute_path(to_path(path.c_str()));
 
-        auto buffer = readFileAsBinary(resolvedPath);
+        auto buffer = read_file_as_binary(resolvedPath);
 
         int width, height, channels;
         // Force RGBA output (4 channels)

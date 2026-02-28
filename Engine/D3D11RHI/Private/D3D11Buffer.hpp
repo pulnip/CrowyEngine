@@ -38,24 +38,24 @@ namespace Crowy
             : context(context)
             , usage(desc.usage), size(desc.size)
         {
-            isCPUAccessible = hasFlag(desc.usage, RHIBufferUsage::CPUWrite);
+            isCPUAccessible = has_flag(desc.usage, RHIBufferUsage::CPUWrite);
 
             UINT bindFlags = 0;
-            if(hasFlag(desc.usage, RHIBufferUsage::VertexBuffer))
+            if(has_flag(desc.usage, RHIBufferUsage::VertexBuffer))
                 bindFlags |= D3D11_BIND_VERTEX_BUFFER;
-            if(hasFlag(desc.usage, RHIBufferUsage::IndexBuffer))
+            if(has_flag(desc.usage, RHIBufferUsage::IndexBuffer))
                 bindFlags |= D3D11_BIND_INDEX_BUFFER;
-            if(hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer))
+            if(has_flag(desc.usage, RHIBufferUsage::ConstantBuffer))
                 bindFlags |= D3D11_BIND_CONSTANT_BUFFER;
-            if(hasFlag(desc.usage, RHIBufferUsage::ShaderResource))
+            if(has_flag(desc.usage, RHIBufferUsage::ShaderResource))
                 bindFlags |= D3D11_BIND_SHADER_RESOURCE;
-            if(hasFlag(desc.usage, RHIBufferUsage::UnorderedAccess))
+            if(has_flag(desc.usage, RHIBufferUsage::UnorderedAccess))
                 bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
             UINT miscFlags = 0;
-            if(hasFlag(desc.usage, RHIBufferUsage::StructuredBuffer))
+            if(has_flag(desc.usage, RHIBufferUsage::StructuredBuffer))
                 miscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-            if(hasFlag(desc.usage, RHIBufferUsage::IndirectArgs))
+            if(has_flag(desc.usage, RHIBufferUsage::IndirectArgs))
                 miscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
 
             D3D11_BUFFER_DESC dxDesc = {
@@ -91,7 +91,7 @@ namespace Crowy
             }
         #endif
 
-            if(hasFlag(desc.usage, RHIBufferUsage::ShaderResource))
+            if(has_flag(desc.usage, RHIBufferUsage::ShaderResource))
                 device->CreateShaderResourceView(buffer, nullptr, &srv);
         }
 

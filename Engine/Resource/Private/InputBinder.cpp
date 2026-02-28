@@ -70,7 +70,7 @@ namespace Crowy
             { "ENTER", KeyCode::Enter },
             {"ESCAPE", KeyCode::Escape},
         };
-        auto upper = toUpper(str);
+        auto upper = to_upper(str);
 
         auto it = text2KeyCode.find(upper);
         if(it == text2KeyCode.end()){
@@ -88,7 +88,7 @@ namespace Crowy
             {"RELEASED", KeyState::Released},
             {    "HELD", KeyState::Held    },
         };
-        auto upper = toUpper(str);
+        auto upper = to_upper(str);
 
         auto it = str2KeyState.find(upper);
         if(it == str2KeyState.end()){

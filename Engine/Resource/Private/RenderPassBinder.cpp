@@ -14,7 +14,7 @@ namespace Crowy
             {  "FLOAT4", CBufferFieldType::Float4  },
             {"FLOAT4X4", CBufferFieldType::Float4x4}
         };
-        auto upper = toUpper(str);
+        auto upper = to_upper(str);
 
         auto it = text2FieldType.find(upper);
         if(it == text2FieldType.end()){

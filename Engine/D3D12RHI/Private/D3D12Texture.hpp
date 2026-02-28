@@ -49,10 +49,10 @@ namespace Crowy
         {
             CROWY_ASSERT(desc.depth == 1);
 
-            auto isShaderResource  = hasFlag(desc.usage, RHITextureUsage::ShaderResource);
-            auto isRenderTarget    = hasFlag(desc.usage, RHITextureUsage::RenderTarget);
-            auto isDepthTarget     = hasFlag(desc.usage, RHITextureUsage::DepthStencil);
-            auto isUnorderedAccess = hasFlag(desc.usage, RHITextureUsage::UnorderedAccess);
+            auto isShaderResource  = has_flag(desc.usage, RHITextureUsage::ShaderResource);
+            auto isRenderTarget    = has_flag(desc.usage, RHITextureUsage::RenderTarget);
+            auto isDepthTarget     = has_flag(desc.usage, RHITextureUsage::DepthStencil);
+            auto isUnorderedAccess = has_flag(desc.usage, RHITextureUsage::UnorderedAccess);
 
             D3D12_RESOURCE_FLAGS bindFlags = D3D12_RESOURCE_FLAG_NONE;
             if(!isShaderResource) bindFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
@@ -87,14 +87,14 @@ namespace Crowy
             };
             D3D12_CLEAR_VALUE* pClearValue = nullptr;
 
-            if(hasFlag(desc.usage, RHITextureUsage::RenderTarget)){
+            if(has_flag(desc.usage, RHITextureUsage::RenderTarget)){
                 clearValue.Color[0] = desc.clearColor.r;
                 clearValue.Color[1] = desc.clearColor.g;
                 clearValue.Color[2] = desc.clearColor.b;
                 clearValue.Color[3] = desc.clearColor.a;
                 pClearValue = &clearValue;
             }
-            else if(hasFlag(desc.usage, RHITextureUsage::DepthStencil)){
+            else if(has_flag(desc.usage, RHITextureUsage::DepthStencil)){
                 clearValue.DepthStencil.Depth = desc.clearDepthStencil.depth;
                 clearValue.DepthStencil.Stencil = desc.clearDepthStencil.stencil;
                 pClearValue = &clearValue;

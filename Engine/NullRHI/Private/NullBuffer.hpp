@@ -26,9 +26,9 @@ namespace Crowy
             : usage(desc.usage)
             , size(desc.size)
         {
-            auto hasVertexUsage = hasFlag(desc.usage, RHIBufferUsage::VertexBuffer);
-            auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
-            auto hasConstantUsage = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer);
+            auto hasVertexUsage = has_flag(desc.usage, RHIBufferUsage::VertexBuffer);
+            auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);
+            auto hasConstantUsage = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer);
             isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
         }
         ~NullBuffer() = default;

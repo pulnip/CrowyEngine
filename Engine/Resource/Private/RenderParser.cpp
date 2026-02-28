@@ -84,7 +84,7 @@ namespace Crowy
             {"BC7_UNORM"        , RHITextureFormat::BC7_UNORM        },
             {"BC7_UNORM_SRGB"   , RHITextureFormat::BC7_UNORM_SRGB   },
         };
-        auto upper = toUpper(str);
+        auto upper = to_upper(str);
 
         auto it = text2TextureFormat.find(upper);
         if(it == text2TextureFormat.end()){
@@ -101,7 +101,7 @@ namespace Crowy
             {"LINEAR" , RHIFilter::Linear}
         };
 
-        auto upper = toUpper(str);
+        auto upper = to_upper(str);
 
         auto it = text2Filter.find(upper);
         if(it == text2Filter.end()){
@@ -121,7 +121,7 @@ namespace Crowy
             {"BORDER", RHIAddressMode::Border}
         };
 
-        auto upper = toUpper(str);
+        auto upper = to_upper(str);
 
         auto it = text2AddressMode.find(upper);
         if(it == text2AddressMode.end()){

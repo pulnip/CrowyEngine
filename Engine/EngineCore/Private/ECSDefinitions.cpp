@@ -9,7 +9,7 @@ namespace Crowy
             {"PERSPECTIVE", Projection::PERSPECTIVE},
             {"ORTHOGRAPHIC",  Projection::ORTHOGRAPHIC},
         };
-        auto upper = toUpper(text);
+        auto upper = to_upper(text);
 
         auto it = text2projection.find(upper);
         if(it == text2projection.end()){

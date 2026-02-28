@@ -34,10 +34,10 @@ namespace Crowy
         ) noexcept
             :usage(desc.usage),size(desc.size)
         {
-            auto hasVertexUsage = hasFlag(desc.usage, RHIBufferUsage::VertexBuffer);
-            auto hasIndexUsage = hasFlag(desc.usage, RHIBufferUsage::IndexBuffer);
-            auto hasConstantUsage = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer);
-            auto hasCPUWrite = hasFlag(desc.usage, RHIBufferUsage::CPUWrite);
+            auto hasVertexUsage = has_flag(desc.usage, RHIBufferUsage::VertexBuffer);
+            auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);
+            auto hasConstantUsage = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer);
+            auto hasCPUWrite = has_flag(desc.usage, RHIBufferUsage::CPUWrite);
 
             isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage ||
                               hasCPUWrite || desc.initialData != nullptr;

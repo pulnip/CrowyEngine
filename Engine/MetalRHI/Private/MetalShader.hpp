@@ -35,7 +35,7 @@ namespace Crowy
             auto ext = std::filesystem::path(desc.file).extension().string();
 
             if(ext == ".metal"){
-                auto code = readFileAsString(desc.file);
+                auto code = read_file_as_string(desc.file);
 
                 auto source = NS::String::string(code.c_str(), NS::UTF8StringEncoding);
                 library = device->newLibrary(source, nullptr, &error);

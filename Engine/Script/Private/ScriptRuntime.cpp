@@ -175,7 +175,7 @@ namespace Crowy
 
             for(const auto& file: moduleSpec.files){
                 auto resolvedPath = get_absolute_path(file);
-                auto code = readFileAsString(resolvedPath);
+                auto code = read_file_as_string(resolvedPath);
                 mod->AddScriptSection(moduleSpec.name.c_str(), code.c_str(), code.size());
             }
 

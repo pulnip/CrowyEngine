@@ -52,7 +52,7 @@ namespace Crowy
                 throw std::runtime_error("Failed to create D3D12 buffer");
             }
 
-            if(hasFlag(usage, RHIBufferUsage::ConstantBuffer) && allocator != nullptr){
+            if(has_flag(usage, RHIBufferUsage::ConstantBuffer) && allocator != nullptr){
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{
                     .BufferLocation = resource.buffer->GetGPUVirtualAddress(),
                     .SizeInBytes = static_cast<UINT>((size + 255) & ~255)
@@ -60,7 +60,7 @@ namespace Crowy
 
                 resource.cbvIndex = allocator->allocate(cbvDesc);
             }
-            if(hasFlag(usage, RHIBufferUsage::ShaderResource)){
+            if(has_flag(usage, RHIBufferUsage::ShaderResource)){
                 CROWY_ASSERT(allocator != nullptr);
 
                 // TODO.
@@ -90,12 +90,12 @@ namespace Crowy
             , size(desc.size)
             , allocator(allocator)
         {
-            isCPUAccessible = hasFlag(desc.usage, RHIBufferUsage::CPUWrite);
+            isCPUAccessible = has_flag(desc.usage, RHIBufferUsage::CPUWrite);
 
             D3D12_RESOURCE_DESC bufDesc{
                 .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
                 .Alignment = 0,
-                .Width = hasFlag(desc.usage, RHIBufferUsage::ConstantBuffer) ?
+                .Width = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer) ?
                     (desc.size + 255) & ~255 : desc.size,
                 .Height = 1,
                 .DepthOrArraySize = 1,
@@ -103,7 +103,7 @@ namespace Crowy
                 .Format = DXGI_FORMAT_UNKNOWN,
                 .SampleDesc = {1, 0},
                 .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-                .Flags = hasFlag(desc.usage, RHIBufferUsage::UnorderedAccess) ?
+                .Flags = has_flag(desc.usage, RHIBufferUsage::UnorderedAccess) ?
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
                     D3D12_RESOURCE_FLAG_NONE
             };

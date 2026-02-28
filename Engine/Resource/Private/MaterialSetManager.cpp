@@ -17,7 +17,7 @@ namespace Crowy
         // TODO: Implement mipmap generation
         // For now, use only 1 mip level to avoid sampling uninitialized mipmap data
         uint32_t mipLevels = 1;
-        // if(hasFlag(ref.flags, TextureFlags::GenerateMips)){
+        // if(has_flag(ref.flags, TextureFlags::GenerateMips)){
         //     mipLevels = static_cast<uint32_t>(
         //         std::floor(std::log2(std::max(
         //             textureData->width, textureData->height
@@ -25,7 +25,7 @@ namespace Crowy
         //     ) + 1;
         // }
 
-        RHITextureFormat format = hasFlag(ref.flags, TextureFlags::SRGB) 
+        RHITextureFormat format = has_flag(ref.flags, TextureFlags::SRGB) 
             ? RHITextureFormat::RGBA8_UNORM_SRGB 
             : RHITextureFormat::RGBA8_UNORM;
 

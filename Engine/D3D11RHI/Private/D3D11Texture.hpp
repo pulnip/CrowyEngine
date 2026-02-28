@@ -42,10 +42,10 @@ namespace Crowy
         {
             CROWY_ASSERT(desc.depth == 1);
 
-            auto isShaderResource  = hasFlag(desc.usage, RHITextureUsage::ShaderResource);
-            auto isRenderTarget    = hasFlag(desc.usage, RHITextureUsage::RenderTarget);
-            auto isDepthTarget     = hasFlag(desc.usage, RHITextureUsage::DepthStencil);
-            auto isUnorderedAccess = hasFlag(desc.usage, RHITextureUsage::UnorderedAccess);
+            auto isShaderResource  = has_flag(desc.usage, RHITextureUsage::ShaderResource);
+            auto isRenderTarget    = has_flag(desc.usage, RHITextureUsage::RenderTarget);
+            auto isDepthTarget     = has_flag(desc.usage, RHITextureUsage::DepthStencil);
+            auto isUnorderedAccess = has_flag(desc.usage, RHITextureUsage::UnorderedAccess);
 
             UINT bindFlags = 0;
             if(isShaderResource ) bindFlags |= D3D11_BIND_SHADER_RESOURCE;

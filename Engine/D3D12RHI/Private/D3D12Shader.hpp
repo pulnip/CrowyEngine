@@ -46,7 +46,7 @@ namespace Crowy
             auto ext = std::filesystem::path(desc.file).extension().string();
 
             if(ext == ".cso" || ext == ".dxbc" || ext == ".dxil"){
-                bytecode = readFileAsBinary(desc.file);
+                bytecode = read_file_as_binary(desc.file);
             }
             else if(ext == ".hlsl"){
                 auto profile = getShaderTargetProfile(desc.stage);

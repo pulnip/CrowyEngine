@@ -17,7 +17,7 @@ namespace Crowy
                 return nullptr;
 
             return reinterpret_cast<T*>(
-                ptrAdd(ptr, offset)
+                ptr_add(ptr, offset)
             );
         }
 

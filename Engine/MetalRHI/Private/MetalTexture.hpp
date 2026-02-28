@@ -14,13 +14,13 @@ namespace Crowy
     inline auto convert(RHITextureUsage usage){
         MTL::TextureUsage mtlUsage = 0;
 
-        if(hasFlag(usage, RHITextureUsage::ShaderResource))
+        if(has_flag(usage, RHITextureUsage::ShaderResource))
             mtlUsage |= MTL::TextureUsageShaderRead;
-        if(hasFlag(usage, RHITextureUsage::RenderTarget))
+        if(has_flag(usage, RHITextureUsage::RenderTarget))
             mtlUsage |= MTL::TextureUsageRenderTarget;
-        if(hasFlag(usage, RHITextureUsage::DepthStencil))
+        if(has_flag(usage, RHITextureUsage::DepthStencil))
             mtlUsage |= MTL::TextureUsageRenderTarget;
-        if(hasFlag(usage, RHITextureUsage::UnorderedAccess))
+        if(has_flag(usage, RHITextureUsage::UnorderedAccess))
             mtlUsage |= MTL::TextureUsageShaderWrite;
 
         return mtlUsage;
@@ -61,8 +61,8 @@ namespace Crowy
             );
             texDesc->setUsage(convert(desc.usage));
         #if TARGET_OS_OSX                                                             
-            bool needsGPUOnly = hasFlag(desc.usage, RHITextureUsage::RenderTarget) || 
-                                hasFlag(desc.usage, RHITextureUsage::DepthStencil);   
+            bool needsGPUOnly = has_flag(desc.usage, RHITextureUsage::RenderTarget) || 
+                                has_flag(desc.usage, RHITextureUsage::DepthStencil);   
             texDesc->setStorageMode(needsGPUOnly ?
                 MTL::StorageModePrivate : MTL::StorageModeShared);           
         #else                                                                         

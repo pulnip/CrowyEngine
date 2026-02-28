@@ -27,12 +27,12 @@ namespace Crowy
             using MapIterator = ArchetypeMap::iterator;
 
             MapIterator mapIt;
-            std::size_t tableIndex;
+            size_t tableIndex;
             const MapIterator mapEnd;
             static constexpr auto requiredBit = ArchetypeView::requiredBit;
 
         public:
-            iterator(MapIterator mapIt, std::size_t tableIndex, MapIterator mapEnd)
+            iterator(MapIterator mapIt, size_t tableIndex, MapIterator mapEnd)
                 : mapIt(mapIt), tableIndex(tableIndex), mapEnd(mapEnd)
             {
                 toValidArchetype();
@@ -86,12 +86,12 @@ namespace Crowy
             using MapIterator = ArchetypeMap::const_iterator;
 
             MapIterator mapIt;
-            std::size_t tableIndex;
+            size_t tableIndex;
             const MapIterator mapEnd;
             static constexpr auto requiredBit = ArchetypeView::requiredBit;
 
         public:
-            const_iterator(MapIterator mapIt, std::size_t tableIndex, MapIterator mapEnd)
+            const_iterator(MapIterator mapIt, size_t tableIndex, MapIterator mapEnd)
                 : mapIt(mapIt), tableIndex(tableIndex), mapEnd(mapEnd)
             {
                 toValidArchetype();
@@ -178,7 +178,7 @@ namespace Crowy
             remove_optional_t<std::remove_pointer_t<std::remove_cvref_t<T>>>>
     void emplaceComponent(void* dst, ArchetypeBit bit, T&& t) noexcept{
         using U = remove_optional_t<std::remove_pointer_t<std::remove_cvref_t<T>>>;
-        dst = ptrAdd(dst, offset_of<U>(bit));
+        dst = ptr_add(dst, offset_of<U>(bit));
 
         if constexpr(value_type<T>)
             std::memcpy(dst, &t, sizeof(U));
@@ -204,13 +204,13 @@ namespace Crowy
 
     struct EntityIndex{
         ArchetypeBit bit;
-        Index tableIndex;
+        size_t tableIndex;
     };
 
     class EntityRegistry{
     private:
         ArchetypeMap archetypeMap;
-        static constexpr std::size_t ID_REGION = 0;
+        static constexpr size_t ID_REGION = 0;
         static constexpr auto COMPONENT_REGION = ID_REGION + sizeof(EntityID);
         std::unordered_map<EntityID, EntityIndex> entityTable;
 
@@ -240,8 +240,8 @@ namespace Crowy
 
             // packing [EntityID + Components] layout
             auto dst = table[tableIndex].data;
-            mem_pack(ptrAdd(dst, ID_REGION), entityId);
-            emplaceComponent(ptrAdd(dst, COMPONENT_REGION), bit,
+            mem_pack(ptr_add(dst, ID_REGION), entityId);
+            emplaceComponent(ptr_add(dst, COMPONENT_REGION), bit,
                 std::forward<Args>(args)...
             );
 
@@ -303,8 +303,8 @@ namespace Crowy
             dstTable.resize(dstTable.size() + 1);
             auto dstRow = dstTable[dstTableIndex];
 
-            std::size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(dstBit);
-            std::size_t remain = size_of(dstBit) - (offset_of<T>(dstBit) + sizeof(T));
+            size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(dstBit);
+            size_t remain = size_of(dstBit) - (offset_of<T>(dstBit) + sizeof(T));
             dstRow.get(ID_REGION, midFirst) = srcRow.get(ID_REGION, midFirst);
             dstRow.get<T>(midFirst) = std::forward<T>(component);
             dstRow.get(midFirst + sizeof(T), remain) = srcRow.get(midFirst, remain);
@@ -348,8 +348,8 @@ namespace Crowy
             dstTable.resize(dstTable.size() + 1);
             auto dstRow = dstTable[dstTableIndex];
 
-            std::size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(srcBit);
-            std::size_t remain = size_of(srcBit) - (offset_of<T>(srcBit) + sizeof(T));
+            size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(srcBit);
+            size_t remain = size_of(srcBit) - (offset_of<T>(srcBit) + sizeof(T));
             dstRow.get(ID_REGION, midFirst) = srcRow.get(ID_REGION, midFirst);
             dstRow.get(midFirst, remain) = srcRow.get(midFirst + sizeof(T), remain);
 
