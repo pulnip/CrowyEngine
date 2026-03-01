@@ -48,7 +48,7 @@ namespace Crowy
                 EntityID id = row.get<EntityID>(0);
 
                 return {id, bit,
-                    row.get<Ts>(sizeof(EntityID) + offset_of<Ts>(bit))...
+                    row.get<Ts>(COMPONENT_REGION + offset_of<Ts>(bit))...
                 };
             }
             iterator& operator++() noexcept{
@@ -107,7 +107,7 @@ namespace Crowy
                 EntityID id = row.get<EntityID>(0);
 
                 return {id, bit,
-                    row.get<Ts>(sizeof(EntityID) + offset_of<Ts>(bit))...
+                    row.get<Ts>(COMPONENT_REGION + offset_of<Ts>(bit))...
                 };
             }
             const_iterator& operator++() noexcept{
@@ -210,8 +210,6 @@ namespace Crowy
     class EntityRegistry{
     private:
         ArchetypeMap archetypeMap;
-        static constexpr size_t ID_REGION = 0;
-        static constexpr auto COMPONENT_REGION = ID_REGION + sizeof(EntityID);
         std::unordered_map<EntityID, EntityIndex> entityTable;
 
         EntityID id_seed = 1;
@@ -260,7 +258,7 @@ namespace Crowy
             auto row = table[info.tableIndex];
 
             return std::make_tuple(
-                row.get<Ts>(sizeof(EntityID) + offset_of<Ts>(info.bit))...
+                row.get<Ts>(COMPONENT_REGION + offset_of<Ts>(info.bit))...
             );
         }
         template<typename T>
@@ -271,7 +269,7 @@ namespace Crowy
 
             auto& table = archetypeMap.at(info.bit);
             auto row = table[info.tableIndex];
-            return row.get<T>(sizeof(EntityID) + offset_of<T>(info.bit));
+            return row.get<T>(COMPONENT_REGION + offset_of<T>(info.bit));
         }
         std::optional<EntityHandle> query(EntityID id) noexcept;
 
@@ -303,7 +301,7 @@ namespace Crowy
             dstTable.resize(dstTable.size() + 1);
             auto dstRow = dstTable[dstTableIndex];
 
-            size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(dstBit);
+            size_t midFirst = COMPONENT_REGION + offset_of<T>(dstBit);
             size_t remain = size_of(dstBit) - (offset_of<T>(dstBit) + sizeof(T));
             dstRow.get(ID_REGION, midFirst) = srcRow.get(ID_REGION, midFirst);
             dstRow.get<T>(midFirst) = std::forward<T>(component);
@@ -348,7 +346,7 @@ namespace Crowy
             dstTable.resize(dstTable.size() + 1);
             auto dstRow = dstTable[dstTableIndex];
 
-            size_t midFirst = ID_REGION + sizeof(EntityID) + offset_of<T>(srcBit);
+            size_t midFirst = COMPONENT_REGION + offset_of<T>(srcBit);
             size_t remain = size_of(srcBit) - (offset_of<T>(srcBit) + sizeof(T));
             dstRow.get(ID_REGION, midFirst) = srcRow.get(ID_REGION, midFirst);
             dstRow.get(midFirst, remain) = srcRow.get(midFirst + sizeof(T), remain);

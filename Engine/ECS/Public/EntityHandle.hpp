@@ -6,13 +6,16 @@
 
 namespace Crowy
 {
+    static constexpr size_t ID_REGION = 0;
+    static constexpr auto COMPONENT_REGION = ID_REGION + sizeof(EntityID);
+
     struct EntityHandle{
         void* const ptr;
         const ArchetypeBit bit;
 
         template<typename T>
         const T* getComponent() const{
-            auto offset = offset_of<T>(bit);
+            auto offset = COMPONENT_REGION + offset_of<T>(bit);
             if(offset == -1)
                 return nullptr;
 
