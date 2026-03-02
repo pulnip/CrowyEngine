@@ -14,7 +14,7 @@ TEST(SceneParser, ParseSimpleTransform){
         scale = [1, 1, 1]
     )";
     Vec3 position{1, 2, 3};
-    auto rotation = unitQuat();
+    auto rotation = unit_quat();
     auto scale = ones();
 
     auto scene = parseSceneFromString(tomlText);
@@ -102,7 +102,7 @@ TEST(SceneParser, ParseMultipleEntities){
     ASSERT_FALSE(scene.transformSpecs.empty());
     auto& tr = scene.transformSpecs[scene.entities[0].transformIndex];
     EXPECT_EQ(tr.position, (Vec3{10, 20, 30}));
-    EXPECT_EQ(tr.rotation, unitQuat());
+    EXPECT_EQ(tr.rotation, unit_quat());
     EXPECT_EQ(tr.scale, (Vec3{2, 2, 2}));
 }
 
@@ -127,7 +127,7 @@ TEST(SceneParser, ParseMultipleProperties){
     ASSERT_FALSE(scene.transformSpecs.empty());
     auto& tr = scene.transformSpecs[scene.entities[0].transformIndex];
     EXPECT_EQ(tr.position, (Vec3{10, 20, 30}));
-    EXPECT_EQ(tr.rotation, unitQuat());
+    EXPECT_EQ(tr.rotation, unit_quat());
     EXPECT_EQ(tr.scale, (Vec3{2, 2, 2}));
     ASSERT_FALSE(scene.renderObjectSpecs.empty());
     auto& msh = scene.renderObjectSpecs[scene.entities[0].renderObjectIndex];
@@ -169,14 +169,14 @@ TEST(SceneParser, ParseMultipleEntitiesWithMultipleProperties){
 
     auto& tr1 = scene.transformSpecs[scene.entities[0].transformIndex];
     EXPECT_EQ(tr1.position, (Vec3{10, 20, 30}));
-    EXPECT_EQ(tr1.rotation, unitQuat());
+    EXPECT_EQ(tr1.rotation, unit_quat());
     EXPECT_EQ(tr1.scale, (Vec3{2, 2, 2}));
     auto& msh1 = scene.renderObjectSpecs[scene.entities[0].renderObjectIndex];
     EXPECT_EQ(msh1.uri, std::string("embedded:cube"));
 
     auto& tr2 = scene.transformSpecs[scene.entities[1].transformIndex];
     EXPECT_EQ(tr2.position, (Vec3{15, 25, 35}));
-    EXPECT_EQ(tr2.rotation, unitQuat());
+    EXPECT_EQ(tr2.rotation, unit_quat());
     EXPECT_EQ(tr2.scale, (Vec3{1.5, 1.5, 1.5}));
     auto& msh2 = scene.renderObjectSpecs[scene.entities[1].renderObjectIndex];
     EXPECT_EQ(msh2.uri, std::string("file:asset/lamp.fbx"));

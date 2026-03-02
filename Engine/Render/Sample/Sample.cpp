@@ -73,7 +73,7 @@ int main(int argc, char* argv[]){
         RenderItem{
             .mesh = meshHandle,
             .materials = materialSetHandle,
-            .world = unitMat(),
+            .world = unit_mat(),
             .type = std::hash<RenderType>{}("type0")
         }
     };
@@ -426,11 +426,11 @@ int main(int argc, char* argv[]){
         }
 
         auto aspect = float(width)/height;
-        renderItems[0].world = rotateYMat(0.5f * et);
+        renderItems[0].world = rotate_y_mat(0.5f * et);
 
         auto camX = std::sin(0.3f * et) * cameraDistance;
         auto camZ = std::cos(0.3f * et) * cameraDistance;
-        auto view = lookAt(
+        auto view = look_at(
             Vec3{camX, 10.0f, camZ},
             Vec3{0.0f, 10.0f, 0.0f},
             Vec3{0.0f,  1.0f, 0.0f}

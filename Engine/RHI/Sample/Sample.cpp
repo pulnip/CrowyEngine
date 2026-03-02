@@ -143,11 +143,11 @@ int main(int argc, char* argv[]){
         }
 
         auto aspect = float(width)/height;
-        auto model = rotateYMat(0.5f * et);
+        auto model = rotate_y_mat(0.5f * et);
 
         auto camX = std::sin(0.3f * et) * cameraDistance;
         auto camZ = std::cos(0.3f * et) * cameraDistance;
-        auto view = lookAt(
+        auto view = look_at(
             Vec3{camX, 10.0f, camZ},
             Vec3{0.0f, 10.0f, 0.0f},
             Vec3{0.0f,  1.0f, 0.0f}

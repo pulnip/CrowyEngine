@@ -62,7 +62,7 @@ namespace Crowy
                 screenHeight : camera.viewport.height;
             auto aspect = static_cast<float>(width) / height;
 
-            auto view = viewMat(transform.position, transform.rotation);
+            auto view = view_mat(transform.position, transform.rotation);
             auto proj = camera.proj==Projection::PERSPECTIVE ?
                 perspective( camera.fov, aspect, camera.nearPlane, camera.farPlane) :
                 orthographic(width, height, camera.nearPlane, camera.farPlane);
@@ -78,10 +78,11 @@ namespace Crowy
                 transform,
                 renderObj
             ]: renderObjView){
-                auto t = translateMat(transform.position);
-                auto r =    rotateMat(transform.rotation);
-                auto s =     scaleMat(transform.scale   );
-                auto model = t * r * s;
+                auto model = model_mat(
+                    transform.position,
+                    transform.rotation,
+                    transform.scale
+                );
 
                 renderItems.push_back(RenderItem{
                     .mesh = renderObj.mesh,

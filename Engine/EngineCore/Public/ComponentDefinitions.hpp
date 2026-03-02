@@ -11,7 +11,7 @@ namespace Crowy
 {
     struct TransformComponent{
         Vec3 position = zeros();
-        Vec4 rotation = unitQuat();
+        Vec4 rotation = unit_quat();
         Vec3 scale = ones();
 
         Vec3 right(){ return Crowy::right(rotation); }
@@ -62,7 +62,7 @@ namespace Crowy
 
     struct BoxColliderComponent{
         Vec3 position = zeros();
-        Vec4 rotation = unitQuat();
+        Vec4 rotation = unit_quat();
         Vec3 scale = ones();
 
         // physical material
@@ -86,7 +86,7 @@ namespace Crowy
     struct CharacterController{
         Vec3 pendingDelta = zeros();
 
-        float slopeLimit = toRadian(45.0);
+        float slopeLimit = to_radian(45.0);
         float stepOffset = 0.3f;
         float skinWidth = 0.08f;
 

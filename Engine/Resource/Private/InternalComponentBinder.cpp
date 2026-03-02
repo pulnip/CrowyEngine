@@ -1,4 +1,5 @@
 #include "InternalComponentBinder.hpp"
+#include "math.hpp"
 
 namespace Crowy
 {
@@ -20,7 +21,7 @@ namespace Crowy
         const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
         auto pos = readVec3(arena, src, plan.errors, "position", zeros());
-        auto rot = readVec4(arena, src, plan.errors, "rotation", unitQuat());
+        auto rot = readVec4(arena, src, plan.errors, "rotation", unit_quat());
         auto scl = readVec3(arena, src, plan.errors, "scale", ones());
 
         plan.transforms.push_back(PlannedTransform{
@@ -138,7 +139,7 @@ namespace Crowy
         const VTable& src, size_t entityIndex, ComponentBindPlan& plan
     ){
         auto pos = readVec3(arena, src, plan.errors, "position", zeros());
-        auto rot = readVec4(arena, src, plan.errors, "rotation", unitQuat());
+        auto rot = readVec4(arena, src, plan.errors, "rotation", unit_quat());
         auto scl = readVec3(arena, src, plan.errors, "scale", ones());
 
         auto bc = readFloat(arena, src, plan.errors, "bounciness");

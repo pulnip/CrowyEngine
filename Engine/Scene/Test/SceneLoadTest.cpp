@@ -33,17 +33,17 @@ TEST_F(SceneModuleTest, EntityWithTransformComponent){
     TransformComponent expectedComponents[] = {
         {
             .position = Crowy::zeros(),
-            .rotation = Crowy::unitQuat(),
+            .rotation = Crowy::unit_quat(),
             .scale = Crowy::ones()
         },
         {
             .position = Crowy::Vec3{1, 2, 3},
-            .rotation = Crowy::unitQuat(),
+            .rotation = Crowy::unit_quat(),
             .scale = Crowy::ones()
         },
         {
             .position = Crowy::Vec3{5, 5, 5},
-            .rotation = Crowy::unitQuat(),
+            .rotation = Crowy::unit_quat(),
             .scale = Crowy::Vec3{2, 2, 2}
         }
     };
@@ -94,7 +94,7 @@ TEST_F(SceneModuleTest, EntityWithRenderObjectComponent){
         : registry.query<TransformComponent, RenderObjectComponent>()
     ){
         EXPECT_EQ(transform.position, Crowy::zeros());
-        EXPECT_EQ(transform.rotation, Crowy::unitQuat());
+        EXPECT_EQ(transform.rotation, Crowy::unit_quat());
         EXPECT_EQ(transform.scale   , Crowy::ones());
 
         EXPECT_EQ(renderObject.renderType, std::hash<Crowy::RenderType>()("unlit"));

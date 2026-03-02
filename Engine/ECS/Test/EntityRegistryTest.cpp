@@ -38,7 +38,7 @@ TEST(ArchetypeView, ComplexQuery){
         registry.createEntity(
             TransformComponent{
                 .position = zeros(),
-                .rotation = unitQuat(),
+                .rotation = unit_quat(),
                 .scale = ones()
             },
             ColorComponent{
@@ -50,7 +50,7 @@ TEST(ArchetypeView, ComplexQuery){
     size_t i=0;
     for(auto [id, bit, tc, cc]: registry.query<TransformComponent, ColorComponent>()){
         EXPECT_EQ(tc.position,    zeros());
-        EXPECT_EQ(tc.rotation, unitQuat());
+        EXPECT_EQ(tc.rotation, unit_quat());
         EXPECT_EQ(   tc.scale,     ones());
 
         EXPECT_EQ(cc.color, testColors[i]);
@@ -71,7 +71,7 @@ TEST(ArchetypeView, EmplaceOrder){
             registry.createEntity(
                 TransformComponent{
                     .position = zeros(),
-                    .rotation = unitQuat(),
+                    .rotation = unit_quat(),
                     .scale = ones()
                 },
                 ColorComponent{
@@ -86,7 +86,7 @@ TEST(ArchetypeView, EmplaceOrder){
                 },
                 TransformComponent{
                     .position = zeros(),
-                    .rotation = unitQuat(),
+                    .rotation = unit_quat(),
                     .scale = ones()
                 }
             );
@@ -96,7 +96,7 @@ TEST(ArchetypeView, EmplaceOrder){
     size_t i=0;
     for(auto [id, bit, tc, cc]: registry.query<TransformComponent, ColorComponent>()){
         EXPECT_EQ(tc.position,    zeros());
-        EXPECT_EQ(tc.rotation, unitQuat());
+        EXPECT_EQ(tc.rotation, unit_quat());
         EXPECT_EQ(   tc.scale,     ones());
 
         EXPECT_EQ(cc.color, testColors[i]);
@@ -127,7 +127,7 @@ TEST(ArchetypeView, AppendComponent){
             },
             TransformComponent{
                 .position = zeros(),
-                .rotation = unitQuat(),
+                .rotation = unit_quat(),
                 .scale = ones()
             }
         );
@@ -137,7 +137,7 @@ TEST(ArchetypeView, AppendComponent){
     auto count = 0;
     for(auto [id, bit, tc, cc]: registry.query<TransformComponent, ColorComponent>()){
         EXPECT_EQ(tc.position,    zeros());
-        EXPECT_EQ(tc.rotation, unitQuat());
+        EXPECT_EQ(tc.rotation, unit_quat());
         EXPECT_EQ(   tc.scale,     ones());
 
         // cannot predict query order.
@@ -171,7 +171,7 @@ TEST(ArchetypeView, RemoveComponent){
             },
             TransformComponent{
                 .position = zeros(),
-                .rotation = unitQuat(),
+                .rotation = unit_quat(),
                 .scale = ones()
             }
         );
@@ -183,7 +183,7 @@ TEST(ArchetypeView, RemoveComponent){
     auto count = 0;
     for(auto [id, bit, tc, cc]: registry.query<TransformComponent, ColorComponent>()){
         EXPECT_EQ(tc.position,    zeros());
-        EXPECT_EQ(tc.rotation, unitQuat());
+        EXPECT_EQ(tc.rotation, unit_quat());
         EXPECT_EQ(   tc.scale,     ones());
 
         // cannot predict query order.
@@ -196,7 +196,7 @@ TEST(ArchetypeView, RemoveComponent){
     count = 0;
     for(auto [id, bit, tc]: registry.query<TransformComponent>()){
         EXPECT_EQ(tc.position,    zeros());
-        EXPECT_EQ(tc.rotation, unitQuat());
+        EXPECT_EQ(tc.rotation, unit_quat());
         EXPECT_EQ(   tc.scale,     ones());
 
         ++count;
