@@ -43,7 +43,7 @@ namespace Crowy
         case CBufferFieldType::Int32:    return 4;
         case CBufferFieldType::Float:    return 4;
         case CBufferFieldType::Float2:   return 8;
-        case CBufferFieldType::Float3:   return 16;
+        case CBufferFieldType::Float3:   return 12;
         case CBufferFieldType::Float4:   return 16;
         case CBufferFieldType::Float4x4: return 64;
         default:
