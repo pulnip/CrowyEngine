@@ -2,14 +2,83 @@
 
 #include <cstddef>
 #include <cstdint>
+#ifdef __cpp_exceptions
+#include <stdexcept>
+#else
+#include <cstdlib>
+#endif
+#include <cstring>
 #include <functional>
 #include <ranges>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include "assert.hpp"
 #include "math.hpp"
+#include "ptr_util.hpp"
 #include "string.hpp"
+
+#define DEFINE_CONST_OP(Type, Op) \
+    template<typename T> \
+        requires std::is_trivially_copyable_v<T> \
+    friend auto operator Op(Type lhs, const T& rhs) noexcept{ \
+        CROWY_ASSERT(size_of(lhs.type) == sizeof(T)); \
+        T t = lhs; \
+        return t Op rhs; \
+    } \
+    template<typename T> \
+        requires std::is_trivially_copyable_v<T> \
+    friend auto operator Op(const T& lhs, Type rhs) noexcept{ \
+        CROWY_ASSERT(sizeof(T) == size_of(rhs.type)); \
+        T t = rhs; \
+        return lhs Op t; \
+    }
+#define DEFINE_ALL_CONST_OP(Type) \
+    DEFINE_CONST_OP(Type, ==) \
+    DEFINE_CONST_OP(Type, <=>) \
+    DEFINE_CONST_OP(Type, +) \
+    DEFINE_CONST_OP(Type, -) \
+    DEFINE_CONST_OP(Type, *) \
+    DEFINE_CONST_OP(Type, /) \
+    DEFINE_CONST_OP(Type, %) \
+    DEFINE_CONST_OP(Type, &) \
+    DEFINE_CONST_OP(Type, |) \
+    DEFINE_CONST_OP(Type, ^) \
+    DEFINE_CONST_OP(Type, <<) \
+    DEFINE_CONST_OP(Type, >>) \
+    DEFINE_CONST_OP(Type, &&)
+#define DEFINE_MUTABLE_OP(Type, Op) \
+    template<typename T> \
+        requires std::is_trivially_copyable_v<T> \
+    friend Type operator Op(Type lhs, const T& rhs) noexcept{ \
+        CROWY_ASSERT(size_of(lhs.type) == sizeof(T)); \
+        T t = lhs; \
+        t Op rhs; \
+        lhs = t; \
+        return lhs; \
+    } \
+    template<typename T> \
+        requires std::is_trivially_copyable_v<T> \
+    friend auto operator Op(T& lhs, Type rhs) noexcept{ \
+        CROWY_ASSERT(sizeof(T) == size_of(rhs.type)); \
+        T t = rhs; \
+        return lhs Op t; \
+    }
+#define DEFINE_ALL_MUTABLE_OP(Type) \
+    DEFINE_MUTABLE_OP(Type, +=) \
+    DEFINE_MUTABLE_OP(Type, -=) \
+    DEFINE_MUTABLE_OP(Type, *=) \
+    DEFINE_MUTABLE_OP(Type, /=) \
+    DEFINE_MUTABLE_OP(Type, %=) \
+    DEFINE_MUTABLE_OP(Type, &=) \
+    DEFINE_MUTABLE_OP(Type, |=) \
+    DEFINE_MUTABLE_OP(Type, ^=) \
+    DEFINE_MUTABLE_OP(Type, <<=) \
+    DEFINE_MUTABLE_OP(Type, >>=)
+#define DEFINE_ALL_OP(Type) \
+    DEFINE_ALL_CONST_OP(Type) \
+    DEFINE_ALL_MUTABLE_OP(Type)
 
 namespace Crowy
 {
@@ -59,37 +128,121 @@ namespace Crowy
 
     struct CBufferConstFieldProxy{
         const CBufferFieldType type;
-        const std::byte& ref;
+        const std::vector<std::byte>& buffer;
+        size_t offset;
+
+        auto data(this auto& self){ return &self.buffer[self.offset]; }
 
         template<typename T>
-        operator T() const{
+            requires std::is_trivially_copyable_v<T>
+        operator T() const noexcept{
+            CROWY_ASSERT(size_of(type) == sizeof(T));
             T t;
-            if(is_convertible_to<T>(type) && sizeof(T) == size_of(type))
-                std::memcpy(&t, &ref, size_of(type));
+            std::memcpy(&t, data(), sizeof(T));
 
             return t;
         }
+
+        friend bool operator==(CBufferConstFieldProxy lhs, CBufferConstFieldProxy rhs) noexcept{
+            CROWY_ASSERT(size_of(lhs.type) == size_of(rhs.type));
+            return std::memcmp(&lhs.buffer[lhs.offset], &rhs.buffer[rhs.offset], size_of(lhs.type)) == 0;
+        }
+
+        DEFINE_ALL_CONST_OP(CBufferConstFieldProxy)
     };
 
     struct CBufferFieldProxy{
         const CBufferFieldType type;
-        std::byte& ref;
+        std::vector<std::byte>& buffer;
+        size_t offset;
+
+        auto data(this auto& self){ return &self.buffer[self.offset]; }
 
         template<typename T>
-        CBufferFieldProxy& operator=(const T& t){
-            if(is_convertible_to<T>(type) && sizeof(T) == size_of(type))
-                std::memcpy(&ref, &t, size_of(type));
-            return *this;
-        }
-
-        template<typename T>
+            requires std::is_trivially_copyable_v<T>
         operator T() const{
+            CROWY_ASSERT(size_of(type) == sizeof(T));
             T t;
-            if(is_convertible_to<T>(type) && sizeof(T) == size_of(type))
-                std::memcpy(&t, &ref, size_of(type));
+            std::memcpy(&t, data(), sizeof(T));
 
             return t;
         }
+
+        inline operator CBufferConstFieldProxy(){
+            return CBufferConstFieldProxy{
+                .type = type,
+                .buffer = buffer,
+                .offset = offset
+            };
+        }
+
+        template<typename T>
+            requires std::is_trivially_copyable_v<T>
+        CBufferFieldProxy& operator=(const T& t){
+            CROWY_ASSERT(sizeof(T) == size_of(type));
+            std::memcpy(data(), &t, sizeof(T));
+
+            return *this;
+        }
+
+        inline CBufferFieldProxy& operator=(const CBufferFieldProxy& other){
+            CROWY_ASSERT(size_of(type) == size_of(other.type));
+
+            if(data() == other.data())
+                return *this;
+
+            std::memcpy(data(), other.data(), size_of(type));
+            return *this;
+        }
+
+        inline CBufferFieldProxy& operator=(const CBufferConstFieldProxy& other){
+            if(data() == other.data())
+                return *this;
+
+            CROWY_ASSERT(size_of(type) == size_of(other.type));
+            std::memcpy(data(), other.data(), size_of(type));
+            return *this;
+        }
+
+        inline friend void swap(CBufferFieldProxy lhs, CBufferFieldProxy rhs){
+            if(lhs.data() == rhs.data())
+                return;
+
+            CROWY_ASSERT(size_of(lhs.type) == size_of(rhs.type));
+            constexpr size_t BUF_SIZE = 256;
+            std::byte tmp[BUF_SIZE];
+            const auto size = size_of(lhs.type);
+
+            void* plhs = lhs.data();
+            void* prhs = rhs.data();
+            auto remain = size;
+
+            while(remain > 0){
+                auto s = std::min(BUF_SIZE, remain);
+                std::memcpy(tmp, plhs, size);
+                std::memcpy(plhs, prhs, size);
+                std::memcpy(prhs, tmp, size);
+
+                plhs = ptr_add(plhs, s);
+                prhs = ptr_add(prhs, s);
+                remain -= s;
+            }
+        }
+
+        friend bool operator==(CBufferFieldProxy lhs, CBufferFieldProxy rhs) noexcept{
+            CROWY_ASSERT(size_of(lhs.type) == size_of(rhs.type));
+            return std::memcmp(lhs.data(), rhs.data(), size_of(lhs.type)) == 0;
+        }
+        friend bool operator==(CBufferFieldProxy lhs, CBufferConstFieldProxy rhs) noexcept{
+            CROWY_ASSERT(size_of(lhs.type) == size_of(rhs.type));
+            return std::memcmp(lhs.data(), rhs.data(), size_of(lhs.type)) == 0;
+        }
+        friend bool operator==(CBufferConstFieldProxy lhs, CBufferFieldProxy rhs) noexcept{
+            CROWY_ASSERT(size_of(lhs.type) == size_of(rhs.type));
+            return std::memcmp(lhs.data(), rhs.data(), size_of(lhs.type)) == 0;
+        }
+
+        DEFINE_ALL_OP(CBufferFieldProxy)
     };
 
     struct CBuffer{
@@ -119,6 +272,10 @@ namespace Crowy
             StringHash, std::equal_to<>
         > fieldIndex;
         std::vector<std::byte> buffer;
+        // buffer size without last padding
+        size_t fieldLast = 0;
+
+        inline void reserve(size_t n){ buffer.reserve(n); }
 
         inline auto newField(
             std::string_view name,
@@ -126,69 +283,104 @@ namespace Crowy
         ){
             auto [it, succeed] = fieldIndex.try_emplace(std::string(name), fields.size());
             if(succeed){
+                auto offset = nextFieldOffset(fieldLast, type);
+
                 fields.push_back({
                     .name = std::string(name),
                     .meta = {
                         .type = type,
-                        .offset = buffer.size()
+                        .offset = offset
                     }
                 });
-                buffer.resize(buffer.size() + size_of(type));
+
+                fieldLast = offset + size_of(type);
+                // 16byte alignment for buffer
+                auto bufSize = (fieldLast + 15) & ~size_t{15};
+                if(bufSize > buffer.size())
+                    buffer.resize(bufSize);
             }
 
             auto& field = fields[it->second];
             return FieldProxy{
                 .type = field.meta.type,
-                .ref = buffer[field.meta.offset]
+                .buffer = buffer,
+                .offset = field.meta.offset
             };
         }
 
-        inline std::optional<ConstFieldProxy> at(std::string_view name) const{
-            auto it = fieldIndex.find(name);
-            if(it == fieldIndex.end())
-                return std::nullopt;
+        inline auto at(this auto& self, std::string_view name){
+            auto it = self.fieldIndex.find(name);
+            if(it == self.fieldIndex.end())
+        #ifdef __cpp_exceptions
+                throw std::out_of_range("CBuffer::at");
+        #else
+                std::abort();
+        #endif
 
-            auto& field = fields[it->second];
-            return ConstFieldProxy{
-                .type = field.meta.type,
-                .ref = buffer[field.meta.offset]
-            };
+            auto& field = self.fields[it->second];
+            if constexpr(std::is_const_v<
+                std::remove_reference_t<decltype(self)>
+            >)
+                return ConstFieldProxy{
+                    .type = field.meta.type,
+                    .buffer = self.buffer,
+                    .offset = field.meta.offset
+                };
+            else
+                return FieldProxy{
+                    .type = field.meta.type,
+                    .buffer = self.buffer,
+                    .offset = field.meta.offset
+                };
         }
 
-        inline std::optional<FieldProxy> at(std::string_view name){
-            auto it = fieldIndex.find(name);
-            if(it == fieldIndex.end())
-                return std::nullopt;
-
-            auto& field = fields[it->second];
-            return FieldProxy{
-                .type = field.meta.type,
-                .ref = buffer[field.meta.offset]
-            };
-        }
-
-        inline auto fieldViews() const{
-            return fields | std::views::transform(
-                [this](const auto& field){
-                    return ConstFieldView{
-                        field.name, {
-                        .type = field.meta.type,
-                        .ref = buffer[field.meta.offset]
-                    }};
+        inline auto fieldViews(this auto& self){
+            return self.fields | std::views::transform(
+                [&self](const auto& field){
+                    if constexpr(std::is_const_v<
+                        std::remove_reference_t<decltype(self)>
+                    >)
+                        return ConstFieldView{
+                            field.name, ConstFieldProxy{
+                            .type = field.meta.type,
+                            .buffer = self.buffer,
+                            .offset = field.meta.offset
+                        }};
+                    else
+                        return FieldView{
+                            field.name, FieldProxy{
+                            .type = field.meta.type,
+                            .buffer = self.buffer,
+                            .offset = field.meta.offset
+                        }};
                 }
             );
         }
 
-        inline auto fieldViews(){
-            return fields | std::views::transform(
-                [this](auto& field){
-                    return FieldView{
-                        field.name, {
-                        .type = field.meta.type,
-                        .ref = buffer[field.meta.offset]
-                    }};
-                }
-            );
+    private:
+        static size_t nextFieldOffset(size_t current, FieldType type){
+            size_t size = size_of(type);
+
+            if(type == CBufferFieldType::Float4x4){
+                return (current + 15) & ~size_t{15};
+            }
+
+            // 4byte alignment for each field
+            current = (current + 3) & ~size_t{3};
+
+            // 16byte alignment for boundary
+            size_t last = (current & ~size_t{15}) + 16;
+            if(current + size > last){
+                current = last;
+            }
+
+            return current;
         }
     };
 }
+
+#undef DEFINE_CONST_OP
+#undef DEFINE_ALL_CONST_OP
+#undef DEFINE_MUTABLE_OP
+#undef DEFINE_ALL_MUTABLE_OP
+#undef DEFINE_ALL_OP

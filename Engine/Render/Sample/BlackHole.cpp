@@ -3,6 +3,7 @@
 #include "FramePacer.hpp"
 #include "Logger.hpp"
 #include "RHIDevice.hpp"
+#include "RenderDefinitions.hpp"
 #include "Renderer.hpp"
 #include "RenderSpec.hpp"
 #include "Timer.hpp"
@@ -65,6 +66,12 @@ int main(int argc, char* argv[]){
         float mass = 1e10;
     } blackhole;
 
+    struct Camera{
+        Vec3 pos = zeros();
+        Vec4 rot = unit_quat();
+    } camera;
+    float fovRad = 45.0f * 3.14159265f / 180.0f;
+
     Renderer renderer(device.get());
     // UIRenderer uiRenderer(window, *device.get());
     // auto ui = Column({
@@ -84,12 +91,20 @@ int main(int argc, char* argv[]){
 
     using enum CBufferFieldType;
 
-    CBuffer blackholeParams{
+    CBuffer bhParams{
         .name = "BlackholeParams",
         .slot = 0
     };
-    blackholeParams.newField("pos", Float3) = blackhole.pos;
-    blackholeParams.newField("mass", Float) = blackhole.mass;
+
+    bhParams.newField("pos", Float3) = blackhole.pos;
+    bhParams.newField("mass", Float) = blackhole.mass;
+    bhParams.newField("camPos", Float3) = camera.pos;
+    bhParams.newField("aspect", Float) = static_cast<float>(width) / height;
+    bhParams.newField("camRight", Float3) = right(camera.rot);
+    bhParams.newField("tanHalfFov", Float) = std::tan(0.5f * fovRad);
+    bhParams.newField("camUp", Float3) = up(camera.rot);
+    // implicit 4byte padding
+    bhParams.newField("camForward", Float3) = forward(camera.rot);
 
     RenderSpec spec{
         .renderTargets = {
@@ -113,7 +128,7 @@ int main(int argc, char* argv[]){
                     .fsFuncName = "fs_blackhole"
                 #endif
                 },
-                .fs_cbuffers{blackholeParams}
+                .fs_cbuffers{bhParams}
             }
         }
     };
@@ -155,17 +170,16 @@ int main(int argc, char* argv[]){
 
         // renderItems[0].world = rotate_y_mat(0.5f * et);
 
-        auto camX = std::sin(0.3f * et) * cameraDistance;
-        auto camZ = std::cos(0.3f * et) * cameraDistance;
         auto view = look_at(
-            Vec3{camX, 10.0f, camZ},
-            Vec3{0.0f, 10.0f, 0.0f},
+            camera.pos,
+            Vec3{0.0f, 0.0f, 1.0f},
             Vec3{0.0f,  1.0f, 0.0f}
         );
-
-        float fovRad = 45.0f * 3.14159265f / 180.0f;
-        auto aspect = float(width)/height;
-        auto proj = perspective(fovRad, aspect, 0.1f, cameraDistance * 4.0f);
+        auto proj = perspective(
+            fovRad,
+            float(width)/height,
+            0.1f, cameraDistance * 4.0f
+        );
 
         RenderContext ctx{
             .view = view,
