@@ -18,9 +18,26 @@ struct BlackholeParams{
     float3 camForward;
 };
 
+// [0, 1] to [-1, 1]
+float2 uv2ndc(float2 uv){
+    return float2(2.0 * uv.x - 1.0, 1.0 - 2.0 * uv.y);
+}
+
+// [-1, 1] to Image Plane
+float2 ndc2ip(float2 ndc, float aspect, float tanHalfFov){
+    return ndc * float2(aspect, 1.0) * tanHalfFov;
+}
+
+float3 ip2RayDir(float2 ip, float3 right, float3 up, float3 forward){
+    return normalize(ip.x * right + ip.y * up + forward);
+}
+
 fragment float4 fs_blackhole(
     VertexOut                 input  [[stage_in ]],
     constant BlackholeParams& params [[buffer(0)]]
 ){
-    return float4(params.camForward, 1.0);
+    float2 ip = ndc2ip(uv2ndc(input.texCoord), params.aspect, params.tanHalfFov);
+    float3 dir = ip2RayDir(ip, params.camRight, params.camUp, params.camForward);
+
+    return float4(dir * 0.5 + 0.5, 1.0);
 }
