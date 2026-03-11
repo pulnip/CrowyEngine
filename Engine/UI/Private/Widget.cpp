@@ -5,41 +5,96 @@
 namespace Crowy
 {
     void IntField::submit(CROWY_UI_CONTEXT& ctx){
+        bool readonly = get.has_value();
+
+        if(readonly){
+            ImGui::BeginDisabled();
+            v = get.value()();
+        }
+
         if(ImGui::InputInt(label.c_str(), &v)){
             onChanged(ctx, v);
+        }
+
+        if(readonly){
+            ImGui::EndDisabled();
         }
     }
 
     void FloatField::submit(CROWY_UI_CONTEXT& ctx){
+        bool readonly = get.has_value();
+
+        if(readonly){
+            ImGui::BeginDisabled();
+            v = get.value()();
+        }
+
         if(ImGui::InputFloat(label.c_str(), &v)){
             onChanged(ctx, v);
+        }
+
+        if(readonly){
+            ImGui::EndDisabled();
         }
     }
 
     void Float2Field::submit(CROWY_UI_CONTEXT& ctx){
+        bool readonly = get.has_value();
+
+        if(readonly){
+            ImGui::BeginDisabled();
+            v = get.value()();
+        }
+
         float arr[] = {v.x, v.y};
 
         if(ImGui::InputFloat2(label.c_str(), arr)){
             v = {arr[0], arr[1]};
             onChanged(ctx, v);
         }
+
+        if(readonly){
+            ImGui::EndDisabled();
+        }
     }
 
     void Float3Field::submit(CROWY_UI_CONTEXT& ctx){
+        bool readonly = get.has_value();
+
+        if(readonly){
+            ImGui::BeginDisabled();
+            v = get.value()();
+        }
+
         float arr[] = {v.x, v.y, v.z};
 
         if(ImGui::InputFloat3(label.c_str(), arr)){
             v = {arr[0], arr[1], arr[2]};
             onChanged(ctx, v);
         }
+
+        if(readonly){
+            ImGui::EndDisabled();
+        }
     }
 
     void Float4Field::submit(CROWY_UI_CONTEXT& ctx){
+        bool readonly = get.has_value();
+
+        if(readonly){
+            ImGui::BeginDisabled();
+            v = (*get)();
+        }
+
         float arr[] = {v.x, v.y, v.z, v.w};
 
         if(ImGui::InputFloat2(label.c_str(), arr)){
             v = {arr[0], arr[1], arr[2], arr[3]};
             onChanged(ctx, v);
+        }
+
+        if(readonly){
+            ImGui::EndDisabled();
         }
     }
 

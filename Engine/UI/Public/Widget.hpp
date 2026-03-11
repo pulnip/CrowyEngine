@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #ifndef CROWY_UI_CONTEXT
     #define CROWY_UI_CONTEXT UIContext
 #endif
@@ -20,6 +21,7 @@ namespace Crowy
         std::string label;
         std::function<void(CROWY_UI_CONTEXT&, int)> onChanged = [](CROWY_UI_CONTEXT&, int){};
         int v = 0;
+        std::optional<std::function<int()>> get = std::nullopt;
 
         void submit(CROWY_UI_CONTEXT&);
     };
@@ -28,6 +30,7 @@ namespace Crowy
         std::string label;
         std::function<void(CROWY_UI_CONTEXT&, float)> onChanged = [](CROWY_UI_CONTEXT&, float){};
         float v = 0;
+        std::optional<std::function<float()>> get = std::nullopt;
 
         void submit(CROWY_UI_CONTEXT&);
     };
@@ -36,6 +39,7 @@ namespace Crowy
         std::string label;
         std::function<void(CROWY_UI_CONTEXT&, Vec2)> onChanged = [](CROWY_UI_CONTEXT&, Vec2){};
         Vec2 v{0, 0};
+        std::optional<std::function<Vec2()>> get = std::nullopt;
 
         void submit(CROWY_UI_CONTEXT&);
     };
@@ -44,6 +48,7 @@ namespace Crowy
         std::string label;
         std::function<void(CROWY_UI_CONTEXT&, Vec3)> onChanged = [](CROWY_UI_CONTEXT&, Vec3){};
         Vec3 v{0, 0, 0};
+        std::optional<std::function<Vec3()>> get = std::nullopt;
 
         void submit(CROWY_UI_CONTEXT&);
     };
@@ -52,6 +57,7 @@ namespace Crowy
         std::string label;
         std::function<void(CROWY_UI_CONTEXT&, Vec4)> onChanged = [](CROWY_UI_CONTEXT&, Vec4){};
         Vec4 v{0, 0, 0, 0};
+        std::optional<std::function<Vec4()>> get = std::nullopt;
 
         void submit(CROWY_UI_CONTEXT&);
     };
