@@ -180,7 +180,7 @@ int main(int argc, char* argv[]){
     auto cmdList = device->createCommandList();
     auto framePacer = device->createFramePacer();
 
-    Vec3 bhPos{0.0f, 0.0f, 10.0f};
+    Vec3 bhPos{0.0f, 0.0f, 3.0f};
     float bhMass = 1e10;
     Vec3 camPos{10.0, 0.0, 0.0};
     Vec3 camTgt = zeros();
@@ -256,12 +256,15 @@ int main(int argc, char* argv[]){
             continue;
         }
 
-        // update world data and cbuffer here!
-        bhParams->at("camPos") = camPos = Vec3{
+        // update world data
+        camPos = Vec3{
             cameraDistance * std::sin(0.3f * et),
             camPos.y,
             cameraDistance * std::cos(0.3f * et)
         };
+
+        // sync cbuffer
+        bhParams->at("camPos") = camPos;
         auto camForward = normalize(camTgt - camPos);
         auto camRight = cross(unit_y(), camForward);
         auto camUp = cross(camForward, camRight);

@@ -8,7 +8,7 @@ struct VertexOut{
 };
 
 struct BlackholeParams{
-    packed_float3 pos;
+    packed_float3 bhPos;
     float mass;
     packed_float3 camPos;
     float aspect;
@@ -39,5 +39,13 @@ fragment float4 fs_blackhole(
     float2 ip = ndc2ip(uv2ndc(input.texCoord), params.aspect, params.tanHalfFov);
     float3 dir = ip2RayDir(ip, params.camRight, params.camUp, params.camForward);
 
+    float3 oc = params.camPos - params.bhPos;
+    float b = dot(oc, dir);
+    float rs = 5;
+    float c = dot(oc, oc) - rs * rs;
+    float disc = b * b - c;
+
+    if(disc > 0.0 && (-b -sqrt(disc)) > 0)
+        return float4(0, 0, 0, 1);
     return float4(dir * 0.5 + 0.5, 1.0);
 }
