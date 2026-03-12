@@ -49,7 +49,7 @@ namespace Crowy
 
         virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) noexcept = 0;
         virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) noexcept = 0;
-        virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) noexcept = 0;
+        virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) = 0;
         virtual RHISamplerPtr createSampler(const RHISamplerState&) noexcept = 0;
 
         virtual RHIPipelineStatePtr createGraphicsPipelineState(

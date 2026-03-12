@@ -1,5 +1,6 @@
 #include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
+#include <string>
 #include "math.hpp"
 #include "FramePacer.hpp"
 #include "Logger.hpp"
@@ -226,7 +227,16 @@ int main(int argc, char* argv[]){
             }
         }
     };
-    renderer.loadPasses(spec, width, height);
+
+    try{
+        renderer.loadPasses(spec, width, height);
+    }
+    catch(const std::exception& e){
+        std::println("{}", e.what());
+
+        return 0;
+    }
+
     auto bhParams = renderer.getCBuffer("BlackholeParams");
 
     Timer timer;

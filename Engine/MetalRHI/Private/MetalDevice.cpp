@@ -62,7 +62,7 @@ namespace Crowy
 
         RHIShaderPtr createShader(
             const RHIShaderCreateDesc& desc
-        ) noexcept{
+        ){
             return std::make_unique<MetalShader>(device, desc);
         }
 
@@ -130,7 +130,7 @@ namespace Crowy
 
     RHIShaderPtr MetalDevice::createShader(
         const RHIShaderCreateDesc& desc
-    ) noexcept{
+    ){
         return impl->createShader(desc);
     }
 
