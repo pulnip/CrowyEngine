@@ -162,9 +162,13 @@ fragment float4 fs_blackhole(
 
         // in disk
         if(prevPos.y * newPos.y < 0.0){
-            float r_disk = length(float2(newPos.x, newPos.z));
-            if(params.diskInner <= r_disk && r_disk <= params.diskOuter){
-                float t = r_disk / params.diskOuter;
+            float t = abs(prevPos.y) / (abs(prevPos.y) + abs(newPos.y));
+            float3 y0Pos = mix(prevPos, newPos, t);
+
+            float r = length(y0Pos);
+
+            if(params.diskInner <= r && r <= params.diskOuter){
+                float t = r / params.diskOuter;
                 return float4(1.0, t, 0.2, 1.0);
             }
         }
