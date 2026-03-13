@@ -111,7 +111,7 @@ namespace Crowy
 using namespace Crowy;
 
 static CBuffer makeBlackholeParamsCBuffer(
-    Vec3 blackholePos, float blackholeMass,
+    Vec3 blackholePos, float rs,
     Vec3 cameraPos, Vec3 cameraTarget,
     float aspect, float tanHalfFov
 ){
@@ -126,19 +126,19 @@ static CBuffer makeBlackholeParamsCBuffer(
 
     // make cbuffer field and initialize
     using enum CBufferFieldType;
-    cbuffer.newField("pos", Float3) = blackholePos;
-    cbuffer.newField("mass", Float) = blackholeMass;
+    cbuffer.newField("bhPos", Float3) = blackholePos;
+    cbuffer.newField("rs", Float) = rs;
     cbuffer.newField("camPos", Float3) = cameraPos;
     cbuffer.newField("aspect", Float) = aspect;
     cbuffer.newField("camRight", Float3) = camRight;
     cbuffer.newField("tanHalfFov", Float) = tanHalfFov;
     cbuffer.newField("camUp", Float3) = camUp;
-    // implicit 4byte padding
+    cbuffer.newField("diskInner", Float) = 3.0f;
     cbuffer.newField("camForward", Float3) = camForward;
+    cbuffer.newField("diskOuter", Float) = 10.0f;
 
     return cbuffer;
 }
-
 
 int main(int argc, char* argv[]){
     Logger::instance().setMinLevel(LogLevel::Warn);
@@ -182,11 +182,11 @@ int main(int argc, char* argv[]){
     auto framePacer = device->createFramePacer();
 
     Vec3 bhPos{0.0f, 0.0f, 3.0f};
-    float bhMass = 1e10;
-    Vec3 camPos{10.0, 0.0, 0.0};
+    float rs = 1.0f;
+    float cameraDistance = 30.0f;
+    Vec3 camPos{cameraDistance, 10.0, 0.0};
     Vec3 camTgt = zeros();
     float fovRad = 45.0f * 3.14159265f / 180.0f;
-    float cameraDistance = 30.0f;
 
     Renderer renderer(device.get());
     UIRenderer uiRenderer(window, *device.get());
@@ -218,7 +218,7 @@ int main(int argc, char* argv[]){
                 },
                 .fs_cbuffers{
                     makeBlackholeParamsCBuffer(
-                        bhPos, bhMass,
+                        bhPos, rs,
                         camPos, camTgt,
                         static_cast<float>(width) / height,
                         std::tan(0.5f * fovRad)
@@ -268,9 +268,9 @@ int main(int argc, char* argv[]){
 
         // update world data
         camPos = Vec3{
-            cameraDistance * std::sin(0.3f * et),
+            cameraDistance * std::cos(0.3f * et),
             camPos.y,
-            cameraDistance * std::cos(0.3f * et)
+            cameraDistance * std::sin(0.3f * et)
         };
 
         // sync cbuffer
