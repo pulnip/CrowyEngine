@@ -5,3 +5,5 @@ PUBLIC
     Crowy::Core
     Crowy::CommonRHI
 )
+
+crowy_rhi_macro(EngineCore)

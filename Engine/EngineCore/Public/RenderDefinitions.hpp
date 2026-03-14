@@ -119,10 +119,12 @@ namespace Crowy
             std::unreachable();
         }
     }
+    size_t stride_of(CBufferFieldType);
     using CBufferFieldOffset = size_t;
 
     struct CBufferFieldMeta{
         CBufferFieldType type;
+        size_t count = 1;
         CBufferFieldOffset offset = 0;
     };
 
@@ -277,9 +279,11 @@ namespace Crowy
 
         inline void reserve(size_t n){ buffer.reserve(n); }
 
+        // count == 0 for non-array type
         inline auto newField(
             std::string_view name,
-            FieldType type
+            FieldType type,
+            size_t count = 0
         ){
             auto [it, succeed] = fieldIndex.try_emplace(std::string(name), fields.size());
             if(succeed){
@@ -289,11 +293,16 @@ namespace Crowy
                     .name = std::string(name),
                     .meta = {
                         .type = type,
+                        .count = count,
                         .offset = offset
                     }
                 });
 
-                fieldLast = offset + size_of(type);
+                if(count == 0)
+                    fieldLast = offset + size_of(type);
+                else
+                    fieldLast = offset + stride_of(type) * count;
+
                 // 16byte alignment for buffer
                 auto bufSize = (fieldLast + 15) & ~size_t{15};
                 if(bufSize > buffer.size())
@@ -308,7 +317,7 @@ namespace Crowy
             };
         }
 
-        inline auto at(this auto& self, std::string_view name){
+        inline auto at(this auto& self, std::string_view name, size_t index = 0){
             auto it = self.fieldIndex.find(name);
             if(it == self.fieldIndex.end())
         #ifdef __cpp_exceptions
@@ -318,19 +327,21 @@ namespace Crowy
         #endif
 
             auto& field = self.fields[it->second];
+            CROWY_ASSERT(field.meta.count==0 || index < field.meta.count);
+            auto type = field.meta.type;
             if constexpr(std::is_const_v<
                 std::remove_reference_t<decltype(self)>
             >)
                 return ConstFieldProxy{
-                    .type = field.meta.type,
+                    .type = type,
                     .buffer = self.buffer,
-                    .offset = field.meta.offset
+                    .offset = field.meta.offset + index * stride_of(type)
                 };
             else
                 return FieldProxy{
-                    .type = field.meta.type,
+                    .type = type,
                     .buffer = self.buffer,
-                    .offset = field.meta.offset
+                    .offset = field.meta.offset + index*stride_of(type)
                 };
         }
 
