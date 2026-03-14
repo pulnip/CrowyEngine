@@ -34,16 +34,11 @@ struct BlackholeParams{
     float diskOuter;
 };
 
-float3 sphericalToCartesian(float r, float theta, float phi){
-    float sint = sin(theta), cost = cos(theta);
-    float sinp = sin(phi  ), cosp = cos(phi  );
-
-    return float3(
-        r * sint*cosp,
-        r * cost,
-        r * sint*sinp
-    );
-}
+struct PlanetParams{
+    static constant constexpr int COUNT = 3;
+    float4 posRadius[COUNT];
+    float4 color[COUNT];
+};
 
 struct GeoState{
     float3 pos;
@@ -95,16 +90,16 @@ void rk4(thread GeoState& s, float dl, float rs){
 }
 
 fragment float4 fs_blackhole(
-    VertexOut                 input  [[stage_in ]],
-    constant BlackholeParams& params [[buffer(0)]]
+    VertexOut              input [[stage_in ]],
+    constant BlackholeParams& bh [[buffer(0)]],
+    constant PlanetParams&    pn [[buffer(1)]]
 ){
-    float3 relPos = params.camPos - params.bhPos;
     float2 ndc = uv2ndc(input.texCoord);
-    float2 ip = ndc2ip(ndc, params.aspect, params.tanHalfFov);
-    float3 dir = ip2RayDir(ip, params.camRight, params.camUp, params.camForward);
-    GeoState state = initGeoState(relPos, dir, params.rs);
+    float2 ip = ndc2ip(ndc, bh.aspect, bh.tanHalfFov);
+    float3 dir = ip2RayDir(ip, bh.camRight, bh.camUp, bh.camForward);
+    GeoState state = initGeoState(bh.camPos - bh.bhPos, dir, bh.rs);
 
-    const float far = 100 * params.rs;
+    const float far = 100 * bh.rs;
     // float4 far_color = float4(dir * 0.5 + 0.5, 1.0);
     float4 far_color = float4(0.05, 0.05, 0.1, 1);
     // float dl = 0.1;
@@ -115,8 +110,21 @@ fragment float4 fs_blackhole(
     for(int i=0; i<MAX_STEPS; ++i){
         float r = length(prevPos);
 
+        for(int j=0; j<pn.COUNT; ++j){
+            float3 pPos = pn.posRadius[j].xyz;
+            float pRad = pn.posRadius[j].w;
+            float3 pToRay = prevPos - pPos;
+            // in planet
+            if(length(pToRay) <= pRad){
+                float3 N = normalize(pToRay);
+                float3 L = normalize(bh.camPos - prevPos);
+                float diff = max(dot(N, L), 0.1);
+                return float4(diff * pn.color[j].rgb, 1);
+            }
+        }
+
         // in event horizon
-        if(r <= params.rs)
+        if(r <= bh.rs)
             return float4(0, 0, 0, 1);
 
         // far from blackhole
@@ -125,7 +133,7 @@ fragment float4 fs_blackhole(
 
         // adaptive dl
         float dl = 0.3 + 0.7 * (r / far);
-        rk4(state, dl, params.rs);
+        rk4(state, dl, bh.rs);
         float3 newPos = state.pos;
 
         // in disk
@@ -135,8 +143,8 @@ fragment float4 fs_blackhole(
 
             float y0r = length(y0Pos);
 
-            if(params.diskInner <= y0r && y0r <= params.diskOuter){
-                float t = y0r / params.diskOuter;
+            if(bh.diskInner <= y0r && y0r <= bh.diskOuter){
+                float t = y0r / bh.diskOuter;
                 return float4(1.0, t, 0.2, 1.0);
             }
         }

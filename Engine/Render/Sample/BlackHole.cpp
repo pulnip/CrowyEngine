@@ -140,6 +140,28 @@ static CBuffer makeBlackholeParamsCBuffer(
     return cbuffer;
 }
 
+static CBuffer makePlanetParamsCBuffer(){
+    CBuffer cbuffer{
+        .name = "PlanetParams",
+        .slot = 1
+    };
+
+    using enum CBufferFieldType;
+    int count = 3;
+    // xyz for pos, w for radius
+    cbuffer.newField("posRadius", Float4, count);
+    cbuffer.newField("color", Float4, count);
+
+    cbuffer.at("posRadius", 0) = Vec4{0, 0, 15, 2};
+    cbuffer.at("color", 0) = Vec4{0.5, 0.1, 0.1, 1};
+    cbuffer.at("posRadius", 1) = Vec4{20, 0, -10, 2.5};
+    cbuffer.at("color", 1) = Vec4{0, 0.5, 1, 1};
+    cbuffer.at("posRadius", 2) = Vec4{-15, 0, -15, 3};
+    cbuffer.at("color", 2) = Vec4{0.4, 0.7, 0.1, 1};
+
+    return cbuffer;
+}
+
 int main(int argc, char* argv[]){
     Logger::instance().setMinLevel(LogLevel::Warn);
 
@@ -222,7 +244,8 @@ int main(int argc, char* argv[]){
                         camPos, camTgt,
                         static_cast<float>(width) / height,
                         std::tan(0.5f * fovRad)
-                    )
+                    ),
+                    makePlanetParamsCBuffer()
                 }
             }
         }
@@ -238,6 +261,7 @@ int main(int argc, char* argv[]){
     }
 
     auto bhParams = renderer.getCBuffer("BlackholeParams");
+    auto pnParams = renderer.getCBuffer("PlanetParams");
 
     Timer timer;
     timer.reset();
@@ -312,7 +336,7 @@ int main(int argc, char* argv[]){
             .renderer = renderer
         };
         uiRenderer.render(
-            "BlackHole", ui, uiContext,
+            "MainUI", ui, uiContext,
             *cmdList.get(),
             swapchain.get()
         );
