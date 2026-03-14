@@ -188,6 +188,7 @@ namespace Crowy
         ){
             // reset Per-Frame Buffer
             vsPerObjectBuffers.reset();
+            passParamBuffers.reset();
 
             for(const auto& pass: passes){
                 if(pass.enabled){
