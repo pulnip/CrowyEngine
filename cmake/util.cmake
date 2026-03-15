@@ -5,8 +5,10 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 if(NOT EXISTS "${ASSET_DST}")
     # try to link asset folder
     if(WIN32)
+        file(TO_NATIVE_PATH "${ASSET_DST}" ASSET_DST_NATIVE)
+        file(TO_NATIVE_PATH "${ASSET_SRC}" ASSET_SRC_NATIVE)
         execute_process(
-            COMMAND cmd /c mklink /J "${ASSET_DST}" "${ASSET_SRC}"
+            COMMAND cmd /c mklink /J "${ASSET_DST_NATIVE}" "${ASSET_SRC_NATIVE}"
             RESULT_VARIABLE LINK_RESULT
         )
     else()
