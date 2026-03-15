@@ -101,7 +101,7 @@ namespace Crowy
         }
     };
 
-    Widget cbufferInspector(std::string_view initCBuf){
+    Widget cbufferInspector(std::string_view initCBuf = ""){
         return Box(CBufferInspector{
             .searchStr = std::string(initCBuf)
         });
@@ -210,10 +210,41 @@ int main(int argc, char* argv[]){
     Vec3 camTgt = zeros();
     float fovRad = 45.0f * 3.14159265f / 180.0f;
 
+    Timer timer;
+    timer.reset();
+
+    size_t nframes = 1;
+
     Renderer renderer(device.get());
     UIRenderer uiRenderer(window, *device.get());
     auto ui = Column({
-        cbufferInspector("BlackholeParams")
+        FloatField{
+            .label = "fps",
+            .v = 0,
+            .get = [&timer, &nframes](){
+                return nframes / timer.elapsedSeconds();
+            }
+        },
+        Slider{
+            .label = "Camera phi",
+            .onChanged = [&camPos, cameraDistance](UIContext&, float v){
+                camPos.x = cameraDistance * std::cos(v);
+                camPos.z = cameraDistance * std::sin(v);
+            },
+            .v = 0,
+            .v_min = 0,
+            .v_max = 2 * std::numbers::pi
+        },
+        Slider{
+            .label = "Camera Y Pos",
+            .onChanged = [&camPos](UIContext&, float v){
+                camPos.y = v;
+            },
+            .v = camPos.y,
+            .v_min = -15,
+            .v_max = 15
+        },
+        cbufferInspector()
     });
 
     RenderSpec spec{
@@ -263,9 +294,7 @@ int main(int argc, char* argv[]){
     auto bhParams = renderer.getCBuffer("BlackholeParams");
     auto pnParams = renderer.getCBuffer("PlanetParams");
 
-    Timer timer;
     timer.reset();
-
     bool isRunning = true;
 
     while(isRunning){
@@ -280,8 +309,6 @@ int main(int argc, char* argv[]){
         }
 
         timer.newFrame();
-        float dt = timer.deltaSeconds();
-        float et = timer.elapsedSeconds();
 
         if(!framePacer->beginFrame())
             continue;
@@ -291,11 +318,6 @@ int main(int argc, char* argv[]){
         }
 
         // update world data
-        camPos = Vec3{
-            cameraDistance * std::cos(0.3f * et),
-            camPos.y,
-            cameraDistance * std::sin(0.3f * et)
-        };
 
         // sync cbuffer
         bhParams->at("camPos") = camPos;
@@ -351,6 +373,7 @@ int main(int argc, char* argv[]){
         device->submit(*cmdList.get(), *swapchain.get());
 
         framePacer->endFrame();
+        ++nframes;
     }
 
     framePacer->waitForIdle();
