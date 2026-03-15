@@ -10,8 +10,8 @@ namespace Crowy
 
     void Timer::newFrame(){
         auto now = Clock::now();
-        prev = now;
         delta = now - prev;
+        prev = now;
         auto d = rawDeltaSeconds();
 
         if(delta.count() > maxDeltaSeconds)

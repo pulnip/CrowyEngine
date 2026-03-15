@@ -14,7 +14,7 @@ namespace Crowy
         void newFrame();
 
         inline float deltaSeconds() const{
-            return paused ? delta.count() * timeScale : 0.0f;
+            return paused ? 0.0f : delta.count() * timeScale;
         }
         inline float rawDeltaSeconds() const{ return delta.count(); }
         inline float elapsedSeconds() const{ return elapsed.count(); }
