@@ -5,7 +5,7 @@ struct VertexOut{
 
 VertexOut vs_fullscreen(uint vertexID : SV_VertexID){
     // BL to TR convention
-    static const float2 positions[6] = {
+    static const float2 ndc[6] = {
         // BL triangle
         float2(-1, -1), float2( 1, -1), float2(-1,  1),
         // TR triangle
@@ -20,8 +20,29 @@ VertexOut vs_fullscreen(uint vertexID : SV_VertexID){
     };
 
     VertexOut output;
-    output.position = float4(positions[vertexID], 0, 1);
+    output.position = float4(ndc[vertexID], 0, 1);
     output.texCoord = texCoords[vertexID];
+
+    return output;
+}
+
+struct VertexOutNDC{
+    float4 position : SV_Position;
+    float2 ndc : TEXCOORD0;
+};
+
+VertexOutNDC vs_fullscreen_ndc(uint vertexID : SV_VertexID){
+    // BL to TR convention
+    static const float2 ndc[6] = {
+        // BL triangle
+        float2(-1, -1), float2( 1, -1), float2(-1,  1),
+        // TR triangle
+        float2(-1,  1), float2( 1, -1), float2( 1,  1)
+    };
+
+    VertexOutNDC output;
+    output.position = float4(ndc[vertexID], 0, 1);
+    output.ndc = ndc[vertexID];
 
     return output;
 }

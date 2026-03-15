@@ -132,7 +132,7 @@ namespace Crowy
 
         RHIShaderPtr createShader(
             const RHIShaderCreateDesc& desc
-        ) noexcept{
+        ){
             return std::make_unique<D3D11Shader>(device, desc);
         }
 
@@ -195,7 +195,7 @@ namespace Crowy
 
     RHIShaderPtr D3D11Device::createShader(
         const RHIShaderCreateDesc& desc
-    ) noexcept{
+    ){
         return impl->createShader(desc);
     }
 
