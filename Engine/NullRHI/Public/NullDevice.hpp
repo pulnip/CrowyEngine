@@ -40,7 +40,7 @@ namespace Crowy
 
         RHICapabilities getCapabilities() const noexcept RHI_OVERRIDE;
 
-        void submit(RHICommandList&, RHISwapchain&) noexcept RHI_OVERRIDE;
+        void submit(RHICommandList&, RHISwapchain*) noexcept RHI_OVERRIDE;
 
         void* getNative() noexcept RHI_OVERRIDE{ return nullptr; }
     };

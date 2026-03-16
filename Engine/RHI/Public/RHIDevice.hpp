@@ -71,7 +71,7 @@ namespace Crowy
 
         virtual RHICapabilities getCapabilities() const noexcept = 0;
 
-        virtual void submit(RHICommandList&, RHISwapchain&) noexcept = 0;
+        virtual void submit(RHICommandList&, RHISwapchain* swapchain = nullptr) noexcept = 0;
 
         // for UI
         virtual void* getNative() noexcept = 0;

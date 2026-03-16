@@ -168,8 +168,9 @@ namespace Crowy
             return std::make_unique<D3D11Fence>(device, initialValue);
         }
 
-        void submit(RHICommandList& cmdList, RHISwapchain& swapchain) noexcept{
-            static_cast<D3D11Swapchain&>(swapchain).present();
+        void submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
+            if(swapchain != nullptr)
+                static_cast<D3D11Swapchain&>(*swapchain).present();
         }
 
         ID3D11Device* get() noexcept{ return device; }
@@ -238,7 +239,7 @@ namespace Crowy
         };
     }
 
-    void D3D11Device::submit(RHICommandList& cmdList, RHISwapchain& swapchain) noexcept{
+    void D3D11Device::submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
         impl->submit(cmdList, swapchain);
     }
 

@@ -73,7 +73,7 @@ namespace Crowy
         return {};
     }
 
-    void NullDevice::submit(RHICommandList&, RHISwapchain&) noexcept{
+    void NullDevice::submit(RHICommandList&, RHISwapchain*) noexcept{
 
     }
 }

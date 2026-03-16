@@ -9,7 +9,6 @@
 #include "LinearAllocator.hpp"
 #include "Renderer.hpp"
 #include "RenderPass.hpp"
-#include "RenderSpec.hpp"
 #include "RenderTargetPool.hpp"
 #include "Resource.hpp"
 #include "RHIBuffer.hpp"
@@ -114,7 +113,7 @@ namespace Crowy
 
             for(const auto& pass: passes){
                 if(pass.enabled){
-                    executePass(cmdList, ctx, backBuffer, pass);
+                    executePass(pass, cmdList, ctx, backBuffer);
                 }
                 else{
                     // bypass for Post-Process, input[0] for bypass target
@@ -148,7 +147,7 @@ namespace Crowy
         ){
             auto pass = createPass(passSpec);
 
-            executePass(cmdList, ctx, backBuffer, pass);
+            executePass(pass, cmdList, ctx, backBuffer);
         }
 
         bool setPassEnabled(std::string_view passName, bool enabled){
@@ -257,10 +256,10 @@ namespace Crowy
 
 
         void executePass(
+            const RenderPass& pass,
             RHICommandList& cmdList,
             const RenderContext& ctx,
-            RHISwapchain* backBuffer,
-            const RenderPass& pass
+            RHISwapchain* backBuffer
         ){
             using enum RHIShaderStage;
 
@@ -434,6 +433,15 @@ namespace Crowy
         RHISwapchain* backBuffer
     ){
         impl->render(cmdList, ctx, backBuffer);
+    }
+
+    void Renderer::render(
+        const RenderPassSpec& passSpec,
+        RHICommandList& cmdList,
+        const RenderContext& ctx,
+        RHISwapchain* backBuffer
+    ){
+        impl->render(passSpec, cmdList, ctx, backBuffer);
     }
 
     CBuffer* Renderer::getCBuffer(std::string_view cbufferName){

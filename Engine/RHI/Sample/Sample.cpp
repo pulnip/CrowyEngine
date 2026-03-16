@@ -199,7 +199,7 @@ int main(int argc, char* argv[]){
         );
 
         cmdList->close();
-        device->submit(*cmdList.get(), *swapchain.get());
+        device->submit(*cmdList.get(), swapchain.get());
 
         framePacer->endFrame();
     }

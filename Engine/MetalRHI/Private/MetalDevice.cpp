@@ -98,13 +98,16 @@ namespace Crowy
             return std::make_unique<MetalFence>(device, initialValue);
         }
 
-        void submit(RHICommandList& cmdList, RHISwapchain& swapchain) noexcept{
+        void submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
             auto& mtlCmdList = static_cast<MetalCommandList&>(cmdList);
-            auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
             auto cmdBuffer = mtlCmdList.get();
-            auto drawable = mtlSwapchain.getCurrentDrawable();
+            if(swapchain != nullptr){
+                auto& mtlSwapchain = static_cast<MetalSwapchain&>(*swapchain);
+                auto drawable = mtlSwapchain.getCurrentDrawable();
 
-            cmdBuffer->presentDrawable(drawable);
+                cmdBuffer->presentDrawable(drawable);
+            }
+
             cmdBuffer->commit();
         }
 
@@ -173,7 +176,7 @@ namespace Crowy
         };
     }
 
-    void MetalDevice::submit(RHICommandList& cmdList, RHISwapchain& swapchain) noexcept{
+    void MetalDevice::submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
         impl->submit(cmdList, swapchain);
     }
 

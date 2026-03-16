@@ -4,6 +4,7 @@
 #include <span>
 #include "math.hpp"
 #include "RenderDefinitions.hpp"
+#include "RenderSpec.hpp"
 #include "ResourceHandle.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
@@ -42,13 +43,14 @@ namespace Crowy
             const RenderContext&,
             RHISwapchain*
         );
-        // TODO. execute specific render pass
-        // void render(
-        //     RHICommandList&, 
-        //     const RenderContext&,
-        //     RHISwapchain*
-        //     const std::string& passName
-        // );
+
+        // execute pass with immediate compile (used for initializing Texture)
+        void render(
+            const RenderPassSpec& passSpec,
+            RHICommandList& cmdList,
+            const RenderContext& ctx,
+            RHISwapchain* backBuffer = nullptr
+        );
 
         bool setPassEnabled(std::string_view passName, bool enabled);
         CBuffer* getCBuffer(std::string_view cbufferName);

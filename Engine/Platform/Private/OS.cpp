@@ -140,7 +140,7 @@ namespace Crowy
                     framePacer->getNextFenceValue()
                 );
                 cmdList->close();
-                device->submit(*cmdList.get(), *swapchain.get());
+                device->submit(*cmdList.get(), swapchain.get());
 
                 framePacer->endFrame();
             }
