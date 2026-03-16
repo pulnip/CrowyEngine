@@ -139,6 +139,18 @@ namespace Crowy
             }
         }
 
+        // execute pass with immediate compile (used for initializing Texture)
+        void render(
+            const RenderPassSpec& passSpec,
+            RHICommandList& cmdList,
+            const RenderContext& ctx,
+            RHISwapchain* backBuffer
+        ){
+            auto pass = createPass(passSpec);
+
+            executePass(cmdList, ctx, backBuffer, pass);
+        }
+
         bool setPassEnabled(std::string_view passName, bool enabled){
             if(auto it = passIndex.find(passName); it != passIndex.end()){
                 auto& pass = passes[it->second];
