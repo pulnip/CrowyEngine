@@ -22,46 +22,6 @@
 
 namespace Crowy
 {
-    static RHIPipelineStatePtr createGraphicsPipelineStateHelper(
-        RHIDevice& device,
-        const RenderPassSpec& spec,
-        RHIShader* vertexShader,
-        RHIShader* fragmentShader,
-        const std::unordered_map<std::string, RHITextureCreateDesc>& renderTargets
-    ){
-        // fullscreen pass (no renderType) doesn't need vertex layout
-        bool isFullscreenPass = spec.renderType.empty();
-
-        RHIGraphicsPipelineStateDesc desc{
-            .vertexShader = vertexShader,
-            .pixelShader = fragmentShader,
-            .vertexLayout = isFullscreenPass ? RHIVertexLayout{} : DEFAULT_VERTEX_LAYOUT,
-            .rasterizer = spec.rasterizer,
-            .depthStencil = spec.depthStencil,
-            .blend = spec.blend,
-            .renderTargetCount = static_cast<uint32_t>(spec.targets.size())
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            , .debugName = spec.name
-        #endif
-        };
-
-        for(int i=0; i<spec.targets.size(); ++i){
-            const auto& targetName = spec.targets[i];
-
-            if(auto it=renderTargets.find(targetName); it!=renderTargets.end()){
-                desc.renderTargetFormats[i] = it->second.format;
-            }
-        }
-
-        if(desc.depthStencil.has_value()){
-            auto it=renderTargets.find(spec.depthTarget);
-            CROWY_ASSERT(it != renderTargets.end());
-            CROWY_ASSERT(it->second.format == desc.depthStencil->format);
-        }
-
-        return device.createGraphicsPipelineState(desc);
-    }
-
     struct PerObjectParam{
         Mat4 mvp;
     };
@@ -114,58 +74,6 @@ namespace Crowy
         ~Impl() = default;
 
         void loadPasses(const RenderSpec& spec, int screenWidth, int screenHeight){
-            for(const auto& passSpec: spec.passes){
-                std::vector<RHISamplerPtr> fs_samplers;
-                fs_samplers.reserve(passSpec.fs_samplers.size());
-                for(const auto& fs_sampler: passSpec.fs_samplers){
-                    auto sampler = device->createSampler(fs_sampler);
-                    fs_samplers.push_back(std::move(sampler));
-                }
-
-                auto vs = device->createShader(RHIShaderCreateDesc{
-                    .file = passSpec.shader.vsFilePath.c_str(),
-                    .entry = passSpec.shader.vsFuncName.c_str(),
-                    .stage = RHIShaderStage::VertexShader
-                });
-                auto fs = device->createShader(RHIShaderCreateDesc{
-                    .file = passSpec.shader.fsFilePath.c_str(),
-                    .entry = passSpec.shader.fsFuncName.c_str(),
-                    .stage = RHIShaderStage::FragmentShader
-                });
-
-                auto pipeline = createGraphicsPipelineStateHelper(
-                    *device, passSpec, vs.get(), fs.get(),
-                    spec.renderTargets
-                );
-
-                std::optional<RenderTypeHash> renderType = std::nullopt;
-                if(!passSpec.renderType.empty())
-                    renderType = std::hash<RenderType>{}(passSpec.renderType);
-
-                for(size_t i = 0; i < passSpec.fs_cbuffers.size(); ++i){
-                    const auto& cbuf = passSpec.fs_cbuffers[i];
-                    cbufferIndexes.emplace(cbuf.name, CBufferIndex{
-                        .passName = passSpec.name,
-                        .index = i
-                    });
-                }
-
-                const auto index = passes.size();
-                passIndex[passSpec.name] = index;
-                passes.push_back(RenderPass{
-                    .name = passSpec.name,
-                    .enabled = true,
-                    .inputs = passSpec.inputs,
-                    .targets = passSpec.targets,
-                    .depthTarget = passSpec.depthTarget,
-                    .fs_samplers = std::move(fs_samplers),
-                    .vs = std::move(vs), .fs = std::move(fs),
-                    .renderType = renderType,
-                    .pipeline = std::move(pipeline),
-                    .fs_cbuffers = passSpec.fs_cbuffers
-                });
-            }
-
             for(const auto& [name, renderTarget]: spec.renderTargets){
                 if(name != "BackBuffer"){
                     auto texDesc = renderTarget;
@@ -177,6 +85,20 @@ namespace Crowy
 
                     renderTargetPool.create(name, texDesc, *device);
                 }
+            }
+
+            for(const auto& passSpec: spec.passes){
+                for(size_t i = 0; i < passSpec.fs_cbuffers.size(); ++i){
+                    const auto& cbuf = passSpec.fs_cbuffers[i];
+                    cbufferIndexes.emplace(cbuf.name, CBufferIndex{
+                        .passName = passSpec.name,
+                        .index = i
+                    });
+                }
+
+                const auto index = passes.size();
+                passIndex[passSpec.name] = index;
+                passes.push_back(createPass(passSpec));
             }
         }
 
@@ -216,19 +138,6 @@ namespace Crowy
                 }
             }
         }
-        // execute specific render pass
-        void render(
-            RHICommandList& cmdList,
-            const RenderContext& ctx,
-            RHISwapchain* backBuffer,
-            const std::string& name
-        ){
-            if(auto it = passIndex.find(name); it != passIndex.end()){
-                auto& pass = passes[it->second];
-
-                executePass(cmdList, ctx, backBuffer, pass);
-            }
-        }
 
         bool setPassEnabled(std::string_view passName, bool enabled){
             if(auto it = passIndex.find(passName); it != passIndex.end()){
@@ -254,6 +163,87 @@ namespace Crowy
         }
 
     private:
+        RHIPipelineStatePtr createGraphicsPipelineStateHelper(
+            const RenderPassSpec& spec,
+            RHIShader* vertexShader,
+            RHIShader* fragmentShader
+        ){
+            // fullscreen pass (no renderType) doesn't need vertex layout
+            bool isFullscreenPass = spec.renderType.empty();
+
+            RHIGraphicsPipelineStateDesc desc{
+                .vertexShader = vertexShader,
+                .pixelShader = fragmentShader,
+                .vertexLayout = isFullscreenPass ? RHIVertexLayout{} : DEFAULT_VERTEX_LAYOUT,
+                .rasterizer = spec.rasterizer,
+                .depthStencil = spec.depthStencil,
+                .blend = spec.blend,
+                .renderTargetCount = static_cast<uint32_t>(spec.targets.size())
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                , .debugName = spec.name
+            #endif
+            };
+
+            for(int i=0; i<spec.targets.size(); ++i){
+                const auto& targetName = spec.targets[i];
+
+                if(auto tex = renderTargetPool.get(targetName))
+                    desc.renderTargetFormats[i] = tex->getFormat();
+            }
+
+            if(desc.depthStencil.has_value()){
+                auto tex = renderTargetPool.get(spec.depthTarget);
+                CROWY_ASSERT(tex != nullptr);
+                CROWY_ASSERT(tex->getFormat() == desc.depthStencil->format);
+            }
+
+            return device->createGraphicsPipelineState(desc);
+        }
+
+        RenderPass createPass(
+            const RenderPassSpec& spec
+        ){
+            std::vector<RHISamplerPtr> fs_samplers;
+            fs_samplers.reserve(spec.fs_samplers.size());
+            for(const auto& fs_sampler: spec.fs_samplers){
+                auto sampler = device->createSampler(fs_sampler);
+                fs_samplers.push_back(std::move(sampler));
+            }
+
+            auto vs = device->createShader(RHIShaderCreateDesc{
+                .file = spec.shader.vsFilePath.c_str(),
+                .entry = spec.shader.vsFuncName.c_str(),
+                .stage = RHIShaderStage::VertexShader
+            });
+            auto fs = device->createShader(RHIShaderCreateDesc{
+                .file = spec.shader.fsFilePath.c_str(),
+                .entry = spec.shader.fsFuncName.c_str(),
+                .stage = RHIShaderStage::FragmentShader
+            });
+
+            auto pipeline = createGraphicsPipelineStateHelper(
+                spec, vs.get(), fs.get()
+            );
+
+            std::optional<RenderTypeHash> renderType = std::nullopt;
+            if(!spec.renderType.empty())
+                renderType = std::hash<RenderType>{}(spec.renderType);
+
+            return RenderPass{
+                .name = spec.name,
+                .enabled = true,
+                .inputs = spec.inputs,
+                .targets = spec.targets,
+                .depthTarget = spec.depthTarget,
+                .fs_samplers = std::move(fs_samplers),
+                .vs = std::move(vs), .fs = std::move(fs),
+                .renderType = renderType,
+                .pipeline = std::move(pipeline),
+                .fs_cbuffers = spec.fs_cbuffers
+            };
+        }
+
+
         void executePass(
             RHICommandList& cmdList,
             const RenderContext& ctx,
