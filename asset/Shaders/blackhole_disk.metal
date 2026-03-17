@@ -31,9 +31,9 @@ float fbm(float2 p, int octaves){
     return v;
 }
 
-struct VertexOut{
+struct VertexOutPolar{
     float4 position [[position]];
-    float2 texCoord;
+    float2 polarCoord;
 };
 
 // https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html
@@ -67,17 +67,17 @@ struct DiskGenParams{
 };
 
 fragment float4 fs_disk_gen(
-    VertexOut            input [[stage_in ]],
+    VertexOutPolar       input [[stage_in ]],
     constant DiskGenParams& dg [[buffer(0)]]
 ){
     // x for radius(0=inner, 1=outer),
     // y for theta (0=0    , 1=2pi  )
-    float2 uv = input.texCoord;
-    float r = mix(dg.diskInner, dg.diskOuter, uv.x);
-    float theta = 2 * M_PI_F * uv.y;
+    float2 rt = input.polarCoord;
+    float r = rt.x, theta = rt.y;
+    float scaledR = mix(dg.diskInner, dg.diskOuter, rt.x);
 
     // Shakura–Sunyaev α-disk model
-    float rRatio = dg.diskInner / r;
+    float rRatio = dg.diskInner / scaledR;
     float temp = dg.maxTempKelvin * pow(rRatio, 0.75) * pow(max(1.0 - sqrt(rRatio), 0.0), 0.25);
 
     // blackbody rgb
@@ -90,16 +90,16 @@ fragment float4 fs_disk_gen(
     float intensity = pow(temp/peakTemp, 4);
 
     // turbulence
-    float2 noiseCoord = float2(12.0 * uv.x, 3.0 * theta);
+    float2 noiseCoord = float2(12.0 * r, 3.0 * theta);
     float turb = fbm(noiseCoord, 4);
-    float turbStrength = mix(0.4, 0.1, uv.x);
+    float turbStrength = mix(0.4, 0.1, r);
     intensity *= (1.0 - turbStrength + turb * turbStrength);
 
-    float spiral = 0.5 * sin(2.0*theta - 15.0*uv.x) + 0.5;
+    float spiral = 0.5 * sin(2.0*theta - 15.0*r) + 0.5;
     intensity *= mix(0.7, 1.0, spiral);
 
     float numBands = 5;
-    float bands = smoothstep(0.1, 0.9, 0.5*sin(2*M_PI_F * numBands * uv.x) + 0.5);
+    float bands = smoothstep(0.1, 0.9, 0.5*sin(2*M_PI_F * numBands * r) + 0.5);
     intensity *= mix(0.5, 1.0, bands);
 
     return float4(intensity * baseColor, 1);

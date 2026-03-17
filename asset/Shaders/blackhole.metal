@@ -172,18 +172,14 @@ fragment float4 fs_blackhole(
             float y0r = length(y0Pos);
 
             if(bh.diskInner <= y0r && y0r <= bh.diskOuter){
+                // float t = y0r / bh.diskOuter;
+                // return float4(1.0, t, 0.2, 1.0);
                 float3 diskColor = sampleDiskWithDoppler(
                     y0Pos, bh.elapsedTimeSeconds, dir,
                     bh.rs, bh.diskInner, bh.diskOuter,
                     diskTexture, s
                 );
                 return float4(diskColor, 1);
-                // float t = y0r / bh.diskOuter;
-                // return float4(1.0, t, 0.2, 1.0);
-                // float u = (y0r - bh.diskInner) / (bh.diskOuter - bh.diskInner);
-                // float v = atan2(y0Pos.z, y0Pos.x) / (2.0 * M_PI_F) + 0.5;
-
-                // return diskTexture.sample(s, float2(u, 0));
             }
         }
 

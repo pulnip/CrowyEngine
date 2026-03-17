@@ -337,12 +337,12 @@ int main(int argc, char* argv[]){
             .shader = ShaderSpec{
             #ifdef CROWY_METALRHI
                 .vsFilePath = "asset/Shaders/fullscreen.metal",
-                .vsFuncName = "vs_fullscreen",
+                .vsFuncName = "vs_fullscreen_polar",
                 .fsFilePath = "asset/Shaders/blackhole_disk.metal",
                 .fsFuncName = "fs_disk_gen"
             #elifdef CROWY_D3DRHI
                 .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                .vsFuncName = "vs_fullscreen",
+                .vsFuncName = "vs_fullscreen_polar",
                 .fsFilePath = L"asset/Shaders/blackhole_disk.hlsl",
                 .fsFuncName = "fs_disk_gen"
             #endif
