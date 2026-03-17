@@ -27,6 +27,7 @@ struct BlackholeParams{
     float diskInner;
     packed_float3 camForward;
     float diskOuter;
+    float elapsedTimeSeconds;
 };
 
 struct PlanetParams{
@@ -40,7 +41,7 @@ struct GeoState{
     float3 vel;
 };
 
-GeoState initGeoState(float3 pos, float3 dir, float rs){
+GeoState initGeoState(float3 pos, float3 dir){
     GeoState s;
     s.pos = pos;
     s.vel = dir;
@@ -84,14 +85,47 @@ void rk4(thread GeoState& s, float dl, float rs){
     s.vel += (dl/6.0) * (k1.dvel + 2*k2.dvel + 2*k3.dvel + k4.dvel);
 }
 
+float3 sampleDiskWithDoppler(
+    float3 hitPos, float t, float3 rayDir,
+    float rs, float diskInner, float diskOuter,
+    texture2d<float, access::sample> diskTexture,
+    sampler s
+){
+    float r = length(hitPos);
+    float theta = atan2(hitPos.z, hitPos.x);
+
+    // kepler's Orbital velocity
+    float v_orb = sqrt(rs / (2.0 * r));
+
+    // rotate anti-clockwise
+    float3 orbitalDir = normalize(float3(-hitPos.z, 0, hitPos.x));
+    // rotate clockwise
+    // float3 orbitalDir = normalize(float3(hitPos.z, 0, -hitPos.x));
+
+    // doppler factor
+    float dopplerCosAngle = dot(rayDir, orbitalDir);
+    float doppler = 1.0 / (1.0 + v_orb*dopplerCosAngle);
+
+    // redshift factor (gravitational + doppler)
+    float redShift = doppler * sqrt(max(1.0 - rs/r, 0.01));
+
+    float u = (r - diskInner) / (diskOuter - diskInner);
+    float omega = pow(diskInner / r, 1.5);
+    float v = fract(theta / (2.0*M_PI_F) + 0.2 * omega * t);
+    // g^3 boosting
+    return pow(redShift, 3) * diskTexture.sample(s, float2(u, v)).rgb;
+}
+
 fragment float4 fs_blackhole(
-    VertexOutNDC           input [[stage_in ]],
-    constant BlackholeParams& bh [[buffer(0)]],
-    constant PlanetParams&    pn [[buffer(1)]]
+    VertexOutNDC           input [[ stage_in ]],
+    constant BlackholeParams& bh [[ buffer(0)]],
+    constant PlanetParams&    pn [[ buffer(1)]],
+    texture2d<float> diskTexture [[texture(0)]],
+    sampler                    s [[sampler(0)]]
 ){
     float2 ip = ndc2ip(input.ndc, bh.aspect, bh.tanHalfFov);
     float3 dir = ip2RayDir(ip, bh.camRight, bh.camUp, bh.camForward);
-    GeoState state = initGeoState(bh.camPos - bh.bhPos, dir, bh.rs);
+    GeoState state = initGeoState(bh.camPos - bh.bhPos, dir);
 
     const float far = 100 * bh.rs;
     // float4 far_color = float4(dir * 0.5 + 0.5, 1.0);
@@ -138,8 +172,18 @@ fragment float4 fs_blackhole(
             float y0r = length(y0Pos);
 
             if(bh.diskInner <= y0r && y0r <= bh.diskOuter){
-                float t = y0r / bh.diskOuter;
-                return float4(1.0, t, 0.2, 1.0);
+                float3 diskColor = sampleDiskWithDoppler(
+                    y0Pos, bh.elapsedTimeSeconds, dir,
+                    bh.rs, bh.diskInner, bh.diskOuter,
+                    diskTexture, s
+                );
+                return float4(diskColor, 1);
+                // float t = y0r / bh.diskOuter;
+                // return float4(1.0, t, 0.2, 1.0);
+                // float u = (y0r - bh.diskInner) / (bh.diskOuter - bh.diskInner);
+                // float v = atan2(y0Pos.z, y0Pos.x) / (2.0 * M_PI_F) + 0.5;
+
+                // return diskTexture.sample(s, float2(u, 0));
             }
         }
 

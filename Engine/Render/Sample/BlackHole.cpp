@@ -113,7 +113,8 @@ using namespace Crowy;
 static CBuffer makeBlackholeParamsCBuffer(
     Vec3 blackholePos, float rs,
     Vec3 cameraPos, Vec3 cameraTarget,
-    float aspect, float tanHalfFov
+    float aspect, float tanHalfFov,
+    float diskInner = 3.0f, float diskOuter = 10.0f
 ){
     CBuffer cbuffer{
         .name = "BlackholeParams",
@@ -133,9 +134,10 @@ static CBuffer makeBlackholeParamsCBuffer(
     cbuffer.newField("camRight", Float3) = camRight;
     cbuffer.newField("tanHalfFov", Float) = tanHalfFov;
     cbuffer.newField("camUp", Float3) = camUp;
-    cbuffer.newField("diskInner", Float) = 3.0f;
+    cbuffer.newField("diskInner", Float) = diskInner;
     cbuffer.newField("camForward", Float3) = camForward;
-    cbuffer.newField("diskOuter", Float) = 10.0f;
+    cbuffer.newField("diskOuter", Float) = diskOuter;
+    cbuffer.newField("elapsedTimeSeconds", Float) = 0.0f;
 
     return cbuffer;
 }
@@ -158,6 +160,25 @@ static CBuffer makePlanetParamsCBuffer(){
     cbuffer.at("color", 1) = Vec4{0, 0.5, 1, 1};
     cbuffer.at("posRadius", 2) = Vec4{-15, 0, -15, 3};
     cbuffer.at("color", 2) = Vec4{0.4, 0.7, 0.1, 1};
+
+    return cbuffer;
+}
+
+static CBuffer makeDiskGenParams(
+    float rs,
+    float diskInner = 3.0f, float diskOuter = 10.0f,
+    float maxTempKelvin = 1e+4
+){
+    CBuffer cbuffer{
+        .name = "DiskGenParams",
+        .slot = 0
+    };
+
+    using enum CBufferFieldType;
+    cbuffer.newField("rs", Float) = rs;
+    cbuffer.newField("diskInner", Float) = diskInner;
+    cbuffer.newField("diskOuter", Float) = diskOuter;
+    cbuffer.newField("maxTempKelvin", Float) = maxTempKelvin;
 
     return cbuffer;
 }
@@ -206,7 +227,7 @@ int main(int argc, char* argv[]){
     Vec3 bhPos{0.0f, 0.0f, 3.0f};
     float rs = 1.0f;
     float cameraDistance = 30.0f;
-    Vec3 camPos{cameraDistance, 10.0, 0.0};
+    Vec3 camPos{cameraDistance, 5.0, 0.0};
     Vec3 camTgt = zeros();
     float fovRad = 45.0f * 3.14159265f / 180.0f;
 
@@ -249,13 +270,28 @@ int main(int argc, char* argv[]){
 
     RenderSpec spec{
         .renderTargets = {
+            {
+                "diskTexture",
+                RHITextureCreateDesc{
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource,
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    .debugName = "Disk Texture"
+                #endif
+                }
+            },
             {"BackBuffer", backBufferDesc},
         },
         .passes = {
             RenderPassSpec{
                 .name = "main",
-                .inputs = {},
+                .inputs = {"diskTexture"},
                 .targets = {"BackBuffer"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
                     .vsFilePath = "asset/Shaders/fullscreen.metal",
@@ -284,6 +320,39 @@ int main(int argc, char* argv[]){
 
     try{
         renderer.loadPasses(spec, width, height);
+
+        cmdList->begin();
+        RenderContext ctx{
+            .viewport = RHIViewport{
+                .x = 0, .y = 0,
+                .width = static_cast<float>(width),
+                .height = static_cast<float>(height),
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f,
+            }
+        };
+        renderer.render(RenderPassSpec{
+            .name = "main",
+            .targets = {"diskTexture"},
+            .shader = ShaderSpec{
+            #ifdef CROWY_METALRHI
+                .vsFilePath = "asset/Shaders/fullscreen.metal",
+                .vsFuncName = "vs_fullscreen",
+                .fsFilePath = "asset/Shaders/blackhole_disk.metal",
+                .fsFuncName = "fs_disk_gen"
+            #elifdef CROWY_D3DRHI
+                .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                .vsFuncName = "vs_fullscreen",
+                .fsFilePath = L"asset/Shaders/blackhole_disk.hlsl",
+                .fsFuncName = "fs_disk_gen"
+            #endif
+            },
+            .fs_cbuffers{
+                makeDiskGenParams(rs)
+            }
+        }, *cmdList.get(), ctx);
+        cmdList->close();
+        device->submit(*cmdList.get());
     }
     catch(const std::exception& e){
         std::println("{}", e.what());
@@ -309,6 +378,7 @@ int main(int argc, char* argv[]){
         }
 
         timer.newFrame();
+        float et = timer.elapsedSeconds();
 
         if(!framePacer->beginFrame())
             continue;
@@ -327,6 +397,7 @@ int main(int argc, char* argv[]){
         bhParams->at("camForward") = camForward;
         bhParams->at("camRight") = camRight;
         bhParams->at("camUp") = camUp;
+        bhParams->at("elapsedTimeSeconds") = et;
 
         auto view = look_at(
             camPos, camTgt,
