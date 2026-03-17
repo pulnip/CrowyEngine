@@ -28,3 +28,9 @@ my Game Engine Project
 
   ![demo3](./asset/video/blackhole_simulation.gif)
 </details>
+
+<details>
+  <summary>Blackhole Simulation with Disk Texture Generation</summary>
+
+  ![demo3](./asset/video/blackhole_with_disk_gen.gif)
+</details>
