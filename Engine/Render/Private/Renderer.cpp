@@ -200,6 +200,9 @@ namespace Crowy
 
                 if(auto tex = renderTargetPool.get(targetName))
                     desc.renderTargetFormats[i] = tex->getFormat();
+                else
+                    // TODO. Backbuffer
+                    desc.renderTargetFormats[i] = RHITextureFormat::BGRA8_UNORM;
             }
 
             if(desc.depthStencil.has_value()){
