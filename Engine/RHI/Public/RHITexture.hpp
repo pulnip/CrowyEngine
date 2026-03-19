@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include "semantics.hpp"
 #include "RHIFWD.hpp"
@@ -31,6 +32,8 @@ namespace Crowy
         ) noexcept = 0;
 
         virtual RHITextureFormat getFormat() const noexcept = 0;
+        virtual size_t getWidth() const noexcept = 0;
+        virtual size_t getHeight() const noexcept = 0;
 
         virtual RHIResourceState getState() const noexcept = 0;
         virtual void setState(RHIResourceState state) noexcept = 0;

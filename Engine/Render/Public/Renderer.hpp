@@ -6,7 +6,6 @@
 #include "RenderDefinitions.hpp"
 #include "RenderSpec.hpp"
 #include "ResourceHandle.hpp"
-#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy
@@ -25,7 +24,6 @@ namespace Crowy
         std::span<const RenderItem> renderItems;
         // Camera Information
         Mat4 view, proj;
-        RHIViewport viewport;
     };
 
     class Renderer{
@@ -48,7 +46,7 @@ namespace Crowy
         void render(
             const RenderPassSpec& passSpec,
             RHICommandList& cmdList,
-            const RenderContext& ctx,
+            const RenderContext& ctx = {},
             RHISwapchain* backBuffer = nullptr
         );
 

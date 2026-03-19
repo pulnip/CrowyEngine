@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include "semantics.hpp"
 
@@ -21,6 +22,9 @@ namespace Crowy
         virtual bool acquireNextImage() noexcept = 0;
 
         virtual void resize(uint32_t newWidth, uint32_t newHeight) noexcept = 0;
+
+        virtual uint32_t getWidth() const noexcept = 0;
+        virtual uint32_t getHeight() const noexcept = 0;
 
         virtual void* getCurrentNativeTexture() const noexcept = 0;
     };

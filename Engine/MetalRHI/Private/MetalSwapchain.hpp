@@ -2,6 +2,7 @@
 
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
+#include <cstdint>
 #include "assert.hpp"
 #include "MetalUtil.hpp"
 #include "RHIAPI.hpp"
@@ -29,7 +30,10 @@ namespace Crowy
         MetalSwapchain(
             MTL::Device* device,
             const RHISwapchainCreateDesc& desc
-        ) noexcept{
+        ) noexcept
+            : width(desc.bufferDesc.width)
+            , height(desc.bufferDesc.height)
+        {
             metalLayer = static_cast<CA::MetalLayer*>(desc.windowHandle);
             CROWY_ASSERT(metalLayer != nullptr);
 
@@ -55,6 +59,13 @@ namespace Crowy
             height = newHeight;
             metalLayer->setDrawableSize(CGSizeMake(newWidth, newHeight));
             currentDrawable = nullptr;
+        }
+
+        uint32_t getWidth() const noexcept RHI_OVERRIDE{
+            return width;
+        }
+        uint32_t getHeight() const noexcept RHI_OVERRIDE{
+            return height;
         }
 
         MTL::Texture* getCurrentTexture() const noexcept{

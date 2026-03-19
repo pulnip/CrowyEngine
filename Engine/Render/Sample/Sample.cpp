@@ -442,14 +442,7 @@ int main(int argc, char* argv[]){
         RenderContext ctx{
             .renderItems = renderItems,
             .view = view,
-            .proj = proj,
-            .viewport = RHIViewport{
-                .x = 0, .y = 0,
-                .width = static_cast<float>(width),
-                .height = static_cast<float>(height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f,
-            }
+            .proj = proj
         };
 
         cmdList->begin();

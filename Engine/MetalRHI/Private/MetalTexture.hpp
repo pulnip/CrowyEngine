@@ -109,6 +109,12 @@ namespace Crowy
         RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
             return format;
         }
+        size_t getWidth() const noexcept RHI_OVERRIDE{
+            return width;
+        }
+        size_t getHeight() const noexcept RHI_OVERRIDE{
+            return height;
+        }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             return currentState;

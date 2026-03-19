@@ -265,21 +265,34 @@ namespace Crowy
 
             RHIClearColor clearColor{0.2f, 0.2f, 0.3f, 0.0f};
             RHIClearDepthStencil clearDS = {1.0f, 0};
+            RHIViewport viewport{
+                .x = 0.0f, .y = 0.0f,
+                .width = 0.0f, .height = 0.0f,
+                .minDepth = 0.0f, .maxDepth = 1.0f
+            };
 
             CROWY_ASSERT(pass.targets.size() > 0);
             const auto& renderTargetName = pass.targets[0];
             auto depthTarget = renderTargetPool.get(pass.depthTarget);
             if(renderTargetName != "BackBuffer"){
-                std::vector<RHITexture*> renderTargets;
-                renderTargets.reserve(pass.targets.size());
+                std::vector<RHITexture*> renderTargets(pass.targets.size());
 
                 // Multi Render Target support
-                for(const auto& renderTargetName: pass.targets){
-                    CROWY_ASSERT(renderTargetName != "BackBuffer");
-                    auto renderTarget = renderTargetPool.get(renderTargetName);
-                    CROWY_ASSERT(renderTarget != nullptr);
+                for(size_t i=0; i<pass.targets.size(); ++i){
+                    const auto& targetName = pass.targets[i];
+                    CROWY_ASSERT(targetName != "BackBuffer");
+                    auto target = renderTargetPool.get(targetName);
+                    CROWY_ASSERT(target != nullptr);
 
-                    renderTargets.push_back(renderTarget);
+                    renderTargets[i] = target;
+                    if(i == 0){
+                        viewport.width = target->getWidth();
+                        viewport.height = target->getHeight();
+                    }
+                    else{
+                        CROWY_ASSERT(viewport.width == target->getWidth());
+                        CROWY_ASSERT(viewport.height == target->getHeight());
+                    }
                 }
 
                 cmdList.beginRenderPass(
@@ -295,6 +308,9 @@ namespace Crowy
                 );
             }
             else{
+                viewport.width = backBuffer->getWidth();
+                viewport.height = backBuffer->getHeight();
+
                 cmdList.beginRenderPass(
                     *backBuffer,
                     depthTarget,
@@ -343,12 +359,12 @@ namespace Crowy
                 cmdList.setConstantBuffer(FragmentShader, cbuf.slot, buf);
             }
 
-            cmdList.setViewport(ctx.viewport);
+            cmdList.setViewport(viewport);
             cmdList.setScissorRect(RHIScissorRect{
-                .left   = static_cast<int32_t>(ctx.viewport.x     ),
-                .top    = static_cast<int32_t>(ctx.viewport.y     ),
-                .right  = static_cast<int32_t>(ctx.viewport.width ),
-                .bottom = static_cast<int32_t>(ctx.viewport.height)
+                .left   = static_cast<int32_t>(viewport.x),
+                .top    = static_cast<int32_t>(viewport.y),
+                .right  = static_cast<int32_t>(viewport.width),
+                .bottom = static_cast<int32_t>(viewport.height)
             });
 
             // draw

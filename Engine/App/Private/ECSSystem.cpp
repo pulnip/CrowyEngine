@@ -97,14 +97,7 @@ namespace Crowy
                 RenderContext{
                     .renderItems = renderItems,
                     .view = view,
-                    .proj = proj,
-                    .viewport = RHIViewport{
-                        .x = camera.viewport.x, .y = camera.viewport.y,
-                        .width = width,
-                        .height = height,
-                        .minDepth = camera.viewport.minDepth,
-                        .maxDepth = camera.viewport.maxDepth
-                    }
+                    .proj = proj
                 },
                 swapchain
             );

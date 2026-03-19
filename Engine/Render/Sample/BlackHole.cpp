@@ -322,17 +322,9 @@ int main(int argc, char* argv[]){
         renderer.loadPasses(spec, width, height);
 
         cmdList->begin();
-        RenderContext ctx{
-            .viewport = RHIViewport{
-                .x = 0, .y = 0,
-                .width = static_cast<float>(width),
-                .height = static_cast<float>(height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f,
-            }
-        };
+
         renderer.render(RenderPassSpec{
-            .name = "main",
+            .name = "Disk Generation",
             .targets = {"diskTexture"},
             .shader = ShaderSpec{
             #ifdef CROWY_METALRHI
@@ -350,7 +342,7 @@ int main(int argc, char* argv[]){
             .fs_cbuffers{
                 makeDiskGenParams(rs)
             }
-        }, *cmdList.get(), ctx);
+        }, *cmdList.get());
         cmdList->close();
         device->submit(*cmdList.get());
     }
@@ -411,14 +403,7 @@ int main(int argc, char* argv[]){
 
         RenderContext ctx{
             .view = view,
-            .proj = proj,
-            .viewport = RHIViewport{
-                .x = 0, .y = 0,
-                .width = static_cast<float>(width),
-                .height = static_cast<float>(height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f,
-            }
+            .proj = proj
         };
 
         cmdList->begin();
