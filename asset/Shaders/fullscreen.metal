@@ -87,9 +87,9 @@ vertex VertexOutPolar vs_fullscreen_polar(
 }
 
 fragment float4 fs_bypass(
-    float4      position [[ position ]],
-    texture2d<float> tex [[texture(0)]]
+    VertexOut      input [[ stage_in ]],
+    texture2d<float> tex [[texture(0)]],
+    sampler            s [[sampler(0)]]
 ){
-    int2 screenCoord = int2(position.xy);
-    return tex.read(uint2(screenCoord));
+    return tex.sample(s, input.texCoord);
 }
