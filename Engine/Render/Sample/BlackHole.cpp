@@ -284,13 +284,74 @@ int main(int argc, char* argv[]){
                 #endif
                 }
             },
+            {
+                "sceneTexture",
+                RHITextureCreateDesc{
+                    .format = RHITextureFormat::RGBA16_FLOAT,
+                    
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource,
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    .debugName = "Scene Texture"
+                #endif
+                }
+            },
+            {
+                "brightMaskTexture",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width / 4),
+                    .height = static_cast<uint32_t>(height / 4),
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource,
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    .debugName = "Bright Mask Texture"
+                #endif
+                }
+            },
+            {
+                "xBlurTexture",
+                RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width / 4),
+                    .height = static_cast<uint32_t>(height / 4),
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource,
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    .debugName = "X Blur Texture"
+                #endif
+                }
+            },
+            {
+                "bloomTexture",
+                RHITextureCreateDesc{
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource,
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    .debugName = "Bloom Texture"
+                #endif
+                }
+            },
             {"BackBuffer", backBufferDesc},
         },
         .passes = {
             RenderPassSpec{
-                .name = "main",
+                .name = "scene",
                 .inputs = {"diskTexture"},
-                .targets = {"BackBuffer"},
+                .targets = {"sceneTexture"},
                 .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
@@ -314,6 +375,82 @@ int main(int argc, char* argv[]){
                     ),
                     makePlanetParamsCBuffer()
                 }
+            },
+            {
+                .name = "brightMask",
+                .inputs = {"sceneTexture"},
+                .targets = {"brightMaskTexture"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_bright"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_bright"
+                #endif
+                },
+            },
+            {
+                .name = "xBlur",
+                .inputs = {"brightMaskTexture"},
+                .targets = {"xBlurTexture"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_horizontal_blur"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_horizontal_blur"
+                #endif
+                },
+            },
+            {
+                .name = "yBlur",
+                .inputs = {"xBlurTexture"},
+                .targets = {"bloomTexture"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_vertical_blur"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_vertical_blur"
+                #endif
+                },
+            },
+            {
+                .name = "bloom",
+                .inputs = {"sceneTexture", "bloomTexture"},
+                .targets = {"BackBuffer"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_composite"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_composite"
+                #endif
+                },
             }
         }
     };
