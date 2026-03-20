@@ -33,6 +33,7 @@ namespace Crowy
         ) noexcept
             : width(desc.bufferDesc.width)
             , height(desc.bufferDesc.height)
+            , format(desc.bufferDesc.format)
         {
             metalLayer = static_cast<CA::MetalLayer*>(desc.windowHandle);
             CROWY_ASSERT(metalLayer != nullptr);
@@ -61,6 +62,9 @@ namespace Crowy
             currentDrawable = nullptr;
         }
 
+        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+            return format;
+        }
         uint32_t getWidth() const noexcept RHI_OVERRIDE{
             return width;
         }

@@ -17,6 +17,7 @@ namespace Crowy
     private:
         uint32_t width = 0;
         uint32_t height = 0;
+        RHITextureFormat format = RHITextureFormat::Unknown;
 
     public:
         NullSwapchain(
@@ -24,6 +25,7 @@ namespace Crowy
         ) noexcept
             : width(desc.bufferDesc.width)
             , height(desc.bufferDesc.height)
+            , format(desc.bufferDesc.format)
         {}
 
         bool acquireNextImage() noexcept RHI_OVERRIDE{
@@ -34,6 +36,9 @@ namespace Crowy
 
         }
 
+        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+            return format;
+        }
         uint32_t getWidth() const noexcept RHI_OVERRIDE{
             return width;
         }

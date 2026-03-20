@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include "semantics.hpp"
+#include "RHIDefinitions.hpp"
 
 #ifdef USE_STATIC_RHI
     #ifdef USE_METAL_BACKEND
@@ -23,6 +24,7 @@ namespace Crowy
 
         virtual void resize(uint32_t newWidth, uint32_t newHeight) noexcept = 0;
 
+        virtual RHITextureFormat getFormat() const noexcept = 0;
         virtual uint32_t getWidth() const noexcept = 0;
         virtual uint32_t getHeight() const noexcept = 0;
 
