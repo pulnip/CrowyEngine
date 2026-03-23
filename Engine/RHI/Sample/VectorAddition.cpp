@@ -28,8 +28,9 @@ int main(int argc, char* argv[]){
         .stage = RHIShaderStage::ComputeShader,
     });
 
-    constexpr size_t N = 1 << 16;
+    constexpr size_t N = 1 << 26;
     std::vector<float> floats(N, 1.0f);
+    std::vector<float> outGpu(N, 0.0f), outCpu(N, 0.0f);
 
     RHIBufferCreateDesc bufferDesc{
         .size = sizeof(float) * N,
@@ -79,19 +80,31 @@ int main(int argc, char* argv[]){
     cmdList->waitUntilCompleted();
 
     // TODO. change this at support D3D12
-    bufferOut->download(floats.data(), sizeof(float) * floats.size());
+    bufferOut->download(outGpu.data(), sizeof(float) * outGpu.size());
 
     timer.newFrame();
-    float et = timer.elapsedSeconds();
-
-    std::println("Elapsed: {}s", et);
+    auto etGpu = timer.elapsedSeconds();
 
     for(size_t i=0; i<N; ++i){
-        if(std::abs(floats[i] - 2.0f) > 1e-3){
-            std::println("float[{}]: {}", i, floats[i]);
-            break;
-        }
+        outCpu[i] = floats[i] + floats[i];
     }
+
+    timer.newFrame();
+    auto etCpu = timer.elapsedSeconds();
+
+    // verify compute result
+    for(size_t i=0; i<N; ++i){
+        if(std::abs(outGpu[i] - 2.0f) < 1e-3)
+            continue;
+        std::println("[GPU] wrong result: float[{}] = {}", i, floats[i]);
+    }
+    for(size_t i=0; i<N; ++i){
+        if(std::abs(outCpu[i] - 2.0f) < 1e-3)
+            continue;
+        std::println("[CPU] wrong result: float[{}] = {}", i, floats[i]);
+    }
+
+    std::println("Elapsed: cpu {}s, gpu {}s", etCpu, etGpu);
 
     return 0;
 }

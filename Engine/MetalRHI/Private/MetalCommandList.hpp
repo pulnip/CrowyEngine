@@ -536,7 +536,7 @@ private:
                 threadGroupSizeZ
             );
 
-            computeEncoder->dispatchThreadgroups(gridSize, threadgroupSize);
+            computeEncoder->dispatchThreads(gridSize, threadgroupSize);
         }
 
         void transitionBarrier(
