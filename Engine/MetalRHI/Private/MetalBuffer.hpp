@@ -38,16 +38,17 @@ namespace Crowy
             auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);
             auto hasConstantUsage = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer);
             auto hasCPUWrite = has_flag(desc.usage, RHIBufferUsage::CPUWrite);
+            auto hasCPURead = has_flag(desc.usage, RHIBufferUsage::CPURead);
 
             isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage ||
-                              hasCPUWrite || desc.initialData != nullptr;
+                              hasCPUWrite || hasCPURead || desc.initialData != nullptr;
 
             if(desc.initialData){
             #if TARGET_OS_OSX
                 isManaged = true;
                 buffer = device->newBuffer(
                     desc.initialData, desc.size,
-                    MTL::StorageModeManaged
+                    MTL::ResourceStorageModeManaged
                 );
             #else
                 buffer = device->newBuffer(
@@ -59,8 +60,9 @@ namespace Crowy
             else{
                 buffer = device->newBuffer(
                     desc.size,
-                    isCPUAccessible ? MTL::StorageModeShared :
-                                      MTL::StorageModePrivate
+                    isCPUAccessible ?
+                        MTL::ResourceStorageModeShared :
+                        MTL::ResourceStorageModePrivate
                 );
             }
 

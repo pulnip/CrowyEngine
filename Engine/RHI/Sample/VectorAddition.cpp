@@ -35,7 +35,8 @@ int main(int argc, char* argv[]){
     RHIBufferCreateDesc bufferDesc{
         .size = sizeof(float) * N,
         .usage = combine(
-            RHIBufferUsage::CPUWrite
+            RHIBufferUsage::CPUWrite,
+            RHIBufferUsage::ShaderResource
         ),
         .stride = 0,
         .initialData = floats.data()
@@ -47,6 +48,10 @@ int main(int argc, char* argv[]){
     auto bufferA = device->createBuffer(bufferDesc);
     auto bufferB = device->createBuffer(bufferDesc);
 
+    bufferDesc.usage = combine(
+        RHIBufferUsage::CPURead,
+        RHIBufferUsage::UnorderedAccess
+    );
     bufferDesc.initialData = nullptr;
     auto bufferOut = device->createBuffer(bufferDesc);
 

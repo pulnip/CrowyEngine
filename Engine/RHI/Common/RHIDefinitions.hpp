@@ -29,7 +29,7 @@ namespace Crowy
         CopySource       = 1 << 7,
         CopyDest         = 1 << 8,
         CPUWrite         = 1 << 9,
-        TransferSrc      = 1 << 10
+        CPURead          = 1 << 10
     };
 
     struct RHIBufferCreateDesc{
