@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <span>
+#include <stdexcept>
 #include <utility>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
@@ -363,15 +364,26 @@ private:
         void setBuffer(
             uint32_t slot,
             RHIBuffer& buffer,
-            RHIShaderStage stage
-        ) noexcept RHI_OVERRIDE{
+            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        ) RHI_OVERRIDE{
             auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
 
-            if(stage == RHIShaderStage::ComputeShader){
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                [[fallthrough]];
+            case RHIShaderStage::FragmentShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                throw std::runtime_error("Unimplemented");
+            case RHIShaderStage::ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
                 computeEncoder->setBuffer(mtlBuffer, 0, slot);
+                break;
+            default:
+                std::unreachable();
             }
         }
 

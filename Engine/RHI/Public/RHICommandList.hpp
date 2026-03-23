@@ -101,8 +101,8 @@ namespace Crowy
         virtual void setBuffer(
             uint32_t slot,
             RHIBuffer& buffer,
-            RHIShaderStage stage
-        ) noexcept = 0;
+            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        ) = 0;
 
         virtual void setSampler(
             uint32_t slot,

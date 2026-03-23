@@ -63,9 +63,9 @@ int main(int argc, char* argv[]){
     cmdList->beginCompute();
 
     cmdList->setPipelineState(pipelineState.get());
-    cmdList->setBuffer(0, *bufferA.get(), RHIShaderStage::ComputeShader);
-    cmdList->setBuffer(1, *bufferB.get(), RHIShaderStage::ComputeShader);
-    cmdList->setBuffer(2, *bufferOut.get(), RHIShaderStage::ComputeShader);
+    cmdList->setBuffer(0, *bufferA.get());
+    cmdList->setBuffer(1, *bufferB.get());
+    cmdList->setBuffer(2, *bufferOut.get());
 
     cmdList->dispatch(
         N, 1, 1,
@@ -78,6 +78,7 @@ int main(int argc, char* argv[]){
     device->submit(*cmdList.get());
     cmdList->waitUntilCompleted();
 
+    // TODO. change this at support D3D12
     bufferOut->download(floats.data(), sizeof(float) * floats.size());
 
     timer.newFrame();
