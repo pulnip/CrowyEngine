@@ -30,6 +30,12 @@ namespace Crowy
             size_t offset = 0
         ) noexcept = 0;
 
+        // Notice! only valid for Metal and D3D11
+        virtual void download(
+            void* data, size_t size,
+            size_t offset = 0
+        ) noexcept = 0;
+
         virtual RHIResourceState getState() const noexcept = 0;
         virtual void setState(RHIResourceState state) noexcept = 0;
     };

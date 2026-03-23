@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -144,10 +143,21 @@ namespace Crowy
 
         }
 
+        void beginCompute() noexcept RHI_OVERRIDE{
+
+        }
+
+        void endCompute() noexcept RHI_OVERRIDE{
+
+        }
+
         void dispatch(
-            uint32_t threadGroupCountX,
-            uint32_t threadGroupCountY,
-            uint32_t threadGroupCountZ
+            uint32_t gridSizeX,
+            uint32_t gridSizeY,
+            uint32_t gridSizeZ,
+            uint32_t threadGroupSizeX,
+            uint32_t threadGroupSizeY,
+            uint32_t threadGroupSizeZ
         ) noexcept RHI_OVERRIDE{
 
         }
@@ -212,6 +222,10 @@ namespace Crowy
             uint32_t mipLevel = 0,
             uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
+
+        }
+
+        void waitUntilCompleted() noexcept RHI_OVERRIDE{
 
         }
 

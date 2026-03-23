@@ -4,8 +4,8 @@
 #include <cstring>
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
-#include <cstdint>
 #include "assert.hpp"
+#include "ptr_util.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -84,17 +84,34 @@ namespace Crowy
             const void* data, size_t size,
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(isCPUAccessible);
+            const auto bufSize = this->size;
+            CROWY_ASSERT(isCPUAccessible && size <= bufSize - offset);
             void* mapped = buffer->contents();
 
             std::memcpy(
-                static_cast<uint8_t*>(mapped) + offset,
-                data, size
+                ptr_add(mapped, offset),
+                data,
+                size
             );
 
             if(isManaged){
                 buffer->didModifyRange(NS::Range::Make(offset, size));
             }
+        }
+
+        inline void download(
+            void* data, size_t size,
+            size_t offset = 0
+        ) noexcept RHI_OVERRIDE{
+            const auto bufSize = this->size;
+            CROWY_ASSERT(isCPUAccessible && size <= bufSize - offset);
+            void* mapped = buffer->contents();
+
+            std::memcpy(
+                data,
+                ptr_add(mapped, offset),
+                size
+            );
         }
 
         MTL::Buffer* get() const{ return buffer; }

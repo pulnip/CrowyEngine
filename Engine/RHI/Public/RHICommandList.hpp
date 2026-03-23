@@ -130,11 +130,18 @@ namespace Crowy
             uint32_t startInstance = 0
         ) noexcept = 0;
 
+        virtual void beginCompute() noexcept = 0;
+
+        virtual void endCompute() noexcept = 0;
+
         // Compute dispatch
         virtual void dispatch(
-            uint32_t threadGroupCountX,
-            uint32_t threadGroupCountY,
-            uint32_t threadGroupCountZ
+            uint32_t gridSizeX,
+            uint32_t gridSizeY,
+            uint32_t gridSizeZ,
+            uint32_t threadGroupSizeX,
+            uint32_t threadGroupSizeY,
+            uint32_t threadGroupSizeZ
         ) noexcept = 0;
 
         // Resource barriers (state transitions)
@@ -180,6 +187,8 @@ namespace Crowy
             uint32_t mipLevel = 0,
             uint32_t arraySlice = 0
         ) noexcept = 0;
+
+        virtual void waitUntilCompleted() noexcept = 0;
 
         // Debug markers (for GPU profiling)
         virtual void beginEvent(const char* name) noexcept = 0;

@@ -479,7 +479,7 @@ private:
             );
         }
 
-        void beginCompute() noexcept{
+        void beginCompute() noexcept RHI_OVERRIDE{
             CROWY_ASSERT(computeEncoder == nullptr,
                 "Did you call RHICommandList::endCompute()?"
             );
@@ -492,7 +492,7 @@ private:
             computeEncoder = commandBuffer->computeCommandEncoder();
         }
 
-        void endCompute() noexcept{
+        void endCompute() noexcept RHI_OVERRIDE{
             CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
@@ -502,18 +502,26 @@ private:
         }
 
         void dispatch(
-            uint32_t threadGroupCountX,
-            uint32_t threadGroupCountY,
-            uint32_t threadGroupCountZ
+            uint32_t gridSizeX,
+            uint32_t gridSizeY,
+            uint32_t gridSizeZ,
+            uint32_t threadGroupSizeX,
+            uint32_t threadGroupSizeY,
+            uint32_t threadGroupSizeZ
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
 
-            // TODO: need proper threadgroup size
-            MTL::Size threadgroupSize = MTL::Size::Make(16, 16, 1);
-            MTL::Size gridSize = MTL::Size::Make(
-                threadGroupCountX, threadGroupCountY, threadGroupCountZ
+            auto gridSize = MTL::Size::Make(
+                gridSizeX,
+                gridSizeY,
+                gridSizeZ
+            );
+            auto threadgroupSize = MTL::Size::Make(
+                threadGroupSizeX,
+                threadGroupSizeY,
+                threadGroupSizeZ
             );
 
             computeEncoder->dispatchThreadgroups(gridSize, threadgroupSize);
@@ -641,6 +649,10 @@ private:
                 dstTex, arraySlice, mipLevel,
                 MTL::Origin::Make(0, 0, 0)
             );
+        }
+
+        void waitUntilCompleted() noexcept RHI_OVERRIDE{
+            commandBuffer->waitUntilCompleted();
         }
 
         void beginEvent(const char* name) noexcept RHI_OVERRIDE{

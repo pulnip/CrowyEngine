@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
+#include "assert.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -37,7 +37,16 @@ namespace Crowy
             const void* data, size_t size,
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
+            const auto bufSize = this->size;
+            CROWY_ASSERT(size <= bufSize - offset);
+        }
 
+        inline void download(
+            void* data, size_t size,
+            size_t offset = 0
+        ) noexcept RHI_OVERRIDE{
+            const auto bufSize = this->size;
+            CROWY_ASSERT(size <= bufSize - offset);
         }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
