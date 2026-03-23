@@ -155,9 +155,7 @@ namespace Crowy
             uint32_t gridSizeX,
             uint32_t gridSizeY,
             uint32_t gridSizeZ,
-            uint32_t threadGroupSizeX,
-            uint32_t threadGroupSizeY,
-            uint32_t threadGroupSizeZ
+            std::optional<RHISize3D> threadGroupSize = std::nullopt
         ) noexcept RHI_OVERRIDE{
 
         }

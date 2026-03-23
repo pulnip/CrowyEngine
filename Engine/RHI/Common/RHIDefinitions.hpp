@@ -498,6 +498,10 @@ namespace Crowy
     #endif
     };
 
+    struct RHISize3D{
+        uint32_t x, y, z;
+    };
+
     inline size_t getBytesPerPixel(RHITextureFormat format){
         switch(format){
         case RHITextureFormat::R8_UNORM:          [[fallthrough]];

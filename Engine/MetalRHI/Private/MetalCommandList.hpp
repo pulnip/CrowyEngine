@@ -86,6 +86,7 @@ private:
         MTL::IndexType currentIndexFormat = MTL::IndexTypeUInt32;
         
         RHIPrimitiveTopology currentTopology = RHIPrimitiveTopology::TriangleList;
+        NS::UInteger maxTotalThreadsPerThreadgroup = 0;
         bool isRecording = false;
 
     public:
@@ -222,6 +223,7 @@ private:
         void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
             auto metalPSO = static_cast<MetalPipelineState*>(pso);
             currentTopology = metalPSO->getTopology();
+            maxTotalThreadsPerThreadgroup = metalPSO->maxTotalThreadsPerThreadgroup();
 
             if(metalPSO->isComputePipeline()){
                 CROWY_ASSERT(computeEncoder != nullptr,
@@ -501,6 +503,7 @@ private:
                 blitEncoder = nullptr;
             }
 
+            maxTotalThreadsPerThreadgroup = 0;
             computeEncoder = commandBuffer->computeCommandEncoder();
         }
 
@@ -517,26 +520,38 @@ private:
             uint32_t gridSizeX,
             uint32_t gridSizeY,
             uint32_t gridSizeZ,
-            uint32_t threadGroupSizeX,
-            uint32_t threadGroupSizeY,
-            uint32_t threadGroupSizeZ
+            std::optional<RHISize3D> threadGroupSize = std::nullopt
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
 
-            auto gridSize = MTL::Size::Make(
+            auto threadsPerGrid = MTL::Size::Make(
                 gridSizeX,
                 gridSizeY,
                 gridSizeZ
             );
-            auto threadgroupSize = MTL::Size::Make(
-                threadGroupSizeX,
-                threadGroupSizeY,
-                threadGroupSizeZ
-            );
 
-            computeEncoder->dispatchThreads(gridSize, threadgroupSize);
+            MTL::Size threadsPerThreadgroup;
+            if(threadGroupSize.has_value()){
+                threadsPerThreadgroup = MTL::Size::Make(
+                    threadGroupSize->x,
+                    threadGroupSize->y,
+                    threadGroupSize->z
+                );
+            }
+            else{
+                auto effectiveGroupSize = std::min(256ul, maxTotalThreadsPerThreadgroup);
+
+                threadsPerThreadgroup = defaultGroupSize(
+                    effectiveGroupSize,
+                    gridSizeX,
+                    gridSizeY,
+                    gridSizeZ
+                );
+            }
+
+            computeEncoder->dispatchThreads(threadsPerGrid, threadsPerThreadgroup);
         }
 
         void transitionBarrier(
@@ -731,6 +746,8 @@ private:
                 blitEncoder = nullptr;
             }
 
+            maxTotalThreadsPerThreadgroup = 0;
+
             auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
 
             // Color Attachment
@@ -778,6 +795,21 @@ private:
             if(blitEncoder == nullptr){
                 blitEncoder = commandBuffer->blitCommandEncoder();
             }
+        }
+
+        static MTL::Size defaultGroupSize(
+            NS::UInteger numThreads,
+            NS::UInteger gridSizeX,
+            NS::UInteger gridSizeY,
+            NS::UInteger gridSizeZ
+        ) noexcept{
+            auto width = std::min(numThreads, gridSizeX);
+            numThreads /= width;
+            auto height = std::min(numThreads, gridSizeY);
+            numThreads /= height;
+            auto depth = std::min(numThreads, gridSizeY);
+
+            return MTL::Size::Make(width, height, depth);
         }
     };
 }

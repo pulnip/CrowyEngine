@@ -270,6 +270,14 @@ namespace Crowy
             return computePipeline != nullptr;
         }
 
+        NS::UInteger maxTotalThreadsPerThreadgroup() const{
+            if(computePipeline != nullptr)
+                return computePipeline->maxTotalThreadsPerThreadgroup();
+            if(renderPipeline != nullptr)
+                return renderPipeline->maxTotalThreadsPerThreadgroup();
+            return 0;
+        }
+
     private:
         void createDepthStencilState(
             MTL::Device* device, 
