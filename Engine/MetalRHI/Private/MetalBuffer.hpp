@@ -53,7 +53,7 @@ namespace Crowy
             #else
                 buffer = device->newBuffer(
                     desc.initialData, desc.size,
-                    MTL::StorageModeShared
+                    MTL::ResourceStorageModeShared
                 );
             #endif
             }
