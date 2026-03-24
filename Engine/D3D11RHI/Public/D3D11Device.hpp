@@ -23,16 +23,28 @@ namespace Crowy
         D3D11Device();
         ~D3D11Device();
 
-        RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) noexcept RHI_OVERRIDE;
-        RHITexturePtr createTexture(const RHITextureCreateDesc&) noexcept RHI_OVERRIDE;
-        RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) RHI_OVERRIDE;
-        RHISamplerPtr createSampler(const RHISamplerState&) noexcept RHI_OVERRIDE;
+        RHIBufferPtr createBuffer(
+            const RHIBufferCreateDesc&,
+            const std::string& name = ""
+        ) noexcept RHI_OVERRIDE;
+        RHITexturePtr createTexture(
+            const RHITextureCreateDesc&,
+            const std::string& name = ""
+        ) noexcept RHI_OVERRIDE;
+        RHIShaderPtr createShader(
+            const RHIShaderCreateDesc&
+        ) RHI_OVERRIDE;
+        RHISamplerPtr createSampler(
+            const RHISamplerState&
+        ) noexcept RHI_OVERRIDE;
 
         RHIPipelineStatePtr createGraphicsPipelineState(
-            const RHIGraphicsPipelineStateDesc&
+            const RHIGraphicsPipelineStateDesc&,
+            const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
         RHIPipelineStatePtr createComputePipelineState(
-            const RHIComputePipelineStateDesc&
+            const RHIComputePipelineStateDesc&,
+            const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
 
         RHISwapchainPtr createSwapchain(

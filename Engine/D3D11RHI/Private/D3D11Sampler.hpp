@@ -7,10 +7,11 @@
 #ifndef USE_STATIC_RHI
     #include "RHISampler.hpp"
 #endif
+#include "D3D11Util.hpp"
 
 namespace Crowy
 {
-    static D3D11_TEXTURE_ADDRESS_MODE convertAddressMode(RHIAddressMode mode){
+    inline D3D11_TEXTURE_ADDRESS_MODE convertAddressMode(RHIAddressMode mode){
         switch(mode){
         case RHIAddressMode::Wrap  : return D3D11_TEXTURE_ADDRESS_WRAP;
         case RHIAddressMode::Clamp : return D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -21,7 +22,7 @@ namespace Crowy
         }
     }
 
-    static D3D11_FILTER convertFilter(
+    inline D3D11_FILTER convertFilter(
         RHIFilter min, RHIFilter mag, RHIFilter mip,
         bool anisotropy, bool comparison
     ){

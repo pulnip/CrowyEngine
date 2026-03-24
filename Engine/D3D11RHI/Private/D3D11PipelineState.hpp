@@ -12,7 +12,7 @@
 
 namespace Crowy
 {
-    static D3D11_FILL_MODE convertFillMode(RHIFillMode mode){
+    inline D3D11_FILL_MODE convertFillMode(RHIFillMode mode){
         switch(mode){
         case RHIFillMode::Solid:     return D3D11_FILL_SOLID;
         case RHIFillMode::Wireframe: return D3D11_FILL_WIREFRAME;
@@ -21,7 +21,7 @@ namespace Crowy
         }
     }
 
-    static D3D11_CULL_MODE convertCullMode(RHICullMode mode){
+    inline D3D11_CULL_MODE convertCullMode(RHICullMode mode){
         switch(mode){
         case RHICullMode::CullNone: return D3D11_CULL_NONE;
         case RHICullMode::Front:    return D3D11_CULL_FRONT;
@@ -31,7 +31,7 @@ namespace Crowy
         }
     }
 
-    D3D11_STENCIL_OP convertStencilOp(RHIStencilOp op){
+    inline D3D11_STENCIL_OP convertStencilOp(RHIStencilOp op){
         switch (op){
         case RHIStencilOp::Keep:     return D3D11_STENCIL_OP_KEEP;
         case RHIStencilOp::Zero:     return D3D11_STENCIL_OP_ZERO;
@@ -46,7 +46,7 @@ namespace Crowy
         }
     }
 
-    auto convertStencilOpDesc(const RHIStencilOpDesc& desc) {
+    inline auto convertStencilOpDesc(const RHIStencilOpDesc& desc) {
         return D3D11_DEPTH_STENCILOP_DESC{
             .StencilFailOp = convertStencilOp(desc.stencilFailOp),
             .StencilDepthFailOp = convertStencilOp(desc.depthFailOp),
@@ -55,7 +55,7 @@ namespace Crowy
         };
     }
 
-    static D3D11_BLEND convertBlendFactor(RHIBlend blend){
+    inline D3D11_BLEND convertBlendFactor(RHIBlend blend){
         switch (blend) {
         case RHIBlend::Zero:          return D3D11_BLEND_ZERO;
         case RHIBlend::One:           return D3D11_BLEND_ONE;
@@ -74,7 +74,7 @@ namespace Crowy
         }
     }
 
-    static D3D11_BLEND_OP convertBlendOp(RHIBlendOp op){
+    inline D3D11_BLEND_OP convertBlendOp(RHIBlendOp op){
         switch (op) {
         case RHIBlendOp::Add:             return D3D11_BLEND_OP_ADD;
         case RHIBlendOp::Subtract:        return D3D11_BLEND_OP_SUBTRACT;
@@ -85,7 +85,7 @@ namespace Crowy
         }
     }
 
-    static D3D11_PRIMITIVE_TOPOLOGY convertTopology(RHIPrimitiveTopology topology){
+    inline D3D11_PRIMITIVE_TOPOLOGY convertTopology(RHIPrimitiveTopology topology){
         switch(topology){
         case RHIPrimitiveTopology::PointList:     return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
         case RHIPrimitiveTopology::LineList:      return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
@@ -111,17 +111,18 @@ namespace Crowy
         ID3D11VertexShader* vs = nullptr;
         ID3D11PixelShader* ps = nullptr;
     #if defined(_DEBUG) || !defined(NDEBUG)
-        std::string debugName;
+        const std::string debugName;
     #endif
 
     public:
         D3D11PipelineState(
             ID3D11Device* device,
-            const RHIGraphicsPipelineStateDesc& desc
+            const RHIGraphicsPipelineStateDesc& desc,
+            const std::string& name
         )
-            :topology(convertTopology(desc.topology))
+            : topology(convertTopology(desc.topology))
         #if defined(_DEBUG) || !defined(NDEBUG)
-            ,debugName(desc.debugName)
+            , debugName(name)
         #endif
         {
             auto dxVS = static_cast<D3D11Shader*>(desc.vertexShader);
@@ -223,8 +224,13 @@ namespace Crowy
 
         D3D11PipelineState(
             ID3D11Device* device,
-            const RHIComputePipelineStateDesc& desc
-        ){
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
+        )
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            : debugName(name)
+        #endif
+        {
             // TODO
         }
 

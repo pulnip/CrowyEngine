@@ -119,15 +119,17 @@ namespace Crowy
         }
 
         RHIBufferPtr createBuffer(
-            const RHIBufferCreateDesc& desc
+            const RHIBufferCreateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11Buffer>(device, context, desc);
+            return std::make_unique<D3D11Buffer>(device, context, desc, name);
         }
 
         RHITexturePtr createTexture(
-            const RHITextureCreateDesc& desc
+            const RHITextureCreateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11Texture>(device, context, desc);
+            return std::make_unique<D3D11Texture>(device, context, desc, name);
         }
 
         RHIShaderPtr createShader(
@@ -143,15 +145,17 @@ namespace Crowy
         }
 
         RHIPipelineStatePtr createGraphicsPipelineState(
-            const RHIGraphicsPipelineStateDesc& desc
+            const RHIGraphicsPipelineStateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11PipelineState>(device, desc);
+            return std::make_unique<D3D11PipelineState>(device, desc, name);
         }
 
         RHIPipelineStatePtr createComputePipelineState(
-            const RHIComputePipelineStateDesc& desc
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11PipelineState>(device, desc);
+            return std::make_unique<D3D11PipelineState>(device, desc, name);
         }
 
         RHISwapchainPtr createSwapchain(
@@ -183,15 +187,17 @@ namespace Crowy
     D3D11Device::~D3D11Device(){}
 
     RHIBufferPtr D3D11Device::createBuffer(
-        const RHIBufferCreateDesc& desc
+        const RHIBufferCreateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createBuffer(desc);
+        return impl->createBuffer(desc, name);
     }
 
     RHITexturePtr D3D11Device::createTexture(
-        const RHITextureCreateDesc& desc
+        const RHITextureCreateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createTexture(desc);
+        return impl->createTexture(desc, name);
     }
 
     RHIShaderPtr D3D11Device::createShader(
@@ -207,15 +213,17 @@ namespace Crowy
     }
 
     RHIPipelineStatePtr D3D11Device::createGraphicsPipelineState(
-        const RHIGraphicsPipelineStateDesc& desc
+        const RHIGraphicsPipelineStateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createGraphicsPipelineState(desc);
+        return impl->createGraphicsPipelineState(desc, name);
     }
 
     RHIPipelineStatePtr D3D11Device::createComputePipelineState(
-        const RHIComputePipelineStateDesc& desc
+        const RHIComputePipelineStateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createComputePipelineState(desc);
+        return impl->createComputePipelineState(desc, name);
     }
 
     RHISwapchainPtr D3D11Device::createSwapchain(

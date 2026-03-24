@@ -23,6 +23,10 @@ namespace Crowy
         ID3D11Texture2D* backBuffer = nullptr;
         ID3D11RenderTargetView* rtv = nullptr;
 
+        uint32_t width = 0;
+        uint32_t height = 0;
+        RHITextureFormat format = RHITextureFormat::Unknown;
+
     public:
         D3D11Swapchain(
             ID3D11Device* device,
@@ -31,6 +35,9 @@ namespace Crowy
         )
             :device(device)
             ,vsync(desc.vsync), allowTearing(desc.allowTearing)
+            , width(desc.bufferDesc.width)
+            , height(desc.bufferDesc.height)
+            , format(desc.bufferDesc.format)
         {
             DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {
                 .Width = desc.bufferDesc.width,
@@ -96,6 +103,16 @@ namespace Crowy
             );
 
             createBackBufferResource();
+        }
+
+        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+            return format;
+        }
+        uint32_t getWidth() const noexcept RHI_OVERRIDE{
+            return width;
+        }
+        uint32_t getHeight() const noexcept RHI_OVERRIDE{
+            return height;
         }
 
         void* getCurrentNativeTexture() const noexcept RHI_OVERRIDE{

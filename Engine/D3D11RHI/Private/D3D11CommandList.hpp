@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <utility>
 #include <d3d11.h>
 #include "assert.hpp"
@@ -331,16 +330,46 @@ namespace Crowy
                     baseVertex,
                     startInstance
                 );
-        else
-            context->DrawIndexed(indexCount, startIndex, baseVertex);
+            else
+                context->DrawIndexed(
+                    indexCount,
+                    startIndex,
+                    baseVertex
+                );
+        }
+
+        void beginCompute() noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(!isComputePass,
+                "Did you call RHICommandList::beginCompute()?"
+            );
+            // NOTE. No-Op for D3D11
+
+            isComputePass = true;
+        }
+
+        void endCompute() noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isComputePass,
+                "Did you call RHICommandList::beginCompute()?"
+            );
+            // NOTE. No-Op for D3D11
+
+            isComputePass = false;
         }
 
         void dispatch(
-            uint32_t threadGroupCountX,
-            uint32_t threadGroupCountY,
-            uint32_t threadGroupCountZ
+            uint32_t gridSizeX,
+            uint32_t gridSizeY,
+            uint32_t gridSizeZ,
+            std::optional<RHISize3D> threadGroupSize = std::nullopt
         ) noexcept RHI_OVERRIDE{
-            context->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
+            threadGroupSize = RHISize3D{256, 1, 1};
+
+            if(threadGroupSize.has_value())
+                context->Dispatch(
+                    gridSizeX / threadGroupSize->x,
+                    gridSizeY / threadGroupSize->y,
+                    gridSizeZ / threadGroupSize->z
+                );
         }
 
         void transitionBarrier(
@@ -424,6 +453,10 @@ namespace Crowy
             uint32_t arraySlice = 0
         ) noexcept RHI_OVERRIDE{
             // TODO
+        }
+
+        void waitUntilCompleted() noexcept RHI_OVERRIDE{
+            // NOTE. No-Op for D3D11
         }
 
         void beginEvent(const char* name) noexcept RHI_OVERRIDE{

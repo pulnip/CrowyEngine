@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <d3d11.h>
 #include "assert.hpp"
 #include "enum_traits.hpp"
@@ -33,7 +32,8 @@ namespace Crowy
         D3D11Texture(
             ID3D11Device* device,
             ID3D11DeviceContext* context,
-            const RHITextureCreateDesc& desc
+            const RHITextureCreateDesc& desc,
+            const std::string& name
         )
             : context(context)
             , width(desc.width), height(desc.height)
@@ -84,11 +84,11 @@ namespace Crowy
                 throw std::runtime_error("Failed to create D3D11 texture");
             }
         #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!desc.debugName.empty()){
+            if(!name.empty()){
                 texture->SetPrivateData(
                     WKPDID_D3DDebugObjectName, 
-                    static_cast<UINT>(desc.debugName.length()),
-                    desc.debugName.c_str()
+                    static_cast<UINT>(name.length()),
+                    name.c_str()
                 );
             }
         #endif
@@ -153,6 +153,12 @@ namespace Crowy
 
         RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
             return format;
+        }
+        size_t getWidth() const noexcept RHI_OVERRIDE{
+            return width;
+        }
+        size_t getHeight() const noexcept RHI_OVERRIDE{
+            return height;
         }
 
         RHIResourceState getState() const noexcept RHI_OVERRIDE{

@@ -19,7 +19,7 @@
 
 namespace Crowy
 {
-    static const char* getShaderTargetProfile(RHIShaderStage stage){
+    inline const char* getShaderTargetProfile(RHIShaderStage stage){
         switch(stage){
         case RHIShaderStage::VertexShader:   return "vs_5_0";
         case RHIShaderStage::FragmentShader: return "ps_5_0";
