@@ -186,7 +186,7 @@ static CBuffer makeDiskGenParams(
 int main(int argc, char* argv[]){
     Logger::instance().setMinLevel(LogLevel::Warn);
 
-    int width = 800, height = 600;
+    uint32_t width = 800, height = 600;
 
     auto window = SDL_CreateWindow("BlackHole", width, height, 0);
     auto device = createDevice();
@@ -195,8 +195,8 @@ int main(int argc, char* argv[]){
     auto view = SDL_Metal_CreateView(window);
 #endif
     RHITextureCreateDesc backBufferDesc{
-        .width = static_cast<uint32_t>(width),
-        .height = static_cast<uint32_t>(height),
+        .width = width,
+        .height = height,
         .format = RHITextureFormat::BGRA8_UNORM
     };
 
@@ -271,7 +271,7 @@ int main(int argc, char* argv[]){
     RenderSpec spec{
         .renderTargets = {
             {
-                "diskTexture",
+                "disk",
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
@@ -282,10 +282,9 @@ int main(int argc, char* argv[]){
                 }
             },
             {
-                "sceneTexture",
+                "scene",
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::RGBA16_FLOAT,
-                    
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
@@ -294,10 +293,8 @@ int main(int argc, char* argv[]){
                 }
             },
             {
-                "brightMaskTexture",
+                "brightMask",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width / 4),
-                    .height = static_cast<uint32_t>(height / 4),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -307,10 +304,10 @@ int main(int argc, char* argv[]){
                 }
             },
             {
-                "xBlurTexture",
+                "blur_tmp_1_2",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width / 4),
-                    .height = static_cast<uint32_t>(height / 4),
+                    .width = width / 2,
+                    .height = height / 2,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -320,10 +317,62 @@ int main(int argc, char* argv[]){
                 }
             },
             {
-                "bloomTexture",
+                "bloom_1_2",
                 RHITextureCreateDesc{
-                    .width = static_cast<uint32_t>(width / 4),
-                    .height = static_cast<uint32_t>(height / 4),
+                    .width = width / 2,
+                    .height = height / 2,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource
+                }
+            },
+            {
+                "blur_tmp_1_4",
+                RHITextureCreateDesc{
+                    .width = width / 4,
+                    .height = height / 4,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource
+                }
+            },
+            {
+                "bloom_1_4",
+                RHITextureCreateDesc{
+                    .width = width / 4,
+                    .height = height / 4,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource
+                }
+            },
+            {
+                "blur_tmp_1_8",
+                RHITextureCreateDesc{
+                    .width = width / 8,
+                    .height = height / 8,
+                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderResource
+                    ),
+                    .initialState = RHIResourceState::AllShaderResource
+                }
+            },
+            {
+                "bloom_1_8",
+                RHITextureCreateDesc{
+                    .width = width / 8,
+                    .height = height / 8,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
@@ -337,8 +386,8 @@ int main(int argc, char* argv[]){
         .passes = {
             RenderPassSpec{
                 .name = "scene",
-                .inputs = {"diskTexture"},
-                .targets = {"sceneTexture"},
+                .inputs = {"disk"},
+                .targets = {"scene", "brightMask"},
                 .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
@@ -364,28 +413,9 @@ int main(int argc, char* argv[]){
                 }
             },
             {
-                .name = "brightMask",
-                .inputs = {"sceneTexture"},
-                .targets = {"brightMaskTexture"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_bright"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_bright"
-                #endif
-                },
-            },
-            {
-                .name = "xBlur",
-                .inputs = {"brightMaskTexture"},
-                .targets = {"xBlurTexture"},
+                .name = "blur_h_1_2",
+                .inputs = {"brightMask"},
+                .targets = {"blur_tmp_1_2"},
                 .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
@@ -402,9 +432,9 @@ int main(int argc, char* argv[]){
                 },
             },
             {
-                .name = "yBlur",
-                .inputs = {"xBlurTexture"},
-                .targets = {"bloomTexture"},
+                .name = "blur_v_1_2",
+                .inputs = {"blur_tmp_1_2"},
+                .targets = {"bloom_1_2"},
                 .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
                 #ifdef CROWY_METALRHI
@@ -418,11 +448,92 @@ int main(int argc, char* argv[]){
                     .fsFilePath = L"asset/Shaders/bloom.hlsl",
                     .fsFuncName = "fs_vertical_blur"
                 #endif
+                }
+            },
+            {
+                .name = "blur_h_1_4",
+                .inputs = {"bloom_1_2"},
+                .targets = {"blur_tmp_1_4"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_horizontal_blur"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_horizontal_blur"
+                #endif
                 },
             },
             {
-                .name = "bloom",
-                .inputs = {"sceneTexture", "bloomTexture"},
+                .name = "blur_v_1_4",
+                .inputs = {"blur_tmp_1_4"},
+                .targets = {"bloom_1_4"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_vertical_blur"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_vertical_blur"
+                #endif
+                }
+            },
+            {
+                .name = "blur_h_1_8",
+                .inputs = {"bloom_1_4"},
+                .targets = {"blur_tmp_1_8"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_horizontal_blur"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_horizontal_blur"
+                #endif
+                },
+            },
+            {
+                .name = "blur_v_1_8",
+                .inputs = {"blur_tmp_1_8"},
+                .targets = {"bloom_1_8"},
+                .fs_samplers = {LINEAR_WRAP_SAMPLER},
+                .shader = ShaderSpec{
+                #ifdef CROWY_METALRHI
+                    .vsFilePath = "asset/Shaders/fullscreen.metal",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = "asset/Shaders/bloom.metal",
+                    .fsFuncName = "fs_vertical_blur"
+                #elifdef CROWY_D3DRHI
+                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                    .vsFuncName = "vs_fullscreen",
+                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                    .fsFuncName = "fs_vertical_blur"
+                #endif
+                }
+            },
+            {
+                .name = "composite",
+                .inputs = {
+                    "scene",
+                    "bloom_1_2",
+                    "bloom_1_4",
+                    "bloom_1_8"
+                },
                 .targets = {"BackBuffer"},
                 .fs_samplers = {LINEAR_WRAP_SAMPLER},
                 .shader = ShaderSpec{
@@ -449,7 +560,7 @@ int main(int argc, char* argv[]){
 
         renderer.render(RenderPassSpec{
             .name = "Disk Generation",
-            .targets = {"diskTexture"},
+            .targets = {"disk"},
             .shader = ShaderSpec{
             #ifdef CROWY_METALRHI
                 .vsFilePath = "asset/Shaders/fullscreen.metal",

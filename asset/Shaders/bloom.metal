@@ -7,19 +7,6 @@ struct VertexOut{
     float2 texCoord;
 };
 
-fragment float4 fs_bright(
-    VertexOut          input [[ stage_in ]],
-    texture2d<float> texture [[texture(0)]],
-    sampler                s [[sampler(0)]]
-){
-    float4 color = texture.sample(s, input.texCoord);
-    constexpr float4 black = float4(0, 0, 0, 1);
-    float brightness = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
-    constexpr float threshold = 0.8;
-
-    return brightness > threshold ? color : black;
-}
-
 float3 gaussian1dk9(
     float2 texCoord, float2 direction,
     texture2d<float, access::sample> texture,
@@ -59,13 +46,19 @@ fragment float4 fs_vertical_blur(
 }
 
 fragment float4 fs_composite(
-    VertexOut           input [[ stage_in ]],
-    texture2d<float> sceneTex [[texture(0)]],
-    texture2d<float> bloomTex [[texture(1)]],
-    sampler                 s [[sampler(0)]]
+    VertexOut             input [[ stage_in ]],
+    texture2d<float>   sceneTex [[texture(0)]],
+    texture2d<float> bloom_1_2  [[texture(1)]],
+    texture2d<float> bloom_1_4  [[texture(2)]],
+    texture2d<float> bloom_1_8  [[texture(3)]],
+    sampler                   s [[sampler(0)]]
 ){
-    float3 color = sceneTex.sample(s, input.texCoord).rgb;
-    float3 bloom = bloomTex.sample(s, input.texCoord).rgb;
+    float3  color =   sceneTex.sample(s, input.texCoord).rgb;
+    float3 b_1_2  =  bloom_1_2.sample(s, input.texCoord).rgb;
+    float3 b_1_4  =  bloom_1_4.sample(s, input.texCoord).rgb;
+    float3 b_1_8  =  bloom_1_8.sample(s, input.texCoord).rgb;
+
+    float3 bloom = b_1_2 + b_1_4 + b_1_8;
     constexpr float intensity = 0.3;
 
     return float4(color + intensity * bloom, 1);

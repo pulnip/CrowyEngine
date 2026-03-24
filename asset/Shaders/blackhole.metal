@@ -116,20 +116,30 @@ float3 sampleDiskWithDoppler(
     return pow(redShift, 3) * diskTexture.sample(s, float2(u, v)).rgb;
 }
 
-fragment float4 fs_blackhole(
+struct BlackholeOut{
+    float4 scene      [[color(0)]];
+    float4 brightMask [[color(1)]];
+};
+
+fragment BlackholeOut fs_blackhole(
     VertexOutNDC           input [[ stage_in ]],
     constant BlackholeParams& bh [[ buffer(0)]],
     constant PlanetParams&    pn [[ buffer(1)]],
     texture2d<float> diskTexture [[texture(0)]],
     sampler                    s [[sampler(0)]]
 ){
+    constexpr float4 black = float4(0, 0, 0, 1);
+    constexpr float4 far_color = float4(0.05, 0.05, 0.1, 1);
+    BlackholeOut out;
+    out.scene = far_color;
+    out.brightMask = black;
+
     float2 ip = ndc2ip(input.ndc, bh.aspect, bh.tanHalfFov);
     float3 dir = ip2RayDir(ip, bh.camRight, bh.camUp, bh.camForward);
     GeoState state = initGeoState(bh.camPos - bh.bhPos, dir);
 
     const float far = 100 * bh.rs;
     // float4 far_color = float4(dir * 0.5 + 0.5, 1.0);
-    float4 far_color = float4(0.05, 0.05, 0.1, 1);
     // float dl = 0.1;
     const int MAX_STEPS = 150;
 
@@ -147,17 +157,21 @@ fragment float4 fs_blackhole(
                 float3 N = normalize(pToRay);
                 float3 L = normalize(bh.camPos - prevPos);
                 float diff = max(dot(N, L), 0.1);
-                return float4(diff * pn.color[j].rgb, 1);
+
+                out.scene = float4(diff * pn.color[j].rgb, 1);
+                return out;
             }
         }
 
         // in event horizon
-        if(r <= bh.rs)
-            return float4(0, 0, 0, 1);
+        if(r <= bh.rs){
+            out.scene = black;
+            return out;
+        }
 
         // far from blackhole
         if(r > far)
-            return far_color;
+            return out;
 
         // adaptive dl
         float dl = 0.3 + 0.7 * (r / far);
@@ -179,12 +193,18 @@ fragment float4 fs_blackhole(
                     bh.rs, bh.diskInner, bh.diskOuter,
                     diskTexture, s
                 );
-                return float4(diskColor, 1);
+                out.scene = float4(diskColor, 1);
+
+                float brightness = dot(diskColor, float3(0.2126, 0.7152, 0.0722));
+                constexpr float threshold = 0.3;
+                out.brightMask = brightness > threshold ? out.scene : black;
+
+                return out;
             }
         }
 
         prevPos = newPos;
     }
 
-    return far_color;
+    return out;
 }
