@@ -14,7 +14,11 @@ namespace Crowy
             return it->second.get();
         }
 
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        auto newTexture = device.createTexture(desc, name);
+    #else
         auto newTexture = device.createTexture(desc);
+    #endif
         auto ref = newTexture.get();
         targets.emplace(name, std::move(newTexture));
 

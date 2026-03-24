@@ -21,20 +21,22 @@ namespace Crowy
 #endif
 
     RHIBufferPtr NullDevice::createBuffer(
-        const RHIBufferCreateDesc& desc
+        const RHIBufferCreateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return std::make_unique<NullBuffer>(desc);
+        return std::make_unique<NullBuffer>(desc, name);
     }
 
     RHITexturePtr NullDevice::createTexture(
-        const RHITextureCreateDesc& desc
+        const RHITextureCreateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return std::make_unique<NullTexture>(desc);
+        return std::make_unique<NullTexture>(desc, name);
     }
 
     RHIShaderPtr NullDevice::createShader(
         const RHIShaderCreateDesc& desc
-    ) noexcept{
+    ){
         return std::make_unique<NullShader>(desc);
     }
     RHISamplerPtr NullDevice::createSampler(
@@ -44,15 +46,17 @@ namespace Crowy
     }
 
     RHIPipelineStatePtr NullDevice::createGraphicsPipelineState(
-        const RHIGraphicsPipelineStateDesc& desc
+        const RHIGraphicsPipelineStateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return std::make_unique<NullPipelineState>(desc);
+        return std::make_unique<NullPipelineState>(desc, name);
     }
 
     RHIPipelineStatePtr NullDevice::createComputePipelineState(
-        const RHIComputePipelineStateDesc& desc
+        const RHIComputePipelineStateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return std::make_unique<NullPipelineState>(desc);
+        return std::make_unique<NullPipelineState>(desc, name);
     }
 
     RHISwapchainPtr NullDevice::createSwapchain(

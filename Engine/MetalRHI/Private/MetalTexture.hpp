@@ -40,7 +40,8 @@ namespace Crowy
     public:
         MetalTexture(
             MTL::Device* device,
-            const RHITextureCreateDesc& desc
+            const RHITextureCreateDesc& desc,
+            const std::string& name
         ) noexcept
             : width(desc.width), height(desc.height)
             , format(desc.format)
@@ -73,9 +74,9 @@ namespace Crowy
             texDesc->release();
 
         #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!desc.debugName.empty()){
+            if(!name.empty()){
                 texture->setLabel(
-                    NS::String::string(desc.debugName.c_str(), NS::UTF8StringEncoding)
+                    NS::String::string(name.c_str(), NS::UTF8StringEncoding)
                 );
             }
         #endif

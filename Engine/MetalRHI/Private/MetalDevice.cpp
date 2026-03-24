@@ -49,15 +49,17 @@ namespace Crowy
         }
 
         RHIBufferPtr createBuffer(
-            const RHIBufferCreateDesc& desc
+            const RHIBufferCreateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<MetalBuffer>(device, desc);
+            return std::make_unique<MetalBuffer>(device, desc, name);
         }
 
         RHITexturePtr createTexture(
-            const RHITextureCreateDesc& desc
+            const RHITextureCreateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<MetalTexture>(device, desc);
+            return std::make_unique<MetalTexture>(device, desc, name);
         }
 
         RHIShaderPtr createShader(
@@ -73,15 +75,17 @@ namespace Crowy
         }
 
         RHIPipelineStatePtr createGraphicsPipelineState(
-            const RHIGraphicsPipelineStateDesc& desc
+            const RHIGraphicsPipelineStateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<MetalPipelineState>(device, desc);
+            return std::make_unique<MetalPipelineState>(device, desc, name);
         }
 
         RHIPipelineStatePtr createComputePipelineState(
-            const RHIComputePipelineStateDesc& desc
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
         ) noexcept{
-            return std::make_unique<MetalPipelineState>(device, desc);
+            return std::make_unique<MetalPipelineState>(device, desc, name);
         }
 
         RHISwapchainPtr createSwapchain(
@@ -120,15 +124,17 @@ namespace Crowy
     MetalDevice::~MetalDevice(){}
 
     RHIBufferPtr MetalDevice::createBuffer(
-        const RHIBufferCreateDesc& desc
+        const RHIBufferCreateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createBuffer(desc);
+        return impl->createBuffer(desc, name);
     }
 
     RHITexturePtr MetalDevice::createTexture(
-        const RHITextureCreateDesc& desc
+        const RHITextureCreateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createTexture(desc);
+        return impl->createTexture(desc, name);
     }
 
     RHIShaderPtr MetalDevice::createShader(
@@ -144,15 +150,17 @@ namespace Crowy
     }
 
     RHIPipelineStatePtr MetalDevice::createGraphicsPipelineState(
-        const RHIGraphicsPipelineStateDesc& desc
+        const RHIGraphicsPipelineStateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createGraphicsPipelineState(desc);
+        return impl->createGraphicsPipelineState(desc, name);
     }
 
     RHIPipelineStatePtr MetalDevice::createComputePipelineState(
-        const RHIComputePipelineStateDesc& desc
+        const RHIComputePipelineStateDesc& desc,
+        const std::string& name
     ) noexcept{
-        return impl->createComputePipelineState(desc);
+        return impl->createComputePipelineState(desc, name);
     }
 
     RHISwapchainPtr MetalDevice::createSwapchain(

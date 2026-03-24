@@ -54,10 +54,7 @@ namespace Crowy
                 ),
                 .stride = 0,
                 .initialData = nullptr
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .debugName = "Uniform Buffer"
-            #endif
-            })
+            }, "Uniform Buffer")
             , passParamBuffers(*device, RHIBufferCreateDesc{
                 .size = 256,
                 .usage = combine(
@@ -66,10 +63,7 @@ namespace Crowy
                 ),
                 .stride = 0,
                 .initialData = nullptr
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .debugName = "PassParam Buffer"
-            #endif
-            }){}
+            }, "PassParam Buffer"){}
         ~Impl() = default;
 
         void loadPasses(const RenderSpec& spec, int screenWidth, int screenHeight){
@@ -190,9 +184,6 @@ namespace Crowy
                 .depthStencil = spec.depthStencil,
                 .blend = spec.blend,
                 .renderTargetCount = static_cast<uint32_t>(spec.targets.size())
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .debugName = spec.name
-            #endif
             };
 
             for(int i=0; i<spec.targets.size(); ++i){
@@ -211,7 +202,7 @@ namespace Crowy
                 CROWY_ASSERT(tex->getFormat() == desc.depthStencil->format);
             }
 
-            return device->createGraphicsPipelineState(desc);
+            return device->createGraphicsPipelineState(desc, spec.name);
         }
 
         RenderPass createPass(

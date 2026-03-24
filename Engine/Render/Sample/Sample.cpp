@@ -124,10 +124,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Albedo Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
             {
@@ -138,10 +135,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Normal Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
             {
@@ -152,10 +146,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Toon Color"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
             {
@@ -166,10 +157,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Scene Color"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
             {
@@ -180,10 +168,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::DepthStencil,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::DepthWrite,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Depth Buffer"
-                #endif
+                    .initialState = RHIResourceState::DepthWrite
                 },
             },
             {
@@ -194,10 +179,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "outlined"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
             {
@@ -208,10 +190,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "pixelated"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
             {
@@ -222,10 +201,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "focusMask"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 },
             },
         },

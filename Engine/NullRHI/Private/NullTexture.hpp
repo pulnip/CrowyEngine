@@ -18,12 +18,14 @@ namespace Crowy
         size_t width, height;
         RHITextureFormat format = RHITextureFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
+        const std::string debugName;
 
     public:
-        NullTexture(const RHITextureCreateDesc& desc)
+        NullTexture(const RHITextureCreateDesc& desc, const std::string& name)
             : width(desc.width), height(desc.height)
             , format(desc.format)
             , currentState(desc.initialState)
+            , debugName(name)
         {}
         ~NullTexture() = default;
 

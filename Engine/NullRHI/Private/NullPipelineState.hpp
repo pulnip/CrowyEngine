@@ -13,17 +13,26 @@ namespace Crowy
         : public RHIPipelineState
 #endif
     {
+    private:
+        const std::string debugName;
+    
     public:
         NullPipelineState(
-            const RHIGraphicsPipelineStateDesc& desc
-        ){
+            const RHIGraphicsPipelineStateDesc& desc,
+            const std::string& name
+        )
+            : debugName(name)
+        {
 
         }
 
         NullPipelineState(
-            const RHIComputePipelineStateDesc& desc
-        ){
-            
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
+        )
+            : debugName(name)
+        {
+
         }
     };
 }

@@ -30,7 +30,8 @@ namespace Crowy
     public:
         MetalBuffer(
             MTL::Device* device,
-            const RHIBufferCreateDesc& desc
+            const RHIBufferCreateDesc& desc,
+            const std::string& name = ""
         ) noexcept
             :usage(desc.usage),size(desc.size)
         {
@@ -67,9 +68,9 @@ namespace Crowy
             }
 
         #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!desc.debugName.empty()){
+            if(!name.empty()){
                 buffer->setLabel(
-                    NS::String::string(desc.debugName.c_str(), NS::UTF8StringEncoding)
+                    NS::String::string(name.c_str(), NS::UTF8StringEncoding)
                 );
             }
         #endif

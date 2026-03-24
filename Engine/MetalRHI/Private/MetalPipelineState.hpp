@@ -103,12 +103,16 @@ namespace Crowy
 
         RHIRasterizerState rasterizerState{};
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
+        const std::string debugName;
 
     public:
         MetalPipelineState(
             MTL::Device* device,
-            const RHIGraphicsPipelineStateDesc& desc
-        ){
+            const RHIGraphicsPipelineStateDesc& desc,
+            const std::string& name
+        )
+            : debugName(name)
+        {
             auto pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
 
             // Shaders
@@ -207,8 +211,6 @@ namespace Crowy
                 throw std::runtime_error(msg);
             }
 
-            // NOTE. discard desc.debugName
-
             // Depth Stencil State
             if(desc.depthStencil.has_value()){
                 createDepthStencilState(device, *desc.depthStencil);
@@ -221,8 +223,11 @@ namespace Crowy
 
         MetalPipelineState(
             MTL::Device* device,
-            const RHIComputePipelineStateDesc& desc
-        ){
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
+        )
+            : debugName(name)
+        {
             auto cs = static_cast<MetalShader*>(desc.computeShader);
             if(!cs){
                 throw std::runtime_error("Compute shader is null");
@@ -236,8 +241,6 @@ namespace Crowy
             if(!computePipeline){
                 throw std::runtime_error("Failed to create compute pipeline state");
             }
-
-            // NOTE. discard desc.debugName
         }
 
         ~MetalPipelineState(){

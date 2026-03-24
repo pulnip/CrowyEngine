@@ -230,10 +230,7 @@ namespace Crowy
                 out.emplace(*name, RHITextureCreateDesc{
                     .width  = static_cast<uint32_t>( width),
                     .height = static_cast<uint32_t>(height),
-                    .format = toTextureFormat(*fmt),
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = *name
-                #endif
+                    .format = toTextureFormat(*fmt)
                 });
             }
         }

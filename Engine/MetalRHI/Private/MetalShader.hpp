@@ -68,6 +68,13 @@ namespace Crowy
             }
 
             function = func;
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            auto identifier = std::format("{}_{}", desc.file, desc.entry);
+            func->setLabel(
+                NS::String::string(identifier.c_str(), NS::UTF8StringEncoding)
+            );
+        #endif
         }
         ~MetalShader(){
             function->release();

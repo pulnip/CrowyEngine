@@ -81,10 +81,7 @@ int main(int argc, char* argv[]){
         .usage = combine(RHIBufferUsage::ConstantBuffer, RHIBufferUsage::CPUWrite),
         .stride = 0,
         .initialData = nullptr
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        , .debugName = "MVP Uniform Buffer"
-    #endif
-    });
+    }, "MVP Uniform Buffer");
 
     auto depthBuffer = device->createTexture({
         .width = static_cast<uint32_t>(width),
@@ -97,10 +94,7 @@ int main(int argc, char* argv[]){
         .initialState = RHIResourceState::DepthWrite,
         .clearColor = {},
         .clearDepthStencil = {1.0f, 0},
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        .debugName = "Depth Buffer"
-    #endif
-    });
+    }, "Depth Buffer");
 
     auto pipelineState = device->createGraphicsPipelineState({
         .vertexShader = vertexShader.get(),
@@ -111,10 +105,7 @@ int main(int argc, char* argv[]){
         },
         .renderTargetFormats = {RHITextureFormat::BGRA8_UNORM},
         .renderTargetCount = 1
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        , .debugName = "Mesh Pipeline"
-    #endif
-    });
+    }, "Mesh Pipeline");
 
     float cameraDistance = 30.0f;
 

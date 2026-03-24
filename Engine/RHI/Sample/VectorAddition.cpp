@@ -40,27 +40,21 @@ int main(int argc, char* argv[]){
         ),
         .stride = 0,
         .initialData = floats.data()
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        , .debugName = "Buffer"
-    #endif
     };
 
-    auto bufferA = device->createBuffer(bufferDesc);
-    auto bufferB = device->createBuffer(bufferDesc);
+    auto bufferA = device->createBuffer(bufferDesc, "BufferA");
+    auto bufferB = device->createBuffer(bufferDesc, "BufferB");
 
     bufferDesc.usage = combine(
         RHIBufferUsage::CPURead,
         RHIBufferUsage::UnorderedAccess
     );
     bufferDesc.initialData = nullptr;
-    auto bufferOut = device->createBuffer(bufferDesc);
+    auto bufferOut = device->createBuffer(bufferDesc, "BufferOut");
 
     auto pipelineState = device->createComputePipelineState({
         .computeShader = computeShader.get()
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        , .debugName = "Compute Pipeline"
-    #endif
-    });
+    }, "Compute Pipeline");
 
     Timer timer;
     timer.reset();

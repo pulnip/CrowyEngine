@@ -20,11 +20,13 @@ namespace Crowy
         RHIBufferUsage usage = RHIBufferUsage::None;
         bool isCPUAccessible = false;
         RHIResourceState currentState = RHIResourceState::Common;
+        const std::string debugName;
 
     public:
-        NullBuffer(const RHIBufferCreateDesc& desc)
+        NullBuffer(const RHIBufferCreateDesc& desc, const std::string& name)
             : usage(desc.usage)
             , size(desc.size)
+            , debugName(name)
         {
             auto hasVertexUsage = has_flag(desc.usage, RHIBufferUsage::VertexBuffer);
             auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);

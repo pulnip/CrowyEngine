@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include "semantics.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -47,16 +48,28 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIDevice)
 
-        virtual RHIBufferPtr  createBuffer (const RHIBufferCreateDesc& ) noexcept = 0;
-        virtual RHITexturePtr createTexture(const RHITextureCreateDesc&) noexcept = 0;
-        virtual RHIShaderPtr  createShader (const RHIShaderCreateDesc& ) = 0;
-        virtual RHISamplerPtr createSampler(const RHISamplerState&) noexcept = 0;
+        virtual RHIBufferPtr createBuffer(
+            const RHIBufferCreateDesc&,
+            const std::string& name = ""
+        ) noexcept = 0;
+        virtual RHITexturePtr createTexture(
+            const RHITextureCreateDesc&,
+            const std::string& name = ""
+        ) noexcept = 0;
+        virtual RHIShaderPtr createShader(
+            const RHIShaderCreateDesc&
+        ) = 0;
+        virtual RHISamplerPtr createSampler(
+            const RHISamplerState&
+        ) noexcept = 0;
 
         virtual RHIPipelineStatePtr createGraphicsPipelineState(
-            const RHIGraphicsPipelineStateDesc&
+            const RHIGraphicsPipelineStateDesc&,
+            const std::string& name = ""
         ) noexcept = 0;
         virtual RHIPipelineStatePtr createComputePipelineState(
-            const RHIComputePipelineStateDesc&
+            const RHIComputePipelineStateDesc&,
+            const std::string& name = ""
         ) noexcept = 0;
 
         virtual RHISwapchainPtr createSwapchain(

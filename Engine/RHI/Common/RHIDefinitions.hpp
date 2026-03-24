@@ -37,9 +37,6 @@ namespace Crowy
         RHIBufferUsage usage;
         uint32_t stride; // For structured buffers
         const void* initialData;
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        std::string debugName;
-    #endif
     };
 
     enum class RHIPrimitiveTopology{
@@ -190,9 +187,6 @@ namespace Crowy
             .depth = 1.0f, .stencil = 0
         };
         const void* initialData = nullptr;
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        std::string debugName;
-    #endif
     };
 
     enum class RHIShaderStage{
@@ -436,16 +430,10 @@ namespace Crowy
 
         RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHITextureFormat::RGBA8_UNORM};
         uint32_t renderTargetCount = 1;
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        std::string debugName;
-    #endif
     };
 
     struct RHIComputePipelineStateDesc{
         RHIShader* computeShader;
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        std::string debugName;
-    #endif
     };
 
     enum class RHIFilter{

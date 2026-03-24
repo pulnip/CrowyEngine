@@ -29,21 +29,25 @@ namespace Crowy
             ? RHITextureFormat::RGBA8_UNORM_SRGB 
             : RHITextureFormat::RGBA8_UNORM;
 
-        return ctx.device->createTexture(
-            RHITextureCreateDesc{
-                .width = textureData->getWidth(),
-                .height = textureData->getHeight(),
-                .depth = 1,
-                .mipLevels = mipLevels,
-                .arraySize = 1,
-                .format = format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialState = RHIResourceState::AllShaderResource,
-                .clearColor = {},
-                .clearDepthStencil = {},
-                .initialData = textureData->pixels.data()
-            }
-        );
+        RHITextureCreateDesc texDesc{
+            .width = textureData->getWidth(),
+            .height = textureData->getHeight(),
+            .depth = 1,
+            .mipLevels = mipLevels,
+            .arraySize = 1,
+            .format = format,
+            .usage = RHITextureUsage::ShaderResource,
+            .initialState = RHIResourceState::AllShaderResource,
+            .clearColor = {},
+            .clearDepthStencil = {},
+            .initialData = textureData->pixels.data()
+        };
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        return ctx.device->createTexture(texDesc, ref.uri);
+    #else
+        return ctx.device->createTexture(texDesc);
+    #endif
     }
 
     static Material instantiate(const MaterialRef& ref, LoadContext& ctx){

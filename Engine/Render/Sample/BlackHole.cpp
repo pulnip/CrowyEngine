@@ -278,10 +278,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Disk Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 }
             },
             {
@@ -293,10 +290,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Scene Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 }
             },
             {
@@ -309,10 +303,7 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Bright Mask Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 }
             },
             {
@@ -325,24 +316,20 @@ int main(int argc, char* argv[]){
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "X Blur Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 }
             },
             {
                 "bloomTexture",
                 RHITextureCreateDesc{
+                    .width = static_cast<uint32_t>(width / 4),
+                    .height = static_cast<uint32_t>(height / 4),
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderResource
                     ),
-                    .initialState = RHIResourceState::AllShaderResource,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .debugName = "Bloom Texture"
-                #endif
+                    .initialState = RHIResourceState::AllShaderResource
                 }
             },
             {"BackBuffer", backBufferDesc},
