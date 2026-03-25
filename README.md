@@ -8,29 +8,35 @@ my Game Engine Project
 <details>
   <summary>Pixelate pass enabling</summary>
 
-  ![demo1](./asset/video/pixelate_sample.gif)
+  ![](./asset/video/pixelate_sample.gif)
 </details>
 
 <details>
   <summary>Pixelate pass + FocusMask</summary>
 
-  ![demo2](./asset/video/pixelate_focusmask.gif)
+  ![](./asset/video/pixelate_focusmask.gif)
 </details>
 
 <details>
   <summary>Pixelate pass + Toon Shading on focus</summary>
 
-  ![demo3](./asset/video/pixelate_and_toon_on_focus.gif)
+  ![](./asset/video/pixelate_and_toon_on_focus.gif)
 </details>
 
 <details>
   <summary>Blackhole Simulation using Raytracing on Fragment Shader</summary>
 
-  ![demo3](./asset/video/blackhole_simulation.gif)
+  ![](./asset/video/blackhole_simulation.gif)
 </details>
 
 <details>
   <summary>Blackhole Simulation with Disk Texture Generation</summary>
 
-  ![demo3](./asset/video/blackhole_with_disk_gen.gif)
+  ![](./asset/video/blackhole_with_disk_gen.gif)
+</details>
+
+<details>
+  <summary>Blackhole Simulation with Bloom effect</summary>
+
+  ![](./asset/video/blackhole_with_bloom.gif)
 </details>

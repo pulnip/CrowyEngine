@@ -54,12 +54,16 @@ fragment float4 fs_composite(
     sampler                   s [[sampler(0)]]
 ){
     float3  color =   sceneTex.sample(s, input.texCoord).rgb;
+
+    // intensity param
+    constexpr float i_1_2 = 0.5;
+    constexpr float i_1_4 = 0.7;
+    constexpr float i_1_8 = 0.9;
+
     float3 b_1_2  =  bloom_1_2.sample(s, input.texCoord).rgb;
     float3 b_1_4  =  bloom_1_4.sample(s, input.texCoord).rgb;
     float3 b_1_8  =  bloom_1_8.sample(s, input.texCoord).rgb;
 
-    float3 bloom = b_1_2 + b_1_4 + b_1_8;
-    constexpr float intensity = 0.3;
-
-    return float4(color + intensity * bloom, 1);
+    float3 bloom = i_1_2*b_1_2 + i_1_4*b_1_4 + i_1_8*b_1_8;
+    return float4(color + bloom, 1);
 }
