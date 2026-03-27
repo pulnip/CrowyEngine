@@ -266,8 +266,6 @@ namespace Crowy
             std::string_view, FieldProxy
         >;
 
-        std::string name;
-        uint32_t slot;
         std::vector<Field> fields;
         std::unordered_map<
             FieldName, size_t,

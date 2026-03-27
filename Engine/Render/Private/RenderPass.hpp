@@ -4,29 +4,33 @@
 #include <string>
 #include <vector>
 #include "RenderDefinitions.hpp"
+#include "RenderSpec.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy
 {
-    struct RenderPass{
+    struct PipelineBind{
         std::string name;
-        bool enabled = true;
-
         // input Texture
         std::vector<std::string> inputs;
-        // output RenderTarget
-        std::vector<std::string> targets;
-        std::string depthTarget;
-        std::vector<RHISamplerPtr> fs_samplers;
+        // output Texture
+        std::vector<std::string> outputs;
+        std::string depthOutput;
 
-        RHIShaderPtr vs, fs;
+        std::vector<BindSpec> fs_samplers;
+        std::vector<BindSpec> fs_cbuffers;
+
+        RHIPipelineStatePtr pso;
         std::optional<RenderTypeHash> renderType;
-        RHIPipelineStatePtr pipeline;
-
-        std::vector<CBuffer> fs_cbuffers;
 
         inline bool isFullscreenPass() const{
             return !renderType.has_value();
         }
+    };
+
+    struct RenderPass{
+        std::string name;
+        bool enabled = true;
+        std::vector<PipelineBind> pipelines;
     };
 }

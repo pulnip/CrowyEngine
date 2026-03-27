@@ -1,9 +1,13 @@
+#include <cstdint>
+#include <optional>
 #include <toml++/toml.hpp>
+#include <unordered_map>
+#include "ParseResult.hpp"
+#include "RenderSpec.hpp"
 #include "enum_traits.hpp"
 #include "path_util.hpp"
 #include "string.hpp"
 #include "ParserCommon.hpp"
-#include "RenderPassBinder.hpp"
 #include "ConfigParser.hpp"
 
 namespace Crowy
@@ -131,36 +135,36 @@ namespace Crowy
         return it->second;
     }
 
-    static SamplerPresets compileSamplerPresets(
-        const ParseResult& tempSPs
+    static std::unordered_map<std::string, RHISamplerState> compileSamplerPresets(
+        const ParseResult& tempSamplers
     ){
-        SamplerPresets out;
+        std::unordered_map<std::string, RHISamplerState> samplers;
         std::vector<BindError> errors;
 
-        for(const auto& elm: tempSPs.elements){
-            const auto& node = tempSPs.arena.nodes[elm.index];
+        for(const auto& elm: tempSamplers.elements){
+            const auto& node = tempSamplers.arena.nodes[elm.index];
 
             if(auto t = std::get_if<VTable>(&node)){
-                auto name = readString(tempSPs.arena, *t, errors, "name");
+                auto name = readString(tempSamplers.arena, *t, errors, "name");
                 if(!name.has_value())
                     continue;
 
                 RHISamplerState desc{};
 
-                auto filter = readString(tempSPs.arena, *t, errors, "filter");
-                auto address = readString(tempSPs.arena, *t, errors, "address");
+                auto filter = readString(tempSamplers.arena, *t, errors, "filter");
+                auto address = readString(tempSamplers.arena, *t, errors, "address");
 
                 if(filter.has_value() && address.has_value()){
                     desc.minFilter = desc.magFilter = desc.mipFilter = toFilter(*filter);
                     desc.addressU = desc.addressV = desc.addressW = toAddressMode(*address);
                 }
                 else{
-                    auto minFilter = readString(tempSPs.arena, *t, errors, "minFilter");
-                    auto magFilter = readString(tempSPs.arena, *t, errors, "magFilter");
-                    auto mipFilter = readString(tempSPs.arena, *t, errors, "mipFilter");
-                    auto addressU = readString(tempSPs.arena, *t, errors, "addressU");
-                    auto addressV = readString(tempSPs.arena, *t, errors, "addressV");
-                    auto addressW = readString(tempSPs.arena, *t, errors, "addressW");
+                    auto minFilter = readString(tempSamplers.arena, *t, errors, "minFilter");
+                    auto magFilter = readString(tempSamplers.arena, *t, errors, "magFilter");
+                    auto mipFilter = readString(tempSamplers.arena, *t, errors, "mipFilter");
+                    auto addressU = readString(tempSamplers.arena, *t, errors, "addressU");
+                    auto addressV = readString(tempSamplers.arena, *t, errors, "addressV");
+                    auto addressW = readString(tempSamplers.arena, *t, errors, "addressW");
 
                     // filter
                     if(minFilter.has_value())
@@ -202,27 +206,27 @@ namespace Crowy
                     else continue;
                 }
 
-                out.emplace(*name, desc);
+                samplers.emplace(*name, desc);
             }
         }
 
-        return out;
+        return samplers;
     }
 
-    static std::unordered_map<std::string, RHITextureCreateDesc> compileRenderTarget(
-        const ParseResult& tempRTs
+    static std::unordered_map<std::string, RHITextureCreateDesc> compileTextures(
+        const ParseResult& tempTextures
     ){
         std::unordered_map<std::string, RHITextureCreateDesc> out;
         std::vector<BindError> errors;
 
-        for(const auto& elm: tempRTs.elements){
-            const auto& node = tempRTs.arena.nodes[elm.index];
+        for(const auto& elm: tempTextures.elements){
+            const auto& node = tempTextures.arena.nodes[elm.index];
 
             if(auto t = std::get_if<VTable>(&node)){
-                auto name   = readString(tempRTs.arena, *t, errors,   "name");
-                auto width  = readFloat (tempRTs.arena, *t, errors,  "width", 0);
-                auto height = readFloat (tempRTs.arena, *t, errors, "height", 0);
-                auto fmt    = readString(tempRTs.arena, *t, errors, "format");
+                auto name   = readString(tempTextures.arena, *t, errors,   "name");
+                auto width  = readFloat (tempTextures.arena, *t, errors,  "width", 0);
+                auto height = readFloat (tempTextures.arena, *t, errors, "height", 0);
+                auto fmt    = readString(tempTextures.arena, *t, errors, "format");
 
                 if(!name || !fmt)
                     continue;
@@ -234,110 +238,355 @@ namespace Crowy
                 });
             }
         }
+        reportError(errors);
 
         return out;
     }
 
-    static std::vector<RenderPassSpec> compileRender(
-        const ParseResult& tempPasses,
-        const RenderPassBinderRegistry& registry
+    static std::optional<ShaderSpec> readShader(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
     ){
-        std::vector<RenderPassSpec> out;
-        RenderPassElementBindPlan plan;
+        const VNode* n = findField(arena, table, key);
+        if(!n) return std::nullopt;
+
+        auto src = std::get_if<VTable>(n);
+        if(!src) return std::nullopt;
+
+        auto vsFile = readString(arena, *src, errors, "vs_file");
+        auto vsFunc = readString(arena, *src, errors, "vs_func", "vertex_main");
+        auto fsFile = readString(arena, *src, errors, "fs_file");
+        auto fsFunc = readString(arena, *src, errors, "fs_func", "fragment_main");
+
+        if(!vsFile || !fsFile)
+            return std::nullopt;
+
+        return ShaderSpec{
+            .vsFilePath = *vsFile,
+            .vsFuncName = vsFunc,
+            .fsFilePath = *fsFile,
+            .fsFuncName = fsFunc,
+        };
+    }
+
+    static std::vector<BindSpec> readBinds(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n) return {};
+
+        auto arr = std::get_if<VArray>(n);
+        if(!arr) return {};
+
+        std::vector<BindSpec> v;
+        v.resize(arr->elements.size());
+
+        for(int i=0; i<arr->elements.size(); ++i){
+            const VNode& elem = arena.nodes[arr->elements[i]];
+            auto table = std::get_if<VTable>(&elem);
+            if(!table){
+                errors.push_back({
+                    "element of Bind should be Table",
+                    getLoc(elem)
+                });
+                break;
+            }
+
+            auto name = readString(arena, *table, errors, "name");
+            auto slot = readFloat(arena, *table, errors, "slot");
+
+            v[i] = BindSpec{
+                .name = *name,
+                .slot = static_cast<uint32_t>(*slot)
+            };
+        }
+
+        return v;
+    }
+
+    static std::vector<PipelineBindSpec> readPipelines(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key = "pipelines"
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n) return {};
+
+        auto arr = std::get_if<VArray>(n);
+        if(!arr) return {};
+
+        std::vector<PipelineBindSpec> v;
+        v.resize(arr->elements.size());
+
+        for(int i=0; i<arr->elements.size(); ++i){
+            const VNode& elem = arena.nodes[arr->elements[i]];
+            auto table = std::get_if<VTable>(&elem);
+            if(!table){
+                errors.push_back({
+                    "element of Pipeline should be Table",
+                    getLoc(elem)
+                });
+                break;
+            }
+
+        #ifdef CROWY_METALRHI
+            auto shader = readShader(arena, *table, errors, "metal_shader");
+        #elifdef CROWY_D3DRHI
+            auto shader = readShader(arena, *table, errors, "d3d_shader");
+        #endif
+            if(!shader.has_value()){
+                errors.push_back({
+                    "element of Pipeline should have shader",
+                    getLoc(elem)
+                });
+                break;
+            }
+
+            auto inputs = readStringArray(arena, *table, errors, "inputs");
+            auto outputs = readStringArray(arena, *table, errors, "outputs");
+            auto depthOutput = readString(arena, *table, errors, "depthOutput");
+
+            auto fs_samplers = readBinds(arena, *table, errors, "fs_samplers");
+            auto fs_cbuffers = readBinds(arena, *table, errors, "fs_cbuffers");
+
+            // TODO. parse rasterizer state, depth stencil state, blend state
+
+            auto renderType = readString(arena, *table, errors, "renderType");
+
+            v[i].shader = *shader;
+            v[i].fs_samplers = fs_samplers;
+            v[i].fs_cbuffers = fs_cbuffers;
+
+            if(inputs.has_value())
+                v[i].inputs = *inputs;
+            if(outputs.has_value())
+                v[i].outputs = *outputs;
+            if(depthOutput.has_value())
+                v[i].depthOutput = *depthOutput;
+
+            if(renderType.has_value())
+                v[i].renderType = *renderType;
+        }
+        reportError(errors);
+
+        return v;
+    }
+
+    static CBufferFieldType toCBufferFieldType(std::string_view str){
+        static std::unordered_map<std::string, CBufferFieldType,
+            StringHash, std::equal_to<>
+        > text2FieldType = {
+            {     "INT", CBufferFieldType::Int32   },
+            {   "INT32", CBufferFieldType::Int32   },
+            {   "FLOAT", CBufferFieldType::Float   },
+            {  "FLOAT2", CBufferFieldType::Float2  },
+            {  "FLOAT3", CBufferFieldType::Float3  },
+            {  "FLOAT4", CBufferFieldType::Float4  },
+            {"FLOAT4X4", CBufferFieldType::Float4x4}
+        };
+        auto upper = to_upper(str);
+
+        auto it = text2FieldType.find(upper);
+        if(it == text2FieldType.end()){
+            return CBufferFieldType::Unknown;
+        }
+        return it->second;
+    }
+
+    void readCBufferData(
+        const ValueArena& arena, const VTable& table,
+        std::vector<BindError>& errors, const char* key,
+        CBuffer& cbuffer
+    ){
+        const VNode* n = findField(arena, table, key);
+        if(!n)
+            return;
+
+        if(auto arr = std::get_if<VArray>(n)){
+            for(size_t i: arr->elements){
+                auto field = std::get_if<VTable>(&arena.nodes[i]);
+                if(!field)
+                    continue;
+
+                auto name = readString(arena, *field, errors, "name");
+                auto type = readString(arena, *field, errors, "type");
+
+                if(!name || !type)
+                    // TODO. field without name and type is error
+                    continue;;
+
+                auto t = toCBufferFieldType(*type);
+                switch(t){
+                case CBufferFieldType::Unknown:
+                    continue;
+                case CBufferFieldType::Int32: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readFloat(arena, *field, errors, "data"))
+                        proxy = static_cast<int32_t>(*data);
+                } break;
+                case CBufferFieldType::Float: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readFloat(arena, *field, errors, "data"))
+                        proxy = static_cast<float>(*data);
+                } break;
+                case CBufferFieldType::Float2: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readVec2(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                case CBufferFieldType::Float3: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readVec3(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                case CBufferFieldType::Float4: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readVec4(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                case CBufferFieldType::Float4x4: {
+                    auto proxy = cbuffer.newField(*name, t);
+                    if(auto data = readMat4(arena, *field, errors, "data"))
+                        proxy = *data;
+                } break;
+                default:
+                    std::unreachable();
+                }
+            }
+        }
+    }
+
+    static std::unordered_map<std::string, CBuffer> compileCBuffers(
+        const ParseResult& tempCBuffers
+    ){
+        std::unordered_map<std::string, CBuffer> cbuffers;
+        std::vector<BindError> errors;
+
+        for(size_t i=0; i<tempCBuffers.elements.size(); ++i){
+            const auto& elm = tempCBuffers.elements[i];
+            const auto& node = tempCBuffers.arena.nodes[elm.index];
+
+            auto table = std::get_if<VTable>(&node);
+            if(!table){
+                errors.push_back({
+                    "element of CBuffer should be Table",
+                    getLoc(node)
+                });
+                break;
+            }
+
+            auto name = readString(tempCBuffers.arena, *table, errors, "name");
+            if(!name)
+                continue;
+
+            CBuffer cbuffer;
+            readCBufferData(tempCBuffers.arena, *table, errors, "value", cbuffer);
+
+            cbuffers.emplace(*name, std::move(cbuffer));
+        }
+        reportError(errors);
+
+        return cbuffers;
+    }
+
+    static std::vector<RenderPassSpec> compileRenderPasses(
+        const ParseResult& tempPasses
+    ){
+        std::vector<RenderPassSpec> passes;
+        std::vector<BindError> errors;
 
         // reserve pass slot and copy name.
-        out.resize(tempPasses.elements.size());
+        passes.resize(tempPasses.elements.size());
         for(size_t i=0; i<tempPasses.elements.size(); ++i){
             const auto& elm = tempPasses.elements[i];
             const auto& node = tempPasses.arena.nodes[elm.index];
 
-            if(auto table = std::get_if<VTable>(&node)){
-                auto name = readString(tempPasses.arena, *table, plan.errors, "name");
-                auto inputs = readStringArray(tempPasses.arena, *table, plan.errors, "inputs");
-                auto targets = readStringArray(tempPasses.arena, *table, plan.errors, "targets");
-                auto depthTarget = readString(tempPasses.arena, *table, plan.errors, "depthTarget");
-
-                auto renderType = readString(tempPasses.arena, *table, plan.errors, "renderType");
-
-                // TODO. parse rasterizer state, depth stencil state, blend state
-
-                if(name.has_value())
-                    out[i].name = *name;
-
-                if(inputs.has_value())
-                    out[i].inputs = *inputs;
-                if(targets.has_value())
-                    out[i].targets = *targets;
-                if(depthTarget.has_value())
-                    out[i].depthTarget = *depthTarget;
-
-                if(renderType.has_value())
-                    out[i].renderType = *renderType;
-            }
-            else{
+            auto table = std::get_if<VTable>(&node);
+            if(!table){
                 // TODO. write Error
-            }                                                                  
+                break;
+            }
+
+            auto name = readString(tempPasses.arena, *table, errors, "name");
+            if(!name){
+                // TODO. write Error
+                break;
+            }
+
+            passes[i].name = *name;
+            passes[i].pipelines = readPipelines(tempPasses.arena, *table, errors, "pipelines");
         }
+        reportError(errors);
 
-        bindAndErrorReport(tempPasses, registry, plan);
-        reportError(plan.errors);
-
-        // Freeze(Create SoA + connect index)
-        SamplerBinder::freeze(out, plan);
-        ShaderBinder::freeze(out, plan);
-        CBufferBinder::freeze(out, plan);
-
-        return out;
+        return passes;
     }
 
     static RenderSpec linkRender(
-        std::unordered_map<std::string, RHITextureCreateDesc> renderTargets,
+        std::unordered_map<std::string, RHITextureCreateDesc> textures,
+        std::unordered_map<std::string, RHISamplerState> samplers,
+        std::unordered_map<std::string, CBuffer> cbuffers,
         std::vector<RenderPassSpec> passes
     ){
         for(auto& pass: passes){
-            // ShaderResource
-            for(const auto& input: pass.inputs){
-                if(auto it = renderTargets.find(input); it != renderTargets.end()){
-                    auto& texDesc = it->second;
-                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::ShaderResource);
+            for(auto& pipeline: pass.pipelines){
+                // ShaderResource
+                for(const auto& input: pipeline.inputs){
+                    if(auto it = textures.find(input); it != textures.end()){
+                        auto& texDesc = it->second;
+                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::ShaderResource);
+                    }
+                    else{
+                        // TODO. ERROR! unresolved texture!
+                    }
                 }
-                else{
-                    // TODO. ERROR! unresolved texture!
-                }
-            }
 
-            // RenderTarget
-            for(const auto& target: pass.targets){
-                if(auto it = renderTargets.find(target); it != renderTargets.end()){
-                    auto& texDesc = it->second;
-                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::RenderTarget);
+                // RenderTarget
+                for(const auto& target: pipeline.outputs){
+                    if(auto it = textures.find(target); it != textures.end()){
+                        auto& texDesc = it->second;
+                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::RenderTarget);
+                    }
+                    else{
+                        // TODO.ERROR! unresolved texture!
+                    }
                 }
-                else{
-                    // TODO.ERROR! unresolved texture!
-                }
-            }
 
-            // DepthTarget
-            if(!pass.depthTarget.empty()){
-                if(auto it = renderTargets.find(pass.depthTarget); it != renderTargets.end()){
-                    auto& texDesc = it->second;
-                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::DepthStencil);
+                // DepthTarget
+                if(!pipeline.depthOutput.empty()){
+                    if(auto it = textures.find(pipeline.depthOutput); it != textures.end()){
+                        auto& texDesc = it->second;
+                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::DepthStencil);
 
-                    pass.depthStencil = RHIDepthStencilState{
-                        .format = texDesc.format,
-                        .depthWriteEnable = true
-                    };
+                        pipeline.depthStencil = RHIDepthStencilState{
+                            .format = texDesc.format,
+                            .depthWriteEnable = true
+                        };
+                    }
+                    else{
+                        // TODO. ERROR! unresolved texture!
+                    }
                 }
-                else{
-                    // TODO. ERROR! unresolved texture!
-                }
+
+                std::erase_if(
+                    pipeline.fs_samplers,
+                    [&samplers](const auto& bind){
+                        return samplers.find(bind.name) == samplers.end();
+                    }
+                );
+
+                std::erase_if(
+                    pipeline.fs_cbuffers,
+                    [&cbuffers](const auto& bind){
+                        return cbuffers.find(bind.name) == cbuffers.end();
+                    }
+                );
             }
         }
 
-        // TODO
-
         return RenderSpec{
-            .renderTargets = renderTargets,
+            .textures = textures,
+            .samplers = samplers,
+            .cbuffers = cbuffers,
             .passes = passes
         };
     }
@@ -348,17 +597,17 @@ namespace Crowy
         if(pr.empty())
             return {};
 
-        auto tempSamplerPresets = parseFromTable(*pr.as_table(), "sampler_presets");
-        auto samplerPresets = compileSamplerPresets(tempSamplerPresets);
-        auto binderRegistry = makeRenderPassBinderRegistry(samplerPresets);
-
-        auto tempRenderTargets = parseFromTable(*pr.as_table(), "render_targets");
-        auto renderTargets = compileRenderTarget(tempRenderTargets);
+        auto tempTextures = parseFromTable(*pr.as_table(), "textures");
+        auto textures = compileTextures(tempTextures);
+        auto tempSamplers = parseFromTable(*pr.as_table(), "samplers");
+        auto samplers = compileSamplerPresets(tempSamplers);
+        auto tempCbuffers = parseFromTable(*pr.as_table(), "cbuffers");
+        auto cbuffers = compileCBuffers(tempCbuffers);
 
         auto tempPasses = parseFromTable(*pr.as_table(), "passes");
-        auto passes = compileRender(tempPasses, binderRegistry);
+        auto passes = compileRenderPasses(tempPasses);
 
-        return linkRender(renderTargets, passes);
+        return linkRender(textures, samplers, cbuffers, passes);
     }
 
     RenderSpec parseRenderFromString(std::string_view renderText){
@@ -366,16 +615,16 @@ namespace Crowy
         if(pr.empty())
             return {};
 
-        auto tempSamplerPresets = parseFromTable(*pr.as_table(), "sampler_presets");
-        auto samplerPresets = compileSamplerPresets(tempSamplerPresets);
-        auto binderRegistry = makeRenderPassBinderRegistry(samplerPresets);
-
-        auto tempRenderTargets = parseFromTable(*pr.as_table(), "render_targets");
-        auto renderTargets = compileRenderTarget(tempRenderTargets);
+        auto tempTextures = parseFromTable(*pr.as_table(), "textures");
+        auto textures = compileTextures(tempTextures);
+        auto tempSamplers = parseFromTable(*pr.as_table(), "samplers");
+        auto samplers = compileSamplerPresets(tempSamplers);
+        auto tempCBuffers = parseFromTable(*pr.as_table(), "cbuffers");
+        auto cbuffers = compileCBuffers(tempCBuffers);
 
         auto tempPasses = parseFromTable(*pr.as_table(), "passes");
-        auto passes = compileRender(tempPasses, binderRegistry);
+        auto passes = compileRenderPasses(tempPasses);
 
-        return linkRender(renderTargets, passes);
+        return linkRender(textures, samplers, cbuffers, passes);
     }
 }

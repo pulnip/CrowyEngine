@@ -24,6 +24,7 @@
     },
     "clangd.path": "/path/to/clangd",
     "evenBetterToml.schema.associations": {
-        "input\\.toml$": "file:///path/to/.vscode/input.schema.json"
+        "input\\.toml$": "file:///path/to/.vscode/input.schema.json",
+        "render\\.toml$": "file:///path/to/.vscode/render.schema.json"
     }
 }

@@ -116,10 +116,7 @@ static CBuffer makeBlackholeParamsCBuffer(
     float aspect, float tanHalfFov,
     float diskInner = 3.0f, float diskOuter = 10.0f
 ){
-    CBuffer cbuffer{
-        .name = "BlackholeParams",
-        .slot = 0
-    };
+    CBuffer cbuffer;
 
     auto camForward = normalize(cameraTarget - cameraPos);
     auto camRight = cross(unit_y(), camForward);
@@ -143,10 +140,7 @@ static CBuffer makeBlackholeParamsCBuffer(
 }
 
 static CBuffer makePlanetParamsCBuffer(){
-    CBuffer cbuffer{
-        .name = "PlanetParams",
-        .slot = 1
-    };
+    CBuffer cbuffer;
 
     using enum CBufferFieldType;
     int count = 3;
@@ -169,10 +163,7 @@ static CBuffer makeDiskGenParams(
     float diskInner = 3.0f, float diskOuter = 10.0f,
     float maxTempKelvin = 1e+4
 ){
-    CBuffer cbuffer{
-        .name = "DiskGenParams",
-        .slot = 0
-    };
+    CBuffer cbuffer;
 
     using enum CBufferFieldType;
     cbuffer.newField("rs", Float) = rs;
@@ -269,7 +260,7 @@ int main(int argc, char* argv[]){
     });
 
     RenderSpec spec{
-        .renderTargets = {
+        .textures = {
             {
                 "disk",
                 RHITextureCreateDesc{
@@ -383,172 +374,214 @@ int main(int argc, char* argv[]){
             },
             {"BackBuffer", backBufferDesc},
         },
+        .samplers = {
+            {"LINEAR_WRAP", LINEAR_WRAP_SAMPLER}
+        },
+        .cbuffers = {
+            {
+                "BlackholeParams",
+                makeBlackholeParamsCBuffer(
+                    bhPos, rs,
+                    camPos, camTgt,
+                    static_cast<float>(width) / height,
+                    std::tan(0.5f * fovRad)
+                )
+            },
+            {
+                "PlanetParams",
+                makePlanetParamsCBuffer()
+            },
+            {
+                "DiskGenParams",
+                makeDiskGenParams(rs)
+            }
+        },
         .passes = {
             RenderPassSpec{
                 .name = "scene",
-                .inputs = {"disk"},
-                .targets = {"scene", "brightMask"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen_ndc",
-                    .fsFilePath = "asset/Shaders/blackhole.metal",
-                    .fsFuncName = "fs_blackhole"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen_ndc",
-                    .fsFilePath = L"asset/Shaders/blackhole.hlsl",
-                    .fsFuncName = "fs_blackhole"
-                #endif
-                },
-                .fs_cbuffers{
-                    makeBlackholeParamsCBuffer(
-                        bhPos, rs,
-                        camPos, camTgt,
-                        static_cast<float>(width) / height,
-                        std::tan(0.5f * fovRad)
-                    ),
-                    makePlanetParamsCBuffer()
+                .pipelines = {
+                    PipelineBindSpec{
+                        .inputs = {"disk"},
+                        .outputs = {"scene", "brightMask"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .fs_cbuffers = {
+                            {.name = "BlackholeParams", .slot = 0},
+                            {.name = "PlanetParams", .slot = 1}
+                        },
+                        .shader = {
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen_ndc",
+                            .fsFilePath = "asset/Shaders/blackhole.metal",
+                            .fsFuncName = "fs_blackhole"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen_ndc",
+                            .fsFilePath = L"asset/Shaders/blackhole.hlsl",
+                            .fsFuncName = "fs_blackhole"
+                        #endif
+                        }
+                    }
                 }
             },
-            {
-                .name = "blur_h_1_2",
-                .inputs = {"brightMask"},
-                .targets = {"blur_tmp_1_2"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_horizontal_blur"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_horizontal_blur"
-                #endif
-                },
-            },
-            {
-                .name = "blur_v_1_2",
-                .inputs = {"blur_tmp_1_2"},
-                .targets = {"bloom_1_2"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_vertical_blur"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_vertical_blur"
-                #endif
+            RenderPassSpec{
+                .name = "bloom",
+                .pipelines = {
+                    // blur_h_1_2
+                    PipelineBindSpec{
+                        .inputs = {"brightMask"},
+                        .outputs = {"blur_tmp_1_2"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_horizontal_blur"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_horizontal_blur"
+                        #endif
+                        },
+                    },
+                    // blur_v_1_2
+                    PipelineBindSpec{
+                        .inputs = {"blur_tmp_1_2"},
+                        .outputs = {"bloom_1_2"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_vertical_blur"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_vertical_blur"
+                        #endif
+                        }
+                    },
+                    // blur_h_1_4
+                    PipelineBindSpec{
+                        .inputs = {"bloom_1_2"},
+                        .outputs = {"blur_tmp_1_4"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_horizontal_blur"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_horizontal_blur"
+                        #endif
+                        },
+                    },
+                    // blur_v_1_4
+                    PipelineBindSpec{
+                        .inputs = {"blur_tmp_1_4"},
+                        .outputs = {"bloom_1_4"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_vertical_blur"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_vertical_blur"
+                        #endif
+                        }
+                    },
+                    // blur_h_1_8
+                    PipelineBindSpec{
+                        .inputs = {"bloom_1_4"},
+                        .outputs = {"blur_tmp_1_8"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_horizontal_blur"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_horizontal_blur"
+                        #endif
+                        },
+                    },
+                    // blur_v_1_8
+                    PipelineBindSpec{
+                        .inputs = {"blur_tmp_1_8"},
+                        .outputs = {"bloom_1_8"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_vertical_blur"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_vertical_blur"
+                        #endif
+                        }
+                    },
+                    // composite
+                    PipelineBindSpec{
+                        .inputs = {
+                            "scene",
+                            "bloom_1_2",
+                            "bloom_1_4",
+                            "bloom_1_8"
+                        },
+                        .outputs = {"BackBuffer"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/bloom.metal",
+                            .fsFuncName = "fs_composite"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/bloom.hlsl",
+                            .fsFuncName = "fs_composite"
+                        #endif
+                        },
+                    }
                 }
-            },
-            {
-                .name = "blur_h_1_4",
-                .inputs = {"bloom_1_2"},
-                .targets = {"blur_tmp_1_4"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_horizontal_blur"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_horizontal_blur"
-                #endif
-                },
-            },
-            {
-                .name = "blur_v_1_4",
-                .inputs = {"blur_tmp_1_4"},
-                .targets = {"bloom_1_4"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_vertical_blur"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_vertical_blur"
-                #endif
-                }
-            },
-            {
-                .name = "blur_h_1_8",
-                .inputs = {"bloom_1_4"},
-                .targets = {"blur_tmp_1_8"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_horizontal_blur"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_horizontal_blur"
-                #endif
-                },
-            },
-            {
-                .name = "blur_v_1_8",
-                .inputs = {"blur_tmp_1_8"},
-                .targets = {"bloom_1_8"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_vertical_blur"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_vertical_blur"
-                #endif
-                }
-            },
-            {
-                .name = "composite",
-                .inputs = {
-                    "scene",
-                    "bloom_1_2",
-                    "bloom_1_4",
-                    "bloom_1_8"
-                },
-                .targets = {"BackBuffer"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/bloom.metal",
-                    .fsFuncName = "fs_composite"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/bloom.hlsl",
-                    .fsFuncName = "fs_composite"
-                #endif
-                },
             }
         }
     };
@@ -560,22 +593,26 @@ int main(int argc, char* argv[]){
 
         renderer.render(RenderPassSpec{
             .name = "Disk Generation",
-            .targets = {"disk"},
-            .shader = ShaderSpec{
-            #ifdef CROWY_METALRHI
-                .vsFilePath = "asset/Shaders/fullscreen.metal",
-                .vsFuncName = "vs_fullscreen_polar",
-                .fsFilePath = "asset/Shaders/blackhole_disk.metal",
-                .fsFuncName = "fs_disk_gen"
-            #elifdef CROWY_D3DRHI
-                .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                .vsFuncName = "vs_fullscreen_polar",
-                .fsFilePath = L"asset/Shaders/blackhole_disk.hlsl",
-                .fsFuncName = "fs_disk_gen"
-            #endif
-            },
-            .fs_cbuffers{
-                makeDiskGenParams(rs)
+            .pipelines = {
+                PipelineBindSpec{
+                    .outputs = {"disk"},
+                    .fs_cbuffers = {
+                        {.name = "DiskGenParams", .slot = 0}
+                    },
+                    .shader = ShaderSpec{
+                    #ifdef CROWY_METALRHI
+                        .vsFilePath = "asset/Shaders/fullscreen.metal",
+                        .vsFuncName = "vs_fullscreen_polar",
+                        .fsFilePath = "asset/Shaders/blackhole_disk.metal",
+                        .fsFuncName = "fs_disk_gen"
+                    #elifdef CROWY_D3DRHI
+                        .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                        .vsFuncName = "vs_fullscreen_polar",
+                        .fsFilePath = L"asset/Shaders/blackhole_disk.hlsl",
+                        .fsFuncName = "fs_disk_gen"
+                    #endif
+                    },
+                }
             }
         }, *cmdList.get());
         cmdList->close();

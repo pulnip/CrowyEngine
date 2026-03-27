@@ -1,5 +1,6 @@
 #include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
+#include "RHIDefinitions.hpp"
 #include "enum_traits.hpp"
 #include "FramePacer.hpp"
 #include "Logger.hpp"
@@ -97,24 +98,18 @@ int main(int argc, char* argv[]){
 
     using enum CBufferFieldType;
 
-    CBuffer pixelateParams{
-        .name = "PixelateParams",
-        .slot = 0
-    };
+    CBuffer pixelateParams;
     pixelateParams.newField("resolution", Float2) = Vec2(800, 600);
     pixelateParams.newField("pixelSize", Float2) = Vec2(4, 4);
 
-    CBuffer focusParams{
-        .name = "FocusParams",
-        .slot = 0
-    };
+    CBuffer focusParams;
     focusParams.newField("focusCenter", Float2) = Vec2{0.5f, 0.1f};
     focusParams.newField("focusRadius", Float) = 0.05f;
     focusParams.newField("falloff", Float) = 0.1f;
     focusParams.newField("aspectRatio", Float) = 1.33f;
 
     RenderSpec spec{
-        .renderTargets = {
+        .textures = {
             {"BackBuffer", backBufferDesc},
             {
                 "albedo",
@@ -205,156 +200,205 @@ int main(int argc, char* argv[]){
                 },
             },
         },
+        .samplers = {
+            {"LINEAR_WRAP", LINEAR_WRAP_SAMPLER}
+        },
+        .cbuffers = {
+            {"PixelateParams", pixelateParams},
+            {"FocusParams", focusParams}
+        },
         .passes = {
             RenderPassSpec{
                 .name = "gbuffer",
-                .inputs = {},
-                .targets = {"albedo", "normal"},
-                .depthTarget = "depth",
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/gbuffer.metal",
-                    .vsFuncName = "vs_gbuffer",
-                    .fsFilePath = "asset/Shaders/gbuffer.metal",
-                    .fsFuncName = "fs_gbuffer"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/gbuffer.hlsl",
-                    .vsFuncName = "vs_gbuffer",
-                    .fsFilePath = L"asset/Shaders/gbuffer.hlsl",
-                    .fsFuncName = "fs_gbuffer"
-                #endif
-                },
-                .renderType = "type0",
-                .depthStencil = RHIDepthStencilState{
-                    .format = RHITextureFormat::D32_FLOAT,
-                    .depthWriteEnable = true
+                .pipelines = {
+                    PipelineBindSpec{
+                        .outputs = {"albedo", "normal"},
+                        .depthOutput = "depth",
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/gbuffer.metal",
+                            .vsFuncName = "vs_gbuffer",
+                            .fsFilePath = "asset/Shaders/gbuffer.metal",
+                            .fsFuncName = "fs_gbuffer"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/gbuffer.hlsl",
+                            .vsFuncName = "vs_gbuffer",
+                            .fsFilePath = L"asset/Shaders/gbuffer.hlsl",
+                            .fsFuncName = "fs_gbuffer"
+                        #endif
+                        },
+                        .depthStencil = RHIDepthStencilState{
+                            .format = RHITextureFormat::D32_FLOAT,
+                            .depthWriteEnable = true
+                        },
+                        .renderType = "type0"
+                    }
                 }
             },
             RenderPassSpec{
                 .name = "celshading",
-                .inputs = {"albedo", "normal"},
-                .targets = {"toonColor"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/cel_shading.metal",
-                    .fsFuncName = "fs_cel_shading"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/cel_shading.hlsl",
-                    .fsFuncName = "fs_cel_shading"
-                #endif
+                .pipelines = {
+                    PipelineBindSpec{
+                        .inputs = {"albedo", "normal"},
+                        .outputs = {"toonColor"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/cel_shading.metal",
+                            .fsFuncName = "fs_cel_shading"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/cel_shading.hlsl",
+                            .fsFuncName = "fs_cel_shading"
+                        #endif
+                        }
+                    }
                 }
             },
             RenderPassSpec{
                 .name = "outlining",
-                .inputs = {"normal", "depth", "toonColor"},
-                .targets = {"outlined"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/outline.metal",
-                    .fsFuncName = "fs_outline"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/outline.hlsl",
-                    .fsFuncName = "fs_outline"
-                #endif
+                .pipelines = {
+                    PipelineBindSpec{
+                        .inputs = {"normal", "depth", "toonColor"},
+                        .outputs = {"outlined"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/outline.metal",
+                            .fsFuncName = "fs_outline"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/outline.hlsl",
+                            .fsFuncName = "fs_outline"
+                        #endif
+                        }
+                    }
                 }
             },
             RenderPassSpec{
                 .name = "scene",
-                // no input texture
-                .inputs = {},
-                .targets = {"sceneColor"},
-                .depthTarget = "depth",
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/triangle.metal",
-                    .vsFuncName = "vs_main",
-                    .fsFilePath = "asset/Shaders/triangle.metal",
-                    .fsFuncName = "fs_textured",
-                #elif CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/standard_vs.hlsl",
-                    .vsFuncName = "vs_main",
-                    .fsFilePath = L"asset/Shaders/standard_ps.hlsl",
-                    .fsFuncName = "ps_textured",
-                #endif
-                },
-                .renderType = "type0",
-                .depthStencil = RHIDepthStencilState{
-                    .format = RHITextureFormat::D32_FLOAT,
-                    .depthWriteEnable = true
+                .pipelines = {
+                    PipelineBindSpec{
+                        // no input texture
+                        .inputs = {},
+                        .outputs = {"sceneColor"},
+                        .depthOutput = "depth",
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/triangle.metal",
+                            .vsFuncName = "vs_main",
+                            .fsFilePath = "asset/Shaders/triangle.metal",
+                            .fsFuncName = "fs_textured",
+                        #elif CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/standard_vs.hlsl",
+                            .vsFuncName = "vs_main",
+                            .fsFilePath = L"asset/Shaders/standard_ps.hlsl",
+                            .fsFuncName = "ps_textured",
+                        #endif
+                        },
+                        .depthStencil = RHIDepthStencilState{
+                            .format = RHITextureFormat::D32_FLOAT,
+                            .depthWriteEnable = true
+                        },
+                        .renderType = "type0"
+                    }
                 }
             },
             RenderPassSpec{
                 .name = "pixelate",
-                .inputs = {"sceneColor"},
-                .targets = {"pixelated"},
-                .fs_samplers = {NEAREST_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/pixelate.metal",
-                    .fsFuncName = "fs_pixelate"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/pixelate.hlsl",
-                    .fsFuncName = "fs_pixelate"
-                #endif
-                },
-                .fs_cbuffers = {pixelateParams}
+                .pipelines = {
+                    PipelineBindSpec{
+                        .inputs = {"sceneColor"},
+                        .outputs = {"pixelated"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .fs_cbuffers = {
+                            {.name = "PixelateParams", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/pixelate.metal",
+                            .fsFuncName = "fs_pixelate"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/pixelate.hlsl",
+                            .fsFuncName = "fs_pixelate"
+                        #endif
+                        }
+                    }
+                }
             },
             RenderPassSpec{
                 .name = "focusmask",
-                .inputs = {},
-                .targets = {"focusMask"},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/focusmask.metal",
-                    .fsFuncName = "fs_focusmask"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/focusmask.hlsl",
-                    .fsFuncName = "fs_focusmask"
-                #endif
-                },
-                .fs_cbuffers = {focusParams}
+                .pipelines = {
+                    PipelineBindSpec{
+                        .outputs = {"focusMask"},
+                        .fs_cbuffers = {
+                            {.name = "FocusParams", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/focusmask.metal",
+                            .fsFuncName = "fs_focusmask"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/focusmask.hlsl",
+                            .fsFuncName = "fs_focusmask"
+                        #endif
+                        }
+                    }
+                }
             },
             RenderPassSpec{
                 .name = "composite",
-                .inputs = {
-                    "pixelated",
-                    "outlined",
-                    "focusMask"
-                },
-                .targets = {"BackBuffer"},
-                .fs_samplers = {LINEAR_WRAP_SAMPLER},
-                .shader = ShaderSpec{
-                #ifdef CROWY_METALRHI
-                    .vsFilePath = "asset/Shaders/fullscreen.metal",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = "asset/Shaders/composite.metal",
-                    .fsFuncName = "fs_composite"
-                #elifdef CROWY_D3DRHI
-                    .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
-                    .vsFuncName = "vs_fullscreen",
-                    .fsFilePath = L"asset/Shaders/composite.hlsl",
-                    .fsFuncName = "fs_composite"
-                #endif
+                .pipelines = {
+                    PipelineBindSpec{
+                        .inputs = {
+                            "pixelated",
+                            "outlined",
+                            "focusMask"
+                        },
+                        .outputs = {"BackBuffer"},
+                        .fs_samplers = {
+                            {.name = "LINEAR_WRAP", .slot = 0}
+                        },
+                        .shader = ShaderSpec{
+                        #ifdef CROWY_METALRHI
+                            .vsFilePath = "asset/Shaders/fullscreen.metal",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = "asset/Shaders/composite.metal",
+                            .fsFuncName = "fs_composite"
+                        #elifdef CROWY_D3DRHI
+                            .vsFilePath = L"asset/Shaders/fullscreen.hlsl",
+                            .vsFuncName = "vs_fullscreen",
+                            .fsFilePath = L"asset/Shaders/composite.hlsl",
+                            .fsFuncName = "fs_composite"
+                        #endif
+                        }
+                    }
                 }
             }
         }

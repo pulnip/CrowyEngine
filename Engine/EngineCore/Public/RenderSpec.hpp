@@ -34,28 +34,39 @@ namespace Crowy
         }
     };
 
-    struct RenderPassSpec{
+    struct BindSpec{
         std::string name;
+        uint32_t slot;
+    };
 
+    struct PipelineBindSpec{
         // input Texture
         std::vector<std::string> inputs;
-        // output RenderTarget
-        std::vector<std::string> targets;
+        // output Texture
+        std::vector<std::string> outputs;
         // depth buffer
-        std::string depthTarget;
-        std::vector<RHISamplerState> fs_samplers;
+        std::string depthOutput;
+
+        std::vector<BindSpec> fs_samplers;
+        std::vector<BindSpec> fs_cbuffers;
 
         ShaderSpec shader;
-        RenderType renderType;
         RHIRasterizerState rasterizer = {};
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         RHIBlendState blend = {};
 
-        std::vector<CBuffer> fs_cbuffers;
+        RenderType renderType;
+    };
+
+    struct RenderPassSpec{
+        std::string name;
+        std::vector<PipelineBindSpec> pipelines;
     };
 
     struct RenderSpec{
-        std::unordered_map<std::string, RHITextureCreateDesc> renderTargets;
+        std::unordered_map<std::string, RHITextureCreateDesc> textures;
+        std::unordered_map<std::string, RHISamplerState> samplers;
+        std::unordered_map<std::string, CBuffer> cbuffers;
         std::vector<RenderPassSpec> passes;
     };
 }

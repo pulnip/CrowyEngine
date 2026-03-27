@@ -1,32 +1,33 @@
-[[render_targets]]
+[[textures]]
 # swapchain
 name = "BackBuffer"
-[[render_targets]]
+format = "RGBA8_UNORM"
+[[textures]]
 name = "albedo"
 format = "RGBA8_UNORM"
-[[render_targets]]
+[[textures]]
 name = "normal"
 format = "RGBA8_UNORM"
-[[render_targets]]
+[[textures]]
 name = "toonColor"
 format = "RGBA8_UNORM"
-[[render_targets]]
+[[textures]]
 name = "sceneColor"
 format = "RGBA8_UNORM"
-[[render_targets]]
+[[textures]]
 name = "depth"
 format = "D32_FLOAT"
-[[render_targets]]
+[[textures]]
 name = "outlined"
 format = "RGBA8_UNORM"
-[[render_targets]]
+[[textures]]
 name = "pixelated"
 format = "RGBA8_UNORM"
-[[render_targets]]
+[[textures]]
 name = "focusMask"
 format = "RGBA8_UNORM"
 
-[[sampler_presets]]
+[[samplers]]
 name = "LINEAR_WRAP"
 minFilter = "Linear"
 magFilter = "Linear"
@@ -34,142 +35,154 @@ mipFilter = "Linear"
 addressU = "Wrap"
 addressV = "Wrap"
 addressW = "Wrap"
-[[sampler_presets]]
+[[samplers]]
 name = "NEAREST_WRAP"
 filter = "Nearest"
 address = "Wrap"
 
+[[cbuffers]]
+name = "PixelateParams"
+value = [
+    # TODO. use real viewport resolution at runtime
+    {name = "resolution", type = "Float2", data = [800, 600]},
+    {name = "pixelSize", type = "Float2", data = [4, 4]}
+]
+[[cbuffers]]
+name = "FocusParams"
+value = [
+    {name = "focusCenter", type = "Float2", data = [0.5, 0.1]},
+    {name = "focusRadius", type = "Float", data = 0.05},
+    {name = "falloff", type = "Float", data = 0.1},
+    # TODO. use real viewport aspect ratio at runtime
+    {name = "aspectRatio", type = "Float", data = 1.33}
+]
+
 [[passes]]
 name = "gbuffer"
-targets = ["albedo", "normal"]
-depthTarget = "depth"
-fs_samplers = [
-    {preset = "LINEAR_WRAP"}
-]
-renderType = "type0"
-    [passes.metal_shader]
+    [[passes.pipelines]]
+    outputs = ["albedo", "normal"]
+    depthOutput = "depth"
+    renderType = "type0"
+    [[passes.pipelines.fs_samplers]]
+    name = "NEAREST_WRAP"
+    slot = 0
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/gbuffer.metal"
     vs_func = "vs_gbuffer"
     fs_file = "asset/Shaders/gbuffer.metal"
     fs_func = "fs_gbuffer"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/gbuffer.hlsl"
     vs_func = "vs_gbuffer"
     fs_file = "asset/Shaders/gbuffer.hlsl"
     fs_func = "fs_gbuffer"
 [[passes]]
 name = "celShading"
-inputs = ["albedo", "normal"]
-targets = ["toonColor"]
-fs_samplers = [
-    {preset = "LINEAR_WRAP"}
-]
-    [passes.metal_shader]
+    [[passes.pipelines]]
+    inputs = ["albedo", "normal"]
+    outputs = ["toonColor"]
+    [[passes.pipelines.fs_samplers]]
+    name = "NEAREST_WRAP"
+    slot = 0
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/cel_shading.metal"
     fs_func = "fs_cel_shading"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/fullscreen.hlsl"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/cel_shading.hlsl"
     fs_func = "fs_cel_shading"
 [[passes]]
 name = "outlining"
-inputs = ["normal", "depth", "toonColor"]
-targets = ["outlined"]
-fs_samplers = [
-    {preset = "LINEAR_WRAP"}
-]
-    [passes.metal_shader]
+    [[passes.pipelines]]
+    inputs = ["normal", "depth", "toonColor"]
+    outputs = ["outlined"]
+    [[passes.pipelines.fs_samplers]]
+    name = "NEAREST_WRAP"
+    slot = 0
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/outline.metal"
     fs_func = "fs_outline"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/fullscreen.hlsl"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/outline.hlsl"
     fs_func = "fs_outline"
 [[passes]]
 name = "scene"
-targets = ["sceneColor"]
-depthTarget = "depth"
-fs_samplers = [
-    {preset = "LINEAR_WRAP"}
-]
-renderType = "type0"
-    [passes.metal_shader]
+    [[passes.pipelines]]
+    outputs = ["sceneColor"]
+    depthOutput = "depth"
+    renderType = "type0"
+    [[passes.pipelines.fs_samplers]]
+    name = "NEAREST_WRAP"
+    slot = 0
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/triangle.metal"
     vs_func = "vs_main"
     fs_file = "asset/Shaders/triangle.metal"
     fs_func = "fs_textured"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/standard_vs.hlsl"
     vs_func = "vs_main"
     fs_file = "asset/Shaders/standard_ps.hlsl"
     fs_func = "ps_textured"
 [[passes]]
 name = "pixelate"
-inputs = ["sceneColor"]
-targets = ["pixelated"]
-fs_samplers = [
-    {preset = "NEAREST_WRAP"}
-]
-    [[passes.fs_cbuffer]]
+    [[passes.pipelines]]
+    inputs = ["sceneColor"]
+    outputs = ["pixelated"]
+    [[passes.pipelines.fs_samplers]]
+    name = "NEAREST_WRAP"
+    slot = 0
+    [[passes.pipelines.fs_cbuffers]]
     name = "PixelateParams"
     slot = 0
-    value = [
-        # TODO. use real viewport resolution at runtime
-        {name = "resolution", type = "Float2", data = [800, 600]},
-        {name = "pixelSize", type = "Float2", data = [4, 4]}
-    ]
-    [passes.metal_shader]
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/pixelate.metal"
     fs_func = "fs_pixelate"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/fullscreen.hlsl"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/pixelate.hlsl"
     fs_func = "fs_pixelate"
 [[passes]]
 name = "focusmask"
-targets = ["focusMask"]
-    [[passes.fs_cbuffer]]
+    [[passes.pipelines]]
+    outputs = ["focusMask"]
+    [[passes.pipelines.fs_cbuffers]]
     name = "FocusParams"
     slot = 0
-    value = [
-        {name = "focusCenter", type = "Float2", data = [0.5, 0.1]},
-        {name = "focusRadius", type = "Float", data = 0.05},
-        {name = "falloff", type = "Float", data = 0.1},
-        # TODO. use real viewport aspect ratio at runtime
-        {name = "aspectRatio", type = "Float", data = 1.33}
-    ]
-    [passes.metal_shader]
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/focusmask.metal"
     fs_func = "fs_focusmask"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/fullscreen.hlsl"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/focusmask.hlsl"
     fs_func = "fs_focusmask"
 [[passes]]
 name = "composite"
-inputs = ["pixelated", "outlined", "focusMask"]
-targets = ["BackBuffer"]
-fs_samplers = [
-    {preset = "LINEAR_WRAP"}
-]
-    [passes.metal_shader]
+    [[passes.pipelines]]
+    inputs = ["pixelated", "outlined", "focusMask"]
+    outputs = ["BackBuffer"]
+    [[passes.pipelines.fs_samplers]]
+    name = "NEAREST_WRAP"
+    slot = 0
+    [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/composite.metal"
     fs_func = "fs_composite"
-    [passes.d3d_shader]
+    [passes.pipelines.d3d_shader]
     vs_file = "asset/Shaders/fullscreen.hlsl"
     vs_func = "vs_fullscreen"
     fs_file = "asset/Shaders/composite.hlsl"

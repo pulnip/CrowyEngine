@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include "RHIDefinitions.hpp"
+#include "RenderSpec.hpp"
 #include "assert.hpp"
 #include "enum_traits.hpp"
 #include "string.hpp"
@@ -25,23 +26,22 @@ namespace Crowy
         Mat4 mvp;
     };
 
+    template<typename T>
+    using StringHashMap = std::unordered_map<std::string, T, StringHash, std::equal_to<>>;
+
     class Renderer::Impl{
     private:
         RHIDevice* device = nullptr;
-        std::vector<RenderPass> passes;
-        std::unordered_map<std::string, size_t, StringHash, std::equal_to<>> passIndex;
         RenderTargetPool renderTargetPool;
+        StringHashMap<RHISamplerPtr> samplers;
+        StringHashMap<CBuffer> cbuffers;
+        std::vector<RenderPass> passes;
+        StringHashMap<size_t> passIndex;
 
         // TODO. need to fit in appropriate slot
         static constexpr uint32_t vsPerObjectCBufferSlot = 1;
         LinearBufferAllocator vsPerObjectBuffers;
         LinearBufferAllocator passParamBuffers;
-
-        struct CBufferIndex{
-            std::string passName;
-            size_t index;
-        };
-        std::unordered_map<std::string, CBufferIndex, StringHash, std::equal_to<>> cbufferIndexes;
 
     public:
         Impl(RHIDevice* device)
@@ -67,30 +67,31 @@ namespace Crowy
         ~Impl() = default;
 
         void loadPasses(const RenderSpec& spec, int screenWidth, int screenHeight){
-            for(const auto& [name, renderTarget]: spec.renderTargets){
-                if(name != "BackBuffer"){
-                    auto texDesc = renderTarget;
-                    // fill real width
-                    texDesc.width  = texDesc.width  == 0 ?
-                        screenWidth  : texDesc.width;
-                    texDesc.height = texDesc.height == 0 ?
-                        screenHeight : texDesc.height;
+            for(const auto& [name, desc]: spec.textures){
+                if(name == "BackBuffer")
+                    continue;
 
-                    renderTargetPool.create(name, texDesc, *device);
-                }
+                auto texDesc = desc;
+                // fill real width
+                texDesc.width  = texDesc.width  == 0 ?
+                    screenWidth  : texDesc.width;
+                texDesc.height = texDesc.height == 0 ?
+                    screenHeight : texDesc.height;
+
+                renderTargetPool.create(name, texDesc, *device);
+            }
+
+            for(const auto& [name, desc]: spec.samplers){
+                auto newSampler = device->createSampler(desc);
+                samplers.emplace(name, std::move(newSampler));
+            }
+
+            for(const auto& [name, cbuffer]: spec.cbuffers){
+                cbuffers.emplace(name, cbuffer);
             }
 
             for(const auto& passSpec: spec.passes){
-                for(size_t i = 0; i < passSpec.fs_cbuffers.size(); ++i){
-                    const auto& cbuf = passSpec.fs_cbuffers[i];
-                    cbufferIndexes.emplace(cbuf.name, CBufferIndex{
-                        .passName = passSpec.name,
-                        .index = i
-                    });
-                }
-
-                const auto index = passes.size();
-                passIndex[passSpec.name] = index;
+                passIndex[passSpec.name] = passes.size();
                 passes.push_back(createPass(passSpec));
             }
         }
@@ -105,31 +106,8 @@ namespace Crowy
             vsPerObjectBuffers.reset();
             passParamBuffers.reset();
 
-            for(const auto& pass: passes){
-                if(pass.enabled){
-                    executePass(pass, cmdList, ctx, backBuffer);
-                }
-                else{
-                    // bypass for Post-Process, input[0] for bypass target
-                    CROWY_ASSERT(pass.inputs.size() > 0);
-                    auto  inputTarget = renderTargetPool.get(pass.inputs[0]);
-                    CROWY_ASSERT(inputTarget != nullptr);
-
-                    // not support MRT for bypass target
-                    CROWY_ASSERT(pass.targets.size() == 1);
-                    const auto& renderTargetName = pass.targets[0];
-
-                    if(renderTargetName != "BackBuffer"){
-                        auto renderTarget = renderTargetPool.get(renderTargetName);
-                        CROWY_ASSERT(renderTarget != nullptr);
-
-                        cmdList.copy(*inputTarget, *renderTarget);
-                    }
-                    else{
-                        cmdList.copy(*inputTarget, *backBuffer);
-                    }
-                }
-            }
+            for(const auto& pass: passes)
+                executePass(pass, cmdList, ctx, backBuffer);
         }
 
         // execute pass with immediate compile (used for initializing Texture)
@@ -158,38 +136,37 @@ namespace Crowy
         }
 
         CBuffer* getCBuffer(std::string_view cbufferName){
-            auto it = cbufferIndexes.find(cbufferName);
-            if(it == cbufferIndexes.end())
+            auto it = cbuffers.find(cbufferName);
+            if(it == cbuffers.end())
                 return nullptr;
 
-            const auto& info = it->second;
-            auto i = passIndex.at(info.passName);
-            return &passes[i].fs_cbuffers[info.index];
+            return &it->second;
         }
 
     private:
         RHIPipelineStatePtr createGraphicsPipelineStateHelper(
-            const RenderPassSpec& spec,
+            const PipelineBindSpec& spec,
             RHIShader* vertexShader,
-            RHIShader* fragmentShader
+            RHIShader* fragmentShader,
+            const std::string& name
         ){
-            // fullscreen pass (no renderType) doesn't need vertex layout
-            bool isFullscreenPass = spec.renderType.empty();
+            auto isFullscreen = spec.renderType.empty();
 
             RHIGraphicsPipelineStateDesc desc{
                 .vertexShader = vertexShader,
                 .pixelShader = fragmentShader,
-                .vertexLayout = isFullscreenPass ? RHIVertexLayout{} : DEFAULT_VERTEX_LAYOUT,
+                // fullscreen pipeline doesn't need vertex layout
+                .vertexLayout = isFullscreen ? RHIVertexLayout{} : DEFAULT_VERTEX_LAYOUT,
                 .rasterizer = spec.rasterizer,
                 .depthStencil = spec.depthStencil,
                 .blend = spec.blend,
-                .renderTargetCount = static_cast<uint32_t>(spec.targets.size())
+                .renderTargetCount = static_cast<uint32_t>(spec.outputs.size())
             };
 
-            for(int i=0; i<spec.targets.size(); ++i){
-                const auto& targetName = spec.targets[i];
+            for(int i=0; i<spec.outputs.size(); ++i){
+                const auto& outputName = spec.outputs[i];
 
-                if(auto tex = renderTargetPool.get(targetName))
+                if(auto tex = renderTargetPool.get(outputName))
                     desc.renderTargetFormats[i] = tex->getFormat();
                 else
                     // TODO. Backbuffer
@@ -197,24 +174,18 @@ namespace Crowy
             }
 
             if(desc.depthStencil.has_value()){
-                auto tex = renderTargetPool.get(spec.depthTarget);
+                auto tex = renderTargetPool.get(spec.depthOutput);
                 CROWY_ASSERT(tex != nullptr);
                 CROWY_ASSERT(tex->getFormat() == desc.depthStencil->format);
             }
 
-            return device->createGraphicsPipelineState(desc, spec.name);
+            return device->createGraphicsPipelineState(desc, name);
         }
 
-        RenderPass createPass(
-            const RenderPassSpec& spec
+        PipelineBind createPipeline(
+            const PipelineBindSpec& spec,
+            std::string name
         ){
-            std::vector<RHISamplerPtr> fs_samplers;
-            fs_samplers.reserve(spec.fs_samplers.size());
-            for(const auto& fs_sampler: spec.fs_samplers){
-                auto sampler = device->createSampler(fs_sampler);
-                fs_samplers.push_back(std::move(sampler));
-            }
-
             auto vs = device->createShader(RHIShaderCreateDesc{
                 .file = spec.shader.vsFilePath.c_str(),
                 .entry = spec.shader.vsFuncName.c_str(),
@@ -225,32 +196,86 @@ namespace Crowy
                 .entry = spec.shader.fsFuncName.c_str(),
                 .stage = RHIShaderStage::FragmentShader
             });
-
             auto pipeline = createGraphicsPipelineStateHelper(
-                spec, vs.get(), fs.get()
+                spec, vs.get(), fs.get(), name
             );
 
-            std::optional<RenderTypeHash> renderType = std::nullopt;
+            std::optional<RenderTypeHash> renderType;
             if(!spec.renderType.empty())
                 renderType = std::hash<RenderType>{}(spec.renderType);
+
+            return PipelineBind{
+                .name = name,
+                .inputs = spec.inputs,
+                .outputs = spec.outputs,
+                .depthOutput = spec.depthOutput,
+                .fs_samplers = spec.fs_samplers,
+                .fs_cbuffers = spec.fs_cbuffers,
+                .pso = std::move(pipeline),
+                .renderType = renderType
+            };
+        }
+
+        RenderPass createPass(
+            const RenderPassSpec& spec
+        ){
+            std::vector<PipelineBind> pipelines;
+
+            for(size_t i=0; i<spec.pipelines.size(); ++i){
+                const auto& pipelineSpec = spec.pipelines[i];
+                auto pipeline = createPipeline(
+                    pipelineSpec,
+                    std::format("{}[{}]", spec.name, i)
+                );
+                pipelines.emplace_back(std::move(pipeline));
+            }
 
             return RenderPass{
                 .name = spec.name,
                 .enabled = true,
-                .inputs = spec.inputs,
-                .targets = spec.targets,
-                .depthTarget = spec.depthTarget,
-                .fs_samplers = std::move(fs_samplers),
-                .vs = std::move(vs), .fs = std::move(fs),
-                .renderType = renderType,
-                .pipeline = std::move(pipeline),
-                .fs_cbuffers = spec.fs_cbuffers
+                .pipelines = std::move(pipelines)
             };
         }
 
-
         void executePass(
             const RenderPass& pass,
+            RHICommandList& cmdList,
+            const RenderContext& ctx,
+            RHISwapchain* backBuffer
+        ){
+            if(pass.enabled){
+                for(const auto& pipeline: pass.pipelines)
+                    executePipeline(pipeline, cmdList, ctx, backBuffer);
+            }
+            else{
+                CROWY_ASSERT(pass.pipelines.size() > 0);
+
+                const auto& pf = pass.pipelines.front();
+                const auto& pb = pass.pipelines.back();
+
+                // bypass for Post-Process, pf.inputs[0] for bypass target
+                CROWY_ASSERT(pf.inputs.size() > 0);
+                auto  input = renderTargetPool.get(pf.inputs[0]);
+                CROWY_ASSERT(input != nullptr);
+
+                // not support MRT for bypass target
+                CROWY_ASSERT(pb.outputs.size() == 1);
+                const auto& renderTargetName = pb.outputs[0];
+
+                if(renderTargetName != "BackBuffer"){
+                    auto renderTarget = renderTargetPool.get(renderTargetName);
+                    CROWY_ASSERT(renderTarget != nullptr);
+
+                    cmdList.copy(*input, *renderTarget);
+                }
+                else{
+                    cmdList.copy(*input, *backBuffer);
+                }
+            }
+        }
+
+        void executePipeline(
+            const PipelineBind& pipeline,
             RHICommandList& cmdList,
             const RenderContext& ctx,
             RHISwapchain* backBuffer
@@ -265,15 +290,15 @@ namespace Crowy
                 .minDepth = 0.0f, .maxDepth = 1.0f
             };
 
-            CROWY_ASSERT(pass.targets.size() > 0);
-            const auto& renderTargetName = pass.targets[0];
-            auto depthTarget = renderTargetPool.get(pass.depthTarget);
+            CROWY_ASSERT(pipeline.outputs.size() > 0);
+            const auto& renderTargetName = pipeline.outputs[0];
+            auto depthTarget = renderTargetPool.get(pipeline.depthOutput);
             if(renderTargetName != "BackBuffer"){
-                std::vector<RHITexture*> renderTargets(pass.targets.size());
+                std::vector<RHITexture*> renderTargets(pipeline.outputs.size());
 
                 // Multi Render Target support
-                for(size_t i=0; i<pass.targets.size(); ++i){
-                    const auto& targetName = pass.targets[i];
+                for(size_t i=0; i<pipeline.outputs.size(); ++i){
+                    const auto& targetName = pipeline.outputs[i];
                     CROWY_ASSERT(targetName != "BackBuffer");
                     auto target = renderTargetPool.get(targetName);
                     CROWY_ASSERT(target != nullptr);
@@ -298,7 +323,7 @@ namespace Crowy
                     RHIStoreAction::Store,
                     clearColor,
                     clearDS,
-                    pass.name.c_str()
+                    pipeline.name.c_str()
                 );
             }
             else{
@@ -312,45 +337,55 @@ namespace Crowy
                     RHIStoreAction::Store,
                     clearColor,
                     clearDS,
-                    pass.name.c_str()
+                    pipeline.name.c_str()
                 );
             }
-            cmdList.setPipelineState(pass.pipeline.get());
+            cmdList.setPipelineState(pipeline.pso.get());
 
             // bind input texture
-            for(size_t i=0; i<pass.inputs.size(); ++i){
-                auto inputTarget = renderTargetPool.get(pass.inputs[i]);
-                if(inputTarget == nullptr)
+            for(size_t i=0; i<pipeline.inputs.size(); ++i){
+                auto shaderResource = renderTargetPool.get(pipeline.inputs[i]);
+                if(shaderResource == nullptr)
                     continue;
 
                 // transition input texture to shader resource state
                 cmdList.transitionBarrier(
-                    *inputTarget,
+                    *shaderResource,
                     RHIResourceState::AllShaderResource
                 );
 
                 // TODO. select shader stage for advanced rendering technique
                 cmdList.setTexture(
                     static_cast<uint32_t>(i),
-                    *inputTarget,
+                    *shaderResource,
                     FragmentShader
                 );
             }
-            for(size_t i=0; i<pass.fs_samplers.size(); ++i){
-                auto sampler = pass.fs_samplers[i].get();
+
+            for(const auto& samplerBind: pipeline.fs_samplers){
+                auto it = samplers.find(samplerBind.name);
+                [[unlikely]] if(it == samplers.end())
+                    continue;
 
                 cmdList.setSampler(
-                    static_cast<uint32_t>(i), *sampler,
+                    samplerBind.slot, *it->second,
                     FragmentShader
                 );
             }
 
-            for(auto& cbuf: pass.fs_cbuffers){
-                auto& buf = passParamBuffers.acquire();
+            for(const auto& cbufferBind: pipeline.fs_cbuffers){
+                auto it = cbuffers.find(cbufferBind.name);
+                [[unlikely]] if(it == cbuffers.end())
+                    continue;
 
+                const auto& cbuf = it->second;
+                auto& buf = passParamBuffers.acquire();
                 buf.upload(cbuf.buffer.data(), cbuf.buffer.size());
 
-                cmdList.setConstantBuffer(FragmentShader, cbuf.slot, buf);
+                cmdList.setConstantBuffer(
+                    FragmentShader,
+                    cbufferBind.slot, buf
+                );
             }
 
             cmdList.setViewport(viewport);
@@ -362,11 +397,11 @@ namespace Crowy
             });
 
             // draw
-            if(pass.isFullscreenPass()){
-                drawFullscreenQuad(cmdList, ctx, pass.name);
+            if(pipeline.isFullscreenPass()){
+                drawFullscreenQuad(cmdList, ctx);
             }
             else{
-                drawObjectsWithType(cmdList, ctx, *pass.renderType);
+                drawObjectsWithType(cmdList, ctx, *pipeline.renderType);
             }
 
             cmdList.endRenderPass();
@@ -416,8 +451,7 @@ namespace Crowy
 
         void drawFullscreenQuad(
             RHICommandList& cmdList,
-            const RenderContext& ctx,
-            std::string_view passName
+            const RenderContext& ctx
         ){
             cmdList.draw(6, 1);
         }
