@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <span>
 #include "RHIFWD.hpp"
 #include "semantics.hpp"
@@ -137,10 +136,7 @@ namespace Crowy
 
         // Compute dispatch
         virtual void dispatch(
-            uint32_t gridSizeX,
-            uint32_t gridSizeY,
-            uint32_t gridSizeZ,
-            std::optional<RHISize3D> threadGroupSize = std::nullopt
+            RHISize3D gridSize
         ) noexcept = 0;
 
         // Resource barriers (state transitions)

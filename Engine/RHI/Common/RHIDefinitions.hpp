@@ -432,8 +432,14 @@ namespace Crowy
         uint32_t renderTargetCount = 1;
     };
 
+    struct RHISize3D{
+        uint32_t x, y, z;
+    };
+
     struct RHIComputePipelineStateDesc{
         RHIShader* computeShader;
+        RHISize3D gridSize;
+        std::optional<RHISize3D> threadGroupSize = std::nullopt;
     };
 
     enum class RHIFilter{
@@ -484,10 +490,6 @@ namespace Crowy
     #if defined(_DEBUG) || !defined(NDEBUG)
         std::string debugName;
     #endif
-    };
-
-    struct RHISize3D{
-        uint32_t x, y, z;
     };
 
     inline size_t getBytesPerPixel(RHITextureFormat format){

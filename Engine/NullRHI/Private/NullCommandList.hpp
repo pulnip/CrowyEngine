@@ -152,10 +152,7 @@ namespace Crowy
         }
 
         void dispatch(
-            uint32_t gridSizeX,
-            uint32_t gridSizeY,
-            uint32_t gridSizeZ,
-            std::optional<RHISize3D> threadGroupSize = std::nullopt
+            RHISize3D gridSize
         ) noexcept RHI_OVERRIDE{
 
         }

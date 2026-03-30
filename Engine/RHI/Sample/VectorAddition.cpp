@@ -67,7 +67,7 @@ int main(int argc, char* argv[]){
     cmdList->setBuffer(1, *bufferB.get());
     cmdList->setBuffer(2, *bufferOut.get());
 
-    cmdList->dispatch(N, 1, 1);
+    cmdList->dispatch({N, 1, 1});
 
     cmdList->endCompute();
     cmdList->close();

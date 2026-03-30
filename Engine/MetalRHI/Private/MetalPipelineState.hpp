@@ -98,11 +98,13 @@ namespace Crowy
     {
     private:
         MTL::RenderPipelineState* renderPipeline = nullptr;
-        MTL::ComputePipelineState* computePipeline = nullptr;
         MTL::DepthStencilState* depthStencilState = nullptr;
-
         RHIRasterizerState rasterizerState{};
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
+
+        MTL::ComputePipelineState* computePipeline = nullptr;
+        MTL::Size threadsPerThreadgroup = {0, 0, 0};
+
         const std::string debugName;
 
     public:
@@ -241,6 +243,25 @@ namespace Crowy
             if(!computePipeline){
                 throw std::runtime_error("Failed to create compute pipeline state");
             }
+
+            if(desc.threadGroupSize.has_value()){
+                const auto& threadGroupSize = *desc.threadGroupSize;
+                threadsPerThreadgroup = MTL::Size::Make(
+                    threadGroupSize.x,
+                    threadGroupSize.y,
+                    threadGroupSize.z
+                );
+            }
+            else{
+                auto effectiveGroupSize = std::min(
+                    256ul,
+                    computePipeline->maxTotalThreadsPerThreadgroup()
+                );
+                threadsPerThreadgroup = defaultGroupSize(
+                    effectiveGroupSize,
+                    desc.gridSize
+                );
+            }
         }
 
         ~MetalPipelineState(){
@@ -273,12 +294,8 @@ namespace Crowy
             return computePipeline != nullptr;
         }
 
-        NS::UInteger maxTotalThreadsPerThreadgroup() const{
-            if(computePipeline != nullptr)
-                return computePipeline->maxTotalThreadsPerThreadgroup();
-            if(renderPipeline != nullptr)
-                return renderPipeline->maxTotalThreadsPerThreadgroup();
-            return 0;
+        MTL::Size getThreadsPerThreadgroup() const{
+            return threadsPerThreadgroup;
         }
 
     private:
@@ -309,6 +326,19 @@ namespace Crowy
 
             depthStencilState = device->newDepthStencilState(dsDesc);
             dsDesc->release();
+        }
+
+        static MTL::Size defaultGroupSize(
+            uint32_t numThreads,
+            const RHISize3D& gridSize
+        ) noexcept{
+            auto width = std::min(numThreads, gridSize.x);
+            numThreads /= width;
+            auto height = std::min(numThreads, gridSize.y);
+            numThreads /= height;
+            auto depth = std::min(numThreads, gridSize.z);
+
+            return MTL::Size::Make(width, height, depth);
         }
     };
 }

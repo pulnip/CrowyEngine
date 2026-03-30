@@ -86,7 +86,7 @@ private:
         MTL::IndexType currentIndexFormat = MTL::IndexTypeUInt32;
         
         RHIPrimitiveTopology currentTopology = RHIPrimitiveTopology::TriangleList;
-        NS::UInteger maxTotalThreadsPerThreadgroup = 0;
+        MTL::Size threadsPerThreadgroup = {0, 0, 0};
         bool isRecording = false;
 
     public:
@@ -223,7 +223,7 @@ private:
         void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
             auto metalPSO = static_cast<MetalPipelineState*>(pso);
             currentTopology = metalPSO->getTopology();
-            maxTotalThreadsPerThreadgroup = metalPSO->maxTotalThreadsPerThreadgroup();
+            threadsPerThreadgroup = metalPSO->getThreadsPerThreadgroup();
 
             if(metalPSO->isComputePipeline()){
                 CROWY_ASSERT(computeEncoder != nullptr,
@@ -503,7 +503,7 @@ private:
                 blitEncoder = nullptr;
             }
 
-            maxTotalThreadsPerThreadgroup = 0;
+            threadsPerThreadgroup = {0, 0, 0};
             computeEncoder = commandBuffer->computeCommandEncoder();
         }
 
@@ -517,41 +517,22 @@ private:
         }
 
         void dispatch(
-            uint32_t gridSizeX,
-            uint32_t gridSizeY,
-            uint32_t gridSizeZ,
-            std::optional<RHISize3D> threadGroupSize = std::nullopt
+            RHISize3D gridSize
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
 
             auto threadsPerGrid = MTL::Size::Make(
-                gridSizeX,
-                gridSizeY,
-                gridSizeZ
+                gridSize.x,
+                gridSize.y,
+                gridSize.z
             );
 
-            MTL::Size threadsPerThreadgroup;
-            if(threadGroupSize.has_value()){
-                threadsPerThreadgroup = MTL::Size::Make(
-                    threadGroupSize->x,
-                    threadGroupSize->y,
-                    threadGroupSize->z
-                );
-            }
-            else{
-                auto effectiveGroupSize = std::min(256ul, maxTotalThreadsPerThreadgroup);
-
-                threadsPerThreadgroup = defaultGroupSize(
-                    effectiveGroupSize,
-                    gridSizeX,
-                    gridSizeY,
-                    gridSizeZ
-                );
-            }
-
-            computeEncoder->dispatchThreads(threadsPerGrid, threadsPerThreadgroup);
+            computeEncoder->dispatchThreads(
+                threadsPerGrid,
+                threadsPerThreadgroup
+            );
         }
 
         void transitionBarrier(
@@ -745,8 +726,6 @@ private:
                 blitEncoder->endEncoding();
                 blitEncoder = nullptr;
             }
-
-            maxTotalThreadsPerThreadgroup = 0;
 
             auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
 
