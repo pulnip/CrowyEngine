@@ -34,12 +34,12 @@ namespace Crowy
         Renderer(RHIDevice* device);
         ~Renderer();
 
-        void loadPasses(const RenderSpec&, int screenWidth, int screenHeight);
+        void loadPasses(const RenderSpec&, int screenWidth = 0, int screenHeight = 0);
         // execute all passes
         void render(
             RHICommandList&,
-            const RenderContext&,
-            RHISwapchain*
+            const RenderContext& = {},
+            RHISwapchain* = nullptr
         );
 
         // execute pass with immediate compile (used for initializing Texture)

@@ -128,8 +128,12 @@ namespace Crowy
             vsPerObjectBuffers.reset();
             passParamBuffers.reset();
 
+            // TODO. make RenderGraph!
             for(const auto& pass: renderPasses)
                 executePass(pass, cmdList, ctx, backBuffer);
+
+            for(const auto& pass: computePasses)
+                executePass(pass, cmdList);
         }
 
         // execute render pass with immediate compile (used for initializing Texture)
@@ -294,7 +298,7 @@ namespace Crowy
                 .name = name,
                 .inputTextures = spec.inputTextures,
                 .inputBuffers = spec.inputBuffers,
-                .outputTextures = spec.outputBuffers,
+                .outputTextures = spec.outputTextures,
                 .outputBuffers = spec.outputBuffers,
                 .pso = std::move(pipeline),
                 .gridSize = spec.gridSize
@@ -545,6 +549,17 @@ namespace Crowy
             const RenderContext& ctx
         ){
             cmdList.draw(6, 1);
+        }
+
+        void executePass(
+            const ComputePass& pass,
+            RHICommandList& cmdList
+        ){
+            if(!pass.enabled)
+                return;
+
+            for(const auto& pipeline: pass.pipelines)
+                executePipeline(pipeline, cmdList);
         }
 
         void executePipeline(
