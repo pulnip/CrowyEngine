@@ -167,7 +167,8 @@
                                         "Float3",
                                         "Float4"
                                     ]
-                                }
+                                },
+                                "data": {}
                             },
                             "additionalProperties": false
                         }
