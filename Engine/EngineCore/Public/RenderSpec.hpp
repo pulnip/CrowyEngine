@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <limits>
 #include <string>
 #include <vector>
 #include "path_util.hpp"
@@ -19,27 +20,26 @@ namespace Crowy
         std::string renderType;
     };
 
-    struct ShaderSpec{
-        using Key = std::string;
-        using KeyHash = std::hash<Key>;
+    struct BindSpec{
+        std::string name;
+        uint32_t slot = std::numeric_limits<uint32_t>::max();
+    };
 
+    struct ShaderSpec{
         std::filesystem::path vsFilePath;
         std::string vsFuncName;
         std::filesystem::path fsFilePath;
         std::string fsFuncName;
 
-        inline Key key() const{
-            return to_utf8String(vsFilePath) + ':' + vsFuncName + ',' +
-                   to_utf8String(fsFilePath) + ':' + fsFuncName;
+        inline auto hash() const{
+            auto concat = to_utf8String(vsFilePath) + ':' + vsFuncName + ',' +
+                          to_utf8String(fsFilePath) + ':' + fsFuncName;
+
+            return std::hash<std::string>{}(concat);
         }
     };
 
-    struct BindSpec{
-        std::string name;
-        uint32_t slot;
-    };
-
-    struct PipelineBindSpec{
+    struct GraphicsPipelineBindSpec{
         // input Texture
         std::vector<std::string> inputs;
         // output Texture
@@ -60,13 +60,43 @@ namespace Crowy
 
     struct RenderPassSpec{
         std::string name;
-        std::vector<PipelineBindSpec> pipelines;
+        std::vector<GraphicsPipelineBindSpec> pipelines;
+    };
+
+    struct ComputeShaderSpec{
+        std::filesystem::path filePath;
+        std::string funcName;
+
+        inline auto hash() const{
+            auto concat = to_utf8String(filePath) + ':' + funcName;
+
+            return std::hash<std::string>{}(concat);
+        }
+    };
+
+    struct ComputePipelineBindSpec{
+        // input
+        std::vector<BindSpec> inputTextures;
+        std::vector<BindSpec> inputBuffers;
+
+        // output
+        std::vector<BindSpec> outputTextures;
+        std::vector<BindSpec> outputBuffers;
+
+        ComputeShaderSpec shader;
+    };
+
+    struct ComputePassSpec{
+        std::string name;
+        std::vector<ComputePipelineBindSpec> pipelines;
     };
 
     struct RenderSpec{
         std::unordered_map<std::string, RHITextureCreateDesc> textures;
         std::unordered_map<std::string, RHISamplerState> samplers;
         std::unordered_map<std::string, CBuffer> cbuffers;
-        std::vector<RenderPassSpec> passes;
+
+        std::vector<RenderPassSpec> renderPasses;
+        std::vector<ComputePassSpec> computePasses;
     };
 }

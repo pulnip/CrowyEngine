@@ -207,11 +207,11 @@ int main(int argc, char* argv[]){
             {"PixelateParams", pixelateParams},
             {"FocusParams", focusParams}
         },
-        .passes = {
-            RenderPassSpec{
+        .renderPasses = {
+            {
                 .name = "gbuffer",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .outputs = {"albedo", "normal"},
                         .depthOutput = "depth",
                         .fs_samplers = {
@@ -238,10 +238,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             },
-            RenderPassSpec{
+            {
                 .name = "celshading",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .inputs = {"albedo", "normal"},
                         .outputs = {"toonColor"},
                         .fs_samplers = {
@@ -263,10 +263,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             },
-            RenderPassSpec{
+            {
                 .name = "outlining",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .inputs = {"normal", "depth", "toonColor"},
                         .outputs = {"outlined"},
                         .fs_samplers = {
@@ -288,10 +288,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             },
-            RenderPassSpec{
+            {
                 .name = "scene",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         // no input texture
                         .inputs = {},
                         .outputs = {"sceneColor"},
@@ -320,10 +320,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             },
-            RenderPassSpec{
+            {
                 .name = "pixelate",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .inputs = {"sceneColor"},
                         .outputs = {"pixelated"},
                         .fs_samplers = {
@@ -348,10 +348,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             },
-            RenderPassSpec{
+            {
                 .name = "focusmask",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .outputs = {"focusMask"},
                         .fs_cbuffers = {
                             {.name = "FocusParams", .slot = 0}
@@ -372,10 +372,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             },
-            RenderPassSpec{
+            {
                 .name = "composite",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .inputs = {
                             "pixelated",
                             "outlined",

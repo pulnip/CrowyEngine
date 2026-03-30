@@ -305,7 +305,7 @@ namespace Crowy
         return v;
     }
 
-    static std::vector<PipelineBindSpec> readPipelines(
+    static std::vector<GraphicsPipelineBindSpec> readGraphicsPipelines(
         const ValueArena& arena, const VTable& table,
         std::vector<BindError>& errors, const char* key = "pipelines"
     ){
@@ -315,7 +315,7 @@ namespace Crowy
         auto arr = std::get_if<VArray>(n);
         if(!arr) return {};
 
-        std::vector<PipelineBindSpec> v;
+        std::vector<GraphicsPipelineBindSpec> v;
         v.resize(arr->elements.size());
 
         for(int i=0; i<arr->elements.size(); ++i){
@@ -514,7 +514,7 @@ namespace Crowy
             }
 
             passes[i].name = *name;
-            passes[i].pipelines = readPipelines(tempPasses.arena, *table, errors, "pipelines");
+            passes[i].pipelines = readGraphicsPipelines(tempPasses.arena, *table, errors, "pipelines");
         }
         reportError(errors);
 
@@ -525,9 +525,9 @@ namespace Crowy
         std::unordered_map<std::string, RHITextureCreateDesc> textures,
         std::unordered_map<std::string, RHISamplerState> samplers,
         std::unordered_map<std::string, CBuffer> cbuffers,
-        std::vector<RenderPassSpec> passes
+        std::vector<RenderPassSpec> renderPasses
     ){
-        for(auto& pass: passes){
+        for(auto& pass: renderPasses){
             for(auto& pipeline: pass.pipelines){
                 // ShaderResource
                 for(const auto& input: pipeline.inputs){
@@ -587,7 +587,7 @@ namespace Crowy
             .textures = textures,
             .samplers = samplers,
             .cbuffers = cbuffers,
-            .passes = passes
+            .renderPasses = renderPasses
         };
     }
 

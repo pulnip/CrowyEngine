@@ -90,7 +90,7 @@ namespace Crowy
                 cbuffers.emplace(name, cbuffer);
             }
 
-            for(const auto& passSpec: spec.passes){
+            for(const auto& passSpec: spec.renderPasses){
                 passIndex[passSpec.name] = passes.size();
                 passes.push_back(createPass(passSpec));
             }
@@ -145,7 +145,7 @@ namespace Crowy
 
     private:
         RHIPipelineStatePtr createGraphicsPipelineStateHelper(
-            const PipelineBindSpec& spec,
+            const GraphicsPipelineBindSpec& spec,
             RHIShader* vertexShader,
             RHIShader* fragmentShader,
             const std::string& name
@@ -183,7 +183,7 @@ namespace Crowy
         }
 
         PipelineBind createPipeline(
-            const PipelineBindSpec& spec,
+            const GraphicsPipelineBindSpec& spec,
             std::string name
         ){
             auto vs = device->createShader(RHIShaderCreateDesc{

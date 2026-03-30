@@ -396,11 +396,11 @@ int main(int argc, char* argv[]){
                 makeDiskGenParams(rs)
             }
         },
-        .passes = {
-            RenderPassSpec{
+        .renderPasses = {
+            {
                 .name = "scene",
                 .pipelines = {
-                    PipelineBindSpec{
+                    {
                         .inputs = {"disk"},
                         .outputs = {"scene", "brightMask"},
                         .fs_samplers = {
@@ -430,7 +430,7 @@ int main(int argc, char* argv[]){
                 .name = "bloom",
                 .pipelines = {
                     // blur_h_1_2
-                    PipelineBindSpec{
+                    {
                         .inputs = {"brightMask"},
                         .outputs = {"blur_tmp_1_2"},
                         .fs_samplers = {
@@ -451,7 +451,7 @@ int main(int argc, char* argv[]){
                         },
                     },
                     // blur_v_1_2
-                    PipelineBindSpec{
+                    {
                         .inputs = {"blur_tmp_1_2"},
                         .outputs = {"bloom_1_2"},
                         .fs_samplers = {
@@ -472,7 +472,7 @@ int main(int argc, char* argv[]){
                         }
                     },
                     // blur_h_1_4
-                    PipelineBindSpec{
+                    {
                         .inputs = {"bloom_1_2"},
                         .outputs = {"blur_tmp_1_4"},
                         .fs_samplers = {
@@ -493,7 +493,7 @@ int main(int argc, char* argv[]){
                         },
                     },
                     // blur_v_1_4
-                    PipelineBindSpec{
+                    {
                         .inputs = {"blur_tmp_1_4"},
                         .outputs = {"bloom_1_4"},
                         .fs_samplers = {
@@ -514,7 +514,7 @@ int main(int argc, char* argv[]){
                         }
                     },
                     // blur_h_1_8
-                    PipelineBindSpec{
+                    {
                         .inputs = {"bloom_1_4"},
                         .outputs = {"blur_tmp_1_8"},
                         .fs_samplers = {
@@ -535,7 +535,7 @@ int main(int argc, char* argv[]){
                         },
                     },
                     // blur_v_1_8
-                    PipelineBindSpec{
+                    {
                         .inputs = {"blur_tmp_1_8"},
                         .outputs = {"bloom_1_8"},
                         .fs_samplers = {
@@ -556,7 +556,7 @@ int main(int argc, char* argv[]){
                         }
                     },
                     // composite
-                    PipelineBindSpec{
+                    {
                         .inputs = {
                             "scene",
                             "bloom_1_2",
@@ -594,7 +594,7 @@ int main(int argc, char* argv[]){
         renderer.render(RenderPassSpec{
             .name = "Disk Generation",
             .pipelines = {
-                PipelineBindSpec{
+                {
                     .outputs = {"disk"},
                     .fs_cbuffers = {
                         {.name = "DiskGenParams", .slot = 0}

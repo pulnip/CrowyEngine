@@ -43,14 +43,14 @@ TEST(RenderParser, ParseSimplePass){
         Field(&RHITextureCreateDesc::format, Eq(RHITextureFormat::RGBA8_UNORM))
     )));
 
-    ASSERT_THAT(render.passes, SizeIs(1));
-    const auto& pass1 = render.passes[0];
+    ASSERT_THAT(render.renderPasses, SizeIs(1));
+    const auto& pass1 = render.renderPasses[0];
     EXPECT_EQ(pass1.name, "pass1");
 
     ASSERT_THAT(pass1.pipelines, SizeIs(1));
     EXPECT_THAT(pass1.pipelines, Contains(AllOf(
-        Field(&PipelineBindSpec::outputs, ElementsAre("BackBuffer")),
-        Field(&PipelineBindSpec::shader, AllOf(
+        Field(&GraphicsPipelineBindSpec::outputs, ElementsAre("BackBuffer")),
+        Field(&GraphicsPipelineBindSpec::shader, AllOf(
             Field(&ShaderSpec::vsFilePath, Eq("path1")),
             Field(&ShaderSpec::vsFuncName, Eq("function1")),
             Field(&ShaderSpec::fsFilePath, Eq("path2")),
@@ -110,15 +110,15 @@ TEST(RenderParser, ParseMultiplePasses){
         Field(&RHITextureCreateDesc::format, Eq(RHITextureFormat::RGBA8_UNORM))
     )));
 
-    ASSERT_THAT(render.passes, SizeIs(2));
-    EXPECT_THAT(render.passes, ElementsAre(
+    ASSERT_THAT(render.renderPasses, SizeIs(2));
+    EXPECT_THAT(render.renderPasses, ElementsAre(
         AllOf(
             Field(&RenderPassSpec::name, Eq("pass1")),
             Field(&RenderPassSpec::pipelines, ElementsAre(
                 AllOf(
-                    Field(&PipelineBindSpec::inputs, IsEmpty()),
-                    Field(&PipelineBindSpec::outputs, ElementsAre("target1")),
-                    Field(&PipelineBindSpec::shader, AllOf(
+                    Field(&GraphicsPipelineBindSpec::inputs, IsEmpty()),
+                    Field(&GraphicsPipelineBindSpec::outputs, ElementsAre("target1")),
+                    Field(&GraphicsPipelineBindSpec::shader, AllOf(
                         Field(&ShaderSpec::vsFilePath, Eq("path1")),
                         Field(&ShaderSpec::vsFuncName, Eq("function1")),
                         Field(&ShaderSpec::fsFilePath, Eq("path2")),
@@ -131,9 +131,9 @@ TEST(RenderParser, ParseMultiplePasses){
             Field(&RenderPassSpec::name, Eq("pass2")),
             Field(&RenderPassSpec::pipelines, ElementsAre(
                 AllOf(
-                    Field(&PipelineBindSpec::inputs, ElementsAre("target1")),
-                    Field(&PipelineBindSpec::outputs, ElementsAre("BackBuffer")),
-                    Field(&PipelineBindSpec::shader, AllOf(
+                    Field(&GraphicsPipelineBindSpec::inputs, ElementsAre("target1")),
+                    Field(&GraphicsPipelineBindSpec::outputs, ElementsAre("BackBuffer")),
+                    Field(&GraphicsPipelineBindSpec::shader, AllOf(
                         Field(&ShaderSpec::vsFilePath, Eq("path3")),
                         Field(&ShaderSpec::vsFuncName, Eq("function3")),
                         Field(&ShaderSpec::fsFilePath, Eq("path4")),
@@ -180,8 +180,8 @@ TEST(RenderParser, ParseSamplerWithIndividualFilters){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 1);
-    const auto& pass1 = render.passes[0];
+    ASSERT_EQ(render.renderPasses.size(), 1);
+    const auto& pass1 = render.renderPasses[0];
     ASSERT_EQ(pass1.pipelines.size(), 1);
     const auto& pipeline = pass1.pipelines[0];
     ASSERT_EQ(pipeline.fs_samplers.size(), 1);
@@ -229,8 +229,8 @@ TEST(RenderParser, ParseSamplerWithUnifiedFilter){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 1);
-    const auto& pass1 = render.passes[0];
+    ASSERT_EQ(render.renderPasses.size(), 1);
+    const auto& pass1 = render.renderPasses[0];
     ASSERT_EQ(pass1.pipelines.size(), 1);
     const auto& pipeline = pass1.pipelines[0];
     ASSERT_EQ(pipeline.fs_samplers.size(), 1);
@@ -303,9 +303,9 @@ TEST(RenderParser, ParseMultipleSamplers){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 2);
-    const auto& pass1 = render.passes[0];
-    const auto& pass2 = render.passes[1];
+    ASSERT_EQ(render.renderPasses.size(), 2);
+    const auto& pass1 = render.renderPasses[0];
+    const auto& pass2 = render.renderPasses[1];
     ASSERT_EQ(pass1.pipelines.size(), 1);
     const auto& pipeline1 = pass1.pipelines[0];
     ASSERT_EQ(pass2.pipelines.size(), 1);
@@ -366,8 +366,8 @@ TEST(RenderParser, ParseMultipleSamplersInSinglePass){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 1);
-    const auto& pass = render.passes[0];
+    ASSERT_EQ(render.renderPasses.size(), 1);
+    const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
     ASSERT_EQ(pipeline.fs_samplers.size(), 2);
@@ -421,8 +421,8 @@ TEST(RenderParser, IncompleteSamplerIsIgnored){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 1);
-    const auto& pass = render.passes[0];
+    ASSERT_EQ(render.renderPasses.size(), 1);
+    const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
     ASSERT_EQ(pipeline.fs_samplers.size(), 1);
@@ -468,8 +468,8 @@ TEST(RenderParser, NonexistentSamplerIsIgnored){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 1);
-    const auto& pass = render.passes[0];
+    ASSERT_EQ(render.renderPasses.size(), 1);
+    const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
     ASSERT_EQ(pipeline.fs_samplers.size(), 1);
@@ -504,8 +504,8 @@ TEST(RenderParser, PassWithoutSamplers){
     )";
     auto render = parseRenderFromString(tomlText);
 
-    ASSERT_EQ(render.passes.size(), 1);
-    const auto& pass = render.passes[0];
+    ASSERT_EQ(render.renderPasses.size(), 1);
+    const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
     EXPECT_TRUE(pipeline.fs_samplers.empty());
