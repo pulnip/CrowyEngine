@@ -9,7 +9,7 @@
 
 namespace Crowy
 {
-    struct PipelineBind{
+    struct GraphicsPipelineBind{
         std::string name;
         // input Texture
         std::vector<std::string> inputs;
@@ -31,6 +31,6 @@ namespace Crowy
     struct RenderPass{
         std::string name;
         bool enabled = true;
-        std::vector<PipelineBind> pipelines;
+        std::vector<GraphicsPipelineBind> pipelines;
     };
 }

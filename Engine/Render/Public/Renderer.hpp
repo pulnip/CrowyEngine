@@ -52,5 +52,6 @@ namespace Crowy
 
         bool setPassEnabled(std::string_view passName, bool enabled);
         CBuffer* getCBuffer(std::string_view cbufferName);
+        RHIBuffer* getBuffer(std::string_view bufferName);
     };
 }

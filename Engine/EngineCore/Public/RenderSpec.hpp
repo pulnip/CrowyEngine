@@ -84,6 +84,8 @@ namespace Crowy
         std::vector<BindSpec> outputBuffers;
 
         ComputeShaderSpec shader;
+        RHISize3D gridSize;
+        std::optional<RHISize3D> threadGroupSize = std::nullopt;
     };
 
     struct ComputePassSpec{
@@ -95,6 +97,7 @@ namespace Crowy
         std::unordered_map<std::string, RHITextureCreateDesc> textures;
         std::unordered_map<std::string, RHISamplerState> samplers;
         std::unordered_map<std::string, CBuffer> cbuffers;
+        std::unordered_map<std::string, RHIBufferCreateDesc> buffers;
 
         std::vector<RenderPassSpec> renderPasses;
         std::vector<ComputePassSpec> computePasses;
