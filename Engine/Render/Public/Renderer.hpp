@@ -1,30 +1,14 @@
 #pragma once
 
 #include <memory>
-#include <span>
-#include "math.hpp"
-#include "RenderDefinitions.hpp"
 #include "RenderSpec.hpp"
-#include "ResourceHandle.hpp"
 #include "RHIFWD.hpp"
+#include "RenderContext.hpp"
 
 namespace Crowy
 {
     struct RenderSpec;
     struct CBuffer;
-
-    struct RenderItem{
-        MeshHandle mesh;
-        MaterialSetHandle materials;
-        Mat4 world;
-        RenderTypeHash type;
-    };
-
-    struct RenderContext{
-        std::span<const RenderItem> renderItems;
-        // Camera Information
-        Mat4 view, proj;
-    };
 
     class Renderer{
         class Impl;
