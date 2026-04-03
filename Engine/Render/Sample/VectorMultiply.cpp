@@ -61,36 +61,32 @@ int main(int argc, char* argv[]){
         .computePasses = {
             {
                 .name = "VectorMultiply",
-                .pipelines = {
+                .inputBuffers = {
                     {
-                        .inputBuffers = {
-                            {
-                                .name = "BufferA",
-                                .slot = 0
-                            },
-                            {
-                                .name = "BufferB",
-                                .slot = 1
-                            }
-                        },
-                        .outputBuffers = {
-                            {
-                                .name = "BufferOut",
-                                .slot = 2
-                            }
-                        },
-                        .shader = {
-                        #ifdef CROWY_METALRHI
-                            .filePath = "asset/Shaders/vector_multiply.metal",
-                            .funcName = "cs_vector_multiply",
-                        #elif CROWY_D3DRHI
-                            .filePath = L"asset/Shaders/vector_multiply.hlsl",
-                            .funcName = "cs_vector_multiply",
-                        #endif
-                        },
-                        .gridSize = {N, 1, 1}
+                        .name = "BufferA",
+                        .slot = 0
+                    },
+                    {
+                        .name = "BufferB",
+                        .slot = 1
                     }
-                }
+                },
+                .outputBuffers = {
+                    {
+                        .name = "BufferOut",
+                        .slot = 2
+                    }
+                },
+                .shader = {
+                #ifdef CROWY_METALRHI
+                    .filePath = "asset/Shaders/vector_multiply.metal",
+                    .funcName = "cs_vector_multiply",
+                #elif CROWY_D3DRHI
+                    .filePath = L"asset/Shaders/vector_multiply.hlsl",
+                    .funcName = "cs_vector_multiply",
+                #endif
+                },
+                .gridSize = {N, 1, 1}
             }
         }
     };

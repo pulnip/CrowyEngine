@@ -343,8 +343,6 @@ namespace Crowy
             }
 
             auto inputs = readStringArray(arena, *table, errors, "inputs");
-            auto outputs = readStringArray(arena, *table, errors, "outputs");
-            auto depthOutput = readString(arena, *table, errors, "depthOutput");
 
             auto fs_samplers = readBinds(arena, *table, errors, "fs_samplers");
             auto fs_cbuffers = readBinds(arena, *table, errors, "fs_cbuffers");
@@ -359,10 +357,6 @@ namespace Crowy
 
             if(inputs.has_value())
                 v[i].inputs = *inputs;
-            if(outputs.has_value())
-                v[i].outputs = *outputs;
-            if(depthOutput.has_value())
-                v[i].depthOutput = *depthOutput;
 
             if(renderType.has_value())
                 v[i].renderType = *renderType;
@@ -514,6 +508,15 @@ namespace Crowy
             }
 
             passes[i].name = *name;
+
+            auto outputs = readStringArray(tempPasses.arena, *table, errors, "outputs");
+            auto depthOutput = readString(tempPasses.arena, *table, errors, "depthOutput");
+
+            if(outputs.has_value())
+                passes[i].outputs = *outputs;
+            if(depthOutput.has_value())
+                passes[i].depthOutput = *depthOutput;
+
             passes[i].pipelines = readGraphicsPipelines(tempPasses.arena, *table, errors, "pipelines");
         }
         reportError(errors);
@@ -528,6 +531,17 @@ namespace Crowy
         std::vector<RenderPassSpec> renderPasses
     ){
         for(auto& pass: renderPasses){
+            // RenderTarget
+            for(const auto& target: pass.outputs){
+                if(auto it = textures.find(target); it != textures.end()){
+                    auto& texDesc = it->second;
+                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::RenderTarget);
+                }
+                else{
+                    // TODO.ERROR! unresolved texture!
+                }
+            }
+
             for(auto& pipeline: pass.pipelines){
                 // ShaderResource
                 for(const auto& input: pipeline.inputs){
@@ -540,20 +554,9 @@ namespace Crowy
                     }
                 }
 
-                // RenderTarget
-                for(const auto& target: pipeline.outputs){
-                    if(auto it = textures.find(target); it != textures.end()){
-                        auto& texDesc = it->second;
-                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::RenderTarget);
-                    }
-                    else{
-                        // TODO.ERROR! unresolved texture!
-                    }
-                }
-
                 // DepthTarget
-                if(!pipeline.depthOutput.empty()){
-                    if(auto it = textures.find(pipeline.depthOutput); it != textures.end()){
+                if(!pass.depthOutput.empty()){
+                    if(auto it = textures.find(pass.depthOutput); it != textures.end()){
                         auto& texDesc = it->second;
                         texDesc.usage = combine(texDesc.usage, RHITextureUsage::DepthStencil);
 

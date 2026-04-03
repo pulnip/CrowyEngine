@@ -399,10 +399,10 @@ int main(int argc, char* argv[]){
         .renderPasses = {
             {
                 .name = "scene",
+                .outputs = {"scene", "brightMask"},
                 .pipelines = {
                     {
                         .inputs = {"disk"},
-                        .outputs = {"scene", "brightMask"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -427,12 +427,11 @@ int main(int argc, char* argv[]){
                 }
             },
             RenderPassSpec{
-                .name = "bloom",
+                .name = "blur_h_1_2",
+                .outputs = {"blur_tmp_1_2"},
                 .pipelines = {
-                    // blur_h_1_2
                     {
                         .inputs = {"brightMask"},
-                        .outputs = {"blur_tmp_1_2"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -449,11 +448,15 @@ int main(int argc, char* argv[]){
                             .fsFuncName = "fs_horizontal_blur"
                         #endif
                         },
-                    },
-                    // blur_v_1_2
+                    }
+                }
+            },
+            RenderPassSpec{
+                .name = "blur_v_1_2",
+                .outputs = {"bloom_1_2"},
+                .pipelines = {
                     {
                         .inputs = {"blur_tmp_1_2"},
-                        .outputs = {"bloom_1_2"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -470,11 +473,15 @@ int main(int argc, char* argv[]){
                             .fsFuncName = "fs_vertical_blur"
                         #endif
                         }
-                    },
-                    // blur_h_1_4
+                    }
+                }
+            },
+            RenderPassSpec{
+                .name = "blur_h_1_4",
+                .outputs = {"blur_tmp_1_4"},
+                .pipelines = {
                     {
                         .inputs = {"bloom_1_2"},
-                        .outputs = {"blur_tmp_1_4"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -491,11 +498,15 @@ int main(int argc, char* argv[]){
                             .fsFuncName = "fs_horizontal_blur"
                         #endif
                         },
-                    },
-                    // blur_v_1_4
+                    }
+                }
+            },
+            RenderPassSpec{
+                .name = "blur_v_1_4",
+                .outputs = {"bloom_1_4"},
+                .pipelines = {
                     {
                         .inputs = {"blur_tmp_1_4"},
-                        .outputs = {"bloom_1_4"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -512,11 +523,15 @@ int main(int argc, char* argv[]){
                             .fsFuncName = "fs_vertical_blur"
                         #endif
                         }
-                    },
-                    // blur_h_1_8
+                    }
+                }
+            },
+            RenderPassSpec{
+                .name = "blur_h_1_8",
+                .outputs = {"blur_tmp_1_8"},
+                .pipelines = {
                     {
                         .inputs = {"bloom_1_4"},
-                        .outputs = {"blur_tmp_1_8"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -533,11 +548,15 @@ int main(int argc, char* argv[]){
                             .fsFuncName = "fs_horizontal_blur"
                         #endif
                         },
-                    },
-                    // blur_v_1_8
+                    }
+                }
+            },
+            RenderPassSpec{
+                .name = "blur_v_1_8",
+                .outputs = {"bloom_1_8"},
+                .pipelines = {
                     {
                         .inputs = {"blur_tmp_1_8"},
-                        .outputs = {"bloom_1_8"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -554,8 +573,13 @@ int main(int argc, char* argv[]){
                             .fsFuncName = "fs_vertical_blur"
                         #endif
                         }
-                    },
-                    // composite
+                    }
+                }
+            },
+            RenderPassSpec{
+                .name = "composite",
+                .outputs = {"BackBuffer"},
+                .pipelines = {
                     {
                         .inputs = {
                             "scene",
@@ -563,7 +587,6 @@ int main(int argc, char* argv[]){
                             "bloom_1_4",
                             "bloom_1_8"
                         },
-                        .outputs = {"BackBuffer"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -593,9 +616,9 @@ int main(int argc, char* argv[]){
 
         renderer.render(RenderPassSpec{
             .name = "Disk Generation",
+            .outputs = {"disk"},
             .pipelines = {
                 {
-                    .outputs = {"disk"},
                     .fs_cbuffers = {
                         {.name = "DiskGenParams", .slot = 0}
                     },

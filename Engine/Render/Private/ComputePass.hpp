@@ -8,12 +8,13 @@
 
 namespace Crowy
 {
-    struct ComputePipelineBind{
+    struct ComputePass{
         std::string name;
+        bool enabled = true;
+
         // input
         std::vector<BindSpec> inputTextures;
         std::vector<BindSpec> inputBuffers;
-
         // output
         std::vector<BindSpec> outputTextures;
         std::vector<BindSpec> outputBuffers;
@@ -24,11 +25,5 @@ namespace Crowy
         inline size_t numOutputs() const{
             return outputTextures.size() + outputBuffers.size();
         }
-    };
-
-    struct ComputePass{
-        std::string name;
-        bool enabled = true;
-        std::vector<ComputePipelineBind> pipelines;
     };
 }

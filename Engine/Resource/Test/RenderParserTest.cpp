@@ -22,8 +22,8 @@ TEST(RenderParser, ParseSimplePass){
         format = "RGBA8_UNORM"
         [[passes]]
         name = "pass1"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [passes.pipelines.metal_shader]
             vs_file = "path1"
             vs_func = "function1"
@@ -46,10 +46,11 @@ TEST(RenderParser, ParseSimplePass){
     ASSERT_THAT(render.renderPasses, SizeIs(1));
     const auto& pass1 = render.renderPasses[0];
     EXPECT_EQ(pass1.name, "pass1");
+    ASSERT_EQ(pass1.outputs.size(), 1);
+    EXPECT_EQ(pass1.outputs[0], "BackBuffer");
 
     ASSERT_THAT(pass1.pipelines, SizeIs(1));
     EXPECT_THAT(pass1.pipelines, Contains(AllOf(
-        Field(&GraphicsPipelineBindSpec::outputs, ElementsAre("BackBuffer")),
         Field(&GraphicsPipelineBindSpec::shader, AllOf(
             Field(&ShaderSpec::vsFilePath, Eq("path1")),
             Field(&ShaderSpec::vsFuncName, Eq("function1")),
@@ -70,8 +71,8 @@ TEST(RenderParser, ParseMultiplePasses){
 
         [[passes]]
         name = "pass1"
+        outputs = ["target1"]
             [[passes.pipelines]]
-            outputs = ["target1"]
             [passes.pipelines.metal_shader]
             vs_file = "path1"
             vs_func = "function1"
@@ -84,9 +85,9 @@ TEST(RenderParser, ParseMultiplePasses){
             fs_func = "function2"
         [[passes]]
         name = "pass2"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
             inputs = ["target1"]
-            outputs = ["BackBuffer"]
             [passes.pipelines.metal_shader]
             vs_file = "path3"
             vs_func = "function3"
@@ -114,10 +115,10 @@ TEST(RenderParser, ParseMultiplePasses){
     EXPECT_THAT(render.renderPasses, ElementsAre(
         AllOf(
             Field(&RenderPassSpec::name, Eq("pass1")),
+            Field(&RenderPassSpec::outputs, ElementsAre("target1")),
             Field(&RenderPassSpec::pipelines, ElementsAre(
                 AllOf(
                     Field(&GraphicsPipelineBindSpec::inputs, IsEmpty()),
-                    Field(&GraphicsPipelineBindSpec::outputs, ElementsAre("target1")),
                     Field(&GraphicsPipelineBindSpec::shader, AllOf(
                         Field(&ShaderSpec::vsFilePath, Eq("path1")),
                         Field(&ShaderSpec::vsFuncName, Eq("function1")),
@@ -129,10 +130,10 @@ TEST(RenderParser, ParseMultiplePasses){
         ),
         AllOf(
             Field(&RenderPassSpec::name, Eq("pass2")),
+            Field(&RenderPassSpec::outputs, ElementsAre("BackBuffer")),
             Field(&RenderPassSpec::pipelines, ElementsAre(
                 AllOf(
                     Field(&GraphicsPipelineBindSpec::inputs, ElementsAre("target1")),
-                    Field(&GraphicsPipelineBindSpec::outputs, ElementsAre("BackBuffer")),
                     Field(&GraphicsPipelineBindSpec::shader, AllOf(
                         Field(&ShaderSpec::vsFilePath, Eq("path3")),
                         Field(&ShaderSpec::vsFuncName, Eq("function3")),
@@ -162,8 +163,8 @@ TEST(RenderParser, ParseSamplerWithIndividualFilters){
 
         [[passes]]
         name = "pass1"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [[passes.pipelines.fs_samplers]]
             name = "LINEAR_WRAP"
             slot = 0
@@ -211,8 +212,8 @@ TEST(RenderParser, ParseSamplerWithUnifiedFilter){
 
         [[passes]]
         name = "pass1"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [[passes.pipelines.fs_samplers]]
             name = "NEAREST_CLAMP"
             slot = 0
@@ -267,8 +268,8 @@ TEST(RenderParser, ParseMultipleSamplers){
 
         [[passes]]
         name = "pass1"
+        outputs = ["target1"]
             [[passes.pipelines]]
-            outputs = ["target1"]
             [[passes.pipelines.fs_samplers]]
             name = "LINEAR_WRAP"
             slot = 0
@@ -284,9 +285,9 @@ TEST(RenderParser, ParseMultipleSamplers){
             fs_func = "fs_main"
         [[passes]]
         name = "pass2"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
             inputs = ["target1"]
-            outputs = ["BackBuffer"]
             [[passes.pipelines.fs_samplers]]
             name = "NEAREST_CLAMP"
             slot = 0
@@ -345,8 +346,8 @@ TEST(RenderParser, ParseMultipleSamplersInSinglePass){
 
         [[passes]]
         name = "pass1"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [[passes.pipelines.fs_samplers]]
             name = "LINEAR_WRAP"
             slot = 0
@@ -403,8 +404,8 @@ TEST(RenderParser, IncompleteSamplerIsIgnored){
 
         [[passes]]
         name = "pass1"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [[passes.pipelines.fs_samplers]]
             name = "VALID_PRESET"
             slot = 0
@@ -447,8 +448,8 @@ TEST(RenderParser, NonexistentSamplerIsIgnored){
 
         [[passes]]
         name = "pass1"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [[passes.pipelines.fs_samplers]]
             name = "NONEXISTENT"
             slot = 0
@@ -489,8 +490,8 @@ TEST(RenderParser, PassWithoutSamplers){
 
         [[passes]]
         name = "noSamplerPass"
+        outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            outputs = ["BackBuffer"]
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"

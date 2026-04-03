@@ -13,9 +13,6 @@ namespace Crowy
         std::string name;
         // input Texture
         std::vector<std::string> inputs;
-        // output Texture
-        std::vector<std::string> outputs;
-        std::string depthOutput;
 
         std::vector<BindSpec> fs_samplers;
         std::vector<BindSpec> fs_cbuffers;
@@ -31,6 +28,11 @@ namespace Crowy
     struct RenderPass{
         std::string name;
         bool enabled = true;
+
+        // output Texture
+        std::vector<std::string> outputs;
+        std::string depthOutput;
+
         std::vector<GraphicsPipelineBind> pipelines;
     };
 }

@@ -210,10 +210,10 @@ int main(int argc, char* argv[]){
         .renderPasses = {
             {
                 .name = "gbuffer",
+                .outputs = {"albedo", "normal"},
+                .depthOutput = "depth",
                 .pipelines = {
                     {
-                        .outputs = {"albedo", "normal"},
-                        .depthOutput = "depth",
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -240,10 +240,10 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "celshading",
+                .outputs = {"toonColor"},
                 .pipelines = {
                     {
                         .inputs = {"albedo", "normal"},
-                        .outputs = {"toonColor"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -265,10 +265,10 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "outlining",
+                .outputs = {"outlined"},
                 .pipelines = {
                     {
                         .inputs = {"normal", "depth", "toonColor"},
-                        .outputs = {"outlined"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -290,12 +290,10 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "scene",
+                .outputs = {"sceneColor"},
+                .depthOutput = "depth",
                 .pipelines = {
                     {
-                        // no input texture
-                        .inputs = {},
-                        .outputs = {"sceneColor"},
-                        .depthOutput = "depth",
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -322,10 +320,10 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "pixelate",
+                .outputs = {"pixelated"},
                 .pipelines = {
                     {
                         .inputs = {"sceneColor"},
-                        .outputs = {"pixelated"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },
@@ -350,9 +348,9 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "focusmask",
+                .outputs = {"focusMask"},
                 .pipelines = {
                     {
-                        .outputs = {"focusMask"},
                         .fs_cbuffers = {
                             {.name = "FocusParams", .slot = 0}
                         },
@@ -374,6 +372,7 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "composite",
+                .outputs = {"BackBuffer"},
                 .pipelines = {
                     {
                         .inputs = {
@@ -381,7 +380,6 @@ int main(int argc, char* argv[]){
                             "outlined",
                             "focusMask"
                         },
-                        .outputs = {"BackBuffer"},
                         .fs_samplers = {
                             {.name = "LINEAR_WRAP", .slot = 0}
                         },

@@ -42,10 +42,6 @@ namespace Crowy
     struct GraphicsPipelineBindSpec{
         // input Texture
         std::vector<std::string> inputs;
-        // output Texture
-        std::vector<std::string> outputs;
-        // depth buffer
-        std::string depthOutput;
 
         std::vector<BindSpec> fs_samplers;
         std::vector<BindSpec> fs_cbuffers;
@@ -60,6 +56,12 @@ namespace Crowy
 
     struct RenderPassSpec{
         std::string name;
+
+        // output Texture
+        std::vector<std::string> outputs;
+        // depth buffer
+        std::string depthOutput;
+
         std::vector<GraphicsPipelineBindSpec> pipelines;
     };
 
@@ -74,7 +76,9 @@ namespace Crowy
         }
     };
 
-    struct ComputePipelineBindSpec{
+    struct ComputePassSpec{
+        std::string name;
+
         // input
         std::vector<BindSpec> inputTextures;
         std::vector<BindSpec> inputBuffers;
@@ -86,11 +90,6 @@ namespace Crowy
         ComputeShaderSpec shader;
         RHISize3D gridSize;
         std::optional<RHISize3D> threadGroupSize = std::nullopt;
-    };
-
-    struct ComputePassSpec{
-        std::string name;
-        std::vector<ComputePipelineBindSpec> pipelines;
     };
 
     struct RenderSpec{
