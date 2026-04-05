@@ -2,7 +2,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <unordered_map>
+#include <utility>
 #include <vector>
+#include <queue>
 #include "ComputePass.hpp"
 #include "LinearAllocator.hpp"
 #include "RHICommandList.hpp"
@@ -70,13 +73,12 @@ namespace Crowy
 
     };
 
-    class RenderGraph{
-    private:
-        struct ResourceLifetime{
-            size_t firstUse;
-            size_t lastUse;
-        };
+    struct DAG{
+        std::vector<std::pair<size_t, size_t>> edges;
+        std::unordered_map<size_t, std::vector<size_t>> adjacency;
+    };
 
+    class RenderGraph{
     private:
         RHIDevice* device = nullptr;
 
@@ -88,19 +90,11 @@ namespace Crowy
 
         // ordered by execution order
         std::vector<RenderPass> renderPasses;
-        StringHashMap<size_t> renderPassIndex;
         std::vector<ComputePass> computePasses;
-        StringHashMap<size_t> computePassIndex;
+        // index of compute pass is right after renderPass
+        StringHashMap<size_t> passIndex;
 
-        enum class PassType{
-            ComputePass,
-            RenderPass
-        };
-        struct PassIndex{
-            PassType type;
-            size_t index;
-        };
-        std::vector<PassIndex> executionOrder;
+        std::vector<size_t> executionOrder;
 
         // TODO. need to fit in appropriate slot
         static constexpr uint32_t vsPerObjectCBufferSlot = 1;
@@ -231,7 +225,7 @@ namespace Crowy
             std::span<const RenderPassSpec> specs
         ){
             for(const auto& spec: specs){
-                renderPassIndex[spec.name] = renderPasses.size();
+                passIndex[spec.name] = renderPasses.size();
                 renderPasses.push_back(createPass(spec));
             }
         }
@@ -341,7 +335,7 @@ namespace Crowy
             std::span<const ComputePassSpec> specs
         ){
             for(const auto& spec: specs){
-                computePassIndex[spec.name] = computePasses.size();
+                passIndex[spec.name] = renderPasses.size() + computePasses.size();
                 computePasses.push_back(createPass(spec));
             }
         }
@@ -381,23 +375,171 @@ namespace Crowy
 
         }
 
+    private:
+        static bool hasDirDeps(const RenderPass& from, const RenderPass& to){
+            for(const auto& output: from.outputs){
+                for(const auto& pip: to.pipelines){
+                    auto it = std::ranges::find(
+                        pip.inputs,
+                        output
+                    );
+                    if(it != pip.inputs.end())
+                        return true;
+                }
+            }
+
+            if(!from.depthOutput.empty()){
+                for(const auto& pip: to.pipelines){
+                    auto it = std::ranges::find(
+                        pip.inputs,
+                        from.depthOutput
+                    );
+                    if(it != pip.inputs.end())
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        static bool hasDirDeps(const RenderPass& from, const ComputePass& to){
+            for(const auto& output: from.outputs){
+                auto it = std::ranges::find_if(
+                    to.inputTextures,
+                    [&output](const auto& bind){
+                        return bind.name == output;
+                    }
+                );
+                if(it != to.inputTextures.end())
+                    return true;
+            }
+
+            if(!from.depthOutput.empty()){
+                auto it = std::ranges::find_if(
+                    to.inputTextures,
+                    [&output = from.depthOutput](const auto& bind){
+                        return bind.name == output;
+                    }
+                );
+                if(it != to.inputTextures.end())
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool hasDirDeps(const ComputePass& from, const RenderPass& to){
+            for(const auto& bind: from.outputTextures){
+                for(const auto& pip: to.pipelines){
+                    auto it = std::ranges::find(
+                        pip.inputs,
+                        bind.name
+                    );
+                    if(it != pip.inputs.end())
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        static bool hasDirDeps(const ComputePass& from, const ComputePass& to){
+            for(const auto& bind: from.outputTextures){
+                auto it = std::ranges::find_if(
+                    to.inputTextures,
+                    [&output = bind.name](const auto& bind){
+                        return bind.name == output;
+                    }
+                );
+                if(it != to.inputTextures.end())
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool hasDeps(const RenderPass& p1, const RenderPass& p2){
+            return hasDirDeps(p1, p2) || hasDirDeps(p2, p1);
+        }
+
+        static bool hasDeps(const RenderPass& p1, const ComputePass& p2){
+            return hasDirDeps(p1, p2) || hasDirDeps(p2, p1);
+        }
+
+        static bool hasDeps(const ComputePass& p1, const RenderPass& p2){
+            return hasDeps(p2, p1);
+        }
+
+        static bool hasDeps(const ComputePass& p1, const ComputePass& p2){
+            return hasDirDeps(p1, p2) || hasDirDeps(p2, p1);
+        }
+
+        DAG makeDAG(){
+            DAG dag;
+
+            for(size_t i=0; i<renderPasses.size(); ++i){
+                for(size_t j=i+1; j<renderPasses.size(); ++j){
+                    if(hasDeps(renderPasses[i], renderPasses[j]))
+                        dag.edges.push_back({i, j});
+                }
+                for(size_t j=0; j<computePasses.size(); ++j){
+                    if(hasDeps(renderPasses[i], computePasses[j]))
+                        dag.edges.push_back({i, renderPasses.size()+j});
+                }
+            }
+            for(size_t i=0; i<computePasses.size(); ++i){
+                for(size_t j=i+1; j<computePasses.size(); ++j){
+                    if(hasDeps(computePasses[i], computePasses[j]))
+                        dag.edges.push_back({
+                            renderPasses.size() + i,
+                            renderPasses.size() + j
+                        });
+                }
+            }
+            for(const auto& [from, to]: dag.edges){
+                auto [it, res] = dag.adjacency.try_emplace(
+                    from,
+                    std::vector<size_t>{to}
+                );
+
+                if(!res){
+                    it->second.emplace_back(to);
+                }
+            }
+
+            return dag;
+        }
+
+    public:
         void compile(
             RenderGraphCompileOptions options = {}
         ){
+            auto dag = makeDAG();
             executionOrder.clear();
 
-            // TODO. impl topological sort
-            for(size_t i=0; i<renderPasses.size(); ++i){
-                executionOrder.push_back({
-                    .type = PassType::RenderPass,
-                    .index = i
-                });
+            std::vector<size_t> inDegrees(numPasses(), 0);
+            for(const auto& [from, to]: dag.edges){
+                ++inDegrees[to];
             }
-            for(size_t i=0; i<computePasses.size(); ++i){
-                executionOrder.push_back({
-                    .type = PassType::ComputePass,
-                    .index = i
-                });
+
+            std::queue<size_t> ready;
+            // init ready from deps == 0
+            for(size_t i=0; i<inDegrees.size(); ++i){
+                if(inDegrees[i] == 0)
+                    ready.push(i);
+            }
+
+            // topological sort from Kahn's algorithm
+            while(!ready.empty()){
+                auto current = ready.front();
+                ready.pop();
+
+                executionOrder.push_back(current);
+
+                for(const auto& next: dag.adjacency[current]){
+                    if(--inDegrees[next] == 0)
+                        ready.push(next);
+                }
             }
         }
 
@@ -428,9 +570,11 @@ namespace Crowy
             passParamBuffers.reset();
 
             for(const auto& index: executionOrder){
-                if(index.type == PassType::RenderPass){
+                const auto isRenderPass = index < renderPasses.size();
+
+                if(isRenderPass){
                     executePass(
-                        renderPasses[index.index],
+                        renderPasses[index],
                         cmdList,
                         ctx,
                         swapchain
@@ -438,7 +582,7 @@ namespace Crowy
                 }
                 else{
                     executePass(
-                        computePasses[index.index],
+                        computePasses[index - renderPasses.size()],
                         cmdList
                     );
                 }
@@ -739,6 +883,10 @@ namespace Crowy
         }
 
     public:
+        size_t numPasses() const{
+            return renderPasses.size() + computePasses.size();
+        }
+
         RHIBuffer* getBuffer(std::string_view bufferName){
             auto it = buffers.find(bufferName);
             if(it == buffers.end())
@@ -756,23 +904,24 @@ namespace Crowy
         }
 
         bool setPassEnabled(std::string_view passName, bool enabled){
-            if(auto it = renderPassIndex.find(passName); it != renderPassIndex.end()){
-                auto& pass = renderPasses[it->second];
+            if(auto it = passIndex.find(passName); it != passIndex.end()){
+                const auto isRenderPass = it->second < renderPasses.size();
+                if(isRenderPass){
+                    auto& pass = renderPasses[it->second];
+                    // TODO. check pass can be disabled
+                    pass.enabled = enabled;
 
-                // TODO. check pass can be disabled
-                pass.enabled = enabled;
+                }
+                else{
+                    auto& pass = computePasses[it->second - renderPasses.size()];
+                    // TODO. check pass can be disabled
+                    pass.enabled = enabled;
+                }
+
                 return true;
             }
-            else if(auto it = computePassIndex.find(passName); it != computePassIndex.end()){
-                auto& pass = computePasses[it->second];
 
-                // TODO. check pass can be disabled
-                pass.enabled = enabled;
-                return true;
-            }
-            else{
-                return false;
-            }
+            return false;
         }
     };
 }
