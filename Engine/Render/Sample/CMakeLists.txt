@@ -27,6 +27,10 @@ crowy_render_sample(BlackHole
     SOURCES BlackHole.cpp
 )
 
+crowy_render_sample(Checkerboard
+    SOURCES Checkerboard.cpp
+)
+
 crowy_render_sample(VectorMultiply
     SOURCES VectorMultiply.cpp
 )
