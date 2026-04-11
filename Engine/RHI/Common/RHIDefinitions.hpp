@@ -35,8 +35,8 @@ namespace Crowy
     struct RHIBufferCreateDesc{
         size_t size;
         RHIBufferUsage usage;
-        uint32_t stride; // For structured buffers
-        const void* initialData;
+        uint32_t stride = 0; // For structured buffers
+        const void* initialData = nullptr;
     };
 
     enum class RHIPrimitiveTopology{

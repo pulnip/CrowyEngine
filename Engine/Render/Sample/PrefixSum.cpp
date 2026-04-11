@@ -17,8 +17,10 @@ int main(int argc, char* argv[]){
     auto device = createDevice();
     auto cmdList = device->createCommandList();
 
-    constexpr auto N = 2000;
-    constexpr auto N2 = nextPow2(N);
+    constexpr auto N = 10000;
+    constexpr auto GROUP_SIZE = 1024;
+    constexpr auto NUM_GROUP = (N/2)/GROUP_SIZE + 1;
+    constexpr auto N2 = 2 * NUM_GROUP * GROUP_SIZE;
     std::vector<uint32_t> ones(N2, 1);
 
     Renderer renderer(device.get());
@@ -32,7 +34,6 @@ int main(int argc, char* argv[]){
                         RHIBufferUsage::CPUWrite,
                         RHIBufferUsage::ShaderResource
                     ),
-                    .stride = 0,
                     .initialData = ones.data()
                 }
             },
@@ -43,15 +44,25 @@ int main(int argc, char* argv[]){
                     .usage = combine(
                         RHIBufferUsage::CPURead,
                         RHIBufferUsage::UnorderedAccess
-                    ),
-                    .stride = 0,
-                    .initialData = nullptr
+                    )
+                }
+            },
+            {
+                "GroupSums",
+                RHIBufferCreateDesc{
+                    .size = sizeof(uint32_t) * nextPow2(NUM_GROUP),
+                    .usage = combine(
+                        RHIBufferUsage::ShaderResource,
+                        RHIBufferUsage::UnorderedAccess,
+
+                        RHIBufferUsage::CPURead
+                    )
                 }
             }
         },
         .computePasses = {
             {
-                .name = "PrefixSum",
+                .name = "Local PrefixSum",
                 .inputBuffers = {
                     {
                         .name = "BufferIn",
@@ -62,6 +73,10 @@ int main(int argc, char* argv[]){
                     {
                         .name = "BufferOut",
                         .slot = 1
+                    },
+                    {
+                        .name = "GroupSums",
+                        .slot = 2
                     }
                 },
                 .shader = {
@@ -73,8 +88,72 @@ int main(int argc, char* argv[]){
                     .funcName = "cs_prefix_sum",
                 #endif
                 },
-                .gridSize = {N2/2, 1, 1},
-                .threadGroupSize = RHISize3D{N2/2, 1, 1}
+                .gridSize = {.x=N2/2, .y=1, .z=1},
+                .threadGroupSize = RHISize3D{
+                    .x=std::min(N2/2, 1024),
+                    .y=1,
+                    .z=1
+                }
+            },
+            {
+                .name = "Group PrefixSum",
+                .inputBuffers = {
+                    {
+                        .name = "GroupSums",
+                        .slot = 0
+                    }
+                },
+                .outputBuffers = {
+                    {
+                        .name = "GroupSums",
+                        .slot = 1
+                    },
+                },
+                .shader = {
+                #ifdef CROWY_METALRHI
+                    .filePath = "asset/Shaders/prefix_sum.metal",
+                    .funcName = "cs_prefix_sum_single",
+                #elif CROWY_D3DRHI
+                    .filePath = L"asset/Shaders/prefix_sum.hlsl",
+                    .funcName = "cs_prefix_sum_single",
+                #endif
+                },
+                .gridSize = {.x=nextPow2(NUM_GROUP)/2, .y=1, .z=1},
+                .threadGroupSize = RHISize3D{
+                    .x=std::min(nextPow2(NUM_GROUP)/2, 1024u),
+                    .y=1,
+                    .z=1
+                }
+            },
+            {
+                .name = "PrefixSum",
+                .inputBuffers = {
+                    {
+                        .name = "GroupSums",
+                        .slot = 0
+                    }
+                },
+                .outputBuffers = {
+                    {
+                        .name = "BufferOut",
+                        .slot = 1
+                    },
+                },
+                .shader = {
+                #ifdef CROWY_METALRHI
+                    .filePath = "asset/Shaders/prefix_sum.metal",
+                    .funcName = "cs_add_group_sums",
+                #elif CROWY_D3DRHI
+                    .filePath = L"asset/Shaders/prefix_sum.hlsl",
+                    .funcName = "cs_add_group_sums",
+                #endif
+                },
+                .gridSize = {.x=N2/2, .y=1, .z=1},
+                .threadGroupSize = RHISize3D{
+                    .x=std::min(N2/2, 1024),
+                    .y=1,
+                    .z=1
+                }
             }
         }
     };
@@ -97,7 +176,11 @@ int main(int argc, char* argv[]){
 
     auto outBuf = renderer.getBuffer("BufferOut");
     std::vector<uint32_t> result(N, 0);
-    outBuf->download(result.data(), sizeof(float) * result.size());
+    outBuf->download(result.data(), sizeof(uint32_t) * result.size());
+
+    auto outBuf2 = renderer.getBuffer("GroupSums");
+    std::vector<uint32_t> result2(NUM_GROUP, 0);
+    outBuf2->download(result2.data(), sizeof(uint32_t) * result2.size());
 
     for(size_t i=0; i<N; ++i){
         if(result[i] != i){
