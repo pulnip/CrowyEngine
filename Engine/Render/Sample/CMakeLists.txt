@@ -31,6 +31,10 @@ crowy_render_sample(Checkerboard
     SOURCES Checkerboard.cpp
 )
 
+crowy_render_sample(PrefixSum
+    SOURCES PrefixSum.cpp
+)
+
 crowy_render_sample(VectorMultiply
     SOURCES VectorMultiply.cpp
 )
