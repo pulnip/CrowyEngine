@@ -1,3 +1,4 @@
+#include <bit>
 #include <SDL3/SDL.h>
 #include <cstddef>
 #include <cstdint>
@@ -9,8 +10,8 @@
 
 using namespace Crowy;
 
-constexpr uint32_t nextPow2(uint32_t n){
-    return 1 << (32 - __builtin_clz(n-1));
+constexpr auto nextPow2(uint32_t n){
+    return 1 << (32 - std::countl_zero(n-1));
 }
 
 int main(int argc, char* argv[]){
@@ -22,6 +23,8 @@ int main(int argc, char* argv[]){
     constexpr auto NUM_GROUP = (N/2)/GROUP_SIZE + 1;
     constexpr auto N2 = 2 * NUM_GROUP * GROUP_SIZE;
     std::vector<uint32_t> ones(N2, 1);
+    typeof(ones) c;
+    decltype(ones)::value_type v;
 
     Renderer renderer(device.get());
     RenderSpec spec{
@@ -120,7 +123,7 @@ int main(int argc, char* argv[]){
                 },
                 .gridSize = {.x=nextPow2(NUM_GROUP)/2, .y=1, .z=1},
                 .threadGroupSize = RHISize3D{
-                    .x=std::min(nextPow2(NUM_GROUP)/2, 1024u),
+                    .x=std::min(nextPow2(NUM_GROUP)/2, 1024),
                     .y=1,
                     .z=1
                 }
