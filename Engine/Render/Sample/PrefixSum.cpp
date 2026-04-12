@@ -23,8 +23,6 @@ int main(int argc, char* argv[]){
     constexpr auto NUM_GROUP = (N/2)/GROUP_SIZE + 1;
     constexpr auto N2 = 2 * NUM_GROUP * GROUP_SIZE;
     std::vector<uint32_t> ones(N2, 1);
-    typeof(ones) c;
-    decltype(ones)::value_type v;
 
     Renderer renderer(device.get());
     RenderSpec spec{
@@ -56,9 +54,7 @@ int main(int argc, char* argv[]){
                     .size = sizeof(uint32_t) * nextPow2(NUM_GROUP),
                     .usage = combine(
                         RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess,
-
-                        RHIBufferUsage::CPURead
+                        RHIBufferUsage::UnorderedAccess
                     )
                 }
             }
@@ -180,10 +176,6 @@ int main(int argc, char* argv[]){
     auto outBuf = renderer.getBuffer("BufferOut");
     std::vector<uint32_t> result(N, 0);
     outBuf->download(result.data(), sizeof(uint32_t) * result.size());
-
-    auto outBuf2 = renderer.getBuffer("GroupSums");
-    std::vector<uint32_t> result2(NUM_GROUP, 0);
-    outBuf2->download(result2.data(), sizeof(uint32_t) * result2.size());
 
     for(size_t i=0; i<N; ++i){
         if(result[i] != i){
