@@ -389,6 +389,31 @@ private:
             }
         }
 
+        virtual void setBytes(
+            uint32_t slot,
+            const void* bytes,
+            size_t size,
+            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        ) RHI_OVERRIDE{
+            switch(stage){
+            case RHIShaderStage::VertexShader:
+                [[fallthrough]];
+            case RHIShaderStage::FragmentShader:
+                CROWY_ASSERT(renderEncoder != nullptr,
+                    "Did you call RHICommandList::beginRenderPass()?"
+                );
+                throw std::runtime_error("Unimplemented");
+            case RHIShaderStage::ComputeShader:
+                CROWY_ASSERT(computeEncoder != nullptr,
+                    "Did you call RHICommandList::beginCompute()?"
+                );
+                computeEncoder->setBytes(bytes, size, slot);
+                break;
+            default:
+                std::unreachable();
+            }
+        }
+
         void setSampler(
             uint32_t slot,
             RHISampler& sampler,

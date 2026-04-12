@@ -25,6 +25,12 @@ namespace Crowy
         uint32_t slot = std::numeric_limits<uint32_t>::max();
     };
 
+    template<typename T>
+    struct ByteBindSpec{
+        T data;
+        uint32_t slot = std::numeric_limits<uint32_t>::max();
+    };
+
     struct ShaderSpec{
         std::filesystem::path vsFilePath;
         std::string vsFuncName;
@@ -82,6 +88,7 @@ namespace Crowy
         // input
         std::vector<BindSpec> inputTextures;
         std::vector<BindSpec> inputBuffers;
+        std::vector<ByteBindSpec<uint32_t>> inputInts;
 
         // output
         std::vector<BindSpec> outputTextures;

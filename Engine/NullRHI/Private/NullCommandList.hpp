@@ -108,6 +108,15 @@ namespace Crowy
 
         }
 
+        void setBytes(
+            uint32_t slot,
+            const void* bytes,
+            size_t size,
+            RHIShaderStage stage
+        ) noexcept RHI_OVERRIDE{
+
+        }
+
         void setSampler(
             uint32_t slot,
             RHISampler& sampler,

@@ -104,6 +104,13 @@ namespace Crowy
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) = 0;
 
+        virtual void setBytes(
+            uint32_t slot,
+            const void* bytes,
+            size_t size,
+            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        ) = 0;
+
         virtual void setSampler(
             uint32_t slot,
             RHISampler& sampler,

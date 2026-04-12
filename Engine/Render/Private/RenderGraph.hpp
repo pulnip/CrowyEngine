@@ -359,6 +359,7 @@ namespace Crowy
                 .enabled = true,
                 .inputTextures = spec.inputTextures,
                 .inputBuffers = spec.inputBuffers,
+                .inputInts = spec.inputInts,
                 .outputTextures = spec.outputTextures,
                 .outputBuffers = spec.outputBuffers,
                 .pso = std::move(pso),
@@ -732,6 +733,14 @@ namespace Crowy
                 cmdList.setBuffer(
                     bind.slot,
                     *it->second,
+                    ComputeShader
+                );
+            }
+            for(const auto& bind: pass.inputInts){
+                cmdList.setBytes(
+                    bind.slot,
+                    &bind.data,
+                    sizeof(bind.data),
                     ComputeShader
                 );
             }

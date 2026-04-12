@@ -15,6 +15,7 @@ namespace Crowy
         // input
         std::vector<BindSpec> inputTextures;
         std::vector<BindSpec> inputBuffers;
+        std::vector<ByteBindSpec<uint32_t>> inputInts;
         // output
         std::vector<BindSpec> outputTextures;
         std::vector<BindSpec> outputBuffers;
