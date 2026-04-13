@@ -2,7 +2,6 @@
 #include <SDL3/SDL.h>
 #include <cstddef>
 #include <cstdint>
-#include <sys/types.h>
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "Renderer.hpp"
