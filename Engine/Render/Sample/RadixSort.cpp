@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -23,14 +24,6 @@ constexpr auto nextMul(int n, int m){
     return ceilDiv(n, m) * m;
 }
 
-template<typename T>
-auto pickInRange(T m, T M){
-    static auto seed = std::random_device{}();
-    static std::mt19937 gen(seed);
-
-    return std::uniform_int_distribution(m, M-1)(gen);
-}
-
 constexpr auto N = 10000;
 
 // HG = Histogram
@@ -51,12 +44,11 @@ auto makeRadixPass(
     const std::string& keysOut,
     const std::string& idxIn,
     const std::string& idxOut
-) -> std::vector<ComputePassSpec>
-{
+){
     auto tag = std::to_string(bitOffset);
 
-    return{
-        {
+    return std::vector{
+        ComputePassSpec{
             .name = "Histogram_" + tag,
             .inputBuffers = {
                 {.name = keysIn, .slot = 0}
@@ -85,7 +77,7 @@ auto makeRadixPass(
                 .z=1
             }
         },
-        {
+        ComputePassSpec{
             .name = "LocalPrefixSum_" + tag,
             .inputBuffers = {
                 {.name = "Histogram", .slot = 0}
@@ -110,7 +102,7 @@ auto makeRadixPass(
                 .z=1
             }
         },
-        {
+        ComputePassSpec{
             .name = "GroupPrefixSum_" + tag,
             .inputBuffers = {
                 {.name = "GroupSums", .slot = 0}
@@ -134,7 +126,7 @@ auto makeRadixPass(
                 .z=1
             }
         },
-        {
+        ComputePassSpec{
             .name = "PrefixSum_" + tag,
             .inputBuffers = {
                 {.name = "GroupSums", .slot = 0}
@@ -158,7 +150,7 @@ auto makeRadixPass(
                 .z=1
             }
         },
-        {
+        ComputePassSpec{
             .name = "Scatter_" + tag,
             .inputBuffers = {
                 {.name = keysIn,     .slot = 0},
@@ -219,13 +211,11 @@ int main(int argc, char* argv[]){
 
     {
         std::ranges::iota(keys, 0u);
-        for(int i=0; i<N; ++i){
-            std::swap(
-                keys[pickInRange(0, N)],
-                keys[pickInRange(0, N)]
-            );
-        }
         std::ranges::iota(indexes, 0u);
+
+        auto seed = std::random_device{}();
+        std::mt19937 gen(seed);
+        std::ranges::shuffle(keys, gen);
     }
 
     // padding for prefix sum
