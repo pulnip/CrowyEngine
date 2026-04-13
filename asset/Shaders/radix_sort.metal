@@ -45,6 +45,11 @@ kernel void cs_scatter(
     uint     tid [[thread_index_in_threadgroup]],
     uint     gid [[threadgroup_position_in_grid]]
 ){
+    threadgroup uint local_offsets[16];
+
+    if(tid < 16) local_offsets[tid] = 0;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
     uint idx = group_size*gid + tid;
     if(idx >= count) return;
 
@@ -53,12 +58,11 @@ kernel void cs_scatter(
 
     uint base = prefix_sums[num_groups*digit + gid];
 
-    uint local_offset = 0;
-    uint block_start = group_size*gid;
-    for(uint i=block_start; i<idx; ++i){
-        if(((keys_in[i] >> bit_offset) & 0xF) == digit)
-            ++local_offset;
-    }
+    uint local_offset = atomic_fetch_add_explicit(
+        (threadgroup atomic_uint*)&local_offsets[digit],
+        1,
+        memory_order_relaxed
+    );
 
     keys_out[base + local_offset] = key;
     vals_out[base + local_offset] = vals_in[idx];
