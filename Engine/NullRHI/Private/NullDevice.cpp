@@ -7,6 +7,7 @@
 #include "NullShader.hpp"
 #include "NullSwapchain.hpp"
 #include "NullTexture.hpp"
+#include "RHIFrameScope.hpp"
 
 namespace Crowy
 {
@@ -19,6 +20,10 @@ namespace Crowy
         return std::make_unique<NullDevice>();
     }
 #endif
+
+    RHIFrameScopePtr NullDevice::createFrameScope() noexcept{
+        return std::make_unique<RHIFrameScope>();
+    }
 
     RHIBufferPtr NullDevice::createBuffer(
         const RHIBufferCreateDesc& desc,

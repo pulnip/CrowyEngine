@@ -6,6 +6,7 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIFence.hpp"
+#include "RHIFrameScope.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHISampler.hpp"
 #include "RHIShader.hpp"
@@ -47,6 +48,8 @@ namespace Crowy
     class RHIDevice{
     public:
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIDevice)
+
+        virtual RHIFrameScopePtr createFrameScope() noexcept = 0;
 
         virtual RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc&,

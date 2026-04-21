@@ -1,12 +1,16 @@
+extern "C" void _objc_autoreleasePoolPrint(void);
+
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
 #include "assert.hpp"
+#include "AutoreleasePoolScope.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalCommandList.hpp"
 #include "MetalDevice.hpp"
 #include "MetalFence.hpp"
+#include "MetalFrameScope.hpp"
 #include "MetalPipelineState.hpp"
 #include "MetalSampler.hpp"
 #include "MetalShader.hpp"
@@ -31,6 +35,8 @@ namespace Crowy
 
         MTL::CommandBuffer* pendingCommandBuffer = nullptr;
 
+        AutoreleasePoolScope autoreleasePool;
+
         Impl() noexcept{
             device = MTL::CreateSystemDefaultDevice();
             CROWY_ASSERT(device != nullptr, "No GPU Available");
@@ -46,6 +52,12 @@ namespace Crowy
                 commandQueue->release();
             if(device != nullptr)
                 device->release();
+
+            _objc_autoreleasePoolPrint();
+        }
+
+        RHIFrameScopePtr createFrameScope() noexcept{
+            return std::make_unique<MetalFrameScope>();
         }
 
         RHIBufferPtr createBuffer(
@@ -122,6 +134,10 @@ namespace Crowy
         :impl(std::make_unique<Impl>()){}
 
     MetalDevice::~MetalDevice(){}
+
+    RHIFrameScopePtr MetalDevice::createFrameScope() noexcept{
+        return impl->createFrameScope();
+    }
 
     RHIBufferPtr MetalDevice::createBuffer(
         const RHIBufferCreateDesc& desc,

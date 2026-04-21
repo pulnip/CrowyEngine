@@ -140,6 +140,8 @@ int main(int argc, char* argv[]){
             }
         }
 
+        auto scope = device->createFrameScope();
+
         if(!swapchain->acquireNextImage())
             continue;
 

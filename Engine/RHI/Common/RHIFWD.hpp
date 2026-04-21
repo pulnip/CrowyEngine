@@ -13,6 +13,7 @@ namespace Crowy
         class MetalSampler;
         class MetalCommandList;
         class MetalFence;
+        class MetalFrameScope;
         class MetalPipelineState;
         class MetalSwapchain;
 
@@ -23,6 +24,7 @@ namespace Crowy
         using RHISampler = MetalSampler;
         using RHICommandList = MetalCommandList;
         using RHIFence = MetalFence;
+        using RHIFrameScope = MetalFrameScope;
         using RHIPipelineState = MetalPipelineState;
         using RHISwapchain = MetalSwapchain;
     #else
@@ -33,6 +35,7 @@ namespace Crowy
         class NullSampler;
         class NullCommandList;
         class NullFence;
+        class NullFrameScope;
         class NullPipelineState;
         class NullSwapchain;
 
@@ -43,6 +46,7 @@ namespace Crowy
         using RHISampler = NullSampler;
         using RHICommandList = NullCommandList;
         using RHIFence = NullFence;
+        using RHIFrameScope = NullFrameScope;
         using RHIPipelineState = NullPipelineState;
         using RHISwapchain = NullSwapchain;
     #endif
@@ -54,6 +58,7 @@ namespace Crowy
     class RHISampler;
     class RHICommandList;
     class RHIFence;
+    class RHIFrameScope;
     class RHIPipelineState;
     class RHISwapchain;
 #endif
@@ -66,6 +71,7 @@ namespace Crowy
     using RHISamplerPtr       = std::unique_ptr<RHISampler>;
     using RHICommandListPtr   = std::unique_ptr<RHICommandList>;
     using RHIFencePtr         = std::unique_ptr<RHIFence>;
+    using RHIFrameScopePtr    = std::unique_ptr<RHIFrameScope>;
     using RHIPipelineStatePtr = std::unique_ptr<RHIPipelineState>;
     using RHISwapchainPtr     = std::unique_ptr<RHISwapchain>;
     using FramePacerPtr       = std::unique_ptr<FramePacer>;

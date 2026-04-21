@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHIAPI.hpp"
+#include "RHIFWD.hpp"
 #ifdef USE_STATIC_RHI
     #include "RHIDefinitions.hpp"
 #else
@@ -17,6 +18,8 @@ namespace Crowy
     public:
         NullDevice() = default;
         ~NullDevice() = default;
+
+        RHIFrameScopePtr createFrameScope() noexcept RHI_OVERRIDE;
 
         RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc&,

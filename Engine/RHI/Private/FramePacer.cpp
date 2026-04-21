@@ -80,6 +80,7 @@ namespace Crowy
 
     struct FramePacer::Impl{
         RHIDevice* device;
+        RHIFrameScopePtr scope;
         RHIFrameFenceManager fenceManager;
 
         uint64_t frameNumber = 0;
@@ -95,6 +96,8 @@ namespace Crowy
         ~Impl() = default;
 
         bool beginFrame() noexcept{
+            scope = device->createFrameScope();
+
             // Wait for oldest frame to complete
             fenceManager.beginFrame();
 
