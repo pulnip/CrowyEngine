@@ -17,16 +17,27 @@ namespace Crowy
     // Encapsulates shaders, rasterizer state, blend state, depth/stencil state
 #ifdef USE_STATIC_RHI
     template<typename T>
-    concept RHIPipelineStateType = requires(T pipelineState,
+    concept RHIGraphicsPipelineStateType = requires(T pipelineState,
     ){
     };
-    static_assert(RHIPipelineStateType<RHIPipelineState>);
+    static_assert(RHIGraphicsPipelineStateType<RHIGraphicsPipelineState>);
+    template<typename T>
+    concept RHIComputePipelineStateType = requires(T pipelineState,
+    ){
+    };
+    static_assert(RHIComputePipelineStateType<RHIComputePipelineState>);
 #else
-    class RHIPipelineState{
+    class RHIGraphicsPipelineState{
     public:
-        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIPipelineState)
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIGraphicsPipelineState)
+    };
+
+    class RHIComputePipelineState{
+    public:
+        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIComputePipelineState)
     };
 #endif
 
-    using RHIPipelineStatePtr = std::unique_ptr<RHIPipelineState>;
+    using RHIGraphicsPipelineStatePtr = std::unique_ptr<RHIGraphicsPipelineState>;
+    using RHIComputePipelineStatePtr = std::unique_ptr<RHIComputePipelineState>;
 }

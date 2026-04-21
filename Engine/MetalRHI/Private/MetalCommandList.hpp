@@ -220,55 +220,52 @@ private:
             renderEncoder = nullptr;
         }
 
-        void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
-            auto metalPSO = static_cast<MetalPipelineState*>(pso);
-            currentTopology = metalPSO->getTopology();
-            threadsPerThreadgroup = metalPSO->getThreadsPerThreadgroup();
+        void setPipelineState(RHIGraphicsPipelineState& pso) noexcept RHI_OVERRIDE{
+            auto& metalPSO = static_cast<MetalGraphicsPipelineState&>(pso);
+            currentTopology = metalPSO.getTopology();
 
-            if(metalPSO->isComputePipeline()){
-                CROWY_ASSERT(computeEncoder != nullptr,
-                    "Did you call RHICommandList::beginCompute()?"
-                );
-
-                computeEncoder->setComputePipelineState(
-                    metalPSO->getComputePipeline()
-                );
+            CROWY_ASSERT(renderEncoder != nullptr,
+                "Did you call RHICommandList::beginRenderPass()?"
+            );
+            renderEncoder->setRenderPipelineState(metalPSO.get());
+            if(auto ds = metalPSO.getDepthStencilState()){
+                renderEncoder->setDepthStencilState(ds);
             }
-            else{
-                CROWY_ASSERT(renderEncoder != nullptr,
-                    "Did you call RHICommandList::beginRenderPass()?"
-                );
-                renderEncoder->setRenderPipelineState(
-                    metalPSO->getRenderPipeline()
-                );
-                if(auto ds = metalPSO->getDepthStencilState()){
-                    renderEncoder->setDepthStencilState(ds);
-                }
 
-                // Rasterizer state
-                const auto& raster = metalPSO->getRasterizerState();
-                renderEncoder->setCullMode(convert(raster.cullMode));
-                renderEncoder->setFrontFacingWinding(
-                    raster.frontCounterClockwise ? 
-                        MTL::WindingCounterClockwise : 
-                        MTL::WindingClockwise
-                );
-                renderEncoder->setTriangleFillMode(
-                    raster.fillMode == RHIFillMode::Wireframe ?
-                        MTL::TriangleFillModeLines :
-                        MTL::TriangleFillModeFill
-                );
-                renderEncoder->setDepthBias(
-                    raster.depthBias,
-                    raster.slopeScaledDepthBias,
-                    raster.depthBiasClamp
-                );
-                renderEncoder->setDepthClipMode(
-                    raster.depthClipEnable ?
-                        MTL::DepthClipModeClip :
-                        MTL::DepthClipModeClamp
-                );
-            }
+            // Rasterizer state
+            const auto& raster = metalPSO.getRasterizerState();
+            renderEncoder->setCullMode(convert(raster.cullMode));
+            renderEncoder->setFrontFacingWinding(
+                raster.frontCounterClockwise ? 
+                    MTL::WindingCounterClockwise : 
+                    MTL::WindingClockwise
+            );
+            renderEncoder->setTriangleFillMode(
+                raster.fillMode == RHIFillMode::Wireframe ?
+                    MTL::TriangleFillModeLines :
+                    MTL::TriangleFillModeFill
+            );
+            renderEncoder->setDepthBias(
+                raster.depthBias,
+                raster.slopeScaledDepthBias,
+                raster.depthBiasClamp
+            );
+            renderEncoder->setDepthClipMode(
+                raster.depthClipEnable ?
+                    MTL::DepthClipModeClip :
+                    MTL::DepthClipModeClamp
+            );
+        }
+
+        void setPipelineState(RHIComputePipelineState& pso) noexcept RHI_OVERRIDE{
+            auto& metalPSO = static_cast<MetalComputePipelineState&>(pso);
+            threadsPerThreadgroup = metalPSO.getThreadsPerThreadgroup();
+
+            CROWY_ASSERT(computeEncoder != nullptr,
+                "Did you call RHICommandList::beginCompute()?"
+            );
+
+            computeEncoder->setComputePipelineState(metalPSO.get());
         }
 
         void setVertexBuffer(

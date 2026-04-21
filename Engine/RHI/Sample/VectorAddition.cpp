@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
     bufferDesc.initialData = nullptr;
     auto bufferOut = device->createBuffer(bufferDesc, "BufferOut");
 
-    auto pipelineState = device->createComputePipelineState({
+    auto pipelineState = device->createPipelineState({
         .computeShader = computeShader.get()
     }, "Compute Pipeline");
 
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]){
     cmdList->begin();
     cmdList->beginCompute();
 
-    cmdList->setPipelineState(pipelineState.get());
+    cmdList->setPipelineState(*pipelineState);
     cmdList->setBuffer(0, *bufferA.get());
     cmdList->setBuffer(1, *bufferB.get());
     cmdList->setBuffer(2, *bufferOut.get());

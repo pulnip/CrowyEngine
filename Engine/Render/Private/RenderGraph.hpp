@@ -290,7 +290,7 @@ namespace Crowy
             };
         }
 
-        RHIPipelineStatePtr createPipelineStateHelper(
+        RHIGraphicsPipelineStatePtr createPipelineStateHelper(
             const GraphicsPipelineBindSpec& spec,
             RHIShader* vertexShader,
             RHIShader* fragmentShader,
@@ -328,7 +328,7 @@ namespace Crowy
                 CROWY_ASSERT(it->second->getFormat() == desc.depthStencil->format);
             }
 
-            return device->createGraphicsPipelineState(desc, name);
+            return device->createPipelineState(desc, name);
         }
 
         void loadComputePasses(
@@ -348,7 +348,7 @@ namespace Crowy
                 .entry = spec.shader.funcName.c_str(),
                 .stage = RHIShaderStage::ComputeShader
             });
-            auto pso = device->createComputePipelineState({
+            auto pso = device->createPipelineState({
                 .computeShader = cs.get(),
                 .gridSize = spec.gridSize,
                 .threadGroupSize = spec.threadGroupSize
@@ -714,7 +714,7 @@ namespace Crowy
 
             using enum RHIShaderStage;
 
-            cmdList.setPipelineState(pass.pso.get());
+            cmdList.setPipelineState(*pass.pso);
 
             for(const auto& bind: pass.inputTextures){
                 auto it = textures.find(bind.name);
@@ -779,7 +779,7 @@ namespace Crowy
         ){
             using enum RHIShaderStage;
 
-            cmdList.setPipelineState(pipeline.pso.get());
+            cmdList.setPipelineState(*pipeline.pso);
 
             // bind input texture
             for(size_t i=0; i<pipeline.inputs.size(); ++i){

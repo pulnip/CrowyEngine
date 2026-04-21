@@ -14,7 +14,8 @@ namespace Crowy
         class MetalCommandList;
         class MetalFence;
         class MetalFrameScope;
-        class MetalPipelineState;
+        class MetalGraphicsPipelineState;
+        class MetalComputePipelineState;
         class MetalSwapchain;
 
         using RHIDevice = MetalDevice;
@@ -25,7 +26,8 @@ namespace Crowy
         using RHICommandList = MetalCommandList;
         using RHIFence = MetalFence;
         using RHIFrameScope = MetalFrameScope;
-        using RHIPipelineState = MetalPipelineState;
+        using RHIGraphicsPipelineState = MetalGraphicsPipelineState;
+        using RHIComputePipelineState = MetalComputePipelineState;
         using RHISwapchain = MetalSwapchain;
     #else
         class NullDevice;
@@ -36,7 +38,8 @@ namespace Crowy
         class NullCommandList;
         class NullFence;
         class NullFrameScope;
-        class NullPipelineState;
+        class NullGraphicsPipelineState;
+        class NullComputePipelineState;
         class NullSwapchain;
 
         using RHIDevice = NullDevice;
@@ -47,7 +50,8 @@ namespace Crowy
         using RHICommandList = NullCommandList;
         using RHIFence = NullFence;
         using RHIFrameScope = NullFrameScope;
-        using RHIPipelineState = NullPipelineState;
+        using RHIGraphicsPipelineState = NullGraphicsPipelineState;
+        using RHIComputePipelineState = NullComputePipelineState;
         using RHISwapchain = NullSwapchain;
     #endif
 #else
@@ -59,20 +63,22 @@ namespace Crowy
     class RHICommandList;
     class RHIFence;
     class RHIFrameScope;
-    class RHIPipelineState;
+    class RHIGraphicsPipelineState;
+    class RHIComputePipelineState;
     class RHISwapchain;
 #endif
     class FramePacer;
 
-    using RHIDevicePtr        = std::unique_ptr<RHIDevice>;
-    using RHIBufferPtr        = std::unique_ptr<RHIBuffer>;
-    using RHITexturePtr       = std::unique_ptr<RHITexture>;
-    using RHIShaderPtr        = std::unique_ptr<RHIShader>;
-    using RHISamplerPtr       = std::unique_ptr<RHISampler>;
-    using RHICommandListPtr   = std::unique_ptr<RHICommandList>;
-    using RHIFencePtr         = std::unique_ptr<RHIFence>;
-    using RHIFrameScopePtr    = std::unique_ptr<RHIFrameScope>;
-    using RHIPipelineStatePtr = std::unique_ptr<RHIPipelineState>;
-    using RHISwapchainPtr     = std::unique_ptr<RHISwapchain>;
-    using FramePacerPtr       = std::unique_ptr<FramePacer>;
+    using RHIDevicePtr = std::unique_ptr<RHIDevice>;
+    using RHIBufferPtr = std::unique_ptr<RHIBuffer>;
+    using RHITexturePtr = std::unique_ptr<RHITexture>;
+    using RHIShaderPtr = std::unique_ptr<RHIShader>;
+    using RHISamplerPtr = std::unique_ptr<RHISampler>;
+    using RHICommandListPtr = std::unique_ptr<RHICommandList>;
+    using RHIFencePtr = std::unique_ptr<RHIFence>;
+    using RHIFrameScopePtr = std::unique_ptr<RHIFrameScope>;
+    using RHIGraphicsPipelineStatePtr = std::unique_ptr<RHIGraphicsPipelineState>;
+    using RHIComputePipelineStatePtr = std::unique_ptr<RHIComputePipelineState>;
+    using RHISwapchainPtr = std::unique_ptr<RHISwapchain>;
+    using FramePacerPtr = std::unique_ptr<FramePacer>;
 }

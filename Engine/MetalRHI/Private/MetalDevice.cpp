@@ -86,18 +86,18 @@ namespace Crowy
             return std::make_unique<MetalSampler>(device, desc);
         }
 
-        RHIPipelineStatePtr createGraphicsPipelineState(
+        RHIGraphicsPipelineStatePtr createPipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<MetalPipelineState>(device, desc, name);
+            return std::make_unique<MetalGraphicsPipelineState>(device, desc, name);
         }
 
-        RHIPipelineStatePtr createComputePipelineState(
+        RHIComputePipelineStatePtr createPipelineState(
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<MetalPipelineState>(device, desc, name);
+            return std::make_unique<MetalComputePipelineState>(device, desc, name);
         }
 
         RHISwapchainPtr createSwapchain(
@@ -165,18 +165,18 @@ namespace Crowy
         return impl->createSampler(desc);
     }
 
-    RHIPipelineStatePtr MetalDevice::createGraphicsPipelineState(
+    RHIGraphicsPipelineStatePtr MetalDevice::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
-        return impl->createGraphicsPipelineState(desc, name);
+        return impl->createPipelineState(desc, name);
     }
 
-    RHIPipelineStatePtr MetalDevice::createComputePipelineState(
+    RHIComputePipelineStatePtr MetalDevice::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
-        return impl->createComputePipelineState(desc, name);
+        return impl->createPipelineState(desc, name);
     }
 
     RHISwapchainPtr MetalDevice::createSwapchain(

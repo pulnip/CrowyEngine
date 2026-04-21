@@ -96,7 +96,7 @@ int main(int argc, char* argv[]){
         .clearDepthStencil = {1.0f, 0},
     }, "Depth Buffer");
 
-    auto pipelineState = device->createGraphicsPipelineState({
+    auto pipelineState = device->createPipelineState({
         .vertexShader = vertexShader.get(),
         .pixelShader = fragmentShader.get(),
         .depthStencil = RHIDepthStencilState{
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]){
             clearColor
         );
 
-        cmdList->setPipelineState(pipelineState.get());
+        cmdList->setPipelineState(*pipelineState);
 
         cmdList->setViewport({0, 0, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f});
         cmdList->setScissorRect({0, 0, width, height});

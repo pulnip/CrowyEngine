@@ -62,7 +62,11 @@ namespace Crowy
 
         }
 
-        void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
+        void setPipelineState(RHIGraphicsPipelineState& pso) noexcept RHI_OVERRIDE{
+
+        }
+
+        void setPipelineState(RHIComputePipelineState& pso) noexcept RHI_OVERRIDE{
 
         }
 

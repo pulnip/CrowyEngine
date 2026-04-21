@@ -37,11 +37,11 @@ namespace Crowy
             const RHISamplerState&
         ) noexcept RHI_OVERRIDE;
 
-        RHIPipelineStatePtr createGraphicsPipelineState(
+        RHIGraphicsPipelineStatePtr createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
-        RHIPipelineStatePtr createComputePipelineState(
+        RHIComputePipelineStatePtr createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;

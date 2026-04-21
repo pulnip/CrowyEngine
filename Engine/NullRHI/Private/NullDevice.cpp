@@ -50,18 +50,18 @@ namespace Crowy
         return std::make_unique<NullSampler>(desc);
     }
 
-    RHIPipelineStatePtr NullDevice::createGraphicsPipelineState(
+    RHIGraphicsPipelineStatePtr NullDevice::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
-        return std::make_unique<NullPipelineState>(desc, name);
+        return std::make_unique<NullGraphicsPipelineState>(desc, name);
     }
 
-    RHIPipelineStatePtr NullDevice::createComputePipelineState(
+    RHIComputePipelineStatePtr NullDevice::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
-        return std::make_unique<NullPipelineState>(desc, name);
+        return std::make_unique<NullComputePipelineState>(desc, name);
     }
 
     RHISwapchainPtr NullDevice::createSwapchain(

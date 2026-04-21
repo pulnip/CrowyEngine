@@ -20,7 +20,7 @@ namespace Crowy
         std::vector<BindSpec> outputTextures;
         std::vector<BindSpec> outputBuffers;
 
-        RHIPipelineStatePtr pso;
+        RHIComputePipelineStatePtr pso;
         RHISize3D gridSize;
 
         inline size_t numOutputs() const{

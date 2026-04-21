@@ -1,8 +1,14 @@
 #pragma once
 
+#include <Foundation/NSTypes.hpp>
+#include <Metal/MTLArgument.hpp>
+#include <Metal/MTLBuffer.hpp>
+#include <Metal/MTLComputePipeline.hpp>
+#include <Metal/MTLDevice.hpp>
 #include <utility>
 #include <Metal/Metal.hpp>
 #include "assert.hpp"
+#include "AutoreleasePoolScope.hpp"
 #include "MetalShader.hpp"
 #include "MetalUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -91,9 +97,78 @@ namespace Crowy
         desc.setDepthStencilPassOperation(convert(op.passOp));
     }
 
-    class MetalPipelineState
+    inline auto convert(MTL::BindingAccess access){
+        switch(access){
+        case MTL::BindingAccessReadOnly:  return RHIBindingAccess::ReadOnly;
+        case MTL::BindingAccessReadWrite: return RHIBindingAccess::ReadWrite;
+        case MTL::BindingAccessWriteOnly: return RHIBindingAccess::WriteOnly;
+        default:
+            std::unreachable();
+        }
+    }
+
+    inline auto extractBindingInfo(NS::Array& bindings){
+        RHIShaderBindingInfo info;
+
+        for(NS::UInteger i=0; i<bindings.count(); ++i){
+            auto obj = bindings.object(i);
+            auto binding = static_cast<MTL::Binding*>(obj);
+
+            // shader parameter name
+            auto name = binding->name();
+            // shader parameter slot number, ex. [[buffer(0)]]
+            auto index = binding->index();
+            // Buffer / Texture / Sampler / ...
+            auto type = binding->type();
+            // ReadOnly / WriteOnly / ReadWrite
+            auto access = binding->access();
+            // check for optimized or not
+            auto used = binding->used();
+
+            RHISlotBindingInfo slotInfo{
+                .index = static_cast<uint32_t>(index),
+                .access = convert(access)
+            };
+
+            if(!used)
+                // TODO. use integrated logging system later.
+                std::println("[Warn] {} is not used.", name->utf8String());
+
+            switch(type){
+            case MTL::BindingTypeBuffer: {
+                // auto b = static_cast<MTL::BufferBinding*>(binding);
+                info.bufferInfo.emplace(name->utf8String(), std::move(slotInfo));
+            } break;
+            case MTL::BindingTypeTexture: {
+                // auto b = static_cast<MTL::TextureBinding*>(binding);
+                info.textureInfo.emplace(name->utf8String(), std::move(slotInfo));
+            } break;
+            case MTL::BindingTypeSampler: {
+                info.samplerInfo.emplace(name->utf8String(), std::move(slotInfo));
+            }
+            default:
+            }
+        }
+
+        return info;
+    }
+
+    inline auto extractBindingInfo(MTL::RenderPipelineReflection& refl){
+        return RHIGraphicsBindingInfo{
+            .vsInfo = extractBindingInfo(*refl.vertexBindings()),
+            .fsInfo = extractBindingInfo(*refl.fragmentBindings())
+        };
+    }
+
+    inline auto extractBindingInfo(MTL::ComputePipelineReflection& refl){
+        return RHIComputeBindingInfo{
+            .csInfo = extractBindingInfo(*refl.bindings())
+        };
+    }
+
+    class MetalGraphicsPipelineState
 #ifndef USE_STATIC_RHI
-        : public RHIPipelineState
+        : public RHIGraphicsPipelineState
 #endif
     {
     private:
@@ -102,27 +177,30 @@ namespace Crowy
         RHIRasterizerState rasterizerState{};
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
 
-        MTL::ComputePipelineState* computePipeline = nullptr;
-        MTL::Size threadsPerThreadgroup = {0, 0, 0};
+        RHIGraphicsBindingInfo bindingInfo;
 
         const std::string debugName;
 
     public:
-        MetalPipelineState(
+        MetalGraphicsPipelineState(
             MTL::Device* device,
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         )
             : debugName(name)
         {
-            auto pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
+            AutoreleasePoolScope _;
 
             // Shaders
             auto vs = static_cast<MetalShader*>(desc.vertexShader);
             auto ps = static_cast<MetalShader*>(desc.pixelShader);
+            if(vs == nullptr || ps == nullptr){
+                throw std::runtime_error("Vertex shader or Fragment shader is null");
+            }
 
-            if(vs) pipelineDesc->setVertexFunction(vs->get());
-            if(ps) pipelineDesc->setFragmentFunction(ps->get());
+            auto pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
+            pipelineDesc->setVertexFunction(vs->get());
+            pipelineDesc->setFragmentFunction(ps->get());
 
             // Vertex Layout
             if(desc.vertexLayout.elementCount > 0 && desc.vertexLayout.elements){
@@ -204,11 +282,19 @@ namespace Crowy
                 desc.blend.alphaToCoverageEnable
             );
 
+            MTL::AutoreleasedRenderPipelineReflection refl = nullptr;
             NS::Error* error = nullptr;
-            renderPipeline = device->newRenderPipelineState(pipelineDesc, &error);
+            renderPipeline = device->newRenderPipelineState(
+                pipelineDesc,
+                MTL::PipelineOptionBindingInfo,
+                &refl,
+                &error
+            );
             pipelineDesc->release();
 
-            if(!renderPipeline){
+            bindingInfo = extractBindingInfo(*refl);
+
+            if(renderPipeline == nullptr){
                 const char* msg = error->localizedDescription()->utf8String();
                 throw std::runtime_error(msg);
             }
@@ -223,59 +309,19 @@ namespace Crowy
             topology = desc.topology;
         }
 
-        MetalPipelineState(
-            MTL::Device* device,
-            const RHIComputePipelineStateDesc& desc,
-            const std::string& name
-        )
-            : debugName(name)
-        {
-            auto cs = static_cast<MetalShader*>(desc.computeShader);
-            if(!cs){
-                throw std::runtime_error("Compute shader is null");
+        ~MetalGraphicsPipelineState(){
+            if(renderPipeline != nullptr){
+                renderPipeline->release();
+                renderPipeline = nullptr;
             }
-
-            NS::Error* error = nullptr;
-            computePipeline = device->newComputePipelineState(
-                cs->get(), &error
-            );
-
-            if(!computePipeline){
-                throw std::runtime_error("Failed to create compute pipeline state");
-            }
-
-            if(desc.threadGroupSize.has_value()){
-                const auto& threadGroupSize = *desc.threadGroupSize;
-                threadsPerThreadgroup = MTL::Size::Make(
-                    threadGroupSize.x,
-                    threadGroupSize.y,
-                    threadGroupSize.z
-                );
-            }
-            else{
-                auto effectiveGroupSize = std::min(
-                    256ul,
-                    computePipeline->maxTotalThreadsPerThreadgroup()
-                );
-                threadsPerThreadgroup = defaultGroupSize(
-                    effectiveGroupSize,
-                    desc.gridSize
-                );
+            if(depthStencilState != nullptr){
+                depthStencilState->release();
+                depthStencilState = nullptr;
             }
         }
 
-        ~MetalPipelineState(){
-            if(renderPipeline) renderPipeline->release();
-            if(computePipeline) computePipeline->release();
-            if(depthStencilState) depthStencilState->release();
-        }
-
-        MTL::RenderPipelineState* getRenderPipeline() const{ 
+        MTL::RenderPipelineState* get() const{ 
             return renderPipeline; 
-        }
-
-        MTL::ComputePipelineState* getComputePipeline() const{ 
-            return computePipeline; 
         }
 
         MTL::DepthStencilState* getDepthStencilState() const{ 
@@ -288,14 +334,6 @@ namespace Crowy
 
         RHIPrimitiveTopology getTopology() const{
             return topology;
-        }
-
-        bool isComputePipeline() const{
-            return computePipeline != nullptr;
-        }
-
-        MTL::Size getThreadsPerThreadgroup() const{
-            return threadsPerThreadgroup;
         }
 
     private:
@@ -327,7 +365,91 @@ namespace Crowy
             depthStencilState = device->newDepthStencilState(dsDesc);
             dsDesc->release();
         }
+    };
 
+    class MetalComputePipelineState
+#ifndef USE_STATIC_RHI
+        : public RHIComputePipelineState
+#endif
+    {
+    private:
+        MTL::ComputePipelineState* computePipeline = nullptr;
+        MTL::Size threadsPerThreadgroup = {0, 0, 0};
+
+        RHIComputeBindingInfo bindingInfo;
+
+        const std::string debugName;
+
+    public:
+        MetalComputePipelineState(
+            MTL::Device* device,
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
+        )
+            : debugName(name)
+        {
+            AutoreleasePoolScope _;
+
+            auto cs = static_cast<MetalShader*>(desc.computeShader);
+            if(cs == nullptr){
+                throw std::runtime_error("Compute shader is null");
+            }
+
+            auto pipelineDesc = MTL::ComputePipelineDescriptor::alloc()->init();
+            pipelineDesc->setComputeFunction(cs->get());
+
+            MTL::AutoreleasedComputePipelineReflection refl = nullptr;
+            NS::Error* error = nullptr;
+            computePipeline = device->newComputePipelineState(
+                pipelineDesc,
+                MTL::PipelineOptionBindingInfo,
+                &refl,
+                &error
+            );
+            pipelineDesc->release();
+
+            bindingInfo = extractBindingInfo(*refl);
+
+            if(computePipeline == nullptr){
+                throw std::runtime_error("Failed to create compute pipeline state");
+            }
+
+            if(desc.threadGroupSize.has_value()){
+                const auto& threadGroupSize = *desc.threadGroupSize;
+                threadsPerThreadgroup = MTL::Size::Make(
+                    threadGroupSize.x,
+                    threadGroupSize.y,
+                    threadGroupSize.z
+                );
+            }
+            else{
+                auto effectiveGroupSize = std::min(
+                    256ul,
+                    computePipeline->maxTotalThreadsPerThreadgroup()
+                );
+                threadsPerThreadgroup = defaultGroupSize(
+                    effectiveGroupSize,
+                    desc.gridSize
+                );
+            }
+        }
+
+        ~MetalComputePipelineState(){
+            if(computePipeline != nullptr){
+                computePipeline->release();
+                computePipeline = nullptr;
+            }
+        }
+
+        MTL::ComputePipelineState* get() const{ 
+            return computePipeline; 
+        }
+
+        MTL::Size getThreadsPerThreadgroup() const{
+            return threadsPerThreadgroup;
+        }
+
+    private:
         static MTL::Size defaultGroupSize(
             uint32_t numThreads,
             const RHISize3D& gridSize

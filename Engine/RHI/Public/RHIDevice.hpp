@@ -66,11 +66,11 @@ namespace Crowy
             const RHISamplerState&
         ) noexcept = 0;
 
-        virtual RHIPipelineStatePtr createGraphicsPipelineState(
+        virtual RHIGraphicsPipelineStatePtr createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
         ) noexcept = 0;
-        virtual RHIPipelineStatePtr createComputePipelineState(
+        virtual RHIComputePipelineStatePtr createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
         ) noexcept = 0;

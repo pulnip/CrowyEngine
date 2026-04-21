@@ -67,7 +67,8 @@ namespace Crowy
         virtual void endRenderPass() noexcept = 0;
 
         // Pipeline state
-        virtual void setPipelineState(RHIPipelineState* pso) noexcept = 0;
+        virtual void setPipelineState(RHIGraphicsPipelineState&) noexcept = 0;
+        virtual void setPipelineState(RHIComputePipelineState&) noexcept = 0;
 
         // Vertex and index buffers
         virtual void setVertexBuffer(

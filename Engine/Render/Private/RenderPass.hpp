@@ -17,7 +17,7 @@ namespace Crowy
         std::vector<BindSpec> fs_samplers;
         std::vector<BindSpec> fs_cbuffers;
 
-        RHIPipelineStatePtr pso;
+        RHIGraphicsPipelineStatePtr pso;
         std::optional<RenderTypeHash> renderType;
 
         inline bool isFullscreenPass() const{

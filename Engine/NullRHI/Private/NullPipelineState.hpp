@@ -8,16 +8,16 @@
 
 namespace Crowy
 {
-    class NullPipelineState
+    class NullGraphicsPipelineState
 #ifndef USE_STATIC_RHI
-        : public RHIPipelineState
+        : public RHIGraphicsPipelineState
 #endif
     {
     private:
         const std::string debugName;
     
     public:
-        NullPipelineState(
+        NullGraphicsPipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         )
@@ -25,8 +25,18 @@ namespace Crowy
         {
 
         }
+    };
 
-        NullPipelineState(
+    class NullComputePipelineState
+#ifndef USE_STATIC_RHI
+        : public RHIComputePipelineState
+#endif
+    {
+    private:
+        const std::string debugName;
+    
+    public:
+        NullComputePipelineState(
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         )

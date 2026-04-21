@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <unordered_map>
 #include "enum_traits.hpp"
 #include "math.hpp"
 #include "RHIFWD.hpp"
@@ -551,4 +552,30 @@ namespace Crowy
             std::unreachable();
         }
     }
+
+    enum class RHIBindingAccess{
+        ReadOnly,
+        ReadWrite,
+        WriteOnly
+    };
+
+    struct RHISlotBindingInfo{
+        uint32_t index;
+        RHIBindingAccess access;
+    };
+
+    struct RHIShaderBindingInfo{
+        std::unordered_map<std::string, RHISlotBindingInfo> bufferInfo;
+        std::unordered_map<std::string, RHISlotBindingInfo> textureInfo;
+        std::unordered_map<std::string, RHISlotBindingInfo> samplerInfo;
+    };
+
+    struct RHIGraphicsBindingInfo{
+        RHIShaderBindingInfo vsInfo;
+        RHIShaderBindingInfo fsInfo;
+    };
+
+    struct RHIComputeBindingInfo{
+        RHIShaderBindingInfo csInfo;
+    };
 }
