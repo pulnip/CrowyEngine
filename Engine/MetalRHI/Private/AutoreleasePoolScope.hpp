@@ -5,13 +5,16 @@
 namespace Crowy
 {
     struct AutoreleasePoolScope{
-        NS::AutoreleasePool* pool;
+        NS::AutoreleasePool* pool = nullptr;
 
         AutoreleasePoolScope()
             : pool(NS::AutoreleasePool::alloc()->init()){}
 
         ~AutoreleasePoolScope(){
-            pool->release();
+            if(pool != nullptr){
+                pool->release();
+                pool = nullptr;
+            }
         }
 
         AutoreleasePoolScope(const AutoreleasePoolScope&) = delete;

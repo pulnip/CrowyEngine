@@ -1,5 +1,3 @@
-#include <array>
-#include <span>
 #include "Log.hpp"
 #include "RHIDevice.hpp"
 #include "RHIFence.hpp"
@@ -80,7 +78,7 @@ namespace Crowy
 
     struct FramePacer::Impl{
         RHIDevice* device;
-        RHIFrameScopePtr scope;
+        RHIFrameScopePtr scope = nullptr;
         RHIFrameFenceManager fenceManager;
 
         uint64_t frameNumber = 0;
@@ -127,6 +125,8 @@ namespace Crowy
         }
 
         void endFrame() noexcept{
+            scope = nullptr;
+
             // Signal fence for this frame
             fenceManager.endFrame();
         }

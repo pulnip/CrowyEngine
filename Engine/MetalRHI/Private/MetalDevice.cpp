@@ -1,4 +1,7 @@
-extern "C" void _objc_autoreleasePoolPrint(void);
+extern "C"{
+    // Debug AutoreleasePool
+    void _objc_autoreleasePoolPrint(void);
+}
 
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
@@ -53,7 +56,7 @@ namespace Crowy
             if(device != nullptr)
                 device->release();
 
-            _objc_autoreleasePoolPrint();
+            // _objc_autoreleasePoolPrint();
         }
 
         RHIFrameScopePtr createFrameScope() noexcept{
