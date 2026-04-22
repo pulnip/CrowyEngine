@@ -73,11 +73,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"BackBuffer"},
                 .pipelines = {
                     {
-                        .inputs = {
-                            "checkerboard",
-                        },
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "tex", .name = "checkerboard"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -99,10 +101,9 @@ int main(int argc, char* argv[]){
         .computePasses = {
             {
                 .name = "Checkerboard",
-                .outputTextures = {
-                    {
-                        .name = "checkerboard",
-                        .slot = 0
+                .cs = {
+                    .textures = {
+                        {.slot = "out", .name = "checkerboard"}
                     }
                 },
                 .shader = {

@@ -50,16 +50,16 @@ auto makeRadixPass(
     return std::vector{
         ComputePassSpec{
             .name = "Histogram_" + tag,
-            .inputBuffers = {
-                {.name = keysIn, .slot = 0}
-            },
-            .inputInts = {
-                {.data = bitOffset, .slot = 2},
-                {.data = N, .slot = 3},
-                {.data = HG_NUMGROUP, .slot = 4}
-            },
-            .outputBuffers = {
-                {.name = "Histogram", .slot = 1}
+            .cs = {
+                .buffers = {
+                    {.slot = "keys", .name = keysIn},
+                    {.slot = "histogram", .name = "Histogram"}
+                },
+                .bytes = {
+                    {.slot = "bit_offset", .data = bitOffset},
+                    {.slot = "count", .data = N},
+                    {.slot = "num_groups", .data = HG_NUMGROUP}
+                }
             },
             .shader = {
             #ifdef CROWY_METALRHI
@@ -79,12 +79,12 @@ auto makeRadixPass(
         },
         ComputePassSpec{
             .name = "LocalPrefixSum_" + tag,
-            .inputBuffers = {
-                {.name = "Histogram", .slot = 0}
-            },
-            .outputBuffers = {
-                {.name = "PrefixSum", .slot = 1},
-                {.name = "GroupSums", .slot = 2}
+            .cs = {
+                .buffers = {
+                    {.slot = "data", .name = "Histogram"},
+                    {.slot = "out", .name = "PrefixSum"},
+                    {.slot = "group_sums", .name = "GroupSums"}
+                }
             },
             .shader = {
             #ifdef CROWY_METALRHI
@@ -104,11 +104,11 @@ auto makeRadixPass(
         },
         ComputePassSpec{
             .name = "GroupPrefixSum_" + tag,
-            .inputBuffers = {
-                {.name = "GroupSums", .slot = 0}
-            },
-            .outputBuffers = {
-                {.name = "GroupSums", .slot = 1},
+            .cs = {
+                .buffers = {
+                    {.slot = "data", .name = "GroupSums"},
+                    {.slot = "out", .name = "GroupSums"},
+                }
             },
             .shader = {
             #ifdef CROWY_METALRHI
@@ -128,11 +128,11 @@ auto makeRadixPass(
         },
         ComputePassSpec{
             .name = "PrefixSum_" + tag,
-            .inputBuffers = {
-                {.name = "GroupSums", .slot = 0}
-            },
-            .outputBuffers = {
-                {.name = "PrefixSum", .slot = 1},
+            .cs = {
+                .buffers = {
+                    {.slot = "group_sums", .name = "GroupSums"},
+                    {.slot = "out", .name = "PrefixSum"}
+                }
             },
             .shader = {
             #ifdef CROWY_METALRHI
@@ -152,19 +152,19 @@ auto makeRadixPass(
         },
         ComputePassSpec{
             .name = "Scatter_" + tag,
-            .inputBuffers = {
-                {.name = keysIn,     .slot = 0},
-                {.name = idxIn,      .slot = 1},
-                {.name = "PrefixSum", .slot = 4},
-            },
-            .inputInts = {
-                {.data = bitOffset, .slot = 5},
-                {.data = N, .slot = 6},
-                {.data = HG_NUMGROUP, .slot = 7}
-            },
-            .outputBuffers = {
-                {.name = keysOut,    .slot = 2},
-                {.name = idxOut,     .slot = 3},
+            .cs = {
+                .buffers = {
+                    {.slot = "keys_in", .name = keysIn},
+                    {.slot = "vals_in", .name = idxIn},
+                    {.slot = "keys_out", .name = keysOut},
+                    {.slot = "vals_out", .name = idxOut},
+                    {.slot = "prefix_sums", .name = "PrefixSum"}
+                },
+                .bytes = {
+                    {.slot = "bit_offset", .data = bitOffset},
+                    {.slot = "count", .data = N},
+                    {.slot = "num_groups", .data = HG_NUMGROUP},
+                }
             },
             .shader = {
             #ifdef CROWY_METALRHI

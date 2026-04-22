@@ -190,12 +190,6 @@
                         "type": "array",
                         "required": ["outputs", "metal_shader", "d3d_shader"],
                         "properties": {
-                            "inputs": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
-                            },
                             "outputs": {
                                 "type": "array",
                                 "items": {
@@ -205,17 +199,32 @@
                             "depthOutput": {
                                 "type": "string"
                             },
+                            "fs_textures": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["name", "slot"],
+                                    "properties": {
+                                        "slot": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
                             "fs_samplers": {
                                 "type": "array",
                                 "items": {
                                     "type": "object",
                                     "required": ["name", "slot"],
                                     "properties": {
-                                        "name": {
+                                        "slot": {
                                             "type": "string"
                                         },
-                                        "slot": {
-                                            "type": "integer"
+                                        "name": {
+                                            "type": "string"
                                         }
                                     }
                                 }
@@ -226,11 +235,11 @@
                                     "type": "object",
                                     "required": ["name", "slot"],
                                     "properties": {
-                                        "name": {
+                                        "slot": {
                                             "type": "string"
                                         },
-                                        "slot": {
-                                            "type": "integer"
+                                        "name": {
+                                            "type": "string"
                                         }
                                     },
                                     "additionalProperties": false

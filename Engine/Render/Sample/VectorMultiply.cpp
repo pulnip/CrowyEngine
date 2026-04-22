@@ -61,20 +61,11 @@ int main(int argc, char* argv[]){
         .computePasses = {
             {
                 .name = "VectorMultiply",
-                .inputBuffers = {
-                    {
-                        .name = "BufferA",
-                        .slot = 0
-                    },
-                    {
-                        .name = "BufferB",
-                        .slot = 1
-                    }
-                },
-                .outputBuffers = {
-                    {
-                        .name = "BufferOut",
-                        .slot = 2
+                .cs = {
+                    .buffers = {
+                        {.slot = "A", .name = "BufferA"},
+                        {.slot = "B", .name = "BufferB"},
+                        {.slot = "out", .name = "BufferOut"},
                     }
                 },
                 .shader = {

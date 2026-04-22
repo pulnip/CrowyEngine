@@ -214,8 +214,10 @@ int main(int argc, char* argv[]){
                 .depthOutput = "depth",
                 .pipelines = {
                     {
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .samplers = {
+                                {.slot = "samp", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -243,9 +245,14 @@ int main(int argc, char* argv[]){
                 .outputs = {"toonColor"},
                 .pipelines = {
                     {
-                        .inputs = {"albedo", "normal"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "albedoTex", .name = "albedo"},
+                                {.slot = "normalTex", .name = "normal"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -268,9 +275,15 @@ int main(int argc, char* argv[]){
                 .outputs = {"outlined"},
                 .pipelines = {
                     {
-                        .inputs = {"normal", "depth", "toonColor"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "normalTex", .name = "normal"},
+                                {.slot = "depthTex", .name = "depth"},
+                                {.slot = "colorTex", .name = "toonColor"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -294,8 +307,10 @@ int main(int argc, char* argv[]){
                 .depthOutput = "depth",
                 .pipelines = {
                     {
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .samplers = {
+                                {.slot = "texSampler", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -323,12 +338,16 @@ int main(int argc, char* argv[]){
                 .outputs = {"pixelated"},
                 .pipelines = {
                     {
-                        .inputs = {"sceneColor"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
-                        },
-                        .fs_cbuffers = {
-                            {.name = "PixelateParams", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "sceneTexture", .name = "sceneColor"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            },
+                            .cbuffers = {
+                                {.slot = "params", .name = "PixelateParams"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -351,8 +370,10 @@ int main(int argc, char* argv[]){
                 .outputs = {"focusMask"},
                 .pipelines = {
                     {
-                        .fs_cbuffers = {
-                            {.name = "FocusParams", .slot = 0}
+                        .fs = {
+                            .cbuffers = {
+                                {.slot = "params", .name = "FocusParams"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -375,13 +396,15 @@ int main(int argc, char* argv[]){
                 .outputs = {"BackBuffer"},
                 .pipelines = {
                     {
-                        .inputs = {
-                            "pixelated",
-                            "outlined",
-                            "focusMask"
-                        },
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "origin", .name = "pixelated"},
+                                {.slot = "masked", .name = "outlined"},
+                                {.slot = "mask", .name = "focusMask"},
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI

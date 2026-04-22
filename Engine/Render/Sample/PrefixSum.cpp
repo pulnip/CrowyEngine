@@ -61,20 +61,11 @@ int main(int argc, char* argv[]){
         .computePasses = {
             {
                 .name = "Local PrefixSum",
-                .inputBuffers = {
-                    {
-                        .name = "BufferIn",
-                        .slot = 0
-                    }
-                },
-                .outputBuffers = {
-                    {
-                        .name = "BufferOut",
-                        .slot = 1
-                    },
-                    {
-                        .name = "GroupSums",
-                        .slot = 2
+                .cs = {
+                    .buffers = {
+                        {.slot = "data", .name = "BufferIn"},
+                        {.slot = "out", .name = "BufferOut"},
+                        {.slot = "group_sums", .name = "BufferOut"}
                     }
                 },
                 .shader = {
@@ -95,17 +86,11 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "Group PrefixSum",
-                .inputBuffers = {
-                    {
-                        .name = "GroupSums",
-                        .slot = 0
+                .cs = {
+                    .buffers = {
+                        {.slot = "data", .name = "GroupSums"},
+                        {.slot = "out", .name = "GroupSums"}
                     }
-                },
-                .outputBuffers = {
-                    {
-                        .name = "GroupSums",
-                        .slot = 1
-                    },
                 },
                 .shader = {
                 #ifdef CROWY_METALRHI
@@ -125,17 +110,11 @@ int main(int argc, char* argv[]){
             },
             {
                 .name = "PrefixSum",
-                .inputBuffers = {
-                    {
-                        .name = "GroupSums",
-                        .slot = 0
+                .cs = {
+                    .buffers = {
+                        {.slot = "group_sums", .name = "GroupSums"},
+                        {.slot = "out", .name = "BufferOut"}
                     }
-                },
-                .outputBuffers = {
-                    {
-                        .name = "BufferOut",
-                        .slot = 1
-                    },
                 },
                 .shader = {
                 #ifdef CROWY_METALRHI

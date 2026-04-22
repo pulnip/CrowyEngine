@@ -64,8 +64,8 @@ name = "gbuffer"
     depthOutput = "depth"
     renderType = "type0"
     [[passes.pipelines.fs_samplers]]
+    slot = "samp"
     name = "NEAREST_WRAP"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/gbuffer.metal"
     vs_func = "vs_gbuffer"
@@ -79,11 +79,16 @@ name = "gbuffer"
 [[passes]]
 name = "celShading"
     [[passes.pipelines]]
-    inputs = ["albedo", "normal"]
     outputs = ["toonColor"]
+    [[passes.pipelines.fs_textures]]
+    slot = "albedoTex"
+    name = "albedo"
+    [[passes.pipelines.fs_textures]]
+    slot = "normalTex"
+    name = "normal"
     [[passes.pipelines.fs_samplers]]
+    slot = "s"
     name = "NEAREST_WRAP"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
@@ -97,11 +102,19 @@ name = "celShading"
 [[passes]]
 name = "outlining"
     [[passes.pipelines]]
-    inputs = ["normal", "depth", "toonColor"]
     outputs = ["outlined"]
     [[passes.pipelines.fs_samplers]]
+    slot = "normalTex"
+    name = "normal"
+    [[passes.pipelines.fs_samplers]]
+    slot = "depthTex"
+    name = "depth"
+    [[passes.pipelines.fs_samplers]]
+    slot = "colorTex"
+    name = "toonColor"
+    [[passes.pipelines.fs_samplers]]
+    slot = "s"
     name = "NEAREST_WRAP"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
@@ -119,8 +132,8 @@ name = "scene"
     depthOutput = "depth"
     renderType = "type0"
     [[passes.pipelines.fs_samplers]]
+    slot = "texSampler"
     name = "NEAREST_WRAP"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/triangle.metal"
     vs_func = "vs_main"
@@ -134,14 +147,16 @@ name = "scene"
 [[passes]]
 name = "pixelate"
     [[passes.pipelines]]
-    inputs = ["sceneColor"]
     outputs = ["pixelated"]
+    [[passes.pipelines.fs_textures]]
+    slot = "sceneTexture"
+    name = "sceneColor"
     [[passes.pipelines.fs_samplers]]
+    slot = "s"
     name = "NEAREST_WRAP"
-    slot = 0
     [[passes.pipelines.fs_cbuffers]]
+    slot = "params"
     name = "PixelateParams"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
@@ -157,8 +172,8 @@ name = "focusmask"
     [[passes.pipelines]]
     outputs = ["focusMask"]
     [[passes.pipelines.fs_cbuffers]]
+    slot = "params"
     name = "FocusParams"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"
@@ -172,11 +187,19 @@ name = "focusmask"
 [[passes]]
 name = "composite"
     [[passes.pipelines]]
-    inputs = ["pixelated", "outlined", "focusMask"]
     outputs = ["BackBuffer"]
+    [[passes.pipelines.fs_textures]]
+    slot = "origin"
+    name = "pixelated"
+    [[passes.pipelines.fs_textures]]
+    slot = "masked"
+    name = "outlined"
+    [[passes.pipelines.fs_textures]]
+    slot = "mask"
+    name = "focusMask"
     [[passes.pipelines.fs_samplers]]
+    slot = "s"
     name = "NEAREST_WRAP"
-    slot = 0
     [passes.pipelines.metal_shader]
     vs_file = "asset/Shaders/fullscreen.metal"
     vs_func = "vs_fullscreen"

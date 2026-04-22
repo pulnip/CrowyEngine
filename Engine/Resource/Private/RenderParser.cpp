@@ -294,11 +294,11 @@ namespace Crowy
             }
 
             auto name = readString(arena, *table, errors, "name");
-            auto slot = readFloat(arena, *table, errors, "slot");
+            auto slot = readString(arena, *table, errors, "slot");
 
             v[i] = BindSpec{
-                .name = *name,
-                .slot = static_cast<uint32_t>(*slot)
+                .slot = *slot,
+                .name = *name
             };
         }
 
@@ -342,8 +342,7 @@ namespace Crowy
                 break;
             }
 
-            auto inputs = readStringArray(arena, *table, errors, "inputs");
-
+            auto fs_textures = readBinds(arena, *table, errors, "fs_textures");
             auto fs_samplers = readBinds(arena, *table, errors, "fs_samplers");
             auto fs_cbuffers = readBinds(arena, *table, errors, "fs_cbuffers");
 
@@ -352,11 +351,11 @@ namespace Crowy
             auto renderType = readString(arena, *table, errors, "renderType");
 
             v[i].shader = *shader;
-            v[i].fs_samplers = fs_samplers;
-            v[i].fs_cbuffers = fs_cbuffers;
-
-            if(inputs.has_value())
-                v[i].inputs = *inputs;
+            v[i].fs = {
+                .textures = std::move(fs_textures),
+                .samplers = std::move(fs_samplers),
+                .cbuffers = std::move(fs_cbuffers)
+            };
 
             if(renderType.has_value())
                 v[i].renderType = *renderType;
@@ -544,8 +543,8 @@ namespace Crowy
 
             for(auto& pipeline: pass.pipelines){
                 // ShaderResource
-                for(const auto& input: pipeline.inputs){
-                    if(auto it = textures.find(input); it != textures.end()){
+                for(const auto& tex: pipeline.fs.textures){
+                    if(auto it = textures.find(tex.name); it != textures.end()){
                         auto& texDesc = it->second;
                         texDesc.usage = combine(texDesc.usage, RHITextureUsage::ShaderResource);
                     }
@@ -571,14 +570,14 @@ namespace Crowy
                 }
 
                 std::erase_if(
-                    pipeline.fs_samplers,
+                    pipeline.fs.samplers,
                     [&samplers](const auto& bind){
                         return samplers.find(bind.name) == samplers.end();
                     }
                 );
 
                 std::erase_if(
-                    pipeline.fs_cbuffers,
+                    pipeline.fs.cbuffers,
                     [&cbuffers](const auto& bind){
                         return cbuffers.find(bind.name) == cbuffers.end();
                     }

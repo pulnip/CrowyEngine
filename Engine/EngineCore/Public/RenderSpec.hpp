@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <limits>
 #include <string>
 #include <vector>
 #include "path_util.hpp"
@@ -21,14 +20,15 @@ namespace Crowy
     };
 
     struct BindSpec{
+        std::string slot;
         std::string name;
-        uint32_t slot = std::numeric_limits<uint32_t>::max();
+        // uint32_t slot = std::numeric_limits<uint32_t>::max();
     };
 
     template<typename T>
     struct ByteBindSpec{
+        std::string slot;
         T data;
-        uint32_t slot = std::numeric_limits<uint32_t>::max();
     };
 
     struct ShaderSpec{
@@ -45,12 +45,18 @@ namespace Crowy
         }
     };
 
-    struct GraphicsPipelineBindSpec{
-        // input Texture
-        std::vector<std::string> inputs;
+    struct ShaderBindSpec{
+        std::vector<BindSpec> buffers;
+        std::vector<BindSpec> textures;
+        std::vector<BindSpec> samplers;
 
-        std::vector<BindSpec> fs_samplers;
-        std::vector<BindSpec> fs_cbuffers;
+        std::vector<BindSpec> cbuffers;
+        std::vector<ByteBindSpec<uint32_t>> bytes;
+    };
+
+    struct GraphicsPipelineBindSpec{
+        ShaderBindSpec vs;
+        ShaderBindSpec fs;
 
         ShaderSpec shader;
         RHIRasterizerState rasterizer = {};
@@ -85,14 +91,7 @@ namespace Crowy
     struct ComputePassSpec{
         std::string name;
 
-        // input
-        std::vector<BindSpec> inputTextures;
-        std::vector<BindSpec> inputBuffers;
-        std::vector<ByteBindSpec<uint32_t>> inputInts;
-
-        // output
-        std::vector<BindSpec> outputTextures;
-        std::vector<BindSpec> outputBuffers;
+        ShaderBindSpec cs;
 
         ComputeShaderSpec shader;
         RHISize3D gridSize;

@@ -282,9 +282,8 @@ namespace Crowy
 
             return{
                 .name = name,
-                .inputs = spec.inputs,
-                .fs_samplers = spec.fs_samplers,
-                .fs_cbuffers = spec.fs_cbuffers,
+                .vs = spec.vs,
+                .fs = spec.fs,
                 .pso = std::move(pipeline),
                 .renderType = renderType
             };
@@ -357,11 +356,7 @@ namespace Crowy
             return{
                 .name = spec.name,
                 .enabled = true,
-                .inputTextures = spec.inputTextures,
-                .inputBuffers = spec.inputBuffers,
-                .inputInts = spec.inputInts,
-                .outputTextures = spec.outputTextures,
-                .outputBuffers = spec.outputBuffers,
+                .cs = spec.cs,
                 .pso = std::move(pso),
                 .gridSize = spec.gridSize
             };
@@ -380,22 +375,26 @@ namespace Crowy
         static bool hasDirDeps(const RenderPass& from, const RenderPass& to){
             for(const auto& output: from.outputs){
                 for(const auto& pip: to.pipelines){
-                    auto it = std::ranges::find(
-                        pip.inputs,
-                        output
+                    auto it = std::ranges::find_if(
+                        pip.fs.textures,
+                        [&name = output](const auto& bind){
+                            return bind.name == name;
+                        }
                     );
-                    if(it != pip.inputs.end())
+                    if(it != pip.fs.textures.end())
                         return true;
                 }
             }
 
             if(!from.depthOutput.empty()){
                 for(const auto& pip: to.pipelines){
-                    auto it = std::ranges::find(
-                        pip.inputs,
-                        from.depthOutput
+                    auto it = std::ranges::find_if(
+                        pip.fs.textures,
+                        [&name = from.depthOutput](const auto& bind){
+                            return bind.name == name;
+                        }
                     );
-                    if(it != pip.inputs.end())
+                    if(it != pip.fs.textures.end())
                         return true;
                 }
             }
@@ -406,23 +405,23 @@ namespace Crowy
         static bool hasDirDeps(const RenderPass& from, const ComputePass& to){
             for(const auto& output: from.outputs){
                 auto it = std::ranges::find_if(
-                    to.inputTextures,
-                    [&output](const auto& bind){
-                        return bind.name == output;
+                    to.cs.textures,
+                    [&name = output](const auto& bind){
+                        return bind.name == name;
                     }
                 );
-                if(it != to.inputTextures.end())
+                if(it != to.cs.textures.end())
                     return true;
             }
 
             if(!from.depthOutput.empty()){
                 auto it = std::ranges::find_if(
-                    to.inputTextures,
-                    [&output = from.depthOutput](const auto& bind){
-                        return bind.name == output;
+                    to.cs.textures,
+                    [&name = from.depthOutput](const auto& bind){
+                        return bind.name == name;
                     }
                 );
-                if(it != to.inputTextures.end())
+                if(it != to.cs.textures.end())
                     return true;
             }
 
@@ -430,13 +429,15 @@ namespace Crowy
         }
 
         static bool hasDirDeps(const ComputePass& from, const RenderPass& to){
-            for(const auto& bind: from.outputTextures){
+            for(const auto& bind: from.cs.textures){
                 for(const auto& pip: to.pipelines){
-                    auto it = std::ranges::find(
-                        pip.inputs,
-                        bind.name
+                    auto it = std::ranges::find_if(
+                        pip.fs.textures,
+                        [&name = bind.name](const auto& bind){
+                            return bind.name == name;
+                        }
                     );
-                    if(it != pip.inputs.end())
+                    if(it != pip.fs.textures.end())
                         return true;
                 }
             }
@@ -445,14 +446,14 @@ namespace Crowy
         }
 
         static bool hasDirDeps(const ComputePass& from, const ComputePass& to){
-            for(const auto& bind: from.outputTextures){
+            for(const auto& bind: from.cs.textures){
                 auto it = std::ranges::find_if(
-                    to.inputTextures,
-                    [&output = bind.name](const auto& bind){
-                        return bind.name == output;
+                    to.cs.textures,
+                    [&name = bind.name](const auto& bind){
+                        return bind.name == name;
                     }
                 );
-                if(it != to.inputTextures.end())
+                if(it != to.cs.textures.end())
                     return true;
             }
 
@@ -682,8 +683,8 @@ namespace Crowy
                 const auto& pb = pass.pipelines.back();
 
                 // bypass for Post-Process, pf.inputs[0] for bypass target
-                CROWY_ASSERT(pf.inputs.size() > 0);
-                auto inputIt = textures.find(pf.inputs[0]);
+                CROWY_ASSERT(pf.fs.textures.size() > 0);
+                auto inputIt = textures.find(pf.fs.textures[0].name);
                 CROWY_ASSERT(inputIt != textures.end());
 
                 // not support MRT for bypass target
@@ -709,59 +710,38 @@ namespace Crowy
             if(!pass.enabled)
                 return;
 
-            CROWY_ASSERT(pass.numOutputs() > 0);
             cmdList.beginCompute();
 
             using enum RHIShaderStage;
 
             cmdList.setPipelineState(*pass.pso);
+            auto& info = pass.pso->getInfo();
 
-            for(const auto& bind: pass.inputTextures){
+            for(const auto& bind: pass.cs.textures){
                 auto it = textures.find(bind.name);
                 CROWY_ASSERT(it != textures.end());
 
                 cmdList.setTexture(
-                    bind.slot,
+                    info.csInfo.textureInfo.at(bind.slot).index,
                     *it->second,
                     ComputeShader
                 );
             }
-            for(const auto& bind: pass.inputBuffers){
+            for(const auto& bind: pass.cs.buffers){
                 auto it = buffers.find(bind.name);
                 CROWY_ASSERT(it != buffers.end());
 
                 cmdList.setBuffer(
-                    bind.slot,
+                    info.csInfo.bufferInfo.at(bind.slot).index,
                     *it->second,
                     ComputeShader
                 );
             }
-            for(const auto& bind: pass.inputInts){
+            for(const auto& bind: pass.cs.bytes){
                 cmdList.setBytes(
-                    bind.slot,
+                    info.csInfo.bufferInfo.at(bind.slot).index,
                     &bind.data,
                     sizeof(bind.data),
-                    ComputeShader
-                );
-            }
-
-            for(const auto& bind: pass.outputTextures){
-                auto it = textures.find(bind.name);
-                CROWY_ASSERT(it != textures.end());
-
-                cmdList.setTexture(
-                    bind.slot,
-                    *it->second,
-                    ComputeShader
-                );
-            }
-            for(const auto& bind: pass.outputBuffers){
-                auto it = buffers.find(bind.name);
-                CROWY_ASSERT(it != buffers.end());
-
-                cmdList.setBuffer(
-                    bind.slot,
-                    *it->second,
                     ComputeShader
                 );
             }
@@ -780,11 +760,11 @@ namespace Crowy
             using enum RHIShaderStage;
 
             cmdList.setPipelineState(*pipeline.pso);
-            auto info = pipeline.pso->getInfo();
+            auto& info = pipeline.pso->getInfo();
 
             // bind input texture
-            for(size_t i=0; i<pipeline.inputs.size(); ++i){
-                auto srIt = textures.find(pipeline.inputs[i]);
+            for(size_t i=0; i<pipeline.fs.textures.size(); ++i){
+                auto srIt = textures.find(pipeline.fs.textures[i].name);
                 CROWY_ASSERT(srIt != textures.end());
 
                 // transition input texture to shader resource state
@@ -801,17 +781,18 @@ namespace Crowy
                 );
             }
 
-            for(const auto& samplerBind: pipeline.fs_samplers){
+            for(const auto& samplerBind: pipeline.fs.samplers){
                 auto it = samplers.find(samplerBind.name);
                 CROWY_ASSERT(it != samplers.end());
 
                 cmdList.setSampler(
-                    samplerBind.slot, *it->second,
+                    info.fsInfo.samplerInfo.at(samplerBind.slot).index,
+                    *it->second,
                     FragmentShader
                 );
             }
 
-            for(const auto& cbufferBind: pipeline.fs_cbuffers){
+            for(const auto& cbufferBind: pipeline.fs.cbuffers){
                 auto it = cbuffers.find(cbufferBind.name);
                 [[unlikely]] if(it == cbuffers.end())
                     continue;
@@ -822,7 +803,8 @@ namespace Crowy
 
                 cmdList.setConstantBuffer(
                     FragmentShader,
-                    cbufferBind.slot, buf
+                    info.fsInfo.bufferInfo.at(cbufferBind.slot).index,
+                    buf
                 );
             }
 

@@ -87,7 +87,9 @@ TEST(RenderParser, ParseMultiplePasses){
         name = "pass2"
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            inputs = ["target1"]
+            [[passes.pipelines.fs_textures]]
+            slot = "t"
+            name = "target1"
             [passes.pipelines.metal_shader]
             vs_file = "path3"
             vs_func = "function3"
@@ -118,7 +120,9 @@ TEST(RenderParser, ParseMultiplePasses){
             Field(&RenderPassSpec::outputs, ElementsAre("target1")),
             Field(&RenderPassSpec::pipelines, ElementsAre(
                 AllOf(
-                    Field(&GraphicsPipelineBindSpec::inputs, IsEmpty()),
+                    Field(&GraphicsPipelineBindSpec::fs,
+                        Field(&ShaderBindSpec::textures, IsEmpty())
+                    ),
                     Field(&GraphicsPipelineBindSpec::shader, AllOf(
                         Field(&ShaderSpec::vsFilePath, Eq("path1")),
                         Field(&ShaderSpec::vsFuncName, Eq("function1")),
@@ -133,7 +137,14 @@ TEST(RenderParser, ParseMultiplePasses){
             Field(&RenderPassSpec::outputs, ElementsAre("BackBuffer")),
             Field(&RenderPassSpec::pipelines, ElementsAre(
                 AllOf(
-                    Field(&GraphicsPipelineBindSpec::inputs, ElementsAre("target1")),
+                    Field(&GraphicsPipelineBindSpec::fs,
+                        Field(&ShaderBindSpec::textures, ElementsAre(
+                            AllOf(
+                                Field(&BindSpec::slot, Eq("t")),
+                                Field(&BindSpec::name, Eq("target1"))
+                            ))
+                        )
+                    ),
                     Field(&GraphicsPipelineBindSpec::shader, AllOf(
                         Field(&ShaderSpec::vsFilePath, Eq("path3")),
                         Field(&ShaderSpec::vsFuncName, Eq("function3")),
@@ -166,8 +177,8 @@ TEST(RenderParser, ParseSamplerWithIndividualFilters){
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
             [[passes.pipelines.fs_samplers]]
+            slot = "s"
             name = "LINEAR_WRAP"
-            slot = 0
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"
@@ -185,8 +196,8 @@ TEST(RenderParser, ParseSamplerWithIndividualFilters){
     const auto& pass1 = render.renderPasses[0];
     ASSERT_EQ(pass1.pipelines.size(), 1);
     const auto& pipeline = pass1.pipelines[0];
-    ASSERT_EQ(pipeline.fs_samplers.size(), 1);
-    const auto& samplerBind = pipeline.fs_samplers[0];
+    ASSERT_EQ(pipeline.fs.samplers.size(), 1);
+    const auto& samplerBind = pipeline.fs.samplers[0];
 
     const auto it = render.samplers.find(samplerBind.name);
     ASSERT_NE(it, render.samplers.end());
@@ -215,8 +226,8 @@ TEST(RenderParser, ParseSamplerWithUnifiedFilter){
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
             [[passes.pipelines.fs_samplers]]
+            slot = "s"
             name = "NEAREST_CLAMP"
-            slot = 0
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"
@@ -234,8 +245,8 @@ TEST(RenderParser, ParseSamplerWithUnifiedFilter){
     const auto& pass1 = render.renderPasses[0];
     ASSERT_EQ(pass1.pipelines.size(), 1);
     const auto& pipeline = pass1.pipelines[0];
-    ASSERT_EQ(pipeline.fs_samplers.size(), 1);
-    const auto& samplerBind = pipeline.fs_samplers[0];
+    ASSERT_EQ(pipeline.fs.samplers.size(), 1);
+    const auto& samplerBind = pipeline.fs.samplers[0];
 
     const auto it = render.samplers.find(samplerBind.name);
     ASSERT_NE(it, render.samplers.end());
@@ -271,8 +282,8 @@ TEST(RenderParser, ParseMultipleSamplers){
         outputs = ["target1"]
             [[passes.pipelines]]
             [[passes.pipelines.fs_samplers]]
+            slot = "s"
             name = "LINEAR_WRAP"
-            slot = 0
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"
@@ -287,10 +298,12 @@ TEST(RenderParser, ParseMultipleSamplers){
         name = "pass2"
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
-            inputs = ["target1"]
+            [[passes.pipelines.fs_textures]]
+            slot = "t"
+            name = "target1"
             [[passes.pipelines.fs_samplers]]
+            slot = "s"
             name = "NEAREST_CLAMP"
-            slot = 0
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"
@@ -312,16 +325,16 @@ TEST(RenderParser, ParseMultipleSamplers){
     ASSERT_EQ(pass2.pipelines.size(), 1);
     const auto& pipeline2 = pass2.pipelines[0];
 
-    ASSERT_EQ(pipeline1.fs_samplers.size(), 1);
-    const auto& samplerBind1 = pipeline1.fs_samplers[0];
+    ASSERT_EQ(pipeline1.fs.samplers.size(), 1);
+    const auto& samplerBind1 = pipeline1.fs.samplers[0];
     auto it1 = render.samplers.find(samplerBind1.name);
     ASSERT_NE(it1, render.samplers.end());
     const auto& sampler1 = it1->second;
     EXPECT_EQ(sampler1.minFilter, RHIFilter::Linear);
     EXPECT_EQ(sampler1.addressU, RHIAddressMode::Wrap);
 
-    ASSERT_EQ(pipeline2.fs_samplers.size(), 1);
-    const auto& samplerBind2 = pipeline2.fs_samplers[0];
+    ASSERT_EQ(pipeline2.fs.samplers.size(), 1);
+    const auto& samplerBind2 = pipeline2.fs.samplers[0];
     auto it2 = render.samplers.find(samplerBind2.name);
     ASSERT_NE(it2, render.samplers.end());
     const auto& sampler2 = it2->second;
@@ -349,11 +362,11 @@ TEST(RenderParser, ParseMultipleSamplersInSinglePass){
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
             [[passes.pipelines.fs_samplers]]
+            slot = "s0"
             name = "LINEAR_WRAP"
-            slot = 0
             [[passes.pipelines.fs_samplers]]
+            slot = "s1"
             name = "NEAREST_CLAMP"
-            slot = 1
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"
@@ -371,9 +384,9 @@ TEST(RenderParser, ParseMultipleSamplersInSinglePass){
     const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
-    ASSERT_EQ(pipeline.fs_samplers.size(), 2);
-    const auto& samplerBind1 = pipeline.fs_samplers[0];
-    const auto& samplerBind2 = pipeline.fs_samplers[1];
+    ASSERT_EQ(pipeline.fs.samplers.size(), 2);
+    const auto& samplerBind1 = pipeline.fs.samplers[0];
+    const auto& samplerBind2 = pipeline.fs.samplers[1];
 
     auto it1 = render.samplers.find(samplerBind1.name);
     ASSERT_NE(it1, render.samplers.end());
@@ -407,8 +420,8 @@ TEST(RenderParser, IncompleteSamplerIsIgnored){
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
             [[passes.pipelines.fs_samplers]]
+            slot = "s"
             name = "VALID_PRESET"
-            slot = 0
             [passes.pipelines.metal_shader]
             vs_file = "vs.hlsl"
             vs_func = "vs_main"
@@ -426,8 +439,8 @@ TEST(RenderParser, IncompleteSamplerIsIgnored){
     const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
-    ASSERT_EQ(pipeline.fs_samplers.size(), 1);
-    const auto& samplerBind = pipeline.fs_samplers[0];
+    ASSERT_EQ(pipeline.fs.samplers.size(), 1);
+    const auto& samplerBind = pipeline.fs.samplers[0];
 
     auto it = render.samplers.find(samplerBind.name);
     ASSERT_NE(it, render.samplers.end());
@@ -451,11 +464,11 @@ TEST(RenderParser, NonexistentSamplerIsIgnored){
         outputs = ["BackBuffer"]
             [[passes.pipelines]]
             [[passes.pipelines.fs_samplers]]
+            slot = "s0"
             name = "NONEXISTENT"
-            slot = 0
             [[passes.pipelines.fs_samplers]]
+            slot = "s1"
             name = "VALID_PRESET"
-            slot = 1
             [passes.pipelines.metal_shader]
             vs_file = "vs.metal"
             vs_func = "vs_main"
@@ -473,8 +486,8 @@ TEST(RenderParser, NonexistentSamplerIsIgnored){
     const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
-    ASSERT_EQ(pipeline.fs_samplers.size(), 1);
-    const auto& samplerBind = pipeline.fs_samplers[0];
+    ASSERT_EQ(pipeline.fs.samplers.size(), 1);
+    const auto& samplerBind = pipeline.fs.samplers[0];
 
     auto it = render.samplers.find(samplerBind.name);
     ASSERT_NE(it, render.samplers.end());
@@ -509,5 +522,5 @@ TEST(RenderParser, PassWithoutSamplers){
     const auto& pass = render.renderPasses[0];
     ASSERT_EQ(pass.pipelines.size(), 1);
     const auto& pipeline = pass.pipelines[0];
-    EXPECT_TRUE(pipeline.fs_samplers.empty());
+    EXPECT_TRUE(pipeline.fs.samplers.empty());
 }

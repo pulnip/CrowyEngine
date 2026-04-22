@@ -402,13 +402,17 @@ int main(int argc, char* argv[]){
                 .outputs = {"scene", "brightMask"},
                 .pipelines = {
                     {
-                        .inputs = {"disk"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
-                        },
-                        .fs_cbuffers = {
-                            {.name = "BlackholeParams", .slot = 0},
-                            {.name = "PlanetParams", .slot = 1}
+                        .fs = {
+                            .textures = {
+                                {.slot = "input", .name = "disk"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            },
+                            .cbuffers = {
+                            {.slot = "bh", .name = "BlackholeParams"},
+                            {.slot = "pn", .name = "PlanetParams"}
+                            }
                         },
                         .shader = {
                         #ifdef CROWY_METALRHI
@@ -431,9 +435,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"blur_tmp_1_2"},
                 .pipelines = {
                     {
-                        .inputs = {"brightMask"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "texture", .name = "brightMask"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -456,9 +464,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"bloom_1_2"},
                 .pipelines = {
                     {
-                        .inputs = {"blur_tmp_1_2"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "texture", .name = "blur_tmp_1_2"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -481,9 +493,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"blur_tmp_1_4"},
                 .pipelines = {
                     {
-                        .inputs = {"bloom_1_2"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "texture", .name = "bloom_1_2"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -506,9 +522,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"bloom_1_4"},
                 .pipelines = {
                     {
-                        .inputs = {"blur_tmp_1_4"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "texture", .name = "blur_tmp_1_4"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -531,9 +551,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"blur_tmp_1_8"},
                 .pipelines = {
                     {
-                        .inputs = {"bloom_1_4"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "texture", .name = "bloom_1_4"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -556,9 +580,13 @@ int main(int argc, char* argv[]){
                 .outputs = {"bloom_1_8"},
                 .pipelines = {
                     {
-                        .inputs = {"blur_tmp_1_8"},
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "texture", .name = "blur_tmp_1_8"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -581,14 +609,16 @@ int main(int argc, char* argv[]){
                 .outputs = {"BackBuffer"},
                 .pipelines = {
                     {
-                        .inputs = {
-                            "scene",
-                            "bloom_1_2",
-                            "bloom_1_4",
-                            "bloom_1_8"
-                        },
-                        .fs_samplers = {
-                            {.name = "LINEAR_WRAP", .slot = 0}
+                        .fs = {
+                            .textures = {
+                                {.slot = "sceneTex", .name = "scene"},
+                                {.slot = "bloom_1_2", .name = "bloom_1_2"},
+                                {.slot = "bloom_1_4", .name = "bloom_1_4"},
+                                {.slot = "bloom_1_8", .name = "bloom_1_8"}
+                            },
+                            .samplers = {
+                                {.slot = "s", .name = "LINEAR_WRAP"}
+                            }
                         },
                         .shader = ShaderSpec{
                         #ifdef CROWY_METALRHI
@@ -619,8 +649,10 @@ int main(int argc, char* argv[]){
             .outputs = {"disk"},
             .pipelines = {
                 {
-                    .fs_cbuffers = {
-                        {.name = "DiskGenParams", .slot = 0}
+                    .fs = {
+                        .cbuffers = {
+                            {.slot = "dg", .name = "DiskGenParams"}
+                        },
                     },
                     .shader = ShaderSpec{
                     #ifdef CROWY_METALRHI

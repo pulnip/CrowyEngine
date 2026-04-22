@@ -11,11 +11,9 @@ namespace Crowy
 {
     struct GraphicsPipelineBind{
         std::string name;
-        // input Texture
-        std::vector<std::string> inputs;
 
-        std::vector<BindSpec> fs_samplers;
-        std::vector<BindSpec> fs_cbuffers;
+        ShaderBindSpec vs;
+        ShaderBindSpec fs;
 
         RHIGraphicsPipelineStatePtr pso;
         std::optional<RenderTypeHash> renderType;
