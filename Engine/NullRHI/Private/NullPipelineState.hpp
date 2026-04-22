@@ -14,6 +14,8 @@ namespace Crowy
 #endif
     {
     private:
+        RHIGraphicsBindingInfo bindingInfo;
+
         const std::string debugName;
     
     public:
@@ -25,6 +27,10 @@ namespace Crowy
         {
 
         }
+
+        const RHIGraphicsBindingInfo& getInfo() const RHI_OVERRIDE{
+            return bindingInfo;
+        }
     };
 
     class NullComputePipelineState
@@ -33,6 +39,8 @@ namespace Crowy
 #endif
     {
     private:
+        RHIComputeBindingInfo bindingInfo;
+
         const std::string debugName;
     
     public:
@@ -43,6 +51,10 @@ namespace Crowy
             : debugName(name)
         {
 
+        }
+
+        const RHIComputeBindingInfo& getInfo() const RHI_OVERRIDE{
+            return bindingInfo;
         }
     };
 }

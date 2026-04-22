@@ -780,6 +780,7 @@ namespace Crowy
             using enum RHIShaderStage;
 
             cmdList.setPipelineState(*pipeline.pso);
+            auto info = pipeline.pso->getInfo();
 
             // bind input texture
             for(size_t i=0; i<pipeline.inputs.size(); ++i){

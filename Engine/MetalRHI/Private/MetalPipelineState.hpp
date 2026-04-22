@@ -320,6 +320,10 @@ namespace Crowy
             }
         }
 
+        const RHIGraphicsBindingInfo& getInfo() const RHI_OVERRIDE{
+            return bindingInfo;
+        }
+
         MTL::RenderPipelineState* get() const{ 
             return renderPipeline; 
         }
@@ -439,6 +443,10 @@ namespace Crowy
                 computePipeline->release();
                 computePipeline = nullptr;
             }
+        }
+
+        const RHIComputeBindingInfo& getInfo() const RHI_OVERRIDE{
+            return bindingInfo;
         }
 
         MTL::ComputePipelineState* get() const{ 
