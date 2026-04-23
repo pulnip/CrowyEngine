@@ -8,6 +8,11 @@ namespace Crowy
 {
     struct UpdateContext;
 
+    class PlayerSystem: public System<UpdateContext>{
+    public:
+        void update(EntityRegistry&, UpdateContext&) override;
+    };
+
     class ScriptSystem: public System<UpdateContext>{
     public:
         void start(EntityRegistry&) override;

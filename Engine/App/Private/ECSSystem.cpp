@@ -1,4 +1,5 @@
 #include "math.hpp"
+#include "simple_collision.hpp"
 #include "ComponentDefinitions.hpp"
 #include "Context.hpp"
 #include "EntityRegistry.hpp"
@@ -6,11 +7,41 @@
 #include "OS.hpp"
 #include "Renderer.hpp"
 #include "Script.hpp"
+#include "ray.hpp"
 #define CROWY_UI_CONTEXT UIContext
 #include "UIRenderer.hpp"
 
 namespace Crowy
 {
+    void PlayerSystem::update(EntityRegistry& registry, UpdateContext& ctx){
+        for(auto [id, bit,
+            transform,
+            controller
+        ]: registry.query<
+            TransformComponent,
+            CharacterController
+        >()){
+            Ray ray{
+                .point = transform.position,
+                .dir = -transform.up()
+            };
+
+            for(auto [id, bit,
+                transform,
+                boxCollider
+            ]: registry.query<
+                TransformComponent,
+                BoxColliderComponent
+            >()){
+                RaycastHit hit;
+                // TODO.
+                // if(raycastBox(ray, hit)){
+
+                // }
+            }
+        }
+    }
+
     void ScriptSystem::start(EntityRegistry& registry){
         for(auto [id, bit,
             script
