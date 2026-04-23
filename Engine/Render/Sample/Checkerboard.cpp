@@ -56,10 +56,7 @@ int main(int argc, char* argv[]){
                     .width = 256,
                     .height = 256,
                     .format = RHITextureFormat::BGRA8_UNORM,
-                    .usage = combine(
-                        RHITextureUsage::UnorderedAccess,
-                        RHITextureUsage::ShaderResource
-                    ),
+                    .usage = TEX_AllowShaderRW,
                     .initialState = RHIResourceState::UnorderedAccess
                 }
             }

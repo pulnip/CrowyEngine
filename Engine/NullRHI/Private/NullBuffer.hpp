@@ -18,7 +18,6 @@ namespace Crowy
     private:
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
-        bool isCPUAccessible = false;
         RHIResourceState currentState = RHIResourceState::Common;
         const std::string debugName;
 
@@ -27,12 +26,7 @@ namespace Crowy
             : usage(desc.usage)
             , size(desc.size)
             , debugName(name)
-        {
-            auto hasVertexUsage = has_flag(desc.usage, RHIBufferUsage::VertexBuffer);
-            auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);
-            auto hasConstantUsage = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer);
-            isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
-        }
+        {}
         ~NullBuffer() = default;
 
         inline void upload(

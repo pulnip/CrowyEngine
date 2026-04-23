@@ -231,11 +231,8 @@ int main(int argc, char* argv[]){
                 "Keys",
                 RHIBufferCreateDesc{
                     .size = sizeof(decltype(keys)::value_type) * keys.size(),
-                    .usage = combine(
-                        RHIBufferUsage::CPUWrite,
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess
-                    ),
+                    .usage = BUF_AllowShaderRW,
+                    .access = RHIMemoryAccess::CPUWrite,
                     .initialData = keys.data()
                 }
             },
@@ -243,10 +240,8 @@ int main(int argc, char* argv[]){
                 "Indexes",
                 RHIBufferCreateDesc{
                     .size = sizeof(decltype(indexes)::value_type) * indexes.size(),
-                    .usage = combine(
-                        RHIBufferUsage::CPUWrite,
-                        RHIBufferUsage::ShaderResource,RHIBufferUsage::UnorderedAccess
-                    ),
+                    .usage = BUF_AllowShaderRW,
+                    .access = RHIMemoryAccess::CPUWrite,
                     .initialData = indexes.data()
                 }
             },
@@ -254,11 +249,8 @@ int main(int argc, char* argv[]){
                 "Histogram",
                 RHIBufferCreateDesc{
                     .size = sizeof(decltype(hg_keys)::value_type) * hg_keys.size(),
-                    .usage = combine(
-                        RHIBufferUsage::CPUWrite,
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess
-                    ),
+                    .usage = BUF_AllowShaderRW,
+                    .access = RHIMemoryAccess::CPUWrite,
                     .initialData = hg_keys.data()
                 }
             },
@@ -266,42 +258,30 @@ int main(int argc, char* argv[]){
                 "GroupSums",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * nextPow2(PS_NUMGROUP),
-                    .usage = combine(
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess
-                    )
+                    .usage = BUF_AllowShaderRW
                 }
             },
             {
                 "PrefixSum",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * HG_PADDED_N,
-                    .usage = combine(
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess
-                    )
+                    .usage = BUF_AllowShaderRW
                 }
             },
             {
                 "KeysOut",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * N,
-                    .usage = combine(
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess,
-                        RHIBufferUsage::CPURead
-                    )
+                    .usage = BUF_AllowShaderRW,
+                    .access = RHIMemoryAccess::CPURead
                 }
             },
             {
                 "IndexesOut",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * N,
-                    .usage = combine(
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess,
-                        RHIBufferUsage::CPURead
-                    )
+                    .usage = BUF_AllowShaderRW,
+                    .access = RHIMemoryAccess::CPURead
                 }
             }
         },

@@ -116,8 +116,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },
@@ -127,8 +127,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },
@@ -138,8 +138,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },
@@ -149,8 +149,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },
@@ -160,8 +160,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::D32_FLOAT,
                     .usage = combine(
-                        RHITextureUsage::DepthStencil,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowDepthStencil,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::DepthWrite
                 },
@@ -171,8 +171,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },
@@ -182,8 +182,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },
@@ -193,8 +193,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 },

@@ -23,7 +23,6 @@ namespace Crowy
         MTL::Buffer* buffer;
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
-        bool isCPUAccessible = false;
         bool isManaged = false;
         RHIResourceState currentState = RHIResourceState::Common;
 
@@ -38,32 +37,35 @@ namespace Crowy
             auto hasVertexUsage = has_flag(desc.usage, RHIBufferUsage::VertexBuffer);
             auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);
             auto hasConstantUsage = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer);
-            auto hasCPUWrite = has_flag(desc.usage, RHIBufferUsage::CPUWrite);
-            auto hasCPURead = has_flag(desc.usage, RHIBufferUsage::CPURead);
+            auto needCPUAccess = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
 
-            isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage ||
-                              hasCPUWrite || hasCPURead || desc.initialData != nullptr;
+            auto isGPUOnly = has_flag(desc.access, RHIMemoryAccess::GPUOnly);
+            CROWY_ASSERT(!needCPUAccess || !isGPUOnly);
 
-            if(desc.initialData){
+            if(desc.initialData != nullptr){
             #if TARGET_OS_OSX
                 isManaged = true;
                 buffer = device->newBuffer(
                     desc.initialData, desc.size,
-                    MTL::ResourceStorageModeManaged
+                    isGPUOnly ?
+                        MTL::ResourceStorageModePrivate :
+                        MTL::ResourceStorageModeManaged
                 );
             #else
                 buffer = device->newBuffer(
                     desc.initialData, desc.size,
-                    MTL::ResourceStorageModeShared
+                    isGPUOnly ?
+                        MTL::ResourceStorageModePrivate :
+                        MTL::ResourceStorageModeShared
                 );
             #endif
             }
             else{
                 buffer = device->newBuffer(
                     desc.size,
-                    isCPUAccessible ?
-                        MTL::ResourceStorageModeShared :
-                        MTL::ResourceStorageModePrivate
+                    isGPUOnly ?
+                        MTL::ResourceStorageModePrivate :
+                        MTL::ResourceStorageModeShared
                 );
             }
 
@@ -88,7 +90,7 @@ namespace Crowy
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
-            CROWY_ASSERT(isCPUAccessible && size <= bufSize - offset);
+            CROWY_ASSERT(size <= bufSize - offset);
             void* mapped = buffer->contents();
 
             std::memcpy(
@@ -107,7 +109,7 @@ namespace Crowy
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
-            CROWY_ASSERT(isCPUAccessible && size <= bufSize - offset);
+            CROWY_ASSERT(size <= bufSize - offset);
             void* mapped = buffer->contents();
 
             std::memcpy(

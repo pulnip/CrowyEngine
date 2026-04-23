@@ -30,10 +30,8 @@ int main(int argc, char* argv[]){
                 "BufferIn",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * N2,
-                    .usage = combine(
-                        RHIBufferUsage::CPUWrite,
-                        RHIBufferUsage::ShaderResource
-                    ),
+                    .usage = RHIBufferUsage::AllowShaderRead,
+                    .access = RHIMemoryAccess::CPUWrite,
                     .initialData = ones.data()
                 }
             },
@@ -41,20 +39,15 @@ int main(int argc, char* argv[]){
                 "BufferOut",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * N2,
-                    .usage = combine(
-                        RHIBufferUsage::CPURead,
-                        RHIBufferUsage::UnorderedAccess
-                    )
+                    .usage = RHIBufferUsage::AllowShaderWrite,
+                    .access = RHIMemoryAccess::CPURead
                 }
             },
             {
                 "GroupSums",
                 RHIBufferCreateDesc{
                     .size = sizeof(uint32_t) * nextPow2(NUM_GROUP),
-                    .usage = combine(
-                        RHIBufferUsage::ShaderResource,
-                        RHIBufferUsage::UnorderedAccess
-                    )
+                    .usage = BUF_AllowShaderRW
                 }
             }
         },

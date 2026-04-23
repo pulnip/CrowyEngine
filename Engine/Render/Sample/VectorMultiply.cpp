@@ -25,10 +25,8 @@ int main(int argc, char* argv[]){
                 "BufferA",
                 RHIBufferCreateDesc{
                     .size = sizeof(float) * N,
-                    .usage = combine(
-                        RHIBufferUsage::CPUWrite,
-                        RHIBufferUsage::ShaderResource
-                    ),
+                    .usage = RHIBufferUsage::AllowShaderRead,
+                    .access = RHIMemoryAccess::CPUWrite,
                     .stride = 0,
                     .initialData = ones.data()
                 }
@@ -37,10 +35,8 @@ int main(int argc, char* argv[]){
                 "BufferB",
                 RHIBufferCreateDesc{
                     .size = sizeof(float) * N,
-                    .usage = combine(
-                        RHIBufferUsage::CPUWrite,
-                        RHIBufferUsage::ShaderResource
-                    ),
+                    .usage = RHIBufferUsage::AllowShaderRead,
+                    .access = RHIMemoryAccess::CPUWrite,
                     .stride = 0,
                     .initialData = twos.data()
                 }
@@ -49,10 +45,8 @@ int main(int argc, char* argv[]){
                 "BufferOut",
                 RHIBufferCreateDesc{
                     .size = sizeof(float) * N,
-                    .usage = combine(
-                        RHIBufferUsage::CPURead,
-                        RHIBufferUsage::UnorderedAccess
-                    ),
+                    .usage = RHIBufferUsage::AllowShaderWrite,
+                    .access = RHIMemoryAccess::CPURead,
                     .stride = 0,
                     .initialData = nullptr
                 }

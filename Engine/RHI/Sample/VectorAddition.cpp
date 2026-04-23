@@ -2,7 +2,6 @@
 #include <print>
 #include <vector>
 #include <SDL3/SDL.h>
-#include "enum_traits.hpp"
 #include "RHIDefinitions.hpp"
 #include "Logger.hpp"
 #include "RHIDevice.hpp"
@@ -34,10 +33,8 @@ int main(int argc, char* argv[]){
 
     RHIBufferCreateDesc bufferDesc{
         .size = sizeof(float) * N,
-        .usage = combine(
-            RHIBufferUsage::CPUWrite,
-            RHIBufferUsage::ShaderResource
-        ),
+        .usage = RHIBufferUsage::AllowShaderRead,
+        .access = RHIMemoryAccess::CPUWrite,
         .stride = 0,
         .initialData = floats.data()
     };
@@ -45,10 +42,8 @@ int main(int argc, char* argv[]){
     auto bufferA = device->createBuffer(bufferDesc, "BufferA");
     auto bufferB = device->createBuffer(bufferDesc, "BufferB");
 
-    bufferDesc.usage = combine(
-        RHIBufferUsage::CPURead,
-        RHIBufferUsage::UnorderedAccess
-    );
+    bufferDesc.usage = RHIBufferUsage::AllowShaderWrite;
+    bufferDesc.access = RHIMemoryAccess::CPURead;
     bufferDesc.initialData = nullptr;
     auto bufferOut = device->createBuffer(bufferDesc, "BufferOut");
 

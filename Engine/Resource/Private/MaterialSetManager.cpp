@@ -36,7 +36,7 @@ namespace Crowy
             .mipLevels = mipLevels,
             .arraySize = 1,
             .format = format,
-            .usage = RHITextureUsage::ShaderResource,
+            .usage = RHITextureUsage::AllowShaderRead,
             .initialState = RHIResourceState::AllShaderResource,
             .clearColor = {},
             .clearDepthStencil = {},

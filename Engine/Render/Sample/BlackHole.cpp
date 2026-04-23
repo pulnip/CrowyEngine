@@ -266,8 +266,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -277,8 +277,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::RGBA16_FLOAT,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -288,8 +288,8 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -301,8 +301,8 @@ int main(int argc, char* argv[]){
                     .height = height / 2,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -314,8 +314,8 @@ int main(int argc, char* argv[]){
                     .height = height / 2,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -327,8 +327,8 @@ int main(int argc, char* argv[]){
                     .height = height / 4,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -340,8 +340,8 @@ int main(int argc, char* argv[]){
                     .height = height / 4,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -353,8 +353,8 @@ int main(int argc, char* argv[]){
                     .height = height / 8,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }
@@ -366,8 +366,8 @@ int main(int argc, char* argv[]){
                     .height = height / 8,
                     .format = RHITextureFormat::BGRA8_UNORM,
                     .usage = combine(
-                        RHITextureUsage::RenderTarget,
-                        RHITextureUsage::ShaderResource
+                        RHITextureUsage::AllowRenderTarget,
+                        RHITextureUsage::AllowShaderRead
                     ),
                     .initialState = RHIResourceState::AllShaderResource
                 }

@@ -534,7 +534,7 @@ namespace Crowy
             for(const auto& target: pass.outputs){
                 if(auto it = textures.find(target); it != textures.end()){
                     auto& texDesc = it->second;
-                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::RenderTarget);
+                    texDesc.usage = combine(texDesc.usage, RHITextureUsage::AllowRenderTarget);
                 }
                 else{
                     // TODO.ERROR! unresolved texture!
@@ -546,7 +546,7 @@ namespace Crowy
                 for(const auto& tex: pipeline.fs.textures){
                     if(auto it = textures.find(tex.name); it != textures.end()){
                         auto& texDesc = it->second;
-                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::ShaderResource);
+                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::AllowShaderRead);
                     }
                     else{
                         // TODO. ERROR! unresolved texture!
@@ -557,7 +557,7 @@ namespace Crowy
                 if(!pass.depthOutput.empty()){
                     if(auto it = textures.find(pass.depthOutput); it != textures.end()){
                         auto& texDesc = it->second;
-                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::DepthStencil);
+                        texDesc.usage = combine(texDesc.usage, RHITextureUsage::AllowDepthStencil);
 
                         pipeline.depthStencil = RHIDepthStencilState{
                             .format = texDesc.format,

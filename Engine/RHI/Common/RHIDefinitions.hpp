@@ -18,29 +18,41 @@ namespace Crowy
         float clipSpaceMinZ;
     };
 
+    enum class RHIMemoryAccess: uint8_t{
+        GPUOnly  = 0,
+        CPUWrite = 1,
+        CPURead  = 2
+    };
+
     enum class RHIBufferUsage: uint16_t{
         None             = 0,
+        // fixed binding
         VertexBuffer     = 1 << 0,
         IndexBuffer      = 1 << 1,
         ConstantBuffer   = 1 << 2,
-        StructuredBuffer = 1 << 3,
-        ShaderResource   = 1 << 4,
-        UnorderedAccess  = 1 << 5,
+        // view capability
+        AllowShaderRead  = 1 << 4,
+        AllowShaderWrite = 1 << 5,
+        // others
         IndirectArgs     = 1 << 6,
         CopySource       = 1 << 7,
-        CopyDest         = 1 << 8,
-        CPUWrite         = 1 << 9,
-        CPURead          = 1 << 10
+        CopyDest         = 1 << 8
     };
+
+    constexpr auto BUF_AllowShaderRW = combine(
+        RHIBufferUsage::AllowShaderRead,
+        RHIBufferUsage::AllowShaderWrite
+    );
 
     struct RHIBufferCreateDesc{
         size_t size;
-        RHIBufferUsage usage;
+        RHIBufferUsage usage = RHIBufferUsage::None;
+        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
         uint32_t stride = 0; // For structured buffers
         const void* initialData = nullptr;
     };
 
-    enum class RHIPrimitiveTopology{
+    enum class RHIPrimitiveTopology: uint8_t{
         PointList     = 0,
         LineList      = 1,
         LineStrip     = 2,
@@ -48,7 +60,7 @@ namespace Crowy
         TriangleStrip = 4,
     };
 
-    enum class RHITextureFormat{
+    enum class RHITextureFormat: uint8_t{
         Unknown = 0,
 
         // 8-bit formats
@@ -132,16 +144,21 @@ namespace Crowy
     };
 
     enum class RHITextureUsage: uint8_t{
-        None            = 0,
-        ShaderResource  = 1 << 0,
-        RenderTarget    = 1 << 1,
-        DepthStencil    = 1 << 2,
-        UnorderedAccess = 1 << 3,
-        CopySource      = 1 << 4,
-        CopyDest        = 1 << 5,
+        None              = 0,
+        AllowShaderRead   = 1 << 0,
+        AllowRenderTarget = 1 << 1,
+        AllowDepthStencil = 1 << 2,
+        AllowShaderWrite  = 1 << 3,
+        CopySource        = 1 << 4,
+        CopyDest          = 1 << 5,
     };
 
-    enum class RHIResourceState{
+    constexpr auto TEX_AllowShaderRW = combine(
+        RHITextureUsage::AllowShaderRead,
+        RHITextureUsage::AllowShaderWrite
+    );
+
+    enum class RHIResourceState: uint16_t{
         Common                    = 0,
         VertexAndConstantBuffer   = 1 << 0,
         IndexBuffer               = 1 << 1,
@@ -180,6 +197,7 @@ namespace Crowy
         uint32_t arraySize = 1;
         RHITextureFormat format = RHITextureFormat::BGRA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
+        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
         RHIResourceState initialState = RHIResourceState::Common;
         RHIClearColor clearColor{
             .r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 1.0f
@@ -190,7 +208,7 @@ namespace Crowy
         const void* initialData = nullptr;
     };
 
-    enum class RHIShaderStage{
+    enum class RHIShaderStage: uint8_t{
         VertexShader,
         FragmentShader,
         ComputeShader,
@@ -206,13 +224,13 @@ namespace Crowy
         RHIShaderStage stage;
     };
 
-    enum class RHILoadAction{
+    enum class RHILoadAction: uint8_t{
         Load,    // Preserve existing contents
         Clear,   // Clear to specified color
         DontCare // Don't care about existing contents
     };
 
-    enum class RHIStoreAction{
+    enum class RHIStoreAction: uint8_t{
         Store,    // Save contents
         DontCare, // Don't care about existing contents
     };
@@ -233,7 +251,7 @@ namespace Crowy
         int32_t right, bottom;
     };
 
-    enum class RHIInputClassification{
+    enum class RHIInputClassification: uint8_t{
         PerVertex,
         PerInstance,
     };
@@ -309,13 +327,13 @@ namespace Crowy
         .elementCount = sizeof(DEFAULT_VERTEX_ELEMENTS) / sizeof(RHIVertexElement)
     };
 
-    enum class RHICullMode{
+    enum class RHICullMode: uint8_t{
         CullNone,
         Front,
         Back,
     };
 
-    enum class RHIFillMode{
+    enum class RHIFillMode: uint8_t{
         Solid,
         Wireframe,
     };
@@ -332,7 +350,7 @@ namespace Crowy
         bool antialiasedLineEnable = false;
     };
 
-    enum class RHIComparisonFunc{
+    enum class RHIComparisonFunc: uint8_t{
         Never,
         Less,
         Equal,
@@ -343,7 +361,7 @@ namespace Crowy
         Always,
     };
 
-    enum class RHIStencilOp{
+    enum class RHIStencilOp: uint8_t{
         Keep,
         Zero,
         Replace,
@@ -375,7 +393,7 @@ namespace Crowy
         std::optional<RHIStencilState> stencil = std::nullopt;
     };
 
-    enum class RHIBlend{
+    enum class RHIBlend: uint8_t{
         Zero,
         One,
         SrcColor,
@@ -391,7 +409,7 @@ namespace Crowy
         InvBlendFactor,
     };
 
-    enum class RHIBlendOp{
+    enum class RHIBlendOp: uint8_t{
         Add,
         Subtract,
         ReverseSubtract,
@@ -443,12 +461,12 @@ namespace Crowy
         std::optional<RHISize3D> threadGroupSize = std::nullopt;
     };
 
-    enum class RHIFilter{
+    enum class RHIFilter: uint8_t{
         Nearest,
         Linear
     };
 
-    enum class RHIAddressMode{
+    enum class RHIAddressMode: uint8_t{
         Wrap,
         Clamp,
         Mirror,
@@ -553,7 +571,7 @@ namespace Crowy
         }
     }
 
-    enum class RHIBindingAccess{
+    enum class RHIBindingAccess: uint8_t{
         ReadOnly,
         ReadWrite,
         WriteOnly

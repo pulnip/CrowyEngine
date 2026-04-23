@@ -1,4 +1,5 @@
 #include <queue>
+#include "RHIDefinitions.hpp"
 #include "Resource.hpp"
 #include "ResourceHandle.hpp"
 #include "RenderGraph.hpp"
@@ -48,19 +49,15 @@ namespace Crowy
         : device(device)
         , vsPerObjectBuffers(*device, RHIBufferCreateDesc{
             .size = sizeof(PerObjectParam),
-            .usage = combine(
-                RHIBufferUsage::ConstantBuffer,
-                RHIBufferUsage::CPUWrite
-            ),
+            .usage = RHIBufferUsage::ConstantBuffer,
+            .access = RHIMemoryAccess::CPUWrite,
             .stride = 0,
             .initialData = nullptr
         }, "Uniform Buffer")
         , passParamBuffers(*device, RHIBufferCreateDesc{
             .size = 256,
-            .usage = combine(
-                RHIBufferUsage::ConstantBuffer,
-                RHIBufferUsage::CPUWrite
-            ),
+            .usage = RHIBufferUsage::ConstantBuffer,
+            .access = RHIMemoryAccess::CPUWrite,
             .stride = 0,
             .initialData = nullptr
         }, "PassParam Buffer"){}
@@ -91,7 +88,7 @@ namespace Crowy
         ]: descs){
             buffers.emplace(
                 name,
-                device->createBuffer(desc)
+                device->createBuffer(desc, name)
             );
         }
     }
@@ -116,7 +113,7 @@ namespace Crowy
 
             textures.emplace(
                 name,
-                device->createTexture(resolved)
+                device->createTexture(resolved, name)
             );
         }
     }

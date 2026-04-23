@@ -1,6 +1,5 @@
 #include <cstring>
 #include <SDL3/SDL.h>
-#include "enum_traits.hpp"
 #include "FramePacer.hpp"
 #include "Logger.hpp"
 #include "RHIDevice.hpp"
@@ -78,7 +77,8 @@ int main(int argc, char* argv[]){
 
     auto uniformBuffer = device->createBuffer({
         .size = sizeof(Mat4),
-        .usage = combine(RHIBufferUsage::ConstantBuffer, RHIBufferUsage::CPUWrite),
+        .usage = RHIBufferUsage::ConstantBuffer,
+        .access = RHIMemoryAccess::CPUWrite,
         .stride = 0,
         .initialData = nullptr
     }, "MVP Uniform Buffer");
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]){
         .mipLevels = 1,
         .arraySize = 1,
         .format = RHITextureFormat::D32_FLOAT,
-        .usage = RHITextureUsage::DepthStencil,
+        .usage = RHITextureUsage::AllowDepthStencil,
         .initialState = RHIResourceState::DepthWrite,
         .clearColor = {},
         .clearDepthStencil = {1.0f, 0},
