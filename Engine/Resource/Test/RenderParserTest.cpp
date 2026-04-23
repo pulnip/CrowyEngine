@@ -40,7 +40,7 @@ TEST(RenderParser, ParseSimplePass){
     ASSERT_THAT(render.textures, SizeIs(1));
     EXPECT_THAT(render.textures, Contains(Pair(
         Eq("BackBuffer"),
-        Field(&RHITextureCreateDesc::format, Eq(RHITextureFormat::RGBA8_UNORM))
+        Field(&RHITextureCreateDesc::format, Eq(RHIPixelFormat::RGBA8_UNORM))
     )));
 
     ASSERT_THAT(render.renderPasses, SizeIs(1));
@@ -106,11 +106,11 @@ TEST(RenderParser, ParseMultiplePasses){
     ASSERT_THAT(render.textures, SizeIs(2));
     EXPECT_THAT(render.textures, Contains(Pair(
         Eq("target1"),
-        Field(&RHITextureCreateDesc::format, Eq(RHITextureFormat::RGBA8_UNORM))
+        Field(&RHITextureCreateDesc::format, Eq(RHIPixelFormat::RGBA8_UNORM))
     )));
     EXPECT_THAT(render.textures, Contains(Pair(
         Eq("BackBuffer"),
-        Field(&RHITextureCreateDesc::format, Eq(RHITextureFormat::RGBA8_UNORM))
+        Field(&RHITextureCreateDesc::format, Eq(RHIPixelFormat::RGBA8_UNORM))
     )));
 
     ASSERT_THAT(render.renderPasses, SizeIs(2));

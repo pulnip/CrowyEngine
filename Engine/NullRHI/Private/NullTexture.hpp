@@ -16,7 +16,7 @@ namespace Crowy
     {
     private:
         size_t width, height;
-        RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
         const std::string debugName;
 
@@ -35,7 +35,7 @@ namespace Crowy
 
         }
 
-        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+        RHIPixelFormat getFormat() const noexcept RHI_OVERRIDE{
             return format;
         }
         size_t getWidth() const noexcept RHI_OVERRIDE{

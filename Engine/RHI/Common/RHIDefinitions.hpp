@@ -48,7 +48,6 @@ namespace Crowy
         size_t size;
         RHIBufferUsage usage = RHIBufferUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
-        uint32_t stride = 0; // For structured buffers
         const void* initialData = nullptr;
     };
 
@@ -60,7 +59,7 @@ namespace Crowy
         TriangleStrip = 4,
     };
 
-    enum class RHITextureFormat: uint8_t{
+    enum class RHIPixelFormat: uint8_t{
         Unknown = 0,
 
         // 8-bit formats
@@ -195,7 +194,7 @@ namespace Crowy
         uint32_t depth = 1;
         uint32_t mipLevels = 1;
         uint32_t arraySize = 1;
-        RHITextureFormat format = RHITextureFormat::BGRA8_UNORM;
+        RHIPixelFormat format = RHIPixelFormat::BGRA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
         RHIResourceState initialState = RHIResourceState::Common;
@@ -272,7 +271,7 @@ namespace Crowy
     struct RHIVertexElement{
         const char* semanticName = nullptr;
         uint32_t semanticIndex;
-        RHITextureFormat format;
+        RHIPixelFormat format;
         uint32_t inputSlot;
         uint32_t alignedByteOffset;
         RHIInputClassification classification;
@@ -288,7 +287,7 @@ namespace Crowy
         {
             .semanticName = "POSITION",
             .semanticIndex = 0,
-            .format = RHITextureFormat::RGB32_FLOAT,  // float3 (12 bytes)
+            .format = RHIPixelFormat::RGB32_FLOAT,  // float3 (12 bytes)
             .inputSlot = 0,
             .alignedByteOffset = 0,
             .classification = RHIInputClassification::PerVertex,
@@ -297,7 +296,7 @@ namespace Crowy
         {
             .semanticName = "NORMAL",
             .semanticIndex = 0,
-            .format = RHITextureFormat::RGB32_FLOAT,  // float3 (12 bytes)
+            .format = RHIPixelFormat::RGB32_FLOAT,  // float3 (12 bytes)
             .inputSlot = 0,
             .alignedByteOffset = 12,
             .classification = RHIInputClassification::PerVertex,
@@ -306,7 +305,7 @@ namespace Crowy
         {
             .semanticName = "TEXCOORD",
             .semanticIndex = 0,
-            .format = RHITextureFormat::RG32_FLOAT,
+            .format = RHIPixelFormat::RG32_FLOAT,
             .inputSlot = 0,
             .alignedByteOffset = 24,
             .classification = RHIInputClassification::PerVertex,
@@ -315,7 +314,7 @@ namespace Crowy
         {
             .semanticName = "TANGENT",
             .semanticIndex = 0,
-            .format = RHITextureFormat::RGBA32_FLOAT,
+            .format = RHIPixelFormat::RGBA32_FLOAT,
             .inputSlot = 0,
             .alignedByteOffset = 32,
             .classification = RHIInputClassification::PerVertex,
@@ -387,7 +386,7 @@ namespace Crowy
     };
 
     struct RHIDepthStencilState{
-        RHITextureFormat format = RHITextureFormat::D32_FLOAT;
+        RHIPixelFormat format = RHIPixelFormat::D32_FLOAT;
         bool depthWriteEnable = false;
         RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
         std::optional<RHIStencilState> stencil = std::nullopt;
@@ -447,7 +446,7 @@ namespace Crowy
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         RHIBlendState blend = {};
 
-        RHITextureFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHITextureFormat::RGBA8_UNORM};
+        RHIPixelFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHIPixelFormat::RGBA8_UNORM};
         uint32_t renderTargetCount = 1;
     };
 
@@ -511,60 +510,62 @@ namespace Crowy
     #endif
     };
 
-    inline size_t getBytesPerPixel(RHITextureFormat format){
+    inline size_t getBytesPerPixel(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
         switch(format){
-        case RHITextureFormat::R8_UNORM:          [[fallthrough]];
-        case RHITextureFormat::R8_SNORM:          [[fallthrough]];
-        case RHITextureFormat::R8_UINT:           [[fallthrough]];
-        case RHITextureFormat::R8_SINT:
+        case R8_UNORM:          [[fallthrough]];
+        case R8_SNORM:          [[fallthrough]];
+        case R8_UINT:           [[fallthrough]];
+        case R8_SINT:
             return 1;
-        case RHITextureFormat::R16_UNORM:         [[fallthrough]];
-        case RHITextureFormat::R16_SNORM:         [[fallthrough]];
-        case RHITextureFormat::R16_UINT:          [[fallthrough]];
-        case RHITextureFormat::R16_SINT:          [[fallthrough]];
-        case RHITextureFormat::R16_FLOAT:         [[fallthrough]];
-        case RHITextureFormat::RG8_UNORM:         [[fallthrough]];
-        case RHITextureFormat::RG8_SNORM:         [[fallthrough]];
-        case RHITextureFormat::RG8_UINT:          [[fallthrough]];
-        case RHITextureFormat::RG8_SINT:
+        case R16_UNORM:         [[fallthrough]];
+        case R16_SNORM:         [[fallthrough]];
+        case R16_UINT:          [[fallthrough]];
+        case R16_SINT:          [[fallthrough]];
+        case R16_FLOAT:         [[fallthrough]];
+        case RG8_UNORM:         [[fallthrough]];
+        case RG8_SNORM:         [[fallthrough]];
+        case RG8_UINT:          [[fallthrough]];
+        case RG8_SINT:
             return 2;
-        case RHITextureFormat::R32_UINT:          [[fallthrough]];
-        case RHITextureFormat::R32_SINT:          [[fallthrough]];
-        case RHITextureFormat::R32_FLOAT:         [[fallthrough]];
-        case RHITextureFormat::RG16_UNORM:        [[fallthrough]];
-        case RHITextureFormat::RG16_SNORM:        [[fallthrough]];
-        case RHITextureFormat::RG16_UINT:         [[fallthrough]];
-        case RHITextureFormat::RG16_SINT:         [[fallthrough]];
-        case RHITextureFormat::RG16_FLOAT:        [[fallthrough]];
-        case RHITextureFormat::RGBA8_UNORM:       [[fallthrough]];
-        case RHITextureFormat::RGBA8_UNORM_SRGB:  [[fallthrough]];
-        case RHITextureFormat::RGBA8_SNORM:       [[fallthrough]];
-        case RHITextureFormat::RGBA8_UINT:        [[fallthrough]];
-        case RHITextureFormat::RGBA8_SINT:        [[fallthrough]];
-        case RHITextureFormat::BGRA8_UNORM:       [[fallthrough]];
-        case RHITextureFormat::BGRA8_UNORM_SRGB:
+        case R32_UINT:          [[fallthrough]];
+        case R32_SINT:          [[fallthrough]];
+        case R32_FLOAT:         [[fallthrough]];
+        case RG16_UNORM:        [[fallthrough]];
+        case RG16_SNORM:        [[fallthrough]];
+        case RG16_UINT:         [[fallthrough]];
+        case RG16_SINT:         [[fallthrough]];
+        case RG16_FLOAT:        [[fallthrough]];
+        case RGBA8_UNORM:       [[fallthrough]];
+        case RGBA8_UNORM_SRGB:  [[fallthrough]];
+        case RGBA8_SNORM:       [[fallthrough]];
+        case RGBA8_UINT:        [[fallthrough]];
+        case RGBA8_SINT:        [[fallthrough]];
+        case BGRA8_UNORM:       [[fallthrough]];
+        case BGRA8_UNORM_SRGB:
             return 4;
-        case RHITextureFormat::RG32_UINT:         [[fallthrough]];
-        case RHITextureFormat::RG32_SINT:         [[fallthrough]];
-        case RHITextureFormat::RG32_FLOAT:        [[fallthrough]];
-        case RHITextureFormat::RGBA16_UNORM:      [[fallthrough]];
-        case RHITextureFormat::RGBA16_SNORM:      [[fallthrough]];
-        case RHITextureFormat::RGBA16_UINT:       [[fallthrough]];
-        case RHITextureFormat::RGBA16_SINT:       [[fallthrough]];
-        case RHITextureFormat::RGBA16_FLOAT:
+        case RG32_UINT:         [[fallthrough]];
+        case RG32_SINT:         [[fallthrough]];
+        case RG32_FLOAT:        [[fallthrough]];
+        case RGBA16_UNORM:      [[fallthrough]];
+        case RGBA16_SNORM:      [[fallthrough]];
+        case RGBA16_UINT:       [[fallthrough]];
+        case RGBA16_SINT:       [[fallthrough]];
+        case RGBA16_FLOAT:
             return 8;
-        case RHITextureFormat::RGB32_FLOAT:
+        case RGB32_FLOAT:
             return 12;
-        case RHITextureFormat::RGBA32_UINT:       [[fallthrough]];
-        case RHITextureFormat::RGBA32_SINT:       [[fallthrough]];
-        case RHITextureFormat::RGBA32_FLOAT:
+        case RGBA32_UINT:       [[fallthrough]];
+        case RGBA32_SINT:       [[fallthrough]];
+        case RGBA32_FLOAT:
             return 16;
-        case RHITextureFormat::D16_UNORM:
+        case D16_UNORM:
             return 2;
-        case RHITextureFormat::D24_UNORM_S8_UINT: [[fallthrough]];
-        case RHITextureFormat::D32_FLOAT:
+        case D24_UNORM_S8_UINT: [[fallthrough]];
+        case D32_FLOAT:
             return 4;
-        case RHITextureFormat::D32_FLOAT_S8_UINT:
+        case D32_FLOAT_S8_UINT:
             return 8;
         default:
             std::unreachable();
@@ -575,6 +576,17 @@ namespace Crowy
         ReadOnly,
         ReadWrite,
         WriteOnly
+    };
+
+    struct RHIBufferViewDesc{
+        RHIBindingAccess access;
+        uint32_t offset, size;
+        uint32_t stride = 0; // For structured buffers
+    };
+
+    struct RHITextureViewDesc{
+        RHIBindingAccess access;
+
     };
 
     struct RHISlotBindingInfo{

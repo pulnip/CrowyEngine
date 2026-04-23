@@ -74,7 +74,7 @@ namespace Crowy
             RHITextureCreateDesc backBufferDesc{
                 .width = static_cast<uint32_t>(config.width),
                 .height = static_cast<uint32_t>(config.height),
-                .format = RHITextureFormat::RGBA8_UNORM
+                .format = RHIPixelFormat::RGBA8_UNORM
             };
 
             swapchain = device->createSwapchain(RHISwapchainCreateDesc{

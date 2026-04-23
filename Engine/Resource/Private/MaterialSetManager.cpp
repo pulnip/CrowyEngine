@@ -25,9 +25,9 @@ namespace Crowy
         //     ) + 1;
         // }
 
-        RHITextureFormat format = has_flag(ref.flags, TextureFlags::SRGB) 
-            ? RHITextureFormat::RGBA8_UNORM_SRGB 
-            : RHITextureFormat::RGBA8_UNORM;
+        RHIPixelFormat format = has_flag(ref.flags, TextureFlags::SRGB) 
+            ? RHIPixelFormat::RGBA8_UNORM_SRGB 
+            : RHIPixelFormat::RGBA8_UNORM;
 
         RHITextureCreateDesc texDesc{
             .width = textureData->getWidth(),

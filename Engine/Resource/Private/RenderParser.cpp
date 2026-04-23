@@ -12,87 +12,87 @@
 
 namespace Crowy
 {
-    static RHITextureFormat toTextureFormat(std::string_view str){
-        static std::unordered_map<std::string, RHITextureFormat,
+    static RHIPixelFormat toTextureFormat(std::string_view str){
+        static std::unordered_map<std::string, RHIPixelFormat,
             StringHash, std::equal_to<>
         > text2TextureFormat = {
             // 8-bit formats
-            {"R8_UNORM"         , RHITextureFormat::R8_UNORM         },
-            {"R8_SNORM"         , RHITextureFormat::R8_SNORM         },
-            {"R8_UINT"          , RHITextureFormat::R8_UINT          },
-            {"R8_SINT"          , RHITextureFormat::R8_SINT          },
+            {"R8_UNORM"         , RHIPixelFormat::R8_UNORM         },
+            {"R8_SNORM"         , RHIPixelFormat::R8_SNORM         },
+            {"R8_UINT"          , RHIPixelFormat::R8_UINT          },
+            {"R8_SINT"          , RHIPixelFormat::R8_SINT          },
             // 16-bit formats
-            {"R16_UNORM"        , RHITextureFormat::R16_UNORM        },
-            {"R16_SNORM"        , RHITextureFormat::R16_SNORM        },
-            {"R16_UINT"         , RHITextureFormat::R16_UINT         },
-            {"R16_SINT"         , RHITextureFormat::R16_SINT         },
-            {"R16_FLOAT"        , RHITextureFormat::R16_FLOAT        },
+            {"R16_UNORM"        , RHIPixelFormat::R16_UNORM        },
+            {"R16_SNORM"        , RHIPixelFormat::R16_SNORM        },
+            {"R16_UINT"         , RHIPixelFormat::R16_UINT         },
+            {"R16_SINT"         , RHIPixelFormat::R16_SINT         },
+            {"R16_FLOAT"        , RHIPixelFormat::R16_FLOAT        },
 
-            {"RG8_UNORM"        , RHITextureFormat::RG8_UNORM        },
-            {"RG8_SNORM"        , RHITextureFormat::RG8_SNORM        },
-            {"RG8_UINT"         , RHITextureFormat::RG8_UINT         },
-            {"RG8_SINT"         , RHITextureFormat::RG8_SINT         },
+            {"RG8_UNORM"        , RHIPixelFormat::RG8_UNORM        },
+            {"RG8_SNORM"        , RHIPixelFormat::RG8_SNORM        },
+            {"RG8_UINT"         , RHIPixelFormat::RG8_UINT         },
+            {"RG8_SINT"         , RHIPixelFormat::RG8_SINT         },
             // 32-bit formats
-            {"R32_UINT"         , RHITextureFormat::R32_UINT         },
-            {"R32_SINT"         , RHITextureFormat::R32_SINT         },
-            {"R32_FLOAT"        , RHITextureFormat::R32_FLOAT        },
+            {"R32_UINT"         , RHIPixelFormat::R32_UINT         },
+            {"R32_SINT"         , RHIPixelFormat::R32_SINT         },
+            {"R32_FLOAT"        , RHIPixelFormat::R32_FLOAT        },
 
-            {"RG16_UNORM"       , RHITextureFormat::RG16_UNORM       },
-            {"RG16_SNORM"       , RHITextureFormat::RG16_SNORM       },
-            {"RG16_UINT"        , RHITextureFormat::RG16_UINT        },
-            {"RG16_SINT"        , RHITextureFormat::RG16_SINT        },
-            {"RG16_FLOAT"       , RHITextureFormat::RG16_FLOAT       },
+            {"RG16_UNORM"       , RHIPixelFormat::RG16_UNORM       },
+            {"RG16_SNORM"       , RHIPixelFormat::RG16_SNORM       },
+            {"RG16_UINT"        , RHIPixelFormat::RG16_UINT        },
+            {"RG16_SINT"        , RHIPixelFormat::RG16_SINT        },
+            {"RG16_FLOAT"       , RHIPixelFormat::RG16_FLOAT       },
 
-            {"RGBA8_UNORM"      , RHITextureFormat::RGBA8_UNORM      },
-            {"RGBA8_UNORM_SRGB" , RHITextureFormat::RGBA8_UNORM_SRGB },
-            {"RGBA8_SNORM"      , RHITextureFormat::RGBA8_SNORM      },
-            {"RGBA8_UINT"       , RHITextureFormat::RGBA8_UINT       },
-            {"RGBA8_SINT"       , RHITextureFormat::RGBA8_SINT       },
+            {"RGBA8_UNORM"      , RHIPixelFormat::RGBA8_UNORM      },
+            {"RGBA8_UNORM_SRGB" , RHIPixelFormat::RGBA8_UNORM_SRGB },
+            {"RGBA8_SNORM"      , RHIPixelFormat::RGBA8_SNORM      },
+            {"RGBA8_UINT"       , RHIPixelFormat::RGBA8_UINT       },
+            {"RGBA8_SINT"       , RHIPixelFormat::RGBA8_SINT       },
 
-            {"BGRA8_UNORM"      , RHITextureFormat::BGRA8_UNORM      },
-            {"BGRA8_UNORM_SRGB" , RHITextureFormat::BGRA8_UNORM_SRGB },
+            {"BGRA8_UNORM"      , RHIPixelFormat::BGRA8_UNORM      },
+            {"BGRA8_UNORM_SRGB" , RHIPixelFormat::BGRA8_UNORM_SRGB },
             // 64-bit formats
-            {"RG32_UINT"        , RHITextureFormat::RG32_UINT        },
-            {"RG32_SINT"        , RHITextureFormat::RG32_SINT        },
-            {"RG32_FLOAT"       , RHITextureFormat::RG32_FLOAT       },
+            {"RG32_UINT"        , RHIPixelFormat::RG32_UINT        },
+            {"RG32_SINT"        , RHIPixelFormat::RG32_SINT        },
+            {"RG32_FLOAT"       , RHIPixelFormat::RG32_FLOAT       },
             // 96-bit formats
-            {"RGB32_FLOAT"      , RHITextureFormat::RGB32_FLOAT      },
+            {"RGB32_FLOAT"      , RHIPixelFormat::RGB32_FLOAT      },
 
-            {"RGBA16_UNORM"     , RHITextureFormat::RGBA16_UNORM     },
-            {"RGBA16_SNORM"     , RHITextureFormat::RGBA16_SNORM     },
-            {"RGBA16_UINT"      , RHITextureFormat::RGBA16_UINT      },
-            {"RGBA16_SINT"      , RHITextureFormat::RGBA16_SINT      },
-            {"RGBA16_FLOAT"     , RHITextureFormat::RGBA16_FLOAT     },
+            {"RGBA16_UNORM"     , RHIPixelFormat::RGBA16_UNORM     },
+            {"RGBA16_SNORM"     , RHIPixelFormat::RGBA16_SNORM     },
+            {"RGBA16_UINT"      , RHIPixelFormat::RGBA16_UINT      },
+            {"RGBA16_SINT"      , RHIPixelFormat::RGBA16_SINT      },
+            {"RGBA16_FLOAT"     , RHIPixelFormat::RGBA16_FLOAT     },
             // 128-bit formats
-            {"RGBA32_UINT"      , RHITextureFormat::RGBA32_UINT      },
-            {"RGBA32_SINT"      , RHITextureFormat::RGBA32_SINT      },
-            {"RGBA32_FLOAT"     , RHITextureFormat::RGBA32_FLOAT     },
+            {"RGBA32_UINT"      , RHIPixelFormat::RGBA32_UINT      },
+            {"RGBA32_SINT"      , RHIPixelFormat::RGBA32_SINT      },
+            {"RGBA32_FLOAT"     , RHIPixelFormat::RGBA32_FLOAT     },
             // Depth/stencil formats
-            {"D16_UNORM"        , RHITextureFormat::D16_UNORM        },
-            {"D24_UNORM_S8_UINT", RHITextureFormat::D24_UNORM_S8_UINT},
-            {"D32_FLOAT"        , RHITextureFormat::D32_FLOAT        },
-            {"D32_FLOAT_S8_UINT", RHITextureFormat::D32_FLOAT_S8_UINT},
+            {"D16_UNORM"        , RHIPixelFormat::D16_UNORM        },
+            {"D24_UNORM_S8_UINT", RHIPixelFormat::D24_UNORM_S8_UINT},
+            {"D32_FLOAT"        , RHIPixelFormat::D32_FLOAT        },
+            {"D32_FLOAT_S8_UINT", RHIPixelFormat::D32_FLOAT_S8_UINT},
             // Compressed formats
-            {"BC1_UNORM"        , RHITextureFormat::BC1_UNORM        },
-            {"BC1_UNORM_SRGB"   , RHITextureFormat::BC1_UNORM_SRGB   },
-            {"BC2_UNORM"        , RHITextureFormat::BC2_UNORM        },
-            {"BC2_UNORM_SRGB"   , RHITextureFormat::BC2_UNORM_SRGB   },
-            {"BC3_UNORM"        , RHITextureFormat::BC3_UNORM        },
-            {"BC3_UNORM_SRGB"   , RHITextureFormat::BC3_UNORM_SRGB   },
-            {"BC4_UNORM"        , RHITextureFormat::BC4_UNORM        },
-            {"BC4_SNORM"        , RHITextureFormat::BC4_SNORM        },
-            {"BC5_UNORM"        , RHITextureFormat::BC5_UNORM        },
-            {"BC5_SNORM"        , RHITextureFormat::BC5_SNORM        },
-            {"BC6H_UF16"        , RHITextureFormat::BC6H_UF16        },
-            {"BC6H_SF16"        , RHITextureFormat::BC6H_SF16        },
-            {"BC7_UNORM"        , RHITextureFormat::BC7_UNORM        },
-            {"BC7_UNORM_SRGB"   , RHITextureFormat::BC7_UNORM_SRGB   },
+            {"BC1_UNORM"        , RHIPixelFormat::BC1_UNORM        },
+            {"BC1_UNORM_SRGB"   , RHIPixelFormat::BC1_UNORM_SRGB   },
+            {"BC2_UNORM"        , RHIPixelFormat::BC2_UNORM        },
+            {"BC2_UNORM_SRGB"   , RHIPixelFormat::BC2_UNORM_SRGB   },
+            {"BC3_UNORM"        , RHIPixelFormat::BC3_UNORM        },
+            {"BC3_UNORM_SRGB"   , RHIPixelFormat::BC3_UNORM_SRGB   },
+            {"BC4_UNORM"        , RHIPixelFormat::BC4_UNORM        },
+            {"BC4_SNORM"        , RHIPixelFormat::BC4_SNORM        },
+            {"BC5_UNORM"        , RHIPixelFormat::BC5_UNORM        },
+            {"BC5_SNORM"        , RHIPixelFormat::BC5_SNORM        },
+            {"BC6H_UF16"        , RHIPixelFormat::BC6H_UF16        },
+            {"BC6H_SF16"        , RHIPixelFormat::BC6H_SF16        },
+            {"BC7_UNORM"        , RHIPixelFormat::BC7_UNORM        },
+            {"BC7_UNORM_SRGB"   , RHIPixelFormat::BC7_UNORM_SRGB   },
         };
         auto upper = to_upper(str);
 
         auto it = text2TextureFormat.find(upper);
         if(it == text2TextureFormat.end()){
-            return RHITextureFormat::Unknown;
+            return RHIPixelFormat::Unknown;
         }
         return it->second;
     }

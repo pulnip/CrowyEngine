@@ -34,7 +34,7 @@ namespace Crowy
     private:
         MTL::Texture* texture;
         size_t width, height;
-        RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
 
     public:
@@ -54,7 +54,7 @@ namespace Crowy
             texDesc->setMipmapLevelCount(desc.mipLevels);
             texDesc->setArrayLength(desc.arraySize);
 
-            texDesc->setPixelFormat(convertTextureFormat(desc.format));
+            texDesc->setPixelFormat(convertPixelFormat(desc.format));
             texDesc->setTextureType(
                 desc.depth > 1 ? MTL::TextureType3D :
                     (desc.arraySize > 1 ? MTL::TextureType2DArray
@@ -106,7 +106,7 @@ namespace Crowy
 
         MTL::Texture* get() const{ return texture; }
 
-        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+        RHIPixelFormat getFormat() const noexcept RHI_OVERRIDE{
             return format;
         }
         size_t getWidth() const noexcept RHI_OVERRIDE{

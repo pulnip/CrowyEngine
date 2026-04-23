@@ -35,7 +35,6 @@ int main(int argc, char* argv[]){
         .size = sizeof(float) * N,
         .usage = RHIBufferUsage::AllowShaderRead,
         .access = RHIMemoryAccess::CPUWrite,
-        .stride = 0,
         .initialData = floats.data()
     };
 

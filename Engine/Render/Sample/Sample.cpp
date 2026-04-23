@@ -37,7 +37,7 @@ int main(int argc, char* argv[]){
     RHITextureCreateDesc backBufferDesc{
         .width = static_cast<uint32_t>(width),
         .height = static_cast<uint32_t>(height),
-        .format = RHITextureFormat::BGRA8_UNORM
+        .format = RHIPixelFormat::BGRA8_UNORM
     };
 
     auto swapchain = device->createSwapchain(
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]){
             {
                 "albedo",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]){
             {
                 "normal",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -136,7 +136,7 @@ int main(int argc, char* argv[]){
             {
                 "toonColor",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -147,7 +147,7 @@ int main(int argc, char* argv[]){
             {
                 "sceneColor",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]){
             {
                 "depth",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::D32_FLOAT,
+                    .format = RHIPixelFormat::D32_FLOAT,
                     .usage = combine(
                         RHITextureUsage::AllowDepthStencil,
                         RHITextureUsage::AllowShaderRead
@@ -169,7 +169,7 @@ int main(int argc, char* argv[]){
             {
                 "outlined",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -180,7 +180,7 @@ int main(int argc, char* argv[]){
             {
                 "pixelated",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]){
             {
                 "focusMask",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -233,7 +233,7 @@ int main(int argc, char* argv[]){
                         #endif
                         },
                         .depthStencil = RHIDepthStencilState{
-                            .format = RHITextureFormat::D32_FLOAT,
+                            .format = RHIPixelFormat::D32_FLOAT,
                             .depthWriteEnable = true
                         },
                         .renderType = "type0"
@@ -326,7 +326,7 @@ int main(int argc, char* argv[]){
                         #endif
                         },
                         .depthStencil = RHIDepthStencilState{
-                            .format = RHITextureFormat::D32_FLOAT,
+                            .format = RHIPixelFormat::D32_FLOAT,
                             .depthWriteEnable = true
                         },
                         .renderType = "type0"

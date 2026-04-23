@@ -38,7 +38,7 @@ namespace Crowy
     struct ResourceDesc{
         SizePolicy size;
         // Unknown for Buffer, else for Texture
-        RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
     };
 
     struct PipelineDesc{
@@ -51,14 +51,12 @@ namespace Crowy
             .size = sizeof(PerObjectParam),
             .usage = RHIBufferUsage::ConstantBuffer,
             .access = RHIMemoryAccess::CPUWrite,
-            .stride = 0,
             .initialData = nullptr
         }, "Uniform Buffer")
         , passParamBuffers(*device, RHIBufferCreateDesc{
             .size = 256,
             .usage = RHIBufferUsage::ConstantBuffer,
             .access = RHIMemoryAccess::CPUWrite,
-            .stride = 0,
             .initialData = nullptr
         }, "PassParam Buffer"){}
 
@@ -243,7 +241,7 @@ namespace Crowy
                 desc.renderTargetFormats[i] = it->second->getFormat();
             else
                 // TODO. Backbuffer
-                desc.renderTargetFormats[i] = RHITextureFormat::BGRA8_UNORM;
+                desc.renderTargetFormats[i] = RHIPixelFormat::BGRA8_UNORM;
         }
 
         if(desc.depthStencil.has_value()){

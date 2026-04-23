@@ -27,7 +27,6 @@ int main(int argc, char* argv[]){
                     .size = sizeof(float) * N,
                     .usage = RHIBufferUsage::AllowShaderRead,
                     .access = RHIMemoryAccess::CPUWrite,
-                    .stride = 0,
                     .initialData = ones.data()
                 }
             },
@@ -37,7 +36,6 @@ int main(int argc, char* argv[]){
                     .size = sizeof(float) * N,
                     .usage = RHIBufferUsage::AllowShaderRead,
                     .access = RHIMemoryAccess::CPUWrite,
-                    .stride = 0,
                     .initialData = twos.data()
                 }
             },
@@ -47,7 +45,6 @@ int main(int argc, char* argv[]){
                     .size = sizeof(float) * N,
                     .usage = RHIBufferUsage::AllowShaderWrite,
                     .access = RHIMemoryAccess::CPURead,
-                    .stride = 0,
                     .initialData = nullptr
                 }
             }

@@ -15,7 +15,6 @@ namespace Crowy
                 RHIBufferCreateDesc{
                     .size = submeshData.vertices.size() * sizeof(Vertex),
                     .usage = RHIBufferUsage::VertexBuffer,
-                    .stride = 0,
                     .initialData = submeshData.vertices.data()
                 }
             );
@@ -23,7 +22,6 @@ namespace Crowy
                 RHIBufferCreateDesc{
                     .size = submeshData.indices.size() * sizeof(uint32_t),
                     .usage = RHIBufferUsage::IndexBuffer,
-                    .stride = 0,
                     .initialData = submeshData.indices.data()
                 }
             );

@@ -188,7 +188,7 @@ int main(int argc, char* argv[]){
     RHITextureCreateDesc backBufferDesc{
         .width = width,
         .height = height,
-        .format = RHITextureFormat::BGRA8_UNORM
+        .format = RHIPixelFormat::BGRA8_UNORM
     };
 
     auto swapchain = device->createSwapchain(
@@ -264,7 +264,7 @@ int main(int argc, char* argv[]){
             {
                 "disk",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -275,7 +275,7 @@ int main(int argc, char* argv[]){
             {
                 "scene",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::RGBA16_FLOAT,
+                    .format = RHIPixelFormat::RGBA16_FLOAT,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -286,7 +286,7 @@ int main(int argc, char* argv[]){
             {
                 "brightMask",
                 RHITextureCreateDesc{
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -299,7 +299,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = width / 2,
                     .height = height / 2,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -312,7 +312,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = width / 2,
                     .height = height / 2,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -325,7 +325,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = width / 4,
                     .height = height / 4,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -338,7 +338,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = width / 4,
                     .height = height / 4,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -351,7 +351,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = width / 8,
                     .height = height / 8,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead
@@ -364,7 +364,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = width / 8,
                     .height = height / 8,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = combine(
                         RHITextureUsage::AllowRenderTarget,
                         RHITextureUsage::AllowShaderRead

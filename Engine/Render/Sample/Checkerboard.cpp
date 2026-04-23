@@ -22,7 +22,7 @@ int main(int argc, char* argv[]){
     RHITextureCreateDesc backBufferDesc{
         .width = width,
         .height = height,
-        .format = RHITextureFormat::BGRA8_UNORM
+        .format = RHIPixelFormat::BGRA8_UNORM
     };
     auto swapchain = device->createSwapchain(
         RHISwapchainCreateDesc{
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
                 RHITextureCreateDesc{
                     .width = 256,
                     .height = 256,
-                    .format = RHITextureFormat::BGRA8_UNORM,
+                    .format = RHIPixelFormat::BGRA8_UNORM,
                     .usage = TEX_AllowShaderRW,
                     .initialState = RHIResourceState::UnorderedAccess
                 }

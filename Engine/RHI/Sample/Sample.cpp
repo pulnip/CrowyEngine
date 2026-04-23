@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
             .bufferDesc = RHITextureCreateDesc{
                 .width = static_cast<uint32_t>(width),
                 .height = static_cast<uint32_t>(height),
-                .format = RHITextureFormat::BGRA8_UNORM
+                .format = RHIPixelFormat::BGRA8_UNORM
             },
             .bufferCount = 3,
             .vsync = true,
@@ -79,7 +79,6 @@ int main(int argc, char* argv[]){
         .size = sizeof(Mat4),
         .usage = RHIBufferUsage::ConstantBuffer,
         .access = RHIMemoryAccess::CPUWrite,
-        .stride = 0,
         .initialData = nullptr
     }, "MVP Uniform Buffer");
 
@@ -89,7 +88,7 @@ int main(int argc, char* argv[]){
         .depth = 1,
         .mipLevels = 1,
         .arraySize = 1,
-        .format = RHITextureFormat::D32_FLOAT,
+        .format = RHIPixelFormat::D32_FLOAT,
         .usage = RHITextureUsage::AllowDepthStencil,
         .initialState = RHIResourceState::DepthWrite,
         .clearColor = {},
@@ -100,10 +99,10 @@ int main(int argc, char* argv[]){
         .vertexShader = vertexShader.get(),
         .pixelShader = fragmentShader.get(),
         .depthStencil = RHIDepthStencilState{
-            .format = RHITextureFormat::D32_FLOAT,
+            .format = RHIPixelFormat::D32_FLOAT,
             .depthWriteEnable = true
         },
-        .renderTargetFormats = {RHITextureFormat::BGRA8_UNORM},
+        .renderTargetFormats = {RHIPixelFormat::BGRA8_UNORM},
         .renderTargetCount = 1
     }, "Mesh Pipeline");
 

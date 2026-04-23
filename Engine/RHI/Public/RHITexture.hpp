@@ -31,7 +31,7 @@ namespace Crowy
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
         ) noexcept = 0;
 
-        virtual RHITextureFormat getFormat() const noexcept = 0;
+        virtual RHIPixelFormat getFormat() const noexcept = 0;
         virtual size_t getWidth() const noexcept = 0;
         virtual size_t getHeight() const noexcept = 0;
 

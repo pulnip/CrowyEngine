@@ -18,70 +18,78 @@
 
 namespace Crowy
 {
-    inline auto convertVertexFormat(RHITextureFormat format){
+    inline auto convertVertexFormat(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
         switch(format){
-        case RHITextureFormat::R32_FLOAT:    return MTL::VertexFormatFloat;
-        case RHITextureFormat::RG32_FLOAT:   return MTL::VertexFormatFloat2;
-        case RHITextureFormat::RGB32_FLOAT:  return MTL::VertexFormatFloat3;
-        case RHITextureFormat::RGBA32_FLOAT: return MTL::VertexFormatFloat4;
-        case RHITextureFormat::R32_SINT:     return MTL::VertexFormatInt;
-        case RHITextureFormat::RG32_SINT:    return MTL::VertexFormatInt2;
-        case RHITextureFormat::RGBA32_SINT:  return MTL::VertexFormatInt4;
-        case RHITextureFormat::R32_UINT:     return MTL::VertexFormatUInt;
-        case RHITextureFormat::RG32_UINT:    return MTL::VertexFormatUInt2;
-        case RHITextureFormat::RGBA32_UINT:  return MTL::VertexFormatUInt4;
-        case RHITextureFormat::R16_FLOAT:    return MTL::VertexFormatHalf;
-        case RHITextureFormat::RG16_FLOAT:   return MTL::VertexFormatHalf2;
-        case RHITextureFormat::RGBA16_FLOAT: return MTL::VertexFormatHalf4;
-        case RHITextureFormat::RGBA8_UNORM:  return MTL::VertexFormatUChar4Normalized;
-        case RHITextureFormat::RGBA8_UINT:   return MTL::VertexFormatUChar4;
+        case R32_FLOAT:    return MTL::VertexFormatFloat;
+        case RG32_FLOAT:   return MTL::VertexFormatFloat2;
+        case RGB32_FLOAT:  return MTL::VertexFormatFloat3;
+        case RGBA32_FLOAT: return MTL::VertexFormatFloat4;
+        case R32_SINT:     return MTL::VertexFormatInt;
+        case RG32_SINT:    return MTL::VertexFormatInt2;
+        case RGBA32_SINT:  return MTL::VertexFormatInt4;
+        case R32_UINT:     return MTL::VertexFormatUInt;
+        case RG32_UINT:    return MTL::VertexFormatUInt2;
+        case RGBA32_UINT:  return MTL::VertexFormatUInt4;
+        case R16_FLOAT:    return MTL::VertexFormatHalf;
+        case RG16_FLOAT:   return MTL::VertexFormatHalf2;
+        case RGBA16_FLOAT: return MTL::VertexFormatHalf4;
+        case RGBA8_UNORM:  return MTL::VertexFormatUChar4Normalized;
+        case RGBA8_UINT:   return MTL::VertexFormatUChar4;
         default:
             std::unreachable();
         }
     }
 
     inline auto convert(RHIStencilOp op){
+        using enum RHIStencilOp;
+
         switch(op){
-        case RHIStencilOp::Keep:      return MTL::StencilOperationKeep;
-        case RHIStencilOp::Zero:      return MTL::StencilOperationZero;
-        case RHIStencilOp::Replace:   return MTL::StencilOperationReplace;
-        case RHIStencilOp::IncrSat:   return MTL::StencilOperationIncrementClamp;
-        case RHIStencilOp::DecrSat:   return MTL::StencilOperationDecrementClamp;
-        case RHIStencilOp::Invert:    return MTL::StencilOperationInvert;
-        case RHIStencilOp::IncrWrap:  return MTL::StencilOperationIncrementWrap;
-        case RHIStencilOp::DecrWrap:  return MTL::StencilOperationDecrementWrap;
+        case Keep:      return MTL::StencilOperationKeep;
+        case Zero:      return MTL::StencilOperationZero;
+        case Replace:   return MTL::StencilOperationReplace;
+        case IncrSat:   return MTL::StencilOperationIncrementClamp;
+        case DecrSat:   return MTL::StencilOperationDecrementClamp;
+        case Invert:    return MTL::StencilOperationInvert;
+        case IncrWrap:  return MTL::StencilOperationIncrementWrap;
+        case DecrWrap:  return MTL::StencilOperationDecrementWrap;
         default:
             std::unreachable();
         }
     }
 
     inline auto convert(RHIBlend blend){
+        using enum RHIBlend;
+
         switch(blend){
-        case RHIBlend::Zero:           return MTL::BlendFactorZero;
-        case RHIBlend::One:            return MTL::BlendFactorOne;
-        case RHIBlend::SrcColor:       return MTL::BlendFactorSourceColor;
-        case RHIBlend::InvSrcColor:    return MTL::BlendFactorOneMinusSourceColor;
-        case RHIBlend::SrcAlpha:       return MTL::BlendFactorSourceAlpha;
-        case RHIBlend::InvSrcAlpha:    return MTL::BlendFactorOneMinusSourceAlpha;
-        case RHIBlend::DestAlpha:      return MTL::BlendFactorDestinationAlpha;
-        case RHIBlend::InvDestAlpha:   return MTL::BlendFactorOneMinusDestinationAlpha;
-        case RHIBlend::DestColor:      return MTL::BlendFactorDestinationColor;
-        case RHIBlend::InvDestColor:   return MTL::BlendFactorOneMinusDestinationColor;
-        case RHIBlend::SrcAlphaSat:    return MTL::BlendFactorSourceAlphaSaturated;
-        case RHIBlend::BlendFactor:    return MTL::BlendFactorBlendColor;
-        case RHIBlend::InvBlendFactor: return MTL::BlendFactorOneMinusBlendColor;
+        case Zero:           return MTL::BlendFactorZero;
+        case One:            return MTL::BlendFactorOne;
+        case SrcColor:       return MTL::BlendFactorSourceColor;
+        case InvSrcColor:    return MTL::BlendFactorOneMinusSourceColor;
+        case SrcAlpha:       return MTL::BlendFactorSourceAlpha;
+        case InvSrcAlpha:    return MTL::BlendFactorOneMinusSourceAlpha;
+        case DestAlpha:      return MTL::BlendFactorDestinationAlpha;
+        case InvDestAlpha:   return MTL::BlendFactorOneMinusDestinationAlpha;
+        case DestColor:      return MTL::BlendFactorDestinationColor;
+        case InvDestColor:   return MTL::BlendFactorOneMinusDestinationColor;
+        case SrcAlphaSat:    return MTL::BlendFactorSourceAlphaSaturated;
+        case BlendFactor:    return MTL::BlendFactorBlendColor;
+        case InvBlendFactor: return MTL::BlendFactorOneMinusBlendColor;
         default:
             std::unreachable();
         }
     }
 
     inline auto convert(RHIBlendOp op){
+        using enum RHIBlendOp;
+
         switch(op){
-        case RHIBlendOp::Add:             return MTL::BlendOperationAdd;
-        case RHIBlendOp::Subtract:        return MTL::BlendOperationSubtract;
-        case RHIBlendOp::ReverseSubtract: return MTL::BlendOperationReverseSubtract;
-        case RHIBlendOp::Min:             return MTL::BlendOperationMin;
-        case RHIBlendOp::Max:             return MTL::BlendOperationMax;
+        case Add:             return MTL::BlendOperationAdd;
+        case Subtract:        return MTL::BlendOperationSubtract;
+        case ReverseSubtract: return MTL::BlendOperationReverseSubtract;
+        case Min:             return MTL::BlendOperationMin;
+        case Max:             return MTL::BlendOperationMax;
         default:
             std::unreachable();
         }
@@ -232,7 +240,7 @@ namespace Crowy
             for(uint32_t i = 0; i < desc.renderTargetCount; ++i){
                 auto colorAttach = pipelineDesc->colorAttachments()->object(i);
                 colorAttach->setPixelFormat(
-                    convertTextureFormat(desc.renderTargetFormats[i])
+                    convertPixelFormat(desc.renderTargetFormats[i])
                 );
 
                 const auto& rtBlend = desc.blend.renderTargets[i];
@@ -270,10 +278,10 @@ namespace Crowy
             // Depth Stencil Format
             if(desc.depthStencil.has_value()){
                 auto depthStencilFormat = desc.depthStencil->format;
-                CROWY_ASSERT(depthStencilFormat != RHITextureFormat::Unknown);
+                CROWY_ASSERT(depthStencilFormat != RHIPixelFormat::Unknown);
 
                 pipelineDesc->setDepthAttachmentPixelFormat(
-                    convertTextureFormat(depthStencilFormat)
+                    convertPixelFormat(depthStencilFormat)
                 );
             }
 
