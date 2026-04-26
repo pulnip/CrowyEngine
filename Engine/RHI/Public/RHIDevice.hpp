@@ -57,8 +57,18 @@ namespace Crowy
             const RHIBufferCreateDesc&,
             const std::string& name = ""
         ) noexcept = 0;
+        virtual RHIBufferViewPtr createBufferView(
+            const RHIBuffer&,
+            const RHIBufferViewDesc&,
+            const std::string& name = ""
+        ) noexcept = 0;
         virtual RHITexturePtr createTexture(
             const RHITextureCreateDesc&,
+            const std::string& name = ""
+        ) noexcept = 0;
+        virtual RHITextureViewPtr createTextureView(
+            const RHITexture&,
+            const RHITextureViewDesc&,
             const std::string& name = ""
         ) noexcept = 0;
         virtual RHIShaderPtr createShader(

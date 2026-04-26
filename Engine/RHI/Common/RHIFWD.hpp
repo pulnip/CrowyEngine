@@ -8,7 +8,9 @@ namespace Crowy
     #if defined(USE_METAL_BACKEND)
         class MetalDevice;
         class MetalBuffer;
+        class MetalBufferView;
         class MetalTexture;
+        class MetalTextureView;
         class MetalShader;
         class MetalSampler;
         class MetalCommandList;
@@ -20,7 +22,9 @@ namespace Crowy
 
         using RHIDevice = MetalDevice;
         using RHIBuffer = MetalBuffer;
+        using RHIBufferView = MetalBufferView;
         using RHITexture = MetalTexture;
+        using RHITextureView = MetalTextureView;
         using RHIShader = MetalShader;
         using RHISampler = MetalSampler;
         using RHICommandList = MetalCommandList;
@@ -81,7 +85,9 @@ namespace Crowy
 #else
     class RHIDevice;
     class RHIBuffer;
+    class RHIBufferView;
     class RHITexture;
+    class RHITextureView;
     class RHIShader;
     class RHISampler;
     class RHICommandList;
@@ -95,7 +101,9 @@ namespace Crowy
 
     using RHIDevicePtr = std::unique_ptr<RHIDevice>;
     using RHIBufferPtr = std::unique_ptr<RHIBuffer>;
+    using RHIBufferViewPtr = std::unique_ptr<RHIBufferView>;
     using RHITexturePtr = std::unique_ptr<RHITexture>;
+    using RHITextureViewPtr = std::unique_ptr<RHITextureView>;
     using RHIShaderPtr = std::unique_ptr<RHIShader>;
     using RHISamplerPtr = std::unique_ptr<RHISampler>;
     using RHICommandListPtr = std::unique_ptr<RHICommandList>;

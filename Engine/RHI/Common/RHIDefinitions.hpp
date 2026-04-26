@@ -579,14 +579,20 @@ namespace Crowy
     };
 
     struct RHIBufferViewDesc{
-        RHIBindingAccess access;
-        uint32_t offset, size;
-        uint32_t stride = 0; // For structured buffers
+        struct RawConfig{};
+        struct TypedConfig{ RHIPixelFormat format = RHIPixelFormat::Unknown; };
+        struct StructuredConfig{ uint32_t stride=0;};
+        using Config = std::variant<RawConfig, TypedConfig, StructuredConfig>;
+
+        RHIBindingAccess access = RHIBindingAccess::ReadOnly;
+        uint32_t offset = 0, size = 0;
+        Config config = RawConfig{};
     };
 
     struct RHITextureViewDesc{
-        RHIBindingAccess access;
-
+        RHIBindingAccess access = RHIBindingAccess::ReadOnly;
+        // TODO.
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
     };
 
     struct RHISlotBindingInfo{
