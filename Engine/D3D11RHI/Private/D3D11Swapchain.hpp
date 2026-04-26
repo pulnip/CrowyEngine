@@ -25,7 +25,7 @@ namespace Crowy
 
         uint32_t width = 0;
         uint32_t height = 0;
-        RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
 
     public:
         D3D11Swapchain(
@@ -105,7 +105,7 @@ namespace Crowy
             createBackBufferResource();
         }
 
-        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+        RHIPixelFormat getFormat() const noexcept RHI_OVERRIDE{
             return format;
         }
         uint32_t getWidth() const noexcept RHI_OVERRIDE{

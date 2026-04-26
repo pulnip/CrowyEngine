@@ -12,35 +12,41 @@
 
 namespace Crowy
 {
-    inline D3D11_FILL_MODE convertFillMode(RHIFillMode mode){
+    inline auto convertFillMode(RHIFillMode mode){
+        using enum RHIFillMode;
+
         switch(mode){
-        case RHIFillMode::Solid:     return D3D11_FILL_SOLID;
-        case RHIFillMode::Wireframe: return D3D11_FILL_WIREFRAME;
+        case Solid:     return D3D11_FILL_SOLID;
+        case Wireframe: return D3D11_FILL_WIREFRAME;
         default:
             std::unreachable();
         }
     }
 
-    inline D3D11_CULL_MODE convertCullMode(RHICullMode mode){
+    inline auto convertCullMode(RHICullMode mode){
+        using enum RHICullMode;
+
         switch(mode){
-        case RHICullMode::CullNone: return D3D11_CULL_NONE;
-        case RHICullMode::Front:    return D3D11_CULL_FRONT;
-        case RHICullMode::Back:     return D3D11_CULL_BACK;
+        case CullNone: return D3D11_CULL_NONE;
+        case Front:    return D3D11_CULL_FRONT;
+        case Back:     return D3D11_CULL_BACK;
         default:
             std::unreachable();
         }
     }
 
-    inline D3D11_STENCIL_OP convertStencilOp(RHIStencilOp op){
+    inline auto convertStencilOp(RHIStencilOp op){
+        using enum RHIStencilOp;
+
         switch (op){
-        case RHIStencilOp::Keep:     return D3D11_STENCIL_OP_KEEP;
-        case RHIStencilOp::Zero:     return D3D11_STENCIL_OP_ZERO;
-        case RHIStencilOp::Replace:  return D3D11_STENCIL_OP_REPLACE;
-        case RHIStencilOp::IncrSat:  return D3D11_STENCIL_OP_INCR_SAT;
-        case RHIStencilOp::DecrSat:  return D3D11_STENCIL_OP_DECR_SAT;
-        case RHIStencilOp::Invert:   return D3D11_STENCIL_OP_INVERT;
-        case RHIStencilOp::IncrWrap: return D3D11_STENCIL_OP_INCR;
-        case RHIStencilOp::DecrWrap: return D3D11_STENCIL_OP_DECR;
+        case Keep:     return D3D11_STENCIL_OP_KEEP;
+        case Zero:     return D3D11_STENCIL_OP_ZERO;
+        case Replace:  return D3D11_STENCIL_OP_REPLACE;
+        case IncrSat:  return D3D11_STENCIL_OP_INCR_SAT;
+        case DecrSat:  return D3D11_STENCIL_OP_DECR_SAT;
+        case Invert:   return D3D11_STENCIL_OP_INVERT;
+        case IncrWrap: return D3D11_STENCIL_OP_INCR;
+        case DecrWrap: return D3D11_STENCIL_OP_DECR;
         default:
             std::unreachable();
         }
@@ -55,51 +61,57 @@ namespace Crowy
         };
     }
 
-    inline D3D11_BLEND convertBlendFactor(RHIBlend blend){
+    inline auto convertBlendFactor(RHIBlend blend){
+        using enum RHIBlend;
+
         switch (blend) {
-        case RHIBlend::Zero:          return D3D11_BLEND_ZERO;
-        case RHIBlend::One:           return D3D11_BLEND_ONE;
-        case RHIBlend::SrcColor:      return D3D11_BLEND_SRC_COLOR;
-        case RHIBlend::InvSrcColor:   return D3D11_BLEND_INV_SRC_COLOR;
-        case RHIBlend::SrcAlpha:      return D3D11_BLEND_SRC_ALPHA;
-        case RHIBlend::InvSrcAlpha:   return D3D11_BLEND_INV_SRC_ALPHA;
-        case RHIBlend::DestAlpha:     return D3D11_BLEND_DEST_ALPHA;
-        case RHIBlend::InvDestAlpha:  return D3D11_BLEND_INV_DEST_ALPHA;
-        case RHIBlend::DestColor:     return D3D11_BLEND_DEST_COLOR;
-        case RHIBlend::InvDestColor:  return D3D11_BLEND_INV_DEST_COLOR;
-        case RHIBlend::SrcAlphaSat:   return D3D11_BLEND_SRC_ALPHA_SAT;
-        case RHIBlend::BlendFactor:   return D3D11_BLEND_BLEND_FACTOR;
-        case RHIBlend::InvBlendFactor: return D3D11_BLEND_INV_BLEND_FACTOR;
+        case Zero:          return D3D11_BLEND_ZERO;
+        case One:           return D3D11_BLEND_ONE;
+        case SrcColor:      return D3D11_BLEND_SRC_COLOR;
+        case InvSrcColor:   return D3D11_BLEND_INV_SRC_COLOR;
+        case SrcAlpha:      return D3D11_BLEND_SRC_ALPHA;
+        case InvSrcAlpha:   return D3D11_BLEND_INV_SRC_ALPHA;
+        case DestAlpha:     return D3D11_BLEND_DEST_ALPHA;
+        case InvDestAlpha:  return D3D11_BLEND_INV_DEST_ALPHA;
+        case DestColor:     return D3D11_BLEND_DEST_COLOR;
+        case InvDestColor:  return D3D11_BLEND_INV_DEST_COLOR;
+        case SrcAlphaSat:   return D3D11_BLEND_SRC_ALPHA_SAT;
+        case BlendFactor:   return D3D11_BLEND_BLEND_FACTOR;
+        case InvBlendFactor: return D3D11_BLEND_INV_BLEND_FACTOR;
         default:                      return D3D11_BLEND_ONE;
         }
     }
 
-    inline D3D11_BLEND_OP convertBlendOp(RHIBlendOp op){
+    inline auto convertBlendOp(RHIBlendOp op){
+        using enum RHIBlendOp;
+
         switch (op) {
-        case RHIBlendOp::Add:             return D3D11_BLEND_OP_ADD;
-        case RHIBlendOp::Subtract:        return D3D11_BLEND_OP_SUBTRACT;
-        case RHIBlendOp::ReverseSubtract: return D3D11_BLEND_OP_REV_SUBTRACT;
-        case RHIBlendOp::Min:             return D3D11_BLEND_OP_MIN;
-        case RHIBlendOp::Max:             return D3D11_BLEND_OP_MAX;
+        case Add:             return D3D11_BLEND_OP_ADD;
+        case Subtract:        return D3D11_BLEND_OP_SUBTRACT;
+        case ReverseSubtract: return D3D11_BLEND_OP_REV_SUBTRACT;
+        case Min:             return D3D11_BLEND_OP_MIN;
+        case Max:             return D3D11_BLEND_OP_MAX;
         default:                          return D3D11_BLEND_OP_ADD;
         }
     }
 
-    inline D3D11_PRIMITIVE_TOPOLOGY convertTopology(RHIPrimitiveTopology topology){
+    inline auto convertTopology(RHIPrimitiveTopology topology){
+        using enum RHIPrimitiveTopology;
+
         switch(topology){
-        case RHIPrimitiveTopology::PointList:     return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
-        case RHIPrimitiveTopology::LineList:      return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-        case RHIPrimitiveTopology::LineStrip:     return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
-        case RHIPrimitiveTopology::TriangleList:  return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        case RHIPrimitiveTopology::TriangleStrip: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        case PointList:     return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+        case LineList:      return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        case LineStrip:     return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+        case TriangleList:  return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        case TriangleStrip: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
         default:
             std::unreachable();
         }
     }
 
-    class D3D11PipelineState
+    class D3D11GraphicsPipelineState
 #ifndef USE_STATIC_RHI
-        : public RHIPipelineState
+        : public RHIGraphicsPipelineState
 #endif
     {
     private:
@@ -110,12 +122,15 @@ namespace Crowy
         D3D11_PRIMITIVE_TOPOLOGY topology;
         ID3D11VertexShader* vs = nullptr;
         ID3D11PixelShader* ps = nullptr;
+
+        RHIGraphicsBindingInfo bindingInfo;
+
     #if defined(_DEBUG) || !defined(NDEBUG)
         const std::string debugName;
     #endif
 
     public:
-        D3D11PipelineState(
+        D3D11GraphicsPipelineState(
             ID3D11Device* device,
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
@@ -222,19 +237,7 @@ namespace Crowy
             }
         }
 
-        D3D11PipelineState(
-            ID3D11Device* device,
-            const RHIComputePipelineStateDesc& desc,
-            const std::string& name
-        )
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            : debugName(name)
-        #endif
-        {
-            // TODO
-        }
-
-        ~D3D11PipelineState(){
+        ~D3D11GraphicsPipelineState(){
             if(il != nullptr){
                 il->Release();
                 il = nullptr;
@@ -261,6 +264,10 @@ namespace Crowy
             }
         }
 
+        const RHIGraphicsBindingInfo& getInfo() const RHI_OVERRIDE{
+            return bindingInfo;
+        }
+
         ID3D11InputLayout*       getIL () const{ return  il; }
         ID3D11RasterizerState*   getRS () const{ return  rs; }
         ID3D11DepthStencilState* getDSS() const{ return dss; }
@@ -270,6 +277,39 @@ namespace Crowy
 
         D3D11_PRIMITIVE_TOPOLOGY getTopology() const{
             return topology;
+        }
+    };
+
+    class D3D11ComputePipelineState
+#ifndef USE_STATIC_RHI
+        : public RHIComputePipelineState
+#endif
+    {
+    private:
+        RHIComputeBindingInfo bindingInfo;
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        const std::string debugName;
+    #endif
+
+    public:
+        D3D11ComputePipelineState(
+            ID3D11Device* device,
+            const RHIComputePipelineStateDesc& desc,
+            const std::string& name
+        )
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            : debugName(name)
+        #endif
+        {
+            // TODO
+        }
+
+        ~D3D11ComputePipelineState(){
+        }
+
+        const RHIComputeBindingInfo& getInfo() const RHI_OVERRIDE{
+            return bindingInfo;
         }
     };
 }

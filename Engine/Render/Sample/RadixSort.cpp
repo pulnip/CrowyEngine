@@ -16,11 +16,11 @@ constexpr auto nextPow2(uint32_t n){
     return 1 << (32 - std::countl_zero(n-1));
 }
 
-constexpr auto ceilDiv(int n, int d){
+constexpr auto ceilDiv(uint32_t n, uint32_t d){
     return (n + (d-1)) / d;
 }
 
-constexpr auto nextMul(int n, int m){
+constexpr auto nextMul(uint32_t n, uint32_t m){
     return ceilDiv(n, m) * m;
 }
 
@@ -28,11 +28,11 @@ constexpr auto N = 10000;
 
 // HG = Histogram
 // PS = Prefix Sum
-constexpr auto HG_GROUPSIZE = 16;
+constexpr auto HG_GROUPSIZE = 16u;
 constexpr auto HG_NUMGROUP = ceilDiv(N, HG_GROUPSIZE);
 constexpr auto HG_N = HG_GROUPSIZE * HG_NUMGROUP;
 
-constexpr auto PS_GROUPSIZE = 1024;
+constexpr auto PS_GROUPSIZE = 1024u;
 constexpr auto PS_BLOCK = 2*PS_GROUPSIZE;
 
 constexpr auto HG_PADDED_N = nextMul(HG_N, PS_BLOCK);
@@ -97,7 +97,7 @@ auto makeRadixPass(
             },
             .gridSize = {.x=HG_PADDED_N/2, .y=1, .z=1},
             .threadGroupSize = RHISize3D{
-                .x=std::min(HG_PADDED_N/2, 1024),
+                .x=std::min(HG_PADDED_N/2u, 1024u),
                 .y=1,
                 .z=1
             }
@@ -119,9 +119,9 @@ auto makeRadixPass(
                 .funcName = "cs_prefix_sum_single",
             #endif
             },
-            .gridSize = {.x=nextPow2(PS_NUMGROUP)/2, .y=1, .z=1},
+            .gridSize = {.x=nextPow2(PS_NUMGROUP)/2u, .y=1u, .z=1u},
             .threadGroupSize = RHISize3D{
-                .x=std::min(nextPow2(PS_NUMGROUP)/2, 1024),
+                .x=std::min(nextPow2(PS_NUMGROUP)/2u, 1024u),
                 .y=1,
                 .z=1
             }
@@ -145,7 +145,7 @@ auto makeRadixPass(
             },
             .gridSize = {.x=HG_PADDED_N/2, .y=1, .z=1},
             .threadGroupSize = RHISize3D{
-                .x=std::min(HG_PADDED_N/2, 1024),
+                .x=std::min(HG_PADDED_N/2u, 1024u),
                 .y=1,
                 .z=1
             }

@@ -14,8 +14,10 @@
 #include "RHITexture.hpp"
 
 #ifdef USE_STATIC_RHI
-    #ifdef USE_METAL_BACKEND
+    #if defined(USE_METAL_BACKEND)
         #include "MetalDevice.hpp"
+    #elif defined(USE_D3D11_BACKEND)
+        #include "D3D11Device.hpp"
     #else
         #include "NullDevice.hpp"
     #endif

@@ -5,8 +5,10 @@
 #include "semantics.hpp"
 
 #ifdef USE_STATIC_RHI
-    #ifdef USE_METAL_BACKEND
+    #if defined(USE_METAL_BACKEND)
         #include "MetalSampler.hpp"
+    #elif defined(USE_D3D11_BACKEND)
+        #include "D3D11Sampler.hpp"
     #else
         #include "NullSampler.hpp"
     #endif

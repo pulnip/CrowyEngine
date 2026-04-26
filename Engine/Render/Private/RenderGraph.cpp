@@ -1,3 +1,4 @@
+#include <variant>
 #include <queue>
 #include "RHIDefinitions.hpp"
 #include "Resource.hpp"

@@ -8,8 +8,10 @@
 #include "RHIDefinitions.hpp"
 
 #ifdef USE_STATIC_RHI
-    #ifdef USE_METAL_BACKEND
+    #if defined(USE_METAL_BACKEND)
         #include "MetalCommandList.hpp"
+    #elif defined(USE_D3D11_BACKEND)
+        #include "D3D11CommandList.hpp"
     #else
         #include "NullCommandList.hpp"
     #endif

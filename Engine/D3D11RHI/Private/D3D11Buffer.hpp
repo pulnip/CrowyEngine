@@ -25,10 +25,9 @@ namespace Crowy
         ID3D11DeviceContext* context = nullptr;
         size_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
-        bool isCPUAccessible = false;
         RHIResourceState currentState = RHIResourceState::Common;
-        ID3D11ShaderResourceView* srv = nullptr;
-        ID3D11UnorderedAccessView* uav = nullptr;
+        // ID3D11ShaderResourceView* srv = nullptr;
+        // ID3D11UnorderedAccessView* uav = nullptr;
 
     public:
         D3D11Buffer(
@@ -40,17 +39,19 @@ namespace Crowy
             : context(context)
             , usage(desc.usage), size(desc.size)
         {
-            auto hasVertexUsage = has_flag(desc.usage, RHIBufferUsage::VertexBuffer);
-            auto hasIndexUsage = has_flag(desc.usage, RHIBufferUsage::IndexBuffer);
-            auto hasConstantUsage = has_flag(desc.usage, RHIBufferUsage::ConstantBuffer);
-            auto hasCPUWrite = has_flag(desc.usage, RHIBufferUsage::CPUWrite);
-            auto hasCPURead = has_flag(desc.usage, RHIBufferUsage::CPURead);
+            using enum RHIBufferUsage;
+            using enum RHIMemoryAccess;
 
-            isCPUAccessible = hasVertexUsage || hasIndexUsage || hasConstantUsage ||
-                              hasCPUWrite || hasCPURead || desc.initialData != nullptr;
+            const auto hasVertexUsage = has_flag(desc.usage, VertexBuffer);
+            const auto hasIndexUsage = has_flag(desc.usage, IndexBuffer);
+            const auto hasConstantUsage = has_flag(desc.usage, ConstantBuffer);
+            const auto needCPUAccess = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
 
-            auto isShaderResource = has_flag(desc.usage, RHIBufferUsage::ShaderResource);
-            auto isUnorderedAccess = has_flag(desc.usage, RHIBufferUsage::UnorderedAccess);
+            const auto isGPUOnly = has_flag(desc.access, GPUOnly);
+            CROWY_ASSERT(!needCPUAccess || !isGPUOnly);
+
+            const auto isShaderResource = has_flag(desc.usage, AllowShaderRead);
+            const auto isUnorderedAccess = has_flag(desc.usage, AllowShaderWrite);
 
             UINT bindFlags = 0;
             if(hasVertexUsage)
@@ -65,20 +66,18 @@ namespace Crowy
                 bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
             UINT miscFlags = 0;
-            if(has_flag(desc.usage, RHIBufferUsage::StructuredBuffer))
-                miscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-            if(has_flag(desc.usage, RHIBufferUsage::IndirectArgs))
+            if(has_flag(desc.usage, IndirectArgs))
                 miscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
 
             D3D11_BUFFER_DESC dxDesc = {
                 .ByteWidth = static_cast<UINT>(desc.size),
-                .Usage = isCPUAccessible ?
-                    D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,
+                .Usage = isGPUOnly ?
+                    D3D11_USAGE_DEFAULT: D3D11_USAGE_DYNAMIC,
                 .BindFlags = bindFlags,
-                .CPUAccessFlags = isCPUAccessible ?
-                    D3D11_CPU_ACCESS_WRITE : UINT(0),
+                .CPUAccessFlags = isGPUOnly ?
+                    UINT(0) : D3D11_CPU_ACCESS_WRITE,
                 .MiscFlags = miscFlags,
-                .StructureByteStride = desc.stride
+                .StructureByteStride = 0
             };
 
             D3D11_SUBRESOURCE_DATA initData{
@@ -103,45 +102,37 @@ namespace Crowy
             }
         #endif
 
-            if(isShaderResource){
-                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
-                    .Format = DXGI_FORMAT_R32_FLOAT,
-                    .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
-                    .Buffer = {
+            // if(isShaderResource){
+            //     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
+            //         .Format = DXGI_FORMAT_R32_FLOAT,
+            //         .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
+            //         .Buffer = {
                         
-                    }
-                };
-                device->CreateShaderResourceView(
-                    buffer,
-                    &srvDesc,
-                    &srv
-                );
-            }
-            if(isUnorderedAccess){
-                D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc{
-                    .Format = DXGI_FORMAT_R32_FLOAT,
-                    .ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
-                    .Buffer = {
+            //         }
+            //     };
+            //     device->CreateShaderResourceView(
+            //         buffer,
+            //         &srvDesc,
+            //         &srv
+            //     );
+            // }
+            // if(isUnorderedAccess){
+            //     D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc{
+            //         .Format = DXGI_FORMAT_R32_FLOAT,
+            //         .ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
+            //         .Buffer = {
 
-                    }
-                };
-                device->CreateUnorderedAccessView(
-                    buffer,
-                    &uavDesc,
-                    &uav
-                );
-            }
+            //         }
+            //     };
+            //     device->CreateUnorderedAccessView(
+            //         buffer,
+            //         &uavDesc,
+            //         &uav
+            //     );
+            // }
         }
 
         ~D3D11Buffer(){
-            if(uav != nullptr){
-                uav->Release();
-                uav = nullptr;
-            }
-            if(srv != nullptr){
-                srv->Release();
-                srv = nullptr;
-            }
             if(buffer != nullptr){
                 buffer->Release();
                 buffer = nullptr;
@@ -155,7 +146,7 @@ namespace Crowy
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
-            CROWY_ASSERT(isCPUAccessible && size <= bufSize - offset);
+            CROWY_ASSERT(size <= bufSize - offset);
 
             D3D11_MAPPED_SUBRESOURCE mapped;
             context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
@@ -170,7 +161,7 @@ namespace Crowy
             size_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
-            CROWY_ASSERT(isCPUAccessible && size <= bufSize - offset);
+            CROWY_ASSERT(size <= bufSize - offset);
             D3D11_MAPPED_SUBRESOURCE mapped;
             context->Map(buffer, 0, D3D11_MAP_READ, 0, &mapped);
 
@@ -190,6 +181,5 @@ namespace Crowy
         }
 
         ID3D11Buffer* get() const{ return buffer; }
-        ID3D11ShaderResourceView* getSRV() const{ return srv; }
     };
 }

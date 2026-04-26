@@ -22,7 +22,7 @@ namespace Crowy
         ID3D11Texture2D* texture = nullptr;
         ID3D11DeviceContext* context = nullptr;
         size_t width, height;
-        RHITextureFormat format = RHITextureFormat::Unknown;
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
         ID3D11RenderTargetView* rtv = nullptr;
         ID3D11ShaderResourceView* srv = nullptr;
@@ -40,12 +40,14 @@ namespace Crowy
             , format(desc.format)
             , currentState(desc.initialState)
         {
+            using enum RHITextureUsage;
+
             CROWY_ASSERT(desc.depth == 1);
 
-            auto isShaderResource  = has_flag(desc.usage, RHITextureUsage::ShaderResource);
-            auto isRenderTarget    = has_flag(desc.usage, RHITextureUsage::RenderTarget);
-            auto isDepthTarget     = has_flag(desc.usage, RHITextureUsage::DepthStencil);
-            auto isUnorderedAccess = has_flag(desc.usage, RHITextureUsage::UnorderedAccess);
+            auto isShaderResource  = has_flag(desc.usage, AllowShaderRead);
+            auto isRenderTarget    = has_flag(desc.usage, AllowRenderTarget);
+            auto isDepthTarget     = has_flag(desc.usage, AllowDepthStencil);
+            auto isUnorderedAccess = has_flag(desc.usage, AllowShaderWrite);
 
             UINT bindFlags = 0;
             if(isShaderResource ) bindFlags |= D3D11_BIND_SHADER_RESOURCE;
@@ -151,7 +153,7 @@ namespace Crowy
             // TODO
         }
 
-        RHITextureFormat getFormat() const noexcept RHI_OVERRIDE{
+        RHIPixelFormat getFormat() const noexcept RHI_OVERRIDE{
             return format;
         }
         size_t getWidth() const noexcept RHI_OVERRIDE{

@@ -20,10 +20,12 @@
 namespace Crowy
 {
     inline const char* getShaderTargetProfile(RHIShaderStage stage){
+        using enum RHIShaderStage;
+
         switch(stage){
-        case RHIShaderStage::VertexShader:   return "vs_5_0";
-        case RHIShaderStage::FragmentShader: return "ps_5_0";
-        case RHIShaderStage::ComputeShader:  return "cs_5_0";
+        case VertexShader:   return "vs_5_0";
+        case FragmentShader: return "ps_5_0";
+        case ComputeShader:  return "cs_5_0";
         default:
             std::unreachable();
         }

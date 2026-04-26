@@ -11,21 +11,25 @@
 
 namespace Crowy
 {
-    inline D3D11_TEXTURE_ADDRESS_MODE convertAddressMode(RHIAddressMode mode){
+    inline auto convertAddressMode(RHIAddressMode mode){
+        using enum RHIAddressMode;
+
         switch(mode){
-        case RHIAddressMode::Wrap  : return D3D11_TEXTURE_ADDRESS_WRAP;
-        case RHIAddressMode::Clamp : return D3D11_TEXTURE_ADDRESS_CLAMP;
-        case RHIAddressMode::Mirror: return D3D11_TEXTURE_ADDRESS_MIRROR;
-        case RHIAddressMode::Border: return D3D11_TEXTURE_ADDRESS_BORDER;
+        case Wrap  : return D3D11_TEXTURE_ADDRESS_WRAP;
+        case Clamp : return D3D11_TEXTURE_ADDRESS_CLAMP;
+        case Mirror: return D3D11_TEXTURE_ADDRESS_MIRROR;
+        case Border: return D3D11_TEXTURE_ADDRESS_BORDER;
         default:
             std::unreachable();
         }
     }
 
-    inline D3D11_FILTER convertFilter(
+    inline auto convertFilter(
         RHIFilter min, RHIFilter mag, RHIFilter mip,
         bool anisotropy, bool comparison
     ){
+        using enum RHIFilter;
+
         if(anisotropy)
             return comparison ?
                 D3D11_FILTER_COMPARISON_ANISOTROPIC :
@@ -33,9 +37,9 @@ namespace Crowy
 
         UINT flags = 0;
 
-        if(mip == RHIFilter::Linear) flags |= 0x1;
-        if(mag == RHIFilter::Linear) flags |= 0x4;
-        if(min == RHIFilter::Linear) flags |= 0x10;
+        if(mip == Linear) flags |= 0x1;
+        if(mag == Linear) flags |= 0x4;
+        if(min == Linear) flags |= 0x10;
         if(comparison)               flags |= 0x80;
 
         return static_cast<D3D11_FILTER>(flags);

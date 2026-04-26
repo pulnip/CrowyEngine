@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "RHIAPI.hpp"
+#include "RHIFWD.hpp"
 #ifdef USE_STATIC_RHI
     #include "RHIDefinitions.hpp"
 #else
@@ -23,6 +24,8 @@ namespace Crowy
         D3D11Device();
         ~D3D11Device();
 
+        RHIFrameScopePtr createFrameScope() noexcept RHI_OVERRIDE;
+
         RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc&,
             const std::string& name = ""
@@ -38,11 +41,11 @@ namespace Crowy
             const RHISamplerState&
         ) noexcept RHI_OVERRIDE;
 
-        RHIPipelineStatePtr createGraphicsPipelineState(
+        RHIGraphicsPipelineStatePtr createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
-        RHIPipelineStatePtr createComputePipelineState(
+        RHIComputePipelineStatePtr createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;

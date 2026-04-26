@@ -6,11 +6,13 @@
 #include "D3D11CommandList.hpp"
 #include "D3D11Device.hpp"
 #include "D3D11Fence.hpp"
+#include "D3D11FrameScope.hpp"
 #include "D3D11PipelineState.hpp"
 #include "D3D11Sampler.hpp"
 #include "D3D11Shader.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
@@ -118,6 +120,10 @@ namespace Crowy
             }
         }
 
+        RHIFrameScopePtr createFrameScopoe() noexcept{
+            return std::make_unique<D3D11FrameScope>();
+        }
+
         RHIBufferPtr createBuffer(
             const RHIBufferCreateDesc& desc,
             const std::string& name
@@ -144,18 +150,18 @@ namespace Crowy
             return std::make_unique<D3D11Sampler>(device, desc);
         }
 
-        RHIPipelineStatePtr createGraphicsPipelineState(
+        RHIGraphicsPipelineStatePtr createPipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11PipelineState>(device, desc, name);
+            return std::make_unique<D3D11GraphicsPipelineState>(device, desc, name);
         }
 
-        RHIPipelineStatePtr createComputePipelineState(
+        RHIComputePipelineStatePtr createPipelineState(
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11PipelineState>(device, desc, name);
+            return std::make_unique<D3D11ComputePipelineState>(device, desc, name);
         }
 
         RHISwapchainPtr createSwapchain(
@@ -186,6 +192,10 @@ namespace Crowy
 
     D3D11Device::~D3D11Device(){}
 
+    RHIFrameScopePtr D3D11Device::createFrameScope() noexcept{
+        return impl->createFrameScopoe();
+    }
+
     RHIBufferPtr D3D11Device::createBuffer(
         const RHIBufferCreateDesc& desc,
         const std::string& name
@@ -212,18 +222,18 @@ namespace Crowy
         return impl->createSampler(desc);
     }
 
-    RHIPipelineStatePtr D3D11Device::createGraphicsPipelineState(
+    RHIGraphicsPipelineStatePtr D3D11Device::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
-        return impl->createGraphicsPipelineState(desc, name);
+        return impl->createPipelineState(desc, name);
     }
 
-    RHIPipelineStatePtr D3D11Device::createComputePipelineState(
+    RHIComputePipelineStatePtr D3D11Device::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
-        return impl->createComputePipelineState(desc, name);
+        return impl->createPipelineState(desc, name);
     }
 
     RHISwapchainPtr D3D11Device::createSwapchain(

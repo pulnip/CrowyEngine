@@ -17,8 +17,8 @@ int main(int argc, char* argv[]){
     auto device = createDevice();
     auto cmdList = device->createCommandList();
 
-    constexpr auto N = 10000;
-    constexpr auto GROUP_SIZE = 1024;
+    constexpr auto N = 10000u;
+    constexpr auto GROUP_SIZE = 1024u;
     constexpr auto NUM_GROUP = (N/2)/GROUP_SIZE + 1;
     constexpr auto N2 = 2 * NUM_GROUP * GROUP_SIZE;
     std::vector<uint32_t> ones(N2, 1);
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]){
                 },
                 .gridSize = {.x=N2/2, .y=1, .z=1},
                 .threadGroupSize = RHISize3D{
-                    .x=std::min(N2/2, 1024),
+                    .x=std::min(N2/2, 1024u),
                     .y=1,
                     .z=1
                 }
@@ -94,9 +94,9 @@ int main(int argc, char* argv[]){
                     .funcName = "cs_prefix_sum_single",
                 #endif
                 },
-                .gridSize = {.x=nextPow2(NUM_GROUP)/2, .y=1, .z=1},
+                .gridSize = {.x=nextPow2(NUM_GROUP)/2u, .y=1u, .z=1u},
                 .threadGroupSize = RHISize3D{
-                    .x=std::min(nextPow2(NUM_GROUP)/2, 1024),
+                    .x=std::min(nextPow2(NUM_GROUP)/2u, 1024u),
                     .y=1,
                     .z=1
                 }
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]){
                 },
                 .gridSize = {.x=N2/2, .y=1, .z=1},
                 .threadGroupSize = RHISize3D{
-                    .x=std::min(N2/2, 1024),
+                    .x=std::min(N2/2u, 1024u),
                     .y=1,
                     .z=1
                 }

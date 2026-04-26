@@ -141,18 +141,24 @@ namespace Crowy
             isRenderPass = false;
         }
 
-        void setPipelineState(RHIPipelineState* pso) noexcept RHI_OVERRIDE{
-            auto dxPSO = static_cast<D3D11PipelineState*>(pso);
+        void setPipelineState(RHIGraphicsPipelineState& pso) noexcept RHI_OVERRIDE{
+            auto& dxPSO = static_cast<D3D11GraphicsPipelineState&>(pso);
 
-            auto il = dxPSO->getIL();
+            auto il = dxPSO.getIL();
             if(il != nullptr)
-                context->IASetInputLayout(dxPSO->getIL());
-            context->IASetPrimitiveTopology(dxPSO->getTopology());
-            context->VSSetShader(dxPSO->getVS(), nullptr, 0);
-            context->PSSetShader(dxPSO->getPS(), nullptr, 0);
-            context->RSSetState(dxPSO->getRS());
-            context->OMSetDepthStencilState(dxPSO->getDSS(), 0);
-            context->OMSetBlendState(dxPSO->getBS(), nullptr, 0xFFFFFFFF);
+                context->IASetInputLayout(il);
+            context->IASetPrimitiveTopology(dxPSO.getTopology());
+            context->VSSetShader(dxPSO.getVS(), nullptr, 0);
+            context->PSSetShader(dxPSO.getPS(), nullptr, 0);
+            context->RSSetState(dxPSO.getRS());
+            context->OMSetDepthStencilState(dxPSO.getDSS(), 0);
+            context->OMSetBlendState(dxPSO.getBS(), nullptr, 0xFFFFFFFF);
+        }
+
+        void setPipelineState(RHIComputePipelineState& pso) noexcept RHI_OVERRIDE{
+            auto& dxPSO = static_cast<D3D11ComputePipelineState&>(pso);
+            
+            // TODO.
         }
 
         void setVertexBuffer(
@@ -235,23 +241,47 @@ namespace Crowy
         void setBuffer(
             uint32_t slot,
             RHIBuffer& buffer,
-            RHIShaderStage stage
+            RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) noexcept RHI_OVERRIDE{
+            using enum RHIShaderStage;
+
             auto buf = static_cast<D3D11Buffer&>(buffer).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 context->VSSetConstantBuffers(slot, 1, &buf);
                 break;
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 context->PSSetConstantBuffers(slot, 1, &buf);
                 break;
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 context->CSSetConstantBuffers(slot, 1, &buf);
                 break;
             default:
                 std::unreachable();
             }   
+        }
+
+        void setBytes(
+            uint32_t slot,
+            const void* bytes,
+            size_t size,
+            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        ) RHI_OVERRIDE{
+            using enum RHIShaderStage;
+
+            throw std::runtime_error("Unimplemented");
+
+            switch(stage){
+            case VertexShader:
+                [[fallthrough]];
+            case FragmentShader:
+                break;
+            case ComputeShader:
+                break;
+            default:
+                std::unreachable();
+            }
         }
 
         void setSampler(
@@ -357,19 +387,16 @@ namespace Crowy
         }
 
         void dispatch(
-            uint32_t gridSizeX,
-            uint32_t gridSizeY,
-            uint32_t gridSizeZ,
-            std::optional<RHISize3D> threadGroupSize = std::nullopt
+            RHISize3D gridSize
         ) noexcept RHI_OVERRIDE{
-            threadGroupSize = RHISize3D{256, 1, 1};
+            // TODO. reflection from shader?
+            auto threadGroupSize = RHISize3D{256, 1, 1};
 
-            if(threadGroupSize.has_value())
-                context->Dispatch(
-                    gridSizeX / threadGroupSize->x,
-                    gridSizeY / threadGroupSize->y,
-                    gridSizeZ / threadGroupSize->z
-                );
+            context->Dispatch(
+                gridSize.x / threadGroupSize.x,
+                gridSize.y / threadGroupSize.y,
+                gridSize.z / threadGroupSize.z
+            );
         }
 
         void transitionBarrier(
