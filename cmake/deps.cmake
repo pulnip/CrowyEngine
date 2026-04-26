@@ -27,7 +27,7 @@ if(NOT stb_FOUND)
     FetchContent_Declare(
         stb
         GIT_REPOSITORY "https://github.com/nothings/stb.git"
-        GIT_TAG "f1c79c02822848a9bed4315b12c8c8f3761e1296"
+        GIT_TAG "31c1ad37456438565541f4919958214b6e762fb4"
         GIT_SHALLOW TRUE
     )
     FetchContent_MakeAvailable(stb)
