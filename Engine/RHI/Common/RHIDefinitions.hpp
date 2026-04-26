@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 #include <unordered_map>
 #include "enum_traits.hpp"
 #include "math.hpp"
