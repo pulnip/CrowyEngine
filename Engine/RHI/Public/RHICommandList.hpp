@@ -39,8 +39,8 @@ namespace Crowy
 
         // Render pass control
         virtual void beginRenderPass(
-            std::span<RHITexture*> renderTargets,
-            RHITexture* depthStencil = nullptr,
+            std::span<RHITextureView*> renderTargets,
+            RHITextureView* depthStencil = nullptr,
             RHILoadAction loadAction  = RHILoadAction::Load,
             RHIStoreAction storeAction = RHIStoreAction::Store,
             const RHIClearColor& clearColor = {
@@ -54,7 +54,7 @@ namespace Crowy
 
         virtual void beginRenderPass(
             RHISwapchain& backBuffer,
-            RHITexture* depthStencil = nullptr,
+            RHITextureView* depthStencilView = nullptr,
             RHILoadAction loadAction  = RHILoadAction::Load,
             RHIStoreAction storeAction = RHIStoreAction::Store,
             const RHIClearColor& clearColor = {
@@ -97,13 +97,14 @@ namespace Crowy
         // Shader resources (textures, buffers)
         virtual void setTexture(
             uint32_t slot,
-            RHITexture& texture,
+            RHITextureView& textureView,
             RHIShaderStage stage
         ) noexcept = 0;
 
+        // only for Compute Shader
         virtual void setBuffer(
             uint32_t slot,
-            RHIBuffer& buffer,
+            RHIBufferView& buffer,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) = 0;
 

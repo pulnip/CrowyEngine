@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <stdexcept>
 #include <utility>
 #include <d3d11.h>
+#include "RHITextureView.hpp"
 #include "assert.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
@@ -10,10 +12,12 @@
     #include "RHICommandList.hpp"
 #endif
 #include "D3D11Buffer.hpp"
+#include "D3D11BufferView.hpp"
 #include "D3D11PipelineState.hpp"
 #include "D3D11Sampler.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
+#include "D3D11TextureView.hpp"
 
 namespace Crowy
 {
@@ -71,23 +75,26 @@ namespace Crowy
         }
 
         void beginRenderPass(
-            std::span<RHITexture*> renderTargets,
-            RHITexture* depthStencil,
+            std::span<RHITextureView*> renderTargetViews,
+            RHITextureView* depthStencilView,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(renderTargets.size() > 0);
+            CROWY_ASSERT(renderTargetViews.size() > 0);
 
             ID3D11RenderTargetView* rtvs[RHI_MAX_RENDER_TARGETS];
-            for(size_t i=0; i<renderTargets.size(); ++i)
-                rtvs[i] = static_cast<D3D11Texture*>(renderTargets[i])->getRTV();
+            for(size_t i=0; i<renderTargetViews.size(); ++i)
+                rtvs[i] = static_cast<D3D11TextureRTV*>(renderTargetViews[i])->get();
+
+            ID3D11DepthStencilView* dsv = depthStencilView != nullptr ?
+                static_cast<D3D11TextureDSV*>(depthStencilView)->get() : nullptr;
 
             beginRenderPass(
-                std::span<ID3D11RenderTargetView*>(rtvs, renderTargets.size()),
-                depthStencil,
+                std::span<ID3D11RenderTargetView*>(rtvs, renderTargetViews.size()),
+                dsv,
                 loadAction, storeAction,
                 clearColor, clearDS,
                 debugName
@@ -96,7 +103,7 @@ namespace Crowy
 
         void beginRenderPass(
             RHISwapchain& swapchain,
-            RHITexture* depthStencil,
+            RHITextureView* depthStencilView,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -107,9 +114,12 @@ namespace Crowy
                 static_cast<D3D11Swapchain&>(swapchain).getCurrentRTV()
             };
 
+            ID3D11DepthStencilView* dsv = depthStencilView != nullptr ?
+                static_cast<D3D11TextureDSV*>(depthStencilView)->get() : nullptr;
+
             beginRenderPass(
                 rtvs,
-                depthStencil,
+                dsv,
                 loadAction, storeAction,
                 clearColor, clearDS,
                 debugName
@@ -167,8 +177,14 @@ namespace Crowy
             uint32_t stride,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
-            ID3D11Buffer* buf = static_cast<D3D11Buffer&>(buffer).get();
-            context->IASetVertexBuffers(slot, 1, &buf, &stride, &offset);
+            auto buf = static_cast<D3D11Buffer&>(buffer).get();
+            context->IASetVertexBuffers(
+                slot,
+                1,
+                &buf,
+                &stride,
+                &offset
+            );
         }
 
         void setIndexBuffer(
@@ -176,8 +192,9 @@ namespace Crowy
             RHIIndexFormat format,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
+            auto buf = static_cast<D3D11Buffer&>(buffer).get();
             context->IASetIndexBuffer(
-                static_cast<D3D11Buffer&>(buffer).get(),
+                buf,
                 format == RHIIndexFormat::UInt16 ?
                     DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
                 offset
@@ -209,29 +226,30 @@ namespace Crowy
 
         void setTexture(
             uint32_t slot,
-            RHITexture& texture,
+            RHITextureView& textureView,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
-            auto srv = static_cast<D3D11Texture&>(texture).getSRV();
+            using enum RHIShaderStage;
+            const auto view = static_cast<D3D11TextureSRV&>(textureView).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
             #if defined(_DEBUG) || !defined(NDEBUG)
                 maxBindedVSSRV = std::max(maxBindedVSSRV, slot+1);
             #endif
-                context->VSSetShaderResources(slot, 1, &srv);
+                context->VSSetShaderResources(slot, 1, &view);
                 break;
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
             #if defined(_DEBUG) || !defined(NDEBUG)
                 maxBindedPSSRV = std::max(maxBindedPSSRV, slot+1);
             #endif
-                context->PSSetShaderResources(slot, 1, &srv);
+                context->PSSetShaderResources(slot, 1, &view);
                 break;
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
             #if defined(_DEBUG) || !defined(NDEBUG)
                 maxBindedCSSRV = std::max(maxBindedCSSRV, slot+1);
             #endif
-                context->CSSetShaderResources(slot, 1, &srv);
+                context->CSSetShaderResources(slot, 1, &view);
                 break;
             default:
                 std::unreachable();
@@ -240,26 +258,59 @@ namespace Crowy
 
         void setBuffer(
             uint32_t slot,
-            RHIBuffer& buffer,
+            RHIBufferView& bufferView,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) noexcept RHI_OVERRIDE{
+            using enum RHIBindingAccess;
             using enum RHIShaderStage;
 
-            auto buf = static_cast<D3D11Buffer&>(buffer).get();
+            if(bufferView.getAccess() == ReadOnly){
+                ID3D11ShaderResourceView* const views = {
+                    static_cast<D3D11BufferSRV&>(bufferView).get()
+                };
 
-            switch(stage){
-            case VertexShader:
-                context->VSSetConstantBuffers(slot, 1, &buf);
-                break;
-            case FragmentShader:
-                context->PSSetConstantBuffers(slot, 1, &buf);
-                break;
-            case ComputeShader:
-                context->CSSetConstantBuffers(slot, 1, &buf);
-                break;
-            default:
-                std::unreachable();
-            }   
+                switch(stage){
+                case VertexShader:
+                    context->VSSetShaderResources(
+                        slot,
+                        1,
+                        &views
+                    );
+                    break;
+                case FragmentShader:
+                    context->PSSetShaderResources(
+                        slot,
+                        1,
+                        &views
+                    );
+                    break;
+                case ComputeShader:
+                    context->CSSetShaderResources(
+                        slot,
+                        1,
+                        &views
+                    );
+                    break;
+                default:
+                    std::unreachable();
+                }
+            }
+            else{
+                // cannot bind to VS, GS, HS, DS, TS
+                // TODO. bind to PS is available at OMSetRenderTargetsAndUnorderedAccessViews
+                CROWY_ASSERT(stage == ComputeShader);
+                // WriteOnly / ReadWrite
+                ID3D11UnorderedAccessView* const views = {
+                    static_cast<D3D11BufferUAV&>(bufferView).get()
+                };
+
+                context->CSSetUnorderedAccessViews(
+                    slot,
+                    1,
+                    &views,
+                    nullptr
+                );
+            }
         }
 
         void setBytes(
@@ -501,17 +552,13 @@ namespace Crowy
     private:
         void beginRenderPass(
             std::span<ID3D11RenderTargetView*> rtvs,
-            RHITexture* depthStencil,
+            ID3D11DepthStencilView* dsv,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept{
-            ID3D11DepthStencilView* dsv = nullptr;
-            if(depthStencil != nullptr)
-                dsv = static_cast<D3D11Texture*>(depthStencil)->getDSV();
-
             context->OMSetRenderTargets(rtvs.size(), rtvs.data(), dsv);
 
             if(loadAction == RHILoadAction::Clear){

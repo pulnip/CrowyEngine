@@ -38,10 +38,15 @@ namespace Crowy
 
         // Texture maps
         RHITexturePtr baseColorMap;
+        RHITextureViewPtr baseColorMapView;
         RHITexturePtr normalMap;
+        RHITextureViewPtr normalMapView;
         RHITexturePtr metallicRoughnessMap;
+        RHITextureViewPtr metallicRoughnessMapView;
         RHITexturePtr emissiveMap;
+        RHITextureViewPtr emissiveMapView;
         RHITexturePtr occlusionMap;
+        RHITextureViewPtr occlusionMapView;
 
         inline bool hasBaseColorMap() const{
             return baseColorMap != nullptr;

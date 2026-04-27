@@ -35,8 +35,8 @@ namespace Crowy
         }
 
         void beginRenderPass(
-            std::span<RHITexture*> renderTargets,
-            RHITexture* depthStencil,
+            std::span<RHITextureView*> renderTargetViews,
+            RHITextureView* depthStencilView,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -48,7 +48,7 @@ namespace Crowy
 
         void beginRenderPass(
             RHISwapchain& swapchain,
-            RHITexture* depthStencil,
+            RHITextureView* depthStencilView,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -98,7 +98,7 @@ namespace Crowy
 
         void setTexture(
             uint32_t slot,
-            RHITexture& texture,
+            RHITextureView& textureView,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
 
@@ -106,7 +106,7 @@ namespace Crowy
 
         void setBuffer(
             uint32_t slot,
-            RHIBuffer& buffer,
+            RHIBufferView& buffer,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
 

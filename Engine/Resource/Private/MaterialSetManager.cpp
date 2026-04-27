@@ -1,6 +1,8 @@
+#include <tuple>
 #include <utility>
 #include "LoadContext.hpp"
 #include "MaterialSetManager.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
 #include "TextureImporter.hpp"
@@ -9,10 +11,10 @@ namespace Crowy
 {
     MaterialSetManager* MaterialSetManager::instance = nullptr;
 
-    static RHITexturePtr instantiate(const TextureRef& ref, LoadContext& ctx){
+    static std::tuple<RHITexturePtr, RHITextureViewPtr> instantiate(const TextureRef& ref, LoadContext& ctx){
         auto textureData = importTexture(ref.uri);
         if(!textureData.has_value())
-            return nullptr;
+            return {nullptr, nullptr};
 
         // TODO: Implement mipmap generation
         // For now, use only 1 mip level to avoid sampling uninitialized mipmap data
@@ -42,11 +44,23 @@ namespace Crowy
             .clearDepthStencil = {},
             .initialData = textureData->pixels.data()
         };
+        RHITextureViewDesc viewDesc{
+            .access = RHIBindingAccess::ReadOnly,
+            .format = format
+        };
 
     #if defined(_DEBUG) || !defined(NDEBUG)
-        return ctx.device->createTexture(texDesc, ref.uri);
+        auto tex = ctx.device->createTexture(texDesc, ref.uri);
+        return std::make_tuple(
+            std::move(tex),
+            ctx.device->createTextureView(*tex, viewDesc, ref.uri)
+        );
     #else
-        return ctx.device->createTexture(texDesc);
+        auto tex = ctx.device->createTexture(texDesc);
+        return std::make_tuple(
+            std::move(tex),
+            ctx.device->createTextureView(*tex, viewDesc)
+        );
     #endif
     }
 
@@ -63,8 +77,13 @@ namespace Crowy
             .occlusionMap         = nullptr
         };
 
+        const RHITextureViewDesc desc{
+            .access = RHIBindingAccess::ReadOnly,
+            .format = RHIPixelFormat::BC1_UNORM
+        };
+
         for(const auto& [semantic, texRef]: ref.textures){
-            auto texture = instantiate(texRef, ctx);
+            auto [texture, view] = instantiate(texRef, ctx);
 
             if(!texture)
                 continue;
@@ -72,18 +91,23 @@ namespace Crowy
             switch(semantic){
             case TextureSemantic::BaseColor:
                 material.baseColorMap = std::move(texture);
+                material.baseColorMapView = std::move(view);
                 break;
             case TextureSemantic::Normal:
                 material.normalMap = std::move(texture);
+                material.normalMapView = std::move(view);
                 break;
             case TextureSemantic::MetallicRoughness:
                 material.metallicRoughnessMap = std::move(texture);
+                material.metallicRoughnessMapView = std::move(view);
                 break;
             case TextureSemantic::Emissive:
                 material.emissiveMap = std::move(texture);
+                material.emissiveMapView = std::move(view);
                 break;
             case TextureSemantic::Occlusion:
                 material.occlusionMap = std::move(texture);
+                material.occlusionMapView = std::move(view);
                 break;
             default:
                 std::unreachable();

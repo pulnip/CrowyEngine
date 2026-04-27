@@ -4,6 +4,7 @@
 #include <string>
 #include "semantics.hpp"
 #include "RHIBuffer.hpp"
+#include "RHIBufferView.hpp"
 #include "RHICommandList.hpp"
 #include "RHIFence.hpp"
 #include "RHIFrameScope.hpp"
@@ -12,6 +13,7 @@
 #include "RHIShader.hpp"
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
+#include "RHITextureView.hpp"
 
 #ifdef USE_STATIC_RHI
     #if defined(USE_METAL_BACKEND)

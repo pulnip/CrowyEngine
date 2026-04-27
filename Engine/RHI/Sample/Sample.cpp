@@ -1,7 +1,7 @@
-#include <cstring>
 #include <SDL3/SDL.h>
 #include "FramePacer.hpp"
 #include "Logger.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "Resource.hpp"
 #include "Timer.hpp"
@@ -94,6 +94,14 @@ int main(int argc, char* argv[]){
         .clearColor = {},
         .clearDepthStencil = {1.0f, 0},
     }, "Depth Buffer");
+    auto dsv = device->createTextureView(
+        *depthBuffer,
+        RHITextureViewDesc{
+            .access = RHIBindingAccess::WriteOnly,
+            .format = RHIPixelFormat::D32_FLOAT
+        },
+        "DepthStencilView"
+    );
 
     auto pipelineState = device->createPipelineState({
         .vertexShader = vertexShader.get(),
@@ -153,8 +161,8 @@ int main(int argc, char* argv[]){
 
         RHIClearColor clearColor{ 0.2f, 0.2f, 0.3f, 1.0f };
         cmdList->beginRenderPass(
-            *swapchain.get(),
-            depthBuffer.get(),
+            *swapchain,
+            dsv.get(),
             RHILoadAction::Clear,
             RHIStoreAction::Store,
             clearColor
@@ -176,7 +184,7 @@ int main(int argc, char* argv[]){
             if(it == materialSet.end())
                 continue;
 
-            cmdList->setTexture(0, *it->second->baseColorMap.get(),
+            cmdList->setTexture(0, *it->second->baseColorMapView,
                 RHIShaderStage::FragmentShader);
             cmdList->drawIndexed(submesh.indexCount, 1);
         }

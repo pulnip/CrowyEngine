@@ -39,12 +39,27 @@ int main(int argc, char* argv[]){
     };
 
     auto bufferA = device->createBuffer(bufferDesc, "BufferA");
+    auto bufAView = device->createBufferView(
+        *bufferA,
+        RHIBufferViewDesc{.access = RHIBindingAccess::ReadOnly},
+        "BufferA View"
+    );
     auto bufferB = device->createBuffer(bufferDesc, "BufferB");
+    auto bufBView = device->createBufferView(
+        *bufferB,
+        RHIBufferViewDesc{.access = RHIBindingAccess::ReadOnly},
+        "BufferB View"
+    );
 
     bufferDesc.usage = RHIBufferUsage::AllowShaderWrite;
     bufferDesc.access = RHIMemoryAccess::CPURead;
     bufferDesc.initialData = nullptr;
     auto bufferOut = device->createBuffer(bufferDesc, "BufferOut");
+    auto bufOutView = device->createBufferView(
+        *bufferOut,
+        RHIBufferViewDesc{.access = RHIBindingAccess::WriteOnly},
+        "BufferB View"
+    );
 
     auto pipelineState = device->createPipelineState({
         .computeShader = computeShader.get()
@@ -57,9 +72,9 @@ int main(int argc, char* argv[]){
     cmdList->beginCompute();
 
     cmdList->setPipelineState(*pipelineState);
-    cmdList->setBuffer(0, *bufferA.get());
-    cmdList->setBuffer(1, *bufferB.get());
-    cmdList->setBuffer(2, *bufferOut.get());
+    cmdList->setBuffer(0, *bufAView);
+    cmdList->setBuffer(1, *bufBView);
+    cmdList->setBuffer(2, *bufOutView);
 
     cmdList->dispatch({N, 1, 1});
 
