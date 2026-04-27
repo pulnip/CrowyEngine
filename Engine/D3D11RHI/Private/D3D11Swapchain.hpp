@@ -42,7 +42,7 @@ namespace Crowy
             DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {
                 .Width = desc.bufferDesc.width,
                 .Height = desc.bufferDesc.height,
-                .Format = convertTextureFormat(desc.bufferDesc.format),
+                .Format = convertPixelFormat(desc.bufferDesc.format),
                 .Stereo = FALSE,
                 // No MSAA for swapchain
                 .SampleDesc = {1, 0},

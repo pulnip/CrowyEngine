@@ -151,7 +151,7 @@ namespace Crowy
 
                     dst.SemanticName = src.semanticName;
                     dst.SemanticIndex = src.semanticIndex;
-                    dst.Format = convertTextureFormat(src.format);
+                    dst.Format = convertPixelFormat(src.format);
                     dst.InputSlot = src.inputSlot;
                     dst.AlignedByteOffset = src.alignedByteOffset;
                     dst.InputSlotClass = src.classification == RHIInputClassification::PerVertex ?

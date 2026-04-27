@@ -30,8 +30,18 @@ namespace Crowy
             const RHIBufferCreateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
+        RHIBufferViewPtr createBufferView(
+            const RHIBuffer&,
+            const RHIBufferViewDesc&,
+            const std::string& name = ""
+        ) noexcept RHI_OVERRIDE;
         RHITexturePtr createTexture(
             const RHITextureCreateDesc&,
+            const std::string& name = ""
+        ) noexcept RHI_OVERRIDE;
+        RHITextureViewPtr createTextureView(
+            const RHITexture&,
+            const RHITextureViewDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
         RHIShaderPtr createShader(

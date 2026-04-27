@@ -511,7 +511,7 @@ namespace Crowy
     #endif
     };
 
-    inline size_t getBytesPerPixel(RHIPixelFormat format){
+    inline constexpr size_t getBytesPerPixel(RHIPixelFormat format){
         using enum RHIPixelFormat;
 
         switch(format){
@@ -570,6 +570,20 @@ namespace Crowy
             return 8;
         default:
             std::unreachable();
+        }
+    }
+
+    inline constexpr auto isDepthFormat(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case D16_UNORM:         [[fallthrough]];
+        case D24_UNORM_S8_UINT: [[fallthrough]];
+        case D32_FLOAT:         [[fallthrough]];
+        case D32_FLOAT_S8_UINT:
+            return true;
+        default:
+            return false;
         }
     }
 

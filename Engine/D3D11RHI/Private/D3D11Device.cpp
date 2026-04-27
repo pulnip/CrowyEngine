@@ -1,8 +1,10 @@
 #include <stdexcept>
 #include <d3d11.h>
 #include <dxgi1_6.h>
+#include <utility>
 #include <wrl/client.h>
 #include "D3D11Buffer.hpp"
+#include "D3D11BufferView.hpp"
 #include "D3D11CommandList.hpp"
 #include "D3D11Device.hpp"
 #include "D3D11Fence.hpp"
@@ -12,6 +14,8 @@
 #include "D3D11Shader.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
+#include "D3D11TextureView.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy
@@ -131,11 +135,87 @@ namespace Crowy
             return std::make_unique<D3D11Buffer>(device, context, desc, name);
         }
 
+        RHIBufferViewPtr createBufferView(
+            const D3D11Buffer& buf,
+            const RHIBufferViewDesc& desc,
+            const std::string& name
+        ) noexcept{
+            using enum RHIBindingAccess;
+
+            switch(desc.access){
+            case ReadOnly:
+                return std::make_unique<D3D11BufferSRV>(
+                    *device,
+                    *buf.get(),
+                    desc,
+                    name
+                );
+            case WriteOnly:
+                return std::make_unique<D3D11BufferRTV>(
+                    *device,
+                    *buf.get(),
+                    desc,
+                    name
+                );
+            case ReadWrite:
+                return std::make_unique<D3D11BufferUAV>(
+                    *device,
+                    *buf.get(),
+                    desc,
+                    name
+                );
+            default:
+                std::unreachable();
+            }
+        }
+
         RHITexturePtr createTexture(
             const RHITextureCreateDesc& desc,
             const std::string& name
         ) noexcept{
             return std::make_unique<D3D11Texture>(device, context, desc, name);
+        }
+
+        RHITextureViewPtr createTextureView(
+            const D3D11Texture& buf,
+            const RHITextureViewDesc& desc,
+            const std::string& name
+        ) noexcept{
+            using enum RHIBindingAccess;
+
+            switch(desc.access){
+            case ReadOnly:
+                return std::make_unique<D3D11TextureSRV>(
+                    *device,
+                    *buf.get(),
+                    desc,
+                    name
+                );
+            case WriteOnly:
+                if(isDepthFormat(desc.format))
+                    return std::make_unique<D3D11TextureDSV>(
+                        *device,
+                        *buf.get(),
+                        desc,
+                        name
+                    );
+                else
+                    return std::make_unique<D3D11TextureRTV>(
+                        *device,
+                        *buf.get(),
+                        desc,
+                        name
+                    );
+            case ReadWrite:
+                return std::make_unique<D3D11TextureUAV>(
+                    *device,
+                    *buf.get(),
+                    desc,
+                    name
+                );
+            default:
+                std::unreachable();
+            }
         }
 
         RHIShaderPtr createShader(
@@ -203,11 +283,35 @@ namespace Crowy
         return impl->createBuffer(desc, name);
     }
 
+    RHIBufferViewPtr D3D11Device::createBufferView(
+        const RHIBuffer& buf,
+        const RHIBufferViewDesc& desc,
+        const std::string& name
+    ) noexcept{
+        return impl->createBufferView(
+            static_cast<const D3D11Buffer&>(buf),
+            desc,
+            name
+        );
+    }
+
     RHITexturePtr D3D11Device::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createTexture(desc, name);
+    }
+
+    RHITextureViewPtr D3D11Device::createTextureView(
+        const RHITexture& buf,
+        const RHITextureViewDesc& desc,
+        const std::string& name
+    ) noexcept{
+        return impl->createTextureView(
+            static_cast<const D3D11Texture&>(buf),
+            desc,
+            name
+        );
     }
 
     RHIShaderPtr D3D11Device::createShader(

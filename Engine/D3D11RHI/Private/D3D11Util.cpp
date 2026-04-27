@@ -3,7 +3,7 @@
 
 namespace Crowy
 {
-    DXGI_FORMAT convertTextureFormat(RHIPixelFormat format, bool isShaderResource, bool isDepthTarget){
+    DXGI_FORMAT convertPixelFormat(RHIPixelFormat format, bool isShaderResource, bool isDepthTarget){
         using enum RHIPixelFormat;
 
         switch(format){

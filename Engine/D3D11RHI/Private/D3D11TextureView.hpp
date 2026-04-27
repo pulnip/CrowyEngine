@@ -26,17 +26,17 @@ namespace Crowy
         D3D11TextureSRV(
             ID3D11Device& device,
             ID3D11Resource& resource,
-            const RHITextureViewDesc& desc,
+            const RHITextureViewDesc& rhiDesc,
             const std::string& name
         )
-            : access(desc.access)
-            , format(desc.format)
+            : access(rhiDesc.access)
+            , format(rhiDesc.format)
         {
             using enum RHIBindingAccess;
-            CROWY_ASSERT(has_flag(desc.access, ReadOnly));
+            CROWY_ASSERT(has_flag(rhiDesc.access, ReadOnly));
 
-            const D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
-                .Format = convertTextureFormat(desc.format, true, false),
+            const D3D11_SHADER_RESOURCE_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format, true, false),
                 .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
                 .Texture2D = {
                     .MostDetailedMip = 0,
@@ -45,7 +45,7 @@ namespace Crowy
             };
             device.CreateShaderResourceView(
                 &resource,
-                &srvDesc,
+                &desc,
                 &view
             );
         }
@@ -83,17 +83,17 @@ namespace Crowy
         D3D11TextureRTV(
             ID3D11Device& device,
             ID3D11Resource& resource,
-            const RHITextureViewDesc& desc,
+            const RHITextureViewDesc& rhiDesc,
             const std::string& name
         )
-            : access(desc.access)
-            , format(desc.format)
+            : access(rhiDesc.access)
+            , format(rhiDesc.format)
         {
             using enum RHIBindingAccess;
-            CROWY_ASSERT(has_flag(desc.access, WriteOnly));
+            CROWY_ASSERT(has_flag(rhiDesc.access, WriteOnly));
 
-            const D3D11_RENDER_TARGET_VIEW_DESC rtvDesc{
-                .Format = convertTextureFormat(desc.format),
+            const D3D11_RENDER_TARGET_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format),
                 .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
                 .Texture2D = {
                     .MipSlice = 0
@@ -101,7 +101,7 @@ namespace Crowy
             };
             device.CreateRenderTargetView(
                 &resource,
-                &rtvDesc,
+                &desc,
                 &view
             );
         }
@@ -139,17 +139,17 @@ namespace Crowy
         D3D11TextureUAV(
             ID3D11Device& device,
             ID3D11Resource& resource,
-            const RHITextureViewDesc& desc,
+            const RHITextureViewDesc& rhiDesc,
             const std::string& name
         )
-            : access(desc.access)
-            , format(desc.format)
+            : access(rhiDesc.access)
+            , format(rhiDesc.format)
         {
             using enum RHIBindingAccess;
-            CROWY_ASSERT(has_flag(desc.access, ReadWrite));
+            CROWY_ASSERT(has_flag(rhiDesc.access, ReadWrite));
 
-            const D3D11_UNORDERED_ACCESS_VIEW_DESC rtvDesc{
-                .Format = convertTextureFormat(desc.format),
+            const D3D11_UNORDERED_ACCESS_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format),
                 .ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D,
                 .Texture2D = {
                     .MipSlice = 0
@@ -157,7 +157,7 @@ namespace Crowy
             };
             device.CreateUnorderedAccessView(
                 &resource,
-                &rtvDesc,
+                &desc,
                 &view
             );
         }
@@ -195,14 +195,14 @@ namespace Crowy
         D3D11TextureDSV(
             ID3D11Device& device,
             ID3D11Resource& resource,
-            const RHITextureViewDesc& desc,
+            const RHITextureViewDesc& rhiDesc,
             const std::string& name
         )
-            : access(desc.access)
-            , format(desc.format)
+            : access(rhiDesc.access)
+            , format(rhiDesc.format)
         {
-            const D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{
-                .Format = convertTextureFormat(desc.format, false, true),
+            const D3D11_DEPTH_STENCIL_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format, false, true),
                 .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
                 .Texture2D = {
                     .MipSlice = 0
@@ -210,7 +210,7 @@ namespace Crowy
             };
             device.CreateDepthStencilView(
                 &resource,
-                &dsvDesc,
+                &desc,
                 &view
             );
         }

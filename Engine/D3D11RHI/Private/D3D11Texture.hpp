@@ -62,7 +62,7 @@ namespace Crowy
                 .Height = desc.height,
                 .MipLevels = desc.mipLevels,
                 .ArraySize = desc.arraySize,
-                .Format = convertTextureFormat(desc.format, isShaderResource, isDepthTarget),
+                .Format = convertPixelFormat(desc.format, isShaderResource, isDepthTarget),
                 // No MSAA
                 .SampleDesc = {1, 0},
                 .Usage = needsGPUOnly ?
@@ -97,7 +97,7 @@ namespace Crowy
 
             if(isRenderTarget){
                 D3D11_RENDER_TARGET_VIEW_DESC rtvDesc{
-                    .Format = convertTextureFormat(desc.format),
+                    .Format = convertPixelFormat(desc.format),
                     .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
                     .Texture2D = {
                         .MipSlice = 0
@@ -107,7 +107,7 @@ namespace Crowy
             }
             if(isShaderResource){
                 D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
-                    .Format = convertTextureFormat(desc.format, true, false),
+                    .Format = convertPixelFormat(desc.format, true, false),
                     .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
                     .Texture2D = {
                         .MostDetailedMip = 0,
@@ -118,7 +118,7 @@ namespace Crowy
             }
             if(isDepthTarget){
                 D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{
-                    .Format = convertTextureFormat(desc.format, false, true),
+                    .Format = convertPixelFormat(desc.format, false, true),
                     .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
                     .Texture2D = {
                         .MipSlice = 0

@@ -1,4 +1,5 @@
 #include "NullBuffer.hpp"
+#include "NullBufferView.hpp"
 #include "NullCommandList.hpp"
 #include "NullDevice.hpp"
 #include "NullFence.hpp"
@@ -7,6 +8,7 @@
 #include "NullShader.hpp"
 #include "NullSwapchain.hpp"
 #include "NullTexture.hpp"
+#include "NullTextureView.hpp"
 #include "RHIFrameScope.hpp"
 
 namespace Crowy
@@ -32,11 +34,27 @@ namespace Crowy
         return std::make_unique<NullBuffer>(desc, name);
     }
 
+    RHIBufferViewPtr NullDevice::createBufferView(
+        const RHIBuffer&,
+        const RHIBufferViewDesc& desc,
+        const std::string& name
+    ) noexcept{
+        return std::make_unique<NullBufferView>(desc, name);
+    }
+
     RHITexturePtr NullDevice::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return std::make_unique<NullTexture>(desc, name);
+    }
+
+    RHITextureViewPtr NullDevice::createTextureView(
+        const RHITexture&,
+        const RHITextureViewDesc& desc,
+        const std::string& name
+    ) noexcept{
+        return std::make_unique<NullTextureView>(desc, name);
     }
 
     RHIShaderPtr NullDevice::createShader(
