@@ -49,7 +49,7 @@ namespace Crowy
 
     public:
         MetalSampler(
-            MTL::Device* device,
+            MTL::Device& device,
             const RHISamplerState& desc
         ){
             auto samplerDesc = MTL::SamplerDescriptor::alloc()->init();
@@ -64,7 +64,7 @@ namespace Crowy
             samplerDesc->setMaxAnisotropy(desc.maxAnisotropy);
             samplerDesc->setCompareFunction(convert(desc.compareFunc));
 
-            sampler = device->newSamplerState(samplerDesc);
+            sampler = device.newSamplerState(samplerDesc);
             samplerDesc->release();
         }
 

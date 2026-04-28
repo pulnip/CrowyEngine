@@ -39,7 +39,7 @@ namespace Crowy
 
     public:
         MetalTexture(
-            MTL::Device* device,
+            MTL::Device& device,
             const RHITextureCreateDesc& desc,
             const std::string& name
         ) noexcept
@@ -69,7 +69,7 @@ namespace Crowy
             texDesc->setStorageMode(MTL::StorageModeShared);                          
         #endif
 
-            texture = device->newTexture(texDesc);
+            texture = device.newTexture(texDesc);
             texDesc->release();
 
         #if defined(_DEBUG) || !defined(NDEBUG)

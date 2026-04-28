@@ -1,16 +1,19 @@
 #pragma once
 
+#include <Metal/MTLLibrary.hpp>
+#include <filesystem>
+#include <utility>
 #include <Foundation/NSTypes.hpp>
 #include <Metal/MTLArgument.hpp>
 #include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLComputePipeline.hpp>
 #include <Metal/MTLDevice.hpp>
-#include <utility>
 #include <Metal/Metal.hpp>
 #include "assert.hpp"
+#include "string.hpp"
 #include "AutoreleasePoolScope.hpp"
-#include "MetalShader.hpp"
 #include "MetalUtil.hpp"
+#include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIPipelineState.hpp"
@@ -109,10 +112,62 @@ namespace Crowy
         switch(access){
         case MTL::BindingAccessReadOnly:  return RHIBindingAccess::ReadOnly;
         case MTL::BindingAccessReadWrite: return RHIBindingAccess::ReadWrite;
-        case MTL::BindingAccessWriteOnly: return RHIBindingAccess::WriteOnly;
         default:
             std::unreachable();
         }
+    }
+
+    inline MTL::Function* compileShader(
+        MTL::Device& device,
+        const std::filesystem::path& shaderFilePath,
+        const std::string& shaderEntryPoint
+    ){
+        NS::Error* error = nullptr;
+        MTL::Library* library;
+
+        auto ext = std::filesystem::path(shaderFilePath).extension().string();
+
+        if(ext == ".metal"){
+            auto code = read_file_as_string(shaderFilePath);
+
+            auto source = NS::String::string(code.c_str(), NS::UTF8StringEncoding);
+            library = device.newLibrary(source, nullptr, &error);
+        }
+        else if(ext == ".metallib"){
+            auto path = NS::String::string(shaderFilePath.c_str(), NS::UTF8StringEncoding);
+            auto url = NS::URL::fileURLWithPath(path);
+            library = device.newLibrary(url, &error);
+        }
+        else{
+            throw std::runtime_error("Unknown file format: " + ext);
+        }
+
+        if(library == nullptr){
+            std::string errorMsg = error->localizedDescription()->utf8String();
+            throw std::runtime_error(
+                "Shader compile failed: " + errorMsg
+            );
+        }
+
+        auto entry = NS::String::string(shaderEntryPoint.c_str(), NS::UTF8StringEncoding);
+        auto func = library->newFunction(entry);
+        // func holds reference
+        library->release();
+
+        if(!func){
+            throw std::runtime_error(
+                "Entry point not found:" + shaderEntryPoint
+            );
+        }
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        auto identifier = std::format("{}_{}", shaderFilePath.c_str(), shaderEntryPoint);
+        func->setLabel(
+            NS::String::string(identifier.c_str(), NS::UTF8StringEncoding)
+        );
+    #endif
+
+        return func;
     }
 
     inline auto extractBindingInfo(NS::Array& bindings){
@@ -180,6 +235,8 @@ namespace Crowy
 #endif
     {
     private:
+        MTL::Function* vs = nullptr;
+        MTL::Function* fs = nullptr;
         MTL::RenderPipelineState* renderPipeline = nullptr;
         MTL::DepthStencilState* depthStencilState = nullptr;
         RHIRasterizerState rasterizerState{};
@@ -191,32 +248,32 @@ namespace Crowy
 
     public:
         MetalGraphicsPipelineState(
-            MTL::Device* device,
+            MTL::Device& device,
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         )
-            : debugName(name)
+            : vs(compileShader(device, desc.vertexShaderPath, desc.vertexShaderEntryPoint))
+            , fs(compileShader(device, desc.fragmentShaderPath, desc.fragmentShaderEntryPoint))
+            , debugName(name)
         {
             AutoreleasePoolScope _;
 
-            // Shaders
-            auto vs = static_cast<MetalShader*>(desc.vertexShader);
-            auto ps = static_cast<MetalShader*>(desc.pixelShader);
-            if(vs == nullptr || ps == nullptr){
+            if(vs == nullptr || fs == nullptr){
                 throw std::runtime_error("Vertex shader or Fragment shader is null");
             }
 
             auto pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
-            pipelineDesc->setVertexFunction(vs->get());
-            pipelineDesc->setFragmentFunction(ps->get());
+            pipelineDesc->setVertexFunction(vs);
+            pipelineDesc->setFragmentFunction(fs);
 
             // Vertex Layout
-            if(desc.vertexLayout.elementCount > 0 && desc.vertexLayout.elements){
+            if(desc.vertexLayout.has_value()){
+                const auto& vertexLayout = desc.vertexLayout.value();
                 auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
                 size_t stride = 0;
 
-                for(uint32_t i = 0; i < desc.vertexLayout.elementCount; ++i){
-                    const auto& elem = desc.vertexLayout.elements[i];
+                for(uint32_t i = 0; i < vertexLayout.size(); ++i){
+                    const auto& elem = vertexLayout[i];
                     auto attr = vertexDesc->attributes()->object(i);
 
                     attr->setFormat(convertVertexFormat(elem.format));
@@ -242,36 +299,40 @@ namespace Crowy
                 colorAttach->setPixelFormat(
                     convertPixelFormat(desc.renderTargetFormats[i])
                 );
+                MTL::ColorWriteMask writeMask = MTL::ColorWriteMaskNone;
 
-                const auto& rtBlend = desc.blend.renderTargets[i];
-                colorAttach->setBlendingEnabled(rtBlend.blendEnable);
+                if(desc.blend.has_value()){
+                    const auto& blend = desc.blend.value();
+                    const auto& rtBlend = blend.renderTargets[i];
+                    colorAttach->setBlendingEnabled(rtBlend.blendEnable);
+    
+                    if(rtBlend.blendEnable){
+                        colorAttach->setSourceRGBBlendFactor(
+                            convert(rtBlend.srcBlend)
+                        );
+                        colorAttach->setDestinationRGBBlendFactor(
+                            convert(rtBlend.dstBlend)
+                        );
+                        colorAttach->setRgbBlendOperation(
+                            convert(rtBlend.blendOp)
+                        );
+                        colorAttach->setSourceAlphaBlendFactor(
+                            convert(rtBlend.srcBlendAlpha)
+                        );
+                        colorAttach->setDestinationAlphaBlendFactor(
+                            convert(rtBlend.dstBlendAlpha)
+                        );
+                        colorAttach->setAlphaBlendOperation(
+                            convert(rtBlend.blendOpAlpha)
+                        );
+                    }
 
-                if(rtBlend.blendEnable){
-                    colorAttach->setSourceRGBBlendFactor(
-                        convert(rtBlend.srcBlend)
-                    );
-                    colorAttach->setDestinationRGBBlendFactor(
-                        convert(rtBlend.dstBlend)
-                    );
-                    colorAttach->setRgbBlendOperation(
-                        convert(rtBlend.blendOp)
-                    );
-                    colorAttach->setSourceAlphaBlendFactor(
-                        convert(rtBlend.srcBlendAlpha)
-                    );
-                    colorAttach->setDestinationAlphaBlendFactor(
-                        convert(rtBlend.dstBlendAlpha)
-                    );
-                    colorAttach->setAlphaBlendOperation(
-                        convert(rtBlend.blendOpAlpha)
-                    );
+                    if(rtBlend.renderTargetWriteMask & 0x1) writeMask |= MTL::ColorWriteMaskRed;
+                    if(rtBlend.renderTargetWriteMask & 0x2) writeMask |= MTL::ColorWriteMaskGreen;
+                    if(rtBlend.renderTargetWriteMask & 0x4) writeMask |= MTL::ColorWriteMaskBlue;
+                    if(rtBlend.renderTargetWriteMask & 0x8) writeMask |= MTL::ColorWriteMaskAlpha;
                 }
 
-                MTL::ColorWriteMask writeMask = MTL::ColorWriteMaskNone;
-                if(rtBlend.renderTargetWriteMask & 0x1) writeMask |= MTL::ColorWriteMaskRed;
-                if(rtBlend.renderTargetWriteMask & 0x2) writeMask |= MTL::ColorWriteMaskGreen;
-                if(rtBlend.renderTargetWriteMask & 0x4) writeMask |= MTL::ColorWriteMaskBlue;
-                if(rtBlend.renderTargetWriteMask & 0x8) writeMask |= MTL::ColorWriteMaskAlpha;
                 colorAttach->setWriteMask(writeMask);
             }
 
@@ -286,13 +347,18 @@ namespace Crowy
             }
 
             // Alpha to Coverage
-            pipelineDesc->setAlphaToCoverageEnabled(
-                desc.blend.alphaToCoverageEnable
-            );
+            if(desc.blend.has_value()){
+                auto& blend = desc.blend.value();
+
+                pipelineDesc->setAlphaToCoverageEnabled(
+                    blend.alphaToCoverageEnable
+                );
+
+            }
 
             MTL::AutoreleasedRenderPipelineReflection refl = nullptr;
             NS::Error* error = nullptr;
-            renderPipeline = device->newRenderPipelineState(
+            renderPipeline = device.newRenderPipelineState(
                 pipelineDesc,
                 MTL::PipelineOptionBindingInfo,
                 &refl,
@@ -309,7 +375,7 @@ namespace Crowy
 
             // Depth Stencil State
             if(desc.depthStencil.has_value()){
-                createDepthStencilState(device, *desc.depthStencil);
+                createDepthStencilState(device, desc.depthStencil.value());
             }
 
             // Store rasterizer state for command list
@@ -325,6 +391,14 @@ namespace Crowy
             if(depthStencilState != nullptr){
                 depthStencilState->release();
                 depthStencilState = nullptr;
+            }
+            if(fs != nullptr){
+                fs->release();
+                fs = nullptr;
+            }
+            if(vs != nullptr){
+                vs->release();
+                vs = nullptr;
             }
         }
 
@@ -350,7 +424,7 @@ namespace Crowy
 
     private:
         void createDepthStencilState(
-            MTL::Device* device, 
+            MTL::Device& device, 
             const RHIDepthStencilState& desc
         ){
             auto dsDesc = MTL::DepthStencilDescriptor::alloc()->init();
@@ -374,7 +448,7 @@ namespace Crowy
                 mtlDesc->release();
             }
 
-            depthStencilState = device->newDepthStencilState(dsDesc);
+            depthStencilState = device.newDepthStencilState(dsDesc);
             dsDesc->release();
         }
     };
@@ -385,6 +459,7 @@ namespace Crowy
 #endif
     {
     private:
+        MTL::Function* cs = nullptr;
         MTL::ComputePipelineState* computePipeline = nullptr;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
@@ -394,25 +469,25 @@ namespace Crowy
 
     public:
         MetalComputePipelineState(
-            MTL::Device* device,
+            MTL::Device& device,
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         )
-            : debugName(name)
+            : cs(compileShader(device, desc.computeShaderPath, desc.computeShaderEntryPoint))
+            , debugName(name)
         {
             AutoreleasePoolScope _;
 
-            auto cs = static_cast<MetalShader*>(desc.computeShader);
             if(cs == nullptr){
                 throw std::runtime_error("Compute shader is null");
             }
 
             auto pipelineDesc = MTL::ComputePipelineDescriptor::alloc()->init();
-            pipelineDesc->setComputeFunction(cs->get());
+            pipelineDesc->setComputeFunction(cs);
 
             MTL::AutoreleasedComputePipelineReflection refl = nullptr;
             NS::Error* error = nullptr;
-            computePipeline = device->newComputePipelineState(
+            computePipeline = device.newComputePipelineState(
                 pipelineDesc,
                 MTL::PipelineOptionBindingInfo,
                 &refl,
@@ -450,6 +525,10 @@ namespace Crowy
             if(computePipeline != nullptr){
                 computePipeline->release();
                 computePipeline = nullptr;
+            }
+            if(cs != nullptr){
+                cs->release();
+                cs = nullptr;
             }
         }
 

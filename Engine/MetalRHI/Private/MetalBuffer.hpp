@@ -28,7 +28,7 @@ namespace Crowy
 
     public:
         MetalBuffer(
-            MTL::Device* device,
+            MTL::Device& device,
             const RHIBufferCreateDesc& desc,
             const std::string& name = ""
         ) noexcept
@@ -45,14 +45,14 @@ namespace Crowy
             if(desc.initialData != nullptr){
             #if TARGET_OS_OSX
                 isManaged = true;
-                buffer = device->newBuffer(
+                buffer = device.newBuffer(
                     desc.initialData, desc.size,
                     isGPUOnly ?
                         MTL::ResourceStorageModePrivate :
                         MTL::ResourceStorageModeManaged
                 );
             #else
-                buffer = device->newBuffer(
+                buffer = device.newBuffer(
                     desc.initialData, desc.size,
                     isGPUOnly ?
                         MTL::ResourceStorageModePrivate :
@@ -61,7 +61,7 @@ namespace Crowy
             #endif
             }
             else{
-                buffer = device->newBuffer(
+                buffer = device.newBuffer(
                     desc.size,
                     isGPUOnly ?
                         MTL::ResourceStorageModePrivate :
@@ -86,8 +86,8 @@ namespace Crowy
         }
 
         inline void upload(
-            const void* data, size_t size,
-            size_t offset = 0
+            const void* data, uint32_t size,
+            uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
             CROWY_ASSERT(size <= bufSize - offset);
@@ -105,8 +105,8 @@ namespace Crowy
         }
 
         inline void download(
-            void* data, size_t size,
-            size_t offset = 0
+            void* data, uint32_t size,
+            uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
             CROWY_ASSERT(size <= bufSize - offset);
@@ -117,6 +117,10 @@ namespace Crowy
                 ptr_add(mapped, offset),
                 size
             );
+        }
+
+        uint32_t getSize() const noexcept RHI_OVERRIDE{
+            return size;
         }
 
         MTL::Buffer* get() const{ return buffer; }

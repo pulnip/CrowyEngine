@@ -28,7 +28,7 @@ namespace Crowy
 
     public:
         MetalSwapchain(
-            MTL::Device* device,
+            MTL::Device& device,
             const RHISwapchainCreateDesc& desc
         ) noexcept
             : width(desc.bufferDesc.width)
@@ -38,7 +38,7 @@ namespace Crowy
             metalLayer = static_cast<CA::MetalLayer*>(desc.windowHandle);
             CROWY_ASSERT(metalLayer != nullptr);
 
-            metalLayer->setDevice(device);
+            metalLayer->setDevice(&device);
             metalLayer->setPixelFormat(convertPixelFormat(desc.bufferDesc.format));
             metalLayer->setFramebufferOnly(false);
             metalLayer->setDrawableSize(CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height));

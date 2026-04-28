@@ -16,7 +16,6 @@ extern "C"{
 #include "MetalFrameScope.hpp"
 #include "MetalPipelineState.hpp"
 #include "MetalSampler.hpp"
-#include "MetalShader.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 
@@ -27,7 +26,7 @@ namespace Crowy
         return std::make_unique<MetalDevice>();
     }
 #else
-    RHIDevicePtr createDevice() noexcept{
+    RHIDeviceRAII createDevice() noexcept{
         return std::make_unique<MetalDevice>();
     }
 #endif
@@ -59,62 +58,56 @@ namespace Crowy
             // _objc_autoreleasePoolPrint();
         }
 
-        RHIFrameScopePtr createFrameScope() noexcept{
+        RHIFrameScopeRAII createFrameScope() noexcept{
             return std::make_unique<MetalFrameScope>();
         }
 
-        RHIBufferPtr createBuffer(
+        RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<MetalBuffer>(device, desc, name);
+            return std::make_unique<MetalBuffer>(*device, desc, name);
         }
 
-        RHITexturePtr createTexture(
+        RHITextureRAII createTexture(
             const RHITextureCreateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<MetalTexture>(device, desc, name);
+            return std::make_unique<MetalTexture>(*device, desc, name);
         }
 
-        RHIShaderPtr createShader(
-            const RHIShaderCreateDesc& desc
-        ){
-            return std::make_unique<MetalShader>(device, desc);
-        }
-
-        RHISamplerPtr createSampler(
+        RHISamplerRAII createSampler(
             const RHISamplerState& desc
         ) noexcept{
-            return std::make_unique<MetalSampler>(device, desc);
+            return std::make_unique<MetalSampler>(*device, desc);
         }
 
-        RHIGraphicsPipelineStatePtr createPipelineState(
+        RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<MetalGraphicsPipelineState>(device, desc, name);
+            return std::make_unique<MetalGraphicsPipelineState>(*device, desc, name);
         }
 
-        RHIComputePipelineStatePtr createPipelineState(
+        RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<MetalComputePipelineState>(device, desc, name);
+            return std::make_unique<MetalComputePipelineState>(*device, desc, name);
         }
 
-        RHISwapchainPtr createSwapchain(
+        RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc& desc
         ) noexcept{
-            return std::make_unique<MetalSwapchain>(device, desc);
+            return std::make_unique<MetalSwapchain>(*device, desc);
         }
 
-        RHICommandListPtr createCommandList() noexcept{
+        RHICommandListRAII createCommandList() noexcept{
             return std::make_unique<MetalCommandList>(commandQueue);
         }
 
-        RHIFencePtr createFence(uint64_t initialValue) noexcept{
-            return std::make_unique<MetalFence>(device, initialValue);
+        RHIFenceRAII createFence(uint64_t initialValue) noexcept{
+            return std::make_unique<MetalFence>(*device, initialValue);
         }
 
         void submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
@@ -138,61 +131,55 @@ namespace Crowy
 
     MetalDevice::~MetalDevice(){}
 
-    RHIFrameScopePtr MetalDevice::createFrameScope() noexcept{
+    RHIFrameScopeRAII MetalDevice::createFrameScope() noexcept{
         return impl->createFrameScope();
     }
 
-    RHIBufferPtr MetalDevice::createBuffer(
+    RHIBufferRAII MetalDevice::createBuffer(
         const RHIBufferCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createBuffer(desc, name);
     }
 
-    RHITexturePtr MetalDevice::createTexture(
+    RHITextureRAII MetalDevice::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createTexture(desc, name);
     }
 
-    RHIShaderPtr MetalDevice::createShader(
-        const RHIShaderCreateDesc& desc
-    ){
-        return impl->createShader(desc);
-    }
-
-    RHISamplerPtr MetalDevice::createSampler(
+    RHISamplerRAII MetalDevice::createSampler(
         const RHISamplerState& desc
     ) noexcept{
         return impl->createSampler(desc);
     }
 
-    RHIGraphicsPipelineStatePtr MetalDevice::createPipelineState(
+    RHIGraphicsPipelineStateRAII MetalDevice::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createPipelineState(desc, name);
     }
 
-    RHIComputePipelineStatePtr MetalDevice::createPipelineState(
+    RHIComputePipelineStateRAII MetalDevice::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createPipelineState(desc, name);
     }
 
-    RHISwapchainPtr MetalDevice::createSwapchain(
+    RHISwapchainRAII MetalDevice::createSwapchain(
         const RHISwapchainCreateDesc& desc
     ) noexcept{
         return impl->createSwapchain(desc);
     }
 
-    RHICommandListPtr MetalDevice::createCommandList() noexcept{
+    RHICommandListRAII MetalDevice::createCommandList() noexcept{
         return impl->createCommandList();
     }
 
-    RHIFencePtr MetalDevice::createFence(uint64_t initialValue) noexcept{
+    RHIFenceRAII MetalDevice::createFence(uint64_t initialValue) noexcept{
         return impl->createFence(initialValue);
     }
 

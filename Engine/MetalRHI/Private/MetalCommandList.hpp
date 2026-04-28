@@ -160,7 +160,7 @@ private:
 
         void beginRenderPass(
             std::span<RHITexture*> renderTargets,
-            RHITexture* depthStencil,
+            RHITexture* depthTarget,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -181,7 +181,7 @@ private:
 
             beginRenderPass(
                 texes,
-                depthStencil,
+                depthTarget,
                 loadAction, storeAction,
                 clearColor, clearDS,
                 debugName
@@ -190,7 +190,7 @@ private:
 
         void beginRenderPass(
             RHISwapchain& swapchain,
-            RHITexture* depthStencil,
+            RHITexture* depthTarget,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -204,7 +204,7 @@ private:
 
             beginRenderPass(
                 renderTarget,
-                depthStencil,
+                depthTarget,
                 loadAction, storeAction,
                 clearColor, clearDS,
                 debugName
@@ -269,56 +269,57 @@ private:
         }
 
         void setVertexBuffer(
+            const RHIBuffer& buffer,
             uint32_t slot,
-            RHIBuffer& buffer,
             uint32_t stride,
-            uint32_t offset = 0
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
 
-            auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
+            auto mtlBuffer = static_cast<const MetalBuffer&>(buffer).get();
             renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
         }
 
         void setIndexBuffer(
-            RHIBuffer& buffer,
+            const RHIBuffer& buffer,
             RHIIndexFormat format,
-            uint32_t offset = 0
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
             CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
 
-            currentIndexBuffer = static_cast<MetalBuffer&>(buffer).get();
+            currentIndexBuffer = static_cast<const MetalBuffer&>(buffer).get();
             currentIndexBufferOffset = offset;
             currentIndexFormat = (format == RHIIndexFormat::UInt16) ?
                 MTL::IndexTypeUInt16 : MTL::IndexTypeUInt32;
         }
 
         void setConstantBuffer(
-            RHIShaderStage stage,
+            const RHIBuffer& buffer,
             uint32_t slot,
-            RHIBuffer& buffer,
+            RHIShaderStage stage,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
-            auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
+            using enum RHIShaderStage;
+            auto mtlBuffer = static_cast<const MetalBuffer&>(buffer).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
                 break;
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 renderEncoder->setFragmentBuffer(mtlBuffer, offset, slot);
                 break;
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
@@ -330,26 +331,28 @@ private:
         }
 
         void setTexture(
-            uint32_t slot,
             RHITexture& texture,
+            uint32_t slot,
+            RHIBindingAccess,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            using enum RHIShaderStage;
             auto mtlTexture = static_cast<MetalTexture&>(texture).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 renderEncoder->setVertexTexture(mtlTexture, slot);
                 break;
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 renderEncoder->setFragmentTexture(mtlTexture, slot);
                 break;
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
@@ -361,21 +364,23 @@ private:
         }
 
         void setBuffer(
-            uint32_t slot,
             RHIBuffer& buffer,
-            RHIShaderStage stage = RHIShaderStage::ComputeShader
+            uint32_t slot,
+            RHIBindingAccess,
+            RHIShaderStage stage
         ) RHI_OVERRIDE{
+            using enum RHIShaderStage;
             auto mtlBuffer = static_cast<MetalBuffer&>(buffer).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 [[fallthrough]];
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 throw std::runtime_error("Unimplemented");
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
@@ -387,20 +392,22 @@ private:
         }
 
         virtual void setBytes(
-            uint32_t slot,
             const void* bytes,
+            uint32_t slot,
             size_t size,
-            RHIShaderStage stage = RHIShaderStage::ComputeShader
+            RHIShaderStage stage
         ) RHI_OVERRIDE{
+            using enum RHIShaderStage;
+
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 [[fallthrough]];
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 throw std::runtime_error("Unimplemented");
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
@@ -412,26 +419,27 @@ private:
         }
 
         void setSampler(
+            const RHISampler& sampler,
             uint32_t slot,
-            RHISampler& sampler,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
-            auto mtlSampler = static_cast<MetalSampler&>(sampler).get();
+            using enum RHIShaderStage;
+            auto mtlSampler = static_cast<const MetalSampler&>(sampler).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 renderEncoder->setVertexSamplerState(mtlSampler, slot);
                 break;
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 CROWY_ASSERT(renderEncoder != nullptr,
                     "Did you call RHICommandList::beginRenderPass()?"
                 );
                 renderEncoder->setFragmentSamplerState(mtlSampler, slot);
                 break;
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 CROWY_ASSERT(computeEncoder != nullptr,
                     "Did you call RHICommandList::beginCompute()?"
                 );
@@ -732,8 +740,7 @@ private:
     private:
         void beginRenderPass(
             std::span<const MTL::Texture*> texes,
-            // MTL::Texture* tex,
-            RHITexture* depthStencil,
+            RHITexture* depthTarget,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -758,14 +765,14 @@ private:
                 colorAttach.setLoadAction(convert(loadAction));
                 colorAttach.setStoreAction(convert(storeAction));
                 colorAttach.setClearColor(MTL::ClearColor::Make(
-                    clearColor.r, clearColor.g, clearColor.b, clearColor.a
+                    clearColor.v[0], clearColor.v[1], clearColor.v[2], clearColor.v[3]
                 ));
             }
 
             // Depth Attachment
-            if(depthStencil){
+            if(depthTarget != nullptr){
                 auto depthTex = static_cast<MTL::Texture*>(
-                    static_cast<MetalTexture&>(*depthStencil).get()
+                    static_cast<MetalTexture&>(*depthTarget).get()
                 );
                 auto& depthAttach = *passDesc->depthAttachment();
                 depthAttach.setTexture(depthTex);

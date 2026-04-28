@@ -22,10 +22,10 @@ namespace Crowy
 
     public:
         MetalFence(
-            MTL::Device* device,
+            MTL::Device& device,
             uint64_t initialValue
         ) noexcept{
-            sharedEvent = device->newSharedEvent();
+            sharedEvent = device.newSharedEvent();
             sharedEvent->setSignaledValue(initialValue);
         }
 
