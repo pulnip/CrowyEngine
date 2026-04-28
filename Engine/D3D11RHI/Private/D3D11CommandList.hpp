@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <utility>
 #include <d3d11.h>
-#include "RHITextureView.hpp"
 #include "assert.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
@@ -12,12 +11,11 @@
     #include "RHICommandList.hpp"
 #endif
 #include "D3D11Buffer.hpp"
-#include "D3D11BufferView.hpp"
+#include "D3D11Definitions.hpp"
 #include "D3D11PipelineState.hpp"
 #include "D3D11Sampler.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
-#include "D3D11TextureView.hpp"
 
 namespace Crowy
 {
@@ -28,9 +26,10 @@ namespace Crowy
     {
     private:
         // NOTE. Immediate context.
-        ID3D11DeviceContext* context = nullptr;
+        ID3D11DeviceContext& context;
+        // simulate command recording
         bool isRecording = false;
-        bool isRenderPass = false, isComputePass = false;
+        bool inRenderPass = false, inComputePass = false;
     #if defined(_DEBUG) || !defined(NDEBUG)
         uint32_t maxBindedVSSRV = 0;
         uint32_t maxBindedPSSRV = 0;
@@ -38,12 +37,8 @@ namespace Crowy
     #endif
 
     public:
-        D3D11CommandList(
-            ID3D11Device* device,
-            ID3D11DeviceContext* context
-        )
-            : context(context)
-        {}
+        D3D11CommandList(ID3D11DeviceContext& context)
+            : context(context){}
 
         ~D3D11CommandList() = default;
 
@@ -75,25 +70,36 @@ namespace Crowy
         }
 
         void beginRenderPass(
-            std::span<RHITextureView*> renderTargetViews,
-            RHITextureView* depthStencilView,
+            std::span<RHITexture*> renderTargets,
+            RHITexture* depthTarget,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(renderTargetViews.size() > 0);
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(!inRenderPass,
+                "Already in a render pass. Did you call RHICommandList::endRenderPass()?"
+            );
+            CROWY_ASSERT(renderTargets.size() > 0);
 
-            ID3D11RenderTargetView* rtvs[RHI_MAX_RENDER_TARGETS];
-            for(size_t i=0; i<renderTargetViews.size(); ++i)
-                rtvs[i] = static_cast<D3D11TextureRTV*>(renderTargetViews[i])->get();
+            RTV* rtvs[RHI_MAX_RENDER_TARGETS];
+            for(size_t i=0; i<renderTargets.size(); ++i){
+                auto tex = static_cast<D3D11Texture*>(renderTargets[i]);
+                rtvs[i] = tex->getOrCreateRTV({.format = tex->getFormat()});
+            }
 
-            ID3D11DepthStencilView* dsv = depthStencilView != nullptr ?
-                static_cast<D3D11TextureDSV*>(depthStencilView)->get() : nullptr;
+            DSV* dsv = nullptr;
+            if(depthTarget != nullptr){
+                auto tex = static_cast<D3D11Texture*>(depthTarget);
+                dsv = tex->getOrCreateDSV({.format = tex->getFormat()});
+            }
 
             beginRenderPass(
-                std::span<ID3D11RenderTargetView*>(rtvs, renderTargetViews.size()),
+                std::span<RTV*>(rtvs, renderTargets.size()),
                 dsv,
                 loadAction, storeAction,
                 clearColor, clearDS,
@@ -103,7 +109,7 @@ namespace Crowy
 
         void beginRenderPass(
             RHISwapchain& swapchain,
-            RHITextureView* depthStencilView,
+            RHITexture* depthTarget,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -114,8 +120,11 @@ namespace Crowy
                 static_cast<D3D11Swapchain&>(swapchain).getCurrentRTV()
             };
 
-            ID3D11DepthStencilView* dsv = depthStencilView != nullptr ?
-                static_cast<D3D11TextureDSV*>(depthStencilView)->get() : nullptr;
+            DSV* dsv = nullptr;
+            if(depthTarget != nullptr){
+                auto tex = static_cast<D3D11Texture*>(depthTarget);
+                dsv = tex->getOrCreateDSV({.format = tex->getFormat()});
+            }
 
             beginRenderPass(
                 rtvs,
@@ -124,11 +133,16 @@ namespace Crowy
                 clearColor, clearDS,
                 debugName
             );
+
+            inRenderPass = true;
         }
 
         void endRenderPass() noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(isRenderPass,
-                "Did you call RHICommandList::beginRenderPass()?"
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass,
+                "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
             );
 
             // NOTE. No-Op for D3D11
@@ -137,32 +151,26 @@ namespace Crowy
             static ID3D11ShaderResourceView* nullSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
 
             if(maxBindedVSSRV > 0)
-                context->VSSetShaderResources(0, maxBindedVSSRV, nullSRVs);
+                context.VSSetShaderResources(0, maxBindedVSSRV, nullSRVs);
             if(maxBindedPSSRV > 0)
-                context->PSSetShaderResources(0, maxBindedPSSRV, nullSRVs);
+                context.PSSetShaderResources(0, maxBindedPSSRV, nullSRVs);
             if(maxBindedCSSRV > 0)
-                context->CSSetShaderResources(0, maxBindedCSSRV, nullSRVs);
+                context.CSSetShaderResources(0, maxBindedCSSRV, nullSRVs);
 
             maxBindedVSSRV = 0;
             maxBindedPSSRV = 0;
             maxBindedCSSRV = 0;
+
+            // Unbind render targets to avoid warnings about resources being bound while being used.
+            context.OMSetRenderTargets(0, nullptr, nullptr);
         #endif
 
-            isRenderPass = false;
+            inRenderPass = false;
         }
 
         void setPipelineState(RHIGraphicsPipelineState& pso) noexcept RHI_OVERRIDE{
             auto& dxPSO = static_cast<D3D11GraphicsPipelineState&>(pso);
-
-            auto il = dxPSO.getIL();
-            if(il != nullptr)
-                context->IASetInputLayout(il);
-            context->IASetPrimitiveTopology(dxPSO.getTopology());
-            context->VSSetShader(dxPSO.getVS(), nullptr, 0);
-            context->PSSetShader(dxPSO.getPS(), nullptr, 0);
-            context->RSSetState(dxPSO.getRS());
-            context->OMSetDepthStencilState(dxPSO.getDSS(), 0);
-            context->OMSetBlendState(dxPSO.getBS(), nullptr, 0xFFFFFFFF);
+            dxPSO.bind(context);
         }
 
         void setPipelineState(RHIComputePipelineState& pso) noexcept RHI_OVERRIDE{
@@ -172,13 +180,13 @@ namespace Crowy
         }
 
         void setVertexBuffer(
+            const RHIBuffer& buffer,
             uint32_t slot,
-            RHIBuffer& buffer,
             uint32_t stride,
-            uint32_t offset = 0
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
-            auto buf = static_cast<D3D11Buffer&>(buffer).get();
-            context->IASetVertexBuffers(
+            auto buf = static_cast<const D3D11Buffer&>(buffer).get();
+            context.IASetVertexBuffers(
                 slot,
                 1,
                 &buf,
@@ -188,12 +196,12 @@ namespace Crowy
         }
 
         void setIndexBuffer(
-            RHIBuffer& buffer,
+            const RHIBuffer& buffer,
             RHIIndexFormat format,
-            uint32_t offset = 0
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
-            auto buf = static_cast<D3D11Buffer&>(buffer).get();
-            context->IASetIndexBuffer(
+            auto buf = static_cast<const D3D11Buffer&>(buffer).get();
+            context.IASetIndexBuffer(
                 buf,
                 format == RHIIndexFormat::UInt16 ?
                     DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
@@ -202,22 +210,22 @@ namespace Crowy
         }
 
         void setConstantBuffer(
-            RHIShaderStage stage,
+            const RHIBuffer& buffer,
             uint32_t slot,
-            RHIBuffer& buffer,
-            uint32_t offset = 0
+            RHIShaderStage stage,
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
-            auto buf = static_cast<D3D11Buffer&>(buffer).get();
+            auto buf = static_cast<const D3D11Buffer&>(buffer).get();
 
             switch(stage){
             case RHIShaderStage::VertexShader:
-                context->VSSetConstantBuffers(slot, 1, &buf);
+                context.VSSetConstantBuffers(slot, 1, &buf);
                 break;
             case RHIShaderStage::FragmentShader:
-                context->PSSetConstantBuffers(slot, 1, &buf);
+                context.PSSetConstantBuffers(slot, 1, &buf);
                 break;
             case RHIShaderStage::ComputeShader:
-                context->CSSetConstantBuffers(slot, 1, &buf);
+                context.CSSetConstantBuffers(slot, 1, &buf);
                 break;
             default:
                 std::unreachable();
@@ -225,97 +233,122 @@ namespace Crowy
         }
 
         void setTexture(
+            RHITexture& texture,
             uint32_t slot,
-            RHITextureView& textureView,
+            RHIBindingAccess access,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            using enum RHIBindingAccess;
             using enum RHIShaderStage;
-            const auto view = static_cast<D3D11TextureSRV&>(textureView).get();
+            auto& dxTex = static_cast<D3D11Texture&>(texture);
 
-            switch(stage){
-            case VertexShader:
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                maxBindedVSSRV = std::max(maxBindedVSSRV, slot+1);
-            #endif
-                context->VSSetShaderResources(slot, 1, &view);
-                break;
-            case FragmentShader:
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                maxBindedPSSRV = std::max(maxBindedPSSRV, slot+1);
-            #endif
-                context->PSSetShaderResources(slot, 1, &view);
-                break;
-            case ComputeShader:
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                maxBindedCSSRV = std::max(maxBindedCSSRV, slot+1);
-            #endif
-                context->CSSetShaderResources(slot, 1, &view);
-                break;
+            switch(access){
+            case ReadOnly: {
+                const auto view = dxTex.getOrCreateSRV({
+                    .format = texture.getFormat()
+                });
+                switch(stage){
+                case VertexShader:
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    maxBindedVSSRV = std::max(maxBindedVSSRV, slot+1);
+                #endif
+                    context.VSSetShaderResources(slot, 1, &view);
+                    break;
+                case FragmentShader:
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    maxBindedPSSRV = std::max(maxBindedPSSRV, slot+1);
+                #endif
+                    context.PSSetShaderResources(slot, 1, &view);
+                    break;
+                case ComputeShader:
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    maxBindedCSSRV = std::max(maxBindedCSSRV, slot+1);
+                #endif
+                    context.CSSetShaderResources(slot, 1, &view);
+                    break;
+                default:
+                    std::unreachable();
+                }
+            } break;
+            case ReadWrite: {
+                CROWY_ASSERT(stage == ComputeShader);
+                const auto view = dxTex.getOrCreateUAV({
+                    .format = texture.getFormat()
+                });
+                switch(stage){
+                case ComputeShader:
+                    context.CSSetUnorderedAccessViews(slot, 1, &view, nullptr);
+                    break;
+                default:
+                    std::unreachable();
+                }
+            } break;
             default:
                 std::unreachable();
             }
         }
 
         void setBuffer(
+            RHIBuffer& buffer,
             uint32_t slot,
-            RHIBufferView& bufferView,
+            RHIBindingAccess access,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) noexcept RHI_OVERRIDE{
             using enum RHIBindingAccess;
             using enum RHIShaderStage;
+            auto& dxBuf = static_cast<D3D11Buffer&>(buffer);
 
-            if(bufferView.getAccess() == ReadOnly){
-                ID3D11ShaderResourceView* const views = {
-                    static_cast<D3D11BufferSRV&>(bufferView).get()
-                };
-
+            switch(access){
+            case ReadOnly: {
+                const auto view = dxBuf.getOrCreateSRV(RHIBufferViewDesc{
+                    .size = buffer.getSize()
+                });
                 switch(stage){
                 case VertexShader:
-                    context->VSSetShaderResources(
-                        slot,
-                        1,
-                        &views
-                    );
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    maxBindedVSSRV = std::max(maxBindedVSSRV, slot+1);
+                #endif
+                    context.VSSetShaderResources(slot, 1, &view);
                     break;
                 case FragmentShader:
-                    context->PSSetShaderResources(
-                        slot,
-                        1,
-                        &views
-                    );
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    maxBindedPSSRV = std::max(maxBindedPSSRV, slot+1);
+                #endif
+                    context.PSSetShaderResources(slot, 1, &view);
                     break;
                 case ComputeShader:
-                    context->CSSetShaderResources(
-                        slot,
-                        1,
-                        &views
-                    );
+                #if defined(_DEBUG) || !defined(NDEBUG)
+                    maxBindedCSSRV = std::max(maxBindedCSSRV, slot+1);
+                #endif
+                    context.CSSetShaderResources(slot, 1, &view);
                     break;
                 default:
                     std::unreachable();
                 }
-            }
-            else{
+            } break;
+            case ReadWrite: {
                 // cannot bind to VS, GS, HS, DS, TS
                 // TODO. bind to PS is available at OMSetRenderTargetsAndUnorderedAccessViews
                 CROWY_ASSERT(stage == ComputeShader);
-                // WriteOnly / ReadWrite
-                ID3D11UnorderedAccessView* const views = {
-                    static_cast<D3D11BufferUAV&>(bufferView).get()
-                };
-
-                context->CSSetUnorderedAccessViews(
-                    slot,
-                    1,
-                    &views,
-                    nullptr
-                );
+                const auto view = dxBuf.getOrCreateUAV(RHIBufferViewDesc{
+                    .size = buffer.getSize()
+                });
+                switch(stage){
+                case ComputeShader:
+                    context.CSSetUnorderedAccessViews(slot, 1, &view, nullptr);
+                    break;
+                default:
+                    std::unreachable();
+                }
+            } break;
+            default:
+                std::unreachable();
             }
         }
 
         void setBytes(
-            uint32_t slot,
             const void* bytes,
+            uint32_t slot,
             size_t size,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) RHI_OVERRIDE{
@@ -336,21 +369,21 @@ namespace Crowy
         }
 
         void setSampler(
+            const RHISampler& sampler,
             uint32_t slot,
-            RHISampler& sampler,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
-            auto s = static_cast<D3D11Sampler&>(sampler).get();
+            auto s = static_cast<const D3D11Sampler&>(sampler).get();
 
             switch(stage){
             case RHIShaderStage::VertexShader:
-                context->VSSetSamplers(slot, 1, &s);
+                context.VSSetSamplers(slot, 1, &s);
                 break;
             case RHIShaderStage::FragmentShader:
-                context->PSSetSamplers(slot, 1, &s);
+                context.PSSetSamplers(slot, 1, &s);
                 break;
             case RHIShaderStage::ComputeShader:
-                context->CSSetSamplers(slot, 1, &s);
+                context.CSSetSamplers(slot, 1, &s);
                 break;
             default:
                 std::unreachable();
@@ -366,7 +399,7 @@ namespace Crowy
                 .MinDepth = viewport.minDepth,
                 .MaxDepth = viewport.maxDepth
             };
-            context->RSSetViewports(1, &vp);
+            context.RSSetViewports(1, &vp);
         }
 
         void setScissorRect(const RHIScissorRect& scissor) noexcept RHI_OVERRIDE{
@@ -376,7 +409,7 @@ namespace Crowy
                 .right = scissor.right,
                 .bottom = scissor.bottom
             };
-            context->RSSetScissorRects(1, &rect);
+            context.RSSetScissorRects(1, &rect);
         }
 
         void draw(
@@ -386,14 +419,14 @@ namespace Crowy
             uint32_t startInstance = 0
         ) noexcept RHI_OVERRIDE{
             if(instanceCount > 1)
-                context->DrawInstanced(
+                context.DrawInstanced(
                     vertexCount,
                     instanceCount,
                     startVertex,
                     startInstance
                 );
             else
-                context->Draw(vertexCount, startVertex);
+                context.Draw(vertexCount, startVertex);
         }
 
         void drawIndexed(
@@ -404,7 +437,7 @@ namespace Crowy
             uint32_t startInstance = 0
         ) noexcept RHI_OVERRIDE{
             if(instanceCount > 1)
-                context->DrawIndexedInstanced(
+                context.DrawIndexedInstanced(
                     indexCount,
                     instanceCount,
                     startIndex,
@@ -412,7 +445,7 @@ namespace Crowy
                     startInstance
                 );
             else
-                context->DrawIndexed(
+                context.DrawIndexed(
                     indexCount,
                     startIndex,
                     baseVertex
@@ -420,21 +453,27 @@ namespace Crowy
         }
 
         void beginCompute() noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(!isComputePass,
-                "Did you call RHICommandList::beginCompute()?"
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
             );
-            // NOTE. No-Op for D3D11
+            CROWY_ASSERT(!inComputePass,
+                "Already in a compute pass. Did you call RHICommandList::endComputePass()?"
+            );
+            // TODO.
 
-            isComputePass = true;
+            inComputePass = true;
         }
 
         void endCompute() noexcept RHI_OVERRIDE{
-            CROWY_ASSERT(isComputePass,
-                "Did you call RHICommandList::beginCompute()?"
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
             );
-            // NOTE. No-Op for D3D11
+            CROWY_ASSERT(inComputePass,
+                "Not in a compute pass. Did you call RHICommandList::beginComputePass()?"
+            );
+            // TODO.
 
-            isComputePass = false;
+            inComputePass = false;
         }
 
         void dispatch(
@@ -443,7 +482,7 @@ namespace Crowy
             // TODO. reflection from shader?
             auto threadGroupSize = RHISize3D{256, 1, 1};
 
-            context->Dispatch(
+            context.Dispatch(
                 gridSize.x / threadGroupSize.x,
                 gridSize.y / threadGroupSize.y,
                 gridSize.z / threadGroupSize.z
@@ -496,7 +535,7 @@ namespace Crowy
                 .back = 1
             };
 
-            context->CopySubresourceRegion(
+            context.CopySubresourceRegion(
                 static_cast<D3D11Buffer&>(dst).get(), 0,
                 dstOffset, 0, 0,
                 static_cast<D3D11Buffer&>(src).get(), 0,
@@ -508,7 +547,7 @@ namespace Crowy
             RHITexture& src,
             RHITexture& dst
         ) noexcept RHI_OVERRIDE{
-            context->CopyResource(
+            context.CopyResource(
                 static_cast<D3D11Texture&>(dst).get(),
                 static_cast<D3D11Texture&>(src).get()
             );
@@ -518,7 +557,7 @@ namespace Crowy
             RHITexture& src,
             RHISwapchain& dst
         ) noexcept RHI_OVERRIDE{
-            context->CopyResource(
+            context.CopyResource(
                 static_cast<D3D11Swapchain&>(dst).getCurrentTexture(),
                 static_cast<D3D11Texture&>(src).get()
             );
@@ -559,22 +598,18 @@ namespace Crowy
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept{
-            context->OMSetRenderTargets(rtvs.size(), rtvs.data(), dsv);
+            context.OMSetRenderTargets(rtvs.size(), rtvs.data(), dsv);
 
             if(loadAction == RHILoadAction::Clear){
-                float cc[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
-
                 for(size_t i=0; i<rtvs.size(); ++i)
-                    context->ClearRenderTargetView(rtvs[i], cc);
+                    context.ClearRenderTargetView(rtvs[i], clearColor.v);
 
                 if(dsv != nullptr)
-                    context->ClearDepthStencilView(dsv,
+                    context.ClearDepthStencilView(dsv,
                         D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
                         clearDS.depth, clearDS.stencil
                     );
             }
-
-            isRenderPass = true;
         }
     };
 }

@@ -10,7 +10,7 @@ namespace Crowy
     class LinearBufferAllocator{
     private:
         RHIDevice& device;
-        std::vector<RHIBufferPtr> buffers;
+        std::vector<RHIBufferRAII> buffers;
         size_t nextIndex = 0;
         const RHIBufferCreateDesc desc;
         const std::string name;

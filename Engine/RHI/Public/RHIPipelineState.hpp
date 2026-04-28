@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include "semantics.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -44,7 +43,4 @@ namespace Crowy
         virtual const RHIComputeBindingInfo& getInfo() const = 0;
     };
 #endif
-
-    using RHIGraphicsPipelineStatePtr = std::unique_ptr<RHIGraphicsPipelineState>;
-    using RHIComputePipelineStatePtr = std::unique_ptr<RHIComputePipelineState>;
 }

@@ -7,6 +7,7 @@
 #ifndef USE_STATIC_RHI
     #include "RHISampler.hpp"
 #endif
+#include "D3D11Definitions.hpp"
 #include "D3D11Util.hpp"
 
 namespace Crowy
@@ -51,11 +52,11 @@ namespace Crowy
 #endif
     {
     private:
-        ID3D11SamplerState* sampler = nullptr;
+        SamplerRAII sampler = nullptr;
 
     public:
         D3D11Sampler(
-            ID3D11Device* device,
+            ID3D11Device& device,
             const RHISamplerState& desc
         ){
             D3D11_SAMPLER_DESC samplerDesc{
@@ -77,7 +78,7 @@ namespace Crowy
                 .MinLOD = desc.minLOD,
                 .MaxLOD = desc.maxLOD
             };
-            if(FAILED(device->CreateSamplerState(&samplerDesc, &sampler))){
+            if(FAILED(device.CreateSamplerState(&samplerDesc, &sampler))){
                 throw std::runtime_error("Failed to create D3D11 Sampler");
             }
         }
@@ -89,6 +90,6 @@ namespace Crowy
             }
         }
 
-        ID3D11SamplerState* get() const{ return sampler; }
+        Sampler* get() const{ return sampler.Get(); }
     };
 }

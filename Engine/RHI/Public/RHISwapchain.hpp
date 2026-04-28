@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include "semantics.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -32,6 +31,4 @@ namespace Crowy
 
         virtual void* getCurrentNativeTexture() const noexcept = 0;
     };
-
-    using RHISwapchainPtr = std::unique_ptr<RHISwapchain>;
 }

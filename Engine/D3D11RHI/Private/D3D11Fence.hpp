@@ -16,7 +16,7 @@ namespace Crowy
     {
     public:
         D3D11Fence(
-            ID3D11Device* device,
+            ID3D11Device& device,
             uint64_t initialValue
         ){}
 

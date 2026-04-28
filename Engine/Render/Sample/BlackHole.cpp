@@ -227,7 +227,7 @@ int main(int argc, char* argv[]){
 
     size_t nframes = 1;
 
-    Renderer renderer(device.get());
+    Renderer renderer(*device);
     UIRenderer uiRenderer(window, *device.get());
     auto ui = Column({
         FloatField{

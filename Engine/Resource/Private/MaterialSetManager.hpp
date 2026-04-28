@@ -7,7 +7,6 @@
 #include "ModelData.hpp"
 #include "Resource.hpp"
 #include "ResourceManager.hpp"
-#include "RHITexture.hpp"
 
 namespace Crowy
 {

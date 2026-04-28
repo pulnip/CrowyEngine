@@ -3,7 +3,7 @@
 
 namespace Crowy
 {
-    FramePacerPtr RHIDevice::createFramePacer() noexcept{
-        return std::make_unique<FramePacer>(this);
+    FramePacerRAII RHIDevice::createFramePacer() noexcept{
+        return std::make_unique<FramePacer>(*this);
     }
 }

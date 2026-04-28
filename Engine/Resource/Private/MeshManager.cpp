@@ -1,6 +1,5 @@
 #include "LoadContext.hpp"
 #include "MeshManager.hpp"
-#include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
 
 namespace Crowy
@@ -13,14 +12,14 @@ namespace Crowy
         for(const auto& submeshData: request.data){
             auto vbuffer = ctx.device->createBuffer(
                 RHIBufferCreateDesc{
-                    .size = submeshData.vertices.size() * sizeof(Vertex),
+                    .size = static_cast<uint32_t>(submeshData.vertices.size() * sizeof(Vertex)),
                     .usage = RHIBufferUsage::VertexBuffer,
                     .initialData = submeshData.vertices.data()
                 }
             );
             auto ibuffer = ctx.device->createBuffer(
                 RHIBufferCreateDesc{
-                    .size = submeshData.indices.size() * sizeof(uint32_t),
+                    .size = static_cast<uint32_t>(submeshData.indices.size() * sizeof(uint32_t)),
                     .usage = RHIBufferUsage::IndexBuffer,
                     .initialData = submeshData.indices.data()
                 }

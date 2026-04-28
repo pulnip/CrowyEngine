@@ -39,30 +39,22 @@ namespace Crowy
 
         // Render pass control
         virtual void beginRenderPass(
-            std::span<RHITextureView*> renderTargets,
-            RHITextureView* depthStencil = nullptr,
+            std::span<RHITexture*> renderTargets,
+            RHITexture* depthTarget = nullptr,
             RHILoadAction loadAction  = RHILoadAction::Load,
             RHIStoreAction storeAction = RHIStoreAction::Store,
-            const RHIClearColor& clearColor = {
-                .r=0.0f, .g=0.0f, .b=0.0f, .a=1.0f
-            },
-            const RHIClearDepthStencil& clearDS = {
-                .depth = 1.0f, .stencil = 0
-            },
+            const RHIClearColor& clearColor = {},
+            const RHIClearDepthStencil& clearDS = {},
             const char* debugName = nullptr
         ) noexcept = 0;
 
         virtual void beginRenderPass(
             RHISwapchain& backBuffer,
-            RHITextureView* depthStencilView = nullptr,
+            RHITexture* depthTarget = nullptr,
             RHILoadAction loadAction  = RHILoadAction::Load,
             RHIStoreAction storeAction = RHIStoreAction::Store,
-            const RHIClearColor& clearColor = {
-                .r=0.0f, .g=0.0f, .b=0.0f, .a=1.0f
-            },
-            const RHIClearDepthStencil& clearDS = {
-                .depth = 1.0f, .stencil = 0
-            },
+            const RHIClearColor& clearColor = {},
+            const RHIClearDepthStencil& clearDS = {},
             const char* debugName = nullptr
         ) noexcept = 0;
 
@@ -74,56 +66,58 @@ namespace Crowy
 
         // Vertex and index buffers
         virtual void setVertexBuffer(
+            const RHIBuffer&,
             uint32_t slot,
-            RHIBuffer& buffer,
-            uint32_t stride,
+            uint32_t stride = sizeof(Vertex),
             uint32_t offset = 0
         ) noexcept = 0;
 
         virtual void setIndexBuffer(
-            RHIBuffer& buffer,
-            RHIIndexFormat format,
+            const RHIBuffer&,
+            RHIIndexFormat format = RHIIndexFormat::UInt32,
             uint32_t offset = 0
         ) noexcept = 0;
 
         // Constant buffers
         virtual void setConstantBuffer(
-            RHIShaderStage stage,
+            const RHIBuffer&,
             uint32_t slot,
-            RHIBuffer& buffer,
+            RHIShaderStage,
             uint32_t offset = 0
         ) noexcept = 0;
 
         // Shader resources (textures, buffers)
         virtual void setTexture(
+            RHITexture&,
             uint32_t slot,
-            RHITextureView& textureView,
-            RHIShaderStage stage
+            RHIBindingAccess,
+            RHIShaderStage
         ) noexcept = 0;
 
         // only for Compute Shader
         virtual void setBuffer(
+            RHIBuffer&,
             uint32_t slot,
-            RHIBufferView& buffer,
+            RHIBindingAccess,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) = 0;
 
         virtual void setBytes(
-            uint32_t slot,
             const void* bytes,
+            uint32_t slot,
             size_t size,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) = 0;
 
         virtual void setSampler(
+            const RHISampler&,
             uint32_t slot,
-            RHISampler& sampler,
-            RHIShaderStage stage
+            RHIShaderStage
         ) noexcept = 0;
 
         // Viewport and scissor
-        virtual void setViewport(const RHIViewport& viewport) noexcept = 0;
-        virtual void setScissorRect(const RHIScissorRect& scissor) noexcept = 0;
+        virtual void setViewport(const RHIViewport&) noexcept = 0;
+        virtual void setScissorRect(const RHIScissorRect&) noexcept = 0;
 
         // Draw commands
         virtual void draw(

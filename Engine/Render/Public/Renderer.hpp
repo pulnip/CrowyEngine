@@ -15,7 +15,7 @@ namespace Crowy
         std::unique_ptr<Impl> impl;
 
     public:
-        Renderer(RHIDevice* device);
+        Renderer(RHIDevice& device);
         ~Renderer();
 
         void loadPasses(const RenderSpec&, int screenWidth = 0, int screenHeight = 0);

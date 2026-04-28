@@ -2,12 +2,13 @@
 
 #include <string>
 #include <d3d11.h>
+#include "string.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
     #include "RHIPipelineState.hpp"
 #endif
-#include "D3D11Shader.hpp"
+#include "D3D11Definitions.hpp"
 #include "D3D11Util.hpp"
 
 namespace Crowy
@@ -95,10 +96,10 @@ namespace Crowy
         }
     }
 
-    inline auto convertTopology(RHIPrimitiveTopology topology){
+    inline auto convertTopology(RHIPrimitiveTopology primitiveTopology){
         using enum RHIPrimitiveTopology;
 
-        switch(topology){
+        switch(primitiveTopology){
         case PointList:     return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
         case LineList:      return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
         case LineStrip:     return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
@@ -109,19 +110,80 @@ namespace Crowy
         }
     }
 
+    using Blob = ID3DBlob;
+	using BlobRAII = RAII<Blob>;
+
+	struct CompiledShader {
+		std::vector<uint8_t> bytecode;
+
+		CompiledShader(
+			const std::filesystem::path& path,
+			const std::string& entryPoint,
+			const char* target
+		) {
+			auto ext = std::filesystem::path(path).extension().string();
+
+			if (ext == ".cso" || ext == ".dxbc" || ext == ".dxil") {
+				bytecode = read_file_as_binary(path);
+			}
+			else if(ext != ".hlsl") {
+				throw std::runtime_error("Unsupported shader file extension: " + ext);
+			}
+
+			UINT compileFlags = 0;
+#if defined(_DEBUG) || !defined(NDEBUG)
+			compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+			BlobRAII shaderBlob, errorBlob;
+
+			if (FAILED(D3DCompileFromFile(
+				path.c_str(),
+				nullptr,
+				D3D_COMPILE_STANDARD_FILE_INCLUDE,
+				entryPoint.c_str(),
+				target,
+				compileFlags,
+				0,
+				&shaderBlob,
+				&errorBlob
+			))) {
+				std::string errorMsg = "HLSL compile failed";
+				if (errorBlob) {
+					errorMsg += ": ";
+					errorMsg += static_cast<const char*>(errorBlob->GetBufferPointer());
+				}
+				throw std::runtime_error(errorMsg);
+			}
+
+			bytecode.resize(shaderBlob->GetBufferSize());
+			memcpy(bytecode.data(), shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize());
+
+			if (bytecode.empty()) {
+				throw std::runtime_error("Shader bytecode is empty");
+			}
+		}
+
+		const void* getBytecode() const {
+			return bytecode.data();
+		}
+		SIZE_T getBytecodeLength() const {
+			return bytecode.size();
+		}
+	};
+
     class D3D11GraphicsPipelineState
 #ifndef USE_STATIC_RHI
         : public RHIGraphicsPipelineState
 #endif
     {
     private:
-        ID3D11InputLayout* il = nullptr;
-        ID3D11RasterizerState* rs = nullptr;
-        ID3D11DepthStencilState* dss = nullptr;
-        ID3D11BlendState* bs = nullptr;
-        D3D11_PRIMITIVE_TOPOLOGY topology;
-        ID3D11VertexShader* vs = nullptr;
-        ID3D11PixelShader* ps = nullptr;
+        InputLayoutRAII inputLayout = nullptr;
+        D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+        VertexShaderRAII vertexShader = nullptr;
+        RasterizerStateRAII rasterizerState = nullptr;
+        PixelShaderRAII pixelShader = nullptr;
+        DepthStencilStateRAII depthStencilState = nullptr;
+        BlendStateRAII blendState = nullptr;
 
         RHIGraphicsBindingInfo bindingInfo;
 
@@ -131,22 +193,31 @@ namespace Crowy
 
     public:
         D3D11GraphicsPipelineState(
-            ID3D11Device* device,
+            Device& device,
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         )
-            : topology(convertTopology(desc.topology))
         #if defined(_DEBUG) || !defined(NDEBUG)
-            , debugName(name)
+            : debugName(name)
         #endif
         {
-            auto dxVS = static_cast<D3D11Shader*>(desc.vertexShader);
+            auto vsBytecode = CompiledShader(desc.vertexShaderPath, desc.vertexShaderEntryPoint, "vs_5_0");
+            if(FAILED(device.CreateVertexShader(
+                vsBytecode.getBytecode(),
+                vsBytecode.getBytecodeLength(),
+                nullptr,
+                &vertexShader
+            ))) {
+                throw std::runtime_error("Failed to create vertex shader");
+            }
 
             // Input Layout
-            if(desc.vertexLayout.elementCount > 0){
-                std::vector<D3D11_INPUT_ELEMENT_DESC> elements(desc.vertexLayout.elementCount);
-                for(uint32_t i=0; i<desc.vertexLayout.elementCount; ++i){
-                    const auto& src = desc.vertexLayout.elements[i];
+            if(desc.vertexLayout.has_value()){
+                const auto& vertexLayout = desc.vertexLayout.value();
+
+                std::vector<D3D11_INPUT_ELEMENT_DESC> elements(vertexLayout.size());
+                for(uint32_t i=0; i<vertexLayout.size(); ++i){
+                    const auto& src = vertexLayout[i];
                     auto& dst = elements[i];
 
                     dst.SemanticName = src.semanticName;
@@ -158,20 +229,14 @@ namespace Crowy
                         D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA;
                     dst.InstanceDataStepRate = src.instanceDataStepRate;
                 }
-                if(FAILED(device->CreateInputLayout(
+                if(FAILED(device.CreateInputLayout(
                     elements.data(), static_cast<UINT>(elements.size()),
-                    dxVS->getBytecodePointer(), dxVS->getBytecodeSize(),
-                    &il
+                    vsBytecode.getBytecode(), vsBytecode.getBytecodeLength(),
+                    &inputLayout
                 ))){
                     throw std::runtime_error("Failed to create ID3D11InputLayout");
                 }
             }
-
-            auto dxPS = static_cast<D3D11Shader*>(desc.pixelShader);
-            vs = dxVS->getVS();
-            ps = dxPS->getPS();
-            vs->AddRef();
-            ps->AddRef();
 
             // RasterizerState
             D3D11_RASTERIZER_DESC rsDesc{
@@ -186,8 +251,18 @@ namespace Crowy
                 .MultisampleEnable     = desc.rasterizer.multisampleEnable,
                 .AntialiasedLineEnable = desc.rasterizer.antialiasedLineEnable
             };
-            if(FAILED(device->CreateRasterizerState(&rsDesc, &rs))){
+            if(FAILED(device.CreateRasterizerState(&rsDesc, &rasterizerState))){
                 throw std::runtime_error("Failed to create ID3D11RasterizerState");
+            }
+
+            auto psBytecode = CompiledShader(desc.fragmentShaderPath, desc.fragmentShaderEntryPoint, "ps_5_0");
+            if(FAILED(device.CreatePixelShader(
+                psBytecode.getBytecode(),
+                psBytecode.getBytecodeLength(),
+                nullptr,
+                &pixelShader
+            ))){
+                throw std::runtime_error("Failed to create pixel shader");
             }
 
             // DepthStencilState
@@ -196,13 +271,16 @@ namespace Crowy
                 .StencilEnable = FALSE
             };
             if(desc.depthStencil.has_value()){
-                dsDesc.DepthEnable = TRUE;
-                dsDesc.DepthWriteMask = desc.depthStencil->depthWriteEnable ? 
-                    D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-                dsDesc.DepthFunc = convertCompareFunc(desc.depthStencil->depthFunc);
+                const auto& depthStencil = desc.depthStencil.value();
 
-                if(desc.depthStencil->stencil.has_value()){
-                    const auto& stencil = desc.depthStencil->stencil.value();
+                dsDesc.DepthEnable = TRUE;
+                dsDesc.DepthWriteMask = depthStencil.depthWriteEnable ? 
+                    D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+                dsDesc.DepthFunc = convertCompareFunc(depthStencil.depthFunc);
+
+                if(depthStencil.stencil.has_value()){
+                    const auto& stencil = depthStencil.stencil.value();
+
                     dsDesc.StencilEnable = TRUE;
                     dsDesc.StencilReadMask = stencil.readMask;
                     dsDesc.StencilWriteMask = stencil.writeMask;
@@ -210,73 +288,59 @@ namespace Crowy
                     dsDesc.BackFace = convertStencilOpDesc(stencil.backFace);
                 }
             }
-            if(FAILED(device->CreateDepthStencilState(&dsDesc, &dss))){
+            if(FAILED(device.CreateDepthStencilState(&dsDesc, &depthStencilState))){
                 throw std::runtime_error("Failed to create ID3D11DepthStencilState");
             }
 
             // BlendState
-            D3D11_BLEND_DESC bsDesc{
-                .AlphaToCoverageEnable = desc.blend.alphaToCoverageEnable,
-                .IndependentBlendEnable = desc.blend.independentBlendEnable
-            };
-            for(int i=0; i<8; ++i){
-                const auto& src = desc.blend.renderTargets[i];
-                auto& dst = bsDesc.RenderTarget[i];
+            if(desc.blend.has_value()){
+                const auto& blend = desc.blend.value();
 
-                dst.BlendEnable    = src.blendEnable;
-                dst.SrcBlend       = convertBlendFactor(src.srcBlend);
-                dst.DestBlend      = convertBlendFactor(src.dstBlend);
-                dst.BlendOp        = convertBlendOp(src.blendOp);
-                dst.SrcBlendAlpha  = convertBlendFactor(src.srcBlendAlpha);
-                dst.DestBlendAlpha = convertBlendFactor(src.dstBlendAlpha);
-                dst.BlendOpAlpha   = convertBlendOp(src.blendOpAlpha);
-                dst.RenderTargetWriteMask = src.renderTargetWriteMask;
-            }
-            if(FAILED(device->CreateBlendState(&bsDesc, &bs))){
-                throw std::runtime_error("Failed to create ID3D11BlendState");
+                D3D11_BLEND_DESC bsDesc{
+                    .AlphaToCoverageEnable = blend.alphaToCoverageEnable,
+                    .IndependentBlendEnable = blend.independentBlendEnable
+                };
+                for(int i=0; i<8; ++i){
+                    const auto& src = blend.renderTargets[i];
+                    auto& dst = bsDesc.RenderTarget[i];
+
+                    dst.BlendEnable    = src.blendEnable;
+                    dst.SrcBlend       = convertBlendFactor(src.srcBlend);
+                    dst.DestBlend      = convertBlendFactor(src.dstBlend);
+                    dst.BlendOp        = convertBlendOp(src.blendOp);
+                    dst.SrcBlendAlpha  = convertBlendFactor(src.srcBlendAlpha);
+                    dst.DestBlendAlpha = convertBlendFactor(src.dstBlendAlpha);
+                    dst.BlendOpAlpha   = convertBlendOp(src.blendOpAlpha);
+                    dst.RenderTargetWriteMask = src.renderTargetWriteMask;
+                }
+                if(FAILED(device.CreateBlendState(&bsDesc, &blendState))){
+                    throw std::runtime_error("Failed to create ID3D11BlendState");
+                }
             }
         }
 
-        ~D3D11GraphicsPipelineState(){
-            if(il != nullptr){
-                il->Release();
-                il = nullptr;
-            }
-            if(rs != nullptr){
-                rs->Release();
-                rs = nullptr;
-            }
-            if(dss != nullptr){
-                dss->Release();
-                dss = nullptr;
-            }
-            if(bs != nullptr){
-                bs->Release();
-                bs = nullptr;
-            }
-            if(vs != nullptr){
-                vs->Release();
-                vs = nullptr;
-            }
-            if(ps != nullptr){
-                ps->Release();
-                ps = nullptr;
-            }
-        }
+        ~D3D11GraphicsPipelineState() = default;
 
         const RHIGraphicsBindingInfo& getInfo() const RHI_OVERRIDE{
             return bindingInfo;
         }
 
-        ID3D11InputLayout*       getIL () const{ return  il; }
-        ID3D11RasterizerState*   getRS () const{ return  rs; }
-        ID3D11DepthStencilState* getDSS() const{ return dss; }
-        ID3D11BlendState*        getBS () const{ return  bs; }
-        ID3D11VertexShader*      getVS () const{ return  vs; }
-        ID3D11PixelShader*       getPS () const{ return  ps; }
+        void bind(DeviceContext& ctx) const{
+            if (inputLayout != nullptr) {
+                ctx.IASetInputLayout(inputLayout.Get());
+                ctx.IASetPrimitiveTopology(primitiveTopology);
+            }
 
-        D3D11_PRIMITIVE_TOPOLOGY getTopology() const{
-            return topology;
+            ctx.VSSetShader(vertexShader.Get(), nullptr, 0);
+            ctx.RSSetState(rasterizerState.Get());
+            ctx.PSSetShader(pixelShader.Get(), nullptr, 0);
+
+            if (depthStencilState != nullptr) {
+                ctx.OMSetDepthStencilState(depthStencilState.Get(), 0);
+            }
+            if (blendState != nullptr) {
+                ctx.OMSetBlendState(blendState.Get(), nullptr, 0xFFFFFFFF);
+            }
         }
     };
 
@@ -294,7 +358,7 @@ namespace Crowy
 
     public:
         D3D11ComputePipelineState(
-            ID3D11Device* device,
+            ID3D11Device& device,
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         )

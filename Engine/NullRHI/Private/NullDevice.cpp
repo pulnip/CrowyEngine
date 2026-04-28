@@ -1,14 +1,11 @@
 #include "NullBuffer.hpp"
-#include "NullBufferView.hpp"
 #include "NullCommandList.hpp"
 #include "NullDevice.hpp"
 #include "NullFence.hpp"
 #include "NullPipelineState.hpp"
 #include "NullSampler.hpp"
-#include "NullShader.hpp"
 #include "NullSwapchain.hpp"
 #include "NullTexture.hpp"
-#include "NullTextureView.hpp"
 #include "RHIFrameScope.hpp"
 
 namespace Crowy
@@ -18,81 +15,60 @@ namespace Crowy
         return std::make_unique<NullDevice>();
     }
 #else
-    RHIDevicePtr createDevice() noexcept{
+    RHIDeviceRAII createDevice() noexcept{
         return std::make_unique<NullDevice>();
     }
 #endif
 
-    RHIFrameScopePtr NullDevice::createFrameScope() noexcept{
+    RHIFrameScopeRAII NullDevice::createFrameScope() noexcept{
         return std::make_unique<RHIFrameScope>();
     }
 
-    RHIBufferPtr NullDevice::createBuffer(
+    RHIBufferRAII NullDevice::createBuffer(
         const RHIBufferCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return std::make_unique<NullBuffer>(desc, name);
     }
 
-    RHIBufferViewPtr NullDevice::createBufferView(
-        const RHIBuffer&,
-        const RHIBufferViewDesc& desc,
-        const std::string& name
-    ) noexcept{
-        return std::make_unique<NullBufferView>(desc, name);
-    }
-
-    RHITexturePtr NullDevice::createTexture(
+    RHITextureRAII NullDevice::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return std::make_unique<NullTexture>(desc, name);
     }
 
-    RHITextureViewPtr NullDevice::createTextureView(
-        const RHITexture&,
-        const RHITextureViewDesc& desc,
-        const std::string& name
-    ) noexcept{
-        return std::make_unique<NullTextureView>(desc, name);
-    }
-
-    RHIShaderPtr NullDevice::createShader(
-        const RHIShaderCreateDesc& desc
-    ){
-        return std::make_unique<NullShader>(desc);
-    }
-    RHISamplerPtr NullDevice::createSampler(
+    RHISamplerRAII NullDevice::createSampler(
         const RHISamplerState& desc
     ) noexcept{
         return std::make_unique<NullSampler>(desc);
     }
 
-    RHIGraphicsPipelineStatePtr NullDevice::createPipelineState(
+    RHIGraphicsPipelineStateRAII NullDevice::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
         return std::make_unique<NullGraphicsPipelineState>(desc, name);
     }
 
-    RHIComputePipelineStatePtr NullDevice::createPipelineState(
+    RHIComputePipelineStateRAII NullDevice::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
         return std::make_unique<NullComputePipelineState>(desc, name);
     }
 
-    RHISwapchainPtr NullDevice::createSwapchain(
+    RHISwapchainRAII NullDevice::createSwapchain(
         const RHISwapchainCreateDesc& desc
     ) noexcept{
         return std::make_unique<NullSwapchain>(desc);
     }
 
-    RHIFencePtr NullDevice::createFence(uint64_t initialValue) noexcept{
+    RHIFenceRAII NullDevice::createFence(uint64_t initialValue) noexcept{
         return std::make_unique<NullFence>(initialValue);
     }
 
-    RHICommandListPtr NullDevice::createCommandList() noexcept{
+    RHICommandListRAII NullDevice::createCommandList() noexcept{
         return std::make_unique<NullCommandList>();
     }
 

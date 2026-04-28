@@ -11,8 +11,8 @@
 namespace Crowy
 {
     struct Submesh{
-        RHIBufferPtr vertexBuffer;
-        RHIBufferPtr indexBuffer;
+        RHIBufferRAII vertexBuffer;
+        RHIBufferRAII indexBuffer;
         uint32_t vertexCount = 0;
         uint32_t indexCount = 0;
         uint32_t vertexStride = 0;
@@ -37,16 +37,11 @@ namespace Crowy
         Vec3 emissive = zeros();
 
         // Texture maps
-        RHITexturePtr baseColorMap;
-        RHITextureViewPtr baseColorMapView;
-        RHITexturePtr normalMap;
-        RHITextureViewPtr normalMapView;
-        RHITexturePtr metallicRoughnessMap;
-        RHITextureViewPtr metallicRoughnessMapView;
-        RHITexturePtr emissiveMap;
-        RHITextureViewPtr emissiveMapView;
-        RHITexturePtr occlusionMap;
-        RHITextureViewPtr occlusionMapView;
+        RHITextureRAII baseColorMap;
+        RHITextureRAII normalMap;
+        RHITextureRAII metallicRoughnessMap;
+        RHITextureRAII emissiveMap;
+        RHITextureRAII occlusionMap;
 
         inline bool hasBaseColorMap() const{
             return baseColorMap != nullptr;
@@ -62,18 +57,6 @@ namespace Crowy
         }
         inline bool hasOcclusionMap() const{
             return occlusionMap != nullptr;
-        }
-    };
-
-    struct Shader{
-        using Request = ShaderSpec;
-
-        RHIShaderPtr vertexShader;
-        RHIShaderPtr fragmentShader;
-
-        inline bool isValid() const{
-            return vertexShader   != nullptr &&
-                   fragmentShader != nullptr;
         }
     };
 

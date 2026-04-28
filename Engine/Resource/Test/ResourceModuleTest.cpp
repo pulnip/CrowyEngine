@@ -4,7 +4,7 @@
 
 class ResourceModuleTest: public ::testing::Test{
 protected:
-    static Crowy::RHIDevicePtr device;
+    static Crowy::RHIDeviceRAII device;
     static constexpr auto testEmbeddedUri = "embedded:cube";
     static constexpr auto testModelUri = "file:asset/Stelle/Stelle.pmx";
 
@@ -21,7 +21,7 @@ protected:
     }
 };
 
-Crowy::RHIDevicePtr ResourceModuleTest::device = nullptr;
+Crowy::RHIDeviceRAII ResourceModuleTest::device = nullptr;
 
 TEST_F(ResourceModuleTest, InitState){
 

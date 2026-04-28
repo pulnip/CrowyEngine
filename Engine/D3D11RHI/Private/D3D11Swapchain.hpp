@@ -6,6 +6,7 @@
 #ifndef USE_STATIC_RHI
     #include "RHISwapchain.hpp"
 #endif
+#include "D3D11Definitions.hpp"
 #include "D3D11Util.hpp"
 
 namespace Crowy
@@ -16,12 +17,13 @@ namespace Crowy
 #endif
     {
     private:    
-        IDXGISwapChain1* swapchain = nullptr;
+        SwapchainRAII swapchain = nullptr;
         bool vsync, allowTearing;
+        // Back buffer and RTV for rendering
+        TextureRAII backBuffer = nullptr;
+        RTVRAII rtv = nullptr;
         // cache for creating rtv
-        ID3D11Device* device = nullptr;
-        ID3D11Texture2D* backBuffer = nullptr;
-        ID3D11RenderTargetView* rtv = nullptr;
+        ID3D11Device& device;
 
         uint32_t width = 0;
         uint32_t height = 0;
@@ -29,8 +31,8 @@ namespace Crowy
 
     public:
         D3D11Swapchain(
-            ID3D11Device* device,
-            IDXGIFactory2* factory,
+            ID3D11Device& device,
+            IDXGIFactory2& factory,
             const RHISwapchainCreateDesc& desc
         )
             :device(device)
@@ -55,8 +57,8 @@ namespace Crowy
                     DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : UINT(0)
             };
 
-            factory->CreateSwapChainForHwnd(
-                device,
+            factory.CreateSwapChainForHwnd(
+                &device,
                 static_cast<HWND>(desc.windowHandle),
                 &swapChainDesc,
                 nullptr,
@@ -75,14 +77,7 @@ namespace Crowy
         #endif
         }
 
-        ~D3D11Swapchain(){
-            releaseBackBufferResource();
-
-            if(swapchain){
-                swapchain->Release();
-                swapchain = nullptr;
-            }
-        }
+        ~D3D11Swapchain() = default;
 
         bool acquireNextImage() noexcept RHI_OVERRIDE{
             return true;
@@ -91,8 +86,6 @@ namespace Crowy
         void resize(uint32_t newWidth, uint32_t newHeight) noexcept RHI_OVERRIDE{
             if(newWidth == 0 || newHeight == 0)
                 return;
-
-            releaseBackBufferResource();
 
             DXGI_SWAP_CHAIN_DESC1 desc;
             swapchain->GetDesc1(&desc);
@@ -127,30 +120,20 @@ namespace Crowy
             swapchain->Present(syncInterval, flags);
         }
 
-        ID3D11Texture2D* getCurrentTexture() const noexcept{
-            return backBuffer;
+        Texture* getCurrentTexture() const noexcept{
+            return backBuffer.Get();
         }
 
-        ID3D11RenderTargetView* getCurrentRTV() const noexcept{
-            return rtv;
+        RTV* getCurrentRTV() const noexcept{
+            return rtv.Get();
         }
 
     private:
         void createBackBufferResource(){
             swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D),
-                reinterpret_cast<void**>(&backBuffer)
+                reinterpret_cast<void**>(backBuffer.GetAddressOf())
             );
-            device->CreateRenderTargetView(backBuffer, nullptr, &rtv);
-        }
-        void releaseBackBufferResource(){
-            if(rtv != nullptr){
-                rtv->Release();
-                rtv = nullptr;
-            }
-            if(backBuffer != nullptr){
-                backBuffer->Release();
-                backBuffer = nullptr;
-            }
+            device.CreateRenderTargetView(backBuffer.Get(), nullptr, &rtv);
         }
     };
 }

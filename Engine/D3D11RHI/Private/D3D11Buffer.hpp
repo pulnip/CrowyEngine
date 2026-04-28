@@ -1,9 +1,10 @@
 #pragma once
 
-#include <cstddef>
-#include <d3dcommon.h>
 #include <stdexcept>
+#include <unordered_map>
+#include <d3dcommon.h>
 #include <d3d11.h>
+#include <wrl/client.h>
 #include "assert.hpp"
 #include "enum_traits.hpp"
 #include "semantics.hpp"
@@ -12,6 +13,8 @@
 #ifndef USE_STATIC_RHI
     #include "RHIBuffer.hpp"
 #endif
+#include "D3D11Definitions.hpp"
+#include "D3D11Util.hpp"
 
 namespace Crowy
 {
@@ -21,22 +24,26 @@ namespace Crowy
 #endif
     {
     private:
-        ID3D11Buffer* buffer = nullptr;
-        ID3D11DeviceContext* context = nullptr;
-        size_t size = 0;
+        BufferRAII buffer = nullptr;
+        uint32_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
+
+        Device& device;
+        DeviceContext& context;
+
         RHIResourceState currentState = RHIResourceState::Common;
-        // ID3D11ShaderResourceView* srv = nullptr;
-        // ID3D11UnorderedAccessView* uav = nullptr;
+
+        std::unordered_map<RHIBufferViewDesc, SRVRAII> srvs;
+        std::unordered_map<RHIBufferViewDesc, UAVRAII> uavs;
 
     public:
         D3D11Buffer(
-            ID3D11Device* device,
-            ID3D11DeviceContext* context,
+            ID3D11Device& device,
+            ID3D11DeviceContext& context,
             const RHIBufferCreateDesc& desc,
             const std::string& name
         )
-            : context(context)
+            : device(device), context(context)
             , usage(desc.usage), size(desc.size)
         {
             using enum RHIBufferUsage;
@@ -84,7 +91,7 @@ namespace Crowy
                 .pSysMem = desc.initialData
             };
 
-            if(FAILED(device->CreateBuffer(
+            if(FAILED(device.CreateBuffer(
                 &dxDesc,
                 desc.initialData != nullptr ? &initData : nullptr,
                 &buffer
@@ -101,75 +108,45 @@ namespace Crowy
                 );
             }
         #endif
-
-            // if(isShaderResource){
-            //     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
-            //         .Format = DXGI_FORMAT_R32_FLOAT,
-            //         .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
-            //         .Buffer = {
-                        
-            //         }
-            //     };
-            //     device->CreateShaderResourceView(
-            //         buffer,
-            //         &srvDesc,
-            //         &srv
-            //     );
-            // }
-            // if(isUnorderedAccess){
-            //     D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc{
-            //         .Format = DXGI_FORMAT_R32_FLOAT,
-            //         .ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
-            //         .Buffer = {
-
-            //         }
-            //     };
-            //     device->CreateUnorderedAccessView(
-            //         buffer,
-            //         &uavDesc,
-            //         &uav
-            //     );
-            // }
         }
 
-        ~D3D11Buffer(){
-            if(buffer != nullptr){
-                buffer->Release();
-                buffer = nullptr;
-            }
-        }
+        ~D3D11Buffer() = default;
 
         CROWY_DECLARE_PINNED(D3D11Buffer)
 
         inline void upload(
-            const void* data, size_t size,
-            size_t offset = 0
+            const void* data, uint32_t size,
+            uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
             CROWY_ASSERT(size <= bufSize - offset);
 
             D3D11_MAPPED_SUBRESOURCE mapped;
-            context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+            context.Map(buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
             std::memcpy(mapped.pData, data, size);
 
-            context->Unmap(buffer, 0);
+            context.Unmap(buffer.Get(), 0);
         }
 
         inline void download(
-            void* data, size_t size,
-            size_t offset = 0
+            void* data, uint32_t size,
+            uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
             const auto bufSize = this->size;
             CROWY_ASSERT(size <= bufSize - offset);
             D3D11_MAPPED_SUBRESOURCE mapped;
-            context->Map(buffer, 0, D3D11_MAP_READ, 0, &mapped);
+            context.Map(buffer.Get(), 0, D3D11_MAP_READ, 0, &mapped);
 
             std::memcpy(data, mapped.pData, size);
 
-            context->Unmap(buffer, 0);
+            context.Unmap(buffer.Get(), 0);
         }
-        
+
+        uint32_t getSize() const noexcept RHI_OVERRIDE{
+            return size;
+        }
+
         RHIResourceState getState() const noexcept RHI_OVERRIDE{
             // NOTE. No-Op for D3D11
             return currentState;
@@ -180,6 +157,113 @@ namespace Crowy
             currentState = state;
         }
 
-        ID3D11Buffer* get() const{ return buffer; }
+        Buffer* get() const{ return buffer.Get(); }
+
+        SRV* getOrCreateSRV(const RHIBufferViewDesc& rhiDesc){
+            if(auto it = srvs.find(rhiDesc); it != srvs.end())
+                return it->second.Get();
+
+            const auto desc = std::visit(overload{
+                [&rhiDesc](const RHIBufferViewDesc::RawConfig&){
+                    constexpr uint32_t RAW_STRIDE = 4;
+                    return D3D11_SHADER_RESOURCE_VIEW_DESC{
+                        .Format = DXGI_FORMAT_R32_TYPELESS,
+                        .ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX,
+                        .BufferEx = {
+                            .FirstElement = rhiDesc.offset / RAW_STRIDE,
+                            .NumElements = rhiDesc.size / RAW_STRIDE,
+                            .Flags = D3D11_BUFFEREX_SRV_FLAG_RAW,
+                        }
+                    };
+                },
+                [&rhiDesc](const RHIBufferViewDesc::TypedConfig& c){
+                    const uint32_t bpp = getBytesPerPixel(c.format);
+                    return D3D11_SHADER_RESOURCE_VIEW_DESC{
+                        .Format = convertPixelFormat(c.format),
+                        .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
+                        .Buffer = {
+                            .FirstElement = rhiDesc.offset / bpp,
+                            .NumElements = rhiDesc.size / bpp,
+                        },
+                    };
+                },
+                [rhiDesc](const RHIBufferViewDesc::StructuredConfig& c){
+                    return D3D11_SHADER_RESOURCE_VIEW_DESC{
+                        .Format = DXGI_FORMAT_UNKNOWN,
+                        .ViewDimension = D3D11_SRV_DIMENSION_BUFFER,
+                        .Buffer = {
+                            .FirstElement = rhiDesc.offset / c.stride,
+                            .NumElements = rhiDesc.size / c.stride,
+                        },
+                    };
+                }
+            }, rhiDesc.config);
+
+            SRVRAII view;
+            device.CreateShaderResourceView(
+                buffer.Get(),
+                &desc,
+                &view
+            );
+
+            auto [it, r] = srvs.emplace(rhiDesc, std::move(view));
+            CROWY_ASSERT(r);
+
+            return it->second.Get();
+        }
+
+        UAV* getOrCreateUAV(const RHIBufferViewDesc& rhiDesc){
+            if(auto it = uavs.find(rhiDesc); it != uavs.end())
+                return it->second.Get();
+
+            const auto desc = std::visit(overload{
+                [&rhiDesc](const RHIBufferViewDesc::RawConfig&){
+                    constexpr uint32_t RAW_STRIDE = 4;
+                    return D3D11_UNORDERED_ACCESS_VIEW_DESC{
+                        .Format = DXGI_FORMAT_R32_TYPELESS,
+                        .ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
+                        .Buffer = {
+                            .FirstElement = rhiDesc.offset / RAW_STRIDE,
+                            .NumElements = rhiDesc.size / RAW_STRIDE,
+                            .Flags = D3D11_BUFFER_UAV_FLAG_RAW
+                        }
+                    };
+                },
+                [&rhiDesc](const RHIBufferViewDesc::TypedConfig& c){
+                    const uint32_t bpp = getBytesPerPixel(c.format);
+                    return D3D11_UNORDERED_ACCESS_VIEW_DESC{
+                        .Format = convertPixelFormat(c.format),
+                        .ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
+                        .Buffer = {
+                            .FirstElement = rhiDesc.offset / bpp,
+                            .NumElements = rhiDesc.size / bpp,
+                            .Flags = 0
+                        },
+                    };
+                },
+                [rhiDesc](const RHIBufferViewDesc::StructuredConfig& c){
+                    return D3D11_UNORDERED_ACCESS_VIEW_DESC{
+                        .Format = DXGI_FORMAT_UNKNOWN,
+                        .ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
+                        .Buffer = {
+                            .FirstElement = rhiDesc.offset / c.stride,
+                            .NumElements = rhiDesc.size / c.stride,
+                            .Flags = D3D11_BUFFER_UAV_FLAG_COUNTER
+                        },
+                    };
+                }
+            }, rhiDesc.config);
+
+            UAVRAII view;
+            device.CreateUnorderedAccessView(
+                buffer.Get(),
+                &desc,
+                &view
+            );
+            auto [it, r] = uavs.emplace(rhiDesc, std::move(view));
+            CROWY_ASSERT(r);
+
+            return it->second.Get();
+        }
     };
 }

@@ -8,10 +8,7 @@ namespace Crowy
     #if defined(USE_METAL_BACKEND)
         class MetalDevice;
         class MetalBuffer;
-        class MetalBufferView;
         class MetalTexture;
-        class MetalTextureView;
-        class MetalShader;
         class MetalSampler;
         class MetalCommandList;
         class MetalFence;
@@ -22,10 +19,7 @@ namespace Crowy
 
         using RHIDevice = MetalDevice;
         using RHIBuffer = MetalBuffer;
-        using RHIBufferView = MetalBufferView;
         using RHITexture = MetalTexture;
-        using RHITextureView = MetalTextureView;
-        using RHIShader = MetalShader;
         using RHISampler = MetalSampler;
         using RHICommandList = MetalCommandList;
         using RHIFence = MetalFence;
@@ -37,7 +31,6 @@ namespace Crowy
         class D3D11Device;
         class D3D11Buffer;
         class D3D11Texture;
-        class D3D11Shader;
         class D3D11Sampler;
         class D3D11CommandList;
         class D3D11Fence;
@@ -49,7 +42,6 @@ namespace Crowy
         using RHIDevice = D3D11Device;
         using RHIBuffer = D3D11Buffer;
         using RHITexture = D3D11Texture;
-        using RHIShader = D3D11Shader;
         using RHISampler = D3D11Sampler;
         using RHICommandList = D3D11CommandList;
         using RHIFence = D3D11Fence;
@@ -61,7 +53,6 @@ namespace Crowy
         class NullDevice;
         class NullBuffer;
         class NullTexture;
-        class NullShader;
         class NullSampler;
         class NullCommandList;
         class NullFence;
@@ -73,7 +64,6 @@ namespace Crowy
         using RHIDevice = NullDevice;
         using RHIBuffer = NullBuffer;
         using RHITexture = NullTexture;
-        using RHIShader = NullShader;
         using RHISampler = NullSampler;
         using RHICommandList = NullCommandList;
         using RHIFence = NullFence;
@@ -85,10 +75,7 @@ namespace Crowy
 #else
     class RHIDevice;
     class RHIBuffer;
-    class RHIBufferView;
     class RHITexture;
-    class RHITextureView;
-    class RHIShader;
     class RHISampler;
     class RHICommandList;
     class RHIFence;
@@ -99,18 +86,15 @@ namespace Crowy
 #endif
     class FramePacer;
 
-    using RHIDevicePtr = std::unique_ptr<RHIDevice>;
-    using RHIBufferPtr = std::unique_ptr<RHIBuffer>;
-    using RHIBufferViewPtr = std::unique_ptr<RHIBufferView>;
-    using RHITexturePtr = std::unique_ptr<RHITexture>;
-    using RHITextureViewPtr = std::unique_ptr<RHITextureView>;
-    using RHIShaderPtr = std::unique_ptr<RHIShader>;
-    using RHISamplerPtr = std::unique_ptr<RHISampler>;
-    using RHICommandListPtr = std::unique_ptr<RHICommandList>;
-    using RHIFencePtr = std::unique_ptr<RHIFence>;
-    using RHIFrameScopePtr = std::unique_ptr<RHIFrameScope>;
-    using RHIGraphicsPipelineStatePtr = std::unique_ptr<RHIGraphicsPipelineState>;
-    using RHIComputePipelineStatePtr = std::unique_ptr<RHIComputePipelineState>;
-    using RHISwapchainPtr = std::unique_ptr<RHISwapchain>;
-    using FramePacerPtr = std::unique_ptr<FramePacer>;
+    using RHIDeviceRAII = std::unique_ptr<RHIDevice>;
+    using RHIBufferRAII = std::unique_ptr<RHIBuffer>;
+    using RHITextureRAII = std::unique_ptr<RHITexture>;
+    using RHISamplerRAII = std::unique_ptr<RHISampler>;
+    using RHICommandListRAII = std::unique_ptr<RHICommandList>;
+    using RHIFenceRAII = std::unique_ptr<RHIFence>;
+    using RHIFrameScopeRAII = std::unique_ptr<RHIFrameScope>;
+    using RHIGraphicsPipelineStateRAII = std::unique_ptr<RHIGraphicsPipelineState>;
+    using RHIComputePipelineStateRAII = std::unique_ptr<RHIComputePipelineState>;
+    using RHISwapchainRAII = std::unique_ptr<RHISwapchain>;
+    using FramePacerRAII = std::unique_ptr<FramePacer>;
 }

@@ -19,50 +19,36 @@ namespace Crowy
         NullDevice() = default;
         ~NullDevice() = default;
 
-        RHIFrameScopePtr createFrameScope() noexcept RHI_OVERRIDE;
+        RHIFrameScopeRAII createFrameScope() noexcept RHI_OVERRIDE;
 
-        RHIBufferPtr createBuffer(
+        RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
-        RHIBufferViewPtr createBufferView(
-            const RHIBuffer&,
-            const RHIBufferViewDesc&,
-            const std::string& name = ""
-        ) noexcept RHI_OVERRIDE;
-        RHITexturePtr createTexture(
+        RHITextureRAII createTexture(
             const RHITextureCreateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
-        RHITextureViewPtr createTextureView(
-            const RHITexture&,
-            const RHITextureViewDesc&,
-            const std::string& name = ""
-        ) noexcept RHI_OVERRIDE;
-
-        RHIShaderPtr createShader(
-            const RHIShaderCreateDesc&
-        ) RHI_OVERRIDE;
-        RHISamplerPtr createSampler(
+        RHISamplerRAII createSampler(
             const RHISamplerState&
         ) noexcept RHI_OVERRIDE;
 
-        RHIGraphicsPipelineStatePtr createPipelineState(
+        RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
-        RHIComputePipelineStatePtr createPipelineState(
+        RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
         ) noexcept RHI_OVERRIDE;
 
-        RHISwapchainPtr createSwapchain(
+        RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc&
         ) noexcept RHI_OVERRIDE; 
 
-        RHICommandListPtr createCommandList() noexcept RHI_OVERRIDE;
+        RHICommandListRAII createCommandList() noexcept RHI_OVERRIDE;
 
-        RHIFencePtr createFence(uint64_t initialValue = 0) noexcept RHI_OVERRIDE;
+        RHIFenceRAII createFence(uint64_t initialValue = 0) noexcept RHI_OVERRIDE;
 
         RHICapabilities getCapabilities() const noexcept RHI_OVERRIDE;
 

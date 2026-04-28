@@ -1,19 +1,16 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include "semantics.hpp"
+#include "RHIFWD.hpp"
 #include "RHIBuffer.hpp"
-#include "RHIBufferView.hpp"
 #include "RHICommandList.hpp"
 #include "RHIFence.hpp"
 #include "RHIFrameScope.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHISampler.hpp"
-#include "RHIShader.hpp"
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
-#include "RHITextureView.hpp"
 
 #ifdef USE_STATIC_RHI
     #if defined(USE_METAL_BACKEND)
@@ -32,18 +29,16 @@ namespace Crowy
     concept RHIDeviceType = requires(T device,
         RHIBufferCreateDesc bufDesc,
         RHITextureCreateDesc texDesc,
-        RHIShaderCreateDesc shaderDesc,
         RHIGraphicsPipelineStateDesc gpsDesc,
         RHIComputePipelineStateDesc cpsDesc
     ){
-        { device.createBuffer(bufDesc) } -> std::same_as<RHIBufferPtr>;
-        { device.createTexture(texDesc) } -> std::same_as<RHITexturePtr>;
-        { device.createShader(shaderDesc) } -> std::same_as<RHIShaderPtr>;
+        { device.createBuffer(bufDesc) } -> std::same_as<RHIBufferRAII>;
+        { device.createTexture(texDesc) } -> std::same_as<RHITextureRAII>;
 
-        { device.createGraphicsPipelineState(gpsDesc) } -> std::same_as<RHIPipelineStatePtr>;
-        { device.createComputePipelineState(cpsDesc) } -> std::same_as<RHIPipelineStatePtr>;
+        { device.createGraphicsPipelineState(gpsDesc) } -> std::same_as<RHIPipelineStateRAII>;
+        { device.createComputePipelineState(cpsDesc) } -> std::same_as<RHIPipelineStateRAII>;
 
-        { device.createFence(uint64_t(0)) } -> std::same_as<RHIFencePtr>;
+        { device.createFence(uint64_t(0)) } -> std::same_as<RHIFenceRAII>;
 
         { device.getCapabilities() } -> std::same_as<RHICapabilities>;
     };
@@ -53,51 +48,38 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIDevice)
 
-        virtual RHIFrameScopePtr createFrameScope() noexcept = 0;
+        virtual RHIFrameScopeRAII createFrameScope() noexcept = 0;
 
-        virtual RHIBufferPtr createBuffer(
+        virtual RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             const std::string& name = ""
         ) noexcept = 0;
-        virtual RHIBufferViewPtr createBufferView(
-            const RHIBuffer&,
-            const RHIBufferViewDesc&,
-            const std::string& name = ""
-        ) noexcept = 0;
-        virtual RHITexturePtr createTexture(
+        virtual RHITextureRAII createTexture(
             const RHITextureCreateDesc&,
             const std::string& name = ""
         ) noexcept = 0;
-        virtual RHITextureViewPtr createTextureView(
-            const RHITexture&,
-            const RHITextureViewDesc&,
-            const std::string& name = ""
-        ) noexcept = 0;
-        virtual RHIShaderPtr createShader(
-            const RHIShaderCreateDesc&
-        ) = 0;
-        virtual RHISamplerPtr createSampler(
+        virtual RHISamplerRAII createSampler(
             const RHISamplerState&
         ) noexcept = 0;
 
-        virtual RHIGraphicsPipelineStatePtr createPipelineState(
+        virtual RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
         ) noexcept = 0;
-        virtual RHIComputePipelineStatePtr createPipelineState(
+        virtual RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
         ) noexcept = 0;
 
-        virtual RHISwapchainPtr createSwapchain(
+        virtual RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc&
         ) noexcept = 0;
 
-        virtual RHICommandListPtr createCommandList() noexcept = 0;
+        virtual RHICommandListRAII createCommandList() noexcept = 0;
 
-        virtual RHIFencePtr createFence(uint64_t initialValue = 0) noexcept = 0;
+        virtual RHIFenceRAII createFence(uint64_t initialValue = 0) noexcept = 0;
 
-        FramePacerPtr createFramePacer() noexcept;
+        FramePacerRAII createFramePacer() noexcept;
 
         virtual RHICapabilities getCapabilities() const noexcept = 0;
 
@@ -111,8 +93,6 @@ namespace Crowy
     };
 #endif
 
-    using RHIDevicePtr = std::unique_ptr<RHIDevice>;
-
     // each platform should implement this function
-    RHIDevicePtr createDevice() noexcept;
+    RHIDeviceRAII createDevice() noexcept;
 }

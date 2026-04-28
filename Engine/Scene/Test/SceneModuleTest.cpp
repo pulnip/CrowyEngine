@@ -1,7 +1,8 @@
 #include "SceneModuleTest.hpp"
 #include "Resource.hpp"
+#include "RHIDevice.hpp"
 
-Crowy::RHIDevicePtr SceneModuleTest::device = nullptr;
+Crowy::RHIDeviceRAII SceneModuleTest::device = nullptr;
 
 void SceneModuleTest::SetUpTestSuite(){
     device = Crowy::createDevice();

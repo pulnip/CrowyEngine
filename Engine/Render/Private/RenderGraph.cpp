@@ -46,15 +46,15 @@ namespace Crowy
 
     };
 
-    RenderGraph::RenderGraph(RHIDevice* device)
+    RenderGraph::RenderGraph(RHIDevice& device)
         : device(device)
-        , vsPerObjectBuffers(*device, RHIBufferCreateDesc{
+        , vsPerObjectBuffers(device, RHIBufferCreateDesc{
             .size = sizeof(PerObjectParam),
             .usage = RHIBufferUsage::ConstantBuffer,
             .access = RHIMemoryAccess::CPUWrite,
             .initialData = nullptr
         }, "Uniform Buffer")
-        , passParamBuffers(*device, RHIBufferCreateDesc{
+        , passParamBuffers(device, RHIBufferCreateDesc{
             .size = 256,
             .usage = RHIBufferUsage::ConstantBuffer,
             .access = RHIMemoryAccess::CPUWrite,
@@ -87,7 +87,7 @@ namespace Crowy
         ]: descs){
             buffers.emplace(
                 name,
-                device->createBuffer(desc, name)
+                device.createBuffer(desc, name)
             );
         }
     }
@@ -112,7 +112,7 @@ namespace Crowy
 
             textures.emplace(
                 name,
-                device->createTexture(resolved, name)
+                device.createTexture(resolved, name)
             );
         }
     }
@@ -126,7 +126,7 @@ namespace Crowy
         ]: descs){
             samplers.emplace(
                 name,
-                device->createSampler(desc)
+                device.createSampler(desc)
             );
         }
     }
@@ -185,18 +185,8 @@ namespace Crowy
         std::span<const std::string> outputs,
         std::string_view depthOutput
     ){
-        auto vs = device->createShader(RHIShaderCreateDesc{
-            .file = spec.shader.vsFilePath.c_str(),
-            .entry = spec.shader.vsFuncName.c_str(),
-            .stage = RHIShaderStage::VertexShader
-        });
-        auto fs = device->createShader(RHIShaderCreateDesc{
-            .file = spec.shader.fsFilePath.c_str(),
-            .entry = spec.shader.fsFuncName.c_str(),
-            .stage = RHIShaderStage::FragmentShader
-        });
         auto pipeline = createPipelineStateHelper(
-            spec, vs.get(), fs.get(), name,
+            spec, name,
             outputs, depthOutput
         );
 
@@ -213,10 +203,8 @@ namespace Crowy
         };
     }
 
-    RHIGraphicsPipelineStatePtr RenderGraph::createPipelineStateHelper(
+    RHIGraphicsPipelineStateRAII RenderGraph::createPipelineStateHelper(
         const GraphicsPipelineBindSpec& spec,
-        RHIShader* vertexShader,
-        RHIShader* fragmentShader,
         const std::string& name,
         std::span<const std::string> outputs,
         std::string_view depthOutput
@@ -224,15 +212,19 @@ namespace Crowy
         auto isFullscreen = spec.renderType.empty();
 
         RHIGraphicsPipelineStateDesc desc{
-            .vertexShader = vertexShader,
-            .pixelShader = fragmentShader,
             // fullscreen pipeline doesn't need vertex layout
-            .vertexLayout = isFullscreen ? RHIVertexLayout{} : DEFAULT_VERTEX_LAYOUT,
+            .vertexLayout = std::nullopt,
+            .vertexShaderPath = spec.shader.vsFilePath,
+            .vertexShaderEntryPoint = spec.shader.vsFuncName,
             .rasterizer = spec.rasterizer,
+            .fragmentShaderPath = spec.shader.fsFilePath,
+            .fragmentShaderEntryPoint = spec.shader.fsFuncName,
             .depthStencil = spec.depthStencil,
             .blend = spec.blend,
             .renderTargetCount = static_cast<uint32_t>(outputs.size())
         };
+        if(!isFullscreen)
+            desc.vertexLayout = DEFAULT_VERTEX_ELEMENTS;
 
         for(int i=0; i<outputs.size(); ++i){
             const auto& name = outputs[i];
@@ -251,7 +243,7 @@ namespace Crowy
             CROWY_ASSERT(it->second->getFormat() == desc.depthStencil->format);
         }
 
-        return device->createPipelineState(desc, name);
+        return device.createPipelineState(desc, name);
     }
 
     void RenderGraph::loadComputePasses(
@@ -266,13 +258,9 @@ namespace Crowy
     ComputePass RenderGraph::createPass(
         const ComputePassSpec& spec
     ){
-        auto cs = device->createShader(RHIShaderCreateDesc{
-            .file = spec.shader.filePath.c_str(),
-            .entry = spec.shader.funcName.c_str(),
-            .stage = RHIShaderStage::ComputeShader
-        });
-        auto pso = device->createPipelineState({
-            .computeShader = cs.get(),
+        auto pso = device.createPipelineState({
+            .computeShaderPath = spec.shader.filePath,
+            .computeShaderEntryPoint = spec.shader.funcName,
             .gridSize = spec.gridSize,
             .threadGroupSize = spec.threadGroupSize
         });
@@ -634,8 +622,9 @@ namespace Crowy
             CROWY_ASSERT(it != textures.end());
 
             cmdList.setTexture(
-                info.csInfo.textureInfo.at(bind.slot).index,
                 *it->second,
+                info.csInfo.textureInfo.at(bind.slot).index,
+                bind.access,
                 ComputeShader
             );
         }
@@ -644,15 +633,16 @@ namespace Crowy
             CROWY_ASSERT(it != buffers.end());
 
             cmdList.setBuffer(
-                info.csInfo.bufferInfo.at(bind.slot).index,
                 *it->second,
+                info.csInfo.bufferInfo.at(bind.slot).index,
+                bind.access,
                 ComputeShader
             );
         }
         for(const auto& bind: pass.cs.bytes){
             cmdList.setBytes(
-                info.csInfo.bufferInfo.at(bind.slot).index,
                 &bind.data,
+                info.csInfo.bufferInfo.at(bind.slot).index,
                 sizeof(bind.data),
                 ComputeShader
             );
@@ -687,8 +677,9 @@ namespace Crowy
 
             // TODO. select shader stage for advanced rendering technique
             cmdList.setTexture(
-                static_cast<uint32_t>(i),
                 *srIt->second,
+                static_cast<uint32_t>(i),
+                RHIBindingAccess::ReadOnly,
                 FragmentShader
             );
         }
@@ -698,8 +689,8 @@ namespace Crowy
             CROWY_ASSERT(it != samplers.end());
 
             cmdList.setSampler(
-                info.fsInfo.samplerInfo.at(samplerBind.slot).index,
                 *it->second,
+                info.fsInfo.samplerInfo.at(samplerBind.slot).index,
                 FragmentShader
             );
         }
@@ -714,9 +705,9 @@ namespace Crowy
             buf.upload(cbuf.buffer.data(), cbuf.buffer.size());
 
             cmdList.setConstantBuffer(
-                FragmentShader,
+                buf,
                 info.fsInfo.bufferInfo.at(cbufferBind.slot).index,
-                buf
+                FragmentShader
             );
         }
 
@@ -761,18 +752,20 @@ namespace Crowy
 
             buf.upload(&perObjectParam, sizeof(PerObjectParam));
 
-            cmdList.setConstantBuffer(VertexShader, vsPerObjectCBufferSlot, buf);
+            cmdList.setConstantBuffer(buf, vsPerObjectCBufferSlot, VertexShader);
 
             for(const auto& submesh: mesh){
                 // TODO. hide slot number (bc it's for Metal)
-                cmdList.setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Vertex), 0);
-                cmdList.setIndexBuffer(*submesh.indexBuffer.get(),
-                    RHIIndexFormat::UInt32, 0);
+                cmdList.setVertexBuffer(*submesh.vertexBuffer, 0);
+                cmdList.setIndexBuffer(*submesh.indexBuffer);
 
                 auto it = materialSet.find(submesh.materialSlotName);
                 if(it == materialSet.end())
                     continue;
-                cmdList.setTexture(0, *it->second->baseColorMap.get(), FragmentShader);
+                cmdList.setTexture(*it->second->baseColorMap, 0,
+                    RHIBindingAccess::ReadOnly,
+                    FragmentShader
+                );
 
                 cmdList.drawIndexed(submesh.indexCount, 1);
             }

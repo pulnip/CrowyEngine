@@ -35,8 +35,8 @@ namespace Crowy
         }
 
         void beginRenderPass(
-            std::span<RHITextureView*> renderTargetViews,
-            RHITextureView* depthStencilView,
+            std::span<RHITexture*> renderTargetViews,
+            RHITexture* depthStencilView,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -48,7 +48,7 @@ namespace Crowy
 
         void beginRenderPass(
             RHISwapchain& swapchain,
-            RHITextureView* depthStencilView,
+            RHITexture* depthStencilView,
             RHILoadAction loadAction,
             RHIStoreAction storeAction,
             const RHIClearColor& clearColor,
@@ -71,50 +71,52 @@ namespace Crowy
         }
 
         void setVertexBuffer(
+            const RHIBuffer& buffer,
             uint32_t slot,
-            RHIBuffer& buffer,
             uint32_t stride,
-            uint32_t offset = 0
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
 
         }
 
         void setIndexBuffer(
-            RHIBuffer& buffer,
+            const RHIBuffer& buffer,
             RHIIndexFormat format,
-            uint32_t offset = 0
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
 
         }
 
         void setConstantBuffer(
-            RHIShaderStage stage,
+            const RHIBuffer& buffer,
             uint32_t slot,
-            RHIBuffer& buffer,
-            uint32_t offset = 0
+            RHIShaderStage stage,
+            uint32_t offset
         ) noexcept RHI_OVERRIDE{
 
         }
 
         void setTexture(
+            RHITexture& texture,
             uint32_t slot,
-            RHITextureView& textureView,
+            RHIBindingAccess,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
 
         }
 
         void setBuffer(
+            RHIBuffer& buffer,
             uint32_t slot,
-            RHIBufferView& buffer,
+            RHIBindingAccess,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
 
         }
 
         void setBytes(
-            uint32_t slot,
             const void* bytes,
+            uint32_t slot,
             size_t size,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
@@ -122,8 +124,8 @@ namespace Crowy
         }
 
         void setSampler(
+            const RHISampler& sampler,
             uint32_t slot,
-            RHISampler& sampler,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
 

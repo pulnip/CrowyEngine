@@ -18,7 +18,6 @@
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHISampler.hpp"
-#include "RHIShader.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
@@ -38,12 +37,12 @@ namespace Crowy
 
     class RenderGraph{
     private:
-        RHIDevice* device = nullptr;
+        RHIDevice& device;
 
         // TODO. use pool for resource reuse and memory aliasing later.
-        StringHashMap<RHIBufferPtr> buffers;
-        StringHashMap<RHITexturePtr> textures;
-        StringHashMap<RHISamplerPtr> samplers;
+        StringHashMap<RHIBufferRAII> buffers;
+        StringHashMap<RHITextureRAII> textures;
+        StringHashMap<RHISamplerRAII> samplers;
         StringHashMap<CBuffer> cbuffers;
 
         // ordered by execution order
@@ -60,7 +59,7 @@ namespace Crowy
         LinearBufferAllocator passParamBuffers;
 
     public:
-        RenderGraph(RHIDevice* device);
+        RenderGraph(RHIDevice& device);
         ~RenderGraph() = default;
 
         void loadPasses(
@@ -90,10 +89,8 @@ namespace Crowy
             std::span<const std::string> outputs,
             std::string_view depthOutput
         );
-        RHIGraphicsPipelineStatePtr createPipelineStateHelper(
+        RHIGraphicsPipelineStateRAII createPipelineStateHelper(
             const GraphicsPipelineBindSpec& spec,
-            RHIShader* vertexShader,
-            RHIShader* fragmentShader,
             const std::string& name,
             std::span<const std::string> outputs,
             std::string_view depthOutput

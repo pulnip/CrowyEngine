@@ -18,7 +18,7 @@ int main(int argc, char* argv[]){
     std::vector<float> ones(N, 1.0f);
     std::vector<float> twos(N, 2.0f);
 
-    Renderer renderer(device.get());
+    Renderer renderer(*device);
     RenderSpec spec{
         .buffers = {
             {

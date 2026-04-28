@@ -9,15 +9,15 @@ namespace Crowy
     // Used for triple buffering to synchronize CPU and GPU work
     class RHIFrameFenceManager{
     private:
-        RHIDevice* device;
-        RHIFencePtr fence;
+        RHIDevice& device;
+        RHIFenceRAII fence;
         uint64_t currentFenceValue = 0;
         uint32_t currentFrame = 0;
 
     public:
-        RHIFrameFenceManager(RHIDevice* device) noexcept
+        RHIFrameFenceManager(RHIDevice& device) noexcept
             : device(device)
-            , fence(device->createFence(0))
+            , fence(device.createFence(0))
         {
             LOG_INFO(LOG_RHI,
                 "Created frame fence manager with {} frames in flight",
@@ -77,8 +77,8 @@ namespace Crowy
     };
 
     struct FramePacer::Impl{
-        RHIDevice* device;
-        RHIFrameScopePtr scope = nullptr;
+        RHIDevice& device;
+        RHIFrameScopeRAII scope = nullptr;
         RHIFrameFenceManager fenceManager;
 
         uint64_t frameNumber = 0;
@@ -88,13 +88,13 @@ namespace Crowy
         double frameTimeAccum = 0.0;
         uint32_t frameCount = 0;
 
-        Impl(RHIDevice* device) noexcept
+        Impl(RHIDevice& device) noexcept
             : device(device), fenceManager(device){}
 
         ~Impl() = default;
 
         bool beginFrame() noexcept{
-            scope = device->createFrameScope();
+            scope = device.createFrameScope();
 
             // Wait for oldest frame to complete
             fenceManager.beginFrame();
@@ -158,7 +158,7 @@ namespace Crowy
         }
     };
 
-    FramePacer::FramePacer(RHIDevice* device) noexcept
+    FramePacer::FramePacer(RHIDevice& device) noexcept
         :impl(std::make_unique<Impl>(device)){}
 
     FramePacer::~FramePacer() = default;

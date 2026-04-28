@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include "RHIFWD.hpp"
 #include "semantics.hpp"
 
@@ -25,6 +24,4 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIFrameScope)
     };
 #endif
-
-    using RHIFrameScopePtr = std::unique_ptr<RHIFrameScope>;
 }

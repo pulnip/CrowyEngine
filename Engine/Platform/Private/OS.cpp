@@ -38,10 +38,10 @@ namespace Crowy
 
         std::unique_ptr<InputProvider> inputProvider;
 
-        RHIDevicePtr device;
-        RHISwapchainPtr swapchain;
-        RHICommandListPtr cmdList;
-        FramePacerPtr framePacer;
+        RHIDeviceRAII device;
+        RHISwapchainRAII swapchain;
+        RHICommandListRAII cmdList;
+        FramePacerRAII framePacer;
 
     public:
         Impl(const WindowConfig& config)

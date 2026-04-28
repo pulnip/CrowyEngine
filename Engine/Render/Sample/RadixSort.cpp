@@ -224,13 +224,13 @@ int main(int argc, char* argv[]){
     auto device = createDevice();
     auto cmdList = device->createCommandList();
 
-    Renderer renderer(device.get());
+    Renderer renderer(*device);
     RenderSpec spec{
         .buffers = {
             {
                 "Keys",
                 RHIBufferCreateDesc{
-                    .size = sizeof(decltype(keys)::value_type) * keys.size(),
+                    .size = static_cast<uint32_t>(sizeof(decltype(keys)::value_type) * keys.size()),
                     .usage = BUF_AllowShaderRW,
                     .access = RHIMemoryAccess::CPUWrite,
                     .initialData = keys.data()
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]){
             {
                 "Indexes",
                 RHIBufferCreateDesc{
-                    .size = sizeof(decltype(indexes)::value_type) * indexes.size(),
+                    .size = static_cast<uint32_t>(sizeof(decltype(indexes)::value_type) * indexes.size()),
                     .usage = BUF_AllowShaderRW,
                     .access = RHIMemoryAccess::CPUWrite,
                     .initialData = indexes.data()
@@ -248,7 +248,7 @@ int main(int argc, char* argv[]){
             {
                 "Histogram",
                 RHIBufferCreateDesc{
-                    .size = sizeof(decltype(hg_keys)::value_type) * hg_keys.size(),
+                    .size = static_cast<uint32_t>(sizeof(decltype(hg_keys)::value_type) * hg_keys.size()),
                     .usage = BUF_AllowShaderRW,
                     .access = RHIMemoryAccess::CPUWrite,
                     .initialData = hg_keys.data()
@@ -257,7 +257,7 @@ int main(int argc, char* argv[]){
             {
                 "GroupSums",
                 RHIBufferCreateDesc{
-                    .size = sizeof(uint32_t) * nextPow2(PS_NUMGROUP),
+                    .size = static_cast<uint32_t>(sizeof(uint32_t) * nextPow2(PS_NUMGROUP)),
                     .usage = BUF_AllowShaderRW
                 }
             },

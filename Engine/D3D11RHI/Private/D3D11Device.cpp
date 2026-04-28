@@ -1,20 +1,17 @@
 #include <stdexcept>
 #include <d3d11.h>
 #include <dxgi1_6.h>
-#include <utility>
 #include <wrl/client.h>
 #include "D3D11Buffer.hpp"
-#include "D3D11BufferView.hpp"
 #include "D3D11CommandList.hpp"
+#include "D3D11Definitions.hpp"
 #include "D3D11Device.hpp"
 #include "D3D11Fence.hpp"
 #include "D3D11FrameScope.hpp"
 #include "D3D11PipelineState.hpp"
 #include "D3D11Sampler.hpp"
-#include "D3D11Shader.hpp"
 #include "D3D11Swapchain.hpp"
 #include "D3D11Texture.hpp"
-#include "D3D11TextureView.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
@@ -25,19 +22,17 @@ namespace Crowy
         return std::make_unique<D3D11Device>();
     }
 #else
-    RHIDevicePtr createDevice() noexcept{
+    RHIDeviceRAII createDevice() noexcept{
         return std::make_unique<D3D11Device>();
     }
 #endif
 
     struct D3D11Device::Impl{
-        IDXGIFactory2* factory = nullptr;
-        ID3D11Device* device = nullptr;
-        ID3D11DeviceContext* context = nullptr;
+        FactoryRAII factory = nullptr;
+        DeviceRAII device = nullptr;
+        DeviceContextRAII context = nullptr;
 
         Impl(){
-            using Microsoft::WRL::ComPtr;
-
             UINT dxgiFactoryFlags = 0;
         #if defined(_DEBUG) || !defined(NDEBUG)
             dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
@@ -47,8 +42,7 @@ namespace Crowy
                 throw std::runtime_error("Failed to create DXGI factory");
             }
 
-            ComPtr<IDXGIAdapter1> adapter;
-            ComPtr<IDXGIAdapter1> selectedAdapter;
+            AdapterRAII adapter, selectedAdapter;
             SIZE_T maxDedicatedMemory = 0;
 
             for(UINT i=0; factory->EnumAdapters1(i, &adapter)!=DXGI_ERROR_NOT_FOUND; ++i){
@@ -98,7 +92,7 @@ namespace Crowy
                 featureLevels,
                 _countof(featureLevels),
                 D3D11_SDK_VERSION,
-                &device,
+                device.GetAddressOf(),
                 &actualLevel,
                 // take immediate context later
                 nullptr
@@ -109,153 +103,64 @@ namespace Crowy
             device->GetImmediateContext(&context);
         }
 
-        ~Impl(){
-            if(context != nullptr){
-                context->Release();
-                context = nullptr;
-            }
-            if(device != nullptr){
-                device->Release();
-                device = nullptr;
-            }
-            if(factory != nullptr){
-                factory->Release();
-                factory = nullptr;
-            }
-        }
+        ~Impl()= default;
 
-        RHIFrameScopePtr createFrameScopoe() noexcept{
+        RHIFrameScopeRAII createFrameScopoe() noexcept{
             return std::make_unique<D3D11FrameScope>();
         }
 
-        RHIBufferPtr createBuffer(
+        RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11Buffer>(device, context, desc, name);
+            return std::make_unique<D3D11Buffer>(
+                *device.Get(), *context.Get(),
+                desc, name
+            );
         }
 
-        RHIBufferViewPtr createBufferView(
-            const D3D11Buffer& buf,
-            const RHIBufferViewDesc& desc,
-            const std::string& name
-        ) noexcept{
-            using enum RHIBindingAccess;
-
-            switch(desc.access){
-            case ReadOnly:
-                return std::make_unique<D3D11BufferSRV>(
-                    *device,
-                    *buf.get(),
-                    desc,
-                    name
-                );
-            case WriteOnly:
-                return std::make_unique<D3D11BufferRTV>(
-                    *device,
-                    *buf.get(),
-                    desc,
-                    name
-                );
-            case ReadWrite:
-                return std::make_unique<D3D11BufferUAV>(
-                    *device,
-                    *buf.get(),
-                    desc,
-                    name
-                );
-            default:
-                std::unreachable();
-            }
-        }
-
-        RHITexturePtr createTexture(
+        RHITextureRAII createTexture(
             const RHITextureCreateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11Texture>(device, context, desc, name);
+            return std::make_unique<D3D11Texture>(
+                *device.Get(), *context.Get(),
+                desc, name
+            );
         }
 
-        RHITextureViewPtr createTextureView(
-            const D3D11Texture& buf,
-            const RHITextureViewDesc& desc,
-            const std::string& name
-        ) noexcept{
-            using enum RHIBindingAccess;
-
-            switch(desc.access){
-            case ReadOnly:
-                return std::make_unique<D3D11TextureSRV>(
-                    *device,
-                    *buf.get(),
-                    desc,
-                    name
-                );
-            case WriteOnly:
-                if(isDepthFormat(desc.format))
-                    return std::make_unique<D3D11TextureDSV>(
-                        *device,
-                        *buf.get(),
-                        desc,
-                        name
-                    );
-                else
-                    return std::make_unique<D3D11TextureRTV>(
-                        *device,
-                        *buf.get(),
-                        desc,
-                        name
-                    );
-            case ReadWrite:
-                return std::make_unique<D3D11TextureUAV>(
-                    *device,
-                    *buf.get(),
-                    desc,
-                    name
-                );
-            default:
-                std::unreachable();
-            }
-        }
-
-        RHIShaderPtr createShader(
-            const RHIShaderCreateDesc& desc
-        ){
-            return std::make_unique<D3D11Shader>(device, desc);
-        }
-
-        RHISamplerPtr createSampler(
+        RHISamplerRAII createSampler(
             const RHISamplerState& desc
         ) noexcept{
-            return std::make_unique<D3D11Sampler>(device, desc);
+            return std::make_unique<D3D11Sampler>(*device.Get(), desc);
         }
 
-        RHIGraphicsPipelineStatePtr createPipelineState(
+        RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11GraphicsPipelineState>(device, desc, name);
+            return std::make_unique<D3D11GraphicsPipelineState>(*device.Get(), desc, name);
         }
 
-        RHIComputePipelineStatePtr createPipelineState(
+        RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
         ) noexcept{
-            return std::make_unique<D3D11ComputePipelineState>(device, desc, name);
+            return std::make_unique<D3D11ComputePipelineState>(*device.Get(), desc, name);
         }
 
-        RHISwapchainPtr createSwapchain(
+        RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc& desc
         ) noexcept{
-            return std::make_unique<D3D11Swapchain>(device, factory, desc);
+            return std::make_unique<D3D11Swapchain>(*device.Get(), *factory.Get(), desc);
         }
 
-        RHICommandListPtr createCommandList() noexcept{
-            return std::make_unique<D3D11CommandList>(device, context);
+        RHICommandListRAII createCommandList() noexcept{
+            return std::make_unique<D3D11CommandList>(*context.Get());
         }
 
-        RHIFencePtr createFence(uint64_t initialValue) noexcept{
-            return std::make_unique<D3D11Fence>(device, initialValue);
+        RHIFenceRAII createFence(uint64_t initialValue) noexcept{
+            return std::make_unique<D3D11Fence>(*device.Get(), initialValue);
         }
 
         void submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
@@ -263,8 +168,8 @@ namespace Crowy
                 static_cast<D3D11Swapchain&>(*swapchain).present();
         }
 
-        ID3D11Device* get() noexcept{ return device; }
-        ID3D11DeviceContext* getContext() noexcept{ return context; }
+        Device* get() noexcept{ return device.Get(); }
+        DeviceContext* getContext() noexcept{ return context.Get(); }
     };
 
     D3D11Device::D3D11Device()
@@ -272,85 +177,55 @@ namespace Crowy
 
     D3D11Device::~D3D11Device(){}
 
-    RHIFrameScopePtr D3D11Device::createFrameScope() noexcept{
+    RHIFrameScopeRAII D3D11Device::createFrameScope() noexcept{
         return impl->createFrameScopoe();
     }
 
-    RHIBufferPtr D3D11Device::createBuffer(
+    RHIBufferRAII D3D11Device::createBuffer(
         const RHIBufferCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createBuffer(desc, name);
     }
 
-    RHIBufferViewPtr D3D11Device::createBufferView(
-        const RHIBuffer& buf,
-        const RHIBufferViewDesc& desc,
-        const std::string& name
-    ) noexcept{
-        return impl->createBufferView(
-            static_cast<const D3D11Buffer&>(buf),
-            desc,
-            name
-        );
-    }
-
-    RHITexturePtr D3D11Device::createTexture(
+    RHITextureRAII D3D11Device::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createTexture(desc, name);
     }
 
-    RHITextureViewPtr D3D11Device::createTextureView(
-        const RHITexture& buf,
-        const RHITextureViewDesc& desc,
-        const std::string& name
-    ) noexcept{
-        return impl->createTextureView(
-            static_cast<const D3D11Texture&>(buf),
-            desc,
-            name
-        );
-    }
-
-    RHIShaderPtr D3D11Device::createShader(
-        const RHIShaderCreateDesc& desc
-    ){
-        return impl->createShader(desc);
-    }
-
-    RHISamplerPtr D3D11Device::createSampler(
+    RHISamplerRAII D3D11Device::createSampler(
         const RHISamplerState& desc
     ) noexcept{
         return impl->createSampler(desc);
     }
 
-    RHIGraphicsPipelineStatePtr D3D11Device::createPipelineState(
+    RHIGraphicsPipelineStateRAII D3D11Device::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createPipelineState(desc, name);
     }
 
-    RHIComputePipelineStatePtr D3D11Device::createPipelineState(
+    RHIComputePipelineStateRAII D3D11Device::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
     ) noexcept{
         return impl->createPipelineState(desc, name);
     }
 
-    RHISwapchainPtr D3D11Device::createSwapchain(
+    RHISwapchainRAII D3D11Device::createSwapchain(
         const RHISwapchainCreateDesc& desc
     ) noexcept{
         return impl->createSwapchain(desc);
     }
 
-    RHICommandListPtr D3D11Device::createCommandList() noexcept{
+    RHICommandListRAII D3D11Device::createCommandList() noexcept{
         return impl->createCommandList();
     }
 
-    RHIFencePtr D3D11Device::createFence(uint64_t initialValue) noexcept{
+    RHIFenceRAII D3D11Device::createFence(uint64_t initialValue) noexcept{
         return impl->createFence(initialValue);
     }
 

@@ -16,17 +16,6 @@ int main(int argc, char* argv[]){
 
     auto cmdList = device->createCommandList();
 
-    auto computeShader = device->createShader(RHIShaderCreateDesc{
-    #ifdef CROWY_METALRHI
-        .file = "asset/Shaders/vector_addition.metal",
-        .entry = "cs_vector_addition",
-    #elif CROWY_D3DRHI
-        .file = L"asset/Shaders/vector_addition.hlsl",
-        .entry = "cs_vector_addition",
-    #endif
-        .stage = RHIShaderStage::ComputeShader,
-    });
-
     constexpr size_t N = 1 << 26;
     std::vector<float> floats(N, 1.0f);
     std::vector<float> outGpu(N, 0.0f), outCpu(N, 0.0f);
@@ -39,30 +28,16 @@ int main(int argc, char* argv[]){
     };
 
     auto bufferA = device->createBuffer(bufferDesc, "BufferA");
-    auto bufAView = device->createBufferView(
-        *bufferA,
-        RHIBufferViewDesc{.access = RHIBindingAccess::ReadOnly},
-        "BufferA View"
-    );
     auto bufferB = device->createBuffer(bufferDesc, "BufferB");
-    auto bufBView = device->createBufferView(
-        *bufferB,
-        RHIBufferViewDesc{.access = RHIBindingAccess::ReadOnly},
-        "BufferB View"
-    );
 
     bufferDesc.usage = RHIBufferUsage::AllowShaderWrite;
     bufferDesc.access = RHIMemoryAccess::CPURead;
     bufferDesc.initialData = nullptr;
     auto bufferOut = device->createBuffer(bufferDesc, "BufferOut");
-    auto bufOutView = device->createBufferView(
-        *bufferOut,
-        RHIBufferViewDesc{.access = RHIBindingAccess::WriteOnly},
-        "BufferB View"
-    );
 
     auto pipelineState = device->createPipelineState({
-        .computeShader = computeShader.get()
+        .computeShaderPath = "asset/Shaders/vector_addition.metal",
+        .computeShaderEntryPoint = "cs_vector_addition",
     }, "Compute Pipeline");
 
     Timer timer;
@@ -72,9 +47,9 @@ int main(int argc, char* argv[]){
     cmdList->beginCompute();
 
     cmdList->setPipelineState(*pipelineState);
-    cmdList->setBuffer(0, *bufAView);
-    cmdList->setBuffer(1, *bufBView);
-    cmdList->setBuffer(2, *bufOutView);
+    cmdList->setBuffer(*bufferA, 0, RHIBindingAccess::ReadOnly);
+    cmdList->setBuffer(*bufferB, 1, RHIBindingAccess::ReadOnly);
+    cmdList->setBuffer(*bufferOut, 2, RHIBindingAccess::ReadWrite);
 
     cmdList->dispatch({N, 1, 1});
 

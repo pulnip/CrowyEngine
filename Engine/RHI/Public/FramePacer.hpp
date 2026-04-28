@@ -15,7 +15,7 @@ namespace Crowy
         std::unique_ptr<Impl> impl;
 
     public:
-        FramePacer(RHIDevice* device) noexcept;
+        FramePacer(RHIDevice& device) noexcept;
         ~FramePacer();
 
         // Begin a new frame

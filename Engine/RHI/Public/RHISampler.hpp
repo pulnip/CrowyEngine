@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include "RHIFWD.hpp"
 #include "semantics.hpp"
 
@@ -27,6 +26,4 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHISampler)
     };
 #endif
-
-    using RHISamplerPtr = std::unique_ptr<RHISampler>;
 }

@@ -1,4 +1,3 @@
-#include <cstddef>
 #include "RenderSpec.hpp"
 #include "Renderer.hpp"
 #include "RenderGraph.hpp"
@@ -10,7 +9,7 @@ namespace Crowy
         RenderGraph graph;
 
     public:
-        Impl(RHIDevice* device)
+        Impl(RHIDevice& device)
             : graph(device) {}
         ~Impl() = default;
 
@@ -68,7 +67,7 @@ namespace Crowy
         }
     };
 
-    Renderer::Renderer(RHIDevice* device)
+    Renderer::Renderer(RHIDevice& device)
         :impl(std::make_unique<Impl>(device))
     {}
 

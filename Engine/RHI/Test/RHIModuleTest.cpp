@@ -2,20 +2,19 @@
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
-#include "RHIShader.hpp"
 
 using namespace Crowy;
 
 class RHIModuleTest: public ::testing::Test{
 protected:
-    static RHIDevicePtr device;
+    static RHIDeviceRAII device;
 
     static void SetUpTestSuite(){
         device = createDevice();
     }
 };
 
-RHIDevicePtr RHIModuleTest::device = nullptr;
+RHIDeviceRAII RHIModuleTest::device = nullptr;
 
 TEST_F(RHIModuleTest, LoadShaderFile){
     // TODO. use binary file instead source file (include problem)

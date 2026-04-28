@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <unordered_map>
 #include <d3d11.h>
 #include "assert.hpp"
 #include "enum_traits.hpp"
@@ -9,6 +10,7 @@
 #ifndef USE_STATIC_RHI
     #include "RHITexture.hpp"
 #endif
+#include "D3D11Definitions.hpp"
 #include "D3D11Util.hpp"
 
 namespace Crowy
@@ -19,23 +21,27 @@ namespace Crowy
 #endif
     {
     private:
-        ID3D11Texture2D* texture = nullptr;
-        ID3D11DeviceContext* context = nullptr;
+        TextureRAII texture = nullptr;
         size_t width, height;
         RHIPixelFormat format = RHIPixelFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
-        ID3D11RenderTargetView* rtv = nullptr;
-        ID3D11ShaderResourceView* srv = nullptr;
-        ID3D11DepthStencilView* dsv = nullptr;
+
+        Device& device;
+        DeviceContext& context;
+
+        std::unordered_map<RHITextureViewDesc, SRVRAII> srvs;
+        std::unordered_map<RHITextureViewDesc, RTVRAII> rtvs;
+        std::unordered_map<RHITextureViewDesc, UAVRAII> uavs;
+        std::unordered_map<RHITextureViewDesc, DSVRAII> dsvs;
 
     public:
         D3D11Texture(
-            ID3D11Device* device,
-            ID3D11DeviceContext* context,
+            ID3D11Device& device,
+            ID3D11DeviceContext& context,
             const RHITextureCreateDesc& desc,
             const std::string& name
         )
-            : context(context)
+            : device(device), context(context)
             , width(desc.width), height(desc.height)
             , format(desc.format)
             , currentState(desc.initialState)
@@ -78,7 +84,7 @@ namespace Crowy
                 .SysMemSlicePitch = 0
             };
 
-            if(FAILED(device->CreateTexture2D(
+            if(FAILED(device.CreateTexture2D(
                 &texDesc,
                 desc.initialData != nullptr ? &initData : nullptr,
                 &texture
@@ -94,58 +100,9 @@ namespace Crowy
                 );
             }
         #endif
-
-            if(isRenderTarget){
-                D3D11_RENDER_TARGET_VIEW_DESC rtvDesc{
-                    .Format = convertPixelFormat(desc.format),
-                    .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
-                    .Texture2D = {
-                        .MipSlice = 0
-                    }
-                };
-                device->CreateRenderTargetView(texture, &rtvDesc, &rtv);
-            }
-            if(isShaderResource){
-                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{
-                    .Format = convertPixelFormat(desc.format, true, false),
-                    .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
-                    .Texture2D = {
-                        .MostDetailedMip = 0,
-                        .MipLevels = 1
-                    }
-                };
-                device->CreateShaderResourceView(texture, &srvDesc, &srv);
-            }
-            if(isDepthTarget){
-                D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{
-                    .Format = convertPixelFormat(desc.format, false, true),
-                    .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
-                    .Texture2D = {
-                        .MipSlice = 0
-                    }
-                };
-                device->CreateDepthStencilView(texture, &dsvDesc, &dsv);
-            }
         }
 
-        ~D3D11Texture(){
-            if(rtv != nullptr){
-                rtv->Release();
-                rtv = nullptr;
-            }
-            if(srv != nullptr){
-                srv->Release();
-                srv = nullptr;
-            }
-            if(dsv != nullptr){
-                dsv->Release();
-                dsv = nullptr;
-            }
-            if(texture != nullptr){
-                texture->Release();
-                texture = nullptr;
-            }
-        }
+        ~D3D11Texture() = default;
 
         void upload(const void* data,
             uint32_t mipLevel = 0, uint32_t arraySlice = 0
@@ -171,9 +128,107 @@ namespace Crowy
             currentState = state;
         }
 
-        ID3D11Texture2D* get() const{ return texture; }
-        ID3D11RenderTargetView* getRTV() const{ return rtv; }
-        ID3D11ShaderResourceView* getSRV() const{ return srv; }
-        ID3D11DepthStencilView* getDSV() const{ return dsv; }
+        Texture* get() const{ return texture.Get(); }
+
+        SRV* getOrCreateSRV(const RHITextureViewDesc& rhiDesc){
+            if(auto it = srvs.find(rhiDesc); it != srvs.end())
+                return it->second.Get();
+
+            const D3D11_SHADER_RESOURCE_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format, true, false),
+                .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
+                .Texture2D = {
+                    .MostDetailedMip = 0,
+                    .MipLevels = 1
+                }
+            };
+
+            SRVRAII view;
+            device.CreateShaderResourceView(
+                texture.Get(),
+                &desc,
+                &view
+            );
+
+            auto [it, r] = srvs.emplace(rhiDesc, std::move(view));
+            CROWY_ASSERT(r);
+
+            return it->second.Get();
+        }
+
+        RTV* getOrCreateRTV(const RHITextureViewDesc& rhiDesc){
+            if(auto it = rtvs.find(rhiDesc); it != rtvs.end())
+                return it->second.Get();
+
+            const D3D11_RENDER_TARGET_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format),
+                .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+                .Texture2D = {
+                    .MipSlice = 0
+                }
+            };
+
+            RTVRAII view;
+            device.CreateRenderTargetView(
+                texture.Get(),
+                &desc,
+                &view
+            );
+
+            auto [it, r] = rtvs.emplace(rhiDesc, std::move(view));
+            CROWY_ASSERT(r);
+
+            return it->second.Get();
+        }
+
+        UAV* getOrCreateUAV(const RHITextureViewDesc& rhiDesc){
+            if(auto it = uavs.find(rhiDesc); it != uavs.end())
+                return it->second.Get();
+
+            const D3D11_UNORDERED_ACCESS_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format),
+                .ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D,
+                .Texture2D = {
+                    .MipSlice = 0
+                }
+            };
+
+            UAVRAII view;
+            device.CreateUnorderedAccessView(
+                texture.Get(),
+                &desc,
+                &view
+            );
+
+            auto [it, r] = uavs.emplace(rhiDesc, std::move(view));
+            CROWY_ASSERT(r);
+
+            return it->second.Get();
+        }
+
+        DSV* getOrCreateDSV(const RHITextureViewDesc& rhiDesc){
+            if(auto it = dsvs.find(rhiDesc); it != dsvs.end())
+                return it->second.Get();
+
+            const D3D11_DEPTH_STENCIL_VIEW_DESC desc{
+                .Format = convertPixelFormat(rhiDesc.format, false, true),
+                .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
+                .Texture2D = {
+                    .MipSlice = 0
+                }
+            };
+
+            DSVRAII view;
+            device.CreateDepthStencilView(
+                texture.Get(),
+                &desc,
+                &view
+            );
+
+            auto [it, r] = dsvs.emplace(rhiDesc, std::move(view));
+            CROWY_ASSERT(r);
+
+            return it->second.Get();
+        }
     };
 }

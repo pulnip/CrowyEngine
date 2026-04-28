@@ -13,7 +13,7 @@ namespace Crowy
 
         ShaderBindSpec cs;
 
-        RHIComputePipelineStatePtr pso;
+        RHIComputePipelineStateRAII pso;
         RHISize3D gridSize;
     };
 }

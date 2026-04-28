@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include "semantics.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDefinitions.hpp"
@@ -28,20 +27,20 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIBuffer)
 
         virtual void upload(
-            const void* data, size_t size,
-            size_t offset = 0
+            const void* data, uint32_t size,
+            uint32_t offset = 0
         ) noexcept = 0;
 
         // Notice! only valid for Metal and D3D11
         virtual void download(
-            void* data, size_t size,
-            size_t offset = 0
+            void* data, uint32_t size,
+            uint32_t offset = 0
         ) noexcept = 0;
+
+        virtual uint32_t getSize() const noexcept = 0;
 
         virtual RHIResourceState getState() const noexcept = 0;
         virtual void setState(RHIResourceState state) noexcept = 0;
     };
 #endif
-
-    using RHIBufferPtr = std::unique_ptr<RHIBuffer>;
 }

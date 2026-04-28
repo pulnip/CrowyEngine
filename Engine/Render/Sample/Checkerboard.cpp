@@ -1,5 +1,4 @@
 #include <SDL3/SDL.h>
-#include <cstddef>
 #include "Logger.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
@@ -47,7 +46,7 @@ int main(int argc, char* argv[]){
     );
     auto cmdList = device->createCommandList();
 
-    Renderer renderer(device.get());
+    Renderer renderer(*device);
     RenderSpec spec{
         .textures = {
             {

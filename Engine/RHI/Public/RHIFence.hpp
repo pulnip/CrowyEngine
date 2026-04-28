@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include "semantics.hpp"
 
 #ifdef USE_STATIC_RHI
@@ -38,6 +37,4 @@ namespace Crowy
         virtual bool isComplete(uint64_t) noexcept = 0;
     };
 #endif
-
-    using RHIFencePtr = std::unique_ptr<RHIFence>;
 }

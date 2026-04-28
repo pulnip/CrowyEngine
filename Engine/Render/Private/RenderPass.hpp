@@ -15,7 +15,7 @@ namespace Crowy
         ShaderBindSpec vs;
         ShaderBindSpec fs;
 
-        RHIGraphicsPipelineStatePtr pso;
+        RHIGraphicsPipelineStateRAII pso;
         std::optional<RenderTypeHash> renderType;
 
         inline bool isFullscreenPass() const{

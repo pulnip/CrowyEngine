@@ -13,7 +13,7 @@ namespace Crowy
         const ScriptSpec& scriptSpec,
         const SceneSpec& sceneSpec
     )
-        : renderer(OS_->getDevice())
+        : renderer(*OS_->getDevice())
         , uiRenderer(OS_->getWindow(), *OS_->getDevice())
     {
         renderer.loadPasses(renderSpec,

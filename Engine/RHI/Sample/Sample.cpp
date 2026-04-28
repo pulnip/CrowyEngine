@@ -54,27 +54,6 @@ int main(int argc, char* argv[]){
     auto mesh = get(meshHandle);
     auto materialSet = get(materialSetHandle);
 
-    auto vertexShader = device->createShader(RHIShaderCreateDesc{
-#ifdef CROWY_METALRHI
-        .file = "asset/Shaders/triangle.metal",
-        .entry = "vs_main",
-#elif CROWY_D3DRHI
-        .file = L"asset/Shaders/standard_vs.hlsl",
-        .entry = "vs_main",
-#endif
-        .stage = RHIShaderStage::VertexShader,
-    });
-    auto fragmentShader = device->createShader(RHIShaderCreateDesc{
-#ifdef CROWY_METALRHI
-        .file = "asset/Shaders/triangle.metal",
-        .entry = "fs_textured",
-#elif CROWY_D3DRHI
-        .file = L"asset/Shaders/standard_ps.hlsl",
-        .entry = "ps_textured",
-#endif
-        .stage = RHIShaderStage::FragmentShader,
-    });
-
     auto uniformBuffer = device->createBuffer({
         .size = sizeof(Mat4),
         .usage = RHIBufferUsage::ConstantBuffer,
@@ -94,18 +73,13 @@ int main(int argc, char* argv[]){
         .clearColor = {},
         .clearDepthStencil = {1.0f, 0},
     }, "Depth Buffer");
-    auto dsv = device->createTextureView(
-        *depthBuffer,
-        RHITextureViewDesc{
-            .access = RHIBindingAccess::WriteOnly,
-            .format = RHIPixelFormat::D32_FLOAT
-        },
-        "DepthStencilView"
-    );
 
     auto pipelineState = device->createPipelineState({
-        .vertexShader = vertexShader.get(),
-        .pixelShader = fragmentShader.get(),
+        .vertexLayout = DEFAULT_VERTEX_ELEMENTS,
+        .vertexShaderPath = "asset/Shaders/triangle.metal",
+        .vertexShaderEntryPoint = "vs_main",
+        .fragmentShaderPath = "asset/Shaders/triangle.metal",
+        .fragmentShaderEntryPoint = "fs_textured",
         .depthStencil = RHIDepthStencilState{
             .format = RHIPixelFormat::D32_FLOAT,
             .depthWriteEnable = true
@@ -162,7 +136,7 @@ int main(int argc, char* argv[]){
         RHIClearColor clearColor{ 0.2f, 0.2f, 0.3f, 1.0f };
         cmdList->beginRenderPass(
             *swapchain,
-            dsv.get(),
+            depthBuffer.get(),
             RHILoadAction::Clear,
             RHIStoreAction::Store,
             clearColor
@@ -173,19 +147,20 @@ int main(int argc, char* argv[]){
         cmdList->setViewport({0, 0, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f});
         cmdList->setScissorRect({0, 0, width, height});
 
-        cmdList->setConstantBuffer(RHIShaderStage::VertexShader, 1, *uniformBuffer.get());
+        cmdList->setConstantBuffer(*uniformBuffer, 1, RHIShaderStage::VertexShader);
 
         for(const auto& submesh: mesh){
-            cmdList->setVertexBuffer(0, *submesh.vertexBuffer.get(), sizeof(Crowy::Vertex), 0);
-            cmdList->setIndexBuffer(*submesh.indexBuffer.get(),
-                RHIIndexFormat::UInt32, 0);
+            cmdList->setVertexBuffer(*submesh.vertexBuffer, 0);
+            cmdList->setIndexBuffer(*submesh.indexBuffer);
 
             auto it = materialSet.find(submesh.materialSlotName);
             if(it == materialSet.end())
                 continue;
 
-            cmdList->setTexture(0, *it->second->baseColorMapView,
-                RHIShaderStage::FragmentShader);
+            cmdList->setTexture(*it->second->baseColorMap, 0,
+                RHIBindingAccess::ReadOnly,
+                RHIShaderStage::FragmentShader
+            );
             cmdList->drawIndexed(submesh.indexCount, 1);
         }
         cmdList->endRenderPass();

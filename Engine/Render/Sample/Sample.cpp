@@ -79,7 +79,7 @@ int main(int argc, char* argv[]){
         }
     };
 
-    Renderer renderer(device.get());
+    Renderer renderer(*device);
     UIRenderer uiRenderer(window, *device.get());
     auto ui = Column({
         Checkbox{

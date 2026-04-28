@@ -23,7 +23,7 @@ int main(int argc, char* argv[]){
     constexpr auto N2 = 2 * NUM_GROUP * GROUP_SIZE;
     std::vector<uint32_t> ones(N2, 1);
 
-    Renderer renderer(device.get());
+    Renderer renderer(*device);
     RenderSpec spec{
         .buffers = {
             {
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
             {
                 "GroupSums",
                 RHIBufferCreateDesc{
-                    .size = sizeof(uint32_t) * nextPow2(NUM_GROUP),
+                    .size = static_cast<uint32_t>(sizeof(uint32_t) * nextPow2(NUM_GROUP)),
                     .usage = BUF_AllowShaderRW
                 }
             }

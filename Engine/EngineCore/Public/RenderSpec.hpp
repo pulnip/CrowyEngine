@@ -22,7 +22,7 @@ namespace Crowy
     struct BindSpec{
         std::string slot;
         std::string name;
-        // uint32_t slot = std::numeric_limits<uint32_t>::max();
+        RHIBindingAccess access = RHIBindingAccess::ReadOnly;
     };
 
     template<typename T>

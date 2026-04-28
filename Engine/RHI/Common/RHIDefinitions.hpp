@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include "enum_traits.hpp"
 #include "math.hpp"
-#include "RHIFWD.hpp"
 
 namespace Crowy
 {
@@ -46,7 +45,7 @@ namespace Crowy
     );
 
     struct RHIBufferCreateDesc{
-        size_t size;
+        uint32_t size;
         RHIBufferUsage usage = RHIBufferUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
         const void* initialData = nullptr;
@@ -181,12 +180,12 @@ namespace Crowy
     };
 
     struct RHIClearColor{
-        float r, g, b, a;
+        float v[4] = { 0, 0, 0, 1 };
     };
 
     struct RHIClearDepthStencil{
-        float depth;
-        uint8_t stencil;
+        float depth = 1.0f;
+        uint8_t stencil = 0;
     };
 
     struct RHITextureCreateDesc{
@@ -199,12 +198,8 @@ namespace Crowy
         RHITextureUsage usage = RHITextureUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
         RHIResourceState initialState = RHIResourceState::Common;
-        RHIClearColor clearColor{
-            .r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 1.0f
-        };
-        RHIClearDepthStencil clearDepthStencil{
-            .depth = 1.0f, .stencil = 0
-        };
+        RHIClearColor clearColor{};
+        RHIClearDepthStencil clearDepthStencil{};
         const void* initialData = nullptr;
     };
 
@@ -212,16 +207,6 @@ namespace Crowy
         VertexShader,
         FragmentShader,
         ComputeShader,
-    };
-
-    struct RHIShaderCreateDesc{
-    #ifdef _WIN32
-        const wchar_t* file;
-    #else
-        const char* file; // source or binary file path
-    #endif
-        const char* entry;
-        RHIShaderStage stage;
     };
 
     enum class RHILoadAction: uint8_t{
@@ -321,10 +306,6 @@ namespace Crowy
             .classification = RHIInputClassification::PerVertex,
             .instanceDataStepRate = 0
         }
-    };
-    constexpr RHIVertexLayout DEFAULT_VERTEX_LAYOUT{
-        .elements = DEFAULT_VERTEX_ELEMENTS,
-        .elementCount = sizeof(DEFAULT_VERTEX_ELEMENTS) / sizeof(RHIVertexElement)
     };
 
     enum class RHICullMode: uint8_t{
@@ -437,15 +418,15 @@ namespace Crowy
     constexpr auto RHI_MAX_RENDER_TARGETS = 8;
 
     struct RHIGraphicsPipelineStateDesc{
-        RHIShader* vertexShader = nullptr;
-        RHIShader* pixelShader = nullptr;
-
-        RHIVertexLayout vertexLayout = DEFAULT_VERTEX_LAYOUT;
+        std::optional<std::span<const RHIVertexElement>> vertexLayout = std::nullopt;
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
-
+        std::filesystem::path vertexShaderPath;
+        std::string vertexShaderEntryPoint = "vs_main";
         RHIRasterizerState rasterizer = {};
+        std::filesystem::path fragmentShaderPath;
+        std::string fragmentShaderEntryPoint = "fs_main";
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
-        RHIBlendState blend = {};
+        std::optional<RHIBlendState> blend = std::nullopt;
 
         RHIPixelFormat renderTargetFormats[RHI_MAX_RENDER_TARGETS] = {RHIPixelFormat::RGBA8_UNORM};
         uint32_t renderTargetCount = 1;
@@ -456,7 +437,8 @@ namespace Crowy
     };
 
     struct RHIComputePipelineStateDesc{
-        RHIShader* computeShader;
+        std::filesystem::path computeShaderPath;
+        std::string computeShaderEntryPoint = "cs_main";
         RHISize3D gridSize;
         std::optional<RHISize3D> threadGroupSize = std::nullopt;
     };
@@ -511,7 +493,7 @@ namespace Crowy
     #endif
     };
 
-    inline constexpr size_t getBytesPerPixel(RHIPixelFormat format){
+    inline constexpr uint32_t getBytesPerPixel(RHIPixelFormat format){
         using enum RHIPixelFormat;
 
         switch(format){
@@ -589,25 +571,36 @@ namespace Crowy
 
     enum class RHIBindingAccess: uint8_t{
         ReadOnly,
-        ReadWrite,
-        WriteOnly
+        ReadWrite
     };
 
     struct RHIBufferViewDesc{
-        struct RawConfig{};
-        struct TypedConfig{ RHIPixelFormat format = RHIPixelFormat::Unknown; };
-        struct StructuredConfig{ uint32_t stride=0;};
+        struct RawConfig{
+            bool operator==(const RawConfig&) const = default;
+        };
+        struct TypedConfig{
+            RHIPixelFormat format = RHIPixelFormat::Unknown;
+
+            bool operator==(const TypedConfig&) const = default;
+        };
+        struct StructuredConfig{
+            uint32_t stride=0;
+
+            bool operator==(const StructuredConfig&) const = default;
+        };
         using Config = std::variant<RawConfig, TypedConfig, StructuredConfig>;
 
-        RHIBindingAccess access = RHIBindingAccess::ReadOnly;
         uint32_t offset = 0, size = 0;
         Config config = RawConfig{};
+
+        bool operator==(const RHIBufferViewDesc&) const = default;
     };
 
     struct RHITextureViewDesc{
-        RHIBindingAccess access = RHIBindingAccess::ReadOnly;
         // TODO.
         RHIPixelFormat format = RHIPixelFormat::Unknown;
+
+        bool operator==(const RHITextureViewDesc&) const = default;
     };
 
     struct RHISlotBindingInfo{
@@ -630,3 +623,48 @@ namespace Crowy
         RHIShaderBindingInfo csInfo;
     };
 }
+
+inline void hashCombine(size_t& seed, size_t v) {
+    seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+template<typename... Args>
+inline size_t hashAll(const Args&... args) {
+    size_t h = 0;
+    (hashCombine(h, std::hash<Args>{}(args)), ...);
+    return h;
+}
+
+template<>
+struct std::hash<Crowy::RHIBufferViewDesc>{
+    size_t operator()(const Crowy::RHIBufferViewDesc& desc) const noexcept{
+        auto h = hashAll(
+            std::hash<uint32_t>{}(desc.offset),
+            std::hash<uint32_t>{}(desc.size),
+            std::hash<size_t>{}(desc.config.index())
+        );
+
+        using TypedConfig = Crowy::RHIBufferViewDesc::TypedConfig;
+        using StructuredConfig = Crowy::RHIBufferViewDesc::StructuredConfig;
+
+        std::visit([&h](const auto& cfg) {
+            using T = std::decay_t<decltype(cfg)>;
+            if constexpr (std::is_same_v<T, TypedConfig>){
+                hashCombine(h, std::hash<uint32_t>{}(static_cast<uint32_t>(cfg.format)));
+            }
+            else if constexpr (std::is_same_v<T, StructuredConfig>){
+                hashCombine(h, std::hash<uint32_t>{}(cfg.stride));
+            }
+        }, desc.config);
+        return h;
+    }
+};
+
+template<>
+struct std::hash<Crowy::RHITextureViewDesc>{
+    size_t operator()(const Crowy::RHITextureViewDesc& desc) const noexcept{
+        return hashAll(
+            static_cast<std::underlying_type_t<Crowy::RHIPixelFormat>>(desc.format)
+        );
+    }
+};
