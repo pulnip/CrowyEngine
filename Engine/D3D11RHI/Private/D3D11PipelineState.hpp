@@ -326,20 +326,35 @@ namespace Crowy
         }
 
         void bind(DeviceContext& ctx) const{
-            if (inputLayout != nullptr) {
+            if(inputLayout != nullptr){
                 ctx.IASetInputLayout(inputLayout.Get());
                 ctx.IASetPrimitiveTopology(primitiveTopology);
             }
 
-            ctx.VSSetShader(vertexShader.Get(), nullptr, 0);
+            ctx.VSSetShader(
+                vertexShader.Get(),
+                nullptr,
+                0
+            );
             ctx.RSSetState(rasterizerState.Get());
-            ctx.PSSetShader(pixelShader.Get(), nullptr, 0);
+            ctx.PSSetShader(
+                pixelShader.Get(),
+                nullptr,
+                0
+            );
 
-            if (depthStencilState != nullptr) {
-                ctx.OMSetDepthStencilState(depthStencilState.Get(), 0);
+            if(depthStencilState != nullptr){
+                ctx.OMSetDepthStencilState(
+                    depthStencilState.Get(),
+                    0
+                );
             }
-            if (blendState != nullptr) {
-                ctx.OMSetBlendState(blendState.Get(), nullptr, 0xFFFFFFFF);
+            if(blendState != nullptr){
+                ctx.OMSetBlendState(
+                    blendState.Get(),
+                    nullptr,
+                    0xFFFFFFFF
+                );
             }
         }
     };
@@ -350,7 +365,9 @@ namespace Crowy
 #endif
     {
     private:
+        ComputeShaderRAII computeShader = nullptr;
         RHIComputeBindingInfo bindingInfo;
+        RHISize3D threadGroupSize = {256, 1, 1};
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         const std::string debugName;
@@ -369,11 +386,18 @@ namespace Crowy
             // TODO
         }
 
-        ~D3D11ComputePipelineState(){
-        }
+        ~D3D11ComputePipelineState() = default;
 
         const RHIComputeBindingInfo& getInfo() const RHI_OVERRIDE{
             return bindingInfo;
+        }
+
+        void bind(DeviceContext& ctx) const{
+            ctx.CSSetShader(computeShader.Get(), nullptr, 0);
+        }
+
+        RHISize3D getThreadGroupSize() const{
+            return threadGroupSize;
         }
     };
 }

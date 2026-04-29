@@ -24,6 +24,9 @@ namespace Crowy
     using DepthStencilState = ID3D11DepthStencilState;
     using BlendState = ID3D11BlendState;
 
+    // Compute Shader Stage
+    using ComputeShader = ID3D11ComputeShader;
+
     // Resource types
     using Buffer = ID3D11Buffer;
     using Texture = ID3D11Texture2D;
@@ -51,6 +54,8 @@ namespace Crowy
     using BlendStateRAII = RAII<BlendState>;
     using VertexShaderRAII = RAII<VertexShader>;
     using PixelShaderRAII = RAII<PixelShader>;
+
+    using ComputeShaderRAII = RAII<ComputeShader>;
 
     using BufferRAII = RAII<Buffer>;
     using TextureRAII = RAII<Texture>;

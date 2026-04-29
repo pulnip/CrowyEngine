@@ -30,6 +30,7 @@ namespace Crowy
         // simulate command recording
         bool isRecording = false;
         bool inRenderPass = false, inComputePass = false;
+        D3D11ComputePipelineState* currentComputePSO = nullptr;
     #if defined(_DEBUG) || !defined(NDEBUG)
         uint32_t maxBindedVSSRV = 0;
         uint32_t maxBindedPSSRV = 0;
@@ -175,8 +176,9 @@ namespace Crowy
 
         void setPipelineState(RHIComputePipelineState& pso) noexcept RHI_OVERRIDE{
             auto& dxPSO = static_cast<D3D11ComputePipelineState&>(pso);
-            
-            // TODO.
+            dxPSO.bind(context);
+
+            currentComputePSO = &dxPSO;
         }
 
         void setVertexBuffer(
@@ -373,16 +375,17 @@ namespace Crowy
             uint32_t slot,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            using enum RHIShaderStage;
             auto s = static_cast<const D3D11Sampler&>(sampler).get();
 
             switch(stage){
-            case RHIShaderStage::VertexShader:
+            case VertexShader:
                 context.VSSetSamplers(slot, 1, &s);
                 break;
-            case RHIShaderStage::FragmentShader:
+            case FragmentShader:
                 context.PSSetSamplers(slot, 1, &s);
                 break;
-            case RHIShaderStage::ComputeShader:
+            case ComputeShader:
                 context.CSSetSamplers(slot, 1, &s);
                 break;
             default:
@@ -462,6 +465,7 @@ namespace Crowy
             // TODO.
 
             inComputePass = true;
+            currentComputePSO = nullptr;
         }
 
         void endCompute() noexcept RHI_OVERRIDE{
@@ -479,8 +483,10 @@ namespace Crowy
         void dispatch(
             RHISize3D gridSize
         ) noexcept RHI_OVERRIDE{
-            // TODO. reflection from shader?
-            auto threadGroupSize = RHISize3D{256, 1, 1};
+            CROWY_ASSERT(currentComputePSO != nullptr,
+                "Did you call RHICommandList::setPipelineState(ComputePSO)?"
+            );
+            auto threadGroupSize = currentComputePSO->getThreadGroupSize();
 
             context.Dispatch(
                 gridSize.x / threadGroupSize.x,
