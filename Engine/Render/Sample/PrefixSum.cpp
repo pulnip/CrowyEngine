@@ -58,7 +58,7 @@ int main(int argc, char* argv[]){
                     .buffers = {
                         {.slot = "data", .name = "BufferIn"},
                         {.slot = "out", .name = "BufferOut"},
-                        {.slot = "group_sums", .name = "BufferOut"}
+                        {.slot = "group_sums", .name = "GroupSums"}
                     }
                 },
                 .shader = {
