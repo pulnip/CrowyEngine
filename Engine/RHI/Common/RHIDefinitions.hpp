@@ -570,8 +570,9 @@ namespace Crowy
     }
 
     enum class RHIBindingAccess: uint8_t{
-        ReadOnly,
-        ReadWrite
+        ReadOnly = 0,
+        ReadWrite = 1,
+        WriteOnly = 2
     };
 
     struct RHIBufferViewDesc{

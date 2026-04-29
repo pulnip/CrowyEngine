@@ -109,9 +109,12 @@ namespace Crowy
     }
 
     inline auto convert(MTL::BindingAccess access){
+        using enum RHIBindingAccess;
+
         switch(access){
-        case MTL::BindingAccessReadOnly:  return RHIBindingAccess::ReadOnly;
-        case MTL::BindingAccessReadWrite: return RHIBindingAccess::ReadWrite;
+        case MTL::BindingAccessReadOnly:  return ReadOnly;
+        case MTL::BindingAccessReadWrite: return ReadWrite;
+        case MTL::BindingAccessWriteOnly: return WriteOnly;
         default:
             std::unreachable();
         }
