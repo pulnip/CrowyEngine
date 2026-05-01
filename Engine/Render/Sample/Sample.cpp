@@ -216,7 +216,7 @@ int main(int argc, char* argv[]){
                     {
                         .fs = {
                             .samplers = {
-                                {.slot = "samp", .name = "LINEAR_WRAP"}
+                                {.slot = "s", .name = "LINEAR_WRAP"}
                             }
                         },
                         .shader = ShaderSpec{

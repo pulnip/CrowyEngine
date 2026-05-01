@@ -3,7 +3,7 @@ struct VertexOut{
     float2 texCoord : TEXCOORD0;
 };
 
-cbuffer FocusParams : register(b0){
+cbuffer params : register(b0){
     float2 focusCenter;
     float  focusRadius;
     float  falloff;

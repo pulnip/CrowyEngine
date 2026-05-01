@@ -1,7 +1,10 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
 #include <d3d11.h>
+#include <d3d11shader.h>
+#include <d3dcompiler.h>
 #include "string.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
@@ -96,7 +99,7 @@ namespace Crowy
         }
     }
 
-    inline auto convertTopology(RHIPrimitiveTopology primitiveTopology){
+    inline auto convert(RHIPrimitiveTopology primitiveTopology){
         using enum RHIPrimitiveTopology;
 
         switch(primitiveTopology){
@@ -113,14 +116,14 @@ namespace Crowy
     using Blob = ID3DBlob;
 	using BlobRAII = RAII<Blob>;
 
-	struct CompiledShader {
+	struct CompiledShader{
 		std::vector<uint8_t> bytecode;
 
 		CompiledShader(
 			const std::filesystem::path& path,
 			const std::string& entryPoint,
 			const char* target
-		) {
+		){
 			auto ext = std::filesystem::path(path).extension().string();
 
 			if (ext == ".cso" || ext == ".dxbc" || ext == ".dxil") {
@@ -136,7 +139,7 @@ namespace Crowy
 #endif
 			BlobRAII shaderBlob, errorBlob;
 
-			if (FAILED(D3DCompileFromFile(
+			if(FAILED(D3DCompileFromFile(
 				path.c_str(),
 				nullptr,
 				D3D_COMPILE_STANDARD_FILE_INCLUDE,
@@ -146,9 +149,9 @@ namespace Crowy
 				0,
 				&shaderBlob,
 				&errorBlob
-			))) {
+			))){
 				std::string errorMsg = "HLSL compile failed";
-				if (errorBlob) {
+				if(errorBlob){
 					errorMsg += ": ";
 					errorMsg += static_cast<const char*>(errorBlob->GetBufferPointer());
 				}
@@ -158,18 +161,72 @@ namespace Crowy
 			bytecode.resize(shaderBlob->GetBufferSize());
 			memcpy(bytecode.data(), shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize());
 
-			if (bytecode.empty()) {
+			if(bytecode.empty()){
 				throw std::runtime_error("Shader bytecode is empty");
 			}
 		}
 
-		const void* getBytecode() const {
+		const void* getBytecode() const{
 			return bytecode.data();
 		}
-		SIZE_T getBytecodeLength() const {
+		SIZE_T getBytecodeLength() const{
 			return bytecode.size();
 		}
 	};
+
+    inline auto extractBindingInfo(ID3D11ShaderReflection& refl){
+        D3D11_SHADER_DESC desc;
+        refl.GetDesc(&desc);
+
+        RHIShaderBindingInfo info;
+
+        for(UINT i=0; i<desc.BoundResources; ++i){
+            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+            refl.GetResourceBindingDesc(i, &bindDesc);
+
+            RHISlotBindingInfo slotInfo{
+                .index = bindDesc.BindPoint,
+                .access = RHIBindingAccess::ReadOnly
+            };
+
+            switch (bindDesc.Type) {
+            case D3D_SIT_CBUFFER:     [[fallthrough]];
+            case D3D_SIT_TBUFFER:     [[fallthrough]];
+            case D3D_SIT_STRUCTURED:  [[fallthrough]];
+            case D3D_SIT_BYTEADDRESS:
+                slotInfo.access = RHIBindingAccess::ReadOnly;
+                info.bufferInfo.emplace(bindDesc.Name, slotInfo);
+                break;
+            case D3D_SIT_UAV_RWTYPED:       [[fallthrough]];
+            case D3D_SIT_UAV_RWSTRUCTURED:  [[fallthrough]];
+            case D3D_SIT_UAV_RWBYTEADDRESS:
+                slotInfo.access = RHIBindingAccess::ReadWrite;
+                info.bufferInfo.emplace(bindDesc.Name, slotInfo);
+                break;
+            case D3D_SIT_TEXTURE:
+                slotInfo.access = RHIBindingAccess::ReadOnly;
+                info.textureInfo.emplace(bindDesc.Name, slotInfo);
+                break;
+            case D3D_SIT_SAMPLER:
+                info.samplerInfo.emplace(bindDesc.Name, slotInfo);
+                break;
+            default:
+                break;
+            }
+        }
+
+        return info;
+    }
+
+    inline RHIGraphicsBindingInfo extractGraphicsBindingInfo(
+        ID3D11ShaderReflection& vsRefl,
+        ID3D11ShaderReflection& psRefl
+    ){
+        return{
+            .vsInfo = extractBindingInfo(vsRefl),
+            .fsInfo = extractBindingInfo(psRefl)
+        };
+    }
 
     class D3D11GraphicsPipelineState
 #ifndef USE_STATIC_RHI
@@ -236,6 +293,8 @@ namespace Crowy
                 ))){
                     throw std::runtime_error("Failed to create ID3D11InputLayout");
                 }
+
+                primitiveTopology = convert(desc.topology);
             }
 
             // RasterizerState
@@ -317,6 +376,28 @@ namespace Crowy
                     throw std::runtime_error("Failed to create ID3D11BlendState");
                 }
             }
+
+            // Shader Reflection
+            RAII<ID3D11ShaderReflection> vsRefl = nullptr, psRefl = nullptr;
+            if(FAILED(D3DReflect(
+                vsBytecode.getBytecode(),
+                vsBytecode.getBytecodeLength(),
+                IID_ID3D11ShaderReflection,
+                (void**)&vsRefl
+            ))){
+                throw std::runtime_error("Failed to reflect vertex shader");
+            }
+            if(FAILED(D3DReflect(
+                psBytecode.getBytecode(),
+                psBytecode.getBytecodeLength(),
+                IID_ID3D11ShaderReflection,
+                (void**)&psRefl
+            ))){
+                throw std::runtime_error("Failed to reflect pixel shader");
+            }
+            bindingInfo = extractGraphicsBindingInfo(
+                *vsRefl.Get(), *psRefl.Get()
+            );
         }
 
         ~D3D11GraphicsPipelineState() = default;
@@ -359,6 +440,18 @@ namespace Crowy
         }
     };
 
+    inline std::tuple<RHIComputeBindingInfo, RHISize3D> extractComputeBindingInfo(
+        ID3D11ShaderReflection& refl
+    ){
+        UINT threadX, threadY, threadZ;
+        UINT totalThreads = refl.GetThreadGroupSize(&threadX, &threadY, &threadZ);
+
+        return{
+            RHIComputeBindingInfo{.csInfo = extractBindingInfo(refl)},
+            RHISize3D{threadX, threadY, threadZ}
+        };
+    }
+
     class D3D11ComputePipelineState
 #ifndef USE_STATIC_RHI
         : public RHIComputePipelineState
@@ -383,7 +476,35 @@ namespace Crowy
             : debugName(name)
         #endif
         {
-            // TODO
+            auto csBytecode = CompiledShader(
+                desc.computeShaderPath,
+                desc.computeShaderEntryPoint,
+                "cs_5_0"
+            );
+
+            if(FAILED(device.CreateComputeShader(
+                csBytecode.getBytecode(),
+                csBytecode.getBytecodeLength(),
+                nullptr,
+                &computeShader
+            ))){
+                throw std::runtime_error("Failed to create compute shader");
+            }
+
+            RAII<ID3D11ShaderReflection> refl = nullptr;
+            if(FAILED(D3DReflect(
+                csBytecode.getBytecode(),
+                csBytecode.getBytecodeLength(),
+                IID_ID3D11ShaderReflection,
+                (void**)&refl
+            ))){
+                throw std::runtime_error("Failed to reflect compute shader");
+            }
+
+            std::tie(bindingInfo, threadGroupSize) = extractComputeBindingInfo(*refl.Get());
+
+            if(desc.threadGroupSize.has_value())
+                CROWY_ASSERT(threadGroupSize == *desc.threadGroupSize, "Unexpected thread group size");
         }
 
         ~D3D11ComputePipelineState() = default;

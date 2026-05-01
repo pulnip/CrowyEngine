@@ -7,7 +7,7 @@ Texture2D    sceneTexture : register(t0);
 // point sampling
 SamplerState s            : register(s0);
 
-cbuffer PixelateParams : register(b0){
+cbuffer params : register(b0){
     float2 resolution;
     float2 pixelSize;
 };

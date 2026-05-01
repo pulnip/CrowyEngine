@@ -436,6 +436,10 @@ namespace Crowy
         uint32_t x, y, z;
     };
 
+    inline bool operator==(const RHISize3D& lhs, const RHISize3D& rhs) noexcept{
+        return lhs.x==rhs.x && lhs.y==rhs.y && lhs.z==rhs.z;
+    }
+
     struct RHIComputePipelineStateDesc{
         std::filesystem::path computeShaderPath;
         std::string computeShaderEntryPoint = "cs_main";

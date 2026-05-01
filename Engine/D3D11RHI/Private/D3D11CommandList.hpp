@@ -47,6 +47,8 @@ namespace Crowy
             CROWY_ASSERT(!isRecording,
                 "Did you call RHICommandList::close()?"
             );
+            CROWY_ASSERT(!inRenderPass && !inComputePass);
+
             // NOTE. No-Op for D3D11
             isRecording = true;
         }
@@ -59,6 +61,8 @@ namespace Crowy
             CROWY_ASSERT(isRecording,
                 "Did you call RHICommandList::begin()?"
             );
+            CROWY_ASSERT(!inRenderPass && !inComputePass);
+
             // NOTE. No-Op for D3D11
             isRecording = false;
         }
@@ -85,6 +89,9 @@ namespace Crowy
             CROWY_ASSERT(!inRenderPass,
                 "Already in a render pass. Did you call RHICommandList::endRenderPass()?"
             );
+            CROWY_ASSERT(!inComputePass,
+                "Already in a compute pass. Did you call RHICommandList::endComputePass()?"
+            );
             CROWY_ASSERT(renderTargets.size() > 0);
 
             RTV* rtvs[RHI_MAX_RENDER_TARGETS];
@@ -106,6 +113,8 @@ namespace Crowy
                 clearColor, clearDS,
                 debugName
             );
+
+            inRenderPass = true;
         }
 
         void beginRenderPass(
@@ -117,6 +126,15 @@ namespace Crowy
             const RHIClearDepthStencil& clearDS,
             const char* debugName
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(!inRenderPass,
+                "Already in a render pass. Did you call RHICommandList::endRenderPass()?"
+            );
+            CROWY_ASSERT(!inComputePass,
+                "Already in a compute pass. Did you call RHICommandList::endComputePass()?"
+            );
             ID3D11RenderTargetView* rtvs[1] = {
                 static_cast<D3D11Swapchain&>(swapchain).getCurrentRTV()
             };
@@ -145,6 +163,7 @@ namespace Crowy
             CROWY_ASSERT(inRenderPass,
                 "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
             );
+            CROWY_ASSERT(!inComputePass);
 
             // NOTE. No-Op for D3D11
         #if defined(_DEBUG) || !defined(NDEBUG)
@@ -170,11 +189,27 @@ namespace Crowy
         }
 
         void setPipelineState(RHIGraphicsPipelineState& pso) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass,
+                "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
+            );
+            CROWY_ASSERT(!inComputePass);
+
             auto& dxPSO = static_cast<D3D11GraphicsPipelineState&>(pso);
             dxPSO.bind(context);
         }
 
         void setPipelineState(RHIComputePipelineState& pso) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inComputePass,
+                "Not in a compute pass. Did you call RHICommandList::beginComputePass()?"
+            );
+            CROWY_ASSERT(!inRenderPass);
+
             auto& dxPSO = static_cast<D3D11ComputePipelineState&>(pso);
             dxPSO.bind(context);
 
@@ -187,6 +222,14 @@ namespace Crowy
             uint32_t stride,
             uint32_t offset
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass,
+                "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
+            );
+            CROWY_ASSERT(!inComputePass);
+
             auto buf = static_cast<const D3D11Buffer&>(buffer).get();
             context.IASetVertexBuffers(
                 slot,
@@ -202,6 +245,14 @@ namespace Crowy
             RHIIndexFormat format,
             uint32_t offset
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass,
+                "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
+            );
+            CROWY_ASSERT(!inComputePass);
+
             auto buf = static_cast<const D3D11Buffer&>(buffer).get();
             context.IASetIndexBuffer(
                 buf,
@@ -217,6 +268,13 @@ namespace Crowy
             RHIShaderStage stage,
             uint32_t offset
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass != inComputePass,
+                "Not in a pass. Did you call RHICommandList::beginPass()?"
+            );
+
             auto buf = static_cast<const D3D11Buffer&>(buffer).get();
 
             switch(stage){
@@ -240,6 +298,13 @@ namespace Crowy
             RHIBindingAccess access,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass != inComputePass,
+                "Not in a pass. Did you call RHICommandList::beginPass()?"
+            );
+
             using enum RHIBindingAccess;
             using enum RHIShaderStage;
             auto& dxTex = static_cast<D3D11Texture&>(texture);
@@ -296,6 +361,13 @@ namespace Crowy
             RHIBindingAccess access,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass != inComputePass,
+                "Not in a pass. Did you call RHICommandList::beginPass()?"
+            );
+
             using enum RHIBindingAccess;
             using enum RHIShaderStage;
             auto& dxBuf = static_cast<D3D11Buffer&>(buffer);
@@ -375,6 +447,13 @@ namespace Crowy
             uint32_t slot,
             RHIShaderStage stage
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass != inComputePass,
+                "Not in a pass. Did you call RHICommandList::beginPass()?"
+            );
+
             using enum RHIShaderStage;
             auto s = static_cast<const D3D11Sampler&>(sampler).get();
 
@@ -421,6 +500,14 @@ namespace Crowy
             uint32_t startVertex = 0,
             uint32_t startInstance = 0
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass,
+                "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
+            );
+            CROWY_ASSERT(!inComputePass);
+
             if(instanceCount > 1)
                 context.DrawInstanced(
                     vertexCount,
@@ -439,6 +526,14 @@ namespace Crowy
             int32_t baseVertex = 0,
             uint32_t startInstance = 0
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inRenderPass,
+                "Not in a render pass. Did you call RHICommandList::beginRenderPass()?"
+            );
+            CROWY_ASSERT(!inComputePass);
+
             if(instanceCount > 1)
                 context.DrawIndexedInstanced(
                     indexCount,
@@ -462,7 +557,9 @@ namespace Crowy
             CROWY_ASSERT(!inComputePass,
                 "Already in a compute pass. Did you call RHICommandList::endComputePass()?"
             );
-            // TODO.
+            CROWY_ASSERT(!inRenderPass,
+                "Already in a render pass. Did you call RHICommandList::endRenderPass()?"
+            );
 
             inComputePass = true;
             currentComputePSO = nullptr;
@@ -475,7 +572,7 @@ namespace Crowy
             CROWY_ASSERT(inComputePass,
                 "Not in a compute pass. Did you call RHICommandList::beginComputePass()?"
             );
-            // TODO.
+            CROWY_ASSERT(!inRenderPass);
 
             inComputePass = false;
         }
@@ -483,6 +580,12 @@ namespace Crowy
         void dispatch(
             RHISize3D gridSize
         ) noexcept RHI_OVERRIDE{
+            CROWY_ASSERT(isRecording,
+                "Did you call RHICommandList::begin()?"
+            );
+            CROWY_ASSERT(inComputePass,
+                "Not in a compute pass. Did you call RHICommandList::beginComputePass()?"
+            );
             CROWY_ASSERT(currentComputePSO != nullptr,
                 "Did you call RHICommandList::setPipelineState(ComputePSO)?"
             );

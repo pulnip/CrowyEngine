@@ -76,10 +76,17 @@ int main(int argc, char* argv[]){
 
     auto pipelineState = device->createPipelineState({
         .vertexLayout = DEFAULT_VERTEX_ELEMENTS,
+    #if defined(CROWY_METALRHI)
         .vertexShaderPath = "asset/Shaders/triangle.metal",
         .vertexShaderEntryPoint = "vs_main",
         .fragmentShaderPath = "asset/Shaders/triangle.metal",
         .fragmentShaderEntryPoint = "fs_textured",
+    #elif defined(CROWY_D3DRHI)
+        .vertexShaderPath = "asset/Shaders/triangle.hlsl",
+        .vertexShaderEntryPoint = "vs_main",
+        .fragmentShaderPath = "asset/Shaders/triangle.hlsl",
+        .fragmentShaderEntryPoint = "fs_textured",
+    #endif
         .depthStencil = RHIDepthStencilState{
             .format = RHIPixelFormat::D32_FLOAT,
             .depthWriteEnable = true

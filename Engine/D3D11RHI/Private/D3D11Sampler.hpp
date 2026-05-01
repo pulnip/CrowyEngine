@@ -83,12 +83,7 @@ namespace Crowy
             }
         }
 
-        ~D3D11Sampler(){
-            if(sampler != nullptr){
-                sampler->Release();
-                sampler = nullptr;
-            }
-        }
+        ~D3D11Sampler() = default;
 
         Sampler* get() const{ return sampler.Get(); }
     };

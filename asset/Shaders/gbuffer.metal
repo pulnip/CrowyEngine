@@ -38,7 +38,7 @@ struct GBufferOut{
 fragment GBufferOut fs_gbuffer(
     VertexOut             in [[  stage_in]],
     texture2d<float> diffuse [[texture(0)]],
-    sampler             samp [[sampler(0)]]
+    sampler                s [[sampler(0)]]
 ){
     GBufferOut out;
 

@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 #include "assert.hpp"
 #include "enum_traits.hpp"
+#include "ptr_util.hpp"
 #include "semantics.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
@@ -25,6 +26,7 @@ namespace Crowy
     {
     private:
         BufferRAII buffer = nullptr;
+        BufferRAII stagingBuffer = nullptr; // for CPURead download
         uint32_t size = 0;
         RHIBufferUsage usage = RHIBufferUsage::None;
 
@@ -52,13 +54,11 @@ namespace Crowy
             const auto hasVertexUsage = has_flag(desc.usage, VertexBuffer);
             const auto hasIndexUsage = has_flag(desc.usage, IndexBuffer);
             const auto hasConstantUsage = has_flag(desc.usage, ConstantBuffer);
-            const auto needCPUAccess = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
-
-            const auto isGPUOnly = has_flag(desc.access, GPUOnly);
-            CROWY_ASSERT(!needCPUAccess || !isGPUOnly);
-
             const auto isShaderResource = has_flag(desc.usage, AllowShaderRead);
             const auto isUnorderedAccess = has_flag(desc.usage, AllowShaderWrite);
+
+            const auto isCPUWrite = (desc.access == RHIMemoryAccess::CPUWrite);
+            const auto isCPURead  = (desc.access == RHIMemoryAccess::CPURead);
 
             UINT bindFlags = 0;
             if(hasVertexUsage)
@@ -73,16 +73,22 @@ namespace Crowy
                 bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
             UINT miscFlags = 0;
+            // Raw buffer views require this flag (ByteAddressBuffer / RWByteAddressBuffer)
+            if(isShaderResource || isUnorderedAccess)
+                miscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
             if(has_flag(desc.usage, IndirectArgs))
                 miscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
 
+            // DYNAMIC+UAV is invalid in D3D11; use DEFAULT when UAV binding is needed
+            const auto isDynamicUsage = isCPUWrite && !isUnorderedAccess;
+
             D3D11_BUFFER_DESC dxDesc = {
                 .ByteWidth = static_cast<UINT>(desc.size),
-                .Usage = isGPUOnly ?
-                    D3D11_USAGE_DEFAULT: D3D11_USAGE_DYNAMIC,
+                .Usage = isDynamicUsage ?
+                    D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,
                 .BindFlags = bindFlags,
-                .CPUAccessFlags = isGPUOnly ?
-                    UINT(0) : D3D11_CPU_ACCESS_WRITE,
+                .CPUAccessFlags = isDynamicUsage ?
+                    D3D11_CPU_ACCESS_WRITE : UINT(0),
                 .MiscFlags = miscFlags,
                 .StructureByteStride = 0
             };
@@ -97,6 +103,21 @@ namespace Crowy
                 &buffer
             ))){
                 throw std::runtime_error("Failed to create D3D11 buffer");
+            }
+
+            // Create a staging buffer for CPU readback when access == CPURead
+            if(isCPURead){
+                D3D11_BUFFER_DESC stagingDesc{
+                    .ByteWidth = static_cast<UINT>(desc.size),
+                    .Usage = D3D11_USAGE_STAGING,
+                    .BindFlags = 0,
+                    .CPUAccessFlags = D3D11_CPU_ACCESS_READ,
+                    .MiscFlags = 0,
+                    .StructureByteStride = 0
+                };
+                if(FAILED(device.CreateBuffer(&stagingDesc, nullptr, &stagingBuffer))){
+                    throw std::runtime_error("Failed to create staging buffer for readback");
+                }
             }
 
         #if defined(_DEBUG) || !defined(NDEBUG)
@@ -115,32 +136,50 @@ namespace Crowy
         CROWY_DECLARE_PINNED(D3D11Buffer)
 
         inline void upload(
-            const void* data, uint32_t size,
+            const void* src, uint32_t srcSize,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
-            const auto bufSize = this->size;
-            CROWY_ASSERT(size <= bufSize - offset);
+            CROWY_ASSERT(srcSize <= size - offset);
 
             D3D11_MAPPED_SUBRESOURCE mapped;
             context.Map(buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
-            std::memcpy(mapped.pData, data, size);
+            std::memcpy(ptr_add(mapped.pData, offset), src, srcSize);
 
             context.Unmap(buffer.Get(), 0);
         }
 
         inline void download(
-            void* data, uint32_t size,
+            void* dst, uint32_t dstSize,
             uint32_t offset = 0
         ) noexcept RHI_OVERRIDE{
-            const auto bufSize = this->size;
-            CROWY_ASSERT(size <= bufSize - offset);
+            CROWY_ASSERT(dstSize <= size - offset);
+            CROWY_ASSERT(stagingBuffer != nullptr,
+                "download() requires RHIMemoryAccess::CPURead"
+            );
+
+            // Copy GPU buffer → staging, then Map staging for CPU read
+            const D3D11_BOX srcBox{
+                .left = offset,
+                .top = 0,
+                .front = 0,
+                .right = offset + dstSize,
+                .bottom = 1,
+                .back = 1
+            };
+            context.CopySubresourceRegion(
+                stagingBuffer.Get(), 0,   // dst resource, dst subresource
+                0, 0, 0,                   // dst x, y, z.
+                buffer.Get(), 0,           // src resource, src subresource
+        &srcBox
+            );
+
             D3D11_MAPPED_SUBRESOURCE mapped;
-            context.Map(buffer.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+            context.Map(stagingBuffer.Get(), 0, D3D11_MAP_READ, 0, &mapped);
 
-            std::memcpy(data, mapped.pData, size);
+            std::memcpy(dst, mapped.pData, dstSize);
 
-            context.Unmap(buffer.Get(), 0);
+            context.Unmap(stagingBuffer.Get(), 0);
         }
 
         uint32_t getSize() const noexcept RHI_OVERRIDE{
