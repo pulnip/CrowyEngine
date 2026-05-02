@@ -504,7 +504,7 @@ namespace Crowy
             std::tie(bindingInfo, threadGroupSize) = extractComputeBindingInfo(*refl.Get());
 
             if(desc.threadGroupSize.has_value())
-                CROWY_ASSERT(threadGroupSize == *desc.threadGroupSize, "Unexpected thread group size");
+                CROWY_ASSERT(threadGroupSize <= *desc.threadGroupSize, "Unexpected thread group size");
         }
 
         ~D3D11ComputePipelineState() = default;

@@ -439,6 +439,9 @@ namespace Crowy
     inline bool operator==(const RHISize3D& lhs, const RHISize3D& rhs) noexcept{
         return lhs.x==rhs.x && lhs.y==rhs.y && lhs.z==rhs.z;
     }
+    inline bool operator<=(const RHISize3D& lhs, const RHISize3D& rhs) noexcept{
+        return lhs.x<=rhs.x && lhs.y<=rhs.y && lhs.z<=rhs.z;
+    }
 
     struct RHIComputePipelineStateDesc{
         std::filesystem::path computeShaderPath;

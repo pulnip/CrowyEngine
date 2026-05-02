@@ -5,6 +5,7 @@
 #include <utility>
 #include <d3d11.h>
 #include "assert.hpp"
+#include "int_math.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #ifndef USE_STATIC_RHI
@@ -592,9 +593,9 @@ namespace Crowy
             auto threadGroupSize = currentComputePSO->getThreadGroupSize();
 
             context.Dispatch(
-                gridSize.x / threadGroupSize.x,
-                gridSize.y / threadGroupSize.y,
-                gridSize.z / threadGroupSize.z
+                ceil_div(gridSize.x, threadGroupSize.x),
+                ceil_div(gridSize.y, threadGroupSize.y),
+                ceil_div(gridSize.z, threadGroupSize.z)
             );
         }
 

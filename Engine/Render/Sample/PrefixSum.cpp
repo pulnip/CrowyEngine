@@ -1,17 +1,12 @@
-#include <bit>
-#include <SDL3/SDL.h>
 #include <cstddef>
 #include <cstdint>
+#include "int_math.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "Renderer.hpp"
 #include "RenderSpec.hpp"
 
 using namespace Crowy;
-
-constexpr auto nextPow2(uint32_t n){
-    return 1 << (32 - std::countl_zero(n-1));
-}
 
 int main(int argc, char* argv[]){
     auto device = createDevice();
@@ -22,6 +17,8 @@ int main(int argc, char* argv[]){
     constexpr auto NUM_GROUP = (N/2)/GROUP_SIZE + 1;
     constexpr auto N2 = 2 * NUM_GROUP * GROUP_SIZE;
     std::vector<uint32_t> ones(N2, 1);
+
+    constexpr uint32_t SINGLE_GROUP_SIZE = next_pow2(NUM_GROUP) / 2u;
 
     Renderer renderer(*device);
     RenderSpec spec{
@@ -46,7 +43,7 @@ int main(int argc, char* argv[]){
             {
                 "GroupSums",
                 RHIBufferCreateDesc{
-                    .size = static_cast<uint32_t>(sizeof(uint32_t) * nextPow2(NUM_GROUP)),
+                    .size = static_cast<uint32_t>(sizeof(uint32_t) * next_pow2(NUM_GROUP)),
                     .usage = BUF_AllowShaderRW
                 }
             }
@@ -94,9 +91,9 @@ int main(int argc, char* argv[]){
                     .funcName = "cs_prefix_sum_single",
                 #endif
                 },
-                .gridSize = {.x=nextPow2(NUM_GROUP)/2u, .y=1u, .z=1u},
+                .gridSize = {.x=SINGLE_GROUP_SIZE, .y=1u, .z=1u},
                 .threadGroupSize = RHISize3D{
-                    .x=std::min(nextPow2(NUM_GROUP)/2u, 1024u),
+                    .x=std::min(SINGLE_GROUP_SIZE, 1024u),
                     .y=1,
                     .z=1
                 }

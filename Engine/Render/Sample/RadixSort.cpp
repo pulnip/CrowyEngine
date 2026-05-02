@@ -1,10 +1,10 @@
 #include <algorithm>
-#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <numeric>
 #include <random>
 #include <vector>
+#include "int_math.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "Renderer.hpp"
@@ -12,30 +12,18 @@
 
 using namespace Crowy;
 
-constexpr auto nextPow2(uint32_t n){
-    return 1 << (32 - std::countl_zero(n-1));
-}
-
-constexpr auto ceilDiv(uint32_t n, uint32_t d){
-    return (n + (d-1)) / d;
-}
-
-constexpr auto nextMul(uint32_t n, uint32_t m){
-    return ceilDiv(n, m) * m;
-}
-
-constexpr auto N = 10000;
+constexpr auto N = 10000u;
 
 // HG = Histogram
 // PS = Prefix Sum
 constexpr auto HG_GROUPSIZE = 16u;
-constexpr auto HG_NUMGROUP = ceilDiv(N, HG_GROUPSIZE);
+constexpr auto HG_NUMGROUP = ceil_div(N, HG_GROUPSIZE);
 constexpr auto HG_N = HG_GROUPSIZE * HG_NUMGROUP;
 
 constexpr auto PS_GROUPSIZE = 1024u;
 constexpr auto PS_BLOCK = 2*PS_GROUPSIZE;
 
-constexpr auto HG_PADDED_N = nextMul(HG_N, PS_BLOCK);
+constexpr auto HG_PADDED_N = next_mul(HG_N, PS_BLOCK);
 constexpr auto PS_NUMGROUP = HG_PADDED_N / PS_BLOCK;
 
 auto makeRadixPass(
@@ -119,9 +107,9 @@ auto makeRadixPass(
                 .funcName = "cs_prefix_sum_single",
             #endif
             },
-            .gridSize = {.x=nextPow2(PS_NUMGROUP)/2u, .y=1u, .z=1u},
+            .gridSize = {.x=next_pow2(PS_NUMGROUP)/2u, .y=1u, .z=1u},
             .threadGroupSize = RHISize3D{
-                .x=std::min(nextPow2(PS_NUMGROUP)/2u, 1024u),
+                .x=std::min(next_pow2(PS_NUMGROUP)/2u, 1024u),
                 .y=1,
                 .z=1
             }
@@ -257,7 +245,7 @@ int main(int argc, char* argv[]){
             {
                 "GroupSums",
                 RHIBufferCreateDesc{
-                    .size = static_cast<uint32_t>(sizeof(uint32_t) * nextPow2(PS_NUMGROUP)),
+                    .size = static_cast<uint32_t>(sizeof(uint32_t) * next_pow2(PS_NUMGROUP)),
                     .usage = BUF_AllowShaderRW
                 }
             },
