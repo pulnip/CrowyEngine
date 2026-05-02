@@ -18,11 +18,11 @@
 namespace Crowy
 {
 #ifdef USE_STATIC_RHI
-    std::unique_ptr<D3D11Device> createDevice() noexcept{
+    std::unique_ptr<D3D11Device> createDevice(){
         return std::make_unique<D3D11Device>();
     }
 #else
-    RHIDeviceRAII createDevice() noexcept{
+    RHIDeviceRAII createDevice(){
         return std::make_unique<D3D11Device>();
     }
 #endif
@@ -112,7 +112,7 @@ namespace Crowy
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             const std::string& name
-        ) noexcept{
+        ){
             return std::make_unique<D3D11Buffer>(
                 *device.Get(), *context.Get(),
                 desc, name
@@ -122,7 +122,7 @@ namespace Crowy
         RHITextureRAII createTexture(
             const RHITextureCreateDesc& desc,
             const std::string& name
-        ) noexcept{
+        ){
             return std::make_unique<D3D11Texture>(
                 *device.Get(), *context.Get(),
                 desc, name
@@ -131,35 +131,35 @@ namespace Crowy
 
         RHISamplerRAII createSampler(
             const RHISamplerState& desc
-        ) noexcept{
+        ){
             return std::make_unique<D3D11Sampler>(*device.Get(), desc);
         }
 
         RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             const std::string& name
-        ) noexcept{
+        ){
             return std::make_unique<D3D11GraphicsPipelineState>(*device.Get(), desc, name);
         }
 
         RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc& desc,
             const std::string& name
-        ) noexcept{
+        ){
             return std::make_unique<D3D11ComputePipelineState>(*device.Get(), desc, name);
         }
 
         RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc& desc
-        ) noexcept{
+        ){
             return std::make_unique<D3D11Swapchain>(*device.Get(), *factory.Get(), desc);
         }
 
-        RHICommandListRAII createCommandList() noexcept{
+        RHICommandListRAII createCommandList(){
             return std::make_unique<D3D11CommandList>(*context.Get());
         }
 
-        RHIFenceRAII createFence(uint64_t initialValue) noexcept{
+        RHIFenceRAII createFence(uint64_t initialValue){
             return std::make_unique<D3D11Fence>(*device.Get(), initialValue);
         }
 
@@ -177,55 +177,55 @@ namespace Crowy
 
     D3D11Device::~D3D11Device(){}
 
-    RHIFrameScopeRAII D3D11Device::createFrameScope() noexcept{
+    RHIFrameScopeRAII D3D11Device::createFrameScope(){
         return impl->createFrameScopoe();
     }
 
     RHIBufferRAII D3D11Device::createBuffer(
         const RHIBufferCreateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return impl->createBuffer(desc, name);
     }
 
     RHITextureRAII D3D11Device::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return impl->createTexture(desc, name);
     }
 
     RHISamplerRAII D3D11Device::createSampler(
         const RHISamplerState& desc
-    ) noexcept{
+    ){
         return impl->createSampler(desc);
     }
 
     RHIGraphicsPipelineStateRAII D3D11Device::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return impl->createPipelineState(desc, name);
     }
 
     RHIComputePipelineStateRAII D3D11Device::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return impl->createPipelineState(desc, name);
     }
 
     RHISwapchainRAII D3D11Device::createSwapchain(
         const RHISwapchainCreateDesc& desc
-    ) noexcept{
+    ){
         return impl->createSwapchain(desc);
     }
 
-    RHICommandListRAII D3D11Device::createCommandList() noexcept{
+    RHICommandListRAII D3D11Device::createCommandList(){
         return impl->createCommandList();
     }
 
-    RHIFenceRAII D3D11Device::createFence(uint64_t initialValue) noexcept{
+    RHIFenceRAII D3D11Device::createFence(uint64_t initialValue){
         return impl->createFence(initialValue);
     }
 

@@ -48,36 +48,36 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE_NOEXCEPT(RHIDevice)
 
-        virtual RHIFrameScopeRAII createFrameScope() noexcept = 0;
+        virtual RHIFrameScopeRAII createFrameScope() = 0;
 
         virtual RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             const std::string& name = ""
-        ) noexcept = 0;
+        ) = 0;
         virtual RHITextureRAII createTexture(
             const RHITextureCreateDesc&,
             const std::string& name = ""
-        ) noexcept = 0;
+        ) = 0;
         virtual RHISamplerRAII createSampler(
             const RHISamplerState&
-        ) noexcept = 0;
+        ) = 0;
 
         virtual RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
-        ) noexcept = 0;
+        ) = 0;
         virtual RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
-        ) noexcept = 0;
+        ) = 0;
 
         virtual RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc&
-        ) noexcept = 0;
+        ) = 0;
 
-        virtual RHICommandListRAII createCommandList() noexcept = 0;
+        virtual RHICommandListRAII createCommandList() = 0;
 
-        virtual RHIFenceRAII createFence(uint64_t initialValue = 0) noexcept = 0;
+        virtual RHIFenceRAII createFence(uint64_t initialValue = 0) = 0;
 
         FramePacerRAII createFramePacer() noexcept;
 
@@ -94,5 +94,5 @@ namespace Crowy
 #endif
 
     // each platform should implement this function
-    RHIDeviceRAII createDevice() noexcept;
+    RHIDeviceRAII createDevice();
 }

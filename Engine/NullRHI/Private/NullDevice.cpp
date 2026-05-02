@@ -11,64 +11,64 @@
 namespace Crowy
 {
 #ifdef USE_STATIC_RHI
-    std::unique_ptr<NullDevice> createDevice() noexcept{
+    std::unique_ptr<NullDevice> createDevice(){
         return std::make_unique<NullDevice>();
     }
 #else
-    RHIDeviceRAII createDevice() noexcept{
+    RHIDeviceRAII createDevice(){
         return std::make_unique<NullDevice>();
     }
 #endif
 
-    RHIFrameScopeRAII NullDevice::createFrameScope() noexcept{
+    RHIFrameScopeRAII NullDevice::createFrameScope(){
         return std::make_unique<RHIFrameScope>();
     }
 
     RHIBufferRAII NullDevice::createBuffer(
         const RHIBufferCreateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return std::make_unique<NullBuffer>(desc, name);
     }
 
     RHITextureRAII NullDevice::createTexture(
         const RHITextureCreateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return std::make_unique<NullTexture>(desc, name);
     }
 
     RHISamplerRAII NullDevice::createSampler(
         const RHISamplerState& desc
-    ) noexcept{
+    ){
         return std::make_unique<NullSampler>(desc);
     }
 
     RHIGraphicsPipelineStateRAII NullDevice::createPipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return std::make_unique<NullGraphicsPipelineState>(desc, name);
     }
 
     RHIComputePipelineStateRAII NullDevice::createPipelineState(
         const RHIComputePipelineStateDesc& desc,
         const std::string& name
-    ) noexcept{
+    ){
         return std::make_unique<NullComputePipelineState>(desc, name);
     }
 
     RHISwapchainRAII NullDevice::createSwapchain(
         const RHISwapchainCreateDesc& desc
-    ) noexcept{
+    ){
         return std::make_unique<NullSwapchain>(desc);
     }
 
-    RHIFenceRAII NullDevice::createFence(uint64_t initialValue) noexcept{
+    RHIFenceRAII NullDevice::createFence(uint64_t initialValue){
         return std::make_unique<NullFence>(initialValue);
     }
 
-    RHICommandListRAII NullDevice::createCommandList() noexcept{
+    RHICommandListRAII NullDevice::createCommandList(){
         return std::make_unique<NullCommandList>();
     }
 
