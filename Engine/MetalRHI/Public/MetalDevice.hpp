@@ -17,39 +17,39 @@ namespace Crowy
 #endif
     {
     public:
-        MetalDevice() noexcept;
+        MetalDevice();
         ~MetalDevice();
 
-        RHIFrameScopeRAII createFrameScope() noexcept RHI_OVERRIDE;
+        RHIFrameScopeRAII createFrameScope() RHI_OVERRIDE;
 
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             const std::string& name = ""
-        ) noexcept RHI_OVERRIDE;
+        ) RHI_OVERRIDE;
         RHITextureRAII createTexture(
             const RHITextureCreateDesc&,
             const std::string& name = ""
-        ) noexcept RHI_OVERRIDE;
+        ) RHI_OVERRIDE;
         RHISamplerRAII createSampler(
             const RHISamplerState&
-        ) noexcept RHI_OVERRIDE;
+        ) RHI_OVERRIDE;
 
         RHIGraphicsPipelineStateRAII createPipelineState(
             const RHIGraphicsPipelineStateDesc&,
             const std::string& name = ""
-        ) noexcept RHI_OVERRIDE;
+        ) RHI_OVERRIDE;
         RHIComputePipelineStateRAII createPipelineState(
             const RHIComputePipelineStateDesc&,
             const std::string& name = ""
-        ) noexcept RHI_OVERRIDE;
+        ) RHI_OVERRIDE;
 
         RHISwapchainRAII createSwapchain(
             const RHISwapchainCreateDesc&
-        ) noexcept RHI_OVERRIDE;
+        ) RHI_OVERRIDE;
 
-        RHICommandListRAII createCommandList() noexcept RHI_OVERRIDE;
+        RHICommandListRAII createCommandList() RHI_OVERRIDE;
 
-        RHIFenceRAII createFence(uint64_t initialValue = 0) noexcept RHI_OVERRIDE;
+        RHIFenceRAII createFence(uint64_t initialValue = 0) RHI_OVERRIDE;
 
         RHICapabilities getCapabilities() const noexcept RHI_OVERRIDE;
 
