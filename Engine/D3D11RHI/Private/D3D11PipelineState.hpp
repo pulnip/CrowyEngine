@@ -126,17 +126,17 @@ namespace Crowy
 		){
 			auto ext = std::filesystem::path(path).extension().string();
 
-			if (ext == ".cso" || ext == ".dxbc" || ext == ".dxil") {
+			if(ext == ".cso" || ext == ".dxbc" || ext == ".dxil"){
 				bytecode = read_file_as_binary(path);
 			}
-			else if(ext != ".hlsl") {
+			else if(ext != ".hlsl"){
 				throw std::runtime_error("Unsupported shader file extension: " + ext);
 			}
 
 			UINT compileFlags = 0;
-#if defined(_DEBUG) || !defined(NDEBUG)
+        #if defined(_DEBUG) || !defined(NDEBUG)
 			compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
+        #endif
 			BlobRAII shaderBlob, errorBlob;
 
 			if(FAILED(D3DCompileFromFile(
@@ -504,7 +504,7 @@ namespace Crowy
             std::tie(bindingInfo, threadGroupSize) = extractComputeBindingInfo(*refl.Get());
 
             if(desc.threadGroupSize.has_value())
-                CROWY_ASSERT(threadGroupSize <= *desc.threadGroupSize, "Unexpected thread group size");
+                CROWY_ASSERT(*desc.threadGroupSize <= *desc.threadGroupSize, "Unexpected thread group size");
         }
 
         ~D3D11ComputePipelineState() = default;

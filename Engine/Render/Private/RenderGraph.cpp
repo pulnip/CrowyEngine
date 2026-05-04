@@ -263,7 +263,7 @@ namespace Crowy
             .computeShaderEntryPoint = spec.shader.funcName,
             .gridSize = spec.gridSize,
             .threadGroupSize = spec.threadGroupSize
-        });
+        }, spec.name);
 
         return{
             .name = spec.name,
