@@ -37,16 +37,15 @@ void prefix_sum_down_sweep(
 }
 
 kernel void cs_prefix_sum_single(
-    device const uint*       data [[buffer(0)]],
-    device uint*              out [[buffer(1)]],
+    device uint*           io_buf [[buffer(1)]],
     uint group_size [[threads_per_threadgroup]],
     uint    tid [[thread_index_in_threadgroup]]
 ){
     threadgroup uint shared[2048];
     uint n = group_size*2;
 
-    shared[2*tid + 0] = data[2*tid + 0];
-    shared[2*tid + 1] = data[2*tid + 1];
+    shared[2*tid + 0] = io_buf[2*tid + 0];
+    shared[2*tid + 1] = io_buf[2*tid + 1];
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
     prefix_sum_up_sweep(shared, tid, n);
@@ -56,13 +55,13 @@ kernel void cs_prefix_sum_single(
 
     prefix_sum_down_sweep(shared, tid, n);
 
-    out[2*tid + 0] = shared[2*tid + 0];
-    out[2*tid + 1] = shared[2*tid + 1];
+    io_buf[2*tid + 0] = shared[2*tid + 0];
+    io_buf[2*tid + 1] = shared[2*tid + 1];
 }
 
 kernel void cs_prefix_sum(
     device const uint*       data [[buffer(0)]],
-    device uint*              out [[buffer(1)]],
+    device uint*           io_buf [[buffer(1)]],
     device uint*       group_sums [[buffer(2)]],
     uint group_size [[threads_per_threadgroup]],
     uint    tid [[thread_index_in_threadgroup]],
@@ -86,18 +85,18 @@ kernel void cs_prefix_sum(
 
     prefix_sum_down_sweep(shared, tid, n);
 
-    out[base + 2*tid + 0] = shared[2*tid + 0];
-    out[base + 2*tid + 1] = shared[2*tid + 1];
+    io_buf[base + 2*tid + 0] = shared[2*tid + 0];
+    io_buf[base + 2*tid + 1] = shared[2*tid + 1];
 }
 
 kernel void cs_add_group_sums(
     device const uint* group_sums [[buffer(0)]],
-    device uint*              out [[buffer(1)]],
+    device uint*           io_buf [[buffer(1)]],
     uint group_size [[threads_per_threadgroup]],
     uint    tid [[thread_index_in_threadgroup]],
     uint    gid [[threadgroup_position_in_grid]]
 ){
     uint base = 2 * gid * group_size;
-    out[base + 2*tid + 0] += group_sums[gid];
-    out[base + 2*tid + 1] += group_sums[gid];
+    io_buf[base + 2*tid + 0] += group_sums[gid];
+    io_buf[base + 2*tid + 1] += group_sums[gid];
 }

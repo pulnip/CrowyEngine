@@ -54,7 +54,7 @@ int main(int argc, char* argv[]){
                 .cs = {
                     .buffers = {
                         {.slot = "data", .name = "BufferIn"},
-                        {.slot = "out", .name = "BufferOut"},
+                        {.slot = "io_buf", .name = "BufferOut"},
                         {.slot = "group_sums", .name = "GroupSums"}
                     }
                 },
@@ -78,8 +78,7 @@ int main(int argc, char* argv[]){
                 .name = "Group PrefixSum",
                 .cs = {
                     .buffers = {
-                        {.slot = "data", .name = "GroupSums"},
-                        {.slot = "out", .name = "GroupSums"}
+                        {.slot = "io_buf", .name = "GroupSums"}
                     }
                 },
                 .shader = {
@@ -103,7 +102,7 @@ int main(int argc, char* argv[]){
                 .cs = {
                     .buffers = {
                         {.slot = "group_sums", .name = "GroupSums"},
-                        {.slot = "out", .name = "BufferOut"}
+                        {.slot = "io_buf", .name = "BufferOut"}
                     }
                 },
                 .shader = {

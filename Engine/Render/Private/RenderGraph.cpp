@@ -628,14 +628,30 @@ namespace Crowy
                 ComputeShader
             );
         }
+        for(const auto& bind: pass.cs.cbuffers){
+            auto it = cbuffers.find(bind.name);
+            [[unlikely]] if(it == cbuffers.end())
+                continue;
+
+            const auto& cbuf = it->second;
+            auto& buf = passParamBuffers.acquire();
+            buf.upload(cbuf.buffer.data(), cbuf.buffer.size());
+
+            cmdList.setConstantBuffer(
+                buf,
+                info.csInfo.bufferInfo.at(bind.slot).index,
+                ComputeShader
+            );
+        }
         for(const auto& bind: pass.cs.buffers){
             auto it = buffers.find(bind.name);
             CROWY_ASSERT(it != buffers.end());
 
+            const auto& slotInfo = info.csInfo.bufferInfo.at(bind.slot);
             cmdList.setBuffer(
                 *it->second,
-                info.csInfo.bufferInfo.at(bind.slot).index,
-                bind.access,
+                slotInfo.index,
+                slotInfo.access,
                 ComputeShader
             );
         }

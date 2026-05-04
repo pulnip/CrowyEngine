@@ -70,7 +70,7 @@ auto makeRadixPass(
             .cs = {
                 .buffers = {
                     {.slot = "data", .name = "Histogram"},
-                    {.slot = "out", .name = "PrefixSum"},
+                    {.slot = "io_buf", .name = "PrefixSum"},
                     {.slot = "group_sums", .name = "GroupSums"}
                 }
             },
@@ -94,8 +94,7 @@ auto makeRadixPass(
             .name = "GroupPrefixSum_" + tag,
             .cs = {
                 .buffers = {
-                    {.slot = "data", .name = "GroupSums"},
-                    {.slot = "out", .name = "GroupSums"},
+                    {.slot = "io_buf", .name = "GroupSums"}
                 }
             },
             .shader = {
@@ -119,7 +118,7 @@ auto makeRadixPass(
             .cs = {
                 .buffers = {
                     {.slot = "group_sums", .name = "GroupSums"},
-                    {.slot = "out", .name = "PrefixSum"}
+                    {.slot = "io_buf", .name = "PrefixSum"}
                 }
             },
             .shader = {
