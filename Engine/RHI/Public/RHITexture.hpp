@@ -1,46 +1,23 @@
 #pragma once
 
-#include <cstddef>
-#include <memory>
-#include "semantics.hpp"
-#include "RHIFWD.hpp"
+#include "Semantics.hpp"
+#include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
-
-#ifdef USE_STATIC_RHI
-    #if defined(USE_METAL_BACKEND)
-        #include "MetalTexture.hpp"
-    #elif defined(USE_D3D11_BACKEND)
-        #include "D3D11Texture.hpp"
-    #else
-        #include "NullTexture.hpp"
-    #endif
-#endif
 
 namespace Crowy
 {
     // GPU texture resource (1D, 2D, 3D, Cube, arrays)
-#ifdef USE_STATIC_RHI
-    template<typename T>
-    concept RHITextureType = requires(T texture){
-    };
-    static_assert(RHITextureType<RHITexture>);
-#else
     class RHITexture{
     public:
-        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHITexture)
+        SMOL_DECLARE_INTERFACE(RHITexture)
 
-        virtual void upload(const void* data,
-            uint32_t mipLevel = 0, uint32_t arraySlice = 0
-        ) noexcept = 0;
+        virtual RHIPixelFormat GetFormat() const noexcept = 0;
+        virtual u32 GetWidth() const noexcept = 0;
+        virtual u32 GetHeight() const noexcept = 0;
 
-        virtual RHIPixelFormat getFormat() const noexcept = 0;
-        virtual size_t getWidth() const noexcept = 0;
-        virtual size_t getHeight() const noexcept = 0;
+        virtual void* GetNative() noexcept = 0;
 
-        virtual RHIResourceState getState() const noexcept = 0;
-        virtual void setState(RHIResourceState state) noexcept = 0;
+        virtual RHIResourceState GetState() const = 0;
+        virtual void SetState(RHIResourceState state) = 0;
     };
-#endif
-
-    using RHITexturePtr = std::unique_ptr<RHITexture>;
 }

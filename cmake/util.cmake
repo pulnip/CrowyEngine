@@ -1,37 +1,44 @@
-set(ASSET_SRC "${CMAKE_SOURCE_DIR}/asset")
-set(ASSET_DST "${CMAKE_BINARY_DIR}/bin/asset")
+# symlink for Config/ or Content/ directory
+function(smol_link_or_copy_directory DIR_NAME)
+    set(SRC "${CMAKE_SOURCE_DIR}/${DIR_NAME}")
+    set(DST "${CMAKE_BINARY_DIR}/bin/${DIR_NAME}")
 
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-if(NOT EXISTS "${ASSET_DST}")
-    # try to link asset folder
+    if(EXISTS "${DST}")
+        return()
+    endif()
+
     if(WIN32)
-        file(TO_NATIVE_PATH "${ASSET_DST}" ASSET_DST_NATIVE)
-        file(TO_NATIVE_PATH "${ASSET_SRC}" ASSET_SRC_NATIVE)
+        file(TO_NATIVE_PATH "${DST}" DST_NATIVE)
+        file(TO_NATIVE_PATH "${SRC}" SRC_NATIVE)
         execute_process(
-            COMMAND cmd /c mklink /J "${ASSET_DST_NATIVE}" "${ASSET_SRC_NATIVE}"
+            COMMAND cmd /c mklink /J "${DST_NATIVE}" "${SRC_NATIVE}"
             RESULT_VARIABLE LINK_RESULT
         )
     else()
-        file(CREATE_LINK "${ASSET_SRC}" "${ASSET_DST}"
+        file(CREATE_LINK "${SRC}" "${DST}"
             RESULT LINK_RESULT
             SYMBOLIC
         )
     endif()
 
-    # fallback: copy asset folder
+    # fallback: copy directory
     if(NOT LINK_RESULT EQUAL 0)
-        message(STATUS "Symlink failed, falling back to copy...")
-        file(COPY "${ASSET_SRC}" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+        message(STATUS "[${DIR_NAME}] Symlink failed, falling back to copy...")
+        file(COPY "${SRC}" DESTINATION "${CMAKE_BINARY_DIR}/bin")
     endif()
-endif()
+endfunction()
 
-function(crowy_declare_module NAME)
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+smol_link_or_copy_directory(Content)
+smol_link_or_copy_directory(Config)
+
+function(smol_declare_module NAME)
     add_library(Crowy${NAME} STATIC)
 
-    file(GLOB PUBLIC_SOURCES
+    file(GLOB_RECURSE PUBLIC_SOURCES
         "Public/*.hpp"
     )
-    file(GLOB PRIVATE_SOURCES
+    file(GLOB_RECURSE PRIVATE_SOURCES
         "Private/*.hpp"
         "Private/*.cpp"
     )
@@ -48,21 +55,32 @@ function(crowy_declare_module NAME)
         "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     )
 
+    target_link_libraries(Crowy${NAME}
+    PUBLIC
+        CrowyProjectInterface
+    )
+
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
 
-function(crowy_declare_private_interface NAME)
-    add_library(Crowy${NAME}_Private INTERFACE)
+function(smol_declare_private_interface NAME)
+    add_library(Crowy${NAME}Private INTERFACE)
 
-    target_include_directories(Crowy${NAME}_Private INTERFACE
+    target_include_directories(Crowy${NAME}Private
+    INTERFACE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private"
     )
 
-    target_link_libraries(Crowy${NAME}_Private INTERFACE Crowy::${NAME})
+    target_link_libraries(Crowy${NAME}Private
+    INTERFACE
+        Crowy::${NAME}
+    )
+
+    add_library(Crowy::${NAME}::Private ALIAS Crowy${NAME}Private)
 endfunction()
 
-function(crowy_declare_interface NAME)
-    cmake_parse_arguments(ARG "" "DIRECTORY" "" ${ARGN})
+function(smol_declare_interface NAME)
+    cmake_parse_arguments(ARG "" "DIRECTORY" "DEPENDS" ${ARGN})
 
     add_library(Crowy${NAME} INTERFACE)
 
@@ -80,10 +98,16 @@ function(crowy_declare_interface NAME)
         "${CMAKE_CURRENT_SOURCE_DIR}/${ARG_DIRECTORY}"
     )
 
+    target_link_libraries(Crowy${NAME}
+    INTERFACE
+        CrowyProjectInterface
+        ${ARG_DEPENDS}
+    )
+
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
 
-function(crowy_declare_test NAME)
+function(smol_declare_test NAME)
     cmake_parse_arguments(ARG "" "DIRECTORY" "LABELS;DEPENDS" ${ARGN})
 
     if(NOT ARG_DIRECTORY)
@@ -110,33 +134,12 @@ function(crowy_declare_test NAME)
     )
 
     add_test(
-        NAME Crowy${NAME}-Test
+        NAME Crowy${NAME}Test
         COMMAND $<TARGET_FILE:Crowy${NAME}Test>
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
-    set_tests_properties(Crowy${NAME}-Test
+    set_tests_properties(Crowy${NAME}Test
     PROPERTIES
         LABELS "${ARG_LABELS}"
     )
-endfunction()
-
-function(crowy_rhi_macro NAME)
-    if(RENDER_BACKEND STREQUAL "Metal")
-        target_compile_definitions(Crowy${NAME}
-        PRIVATE
-            CROWY_METALRHI
-        )
-    elseif(RENDER_BACKEND STREQUAL "D3D11")
-        target_compile_definitions(Crowy${NAME}
-        PRIVATE
-            CROWY_D3DRHI
-            CROWY_D3D11RHI
-        )
-    elseif(RENDER_BACKEND STREQUAL "D3D12")
-        target_compile_definitions(Crowy${NAME}
-        PRIVATE
-            CROWY_D3DRHI
-            CROWY_D3D12RHI
-        )
-    endif()
 endfunction()

@@ -1,3 +1,4 @@
+#include "RHIDefinitions.hpp"
 extern "C"{
     // Debug AutoreleasePool
     void _objc_autoreleasePoolPrint(void);
@@ -7,7 +8,7 @@ extern "C"{
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
-#include "assert.hpp"
+#include "Assert.hpp"
 #include "AutoreleasePoolScope.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalCommandList.hpp"
@@ -21,180 +22,207 @@ extern "C"{
 
 namespace Crowy
 {
-#ifdef USE_STATIC_RHI
-    std::unique_ptr<MetalDevice> createDevice(){
+    RHIDeviceRAII CreateMetalDevice(){
         return std::make_unique<MetalDevice>();
     }
-#else
-    RHIDeviceRAII createDevice(){
-        return std::make_unique<MetalDevice>();
-    }
-#endif
 
-    struct MetalDevice::Impl{
+    class MetalDevice::Impl{
+    private:
         MTL::Device* device;
         MTL::CommandQueue* commandQueue;
-
-        MTL::CommandBuffer* pendingCommandBuffer = nullptr;
+        RAII<MetalCommandList> cmdList;
 
         AutoreleasePoolScope autoreleasePool;
 
+    public:
         Impl(){
             device = MTL::CreateSystemDefaultDevice();
-            CROWY_ASSERT(device != nullptr, "No GPU Available");
+            SMOL_ASSERT(device != nullptr, "No GPU Available");
 
             commandQueue = device->newCommandQueue();
-            CROWY_ASSERT(commandQueue != nullptr,
+            SMOL_ASSERT(commandQueue != nullptr,
                 "Failed to create command queue"
+            );
+
+            cmdList = std::make_unique<MetalCommandList>(
+                commandQueue
             );
         }
 
         ~Impl(){
-            if(commandQueue != nullptr)
+            cmdList = nullptr;
+
+            if(commandQueue != nullptr){
                 commandQueue->release();
-            if(device != nullptr)
+                commandQueue = nullptr;
+            }
+            if(device != nullptr){
                 device->release();
+                device = nullptr;
+            }
 
             // _objc_autoreleasePoolPrint();
         }
 
-        RHIFrameScopeRAII createFrameScope(){
+        RHIFrameScopeRAII CreateFrameScope(){
             return std::make_unique<MetalFrameScope>();
         }
 
-        RHIBufferRAII createBuffer(
+        RHIBufferRAII CreateBuffer(
             const RHIBufferCreateDesc& desc,
-            const std::string& name
+            StrView name
         ){
             return std::make_unique<MetalBuffer>(*device, desc, name);
         }
 
-        RHITextureRAII createTexture(
+        RHITextureRAII CreateTexture(
             const RHITextureCreateDesc& desc,
-            const std::string& name
+            StrView name
         ){
             return std::make_unique<MetalTexture>(*device, desc, name);
         }
 
-        RHISamplerRAII createSampler(
+        RHISamplerRAII CreateSampler(
             const RHISamplerState& desc
         ){
             return std::make_unique<MetalSampler>(*device, desc);
         }
 
-        RHIGraphicsPipelineStateRAII createPipelineState(
+        RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
-            const std::string& name
+            StrView name
         ){
-            return std::make_unique<MetalGraphicsPipelineState>(*device, desc, name);
+            if(std::get_if<RHILegacyFrontendDesc>(&desc.preRasterizer)){
+                return std::make_unique<MetalGraphicsPipelineState>(*device, desc, name);
+            }
+            else{
+                // TODO. use Mesh Shader
+                throw std::runtime_error("Unimplemented Graphics Pipeline Frontend");
+            }
         }
 
-        RHIComputePipelineStateRAII createPipelineState(
+        RHIComputePipelineStateRAII CreatePipelineState(
             const RHIComputePipelineStateDesc& desc,
-            const std::string& name
+            StrView name
         ){
             return std::make_unique<MetalComputePipelineState>(*device, desc, name);
         }
 
-        RHISwapchainRAII createSwapchain(
+        RHISwapchainRAII CreateSwapchain(
             const RHISwapchainCreateDesc& desc
         ){
             return std::make_unique<MetalSwapchain>(*device, desc);
         }
 
-        RHICommandListRAII createCommandList(){
+        RHICommandListRAII CreateCommandList(){
             return std::make_unique<MetalCommandList>(commandQueue);
         }
 
-        RHIFenceRAII createFence(uint64_t initialValue){
+        RHIFenceRAII CreateFence(u64 initialValue){
             return std::make_unique<MetalFence>(*device, initialValue);
         }
 
-        void submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
-            auto& mtlCmdList = static_cast<MetalCommandList&>(cmdList);
-            auto cmdBuffer = mtlCmdList.get();
-            if(swapchain != nullptr){
-                auto& mtlSwapchain = static_cast<MetalSwapchain&>(*swapchain);
-                auto drawable = mtlSwapchain.getCurrentDrawable();
+        void Submit(RHICommandList& cmdList);
 
-                cmdBuffer->presentDrawable(drawable);
-            }
-
-            cmdBuffer->commit();
-        }
-
-        MTL::Device* get() noexcept{ return device; }
+        MTL::Device* Get() noexcept{ return device; }
+        MetalCommandList& GetMainCmdList() noexcept{ return *cmdList; }
     };
 
     MetalDevice::MetalDevice()
-        :impl(std::make_unique<Impl>()){}
+        : impl(std::make_unique<Impl>()){}
 
     MetalDevice::~MetalDevice(){}
 
-    RHIFrameScopeRAII MetalDevice::createFrameScope(){
-        return impl->createFrameScope();
+    RHIFrameScopeRAII MetalDevice::CreateFrameScope(){
+        return impl->CreateFrameScope();
     }
 
-    RHIBufferRAII MetalDevice::createBuffer(
+    RHIBufferRAII MetalDevice::CreateBuffer(
         const RHIBufferCreateDesc& desc,
-        const std::string& name
+        StrView name
     ){
-        return impl->createBuffer(desc, name);
+        return impl->CreateBuffer(desc, name);
     }
 
-    RHITextureRAII MetalDevice::createTexture(
+    RHITextureRAII MetalDevice::CreateTexture(
         const RHITextureCreateDesc& desc,
-        const std::string& name
+        StrView name
     ){
-        return impl->createTexture(desc, name);
+        return impl->CreateTexture(desc, name);
     }
 
-    RHISamplerRAII MetalDevice::createSampler(
+    RHISamplerRAII MetalDevice::CreateSampler(
         const RHISamplerState& desc
     ){
-        return impl->createSampler(desc);
+        return impl->CreateSampler(desc);
     }
 
-    RHIGraphicsPipelineStateRAII MetalDevice::createPipelineState(
+    RHIGraphicsPipelineStateRAII MetalDevice::CreatePipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
-        const std::string& name
+        StrView name
     ){
-        return impl->createPipelineState(desc, name);
+        return impl->CreatePipelineState(desc, name);
     }
 
-    RHIComputePipelineStateRAII MetalDevice::createPipelineState(
+    RHIComputePipelineStateRAII MetalDevice::CreatePipelineState(
         const RHIComputePipelineStateDesc& desc,
-        const std::string& name
+        StrView name
     ){
-        return impl->createPipelineState(desc, name);
+        return impl->CreatePipelineState(desc, name);
     }
 
-    RHISwapchainRAII MetalDevice::createSwapchain(
+    RHISwapchainRAII MetalDevice::CreateSwapchain(
         const RHISwapchainCreateDesc& desc
     ){
-        return impl->createSwapchain(desc);
+        return impl->CreateSwapchain(desc);
     }
 
-    RHICommandListRAII MetalDevice::createCommandList(){
-        return impl->createCommandList();
+    RHICommandListRAII MetalDevice::CreateCommandList(){
+        return impl->CreateCommandList();
     }
 
-    RHIFenceRAII MetalDevice::createFence(uint64_t initialValue){
-        return impl->createFence(initialValue);
+    RHIFenceRAII MetalDevice::CreateFence(u64 initialValue){
+        return impl->CreateFence(initialValue);
     }
 
-    RHICapabilities MetalDevice::getCapabilities() const noexcept{
+    void MetalDevice::SignalFence(
+        RHICommandList& cmdList,
+        RHIFence& fence,
+        u64 value
+    ){
+        auto& mtlCmdList = static_cast<MetalCommandList&>(cmdList);
+        auto& mtlFence = static_cast<MetalFence&>(fence);
+
+        auto cmdBuf = mtlCmdList.Get();
+        auto event = mtlFence.Get();
+
+        cmdBuf->encodeSignalEvent(event, value);
+    }
+
+    RHICapabilities MetalDevice::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,
             .clipSpaceMinZ = 0.0f
         };
     }
 
-    void MetalDevice::submit(RHICommandList& cmdList, RHISwapchain* swapchain) noexcept{
-        impl->submit(cmdList, swapchain);
+    void MetalDevice::Submit(RHICommandList& cmdList){
+        impl->Submit(cmdList);
     }
 
-    void* MetalDevice::getNative() noexcept{
-        return impl->get();
+    void MetalDevice::Impl::Submit(
+        RHICommandList& cmdList
+    ){
+        auto& mtlCmdList = static_cast<MetalCommandList&>(cmdList);
+        auto cmdBuffer = mtlCmdList.Get();
+        cmdBuffer->commit();
+    }
+
+    void* MetalDevice::Get() noexcept{
+        return impl->Get();
+    }
+
+    RHICommandList& MetalDevice::GetMainCmdList() noexcept{
+        return impl->GetMainCmdList();
     }
 }

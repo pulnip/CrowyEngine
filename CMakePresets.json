@@ -7,87 +7,183 @@
             "binaryDir": "build"
         },
         {
-            "name": "macOS",
-            "generator": "Xcode",
-            "inherits": "base"
+            "name": "Windows-llvm",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "generator": "Ninja Multi-Config",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/windows-llvm.cmake"
+        },
+        {
+            "name": "Windows-llvm-x64",
+            "displayName": "llvm-x64",
+            "inherits": "Windows-llvm",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "toolset": {
+                "value": "host=x64",
+                "strategy": "external"
+            }
+        },
+        {
+            "name": "Windows-llvm-x86",
+            "displayName": "llvm-x86",
+            "inherits": "Windows-llvm",
+            "architecture": {
+                "value": "x86",
+                "strategy": "external"
+            },
+            "toolset": {
+                "value": "host=x64",
+                "strategy": "external"
+            }
+        },
+        {
+            "name": "Windows-msvc",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "generator": "Visual Studio 17 2022",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/windows-msvc.cmake"
+        },
+        {
+            "name": "Windows-msvc-x64",
+            "displayName": "msvc-x64",
+            "inherits": "Windows-msvc",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "toolset": {
+                "value": "host=x64",
+                "strategy": "set"
+            }
+        },
+        {
+            "name": "Windows-msvc-x86",
+            "displayName": "msvc-x86",
+            "inherits": "Windows-msvc",
+            "architecture": {
+                "value": "Win32",
+                "strategy": "set"
+            },
+            "toolset": {
+                "value": "host=x64",
+                "strategy": "set"
+            }
         },
         {
             "name": "macOS-brew-llvm",
+            "displayName": "brew-llvm",
             "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
             "generator": "Ninja Multi-Config",
             "toolchainFile": "${sourceDir}/cmake/toolchains/brew-llvm.cmake"
-        },
-        {
-            "name": "Windows",
-            "inherits": "base",
-            "generator": "Visual Studio 17 2022"
-        },
-        {
-            "name": "Windows-llvm",
-            "inherits": "base",
-            "generator": "Ninja Multi-Config",
-            "toolchainFile": "${sourceDir}/cmake/toolchains/windows-llvm.cmake"
         }
     ],
     "buildPresets": [
         {
-            "name": "macOS-Debug",
-            "configurePreset": "macOS",
+            "name": "Windows-llvm-x64-Debug",
+            "displayName": "Debug",
+            "configurePreset": "Windows-llvm-x64",
             "configuration": "Debug"
         },
         {
-            "name": "macOS-RelWithDebInfo",
-            "configurePreset": "macOS",
+            "name": "Windows-llvm-x64-RelWithDebInfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "Windows-llvm-x64",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "macOS-Release",
-            "configurePreset": "macOS",
+            "name": "Windows-llvm-x64-Release",
+            "displayName": "Release",
+            "configurePreset": "Windows-llvm-x64",
+            "configuration": "Release"
+        },
+        {
+            "name": "Windows-llvm-x86-Debug",
+            "displayName": "Debug",
+            "configurePreset": "Windows-llvm-x86",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Windows-llvm-x86-RelWithDebInfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "Windows-llvm-x86",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "Windows-llvm-x86-Release",
+            "displayName": "Release",
+            "configurePreset": "Windows-llvm-x86",
+            "configuration": "Release"
+        },
+        {
+            "name": "Windows-msvc-x64-Debug",
+            "displayName": "Debug",
+            "configurePreset": "Windows-msvc-x64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Windows-msvc-x64-RelWithDebInfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "Windows-msvc-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "Windows-msvc-x64-Release",
+            "displayName": "Release",
+            "configurePreset": "Windows-msvc-x64",
+            "configuration": "Release"
+        },
+        {
+            "name": "Windows-msvc-x86-Debug",
+            "displayName": "Debug",
+            "configurePreset": "Windows-msvc-x86",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Windows-msvc-x86-RelWithDebInfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "Windows-msvc-x86",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "Windows-msvc-x86-Release",
+            "displayName": "Release",
+            "configurePreset": "Windows-msvc-x86",
             "configuration": "Release"
         },
         {
             "name": "macOS-brew-llvm-Debug",
+            "displayName": "Debug",
             "configurePreset": "macOS-brew-llvm",
             "configuration": "Debug"
         },
         {
             "name": "macOS-brew-llvm-RelWithDebInfo",
+            "displayName": "RelWithDebInfo",
             "configurePreset": "macOS-brew-llvm",
             "configuration": "RelWithDebInfo"
         },
         {
             "name": "macOS-brew-llvm-Release",
+            "displayName": "Release",
             "configurePreset": "macOS-brew-llvm",
-            "configuration": "Release"
-        },
-        {
-            "name": "Windows-Debug",
-            "configurePreset": "Windows",
-            "configuration": "Debug"
-        },
-        {
-            "name": "Windows-RelWithDebInfo",
-            "configurePreset": "Windows",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "Windows-Release",
-            "configurePreset": "Windows",
-            "configuration": "Release"
-        },
-        {
-            "name": "Windows-llvm-Debug",
-            "configurePreset": "Windows-llvm",
-            "configuration": "Debug"
-        },
-        {
-            "name": "Windows-llvm-RelWithDebInfo",
-            "configurePreset": "Windows-llvm",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "Windows-llvm-Release",
-            "configurePreset": "Windows-llvm",
             "configuration": "Release"
         }
     ]

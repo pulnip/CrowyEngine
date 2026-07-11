@@ -1,0 +1,567 @@
+#include <array>
+#include <utility>
+#include <pix.h>
+#include <d3dx12/d3dx12_barriers.h>
+#include "Assert.hpp"
+#include "DX12Definitions.hpp"
+#include "DescriptorHeapAllocator.hpp"
+#include "DX12Buffer.hpp"
+#include "DX12CommandList.hpp"
+#include "DX12PipelineState.hpp"
+#include "DX12Texture.hpp"
+#include "DX12Util.hpp"
+#include "IntMath.hpp"
+#include "RHIDefinitions.hpp"
+#include "RHISwapchain.hpp"
+
+namespace{
+    D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE convert(Crowy::RHILoadAction action){
+        using enum Crowy::RHILoadAction;
+
+        switch(action){
+        case Load:     return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+        case Clear:    return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+        case DontCare: return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+        default:
+            std::unreachable();
+        }
+    }
+
+    D3D12_RENDER_PASS_ENDING_ACCESS_TYPE convert(Crowy::RHIStoreAction action){
+        using enum Crowy::RHIStoreAction;
+
+        switch(action){
+        case Store:    return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        case DontCare: return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+        default:
+            std::unreachable();
+        }
+    }
+
+    auto convert(
+        Crowy::RHIColorAttachment desc,
+        Crowy::DescriptorHeapAllocator& rtvHeap
+    ){
+        using namespace Crowy;
+
+        auto tex = static_cast<DX12Texture*>(desc.texture);
+
+        return D3D12_RENDER_PASS_RENDER_TARGET_DESC{
+            .cpuDescriptor = rtvHeap.GetCPUHandle(tex->GetOrCreateRTV()),
+            .BeginningAccess = {
+                .Type = convert(desc.loadAction),
+                .Clear = {
+                    .ClearValue = {
+                        .Format = convert(tex->GetFormat()),
+                        .Color = {
+                            desc.clearColor.x,
+                            desc.clearColor.y,
+                            desc.clearColor.z,
+                            desc.clearColor.w
+                        }
+                    }
+                }
+            },
+            .EndingAccess = {
+                .Type = convert(desc.storeAction)
+            }
+        };
+    }
+
+    auto convert(
+        Crowy::RHIDepthAttachment desc,
+        Crowy::DescriptorHeapAllocator& dsvHeap
+    ){
+        using namespace Crowy;
+
+        auto tex = static_cast<DX12Texture*>(desc.texture);
+
+        const D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{
+            .Type = convert(desc.loadAction),
+            .Clear = {
+                .ClearValue = {
+                    .Format = convert(tex->GetFormat(), false, true),
+                    .DepthStencil = {
+                        .Depth = desc.clearDepthStencil.depth,
+                        .Stencil = desc.clearDepthStencil.stencil
+                    }
+                }
+            }
+        };
+        const D3D12_RENDER_PASS_ENDING_ACCESS endingAccess{
+            .Type = convert(desc.storeAction)
+        };
+
+        return D3D12_RENDER_PASS_DEPTH_STENCIL_DESC{
+            .cpuDescriptor = dsvHeap.GetCPUHandle(tex->GetOrCreateDSV()),
+            .DepthBeginningAccess = beginningAccess,
+            .StencilBeginningAccess = beginningAccess,
+            .DepthEndingAccess = endingAccess,
+            .StencilEndingAccess = endingAccess
+        };
+    }
+}
+
+namespace Crowy
+{
+    DX12CommandList::DX12CommandList(
+        Device& device,
+        CommandQueue& commandQueue,
+        RootSignature& rootSignature,
+        const u64& frameIndex,
+        DescriptorHeapAllocator& cbvsrvuavHeap,
+        DescriptorHeapAllocator& rtvHeap,
+        DescriptorHeapAllocator& dsvHeap,
+        DescriptorHeapAllocator& samplerHeap
+    )
+        : commandQueue(commandQueue)
+        , rootSignature(rootSignature)
+        , frameIndex(frameIndex)
+        , cbvsrvuavHeap(cbvsrvuavHeap)
+        , rtvHeap(rtvHeap)
+        , dsvHeap(dsvHeap)
+        , samplerHeap(samplerHeap)
+    {
+        for(u32 i = 0; i < RHI_FRAMES_IN_FLIGHT; ++i){
+            CHECK_HRESULT(device.CreateCommandAllocator(
+                D3D12_COMMAND_LIST_TYPE_DIRECT,
+                IID_PPV_ARGS(commandAllocators[i].GetAddressOf())
+            ), "Failed to create command allocator");
+        }
+
+        CHECK_HRESULT(device.CreateCommandList1(
+            0,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            D3D12_COMMAND_LIST_FLAG_NONE,
+            IID_PPV_ARGS(commandList.GetAddressOf())
+        ), "Failed to create command list");
+    }
+
+    DX12CommandList::~DX12CommandList() = default;
+
+    void DX12CommandList::Begin(){
+        auto allocator = commandAllocators[currentIndex()];
+        CHECK_HRESULT(allocator->Reset(), "Failed to reset command allocator");
+        CHECK_HRESULT(commandList->Reset(
+            allocator.Get(),
+            nullptr
+        ), "Failed to reset command list");
+
+        std::array heaps{
+            cbvsrvuavHeap.Get(),
+            samplerHeap.Get()
+        };
+        commandList->SetDescriptorHeaps(
+            heaps.size(),
+            heaps.data()
+        );
+
+        commandList->SetGraphicsRootSignature(&rootSignature);
+        commandList->SetComputeRootSignature(&rootSignature);
+    }
+
+    void DX12CommandList::Close(){
+        CHECK_HRESULT(commandList->Close(),
+            "Failed to close command list"
+        );
+    }
+
+    void DX12CommandList::BeginRenderPass(const RHIRenderPassDesc& desc){
+        SMOL_ASSERT(desc.colorAttachments.size() > 0);
+
+        std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, RHI_MAX_RENDER_TARGETS> rts;
+        for(usize i=0; i<desc.colorAttachments.size(); ++i)
+            rts[i] = ::convert(desc.colorAttachments[i], rtvHeap);
+
+        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dt;
+        if(desc.depthAttachment.has_value())
+            dt = ::convert(*desc.depthAttachment, dsvHeap);
+
+        commandList->BeginRenderPass(
+            desc.colorAttachments.size(),
+            rts.data(),
+            desc.depthAttachment.has_value() ?
+                &dt :
+                nullptr,
+            D3D12_RENDER_PASS_FLAG_NONE
+        );
+    }
+
+    void DX12CommandList::EndRenderPass(){
+        commandList->EndRenderPass();
+    }
+
+    void DX12CommandList::SetPipelineState(DX12GraphicsPipelineState& pso){
+        pso.Bind(*commandList.Get());
+
+        currentGraphicsPSO = &pso;
+    }
+
+    void DX12CommandList::SetPipelineState(DX12ComputePipelineState& pso){
+        pso.Bind(*commandList.Get());
+
+        currentComputePSO = &pso;
+    }
+
+    void DX12CommandList::SetVertexBuffer(
+        RHIBuffer& buffer,
+        u32 slot,
+        u32 stride,
+        u32 offset
+    ){
+        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
+        const std::array vbViews{
+            D3D12_VERTEX_BUFFER_VIEW{
+                .BufferLocation = dxBuffer.GetGPUAddress() + offset,
+                .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - offset),
+                .StrideInBytes = stride
+            }
+        };
+
+        commandList->IASetVertexBuffers(
+            slot,
+            vbViews.size(),
+            vbViews.data()
+        );
+    }
+
+    void DX12CommandList::SetIndexBuffer(
+        RHIBuffer& buffer,
+        RHIIndexFormat format,
+        u32 offset
+    ){
+        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
+        const D3D12_INDEX_BUFFER_VIEW ibView{
+            .BufferLocation = dxBuffer.GetGPUAddress() + offset,
+            .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - offset),
+            .Format = RHIIndexFormat::UInt32 == format ?
+                DXGI_FORMAT_R32_UINT :
+                DXGI_FORMAT_R16_UINT
+        };
+
+        commandList->IASetIndexBuffer(
+            &ibView
+        );
+    }
+
+    void DX12CommandList::setPushGraphicsConstants(
+        const void* data,
+        u32 size
+    ){
+        SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+
+        commandList->SetGraphicsRoot32BitConstants(
+            RootParamPush,
+            size / 4,
+            data,
+            0
+        );
+    }
+
+    void DX12CommandList::setPushComputeConstants(
+        const void* data,
+        u32 size
+    ){
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+
+        commandList->SetComputeRoot32BitConstants(
+            RootParamPush,
+            size / 4,
+            data,
+            0
+        );
+    }
+
+    void DX12CommandList::SetGraphicsConstantBuffer(
+        RHIBuffer& buffer,
+        u32 slot,
+        u32 offset
+    ){
+        SMOL_ASSERT(offset < buffer.GetSize());
+
+        SMOL_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+        SMOL_ASSERT(offset % RHI_CB_ALIGN == 0);
+
+        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
+        auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
+
+        commandList->SetGraphicsRootConstantBufferView(
+            RootParamCBBase + slot,
+            virtualAddress
+        );
+    }
+
+    void DX12CommandList::SetComputeConstantBuffer(
+        RHIBuffer& buffer,
+        u32 slot,
+        u32 offset
+    ){
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        SMOL_ASSERT(offset < buffer.GetSize());
+
+        SMOL_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+        SMOL_ASSERT(offset % RHI_CB_ALIGN == 0);
+
+        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
+        auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
+
+        commandList->SetComputeRootConstantBufferView(
+            RootParamCBBase + slot,
+            virtualAddress
+        );
+    }
+
+    void DX12CommandList::SetViewport(const RHIViewport& viewport){
+        const std::array vps{
+            D3D12_VIEWPORT{
+                .TopLeftX = viewport.x,
+                .TopLeftY = viewport.y,
+                .Width = viewport.width,
+                .Height = viewport.height,
+                .MinDepth = viewport.minDepth,
+                .MaxDepth = viewport.maxDepth
+            }
+        };
+        commandList->RSSetViewports(
+            vps.size(),
+            vps.data()
+        );
+    }
+
+    void DX12CommandList::SetScissorRect(const RHIScissorRect& scissor){
+        const std::array rects{
+            D3D12_RECT{
+                .left = scissor.left,
+                .top = scissor.top,
+                .right = scissor.right,
+                .bottom = scissor.bottom
+            }
+        };
+        commandList->RSSetScissorRects(
+            rects.size(),
+            rects.data()
+        );
+    }
+
+    void DX12CommandList::Draw(
+        u32 vertexCount,
+        u32 instanceCount,
+        u32 startVertex,
+        u32 startInstance
+    ){
+        commandList->DrawInstanced(
+            vertexCount,
+            instanceCount,
+            startVertex,
+            startInstance
+        );
+    }
+
+    void DX12CommandList::DrawIndexed(
+        u32 indexCount,
+        u32 instanceCount,
+        u32 startIndex,
+        i32 baseVertex,
+        u32 startInstance
+    ){
+        commandList->DrawIndexedInstanced(
+            indexCount,
+            instanceCount,
+            startIndex,
+            baseVertex,
+            startInstance
+        );
+    }
+
+    void DX12CommandList::BeginCompute() noexcept{
+        SMOL_ASSERT(!inComputePass,
+            "Already in a compute pass. Did you call RHICommandList::EndCompute()?"
+        );
+        inComputePass = true;
+        currentComputePSO = nullptr;
+    }
+
+    void DX12CommandList::EndCompute() noexcept{
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        inComputePass = false;
+    }
+
+    void DX12CommandList::Dispatch(Size3D gridSize){
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        SMOL_ASSERT(currentComputePSO != nullptr,
+            "Did you call RHICommandList::SetPipelineState(ComputePSO)?"
+        );
+        auto threadGroupSize = currentComputePSO->getThreadGroupSize();
+
+        commandList->Dispatch(
+            ceilDiv(gridSize.x, threadGroupSize.x),
+            ceilDiv(gridSize.y, threadGroupSize.y),
+            ceilDiv(gridSize.z, threadGroupSize.z)
+        );
+    }
+
+    void DX12CommandList::TransitionBarrier(
+        DX12Texture& texture,
+        D3D12_BARRIER_SYNC syncAfter,
+        D3D12_BARRIER_ACCESS accessAfter,
+        D3D12_BARRIER_LAYOUT layoutAfter
+    ){
+        const std::array barriers{
+            CD3DX12_TEXTURE_BARRIER(
+                texture.TransitionState(syncAfter), syncAfter,
+                texture.TransitionState(accessAfter), accessAfter,
+                texture.TransitionState(layoutAfter), layoutAfter,
+                texture.Get(),
+                CD3DX12_BARRIER_SUBRESOURCE_RANGE(0xFFFF'FFFF)
+            )
+        };
+        const std::array barrierGroups{
+            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
+        };
+
+        commandList->Barrier(
+            barrierGroups.size(),
+            barrierGroups.data()
+        );
+    }
+
+    void DX12CommandList::TransitionBarrier(
+        DX12Buffer& buffer,
+        D3D12_BARRIER_SYNC syncAfter,
+        D3D12_BARRIER_ACCESS accessAfter
+    ){
+        const std::array barriers{
+            CD3DX12_BUFFER_BARRIER(
+                buffer.TransitionState(syncAfter), syncAfter,
+                buffer.TransitionState(accessAfter), accessAfter,
+                buffer.Get()
+            )
+        };
+        const std::array barrierGroups{
+            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
+        };
+
+        commandList->Barrier(
+            barrierGroups.size(),
+            barrierGroups.data()
+        );
+    }
+
+    void DX12CommandList::Copy(
+        RHIBuffer& src,
+        RHIBuffer& dst,
+        usize srcOffset,
+        usize dstOffset,
+        usize size
+    ){
+        auto& dxSrc = static_cast<DX12Buffer&>(src);
+        auto& dxDst = static_cast<DX12Buffer&>(dst);
+
+        commandList->CopyBufferRegion(
+            dxDst.Get(),
+            dstOffset,
+            dxSrc.Get(),
+            srcOffset,
+            size
+        );
+    }
+
+    void DX12CommandList::Copy(
+        RHITexture& src,
+        RHITexture& dst
+    ){
+        commandList->CopyResource(
+            static_cast<DX12Texture&>(dst).Get(),
+            static_cast<DX12Texture&>(src).Get()
+        );
+    }
+
+    void DX12CommandList::Copy(
+        RHITexture& src,
+        RHISwapchain& dst
+    ){
+        auto& texture = static_cast<DX12Texture&>(dst.GetCurrentTexture());
+
+        commandList->CopyResource(
+            texture.Get(),
+            static_cast<DX12Texture&>(src).Get()
+        );
+    }
+
+    void DX12CommandList::Copy(
+        RHIBuffer& src,
+        u64 srcOffset,
+        u32 srcRowPitch,
+        RHITexture& dst,
+        u32 mipLevel,
+        u32 arraySlice
+    ){
+        auto& dxSrc = static_cast<DX12Buffer&>(src);
+        auto& dxDst = static_cast<DX12Texture&>(dst);
+
+        const auto desc = dxDst.Get()->GetDesc();
+        const auto subresource = D3D12CalcSubresource(
+            mipLevel,
+            arraySlice,
+            0,
+            desc.MipLevels,
+            desc.DepthOrArraySize
+        );
+
+        const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{
+            .Offset = srcOffset,
+            .Footprint = {
+                .Format = desc.Format,
+                .Width = std::max<UINT>(1, desc.Width >> mipLevel),
+                .Height = std::max<UINT>(1, desc.Height >> mipLevel),
+                .Depth = 1,
+                .RowPitch = srcRowPitch
+            }
+        };
+
+        const CD3DX12_TEXTURE_COPY_LOCATION srcLoc(dxSrc.Get(), footprint);
+        const CD3DX12_TEXTURE_COPY_LOCATION dstLoc(dxDst.Get(), subresource);
+
+        commandList->CopyTextureRegion(
+            &dstLoc,
+            0, 0, 0,
+            &srcLoc,
+            nullptr
+        );
+    }
+
+    void DX12CommandList::WaitUntilCompleted(){
+        // TODO.
+    }
+
+    void DX12CommandList::BeginEvent(CStr name){
+        PIXBeginEvent(
+            commandList.Get(),
+            PIX_COLOR(0xFF, 0, 0),
+            name
+        );
+    }
+
+    void DX12CommandList::EndEvent(){
+        PIXEndEvent(
+            commandList.Get()
+        );
+    }
+
+    void DX12CommandList::SetMarker(CStr name){
+        PIXSetMarker(
+            commandList.Get(),
+            PIX_COLOR(0xFF, 0, 0),
+            name
+        );
+    }
+}

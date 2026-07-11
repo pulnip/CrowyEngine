@@ -1,87 +1,61 @@
 #pragma once
 
-#include <Metal/Metal.hpp>
-#include <QuartzCore/QuartzCore.hpp>
-#include <cstdint>
-#include "assert.hpp"
-#include "MetalUtil.hpp"
+#include <Metal/MTLCommandQueue.hpp>
+#include <Metal/MTLDevice.hpp>
+#include <Metal/MTLTexture.hpp>
+#include <QuartzCore/CAMetalDrawable.hpp>
+#include <SDL3/SDL_metal.h>
+#include "MetalTexture.hpp"
+#include "Primitives.hpp"
 #include "RHIAPI.hpp"
+#include "RHICommandList.hpp"
 #include "RHIDefinitions.hpp"
-#ifndef USE_STATIC_RHI
-    #include "RHISwapchain.hpp"
-#endif
+#include "RHISwapchain.hpp"
 
 namespace Crowy
 {
-    class MetalSwapchain
-#ifndef USE_STATIC_RHI
-        : public RHISwapchain
-#endif
-    {
+    class MetalSwapchain final: public RHISwapchain{
     private:
+        SDL_MetalView view;
+        // Cache MetalLayer
         CA::MetalLayer* metalLayer = nullptr;
         CA::MetalDrawable* currentDrawable = nullptr;
 
-        uint32_t width = 0;
-        uint32_t height = 0;
-        RHIPixelFormat format = RHIPixelFormat::Unknown;
+        RAII<MetalTexture> backBuffer;
 
     public:
         MetalSwapchain(
             MTL::Device& device,
             const RHISwapchainCreateDesc& desc
-        ) noexcept
-            : width(desc.bufferDesc.width)
-            , height(desc.bufferDesc.height)
-            , format(desc.bufferDesc.format)
-        {
-            metalLayer = static_cast<CA::MetalLayer*>(desc.windowHandle);
-            CROWY_ASSERT(metalLayer != nullptr);
+        );
 
-            metalLayer->setDevice(&device);
-            metalLayer->setPixelFormat(convertPixelFormat(desc.bufferDesc.format));
-            metalLayer->setFramebufferOnly(false);
-            metalLayer->setDrawableSize(CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height));
+        ~MetalSwapchain();
 
-            // NOTE. discard desc.debugName, desc.vsync
+        bool AcquireNextImage() noexcept RHI_OVERRIDE;
+
+        void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
+
+        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE{
+            return backBuffer->GetFormat();
+        }
+        u32 GetWidth() const noexcept RHI_OVERRIDE{
+            return backBuffer->GetWidth();
+        }
+        u32 GetHeight() const noexcept RHI_OVERRIDE{
+            return backBuffer->GetHeight();
         }
 
-        ~MetalSwapchain(){
-            currentDrawable = nullptr;
+        RHITexture& GetCurrentTexture() RHI_OVERRIDE{
+            return *backBuffer;
+        }
+        const RHITexture& GetCurrentTexture() const RHI_OVERRIDE{
+            return *backBuffer;
         }
 
-        bool acquireNextImage() noexcept RHI_OVERRIDE{
-            currentDrawable = metalLayer->nextDrawable();
-            return currentDrawable != nullptr;
-        }
+        void Present(RHICommandList&) RHI_OVERRIDE;
 
-        void resize(uint32_t newWidth, uint32_t newHeight) noexcept RHI_OVERRIDE{
-            width = newWidth;
-            height = newHeight;
-            metalLayer->setDrawableSize(CGSizeMake(newWidth, newHeight));
-            currentDrawable = nullptr;
-        }
-
-        RHIPixelFormat getFormat() const noexcept RHI_OVERRIDE{
-            return format;
-        }
-        uint32_t getWidth() const noexcept RHI_OVERRIDE{
-            return width;
-        }
-        uint32_t getHeight() const noexcept RHI_OVERRIDE{
-            return height;
-        }
-
-        MTL::Texture* getCurrentTexture() const noexcept{
-            return currentDrawable ? currentDrawable->texture() : nullptr;
-        }
-
-        CA::MetalDrawable* getCurrentDrawable() const noexcept{ 
-            return currentDrawable; 
-        }
-
-        void* getCurrentNativeTexture() const noexcept RHI_OVERRIDE{
-            return getCurrentTexture();
+        CA::MetalDrawable* GetCurrentDrawable() const noexcept{
+            return currentDrawable;
         }
     };
 }

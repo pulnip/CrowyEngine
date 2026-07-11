@@ -2,36 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Game (macOS)",
+            "name": "(cppvsdbg) CMake Target",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "(lldb) CMake Target",
             "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/Game/Crowy",
-            "args": [
-                "--width=800", "--height=600",
-                "--render=render.toml",
-                "--input=input.toml",
-                "--script=script.toml",
-                "--scene=scene.toml"
-            ],
-            "cwd": "${workspaceFolder}/Game"
-        },
-        {
-            "name": "Game (Windows)",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/Game/Crowy.exe",
-            "args": [
-                "--width=800", "--height=600",
-                "--render=render.toml",
-                "--input=input.toml",
-                "--script=script.toml",
-                "--scene=scene.toml"
-            ],
-            "cwd": "${workspaceFolder}/Game"
-        },
-        {
-            "name": "CMake Target",
-            "type": "cppvsdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [],

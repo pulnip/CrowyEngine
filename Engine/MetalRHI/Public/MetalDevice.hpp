@@ -1,64 +1,58 @@
 #pragma once
 
-#include <memory>
 #include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
-#ifdef USE_STATIC_RHI
-    #include "RHIDefinitions.hpp"
-#else
-    #include "RHIDevice.hpp"
-#endif
+#include "RHIDevice.hpp"
 
 namespace Crowy
 {
-    class MetalDevice
-#ifndef USE_STATIC_RHI
-        : public RHIDevice
-#endif
-    {
+    class MetalDevice final: public RHIDevice{
+    private:
+        class Impl;
+        RAII<Impl> impl;
+
     public:
         MetalDevice();
         ~MetalDevice();
 
-        RHIFrameScopeRAII createFrameScope() RHI_OVERRIDE;
+        RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE;
 
-        RHIBufferRAII createBuffer(
+        RHIBufferRAII CreateBuffer(
             const RHIBufferCreateDesc&,
-            const std::string& name = ""
+            StrView name = {}
         ) RHI_OVERRIDE;
-        RHITextureRAII createTexture(
+        RHITextureRAII CreateTexture(
             const RHITextureCreateDesc&,
-            const std::string& name = ""
+            StrView name = {}
         ) RHI_OVERRIDE;
-        RHISamplerRAII createSampler(
+        RHISamplerRAII CreateSampler(
             const RHISamplerState&
         ) RHI_OVERRIDE;
 
-        RHIGraphicsPipelineStateRAII createPipelineState(
+        RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
-            const std::string& name = ""
+            StrView name = {}
         ) RHI_OVERRIDE;
-        RHIComputePipelineStateRAII createPipelineState(
+        RHIComputePipelineStateRAII CreatePipelineState(
             const RHIComputePipelineStateDesc&,
-            const std::string& name = ""
+            StrView name = {}
         ) RHI_OVERRIDE;
 
-        RHISwapchainRAII createSwapchain(
+        RHISwapchainRAII CreateSwapchain(
             const RHISwapchainCreateDesc&
         ) RHI_OVERRIDE;
 
-        RHICommandListRAII createCommandList() RHI_OVERRIDE;
+        RHICommandListRAII CreateCommandList() RHI_OVERRIDE;
 
-        RHIFenceRAII createFence(uint64_t initialValue = 0) RHI_OVERRIDE;
+        RHIFenceRAII CreateFence(u64 initialValue = 0) RHI_OVERRIDE;
 
-        RHICapabilities getCapabilities() const noexcept RHI_OVERRIDE;
+        void SignalFence(RHICommandList&, RHIFence&, u64 value) RHI_OVERRIDE;
 
-        void submit(RHICommandList&, RHISwapchain*) noexcept RHI_OVERRIDE;
+        RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
 
-        void* getNative() noexcept RHI_OVERRIDE;
+        void Submit(RHICommandList&) RHI_OVERRIDE;
 
-    private:
-        struct Impl;
-        std::unique_ptr<Impl> impl;
+        NativeDeviceHandle Get() noexcept RHI_OVERRIDE;
+        RHICommandList& GetMainCmdList() noexcept RHI_OVERRIDE;
     };
 }

@@ -1,23 +1,23 @@
 #pragma once
 
 #include <chrono>
-#include <string>
 #include <source_location>
 #include <thread>
 #include <utility>
+#include "Primitives.hpp"
 
 namespace Crowy
 {
-    enum class LogLevel{
-        Trace,
-        Debug,
-        Info,
-        Warn,
-        Error,
-        Fatal
+    enum class LogLevel: u8{
+        Trace = 0,
+        Debug = 1,
+        Info = 2,
+        Warn = 3,
+        Error = 4,
+        Fatal = 5
     };
 
-    inline const char* levelToString(LogLevel level){
+    inline CStr convert(LogLevel level) noexcept{
         switch(level){
         case LogLevel::Trace: return "Trace";
         case LogLevel::Debug: return "Debug";
@@ -30,25 +30,10 @@ namespace Crowy
         }
     }
 
-    struct LogCategory{
-        const char* const name;
-    };
-
-    inline constexpr LogCategory LOG_CORE     { "Core"     };
-    inline constexpr LogCategory LOG_APP      { "App"      };
-    inline constexpr LogCategory LOG_ECS      { "ECS"      };
-    inline constexpr LogCategory LOG_METAL    { "Metal"    };
-    inline constexpr LogCategory LOG_PLATFORM { "Platform" };
-    inline constexpr LogCategory LOG_RENDER   { "Render"   };
-    inline constexpr LogCategory LOG_RESOURCE { "Resource" };
-    inline constexpr LogCategory LOG_RHI      { "RHI"      };
-    inline constexpr LogCategory LOG_SCENE    { "Scene"    };
-    inline constexpr LogCategory LOG_SCRIPT   { "Script"   };
-
     struct LogMessage{
         LogLevel level;
-        LogCategory category;
-        std::string text;
+        CStr category;
+        Str text;
 
         std::source_location location;
 

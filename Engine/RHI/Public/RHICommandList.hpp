@@ -1,204 +1,174 @@
 #pragma once
 
-#include <cstddef>
-#include <memory>
-#include <span>
 #include "RHIFWD.hpp"
-#include "semantics.hpp"
+#include "Semantics.hpp"
 #include "RHIDefinitions.hpp"
-
-#ifdef USE_STATIC_RHI
-    #if defined(USE_METAL_BACKEND)
-        #include "MetalCommandList.hpp"
-    #elif defined(USE_D3D11_BACKEND)
-        #include "D3D11CommandList.hpp"
-    #else
-        #include "NullCommandList.hpp"
-    #endif
-#endif
 
 namespace Crowy
 {
-#ifdef USE_STATIC_RHI
-    template<typename T>
-    concept RHICommandListType = requires(T cmdList,
-    ){
-    };
-    static_assert(RHICommandListType<RHICommandList>);
-#else
     // Command list for recording GPU commands
     class RHICommandList{
     public:
-        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHICommandList)
+        SMOL_DECLARE_INTERFACE(RHICommandList)
 
         // Command list lifecycle
-        virtual void begin() noexcept = 0;
-        virtual void flush() noexcept = 0;
-        virtual void close() noexcept = 0;
-        virtual void reset() noexcept = 0;
+        virtual void Begin() = 0;
+        virtual void Flush() = 0;
+        virtual void Close() = 0;
+        virtual void Reset() = 0;
 
         // Render pass control
-        virtual void beginRenderPass(
-            std::span<RHITexture*> renderTargets,
-            RHITexture* depthTarget = nullptr,
-            RHILoadAction loadAction  = RHILoadAction::Load,
-            RHIStoreAction storeAction = RHIStoreAction::Store,
-            const RHIClearColor& clearColor = {},
-            const RHIClearDepthStencil& clearDS = {},
-            const char* debugName = nullptr
-        ) noexcept = 0;
-
-        virtual void beginRenderPass(
-            RHISwapchain& backBuffer,
-            RHITexture* depthTarget = nullptr,
-            RHILoadAction loadAction  = RHILoadAction::Load,
-            RHIStoreAction storeAction = RHIStoreAction::Store,
-            const RHIClearColor& clearColor = {},
-            const RHIClearDepthStencil& clearDS = {},
-            const char* debugName = nullptr
-        ) noexcept = 0;
-
-        virtual void endRenderPass() noexcept = 0;
+        virtual void BeginRenderPass(const RHIRenderPassDesc&) = 0;
+        virtual void EndRenderPass() = 0;
 
         // Pipeline state
-        virtual void setPipelineState(RHIGraphicsPipelineState&) noexcept = 0;
-        virtual void setPipelineState(RHIComputePipelineState&) noexcept = 0;
+        virtual void SetPipelineState(RHIGraphicsPipelineState&) = 0;
+        virtual void SetPipelineState(RHIComputePipelineState&) = 0;
 
         // Vertex and index buffers
-        virtual void setVertexBuffer(
-            const RHIBuffer&,
-            uint32_t slot,
-            uint32_t stride = sizeof(Vertex),
-            uint32_t offset = 0
-        ) noexcept = 0;
+        // stride = sizeof(Vertex)
+        virtual void SetVertexBuffer(
+            RHIBuffer&,
+            u32 slot,
+            u32 stride,
+            u32 offset = 0
+        ) = 0;
 
-        virtual void setIndexBuffer(
-            const RHIBuffer&,
+        virtual void SetIndexBuffer(
+            RHIBuffer&,
             RHIIndexFormat format = RHIIndexFormat::UInt32,
-            uint32_t offset = 0
-        ) noexcept = 0;
+            u32 offset = 0
+        ) = 0;
 
-        // Constant buffers
-        virtual void setConstantBuffer(
-            const RHIBuffer&,
-            uint32_t slot,
+        // for Data shared within Multiple Draw Call
+        virtual void SetConstantBuffer(
+            RHIBuffer&,
+            u32 slot,
             RHIShaderStage,
-            uint32_t offset = 0
-        ) noexcept = 0;
+            u32 offset = 0
+        ) = 0;
 
         // Shader resources (textures, buffers)
-        virtual void setTexture(
+        virtual void SetTexture(
             RHITexture&,
-            uint32_t slot,
+            u32 slot,
             RHIBindingAccess,
             RHIShaderStage
-        ) noexcept = 0;
+        ) = 0;
 
         // only for Compute Shader
-        virtual void setBuffer(
+        virtual void SetBuffer(
             RHIBuffer&,
-            uint32_t slot,
+            u32 slot,
             RHIBindingAccess,
             RHIShaderStage stage = RHIShaderStage::ComputeShader
         ) = 0;
 
-        virtual void setBytes(
-            const void* bytes,
-            uint32_t slot,
-            size_t size,
-            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        // for per-draw data, size should be <= 256B
+        template<typename T>
+            requires (!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
+        void SetBytes(
+            const T& data,
+            u32 slot,
+            RHIShaderStage stage
+        ){
+            // type-safe helper
+            SetBytes(&data, sizeof(T), slot, stage);
+        }
+
+        virtual void SetSampler(
+            RHISampler&,
+            u32 slot,
+            RHIShaderStage
         ) = 0;
 
-        virtual void setSampler(
-            const RHISampler&,
-            uint32_t slot,
-            RHIShaderStage
-        ) noexcept = 0;
-
         // Viewport and scissor
-        virtual void setViewport(const RHIViewport&) noexcept = 0;
-        virtual void setScissorRect(const RHIScissorRect&) noexcept = 0;
+        virtual void SetViewport(const RHIViewport&) = 0;
+        virtual void SetScissorRect(const RHIScissorRect&) = 0;
 
         // Draw commands
-        virtual void draw(
-            uint32_t vertexCount,
-            uint32_t instanceCount = 1,
-            uint32_t startVertex = 0,
-            uint32_t startInstance = 0
-        ) noexcept = 0;
+        virtual void Draw(
+            u32 vertexCount,
+            u32 instanceCount = 1,
+            u32 startVertex = 0,
+            u32 startInstance = 0
+        ) = 0;
 
-        virtual void drawIndexed(
-            uint32_t indexCount,
-            uint32_t instanceCount = 1,
-            uint32_t startIndex = 0,
-            int32_t baseVertex = 0,
-            uint32_t startInstance = 0
-        ) noexcept = 0;
+        virtual void DrawIndexed(
+            u32 indexCount,
+            u32 instanceCount = 1,
+            u32 startIndex = 0,
+            i32 baseVertex = 0,
+            u32 startInstance = 0
+        ) = 0;
 
-        virtual void beginCompute() noexcept = 0;
+        virtual void BeginCompute() = 0;
 
-        virtual void endCompute() noexcept = 0;
+        virtual void EndCompute() = 0;
 
         // Compute dispatch
-        virtual void dispatch(
-            RHISize3D gridSize
-        ) noexcept = 0;
+        virtual void Dispatch(
+            Size3D gridSize
+        ) = 0;
 
         // Resource barriers (state transitions)
         // Note: 'before' state is obtained from texture.getState() internally
-        virtual void transitionBarrier(
+        virtual void TransitionBarrier(
             RHITexture& texture,
             RHIResourceState after
-        ) noexcept = 0;
+        ) = 0;
 
-        virtual void transitionBarrier(
+        virtual void TransitionBarrier(
             RHIBuffer& buffer,
             RHIResourceState after
-        ) noexcept = 0;
-
-        virtual void uavBarrier(RHITexture&) noexcept = 0;
-        virtual void uavBarrier(RHIBuffer&) noexcept = 0;
-
-        virtual void signalFence(RHIFence&, uint64_t value) noexcept = 0;
-        virtual void waitFence(RHIFence&, uint64_t value) noexcept = 0;
+        ) = 0;
 
         // Copy operations
-        virtual void copy(
+        virtual void Copy(
             RHIBuffer& src,
             RHIBuffer& dst,
-            size_t srcOffset,
-            size_t dstOffset,
-            size_t size
-        ) noexcept = 0;
+            usize srcOffset,
+            usize dstOffset,
+            usize size
+        ) = 0;
 
-        virtual void copy(
+        virtual void Copy(
             RHITexture& src,
             RHITexture& dst
-        ) noexcept = 0;
+        ) = 0;
 
-        virtual void copy(
+        virtual void Copy(
             RHITexture& src,
             RHISwapchain& dst
-        ) noexcept = 0;
+        ) = 0;
 
-        virtual void copy(
+        virtual void Copy(
             RHIBuffer& src,
             RHITexture& dst,
-            uint32_t mipLevel = 0,
-            uint32_t arraySlice = 0
-        ) noexcept = 0;
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ) = 0;
 
-        virtual void waitUntilCompleted() noexcept = 0;
+        virtual void WaitUntilCompleted() = 0;
 
         // Debug markers (for GPU profiling)
-        virtual void beginEvent(const char* name) noexcept = 0;
-        virtual void endEvent() noexcept = 0;
-        virtual void setMarker(const char* name) noexcept = 0;
+        virtual void BeginEvent(CStr name) = 0;
+        virtual void EndEvent() = 0;
+        virtual void SetMarker(CStr name) = 0;
 
-        // for UI, CommandBuffer for Metal, CommandList for D3D12
-        virtual void* getNative() const noexcept{ return nullptr; }
+        // for UI,
+        //   DeviceContext for D3D11,
+        //   CommandBuffer for Metal,
+        //   CommandList for D3D12
+        virtual void* GetNative() noexcept = 0;
+
+    private:
+        // direct use of void* is unsafe
+        virtual void SetBytes(
+            const void* bytes,
+            usize size,
+            u32 slot,
+            RHIShaderStage stage
+        ) = 0;
     };
-#endif
-
-    using RHICommandListPtr = std::unique_ptr<RHICommandList>;
 }

@@ -1,43 +1,25 @@
-function(crowy_rhi_sample NAME)
-    cmake_parse_arguments(ARG "" "SOURCES" "" ${ARGN})
+function(smol_rhi_sample NAME)
+    cmake_parse_arguments(ARG "" "SOURCES" "DEPENDS" ${ARGN})
 
-    add_executable(Crowy${NAME} ${ARG_SOURCES})
-    crowy_rhi_macro(${NAME})
+    add_executable(${NAME}Sample ${ARG_SOURCES})
 
-    target_link_libraries(Crowy${NAME}
+    target_link_options(${NAME}Sample
     PRIVATE
-        SDL3::SDL3
-        Crowy::Log
-        Crowy::Resource
+        ${RENDER_BACKEND_LINK_OPTIONS}
     )
-
-    if(RENDER_BACKEND STREQUAL "Metal")
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::MetalRHI
-        )
-    elseif(RENDER_BACKEND STREQUAL "D3D11")
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::D3D11RHI
-        )
-    elseif(RENDER_BACKEND STREQUAL "D3D12")
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::D3D12RHI
-        )
-    else()
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::NullRHI
-        )
-    endif()
+    target_link_libraries(${NAME}Sample
+    PRIVATE
+        Crowy::Platform
+        Crowy::Log
+        ${RENDER_BACKENDS}
+        ${ARG_DEPENDS}
+    )
 endfunction()
 
-crowy_rhi_sample(RHISample
-    SOURCES Sample.cpp
-)
-
-crowy_rhi_sample(VectorAddition
-    SOURCES VectorAddition.cpp
+smol_rhi_sample(Texture
+SOURCES TextureSample.cpp
+DEPENDS
+    Crowy::Serialization
+    SDL3::SDL3
+    Crowy::Platform::Private
 )

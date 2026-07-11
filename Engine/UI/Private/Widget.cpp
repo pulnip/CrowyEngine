@@ -1,10 +1,37 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include "Widget.hpp"
+#include "Primitives.hpp"
+
+namespace{
+    enum class Axis{
+        horizontal,
+        vertical
+    };
+
+    struct Flex{
+        Axis axis;
+        std::vector<Crowy::Widget> children;
+        double spacing = 0.0;
+
+        void submit(Crowy::UIContext& ctx){
+            ImGui::BeginGroup();
+            for(Crowy::usize i = 0; i < children.size(); ++i){
+                if(i > 0 && axis == Axis::horizontal)
+                    ImGui::SameLine(0, spacing);
+
+                std::visit([&ctx](auto& widget){
+                    widget.submit(ctx);
+                }, children[i]);
+            }
+            ImGui::EndGroup();
+        }
+    };
+}
 
 namespace Crowy
 {
-    void IntField::submit(CROWY_UI_CONTEXT& ctx){
+    void IntField::submit(UIContext& ctx){
         bool readonly = get.has_value();
 
         if(readonly){
@@ -21,7 +48,7 @@ namespace Crowy
         }
     }
 
-    void FloatField::submit(CROWY_UI_CONTEXT& ctx){
+    void FloatField::submit(UIContext& ctx){
         bool readonly = get.has_value();
 
         if(readonly){
@@ -38,7 +65,7 @@ namespace Crowy
         }
     }
 
-    void Float2Field::submit(CROWY_UI_CONTEXT& ctx){
+    void Float2Field::submit(UIContext& ctx){
         bool readonly = get.has_value();
 
         if(readonly){
@@ -46,7 +73,7 @@ namespace Crowy
             v = get.value()();
         }
 
-        float arr[] = {v.x, v.y};
+        f32 arr[] = {v.x, v.y};
 
         if(ImGui::InputFloat2(label.c_str(), arr)){
             v = {arr[0], arr[1]};
@@ -58,7 +85,7 @@ namespace Crowy
         }
     }
 
-    void Float3Field::submit(CROWY_UI_CONTEXT& ctx){
+    void Float3Field::submit(UIContext& ctx){
         bool readonly = get.has_value();
 
         if(readonly){
@@ -66,7 +93,7 @@ namespace Crowy
             v = get.value()();
         }
 
-        float arr[] = {v.x, v.y, v.z};
+        f32 arr[] = {v.x, v.y, v.z};
 
         if(ImGui::InputFloat3(label.c_str(), arr)){
             v = {arr[0], arr[1], arr[2]};
@@ -78,7 +105,7 @@ namespace Crowy
         }
     }
 
-    void Float4Field::submit(CROWY_UI_CONTEXT& ctx){
+    void Float4Field::submit(UIContext& ctx){
         bool readonly = get.has_value();
 
         if(readonly){
@@ -86,9 +113,9 @@ namespace Crowy
             v = (*get)();
         }
 
-        float arr[] = {v.x, v.y, v.z, v.w};
+        f32 arr[] = {v.x, v.y, v.z, v.w};
 
-        if(ImGui::InputFloat2(label.c_str(), arr)){
+        if(ImGui::InputFloat4(label.c_str(), arr)){
             v = {arr[0], arr[1], arr[2], arr[3]};
             onChanged(ctx, v);
         }
@@ -98,54 +125,30 @@ namespace Crowy
         }
     }
 
-    void TextButton::submit(CROWY_UI_CONTEXT& ctx){
+    void Checkbox::submit(UIContext& ctx){
+        if(ImGui::Checkbox(label.c_str(), &v))
+            onChanged(ctx, v);
+    }
+
+    void TextButton::submit(UIContext& ctx){
         if(ImGui::Button(label.c_str())){
             onPressed(ctx);
         }
     }
 
-    void Checkbox::submit(CROWY_UI_CONTEXT& ctx){
-        if(ImGui::Checkbox(label.c_str(), &v))
-            onChanged(ctx, v);
-    }
-
-    void Slider::submit(CROWY_UI_CONTEXT& ctx){
+    void Slider::submit(UIContext& ctx){
         if(ImGui::SliderFloat(label.c_str(), &v, v_min, v_max))
             onChanged(ctx, v);
     }
 
-    void Text::submit(CROWY_UI_CONTEXT&){
+    void Text::submit(UIContext&){
         ImGui::Text("%s", data.c_str());
     }
 
-    void SearchBar::submit(CROWY_UI_CONTEXT& ctx){
+    void SearchBar::submit(UIContext& ctx){
         if(ImGui::InputText(label.c_str(), &str))
             onChanged(ctx, str);
     }
-
-    enum class Axis{
-        horizontal,
-        vertical
-    };
-
-    struct Flex{
-        Axis axis;
-        std::vector<Widget> children;
-        double spacing = 0.0;
-
-        void submit(CROWY_UI_CONTEXT& ctx){
-            ImGui::BeginGroup();
-            for(size_t i = 0; i < children.size(); ++i){
-                if(i > 0 && axis == Axis::horizontal)
-                    ImGui::SameLine(0, spacing);
-
-                std::visit([&ctx](auto& widget){
-                    widget.submit(ctx);
-                }, children[i]);
-            }
-            ImGui::EndGroup();
-        }
-    };
 
     Widget Row(
         std::vector<Widget>&& children,
@@ -164,26 +167,6 @@ namespace Crowy
         return Box(Flex{
             .axis = Axis::vertical,
             .children = std::move(children)
-        });
-    }
-
-    Widget demoUI(){
-        return Column({
-            Row({
-                Text{
-                    .data = "Hello, "
-                },
-                Text{
-                    .data = "Widget!"
-                }
-            }),
-            TextButton{
-                .label = "Test Button",
-            },
-            Slider{
-                .label = "Test Slider",
-                .v = 0.5f
-            }
         });
     }
 }

@@ -1,0 +1,312 @@
+#include <d3dx12/d3dx12_core.h>
+#include "Assert.hpp"
+#include "DescriptorHeapAllocator.hpp"
+#include "DX12Buffer.hpp"
+#include "DX12Definitions.hpp"
+#include "DX12Util.hpp"
+#include "EnumUtil.hpp"
+#include "IntMath.hpp"
+#include "PtrUtil.hpp"
+#include "RHIDefinitions.hpp"
+#include "VariantUtil.hpp"
+
+namespace{
+    struct BufferPolicy{
+        D3D12_HEAP_TYPE heapType;
+        Crowy::u32 slotCount;
+        bool persistentMap;
+        // Initial State
+        D3D12_BARRIER_SYNC syncState = D3D12_BARRIER_SYNC_NONE;
+        D3D12_BARRIER_ACCESS accessState = D3D12_BARRIER_ACCESS_COMMON;
+    };
+
+    auto Resolve(
+        Crowy::RHIBufferUsage usage,
+        Crowy::RHIMemoryAccess access,
+        const Crowy::DX12Capabilities& capabilities
+    ){
+        using namespace Crowy;
+        using enum RHIMemoryAccess;
+        using enum RHIResourceState;
+
+        switch(access){
+        case GPUOnly:
+            return BufferPolicy{
+                .heapType = D3D12_HEAP_TYPE_DEFAULT,
+                .slotCount = 1,
+                .persistentMap = false,
+                .syncState = D3D12_BARRIER_SYNC_NONE,
+                .accessState = D3D12_BARRIER_ACCESS_COMMON
+            };
+        case CPUWrite:
+            return BufferPolicy{
+                .heapType = capabilities.gpuUploadHeap ?
+                    D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD,
+                .slotCount = usage == RHIBufferUsage::CopySrc ?
+                    1 :
+                    RHI_FRAMES_IN_FLIGHT,
+                .persistentMap = true,
+                .syncState = D3D12_BARRIER_SYNC_NONE,
+                .accessState = D3D12_BARRIER_ACCESS_CONSTANT_BUFFER
+            };
+        case CPURead:
+            return BufferPolicy{
+                .heapType = D3D12_HEAP_TYPE_READBACK,
+                .slotCount = RHI_FRAMES_IN_FLIGHT,
+                .persistentMap = true,
+                .syncState = D3D12_BARRIER_SYNC_COPY,
+                .accessState = D3D12_BARRIER_ACCESS_COPY_DEST
+            };
+        case Transient:
+            SMOL_ASSERT(false, "Transient is texture-only");
+        default:
+            std::unreachable();
+        }
+    }
+}
+
+namespace Crowy
+{
+    DX12Buffer::DX12Buffer(
+        Device& device,
+        const RHIBufferCreateDesc& desc,
+        const DX12Capabilities& capabilities,
+        const u64& frameIndex,
+        DescriptorHeapAllocator& heap,
+        StrView name
+    )
+        : frameIndex(frameIndex)
+        , heap(heap)
+    {
+        using enum RHIBufferUsage;
+        using enum RHIMemoryAccess;
+
+        const auto policy = Resolve(desc.usage, desc.access, capabilities);
+
+        const auto hasConstantUsage = hasFlag(desc.usage, ConstantBuffer);
+        const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
+        const auto isCopyDst = hasFlag(desc.usage, CopyDst);
+
+        const auto isCPUWrite = (desc.access == CPUWrite);
+        SMOL_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
+        const auto isCPURead  = (desc.access == CPURead);
+        SMOL_ASSERT(!isCPURead || (desc.usage == CopyDst));
+        const auto isGPUOnly  = (desc.access == GPUOnly);
+
+        const auto bufDesc = CD3DX12_RESOURCE_DESC1::Buffer(
+            D3D12_RESOURCE_ALLOCATION_INFO{
+                .SizeInBytes = hasConstantUsage ?
+                    nextMul<u32>(desc.size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT) :
+                    desc.size,
+                .Alignment = 0
+            },
+            isUnorderedAccess ?
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
+                D3D12_RESOURCE_FLAG_NONE
+        );
+        const auto heapProp = CD3DX12_HEAP_PROPERTIES(
+            policy.heapType
+        );
+
+        resources.reserve(policy.slotCount);
+        for(u32 i=0; i<policy.slotCount; ++i){
+            FrameResource frameResource{
+                .syncState = policy.syncState,
+                .accessState = policy.accessState
+            };
+            CHECK_HRESULT(device.CreateCommittedResource3(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &bufDesc,
+                D3D12_BARRIER_LAYOUT_UNDEFINED,
+                nullptr,
+                nullptr,
+                0, nullptr,
+                IID_PPV_ARGS(&frameResource.buffer)
+            ), "Failed to create DX12 buffer");
+
+            if(policy.persistentMap){
+                SMOL_ASSERT(isCPUWrite || isCPURead);
+                const CD3DX12_RANGE noRead(0, 0);
+                CHECK_HRESULT(frameResource.buffer->Map(
+                    0,
+                    &noRead,
+                    &frameResource.mapped
+                ), "Failed to Map DX12 Buffer");
+            }
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(!name.empty()){
+                frameResource.buffer->SetPrivateData(
+                    WKPDID_D3DDebugObjectName,
+                    static_cast<UINT>(name.length()),
+                    name.data()
+                );
+            }
+        #endif
+
+            resources.emplace_back(std::move(frameResource));
+        }
+    }
+
+    DX12Buffer::~DX12Buffer(){
+        for(u32 i=0; i<resources.size(); ++i){
+            auto& frameResource = resources[i];
+
+            if(frameResource.mapped != nullptr){
+                frameResource.buffer->Unmap(
+                    0,
+                    nullptr
+                );
+                frameResource.mapped = nullptr;
+            }
+
+            for(const auto& [_, idx]: frameResource.cbvs){
+                heap.Free(idx);
+            }
+            for(const auto& [_, idx]: frameResource.srvs){
+                heap.Free(idx);
+            }
+            for(const auto& [_, idx]: frameResource.uavs){
+                heap.Free(idx);
+            }
+        }
+    }
+
+    void DX12Buffer::upload(
+        u32 index,
+        const void* src,
+        u32 srcSize,
+        u32 offset
+    ){
+        SMOL_ASSERT(srcSize <= GetSize() - offset);
+
+        auto& frameResource = resources[index];
+
+        std::memcpy(
+            ptrAdd(frameResource.mapped, offset),
+            src,
+            srcSize
+        );
+    }
+
+    void DX12Buffer::download(
+        u32 index,
+        void* dst,
+        u32 dstSize,
+        u32 offset
+    ){
+        SMOL_ASSERT(dstSize <= GetSize() - offset);
+
+        auto& frameResource = resources[index];
+
+        std::memcpy(
+            dst,
+            ptrAdd(frameResource.mapped, offset),
+            dstSize
+        );
+    }
+
+    u32 DX12Buffer::GetSize() const noexcept{
+        auto& frameResource = resources[currentIndex()];
+        auto desc = frameResource.buffer->GetDesc();
+        return desc.Width;
+    }
+
+    UINT DX12Buffer::GetOrCreateCBV(const RHIBufferViewDesc& desc){
+        auto& frameResource = resources[currentIndex()];
+        auto& cbvs = frameResource.cbvs;
+        if(auto it = cbvs.find(desc); it != cbvs.end())
+            return it->second;
+
+        const D3D12_CONSTANT_BUFFER_VIEW_DESC dxDesc{
+            .BufferLocation = frameResource.buffer->GetGPUVirtualAddress() + desc.offset,
+            .SizeInBytes = desc.size
+        };
+
+        auto idx = heap.Allocate(dxDesc);
+        auto [it, ret] = cbvs.emplace(desc, idx);
+        SMOL_ASSERT(ret);
+
+        return idx;
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS DX12Buffer::GetGPUAddress(){
+        auto& frameResource = resources[currentIndex()];
+        return frameResource.buffer->GetGPUVirtualAddress();
+    }
+
+    UINT DX12Buffer::GetOrCreateSRV(const RHIBufferViewDesc& desc){
+        auto& frameResource = resources[currentIndex()];
+        auto& srvs = frameResource.srvs;
+        if(auto it = srvs.find(desc); it != srvs.end())
+            return it->second;
+
+        const auto NumElements = GetSize() / 4;
+        const auto dxDesc = std::visit(overload{
+            [&](const RHIBufferViewDesc::RawConfig&){
+                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::RawBuffer(
+                    NumElements
+                );
+            },
+            [&](const RHIBufferViewDesc::TypedConfig& c){
+                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TypedBuffer(
+                    convert(c.format),
+                    NumElements
+                );
+            },
+            [&](const RHIBufferViewDesc::StructuredConfig& c){
+                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::StructuredBuffer(
+                    NumElements,
+                    c.stride
+                );
+            }
+        }, desc.config);
+
+        auto idx = heap.Allocate(
+            *frameResource.buffer.Get(),
+            dxDesc
+        );
+        auto [it, ret] = srvs.emplace(desc, idx);
+        SMOL_ASSERT(ret);
+
+        return idx;
+    }
+
+    UINT DX12Buffer::GetOrCreateUAV(const RHIBufferViewDesc& desc){
+        auto& frameResource = resources[currentIndex()];
+        auto& uavs = frameResource.uavs;
+        if(auto it = uavs.find(desc); it != uavs.end())
+            return it->second;
+
+        const auto NumElements = GetSize() / 4;
+        const auto dxDesc = std::visit(overload{
+            [&](const RHIBufferViewDesc::RawConfig&){
+                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::RawBuffer(
+                    NumElements
+                );
+            },
+            [&](const RHIBufferViewDesc::TypedConfig& c){
+                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::TypedBuffer(
+                    convert(c.format),
+                    NumElements
+                );
+            },
+            [&](const RHIBufferViewDesc::StructuredConfig& c){
+                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::StructuredBuffer(
+                    NumElements,
+                    c.stride
+                );
+            }
+        }, desc.config);
+
+        auto idx = heap.Allocate(
+            *frameResource.buffer.Get(),
+            dxDesc
+        );
+        auto [it, ret] = uavs.emplace(desc, idx);
+        SMOL_ASSERT(ret);
+
+        return idx;
+    }
+}

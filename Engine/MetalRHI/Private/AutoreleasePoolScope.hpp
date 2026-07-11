@@ -1,12 +1,15 @@
 #pragma once
 
 #include <Foundation/NSAutoreleasePool.hpp>
+#include "Semantics.hpp"
 
 namespace Crowy
 {
-    struct AutoreleasePoolScope{
+    class AutoreleasePoolScope{
+    private:
         NS::AutoreleasePool* pool = nullptr;
 
+    public:
         AutoreleasePoolScope()
             : pool(NS::AutoreleasePool::alloc()->init()){}
 
@@ -17,9 +20,6 @@ namespace Crowy
             }
         }
 
-        AutoreleasePoolScope(const AutoreleasePoolScope&) = delete;
-        AutoreleasePoolScope& operator=(const AutoreleasePoolScope&) = delete;
-        AutoreleasePoolScope(AutoreleasePoolScope&&) = delete;
-        AutoreleasePoolScope& operator=(AutoreleasePoolScope&&) = delete;
+        SMOL_DECLARE_PINNED(AutoreleasePoolScope)
     };
 }

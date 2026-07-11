@@ -1,6 +1,0 @@
-[[modules]]
-name = "MainModule"
-files = [
-    "asset/Scripts/Component.as",
-    "asset/Scripts/TestComponents.as"
-]

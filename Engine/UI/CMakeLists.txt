@@ -1,28 +1,14 @@
-crowy_declare_module(UI)
+smol_declare_module(UI)
 
+target_link_options(CrowyUI
+PRIVATE
+    ${RENDER_BACKEND_LINK_OPTIONS}
+)
 target_link_libraries(CrowyUI
 PUBLIC
     Crowy::CommonRHI
-    Crowy::EngineCore
+    Crowy::Core
     imgui
 PRIVATE
-    Crowy::RHI
+    ${RENDER_BACKENDS}
 )
-
-crowy_rhi_macro(UI)
-if(RENDER_BACKEND STREQUAL "Metal")
-    target_link_libraries(CrowyUI
-    PRIVATE
-        Crowy::MetalRHI
-    )
-elseif(RENDER_BACKEND STREQUAL "D3D11")
-    target_link_libraries(CrowyUI
-    PRIVATE
-        Crowy::D3D11RHI
-    )
-elseif(RENDER_BACKEND STREQUAL "D3D12")
-    target_link_libraries(CrowyUI
-    PRIVATE
-        Crowy::D3D12RHI
-    )
-endif()

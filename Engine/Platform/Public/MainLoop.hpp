@@ -1,15 +1,19 @@
 #pragma once
 
-#include "semantics.hpp"
+#include "RHIFWD.hpp"
+#include "Semantics.hpp"
 
 namespace Crowy
 {
     class MainLoop{
     public:
-        CROWY_DECLARE_INTERFACE(MainLoop)
+        SMOL_DECLARE_INTERFACE(MainLoop)
 
-        virtual void initialize(){}
-        virtual bool update(float deltaTime, float totalTime) = 0;
-        virtual void finalize(){}
+        virtual bool Initialize(){ return true; }
+        virtual bool Update() = 0;
+        // TODO. support multi-window if needed
+        virtual bool Render(CommandListPool&, RHISwapchain&) = 0;
+        virtual bool RenderUI(RHICommandList&, RHISwapchain&) = 0;
+        virtual void Finalize(){}
     };
 }

@@ -1,0 +1,7 @@
+[metadata]
+version = 0
+name = "Example"
+type = "engine"
+
+[windows_target]
+graphics_rhi = "DX12"

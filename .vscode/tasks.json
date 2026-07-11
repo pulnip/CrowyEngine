@@ -2,27 +2,57 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "CMake Build",
+            "label": "Slang: Compile to HLSL(VertexShader)",
+            "hide": true,
             "type": "shell",
-            "command": "cmake",
-            "windows": {
-                "args": [
-                    "--build",
-                    "--preset", "Windows-Debug"
-                ],
-                "problemMatcher": "$msCompile",
-            },
-            "osx": {
-                "args": [
-                    "--build",
-                    "--preset", "macOS-Debug"
-                ],
-                "problemMatcher": "$gcc"
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "command": "${workspaceFolder}/build/_deps/slang_bin-src/bin/slangc",
+            "args": [
+                "${file}",
+                "-target", "hlsl",
+                "-profile", "sm_6_6",
+                "-entry", "vs_main",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}.vert.gen.hlsl"
+            ]
+        },
+        {
+            "label": "Slang: Compile to HLSL(PixelShader)",
+            "hide": true,
+            "type": "shell",
+            "command": "${workspaceFolder}/build/_deps/slang_bin-src/bin/slangc",
+            "args": [
+                "${file}",
+                "-target", "hlsl",
+                "-profile", "sm_6_6",
+                "-entry", "fs_main",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}.pixel.gen.hlsl"
+            ]
+        },
+        {
+            "label": "Slang: Compile to HLSL",
+            "dependsOn": [
+                "Slang: Compile to HLSL(VertexShader)",
+                "Slang: Compile to HLSL(PixelShader)"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${fileDirname}"
+            }
+        },
+        {
+            "label": "Slang: Compile to MSL",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/_deps/slang_bin-src/bin/slangc",
+            "args": [
+                "${file}",
+                "-target", "metal",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}.gen.metal"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${fileDirname}"
+            }
         }
     ]
 }

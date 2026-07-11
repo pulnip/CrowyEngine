@@ -1,30 +1,28 @@
 {
     "cmake.useVsDeveloperEnvironment": "always",
     "files.associations": {
+        "*.toml": "toml",
         "*.h": "c",
         "*.c": "c",
         "*.hpp": "cpp",
         "*.cpp": "cpp"
     },
     "files.exclude": {
-        "**/D3D11RHI/**": true,
-        "**/D3D12RHI/**": true,
-        "**/*.hlsli": true,
-        "**/*.hlsl": true,
-        "**/MetalRHI/**": true,
-        "**/*.metal": true
+        ".cache/": true,
+        ".vs": true,
+        "**/DX12RHI/**": true,
+        "**/MetalRHI/**": true
     },
     "search.exclude": {
-        "**/D3D11RHI/**": true,
-        "**/D3D12RHI/**": true,
-        "**/*.hlsli": true,
-        "**/*.hlsl": true,
-        "**/MetalRHI/**": true,
-        "**/*.metal": true
+        ".cache/": true,
+        ".vs": true,
+        "**/DX12RHI/**": true,
+        "**/MetalRHI/**": true
     },
+    "C_Cpp.intelliSenseEngine": "disabled",
     "clangd.path": "/path/to/clangd",
-    "evenBetterToml.schema.associations": {
-        "input\\.toml$": "file:///path/to/.vscode/input.schema.json",
-        "render\\.toml$": "file:///path/to/.vscode/render.schema.json"
-    }
+    "github.copilot.enable": {
+        "*": false
+    },
+    "cmake.modifyLists.addNewSourceFiles": "no"
 }
