@@ -9,6 +9,7 @@
 #include <utility>
 #include <variant>
 #include "HashUtil.hpp"
+#include "IntMath.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 
@@ -131,7 +132,136 @@ namespace Crowy
         D24_UNORM_S8_UINT,
         D32_FLOAT,
         D32_FLOAT_S8_UINT,
+
+        // Block-compressed formats
+        BC1_UNORM, BC1_UNORM_SRGB,
+        BC2_UNORM, BC2_UNORM_SRGB,
+        BC3_UNORM, BC3_UNORM_SRGB,
+        BC4_UNORM, BC4_SNORM,
+        BC5_UNORM, BC5_SNORM,
+        BC6H_UF16, BC6H_SF16,
+        BC7_UNORM, BC7_UNORM_SRGB,
     };
+
+    inline constexpr auto IsDepthFormat(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case D16_UNORM:         [[fallthrough]];
+        case D24_UNORM_S8_UINT: [[fallthrough]];
+        case D32_FLOAT:         [[fallthrough]];
+        case D32_FLOAT_S8_UINT:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    inline constexpr bool IsBlockCompressed(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
+        return BC1_UNORM <= format && format <= BC7_UNORM_SRGB;
+    }
+
+    inline constexpr u32 GetBlockDim(RHIPixelFormat format){
+        return IsBlockCompressed(format) ? 4 : 1;
+    }
+
+    namespace detail{
+        inline constexpr u32 GetBytesPerPixel(RHIPixelFormat format){
+            using enum RHIPixelFormat;
+
+            switch(format){
+            case R8_UNORM:          [[fallthrough]];
+            case R8_SNORM:          [[fallthrough]];
+            case R8_UINT:           [[fallthrough]];
+            case R8_SINT:
+                return 1;
+            case R16_UNORM:         [[fallthrough]];
+            case R16_SNORM:         [[fallthrough]];
+            case R16_UINT:          [[fallthrough]];
+            case R16_SINT:          [[fallthrough]];
+            case R16_FLOAT:         [[fallthrough]];
+            case RG8_UNORM:         [[fallthrough]];
+            case RG8_SNORM:         [[fallthrough]];
+            case RG8_UINT:          [[fallthrough]];
+            case RG8_SINT:
+                return 2;
+            case R32_UINT:          [[fallthrough]];
+            case R32_SINT:          [[fallthrough]];
+            case R32_FLOAT:         [[fallthrough]];
+            case RG16_UNORM:        [[fallthrough]];
+            case RG16_SNORM:        [[fallthrough]];
+            case RG16_UINT:         [[fallthrough]];
+            case RG16_SINT:         [[fallthrough]];
+            case RG16_FLOAT:        [[fallthrough]];
+            case RGBA8_UNORM:       [[fallthrough]];
+            case RGBA8_UNORM_SRGB:  [[fallthrough]];
+            case RGBA8_SNORM:       [[fallthrough]];
+            case RGBA8_UINT:        [[fallthrough]];
+            case RGBA8_SINT:        [[fallthrough]];
+            case BGRA8_UNORM:       [[fallthrough]];
+            case BGRA8_UNORM_SRGB:
+                return 4;
+            case RG32_UINT:         [[fallthrough]];
+            case RG32_SINT:         [[fallthrough]];
+            case RG32_FLOAT:        [[fallthrough]];
+            case RGBA16_UNORM:      [[fallthrough]];
+            case RGBA16_SNORM:      [[fallthrough]];
+            case RGBA16_UINT:       [[fallthrough]];
+            case RGBA16_SINT:       [[fallthrough]];
+            case RGBA16_FLOAT:
+                return 8;
+            case RGB32_FLOAT:
+                return 12;
+            case RGBA32_UINT:       [[fallthrough]];
+            case RGBA32_SINT:       [[fallthrough]];
+            case RGBA32_FLOAT:
+                return 16;
+            case D16_UNORM:
+                return 2;
+            case D24_UNORM_S8_UINT: [[fallthrough]];
+            case D32_FLOAT:
+                return 4;
+            case D32_FLOAT_S8_UINT:
+                return 8;
+            default:
+                std::unreachable();
+            }
+        }
+    }
+
+    inline constexpr u32 GetBytesPerBlock(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
+        switch(format){
+        // Compressed format => bytes in 4x4 block
+        case BC1_UNORM:         [[fallthrough]];
+        case BC1_UNORM_SRGB:    [[fallthrough]];
+        case BC4_UNORM:         [[fallthrough]];
+        case BC4_SNORM:
+            return 8;
+        case BC2_UNORM:         [[fallthrough]];
+        case BC2_UNORM_SRGB:    [[fallthrough]];
+        case BC3_UNORM:         [[fallthrough]];
+        case BC3_UNORM_SRGB:    [[fallthrough]];
+        case BC5_UNORM:         [[fallthrough]];
+        case BC5_SNORM:         [[fallthrough]];
+        case BC6H_UF16:         [[fallthrough]];
+        case BC6H_SF16:         [[fallthrough]];
+        case BC7_UNORM:         [[fallthrough]];
+        case BC7_UNORM_SRGB:
+            return 16;
+        // Uncompressed format => bytes per pixel
+        default:
+            return detail::GetBytesPerPixel(format);
+        }
+    }
+
+    inline constexpr u32 GetRowPitch(RHIPixelFormat format, u32 width){
+        const u32 dim = GetBlockDim(format);
+        return ceilDiv(width, dim) * GetBytesPerBlock(format);
+    }
 
     enum class RHITextureUsage: u8{
         None              = 0,
@@ -214,21 +344,6 @@ namespace Crowy
         u8 stencil = 0;
     };
 
-    struct RHITextureCreateDesc{
-        // 0 for same as screen
-        u32 width = 0, height = 0;
-        u32 depth = 1;
-        u32 mipLevels = 1;
-        u32 arraySize = 1;
-        RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
-        RHITextureUsage usage = RHITextureUsage::None;
-        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
-        const void* initialData = nullptr;
-        // ClearColor for optimize (only Valid at D3D12)
-        Color clearColor = Colors::Black;
-        RHIClearDepthStencil clearDepthStencil{};
-    };
-
     struct RHISubresourceData{
         const void* data;
         usize rowPitch;
@@ -238,6 +353,22 @@ namespace Crowy
         u32 rowPitch;
         u64 rowSize;
         u32 rowCount;
+    };
+
+    struct RHITextureCreateDesc{
+        // 0 for same as screen
+        u32 width = 0, height = 0;
+        u32 depth = 1;
+        u32 mipLevels = 1;
+        u32 arraySize = 1;
+        RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
+        RHITextureUsage usage = RHITextureUsage::None;
+        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
+        // mip + arraySlice
+        std::span<const RHISubresourceData> initialData{};
+        // ClearColor for optimize (only Valid at D3D12)
+        Color clearColor = Colors::Black;
+        RHIClearDepthStencil clearDepthStencil{};
     };
 
     enum class RHIShaderStage: u8{
@@ -844,82 +975,6 @@ namespace Crowy
         bool vsync = true;                           // VSync enabled by default
         bool allowTearing = false;                   // Variable refresh rate
     };
-
-    inline constexpr u32 getBytesPerPixel(RHIPixelFormat format){
-        using enum RHIPixelFormat;
-
-        switch(format){
-        case R8_UNORM:          [[fallthrough]];
-        case R8_SNORM:          [[fallthrough]];
-        case R8_UINT:           [[fallthrough]];
-        case R8_SINT:
-            return 1;
-        case R16_UNORM:         [[fallthrough]];
-        case R16_SNORM:         [[fallthrough]];
-        case R16_UINT:          [[fallthrough]];
-        case R16_SINT:          [[fallthrough]];
-        case R16_FLOAT:         [[fallthrough]];
-        case RG8_UNORM:         [[fallthrough]];
-        case RG8_SNORM:         [[fallthrough]];
-        case RG8_UINT:          [[fallthrough]];
-        case RG8_SINT:
-            return 2;
-        case R32_UINT:          [[fallthrough]];
-        case R32_SINT:          [[fallthrough]];
-        case R32_FLOAT:         [[fallthrough]];
-        case RG16_UNORM:        [[fallthrough]];
-        case RG16_SNORM:        [[fallthrough]];
-        case RG16_UINT:         [[fallthrough]];
-        case RG16_SINT:         [[fallthrough]];
-        case RG16_FLOAT:        [[fallthrough]];
-        case RGBA8_UNORM:       [[fallthrough]];
-        case RGBA8_UNORM_SRGB:  [[fallthrough]];
-        case RGBA8_SNORM:       [[fallthrough]];
-        case RGBA8_UINT:        [[fallthrough]];
-        case RGBA8_SINT:        [[fallthrough]];
-        case BGRA8_UNORM:       [[fallthrough]];
-        case BGRA8_UNORM_SRGB:
-            return 4;
-        case RG32_UINT:         [[fallthrough]];
-        case RG32_SINT:         [[fallthrough]];
-        case RG32_FLOAT:        [[fallthrough]];
-        case RGBA16_UNORM:      [[fallthrough]];
-        case RGBA16_SNORM:      [[fallthrough]];
-        case RGBA16_UINT:       [[fallthrough]];
-        case RGBA16_SINT:       [[fallthrough]];
-        case RGBA16_FLOAT:
-            return 8;
-        case RGB32_FLOAT:
-            return 12;
-        case RGBA32_UINT:       [[fallthrough]];
-        case RGBA32_SINT:       [[fallthrough]];
-        case RGBA32_FLOAT:
-            return 16;
-        case D16_UNORM:
-            return 2;
-        case D24_UNORM_S8_UINT: [[fallthrough]];
-        case D32_FLOAT:
-            return 4;
-        case D32_FLOAT_S8_UINT:
-            return 8;
-        default:
-            std::unreachable();
-        }
-    }
-
-    inline constexpr auto isDepthFormat(RHIPixelFormat format){
-        using enum RHIPixelFormat;
-
-        switch(format){
-        case D16_UNORM:         [[fallthrough]];
-        case D24_UNORM_S8_UINT: [[fallthrough]];
-        case D32_FLOAT:         [[fallthrough]];
-        case D32_FLOAT_S8_UINT:
-            return true;
-        default:
-            return false;
-        }
-    }
 
     struct RHIBufferViewDesc{
         struct RawConfig{

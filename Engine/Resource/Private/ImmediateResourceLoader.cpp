@@ -20,13 +20,19 @@ namespace Crowy
     ){
         auto imagePath = root / request.path;
         auto image = loadImage(imagePath);
+        std::array subs = {
+            RHISubresourceData{
+                .data = image.GetBufferPointer(),
+                .rowPitch = GetRowPitch(RHIPixelFormat::RGBA8_UNORM, image.GetWidth())
+            }
+        };
 
         auto texture = device.CreateTexture(
             RHITextureCreateDesc{
                 .width = image.GetWidth(), .height = image.GetHeight(),
                 .format = RHIPixelFormat::RGBA8_UNORM,
                 .usage = RHITextureUsage::ShaderRead,
-                .initialData = image.GetBufferPointer()
+                .initialData = subs
             }
         );
 

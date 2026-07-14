@@ -456,29 +456,27 @@ namespace Crowy
                 name
             );
             // Notice. RHIMemoryAccess::Transient == RHIMemoryAccess::GPUOnly
-            if(desc.initialData != nullptr){
+            if(!desc.initialData.empty()){
                 if(!uploadRecorded){
                     uploadCmdList->Begin();
                     uploadCmdList->BeginBlit();
                     uploadRecorded = true;
                 }
-                std::array<RHISubresourceLayout, 1> layouts;
+
+                const usize n = desc.mipLevels * desc.arraySize;
+                CROWY_ASSERT(desc.initialData.size() == n);
+
+                std::vector<RHISubresourceLayout> layouts(n);
                 const auto totalBytes = QueryUploadLayout(
                     *texture,
                     layouts
                 );
-                std::array subs{
-                    RHISubresourceData{
-                        .data = desc.initialData,
-                        .rowPitch = desc.width * getBytesPerPixel(desc.format)
-                    }
-                };
                 UploadTexture(
                     *uploadCmdList,
                     uploadRing,
                     D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
                     *texture,
-                    subs,
+                    desc.initialData,
                     layouts,
                     totalBytes
                 );

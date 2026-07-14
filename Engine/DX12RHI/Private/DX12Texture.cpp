@@ -38,6 +38,10 @@ namespace Crowy
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
         const auto isDepthTarget     = hasFlag(desc.usage, DepthStencil);
 
+        CROWY_ASSERT(!IsBlockCompressed(desc.format) || isShaderResource,
+            "Block-compressed textures are shader-resource only"
+        );
+
         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
         if(!isShaderResource) flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
         if(isRenderTarget)    flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
