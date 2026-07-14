@@ -12,10 +12,6 @@ namespace Crowy
 
         D3D_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        const Str debugName;
-    #endif
-
     public:
         DX12GraphicsPipelineState(
             Device&,
@@ -33,11 +29,7 @@ namespace Crowy
     private:
         PipelineStateRAII pipeline = nullptr;
 
-        Size3D threadGroupSize = {256, 1, 1};
-
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        const std::string debugName;
-    #endif
+        Size3D threadGroupSize = {0, 0, 0};
 
     public:
         DX12ComputePipelineState(

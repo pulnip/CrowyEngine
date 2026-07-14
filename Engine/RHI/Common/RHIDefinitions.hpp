@@ -667,8 +667,6 @@ namespace Crowy
         RHIShaderDesc computeShader{
             .entryPoint = "cs_main"
         };
-        Size3D gridSize = Size3D{1, 1, 1};
-        std::optional<Size3D> threadGroupSize = std::nullopt;
     };
 }
 
@@ -701,14 +699,9 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc>{
 template<>
 struct std::hash<Crowy::RHIComputePipelineStateDesc>{
     std::size_t operator()(const Crowy::RHIComputePipelineStateDesc& desc) const noexcept{
-        std::size_t h = hashAll(
-            desc.computeShader,
-            desc.gridSize
+        return hashAll(
+            desc.computeShader
         );
-
-        return desc.threadGroupSize.has_value() ?
-            hashAll(h, *desc.threadGroupSize) :
-            h;
     }
 };
 

@@ -175,11 +175,7 @@ namespace Crowy
         const RHIGraphicsPipelineStateDesc& desc,
         RootSignature& rootSignature,
         StrView name
-    )
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        : debugName(name)
-    #endif
-    {
+    ){
         auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
         primitiveTopology = ::convert(frontend.topology);
 
@@ -327,6 +323,16 @@ namespace Crowy
             &dxDesc,
             IID_PPV_ARGS(pipeline.GetAddressOf())
         ), "Failed to create graphics pipeline state");
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        if(!name.empty()){
+            pipeline->SetPrivateData(
+                WKPDID_D3DDebugObjectName,
+                static_cast<UINT>(name.length()),
+                name.data()
+            );
+        }
+    #endif
     }
 
     DX12GraphicsPipelineState::~DX12GraphicsPipelineState() = default;
@@ -341,21 +347,13 @@ namespace Crowy
         const RHIComputePipelineStateDesc& desc,
         RootSignature& rootSignature,
         StrView name
-    )
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        : debugName(name)
-    #endif
-    {
+    ){
         RHIShader computeShader(
             desc.computeShader,
             RHIBackend::DirectX12,
             "sm_6_6"
         );
-        if(desc.threadGroupSize.has_value())
-            CROWY_ASSERT(
-                *desc.threadGroupSize <= computeShader.GetRefl().threadGroupSize,
-                "Unexpected thread group size"
-            );
+        threadGroupSize = computeShader.GetRefl().threadGroupSize;
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC dxDesc{
             .pRootSignature = &rootSignature,
@@ -372,6 +370,16 @@ namespace Crowy
             &dxDesc,
             IID_PPV_ARGS(pipeline.GetAddressOf())
         ), "Failed to create compute pipeline state");
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        if(!name.empty()){
+            pipeline->SetPrivateData(
+                WKPDID_D3DDebugObjectName,
+                static_cast<UINT>(name.length()),
+                name.data()
+            );
+        }
+    #endif
     }
 
     DX12ComputePipelineState::~DX12ComputePipelineState() = default;
