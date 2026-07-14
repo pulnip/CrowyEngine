@@ -53,6 +53,105 @@
             "options": {
                 "cwd": "${fileDirname}"
             }
+        },
+        {
+            "label": "ktx: encode uastc",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_SRGB",
+                "--assign-tf", "srgb",
+                "--generate-mipmap",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: encode uastc (normal)",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_UNORM",
+                "--assign-tf", "linear",
+                "--normalize",
+                "--generate-mipmap",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: transcode BC7",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "transcode",
+                "--target", "bc7",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2",
+                "${fileDirname}/${fileBasenameNoExtension}.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: transcode BC5",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "transcode",
+                "--target", "bc5",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2",
+                "${fileDirname}/${fileBasenameNoExtension}.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: remove intermediate (uastc)",
+            "hide": true,
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook albedo",
+            "dependsOn": [
+                "ktx: encode uastc",
+                "ktx: transcode BC7",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook normal",
+            "dependsOn": [
+                "ktx: encode uastc (normal)",
+                "ktx: transcode BC5",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
+            },
+            "problemMatcher": []
         }
     ]
 }

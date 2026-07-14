@@ -170,6 +170,25 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(slang_bin)
 
+# KTX
+set(KTX_FEATURE_TESTS     OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS     OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_DOC       OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_JNI       OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_PY        OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_VK_UPLOAD OFF CACHE BOOL "" FORCE) # DX12 / Metal
+set(KTX_FEATURE_GL_UPLOAD OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_KTX1      OFF CACHE BOOL "" FORCE) # ktx2 only
+set(KTX_FEATURE_LOADTEST_APPS "" CACHE STRING "" FORCE)
+set(BUILD_SHARED_LIBS     OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(ktx
+    GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
+    GIT_TAG        "v4.4.2"
+    GIT_SHALLOW    ON
+    GIT_SUBMODULES ""
+)
+FetchContent_MakeAvailable(ktx)
+
 if(CROWY_ENABLE_TEST)
     find_package(GTest QUIET)
     if(NOT GTest_FOUND)
