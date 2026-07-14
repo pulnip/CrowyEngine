@@ -1,18 +1,21 @@
-#include "Sample.hpp"
-#include "DX12Texture.hpp"
+#include "AppFramework.hpp"
+#include "RHITexture.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
 
+#if defined(_WIN32)
 extern "C" {
-    __declspec(dllexport) extern const UINT D3D12SDKVersion = 619;
+    __declspec(dllexport) extern const std::uint32_t D3D12SDKVersion = 619;
     __declspec(dllexport) extern const char* D3D12SDKPath = ".\\";
 }
+#endif
 
 namespace Crowy
 {
-    Sample::Sample(const WindowConfig& windowConfig)
+    App::App(const WindowConfig& windowConfig)
         : window(windowConfig)
-        , swapchain(device.CreateSwapchain(RHISwapchainCreateDesc{
+        , swapchain(device->CreateSwapchain(RHISwapchainCreateDesc{
             .sdlWindow = window.GetWindow(),
             .bufferDesc = RHITextureCreateDesc{
                 .width = windowConfig.width,
@@ -22,8 +25,8 @@ namespace Crowy
         }))
     {}
 
-    int Sample::Run(){
-        OnInit(device);
+    int App::Run(){
+        OnInit(*device);
 
         while(true){
             if(!pumpEvents()) [[unlikely]]
@@ -43,7 +46,7 @@ namespace Crowy
         return 0;
     }
 
-    bool Sample::pumpEvents(){
+    bool App::pumpEvents(){
         bool keepRunning = true;
 
         SDL_Event event;
@@ -72,7 +75,7 @@ namespace Crowy
         return keepRunning;
     }
 
-    void Sample::renderFrame(){
+    void App::renderFrame(){
         framePacer.BeginFrame();
         swapchain->AcquireNextImage();
         cmdListPool.BeginFrame();
@@ -80,10 +83,10 @@ namespace Crowy
         auto& cmdList = cmdListPool.Acquire();
         cmdList.Begin();
         cmdList.TransitionBarrier(
-            static_cast<DX12Texture&>(swapchain->GetCurrentTexture()),
-            D3D12_BARRIER_SYNC_RENDER_TARGET,
-            D3D12_BARRIER_ACCESS_RENDER_TARGET,
-            D3D12_BARRIER_LAYOUT_RENDER_TARGET
+            swapchain->GetCurrentTexture(),
+            RHIBarrierSync::RenderTarget,
+            RHIBarrierAccess::RenderTarget,
+            RHIBarrierLayout::RenderTarget
         );
 
         RHIColorAttachment backBuffer{
@@ -95,10 +98,10 @@ namespace Crowy
         OnRecord(cmdList, backBuffer);
 
         cmdList.TransitionBarrier(
-            static_cast<DX12Texture&>(swapchain->GetCurrentTexture()),
-            D3D12_BARRIER_SYNC_NONE,
-            D3D12_BARRIER_ACCESS_NO_ACCESS,
-            D3D12_BARRIER_LAYOUT_PRESENT
+            swapchain->GetCurrentTexture(),
+            RHIBarrierSync::None,
+            RHIBarrierAccess::NoAccess,
+            RHIBarrierLayout::Present
         );
         cmdList.Close();
 
@@ -106,8 +109,8 @@ namespace Crowy
         swapchain->Present();
         framePacer.EndFrame();
 
-        static_cast<DX12Texture&>(swapchain->GetCurrentTexture()).TransitionState(
-            D3D12_BARRIER_ACCESS_NO_ACCESS
+        swapchain->GetCurrentTexture().TransitionState(
+            RHIBarrierAccess::NoAccess
         );
     }
 

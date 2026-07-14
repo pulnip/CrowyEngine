@@ -12,7 +12,8 @@ namespace Crowy
         const RHISwapchainCreateDesc& desc,
         DescriptorHeapAllocator& cbvsrvuavHeap,
         DescriptorHeapAllocator& rtvHeap,
-        DescriptorHeapAllocator& dsvHeap
+        DescriptorHeapAllocator& dsvHeap,
+        StrView name
     )
         : vsync(desc.vsync)
         , allowTearing(desc.allowTearing)
@@ -64,11 +65,11 @@ namespace Crowy
         createBackBuffers(desc.bufferCount);
 
     #if defined(_DEBUG) || !defined(NDEBUG)
-        if(!desc.debugName.empty()){
+        if(!name.empty()){
             swapchain->SetPrivateData(
                 WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(desc.debugName.length()),
-                desc.debugName.c_str()
+                static_cast<UINT>(name.length()),
+                name.data()
             );
         }
     #endif

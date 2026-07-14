@@ -1,14 +1,13 @@
 #pragma once
 
-#include "DX12CommandList.hpp"
-#include "DX12PipelineState.hpp"
-#include "DX12Swapchain.hpp"
+#include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHIDevice.hpp"
 
 namespace Crowy
 {
-    class DX12Device{
+    class DX12Device: public RHIDevice{
     private:
         class Impl;
         RAII<Impl> impl;
@@ -17,44 +16,47 @@ namespace Crowy
         DX12Device();
         ~DX12Device();
 
-        RHIFrameScopeRAII CreateFrameScope();
+        RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE;
 
         RHIBufferRAII CreateBuffer(
             const RHIBufferCreateDesc&,
             StrView name = {}
-        );
+        ) RHI_OVERRIDE;
         RHITextureRAII CreateTexture(
             const RHITextureCreateDesc&,
             StrView name = {}
-        );
+        ) RHI_OVERRIDE;
         RHISamplerRAII CreateSampler(
             const RHISamplerState&
-        );
+        ) RHI_OVERRIDE;
 
-        RAII<DX12GraphicsPipelineState> CreatePipelineState(
+        RAII<RHIGraphicsPipelineState> CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
-        );
-        RAII<DX12ComputePipelineState> CreatePipelineState(
+        ) RHI_OVERRIDE;
+        RAII<RHIComputePipelineState> CreatePipelineState(
             const RHIComputePipelineStateDesc&,
             StrView name = {}
-        );
+        ) RHI_OVERRIDE;
 
-        RAII<DX12Swapchain> CreateSwapchain(
-            const RHISwapchainCreateDesc&
-        );
+        RAII<RHISwapchain> CreateSwapchain(
+            const RHISwapchainCreateDesc&,
+            StrView name = {}
+        ) RHI_OVERRIDE;
 
-        RAII<DX12CommandList> CreateCommandList();
+        RAII<RHICommandList> CreateCommandList() RHI_OVERRIDE;
 
-        RHIFenceRAII CreateFence(u64 initialValue = 0);
+        RHIFenceRAII CreateFence(u64 initialValue = 0) RHI_OVERRIDE;
 
-        RHICapabilities GetCapabilities() const noexcept;
+        void SignalFence(RHIFence&, u64) RHI_OVERRIDE;
 
-        void SignalFence(RHIFence&, u64);
+        void Submit(std::span<RHICommandList*>) RHI_OVERRIDE;
 
-        void Submit(std::span<DX12CommandList*>);
+        u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 
-        u64& GetFrameIndexRef() noexcept;
+        RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
+
+        NativeDeviceHandle Get() noexcept RHI_OVERRIDE;
 
         UINT64 QueryUploadLayout(
             RHITexture&,

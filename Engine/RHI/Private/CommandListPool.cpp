@@ -1,29 +1,26 @@
 #include "Assert.hpp"
 #include "CommandListPool.hpp"
 #include "RHICommandList.hpp"
-#include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
-#include "RHISwapchain.hpp"
 
 namespace Crowy
 {
     CommandListPool::CommandListPool(RHIDevice& device)
-        : device(device){}
+        : device(device)
+        , frameIndex(device.GetFrameIndexRef())
+    {}
 
     CommandListPool::~CommandListPool() = default;
 
     void CommandListPool::BeginFrame(){
-        frameIndex = (frameIndex + 1) % RHI_FRAMES_IN_FLIGHT;
-        auto& slot = slots[frameIndex];
+        auto& slot = slots[currentIndex()];
 
         slot.cmdLists.clear();
         slot.nextIndex = 0;
     }
 
     RHICommandList& CommandListPool::Acquire(){
-        SMOL_ASSERT(frameIndex < RHI_FRAMES_IN_FLIGHT);
-        auto& slot = slots[frameIndex];
+        auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex >= slot.cmdLists.size()){
             // reserve new commandList, if not enough
@@ -37,12 +34,8 @@ namespace Crowy
         return *acquiredCmdList;
     }
 
-    void CommandListPool::SubmitFrame(
-        RHIFence& fence,
-        u64 fenceValue
-    ){
-        SMOL_ASSERT(frameIndex < RHI_FRAMES_IN_FLIGHT);
-        auto& slot = slots[frameIndex];
+    void CommandListPool::SubmitFrame(){
+        auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex == 0) [[unlikely]] {
             // empty cmdList submit pattern
@@ -52,10 +45,10 @@ namespace Crowy
             cmdList.Close();
         }
 
-        device.SignalFence(*slot.cmdLists.back(), fence, fenceValue);
-
-        for(auto& cmdList: slot.cmdLists){
-            device.Submit(*cmdList);
+        std::vector<RHICommandList*> cmdLists(slot.cmdLists.size());
+        for(usize i=0; i<cmdLists.size(); ++i){
+            cmdLists[i] = slot.cmdLists[i].get();
         }
+        device.Submit(cmdLists);
     }
 }

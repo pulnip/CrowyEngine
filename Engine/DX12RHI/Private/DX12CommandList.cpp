@@ -12,7 +12,6 @@
 #include "DX12Util.hpp"
 #include "IntMath.hpp"
 #include "RHIDefinitions.hpp"
-#include "RHISwapchain.hpp"
 
 namespace{
     D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE convert(Crowy::RHILoadAction action){
@@ -191,16 +190,11 @@ namespace Crowy
         commandList->EndRenderPass();
     }
 
-    void DX12CommandList::SetPipelineState(DX12GraphicsPipelineState& pso){
-        pso.Bind(*commandList.Get());
+    void DX12CommandList::SetPipelineState(RHIGraphicsPipelineState& pso){
+        auto& dxPso = static_cast<DX12GraphicsPipelineState&>(pso);
+        dxPso.Bind(*commandList.Get());
 
-        currentGraphicsPSO = &pso;
-    }
-
-    void DX12CommandList::SetPipelineState(DX12ComputePipelineState& pso){
-        pso.Bind(*commandList.Get());
-
-        currentComputePSO = &pso;
+        currentGraphicsPSO = &dxPso;
     }
 
     void DX12CommandList::SetVertexBuffer(
@@ -244,30 +238,13 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::setPushGraphicsConstants(
+    void DX12CommandList::SetPushGraphicsConstants(
         const void* data,
         u32 size
     ){
         SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
 
         commandList->SetGraphicsRoot32BitConstants(
-            RootParamPush,
-            size / 4,
-            data,
-            0
-        );
-    }
-
-    void DX12CommandList::setPushComputeConstants(
-        const void* data,
-        u32 size
-    ){
-        SMOL_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
-        );
-        SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
-
-        commandList->SetComputeRoot32BitConstants(
             RootParamPush,
             size / 4,
             data,
@@ -289,28 +266,6 @@ namespace Crowy
         auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
 
         commandList->SetGraphicsRootConstantBufferView(
-            RootParamCBBase + slot,
-            virtualAddress
-        );
-    }
-
-    void DX12CommandList::SetComputeConstantBuffer(
-        RHIBuffer& buffer,
-        u32 slot,
-        u32 offset
-    ){
-        SMOL_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
-        );
-        SMOL_ASSERT(offset < buffer.GetSize());
-
-        SMOL_ASSERT(slot < RHI_NUM_DIRECT_CBS);
-        SMOL_ASSERT(offset % RHI_CB_ALIGN == 0);
-
-        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
-        auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
-
-        commandList->SetComputeRootConstantBufferView(
             RootParamCBBase + slot,
             virtualAddress
         );
@@ -393,6 +348,55 @@ namespace Crowy
         inComputePass = false;
     }
 
+    void DX12CommandList::SetPipelineState(RHIComputePipelineState& pso){
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        auto& dxPso = static_cast<DX12ComputePipelineState&>(pso);
+        dxPso.Bind(*commandList.Get());
+
+        currentComputePSO = &dxPso;
+    }
+
+    void DX12CommandList::SetPushComputeConstants(
+        const void* data,
+        u32 size
+    ){
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+
+        commandList->SetComputeRoot32BitConstants(
+            RootParamPush,
+            size / 4,
+            data,
+            0
+        );
+    }
+
+    void DX12CommandList::SetComputeConstantBuffer(
+        RHIBuffer& buffer,
+        u32 slot,
+        u32 offset
+    ){
+        SMOL_ASSERT(inComputePass,
+            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        );
+        SMOL_ASSERT(offset < buffer.GetSize());
+
+        SMOL_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+        SMOL_ASSERT(offset % RHI_CB_ALIGN == 0);
+
+        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
+        auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
+
+        commandList->SetComputeRootConstantBufferView(
+            RootParamCBBase + slot,
+            virtualAddress
+        );
+    }
+
     void DX12CommandList::Dispatch(Size3D gridSize){
         SMOL_ASSERT(inComputePass,
             "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
@@ -409,51 +413,18 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::TransitionBarrier(
-        DX12Texture& texture,
-        D3D12_BARRIER_SYNC syncAfter,
-        D3D12_BARRIER_ACCESS accessAfter,
-        D3D12_BARRIER_LAYOUT layoutAfter
-    ){
-        const std::array barriers{
-            CD3DX12_TEXTURE_BARRIER(
-                texture.TransitionState(syncAfter), syncAfter,
-                texture.TransitionState(accessAfter), accessAfter,
-                texture.TransitionState(layoutAfter), layoutAfter,
-                texture.Get(),
-                CD3DX12_BARRIER_SUBRESOURCE_RANGE(0xFFFF'FFFF)
-            )
-        };
-        const std::array barrierGroups{
-            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
-        };
-
-        commandList->Barrier(
-            barrierGroups.size(),
-            barrierGroups.data()
+    void DX12CommandList::BeginBlit() noexcept{
+        SMOL_ASSERT(!inBlitPass,
+            "Already in a blit pass. Did you call RHICommandList::EndBlit()?"
         );
+        inBlitPass = true;
     }
 
-    void DX12CommandList::TransitionBarrier(
-        DX12Buffer& buffer,
-        D3D12_BARRIER_SYNC syncAfter,
-        D3D12_BARRIER_ACCESS accessAfter
-    ){
-        const std::array barriers{
-            CD3DX12_BUFFER_BARRIER(
-                buffer.TransitionState(syncAfter), syncAfter,
-                buffer.TransitionState(accessAfter), accessAfter,
-                buffer.Get()
-            )
-        };
-        const std::array barrierGroups{
-            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
-        };
-
-        commandList->Barrier(
-            barrierGroups.size(),
-            barrierGroups.data()
+    void DX12CommandList::EndBlit() noexcept{
+        SMOL_ASSERT(inBlitPass,
+            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
         );
+        inBlitPass = false;
     }
 
     void DX12CommandList::Copy(
@@ -463,6 +434,9 @@ namespace Crowy
         usize dstOffset,
         usize size
     ){
+        SMOL_ASSERT(inBlitPass,
+            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+        );
         auto& dxSrc = static_cast<DX12Buffer&>(src);
         auto& dxDst = static_cast<DX12Buffer&>(dst);
 
@@ -479,20 +453,11 @@ namespace Crowy
         RHITexture& src,
         RHITexture& dst
     ){
+        SMOL_ASSERT(inBlitPass,
+            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+        );
         commandList->CopyResource(
             static_cast<DX12Texture&>(dst).Get(),
-            static_cast<DX12Texture&>(src).Get()
-        );
-    }
-
-    void DX12CommandList::Copy(
-        RHITexture& src,
-        RHISwapchain& dst
-    ){
-        auto& texture = static_cast<DX12Texture&>(dst.GetCurrentTexture());
-
-        commandList->CopyResource(
-            texture.Get(),
             static_cast<DX12Texture&>(src).Get()
         );
     }
@@ -505,6 +470,9 @@ namespace Crowy
         u32 mipLevel,
         u32 arraySlice
     ){
+        SMOL_ASSERT(inBlitPass,
+            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+        );
         auto& dxSrc = static_cast<DX12Buffer&>(src);
         auto& dxDst = static_cast<DX12Texture&>(dst);
 
@@ -536,6 +504,58 @@ namespace Crowy
             0, 0, 0,
             &srcLoc,
             nullptr
+        );
+    }
+
+    void DX12CommandList::TransitionBarrier(
+        RHITexture& texture,
+        RHIBarrierSync syncAfter,
+        RHIBarrierAccess accessAfter,
+        RHIBarrierLayout layoutAfter
+    ){
+        const std::array barriers{
+            CD3DX12_TEXTURE_BARRIER(
+                convert(texture.TransitionState(syncAfter)),
+                convert(syncAfter),
+                convert(texture.TransitionState(accessAfter)),
+                convert(accessAfter),
+                convert(texture.TransitionState(layoutAfter)),
+                convert(layoutAfter),
+                static_cast<DX12Texture&>(texture).Get(),
+                CD3DX12_BARRIER_SUBRESOURCE_RANGE(0xFFFF'FFFF)
+            )
+        };
+        const std::array barrierGroups{
+            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
+        };
+
+        commandList->Barrier(
+            barrierGroups.size(),
+            barrierGroups.data()
+        );
+    }
+
+    void DX12CommandList::TransitionBarrier(
+            RHIBuffer& buffer,
+            RHIBarrierSync syncAfter,
+            RHIBarrierAccess accessAfter
+    ){
+        const std::array barriers{
+            CD3DX12_BUFFER_BARRIER(
+                convert(buffer.TransitionState(syncAfter)),
+                convert(syncAfter),
+                convert(buffer.TransitionState(accessAfter)),
+                convert(accessAfter),
+                static_cast<DX12Buffer&>(buffer).Get()
+            )
+        };
+        const std::array barrierGroups{
+            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
+        };
+
+        commandList->Barrier(
+            barrierGroups.size(),
+            barrierGroups.data()
         );
     }
 

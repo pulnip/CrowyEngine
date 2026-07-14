@@ -1,17 +1,12 @@
 #pragma once
 
-#include <map>
 #include "DX12Definitions.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    struct RootSignatureLayout{
-        RootSignatureRAII rootSignature = nullptr;
-        std::map<std::pair<UINT, UINT>, UINT> cbvRootIndex;
-    };
-
-    class DX12GraphicsPipelineState{
+    class DX12GraphicsPipelineState: public RHIGraphicsPipelineState{
     private:
         PipelineStateRAII pipeline = nullptr;
 
@@ -32,14 +27,12 @@ namespace Crowy
         ~DX12GraphicsPipelineState();
 
         void Bind(CommandList&) const;
-        // UINT GetCBVRootIndex(UINT reg, UINT space);
     };
 
-    class DX12ComputePipelineState{
+    class DX12ComputePipelineState: public RHIComputePipelineState{
     private:
         PipelineStateRAII pipeline = nullptr;
 
-        RHIComputeBindingInfo bindingInfo;
         Size3D threadGroupSize = {256, 1, 1};
 
     #if defined(_DEBUG) || !defined(NDEBUG)
@@ -57,7 +50,6 @@ namespace Crowy
         ~DX12ComputePipelineState();
 
         void Bind(CommandList&) const;
-        // UINT GetCBVRootIndex(UINT reg, UINT space);
 
         Size3D getThreadGroupSize() const{
             return threadGroupSize;

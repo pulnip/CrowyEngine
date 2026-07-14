@@ -5,12 +5,12 @@
 #include <limits>
 #include <optional>
 #include <span>
+#include <unordered_map>
 #include <utility>
 #include <variant>
 #include "HashUtil.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
-#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -147,36 +147,66 @@ namespace Crowy
         CopyDst         = 1 << 5,
     };
 
-    // for Resource Barrier,
-    // used at D3D12 or Metal without hazard tracking
-    enum class RHIResourceState: u16{
-        Common                    = 0,
-        Present                   = Common,
-        VertexAndConstantBuffer   = 1 << 0,
-        IndexBuffer               = 1 << 1,
-        RenderTarget              = 1 << 2,
-        UnorderedAccess           = 1 << 3,
-        DepthWrite                = 1 << 4,
-        DepthRead                 = 1 << 5,
-        // VertexShader, MeshShader, ComputeShader
-        NonFragmentShaderResource = 1 << 6,
-        FragmentShaderResource    = 1 << 7,
-        StreamOut                 = 1 << 8,
-        IndirectArgument          = 1 << 9,
-        Predication               = IndirectArgument,
-        CopyDst                   = 1 << 10,
-        CopySrc                   = 1 << 11,
-        ResolveDst                = 1 << 12,
-        ResolveSrc                = 1 << 13,
-        ShaderResource =
-            NonFragmentShaderResource |
-            FragmentShaderResource,
-        GenericRead =
-            VertexAndConstantBuffer |
-            IndexBuffer |
-            ShaderResource |
-            IndirectArgument |
-            CopySrc,
+    // based on D3D12 Enhanced Barrier for hazard tracking
+    // Pipeline Stage Scope
+    enum class RHIBarrierSync: u32{
+        None                 = 0,
+        All                  = 1 << 0,
+        Draw                 = 1 << 1,
+        IndexInput           = 1 << 2,
+        Vertex               = 1 << 3,
+        Fragment             = 1 << 4,
+        DepthStencil         = 1 << 5,
+        RenderTarget         = 1 << 6,
+        Compute              = 1 << 7,
+        Copy                 = 1 << 9,
+        Resolve              = 1 << 10,
+        ExecuteIndirect      = 1 << 11,
+        Predication          = ExecuteIndirect,
+        AllShading           = 1 << 12,
+        NonFragment          = 1 << 13,
+        ClearUnorderedAccess = 1 << 15,
+        Split                = 1 << 27
+    };
+
+    // Cache Visibility
+    enum class RHIBarrierAccess: u32{
+        Common           = 0,
+        VertexBuffer     = 1 << 0,
+        ConstantBuffer   = 1 << 1,
+        IndexBuffer      = 1 << 2,
+        RenderTarget     = 1 << 3,
+        UnorderedAccess  = 1 << 4,
+        DepthStencilWrite = 1 << 5,
+        DepthStencilRead  = 1 << 6,
+        ShaderResource    = 1 << 7,
+        StreamOutput      = 1 << 8,
+        IndirectArgument  = 1 << 9,
+        Predication       = IndirectArgument,
+        CopyDst           = 1 << 10,
+        CopySrc           = 1 << 11,
+        ResolveDst        = 1 << 12,
+        ResolveSrc        = 1 << 13,
+        ShadingRateSource = 1 << 16,
+        NoAccess          = 1 << 27
+    };
+
+    // Physical Layout in Memory (Texture Only)
+    enum class RHIBarrierLayout: u32{
+        Undefined = 0xFFFF'FFFF,
+        Common = 0,
+        Present = Common,
+        GenericRead = 1,
+        RenderTarget = 2,
+        UnorderedAccess = 3,
+        DepthStencilWrite = 4,
+        DepthStencilRead = 5,
+        ShaderResource = 6,
+        CopySrc = 7,
+        CopyDst = 8,
+        ResolveSrc = 9,
+        ResolveDst = 10,
+        ShadingRateSource = 11
     };
 
     struct RHIClearDepthStencil{
@@ -193,7 +223,6 @@ namespace Crowy
         RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
-        RHIResourceState initialState = RHIResourceState::Common;
         const void* initialData = nullptr;
         // ClearColor for optimize (only Valid at D3D12)
         Color clearColor = Colors::Black;
@@ -821,9 +850,6 @@ namespace Crowy
         u32 bufferCount = RHI_FRAMES_IN_FLIGHT; // Triple buffering
         bool vsync = true;                           // VSync enabled by default
         bool allowTearing = false;                   // Variable refresh rate
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        Str debugName;
-    #endif
     };
 
     inline constexpr u32 getBytesPerPixel(RHIPixelFormat format){
@@ -902,12 +928,6 @@ namespace Crowy
         }
     }
 
-    enum class RHIBindingAccess: u8{
-        ReadOnly = 0,
-        ReadWrite = 1,
-        WriteOnly = 2
-    };
-
     struct RHIBufferViewDesc{
         struct RawConfig{
             bool operator==(const RawConfig&) const = default;
@@ -980,27 +1000,6 @@ struct std::hash<Crowy::RHITextureViewDesc>{
 
 namespace Crowy
 {
-    struct RHISlotBindingInfo{
-        u32 index = std::numeric_limits<u32>::max();
-        RHIBindingAccess access = RHIBindingAccess::ReadOnly;
-    };
-
-    struct RHIShaderBindingInfo{
-        StringHashMap<RHISlotBindingInfo> bufferInfo;
-        StringHashMap<RHISlotBindingInfo> textureInfo;
-        StringHashMap<RHISlotBindingInfo> samplerInfo;
-    };
-
-    struct RHIGraphicsBindingInfo{
-        RHIShaderBindingInfo vsInfo;
-        RHIShaderBindingInfo fsInfo;
-    };
-
-    struct RHIComputeBindingInfo{
-        RHIShaderBindingInfo csInfo;
-        Size3D reflectedSize = Size3D{1, 1, 1};
-    };
-
     // Shader Reflection for bindless model
     struct RHIShaderReflection{
         std::unordered_map<Str, u32> nameToSlot;

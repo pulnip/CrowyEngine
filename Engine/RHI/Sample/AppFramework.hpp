@@ -1,33 +1,36 @@
 #pragma once
 
 #include <print>
-#include <comdef.h>
-#include "DX12CommandListPool.hpp"
-#include "DX12Device.hpp"
-#include "DX12FramePacer.hpp"
-#include "RHIDefinitions.hpp"
+#include "CommandListPool.hpp"
+#include "FramePacer.hpp"
+#include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
+#include "RHIDevice.hpp"
+#include "RHIPipelineState.hpp"
+#include "RHISwapchain.hpp"
+#include "RHITexture.hpp"
 #include "RuntimeConfig.hpp"
 #include "SDLWindow.hpp"
 #include "Timer.hpp"
 
 namespace Crowy
 {
-    class Sample{
+    class App{
     protected:
-        DX12Device device{};
-        DX12FramePacer framePacer{device};
-        DX12CommandListPool cmdListPool{device};
+        RHIDeviceRAII device = CreateDevice();
+        FramePacer framePacer{*device};
+        CommandListPool cmdListPool{*device};
         SDLWindow window;
-        RAII<DX12Swapchain> swapchain;
+        RHISwapchainRAII swapchain;
         Timer timer;
 
     public:
-        explicit Sample(const WindowConfig&);
-        virtual ~Sample() = default;
+        explicit App(const WindowConfig&);
+        virtual ~App() = default;
 
-        virtual void OnInit(DX12Device&) = 0;
+        virtual void OnInit(RHIDevice&) = 0;
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
-        virtual void OnRecord(DX12CommandList&, const RHIColorAttachment& backBuffer) = 0;
+        virtual void OnRecord(RHICommandList&, const RHIColorAttachment& backBuffer) = 0;
 
         int Run();
 
@@ -39,20 +42,12 @@ namespace Crowy
     RHIViewport FullViewport(const RHITexture&);
     RHIScissorRect FullScissorRect(const RHITexture&);
 
-    template<std::derived_from<Sample> T>
+    template<std::derived_from<App> T>
     int Main(const WindowConfig& config){
         try{
             T sample(config);
 
             sample.Run();
-        }
-        catch(const _com_error& e){
-            std::println(
-                "COM Exception: {} (hr=0x{:08X})",
-                static_cast<CStr>(e.ErrorMessage()), e.Error()
-            );
-
-            return 1;
         }
         catch(const std::exception& e){
             std::println("Exception: {}", e.what());

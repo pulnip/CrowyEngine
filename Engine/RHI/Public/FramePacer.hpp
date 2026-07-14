@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Primitives.hpp"
-#include "RHIFWD.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
+    class RHIDevice;
     // Frame pacing and synchronization system
     // Manages triple buffering, frame timing, and CPU-GPU synchronization
     class FramePacer{
@@ -27,12 +27,5 @@ namespace Crowy
 
         // Wait for all frames to complete
         void WaitForIdle();
-
-        // Get fence for current frame
-        RHIFence& GetCurrentFence() noexcept;
-        const RHIFence& GetCurrentFence() const noexcept;
-
-        // Get the fence value to signal for the current frame
-        u64 GetNextFenceValue() const;
     };
 }

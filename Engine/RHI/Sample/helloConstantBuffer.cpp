@@ -1,19 +1,18 @@
-#include "RHIBuffer.hpp"
-#include "Sample.hpp"
+#include "AppFramework.hpp"
 
 namespace Crowy
 {
-    class HelloConstantBuffer: public Sample{
-        using Sample::Sample;
+    class HelloConstantBuffer: public App{
+        using App::App;
 
         struct SceneData{
             Vec4 offset{0, 0, 0, 0};
         } sceneData;
 
-        RAII<DX12GraphicsPipelineState> pso;
+        RHIGraphicsPipelineStateRAII pso;
         RHIBufferRAII constantBuffer;
 
-        void OnInit(DX12Device& device) override{
+        void OnInit(RHIDevice& device) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -49,7 +48,7 @@ namespace Crowy
             sceneData.offset.y = scale * std::sinf(et);
         }
 
-        void OnRecord(DX12CommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             constantBuffer->Upload(sceneData);
 
             std::array colorAttachments = {backBuffer};
@@ -75,7 +74,7 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "DX12 HelloConstantBuffer",
+        .title = "HelloConstantBuffer",
         .width = 800, .height = 800,
         .fullscreen = false,
         .resizable = true,

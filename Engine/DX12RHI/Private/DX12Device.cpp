@@ -18,6 +18,7 @@
 #include "DX12Util.hpp"
 #include "PtrUtil.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHIFWD.hpp"
 #include "RHIShader.hpp"
 #include "UploadRing.hpp"
 
@@ -337,8 +338,8 @@ namespace{
         // UNDEFINED to COPY_DST
         cmdList.TransitionBarrier(
             buffer,
-            D3D12_BARRIER_SYNC_COPY,
-            D3D12_BARRIER_ACCESS_COPY_DEST
+            RHIBarrierSync::Copy,
+            RHIBarrierAccess::CopyDst
         );
 
         cmdList.Copy(
@@ -352,8 +353,8 @@ namespace{
         // COPY_DST to SHADER_RESOURCE
         cmdList.TransitionBarrier(
             buffer,
-            D3D12_BARRIER_SYNC_ALL_SHADING,
-            D3D12_BARRIER_ACCESS_SHADER_RESOURCE
+            RHIBarrierSync::AllShading,
+            RHIBarrierAccess::ShaderResource
         );
     }
 
@@ -396,9 +397,9 @@ namespace{
         // UNDEFINED to COPY_DST
         cmdList.TransitionBarrier(
             texture,
-            D3D12_BARRIER_SYNC_COPY,
-            D3D12_BARRIER_ACCESS_COPY_DEST,
-            D3D12_BARRIER_LAYOUT_COPY_DEST
+            RHIBarrierSync::Copy,
+            RHIBarrierAccess::CopyDst,
+            RHIBarrierLayout::CopyDst
         );
 
         for(usize s=0; s<n; ++s){
@@ -415,15 +416,19 @@ namespace{
         // COPY_DST to SHADER_RESOURCE
         cmdList.TransitionBarrier(
             texture,
-            D3D12_BARRIER_SYNC_ALL_SHADING,
-            D3D12_BARRIER_ACCESS_SHADER_RESOURCE,
-            D3D12_BARRIER_LAYOUT_SHADER_RESOURCE
+            RHIBarrierSync::AllShading,
+            RHIBarrierAccess::ShaderResource,
+            RHIBarrierLayout::ShaderResource
         );
     }
 }
 
 namespace Crowy
 {
+    RHIDeviceRAII CreateDX12Device(){
+        return std::make_unique<DX12Device>();
+    }
+
     class DX12Device::Impl{
     private:
         FactoryRAII factory = nullptr;
@@ -493,11 +498,11 @@ namespace Crowy
 
         ~Impl()= default;
 
-        RHIFrameScopeRAII CreateFrameScopoe() noexcept{
+        auto CreateFrameScopoe() noexcept{
             return std::make_unique<DX12FrameScope>();
         }
 
-        RHIBufferRAII CreateBuffer(
+        RAII<DX12Buffer> CreateBuffer(
             const RHIBufferCreateDesc& desc,
             StrView name
         ){
@@ -540,7 +545,7 @@ namespace Crowy
             return buffer;
         }
 
-        RHITextureRAII CreateTexture(
+        auto CreateTexture(
             const RHITextureCreateDesc& desc,
             StrView name
         ){
@@ -562,6 +567,7 @@ namespace Crowy
             if(desc.initialData != nullptr){
                 if(!uploadRecorded){
                     uploadCmdList->Begin();
+                    uploadCmdList->BeginBlit();
                     uploadRecorded = true;
                 }
                 std::array<RHISubresourceLayout, 1> layouts;
@@ -588,7 +594,7 @@ namespace Crowy
             return texture;
         }
 
-        RHISamplerRAII CreateSampler(
+        RAII<DX12Sampler> CreateSampler(
             const RHISamplerState& desc
         ){
             return std::make_unique<DX12Sampler>(
@@ -627,7 +633,8 @@ namespace Crowy
         }
 
         RAII<DX12Swapchain> CreateSwapchain(
-            const RHISwapchainCreateDesc& desc
+            const RHISwapchainCreateDesc& desc,
+            StrView name
         ){
             return std::make_unique<DX12Swapchain>(
                 *commandQueue.Get(),
@@ -635,7 +642,8 @@ namespace Crowy
                 desc,
                 *cbvsrvuavHeap,
                 *rtvHeap,
-                *dsvHeap
+                *dsvHeap,
+                name
             );
         }
 
@@ -652,7 +660,7 @@ namespace Crowy
             );
         }
 
-        RHIFenceRAII CreateFence(u64 initialValue){
+        RAII<DX12Fence> CreateFence(u64 initialValue){
             return std::make_unique<DX12Fence>(
                 *device.Get(),
                 initialValue
@@ -668,10 +676,11 @@ namespace Crowy
             ), "Failed to signal fence");
         }
 
-        void Submit(std::span<DX12CommandList*> cmdLists){
+        void Submit(std::span<RHICommandList*> cmdLists){
             usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
             std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
             if(uploadRecorded){
+                uploadCmdList->EndBlit();
                 uploadCmdList->Close();
                 dxCmdLists[0] = uploadCmdList->Get();
 
@@ -679,7 +688,8 @@ namespace Crowy
             }
 
             for(usize i=0; i<cmdLists.size(); ++i){
-                dxCmdLists[recordedUploadCmdListCount + i] = cmdLists[i]->Get();
+                auto dxCmdList = static_cast<DX12CommandList*>(cmdLists[i]);
+                dxCmdLists[recordedUploadCmdListCount + i] = dxCmdList->Get();
             }
 
             commandQueue->ExecuteCommandLists(
@@ -690,6 +700,10 @@ namespace Crowy
 
         u64& GetFrameIndexRef() noexcept{
             return frameIndex;
+        }
+
+        Device* Get() noexcept{
+            return device.Get();
         }
 
         UINT64 QueryUploadLayout(
@@ -757,32 +771,45 @@ namespace Crowy
         return impl->CreateSampler(desc);
     }
 
-    RAII<DX12GraphicsPipelineState> DX12Device::CreatePipelineState(
+    RAII<RHIGraphicsPipelineState> DX12Device::CreatePipelineState(
         const RHIGraphicsPipelineStateDesc& desc,
         StrView name
     ){
         return impl->CreatePipelineState(desc, name);
     }
 
-    RAII<DX12ComputePipelineState> DX12Device::CreatePipelineState(
+    RAII<RHIComputePipelineState> DX12Device::CreatePipelineState(
         const RHIComputePipelineStateDesc& desc,
         StrView name
     ){
         return impl->CreatePipelineState(desc, name);
     }
 
-    RAII<DX12Swapchain> DX12Device::CreateSwapchain(
-        const RHISwapchainCreateDesc& desc
+    RAII<RHISwapchain> DX12Device::CreateSwapchain(
+        const RHISwapchainCreateDesc& desc,
+        StrView name
     ){
-        return impl->CreateSwapchain(desc);
+        return impl->CreateSwapchain(desc, name);
     }
 
-    RAII<DX12CommandList> DX12Device::CreateCommandList(){
+    RAII<RHICommandList> DX12Device::CreateCommandList(){
         return impl->CreateCommandList();
     }
 
     RHIFenceRAII DX12Device::CreateFence(u64 initialValue){
         return impl->CreateFence(initialValue);
+    }
+
+    void DX12Device::SignalFence(RHIFence& fence, u64 value){
+        impl->SignalFence(fence, value);
+    }
+
+    void DX12Device::Submit(std::span<RHICommandList*> cmdLists){
+        impl->Submit(cmdLists);
+    }
+
+    u64& DX12Device::GetFrameIndexRef() noexcept{
+        return impl->GetFrameIndexRef();
     }
 
     RHICapabilities DX12Device::GetCapabilities() const noexcept{
@@ -792,16 +819,8 @@ namespace Crowy
         };
     }
 
-    void DX12Device::SignalFence(RHIFence& fence, u64 value){
-        impl->SignalFence(fence, value);
-    }
-
-    void DX12Device::Submit(std::span<DX12CommandList*> cmdLists){
-        impl->Submit(cmdLists);
-    }
-
-    u64& DX12Device::GetFrameIndexRef() noexcept{
-        return impl->GetFrameIndexRef();
+    NativeDeviceHandle DX12Device::Get() noexcept{
+        return impl->Get();
     }
 
     UINT64 DX12Device::QueryUploadLayout(

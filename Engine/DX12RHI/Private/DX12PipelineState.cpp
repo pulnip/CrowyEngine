@@ -1,12 +1,7 @@
-#include <map>
-#include <stdexcept>
 #include <d3dx12/d3dx12_root_signature.h>
 #include "DX12PipelineState.hpp"
 #include "DX12Definitions.hpp"
 #include "DX12Util.hpp"
-#include "EnumUtil.hpp"
-#include "StringUtil.hpp"
-
 #include "RHIShader.hpp"
 
 namespace{
@@ -171,210 +166,6 @@ namespace{
 
         return static_cast<D3D12_FILTER>(flags);
     }
-
-    auto convert(
-        const Crowy::RHISamplerState& desc,
-        D3D12_SHADER_VISIBILITY vis,
-        UINT shaderRegister,
-        UINT registerSpace
-    ){
-        using namespace Crowy;
-
-        return D3D12_STATIC_SAMPLER_DESC{
-            .Filter = convert(
-                desc.minFilter, desc.magFilter, desc.mipFilter,
-                desc.maxAnisotropy > 1,
-                desc.compareFunc != RHIComparisonFunc::Never
-            ),
-            .AddressU = convert(desc.addressU),
-            .AddressV = convert(desc.addressV),
-            .AddressW = convert(desc.addressW),
-            .MipLODBias = desc.mipLODBias,
-            .MaxAnisotropy = desc.maxAnisotropy,
-            .ComparisonFunc = convert(desc.compareFunc),
-            // Notice. discard RHISamplerState::borderColor
-            .BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
-            .MinLOD = desc.minLOD,
-            .MaxLOD = desc.maxLOD,
-            .ShaderRegister = shaderRegister,
-            .RegisterSpace = registerSpace,
-            .ShaderVisibility = vis
-        };
-    }
-
-    auto toStaticSamplerDesc(
-        Crowy::StrView name,
-        D3D12_SHADER_VISIBILITY vis,
-        UINT shaderRegister,
-        UINT registerSpace
-    ){
-        using namespace Crowy;
-
-        static StringHashMap<RHISamplerState> map = {
-            {"LINEARWRAP", LINEAR_WRAP_SAMPLER},
-            {"LINEARCLAMP", LINEAR_CLAMP_SAMPLER},
-            {"LINEARMIRROR", LINEAR_MIRROR_SAMPLER},
-            {"LINEARBORDER", LINEAR_BORDER_SAMPLER},
-            {"NEARESTWRAP", NEAREST_WRAP_SAMPLER},
-            {"NEARESTCLAMP", NEAREST_CLAMP_SAMPLER},
-            {"NEARESTMIRROR", NEAREST_MIRROR_SAMPLER},
-            {"NEARESTBORDER", NEAREST_BORDER_SAMPLER},
-        };
-
-        auto upper = toUpper(name);
-        if(auto it = map.find(upper); it != map.end()){
-            return convert(
-                it->second,
-                vis,
-                shaderRegister,
-                registerSpace
-            );
-        }
-
-        throw std::runtime_error(std::format(
-            "Undefined Sampler: {}",
-            name
-        ));
-    }
-
-    class RootSignatureBuilder{
-    private:
-        struct CBVEntry{
-            StageVisibility vis = StageVisibility::None;
-        };
-        std::map<std::pair<UINT, UINT>, CBVEntry> cbvs;
-
-        struct StaticSamplerEntry{
-            Crowy::Str name = {};
-            StageVisibility vis = StageVisibility::None;
-        };
-        std::map<std::pair<UINT, UINT>, StaticSamplerEntry> staticSamplers;
-
-    public:
-        void Reflect(
-            Crowy::ShaderReflection& refl,
-            StageVisibility stageVis
-        ){
-            using namespace Crowy;
-
-            D3D12_SHADER_DESC desc;
-            refl.GetDesc(&desc);
-
-            for(UINT i=0; i<desc.BoundResources; ++i){
-                D3D12_SHADER_INPUT_BIND_DESC bindDesc;
-                refl.GetResourceBindingDesc(i, &bindDesc);
-
-                auto key = std::make_pair(
-                    bindDesc.BindPoint,
-                    bindDesc.Space
-                );
-
-                switch (bindDesc.Type) {
-                case D3D_SIT_CBUFFER: {
-                    auto& e = cbvs[key];
-                    e.vis = combine(e.vis, stageVis);
-                } break;
-                case D3D_SIT_SAMPLER: {
-                    auto& e = staticSamplers[key];
-                    e.vis = combine(e.vis, stageVis);
-
-                    if(e.name.empty()){
-                        e.name = bindDesc.Name;
-                    }
-                    else if(e.name != bindDesc.Name){
-                        throw std::runtime_error("conflict Static Sampler slot/space");
-                    }
-                } break;
-                default:
-                    break;
-                }
-            }
-        }
-
-        auto Build(Crowy::Device& device){
-            using namespace Crowy;
-
-            // Root Parameters
-            std::map<std::pair<UINT, UINT>, UINT> cbvRootIndex;
-            std::vector<CD3DX12_ROOT_PARAMETER1> params;
-            for(const auto& [key, entry]: cbvs){
-                const auto& [reg, space] = key;
-                CD3DX12_ROOT_PARAMETER1 param;
-                if(reg == 0 && space == 0){
-                    // b0 for per-draw root constant(heap index)
-                    param.InitAsConstants(
-                        4,
-                        0,
-                        0,
-                        convert(entry.vis)
-                    );
-                }
-                else{
-                    param.InitAsConstantBufferView(
-                        reg,
-                        space,
-                        D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC,
-                        convert(entry.vis)
-                    );
-                }
-
-                cbvRootIndex.emplace(key, params.size());
-                params.push_back(param);
-            }
-
-            // Static Samplers
-            std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplerDescs;
-            for(const auto& [key, entry]: staticSamplers){
-                const auto& [reg, space] = key;
-
-                staticSamplerDescs.push_back(toStaticSamplerDesc(
-                    entry.name,
-                    convert(entry.vis),
-                    reg,
-                    space
-                ));
-            }
-
-            CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC desc;
-            desc.Init_1_1(
-                static_cast<UINT>(params.size()),
-                params.data(),
-                static_cast<UINT>(staticSamplerDescs.size()),
-                staticSamplerDescs.data(),
-                D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-                D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED  // bindless
-            );
-
-            BlobRAII blob = nullptr, errorBlob = nullptr;
-            if(FAILED(D3DX12SerializeVersionedRootSignature(
-                &desc,
-                D3D_ROOT_SIGNATURE_VERSION_1_1,
-                blob.GetAddressOf(),
-                errorBlob.GetAddressOf()
-            ))){
-                auto cstr = static_cast<CStr>(errorBlob->GetBufferPointer());
-                throw std::runtime_error(
-                    std::format(
-                        "Failed to serialize RootSignature: {}",
-                        cstr
-                    )
-                );
-            }
-
-            RootSignatureRAII rootSignature = nullptr;
-            CHECK_HRESULT(device.CreateRootSignature(
-                0,
-                blob->GetBufferPointer(),
-                blob->GetBufferSize(),
-                IID_PPV_ARGS(rootSignature.GetAddressOf())
-            ), "Failed to create RootSignature");
-
-            return RootSignatureLayout{
-                .rootSignature = rootSignature,
-                .cbvRootIndex = cbvRootIndex
-            };
-        }
-    };
 }
 
 namespace Crowy
@@ -543,18 +334,7 @@ namespace Crowy
     void DX12GraphicsPipelineState::Bind(CommandList& cmdList) const{
         cmdList.IASetPrimitiveTopology(primitiveTopology);
         cmdList.SetPipelineState(pipeline.Get());
-        // cmdList.SetGraphicsRootSignature(layout.rootSignature.Get());
     }
-
-    // UINT DX12GraphicsPipelineState::GetCBVRootIndex(UINT reg, UINT space){
-    //     auto key = std::make_pair(reg, space);
-    //     auto it = layout.cbvRootIndex.find(key);
-    //     if(it != layout.cbvRootIndex.end()){
-    //         return it->second;
-    //     }
-
-    //     return UINT_MAX;
-    // }
 
     DX12ComputePipelineState::DX12ComputePipelineState(
         Device& device,
@@ -598,16 +378,5 @@ namespace Crowy
 
     void DX12ComputePipelineState::Bind(CommandList& cmdList) const{
         cmdList.SetPipelineState(pipeline.Get());
-        // cmdList.SetComputeRootSignature(layout.rootSignature.Get());
     }
-
-    // UINT DX12ComputePipelineState::GetCBVRootIndex(UINT reg, UINT space){
-    //     auto key = std::make_pair(reg, space);
-    //     auto it = layout.cbvRootIndex.find(key);
-    //     if(it != layout.cbvRootIndex.end()){
-    //         return it->second;
-    //     }
-
-    //     return UINT_MAX;
-    // }
 }

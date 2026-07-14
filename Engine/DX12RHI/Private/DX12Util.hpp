@@ -16,7 +16,9 @@ namespace Crowy
         bool isDepthTarget=false
     );
     D3D12_COMPARISON_FUNC convert(RHIComparisonFunc);
-    D3D12_RESOURCE_STATES convert(RHIResourceState);
+    D3D12_BARRIER_SYNC convert(RHIBarrierSync);
+    D3D12_BARRIER_ACCESS convert(RHIBarrierAccess);
+    D3D12_BARRIER_LAYOUT convert(RHIBarrierLayout);
 
     RHIPixelFormat convert(DXGI_FORMAT);
 

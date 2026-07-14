@@ -16,8 +16,8 @@ namespace{
         Crowy::u32 slotCount;
         bool persistentMap;
         // Initial State
-        D3D12_BARRIER_SYNC syncState = D3D12_BARRIER_SYNC_NONE;
-        D3D12_BARRIER_ACCESS accessState = D3D12_BARRIER_ACCESS_COMMON;
+        Crowy::RHIBarrierSync syncState;
+        Crowy::RHIBarrierAccess accessState;
     };
 
     auto Resolve(
@@ -27,7 +27,6 @@ namespace{
     ){
         using namespace Crowy;
         using enum RHIMemoryAccess;
-        using enum RHIResourceState;
 
         switch(access){
         case GPUOnly:
@@ -35,8 +34,8 @@ namespace{
                 .heapType = D3D12_HEAP_TYPE_DEFAULT,
                 .slotCount = 1,
                 .persistentMap = false,
-                .syncState = D3D12_BARRIER_SYNC_NONE,
-                .accessState = D3D12_BARRIER_ACCESS_COMMON
+                .syncState = RHIBarrierSync::None,
+                .accessState = RHIBarrierAccess::Common
             };
         case CPUWrite:
             return BufferPolicy{
@@ -46,16 +45,16 @@ namespace{
                     1 :
                     RHI_FRAMES_IN_FLIGHT,
                 .persistentMap = true,
-                .syncState = D3D12_BARRIER_SYNC_NONE,
-                .accessState = D3D12_BARRIER_ACCESS_CONSTANT_BUFFER
+                .syncState = RHIBarrierSync::None,
+                .accessState = RHIBarrierAccess::ConstantBuffer
             };
         case CPURead:
             return BufferPolicy{
                 .heapType = D3D12_HEAP_TYPE_READBACK,
                 .slotCount = RHI_FRAMES_IN_FLIGHT,
                 .persistentMap = true,
-                .syncState = D3D12_BARRIER_SYNC_COPY,
-                .accessState = D3D12_BARRIER_ACCESS_COPY_DEST
+                .syncState = RHIBarrierSync::Copy,
+                .accessState = RHIBarrierAccess::CopyDst
             };
         case Transient:
             SMOL_ASSERT(false, "Transient is texture-only");
@@ -211,24 +210,6 @@ namespace Crowy
         auto& frameResource = resources[currentIndex()];
         auto desc = frameResource.buffer->GetDesc();
         return desc.Width;
-    }
-
-    UINT DX12Buffer::GetOrCreateCBV(const RHIBufferViewDesc& desc){
-        auto& frameResource = resources[currentIndex()];
-        auto& cbvs = frameResource.cbvs;
-        if(auto it = cbvs.find(desc); it != cbvs.end())
-            return it->second;
-
-        const D3D12_CONSTANT_BUFFER_VIEW_DESC dxDesc{
-            .BufferLocation = frameResource.buffer->GetGPUVirtualAddress() + desc.offset,
-            .SizeInBytes = desc.size
-        };
-
-        auto idx = heap.Allocate(dxDesc);
-        auto [it, ret] = cbvs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
-
-        return idx;
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS DX12Buffer::GetGPUAddress(){

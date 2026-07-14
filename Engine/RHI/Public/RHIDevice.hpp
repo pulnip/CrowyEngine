@@ -37,24 +37,25 @@ namespace Crowy
         ) = 0;
 
         virtual RHISwapchainRAII CreateSwapchain(
-            const RHISwapchainCreateDesc&
+            const RHISwapchainCreateDesc&,
+            StrView name = {}
         ) = 0;
 
         virtual RHICommandListRAII CreateCommandList() = 0;
 
         virtual RHIFenceRAII CreateFence(u64 initialValue = 0) = 0;
 
-        virtual void SignalFence(RHICommandList&, RHIFence&, u64 value) = 0;
+        virtual void SignalFence(RHIFence&, u64 value) = 0;
 
-        virtual void Submit(RHICommandList&) = 0;
+        virtual void Submit(std::span<RHICommandList*>) = 0;
+
+        virtual u64& GetFrameIndexRef() noexcept = 0;
 
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
 
         // return native type for UI
         // in Metal, MTL::Device
         virtual NativeDeviceHandle Get() noexcept = 0;
-
-        virtual RHICommandList& GetMainCmdList() noexcept = 0;
     };
 
 #if defined(_WIN32)

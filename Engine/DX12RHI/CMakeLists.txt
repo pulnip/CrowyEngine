@@ -52,6 +52,6 @@ add_custom_command(TARGET CrowyDX12RHI POST_BUILD
 
 smol_declare_private_interface(DX12RHI)
 
-if(SMOL_ENABLE_TEST)
-    add_subdirectory(Sample)
-endif()
+# if(SMOL_ENABLE_TEST)
+#     add_subdirectory(Sample)
+# endif()

@@ -11,12 +11,6 @@ namespace Crowy
     class DX12Texture: public RHITexture{
     private:
         TextureRAII texture = nullptr;
-        // Legacy Resource Barrier
-        RHIResourceState currentState = RHIResourceState::Common;
-        // for Enhanced Resource Barrier
-        D3D12_BARRIER_SYNC syncState = D3D12_BARRIER_SYNC_NONE;
-        D3D12_BARRIER_ACCESS accessState = D3D12_BARRIER_ACCESS_NO_ACCESS;
-        D3D12_BARRIER_LAYOUT layoutState = D3D12_BARRIER_LAYOUT_UNDEFINED;
         // descriptor heap index
         std::unordered_map<RHITextureViewDesc, UINT> srvs;
         std::unordered_map<RHITextureViewDesc, UINT> rtvs;
@@ -53,37 +47,12 @@ namespace Crowy
 
         void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 
-        RHIResourceState GetState() const noexcept RHI_OVERRIDE{
-            return currentState;
-        }
-        void SetState(RHIResourceState state) noexcept RHI_OVERRIDE{
-            currentState = state;
-        }
-
-        // Pipeline Stage Scope
-        auto TransitionState(D3D12_BARRIER_SYNC newState) noexcept{
-            const auto oldState = syncState;
-            syncState = newState;
-            return oldState;
-        }
-        // Cache Visibility
-        auto TransitionState(D3D12_BARRIER_ACCESS newState) noexcept{
-            const auto oldState = accessState;
-            accessState = newState;
-            return oldState;
-        }
-        // Physical Layout in Memory (Texture Only)
-        auto TransitionState(D3D12_BARRIER_LAYOUT newState) noexcept{
-            const auto oldState = layoutState;
-            layoutState = newState;
-            return oldState;
-        }
-
         Texture* Get() noexcept{ return texture.Get(); }
 
         UINT GetOrCreateSRV(const RHITextureViewDesc&);
-        UINT GetOrCreateRTV(const RHITextureViewDesc&);
         UINT GetOrCreateUAV(const RHITextureViewDesc&);
+
+        UINT GetOrCreateRTV(const RHITextureViewDesc&);
         UINT GetOrCreateDSV(const RHITextureViewDesc&);
 
         UINT GetOrCreateSRV(){
@@ -91,13 +60,20 @@ namespace Crowy
                 .format = GetFormat()
             });
         }
-        UINT GetOrCreateRTV(){
-            return GetOrCreateRTV(RHITextureViewDesc{
-                .format = GetFormat()
-            });
+        u64 GetReadableID() RHI_OVERRIDE{
+            return GetOrCreateSRV();
         }
         UINT GetOrCreateUAV(){
             return GetOrCreateUAV(RHITextureViewDesc{
+                .format = GetFormat()
+            });
+        }
+        u64 GetWritableID() RHI_OVERRIDE{
+            return GetOrCreateUAV();
+        }
+
+        UINT GetOrCreateRTV(){
+            return GetOrCreateRTV(RHITextureViewDesc{
                 .format = GetFormat()
             });
         }

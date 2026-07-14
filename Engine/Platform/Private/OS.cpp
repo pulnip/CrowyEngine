@@ -103,10 +103,7 @@ namespace Crowy
             .bufferCount = 3,
             .vsync = true,
             .allowTearing = false
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            , .debugName = std::format("Swapchain for {}", config.window.title)
-        #endif
-        });
+        }, std::format("Swapchain for {}", config.window.title));
     }
 
     OS::~OS(){
@@ -127,8 +124,6 @@ namespace Crowy
 
         sysTimer.Reset();
 
-        auto& mainCmdList = device.GetMainCmdList();
-
         while(true){
             sysTimer.NewFrame();
 
@@ -142,13 +137,13 @@ namespace Crowy
             if(!mainLoop.Render(cmdListPool, *swapchain)) [[unlikely]]
                 break;
 
-            mainCmdList.Begin();
+            // TODO.
+            /*
             // for Immediate draw of ImGui
-            if(!mainLoop.RenderUI(mainCmdList, *swapchain)) [[unlikely]]
+            if(!mainLoop.RenderUI(cmdList, *swapchain)) [[unlikely]]
                 break;
-            swapchain->Present(mainCmdList);
+            */
 
-            mainCmdList.Close();
             EndFrame(device);
         }
 
@@ -212,14 +207,8 @@ namespace Crowy
     }
 
     void OS::Impl::EndFrame(RHIDevice& device){
-        cmdListPool.SubmitFrame(
-            framePacer.GetCurrentFence(),
-            framePacer.GetNextFenceValue()
-        );
-
-        auto& mainCmdList = device.GetMainCmdList();
-        device.Submit(mainCmdList);
-
+        cmdListPool.SubmitFrame();
+        swapchain->Present();
         framePacer.EndFrame();
     }
 

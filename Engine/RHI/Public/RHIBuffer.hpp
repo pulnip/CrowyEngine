@@ -37,8 +37,14 @@ namespace Crowy
         }
 
         virtual u32 GetSize() const noexcept = 0;
+        // Shader Resource
+        virtual u64 GetReadableID() = 0;
+        // Unordered Access
+        virtual u64 GetWritableID() = 0;
 
-        virtual RHIResourceState GetState() const = 0;
-        virtual void SetState(RHIResourceState state) = 0;
+        virtual RHIBarrierSync GetSyncState() const = 0;
+        virtual RHIBarrierSync TransitionState(RHIBarrierSync newState) = 0;
+        virtual RHIBarrierAccess GetAccessState() const = 0;
+        virtual RHIBarrierAccess TransitionState(RHIBarrierAccess newState) = 0;
     };
 }

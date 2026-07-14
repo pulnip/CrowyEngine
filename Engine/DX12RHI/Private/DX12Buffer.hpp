@@ -16,8 +16,8 @@ namespace Crowy
             BufferRAII buffer = nullptr;
             void* mapped = nullptr;
             // for Enhanced Resource Barrier
-            D3D12_BARRIER_SYNC syncState = D3D12_BARRIER_SYNC_NONE;
-            D3D12_BARRIER_ACCESS accessState = D3D12_BARRIER_ACCESS_COMMON;
+            RHIBarrierSync syncState;
+            RHIBarrierAccess accessState;
             // No Layout Barrier for Buffer (trivially Row-major Layout)
             // descriptor heap index
             std::unordered_map<RHIBufferViewDesc, UINT> cbvs;
@@ -70,23 +70,22 @@ namespace Crowy
 
         u32 GetSize() const noexcept RHI_OVERRIDE;
 
-        RHIResourceState GetState() const RHI_OVERRIDE{
-            throw std::runtime_error("Unimplemented");
+        RHIBarrierSync GetSyncState() const RHI_OVERRIDE{
+            auto& frameResource = resources[currentIndex()];
+            return frameResource.syncState;
         }
-        void SetState(RHIResourceState) RHI_OVERRIDE{
-            throw std::runtime_error("Unimplemented");
-        }
-
-        // Pipeline Stage Scope
-        auto TransitionState(D3D12_BARRIER_SYNC newState) noexcept{
+        RHIBarrierSync TransitionState(RHIBarrierSync newState) RHI_OVERRIDE{
             auto& frameResource = resources[currentIndex()];
 
             const auto oldState = frameResource.syncState;
             frameResource.syncState = newState;
             return oldState;
         }
-        // Cache Visibility
-        auto TransitionState(D3D12_BARRIER_ACCESS newState) noexcept{
+        RHIBarrierAccess GetAccessState() const RHI_OVERRIDE{
+            auto& frameResource = resources[currentIndex()];
+            return frameResource.accessState;
+        }
+        RHIBarrierAccess TransitionState(RHIBarrierAccess newState) RHI_OVERRIDE{
             auto& frameResource = resources[currentIndex()];
 
             const auto oldState = frameResource.accessState;
@@ -98,17 +97,9 @@ namespace Crowy
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress();
 
-        UINT GetOrCreateCBV(const RHIBufferViewDesc&);
         UINT GetOrCreateSRV(const RHIBufferViewDesc&);
         UINT GetOrCreateUAV(const RHIBufferViewDesc&);
 
-        UINT GetOrCreateCBV(){
-            return GetOrCreateCBV(RHIBufferViewDesc{
-                .offset = 0,
-                .size = GetSize(),
-                .config = RHIBufferViewDesc::RawConfig{}
-            });
-        }
         UINT GetOrCreateSRV(){
             return GetOrCreateSRV(RHIBufferViewDesc{
                 .offset = 0,
@@ -116,12 +107,18 @@ namespace Crowy
                 .config = RHIBufferViewDesc::RawConfig{}
             });
         }
+        u64 GetReadableID() RHI_OVERRIDE{
+            return GetOrCreateSRV();
+        }
         UINT GetOrCreateUAV(){
             return GetOrCreateUAV(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
                 .config = RHIBufferViewDesc::RawConfig{}
             });
+        }
+        u64 GetWritableID() RHI_OVERRIDE{
+            return GetOrCreateUAV();
         }
 
     private:

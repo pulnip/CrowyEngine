@@ -18,7 +18,7 @@ namespace Crowy
 
         switch(backend){
     #if defined(_WIN32)
-        // case DirectX12: return CreateDX12Device();
+        case DirectX12: return CreateDX12Device();
     #elif defined(__APPLE__)
         case Metal:     return CreateMetalDevice();
     #endif

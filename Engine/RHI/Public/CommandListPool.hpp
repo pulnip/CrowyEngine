@@ -16,18 +16,22 @@ namespace Crowy
             usize nextIndex = 0;
         };
         std::array<FrameSlot, RHI_FRAMES_IN_FLIGHT> slots;
-        u32 frameIndex = 0;
+        const u64& frameIndex;
 
     public:
         CommandListPool(RHIDevice&);
         ~CommandListPool();
 
+        void BeginFrame();
+        void SubmitFrame();
+
         RHICommandList& Acquire();
 
     private:
-        friend class OS;
-
-        void BeginFrame();
-        void SubmitFrame(RHIFence&, u64 fenceValue);
+        u32 currentIndex() const noexcept{
+            return static_cast<u32>(
+                frameIndex % RHI_FRAMES_IN_FLIGHT
+            );
+        }
     };
 }

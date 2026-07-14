@@ -1,21 +1,19 @@
-#include "DX12Texture.hpp"
 #include "ImageLoader.hpp"
 #include "Primitives.hpp"
-#include "RHIDefinitions.hpp"
-#include "Sample.hpp"
+#include "AppFramework.hpp"
 
 namespace Crowy
 {
-    class HelloTexture: public Sample{
-        using Sample::Sample;
+    class HelloTexture: public App{
+        using App::App;
 
-        RAII<DX12GraphicsPipelineState> pso;
+        RHIGraphicsPipelineStateRAII pso;
         RHITextureRAII texture;
         struct PushConstants{
-            u64 textureIndex;
+            u64 textureID;
         };
 
-        void OnInit(DX12Device& device) override{
+        void OnInit(RHIDevice& device) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
@@ -56,7 +54,7 @@ namespace Crowy
             });
         }
 
-        void OnRecord(DX12CommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             std::array colorAttachments = {
                 RHIColorAttachment{
                     .texture = backBuffer.texture,
@@ -73,7 +71,7 @@ namespace Crowy
 
             cmdList.SetPipelineState(*pso);
             PushConstants pushConstants{
-                .textureIndex = static_cast<DX12Texture&>(*texture).GetOrCreateSRV(),
+                .textureID = texture->GetReadableID(),
             };
             cmdList.SetPushGraphicsConstants(pushConstants);
             cmdList.Draw(4);
@@ -87,7 +85,7 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "DX12 HelloTexture",
+        .title = "HelloTexture",
         .width = 800, .height = 800,
         .fullscreen = false,
         .resizable = true,

@@ -17,7 +17,12 @@ namespace Crowy
         DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
-        : cbvsrvuavHeap(cbvsrvuavHeap)
+        : RHITexture(
+            RHIBarrierSync::None,
+            RHIBarrierAccess::NoAccess,
+            RHIBarrierLayout::Undefined
+        )
+        , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)
     {
@@ -72,7 +77,7 @@ namespace Crowy
             D3D12_HEAP_FLAG_NONE,
             &texDesc,
             // undefined - no content
-            layoutState,
+            convert(GetLayoutState()),
             pClearValue,
             // Hardware DRM
             nullptr,
@@ -100,9 +105,11 @@ namespace Crowy
         DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
-        : syncState(D3D12_BARRIER_SYNC_NONE)
-        , accessState(D3D12_BARRIER_ACCESS_NO_ACCESS)
-        , layoutState(D3D12_BARRIER_LAYOUT_PRESENT)
+        : RHITexture(
+            RHIBarrierSync::None,
+            RHIBarrierAccess::NoAccess,
+            RHIBarrierLayout::Present
+        )
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)

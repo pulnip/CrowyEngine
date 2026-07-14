@@ -1,13 +1,13 @@
-#include "Sample.hpp"
+#include "AppFramework.hpp"
 
 namespace Crowy
 {
-    class TriangleSample: public Sample{
-        using Sample::Sample;
+    class HelloWorld: public App{
+        using App::App;
 
-        RAII<DX12GraphicsPipelineState> pso;
+        RHIGraphicsPipelineStateRAII pso;
 
-        void OnInit(DX12Device& device) override{
+        void OnInit(RHIDevice& device) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -30,7 +30,7 @@ namespace Crowy
             });
         }
 
-        void OnRecord(DX12CommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             std::array colorAttachments = {backBuffer};
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
@@ -50,10 +50,10 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "DX12 Triangle Sample",
+        .title = "HelloWorld",
         .width = 800, .height = 800,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<TriangleSample>(windowConfig);
+    return Main<HelloWorld>(windowConfig);
 }
