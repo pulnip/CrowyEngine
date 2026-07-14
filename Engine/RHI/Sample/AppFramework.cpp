@@ -1,4 +1,5 @@
 #include "AppFramework.hpp"
+#include "RHICommandList.hpp"
 #include "RHITexture.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHISwapchain.hpp"
@@ -84,9 +85,7 @@ namespace Crowy
         cmdList.Begin();
         cmdList.TransitionBarrier(
             swapchain->GetCurrentTexture(),
-            RHIBarrierSync::RenderTarget,
-            RHIBarrierAccess::RenderTarget,
-            RHIBarrierLayout::RenderTarget
+            RHIResourceUsage::RenderTarget
         );
 
         RHIColorAttachment backBuffer{
@@ -99,9 +98,7 @@ namespace Crowy
 
         cmdList.TransitionBarrier(
             swapchain->GetCurrentTexture(),
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Present
+            RHIResourceUsage::Present
         );
         cmdList.Close();
 

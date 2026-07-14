@@ -317,9 +317,9 @@ namespace{
 
 namespace{
     void uploadGpuOnlyBuffer(
-        Crowy::DX12CommandList& cmdList,
+        Crowy::RHICommandList& cmdList,
         Crowy::UploadRing& ring,
-        Crowy::DX12Buffer& buffer,
+        Crowy::RHIBuffer& buffer,
         const Crowy::RHISubresourceData& sub
     ){
         using namespace Crowy;
@@ -338,8 +338,7 @@ namespace{
         // UNDEFINED to COPY_DST
         cmdList.TransitionBarrier(
             buffer,
-            RHIBarrierSync::Copy,
-            RHIBarrierAccess::CopyDst
+            RHIResourceUsage::CopyDst
         );
 
         cmdList.Copy(
@@ -350,16 +349,16 @@ namespace{
             sub.rowPitch
         );
 
+        // TODO.
         // COPY_DST to SHADER_RESOURCE
         cmdList.TransitionBarrier(
             buffer,
-            RHIBarrierSync::AllShading,
-            RHIBarrierAccess::ShaderResource
+            RHIResourceUsage::AnyRead
         );
     }
 
     void uploadTexture(
-        Crowy::DX12CommandList& cmdList,
+        Crowy::RHICommandList& cmdList,
         Crowy::UploadRing& ring,
         Crowy::DX12Texture& texture,
         std::span<const Crowy::RHISubresourceData> subs,
@@ -397,9 +396,7 @@ namespace{
         // UNDEFINED to COPY_DST
         cmdList.TransitionBarrier(
             texture,
-            RHIBarrierSync::Copy,
-            RHIBarrierAccess::CopyDst,
-            RHIBarrierLayout::CopyDst
+            RHIResourceUsage::CopyDst
         );
 
         for(usize s=0; s<n; ++s){
@@ -416,9 +413,7 @@ namespace{
         // COPY_DST to SHADER_RESOURCE
         cmdList.TransitionBarrier(
             texture,
-            RHIBarrierSync::AllShading,
-            RHIBarrierAccess::ShaderResource,
-            RHIBarrierLayout::ShaderResource
+            RHIResourceUsage::AnyRead
         );
     }
 }
@@ -531,6 +526,7 @@ namespace Crowy
                         *uploadCmdList,
                         uploadRing,
                         *buffer,
+
                         RHISubresourceData{
                             .data = desc.initialData,
                             .rowPitch = desc.size

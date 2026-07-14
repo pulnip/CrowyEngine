@@ -20,6 +20,7 @@ namespace Crowy
         DepthStencilWrite,
         DepthStencilRead,
         // buffer/texture
+        AnyRead,
         VertexRead,
         FragmentRead,
         ComputeRead,
@@ -27,6 +28,61 @@ namespace Crowy
         CopySrc,
         CopyDst,
     };
+
+    namespace detail{
+        struct RHIBarrierPoint{
+            RHIBarrierSync sync;
+            RHIBarrierAccess access;
+            RHIBarrierLayout layout;
+        };
+
+        constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
+            using enum RHIResourceUsage;
+            using S = RHIBarrierSync;
+            using A = RHIBarrierAccess;
+            using L = RHIBarrierLayout;
+
+            switch(usage){
+            case Present:
+                return {S::None, A::NoAccess, L::Present};
+            // buffer
+            case VertexBuffer:
+                return {S::Vertex, A::VertexBuffer, L::Undefined};
+            case IndexBuffer:
+                return {S::IndexInput, A::IndexBuffer, L::Undefined};
+            case ConstantBuffer:
+                return {S::AllShading, A::ConstantBuffer, L::Undefined};
+            case IndirectArgument:
+                return {S::ExecuteIndirect, A::IndirectArgument, L::Undefined};
+            // texture in render pass
+            case RenderTarget:
+                return {S::RenderTarget, A::RenderTarget, L::RenderTarget};
+            case DepthStencilWrite:
+                return {S::DepthStencil, A::DepthStencilWrite, L::DepthStencilWrite};
+            case DepthStencilRead:
+                return {S::DepthStencil, A::DepthStencilRead, L::DepthStencilRead};
+            // shader read/write
+            case AnyRead:
+                return {S::AllShading, A::ShaderResource, L::ShaderResource};
+            case VertexRead:
+                return {S::Vertex, A::ShaderResource, L::ShaderResource};
+            case FragmentRead:
+                return {S::Fragment, A::ShaderResource, L::ShaderResource};
+            case ComputeRead:
+                return {S::Compute, A::ShaderResource, L::ShaderResource};
+            case ComputeWrite:
+                return {S::Compute, A::UnorderedAccess, L::UnorderedAccess};
+            // transfer
+            case CopySrc:
+                return {S::Copy, A::CopySrc, L::CopySrc};
+            case CopyDst:
+                return {S::Copy, A::CopyDst, L::CopyDst};
+            }
+
+            // error
+            return {S::None, A::NoAccess, L::Undefined};
+        }
+    }
 
     // Command list for recording GPU commands
     class RHICommandList{
@@ -167,14 +223,31 @@ namespace Crowy
             RHIBarrierSync syncAfter,
             RHIBarrierAccess accessAfter
         ) = 0;
-        constexpr void TransitionBarrier(
+        void TransitionBarrier(
             RHITexture& texture,
             RHIResourceUsage usageAfter
-        );
-        constexpr void TransitionBarrier(
+        ){
+            const auto point = detail::Expand(usageAfter);
+
+            TransitionBarrier(
+                texture,
+                point.sync,
+                point.access,
+                point.layout
+            );
+        }
+        void TransitionBarrier(
             RHIBuffer& buffer,
             RHIResourceUsage usageAfter
-        );
+        ){
+            const auto point = detail::Expand(usageAfter);
+
+            TransitionBarrier(
+                buffer,
+                point.sync,
+                point.access
+            );
+        }
 
         virtual void WaitUntilCompleted() = 0;
 
@@ -189,84 +262,4 @@ namespace Crowy
         //   CommandList for D3D12
         virtual void* GetNative() noexcept = 0;
     };
-
-    namespace detail{
-        struct RHIBarrierPoint{
-            RHIBarrierSync sync;
-            RHIBarrierAccess access;
-            RHIBarrierLayout layout;
-        };
-
-        constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
-            using enum RHIResourceUsage;
-            using S = RHIBarrierSync;
-            using A = RHIBarrierAccess;
-            using L = RHIBarrierLayout;
-
-            switch(usage){
-            case Present:
-                return {S::None, A::NoAccess, L::Present};
-            // buffer
-            case VertexBuffer:
-                return {S::Vertex, A::VertexBuffer, L::Undefined};
-            case IndexBuffer:
-                return {S::IndexInput, A::IndexBuffer, L::Undefined};
-            case ConstantBuffer:
-                return {S::AllShading, A::ConstantBuffer, L::Undefined};
-            case IndirectArgument:
-                return {S::ExecuteIndirect, A::IndirectArgument, L::Undefined};
-            // texture in render pass
-            case RenderTarget:
-                return {S::RenderTarget, A::RenderTarget, L::RenderTarget};
-            case DepthStencilWrite:
-                return {S::DepthStencil, A::DepthStencilWrite, L::DepthStencilWrite};
-            case DepthStencilRead:
-                return {S::DepthStencil, A::DepthStencilRead, L::DepthStencilRead};
-            // shader read/write
-            case VertexRead:
-                return {S::Vertex, A::ShaderResource, L::ShaderResource};
-            case FragmentRead:
-                return {S::Fragment, A::ShaderResource, L::ShaderResource};
-            case ComputeRead:
-                return {S::Compute, A::ShaderResource, L::ShaderResource};
-            case ComputeWrite:
-                return {S::Compute, A::UnorderedAccess, L::UnorderedAccess};
-            // transfer
-            case CopySrc:
-                return {S::Copy, A::CopySrc, L::CopySrc};
-            case CopyDst:
-                return {S::Copy, A::CopyDst, L::CopyDst};
-            }
-
-            // error
-            return {S::None, A::NoAccess, L::Undefined};
-        }
-    }
-
-    constexpr void RHICommandList::TransitionBarrier(
-        RHITexture& texture,
-        RHIResourceUsage usageAfter
-    ){
-        const auto point = detail::Expand(usageAfter);
-
-        TransitionBarrier(
-            texture,
-            point.sync,
-            point.access,
-            point.layout
-        );
-    }
-
-    constexpr void RHICommandList::TransitionBarrier(
-        RHIBuffer& buffer,
-        RHIResourceUsage usageAfter
-    ){
-        const auto point = detail::Expand(usageAfter);
-
-        TransitionBarrier(
-            buffer,
-            point.sync,
-            point.access
-        );
-    }
 }
