@@ -1,4 +1,4 @@
-smol_declare_module(Resource)
+crowy_declare_module(Resource)
 
 target_link_libraries(CrowyResource
 PUBLIC

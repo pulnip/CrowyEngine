@@ -1,4 +1,4 @@
-smol_declare_module(MetalRHI)
+crowy_declare_module(MetalRHI)
 
 target_include_directories(CrowyMetalRHI
 SYSTEM PRIVATE

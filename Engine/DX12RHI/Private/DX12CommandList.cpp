@@ -166,7 +166,7 @@ namespace Crowy
     }
 
     void DX12CommandList::BeginRenderPass(const RHIRenderPassDesc& desc){
-        SMOL_ASSERT(desc.colorAttachments.size() > 0);
+        CROWY_ASSERT(desc.colorAttachments.size() > 0);
 
         std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, RHI_MAX_RENDER_TARGETS> rts;
         for(usize i=0; i<desc.colorAttachments.size(); ++i)
@@ -242,7 +242,7 @@ namespace Crowy
         const void* data,
         u32 size
     ){
-        SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+        CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
 
         commandList->SetGraphicsRoot32BitConstants(
             RootParamPush,
@@ -257,10 +257,10 @@ namespace Crowy
         u32 slot,
         u32 offset
     ){
-        SMOL_ASSERT(offset < buffer.GetSize());
+        CROWY_ASSERT(offset < buffer.GetSize());
 
-        SMOL_ASSERT(slot < RHI_NUM_DIRECT_CBS);
-        SMOL_ASSERT(offset % RHI_CB_ALIGN == 0);
+        CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+        CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
 
         auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
         auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
@@ -334,7 +334,7 @@ namespace Crowy
     }
 
     void DX12CommandList::BeginCompute() noexcept{
-        SMOL_ASSERT(!inComputePass,
+        CROWY_ASSERT(!inComputePass,
             "Already in a compute pass. Did you call RHICommandList::EndCompute()?"
         );
         inComputePass = true;
@@ -342,14 +342,14 @@ namespace Crowy
     }
 
     void DX12CommandList::EndCompute() noexcept{
-        SMOL_ASSERT(inComputePass,
+        CROWY_ASSERT(inComputePass,
             "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
         );
         inComputePass = false;
     }
 
     void DX12CommandList::SetPipelineState(RHIComputePipelineState& pso){
-        SMOL_ASSERT(inComputePass,
+        CROWY_ASSERT(inComputePass,
             "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
         );
         auto& dxPso = static_cast<DX12ComputePipelineState&>(pso);
@@ -362,10 +362,10 @@ namespace Crowy
         const void* data,
         u32 size
     ){
-        SMOL_ASSERT(inComputePass,
+        CROWY_ASSERT(inComputePass,
             "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
         );
-        SMOL_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+        CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
 
         commandList->SetComputeRoot32BitConstants(
             RootParamPush,
@@ -380,13 +380,13 @@ namespace Crowy
         u32 slot,
         u32 offset
     ){
-        SMOL_ASSERT(inComputePass,
+        CROWY_ASSERT(inComputePass,
             "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
         );
-        SMOL_ASSERT(offset < buffer.GetSize());
+        CROWY_ASSERT(offset < buffer.GetSize());
 
-        SMOL_ASSERT(slot < RHI_NUM_DIRECT_CBS);
-        SMOL_ASSERT(offset % RHI_CB_ALIGN == 0);
+        CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+        CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
 
         auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
         auto virtualAddress = dxBuffer.GetGPUAddress() + offset;
@@ -398,10 +398,10 @@ namespace Crowy
     }
 
     void DX12CommandList::Dispatch(Size3D gridSize){
-        SMOL_ASSERT(inComputePass,
+        CROWY_ASSERT(inComputePass,
             "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
         );
-        SMOL_ASSERT(currentComputePSO != nullptr,
+        CROWY_ASSERT(currentComputePSO != nullptr,
             "Did you call RHICommandList::SetPipelineState(ComputePSO)?"
         );
         auto threadGroupSize = currentComputePSO->getThreadGroupSize();
@@ -414,14 +414,14 @@ namespace Crowy
     }
 
     void DX12CommandList::BeginBlit() noexcept{
-        SMOL_ASSERT(!inBlitPass,
+        CROWY_ASSERT(!inBlitPass,
             "Already in a blit pass. Did you call RHICommandList::EndBlit()?"
         );
         inBlitPass = true;
     }
 
     void DX12CommandList::EndBlit() noexcept{
-        SMOL_ASSERT(inBlitPass,
+        CROWY_ASSERT(inBlitPass,
             "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
         );
         inBlitPass = false;
@@ -434,7 +434,7 @@ namespace Crowy
         usize dstOffset,
         usize size
     ){
-        SMOL_ASSERT(inBlitPass,
+        CROWY_ASSERT(inBlitPass,
             "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
         );
         auto& dxSrc = static_cast<DX12Buffer&>(src);
@@ -453,7 +453,7 @@ namespace Crowy
         RHITexture& src,
         RHITexture& dst
     ){
-        SMOL_ASSERT(inBlitPass,
+        CROWY_ASSERT(inBlitPass,
             "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
         );
         commandList->CopyResource(
@@ -470,7 +470,7 @@ namespace Crowy
         u32 mipLevel,
         u32 arraySlice
     ){
-        SMOL_ASSERT(inBlitPass,
+        CROWY_ASSERT(inBlitPass,
             "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
         );
         auto& dxSrc = static_cast<DX12Buffer&>(src);

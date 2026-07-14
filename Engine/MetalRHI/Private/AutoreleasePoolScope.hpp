@@ -20,6 +20,6 @@ namespace Crowy
             }
         }
 
-        SMOL_DECLARE_PINNED(AutoreleasePoolScope)
+        CROWY_DECLARE_PINNED(AutoreleasePoolScope)
     };
 }

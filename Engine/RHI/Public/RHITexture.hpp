@@ -24,7 +24,7 @@ namespace Crowy
             , layoutState(layoutState)
         {}
         virtual ~RHITexture() = default;
-        SMOL_DECLARE_PINNED(RHITexture)
+        CROWY_DECLARE_PINNED(RHITexture)
 
         virtual RHIPixelFormat GetFormat() const noexcept = 0;
         virtual u32 GetWidth() const noexcept = 0;

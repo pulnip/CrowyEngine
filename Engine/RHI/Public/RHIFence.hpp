@@ -8,7 +8,7 @@ namespace Crowy
     // GPU fence for CPU/GPU synchronization
     class RHIFence{
     public:
-        SMOL_DECLARE_INTERFACE(RHIFence)
+        CROWY_DECLARE_INTERFACE(RHIFence)
 
         // Wait on CPU until fence reaches waitValue
         virtual void WaitCPU(u64 waitValue, u64 timeoutMs = 0) = 0;

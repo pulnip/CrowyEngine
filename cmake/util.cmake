@@ -1,5 +1,5 @@
 # symlink for Config/ or Content/ directory
-function(smol_link_or_copy_directory DIR_NAME)
+function(crowy_link_or_copy_directory DIR_NAME)
     set(SRC "${CMAKE_SOURCE_DIR}/${DIR_NAME}")
     set(DST "${CMAKE_BINARY_DIR}/bin/${DIR_NAME}")
 
@@ -29,10 +29,10 @@ function(smol_link_or_copy_directory DIR_NAME)
 endfunction()
 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-smol_link_or_copy_directory(Content)
-smol_link_or_copy_directory(Config)
+crowy_link_or_copy_directory(Content)
+crowy_link_or_copy_directory(Config)
 
-function(smol_declare_module NAME)
+function(crowy_declare_module NAME)
     add_library(Crowy${NAME} STATIC)
 
     file(GLOB_RECURSE PUBLIC_SOURCES
@@ -63,7 +63,7 @@ function(smol_declare_module NAME)
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
 
-function(smol_declare_private_interface NAME)
+function(crowy_declare_private_interface NAME)
     add_library(Crowy${NAME}Private INTERFACE)
 
     target_include_directories(Crowy${NAME}Private
@@ -79,7 +79,7 @@ function(smol_declare_private_interface NAME)
     add_library(Crowy::${NAME}::Private ALIAS Crowy${NAME}Private)
 endfunction()
 
-function(smol_declare_interface NAME)
+function(crowy_declare_interface NAME)
     cmake_parse_arguments(ARG "" "DIRECTORY" "DEPENDS" ${ARGN})
 
     add_library(Crowy${NAME} INTERFACE)
@@ -107,7 +107,7 @@ function(smol_declare_interface NAME)
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
 
-function(smol_declare_test NAME)
+function(crowy_declare_test NAME)
     cmake_parse_arguments(ARG "" "DIRECTORY" "LABELS;DEPENDS" ${ARGN})
 
     if(NOT ARG_DIRECTORY)

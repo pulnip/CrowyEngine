@@ -6,6 +6,6 @@ namespace Crowy
 {
     class RHISampler{
     public:
-        SMOL_DECLARE_INTERFACE(RHISampler)
+        CROWY_DECLARE_INTERFACE(RHISampler)
     };
 }

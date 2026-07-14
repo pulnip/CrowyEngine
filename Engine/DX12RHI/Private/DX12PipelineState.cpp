@@ -352,7 +352,7 @@ namespace Crowy
             "sm_6_6"
         );
         if(desc.threadGroupSize.has_value())
-            SMOL_ASSERT(
+            CROWY_ASSERT(
                 *desc.threadGroupSize <= computeShader.GetRefl().threadGroupSize,
                 "Unexpected thread group size"
             );

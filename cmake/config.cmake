@@ -94,7 +94,7 @@ endif()
 include(deps)
 include(util)
 
-if(SMOL_ENABLE_TEST)
+if(CROWY_ENABLE_TEST)
     enable_testing()
     include(CTest)
     include(GoogleTest)

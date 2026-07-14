@@ -12,14 +12,14 @@ namespace Crowy
         : staging(std::move(stagingBuffer))
         , capacity(staging->GetSize())
     {
-        SMOL_ASSERT(nextMul(capacity, 512ull) == capacity);
+        CROWY_ASSERT(nextMul(capacity, 512ull) == capacity);
     }
 
     UploadRing::Allocation UploadRing::Allocate(
         u64 size,
         u64 align
     ){
-        SMOL_ASSERT(size <= capacity);
+        CROWY_ASSERT(size <= capacity);
 
         u64 newHead = nextMul(head, align);
         if(u64 p = newHead % capacity; p + size > capacity){
@@ -50,7 +50,7 @@ namespace Crowy
     }
 
     void UploadRing::retireOldest(bool wait){
-        SMOL_ASSERT(!inFlight.empty());
+        CROWY_ASSERT(!inFlight.empty());
         auto& f = inFlight.front();
         if(f.fence.GetValue() < f.value){
             if(!wait)

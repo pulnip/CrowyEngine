@@ -104,7 +104,7 @@ namespace Crowy
         , spriteManager(*(this->spriteLoader))
     {
         auto metadata = TomlTraits<TomlMetadata>::from(manifest);
-        SMOL_ASSERT(metadata.type == "resources");
+        CROWY_ASSERT(metadata.type == "resources");
 
         manifest.forEach("sprites", [&](const DOM::Value& node){
             auto name = node.get<Str>("name");

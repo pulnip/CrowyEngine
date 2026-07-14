@@ -1,4 +1,4 @@
-smol_declare_module(ImGuiCanvas)
+crowy_declare_module(ImGuiCanvas)
 
 target_link_libraries(CrowyImGuiCanvas
 PUBLIC

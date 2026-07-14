@@ -47,7 +47,7 @@ namespace Crowy
             case 0: return self.x;
             case 1: return self.y;
             default:
-                SMOL_ASSERT(false, "Vec2 index out of range");
+                CROWY_ASSERT(false, "Vec2 index out of range");
                 std::unreachable();
             }
         }
@@ -79,7 +79,7 @@ namespace Crowy
             case 1: return self.y;
             case 2: return self.z;
             default:
-                SMOL_ASSERT(false, "Vec3 index out of range");
+                CROWY_ASSERT(false, "Vec3 index out of range");
                 std::unreachable();
             }
         }
@@ -146,7 +146,7 @@ namespace Crowy
             case 2: return self.z;
             case 3: return self.w;
             default:
-                SMOL_ASSERT(false, "Vec4 index out of range");
+                CROWY_ASSERT(false, "Vec4 index out of range");
                 std::unreachable();
             }
         }

@@ -14,7 +14,7 @@ namespace Crowy
     public:
         SDLWindow(const WindowConfig&);
         ~SDLWindow();
-        SMOL_DECLARE_PINNED(SDLWindow)
+        CROWY_DECLARE_PINNED(SDLWindow)
 
         void* GetWindow() const noexcept;
         u32 GetWidth() const noexcept;

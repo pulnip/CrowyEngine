@@ -6,6 +6,6 @@ namespace Crowy
 {
     class RHIFrameScope{
     public:
-        SMOL_DECLARE_INTERFACE(RHIFrameScope)
+        CROWY_DECLARE_INTERFACE(RHIFrameScope)
     };
 }

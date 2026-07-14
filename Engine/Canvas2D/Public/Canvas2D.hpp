@@ -29,7 +29,7 @@ namespace Crowy
 
     class Canvas2D{
     public:
-        SMOL_DECLARE_INTERFACE(Canvas2D)
+        CROWY_DECLARE_INTERFACE(Canvas2D)
 
         virtual void Begin(RHISwapchain&) = 0;
         virtual void End() = 0;

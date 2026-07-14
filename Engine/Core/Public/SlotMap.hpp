@@ -28,7 +28,7 @@ namespace Crowy
         public:
             Slot() = default;
             ~Slot() = default;
-            SMOL_DECLARE_MOVE_ONLY(Slot)
+            CROWY_DECLARE_MOVE_ONLY(Slot)
 
             void Reset() noexcept{
                 ++generation;
@@ -40,12 +40,12 @@ namespace Crowy
             }
 
             auto& GetData(this auto& self) noexcept{
-                SMOL_ASSERT(self.IsUsing());
+                CROWY_ASSERT(self.IsUsing());
                 return self.data.value();
             }
 
             T Release() noexcept{
-                SMOL_ASSERT(IsUsing());
+                CROWY_ASSERT(IsUsing());
                 T t = std::move(*data);
                 Reset();
 
@@ -71,7 +71,7 @@ namespace Crowy
     public:
         SlotMap() = default;
         ~SlotMap() = default;
-        SMOL_DECLARE_TRANSFERABLE(SlotMap)
+        CROWY_DECLARE_TRANSFERABLE(SlotMap)
 
         template<typename... Args>
         Handle Emplace(Args&&... args){
@@ -145,7 +145,7 @@ namespace Crowy
             auto index = handle.GetIndex();
             auto& slot = self.slots[index];
 
-            SMOL_ASSERT(
+            CROWY_ASSERT(
                 index < self.slots.size() &&
                 slot.GetGeneration() == handle.GetGeneration()
             );
@@ -156,7 +156,7 @@ namespace Crowy
             auto index = handle.GetIndex();
             auto& slot = self.slots[index];
 
-            SMOL_ASSERT(
+            CROWY_ASSERT(
                 index < self.slots.size() &&
                 slot.GetGeneration() == handle.GetGeneration()
             );
@@ -168,7 +168,7 @@ namespace Crowy
             auto index = handle.GetIndex();
             auto& slot = slots[index];
 
-            SMOL_ASSERT(
+            CROWY_ASSERT(
                 index < slots.size() &&
                 slot.GetGeneration() == handle.GetGeneration()
             );
@@ -236,19 +236,19 @@ namespace Crowy
             }
 
             bool operator==(const Iterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index == other.index;
             }
             bool operator!=(const Iterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index != other.index;
             }
             bool operator==(const ConstIterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index == other.index;
             }
             bool operator!=(const ConstIterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index != other.index;
             }
 
@@ -307,19 +307,19 @@ namespace Crowy
             }
 
             bool operator==(const Iterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index == other.index;
             }
             bool operator!=(const Iterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index != other.index;
             }
             bool operator==(const ConstIterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index == other.index;
             }
             bool operator!=(const ConstIterator& other) const noexcept{
-                SMOL_ASSERT(slots == other.slots);
+                CROWY_ASSERT(slots == other.slots);
                 return index != other.index;
             }
 

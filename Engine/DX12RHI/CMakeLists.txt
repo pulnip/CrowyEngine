@@ -1,4 +1,4 @@
-smol_declare_module(DX12RHI)
+crowy_declare_module(DX12RHI)
 
 target_include_directories(CrowyDX12RHI
 BEFORE PRIVATE
@@ -50,8 +50,8 @@ add_custom_command(TARGET CrowyDX12RHI POST_BUILD
     COMMENT "Copying dxcompiler.dll/dxil.dll"
 )
 
-smol_declare_private_interface(DX12RHI)
+crowy_declare_private_interface(DX12RHI)
 
-# if(SMOL_ENABLE_TEST)
+# if(CROWY_ENABLE_TEST)
 #     add_subdirectory(Sample)
 # endif()

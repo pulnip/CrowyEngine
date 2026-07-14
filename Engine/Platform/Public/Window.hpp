@@ -9,7 +9,7 @@ namespace Crowy
 
     class Window{
     public:
-        SMOL_DECLARE_INTERFACE(Window)
+        CROWY_DECLARE_INTERFACE(Window)
 
         virtual void* GetWindow() const noexcept = 0;
         virtual u32 GetWidth() const noexcept = 0;

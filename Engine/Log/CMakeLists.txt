@@ -1,4 +1,4 @@
-smol_declare_module(Log)
+crowy_declare_module(Log)
 
 target_link_libraries(CrowyLog
 PUBLIC

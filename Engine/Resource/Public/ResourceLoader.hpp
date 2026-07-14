@@ -22,7 +22,7 @@ namespace Crowy
         };
 
     public:
-        SMOL_DECLARE_INTERFACE(ResourceLoader)
+        CROWY_DECLARE_INTERFACE(ResourceLoader)
 
         virtual void Submit(const Request&, Handle, ResourceManager<T>&) = 0;
         virtual void Poll(std::vector<Completion>&) = 0;

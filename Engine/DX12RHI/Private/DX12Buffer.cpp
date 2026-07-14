@@ -57,7 +57,7 @@ namespace{
                 .accessState = RHIBarrierAccess::CopyDst
             };
         case Transient:
-            SMOL_ASSERT(false, "Transient is texture-only");
+            CROWY_ASSERT(false, "Transient is texture-only");
         default:
             std::unreachable();
         }
@@ -87,9 +87,9 @@ namespace Crowy
         const auto isCopyDst = hasFlag(desc.usage, CopyDst);
 
         const auto isCPUWrite = (desc.access == CPUWrite);
-        SMOL_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
+        CROWY_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
         const auto isCPURead  = (desc.access == CPURead);
-        SMOL_ASSERT(!isCPURead || (desc.usage == CopyDst));
+        CROWY_ASSERT(!isCPURead || (desc.usage == CopyDst));
         const auto isGPUOnly  = (desc.access == GPUOnly);
 
         const auto bufDesc = CD3DX12_RESOURCE_DESC1::Buffer(
@@ -125,7 +125,7 @@ namespace Crowy
             ), "Failed to create DX12 buffer");
 
             if(policy.persistentMap){
-                SMOL_ASSERT(isCPUWrite || isCPURead);
+                CROWY_ASSERT(isCPUWrite || isCPURead);
                 const CD3DX12_RANGE noRead(0, 0);
                 CHECK_HRESULT(frameResource.buffer->Map(
                     0,
@@ -178,7 +178,7 @@ namespace Crowy
         u32 srcSize,
         u32 offset
     ){
-        SMOL_ASSERT(srcSize <= GetSize() - offset);
+        CROWY_ASSERT(srcSize <= GetSize() - offset);
 
         auto& frameResource = resources[index];
 
@@ -195,7 +195,7 @@ namespace Crowy
         u32 dstSize,
         u32 offset
     ){
-        SMOL_ASSERT(dstSize <= GetSize() - offset);
+        CROWY_ASSERT(dstSize <= GetSize() - offset);
 
         auto& frameResource = resources[index];
 
@@ -249,7 +249,7 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = srvs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
+        CROWY_ASSERT(ret);
 
         return idx;
     }
@@ -286,7 +286,7 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = uavs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
+        CROWY_ASSERT(ret);
 
         return idx;
     }

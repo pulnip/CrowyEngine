@@ -1,4 +1,4 @@
-smol_declare_module(UI)
+crowy_declare_module(UI)
 
 target_link_options(CrowyUI
 PRIVATE

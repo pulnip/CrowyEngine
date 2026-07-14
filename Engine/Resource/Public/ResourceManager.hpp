@@ -44,7 +44,7 @@ namespace Crowy
         }
 
         Handle Load(StrView key, const Request& request){
-            SMOL_ASSERT(initThread == std::this_thread::get_id());
+            CROWY_ASSERT(initThread == std::this_thread::get_id());
             auto handle = Find(key);
             if(handle.IsValid()){
                 return handle;
@@ -65,7 +65,7 @@ namespace Crowy
 
     public:
         void DrainCompletions(){
-            SMOL_ASSERT(initThread == std::this_thread::get_id());
+            CROWY_ASSERT(initThread == std::this_thread::get_id());
             scratch.clear();
 
             loader.Poll(scratch);

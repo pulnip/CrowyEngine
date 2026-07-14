@@ -429,7 +429,7 @@ namespace Crowy
                     );
                     break;
                 default:
-                    SMOL_ASSERT(false);
+                    CROWY_ASSERT(false);
                 }
             }
 
@@ -442,7 +442,7 @@ namespace Crowy
         ){
             using enum RHIMemoryAccess;
 
-            SMOL_ASSERT(desc.access != CPUWrite && desc.access != CPURead,
+            CROWY_ASSERT(desc.access != CPUWrite && desc.access != CPURead,
                 "Use RHIBuffer for CPU-Accessable Resource"
             );
 

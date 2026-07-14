@@ -107,7 +107,7 @@ PUBLIC
     ${imgui_SOURCE_DIR}/imgui.h
 PRIVATE
     ${imgui_SOURCE_DIR}/imgui.cpp
-    $<$<BOOL:${SMOL_ENABLE_TEST}>:${imgui_SOURCE_DIR}/imgui_demo.cpp>
+    $<$<BOOL:${CROWY_ENABLE_TEST}>:${imgui_SOURCE_DIR}/imgui_demo.cpp>
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
@@ -170,7 +170,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(slang_bin)
 
-if(SMOL_ENABLE_TEST)
+if(CROWY_ENABLE_TEST)
     find_package(GTest QUIET)
     if(NOT GTest_FOUND)
         FetchContent_Declare(

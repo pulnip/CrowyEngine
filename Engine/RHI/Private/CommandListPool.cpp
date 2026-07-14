@@ -30,7 +30,7 @@ namespace Crowy
 
         auto acquireIndex = slot.nextIndex++;
         auto acquiredCmdList = slot.cmdLists[acquireIndex].get();
-        SMOL_ASSERT(acquiredCmdList != nullptr);
+        CROWY_ASSERT(acquiredCmdList != nullptr);
         return *acquiredCmdList;
     }
 

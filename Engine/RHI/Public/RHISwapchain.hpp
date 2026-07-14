@@ -11,7 +11,7 @@ namespace Crowy
     // Swapchain for presenting rendered images to the screen
     class RHISwapchain{
     public:
-        SMOL_DECLARE_INTERFACE(RHISwapchain)
+        CROWY_DECLARE_INTERFACE(RHISwapchain)
 
         virtual bool AcquireNextImage() = 0;
 

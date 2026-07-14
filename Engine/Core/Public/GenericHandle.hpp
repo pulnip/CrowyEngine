@@ -21,7 +21,7 @@ namespace Crowy
         GenericHandle(usize index, usize generation) noexcept
             : index(index), generation(generation){}
         ~GenericHandle() = default;
-        SMOL_DECLARE_TRANSFERABLE_NOEXCEPT(GenericHandle)
+        CROWY_DECLARE_TRANSFERABLE_NOEXCEPT(GenericHandle)
 
         // Notice! This doesn't mean pointed slot (in Container) is valid.
         bool IsValid() const noexcept{

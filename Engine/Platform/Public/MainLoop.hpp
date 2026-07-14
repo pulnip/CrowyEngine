@@ -7,7 +7,7 @@ namespace Crowy
 {
     class MainLoop{
     public:
-        SMOL_DECLARE_INTERFACE(MainLoop)
+        CROWY_DECLARE_INTERFACE(MainLoop)
 
         virtual bool Initialize(){ return true; }
         virtual bool Update() = 0;

@@ -1,8 +1,7 @@
-function(smol_rhi_sample NAME)
+function(crowy_rhi_sample NAME)
     cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
 
     add_executable(${NAME}
-        AppFramework.cpp
         ${ARG_SOURCES}
     )
 
@@ -12,11 +11,8 @@ function(smol_rhi_sample NAME)
     )
     target_link_libraries(${NAME}
     PRIVATE
-        Crowy::Log
-        # use SDL Window
-        SDL3::SDL3
-        Crowy::Platform::Private
         ${RENDER_BACKENDS}
+        Crowy::Log
         ${ARG_DEPENDS}
     )
     if(WIN32)
@@ -27,17 +23,32 @@ function(smol_rhi_sample NAME)
     endif()
 endfunction()
 
-smol_rhi_sample(HelloWorld
+function(crowy_graphics_sample NAME)
+    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
+
+    crowy_rhi_sample(${NAME}
+    SOURCES
+        AppFramework.cpp
+        ${ARG_SOURCES}
+    DEPENDS
+        # use SDL Window
+        SDL3::SDL3
+        Crowy::Platform::Private
+        ${ARG_DEPENDS}
+    )
+endfunction()
+
+crowy_graphics_sample(HelloWorld
 SOURCES
     helloWorld.cpp
 )
 
-smol_rhi_sample(HelloConstantBuffer
+crowy_graphics_sample(HelloConstantBuffer
 SOURCES
     helloConstantBuffer.cpp
 )
 
-smol_rhi_sample(HelloTexture
+crowy_graphics_sample(HelloTexture
 SOURCES
     helloTexture.cpp
 DEPENDS

@@ -10,7 +10,7 @@ namespace Crowy
 
     class Sink{
     public:
-        SMOL_DECLARE_INTERFACE(Sink)
+        CROWY_DECLARE_INTERFACE(Sink)
 
         virtual void Write(const LogMessage&) = 0;
     };

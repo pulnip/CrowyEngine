@@ -1,4 +1,4 @@
-smol_declare_module(Platform)
+crowy_declare_module(Platform)
 
 target_link_libraries(CrowyPlatform
 PUBLIC
@@ -11,10 +11,10 @@ PRIVATE
     Crowy::Log
 )
 
-smol_declare_private_interface(Platform)
+crowy_declare_private_interface(Platform)
 
-if(SMOL_ENABLE_TEST)
-    smol_declare_test(Platform
+if(CROWY_ENABLE_TEST)
+    crowy_declare_test(Platform
         DIRECTORY Test
         DEPENDS Crowy::Platform
         LABELS "unit"

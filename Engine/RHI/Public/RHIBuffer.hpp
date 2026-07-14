@@ -8,7 +8,7 @@ namespace Crowy
 {
     class RHIBuffer{
     public:
-        SMOL_DECLARE_INTERFACE(RHIBuffer)
+        CROWY_DECLARE_INTERFACE(RHIBuffer)
 
         // Notice! only valid for upload buffer
         virtual void Upload(

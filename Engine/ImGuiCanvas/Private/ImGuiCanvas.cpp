@@ -78,7 +78,7 @@ namespace Crowy
     ImGuiCanvas::ImGuiCanvas()
         : impl(std::make_unique<Impl>())
     {
-        SMOL_ASSERT(ImGui::GetCurrentContext() != nullptr);
+        CROWY_ASSERT(ImGui::GetCurrentContext() != nullptr);
     }
 
     ImGuiCanvas::~ImGuiCanvas() = default;
@@ -87,7 +87,7 @@ namespace Crowy
         impl->Begin();
     }
     void ImGuiCanvas::Impl::Begin(){
-        SMOL_ASSERT(drawList == nullptr);
+        CROWY_ASSERT(drawList == nullptr);
 
         drawList = ImGui::GetBackgroundDrawList();
         transform = unitMat2x3();
@@ -97,7 +97,7 @@ namespace Crowy
         impl->End();
     }
     void ImGuiCanvas::Impl::End(){
-        SMOL_ASSERT(drawList != nullptr);
+        CROWY_ASSERT(drawList != nullptr);
 
         drawList = nullptr;
     }
@@ -120,7 +120,7 @@ namespace Crowy
         impl->Line(v0, v1, style);
     }
     void ImGuiCanvas::Impl::Line(Vec2 v0, Vec2 v1, const StrokeStyle& style){
-        SMOL_ASSERT(drawList != nullptr);
+        CROWY_ASSERT(drawList != nullptr);
 
         drawList->AddLine(
             apply(v0),
@@ -131,12 +131,12 @@ namespace Crowy
     }
 
     void ImGuiCanvas::Polyline(std::span<const Vec2> points, const StrokeStyle& style){
-        SMOL_ASSERT(points.size() >= 2);
+        CROWY_ASSERT(points.size() >= 2);
 
         impl->Polyline(points, style);
     }
     void ImGuiCanvas::Impl::Polyline(std::span<const Vec2> points, const StrokeStyle& style){
-        SMOL_ASSERT(drawList != nullptr);
+        CROWY_ASSERT(drawList != nullptr);
 
         std::vector<ImVec2> screen;
         screen.reserve(points.size());
@@ -158,7 +158,7 @@ namespace Crowy
         impl->Circle(center, r, style);
     }
     void ImGuiCanvas::Impl::Circle(Vec2 center, f32 r, const StrokeStyle& style){
-        SMOL_ASSERT(drawList != nullptr);
+        CROWY_ASSERT(drawList != nullptr);
         const auto uniformScale = std::sqrt(std::abs(det(transform)));
 
         drawList->AddCircle(
@@ -178,7 +178,7 @@ namespace Crowy
         impl->Quad(min, rt, max, lb, style);
     }
     void ImGuiCanvas::Impl::Quad(Vec2 lt, Vec2 rt, Vec2 rb, Vec2 lb, const StrokeStyle& style){
-        SMOL_ASSERT(drawList != nullptr);
+        CROWY_ASSERT(drawList != nullptr);
 
         drawList->AddQuad(
             apply(lt), apply(rt), apply(rb), apply(lb),
@@ -191,7 +191,7 @@ namespace Crowy
         impl->Text(utf8, pos, style);
     }
     void ImGuiCanvas::Impl::Text(StrView utf8, Vec2 pos, const TextStyle& style){
-        SMOL_ASSERT(drawList != nullptr);
+        CROWY_ASSERT(drawList != nullptr);
 
         drawList->AddText(
             ImGui::GetFont(),

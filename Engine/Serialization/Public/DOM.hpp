@@ -47,7 +47,7 @@ namespace Crowy
             Value(Array&& v): value(std::make_unique<Array>(std::move(v))){}
             Value(Table&& v): value(std::make_unique<Table>(std::move(v))){}
 
-            SMOL_DECLARE_MOVE_ONLY_NOEXCEPT(Value)
+            CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(Value)
 
             enum class Kind{
                 None,

@@ -175,7 +175,7 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = srvs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
+        CROWY_ASSERT(ret);
 
         return idx;
     }
@@ -198,7 +198,7 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = rtvs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
+        CROWY_ASSERT(ret);
 
         return idx;
     }
@@ -216,7 +216,7 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = uavs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
+        CROWY_ASSERT(ret);
 
         return idx;
     }
@@ -240,7 +240,7 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = dsvs.emplace(desc, idx);
-        SMOL_ASSERT(ret);
+        CROWY_ASSERT(ret);
 
         return idx;
     }

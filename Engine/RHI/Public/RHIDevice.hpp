@@ -11,7 +11,7 @@ namespace Crowy
 
     class RHIDevice{
     public:
-        SMOL_DECLARE_INTERFACE(RHIDevice)
+        CROWY_DECLARE_INTERFACE(RHIDevice)
 
         virtual RHIFrameScopeRAII CreateFrameScope() = 0;
 

@@ -385,7 +385,7 @@ namespace Crowy
         // Depth Stencil Format
         if(desc.depthStencil.has_value()){
             auto depthStencilFormat = desc.depthStencil->format;
-            SMOL_ASSERT(depthStencilFormat != RHIPixelFormat::Unknown);
+            CROWY_ASSERT(depthStencilFormat != RHIPixelFormat::Unknown);
 
             pipelineDesc->setDepthAttachmentPixelFormat(
                 convert(depthStencilFormat)

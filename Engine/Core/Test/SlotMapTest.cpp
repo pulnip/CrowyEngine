@@ -36,7 +36,7 @@ struct LifetimeTracker{
         return *this;
     }
 
-    SMOL_DECLARE_NON_COPYABLE(LifetimeTracker)
+    CROWY_DECLARE_NON_COPYABLE(LifetimeTracker)
 };
 
 u32 LifetimeTracker::constructed = 0;

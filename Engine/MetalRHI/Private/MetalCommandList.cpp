@@ -51,7 +51,7 @@ namespace Crowy
     }
 
     void MetalCommandList::Begin(){
-        SMOL_ASSERT(!isRecording,
+        CROWY_ASSERT(!isRecording,
             "Did you call RHICommandList::close()?"
         );
 
@@ -78,14 +78,14 @@ namespace Crowy
     }
 
     void MetalCommandList::Close(){
-        SMOL_ASSERT(isRecording,
+        CROWY_ASSERT(isRecording,
             "Did you call RHICommandList::begin()?"
         );
 
-        SMOL_ASSERT(renderEncoder == nullptr,
+        CROWY_ASSERT(renderEncoder == nullptr,
             "Did you call RHICommandList::endRenderPass()?"
         );
-        SMOL_ASSERT(computeEncoder == nullptr,
+        CROWY_ASSERT(computeEncoder == nullptr,
             "Did you call RHICommandList::endCompute()?"
         );
         if(blitEncoder != nullptr){
@@ -103,22 +103,22 @@ namespace Crowy
             isRecording = false;
         }
         else{
-            SMOL_ASSERT( renderEncoder == nullptr);
-            SMOL_ASSERT(computeEncoder == nullptr);
-            SMOL_ASSERT(   blitEncoder == nullptr);
+            CROWY_ASSERT( renderEncoder == nullptr);
+            CROWY_ASSERT(computeEncoder == nullptr);
+            CROWY_ASSERT(   blitEncoder == nullptr);
         }
     }
 
     void MetalCommandList::BeginRenderPass(const RHIRenderPassDesc& desc){
-        SMOL_ASSERT(renderEncoder == nullptr,
+        CROWY_ASSERT(renderEncoder == nullptr,
             "Did you call RHICommandList::endRenderPass()?"
         );
-        SMOL_ASSERT(computeEncoder == nullptr);
+        CROWY_ASSERT(computeEncoder == nullptr);
         if(blitEncoder != nullptr){
             blitEncoder->endEncoding();
             blitEncoder = nullptr;
         }
-        SMOL_ASSERT(desc.colorAttachments.size() > 0);
+        CROWY_ASSERT(desc.colorAttachments.size() > 0);
 
         auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
 
@@ -158,7 +158,7 @@ namespace Crowy
     }
 
     void MetalCommandList::EndRenderPass(){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
 
@@ -170,7 +170,7 @@ namespace Crowy
         auto& metalPSO = static_cast<MetalGraphicsPipelineState&>(pso);
         currentTopology = metalPSO.GetTopology();
 
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
         metalPSO.Bind(*renderEncoder);
@@ -180,7 +180,7 @@ namespace Crowy
         auto& metalPSO = static_cast<MetalComputePipelineState&>(pso);
         threadsPerThreadgroup = metalPSO.GetThreadsPerThreadgroup();
 
-        SMOL_ASSERT(computeEncoder != nullptr,
+        CROWY_ASSERT(computeEncoder != nullptr,
             "Did you call RHICommandList::beginCompute()?"
         );
         metalPSO.Bind(*computeEncoder);
@@ -192,7 +192,7 @@ namespace Crowy
         u32 stride,
         u32 offset
     ){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
 
@@ -205,7 +205,7 @@ namespace Crowy
         RHIIndexFormat format,
         u32 offset
     ){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
 
@@ -226,19 +226,19 @@ namespace Crowy
 
         switch(stage){
         case VertexShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
             break;
         case FragmentShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setFragmentBuffer(mtlBuffer, offset, slot);
             break;
         case ComputeShader:
-            SMOL_ASSERT(computeEncoder != nullptr,
+            CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
             computeEncoder->setBuffer(mtlBuffer, offset, slot);
@@ -259,19 +259,19 @@ namespace Crowy
 
         switch(stage){
         case VertexShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setVertexTexture(mtlTexture, slot);
             break;
         case FragmentShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setFragmentTexture(mtlTexture, slot);
             break;
         case ComputeShader:
-            SMOL_ASSERT(computeEncoder != nullptr,
+            CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
             computeEncoder->setTexture(mtlTexture, slot);
@@ -294,12 +294,12 @@ namespace Crowy
         case VertexShader:
             [[fallthrough]];
         case FragmentShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             throw std::runtime_error("Unimplemented");
         case ComputeShader:
-            SMOL_ASSERT(computeEncoder != nullptr,
+            CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
             computeEncoder->setBuffer(mtlBuffer, 0, slot);
@@ -319,19 +319,19 @@ namespace Crowy
 
         switch(stage){
         case VertexShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setVertexBytes(bytes, size, slot);
             break;
         case FragmentShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setFragmentBytes(bytes, size, slot);
             break;
         case ComputeShader:
-            SMOL_ASSERT(computeEncoder != nullptr,
+            CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
             computeEncoder->setBytes(bytes, size, slot);
@@ -351,19 +351,19 @@ namespace Crowy
 
         switch(stage){
         case VertexShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setVertexSamplerState(mtlSampler, slot);
             break;
         case FragmentShader:
-            SMOL_ASSERT(renderEncoder != nullptr,
+            CROWY_ASSERT(renderEncoder != nullptr,
                 "Did you call RHICommandList::beginRenderPass()?"
             );
             renderEncoder->setFragmentSamplerState(mtlSampler, slot);
             break;
         case ComputeShader:
-            SMOL_ASSERT(computeEncoder != nullptr,
+            CROWY_ASSERT(computeEncoder != nullptr,
                 "Did you call RHICommandList::beginCompute()?"
             );
             computeEncoder->setSamplerState(mtlSampler, slot);
@@ -374,7 +374,7 @@ namespace Crowy
     }
 
     void MetalCommandList::SetViewport(const RHIViewport& viewport){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
 
@@ -387,7 +387,7 @@ namespace Crowy
     }
 
     void MetalCommandList::SetScissorRect(const RHIScissorRect& scissor){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
 
@@ -406,7 +406,7 @@ namespace Crowy
         u32 startVertex,
         u32 startInstance
     ){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
 
@@ -426,10 +426,10 @@ namespace Crowy
         int32_t baseVertex,
         u32 startInstance
     ){
-        SMOL_ASSERT(renderEncoder != nullptr,
+        CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::beginRenderPass()?"
         );
-        SMOL_ASSERT(currentIndexBuffer != nullptr);
+        CROWY_ASSERT(currentIndexBuffer != nullptr);
 
         auto indexSize = (currentIndexFormat == MTL::IndexTypeUInt16) ? 2 : 4;
         auto indexOffset = currentIndexBufferOffset + startIndex * indexSize;
@@ -447,10 +447,10 @@ namespace Crowy
     }
 
     void MetalCommandList::BeginCompute(){
-        SMOL_ASSERT(computeEncoder == nullptr,
+        CROWY_ASSERT(computeEncoder == nullptr,
             "Did you call RHICommandList::endCompute()?"
         );
-        SMOL_ASSERT(renderEncoder == nullptr);
+        CROWY_ASSERT(renderEncoder == nullptr);
         if(blitEncoder != nullptr){
             blitEncoder->endEncoding();
             blitEncoder = nullptr;
@@ -461,7 +461,7 @@ namespace Crowy
     }
 
     void MetalCommandList::EndCompute(){
-        SMOL_ASSERT(computeEncoder != nullptr,
+        CROWY_ASSERT(computeEncoder != nullptr,
             "Did you call RHICommandList::beginCompute()?"
         );
 
@@ -470,7 +470,7 @@ namespace Crowy
     }
 
     void MetalCommandList::Dispatch(Size3D gridSize){
-        SMOL_ASSERT(computeEncoder != nullptr,
+        CROWY_ASSERT(computeEncoder != nullptr,
             "Did you call RHICommandList::beginCompute()?"
         );
 
@@ -617,10 +617,10 @@ namespace Crowy
     }
 
     void MetalCommandList::ensureBlitEncoder(){
-        SMOL_ASSERT(renderEncoder == nullptr,
+        CROWY_ASSERT(renderEncoder == nullptr,
             "Did you call RHICommandList::endRenderPass()?"
         );
-        SMOL_ASSERT(computeEncoder == nullptr,
+        CROWY_ASSERT(computeEncoder == nullptr,
             "Did you call RHICommandList::endCompute()?"
         );
 

@@ -17,7 +17,7 @@ namespace Crowy
 }
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-    #define SMOL_ASSERT(expr, ...) \
+    #define CROWY_ASSERT(expr, ...) \
         do{ \
             if(!(expr)) [[unlikely]]{ \
                 Crowy::detail::assertFail( \
@@ -28,5 +28,5 @@ namespace Crowy
             } \
         } while(false)
 #else
-    #define SMOL_ASSERT(expr, ...) ((void)0)
+    #define CROWY_ASSERT(expr, ...) ((void)0)
 #endif

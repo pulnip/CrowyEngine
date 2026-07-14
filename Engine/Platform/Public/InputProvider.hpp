@@ -21,7 +21,7 @@ namespace Crowy
         } mouse;
 
     public:
-        SMOL_DECLARE_INTERFACE(InputProvider)
+        CROWY_DECLARE_INTERFACE(InputProvider)
 
         // Call After All Event Process Done
         virtual bool IsKeyDown(KeyCode) const noexcept = 0;

@@ -16,7 +16,7 @@ namespace Crowy
     public:
         FramePacer(RHIDevice& device);
         ~FramePacer();
-        SMOL_DECLARE_MOVE_ONLY(FramePacer)
+        CROWY_DECLARE_MOVE_ONLY(FramePacer)
 
         // Begin a new frame
         // Returns true if ready to render, false if should skip

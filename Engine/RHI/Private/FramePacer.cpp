@@ -19,7 +19,7 @@ namespace Crowy
             , frameIndex(device.GetFrameIndexRef())
             , fence(device.CreateFence(0))
         {
-            SMOL_ASSERT(fence != nullptr);
+            CROWY_ASSERT(fence != nullptr);
         }
 
         ~Impl() = default;

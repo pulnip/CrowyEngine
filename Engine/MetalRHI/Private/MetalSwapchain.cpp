@@ -17,7 +17,7 @@ namespace Crowy
         : view(SDL_Metal_CreateView(static_cast<SDL_Window*>(desc.sdlWindow)))
         , metalLayer(static_cast<CA::MetalLayer*>(SDL_Metal_GetLayer(view)))
     {
-        SMOL_ASSERT(metalLayer != nullptr);
+        CROWY_ASSERT(metalLayer != nullptr);
 
         metalLayer->setDevice(&device);
         metalLayer->setPixelFormat(convert(desc.bufferDesc.format));

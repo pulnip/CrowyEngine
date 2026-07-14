@@ -23,7 +23,7 @@ namespace Crowy
     public:
         ImageData() = default;
         ~ImageData() = default;
-        SMOL_DECLARE_TRANSFERABLE(ImageData)
+        CROWY_DECLARE_TRANSFERABLE(ImageData)
 
         ImageData(const ImageBlob& buffer, u32 width, u32 height, ImageFormat format)
             : buffer(buffer), width(width), height(height), format(format) {}

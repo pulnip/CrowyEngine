@@ -1,8 +1,8 @@
-smol_declare_interface(CommonRHI
+crowy_declare_interface(CommonRHI
     DIRECTORY Common
 )
 
-smol_declare_module(RHI)
+crowy_declare_module(RHI)
 
 target_include_directories(CrowyRHI
 PRIVATE
@@ -26,6 +26,6 @@ add_custom_command(TARGET CrowyRHI POST_BUILD
     COMMENT "Copying slang.dll"
 )
 
-if(SMOL_ENABLE_TEST)
+if(CROWY_ENABLE_TEST)
     add_subdirectory(Sample)
 endif()

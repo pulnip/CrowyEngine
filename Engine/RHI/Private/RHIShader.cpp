@@ -137,7 +137,7 @@ namespace Crowy
         using namespace slang;
         using namespace Slang;
 
-        SMOL_ASSERT(globalSession != nullptr,
+        CROWY_ASSERT(globalSession != nullptr,
             "Did you call InitGlobalSession()?"
         );
 

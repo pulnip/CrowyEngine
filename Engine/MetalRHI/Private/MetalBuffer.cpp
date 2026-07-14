@@ -19,7 +19,7 @@ namespace Crowy
         auto needCPUAccess = hasVertexUsage || hasIndexUsage || hasConstantUsage || desc.initialData != nullptr;
 
         auto isGPUOnly = hasFlag(desc.access, RHIMemoryAccess::GPUOnly);
-        SMOL_ASSERT(!needCPUAccess || !isGPUOnly);
+        CROWY_ASSERT(!needCPUAccess || !isGPUOnly);
 
         if(desc.initialData != nullptr){
         #if TARGET_OS_OSX
@@ -69,7 +69,7 @@ namespace Crowy
         u32 size,
         u32 offset
     ){
-        SMOL_ASSERT(offset + size <= GetSize());
+        CROWY_ASSERT(offset + size <= GetSize());
         void* mapped = buffer->contents();
 
         std::memcpy(
@@ -88,7 +88,7 @@ namespace Crowy
         u32 size,
         u32 offset
     ){
-        SMOL_ASSERT(offset + size <= GetSize());
+        CROWY_ASSERT(offset + size <= GetSize());
         void* mapped = buffer->contents();
 
         std::memcpy(

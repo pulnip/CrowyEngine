@@ -392,7 +392,7 @@ namespace Crowy
         f32 m2, f32 M2,
         f32 epsilon = 0
     ) noexcept{
-        SMOL_ASSERT(epsilon >= 0);
+        CROWY_ASSERT(epsilon >= 0);
         if(m1 > m2){
             std::swap(m1, m2);
             std::swap(M1, M2);

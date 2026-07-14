@@ -87,7 +87,7 @@ namespace Crowy
     // Command list for recording GPU commands
     class RHICommandList{
     public:
-        SMOL_DECLARE_INTERFACE(RHICommandList)
+        CROWY_DECLARE_INTERFACE(RHICommandList)
 
         // Command list lifecycle
         virtual void Begin() = 0;

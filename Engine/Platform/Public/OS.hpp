@@ -22,7 +22,7 @@ namespace Crowy
     public:
         OS(const RuntimeConfig&, RHIDevice&);
         ~OS();
-        SMOL_DECLARE_PINNED(OS)
+        CROWY_DECLARE_PINNED(OS)
 
         void Run(MainLoop&, RHIDevice&);
 

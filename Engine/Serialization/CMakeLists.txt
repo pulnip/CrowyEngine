@@ -1,4 +1,4 @@
-smol_declare_module(Serialization)
+crowy_declare_module(Serialization)
 
 target_compile_definitions(CrowySerialization
 PRIVATE
@@ -14,10 +14,10 @@ PRIVATE
     Crowy::Log
 )
 
-smol_declare_private_interface(Serialization)
+crowy_declare_private_interface(Serialization)
 
-if(SMOL_ENABLE_TEST)
-    smol_declare_test(Serialization
+if(CROWY_ENABLE_TEST)
+    crowy_declare_test(Serialization
         DIRECTORY Test
         DEPENDS Crowy::Serialization::Private
         LABELS "unit"

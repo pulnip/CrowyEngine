@@ -13,6 +13,6 @@ namespace Crowy
         MetalFrameScope() = default;
         ~MetalFrameScope() = default;
 
-        SMOL_DECLARE_PINNED(MetalFrameScope)
+        CROWY_DECLARE_PINNED(MetalFrameScope)
     };
 }

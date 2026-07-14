@@ -1,4 +1,4 @@
-function(smol_serialization_sample NAME)
+function(crowy_serialization_sample NAME)
     cmake_parse_arguments(ARG "" "SOURCES" "DEPENDS" ${ARGN})
 
     add_executable(Crowy${NAME}Sample ${ARG_SOURCES})
@@ -10,6 +10,6 @@ function(smol_serialization_sample NAME)
     )
 endfunction()
 
-smol_serialization_sample(ImageLoader
+crowy_serialization_sample(ImageLoader
     SOURCES ImageLoaderSample.cpp
 )

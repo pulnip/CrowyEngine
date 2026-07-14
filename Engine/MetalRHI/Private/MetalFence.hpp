@@ -18,7 +18,7 @@ namespace Crowy
 
         ~MetalFence();
 
-        SMOL_DECLARE_NON_COPYABLE(MetalFence)
+        CROWY_DECLARE_NON_COPYABLE(MetalFence)
 
         void WaitCPU(u64 waitValue, u64 timeoutMs) RHI_OVERRIDE;
 

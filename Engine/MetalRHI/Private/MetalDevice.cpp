@@ -37,10 +37,10 @@ namespace Crowy
     public:
         Impl(){
             device = MTL::CreateSystemDefaultDevice();
-            SMOL_ASSERT(device != nullptr, "No GPU Available");
+            CROWY_ASSERT(device != nullptr, "No GPU Available");
 
             commandQueue = device->newCommandQueue();
-            SMOL_ASSERT(commandQueue != nullptr,
+            CROWY_ASSERT(commandQueue != nullptr,
                 "Failed to create command queue"
             );
 
