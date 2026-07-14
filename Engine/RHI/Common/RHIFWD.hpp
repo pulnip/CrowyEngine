@@ -17,6 +17,7 @@ namespace Crowy
 
     class CommandListPool;
     class FramePacer;
+    class UploadRing;
 
     using RHIDeviceRAII = RAII<RHIDevice>;
     using RHIBufferRAII = RAII<RHIBuffer>;

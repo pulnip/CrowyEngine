@@ -29,6 +29,7 @@ namespace Crowy
         virtual RHIPixelFormat GetFormat() const noexcept = 0;
         virtual u32 GetWidth() const noexcept = 0;
         virtual u32 GetHeight() const noexcept = 0;
+        virtual u16 GetMipLevels() const noexcept = 0;
         // Shader Resource
         virtual u64 GetReadableID() = 0;
         // Unordered Access

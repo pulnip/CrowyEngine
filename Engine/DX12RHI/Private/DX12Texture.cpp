@@ -157,6 +157,10 @@ namespace Crowy
         const auto desc = texture->GetDesc();
         return desc.Height;
     }
+    u16 DX12Texture::GetMipLevels() const noexcept{
+        const auto desc = texture->GetDesc();
+        return desc.MipLevels;
+    }
 
     UINT DX12Texture::GetOrCreateSRV(const RHITextureViewDesc& desc){
         if(auto it = srvs.find(desc); it != srvs.end())

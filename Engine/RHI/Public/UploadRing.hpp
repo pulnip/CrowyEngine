@@ -6,8 +6,6 @@
 
 namespace Crowy
 {
-    class DX12Device;
-
     class UploadRing{
     public:
         struct Allocation{

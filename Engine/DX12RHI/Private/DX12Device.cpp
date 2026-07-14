@@ -16,9 +16,7 @@
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
-#include "PtrUtil.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
+#include "RHIUtil.hpp"
 #include "RHIShader.hpp"
 #include "UploadRing.hpp"
 
@@ -315,109 +313,6 @@ namespace{
     }
 }
 
-namespace{
-    void uploadGpuOnlyBuffer(
-        Crowy::RHICommandList& cmdList,
-        Crowy::UploadRing& ring,
-        Crowy::RHIBuffer& buffer,
-        const Crowy::RHISubresourceData& sub
-    ){
-        using namespace Crowy;
-
-        const auto totalBytes = buffer.GetSize();
-
-        // Allocate Staging buffer
-        auto alloc = ring.Allocate(
-            totalBytes,
-            D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT
-        );
-
-        // Copy from CPU to Staging buffer
-        alloc.buffer.Upload(sub, sub.rowPitch);
-
-        // UNDEFINED to COPY_DST
-        cmdList.TransitionBarrier(
-            buffer,
-            RHIResourceUsage::CopyDst
-        );
-
-        cmdList.Copy(
-            alloc.buffer,
-            buffer,
-            0,
-            0,
-            sub.rowPitch
-        );
-
-        // TODO.
-        // COPY_DST to SHADER_RESOURCE
-        cmdList.TransitionBarrier(
-            buffer,
-            RHIResourceUsage::AnyRead
-        );
-    }
-
-    void uploadTexture(
-        Crowy::RHICommandList& cmdList,
-        Crowy::UploadRing& ring,
-        Crowy::DX12Texture& texture,
-        std::span<const Crowy::RHISubresourceData> subs,
-        std::span<const Crowy::RHISubresourceLayout> layouts,
-        const UINT64 totalBytes
-    ){
-        using namespace Crowy;
-
-        const usize n = subs.size();
-
-        // Allocate Staging buffer
-        auto alloc = ring.Allocate(
-            totalBytes,
-            D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT
-        );
-
-        // Copy from CPU to Staging buffer (with convert pitch & packing)
-        for(usize s=0; s<n; ++s){
-            const auto& layout = layouts[s];
-            // subs[s].rowPitch == RowPitch
-            // so, copy whole slice
-            for(u32 r=0; r<layout.rowCount; ++r){
-                alloc.buffer.Upload(
-                    ptrAdd(subs[s].data,
-                        subs[s].rowPitch * r
-                    ),
-                    layout.rowSize,
-                    alloc.offset + layout.offset + layout.rowPitch * r
-                );
-            }
-        }
-
-        const auto mipLevels = texture.Get()->GetDesc().MipLevels;
-
-        // UNDEFINED to COPY_DST
-        cmdList.TransitionBarrier(
-            texture,
-            RHIResourceUsage::CopyDst
-        );
-
-        for(usize s=0; s<n; ++s){
-            cmdList.Copy(
-                alloc.buffer,
-                alloc.offset + layouts[s].offset,
-                layouts[s].rowPitch,
-                texture,
-                s % mipLevels,
-                s / mipLevels
-            );
-        }
-
-        // COPY_DST to SHADER_RESOURCE
-        cmdList.TransitionBarrier(
-            texture,
-            RHIResourceUsage::AnyRead
-        );
-    }
-}
-
 namespace Crowy
 {
     RHIDeviceRAII CreateDX12Device(){
@@ -522,11 +417,11 @@ namespace Crowy
                         uploadCmdList->Begin();
                         uploadRecorded = true;
                     }
-                    ::uploadGpuOnlyBuffer(
+                    UploadGpuOnlyBuffer(
                         *uploadCmdList,
                         uploadRing,
+                        D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
                         *buffer,
-
                         RHISubresourceData{
                             .data = desc.initialData,
                             .rowPitch = desc.size
@@ -577,9 +472,10 @@ namespace Crowy
                         .rowPitch = desc.width * getBytesPerPixel(desc.format)
                     }
                 };
-                ::uploadTexture(
+                UploadTexture(
                     *uploadCmdList,
                     uploadRing,
+                    D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
                     *texture,
                     subs,
                     layouts,
