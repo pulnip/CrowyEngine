@@ -35,7 +35,7 @@ namespace{
                 .slotCount = 1,
                 .persistentMap = false,
                 .syncState = RHIBarrierSync::None,
-                .accessState = RHIBarrierAccess::Common
+                .accessState = RHIBarrierAccess::NoAccess
             };
         case CPUWrite:
             return BufferPolicy{
@@ -217,7 +217,7 @@ namespace Crowy
         return frameResource.buffer->GetGPUVirtualAddress();
     }
 
-    UINT DX12Buffer::GetOrCreateSRV(const RHIBufferViewDesc& desc){
+    u64 DX12Buffer::GetReadableID(const RHIBufferViewDesc& desc){
         auto& frameResource = resources[currentIndex()];
         auto& srvs = frameResource.srvs;
         if(auto it = srvs.find(desc); it != srvs.end())
@@ -254,7 +254,7 @@ namespace Crowy
         return idx;
     }
 
-    UINT DX12Buffer::GetOrCreateUAV(const RHIBufferViewDesc& desc){
+    u64 DX12Buffer::GetWritableID(const RHIBufferViewDesc& desc){
         auto& frameResource = resources[currentIndex()];
         auto& uavs = frameResource.uavs;
         if(auto it = uavs.find(desc); it != uavs.end())

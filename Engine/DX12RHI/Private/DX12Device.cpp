@@ -415,6 +415,7 @@ namespace Crowy
                 case GPUOnly:
                     if(!uploadRecorded){
                         uploadCmdList->Begin();
+                        uploadCmdList->BeginBlit();
                         uploadRecorded = true;
                     }
                     UploadGpuOnlyBuffer(

@@ -165,7 +165,7 @@ namespace Crowy
         template<typename T>
             requires (!std::is_pointer_v<T>)
         void SetPushComputeConstants(const T& t){
-            setPushComputeConstants(&t, sizeof(T));
+            SetPushComputeConstants(&t, sizeof(T));
         }
 
         virtual void SetComputeConstantBuffer(

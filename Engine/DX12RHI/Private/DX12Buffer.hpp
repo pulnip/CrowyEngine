@@ -97,29 +97,8 @@ namespace Crowy
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress();
 
-        UINT GetOrCreateSRV(const RHIBufferViewDesc&);
-        UINT GetOrCreateUAV(const RHIBufferViewDesc&);
-
-        UINT GetOrCreateSRV(){
-            return GetOrCreateSRV(RHIBufferViewDesc{
-                .offset = 0,
-                .size = GetSize(),
-                .config = RHIBufferViewDesc::RawConfig{}
-            });
-        }
-        u64 GetReadableID() RHI_OVERRIDE{
-            return GetOrCreateSRV();
-        }
-        UINT GetOrCreateUAV(){
-            return GetOrCreateUAV(RHIBufferViewDesc{
-                .offset = 0,
-                .size = GetSize(),
-                .config = RHIBufferViewDesc::RawConfig{}
-            });
-        }
-        u64 GetWritableID() RHI_OVERRIDE{
-            return GetOrCreateUAV();
-        }
+        u64 GetReadableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
+        u64 GetWritableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
 
     private:
         u32 currentIndex() const noexcept{

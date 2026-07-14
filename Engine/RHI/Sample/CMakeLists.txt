@@ -54,3 +54,8 @@ SOURCES
 DEPENDS
     Crowy::Serialization
 )
+
+crowy_rhi_sample(HelloCompute
+SOURCES
+    helloCompute.cpp
+)

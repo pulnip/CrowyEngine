@@ -23,7 +23,11 @@ namespace Crowy
         );
 
         // Copy from CPU to Staging buffer
-        alloc.buffer.Upload(sub, sub.rowPitch);
+        alloc.buffer.Upload(
+            sub.data,
+            sub.rowPitch,
+            alloc.offset
+        );
 
         // UNDEFINED to COPY_DST
         cmdList.TransitionBarrier(
@@ -34,7 +38,7 @@ namespace Crowy
         cmdList.Copy(
             alloc.buffer,
             buffer,
-            0,
+            alloc.offset,
             0,
             sub.rowPitch
         );

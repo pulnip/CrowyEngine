@@ -38,9 +38,59 @@ namespace Crowy
 
         virtual u32 GetSize() const noexcept = 0;
         // Shader Resource
-        virtual u64 GetReadableID() = 0;
+        virtual u64 GetReadableID(const RHIBufferViewDesc&) = 0;
+        u64 GetReadableID(){
+            return GetReadableID(RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = RHIBufferViewDesc::RawConfig{}
+            });
+        }
+        u64 GetReadableID(RHIPixelFormat format){
+            return GetReadableID(RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = RHIBufferViewDesc::TypedConfig{
+                    .format = format
+                }
+            });
+        }
+        u64 GetReadableID(u32 stride){
+            return GetReadableID(RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = RHIBufferViewDesc::StructuredConfig{
+                    .stride = stride
+                }
+            });
+        }
         // Unordered Access
-        virtual u64 GetWritableID() = 0;
+        virtual u64 GetWritableID(const RHIBufferViewDesc&) = 0;
+        u64 GetWritableID(){
+            return GetWritableID(RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = RHIBufferViewDesc::RawConfig{}
+            });
+        }
+        u64 GetWritableID(RHIPixelFormat format){
+            return GetWritableID(RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = RHIBufferViewDesc::TypedConfig{
+                    .format = format
+                }
+            });
+        }
+        u64 GetWritableID(u32 stride){
+            return GetWritableID(RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = RHIBufferViewDesc::StructuredConfig{
+                    .stride = stride
+                }
+            });
+        }
 
         virtual RHIBarrierSync GetSyncState() const = 0;
         virtual RHIBarrierSync TransitionState(RHIBarrierSync newState) = 0;
