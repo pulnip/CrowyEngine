@@ -1,48 +1,45 @@
 include(FetchContent)
 
-find_package(SDL3 QUIET)
-if(NOT SDL3_FOUND)
-    FetchContent_Declare(
-        SDL3
-        GIT_REPOSITORY "https://github.com/libsdl-org/SDL.git"
-        GIT_TAG "release-3.2.30"
-        GIT_SHALLOW TRUE
-        GIT_PROGRESS TRUE
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY "https://github.com/libsdl-org/SDL.git"
+    GIT_TAG "release-3.2.30"
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+)
+# Library Type
+set(SDL_SHARED ON  CACHE BOOL "" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+# Feature
+set(SDL_AUDIO    OFF CACHE BOOL "" FORCE)
+set(SDL_VIDEO    ON  CACHE BOOL "" FORCE)
+set(SDL_GPU      OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGL   OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+set(SDL_VULKAN   OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER   OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA   OFF CACHE BOOL "" FORCE)
+set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+set(SDL_HAPTIC   OFF CACHE BOOL "" FORCE)
+set(SDL_HIDAPI   OFF CACHE BOOL "" FORCE)
+set(SDL_POWER    OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR   OFF CACHE BOOL "" FORCE)
+set(SDL_DIALOG   OFF CACHE BOOL "" FORCE)
+# Test Build
+set(SDL_TESTS         OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY  OFF CACHE BOOL "" FORCE)
+# Install
+set(SDL_INSTALL       OFF CACHE BOOL "" FORCE)
+set(SDL_DISABLE_INSTALL_DOCS ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SDL3)
+if(TARGET SDL3-shared)
+    target_compile_options(SDL3-shared PRIVATE
+        $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
     )
-    # Library Type
-    set(SDL_SHARED ON  CACHE BOOL "" FORCE)
-    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
-    # Feature
-    set(SDL_AUDIO    OFF CACHE BOOL "" FORCE)
-    set(SDL_VIDEO    ON  CACHE BOOL "" FORCE)
-    set(SDL_GPU      OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGL   OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
-    set(SDL_VULKAN   OFF CACHE BOOL "" FORCE)
-    set(SDL_RENDER   OFF CACHE BOOL "" FORCE)
-    set(SDL_CAMERA   OFF CACHE BOOL "" FORCE)
-    set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
-    set(SDL_HAPTIC   OFF CACHE BOOL "" FORCE)
-    set(SDL_HIDAPI   OFF CACHE BOOL "" FORCE)
-    set(SDL_POWER    OFF CACHE BOOL "" FORCE)
-    set(SDL_SENSOR   OFF CACHE BOOL "" FORCE)
-    set(SDL_DIALOG   OFF CACHE BOOL "" FORCE)
-    # Test Build
-    set(SDL_TESTS         OFF CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY  OFF CACHE BOOL "" FORCE)
-    # Install
-    set(SDL_INSTALL       OFF CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_INSTALL_DOCS ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(SDL3)
-    if(TARGET SDL3-shared)
-        target_compile_options(SDL3-shared PRIVATE
-            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-        )
-    elseif(TARGET SDL3-static)
-        target_compile_options(SDL3-static PRIVATE
-            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-        )
-    endif()
+elseif(TARGET SDL3-static)
+    target_compile_options(SDL3-static PRIVATE
+        $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
+    )
 endif()
 
 # stb - header-only image loading library
@@ -179,8 +176,7 @@ set(KTX_FEATURE_PY        OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_VK_UPLOAD OFF CACHE BOOL "" FORCE) # DX12 / Metal
 set(KTX_FEATURE_GL_UPLOAD OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_KTX1       ON CACHE BOOL "" FORCE)
-set(KTX_FEATURE_LOADTEST_APPS "" CACHE STRING "" FORCE)
-set(BUILD_SHARED_LIBS     OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_LOADTEST_APPS OFF CACHE STRING "" FORCE)
 FetchContent_Declare(ktx
     GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
     GIT_TAG        "v4.4.2"
@@ -190,21 +186,18 @@ FetchContent_Declare(ktx
 FetchContent_MakeAvailable(ktx)
 
 if(CROWY_ENABLE_TEST)
-    find_package(GTest QUIET)
-    if(NOT GTest_FOUND)
-        FetchContent_Declare(
-            GTest
-            GIT_REPOSITORY "https://github.com/google/googletest.git"
-            GIT_TAG "v1.17.0"
-            GIT_SHALLOW TRUE
-            GIT_PROGRESS TRUE
-        )
-        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-        set(GTEST_HAS_ABSL OFF CACHE BOOL "" FORCE)
-        add_compile_options(
-            $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-character-conversion>
-        )
-        FetchContent_MakeAvailable(GTest)
-    endif()
+    FetchContent_Declare(
+        GTest
+        GIT_REPOSITORY "https://github.com/google/googletest.git"
+        GIT_TAG "v1.17.0"
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+    )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(GTEST_HAS_ABSL OFF CACHE BOOL "" FORCE)
+    add_compile_options(
+        $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-character-conversion>
+    )
+    FetchContent_MakeAvailable(GTest)
 endif()
