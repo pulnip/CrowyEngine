@@ -8,8 +8,10 @@ PRIVATE
 target_link_libraries(CrowySerialization
 PUBLIC
     Crowy::Core
+    Crowy::RHI
 PRIVATE
     stb
+    ktx
     tomlplusplus::tomlplusplus
     Crowy::Log
 )

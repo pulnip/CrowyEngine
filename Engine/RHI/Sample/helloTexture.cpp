@@ -44,19 +44,15 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            auto image = loadImage("Content/Assets/3crates/crate1/crate1_diffuse.png");
-            std::array subs = {
-                RHISubresourceData{
-                    .data = image.GetBufferPointer(),
-                    .rowPitch = GetRowPitch(RHIPixelFormat::RGBA8_UNORM, image.GetWidth())
-                }
-            };
+            auto image = LoadImage("Content/Assets/3crates/crate1/crate1_diffuse.ktx2");
 
             texture = device.CreateTexture(RHITextureCreateDesc{
-                .width = image.GetWidth(), .height = image.GetHeight(),
-                .format = RHIPixelFormat::RGBA8_UNORM,
+                .width = image.width, .height = image.height,
+                .mipLevels = image.mipLevels,
+                .arraySize = image.arraySize,
+                .format = image.format,
                 .usage = RHITextureUsage::ShaderResource,
-                .initialData = subs
+                .initialData = image.subs
             });
         }
 

@@ -5,21 +5,20 @@
 #include "ImageLoader.hpp"
 
 int main(void){
+    using namespace Crowy;
+
     std::print("Image File to Load: ");
 
     std::string str;
     std::getline(std::cin, str);
 
-    auto image = Crowy::loadImage(str);
-    const auto width = image.GetWidth();
-    const auto height = image.GetHeight();
-    const auto channels = image.GetChannels();
-    const auto size = image.GetBufferSize();
+    auto image = LoadImage(str);
+    const auto width = image.width;
+    const auto height = image.height;
+    const auto channels = GetBytesPerBlock(image.format);
 
     std::println(
-        "Load Result: width={}, height={}, channels={}\n"
-        "size={}, same with w*h*c={}",
-        width, height, channels,
-        size, size == width * height * channels
+        "Load Result: width={}, height={}, channels={}",
+        width, height, channels
     );
 }

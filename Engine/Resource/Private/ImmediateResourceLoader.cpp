@@ -19,20 +19,16 @@ namespace Crowy
         ResourceManager<SpriteResource>& resourceManager
     ){
         auto imagePath = root / request.path;
-        auto image = loadImage(imagePath);
-        std::array subs = {
-            RHISubresourceData{
-                .data = image.GetBufferPointer(),
-                .rowPitch = GetRowPitch(RHIPixelFormat::RGBA8_UNORM, image.GetWidth())
-            }
-        };
+        auto image = LoadImage(imagePath);
 
         auto texture = device.CreateTexture(
             RHITextureCreateDesc{
-                .width = image.GetWidth(), .height = image.GetHeight(),
-                .format = RHIPixelFormat::RGBA8_UNORM,
+                .width = image.width, .height = image.height,
+                .mipLevels = image.mipLevels,
+                .arraySize = image.arraySize,
+                .format = image.format,
                 .usage = RHITextureUsage::ShaderRead,
-                .initialData = subs
+                .initialData = image.subs
             }
         );
 
