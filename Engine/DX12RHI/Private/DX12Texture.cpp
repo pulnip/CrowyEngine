@@ -7,6 +7,24 @@
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
 
+namespace{
+    Crowy::RHIPixelFormat toSrgb(Crowy::RHIPixelFormat format){
+        using enum Crowy::RHIPixelFormat;
+
+
+        switch(format){
+        case RGBA8_UNORM: return RGBA8_UNORM_SRGB;
+        case BGRA8_UNORM: return BGRA8_UNORM_SRGB;
+        case BC1_UNORM:   return BC1_UNORM_SRGB;
+        case BC2_UNORM:   return BC2_UNORM_SRGB;
+        case BC3_UNORM:   return BC3_UNORM_SRGB;
+        case BC7_UNORM:   return BC7_UNORM_SRGB;
+        default:
+            std::unreachable();
+        }
+    }
+}
+
 namespace Crowy
 {
     DX12Texture::DX12Texture(
@@ -122,6 +140,24 @@ namespace Crowy
             bufferIndex,
             IID_PPV_ARGS(texture.GetAddressOf())
         ), "Failed to Get Buffer from Swapchain");
+
+        const D3D12_RENDER_TARGET_VIEW_DESC dxDesc{
+            .Format = convert(toSrgb(GetFormat())),
+            .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+            .Texture2D = D3D12_TEX2D_RTV{
+                .MipSlice = 0,
+                .PlaneSlice = 0
+            }
+        };
+
+        auto idx = rtvHeap.Allocate(
+            *texture.Get(),
+            dxDesc
+        );
+        // match non-srgb to srgb
+        auto [it, ret] = rtvs.emplace(RHITextureViewDesc{
+            .format = GetFormat()
+        }, idx);
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         if(!name.empty()){

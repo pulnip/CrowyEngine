@@ -77,6 +77,21 @@ namespace Crowy
         case D32_FLOAT_S8_UINT: return isDepthTarget ?
             (isShaderResource ? DXGI_FORMAT_R32G8X24_TYPELESS : DXGI_FORMAT_D32_FLOAT_S8X24_UINT) :
             DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                // Block-compressed formats
+        case BC1_UNORM:         return DXGI_FORMAT_BC1_UNORM;
+        case BC1_UNORM_SRGB:    return DXGI_FORMAT_BC1_UNORM_SRGB;
+        case BC2_UNORM:         return DXGI_FORMAT_BC2_UNORM;
+        case BC2_UNORM_SRGB:    return DXGI_FORMAT_BC2_UNORM_SRGB;
+        case BC3_UNORM:         return DXGI_FORMAT_BC3_UNORM;
+        case BC3_UNORM_SRGB:    return DXGI_FORMAT_BC3_UNORM_SRGB;
+        case BC4_UNORM:         return DXGI_FORMAT_BC4_UNORM;
+        case BC4_SNORM:         return DXGI_FORMAT_BC4_SNORM;
+        case BC5_UNORM:         return DXGI_FORMAT_BC5_UNORM;
+        case BC5_SNORM:         return DXGI_FORMAT_BC5_SNORM;
+        case BC6H_UF16:         return DXGI_FORMAT_BC6H_UF16;
+        case BC6H_SF16:         return DXGI_FORMAT_BC6H_SF16;
+        case BC7_UNORM:         return DXGI_FORMAT_BC7_UNORM;
+        case BC7_UNORM_SRGB:    return DXGI_FORMAT_BC7_UNORM_SRGB;
         default:
             std::unreachable();
         }
