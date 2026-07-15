@@ -1,6 +1,7 @@
 #include "RHIUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHITexture.hpp"
 #include "PtrUtil.hpp"
 #include "UploadRing.hpp"
@@ -110,5 +111,20 @@ namespace Crowy
             texture,
             RHIResourceUsage::AnyRead
         );
+    }
+
+    RHIPixelFormat toSrgb(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case RGBA8_UNORM: return RGBA8_UNORM_SRGB;
+        case BGRA8_UNORM: return BGRA8_UNORM_SRGB;
+        case BC1_UNORM:   return BC1_UNORM_SRGB;
+        case BC2_UNORM:   return BC2_UNORM_SRGB;
+        case BC3_UNORM:   return BC3_UNORM_SRGB;
+        case BC7_UNORM:   return BC7_UNORM_SRGB;
+        default:
+            std::unreachable();
+        }
     }
 }

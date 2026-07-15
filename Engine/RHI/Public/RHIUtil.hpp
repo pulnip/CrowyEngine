@@ -23,4 +23,6 @@ namespace Crowy
         std::span<const RHISubresourceLayout> layouts,
         const u64 totalBytes
     );
+
+    RHIPixelFormat toSrgb(RHIPixelFormat format);
 }

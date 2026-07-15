@@ -1,5 +1,6 @@
 #include "ImageLoader.hpp"
 #include "Primitives.hpp"
+#include "RHIUtil.hpp"
 #include "AppFramework.hpp"
 
 namespace Crowy
@@ -39,7 +40,7 @@ namespace Crowy
                     }
                 },
                 .renderTargetFormats = {
-                    RHIPixelFormat::RGBA8_UNORM
+                    toSrgb(swapchain->GetFormat())
                 },
                 .renderTargetCount = 1
             });
