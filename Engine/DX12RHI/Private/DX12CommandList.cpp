@@ -79,7 +79,7 @@ namespace{
             .Type = convert(desc.loadAction),
             .Clear = {
                 .ClearValue = {
-                    .Format = convert(tex->GetFormat(), false, true),
+                    .Format = convert(tex->GetFormat()),
                     .DepthStencil = {
                         .Depth = desc.clearDepthStencil.depth,
                         .Stencil = desc.clearDepthStencil.stencil

@@ -4,6 +4,26 @@
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 
+namespace{
+    DXGI_FORMAT toPhysicalFormat(Crowy::RHIPixelFormat format){
+        using namespace Crowy;
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case RGBA8_UNORM_SRGB:
+            format = RGBA8_UNORM;
+            break;
+        case BGRA8_UNORM_SRGB:
+            format = BGRA8_UNORM;
+            break;
+        default:
+            break;
+        }
+
+        return convert(format);
+    }
+}
+
 namespace Crowy
 {
     DX12Swapchain::DX12Swapchain(
@@ -15,7 +35,8 @@ namespace Crowy
         DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
-        : vsync(desc.vsync)
+        : RHISwapchain(desc.bufferDesc.format)
+        , vsync(desc.vsync)
         , allowTearing(desc.allowTearing)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
@@ -31,7 +52,7 @@ namespace Crowy
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {
             .Width = desc.bufferDesc.width,
             .Height = desc.bufferDesc.height,
-            .Format = convert(desc.bufferDesc.format),
+            .Format = toPhysicalFormat(GetFormat()),
             .Stereo = FALSE,
             // No MSAA for swapchain
             .SampleDesc = {1, 0},
@@ -83,6 +104,7 @@ namespace Crowy
         for(u32 i=0; i<bufferCount; ++i){
             backBuffers.push_back(std::make_unique<DX12Texture>(
                 *swapchain.Get(),
+                GetFormat(),
                 i,
                 cbvsrvuavHeap,
                 rtvHeap,
@@ -114,13 +136,6 @@ namespace Crowy
 
         // recreate back buffer resource
         createBackBuffers(desc.BufferCount);
-    }
-
-    RHIPixelFormat DX12Swapchain::GetFormat() const noexcept{
-        DXGI_SWAP_CHAIN_DESC1 desc;
-        swapchain->GetDesc1(&desc);
-
-        return convert(desc.Format);
     }
 
     u32 DX12Swapchain::GetWidth() const noexcept{

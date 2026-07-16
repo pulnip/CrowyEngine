@@ -36,7 +36,6 @@ namespace Crowy
 
         void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
 
-        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE;
         u32 GetWidth() const noexcept RHI_OVERRIDE;
         u32 GetHeight() const noexcept RHI_OVERRIDE;
 

@@ -4,7 +4,7 @@
 
 namespace Crowy
 {
-    DXGI_FORMAT convert(RHIPixelFormat format, bool isShaderResource, bool isDepthTarget){
+    DXGI_FORMAT convert(RHIPixelFormat format){
         using enum RHIPixelFormat;
 
         switch(format){
@@ -65,19 +65,12 @@ namespace Crowy
         case RGBA32_FLOAT:      return DXGI_FORMAT_R32G32B32A32_FLOAT;
 
         // Depth/stencil formats
-        case D16_UNORM:         return isDepthTarget ?
-            (isShaderResource ? DXGI_FORMAT_R16_TYPELESS : DXGI_FORMAT_D16_UNORM) :
-            DXGI_FORMAT_R16_UNORM;
-        case D24_UNORM_S8_UINT: return isDepthTarget ?
-            (isShaderResource ? DXGI_FORMAT_R24G8_TYPELESS : DXGI_FORMAT_D24_UNORM_S8_UINT) :
-            DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-        case D32_FLOAT:         return isDepthTarget ?
-            (isShaderResource ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_D32_FLOAT) :
-            DXGI_FORMAT_R32_FLOAT;
-        case D32_FLOAT_S8_UINT: return isDepthTarget ?
-            (isShaderResource ? DXGI_FORMAT_R32G8X24_TYPELESS : DXGI_FORMAT_D32_FLOAT_S8X24_UINT) :
-            DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
-                // Block-compressed formats
+        case D16_UNORM:         return DXGI_FORMAT_D16_UNORM;
+        case D24_UNORM_S8_UINT: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+        case D32_FLOAT:         return DXGI_FORMAT_D32_FLOAT;
+        case D32_FLOAT_S8_UINT: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+
+        // Block-compressed formats
         case BC1_UNORM:         return DXGI_FORMAT_BC1_UNORM;
         case BC1_UNORM_SRGB:    return DXGI_FORMAT_BC1_UNORM_SRGB;
         case BC2_UNORM:         return DXGI_FORMAT_BC2_UNORM;
@@ -94,6 +87,92 @@ namespace Crowy
         case BC7_UNORM_SRGB:    return DXGI_FORMAT_BC7_UNORM_SRGB;
         default:
             std::unreachable();
+        }
+    }
+
+    RHIPixelFormat convert(DXGI_FORMAT format){
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case DXGI_FORMAT_UNKNOWN:              return Unknown;
+        // 8-bit formats
+        case DXGI_FORMAT_R8_UNORM:             return R8_UNORM;
+        case DXGI_FORMAT_R8_SNORM:             return R8_SNORM;
+        case DXGI_FORMAT_R8_UINT:              return R8_UINT;
+        case DXGI_FORMAT_R8_SINT:              return R8_SINT;
+        // 16-bit formats
+        case DXGI_FORMAT_R16_UNORM:            return R16_UNORM;
+        case DXGI_FORMAT_R16_SNORM:            return R16_SNORM;
+        case DXGI_FORMAT_R16_UINT:             return R16_UINT;
+        case DXGI_FORMAT_R16_SINT:             return R16_SINT;
+        case DXGI_FORMAT_R16_FLOAT:            return R16_FLOAT;
+
+        case DXGI_FORMAT_R8G8_UNORM:           return RG8_UNORM;
+        case DXGI_FORMAT_R8G8_SNORM:           return RG8_SNORM;
+        case DXGI_FORMAT_R8G8_UINT:            return RG8_UINT;
+        case DXGI_FORMAT_R8G8_SINT:            return RG8_SINT;
+        // 32-bit formats
+        case DXGI_FORMAT_R32_UINT:             return R32_UINT;
+        case DXGI_FORMAT_R32_SINT:             return R32_SINT;
+        case DXGI_FORMAT_R32_FLOAT:            return R32_FLOAT;
+
+        case DXGI_FORMAT_R16G16_UNORM:         return RG16_UNORM;
+        case DXGI_FORMAT_R16G16_SNORM:         return RG16_SNORM;
+        case DXGI_FORMAT_R16G16_UINT:          return RG16_UINT;
+        case DXGI_FORMAT_R16G16_SINT:          return RG16_SINT;
+        case DXGI_FORMAT_R16G16_FLOAT:         return RG16_FLOAT;
+
+        case DXGI_FORMAT_R8G8B8A8_UNORM:       return RGBA8_UNORM;
+        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:  return RGBA8_UNORM_SRGB;
+        case DXGI_FORMAT_R8G8B8A8_SNORM:       return RGBA8_SNORM;
+        case DXGI_FORMAT_R8G8B8A8_UINT:        return RGBA8_UINT;
+        case DXGI_FORMAT_R8G8B8A8_SINT:        return RGBA8_SINT;
+
+        case DXGI_FORMAT_B8G8R8A8_UNORM:       return BGRA8_UNORM;
+        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:  return BGRA8_UNORM_SRGB;
+
+        // 64-bit formats
+        case DXGI_FORMAT_R32G32_UINT:          return RG32_UINT;
+        case DXGI_FORMAT_R32G32_SINT:          return RG32_SINT;
+        case DXGI_FORMAT_R32G32_FLOAT:         return RG32_FLOAT;
+
+        // 96-bit formats
+        case DXGI_FORMAT_R32G32B32_FLOAT:      return RGB32_FLOAT;
+
+        case DXGI_FORMAT_R16G16B16A16_UNORM:   return RGBA16_UNORM;
+        case DXGI_FORMAT_R16G16B16A16_SNORM:   return RGBA16_SNORM;
+        case DXGI_FORMAT_R16G16B16A16_UINT:    return RGBA16_UINT;
+        case DXGI_FORMAT_R16G16B16A16_SINT:    return RGBA16_SINT;
+        case DXGI_FORMAT_R16G16B16A16_FLOAT:   return RGBA16_FLOAT;
+
+        // 128-bit formats
+        case DXGI_FORMAT_R32G32B32A32_UINT:    return RGBA32_UINT;
+        case DXGI_FORMAT_R32G32B32A32_SINT:    return RGBA32_SINT;
+        case DXGI_FORMAT_R32G32B32A32_FLOAT:   return RGBA32_FLOAT;
+
+        // Depth/stencil formats
+        case DXGI_FORMAT_D16_UNORM:            return D16_UNORM;
+        case DXGI_FORMAT_D24_UNORM_S8_UINT:    return D24_UNORM_S8_UINT;
+        case DXGI_FORMAT_D32_FLOAT:            return D32_FLOAT;
+        case DXGI_FORMAT_D32_FLOAT_S8X24_UINT: return D32_FLOAT_S8_UINT;
+
+        // Block-compressed formats
+        case DXGI_FORMAT_BC1_UNORM:         return BC1_UNORM;
+        case DXGI_FORMAT_BC1_UNORM_SRGB:    return BC1_UNORM_SRGB;
+        case DXGI_FORMAT_BC2_UNORM:         return BC2_UNORM;
+        case DXGI_FORMAT_BC2_UNORM_SRGB:    return BC2_UNORM_SRGB;
+        case DXGI_FORMAT_BC3_UNORM:         return BC3_UNORM;
+        case DXGI_FORMAT_BC3_UNORM_SRGB:    return BC3_UNORM_SRGB;
+        case DXGI_FORMAT_BC4_UNORM:         return BC4_UNORM;
+        case DXGI_FORMAT_BC4_SNORM:         return BC4_SNORM;
+        case DXGI_FORMAT_BC5_UNORM:         return BC5_UNORM;
+        case DXGI_FORMAT_BC5_SNORM:         return BC5_SNORM;
+        case DXGI_FORMAT_BC6H_UF16:         return BC6H_UF16;
+        case DXGI_FORMAT_BC6H_SF16:         return BC6H_SF16;
+        case DXGI_FORMAT_BC7_UNORM:         return BC7_UNORM;
+        case DXGI_FORMAT_BC7_UNORM_SRGB:    return BC7_UNORM_SRGB;
+        default:
+            return Unknown;
         }
     }
 
@@ -183,76 +262,6 @@ namespace Crowy
         case ShadingRateSource: return D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
         default:
             std::unreachable();
-        }
-    }
-
-    RHIPixelFormat convert(DXGI_FORMAT format){
-        using enum RHIPixelFormat;
-
-        switch(format){
-        case DXGI_FORMAT_UNKNOWN:              return Unknown;
-        // 8-bit formats
-        case DXGI_FORMAT_R8_UNORM:             return R8_UNORM;
-        case DXGI_FORMAT_R8_SNORM:             return R8_SNORM;
-        case DXGI_FORMAT_R8_UINT:              return R8_UINT;
-        case DXGI_FORMAT_R8_SINT:              return R8_SINT;
-        // 16-bit formats
-        case DXGI_FORMAT_R16_UNORM:            return R16_UNORM;
-        case DXGI_FORMAT_R16_SNORM:            return R16_SNORM;
-        case DXGI_FORMAT_R16_UINT:             return R16_UINT;
-        case DXGI_FORMAT_R16_SINT:             return R16_SINT;
-        case DXGI_FORMAT_R16_FLOAT:            return R16_FLOAT;
-
-        case DXGI_FORMAT_R8G8_UNORM:           return RG8_UNORM;
-        case DXGI_FORMAT_R8G8_SNORM:           return RG8_SNORM;
-        case DXGI_FORMAT_R8G8_UINT:            return RG8_UINT;
-        case DXGI_FORMAT_R8G8_SINT:            return RG8_SINT;
-        // 32-bit formats
-        case DXGI_FORMAT_R32_UINT:             return R32_UINT;
-        case DXGI_FORMAT_R32_SINT:             return R32_SINT;
-        case DXGI_FORMAT_R32_FLOAT:            return R32_FLOAT;
-
-        case DXGI_FORMAT_R16G16_UNORM:         return RG16_UNORM;
-        case DXGI_FORMAT_R16G16_SNORM:         return RG16_SNORM;
-        case DXGI_FORMAT_R16G16_UINT:          return RG16_UINT;
-        case DXGI_FORMAT_R16G16_SINT:          return RG16_SINT;
-        case DXGI_FORMAT_R16G16_FLOAT:         return RG16_FLOAT;
-
-        case DXGI_FORMAT_R8G8B8A8_UNORM:       return RGBA8_UNORM;
-        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:  return RGBA8_UNORM_SRGB;
-        case DXGI_FORMAT_R8G8B8A8_SNORM:       return RGBA8_SNORM;
-        case DXGI_FORMAT_R8G8B8A8_UINT:        return RGBA8_UINT;
-        case DXGI_FORMAT_R8G8B8A8_SINT:        return RGBA8_SINT;
-
-        case DXGI_FORMAT_B8G8R8A8_UNORM:       return BGRA8_UNORM;
-        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:  return BGRA8_UNORM_SRGB;
-
-        // 64-bit formats
-        case DXGI_FORMAT_R32G32_UINT:          return RG32_UINT;
-        case DXGI_FORMAT_R32G32_SINT:          return RG32_SINT;
-        case DXGI_FORMAT_R32G32_FLOAT:         return RG32_FLOAT;
-
-        // 96-bit formats
-        case DXGI_FORMAT_R32G32B32_FLOAT:      return RGB32_FLOAT;
-
-        case DXGI_FORMAT_R16G16B16A16_UNORM:   return RGBA16_UNORM;
-        case DXGI_FORMAT_R16G16B16A16_SNORM:   return RGBA16_SNORM;
-        case DXGI_FORMAT_R16G16B16A16_UINT:    return RGBA16_UINT;
-        case DXGI_FORMAT_R16G16B16A16_SINT:    return RGBA16_SINT;
-        case DXGI_FORMAT_R16G16B16A16_FLOAT:   return RGBA16_FLOAT;
-
-        // 128-bit formats
-        case DXGI_FORMAT_R32G32B32A32_UINT:    return RGBA32_UINT;
-        case DXGI_FORMAT_R32G32B32A32_SINT:    return RGBA32_SINT;
-        case DXGI_FORMAT_R32G32B32A32_FLOAT:   return RGBA32_FLOAT;
-
-        // Depth/stencil formats
-        case DXGI_FORMAT_D16_UNORM:            return D16_UNORM;
-        case DXGI_FORMAT_D24_UNORM_S8_UINT:    return D24_UNORM_S8_UINT;
-        case DXGI_FORMAT_D32_FLOAT:            return D32_FLOAT;
-        case DXGI_FORMAT_D32_FLOAT_S8X24_UINT: return D32_FLOAT_S8_UINT;
-        default:
-            return Unknown;
         }
     }
 

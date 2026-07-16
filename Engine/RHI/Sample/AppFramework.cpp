@@ -21,7 +21,7 @@ namespace Crowy
             .bufferDesc = RHITextureCreateDesc{
                 .width = windowConfig.width,
                 .height = windowConfig.height,
-                .format = RHIPixelFormat::RGBA8_UNORM
+                .format = RHIPixelFormat::RGBA8_UNORM_SRGB
             }
         }))
     {}

@@ -9,24 +9,31 @@ namespace Crowy
     // GPU-only resource
     class RHITexture{
     private:
+        // Requested format; Could be differ from Actual format
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
+
         RHIBarrierSync syncState;
         RHIBarrierAccess accessState;
         RHIBarrierLayout layoutState;
 
     public:
         RHITexture(
+            RHIPixelFormat format,
             RHIBarrierSync syncState,
             RHIBarrierAccess accessState,
             RHIBarrierLayout layoutState
         )
-            : syncState(syncState)
+            : format(format)
+            , syncState(syncState)
             , accessState(accessState)
             , layoutState(layoutState)
         {}
         virtual ~RHITexture() = default;
         CROWY_DECLARE_PINNED(RHITexture)
 
-        virtual RHIPixelFormat GetFormat() const noexcept = 0;
+        RHIPixelFormat GetFormat() const noexcept{
+            return format;
+        }
         virtual u32 GetWidth() const noexcept = 0;
         virtual u32 GetHeight() const noexcept = 0;
         virtual u16 GetMipLevels() const noexcept = 0;

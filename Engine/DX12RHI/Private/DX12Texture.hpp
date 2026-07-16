@@ -32,6 +32,7 @@ namespace Crowy
         );
         DX12Texture(
             Swapchain&,
+            RHIPixelFormat logicalFormat,
             UINT bufferIndex,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,
@@ -41,7 +42,6 @@ namespace Crowy
 
         ~DX12Texture();
 
-        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE;
         u32 GetWidth() const noexcept RHI_OVERRIDE;
         u32 GetHeight() const noexcept RHI_OVERRIDE;
         u16 GetMipLevels() const noexcept RHI_OVERRIDE;

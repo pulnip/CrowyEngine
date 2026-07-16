@@ -11,16 +11,14 @@
 
 namespace Crowy
 {
-    DXGI_FORMAT convert(RHIPixelFormat,
-        bool isShaderResource=true,
-        bool isDepthTarget=false
-    );
+    DXGI_FORMAT convert(RHIPixelFormat);
+    RHIPixelFormat convert(DXGI_FORMAT);
+
     D3D12_COMPARISON_FUNC convert(RHIComparisonFunc);
+
     D3D12_BARRIER_SYNC convert(RHIBarrierSync);
     D3D12_BARRIER_ACCESS convert(RHIBarrierAccess);
     D3D12_BARRIER_LAYOUT convert(RHIBarrierLayout);
-
-    RHIPixelFormat convert(DXGI_FORMAT);
 
     Str HResultToString(HRESULT hr);
 }
