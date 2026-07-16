@@ -114,7 +114,7 @@ namespace Crowy
             nullptr,
             // Relaxed Format Casting
             0, nullptr,
-            IID_PPV_ARGS(texture.GetAddressOf())
+            IID_PPV_ARGS(&texture)
         ), "Failed to create DX12 texture");
 
     #if defined(_DEBUG) || !defined(NDEBUG)
@@ -149,7 +149,7 @@ namespace Crowy
     {
         CHECK_HRESULT(swapchain.GetBuffer(
             bufferIndex,
-            IID_PPV_ARGS(texture.GetAddressOf())
+            IID_PPV_ARGS(&texture)
         ), "Failed to Get Buffer from Swapchain");
 
     #if defined(_DEBUG) || !defined(NDEBUG)

@@ -321,7 +321,7 @@ namespace Crowy
 
         CHECK_HRESULT(device.CreateGraphicsPipelineState(
             &dxDesc,
-            IID_PPV_ARGS(pipeline.GetAddressOf())
+            IID_PPV_ARGS(&pipeline)
         ), "Failed to create graphics pipeline state");
 
     #if defined(_DEBUG) || !defined(NDEBUG)
@@ -368,7 +368,7 @@ namespace Crowy
 
         CHECK_HRESULT(device.CreateComputePipelineState(
             &dxDesc,
-            IID_PPV_ARGS(pipeline.GetAddressOf())
+            IID_PPV_ARGS(&pipeline)
         ), "Failed to create compute pipeline state");
 
     #if defined(_DEBUG) || !defined(NDEBUG)

@@ -124,7 +124,7 @@ namespace Crowy
         for(u32 i = 0; i < RHI_FRAMES_IN_FLIGHT; ++i){
             CHECK_HRESULT(device.CreateCommandAllocator(
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
-                IID_PPV_ARGS(commandAllocators[i].GetAddressOf())
+                IID_PPV_ARGS(&commandAllocators[i])
             ), "Failed to create command allocator");
         }
 
@@ -132,7 +132,7 @@ namespace Crowy
             0,
             D3D12_COMMAND_LIST_TYPE_DIRECT,
             D3D12_COMMAND_LIST_FLAG_NONE,
-            IID_PPV_ARGS(commandList.GetAddressOf())
+            IID_PPV_ARGS(&commandList)
         ), "Failed to create command list");
     }
 

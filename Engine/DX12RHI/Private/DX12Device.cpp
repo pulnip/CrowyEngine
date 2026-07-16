@@ -81,7 +81,7 @@ namespace{
         CHECK_HRESULT(D3D12CreateDevice(
             selectedAdapter.Get(),
             D3D_FEATURE_LEVEL_12_2,
-            IID_PPV_ARGS(device.GetAddressOf())
+            IID_PPV_ARGS(&device)
         ), "Failed to create DX12 device");
 
         return device;
@@ -175,7 +175,7 @@ namespace{
         CommandQueueRAII commandQueue = nullptr;
         CHECK_HRESULT(device.CreateCommandQueue(
             &queueDesc,
-            IID_PPV_ARGS(commandQueue.GetAddressOf())
+            IID_PPV_ARGS(&commandQueue)
         ), "Failed to create command queue");
 
         return commandQueue;
@@ -306,7 +306,7 @@ namespace{
             0,
             blob->GetBufferPointer(),
             blob->GetBufferSize(),
-            IID_PPV_ARGS(rootSignature.GetAddressOf())
+            IID_PPV_ARGS(&rootSignature)
         ), "Failed to create RootSignature");
 
         return rootSignature;
