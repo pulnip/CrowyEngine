@@ -8,9 +8,14 @@ namespace Crowy
         using App::App;
 
         RHIGraphicsPipelineStateRAII pso;
-        RHITextureRAII texture;
+        RHITextureRAII diffuse;
+        RHITextureRAII normal;
+        RHITextureRAII bump;
+
         struct PushConstants{
-            u64 textureID;
+            u64 diffuse;
+            u64 normal;
+            u64 bump;
         };
 
         void OnInit(RHIDevice& device) override{
@@ -44,15 +49,33 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            auto image = LoadImage("Content/Assets/3crates/crate1/crate1_diffuse.ktx2");
+            auto diffuse = LoadImage("Content/Assets/3crates/crate1/crate1_diffuse.ktx2");
+            auto normal = LoadImage("Content/Assets/3crates/crate1/crate1_normal.ktx2");
+            auto bump = LoadImage("Content/Assets/3crates/crate1/crate1_bump.ktx2");
 
-            texture = device.CreateTexture(RHITextureCreateDesc{
-                .width = image.width, .height = image.height,
-                .mipLevels = image.mipLevels,
-                .arraySize = image.arraySize,
-                .format = image.format,
+            this->diffuse = device.CreateTexture(RHITextureCreateDesc{
+                .width = diffuse.width, .height = diffuse.height,
+                .mipLevels = diffuse.mipLevels,
+                .arraySize = diffuse.arraySize,
+                .format = diffuse.format,
                 .usage = RHITextureUsage::ShaderResource,
-                .initialData = image.subs
+                .initialData = diffuse.subs
+            });
+            this->normal = device.CreateTexture(RHITextureCreateDesc{
+                .width = normal.width, .height = normal.height,
+                .mipLevels = normal.mipLevels,
+                .arraySize = normal.arraySize,
+                .format = normal.format,
+                .usage = RHITextureUsage::ShaderResource,
+                .initialData = normal.subs
+            });
+            this->bump = device.CreateTexture(RHITextureCreateDesc{
+                .width = bump.width, .height = bump.height,
+                .mipLevels = bump.mipLevels,
+                .arraySize = bump.arraySize,
+                .format = bump.format,
+                .usage = RHITextureUsage::ShaderResource,
+                .initialData = bump.subs
             });
         }
 
@@ -73,7 +96,9 @@ namespace Crowy
 
             cmdList.SetPipelineState(*pso);
             PushConstants pushConstants{
-                .textureID = texture->GetReadableID(),
+                .diffuse = diffuse->GetReadableID(),
+                .normal = normal->GetReadableID(),
+                .bump = bump->GetReadableID(),
             };
             cmdList.SetPushGraphicsConstants(pushConstants);
             cmdList.Draw(4);
