@@ -10,33 +10,19 @@
 namespace{
     DXGI_FORMAT toPhysicalFormat(
         Crowy::RHIPixelFormat format,
-        bool isShaderResource,
-        bool isDepthTarget
+        bool isShaderResource
     ){
         using namespace Crowy;
         using enum RHIPixelFormat;
 
-        if(!IsDepthFormat(format))
-            return convert(format);
-
-        if(!isDepthTarget){
-            switch(format){
-            case D16_UNORM:         return DXGI_FORMAT_R16_UNORM;
-            case D24_UNORM_S8_UINT: return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-            case D32_FLOAT:         return DXGI_FORMAT_R32_FLOAT;
-            case D32_FLOAT_S8_UINT: return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
-            default:
-                std::unreachable();
-            }
-        }
-        else if(isShaderResource){
+        if(isShaderResource){
             switch(format){
             case D16_UNORM:         return DXGI_FORMAT_R16_TYPELESS;
             case D24_UNORM_S8_UINT: return DXGI_FORMAT_R24G8_TYPELESS;
             case D32_FLOAT:         return DXGI_FORMAT_R32_TYPELESS;
             case D32_FLOAT_S8_UINT: return DXGI_FORMAT_R32G8X24_TYPELESS;
             default:
-                std::unreachable();
+                break;
             }
         }
 
@@ -72,21 +58,24 @@ namespace Crowy
         );
 
         const auto isShaderResource  = hasFlag(desc.usage, ShaderResource);
-        const auto isRenderTarget    = hasFlag(desc.usage, RenderTarget);
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
-        const auto isDepthTarget     = hasFlag(desc.usage, DepthStencil);
+        const auto isRenderTarget    = hasFlag(desc.usage, RenderTarget);
+        const auto isDepthStencil    = hasFlag(desc.usage, DepthStencil);
 
         CROWY_ASSERT(!IsBlockCompressed(desc.format) || isShaderResource,
             "Block-compressed textures are shader-resource only"
         );
+        CROWY_ASSERT(!IsDepthFormat(desc.format) || isDepthStencil,
+            "Depth format should be depth stencil usage"
+        );
 
         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-        if(!isShaderResource) flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
         if(isRenderTarget)    flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        if(isDepthTarget)     flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        if(isDepthStencil)    flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         if(isUnorderedAccess) flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        if(!isShaderResource) flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 
-        const auto dxFormat = toPhysicalFormat(desc.format, isShaderResource, isDepthTarget);
+        const auto dxFormat = toPhysicalFormat(desc.format, isShaderResource);
         const auto texDesc = CD3DX12_RESOURCE_DESC1::Tex2D(
             dxFormat,
             desc.width,
@@ -101,14 +90,14 @@ namespace Crowy
             .Format = dxFormat
         };
         D3D12_CLEAR_VALUE* pClearValue = nullptr;
-        if(isRenderTarget){
+        if(isRenderTarget && !isDepthStencil){
             clearValue.Color[0] = desc.clearColor.x;
             clearValue.Color[1] = desc.clearColor.y;
             clearValue.Color[2] = desc.clearColor.z;
             clearValue.Color[3] = desc.clearColor.w;
             pClearValue = &clearValue;
         }
-        else if(isDepthTarget){
+        else if(!isRenderTarget && isDepthStencil){
             clearValue.DepthStencil.Depth = desc.clearDepthStencil.depth;
             clearValue.DepthStencil.Stencil = desc.clearDepthStencil.stencil;
             pClearValue = &clearValue;
@@ -125,7 +114,7 @@ namespace Crowy
             nullptr,
             // Relaxed Format Casting
             0, nullptr,
-            IID_PPV_ARGS(&texture)
+            IID_PPV_ARGS(texture.GetAddressOf())
         ), "Failed to create DX12 texture");
 
     #if defined(_DEBUG) || !defined(NDEBUG)

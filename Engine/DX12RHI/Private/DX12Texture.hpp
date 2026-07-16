@@ -13,8 +13,8 @@ namespace Crowy
         TextureRAII texture = nullptr;
         // descriptor heap index
         std::unordered_map<RHITextureViewDesc, UINT> srvs;
-        std::unordered_map<RHITextureViewDesc, UINT> rtvs;
         std::unordered_map<RHITextureViewDesc, UINT> uavs;
+        std::unordered_map<RHITextureViewDesc, UINT> rtvs;
         std::unordered_map<RHITextureViewDesc, UINT> dsvs;
 
         DescriptorHeapAllocator& cbvsrvuavHeap;

@@ -266,12 +266,12 @@ namespace Crowy
     enum class RHITextureUsage: u8{
         None              = 0,
         // view capability
-        ShaderResource = 1 << 0,
+        ShaderResource  = 1 << 0,
         ShaderRead      = ShaderResource,
-        RenderTarget    = 1 << 1,
-        DepthStencil    = 1 << 2,
-        UnorderedAccess = 1 << 3,
+        UnorderedAccess = 1 << 1,
         ShaderWrite     = UnorderedAccess,
+        RenderTarget    = 1 << 2,
+        DepthStencil    = 1 << 3,
         // (D3D12) blit pass capability
         CopySrc         = 1 << 4,
         CopyDst         = 1 << 5,
