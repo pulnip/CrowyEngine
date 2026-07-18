@@ -1,7 +1,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
-#include <imgui_impl_sdl3.h>
+// #include <imgui_impl_sdl3.h>
 #include "CommandListPool.hpp"
 #include "FramePacer.hpp"
 #include "MainLoop.hpp"
@@ -9,6 +9,7 @@
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "RHISwapchain.hpp"
+#include "RHITexture.hpp"
 #include "RuntimeConfig.hpp"
 #include "SDLInputProvider.hpp"
 #include "SDLWindow.hpp"
@@ -93,7 +94,7 @@ namespace Crowy
         RHITextureCreateDesc backBufferDesc{
             .width = config.window.width,
             .height = config.window.height,
-            .format = RHIPixelFormat::RGBA8_UNORM
+            .format = RHIPixelFormat::RGBA8_UNORM_SRGB
         };
 
         swapchain = device.CreateSwapchain(RHISwapchainCreateDesc{
@@ -119,8 +120,7 @@ namespace Crowy
     }
 
     void OS::Impl::Run(MainLoop& mainLoop, RHIDevice& device){
-        if(!mainLoop.Initialize())
-            return;
+        mainLoop.OnInit(device);
 
         sysTimer.Reset();
 
@@ -129,6 +129,7 @@ namespace Crowy
 
             if(!ProcessEvents()) [[unlikely]]
                 break;
+            mainLoop.ProcessInput(inputProvider);
 
             if(!mainLoop.Update()) [[unlikely]]
                 break;
@@ -157,7 +158,7 @@ namespace Crowy
 
         SDL_Event event;
         while(SDL_PollEvent(&event)){
-            ImGui_ImplSDL3_ProcessEvent(&event);
+            // ImGui_ImplSDL3_ProcessEvent(&event);
             if(SDL_EVENT_QUIT == event.type) [[unlikely]]{
                 keepRunning = false;
                 break;
@@ -210,6 +211,10 @@ namespace Crowy
         cmdListPool.SubmitFrame();
         swapchain->Present();
         framePacer.EndFrame();
+
+        swapchain->GetCurrentTexture().TransitionState(
+            RHIBarrierAccess::NoAccess
+        );
     }
 
     const InputProvider& OS::GetInputProvider() const noexcept{

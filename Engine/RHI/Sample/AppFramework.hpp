@@ -2,7 +2,8 @@
 
 #include <print>
 #include "CommandListPool.hpp"
-#include "FramePacer.hpp"
+#include "MainLoop.hpp"
+#include "OS.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
@@ -10,44 +11,72 @@
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
 #include "RuntimeConfig.hpp"
-#include "SDLWindow.hpp"
 #include "Timer.hpp"
 
 namespace Crowy
 {
-    class App{
-    protected:
-        RHIDeviceRAII device = CreateDevice();
-        FramePacer framePacer{*device};
-        CommandListPool cmdListPool{*device};
-        SDLWindow window;
-        RHISwapchainRAII swapchain;
+    class App: public MainLoop{
+    private:
         Timer timer;
 
     public:
-        explicit App(const WindowConfig&);
         virtual ~App() = default;
 
-        virtual void OnInit(RHIDevice&) = 0;
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
         virtual void OnRecord(RHICommandList&, const RHIColorAttachment& backBuffer) = 0;
 
-        int Run();
+        bool Update() override final{
+            timer.NewFrame();
 
-    private:
-        bool pumpEvents();
-        void renderFrame();
+            OnUpdate(
+                timer.GetDeltaTime(),
+                timer.GetElapsedTime()
+            );
+            return true;
+        }
+
+        bool Render(CommandListPool& pool, RHISwapchain& swapchain) override{
+            auto& cmdList = pool.Acquire();
+            cmdList.Begin();
+            cmdList.TransitionBarrier(
+                swapchain.GetCurrentTexture(),
+                RHIResourceUsage::RenderTarget
+            );
+            RHIColorAttachment backBuffer{
+                .texture = &swapchain.GetCurrentTexture(),
+                .loadAction = RHILoadAction::Clear,
+                .storeAction = RHIStoreAction::Store,
+                .clearColor = Colors::Black
+            };
+
+            OnRecord(cmdList, backBuffer);
+
+            cmdList.TransitionBarrier(
+                swapchain.GetCurrentTexture(),
+                RHIResourceUsage::Present
+            );
+            cmdList.Close();
+
+            return true;
+        }
     };
 
     RHIViewport FullViewport(const RHITexture&);
     RHIScissorRect FullScissorRect(const RHITexture&);
 
     template<std::derived_from<App> T>
-    int Main(const WindowConfig& config){
-        try{
-            T sample(config);
+    int Main(const WindowConfig& windowConfig){
+        RuntimeConfig runtimeConfig{
+            .window = windowConfig
+        };
 
-            sample.Run();
+        try{
+            auto device = CreateDevice();
+
+            OS os(runtimeConfig, *device);
+            T app;
+
+            os.Run(app, *device);
         }
         catch(const std::exception& e){
             std::println("Exception: {}", e.what());

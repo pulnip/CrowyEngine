@@ -31,9 +31,7 @@ function(crowy_graphics_sample NAME)
         AppFramework.cpp
         ${ARG_SOURCES}
     DEPENDS
-        # use SDL Window
-        SDL3::SDL3
-        Crowy::Platform::Private
+        Crowy::Platform
         ${ARG_DEPENDS}
     )
 endfunction()
@@ -58,4 +56,11 @@ DEPENDS
 crowy_rhi_sample(HelloCompute
 SOURCES
     helloCompute.cpp
+)
+
+crowy_graphics_sample(CubeMapping
+SOURCES
+    CubeMapping.cpp
+DEPENDS
+    Crowy::Serialization
 )

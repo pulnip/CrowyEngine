@@ -44,7 +44,7 @@ namespace Crowy
                     }
                 },
                 .renderTargetFormats = {
-                    swapchain->GetFormat()
+                    RHIPixelFormat::RGBA8_UNORM
                 },
                 .renderTargetCount = 1
             });
