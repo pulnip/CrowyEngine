@@ -244,16 +244,17 @@ namespace Crowy
         return Mat4{lhs*rhs[0], lhs*rhs[1], lhs*rhs[2], lhs*rhs[3]};
     }
 
+    // left-handed
     inline auto lookAt(Vec3 eye, Vec3 target, Vec3 up) noexcept{
         auto f = normalize(target - eye);
-        auto r = normalize(cross(f, up));
-        auto u = cross(r, f);
+        auto r = normalize(cross(up, f));
+        auto u = cross(f, r);
         // column-major
         return Mat4{
-            Vec4{         r.x,          u.x,        -f.x, 0.0f},
-            Vec4{         r.y,          u.y,        -f.y, 0.0f},
-            Vec4{         r.z,          u.z,        -f.z, 0.0f},
-            Vec4{-dot(r, eye), -dot(u, eye), dot(f, eye), 1.0f}
+            Vec4{         r.x,          u.x,         f.x, 0.0f},
+            Vec4{         r.y,          u.y,         f.y, 0.0f},
+            Vec4{         r.z,          u.z,         f.z, 0.0f},
+            Vec4{-dot(r, eye), -dot(u, eye), -dot(f, eye), 1.0f}
         };
     }
 
@@ -363,22 +364,23 @@ namespace Crowy
         };
     }
 
+    // left-handed
     inline auto perspective(
         f32 fovY, f32 aspect, f32 nearZ, f32 farZ
     ) noexcept{
         auto tanHalfFovY = std::tan(0.5f * fovY);
-        auto dz = nearZ - farZ;
+        auto dz = farZ - nearZ;
 
         auto e00 = 1.0f / (aspect*tanHalfFovY);
         auto e11 = 1.0f / tanHalfFovY;
         auto e22 = farZ / dz;
-        auto e23 = (farZ*nearZ) / dz;
+        auto e23 = -(farZ*nearZ) / dz;
 
         return Mat4{
-            Vec4{ e00, 0.0f, 0.0f,  0.0f},
-            Vec4{0.0f,  e11, 0.0f,  0.0f},
-            Vec4{0.0f, 0.0f,  e22, -1.0f},
-            Vec4{0.0f, 0.0f,  e23,  0.0f}
+            Vec4{ e00, 0.0f, 0.0f, 0.0f},
+            Vec4{0.0f,  e11, 0.0f, 0.0f},
+            Vec4{0.0f, 0.0f,  e22, 1.0f},
+            Vec4{0.0f, 0.0f,  e23, 0.0f}
         };
     }
 

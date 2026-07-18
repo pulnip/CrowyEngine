@@ -29,7 +29,7 @@ namespace Crowy
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
-                    RHIPixelFormat::RGBA8_UNORM
+                    RHIPixelFormat::RGBA8_UNORM_SRGB
                 },
                 .renderTargetCount = 1
             });
