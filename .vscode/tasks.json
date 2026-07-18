@@ -64,6 +64,21 @@
                 "--encode", "uastc",
                 "--format", "R8G8B8A8_SRGB",
                 "--assign-tf", "srgb",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: encode uastc (srgb, mipmap)",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_SRGB",
+                "--assign-tf", "srgb",
                 "--generate-mipmap",
                 "${file}",
                 "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
@@ -157,6 +172,21 @@
             "label": "ktx: cook albedo",
             "dependsOn": [
                 "ktx: encode uastc (srgb)",
+                "ktx: transcode BC7",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook albedo with mipmap",
+            "dependsOn": [
+                "ktx: encode uastc (srgb, mipmap)",
                 "ktx: transcode BC7",
                 "ktx: remove intermediate (uastc)"
             ],
