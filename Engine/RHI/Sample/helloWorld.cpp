@@ -1,4 +1,5 @@
 #include "AppFramework.hpp"
+#include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
@@ -7,7 +8,7 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII pso;
 
-        void OnInit(RHIDevice& device) override{
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -24,7 +25,7 @@ namespace Crowy
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
-                    RHIPixelFormat::RGBA8_UNORM
+                    swapchain.GetFormat()
                 },
                 .renderTargetCount = 1
             });

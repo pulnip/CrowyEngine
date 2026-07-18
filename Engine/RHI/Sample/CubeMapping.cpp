@@ -3,11 +3,11 @@
 #include <numbers>
 #include "AppFramework.hpp"
 #include "ImageLoader.hpp"
-#include "LinearAlgebra.hpp"
-#include "OS.hpp"
-#include "Primitives.hpp"
 #include "InputProvider.hpp"
-#include "RHIDefinitions.hpp"
+#include "LinearAlgebra.hpp"
+#include "Primitives.hpp"
+#include "RHIBuffer.hpp"
+#include "RHIPipelineState.hpp"
 
 namespace{
     struct Vertex{
@@ -121,26 +121,24 @@ namespace Crowy
             u64 texture;
         };
 
-        // identity rotation looks toward +Z
+        // camera geometry
         f32 yaw = 0.0f, pitch = 0.0f;
         Vec4 GetCameraRot() const noexcept{
             // yaw in world, then pitch in camera-local frame
             return quat(rotateY(yaw), rotateX(pitch));
         }
 
-        const Mat4 proj = perspective(
-            static_cast<float>(toRadian(60.0)),
-            1.0f,
-            0.1f,
-            100.0f
-        );
+        // camera lens
+        static constexpr f32 fovY = static_cast<f32>(toRadian(60.0));
+        f32 aspect;
+        static constexpr f32 nearZ = 0.1f, farZ = 100.0f;
 
         struct Uniforms{
             Mat4 viewProj = unitMat();
-        } uniforms;
+        };
         RHIBufferRAII uniformsCB;
 
-        void OnInit(RHIDevice& device) override{
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .vertexLayout = ::VERTEX_INPUT_LAYOUT,
@@ -158,7 +156,7 @@ namespace Crowy
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
-                    RHIPixelFormat::RGBA8_UNORM_SRGB
+                    swapchain.GetFormat()
                 },
                 .renderTargetCount = 1
             });
@@ -204,13 +202,11 @@ namespace Crowy
                 .initialData = subs
             });
 
-            uniforms.viewProj = proj * viewMat(zeros(), GetCameraRot());
-
+            aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
             uniformsCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(uniforms),
+                .size = sizeof(Uniforms),
                 .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite,
-                .initialData = &uniforms
+                .access = RHIMemoryAccess::CPUWrite
             });
         }
 
@@ -220,7 +216,7 @@ namespace Crowy
 
             // radian per pixel
             constexpr f32 SENSITIVITY = 0.003f;
-            // keep the horizon level, avoid lookAt degenerating at the poles
+            // do not let the camera flip over the poles
             constexpr f32 PITCH_LIMIT = 0.5f * std::numbers::pi_v<f32> - 0.01f;
 
             const auto dpos = input.GetMouseDPos();
@@ -232,11 +228,13 @@ namespace Crowy
             );
         }
 
-        void OnUpdate(f64 deltaTime, f64 elapsedTime) override{
-            uniforms.viewProj = proj * viewMat(zeros(), GetCameraRot());
-        }
-
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+            const auto view = viewMat(zeros(), GetCameraRot());
+            const auto proj = perspective(fovY, aspect, nearZ, farZ);
+
+            Uniforms uniforms{
+                .viewProj = proj * view
+            };
             uniformsCB->Upload(uniforms);
 
             std::array colorAttachments = {
@@ -278,6 +276,10 @@ namespace Crowy
 
             cmdList.EndRenderPass();
         }
+
+        void OnResize(u32 width, u32 height) override{
+            aspect = static_cast<f32>(width) / height;
+        }
     };
 }
 
@@ -288,7 +290,7 @@ int main(void){
         .title = "CubeMapping",
         .width = 800, .height = 800,
         .fullscreen = false,
-        .resizable = false,
+        .resizable = true,
     };
     return Main<CubeMapping>(windowConfig);
 }

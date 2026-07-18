@@ -57,7 +57,7 @@ namespace Crowy
             u32 srcSize,
             u32 offset = 0
         ) RHI_OVERRIDE{
-            for(usize i=0; i<resources.size(); ++i){
+            for(u32 i=0; i<resources.size(); ++i){
                 upload(
                     i,
                     src,

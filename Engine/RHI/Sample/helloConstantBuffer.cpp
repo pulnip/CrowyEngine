@@ -1,4 +1,6 @@
 #include "AppFramework.hpp"
+#include "RHIBuffer.hpp"
+#include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
@@ -12,7 +14,7 @@ namespace Crowy
         RHIGraphicsPipelineStateRAII pso;
         RHIBufferRAII constantBuffer;
 
-        void OnInit(RHIDevice& device) override{
+        void OnInit(RHIDevice& device, RHISwapchain&) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,

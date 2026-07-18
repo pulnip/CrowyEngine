@@ -1,6 +1,7 @@
+#include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "Primitives.hpp"
-#include "AppFramework.hpp"
+#include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
@@ -18,7 +19,7 @@ namespace Crowy
             u64 bump;
         };
 
-        void OnInit(RHIDevice& device) override{
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
@@ -44,7 +45,7 @@ namespace Crowy
                     }
                 },
                 .renderTargetFormats = {
-                    RHIPixelFormat::RGBA8_UNORM_SRGB
+                    swapchain.GetFormat()
                 },
                 .renderTargetCount = 1
             });

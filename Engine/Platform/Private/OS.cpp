@@ -120,7 +120,7 @@ namespace Crowy
     }
 
     void OS::Impl::Run(MainLoop& mainLoop, RHIDevice& device){
-        mainLoop.OnInit(device);
+        mainLoop.OnInit(device, *swapchain);
 
         sysTimer.Reset();
 
