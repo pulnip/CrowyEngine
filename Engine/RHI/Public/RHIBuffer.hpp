@@ -15,6 +15,10 @@ namespace Crowy
             const void* data, u32 size,
             u32 offset = 0
         ) = 0;
+        virtual void UploadAll(
+            const void* data, u32 size,
+            u32 offset = 0
+        ) = 0;
 
         // type-safe helper
         template<typename T>
@@ -43,14 +47,14 @@ namespace Crowy
             return GetReadableID(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
-                .config = RHIBufferViewDesc::RawConfig{}
+                .config = RHIBufferViewDesc::Raw{}
             });
         }
         u64 GetReadableID(RHIPixelFormat format){
             return GetReadableID(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
-                .config = RHIBufferViewDesc::TypedConfig{
+                .config = RHIBufferViewDesc::Typed{
                     .format = format
                 }
             });
@@ -59,7 +63,7 @@ namespace Crowy
             return GetReadableID(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
-                .config = RHIBufferViewDesc::StructuredConfig{
+                .config = RHIBufferViewDesc::Structured{
                     .stride = stride
                 }
             });
@@ -70,14 +74,14 @@ namespace Crowy
             return GetWritableID(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
-                .config = RHIBufferViewDesc::RawConfig{}
+                .config = RHIBufferViewDesc::Raw{}
             });
         }
         u64 GetWritableID(RHIPixelFormat format){
             return GetWritableID(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
-                .config = RHIBufferViewDesc::TypedConfig{
+                .config = RHIBufferViewDesc::Typed{
                     .format = format
                 }
             });
@@ -86,7 +90,7 @@ namespace Crowy
             return GetWritableID(RHIBufferViewDesc{
                 .offset = 0,
                 .size = GetSize(),
-                .config = RHIBufferViewDesc::StructuredConfig{
+                .config = RHIBufferViewDesc::Structured{
                     .stride = stride
                 }
             });

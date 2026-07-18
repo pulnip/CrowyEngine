@@ -50,28 +50,11 @@ namespace Crowy
 
         Texture* Get() noexcept{ return texture.Get(); }
 
-        UINT GetOrCreateSRV(const RHITextureViewDesc&);
-        UINT GetOrCreateUAV(const RHITextureViewDesc&);
-
         UINT GetOrCreateRTV(const RHITextureViewDesc&);
         UINT GetOrCreateDSV(const RHITextureViewDesc&);
 
-        UINT GetOrCreateSRV(){
-            return GetOrCreateSRV(RHITextureViewDesc{
-                .format = GetFormat()
-            });
-        }
-        u64 GetReadableID() RHI_OVERRIDE{
-            return GetOrCreateSRV();
-        }
-        UINT GetOrCreateUAV(){
-            return GetOrCreateUAV(RHITextureViewDesc{
-                .format = GetFormat()
-            });
-        }
-        u64 GetWritableID() RHI_OVERRIDE{
-            return GetOrCreateUAV();
-        }
+        u64 GetReadableID(const RHITextureViewDesc&) RHI_OVERRIDE;
+        u64 GetWritableID(const RHITextureViewDesc&) RHI_OVERRIDE;
 
         UINT GetOrCreateRTV(){
             return GetOrCreateRTV(RHITextureViewDesc{

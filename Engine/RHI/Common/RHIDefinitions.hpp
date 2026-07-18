@@ -977,30 +977,38 @@ namespace Crowy
     };
 
     struct RHIBufferViewDesc{
-        struct RawConfig{
-            bool operator==(const RawConfig&) const = default;
+        struct Raw{
+            bool operator==(const Raw&) const = default;
         };
-        struct TypedConfig{
+        struct Typed{
             RHIPixelFormat format = RHIPixelFormat::Unknown;
 
-            bool operator==(const TypedConfig&) const = default;
+            bool operator==(const Typed&) const = default;
         };
-        struct StructuredConfig{
+        struct Structured{
             u32 stride = 0;
 
-            bool operator==(const StructuredConfig&) const = default;
+            bool operator==(const Structured&) const = default;
         };
-        using Config = std::variant<RawConfig, TypedConfig, StructuredConfig>;
+        using Config = std::variant<Raw, Typed, Structured>;
 
         u32 offset = 0, size = 0;
-        Config config = RawConfig{};
+        Config config = Raw{};
 
         bool operator==(const RHIBufferViewDesc&) const = default;
     };
 
     struct RHITextureViewDesc{
-        // TODO.
+        struct Tex2D{
+            bool operator==(const Tex2D&) const = default;
+        };
+        struct TexCube{
+            bool operator==(const TexCube&) const = default;
+        };
+        using Config = std::variant<Tex2D, TexCube>;
+
         RHIPixelFormat format = RHIPixelFormat::Unknown;
+        Config config = Tex2D{};
 
         bool operator==(const RHITextureViewDesc&) const = default;
     };
@@ -1017,19 +1025,16 @@ struct std::hash<Crowy::RHIBufferViewDesc>{
             desc.config.index()
         );
 
-        using TypedConfig = RHIBufferViewDesc::TypedConfig;
-        using StructuredConfig = RHIBufferViewDesc::StructuredConfig;
-
         return std::visit([h](const auto& cfg){
             using T = std::decay_t<decltype(cfg)>;
-            if constexpr(std::is_same_v<T, TypedConfig>){
+            if constexpr(std::is_same_v<T, RHIBufferViewDesc::Raw>){
+                return h;
+            }
+            if constexpr(std::is_same_v<T, RHIBufferViewDesc::Typed>){
                 return hashAll(h, cfg.format);
             }
-            else if constexpr(std::is_same_v<T, StructuredConfig>){
+            else if constexpr(std::is_same_v<T, RHIBufferViewDesc::Structured>){
                 return hashAll(h, cfg.stride);
-            }
-            else{
-                return h;
             }
         }, desc.config);
     }
@@ -1040,9 +1045,20 @@ struct std::hash<Crowy::RHITextureViewDesc>{
     std::size_t operator()(const Crowy::RHITextureViewDesc& desc) const noexcept{
         using namespace Crowy;
 
-        return hashAll(
-            desc.format
+        std::size_t h = hashAll(
+            desc.format,
+            desc.config.index()
         );
+
+        return std::visit([h](const auto& cfg){
+            using T = std::decay_t<decltype(cfg)>;
+            if constexpr(std::is_same_v<T, RHITextureViewDesc::Tex2D>){
+                return h;
+            }
+            if constexpr(std::is_same_v<T, RHITextureViewDesc::TexCube>){
+                return h;
+            }
+        }, desc.config);
     }
 };
 

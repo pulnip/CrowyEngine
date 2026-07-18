@@ -6,6 +6,7 @@
 #include "RHIDefinitions.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
+#include "VariantUtil.hpp"
 
 namespace{
     DXGI_FORMAT toPhysicalFormat(
@@ -191,24 +192,6 @@ namespace Crowy
         return desc.MipLevels;
     }
 
-    UINT DX12Texture::GetOrCreateSRV(const RHITextureViewDesc& desc){
-        if(auto it = srvs.find(desc); it != srvs.end())
-            return it->second;
-
-        const auto dxDesc = CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex2D(
-            convert(desc.format)
-        );
-
-        auto idx = cbvsrvuavHeap.Allocate(
-            *texture.Get(),
-            dxDesc
-        );
-        auto [it, ret] = srvs.emplace(desc, idx);
-        CROWY_ASSERT(ret);
-
-        return idx;
-    }
-
     UINT DX12Texture::GetOrCreateRTV(const RHITextureViewDesc& desc){
         if(auto it = rtvs.find(desc); it != rtvs.end())
             return it->second;
@@ -232,25 +215,6 @@ namespace Crowy
         return idx;
     }
 
-    UINT DX12Texture::GetOrCreateUAV(const RHITextureViewDesc& desc){
-        if(auto it = uavs.find(desc); it != uavs.end())
-            return it->second;
-
-        const auto dxDesc = CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex2D(
-            convert(desc.format)
-        );
-
-        auto idx = cbvsrvuavHeap.Allocate(
-            *texture.Get(),
-            dxDesc
-        );
-        auto [it, ret] = uavs.emplace(desc, idx);
-        CROWY_ASSERT(ret);
-
-        return idx;
-    }
-
-
     UINT DX12Texture::GetOrCreateDSV(const RHITextureViewDesc& desc){
         if(auto it = dsvs.find(desc); it != dsvs.end())
             return it->second;
@@ -269,6 +233,51 @@ namespace Crowy
             dxDesc
         );
         auto [it, ret] = dsvs.emplace(desc, idx);
+        CROWY_ASSERT(ret);
+
+        return idx;
+    }
+
+    u64 DX12Texture::GetReadableID(const RHITextureViewDesc& desc){
+        if(auto it = srvs.find(desc); it != srvs.end())
+            return it->second;
+
+        const auto dxDesc = std::visit(overload{
+            [&](const RHITextureViewDesc::Tex2D&){
+                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex2D(
+                    convert(desc.format)
+                );
+            },
+            [&](const RHITextureViewDesc::TexCube& c){
+                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TexCube(
+                    convert(desc.format)
+                );
+            }
+        }, desc.config);
+
+        auto idx = cbvsrvuavHeap.Allocate(
+            *texture.Get(),
+            dxDesc
+        );
+        auto [it, ret] = srvs.emplace(desc, idx);
+        CROWY_ASSERT(ret);
+
+        return idx;
+    }
+
+    u64 DX12Texture::GetWritableID(const RHITextureViewDesc& desc){
+        if(auto it = uavs.find(desc); it != uavs.end())
+            return it->second;
+
+        const auto dxDesc = CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex2D(
+            convert(desc.format)
+        );
+
+        auto idx = cbvsrvuavHeap.Allocate(
+            *texture.Get(),
+            dxDesc
+        );
+        auto [it, ret] = uavs.emplace(desc, idx);
         CROWY_ASSERT(ret);
 
         return idx;

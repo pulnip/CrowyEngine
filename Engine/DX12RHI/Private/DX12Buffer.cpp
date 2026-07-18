@@ -7,7 +7,6 @@
 #include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "PtrUtil.hpp"
-#include "RHIDefinitions.hpp"
 #include "VariantUtil.hpp"
 
 namespace{
@@ -225,18 +224,18 @@ namespace Crowy
 
         const auto NumElements = GetSize() / 4;
         const auto dxDesc = std::visit(overload{
-            [&](const RHIBufferViewDesc::RawConfig&){
+            [&](const RHIBufferViewDesc::Raw&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::RawBuffer(
                     NumElements
                 );
             },
-            [&](const RHIBufferViewDesc::TypedConfig& c){
+            [&](const RHIBufferViewDesc::Typed& c){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TypedBuffer(
                     convert(c.format),
                     NumElements
                 );
             },
-            [&](const RHIBufferViewDesc::StructuredConfig& c){
+            [&](const RHIBufferViewDesc::Structured& c){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::StructuredBuffer(
                     NumElements,
                     c.stride
@@ -262,18 +261,18 @@ namespace Crowy
 
         const auto NumElements = GetSize() / 4;
         const auto dxDesc = std::visit(overload{
-            [&](const RHIBufferViewDesc::RawConfig&){
+            [&](const RHIBufferViewDesc::Raw&){
                 return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::RawBuffer(
                     NumElements
                 );
             },
-            [&](const RHIBufferViewDesc::TypedConfig& c){
+            [&](const RHIBufferViewDesc::Typed& c){
                 return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::TypedBuffer(
                     convert(c.format),
                     NumElements
                 );
             },
-            [&](const RHIBufferViewDesc::StructuredConfig& c){
+            [&](const RHIBufferViewDesc::Structured& c){
                 return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::StructuredBuffer(
                     NumElements,
                     c.stride

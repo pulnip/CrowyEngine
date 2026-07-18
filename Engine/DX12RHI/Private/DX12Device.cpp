@@ -410,7 +410,10 @@ namespace Crowy
 
                 switch(desc.access){
                 case CPUWrite:
-                    buffer->Upload(desc.initialData, desc.size);
+                    buffer->UploadAll(
+                        desc.initialData,
+                        desc.size
+                    );
                     break;
                 case GPUOnly:
                     if(!uploadRecorded){

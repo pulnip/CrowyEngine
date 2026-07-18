@@ -38,9 +38,22 @@ namespace Crowy
         virtual u32 GetHeight() const noexcept = 0;
         virtual u16 GetMipLevels() const noexcept = 0;
         // Shader Resource
-        virtual u64 GetReadableID() = 0;
+        virtual u64 GetReadableID(const RHITextureViewDesc&) = 0;
         // Unordered Access
-        virtual u64 GetWritableID() = 0;
+        virtual u64 GetWritableID(const RHITextureViewDesc&) = 0;
+
+        u64 GetReadableID(){
+            return GetReadableID(RHITextureViewDesc{
+                .format = GetFormat(),
+                .config = RHITextureViewDesc::Tex2D{}
+            });
+        }
+        u64 GetWritableID(){
+            return GetWritableID(RHITextureViewDesc{
+                .format = GetFormat(),
+                .config = RHITextureViewDesc::Tex2D{}
+            });
+        }
 
         virtual void* GetNative() noexcept = 0;
 

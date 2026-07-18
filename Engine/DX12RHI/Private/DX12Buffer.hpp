@@ -6,8 +6,6 @@
 #include "RHIBuffer.hpp"
 #include "DX12Definitions.hpp"
 
-#include <stdexcept>
-
 namespace Crowy
 {
     class DX12Buffer: public RHIBuffer{
@@ -53,6 +51,20 @@ namespace Crowy
                 srcSize,
                 offset
             );
+        }
+        void UploadAll(
+            const void* src,
+            u32 srcSize,
+            u32 offset = 0
+        ) RHI_OVERRIDE{
+            for(usize i=0; i<resources.size(); ++i){
+                upload(
+                    i,
+                    src,
+                    srcSize,
+                    offset
+                );
+            }
         }
 
         void Download(
