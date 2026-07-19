@@ -64,3 +64,10 @@ SOURCES
 DEPENDS
     Crowy::Serialization
 )
+
+crowy_graphics_sample(NormalMapping
+SOURCES
+    NormalMapping.cpp
+DEPENDS
+    Crowy::Serialization
+)
