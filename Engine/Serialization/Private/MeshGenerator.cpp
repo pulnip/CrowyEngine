@@ -65,7 +65,11 @@ namespace Crowy
         };
     }
 
-    MeshData MakePlane(Vec3 normal, Vec3 tangent, f32 halfSize, f32 uvScale){
+    MeshData MakePlane(
+        Vec3 normal, Vec3 tangent,
+        Vec2 halfExtent,
+        Vec2 uvScale
+    ){
         // the corners are laid out along this, so it is the direction of
         // increasing v, exactly as in MakeBox
         const auto bitangent = cross(normal, tangent);
@@ -81,13 +85,13 @@ namespace Crowy
         vertices.reserve(corners.size());
 
         for(const auto& corner: corners){
-            const f32 su = 2.0f * (corner.x - 0.5f) * halfSize;
-            const f32 sv = 2.0f * (corner.y - 0.5f) * halfSize;
+            const f32 su = 2.0f * (corner.x - 0.5f) * halfExtent.x;
+            const f32 sv = 2.0f * (corner.y - 0.5f) * halfExtent.y;
 
             vertices.push_back(Vertex{
                 .position = su*tangent + sv*bitangent,
                 .normal = normal,
-                .texCoord = uvScale * corner,
+                .texCoord = Vec2{uvScale.x * corner.x, uvScale.y * corner.y},
                 .tangent = Vec4{tangent.x, tangent.y, tangent.z, 1.0f}
             });
         }
@@ -96,6 +100,22 @@ namespace Crowy
             .vertices = std::move(vertices),
             .indices = {0, 1, 2, 0, 2, 3}
         };
+    }
+
+    MeshData MakePlane(Vec2 halfExtent, Vec2 uvScale){
+        return MakePlane(
+            Vec3{0.0f, 1.0f, 0.0f},
+            Vec3{1.0f, 0.0f, 0.0f},
+            halfExtent, uvScale
+        );
+    }
+
+    MeshData MakePlane(Vec3 normal, Vec3 tangent, f32 halfSize, f32 uvScale){
+        return MakePlane(
+            normal, tangent,
+            Vec2{halfSize, halfSize},
+            Vec2{uvScale, uvScale}
+        );
     }
 
     MeshData MakePlane(f32 halfSize, f32 uvScale){

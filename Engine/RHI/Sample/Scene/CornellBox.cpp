@@ -88,7 +88,7 @@ namespace Crowy
         // the light is drawn as well, so a sample that only rasterizes albedo
         // still shows where it hangs
         objects.push_back(SceneObject{
-            .mesh = MakePlane(light.normal, light.tangent, light.halfExtent.x),
+            .mesh = MakePlane(light.normal, light.tangent, light.halfExtent),
             .transform = translateMat(light.center),
             .material = Material{
                 .albedo = {0.0f, 0.0f, 0.0f},
