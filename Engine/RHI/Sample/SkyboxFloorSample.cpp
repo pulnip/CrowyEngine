@@ -59,6 +59,7 @@ namespace Crowy
 
         // a walker standing on the floor, looking around
         Vec3 eye{0.0f, 1.6f, -4.0f};
+        Vec3 moveDir = zeros();
         f32 yaw = 0.0f, pitch = 0.0f;
 
         static constexpr f32 fovY = static_cast<f32>(toRadian(60.0));
@@ -231,7 +232,6 @@ namespace Crowy
             constexpr f32 SENSITIVITY = 0.003f;
             // do not let the camera flip over the poles
             constexpr f32 PITCH_LIMIT = 0.5f * std::numbers::pi_v<f32> - 0.01f;
-            constexpr f32 SPEED = 0.08f;
 
             if(input.IsKeyDown(MouseButton::RButton)){
                 const auto dpos = input.GetMouseDPos();
@@ -247,14 +247,20 @@ namespace Crowy
             const Vec3 forward{std::sin(yaw), 0.0f, std::cos(yaw)};
             const Vec3 right{std::cos(yaw), 0.0f, -std::sin(yaw)};
 
-            Vec3 move{};
-            if(input.IsKeyDown(KeyCode::W)) move = move + forward;
-            if(input.IsKeyDown(KeyCode::S)) move = move - forward;
-            if(input.IsKeyDown(KeyCode::D)) move = move + right;
-            if(input.IsKeyDown(KeyCode::A)) move = move - right;
+            moveDir = zeros();
+            if(input.IsKeyDown(KeyCode::W)) moveDir += forward;
+            if(input.IsKeyDown(KeyCode::S)) moveDir -= forward;
+            if(input.IsKeyDown(KeyCode::D)) moveDir += right;
+            if(input.IsKeyDown(KeyCode::A)) moveDir -= right;
+        }
 
-            if(normSquared(move) > 0.0f){
-                eye = eye + SPEED * normalize(move);
+        void OnUpdate(f64 deltaTime, f64) override{
+            constexpr f32 SPEED = 5.0f;
+
+            if(normSquared(moveDir) > 0.0f){
+                eye += SPEED * deltaTime * normalize(moveDir);
+
+                moveDir = zeros();
             }
         }
 
