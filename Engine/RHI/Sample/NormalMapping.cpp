@@ -3,119 +3,10 @@
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
+#include "MeshGenerator.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
-
-namespace{
-    struct Vertex{
-        Crowy::Vec3 position;
-        Crowy::Vec3 normal;
-        Crowy::Vec3 tangent;
-        Crowy::Vec2 texCoord;
-    };
-
-    inline constexpr std::array VERTEX_INPUT_LAYOUT = {
-        Crowy::RHIVertexElement{
-            .semanticName = "POSITION",
-            .semanticIndex = 0,
-            .format = Crowy::RHIPixelFormat::RGB32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = 0,
-            .classification = Crowy::RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        },
-        Crowy::RHIVertexElement{
-            .semanticName = "NORMAL",
-            .semanticIndex = 0,
-            .format = Crowy::RHIPixelFormat::RGB32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = 12,
-            .classification = Crowy::RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        },
-        Crowy::RHIVertexElement{
-            .semanticName = "TANGENT",
-            .semanticIndex = 0,
-            .format = Crowy::RHIPixelFormat::RGB32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = 24,
-            .classification = Crowy::RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        },
-        Crowy::RHIVertexElement{
-            .semanticName = "TEXCOORD",
-            .semanticIndex = 0,
-            .format = Crowy::RHIPixelFormat::RG32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = 36,
-            .classification = Crowy::RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        }
-    };
-
-    struct MeshData{
-        std::vector<Vertex> vertices;
-        std::vector<std::uint32_t> indices;
-    };
-
-    MeshData makeBox(float halfSize = 1.0f){
-        using namespace Crowy;
-
-        struct Face{
-            Crowy::Vec3 normal;
-            // direction of increasing u.
-            Crowy::Vec3 tangent;
-        };
-        constexpr std::array faces = {
-            Face{.normal = { 1.0f,  0.0f,  0.0f}, .tangent = { 0.0f, 0.0f,  1.0f}},
-            Face{.normal = {-1.0f,  0.0f,  0.0f}, .tangent = { 0.0f, 0.0f, -1.0f}},
-            Face{.normal = { 0.0f,  1.0f,  0.0f}, .tangent = { 1.0f, 0.0f,  0.0f}},
-            Face{.normal = { 0.0f, -1.0f,  0.0f}, .tangent = { 1.0f, 0.0f,  0.0f}},
-            Face{.normal = { 0.0f,  0.0f,  1.0f}, .tangent = {-1.0f, 0.0f,  0.0f}},
-            Face{.normal = { 0.0f,  0.0f, -1.0f}, .tangent = { 1.0f, 0.0f,  0.0f}}
-        };
-        constexpr std::array<Crowy::Vec2, 4> texCoords = {
-            Crowy::Vec2{0.0f, 0.0f},
-            Crowy::Vec2{1.0f, 0.0f},
-            Crowy::Vec2{1.0f, 1.0f},
-            Crowy::Vec2{0.0f, 1.0f}
-        };
-
-        std::vector<Vertex> vertices;
-        vertices.reserve(faces.size() * texCoords.size());
-
-        std::vector<u32> indices;
-        indices.reserve(faces.size() * 6);
-
-        for(const auto& [normal, tangent]: faces){
-            const auto bitangent = cross(normal, tangent);
-            const auto base = static_cast<u32>(vertices.size());
-
-            for(const auto& uv: texCoords){
-                const float su = 2.0f * (uv.x - 0.5f) * halfSize;
-                const float sv = 2.0f * (uv.y - 0.5f) * halfSize;
-
-                vertices.push_back(Vertex{
-                    .position = halfSize*normal + su*tangent + sv*bitangent,
-                    .normal = normal,
-                    .tangent = tangent,
-                    .texCoord = uv
-                });
-            }
-
-            indices.insert(indices.end(), {
-                base + 0, base + 1, base + 2,
-                base + 0, base + 2, base + 3
-            });
-        }
-
-        return MeshData{
-            .vertices = std::move(vertices),
-            .indices = std::move(indices)
-        };
-    }
-}
 
 namespace Crowy
 {
@@ -161,7 +52,7 @@ namespace Crowy
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
-                    .vertexLayout = ::VERTEX_INPUT_LAYOUT,
+                    .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
                         .path = "Engine/Shader/NormalMapping.slang",
@@ -181,7 +72,7 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            auto boxMesh = ::makeBox(1.0f);
+            auto boxMesh = MakeBox(1.0f);
             vertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * boxMesh.vertices.size()),
                 .usage = RHIBufferUsage::VertexBuffer,

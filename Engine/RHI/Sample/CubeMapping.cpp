@@ -5,107 +5,10 @@
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
+#include "MeshGenerator.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
-
-namespace{
-    struct Vertex{
-        Crowy::Vec3 position;
-        Crowy::Vec3 normal;
-    };
-
-    inline constexpr std::array VERTEX_INPUT_LAYOUT = {
-        Crowy::RHIVertexElement{
-            .semanticName = "POSITION",
-            .semanticIndex = 0,
-            .format = Crowy::RHIPixelFormat::RGB32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = 0,
-            .classification = Crowy::RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        },
-        Crowy::RHIVertexElement{
-            .semanticName = "NORMAL",
-            .semanticIndex = 0,
-            .format = Crowy::RHIPixelFormat::RGB32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = 12,
-            .classification = Crowy::RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        }
-    };
-
-    struct MeshData{
-        std::vector<Vertex> vertices;
-        std::vector<std::uint32_t> indices;
-    };
-    MeshData makeSphere(
-        float radius = 1.0f,
-        int slices = 32,
-        int stacks = 16
-    ){
-        constexpr float pi = std::numbers::pi_v<float>;
-        const float dTheta = 2.0f * pi / slices;
-        const float dPhi = pi / stacks;
-
-        std::vector<Vertex> vertices;
-        vertices.reserve((slices+1) * (stacks));
-
-        for(int i=0; i<=stacks; ++i){
-            const float phi = dPhi * i;
-            const float y = radius * std::cosf(phi);
-            const float rad = radius * std::sinf(phi);
-
-            // const float v = static_cast<float>(i) / stacks;
-
-            for(int j=0; j<=slices; ++j){
-                const float theta = dTheta * j;
-                const float cost = std::cosf(theta);
-                const float sint = std::sinf(theta);
-
-                const float x = rad * cost;
-                const float z = rad * sint;
-                // const float u = static_cast<float>(j) / slices;
-
-                // Vec2 texCoord{u, v};
-                // Vec3 tangent{-sint, 0.0f, cost};
-
-                vertices.push_back(Vertex{
-                    .position = Crowy::Vec3{x, y, z},
-                    .normal = Crowy::Vec3{x, y, z}
-                });
-            }
-        }
-
-        std::vector<std::uint32_t> indices;
-        indices.reserve(6 * slices * stacks);
-
-        for(int i=0; i<stacks; ++i){
-            const int base = (slices+1) * i;
-
-            for(int j=0; j<slices; ++j){
-                const int topLeft = base + j;
-                const int topRight = base + (j + 1);
-                const int bottomLeft = base + (slices + 1) + j;
-                const int bottomRight = base + (slices + 1) + (j + 1);
-
-                indices.push_back(topLeft);
-                indices.push_back(topRight);
-                indices.push_back(bottomRight);
-
-                indices.push_back(topLeft);
-                indices.push_back(bottomRight);
-                indices.push_back(bottomLeft);
-            }
-        }
-
-        return MeshData{
-            .vertices = std::move(vertices),
-            .indices = std::move(indices)
-        };
-    }
-}
 
 namespace Crowy
 {
@@ -141,7 +44,7 @@ namespace Crowy
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
-                    .vertexLayout = ::VERTEX_INPUT_LAYOUT,
+                    .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
                         .path = "Engine/Shader/CubeMapping.slang",
@@ -161,13 +64,15 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            auto cubeMesh = ::makeSphere(10.0f);
+            auto cubeMesh = MakeSphere(10.0f);
             vertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * cubeMesh.vertices.size()),
                 .usage = RHIBufferUsage::VertexBuffer,
                 .access = RHIMemoryAccess::GPUOnly,
                 .initialData = cubeMesh.vertices.data()
             });
+            // MakeSphere winds its faces for a viewer outside the mesh,
+            // but a skybox is seen from the inside, so flip the winding
             std::reverse(cubeMesh.indices.begin(), cubeMesh.indices.end());
             indices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * cubeMesh.indices.size()),

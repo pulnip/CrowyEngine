@@ -1,8 +1,9 @@
 struct VertexIn {
     float3 position : POSITION;
     float3 normal : NORMAL;
-    float3 tangent : TANGENT;
     float2 texCoord : TEXCOORD0;
+    // xyz = tangent direction, w = handedness sign
+    float4 tangent : TANGENT;
 };
 
 cbuffer uniform : register(b1) {
@@ -20,7 +21,8 @@ struct VertexOut {
     float4 posProj : SV_Position;
     float3 posWorld : POSITION;
     float3 normal : NORMAL;
-    float3 tangent : TANGENT;
+    // w carries the handedness sign through unchanged
+    float4 tangent : TANGENT;
     float2 texCoord : TEXCOORD0;
 };
 
@@ -32,7 +34,7 @@ VertexOut vs_main(VertexIn input) {
     output.posProj = mul(viewProj, posWorld);
     output.posWorld = posWorld.xyz;
     output.normal = mul((float3x3)model, input.normal);
-    output.tangent = mul((float3x3)model, input.tangent);
+    output.tangent = float4(mul((float3x3)model, input.tangent.xyz), input.tangent.w);
     output.texCoord = input.texCoord;
 
     return output;
@@ -64,8 +66,8 @@ float4 fs_main(VertexOut input) : SV_Target {
     // interpolation leaves the frame slightly non-orthogonal, so re-orthogonalize.
     // bitangent runs along +v, which points down in texture space
     float3 N = normalize(input.normal);
-    float3 T = normalize(input.tangent - N * dot(N, input.tangent));
-    float3 B = cross(N, T);
+    float3 T = normalize(input.tangent.xyz - N * dot(N, input.tangent.xyz));
+    float3 B = input.tangent.w * cross(N, T);
     // mul(tbn, v): world -> tangent,
     // mul(v, tbn): tangent -> world
     float3x3 tbn = float3x3(T, B, N);
