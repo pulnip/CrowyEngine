@@ -20,6 +20,8 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII pso;
         RHITextureRAII depthBuffer;
+        // kept so the depth buffer can be rebuilt when the window changes size
+        RHIDevice* device = nullptr;
 
         // one draw per scene object. the scene never moves, so the per-object
         // constants are filled in once and never touched again
@@ -78,6 +80,8 @@ namespace Crowy
         }
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
+            this->device = &device;
+
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .vertexLayout = VERTEX_INPUT_LAYOUT,
@@ -223,20 +227,28 @@ namespace Crowy
 
             cmdList.EndRenderPass();
         }
+
+        void OnResize(u32 width, u32 height) override{
+            // a minimized window reports zero, which the swapchain also skips
+            if(width == 0 || height == 0)
+                return;
+
+            aspect = static_cast<f32>(width) / height;
+            // the depth buffer has to keep matching the back buffer, so it is
+            // thrown away and rebuilt rather than reused
+            CreateDepthBuffer(*device, width, height);
+        }
     };
 }
 
 int main(void){
     using namespace Crowy;
 
-    // fixed size for now: the depth buffer has to be rebuilt to match a
-    // resized back buffer, and doing that from OnResize has not been
-    // exercised yet
     const WindowConfig windowConfig{
         .title = "CornellBoxSample",
         .width = 800, .height = 800,
         .fullscreen = false,
-        .resizable = false,
+        .resizable = true,
     };
     return Main<CornellBoxSample>(windowConfig);
 }

@@ -189,6 +189,9 @@ namespace Crowy
                 if(event.type == SDL_EVENT_WINDOW_RESIZED){
                     int w = event.window.data1;
                     int h = event.window.data2;
+
+                    framePacer.WaitForIdle();
+
                     swapchain->Resize(w, h);
                     mainLoop.OnResize(w, h);
                 }

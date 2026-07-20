@@ -23,6 +23,8 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII skyPSO, floorPSO;
         RHITextureRAII depthBuffer;
+        // kept so the depth buffer can be rebuilt when the window changes size
+        RHIDevice* device = nullptr;
 
         // the sky is a sphere drawn around the camera, so it is inside out
         RHIBufferRAII skyVertices, skyIndices;
@@ -91,6 +93,8 @@ namespace Crowy
         }
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
+            this->device = &device;
+
             // the sky never writes depth, so the floor always wins over it
             // regardless of how the sphere and the plane happen to overlap
             skyPSO = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
@@ -309,20 +313,28 @@ namespace Crowy
 
             cmdList.EndRenderPass();
         }
+
+        void OnResize(u32 width, u32 height) override{
+            // a minimized window reports zero, which the swapchain also skips
+            if(width == 0 || height == 0)
+                return;
+
+            aspect = static_cast<f32>(width) / height;
+            // the depth buffer has to keep matching the back buffer, so it is
+            // thrown away and rebuilt rather than reused
+            CreateDepthBuffer(*device, width, height);
+        }
     };
 }
 
 int main(void){
     using namespace Crowy;
 
-    // fixed size for now: the depth buffer has to be rebuilt to match a
-    // resized back buffer, and doing that from OnResize has not been
-    // exercised yet
     const WindowConfig windowConfig{
         .title = "SkyboxFloorSample",
         .width = 1280, .height = 720,
         .fullscreen = false,
-        .resizable = false,
+        .resizable = true,
     };
     return Main<SkyboxFloorSample>(windowConfig);
 }
