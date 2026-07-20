@@ -21,12 +21,19 @@ namespace Crowy
             std::unordered_map<RHIBufferViewDesc, UINT> cbvs;
             std::unordered_map<RHIBufferViewDesc, UINT> srvs;
             std::unordered_map<RHIBufferViewDesc, UINT> uavs;
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            bool slotWritten = false;
+        #endif
         };
         // 1 for default heap, RHI_FRAMES_IN_FLIGHT for others.
         std::vector<FrameResource> resources;
         const u64& frameIndex;
         // CBV, SRV, UAV
         DescriptorHeapAllocator& heap;
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        bool tracksSlotWrites = false;
+    #endif
 
     public:
         DX12Buffer(
@@ -111,6 +118,20 @@ namespace Crowy
 
         u64 GetReadableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
         u64 GetWritableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        // call wherever the GPU is about to be pointed at the current slot
+        void AssertSlotWritten() const noexcept{
+            if(!tracksSlotWrites)
+                return;
+
+            auto index = currentIndex();
+            CROWY_ASSERT(resources[index].slotWritten,
+                "slot {} was never written.",
+                index
+            );
+        }
+    #endif
 
     private:
         u32 currentIndex() const noexcept{

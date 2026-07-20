@@ -110,7 +110,10 @@ namespace Crowy
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource frameResource{
                 .syncState = policy.syncState,
-                .accessState = policy.accessState
+                .accessState = policy.accessState,
+            #if defined(_DEBUG) || !defined(NDEBUG)
+                .slotWritten = false
+            #endif
             };
             CHECK_HRESULT(device.CreateCommittedResource3(
                 &heapProp,
@@ -145,6 +148,10 @@ namespace Crowy
 
             resources.emplace_back(std::move(frameResource));
         }
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        tracksSlotWrites = isCPUWrite && resources.size() > 1;
+    #endif
     }
 
     DX12Buffer::~DX12Buffer(){
@@ -186,6 +193,10 @@ namespace Crowy
             src,
             srcSize
         );
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        frameResource.slotWritten = true;
+    #endif
     }
 
     void DX12Buffer::download(
@@ -212,11 +223,19 @@ namespace Crowy
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS DX12Buffer::GetGPUAddress(){
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        AssertSlotWritten();
+    #endif
+
         auto& frameResource = resources[currentIndex()];
         return frameResource.buffer->GetGPUVirtualAddress();
     }
 
     u64 DX12Buffer::GetReadableID(const RHIBufferViewDesc& desc){
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        AssertSlotWritten();
+    #endif
+
         auto& frameResource = resources[currentIndex()];
         auto& srvs = frameResource.srvs;
         if(auto it = srvs.find(desc); it != srvs.end())
