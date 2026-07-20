@@ -127,6 +127,8 @@ function(crowy_declare_test NAME)
     )
 
     target_link_libraries(Crowy${NAME}Test
+    PUBLIC
+        CrowyProjectInterface
     PRIVATE
         GTest::gtest_main
         GTest::gmock_main

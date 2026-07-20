@@ -10,6 +10,8 @@ function(crowy_rhi_sample NAME)
         ${RENDER_BACKEND_LINK_OPTIONS}
     )
     target_link_libraries(${NAME}
+    PUBLIC
+        CrowyProjectInterface
     PRIVATE
         ${RENDER_BACKENDS}
         Crowy::Log

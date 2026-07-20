@@ -7,35 +7,33 @@ add_library(CrowyProjectInterface INTERFACE)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if(CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
         # clang-cl config
-        # use Exception Handling for stack unwinding
-        add_compile_options(
-            /EHsc
-        )
-        add_compile_definitions(
+        target_compile_definitions(CrowyProjectInterface
+        INTERFACE
             NOMINMAX
             VC_EXTRALEAN
             WIN32_LEAN_AND_MEAN
         )
         target_compile_options(CrowyProjectInterface
         INTERFACE
+            # use Exception Handling for stack unwinding
+            /EHsc
             /utf-8
         )
     else()
         # pure Clang or AppleClang config here
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    add_compile_options(
-        /EHsc
-        /MP
-        /Zc:preprocessor
-    )
-    add_compile_definitions(
+    target_compile_definitions(CrowyProjectInterface
+    INTERFACE
         NOMINMAX
         VC_EXTRALEAN
         WIN32_LEAN_AND_MEAN
     )
     target_compile_options(CrowyProjectInterface
     INTERFACE
+        /EHsc
+        /MP
+        /Zc:preprocessor
         /utf-8
     )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
