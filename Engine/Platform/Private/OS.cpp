@@ -66,7 +66,7 @@ namespace Crowy
         }
 
     private:
-        bool ProcessEvents();
+        bool ProcessEvents(MainLoop&);
 
         void BeginFrame(RHIDevice&);
         void EndFrame(RHIDevice&);
@@ -127,7 +127,7 @@ namespace Crowy
         while(true){
             sysTimer.NewFrame();
 
-            if(!ProcessEvents()) [[unlikely]]
+            if(!ProcessEvents(mainLoop)) [[unlikely]]
                 break;
             mainLoop.ProcessInput(inputProvider);
 
@@ -151,7 +151,7 @@ namespace Crowy
         mainLoop.Finalize();
     }
 
-    bool OS::Impl::ProcessEvents(){
+    bool OS::Impl::ProcessEvents(MainLoop& mainLoop){
         bool keepRunning = true;
 
         inputProvider.NewFrame();
@@ -190,6 +190,7 @@ namespace Crowy
                     int w = event.window.data1;
                     int h = event.window.data2;
                     swapchain->Resize(w, h);
+                    mainLoop.OnResize(w, h);
                 }
                 window.OnPlatformEvent(event.window);
             }
