@@ -38,6 +38,9 @@ function(crowy_graphics_sample NAME)
     )
 endfunction()
 
+# ready-made scenes the samples can render
+add_subdirectory(Scene)
+
 crowy_graphics_sample(HelloWorld
 SOURCES
     helloWorld.cpp
@@ -72,4 +75,18 @@ SOURCES
     NormalMapping.cpp
 DEPENDS
     Crowy::Serialization
+)
+
+crowy_graphics_sample(CornellBoxSample
+SOURCES
+    CornellBoxSample.cpp
+DEPENDS
+    Crowy::SampleScene
+)
+
+crowy_graphics_sample(SkyboxFloorSample
+SOURCES
+    SkyboxFloorSample.cpp
+DEPENDS
+    Crowy::SampleScene
 )

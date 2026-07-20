@@ -65,6 +65,47 @@ namespace Crowy
         };
     }
 
+    MeshData MakePlane(Vec3 normal, Vec3 tangent, f32 halfSize, f32 uvScale){
+        // the corners are laid out along this, so it is the direction of
+        // increasing v, exactly as in MakeBox
+        const auto bitangent = cross(normal, tangent);
+
+        constexpr std::array<Vec2, 4> corners = {
+            Vec2{0.0f, 0.0f},
+            Vec2{1.0f, 0.0f},
+            Vec2{1.0f, 1.0f},
+            Vec2{0.0f, 1.0f}
+        };
+
+        std::vector<Vertex> vertices;
+        vertices.reserve(corners.size());
+
+        for(const auto& corner: corners){
+            const f32 su = 2.0f * (corner.x - 0.5f) * halfSize;
+            const f32 sv = 2.0f * (corner.y - 0.5f) * halfSize;
+
+            vertices.push_back(Vertex{
+                .position = su*tangent + sv*bitangent,
+                .normal = normal,
+                .texCoord = uvScale * corner,
+                .tangent = Vec4{tangent.x, tangent.y, tangent.z, 1.0f}
+            });
+        }
+
+        return MeshData{
+            .vertices = std::move(vertices),
+            .indices = {0, 1, 2, 0, 2, 3}
+        };
+    }
+
+    MeshData MakePlane(f32 halfSize, f32 uvScale){
+        return MakePlane(
+            Vec3{0.0f, 1.0f, 0.0f},
+            Vec3{1.0f, 0.0f, 0.0f},
+            halfSize, uvScale
+        );
+    }
+
     MeshData MakeSphere(f32 radius, u32 slices, u32 stacks){
         // below this the sphere has no surface left: every ring would be a pole
         CROWY_ASSERT(slices >= 3, "MakeSphere needs at least 3 slices");
