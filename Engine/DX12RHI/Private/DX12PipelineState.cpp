@@ -307,7 +307,9 @@ namespace Crowy
             },
             .PrimitiveTopologyType = ::topologyType(primitiveTopology),
             .NumRenderTargets = static_cast<UINT>(desc.renderTargetCount),
-            .DSVFormat = DXGI_FORMAT_UNKNOWN,
+            .DSVFormat = desc.depthStencil.has_value() ?
+                convert(desc.depthStencil->format) :
+                DXGI_FORMAT_UNKNOWN,
             .SampleDesc = {1, 0},
             .NodeMask = 0,
             .CachedPSO = {nullptr, 0},

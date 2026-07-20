@@ -157,6 +157,18 @@ namespace Crowy
         }
     }
 
+    inline constexpr auto HasStencil(RHIPixelFormat format){
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case D24_UNORM_S8_UINT: [[fallthrough]];
+        case D32_FLOAT_S8_UINT:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     inline constexpr bool IsBlockCompressed(RHIPixelFormat format){
         using enum RHIPixelFormat;
 

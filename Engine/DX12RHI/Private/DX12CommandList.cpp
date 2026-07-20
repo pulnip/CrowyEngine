@@ -74,12 +74,13 @@ namespace{
         using namespace Crowy;
 
         auto tex = static_cast<DX12Texture*>(desc.texture);
+        const auto format = tex->GetFormat();
 
         const D3D12_RENDER_PASS_BEGINNING_ACCESS beginningAccess{
             .Type = convert(desc.loadAction),
             .Clear = {
                 .ClearValue = {
-                    .Format = convert(tex->GetFormat()),
+                    .Format = convert(format),
                     .DepthStencil = {
                         .Depth = desc.clearDepthStencil.depth,
                         .Stencil = desc.clearDepthStencil.stencil
@@ -90,13 +91,22 @@ namespace{
         const D3D12_RENDER_PASS_ENDING_ACCESS endingAccess{
             .Type = convert(desc.storeAction)
         };
+        // a depth-only view rejects the pass outright if the stencil access
+        // claims it will clear or discard something that is not there
+        const D3D12_RENDER_PASS_BEGINNING_ACCESS noBeginningAccess{
+            .Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS
+        };
+        const D3D12_RENDER_PASS_ENDING_ACCESS noEndingAccess{
+            .Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS
+        };
+        const bool hasStencil = HasStencil(format);
 
         return D3D12_RENDER_PASS_DEPTH_STENCIL_DESC{
             .cpuDescriptor = dsvHeap.GetCPUHandle(tex->GetOrCreateDSV()),
             .DepthBeginningAccess = beginningAccess,
-            .StencilBeginningAccess = beginningAccess,
+            .StencilBeginningAccess = hasStencil ? beginningAccess : noBeginningAccess,
             .DepthEndingAccess = endingAccess,
-            .StencilEndingAccess = endingAccess
+            .StencilEndingAccess = hasStencil ? endingAccess : noEndingAccess
         };
     }
 }
