@@ -3,6 +3,8 @@
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
 
@@ -21,6 +23,8 @@ namespace Crowy
         };
 
         RHIGraphicsPipelineStateRAII blackholeSimulator = nullptr;
+        RHITextureRAII scene = nullptr;
+        RHITextureRAII brightMask = nullptr;
         struct PushConstants{
             u64 disk;
         };
@@ -97,10 +101,27 @@ namespace Crowy
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
+                    swapchain.GetFormat(),
                     swapchain.GetFormat()
                 },
-                .renderTargetCount = 1
+                .renderTargetCount = 2
             });
+            scene = device.CreateTexture(RHITextureCreateDesc{
+                .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
+                .format = swapchain.GetFormat(),
+                .usage = combine(
+                    RHITextureUsage::ShaderRead,
+                    RHITextureUsage::RenderTarget
+                )
+            }, "scene");
+            brightMask = device.CreateTexture(RHITextureCreateDesc{
+                .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
+                .format = swapchain.GetFormat(),
+                .usage = combine(
+                    RHITextureUsage::ShaderRead,
+                    RHITextureUsage::RenderTarget
+                )
+            }, "brightMask");
 
             simParam.camForward = normalize(simParam.bhPos - simParam.camPos);
             simParam.camRight   = normalize(cross(unitY(), simParam.camForward));
@@ -162,28 +183,58 @@ namespace Crowy
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             simParamBuffer->Upload(simParam);
 
-            std::array colorAttachments = {
-                RHIColorAttachment{
-                    .texture = backBuffer.texture,
-                    .loadAction = backBuffer.loadAction,
-                    .storeAction = backBuffer.storeAction,
-                    .clearColor = Colors::Grey
-                }
-            };
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments
-            });
-            cmdList.SetViewport(FullViewport(*backBuffer.texture));
-            cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+            {
+                std::array barriers = {
+                    MakeBarrier(*scene, RHIResourceUsage::RenderTarget),
+                    MakeBarrier(*brightMask, RHIResourceUsage::RenderTarget)
+                };
+                cmdList.TransitionBarrier(barriers);
+            }
 
-            cmdList.SetPipelineState(*blackholeSimulator);
-            cmdList.SetPushGraphicsConstants(PushConstants{
-                .disk = disk->GetReadableID()
-            });
-            cmdList.SetGraphicsConstantBuffer(*simParamBuffer, 0);
-            cmdList.Draw(4);
+            {
+                std::array colorAttachments = {
+                    RHIColorAttachment{
+                        .texture = scene.get(),
+                        .loadAction = RHILoadAction::DontCare,
+                        .storeAction = RHIStoreAction::Store
+                    },
+                    RHIColorAttachment{
+                        .texture = brightMask.get(),
+                        .loadAction = RHILoadAction::Clear,
+                        .storeAction = RHIStoreAction::Store
+                    }
+                };
+                cmdList.BeginRenderPass(RHIRenderPassDesc{
+                    .colorAttachments = colorAttachments
+                });
+                cmdList.SetViewport(FullViewport(*backBuffer.texture));
+                cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.EndRenderPass();
+                cmdList.SetPipelineState(*blackholeSimulator);
+                cmdList.SetPushGraphicsConstants(PushConstants{
+                    .disk = disk->GetReadableID()
+                });
+                cmdList.SetGraphicsConstantBuffer(*simParamBuffer, 0);
+                cmdList.Draw(4);
+
+                cmdList.EndRenderPass();
+            }
+
+            {
+                std::array barriers = {
+                    MakeBarrier(*scene, RHIResourceUsage::CopySrc),
+                    MakeBarrier(*backBuffer.texture, RHIResourceUsage::CopyDst)
+                };
+                cmdList.TransitionBarrier(barriers);
+            }
+
+            {
+                cmdList.BeginBlit();
+
+                cmdList.Copy(*scene, *backBuffer.texture);
+
+                cmdList.EndBlit();
+            }
         }
 
         void OnResize(u32 width, u32 height) override{

@@ -139,7 +139,7 @@ float3 sampleDiskWithDoppler(
 
 struct FragmentOut {
     float4 scene : COLOR0;
-    // float4 brightMask : COLOR1;
+    float4 brightMask : COLOR1;
 };
 
 [shader("fragment")]
@@ -147,7 +147,7 @@ FragmentOut fs_main(VertexOut input) : SV_Target {
     static const float4 far_color = float4(0.05, 0.05, 0.1, 1);
     FragmentOut output;
     output.scene = far_color;
-    // output.brightMask = float4(0, 0, 0, 1);
+    output.brightMask = float4(0, 0, 0, 1);
 
     float2 ip = ndc2ip(input.ndc, aspect, tanHalfFov);
     float3 dir = ip2RayDir(ip, camRight, camUp, camForward);
@@ -215,11 +215,10 @@ FragmentOut fs_main(VertexOut input) : SV_Target {
                 );
                 output.scene = float4(diskColor, 1.0);
 
-                // float brightness = dot(diskColor, float3(0.2126, 0.7152, 0.0722));
-                // constexpr float threshold = 0.3;
-                // output.brightMask = brightness > threshold ?
-                //     float4(diskColor, 1) :
-                //     float4(0, 0, 0, 1);
+                float brightness = dot(diskColor, float3(0.2126, 0.7152, 0.0722));
+                output.brightMask = brightness > 0.3 ?
+                    float4(diskColor, 1) :
+                    float4(0, 0, 0, 1);
 
                 return output;
             }
