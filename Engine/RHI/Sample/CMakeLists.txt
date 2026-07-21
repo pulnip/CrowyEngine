@@ -90,3 +90,8 @@ SOURCES
 DEPENDS
     Crowy::SampleScene
 )
+
+crowy_graphics_sample(Checkerboard
+SOURCES
+    Checkerboard.cpp
+)
