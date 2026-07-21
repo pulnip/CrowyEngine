@@ -36,7 +36,7 @@ namespace Crowy
             RHIBarrierLayout layout;
         };
 
-        constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
+        inline constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
             using enum RHIResourceUsage;
             using S = RHIBarrierSync;
             using A = RHIBarrierAccess;
@@ -82,6 +82,26 @@ namespace Crowy
             // error
             return {S::None, A::NoAccess, L::Undefined};
         }
+    }
+
+    inline auto MakeBarrier(RHITexture& texture, RHIResourceUsage usage){
+        const auto point = detail::Expand(usage);
+
+        return RHITextureBarrier{
+            .texture = texture,
+            .syncAfter = point.sync,
+            .accessAfter = point.access,
+            .layoutAfter = point.layout
+        };
+    }
+    inline auto MakeBarrier(RHIBuffer& buffer, RHIResourceUsage usage){
+        const auto point = detail::Expand(usage);
+
+        return RHIBufferBarrier{
+            .buffer = buffer,
+            .syncAfter = point.sync,
+            .accessAfter = point.access
+        };
     }
 
     // Command list for recording GPU commands
@@ -213,16 +233,63 @@ namespace Crowy
 
         // Resource barriers
         virtual void TransitionBarrier(
+            std::span<const RHITextureBarrier>,
+            std::span<const RHIBufferBarrier>
+        ) = 0;
+        void TransitionBarrier(
+            std::span<const RHITextureBarrier> barriers
+        ){
+            TransitionBarrier(barriers, {});
+        }
+        void TransitionBarrier(
+            std::span<const RHIBufferBarrier> barriers
+        ){
+            TransitionBarrier({}, barriers);
+        }
+        void TransitionBarrier(
+            RHITextureBarrier barrier
+        ){
+            RHITextureBarrier barriers[1] = {barrier};
+
+            TransitionBarrier(
+                barriers,
+                {}
+            );
+        }
+        void TransitionBarrier(
+            RHIBufferBarrier barrier
+        ){
+            RHIBufferBarrier barriers[1] = {barrier};
+
+            TransitionBarrier(
+                {},
+                barriers
+            );
+        }
+        void TransitionBarrier(
             RHITexture& texture,
             RHIBarrierSync syncAfter,
             RHIBarrierAccess accessAfter,
             RHIBarrierLayout layoutAfter
-        ) = 0;
-        virtual void TransitionBarrier(
+        ){
+            TransitionBarrier(RHITextureBarrier{
+                .texture = texture,
+                .syncAfter = syncAfter,
+                .accessAfter = accessAfter,
+                .layoutAfter = layoutAfter
+            });
+        }
+        void TransitionBarrier(
             RHIBuffer& buffer,
             RHIBarrierSync syncAfter,
             RHIBarrierAccess accessAfter
-        ) = 0;
+        ){
+            TransitionBarrier(RHIBufferBarrier{
+                .buffer = buffer,
+                .syncAfter = syncAfter,
+                .accessAfter = accessAfter
+            });
+        }
         void TransitionBarrier(
             RHITexture& texture,
             RHIResourceUsage usageAfter

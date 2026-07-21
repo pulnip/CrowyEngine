@@ -351,6 +351,21 @@ namespace Crowy
         ShadingRateSource = 11
     };
 
+    struct RHIBufferBarrier{
+        RHIBuffer& buffer;
+
+        RHIBarrierSync syncAfter;
+        RHIBarrierAccess accessAfter;
+    };
+
+    struct RHITextureBarrier{
+        RHITexture& texture;
+
+        RHIBarrierSync syncAfter;
+        RHIBarrierAccess accessAfter;
+        RHIBarrierLayout layoutAfter;
+    };
+
     struct RHIClearDepthStencil{
         f32 depth = 1.0f;
         u8 stencil = 0;

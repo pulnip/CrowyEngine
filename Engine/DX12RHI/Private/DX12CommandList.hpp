@@ -1,5 +1,6 @@
 #pragma once
 
+#include <d3dx12/d3dx12_barriers.h>
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
 #include "DX12Definitions.hpp"
@@ -29,6 +30,9 @@ namespace Crowy
         // TODO. Add REAL bindless api
         DX12GraphicsPipelineState* currentGraphicsPSO = nullptr;
         DX12ComputePipelineState* currentComputePSO = nullptr;
+
+        std::vector<CD3DX12_TEXTURE_BARRIER> textureBarrierScratch;
+        std::vector<CD3DX12_BUFFER_BARRIER> bufferBarrierScratch;
 
     public:
         DX12CommandList(
@@ -137,16 +141,8 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void TransitionBarrier(
-            RHITexture&,
-            RHIBarrierSync syncAfter,
-            RHIBarrierAccess accessAfter,
-            RHIBarrierLayout layoutAfter
-        ) RHI_OVERRIDE;
-
-        void TransitionBarrier(
-            RHIBuffer&,
-            RHIBarrierSync syncAfter,
-            RHIBarrierAccess accessAfter
+            std::span<const RHITextureBarrier>,
+            std::span<const RHIBufferBarrier>
         ) RHI_OVERRIDE;
 
         void WaitUntilCompleted() RHI_OVERRIDE;

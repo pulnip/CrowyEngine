@@ -517,56 +517,71 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::TransitionBarrier(
-        RHITexture& texture,
-        RHIBarrierSync syncAfter,
-        RHIBarrierAccess accessAfter,
-        RHIBarrierLayout layoutAfter
-    ){
-        const std::array barriers{
-            CD3DX12_TEXTURE_BARRIER(
-                convert(texture.TransitionState(syncAfter)),
-                convert(syncAfter),
-                convert(texture.TransitionState(accessAfter)),
-                convert(accessAfter),
-                convert(texture.TransitionState(layoutAfter)),
-                convert(layoutAfter),
-                static_cast<DX12Texture&>(texture).Get(),
-                CD3DX12_BARRIER_SUBRESOURCE_RANGE(0xFFFF'FFFF)
-            )
-        };
-        const std::array barrierGroups{
-            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
-        };
+    namespace{
+        inline auto convert(const RHITextureBarrier& barrier){
+            auto& resource = barrier.texture;
+            const auto syncAfter = barrier.syncAfter;
+            const auto accessAfter = barrier.accessAfter;
+            const auto layoutAfter = barrier.layoutAfter;
 
-        commandList->Barrier(
-            barrierGroups.size(),
-            barrierGroups.data()
-        );
+            return CD3DX12_TEXTURE_BARRIER(
+                convert(resource.TransitionState(syncAfter)),
+                convert(syncAfter),
+                convert(resource.TransitionState(accessAfter)),
+                convert(accessAfter),
+                convert(resource.TransitionState(layoutAfter)),
+                convert(layoutAfter),
+                static_cast<DX12Texture&>(resource).Get(),
+                CD3DX12_BARRIER_SUBRESOURCE_RANGE(0xFFFF'FFFF)
+            );
+        }
+
+        inline auto convert(const RHIBufferBarrier& barrier){
+            auto& resource = barrier.buffer;
+            const auto syncAfter = barrier.syncAfter;
+            const auto accessAfter = barrier.accessAfter;
+
+            return CD3DX12_BUFFER_BARRIER(
+                convert(resource.TransitionState(syncAfter)),
+                convert(syncAfter),
+                convert(resource.TransitionState(accessAfter)),
+                convert(accessAfter),
+                static_cast<DX12Buffer&>(resource).Get()
+            );
+        }
     }
 
     void DX12CommandList::TransitionBarrier(
-            RHIBuffer& buffer,
-            RHIBarrierSync syncAfter,
-            RHIBarrierAccess accessAfter
+        std::span<const RHITextureBarrier> textureBarriers,
+        std::span<const RHIBufferBarrier> bufferBarriers
     ){
-        const std::array barriers{
-            CD3DX12_BUFFER_BARRIER(
-                convert(buffer.TransitionState(syncAfter)),
-                convert(syncAfter),
-                convert(buffer.TransitionState(accessAfter)),
-                convert(accessAfter),
-                static_cast<DX12Buffer&>(buffer).Get()
+        textureBarrierScratch.reserve(textureBarriers.size());
+        for(auto& barrier: textureBarriers){
+            textureBarrierScratch.push_back(convert(barrier));
+        }
+
+        bufferBarrierScratch.reserve(bufferBarriers.size());
+        for(auto& barrier: bufferBarriers){
+            bufferBarrierScratch.push_back(convert(barrier));
+        }
+
+        const std::array barrierGroups{
+            CD3DX12_BARRIER_GROUP(
+                textureBarrierScratch.size(),
+                textureBarrierScratch.data()
+            ),
+            CD3DX12_BARRIER_GROUP(
+                bufferBarrierScratch.size(),
+                bufferBarrierScratch.data()
             )
         };
-        const std::array barrierGroups{
-            CD3DX12_BARRIER_GROUP(barriers.size(), barriers.data())
-        };
-
         commandList->Barrier(
             barrierGroups.size(),
             barrierGroups.data()
         );
+
+        textureBarrierScratch.clear();
+        bufferBarrierScratch.clear();
     }
 
     void DX12CommandList::WaitUntilCompleted(){
