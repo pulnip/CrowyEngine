@@ -147,9 +147,12 @@ namespace Crowy
                 .profile = globalSession->findProfile(profile)
             }
         };
-        const auto path = toUTF8String(std::filesystem::absolute(desc.path));
+        const auto absPath = std::filesystem::absolute(desc.path);
+        const auto path = toUTF8String(absPath);
+
+        const auto searchDir = toUTF8String(absPath.parent_path());
         const std::array searchPaths{
-            path.c_str()
+            searchDir.c_str()
         };
         const SessionDesc sessionDesc{
             .targets = targetDescs.data(),

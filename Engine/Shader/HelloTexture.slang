@@ -1,3 +1,5 @@
+#include "Sampler.slang"
+
 struct ResourceData {
     DescriptorHandle<Texture2D> diffuse;
     DescriptorHandle<Texture2D> normal;
@@ -6,9 +8,6 @@ struct ResourceData {
 
 [[vk::push_constant]]
 ConstantBuffer<ResourceData> resource;
-// defined in Global RootSignature
-[[vk::binding(1, 0)]]
-SamplerState linearWrap : register(s0);
 
 struct VertexOut{
     float4 position : SV_POSITION;
