@@ -53,6 +53,7 @@ int main(void){
     const WindowConfig windowConfig{
         .title = "HelloWorld",
         .width = 800, .height = 800,
+        .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };

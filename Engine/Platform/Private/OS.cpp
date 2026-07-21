@@ -94,7 +94,7 @@ namespace Crowy
         RHITextureCreateDesc backBufferDesc{
             .width = config.window.width,
             .height = config.window.height,
-            .format = RHIPixelFormat::RGBA8_UNORM_SRGB
+            .format = config.window.format
         };
 
         swapchain = device.CreateSwapchain(RHISwapchainCreateDesc{

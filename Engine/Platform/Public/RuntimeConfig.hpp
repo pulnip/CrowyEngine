@@ -2,6 +2,7 @@
 
 #include "DOM.hpp"
 #include "Primitives.hpp"
+#include "RHIDefinitions.hpp"
 #include "TomlLoader.hpp"
 
 namespace Crowy
@@ -9,6 +10,7 @@ namespace Crowy
     struct WindowConfig{
         Str title = "DefaultWindow";
         u32 width = 800, height = 600;
+        RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM_SRGB;
 
         bool fullscreen = false;
         bool resizable = false;

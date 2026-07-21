@@ -81,6 +81,7 @@ int main(void){
     const WindowConfig windowConfig{
         .title = "Checkerboard",
         .width = W, .height = H,
+        .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = false,
     };

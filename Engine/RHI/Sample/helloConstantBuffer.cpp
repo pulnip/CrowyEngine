@@ -78,6 +78,7 @@ int main(void){
     const WindowConfig windowConfig{
         .title = "HelloConstantBuffer",
         .width = 800, .height = 800,
+        .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
