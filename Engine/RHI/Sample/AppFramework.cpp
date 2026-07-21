@@ -10,6 +10,38 @@ extern "C" {
 
 namespace Crowy
 {
+    void App::RenderOnce(CommandListPool& pool){
+        auto& cmdList = pool.Acquire();
+        cmdList.Begin();
+
+        OnInitialRecord(cmdList);
+
+        cmdList.Close();
+    }
+
+    void App::Render(CommandListPool& pool, RHISwapchain& swapchain){
+        auto& cmdList = pool.Acquire();
+        cmdList.Begin();
+        cmdList.TransitionBarrier(
+            swapchain.GetCurrentTexture(),
+            RHIResourceUsage::RenderTarget
+        );
+        RHIColorAttachment backBuffer{
+            .texture = &swapchain.GetCurrentTexture(),
+            .loadAction = RHILoadAction::Clear,
+            .storeAction = RHIStoreAction::Store,
+            .clearColor = Colors::Black
+        };
+
+        OnRecord(cmdList, backBuffer);
+
+        cmdList.TransitionBarrier(
+            swapchain.GetCurrentTexture(),
+            RHIResourceUsage::Present
+        );
+        cmdList.Close();
+    }
+
     RHIViewport FullViewport(const RHITexture& texture){
         return RHIViewport{
             .x = 0, .y = 0,

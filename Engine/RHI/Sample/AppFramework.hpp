@@ -20,9 +20,10 @@ namespace Crowy
     public:
         virtual ~App() = default;
 
-        virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
-        virtual void OnRecord(RHICommandList&, const RHIColorAttachment& backBuffer) = 0;
+        virtual void OnInitialRecord(RHICommandList&){};
+        void RenderOnce(CommandListPool& pool) override final;
 
+        virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
         bool Update() override final{
             timer.NewFrame();
 
@@ -33,30 +34,8 @@ namespace Crowy
             return true;
         }
 
-        bool Render(CommandListPool& pool, RHISwapchain& swapchain) override{
-            auto& cmdList = pool.Acquire();
-            cmdList.Begin();
-            cmdList.TransitionBarrier(
-                swapchain.GetCurrentTexture(),
-                RHIResourceUsage::RenderTarget
-            );
-            RHIColorAttachment backBuffer{
-                .texture = &swapchain.GetCurrentTexture(),
-                .loadAction = RHILoadAction::Clear,
-                .storeAction = RHIStoreAction::Store,
-                .clearColor = Colors::Black
-            };
-
-            OnRecord(cmdList, backBuffer);
-
-            cmdList.TransitionBarrier(
-                swapchain.GetCurrentTexture(),
-                RHIResourceUsage::Present
-            );
-            cmdList.Close();
-
-            return true;
-        }
+        virtual void OnRecord(RHICommandList&, const RHIColorAttachment& backBuffer) = 0;
+        void Render(CommandListPool& pool, RHISwapchain& swapchain) override final;
     };
 
     RHIViewport FullViewport(const RHITexture&);

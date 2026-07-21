@@ -1,24 +1,31 @@
 #include "AppFramework.hpp"
+#include "EnumUtil.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
-#include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
+#include "RHITexture.hpp"
 
 namespace Crowy
 {
     class BlackholeSimulation: public App{
         using App::App;
 
-        RHIGraphicsPipelineStateRAII pso;
+        RHIGraphicsPipelineStateRAII diskGenerator = nullptr;
+        RHITextureRAII disk = nullptr;
+        struct GenerationParam{
+            f32 rs;
+            f32 diskInner;
+            f32 diskOuter;
+            f32 maxTempKelvin;
+        };
 
+        RHIGraphicsPipelineStateRAII blackholeSimulator = nullptr;
         struct PushConstants{
             u64 disk;
         };
-
         static constexpr u32 PLANET_COUNT = 3;
-
-        struct Param{
+        struct SimulationParam{
             Vec3 bhPos{0.0, 0.0, 3.0f};
             f32 rs = 1.0f;
             Vec3 camPos{30.0f, 5.0f, 0.0f};
@@ -39,11 +46,42 @@ namespace Crowy
                 Color{0.0f, 0.5f, 1.0f, 1},
                 Color{0.4f, 0.7f, 0.1f, 1}
             };
-        } param;
-        RHIBufferRAII paramBuffer = nullptr;
+            f32 elapsedTimeSeconds = 0.0f;
+        } simParam;
+        RHIBufferRAII simParamBuffer = nullptr;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
+            diskGenerator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
+                .preRasterizer = RHILegacyFrontendDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader = {
+                        .path = "Engine/Shader/BlackholeDisk.slang",
+                        .entryPoint = "vs_main"
+                    }
+                },
+                .rasterizer = RHIRasterizerState{
+                    .frontCounterClockwise = false
+                },
+                .fragmentShader = {
+                    .path = "Engine/Shader/BlackholeDisk.slang",
+                    .entryPoint = "fs_main"
+                },
+                .renderTargetFormats = {
+                    swapchain.GetFormat()
+                },
+                .renderTargetCount = 1
+            });
+            disk = device.CreateTexture(RHITextureCreateDesc{
+                .width = swapchain.GetWidth(),
+                .height = swapchain.GetHeight(),
+                .format = RHIPixelFormat::RGBA8_UNORM,
+                .usage = combine(
+                    RHITextureUsage::RenderTarget,
+                    RHITextureUsage::ShaderRead
+                )
+            });
+
+            blackholeSimulator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
@@ -64,20 +102,66 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            param.camForward = normalize(param.bhPos - param.camPos);
-            param.camRight   = normalize(cross(unitY(), param.camForward));
-            param.camUp      = cross(param.camForward, param.camRight);
+            simParam.camForward = normalize(simParam.bhPos - simParam.camPos);
+            simParam.camRight   = normalize(cross(unitY(), simParam.camForward));
+            simParam.camUp      = cross(simParam.camForward, simParam.camRight);
 
-            param.aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
-            paramBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(param),
+            simParam.aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
+
+            simParamBuffer = device.CreateBuffer(RHIBufferCreateDesc{
+                .size = sizeof(simParam),
                 .usage = RHIBufferUsage::ConstantBuffer,
                 .access = RHIMemoryAccess::CPUWrite,
-                .initialData = &param
+                .initialData = &simParam
             });
         }
 
+        void OnInitialRecord(RHICommandList& cmdList) override{
+            cmdList.TransitionBarrier(
+                *disk,
+                RHIResourceUsage::RenderTarget
+            );
+
+            {
+                std::array colorAttachments = {
+                    RHIColorAttachment{
+                        .texture = disk.get(),
+                        .loadAction = RHILoadAction::DontCare,
+                        .storeAction = RHIStoreAction::Store,
+                        .clearColor = Colors::Black
+                    }
+                };
+                cmdList.BeginRenderPass(RHIRenderPassDesc{
+                    .colorAttachments = colorAttachments,
+                });
+                cmdList.SetViewport(FullViewport(*disk));
+                cmdList.SetScissorRect(FullScissorRect(*disk));
+
+                cmdList.SetPipelineState(*diskGenerator);
+                cmdList.SetPushGraphicsConstants(GenerationParam{
+                    .rs = simParam.rs,
+                    .diskInner = simParam.diskInner,
+                    .diskOuter = simParam.diskOuter,
+                    .maxTempKelvin = 1e+4
+                });
+                cmdList.Draw(4);
+
+                cmdList.EndRenderPass();
+            }
+
+            cmdList.TransitionBarrier(
+                *disk,
+                RHIResourceUsage::FragmentRead
+            );
+        }
+
+        void OnUpdate(f64, f64 elapsedTime) override{
+            simParam.elapsedTimeSeconds = static_cast<f32>(elapsedTime);
+        }
+
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+            simParamBuffer->Upload(simParam);
+
             std::array colorAttachments = {
                 RHIColorAttachment{
                     .texture = backBuffer.texture,
@@ -92,18 +176,18 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetPipelineState(*pso);
-            // PushConstants pushConstants{
-            // };
-            // cmdList.SetPushGraphicsConstants(pushConstants);
-            cmdList.SetGraphicsConstantBuffer(*paramBuffer, 0);
+            cmdList.SetPipelineState(*blackholeSimulator);
+            cmdList.SetPushGraphicsConstants(PushConstants{
+                .disk = disk->GetReadableID()
+            });
+            cmdList.SetGraphicsConstantBuffer(*simParamBuffer, 0);
             cmdList.Draw(4);
 
             cmdList.EndRenderPass();
         }
 
         void OnResize(u32 width, u32 height) override{
-            param.aspect = static_cast<f32>(width) / height;
+            simParam.aspect = static_cast<f32>(width) / height;
         }
     };
 }

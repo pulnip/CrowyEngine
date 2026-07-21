@@ -1,3 +1,5 @@
+#include "Sampler.slang"
+
 // [-1, 1] to Image Plane
 float2 ndc2ip(float2 ndc, float aspect, float tanHalfFov){
     return ndc * float2(aspect, 1.0) * tanHalfFov;
@@ -76,8 +78,13 @@ VertexOut vs_main(uint vertexID: SV_VertexID) {
     return output;
 }
 
-static const int PLANET_COUNT = 3;
+struct ResourceData {
+    DescriptorHandle<Texture2D> disk;
+};
+[[vk::push_constant]]
+ConstantBuffer<ResourceData> resource;
 
+static const int PLANET_COUNT = 3;
 cbuffer params : register(b1) {
     float3 bhPos;
     float rs;
@@ -91,7 +98,44 @@ cbuffer params : register(b1) {
     float diskOuter;
     float4 posRadius[PLANET_COUNT];
     float4 planetColor[PLANET_COUNT];
+    float elapsedTimeSeconds;
 };
+
+float3 sampleDiskWithDoppler(
+    float3 hitPos,
+    float t,
+    float3 rayDir,
+    float rs,
+    float diskInner,
+    float diskOuter,
+    Texture2D disk,
+    SamplerState linearWrap
+) {
+    float r = length(hitPos);
+    float theta = atan2(hitPos.z, hitPos.x);
+
+    // kepler's Orbital velocity
+    float v_orb = sqrt(rs / (2.0 * r));
+
+    // rotate anti-clockwise
+    float3 orbitalDir = normalize(float3(-hitPos.z, 0, hitPos.x));
+    // rotate clockwise
+    // float3 orbitalDir = normalize(float3(hitPos.z, 0, -hitPos.x));
+
+    // doppler factor
+    float dopplerCosAngle = dot(rayDir, orbitalDir);
+    float doppler = 1.0 / (1.0 + v_orb * dopplerCosAngle);
+
+    // redshift factor (gravitational + doppler)
+    float redShift = doppler * sqrt(max(1.0 - rs / r, 0.01));
+
+    float u = (r - diskInner) / (diskOuter - diskInner);
+    float omega = pow(diskInner / r, 1.5);
+    float v = fract(theta / (2.0 * float.getPi()) + 0.2 * omega * t);
+
+    // g^3 boosting
+    return pow(redShift, 3) * disk.Sample(linearWrap, float2(u, v)).rgb;
+}
 
 struct FragmentOut {
     float4 scene : COLOR0;
@@ -157,8 +201,18 @@ FragmentOut fs_main(VertexOut input) : SV_Target {
             float y0r = length(y0Pos);
 
             if (diskInner <= y0r && y0r <= diskOuter) {
-                float t2 = y0r / diskOuter;
-                float3 diskColor = float3(1.0, t2, 0.2);
+                // float t2 = y0r / diskOuter;
+                // float3 diskColor = float3(1.0, t2, 0.2);
+                float3 diskColor = sampleDiskWithDoppler(
+                    y0Pos,
+                    elapsedTimeSeconds,
+                    dir,
+                    rs,
+                    diskInner,
+                    diskOuter,
+                    resource.disk,
+                    linearWrap
+                );
                 output.scene = float4(diskColor, 1.0);
 
                 // float brightness = dot(diskColor, float3(0.2126, 0.7152, 0.0722));

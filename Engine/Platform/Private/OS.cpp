@@ -124,6 +124,16 @@ namespace Crowy
 
         sysTimer.Reset();
 
+        {
+            framePacer.BeginFrame();
+            cmdListPool.BeginFrame();
+
+            mainLoop.RenderOnce(cmdListPool);
+
+            cmdListPool.SubmitFrame();
+            framePacer.EndFrame();
+        }
+
         while(true){
             sysTimer.NewFrame();
 
@@ -135,8 +145,7 @@ namespace Crowy
                 break;
 
             BeginFrame(device);
-            if(!mainLoop.Render(cmdListPool, *swapchain)) [[unlikely]]
-                break;
+            mainLoop.Render(cmdListPool, *swapchain);
 
             // TODO.
             /*

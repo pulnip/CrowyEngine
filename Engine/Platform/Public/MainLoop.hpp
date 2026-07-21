@@ -12,11 +12,12 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE(MainLoop)
 
         virtual void OnInit(RHIDevice&, RHISwapchain& swapchain){}
+        virtual void RenderOnce(CommandListPool&){}
 
         virtual void ProcessInput(const InputProvider&){}
         virtual bool Update(){ return true; };
         // TODO. support multi-window if needed
-        virtual bool Render(CommandListPool&, RHISwapchain& swapchain) = 0;
+        virtual void Render(CommandListPool&, RHISwapchain& swapchain) = 0;
 
         virtual void Finalize(){}
 
