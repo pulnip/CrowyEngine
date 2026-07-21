@@ -32,7 +32,7 @@ namespace Crowy
             );
             checkerboard = device.CreateTexture(RHITextureCreateDesc{
                 .width = W, .height = H,
-                .format = RHIPixelFormat::RGBA8_UNORM,
+                .format = swapchain.GetFormat(),
                 .usage = combine(RHITextureUsage::ShaderRead, RHITextureUsage::ShaderWrite)
             });
         }

@@ -14,7 +14,7 @@ namespace Crowy
         RHIGraphicsPipelineStateRAII pso;
         RHIBufferRAII constantBuffer;
 
-        void OnInit(RHIDevice& device, RHISwapchain&) override{
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -31,7 +31,7 @@ namespace Crowy
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
-                    RHIPixelFormat::RGBA8_UNORM_SRGB
+                    swapchain.GetFormat()
                 },
                 .renderTargetCount = 1
             });
