@@ -95,3 +95,8 @@ crowy_graphics_sample(Checkerboard
 SOURCES
     Checkerboard.cpp
 )
+
+crowy_graphics_sample(BlackholeSimulation
+SOURCES
+    BlackholeSimulation.cpp
+)
