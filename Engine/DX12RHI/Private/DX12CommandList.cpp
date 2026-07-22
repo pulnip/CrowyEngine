@@ -46,7 +46,9 @@ namespace{
         auto tex = static_cast<DX12Texture*>(desc.texture);
 
         return D3D12_RENDER_PASS_RENDER_TARGET_DESC{
-            .cpuDescriptor = rtvHeap.GetCPUHandle(tex->GetOrCreateRTV()),
+            .cpuDescriptor = rtvHeap.GetCPUHandle(
+                tex->GetOrCreateRTV(desc.mipLevel)
+            ),
             .BeginningAccess = {
                 .Type = convert(desc.loadAction),
                 .Clear = {
@@ -102,7 +104,9 @@ namespace{
         const bool hasStencil = HasStencil(format);
 
         return D3D12_RENDER_PASS_DEPTH_STENCIL_DESC{
-            .cpuDescriptor = dsvHeap.GetCPUHandle(tex->GetOrCreateDSV()),
+            .cpuDescriptor = dsvHeap.GetCPUHandle(
+                tex->GetOrCreateDSV(desc.mipLevel)
+            ),
             .DepthBeginningAccess = beginningAccess,
             .StencilBeginningAccess = hasStencil ? beginningAccess : noBeginningAccess,
             .DepthEndingAccess = endingAccess,

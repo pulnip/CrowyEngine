@@ -200,7 +200,8 @@ namespace Crowy
             .Format = convert(desc.format),
             .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
             .Texture2D = D3D12_TEX2D_RTV{
-                .MipSlice = 0,
+                // a render target is a single mip, so mipCount plays no part
+                .MipSlice = desc.mostDetailedMip,
                 .PlaneSlice = 0
             }
         };
@@ -224,7 +225,8 @@ namespace Crowy
             .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
             .Flags = D3D12_DSV_FLAG_NONE,
             .Texture2D = D3D12_TEX2D_DSV{
-                .MipSlice = 0
+                // a depth target is a single mip, so mipCount plays no part
+                .MipSlice = desc.mostDetailedMip
             }
         };
 
@@ -242,15 +244,20 @@ namespace Crowy
         if(auto it = srvs.find(desc); it != srvs.end())
             return it->second;
 
+        // RHI_ALL_MIPS is the same all-ones value D3D12 reads as "the rest"
         const auto dxDesc = std::visit(overload{
             [&](const RHITextureViewDesc::Tex2D&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex2D(
-                    convert(desc.format)
+                    convert(desc.format),
+                    desc.mipCount,
+                    desc.mostDetailedMip
                 );
             },
-            [&](const RHITextureViewDesc::TexCube& c){
+            [&](const RHITextureViewDesc::TexCube&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TexCube(
-                    convert(desc.format)
+                    convert(desc.format),
+                    desc.mipCount,
+                    desc.mostDetailedMip
                 );
             }
         }, desc.config);
@@ -270,7 +277,9 @@ namespace Crowy
             return it->second;
 
         const auto dxDesc = CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex2D(
-            convert(desc.format)
+            // unordered access binds a single mip, so mipCount plays no part
+            convert(desc.format),
+            desc.mostDetailedMip
         );
 
         auto idx = cbvsrvuavHeap.Allocate(

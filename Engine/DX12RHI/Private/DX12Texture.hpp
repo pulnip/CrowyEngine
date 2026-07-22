@@ -44,6 +44,9 @@ namespace Crowy
 
         u32 GetWidth() const noexcept RHI_OVERRIDE;
         u32 GetHeight() const noexcept RHI_OVERRIDE;
+        // the overrides above would otherwise hide the per-mip overloads
+        using RHITexture::GetWidth;
+        using RHITexture::GetHeight;
 
         void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 
@@ -55,14 +58,19 @@ namespace Crowy
         u64 GetReadableID(const RHITextureViewDesc&) RHI_OVERRIDE;
         u64 GetWritableID(const RHITextureViewDesc&) RHI_OVERRIDE;
 
-        UINT GetOrCreateRTV(){
+        // render and depth targets always bind exactly one mip
+        UINT GetOrCreateRTV(u32 mipLevel){
             return GetOrCreateRTV(RHITextureViewDesc{
-                .format = GetFormat()
+                .format = GetFormat(),
+                .mostDetailedMip = mipLevel,
+                .mipCount = 1
             });
         }
-        UINT GetOrCreateDSV(){
+        UINT GetOrCreateDSV(u32 mipLevel){
             return GetOrCreateDSV(RHITextureViewDesc{
-                .format = GetFormat()
+                .format = GetFormat(),
+                .mostDetailedMip = mipLevel,
+                .mipCount = 1
             });
         }
     };

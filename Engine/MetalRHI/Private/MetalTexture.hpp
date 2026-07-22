@@ -34,6 +34,9 @@ namespace Crowy
         u32 GetHeight() const noexcept RHI_OVERRIDE{
             return texture->height();
         }
+        // the overrides above would otherwise hide the per-mip overloads
+        using RHITexture::GetWidth;
+        using RHITexture::GetHeight;
 
         virtual void* GetNative() noexcept RHI_OVERRIDE{
             return texture;

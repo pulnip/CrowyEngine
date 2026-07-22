@@ -438,6 +438,8 @@ namespace Crowy
         RHILoadAction loadAction = RHILoadAction::Clear;
         RHIStoreAction storeAction = RHIStoreAction::Store;
         Color clearColor = Colors::Black;
+        // the viewport does not follow from this; size it with the same mip
+        u32 mipLevel = 0;
     };
 
     struct RHIDepthAttachment{
@@ -445,6 +447,7 @@ namespace Crowy
         RHILoadAction loadAction = RHILoadAction::Clear;
         RHIStoreAction storeAction = RHIStoreAction::Store;
         RHIClearDepthStencil clearDepthStencil{};
+        u32 mipLevel = 0;
     };
 
     struct RHIRenderPassDesc{
@@ -1043,6 +1046,8 @@ namespace Crowy
         bool operator==(const RHIBufferViewDesc&) const = default;
     };
 
+    inline constexpr u32 RHI_ALL_MIPS = 0xFFFF'FFFF;
+
     struct RHITextureViewDesc{
         struct Tex2D{
             bool operator==(const Tex2D&) const = default;
@@ -1053,6 +1058,10 @@ namespace Crowy
         using Config = std::variant<Tex2D, TexCube>;
 
         RHIPixelFormat format = RHIPixelFormat::Unknown;
+        u32 mostDetailedMip = 0;
+        // RHI_ALL_MIPS reads every mip below mostDetailedMip.
+        // Render target and unordered access views bind exactly one mip and ignore this.
+        u32 mipCount = RHI_ALL_MIPS;
         Config config = Tex2D{};
 
         bool operator==(const RHITextureViewDesc&) const = default;
@@ -1092,6 +1101,8 @@ struct std::hash<Crowy::RHITextureViewDesc>{
 
         std::size_t h = hashAll(
             desc.format,
+            desc.mostDetailedMip,
+            desc.mipCount,
             desc.config.index()
         );
 

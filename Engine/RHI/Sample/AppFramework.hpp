@@ -38,8 +38,8 @@ namespace Crowy
         void Render(CommandListPool& pool, RHISwapchain& swapchain) override final;
     };
 
-    RHIViewport FullViewport(const RHITexture&);
-    RHIScissorRect FullScissorRect(const RHITexture&);
+    RHIViewport FullViewport(const RHITexture&, u32 mipLevel = 0);
+    RHIScissorRect FullScissorRect(const RHITexture&, u32 mipLevel = 0);
 
     template<std::derived_from<App> T>
     int Main(const WindowConfig& windowConfig){

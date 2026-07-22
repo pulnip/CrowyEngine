@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 #include "Assert.hpp"
 #include "Semantics.hpp"
@@ -50,8 +51,16 @@ namespace Crowy
         RHIPixelFormat GetFormat() const noexcept{
             return format;
         }
+        // mip 0
         virtual u32 GetWidth() const noexcept = 0;
         virtual u32 GetHeight() const noexcept = 0;
+        // a mip never shrinks below one texel, so this is not a plain shift.
+        u32 GetWidth(u32 mipLevel) const noexcept{
+            return MipExtent(GetWidth(), mipLevel);
+        }
+        u32 GetHeight(u32 mipLevel) const noexcept{
+            return MipExtent(GetHeight(), mipLevel);
+        }
         u32 GetMipLevels() const noexcept{
             return mipLevels;
         }
@@ -194,6 +203,17 @@ namespace Crowy
         }
 
     private:
+        u32 MipExtent(u32 extent, u32 mipLevel) const noexcept{
+            CROWY_ASSERT(mipLevel < mipLevels, "mip level out of range");
+
+            // a shift wider than the type is undefined, and the assert above is
+            // gone in release builds
+            if(mipLevel >= 32){
+                return 1;
+            }
+            return std::max(1u, extent >> mipLevel);
+        }
+
         usize SubresourceIndex(u32 mipLevel, u32 arraySlice) const{
             CROWY_ASSERT(mipLevel < mipLevels, "mip level out of range");
 
