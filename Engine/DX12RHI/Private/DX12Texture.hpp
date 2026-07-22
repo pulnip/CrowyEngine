@@ -44,7 +44,6 @@ namespace Crowy
 
         u32 GetWidth() const noexcept RHI_OVERRIDE;
         u32 GetHeight() const noexcept RHI_OVERRIDE;
-        u16 GetMipLevels() const noexcept RHI_OVERRIDE;
 
         void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 

@@ -45,7 +45,9 @@ namespace Crowy
             desc.format,
             RHIBarrierSync::None,
             RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Undefined
+            RHIBarrierLayout::Undefined,
+            desc.mipLevels,
+            desc.arraySize
         )
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
@@ -109,7 +111,7 @@ namespace Crowy
             D3D12_HEAP_FLAG_NONE,
             &texDesc,
             // undefined - no content
-            convert(GetLayoutState()),
+            convert(RHIBarrierLayout::Undefined),
             pClearValue,
             // Hardware DRM
             nullptr,
@@ -142,7 +144,9 @@ namespace Crowy
             logicalFormat,
             RHIBarrierSync::None,
             RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Present
+            RHIBarrierLayout::Present,
+            1,
+            1
         )
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
@@ -186,10 +190,6 @@ namespace Crowy
     u32 DX12Texture::GetHeight() const noexcept{
         const auto desc = texture->GetDesc();
         return desc.Height;
-    }
-    u16 DX12Texture::GetMipLevels() const noexcept{
-        const auto desc = texture->GetDesc();
-        return desc.MipLevels;
     }
 
     UINT DX12Texture::GetOrCreateRTV(const RHITextureViewDesc& desc){

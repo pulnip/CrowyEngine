@@ -518,21 +518,35 @@ namespace Crowy
     }
 
     namespace{
+        inline auto convert(const RHISubresourceRange& range){
+            if(range.numMips == 0){
+                // flat subresource index, RHI_ALL_SUBRESOURCES for everything
+                return CD3DX12_BARRIER_SUBRESOURCE_RANGE(range.firstMip);
+            }
+
+            // planes are left at the default single plane
+            return CD3DX12_BARRIER_SUBRESOURCE_RANGE(
+                range.firstMip,
+                range.numMips,
+                range.firstArraySlice,
+                range.numArraySlice
+            );
+        }
+
         inline auto convert(const RHITextureBarrier& barrier){
             auto& resource = barrier.texture;
-            const auto syncAfter = barrier.syncAfter;
-            const auto accessAfter = barrier.accessAfter;
-            const auto layoutAfter = barrier.layoutAfter;
+            const auto after = barrier.point;
+            const auto before = resource.TransitionState(after, barrier.range);
 
             return CD3DX12_TEXTURE_BARRIER(
-                convert(resource.TransitionState(syncAfter)),
-                convert(syncAfter),
-                convert(resource.TransitionState(accessAfter)),
-                convert(accessAfter),
-                convert(resource.TransitionState(layoutAfter)),
-                convert(layoutAfter),
+                convert(before.sync),
+                convert(after.sync),
+                convert(before.access),
+                convert(after.access),
+                convert(before.layout),
+                convert(after.layout),
                 static_cast<DX12Texture&>(resource).Get(),
-                CD3DX12_BARRIER_SUBRESOURCE_RANGE(0xFFFF'FFFF)
+                convert(barrier.range)
             );
         }
 

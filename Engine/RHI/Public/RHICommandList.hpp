@@ -30,12 +30,6 @@ namespace Crowy
     };
 
     namespace detail{
-        struct RHIBarrierPoint{
-            RHIBarrierSync sync;
-            RHIBarrierAccess access;
-            RHIBarrierLayout layout;
-        };
-
         inline constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
             using enum RHIResourceUsage;
             using S = RHIBarrierSync;
@@ -84,14 +78,17 @@ namespace Crowy
         }
     }
 
-    inline auto MakeBarrier(RHITexture& texture, RHIResourceUsage usage){
+    inline auto MakeBarrier(
+        RHITexture& texture,
+        RHIResourceUsage usage,
+        RHISubresourceRange range = {}
+    ){
         const auto point = detail::Expand(usage);
 
         return RHITextureBarrier{
             .texture = texture,
-            .syncAfter = point.sync,
-            .accessAfter = point.access,
-            .layoutAfter = point.layout
+            .point = point,
+            .range = range
         };
     }
     inline auto MakeBarrier(RHIBuffer& buffer, RHIResourceUsage usage){
@@ -274,9 +271,11 @@ namespace Crowy
         ){
             TransitionBarrier(RHITextureBarrier{
                 .texture = texture,
-                .syncAfter = syncAfter,
-                .accessAfter = accessAfter,
-                .layoutAfter = layoutAfter
+                .point = RHIBarrierPoint{
+                    .sync = syncAfter,
+                    .access = accessAfter,
+                    .layout = layoutAfter
+                }
             });
         }
         void TransitionBarrier(

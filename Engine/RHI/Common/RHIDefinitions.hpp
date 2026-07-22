@@ -358,12 +358,30 @@ namespace Crowy
         RHIBarrierAccess accessAfter;
     };
 
+    struct RHIBarrierPoint{
+        RHIBarrierSync sync;
+        RHIBarrierAccess access;
+        RHIBarrierLayout layout;
+
+        bool operator==(const RHIBarrierPoint&) const = default;
+    };
+
+    inline constexpr u32 RHI_ALL_SUBRESOURCES = 0xFFFF'FFFF;
+
+    // numMips == 0 makes firstMip a flat subresource index instead of a range;
+    // RHI_ALL_SUBRESOURCES there selects the whole resource, which is the default.
+    struct RHISubresourceRange{
+        u32 firstMip = RHI_ALL_SUBRESOURCES;
+        u32 numMips = 0;
+        u32 firstArraySlice = 0;
+        u32 numArraySlice = 0;
+    };
+
     struct RHITextureBarrier{
         RHITexture& texture;
 
-        RHIBarrierSync syncAfter;
-        RHIBarrierAccess accessAfter;
-        RHIBarrierLayout layoutAfter;
+        RHIBarrierPoint point;
+        RHISubresourceRange range{};
     };
 
     struct RHIClearDepthStencil{
