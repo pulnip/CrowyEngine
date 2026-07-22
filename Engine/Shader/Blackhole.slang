@@ -117,10 +117,9 @@ float3 sampleDiskWithDoppler(
     // kepler's Orbital velocity
     float v_orb = sqrt(rs / (2.0 * r));
 
-    // rotate anti-clockwise
-    float3 orbitalDir = normalize(float3(-hitPos.z, 0, hitPos.x));
-    // rotate clockwise
-    // float3 orbitalDir = normalize(float3(hitPos.z, 0, -hitPos.x));
+    // +1: anti-clockwise, -1: clockwise
+    static const float dir = +1.0;
+    float3 orbitalDir = dir * normalize(float3(-hitPos.z, 0, hitPos.x));
 
     // doppler factor
     float dopplerCosAngle = dot(rayDir, orbitalDir);
@@ -131,7 +130,7 @@ float3 sampleDiskWithDoppler(
 
     float u = (r - diskInner) / (diskOuter - diskInner);
     float omega = pow(diskInner / r, 1.5);
-    float v = fract(theta / (2.0 * float.getPi()) + 0.2 * omega * t);
+    float v = fract(theta / (2.0 * float.getPi()) - dir * 0.2 * omega * t);
 
     // g^3 boosting
     return pow(redShift, 3) * disk.Sample(linearWrap, float2(u, v)).rgb;
