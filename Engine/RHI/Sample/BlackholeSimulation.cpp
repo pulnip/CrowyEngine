@@ -240,6 +240,10 @@ namespace Crowy
     class BlackholeSimulation: public App{
         using App::App;
 
+        // linear radiance. the g^3 doppler boost drives the disk well past 1,
+        // which is exactly what an UNORM target used to throw away.
+        static constexpr auto HDR_FORMAT = RHIPixelFormat::RGBA16_FLOAT;
+
         RHIGraphicsPipelineStateRAII diskGenerator = nullptr;
         RHITextureRAII disk = nullptr;
         struct GenerationParam{
@@ -282,6 +286,16 @@ namespace Crowy
 
         BloomPass bloomPass;
         RHITextureRAII brightMask = nullptr;
+
+        RHIGraphicsPipelineStateRAII composite = nullptr;
+        struct CompositeParam{
+            u64 scene;
+            u64 bloom;
+            // brightMask carries the whole disk color, not just the excess over the threshold,
+            // so adding it back at full strength would double the disk
+            f32 bloomStrength = 0.2f;
+            f32 exposure = 1.0f;
+        };
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             diskGenerator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
@@ -330,14 +344,14 @@ namespace Crowy
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
-                    swapchain.GetFormat(),
-                    swapchain.GetFormat()
+                    HDR_FORMAT,
+                    HDR_FORMAT
                 },
                 .renderTargetCount = 2
             });
             scene = device.CreateTexture(RHITextureCreateDesc{
                 .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
-                .format = swapchain.GetFormat(),
+                .format = HDR_FORMAT,
                 .usage = combine(
                     RHITextureUsage::ShaderRead,
                     RHITextureUsage::RenderTarget
@@ -359,13 +373,34 @@ namespace Crowy
 
             brightMask = device.CreateTexture(RHITextureCreateDesc{
                 .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
-                .format = swapchain.GetFormat(),
+                .format = HDR_FORMAT,
                 .usage = combine(
                     RHITextureUsage::ShaderRead,
                     RHITextureUsage::RenderTarget
                 )
             }, "brightMask");
             bloomPass.Init(device, *brightMask, 4);
+
+            composite = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
+                .preRasterizer = RHILegacyFrontendDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader = {
+                        .path = "Engine/Shader/Composite.slang",
+                        .entryPoint = "vs_main"
+                    }
+                },
+                .rasterizer = RHIRasterizerState{
+                    .frontCounterClockwise = false
+                },
+                .fragmentShader = {
+                    .path = "Engine/Shader/Composite.slang",
+                    .entryPoint = "fs_main"
+                },
+                .renderTargetFormats = {
+                    swapchain.GetFormat()
+                },
+                .renderTargetCount = 1
+            }, "composite");
         }
 
         void OnInitialRecord(RHICommandList& cmdList) override{
@@ -454,18 +489,36 @@ namespace Crowy
 
             {
                 std::array barriers = {
-                    MakeBarrier(bloom, RHIResourceUsage::CopySrc),
-                    MakeBarrier(*backBuffer.texture, RHIResourceUsage::CopyDst)
+                    MakeBarrier(*scene, RHIResourceUsage::FragmentRead),
+                    MakeBarrier(bloom, RHIResourceUsage::FragmentRead)
                 };
                 cmdList.TransitionBarrier(barriers);
             }
 
+            // the framework already left the back buffer as a render target
             {
-                cmdList.BeginBlit();
+                std::array colorAttachments = {
+                    RHIColorAttachment{
+                        .texture = backBuffer.texture,
+                        // a full screen quad covers every pixel
+                        .loadAction = RHILoadAction::DontCare,
+                        .storeAction = backBuffer.storeAction
+                    }
+                };
+                cmdList.BeginRenderPass(RHIRenderPassDesc{
+                    .colorAttachments = colorAttachments
+                });
+                cmdList.SetViewport(FullViewport(*backBuffer.texture));
+                cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-                cmdList.Copy(bloom, *backBuffer.texture);
+                cmdList.SetPipelineState(*composite);
+                cmdList.SetPushGraphicsConstants(CompositeParam{
+                    .scene = scene->GetReadableID(),
+                    .bloom = bloom.GetReadableID()
+                });
+                cmdList.Draw(4);
 
-                cmdList.EndBlit();
+                cmdList.EndRenderPass();
             }
         }
 
