@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <bit>
 #include <concepts>
 #include <limits>
@@ -22,5 +23,10 @@ namespace Crowy
     template<std::unsigned_integral T>
     constexpr T nextMul(T n, T m) noexcept{
         return ceilDiv(n, m) * m;
+    }
+
+    template<std::unsigned_integral T>
+    T halve(T extent){
+        return std::max<T>(1u, extent / 2);
     }
 }
