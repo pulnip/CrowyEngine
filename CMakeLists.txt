@@ -9,17 +9,11 @@ set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# option(CROWY_BUILD_TOOLS "Build tools" ON)
 option(CROWY_ENABLE_TEST "Enable Tests" ON)
-option(CROWY_STATIC_RHI "Use STATIC RHI model" OFF)
 
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-set(CMAKE_INSTALL_RPATH "@executable_path")
-set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/Game)
-
 include(config)
 
-add_subdirectory(Core)
 add_subdirectory(Engine)

@@ -1,73 +1,45 @@
 #pragma once
 
-#include <cstdint>
-#include <span>
-#include <string>
-#include "math.hpp"
-#include "ResourceHandle.hpp"
-#include "RenderSpec.hpp"
+#include <filesystem>
+#include "Primitives.hpp"
 #include "RHIFWD.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
-    struct Submesh{
-        RHIBufferRAII vertexBuffer;
-        RHIBufferRAII indexBuffer;
-        uint32_t vertexCount = 0;
-        uint32_t indexCount = 0;
-        uint32_t vertexStride = 0;
-        std::string materialSlotName;
-
-        inline bool isValid() const{
-            return vertexBuffer != nullptr &&
-                   vertexCount > 0;
-        }
-
-        inline bool hasIndices() const{
-            return indexBuffer != nullptr &&
-                   indexCount > 0;
-        }
+    template<typename T>
+    concept ResourceRequest = requires(T t){
+        typename T::Key;
+        typename T::KeyHash;
     };
 
-    struct Material{
-        // fallback Parameters
-        Vec4 baseColor = Vec4{1.0f, 1.0f, 1.0f, 1.0f};
-        float metallic = 0.0f;
-        float roughness = 1.0f;
-        Vec3 emissive = zeros();
-
-        // Texture maps
-        RHITextureRAII baseColorMap;
-        RHITextureRAII normalMap;
-        RHITextureRAII metallicRoughnessMap;
-        RHITextureRAII emissiveMap;
-        RHITextureRAII occlusionMap;
-
-        inline bool hasBaseColorMap() const{
-            return baseColorMap != nullptr;
-        }
-        inline bool hasNormalMap() const{
-            return normalMap != nullptr;
-        }
-        inline bool hasMetallicRoughnessMap() const{
-            return metallicRoughnessMap != nullptr;
-        }
-        inline bool hasEmissiveMap() const{
-            return emissiveMap != nullptr;
-        }
-        inline bool hasOcclusionMap() const{
-            return occlusionMap != nullptr;
-        }
+    template<typename T>
+    concept Resource = requires{
+        typename T::Request;
+        requires ResourceRequest<typename T::Request>;
     };
 
-    void initResourceModule(RHIDevice*);
-    void deinitResourceModule();
+    struct SpriteAnimation{
+        u32 startRow = 0;
+        u32 startCol, frameCount = 1;
+        f32 frameDurationMs = 160.0f;
+    };
 
-    std::pair<MeshHandle, MaterialSetHandle> getOrLoad(const RenderObjectSpec&);
+    struct SpriteRequest{
+        using Key = std::filesystem::path;
+        using KeyHash = std::hash<Key>;
 
-    using        MeshView = std::span<const  Submesh>;
-    using MaterialSetView = std::unordered_map<std::string, const Material*>;
+        Key path;
+        Size2D sheetSize;
+        StringHashMap<SpriteAnimation> animations;
+    };
 
-    MeshView        get(       MeshHandle);
-    MaterialSetView get(MaterialSetHandle);
+    struct SpriteResource{
+        using Request = SpriteRequest;
+
+        RHITextureRAII texture;
+        Size2D sheetSize;
+        StringHashMap<SpriteAnimation> animations;
+    };
+    static_assert(Resource<SpriteResource>);
 }

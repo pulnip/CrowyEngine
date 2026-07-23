@@ -1,41 +1,23 @@
-# Layer 0
-add_subdirectory(Log)
-add_subdirectory(ECS)
-add_subdirectory(EngineCore)
+# 1) Core Layer
+add_subdirectory(Core)
 
-# Layer 1: Platform
-add_subdirectory(Platform)
+# 2-0) Interface Layer
+add_subdirectory(Canvas2D)
 add_subdirectory(RHI)
-# RHI Implementations
-if(RENDER_BACKEND STREQUAL "Metal")
+# 2-1) Infrastructure Layer
+add_subdirectory(Log)
+add_subdirectory(Platform)
+add_subdirectory(Serialization)
+# 2-2) Infrastructure Implement Layer
+if(WIN32)
+    add_subdirectory(DX12RHI)
+elseif(APPLE)
     add_subdirectory(MetalRHI)
-elseif(RENDER_BACKEND STREQUAL "D3D11")
-    add_subdirectory(D3D11RHI)
-elseif(RENDER_BACKEND STREQUAL "D3D12")
-    add_subdirectory(D3D12RHI)
-else()
-    # Null RHI as fallback
-    set(USE_NULL_RHI ON)
 endif()
+add_subdirectory(ImGuiCanvas)
 
-# Layer 2: High-Level Systems
-# add_subdirectory(Audio)
-add_subdirectory(Input)
-# add_subdirectory(Physics)
-add_subdirectory(Resource)
-add_subdirectory(Render)
-add_subdirectory(Scene)
-add_subdirectory(Script)
 add_subdirectory(UI)
 
-# Layer 3: Application
-add_subdirectory(App)
-
-if(CROWY_ENABLE_TEST)
-    set(USE_NULL_RHI ON)
-    # add_subdirectory(Test)
-endif()
-
-if(USE_NULL_RHI)
-    add_subdirectory(NullRHI)
-endif()
+add_subdirectory(Resource)
+# 3-0) Subsystem Layer
+# add_subdirectory(Render)

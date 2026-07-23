@@ -1,34 +1,39 @@
 #pragma once
 
-#include <cstdint>
-#include "semantics.hpp"
+#include "Semantics.hpp"
+#include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
-
-#ifdef USE_STATIC_RHI
-    #if defined(USE_METAL_BACKEND)
-        #include "MetalSwapchain.hpp"
-    #elif defined(USE_D3D11_BACKEND)
-        #include "D3D11Swapchain.hpp"
-    #else
-        #include "NullSwapchain.hpp"
-    #endif
-#endif
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
     // Swapchain for presenting rendered images to the screen
     class RHISwapchain{
+    private:
+        // Requested format; Could be differ from Actual format
+        RHIPixelFormat format;
+
     public:
-        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHISwapchain)
+        RHISwapchain(
+            RHIPixelFormat format
+        )
+            : format(format)
+        {}
+        virtual ~RHISwapchain() = default;
+        CROWY_DECLARE_PINNED(RHISwapchain)
 
-        virtual bool acquireNextImage() noexcept = 0;
+        virtual bool AcquireNextImage() = 0;
 
-        virtual void resize(uint32_t newWidth, uint32_t newHeight) noexcept = 0;
+        virtual void Resize(u32 newWidth, u32 newHeight) = 0;
 
-        virtual RHIPixelFormat getFormat() const noexcept = 0;
-        virtual uint32_t getWidth() const noexcept = 0;
-        virtual uint32_t getHeight() const noexcept = 0;
+        RHIPixelFormat GetFormat() const noexcept{
+            return format;
+        }
+        virtual u32 GetWidth() const noexcept = 0;
+        virtual u32 GetHeight() const noexcept = 0;
 
-        virtual void* getCurrentNativeTexture() const noexcept = 0;
+        virtual RHITexture& GetCurrentTexture() = 0;
+
+        virtual void Present() = 0;
     };
 }

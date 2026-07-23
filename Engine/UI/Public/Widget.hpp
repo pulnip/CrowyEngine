@@ -1,103 +1,97 @@
 #pragma once
 
-#include <optional>
-#ifndef CROWY_UI_CONTEXT
-    #define CROWY_UI_CONTEXT UIContext
-#endif
-
 #include <functional>
-#include <memory>
-#include <string>
-#include <string_view>
+#include <optional>
+#include <type_traits>
 #include <variant>
-#include <vector>
-#include "math.hpp"
+#include "Primitives.hpp"
 
 namespace Crowy
 {
-    struct CROWY_UI_CONTEXT;
+    // Defined at Lower layer
+    struct UIContext;
 
     struct IntField{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, int)> onChanged = [](CROWY_UI_CONTEXT&, int){};
+        Str label;
+        std::function<void(UIContext&, int)> onChanged = [](UIContext&, int){};
         int v = 0;
         std::optional<std::function<int()>> get = std::nullopt;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct FloatField{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, float)> onChanged = [](CROWY_UI_CONTEXT&, float){};
+        Str label;
+        std::function<void(UIContext&, float)> onChanged = [](UIContext&, float){};
         float v = 0;
         std::optional<std::function<float()>> get = std::nullopt;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct Float2Field{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, Vec2)> onChanged = [](CROWY_UI_CONTEXT&, Vec2){};
+        Str label;
+        std::function<void(UIContext&, Vec2)> onChanged = [](UIContext&, Vec2){};
         Vec2 v{0, 0};
         std::optional<std::function<Vec2()>> get = std::nullopt;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct Float3Field{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, Vec3)> onChanged = [](CROWY_UI_CONTEXT&, Vec3){};
+        Str label;
+        std::function<void(UIContext&, Vec3)> onChanged = [](UIContext&, Vec3){};
         Vec3 v{0, 0, 0};
         std::optional<std::function<Vec3()>> get = std::nullopt;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct Float4Field{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, Vec4)> onChanged = [](CROWY_UI_CONTEXT&, Vec4){};
+        Str label;
+        std::function<void(UIContext&, Vec4)> onChanged = [](UIContext&, Vec4){};
         Vec4 v{0, 0, 0, 0};
         std::optional<std::function<Vec4()>> get = std::nullopt;
 
-        void submit(CROWY_UI_CONTEXT&);
-    };
-
-    struct TextButton{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&)> onPressed = [](CROWY_UI_CONTEXT&){};
-
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct Checkbox{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, bool)> onChanged = [](CROWY_UI_CONTEXT&, bool){};
+        Str label;
+        std::function<void(UIContext&, bool)> onChanged = [](UIContext&, bool){};
         bool v;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
+    };
+
+    struct TextButton{
+        Str label;
+        std::function<void(UIContext&)> onPressed = [](UIContext&){};
+
+        void submit(UIContext&);
     };
 
     struct Slider{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, float)> onChanged = [](CROWY_UI_CONTEXT&, float){};
+        Str label;
+        std::function<void(UIContext&, float)> onChanged = [](UIContext&, float){};
         float v = 0.0f;
         float v_min = 0.0f, v_max = 1.0f;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct Text{
-        std::string data;
+        Str data;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct SearchBar{
-        std::string label;
-        std::function<void(CROWY_UI_CONTEXT&, std::string_view)> onChanged = [](CROWY_UI_CONTEXT&, std::string_view){};
-        std::string str;
+        Str label;
+        std::function<void(UIContext&, StrView)> onChanged = [](UIContext&, StrView){};
+        Str str;
 
-        void submit(CROWY_UI_CONTEXT&);
+        void submit(UIContext&);
     };
 
     struct Box{
@@ -106,8 +100,8 @@ namespace Crowy
         public:
             virtual ~IWidget() = default;
 
-            virtual void submit(CROWY_UI_CONTEXT& ctx) = 0;
-            virtual std::unique_ptr<IWidget> clone() const = 0;
+            virtual void submit(UIContext& ctx) = 0;
+            virtual RAII<IWidget> clone() const = 0;
         };
 
         template<typename T>
@@ -120,21 +114,20 @@ namespace Crowy
                 : widget(std::move(widget)){}
             ~WidgetWrapper() = default;
 
-            void submit(CROWY_UI_CONTEXT& ctx) override{
+            void submit(UIContext& ctx) override{
                 widget.submit(ctx);
             }
-            std::unique_ptr<IWidget> clone() const override{
+            RAII<IWidget> clone() const override{
                 return std::make_unique<WidgetWrapper>(widget);
             }
         };
 
-        std::unique_ptr<IWidget> ptr;
+        RAII<IWidget> ptr;
 
     public:
         template<typename T>
         Box(T&& widget)
             : ptr(std::make_unique<WidgetWrapper<std::decay_t<T>>>(std::forward<T>(widget))){}
-
         ~Box() = default;
         Box(Box&&) = default;
         Box& operator=(Box&&) = default;
@@ -145,13 +138,14 @@ namespace Crowy
             return *this;
         }
 
-        inline void submit(CROWY_UI_CONTEXT& ctx){
+        void submit(UIContext& ctx){
             ptr->submit(ctx);
         }
     };
 
     using Widget = std::variant<
-        TextButton, Checkbox, Slider, Text, SearchBar,
+        IntField, FloatField, Float2Field, Float3Field, Float4Field,
+        Checkbox, TextButton, Slider, Text, SearchBar,
         Box
     >;
 
@@ -164,6 +158,4 @@ namespace Crowy
         std::vector<Widget>&& children,
         double spacing = 0.0
     );
-
-    Widget demoUI();
 }

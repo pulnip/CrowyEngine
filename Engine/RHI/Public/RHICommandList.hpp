@@ -1,204 +1,331 @@
 #pragma once
 
-#include <cstddef>
-#include <memory>
-#include <span>
 #include "RHIFWD.hpp"
-#include "semantics.hpp"
+#include "Semantics.hpp"
 #include "RHIDefinitions.hpp"
-
-#ifdef USE_STATIC_RHI
-    #if defined(USE_METAL_BACKEND)
-        #include "MetalCommandList.hpp"
-    #elif defined(USE_D3D11_BACKEND)
-        #include "D3D11CommandList.hpp"
-    #else
-        #include "NullCommandList.hpp"
-    #endif
-#endif
 
 namespace Crowy
 {
-#ifdef USE_STATIC_RHI
-    template<typename T>
-    concept RHICommandListType = requires(T cmdList,
-    ){
+    // helper for resource barrier
+    enum class RHIResourceUsage: u16{
+        // swapchain
+        Present,
+        // buffer
+        VertexBuffer,
+        IndexBuffer,
+        ConstantBuffer,
+        IndirectArgument,
+        // texture
+        RenderTarget,
+        DepthStencilWrite,
+        DepthStencilRead,
+        // buffer/texture
+        AnyRead,
+        VertexRead,
+        FragmentRead,
+        ComputeRead,
+        ComputeWrite,
+        CopySrc,
+        CopyDst,
     };
-    static_assert(RHICommandListType<RHICommandList>);
-#else
+
+    namespace detail{
+        inline constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
+            using enum RHIResourceUsage;
+            using S = RHIBarrierSync;
+            using A = RHIBarrierAccess;
+            using L = RHIBarrierLayout;
+
+            switch(usage){
+            case Present:
+                return {S::None, A::NoAccess, L::Present};
+            // buffer
+            case VertexBuffer:
+                return {S::Vertex, A::VertexBuffer, L::Undefined};
+            case IndexBuffer:
+                return {S::IndexInput, A::IndexBuffer, L::Undefined};
+            case ConstantBuffer:
+                return {S::AllShading, A::ConstantBuffer, L::Undefined};
+            case IndirectArgument:
+                return {S::ExecuteIndirect, A::IndirectArgument, L::Undefined};
+            // texture in render pass
+            case RenderTarget:
+                return {S::RenderTarget, A::RenderTarget, L::RenderTarget};
+            case DepthStencilWrite:
+                return {S::DepthStencil, A::DepthStencilWrite, L::DepthStencilWrite};
+            case DepthStencilRead:
+                return {S::DepthStencil, A::DepthStencilRead, L::DepthStencilRead};
+            // shader read/write
+            case AnyRead:
+                return {S::AllShading, A::ShaderResource, L::ShaderResource};
+            case VertexRead:
+                return {S::Vertex, A::ShaderResource, L::ShaderResource};
+            case FragmentRead:
+                return {S::Fragment, A::ShaderResource, L::ShaderResource};
+            case ComputeRead:
+                return {S::Compute, A::ShaderResource, L::ShaderResource};
+            case ComputeWrite:
+                return {S::Compute, A::UnorderedAccess, L::UnorderedAccess};
+            // transfer
+            case CopySrc:
+                return {S::Copy, A::CopySrc, L::CopySrc};
+            case CopyDst:
+                return {S::Copy, A::CopyDst, L::CopyDst};
+            }
+
+            // error
+            return {S::None, A::NoAccess, L::Undefined};
+        }
+    }
+
+    inline auto MakeBarrier(
+        RHITexture& texture,
+        RHIResourceUsage usage,
+        RHISubresourceRange range = {}
+    ){
+        const auto point = detail::Expand(usage);
+
+        return RHITextureBarrier{
+            .texture = texture,
+            .point = point,
+            .range = range
+        };
+    }
+    inline auto MakeBarrier(RHIBuffer& buffer, RHIResourceUsage usage){
+        const auto point = detail::Expand(usage);
+
+        return RHIBufferBarrier{
+            .buffer = buffer,
+            .syncAfter = point.sync,
+            .accessAfter = point.access
+        };
+    }
+
     // Command list for recording GPU commands
     class RHICommandList{
     public:
-        CROWY_DECLARE_INTERFACE_NOEXCEPT(RHICommandList)
+        CROWY_DECLARE_INTERFACE(RHICommandList)
 
         // Command list lifecycle
-        virtual void begin() noexcept = 0;
-        virtual void flush() noexcept = 0;
-        virtual void close() noexcept = 0;
-        virtual void reset() noexcept = 0;
+        virtual void Begin() = 0;
+        virtual void Close() = 0;
 
         // Render pass control
-        virtual void beginRenderPass(
-            std::span<RHITexture*> renderTargets,
-            RHITexture* depthTarget = nullptr,
-            RHILoadAction loadAction  = RHILoadAction::Load,
-            RHIStoreAction storeAction = RHIStoreAction::Store,
-            const RHIClearColor& clearColor = {},
-            const RHIClearDepthStencil& clearDS = {},
-            const char* debugName = nullptr
-        ) noexcept = 0;
-
-        virtual void beginRenderPass(
-            RHISwapchain& backBuffer,
-            RHITexture* depthTarget = nullptr,
-            RHILoadAction loadAction  = RHILoadAction::Load,
-            RHIStoreAction storeAction = RHIStoreAction::Store,
-            const RHIClearColor& clearColor = {},
-            const RHIClearDepthStencil& clearDS = {},
-            const char* debugName = nullptr
-        ) noexcept = 0;
-
-        virtual void endRenderPass() noexcept = 0;
+        virtual void BeginRenderPass(const RHIRenderPassDesc&) = 0;
+        virtual void EndRenderPass() = 0;
 
         // Pipeline state
-        virtual void setPipelineState(RHIGraphicsPipelineState&) noexcept = 0;
-        virtual void setPipelineState(RHIComputePipelineState&) noexcept = 0;
+        virtual void SetPipelineState(RHIGraphicsPipelineState&) = 0;
 
         // Vertex and index buffers
-        virtual void setVertexBuffer(
-            const RHIBuffer&,
-            uint32_t slot,
-            uint32_t stride = sizeof(Vertex),
-            uint32_t offset = 0
-        ) noexcept = 0;
-
-        virtual void setIndexBuffer(
-            const RHIBuffer&,
-            RHIIndexFormat format = RHIIndexFormat::UInt32,
-            uint32_t offset = 0
-        ) noexcept = 0;
-
-        // Constant buffers
-        virtual void setConstantBuffer(
-            const RHIBuffer&,
-            uint32_t slot,
-            RHIShaderStage,
-            uint32_t offset = 0
-        ) noexcept = 0;
-
-        // Shader resources (textures, buffers)
-        virtual void setTexture(
-            RHITexture&,
-            uint32_t slot,
-            RHIBindingAccess,
-            RHIShaderStage
-        ) noexcept = 0;
-
-        // only for Compute Shader
-        virtual void setBuffer(
+        // stride = sizeof(Vertex)
+        virtual void SetVertexBuffer(
             RHIBuffer&,
-            uint32_t slot,
-            RHIBindingAccess,
-            RHIShaderStage stage = RHIShaderStage::ComputeShader
+            u32 slot,
+            u32 stride,
+            u32 offset = 0
         ) = 0;
 
-        virtual void setBytes(
-            const void* bytes,
-            uint32_t slot,
-            size_t size,
-            RHIShaderStage stage = RHIShaderStage::ComputeShader
+        virtual void SetIndexBuffer(
+            RHIBuffer&,
+            RHIIndexFormat format = RHIIndexFormat::UInt32,
+            u32 offset = 0
         ) = 0;
 
-        virtual void setSampler(
-            const RHISampler&,
-            uint32_t slot,
-            RHIShaderStage
-        ) noexcept = 0;
+        virtual void SetPushGraphicsConstants(
+            const void* data,
+            u32 size
+        ) = 0;
+
+        template<typename T>
+            requires (!std::is_pointer_v<T>)
+        void SetPushGraphicsConstants(const T& t){
+            SetPushGraphicsConstants(&t, sizeof(T));
+        }
+
+        virtual void SetGraphicsConstantBuffer(
+            RHIBuffer& buffer,
+            u32 slot,
+            u32 offset = 0
+        ) = 0;
 
         // Viewport and scissor
-        virtual void setViewport(const RHIViewport&) noexcept = 0;
-        virtual void setScissorRect(const RHIScissorRect&) noexcept = 0;
+        virtual void SetViewport(const RHIViewport&) = 0;
+        virtual void SetScissorRect(const RHIScissorRect&) = 0;
 
         // Draw commands
-        virtual void draw(
-            uint32_t vertexCount,
-            uint32_t instanceCount = 1,
-            uint32_t startVertex = 0,
-            uint32_t startInstance = 0
-        ) noexcept = 0;
+        virtual void Draw(
+            u32 vertexCount,
+            u32 instanceCount = 1,
+            u32 startVertex = 0,
+            u32 startInstance = 0
+        ) = 0;
 
-        virtual void drawIndexed(
-            uint32_t indexCount,
-            uint32_t instanceCount = 1,
-            uint32_t startIndex = 0,
-            int32_t baseVertex = 0,
-            uint32_t startInstance = 0
-        ) noexcept = 0;
+        virtual void DrawIndexed(
+            u32 indexCount,
+            u32 instanceCount = 1,
+            u32 startIndex = 0,
+            i32 baseVertex = 0,
+            u32 startInstance = 0
+        ) = 0;
 
-        virtual void beginCompute() noexcept = 0;
+        virtual void BeginCompute() = 0;
+        virtual void EndCompute() = 0;
 
-        virtual void endCompute() noexcept = 0;
+        virtual void SetPipelineState(RHIComputePipelineState&) = 0;
+
+        virtual void SetPushComputeConstants(
+            const void* data,
+            u32 size
+        ) = 0;
+
+        template<typename T>
+            requires (!std::is_pointer_v<T>)
+        void SetPushComputeConstants(const T& t){
+            SetPushComputeConstants(&t, sizeof(T));
+        }
+
+        virtual void SetComputeConstantBuffer(
+            RHIBuffer& buffer,
+            u32 slot,
+            u32 offset = 0
+        ) = 0;
 
         // Compute dispatch
-        virtual void dispatch(
-            RHISize3D gridSize
-        ) noexcept = 0;
+        virtual void Dispatch(
+            Size3D gridSize
+        ) = 0;
 
-        // Resource barriers (state transitions)
-        // Note: 'before' state is obtained from texture.getState() internally
-        virtual void transitionBarrier(
-            RHITexture& texture,
-            RHIResourceState after
-        ) noexcept = 0;
-
-        virtual void transitionBarrier(
-            RHIBuffer& buffer,
-            RHIResourceState after
-        ) noexcept = 0;
-
-        virtual void uavBarrier(RHITexture&) noexcept = 0;
-        virtual void uavBarrier(RHIBuffer&) noexcept = 0;
-
-        virtual void signalFence(RHIFence&, uint64_t value) noexcept = 0;
-        virtual void waitFence(RHIFence&, uint64_t value) noexcept = 0;
+        virtual void BeginBlit() = 0;
+        virtual void EndBlit() = 0;
 
         // Copy operations
-        virtual void copy(
+        virtual void Copy(
             RHIBuffer& src,
             RHIBuffer& dst,
-            size_t srcOffset,
-            size_t dstOffset,
-            size_t size
-        ) noexcept = 0;
+            usize srcOffset,
+            usize dstOffset,
+            usize size
+        ) = 0;
 
-        virtual void copy(
+        virtual void Copy(
             RHITexture& src,
             RHITexture& dst
-        ) noexcept = 0;
+        ) = 0;
 
-        virtual void copy(
+        // helper for RHISwapchain(backBuffer)
+        void Copy(
             RHITexture& src,
             RHISwapchain& dst
-        ) noexcept = 0;
+        );
 
-        virtual void copy(
+        virtual void Copy(
             RHIBuffer& src,
+            u64 srcOffset,
+            u32 srcRowPitch,
             RHITexture& dst,
-            uint32_t mipLevel = 0,
-            uint32_t arraySlice = 0
-        ) noexcept = 0;
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ) = 0;
 
-        virtual void waitUntilCompleted() noexcept = 0;
+        // Resource barriers
+        virtual void TransitionBarrier(
+            std::span<const RHITextureBarrier>,
+            std::span<const RHIBufferBarrier>
+        ) = 0;
+        void TransitionBarrier(
+            std::span<const RHITextureBarrier> barriers
+        ){
+            TransitionBarrier(barriers, {});
+        }
+        void TransitionBarrier(
+            std::span<const RHIBufferBarrier> barriers
+        ){
+            TransitionBarrier({}, barriers);
+        }
+        void TransitionBarrier(
+            RHITextureBarrier barrier
+        ){
+            RHITextureBarrier barriers[1] = {barrier};
+
+            TransitionBarrier(
+                barriers,
+                {}
+            );
+        }
+        void TransitionBarrier(
+            RHIBufferBarrier barrier
+        ){
+            RHIBufferBarrier barriers[1] = {barrier};
+
+            TransitionBarrier(
+                {},
+                barriers
+            );
+        }
+        void TransitionBarrier(
+            RHITexture& texture,
+            RHIBarrierSync syncAfter,
+            RHIBarrierAccess accessAfter,
+            RHIBarrierLayout layoutAfter
+        ){
+            TransitionBarrier(RHITextureBarrier{
+                .texture = texture,
+                .point = RHIBarrierPoint{
+                    .sync = syncAfter,
+                    .access = accessAfter,
+                    .layout = layoutAfter
+                }
+            });
+        }
+        void TransitionBarrier(
+            RHIBuffer& buffer,
+            RHIBarrierSync syncAfter,
+            RHIBarrierAccess accessAfter
+        ){
+            TransitionBarrier(RHIBufferBarrier{
+                .buffer = buffer,
+                .syncAfter = syncAfter,
+                .accessAfter = accessAfter
+            });
+        }
+        void TransitionBarrier(
+            RHITexture& texture,
+            RHIResourceUsage usageAfter
+        ){
+            const auto point = detail::Expand(usageAfter);
+
+            TransitionBarrier(
+                texture,
+                point.sync,
+                point.access,
+                point.layout
+            );
+        }
+        void TransitionBarrier(
+            RHIBuffer& buffer,
+            RHIResourceUsage usageAfter
+        ){
+            const auto point = detail::Expand(usageAfter);
+
+            TransitionBarrier(
+                buffer,
+                point.sync,
+                point.access
+            );
+        }
+
+        virtual void WaitUntilCompleted() = 0;
 
         // Debug markers (for GPU profiling)
-        virtual void beginEvent(const char* name) noexcept = 0;
-        virtual void endEvent() noexcept = 0;
-        virtual void setMarker(const char* name) noexcept = 0;
+        virtual void BeginEvent(CStr name) = 0;
+        virtual void EndEvent() = 0;
+        virtual void SetMarker(CStr name) = 0;
 
-        // for UI, CommandBuffer for Metal, CommandList for D3D12
-        virtual void* getNative() const noexcept{ return nullptr; }
+        // for UI,
+        //   DeviceContext for D3D11,
+        //   CommandBuffer for Metal,
+        //   CommandList for D3D12
+        virtual void* GetNative() noexcept = 0;
     };
-#endif
-
-    using RHICommandListPtr = std::unique_ptr<RHICommandList>;
 }

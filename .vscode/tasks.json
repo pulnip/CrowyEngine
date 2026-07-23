@@ -2,27 +2,231 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "CMake Build",
+            "label": "Slang: Compile to HLSL(VertexShader)",
+            "hide": true,
             "type": "shell",
-            "command": "cmake",
-            "windows": {
-                "args": [
-                    "--build",
-                    "--preset", "Windows-Debug"
-                ],
-                "problemMatcher": "$msCompile",
+            "command": "${workspaceFolder}/build/_deps/slang_bin-src/bin/slangc",
+            "args": [
+                "${file}",
+                "-target", "hlsl",
+                "-profile", "sm_6_6",
+                "-entry", "vs_main",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}.vert.gen.hlsl"
+            ]
+        },
+        {
+            "label": "Slang: Compile to HLSL(PixelShader)",
+            "hide": true,
+            "type": "shell",
+            "command": "${workspaceFolder}/build/_deps/slang_bin-src/bin/slangc",
+            "args": [
+                "${file}",
+                "-target", "hlsl",
+                "-profile", "sm_6_6",
+                "-entry", "fs_main",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}.pixel.gen.hlsl"
+            ]
+        },
+        {
+            "label": "Slang: Compile to HLSL",
+            "dependsOn": [
+                "Slang: Compile to HLSL(VertexShader)",
+                "Slang: Compile to HLSL(PixelShader)"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${fileDirname}"
+            }
+        },
+        {
+            "label": "Slang: Compile to MSL",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/_deps/slang_bin-src/bin/slangc",
+            "args": [
+                "${file}",
+                "-target", "metal",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}.gen.metal"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${fileDirname}"
+            }
+        },
+        {
+            "label": "ktx: encode uastc (srgb)",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_SRGB",
+                "--assign-tf", "srgb",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: encode uastc (srgb, mipmap)",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_SRGB",
+                "--assign-tf", "srgb",
+                "--generate-mipmap",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: encode uastc (linear, normalize)",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_UNORM",
+                "--assign-tf", "linear",
+                "--normalize",
+                "--normal-mode",
+                "--generate-mipmap",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: encode uastc (linear)",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "create",
+                "--encode", "uastc",
+                "--format", "R8G8B8A8_UNORM",
+                "--assign-tf", "linear",
+                "--generate-mipmap",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: transcode BC7",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "transcode",
+                "--target", "bc7",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2",
+                "${fileDirname}/${fileBasenameNoExtension}.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: transcode BC5",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "transcode",
+                "--target", "bc5",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2",
+                "${fileDirname}/${fileBasenameNoExtension}.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: transcode BC4",
+            "hide": true,
+            "type": "shell",
+            "command": "ktx",
+            "args": [
+                "transcode",
+                "--target", "bc4",
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2",
+                "${fileDirname}/${fileBasenameNoExtension}.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: remove intermediate (uastc)",
+            "hide": true,
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "${fileDirname}/${fileBasenameNoExtension}.uastc.ktx2"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook albedo",
+            "dependsOn": [
+                "ktx: encode uastc (srgb)",
+                "ktx: transcode BC7",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
             },
-            "osx": {
-                "args": [
-                    "--build",
-                    "--preset", "macOS-Debug"
-                ],
-                "problemMatcher": "$gcc"
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook albedo with mipmap",
+            "dependsOn": [
+                "ktx: encode uastc (srgb, mipmap)",
+                "ktx: transcode BC7",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
             },
-            "group": {
-                "kind": "build",
-                "isDefault": true
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook normal",
+            "dependsOn": [
+                "ktx: encode uastc (linear, normalize)",
+                "ktx: transcode BC5",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
             },
+            "problemMatcher": []
+        },
+        {
+            "label": "ktx: cook greyscale",
+            "dependsOn": [
+                "ktx: encode uastc (linear)",
+                "ktx: transcode BC4",
+                "ktx: remove intermediate (uastc)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "clear": true
+            },
+            "problemMatcher": []
         }
     ]
 }

@@ -1,53 +1,37 @@
 #pragma once
 
-#include <cstdint>
-#include <memory>
+#include "Primitives.hpp"
 #include "RHIFWD.hpp"
+#include "Semantics.hpp"
 
 namespace Crowy
 {
-    class InputProvider;
     class MainLoop;
+    class InputProvider;
+    class Window;
 
-    struct WindowConfig{
-        const char* title = "Crowy";
-        int width = 800;
-        int height = 600;
-        bool fullscreen = false;
-        bool resizable = true;
-        bool borderless = false;
-        bool always_on_top = false;
-    };
+    struct RuntimeConfig;
 
     class OS{
     private:
         class Impl;
-        std::unique_ptr<Impl> impl;
+        RAII<Impl> impl;
 
-        // singleton object
-        static OS* instance;
+        static OS* singleton;
 
     public:
-        OS(const WindowConfig&);
-        virtual ~OS();
+        OS(const RuntimeConfig&, RHIDevice&);
+        ~OS();
+        CROWY_DECLARE_PINNED(OS)
 
-        virtual void run();
-        virtual void processEvents();
+        void Run(MainLoop&, RHIDevice&);
 
-        inline static OS* singleton(){ return instance; }
+        inline static OS* Get(){ return singleton; }
 
-        int getWidth   () const;
-        int getHeight  () const;
-        int getExitCode() const;
-
-        void*           getWindow();
-        InputProvider*  getInputProvider();
-        RHIDevice*      getDevice();
-        RHISwapchain*   getSwapchain();
-        RHICommandList* getCommandList();
-
-        void setMainLoop(MainLoop*);
+        const InputProvider& GetInputProvider() const noexcept;
+        const Window& GetWindow() const noexcept;
     };
 
-    #define OS_ OS::singleton()
+    // direct access to ptr is unsafe, but handy helper
+    #define OS_ *OS::Get()
 }

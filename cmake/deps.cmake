@@ -1,113 +1,87 @@
 include(FetchContent)
 
-find_package(SDL3 QUIET)
-if(NOT SDL3_FOUND)
-    FetchContent_Declare(
-        SDL3
-        GIT_REPOSITORY "https://github.com/libsdl-org/SDL.git"
-        GIT_TAG "release-3.2.26"
-        GIT_SHALLOW TRUE
-        GIT_PROGRESS TRUE
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY "https://github.com/libsdl-org/SDL.git"
+    GIT_TAG "release-3.2.30"
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+)
+# Library Type
+set(SDL_SHARED ON  CACHE BOOL "" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+# Feature
+set(SDL_AUDIO    OFF CACHE BOOL "" FORCE)
+set(SDL_VIDEO    ON  CACHE BOOL "" FORCE)
+set(SDL_GPU      OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGL   OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+set(SDL_VULKAN   OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER   OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA   OFF CACHE BOOL "" FORCE)
+set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+set(SDL_HAPTIC   OFF CACHE BOOL "" FORCE)
+set(SDL_HIDAPI   OFF CACHE BOOL "" FORCE)
+set(SDL_POWER    OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR   OFF CACHE BOOL "" FORCE)
+set(SDL_DIALOG   OFF CACHE BOOL "" FORCE)
+# Test Build
+set(SDL_TESTS         OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY  OFF CACHE BOOL "" FORCE)
+# Install
+set(SDL_INSTALL       OFF CACHE BOOL "" FORCE)
+set(SDL_DISABLE_INSTALL_DOCS ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SDL3)
+if(TARGET SDL3-shared)
+    target_compile_options(SDL3-shared PRIVATE
+        $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
     )
-    FetchContent_MakeAvailable(SDL3)
-    if(TARGET SDL3-shared)
-        target_compile_options(SDL3-shared PRIVATE
-            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-        )
-    elseif(TARGET SDL3-static)
-        target_compile_options(SDL3-static PRIVATE
-            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-        )
-    endif()
+elseif(TARGET SDL3-static)
+    target_compile_options(SDL3-static PRIVATE
+        $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
+    )
 endif()
 
 # stb - header-only image loading library
-find_package(stb QUIET)
-if(NOT stb_FOUND)
-    FetchContent_Declare(
-        stb
-        GIT_REPOSITORY "https://github.com/nothings/stb.git"
-        GIT_TAG "31c1ad37456438565541f4919958214b6e762fb4"
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(stb)
-endif()
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY "https://github.com/nothings/stb.git"
+    GIT_TAG "31c1ad37456438565541f4919958214b6e762fb4"
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(stb)
+
+add_library(stb INTERFACE)
+
+target_include_directories(stb
+SYSTEM INTERFACE
+    "${stb_SOURCE_DIR}"
+)
 
 # tomlplusplus - TOML parser library
-find_package(tomlplusplus QUIET)
-if(NOT tomlplusplus_FOUND)
+FetchContent_Declare(
+    tomlplusplus
+    GIT_REPOSITORY "https://github.com/marzer/tomlplusplus.git"
+    GIT_TAG "v3.4.0"
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(tomlplusplus)
+
+if(WIN32)
+    set(AGILITY_SDK_VERSION "1.619.4")
+
+    # DirectX Agility SDK
     FetchContent_Declare(
-        tomlplusplus
-        GIT_REPOSITORY "https://github.com/marzer/tomlplusplus.git"
-        GIT_TAG "v3.4.0"
-        GIT_SHALLOW TRUE
+        AgilitySDK
+        URL      "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${AGILITY_SDK_VERSION}"
+        URL_HASH SHA256=d30f756ce05bb4b7705fc1b04a5ded32ed62f2c2a2b392ae8d3318181395c8bc
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
-    FetchContent_MakeAvailable(tomlplusplus)
-endif()
+    FetchContent_MakeAvailable(AgilitySDK)
 
-# assimp - 3D model loading library
-find_package(assimp QUIET)
-if(NOT assimp_FOUND)
-    FetchContent_Declare(
-        assimp
-        GIT_REPOSITORY "https://github.com/assimp/assimp.git"
-        GIT_TAG "v6.0.2"
-        GIT_SHALLOW TRUE
-    )
-    set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_FBX_IMPORTER ON CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
-    set(ASSIMP_BUILD_MMD_IMPORTER ON CACHE BOOL "" FORCE)  # PMX/PMD support
-    set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
-    set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(assimp)
-    if(APPLE AND TARGET assimp)
-        get_target_property(_incs assimp INCLUDE_DIRECTORIES)
-        if(_incs)
-            # for Homebrew LLVM
-            list(FILTER _incs EXCLUDE REGEX "MacOSX\\.sdk")
-            set_target_properties(assimp PROPERTIES INCLUDE_DIRECTORIES "${_incs}")
-        endif()
-    endif()
-
-    if(TARGET zlibstatic)
-        target_compile_options(zlibstatic PRIVATE
-            $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-non-prototype>
-        )
-    endif()
-endif()
-
-# angelscript - scripting library
-find_package(angelscript QUIET)
-if(NOT angelscript_FOUND)
-    FetchContent_Declare(
-        angelscript
-        URL https://www.angelcode.com/angelscript/sdk/files/angelscript_2.38.0.zip
-    )
-    FetchContent_MakeAvailable(angelscript)
-    set(AS_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-    add_subdirectory(
-        ${angelscript_SOURCE_DIR}/angelscript/projects/cmake
-        ${angelscript_BINARY_DIR}
-    )
-    target_compile_options(angelscript
-    PRIVATE
-        $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fno-strict-aliasing>
-    )
-    if(APPLE)
-        target_compile_options(angelscript
-        PRIVATE
-            $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-        )
-    endif()
-endif()
-
-# Metal-cpp
-if(RENDER_BACKEND STREQUAL "Metal")
+    set(AGILITY_SDK_BIN_DIR "${agilitysdk_SOURCE_DIR}/build/native/bin/x64")
+elseif(APPLE)
+    # Metal-cpp
     FetchContent_Declare(
         metal-cpp
         URL https://developer.apple.com/metal/cpp/files/metal-cpp_macOS15_iOS18.zip
@@ -149,7 +123,12 @@ PRIVATE
     SDL3::SDL3
 )
 
-if(RENDER_BACKEND STREQUAL "Metal")
+if(WIN32)
+    target_sources(imgui
+    PRIVATE
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
+    )
+elseif(APPLE)
     target_compile_options(imgui
     PRIVATE
         $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
@@ -173,34 +152,52 @@ if(RENDER_BACKEND STREQUAL "Metal")
     PRIVATE
         ${METAL_LIBRARY}
     )
-elseif(RENDER_BACKEND STREQUAL "D3D11")
-    target_sources(imgui
-    PRIVATE
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
-    )
-elseif(RENDER_BACKEND STREQUAL "D3D12")
-    target_sources(imgui
-    PRIVATE
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
-    )
 endif()
 
+# Slang
+set(SLANG_VERSION "2026.13")
+if(WIN32)
+    set(SLANG_TARGET "windows-x86_64")
+elseif(APPLE)
+    set(SLANG_TARGET "macos-aarch64")
+endif()
+FetchContent_Declare(
+    slang_bin
+    URL "https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-${SLANG_TARGET}.zip"
+)
+FetchContent_MakeAvailable(slang_bin)
+
+# KTX
+set(KTX_FEATURE_TESTS     OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS     OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_DOC       OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_JNI       OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_PY        OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_VK_UPLOAD OFF CACHE BOOL "" FORCE) # DX12 / Metal
+set(KTX_FEATURE_GL_UPLOAD OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_KTX1       ON CACHE BOOL "" FORCE)
+set(KTX_FEATURE_LOADTEST_APPS OFF CACHE STRING "" FORCE)
+FetchContent_Declare(ktx
+    GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
+    GIT_TAG        "v4.4.2"
+    GIT_SHALLOW    ON
+    GIT_SUBMODULES ""
+)
+FetchContent_MakeAvailable(ktx)
+
 if(CROWY_ENABLE_TEST)
-    find_package(GTest QUIET)
-    if(NOT GTest_FOUND)
-        FetchContent_Declare(
-            GTest
-            GIT_REPOSITORY "https://github.com/google/googletest.git"
-            GIT_TAG "v1.17.0"
-            GIT_SHALLOW TRUE
-            GIT_PROGRESS TRUE
-        )
-        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-        set(GTEST_HAS_ABSL OFF CACHE BOOL "" FORCE)
-        add_compile_options(
-            $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-character-conversion>
-        )
-        FetchContent_MakeAvailable(GTest)
-    endif()
+    FetchContent_Declare(
+        GTest
+        GIT_REPOSITORY "https://github.com/google/googletest.git"
+        GIT_TAG "v1.17.0"
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+    )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(GTEST_HAS_ABSL OFF CACHE BOOL "" FORCE)
+    add_compile_options(
+        $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-character-conversion>
+    )
+    FetchContent_MakeAvailable(GTest)
 endif()

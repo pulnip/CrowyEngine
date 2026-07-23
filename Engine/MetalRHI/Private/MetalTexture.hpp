@@ -1,127 +1,55 @@
 #pragma once
 
-#include <cstddef>
 #include <Metal/Metal.hpp>
-#include "MetalUtil.hpp"
+#include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
-#ifndef USE_STATIC_RHI
-    #include "RHITexture.hpp"
-#endif
+#include "RHITexture.hpp"
+#include "MetalUtil.hpp"
 
 namespace Crowy
 {
-    inline auto convert(RHITextureUsage usage){
-        MTL::TextureUsage mtlUsage = 0;
-
-        if(has_flag(usage, RHITextureUsage::AllowShaderRead))
-            mtlUsage |= MTL::TextureUsageShaderRead;
-        if(has_flag(usage, RHITextureUsage::AllowRenderTarget))
-            mtlUsage |= MTL::TextureUsageRenderTarget;
-        if(has_flag(usage, RHITextureUsage::AllowDepthStencil))
-            mtlUsage |= MTL::TextureUsageRenderTarget;
-        if(has_flag(usage, RHITextureUsage::AllowShaderWrite))
-            mtlUsage |= MTL::TextureUsageShaderWrite;
-
-        return mtlUsage;
-    }
-
-    class MetalTexture
-#ifndef USE_STATIC_RHI
-        : public RHITexture
-#endif
-    {
+    class MetalTexture final: public RHITexture{
     private:
         MTL::Texture* texture;
-        size_t width, height;
-        RHIPixelFormat format = RHIPixelFormat::Unknown;
         RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         MetalTexture(
             MTL::Device& device,
             const RHITextureCreateDesc& desc,
-            const std::string& name
-        ) noexcept
-            : width(desc.width), height(desc.height)
-            , format(desc.format)
-            , currentState(desc.initialState)
-        {
-            auto texDesc = MTL::TextureDescriptor::alloc()->init();
-            texDesc->setWidth(desc.width);
-            texDesc->setHeight(desc.height);
-            texDesc->setDepth(desc.depth);
-            texDesc->setMipmapLevelCount(desc.mipLevels);
-            texDesc->setArrayLength(desc.arraySize);
+            StrView name = {}
+        );
+        MetalTexture(
+            CA::MetalDrawable*
+        );
+        ~MetalTexture();
 
-            texDesc->setPixelFormat(convertPixelFormat(desc.format));
-            texDesc->setTextureType(
-                desc.depth > 1 ? MTL::TextureType3D :
-                    (desc.arraySize > 1 ? MTL::TextureType2DArray
-                                        : MTL::TextureType2D)
-            );
-            texDesc->setUsage(convert(desc.usage));
-        #if TARGET_OS_OSX                                                             
-            bool needsGPUOnly = has_flag(desc.access, RHIMemoryAccess::GPUOnly);   
-            texDesc->setStorageMode(needsGPUOnly ?
-                MTL::StorageModePrivate : MTL::StorageModeShared);           
-        #else                                                                         
-            texDesc->setStorageMode(MTL::StorageModeShared);                          
-        #endif
-
-            texture = device.newTexture(texDesc);
-            texDesc->release();
-
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!name.empty()){
-                texture->setLabel(
-                    NS::String::string(name.c_str(), NS::UTF8StringEncoding)
-                );
-            }
-        #endif
-
-            if(desc.initialData)
-                upload(desc.initialData);
+        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE{
+            return convert(texture->pixelFormat());
         }
-        ~MetalTexture(){
-            texture->release();
+        u32 GetWidth() const noexcept RHI_OVERRIDE{
+            return texture->width();
+        }
+        u32 GetHeight() const noexcept RHI_OVERRIDE{
+            return texture->height();
+        }
+        // the overrides above would otherwise hide the per-mip overloads
+        using RHITexture::GetWidth;
+        using RHITexture::GetHeight;
+
+        virtual void* GetNative() noexcept RHI_OVERRIDE{
+            return texture;
         }
 
-        void upload(const void* data,
-            uint32_t mipLevel = 0, uint32_t arraySlice = 0
-        ) noexcept RHI_OVERRIDE{
-            auto bytesPerPixel = getBytesPerPixel(format);
-            auto bytesPerRow = width * bytesPerPixel;
-            auto region = MTL::Region::Make2D(0, 0, width, height);
-
-            texture->replaceRegion(
-                region,
-                mipLevel,
-                arraySlice,
-                data,
-                bytesPerRow,
-                0
-            );
-        }
-
-        MTL::Texture* get() const{ return texture; }
-
-        RHIPixelFormat getFormat() const noexcept RHI_OVERRIDE{
-            return format;
-        }
-        size_t getWidth() const noexcept RHI_OVERRIDE{
-            return width;
-        }
-        size_t getHeight() const noexcept RHI_OVERRIDE{
-            return height;
-        }
-
-        RHIResourceState getState() const noexcept RHI_OVERRIDE{
+        RHIResourceState GetState() const noexcept RHI_OVERRIDE{
             return currentState;
         }
 
-        void setState(RHIResourceState state) noexcept RHI_OVERRIDE{
+        void SetState(RHIResourceState state) noexcept RHI_OVERRIDE{
             currentState = state;
         }
+
+        MTL::Texture* Get(){ return texture; }
     };
 }

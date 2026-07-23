@@ -1,12 +1,17 @@
 #pragma once
 
 #include <format>
-#include "Logger.hpp"
+#include "LogDefinitions.hpp"
 
 namespace Crowy
 {
+    namespace detail
+    {
+        void Log(LogMessage&&);
+    }
+
     template<typename... Args>
-    void log(LogLevel level, LogCategory category,
+    void Log(LogLevel level, CStr category,
         std::source_location location,
         std::format_string<Args...> fmt, Args&&... args
     ) noexcept{
@@ -19,12 +24,14 @@ namespace Crowy
             .time_point = std::chrono::system_clock::now()
         };
 
-        Logger::instance().log(std::move(msg));
+        detail::Log(std::move(msg));
     }
+
+    void SetLogLevel(LogLevel level);
 }
 
 #define LOG_IMPL(level, category, fmt, ...) \
-    Crowy::log(level, category, std::source_location::current(), fmt, ##__VA_ARGS__)
+    Crowy::Log(level, category, std::source_location::current(), fmt, ##__VA_ARGS__)
 
 #define LOG_TRACE(category, fmt, ...) \
     LOG_IMPL(Crowy::LogLevel::Trace, category, fmt, ##__VA_ARGS__)

@@ -1,43 +1,102 @@
 function(crowy_rhi_sample NAME)
-    cmake_parse_arguments(ARG "" "SOURCES" "" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
 
-    add_executable(Crowy${NAME} ${ARG_SOURCES})
-    crowy_rhi_macro(${NAME})
-
-    target_link_libraries(Crowy${NAME}
-    PRIVATE
-        SDL3::SDL3
-        Crowy::Log
-        Crowy::Resource
+    add_executable(${NAME}
+        ${ARG_SOURCES}
     )
 
-    if(RENDER_BACKEND STREQUAL "Metal")
-        target_link_libraries(Crowy${NAME}
+    target_link_options(${NAME}
+    PRIVATE
+        ${RENDER_BACKEND_LINK_OPTIONS}
+    )
+    target_link_libraries(${NAME}
+    PUBLIC
+        CrowyProjectInterface
+    PRIVATE
+        ${RENDER_BACKENDS}
+        Crowy::Log
+        ${ARG_DEPENDS}
+    )
+    if(WIN32)
+        target_link_libraries(${NAME}
         PRIVATE
-            Crowy::MetalRHI
-        )
-    elseif(RENDER_BACKEND STREQUAL "D3D11")
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::D3D11RHI
-        )
-    elseif(RENDER_BACKEND STREQUAL "D3D12")
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::D3D12RHI
-        )
-    else()
-        target_link_libraries(Crowy${NAME}
-        PRIVATE
-            Crowy::NullRHI
+            delayimp.lib
         )
     endif()
 endfunction()
 
-crowy_rhi_sample(RHISample
-    SOURCES Sample.cpp
+function(crowy_graphics_sample NAME)
+    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
+
+    crowy_rhi_sample(${NAME}
+    SOURCES
+        AppFramework.cpp
+        ${ARG_SOURCES}
+    DEPENDS
+        Crowy::Platform
+        ${ARG_DEPENDS}
+    )
+endfunction()
+
+# ready-made scenes the samples can render
+add_subdirectory(Scene)
+
+crowy_graphics_sample(HelloWorld
+SOURCES
+    helloWorld.cpp
 )
 
-crowy_rhi_sample(VectorAddition
-    SOURCES VectorAddition.cpp
+crowy_graphics_sample(HelloConstantBuffer
+SOURCES
+    helloConstantBuffer.cpp
+)
+
+crowy_graphics_sample(HelloTexture
+SOURCES
+    helloTexture.cpp
+DEPENDS
+    Crowy::Serialization
+)
+
+crowy_rhi_sample(HelloCompute
+SOURCES
+    helloCompute.cpp
+)
+
+crowy_graphics_sample(CubeMapping
+SOURCES
+    CubeMapping.cpp
+DEPENDS
+    Crowy::Serialization
+)
+
+crowy_graphics_sample(NormalMapping
+SOURCES
+    NormalMapping.cpp
+DEPENDS
+    Crowy::Serialization
+)
+
+crowy_graphics_sample(CornellBoxSample
+SOURCES
+    CornellBoxSample.cpp
+DEPENDS
+    Crowy::SampleScene
+)
+
+crowy_graphics_sample(SkyboxFloorSample
+SOURCES
+    SkyboxFloorSample.cpp
+DEPENDS
+    Crowy::SampleScene
+)
+
+crowy_graphics_sample(Checkerboard
+SOURCES
+    Checkerboard.cpp
+)
+
+crowy_graphics_sample(BlackholeSimulation
+SOURCES
+    BlackholeSimulation.cpp
 )

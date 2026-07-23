@@ -1,23 +1,18 @@
 #pragma once
 
-#include "RHIDefinitions.hpp"
-#ifndef USE_STATIC_RHI
-    #include "RHIFrameScope.hpp"
-#endif
+#include "RHIFrameScope.hpp"
 #include "AutoreleasePoolScope.hpp"
 
 namespace Crowy
 {
-    class MetalFrameScope
-#ifndef USE_STATIC_RHI
-        : public RHIFrameScope
-#endif
-    {
+    class MetalFrameScope final: public RHIFrameScope{
     private:
         AutoreleasePoolScope autoreleasePool;
 
     public:
         MetalFrameScope() = default;
         ~MetalFrameScope() = default;
+
+        CROWY_DECLARE_PINNED(MetalFrameScope)
     };
 }
