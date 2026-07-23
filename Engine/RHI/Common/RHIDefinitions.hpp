@@ -24,6 +24,8 @@ namespace Crowy
     struct RHICapabilities{
         bool flipTextureV;
         f32 clipSpaceMinZ;
+        u32 textureRowPitchAlign = 1;
+        u32 textureOffsetAlign = 1;
     };
 
     enum class RHIMemoryAccess: u8{

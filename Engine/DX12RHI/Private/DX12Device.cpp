@@ -709,7 +709,9 @@ namespace Crowy
     RHICapabilities DX12Device::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,
-            .clipSpaceMinZ = 0.0f
+            .clipSpaceMinZ = 0.0f,
+            .textureRowPitchAlign = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
+            .textureOffsetAlign = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT
         };
     }
 
