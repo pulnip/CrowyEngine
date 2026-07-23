@@ -156,7 +156,8 @@ namespace Crowy
     ){
         return Box(Flex{
             .axis = Axis::horizontal,
-            .children = std::move(children)
+            .children = std::move(children),
+            .spacing = spacing
         });
     }
 
@@ -166,7 +167,8 @@ namespace Crowy
     ){
         return Box(Flex{
             .axis = Axis::vertical,
-            .children = std::move(children)
+            .children = std::move(children),
+            .spacing = spacing
         });
     }
 }
