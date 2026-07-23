@@ -28,8 +28,9 @@ namespace Crowy
             IID_PPV_ARGS(&heap)
         ), "Failed to create DescriptorHeap");
 
+        // reserve id = 0 for invalid
         freeIndexes.reserve(capacity);
-        for(UINT i=capacity; i>0; --i)
+        for(UINT i=capacity; i>1; --i)
             freeIndexes.push_back(i-1);
     }
 
