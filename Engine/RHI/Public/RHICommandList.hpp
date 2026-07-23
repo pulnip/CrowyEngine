@@ -3,6 +3,7 @@
 #include "RHIFWD.hpp"
 #include "Semantics.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHITexture.hpp"
 
 namespace Crowy
 {
@@ -224,9 +225,34 @@ namespace Crowy
             u64 srcOffset,
             u32 srcRowPitch,
             RHITexture& dst,
+            const RHITextureRegion& region,
             u32 mipLevel = 0,
             u32 arraySlice = 0
         ) = 0;
+
+        void Copy(
+            RHIBuffer& src,
+            u64 srcOffset,
+            u32 srcRowPitch,
+            RHITexture& dst,
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ){
+            Copy(
+                src,
+                srcOffset,
+                srcRowPitch,
+                dst,
+                RHITextureRegion{
+                    .x = 0,
+                    .y = 0,
+                    .width = dst.GetWidth(mipLevel),
+                    .height = dst.GetHeight(mipLevel)
+                },
+                mipLevel,
+                arraySlice
+            );
+        }
 
         // Resource barriers
         virtual void TransitionBarrier(

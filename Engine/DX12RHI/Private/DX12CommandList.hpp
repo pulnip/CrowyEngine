@@ -136,9 +136,12 @@ namespace Crowy
             u64 srcOffset,   // align 512 (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT)
             u32 srcRowPitch, // align 256 (D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
             RHITexture& dst,
+            const RHITextureRegion& region,
             u32 mipLevel = 0,
             u32 arraySlice = 0
         ) RHI_OVERRIDE;
+
+        using RHICommandList::Copy;
 
         void TransitionBarrier(
             std::span<const RHITextureBarrier>,

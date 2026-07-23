@@ -400,6 +400,12 @@ namespace Crowy
         u32 rowCount;
     };
 
+    // a zero size means the whole mip
+    struct RHITextureRegion{
+        u32 x = 0, y = 0;
+        u32 width = 0, height = 0;
+    };
+
     struct RHITextureCreateDesc{
         // 0 for same as screen
         u32 width = 0, height = 0;
