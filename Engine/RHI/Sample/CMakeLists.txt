@@ -100,3 +100,10 @@ crowy_graphics_sample(BlackholeSimulation
 SOURCES
     BlackholeSimulation.cpp
 )
+
+crowy_graphics_sample(UISample
+SOURCES
+    UISample.cpp
+DEPENDS
+    Crowy::UI
+)

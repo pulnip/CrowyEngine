@@ -1,7 +1,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
-// #include <imgui_impl_sdl3.h>
+#include <imgui_impl_sdl3.h>
 #include "CommandListPool.hpp"
 #include "FramePacer.hpp"
 #include "MainLoop.hpp"
@@ -51,6 +51,8 @@ namespace Crowy
         Timer sysTimer;
         FramePacer framePacer;
         CommandListPool cmdListPool;
+
+        bool imguiEnabled = false;
 
     public:
         Impl(const RuntimeConfig&, RHIDevice&);
@@ -122,6 +124,14 @@ namespace Crowy
     void OS::Impl::Run(MainLoop& mainLoop, RHIDevice& device){
         mainLoop.OnInit(device, *swapchain);
 
+        imguiEnabled = ImGui::GetCurrentContext() != nullptr;
+        if(imguiEnabled){
+            auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
+
+            // D3D, Metal, Vulkan, ... all same!
+            ImGui_ImplSDL3_InitForOther(sdlWindow);
+        }
+
         sysTimer.Reset();
 
         {
@@ -145,16 +155,20 @@ namespace Crowy
                 break;
 
             BeginFrame(device);
+
+            if(imguiEnabled){
+                ImGui_ImplSDL3_NewFrame();
+                ImGui::NewFrame();
+            }
             mainLoop.Render(cmdListPool, *swapchain);
 
-            // TODO.
-            /*
-            // for Immediate draw of ImGui
-            if(!mainLoop.RenderUI(cmdList, *swapchain)) [[unlikely]]
-                break;
-            */
-
             EndFrame(device);
+        }
+
+        framePacer.WaitForIdle();
+
+        if(imguiEnabled){
+            ImGui_ImplSDL3_Shutdown();
         }
 
         mainLoop.Finalize();
@@ -165,9 +179,18 @@ namespace Crowy
 
         inputProvider.NewFrame();
 
+        bool uiWantsMouse = false, uiWantsKeyboard = false;
+        if(imguiEnabled){
+            const auto& io = ImGui::GetIO();
+            uiWantsMouse = io.WantCaptureMouse;
+            uiWantsKeyboard = io.WantCaptureKeyboard;
+        }
+
         SDL_Event event;
         while(SDL_PollEvent(&event)){
-            // ImGui_ImplSDL3_ProcessEvent(&event);
+            if(imguiEnabled)
+                ImGui_ImplSDL3_ProcessEvent(&event);
+
             if(SDL_EVENT_QUIT == event.type) [[unlikely]]{
                 keepRunning = false;
                 break;
@@ -178,7 +201,8 @@ namespace Crowy
             case SDL_EVENT_KEY_DOWN:
                 [[fallthrough]];
             case SDL_EVENT_KEY_UP:
-                inputProvider.OnPlatformEvent(event.key);
+                if(!uiWantsKeyboard)
+                    inputProvider.OnPlatformEvent(event.key);
                 break;
             // Mouse Event
             case SDL_EVENT_MOUSE_MOTION:
@@ -186,7 +210,8 @@ namespace Crowy
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 [[fallthrough]];
             case SDL_EVENT_MOUSE_BUTTON_UP:
-                inputProvider.OnPlatformEvent(event.button);
+                if(!uiWantsMouse)
+                    inputProvider.OnPlatformEvent(event.button);
                 break;
             }
 

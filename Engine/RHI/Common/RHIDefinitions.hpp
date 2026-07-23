@@ -24,6 +24,8 @@ namespace Crowy
     struct RHICapabilities{
         bool flipTextureV;
         f32 clipSpaceMinZ;
+        u32 textureRowPitchAlign = 1;
+        u32 textureOffsetAlign = 1;
     };
 
     enum class RHIMemoryAccess: u8{
@@ -398,6 +400,12 @@ namespace Crowy
         u32 rowPitch;
         u64 rowSize;
         u32 rowCount;
+    };
+
+    // a zero size means the whole mip
+    struct RHITextureRegion{
+        u32 x = 0, y = 0;
+        u32 width = 0, height = 0;
     };
 
     struct RHITextureCreateDesc{

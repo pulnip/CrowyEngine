@@ -481,6 +481,7 @@ namespace Crowy
         u64 srcOffset,
         u32 srcRowPitch,
         RHITexture& dst,
+        const RHITextureRegion& region,
         u32 mipLevel,
         u32 arraySlice
     ){
@@ -499,12 +500,18 @@ namespace Crowy
             desc.DepthOrArraySize
         );
 
+        CROWY_ASSERT(
+            region.x + region.width <= dxDst.GetWidth(mipLevel) &&
+            region.y + region.height <= dxDst.GetHeight(mipLevel),
+            "copy region reaches past the mip"
+        );
+
         const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{
             .Offset = srcOffset,
             .Footprint = {
                 .Format = desc.Format,
-                .Width = std::max<UINT>(1, desc.Width >> mipLevel),
-                .Height = std::max<UINT>(1, desc.Height >> mipLevel),
+                .Width = region.width,
+                .Height = region.height,
                 .Depth = 1,
                 .RowPitch = srcRowPitch
             }
@@ -515,7 +522,7 @@ namespace Crowy
 
         commandList->CopyTextureRegion(
             &dstLoc,
-            0, 0, 0,
+            region.x, region.y, 0,
             &srcLoc,
             nullptr
         );
