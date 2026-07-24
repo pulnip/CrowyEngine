@@ -10,9 +10,10 @@ PUBLIC
     Crowy::Core
     Crowy::RHI
 PRIVATE
-    stb
     ktx
+    stb
     tomlplusplus::tomlplusplus
+    ufbx
     Crowy::Log
 )
 

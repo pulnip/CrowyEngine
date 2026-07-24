@@ -73,7 +73,7 @@ if(WIN32)
     # DirectX Agility SDK
     FetchContent_Declare(
         AgilitySDK
-        URL      "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${AGILITY_SDK_VERSION}"
+        URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${AGILITY_SDK_VERSION}"
         URL_HASH SHA256=d30f756ce05bb4b7705fc1b04a5ded32ed62f2c2a2b392ae8d3318181395c8bc
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
@@ -90,10 +90,10 @@ elseif(APPLE)
 endif()
 
 # Dear ImGui
-FetchContent_Declare(
-    imgui
+FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG        "v1.92.5"
+    GIT_TAG "v1.92.5"
+    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(imgui)
 
@@ -179,11 +179,27 @@ set(KTX_FEATURE_KTX1       ON CACHE BOOL "" FORCE)
 set(KTX_FEATURE_LOADTEST_APPS OFF CACHE STRING "" FORCE)
 FetchContent_Declare(ktx
     GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
-    GIT_TAG        "v4.4.2"
-    GIT_SHALLOW    ON
+    GIT_TAG "v4.4.2"
+    GIT_SHALLOW TRUE
     GIT_SUBMODULES ""
 )
 FetchContent_MakeAvailable(ktx)
+
+# ufbx - single source file FBX file loader
+FetchContent_Declare(ufbx
+    GIT_REPOSITORY "https://github.com/ufbx/ufbx.git"
+    GIT_TAG "v0.23.0"
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(ufbx)
+
+add_library(ufbx STATIC
+    ${ufbx_SOURCE_DIR}/ufbx.c
+)
+target_include_directories(ufbx
+PUBLIC
+    ${ufbx_SOURCE_DIR}
+)
 
 if(CROWY_ENABLE_TEST)
     FetchContent_Declare(
