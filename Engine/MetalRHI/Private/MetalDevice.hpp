@@ -25,9 +25,6 @@ namespace Crowy
             const RHITextureCreateDesc&,
             StrView name = {}
         ) RHI_OVERRIDE;
-        RHISamplerRAII CreateSampler(
-            const RHISamplerState&
-        ) RHI_OVERRIDE;
 
         RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
@@ -39,20 +36,22 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         RHISwapchainRAII CreateSwapchain(
-            const RHISwapchainCreateDesc&
+            const RHISwapchainCreateDesc&,
+            StrView name = {}
         ) RHI_OVERRIDE;
 
         RHICommandListRAII CreateCommandList() RHI_OVERRIDE;
 
         RHIFenceRAII CreateFence(u64 initialValue = 0) RHI_OVERRIDE;
 
-        void SignalFence(RHICommandList&, RHIFence&, u64 value) RHI_OVERRIDE;
+        void SignalFence(RHIFence&, u64 value) RHI_OVERRIDE;
+
+        void Submit(std::span<RHICommandList*>) RHI_OVERRIDE;
+
+        u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
 
-        void Submit(RHICommandList&) RHI_OVERRIDE;
-
         NativeDeviceHandle Get() noexcept RHI_OVERRIDE;
-        RHICommandList& GetMainCmdList() noexcept RHI_OVERRIDE;
     };
 }
