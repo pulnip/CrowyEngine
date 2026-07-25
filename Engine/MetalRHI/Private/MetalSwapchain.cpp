@@ -1,12 +1,10 @@
-#include <Metal/MTLCommandQueue.hpp>
-#include <Metal/Metal.hpp>
-#include <QuartzCore/QuartzCore.hpp>
+#include <CoreGraphics/CGGeometry.h>
+#include <QuartzCore/CAMetalLayer.hpp>
 #include "Assert.hpp"
 #include "MetalCommandList.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
-#include "RHICommandList.hpp"
 
 namespace Crowy
 {
@@ -14,7 +12,8 @@ namespace Crowy
         MTL::Device& device,
         const RHISwapchainCreateDesc& desc
     )
-        : view(SDL_Metal_CreateView(static_cast<SDL_Window*>(desc.sdlWindow)))
+        : RHISwapchain(desc.bufferDesc.format)
+        , view(SDL_Metal_CreateView(static_cast<SDL_Window*>(desc.sdlWindow)))
         , metalLayer(static_cast<CA::MetalLayer*>(SDL_Metal_GetLayer(view)))
     {
         CROWY_ASSERT(metalLayer != nullptr);
@@ -33,7 +32,7 @@ namespace Crowy
 
     bool MetalSwapchain::AcquireNextImage() noexcept{
         currentDrawable = metalLayer->nextDrawable();
-        backBuffer = std::make_unique<MetalTexture>(currentDrawable);
+        *backBuffer = MetalTexture(currentDrawable);
 
         return currentDrawable != nullptr;
     }
@@ -44,9 +43,8 @@ namespace Crowy
         backBuffer = nullptr;
     }
 
-    void MetalSwapchain::Present(RHICommandList& cmdList){
-        auto& mtlCmdList = static_cast<MetalCommandList&>(cmdList);
-        auto cmdBuffer = mtlCmdList.Get();
+    void MetalSwapchain::Present(MetalCommandList& cmdList){
+        auto cmdBuffer = cmdList.Get();
         cmdBuffer->presentDrawable(currentDrawable);
     }
 }

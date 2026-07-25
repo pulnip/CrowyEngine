@@ -33,7 +33,5 @@ namespace Crowy
         virtual u32 GetHeight() const noexcept = 0;
 
         virtual RHITexture& GetCurrentTexture() = 0;
-
-        virtual void Present() = 0;
     };
 }

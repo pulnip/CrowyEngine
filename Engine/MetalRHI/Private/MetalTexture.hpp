@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Metal/Metal.hpp>
+#include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
 #include "RHITexture.hpp"
@@ -21,6 +21,9 @@ namespace Crowy
             CA::MetalDrawable*
         );
         ~MetalTexture();
+
+        MetalTexture(MetalTexture&&);
+        MetalTexture& operator=(MetalTexture&&);
 
         u32 GetWidth() const noexcept RHI_OVERRIDE{
             return texture->width();
