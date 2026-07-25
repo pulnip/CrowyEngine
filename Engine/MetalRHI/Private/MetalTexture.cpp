@@ -146,4 +146,8 @@ namespace Crowy
 
         return *this;
     }
+
+    u64 MetalTexture::getResourceID(const RHITextureViewDesc&){
+        return texture->gpuResourceID()._impl;
+    }
 }

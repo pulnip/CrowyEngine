@@ -104,8 +104,12 @@ namespace Crowy
             return oldState;
         }
 
-        u64 GetReadableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
-        u64 GetWritableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
+        u64 GetReadableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
+        u64 GetWritableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
 
         MTL::Buffer* Get() noexcept{ return resources[currentIndex()].buffer; }
 
@@ -142,5 +146,7 @@ namespace Crowy
             u32 size,
             u32 offset = 0
         );
+
+        u64 getResourceID(const RHIBufferViewDesc&);
     };
 }

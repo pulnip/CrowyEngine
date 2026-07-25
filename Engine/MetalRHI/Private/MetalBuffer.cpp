@@ -198,4 +198,8 @@ namespace Crowy
             size
         );
     }
+
+    u64 MetalBuffer::getResourceID(const RHIBufferViewDesc&){
+        return resources[currentIndex()].buffer->gpuAddress();
+    }
 }

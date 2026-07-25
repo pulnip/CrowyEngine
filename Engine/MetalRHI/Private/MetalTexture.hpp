@@ -35,13 +35,21 @@ namespace Crowy
         using RHITexture::GetWidth;
         using RHITexture::GetHeight;
 
-        u64 GetReadableID(const RHITextureViewDesc&) RHI_OVERRIDE;
-        u64 GetWritableID(const RHITextureViewDesc&) RHI_OVERRIDE;
+
+        u64 GetReadableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
+        u64 GetWritableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
 
         virtual void* GetNative() noexcept RHI_OVERRIDE{
             return texture;
         }
 
         MTL::Texture* Get(){ return texture; }
+
+    private:
+        u64 getResourceID(const RHITextureViewDesc&);
     };
 }
