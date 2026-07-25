@@ -12,7 +12,8 @@ namespace Crowy
     class MetalBuffer final: public RHIBuffer{
     private:
         struct FrameResource{
-            MTL::Buffer* buffer;
+            MTL::Buffer* buffer = nullptr;
+            void* mapped = nullptr;
             // for Enhanced Resource Barrier
             RHIBarrierSync syncState;
             RHIBarrierAccess accessState;
@@ -31,46 +32,47 @@ namespace Crowy
         MetalBuffer(
             MTL::Device& device,
             const RHIBufferCreateDesc& desc,
+            const u64& frameIndex,
             StrView name = {}
         );
         ~MetalBuffer();
 
         void Upload(
-            const void* src,
-            u32 srcSize,
+            const void* data,
+            u32 size,
             u32 offset = 0
         ) RHI_OVERRIDE{
             upload(
                 currentIndex(),
-                src,
-                srcSize,
+                data,
+                size,
                 offset
             );
         }
         void UploadAll(
-            const void* src,
-            u32 srcSize,
+            const void* data,
+            u32 size,
             u32 offset = 0
         ) RHI_OVERRIDE{
             for(u32 i=0; i<resources.size(); ++i){
                 upload(
                     i,
-                    src,
-                    srcSize,
+                    data,
+                    size,
                     offset
                 );
             }
         }
 
         void Download(
-            void* dst,
-            u32 dstSize,
+            void* data,
+            u32 size,
             u32 offset = 0
         ) RHI_OVERRIDE{
             download(
                 currentIndex(),
-                dst,
-                dstSize,
+                data,
+                size,
                 offset
             );
         }
@@ -130,14 +132,14 @@ namespace Crowy
 
         void upload(
             u32 index,
-            const void* src,
-            u32 srcSize,
+            const void* data,
+            u32 size,
             u32 offset = 0
         );
         void download(
             u32 index,
-            void* dst,
-            u32 dstSize,
+            void* data,
+            u32 size,
             u32 offset = 0
         );
     };

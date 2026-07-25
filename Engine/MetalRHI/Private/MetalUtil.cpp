@@ -4,6 +4,13 @@
 
 namespace Crowy
 {
+    NS::String* toNSString(StrView str){
+        return NS::String::string(
+            str.data(),
+            NS::UTF8StringEncoding
+        );
+    }
+
     MTL::PixelFormat convert(RHIPixelFormat format){
         using enum RHIPixelFormat;
         using namespace MTL;
