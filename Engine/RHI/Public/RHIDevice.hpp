@@ -23,9 +23,6 @@ namespace Crowy
             const RHITextureCreateDesc&,
             StrView name = {}
         ) = 0;
-        virtual RHISamplerRAII CreateSampler(
-            const RHISamplerState&
-        ) = 0;
 
         virtual RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,

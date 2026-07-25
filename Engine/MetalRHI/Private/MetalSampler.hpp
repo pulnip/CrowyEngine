@@ -3,12 +3,11 @@
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLSampler.hpp>
 #include "RHIDefinitions.hpp"
-#include "RHISampler.hpp"
 
 namespace Crowy
 {
 
-    class MetalSampler final: public RHISampler{
+    class MetalSampler final{
     private:
         MTL::SamplerState* sampler = nullptr;
 
@@ -21,6 +20,5 @@ namespace Crowy
         ~MetalSampler();
 
         MTL::SamplerState* Get(){ return sampler; }
-        const MTL::SamplerState* Get() const{ return sampler; }
     };
 }
