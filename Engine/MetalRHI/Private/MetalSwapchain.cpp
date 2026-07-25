@@ -21,7 +21,12 @@ namespace Crowy
         metalLayer->setDevice(&device);
         metalLayer->setPixelFormat(convert(desc.bufferDesc.format));
         metalLayer->setFramebufferOnly(false);
-        metalLayer->setDrawableSize(CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height));
+        metalLayer->setDrawableSize(CGSizeMake(
+            desc.bufferDesc.width,
+            desc.bufferDesc.height
+        ));
+
+        backBuffer = std::make_unique<MetalTexture>(currentDrawable);
 
         // NOTE. discard desc.debugName, desc.vsync
     }
