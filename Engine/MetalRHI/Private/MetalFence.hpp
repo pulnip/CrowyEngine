@@ -29,8 +29,5 @@ namespace Crowy
         MTL::SharedEvent* Get() noexcept{
             return sharedEvent;
         }
-        const MTL::SharedEvent* Get() const noexcept{
-            return sharedEvent;
-        }
     };
 }

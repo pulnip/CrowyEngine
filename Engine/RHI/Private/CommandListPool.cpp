@@ -34,7 +34,7 @@ namespace Crowy
         return *acquiredCmdList;
     }
 
-    void CommandListPool::SubmitFrame(){
+    void CommandListPool::SubmitFrame(RHISwapchain* swapchain){
         auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex == 0) [[unlikely]] {
@@ -49,6 +49,12 @@ namespace Crowy
         for(usize i=0; i<cmdLists.size(); ++i){
             cmdLists[i] = slot.cmdLists[i].get();
         }
-        device.Submit(cmdLists);
+
+        if(swapchain != nullptr) [[likely]]{
+            device.SubmitAndPresent(cmdLists, *swapchain);
+        }
+        else{
+            device.Submit(cmdLists);
+        }
     }
 }

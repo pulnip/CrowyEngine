@@ -45,6 +45,7 @@ namespace Crowy
         virtual void SignalFence(RHIFence&, u64 value) = 0;
 
         virtual void Submit(std::span<RHICommandList*>) = 0;
+        virtual void SubmitAndPresent(std::span<RHICommandList*>, RHISwapchain&) = 0;
 
         virtual u64& GetFrameIndexRef() noexcept = 0;
 

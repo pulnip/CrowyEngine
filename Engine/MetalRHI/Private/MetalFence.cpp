@@ -1,7 +1,7 @@
 #include <chrono>
 #include <thread>
-#include <Metal/Metal.hpp>
 #include <dispatch/dispatch.h>
+#include <Metal/Metal.hpp>
 #include "MetalFence.hpp"
 
 namespace Crowy

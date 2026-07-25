@@ -23,7 +23,7 @@ namespace Crowy
         ~CommandListPool();
 
         void BeginFrame();
-        void SubmitFrame();
+        void SubmitFrame(RHISwapchain* swapchain = nullptr);
 
         RHICommandList& Acquire();
 

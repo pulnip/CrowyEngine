@@ -1,7 +1,7 @@
 #include <CoreGraphics/CGGeometry.h>
 #include <QuartzCore/CAMetalLayer.hpp>
+#include <Metal/MTLCommandBuffer.hpp>
 #include "Assert.hpp"
-#include "MetalCommandList.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
@@ -43,8 +43,7 @@ namespace Crowy
         backBuffer = nullptr;
     }
 
-    void MetalSwapchain::Present(MetalCommandList& cmdList){
-        auto cmdBuffer = cmdList.Get();
-        cmdBuffer->presentDrawable(currentDrawable);
+    void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer){
+        cmdBuffer.presentDrawable(currentDrawable);
     }
 }

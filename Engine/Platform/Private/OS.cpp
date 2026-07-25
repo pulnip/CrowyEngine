@@ -246,8 +246,7 @@ namespace Crowy
     }
 
     void OS::Impl::EndFrame(RHIDevice& device){
-        cmdListPool.SubmitFrame();
-        swapchain->Present();
+        cmdListPool.SubmitFrame(swapchain.get());
         framePacer.EndFrame();
 
         swapchain->GetCurrentTexture().TransitionState(

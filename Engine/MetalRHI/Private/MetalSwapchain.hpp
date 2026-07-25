@@ -44,6 +44,6 @@ namespace Crowy
             return *backBuffer;
         }
 
-        void Present(MetalCommandList&);
+        void Present(MTL::CommandBuffer&);
     };
 }
