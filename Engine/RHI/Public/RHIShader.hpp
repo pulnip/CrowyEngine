@@ -4,6 +4,11 @@
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 
+namespace slang{
+    struct IModule;
+    struct IComponentType;
+}
+
 namespace Crowy
 {
     // call once in whole program-lifetime
@@ -11,30 +16,26 @@ namespace Crowy
 
     class RHIShader{
     private:
-        std::vector<u8> bytecode;
+        slang::IModule* mod = nullptr;
+        slang::IComponentType* program = nullptr;
         std::size_t hash = 0;
 
-        RHIShaderReflection reflection;
+        RHIProgramReflection reflection;
 
     public:
         RHIShader(
-            const RHIShaderDesc&,
+            const std::filesystem::path&,
             RHIBackend backend,
             CStr profile = nullptr
         );
+        ~RHIShader();
 
-        const void* GetBytecode() const noexcept{
-            return bytecode.data();
-        }
-        usize GetBytecodeLength() const noexcept{
-            return bytecode.size();
-        }
         std::size_t Gethash() const noexcept{
             return hash;
         }
+        Size3D GetThreadGroupSize(StrView entryPoint);
 
-        const auto& GetRefl() const noexcept{
-            return reflection;
-        }
+        std::vector<u8> GetEntryPointCode(StrView entryPoint);
+        std::vector<u8> GetTargetCode();
     };
 }

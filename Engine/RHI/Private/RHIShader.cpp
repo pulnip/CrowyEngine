@@ -45,17 +45,6 @@ namespace{
 
     Slang::ComPtr<slang::IGlobalSession> globalSession;
 
-    SlangCompileTarget convert(Crowy::RHIBackend backend){
-        using enum Crowy::RHIBackend;
-
-        switch(backend){
-        case DirectX12: return SLANG_DXIL;
-        case Metal:     return SLANG_METAL_LIB;
-        default:
-            std::unreachable();
-        }
-    }
-
     void checkMetadata(slang::IMetadata& metadata){
         using namespace slang;
 
@@ -64,46 +53,6 @@ namespace{
         );
 
         (void)bindless->usesBindlessResourceHeap();
-    }
-
-    Crowy::RHIShaderReflection extractReflection(slang::ProgramLayout& layout){
-        using namespace slang;
-        using namespace Crowy;
-
-        RHIShaderReflection refl;
-
-        const auto numParams = layout.getParameterCount();
-        for(u32 i=0; i<numParams; ++i){
-            auto param = layout.getParameterByIndex(i);
-            auto category = param->getCategory();
-
-            auto raw = param->getName();
-
-            switch(category){
-            case ConstantBuffer:
-                refl.nameToSlot[raw] = param->getBindingIndex();
-                break;
-            case SamplerState:
-                // use static sampler(index fixed), so skip
-                break;
-            default:
-                // SRV, UAV -> use only Descriptor Heap Indexing
-                throw std::runtime_error("Unexpected param category");
-            }
-        }
-
-        // thread group size
-        auto entryPoint = layout.getEntryPointByIndex(0);
-        if(entryPoint->getStage() == SLANG_STAGE_COMPUTE){
-            SlangUInt threadGroupSize[3] = {1, 1, 1};
-            entryPoint->getComputeThreadGroupSize(3, threadGroupSize);
-
-            refl.threadGroupSize.x = threadGroupSize[0];
-            refl.threadGroupSize.y = threadGroupSize[1];
-            refl.threadGroupSize.z = threadGroupSize[2];
-        }
-
-        return refl;
     }
 }
 
@@ -118,6 +67,68 @@ namespace{
 
 namespace Crowy
 {
+    namespace{
+        SlangCompileTarget convert(RHIBackend backend){
+            using enum RHIBackend;
+
+            switch(backend){
+            case DirectX12: return SLANG_DXIL;
+            case Metal:     return SLANG_METAL_LIB;
+            default:
+                std::unreachable();
+            }
+        }
+
+        auto extractReflection(slang::ProgramLayout& layout){
+            using namespace slang;
+
+            RHIProgramReflection refl;
+
+            const auto numParams = layout.getParameterCount();
+            for(u32 i=0; i<numParams; ++i){
+                auto param = layout.getParameterByIndex(i);
+                auto category = param->getCategory();
+
+                auto raw = param->getName();
+
+                switch(category){
+                case ConstantBuffer:
+                    refl.nameToSlot[raw] = param->getBindingIndex();
+                    break;
+                case SamplerState:
+                    // use static sampler(index fixed), so skip
+                    break;
+                default:
+                    // SRV, UAV -> use only Descriptor Heap Indexing
+                    throw std::runtime_error("Unexpected param category");
+                }
+            }
+
+            const auto count = layout.getEntryPointCount();
+            for(SlangUInt i = 0; i < count; ++i){
+                auto entryPoint = layout.getEntryPointByIndex(i);
+
+                // thread group size
+                SlangUInt threadGroupSize[3] = {1, 1, 1};
+                entryPoint->getComputeThreadGroupSize(3, threadGroupSize);
+
+                refl.shaderRefl.emplace(
+                    entryPoint->getName(),
+                    RHIShaderReflection{
+                        .entryPointIndex = i,
+                        .threadGroupSize = Size3D{
+                            .x = static_cast<u32>(threadGroupSize[0]),
+                            .y = static_cast<u32>(threadGroupSize[1]),
+                            .z = static_cast<u32>(threadGroupSize[2])
+                        }
+                    }
+                );
+            }
+
+            return refl;
+        }
+    }
+
     void InitGlobalSession(){
         const SlangGlobalSessionDesc desc{};
 
@@ -128,11 +139,11 @@ namespace Crowy
     }
 
     RHIShader::RHIShader(
-        const RHIShaderDesc& desc,
+        const std::filesystem::path& filePath,
         RHIBackend backend,
         CStr profile
     )
-        : hash(hashAll(desc))
+        : hash(hashAll(filePath))
     {
         using namespace slang;
         using namespace Slang;
@@ -143,11 +154,11 @@ namespace Crowy
 
         const std::array targetDescs{
             TargetDesc{
-                .format = ::convert(backend),
+                .format = convert(backend),
                 .profile = globalSession->findProfile(profile)
             }
         };
-        const auto absPath = std::filesystem::absolute(desc.path);
+        const auto absPath = std::filesystem::absolute(filePath);
         const auto path = toUTF8String(absPath);
 
         const auto searchDir = toUTF8String(absPath.parent_path());
@@ -168,7 +179,6 @@ namespace Crowy
         ), "Failed to create session");
 
         // Compile
-        IModule* mod = nullptr;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
             mod = session->loadModule(
@@ -179,18 +189,26 @@ namespace Crowy
             ::throwIfSlangError(diagnostics.get());
         }
 
-        // find entry point
-        ComPtr<IEntryPoint> entryPoint = nullptr;
-        CHECK_SRESULT(mod->findEntryPointByName(
-            desc.entryPoint.c_str(),
-            entryPoint.writeRef()
-        ), "Failed to find entry point");
+        // entry points
+        const auto entryPointCount = mod->getDefinedEntryPointCount();
+        std::vector<ComPtr<IEntryPoint>> entryPoints;
+        entryPoints.reserve(entryPointCount);
 
         // compose module + entryPoint
-        std::array<IComponentType*, 2> components{
-            mod,
-            entryPoint.get()
-        };
+        std::vector<IComponentType*> components(entryPointCount + 1);
+        components[0] = mod;
+
+        for(SlangInt32 i=0; i<entryPointCount; ++i){
+            ComPtr<IEntryPoint> entryPoint = nullptr;
+            CHECK_SRESULT(mod->getDefinedEntryPoint(
+                i,
+                entryPoint.writeRef()
+            ), "Failed to find entry point");
+
+            entryPoints.push_back(std::move(entryPoint));
+            components[i + 1] = entryPoints[i].get();
+        }
+
         ComPtr<IComponentType> composed = nullptr;
         CHECK_SRESULT(session->createCompositeComponentType(
             components.data(),
@@ -199,21 +217,22 @@ namespace Crowy
         ), "Failed to compose slang component");
 
         // link to single program
-        ComPtr<IComponentType> linked = nullptr;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
             CHECK_SRESULT(composed->link(
-                linked.writeRef(),
+                &program,
                 diagnostics.writeRef()
             ), "Failed to link slang component");
 
             ::throwIfSlangError(diagnostics.get());
         }
 
+        reflection = extractReflection(*program->getLayout());
+
         ComPtr<IMetadata> metadata;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT(linked->getTargetMetadata(
+            CHECK_SRESULT(program->getTargetMetadata(
                 0,
                 metadata.writeRef(),
                 diagnostics.writeRef()
@@ -223,28 +242,69 @@ namespace Crowy
 
             ::checkMetadata(*metadata);
         }
+    }
 
-        // interpret to final target (DirectX IL, Apple IR)
-        ComPtr<ISlangBlob> code = nullptr;
-        {
-            ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT(linked->getEntryPointCode(
-                0,
-                0,
-                code.writeRef(),
-                diagnostics.writeRef()
-            ), "failed to get target entry code");
-
-            ::throwIfSlangError(diagnostics.get());
+    RHIShader::~RHIShader(){
+        if(program != nullptr){
+            program->release();
+            program = nullptr;
         }
+    }
 
-        bytecode.resize(code->getBufferSize());
+    Size3D RHIShader::GetThreadGroupSize(StrView entryPoint){
+        auto it = reflection.shaderRefl.find(entryPoint);
+        CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
+
+        return it->second.threadGroupSize;
+    }
+
+    std::vector<u8> RHIShader::GetEntryPointCode(StrView entryPoint){
+        using namespace Slang;
+
+        const auto it = reflection.shaderRefl.find(entryPoint);
+        CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
+
+        ComPtr<ISlangBlob> code = nullptr;
+        ComPtr<ISlangBlob> diagnostics = nullptr;
+        CHECK_SRESULT(program->getEntryPointCode(
+            it->second.entryPointIndex,
+            0,
+            code.writeRef(),
+            diagnostics.writeRef()
+        ), "failed to get target entry code");
+
+        ::throwIfSlangError(diagnostics.get());
+
+        std::vector<u8> bytecode(code->getBufferSize());
         std::memcpy(
             bytecode.data(),
             code->getBufferPointer(),
             code->getBufferSize()
         );
 
-        reflection = ::extractReflection(*linked->getLayout());
+        return bytecode;
+    }
+
+    std::vector<u8> RHIShader::GetTargetCode(){
+        using namespace Slang;
+
+        ComPtr<ISlangBlob> code = nullptr;
+        ComPtr<ISlangBlob> diagnostics = nullptr;
+        CHECK_SRESULT(program->getTargetCode(
+            0,
+            code.writeRef(),
+            diagnostics.writeRef()
+        ), "failed to get target entry code");
+
+        ::throwIfSlangError(diagnostics.get());
+
+        std::vector<u8> bytecode(code->getBufferSize());
+        std::memcpy(
+            bytecode.data(),
+            code->getBufferPointer(),
+            code->getBufferSize()
+        );
+
+        return bytecode;
     }
 }
