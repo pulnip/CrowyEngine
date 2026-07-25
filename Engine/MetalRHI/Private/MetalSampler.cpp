@@ -1,5 +1,5 @@
 #include <utility>
-#include <Metal/Metal.hpp>
+#include <Metal/MTLDevice.hpp>
 #include "MetalSampler.hpp"
 #include "MetalUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -70,6 +70,9 @@ namespace Crowy
     }
 
     MetalSampler::~MetalSampler(){
-        sampler->release();
+        if(sampler != nullptr){
+            sampler->release();
+            sampler = nullptr;
+        }
     }
 }

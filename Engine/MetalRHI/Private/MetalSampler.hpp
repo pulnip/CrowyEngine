@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Metal/MTLDevice.hpp>
 #include <Metal/MTLSampler.hpp>
 #include "RHIDefinitions.hpp"
 
