@@ -167,6 +167,28 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(slang_bin)
 
+add_library(Slang::Slang SHARED IMPORTED GLOBAL)
+set_target_properties(Slang::Slang PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${slang_bin_SOURCE_DIR}/include"
+)
+if(WIN32)
+    set_target_properties(Slang::Slang PROPERTIES
+        IMPORTED_LOCATION "${slang_bin_SOURCE_DIR}/bin/slang.dll"
+        IMPORTED_IMPLIB   "${slang_bin_SOURCE_DIR}/lib/slang.lib"
+    )
+    set(SLANG_RUNTIME_LIBS
+        "${slang_bin_SOURCE_DIR}/bin/slang.dll"
+        "${slang_bin_SOURCE_DIR}/bin/slang-compiler.dll"
+    )
+elseif(APPLE)
+    file(GLOB SLANG_RUNTIME_LIBS
+        "${slang_bin_SOURCE_DIR}/lib/libslang-compiler.*.dylib")
+    set_target_properties(Slang::Slang PROPERTIES
+        IMPORTED_LOCATION "${slang_bin_SOURCE_DIR}/lib/libslang.dylib"
+        INTERFACE_LINK_OPTIONS "-Wl,-rpath,@executable_path"
+    )
+endif()
+
 # KTX
 set(KTX_FEATURE_TESTS     OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_TOOLS     OFF CACHE BOOL "" FORCE)
