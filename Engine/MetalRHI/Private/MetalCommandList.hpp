@@ -1,17 +1,12 @@
 #pragma once
 
 #include <Metal/MTLCommandBuffer.hpp>
-#include <Metal/MTLCommandQueue.hpp>
-#include <Metal/MTLBlitCommandEncoder.hpp>
-#include <QuartzCore/CAMetalDrawable.hpp>
-#include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLStageInputOutputDescriptor.hpp>
 #include <Metal/MTLTypes.hpp>
+#include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
 
 namespace Crowy
 {
