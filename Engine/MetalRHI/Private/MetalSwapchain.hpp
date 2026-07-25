@@ -8,7 +8,7 @@
 #include "MetalTexture.hpp"
 #include "Primitives.hpp"
 #include "RHIAPI.hpp"
-#include "RHICommandList.hpp"
+// #include "RHICommandList.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHISwapchain.hpp"
 
@@ -21,7 +21,8 @@ namespace Crowy
         CA::MetalLayer* metalLayer = nullptr;
         CA::MetalDrawable* currentDrawable = nullptr;
 
-        RAII<MetalTexture> backBuffer;
+        std::vector<RAII<MetalTexture>> backBuffers;
+        const u64& frameIndex;
 
     public:
         MetalSwapchain(
@@ -35,27 +36,28 @@ namespace Crowy
 
         void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
 
-        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE{
-            return backBuffer->GetFormat();
-        }
         u32 GetWidth() const noexcept RHI_OVERRIDE{
-            return backBuffer->GetWidth();
+            return backBuffers[currentIndex()]->GetWidth();
         }
         u32 GetHeight() const noexcept RHI_OVERRIDE{
-            return backBuffer->GetHeight();
+            return backBuffers[currentIndex()]->GetHeight();
         }
 
         RHITexture& GetCurrentTexture() RHI_OVERRIDE{
-            return *backBuffer;
-        }
-        const RHITexture& GetCurrentTexture() const RHI_OVERRIDE{
-            return *backBuffer;
+            return *backBuffers[currentIndex()];
         }
 
-        void Present(RHICommandList&) RHI_OVERRIDE;
+        void Present() RHI_OVERRIDE;
 
         CA::MetalDrawable* GetCurrentDrawable() const noexcept{
             return currentDrawable;
+        }
+
+    private:
+        u32 currentIndex() const noexcept{
+            return static_cast<u32>(
+                frameIndex % backBuffers.size()
+            );
         }
     };
 }

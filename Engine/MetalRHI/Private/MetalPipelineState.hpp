@@ -6,7 +6,6 @@
 #include <Metal/MTLComputePipeline.hpp>
 #include <Metal/MTLDevice.hpp>
 #include <Metal/Metal.hpp>
-#include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -15,11 +14,10 @@ namespace Crowy
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
     private:
         MTL::RenderPipelineState* pipeline = nullptr;
-        MTL::DepthStencilState* depthStencilState = nullptr;
         RHIRasterizerState rasterizerState{};
-        MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
+        MTL::DepthStencilState* depthStencilState = nullptr;
 
-        RHIGraphicsBindingInfo bindingInfo;
+        MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
 
         const Str debugName;
 
@@ -31,10 +29,6 @@ namespace Crowy
         );
 
         ~MetalGraphicsPipelineState();
-
-        const RHIGraphicsBindingInfo& GetInfo() const RHI_OVERRIDE{
-            return bindingInfo;
-        }
 
         void Bind(MTL::RenderCommandEncoder&);
 
@@ -55,8 +49,6 @@ namespace Crowy
         MTL::ComputePipelineState* pipeline = nullptr;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
-        RHIComputeBindingInfo bindingInfo;
-
         const Str debugName;
 
     public:
@@ -67,10 +59,6 @@ namespace Crowy
         );
 
         ~MetalComputePipelineState();
-
-        const RHIComputeBindingInfo& GetInfo() const RHI_OVERRIDE{
-            return bindingInfo;
-        }
 
         void Bind(MTL::ComputeCommandEncoder&);
 
