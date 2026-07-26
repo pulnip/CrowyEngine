@@ -7,6 +7,8 @@
 
 namespace Crowy
 {
+    class DX12Sampler;
+
     class DX12Device: public RHIDevice{
     private:
         class Impl;
@@ -26,9 +28,9 @@ namespace Crowy
             const RHITextureCreateDesc&,
             StrView name = {}
         ) RHI_OVERRIDE;
-        RHISamplerRAII CreateSampler(
+        RAII<DX12Sampler> CreateSampler(
             const RHISamplerState&
-        ) RHI_OVERRIDE;
+        );
 
         RAII<RHIGraphicsPipelineState> CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
@@ -50,7 +52,15 @@ namespace Crowy
 
         void SignalFence(RHIFence&, u64) RHI_OVERRIDE;
 
-        void Submit(std::span<RHICommandList*>) RHI_OVERRIDE;
+        void Submit(
+            std::span<RHICommandList*>,
+            RHIFence&
+        ) RHI_OVERRIDE;
+        void SubmitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            RHIFence&
+        ) RHI_OVERRIDE;
 
         u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 

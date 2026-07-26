@@ -1,12 +1,11 @@
 #pragma once
 
 #include "RHIDefinitions.hpp"
-#include "RHISampler.hpp"
 #include "DX12Definitions.hpp"
 
 namespace Crowy
 {
-    class DX12Sampler: public RHISampler{
+    class DX12Sampler{
     private:
         UINT heapIndex;
         DescriptorHeapAllocator& samplerHeap;
