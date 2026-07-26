@@ -13,8 +13,8 @@ namespace Crowy
 
     public:
         MetalTexture(
-            MTL::Device& device,
-            const RHITextureCreateDesc& desc,
+            MTL::Device&,
+            MTL::TextureDescriptor*,
             StrView name = {}
         );
         MetalTexture(

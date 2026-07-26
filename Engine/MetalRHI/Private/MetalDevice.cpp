@@ -18,6 +18,7 @@ extern "C"{
 #include "MetalSampler.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
+#include "MetalUtil.hpp"
 #include "RHIShader.hpp"
 #include "RHIUtil.hpp"
 #include "UploadRing.hpp"
@@ -111,12 +112,16 @@ namespace Crowy
             CROWY_ASSERT(desc.access != CPUWrite && desc.access != CPURead,
                 "Use RHIBuffer for CPU-Accessable Resource"
             );
+            auto texDesc = convert(desc);
+            auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
             auto texture = std::make_unique<MetalTexture>(
                 *device,
-                desc,
+                texDesc,
                 name
             );
+            texDesc->release();
+
             if(!desc.initialData.empty()){
                 if(!uploadRecorded){
                     uploadCmdList->Begin();
@@ -128,14 +133,18 @@ namespace Crowy
                 CROWY_ASSERT(desc.initialData.size() == n);
 
                 std::vector<RHISubresourceLayout> layouts(n);
+                const auto totalBytes = QueryUploadLayout(
+                    desc,
+                    layouts
+                );
                 UploadTexture(
                     *uploadCmdList,
                     uploadRing,
-                    -1,
+                    sizeAlign.align,
                     *texture,
                     desc.initialData,
                     layouts,
-                    -1
+                    totalBytes
                 );
             }
 
@@ -256,6 +265,42 @@ namespace Crowy
         MTL::Device* Get() noexcept{
             return device;
         }
+
+        // Metal has no GetCopyableFootprints equivalent,
+        // so compute the staging-buffer footprint by hand.
+        u64 QueryUploadLayout(
+            const RHITextureCreateDesc& desc,
+            std::span<RHISubresourceLayout> out
+        ){
+            // copyFromBuffer requires sourceOffset to be a multiple of
+            // the pixel size (block size for compressed formats);
+            // 256 covers every format.
+            constexpr u64 offsetAlign = 256;
+            const u32 blockDim = GetBlockDim(desc.format);
+
+            u64 totalBytes = 0;
+            for(u32 slice = 0; slice < desc.arraySize; ++slice){
+                for(u32 mip = 0; mip < desc.mipLevels; ++mip){
+                    const u32 mipWidth  = std::max(1u, desc.width  >> mip);
+                    const u32 mipHeight = std::max(1u, desc.height >> mip);
+
+                    const u32 rowSize  = GetRowPitch(desc.format, mipWidth);
+                    const u32 rowCount = ceilDiv(mipHeight, blockDim);
+
+                    totalBytes = nextMul(totalBytes, offsetAlign);
+
+                    // rowPitch == rowSize: Metal allows tight packing
+                    out[slice * desc.mipLevels + mip] = RHISubresourceLayout{
+                        .offset = totalBytes,
+                        .rowPitch = rowSize,
+                        .rowSize = rowSize,
+                        .rowCount = rowCount
+                    };
+                    totalBytes += u64(rowSize) * rowCount;
+                }
+            }
+            return totalBytes;
+        }
     };
 
     MetalDevice::MetalDevice()
@@ -324,7 +369,10 @@ namespace Crowy
     RHICapabilities MetalDevice::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,
-            .clipSpaceMinZ = 0.0f
+            .clipSpaceMinZ = 0.0f,
+            // maximum pixel/block size of All RHIPixelFormat
+            .textureRowPitchAlign = 16,
+            .textureOffsetAlign = 16,
         };
     }
 

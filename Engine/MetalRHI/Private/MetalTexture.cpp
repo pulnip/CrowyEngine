@@ -1,7 +1,4 @@
-#include <utility>
 #include <Metal/MTLDevice.hpp>
-#include "Assert.hpp"
-#include "EnumUtil.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
 #include "Primitives.hpp"
@@ -9,87 +6,21 @@
 
 namespace Crowy
 {
-    namespace{
-        auto convert(RHITextureUsage usage){
-            using enum RHITextureUsage;
-            MTL::TextureUsage mtlUsage = 0;
-
-            if(hasFlag(usage, ShaderRead))
-                mtlUsage |= MTL::TextureUsageShaderRead;
-            if(hasFlag(usage, RenderTarget))
-                mtlUsage |= MTL::TextureUsageRenderTarget;
-            if(hasFlag(usage, DepthStencil))
-                mtlUsage |= MTL::TextureUsageRenderTarget;
-            if(hasFlag(usage, ShaderWrite))
-                mtlUsage |= MTL::TextureUsageShaderWrite;
-
-            return mtlUsage;
-        }
-
-        auto convert(u32 depth, u32 arraySize){
-            CROWY_ASSERT(1 <= depth && depth <= 3,
-                "Invalid Texture Depth: {}",
-                depth
-            );
-            CROWY_ASSERT(0 < arraySize,
-                "ArraySize should be positive"
-            );
-
-            switch(depth){
-            case 1:
-                return arraySize > 1 ?
-                    MTL::TextureType1D :
-                    MTL::TextureType1DArray;
-            case 2:
-                return arraySize > 1 ?
-                    MTL::TextureType2D :
-                    MTL::TextureType2DArray;
-            case 3:
-                CROWY_ASSERT(arraySize == 1);
-                return MTL::TextureType3D;
-            default:
-                std::unreachable();
-            }
-        }
-    }
-
     MetalTexture::MetalTexture(
         MTL::Device& device,
-        const RHITextureCreateDesc& desc,
+        MTL::TextureDescriptor* desc,
         StrView name
     )
         : RHITexture(
-            desc.format,
+            convert(desc->pixelFormat()),
             RHIBarrierSync::None,
             RHIBarrierAccess::NoAccess,
             RHIBarrierLayout::Undefined,
-            desc.mipLevels,
-            desc.arraySize
+            desc->mipmapLevelCount(),
+            desc->arrayLength()
         )
     {
-        auto texDesc = MTL::TextureDescriptor::alloc()->init();
-        texDesc->setWidth(desc.width);
-        texDesc->setHeight(desc.height);
-        texDesc->setDepth(desc.depth);
-        texDesc->setMipmapLevelCount(desc.mipLevels);
-        if(desc.isCubeMap){
-            CROWY_ASSERT(desc.depth == 2 && desc.arraySize % 6 == 0);
-            texDesc->setArrayLength(desc.arraySize / 6);
-            texDesc->setTextureType(desc.arraySize == 6 ?
-                MTL::TextureTypeCube :
-                MTL::TextureTypeCubeArray
-            );
-        }
-        else{
-            texDesc->setArrayLength(desc.arraySize);
-            texDesc->setTextureType(convert(desc.depth, desc.arraySize));
-        }
-        texDesc->setPixelFormat(convert(desc.format));
-        texDesc->setUsage(convert(desc.usage));
-        texDesc->setStorageMode(MTL::StorageModePrivate);
-
-        texture = device.newTexture(texDesc);
-        texDesc->release();
+        texture = device.newTexture(desc);
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         if(!name.empty()){
