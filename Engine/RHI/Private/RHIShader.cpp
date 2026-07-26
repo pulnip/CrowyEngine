@@ -92,6 +92,35 @@ namespace Crowy
                 auto raw = param->getName();
 
                 switch(category){
+                case Mixed: {
+                    // Metal legalizes DescriptorHandle<T> members into
+                    // real texture slots inside the argument buffer,
+                    // so the CB param consumes ConstantBuffer + ShaderResource.
+                    bool hasConstantBuffer = false;
+                    const auto subCount = param->getCategoryCount();
+                    for(unsigned j=0; j<subCount; ++j){
+                        switch(param->getCategoryByIndex(j)){
+                        case ConstantBuffer:
+                            hasConstantBuffer = true;
+                            break;
+                        case ShaderResource:
+                            break;
+                        default:
+                            throw std::runtime_error(
+                                "Unexpected sub-category in mixed param"
+                            );
+                        }
+                    }
+                    if(!hasConstantBuffer){
+                        throw std::runtime_error(
+                            "Mixed param without constant buffer"
+                        );
+                    }
+                    refl.nameToSlot[raw] = static_cast<u32>(
+                        param->getOffset(ConstantBuffer)
+                    );
+                    break;
+                }
                 case ConstantBuffer:
                     refl.nameToSlot[raw] = param->getBindingIndex();
                     break;
