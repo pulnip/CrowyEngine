@@ -13,6 +13,7 @@ namespace Crowy
     namespace{
         struct BufferPolicy{
             u32 slotCount;
+            MTL::ResourceOptions options;
             bool persistentMap;
             RHIBarrierSync sync;
             RHIBarrierAccess access;
@@ -29,6 +30,7 @@ namespace Crowy
             case GPUOnly:
                 return BufferPolicy{
                     .slotCount = 1,
+                    .options = MTL::ResourceStorageModePrivate,
                     .persistentMap = false,
                     .sync = RHIBarrierSync::None,
                     .access = RHIBarrierAccess::NoAccess
@@ -38,6 +40,7 @@ namespace Crowy
                     .slotCount = usage == CopySrc ?
                         1 :
                         RHI_FRAMES_IN_FLIGHT,
+                    .options = MTL::ResourceStorageModeShared,
                     .persistentMap = true,
                     .sync = RHIBarrierSync::None,
                     .access = RHIBarrierAccess::ConstantBuffer
@@ -45,6 +48,7 @@ namespace Crowy
             case CPURead:
                 return BufferPolicy{
                     .slotCount = RHI_FRAMES_IN_FLIGHT,
+                    .options = MTL::ResourceStorageModeShared,
                     .persistentMap = true,
                     .sync = RHIBarrierSync::Copy,
                     .access = RHIBarrierAccess::CopyDst
@@ -84,65 +88,38 @@ namespace Crowy
         const auto isGPUOnly  = (desc.access == GPUOnly);
 
         resources.reserve(policy.slotCount);
-        if(desc.initialData != nullptr){
-            for(u32 i=0; i<policy.slotCount; ++i){
-                FrameResource resource{
-                    .buffer = device.newBuffer(
+        for(u32 i=0; i<policy.slotCount; ++i){
+            FrameResource resource{
+                .buffer = desc.initialData != nullptr && !isGPUOnly ?
+                    device.newBuffer(
                         desc.initialData,
                         desc.size,
-                        isGPUOnly ?
-                            MTL::ResourceStorageModePrivate :
-                            MTL::ResourceStorageModeManaged
-                    ),
-                    .syncState = policy.sync,
-                    .accessState = policy.access,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .slotWritten = false
-                #endif
-                };
-                if(policy.persistentMap){
-                    CROWY_ASSERT(isCPUWrite || isCPURead);
-                    resource.mapped = resource.buffer->contents();
-                }
-
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                if(!name.empty()){
-                    resource.buffer->setLabel(toNSString(name));
-                }
-            #endif
-
-                resources.emplace_back(std::move(resource));
-            }
-        }
-        else{
-            for(u32 i=0; i<policy.slotCount; ++i){
-                FrameResource resource{
-                    .buffer = device.newBuffer(
+                        policy.options
+                    ) :
+                    device.newBuffer(
                         desc.size,
-                        isGPUOnly ?
-                            MTL::ResourceStorageModePrivate :
-                            MTL::ResourceStorageModeManaged
+                        policy.options
                     ),
-                    .syncState = policy.sync,
-                    .accessState = policy.access,
-                #if defined(_DEBUG) || !defined(NDEBUG)
-                    .slotWritten = false
-                #endif
-                };
-                if(policy.persistentMap){
-                    CROWY_ASSERT(isCPUWrite || isCPURead);
-                    resource.mapped = resource.buffer->contents();
-                }
-
+                .syncState = policy.sync,
+                .accessState = policy.access,
             #if defined(_DEBUG) || !defined(NDEBUG)
-                if(!name.empty()){
-                    resource.buffer->setLabel(toNSString(name));
-                }
+                .slotWritten = false
             #endif
-
-                resources.emplace_back(std::move(resource));
+            };
+            if(policy.persistentMap){
+                CROWY_ASSERT(isCPUWrite || isCPURead);
+                resource.mapped = resource.buffer->contents();
             }
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(!name.empty()){
+                resource.buffer->setLabel(toNSString(name));
+            }
+        #endif
+
+            resources.emplace_back(std::move(resource));
         }
+
     #if defined(_DEBUG) || !defined(NDEBUG)
         tracksSlotWrites = isCPUWrite && resources.size() > 1;
     #endif

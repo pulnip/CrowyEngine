@@ -54,12 +54,31 @@ namespace Crowy
             const RHIBufferCreateDesc& desc,
             StrView name
         ){
-            return std::make_unique<MetalBuffer>(
+            CROWY_ASSERT(desc.size % 4 == 0);
+
+            auto buffer = std::make_unique<MetalBuffer>(
                 *device,
                 desc,
                 frameIndex,
                 name
             );
+
+            if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
+                ensureUpload();
+
+                UploadGpuOnlyBuffer(
+                    *uploadCmdList,
+                    uploadRing,
+                    4,
+                    *buffer,
+                    RHISubresourceData{
+                        .data = desc.initialData,
+                        .rowPitch = desc.size
+                    }
+                );
+            }
+
+            return buffer;
         }
 
         Impl()
@@ -107,11 +126,6 @@ namespace Crowy
             const RHITextureCreateDesc& desc,
             StrView name
         ){
-            using enum RHIMemoryAccess;
-
-            CROWY_ASSERT(desc.access != CPUWrite && desc.access != CPURead,
-                "Use RHIBuffer for CPU-Accessable Resource"
-            );
             auto texDesc = convert(desc);
             auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
@@ -123,11 +137,7 @@ namespace Crowy
             texDesc->release();
 
             if(!desc.initialData.empty()){
-                if(!uploadRecorded){
-                    uploadCmdList->Begin();
-                    uploadCmdList->BeginBlit();
-                    uploadRecorded = true;
-                }
+                ensureUpload();
 
                 const usize n = desc.mipLevels * desc.arraySize;
                 CROWY_ASSERT(desc.initialData.size() == n);
@@ -214,15 +224,7 @@ namespace Crowy
             std::span<RHICommandList*> cmdLists,
             MetalFence& fence
         ){
-            if(uploadRecorded){
-                uploadCmdList->EndBlit();
-                uploadCmdList->Close();
-
-                auto mtlCmdList = uploadCmdList->Get();
-                mtlCmdList->commit();
-
-                uploadRecorded = false;
-            }
+            commitUpload();
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
             fence.Encode(*lastCmdBuffer, ++frameIndex);
@@ -238,15 +240,7 @@ namespace Crowy
             MetalSwapchain& swapchain,
             MetalFence& fence
         ){
-            if(uploadRecorded){
-                uploadCmdList->EndBlit();
-                uploadCmdList->Close();
-
-                auto mtlCmdList = uploadCmdList->Get();
-                mtlCmdList->commit();
-
-                uploadRecorded = false;
-            }
+            commitUpload();
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
             swapchain.Present(*lastCmdBuffer);
@@ -300,6 +294,27 @@ namespace Crowy
                 }
             }
             return totalBytes;
+        }
+
+    private:
+        void ensureUpload(){
+            if(!uploadRecorded){
+                uploadCmdList->Begin();
+                uploadCmdList->BeginBlit();
+                uploadRecorded = true;
+            }
+        }
+
+        void commitUpload(){
+            if(uploadRecorded){
+                uploadCmdList->EndBlit();
+                uploadCmdList->Close();
+
+                auto mtlCmdList = uploadCmdList->Get();
+                mtlCmdList->commit();
+
+                uploadRecorded = false;
+            }
         }
     };
 
