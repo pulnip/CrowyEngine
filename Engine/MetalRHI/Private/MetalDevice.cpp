@@ -32,7 +32,6 @@ namespace Crowy
     private:
         MTL::Device* device;
         MTL::CommandQueue* commandQueue;
-        MTL::CommandBuffer* finalCommandBuffer = nullptr;
 
         RAII<MetalCommandList> uploadCmdList;
         bool uploadRecorded = false;
@@ -40,7 +39,7 @@ namespace Crowy
 
         AutoreleasePoolScope autoreleasePool;
 
-        // increased by FramePacer
+        // increased on Submit
         u64 frameIndex = 0;
 
     public:
@@ -196,34 +195,15 @@ namespace Crowy
         }
 
         void SignalFence(MetalFence& fence, u64 value){
-            finalCommandBuffer = commandQueue->commandBuffer();
-            auto sharedEvent = fence.Get();
+            auto cmdBuffer = commandQueue->commandBuffer();
+            fence.Encode(*cmdBuffer, value);
 
-            finalCommandBuffer->encodeSignalEvent(sharedEvent, value);
+            cmdBuffer->commit();
         }
 
-        void Submit(std::span<RHICommandList*> cmdLists){
-            if(uploadRecorded){
-                uploadCmdList->EndBlit();
-                uploadCmdList->Close();
-
-                auto mtlCmdList = uploadCmdList->Get();
-                mtlCmdList->commit();
-
-                uploadRecorded = false;
-            }
-
-            for(auto cmdList: cmdLists){
-                auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
-                mtlCmdList->commit();
-            }
-
-            finalCommandBuffer->commit();
-        }
-
-        void SubmitAndPresent(
+        void Submit(
             std::span<RHICommandList*> cmdLists,
-            MetalSwapchain& swapchain
+            MetalFence& fence
         ){
             if(uploadRecorded){
                 uploadCmdList->EndBlit();
@@ -235,13 +215,38 @@ namespace Crowy
                 uploadRecorded = false;
             }
 
+            auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
+            fence.Encode(*lastCmdBuffer, ++frameIndex);
+
             for(auto cmdList: cmdLists){
                 auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
                 mtlCmdList->commit();
             }
+        }
 
-            swapchain.Present(*finalCommandBuffer);
-            finalCommandBuffer->commit();
+        void SubmitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            MetalSwapchain& swapchain,
+            MetalFence& fence
+        ){
+            if(uploadRecorded){
+                uploadCmdList->EndBlit();
+                uploadCmdList->Close();
+
+                auto mtlCmdList = uploadCmdList->Get();
+                mtlCmdList->commit();
+
+                uploadRecorded = false;
+            }
+
+            auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
+            swapchain.Present(*lastCmdBuffer);
+            fence.Encode(*lastCmdBuffer, ++frameIndex);
+
+            for(auto cmdList: cmdLists){
+                auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
+                mtlCmdList->commit();
+            }
         }
 
         u64& GetFrameIndexRef() noexcept{
@@ -323,16 +328,24 @@ namespace Crowy
         };
     }
 
-    void MetalDevice::Submit(std::span<RHICommandList*> cmdLists){
-        impl->Submit(cmdLists);
+    void MetalDevice::Submit(
+        std::span<RHICommandList*> cmdLists,
+        RHIFence& fence
+    ){
+        impl->Submit(
+            cmdLists,
+            static_cast<MetalFence&>(fence)
+        );
     }
     void MetalDevice::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain
+        RHISwapchain& swapchain,
+        RHIFence& fence
     ){
         impl->SubmitAndPresent(
             cmdLists,
-            static_cast<MetalSwapchain&>(swapchain)
+            static_cast<MetalSwapchain&>(swapchain),
+            static_cast<MetalFence&>(fence)
         );
     }
 

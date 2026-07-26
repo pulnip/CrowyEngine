@@ -68,4 +68,8 @@ namespace Crowy
     bool MetalFence::IsComplete(u64 value){
         return sharedEvent->signaledValue() >= value;
     }
+
+    void MetalFence::Encode(MTL::CommandBuffer& cmdBuffer, u64 value){
+        cmdBuffer.encodeSignalEvent(sharedEvent, value);
+    }
 }

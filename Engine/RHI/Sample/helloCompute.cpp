@@ -93,9 +93,8 @@ int main(void){
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists);
+        device->Submit(cmdLists, *fence);
 
-        device->SignalFence(*fence, 1);
         fence->WaitCPU(1);
 
         std::vector<float> result(N, 0.0f);
