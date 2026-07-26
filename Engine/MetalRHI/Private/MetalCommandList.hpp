@@ -1,17 +1,12 @@
 #pragma once
 
 #include <Metal/MTLCommandBuffer.hpp>
-#include <Metal/MTLCommandQueue.hpp>
-#include <Metal/MTLBlitCommandEncoder.hpp>
-#include <QuartzCore/CAMetalDrawable.hpp>
-#include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLStageInputOutputDescriptor.hpp>
 #include <Metal/MTLTypes.hpp>
+#include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
 
 namespace Crowy
 {
@@ -19,11 +14,9 @@ namespace Crowy
     private:
         MTL::CommandQueue* commandQueue = nullptr;
         MTL::CommandBuffer* commandBuffer = nullptr;
-        // Begin-End of RenderEncoder should be called explicitly
+
         MTL::RenderCommandEncoder* renderEncoder = nullptr;
-        // Begin-End of RenderEncoder should be called explicitly
         MTL::ComputeCommandEncoder* computeEncoder = nullptr;
-        // implicitly reuse blit Encoder
         MTL::BlitCommandEncoder* blitEncoder = nullptr;
 
         CA::MetalDrawable* currentDrawable = nullptr;
@@ -42,15 +35,12 @@ namespace Crowy
         ~MetalCommandList();
 
         void Begin() RHI_OVERRIDE;
-        void Flush() RHI_OVERRIDE;
         void Close() RHI_OVERRIDE;
-        void Reset() RHI_OVERRIDE;
 
         void BeginRenderPass(const RHIRenderPassDesc&) RHI_OVERRIDE;
         void EndRenderPass() RHI_OVERRIDE;
 
         void SetPipelineState(RHIGraphicsPipelineState& pso) RHI_OVERRIDE;
-        void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
 
         void SetVertexBuffer(
             RHIBuffer& buffer,
@@ -65,38 +55,15 @@ namespace Crowy
             u32 offset
         ) RHI_OVERRIDE;
 
-        void SetConstantBuffer(
+        void SetPushGraphicsConstants(
+            const void* data,
+            u32 size
+        ) RHI_OVERRIDE;
+
+        void SetGraphicsConstantBuffer(
             RHIBuffer& buffer,
             u32 slot,
-            RHIShaderStage stage,
             u32 offset = 0
-        ) RHI_OVERRIDE;
-
-        void SetTexture(
-            RHITexture& texture,
-            u32 slot,
-            RHIBindingAccess,
-            RHIShaderStage stage
-        ) RHI_OVERRIDE;
-
-        void SetBuffer(
-            RHIBuffer& buffer,
-            u32 slot,
-            RHIBindingAccess,
-            RHIShaderStage stage
-        ) RHI_OVERRIDE;
-
-        void SetBytes(
-            const void* bytes,
-            usize size,
-            u32 slot,
-            RHIShaderStage stage
-        ) RHI_OVERRIDE;
-
-        void SetSampler(
-            RHISampler& sampler,
-            u32 slot,
-            RHIShaderStage stage
         ) RHI_OVERRIDE;
 
         void SetViewport(const RHIViewport& viewport) RHI_OVERRIDE;
@@ -119,17 +86,24 @@ namespace Crowy
 
         void BeginCompute() RHI_OVERRIDE;
         void EndCompute() RHI_OVERRIDE;
+
+        void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
+
+        void SetPushComputeConstants(
+            const void* data,
+            u32 size
+        ) RHI_OVERRIDE;
+
+        void SetComputeConstantBuffer(
+            RHIBuffer& buffer,
+            u32 slot,
+            u32 offset = 0
+        ) RHI_OVERRIDE;
+
         void Dispatch(Size3D gridSize) RHI_OVERRIDE;
 
-        void TransitionBarrier(
-            RHITexture& texture,
-            RHIResourceState after
-        ) RHI_OVERRIDE;
-
-        void TransitionBarrier(
-            RHIBuffer& buffer,
-            RHIResourceState after
-        ) RHI_OVERRIDE;
+        void BeginBlit() RHI_OVERRIDE;
+        void EndBlit() RHI_OVERRIDE;
 
         void Copy(
             RHIBuffer& src,
@@ -145,15 +119,18 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void Copy(
-            RHITexture& src,
-            RHISwapchain& swapchain
-        ) RHI_OVERRIDE;
-
-        void Copy(
             RHIBuffer& src,
+            u64 srcOffset,
+            u32 srcRowPitch,
             RHITexture& dst,
+            const RHITextureRegion& region,
             u32 mipLevel = 0,
             u32 arraySlice = 0
+        ) RHI_OVERRIDE;
+
+        void TransitionBarrier(
+            std::span<const RHITextureBarrier>,
+            std::span<const RHIBufferBarrier>
         ) RHI_OVERRIDE;
 
         void WaitUntilCompleted() RHI_OVERRIDE;
@@ -168,8 +145,5 @@ namespace Crowy
         }
 
         auto Get() const noexcept{ return commandBuffer; }
-
-    private:
-        void ensureBlitEncoder();
     };
 }

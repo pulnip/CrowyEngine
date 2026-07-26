@@ -140,8 +140,8 @@ namespace Crowy
 
             mainLoop.RenderOnce(cmdListPool);
 
-            cmdListPool.SubmitFrame();
-            framePacer.EndFrame();
+            auto cmdLists = cmdListPool.ExtractRecorded();
+            framePacer.EndFrame(cmdLists);
         }
 
         while(true){
@@ -246,12 +246,15 @@ namespace Crowy
     }
 
     void OS::Impl::EndFrame(RHIDevice& device){
-        cmdListPool.SubmitFrame();
-        swapchain->Present();
-        framePacer.EndFrame();
+        auto cmdLists = cmdListPool.ExtractRecorded();
 
         swapchain->GetCurrentTexture().TransitionState(
             RHIBarrierAccess::NoAccess
+        );
+
+        framePacer.EndFrame(
+            cmdLists,
+            *swapchain.get()
         );
     }
 

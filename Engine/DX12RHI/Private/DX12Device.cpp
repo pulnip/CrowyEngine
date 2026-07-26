@@ -570,7 +570,13 @@ namespace Crowy
             ), "Failed to signal fence");
         }
 
-        void Submit(std::span<RHICommandList*> cmdLists){
+        void SignalFence(RHIFence& fence){
+            SignalFence(fence, ++frameIndex);
+        }
+
+        void Submit(
+            std::span<RHICommandList*> cmdLists
+        ){
             usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
             std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
             if(uploadRecorded){
@@ -659,7 +665,7 @@ namespace Crowy
         return impl->CreateTexture(desc, name);
     }
 
-    RHISamplerRAII DX12Device::CreateSampler(
+    RAII<DX12Sampler> DX12Device::CreateSampler(
         const RHISamplerState& desc
     ){
         return impl->CreateSampler(desc);
@@ -698,8 +704,25 @@ namespace Crowy
         impl->SignalFence(fence, value);
     }
 
-    void DX12Device::Submit(std::span<RHICommandList*> cmdLists){
+    void DX12Device::Submit(
+        std::span<RHICommandList*> cmdLists,
+        RHIFence& fence
+    ){
         impl->Submit(cmdLists);
+
+        impl->SignalFence(fence);
+    }
+
+    void DX12Device::SubmitAndPresent(
+        std::span<RHICommandList*> cmdLists,
+        RHISwapchain& swapchain,
+        RHIFence& fence
+    ){
+        impl->Submit(cmdLists);
+
+        static_cast<DX12Swapchain&>(swapchain).Present();
+
+        impl->SignalFence(fence);
     }
 
     u64& DX12Device::GetFrameIndexRef() noexcept{

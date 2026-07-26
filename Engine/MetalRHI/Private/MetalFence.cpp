@@ -1,7 +1,7 @@
 #include <chrono>
 #include <thread>
-#include <Metal/Metal.hpp>
 #include <dispatch/dispatch.h>
+#include <Metal/Metal.hpp>
 #include "MetalFence.hpp"
 
 namespace Crowy
@@ -67,5 +67,9 @@ namespace Crowy
 
     bool MetalFence::IsComplete(u64 value){
         return sharedEvent->signaledValue() >= value;
+    }
+
+    void MetalFence::Encode(MTL::CommandBuffer& cmdBuffer, u64 value){
+        cmdBuffer.encodeSignalEvent(sharedEvent, value);
     }
 }

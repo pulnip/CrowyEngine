@@ -18,10 +18,7 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [],
-            "cwd": "${workspaceFolder}",
-            "logging": {
-                "moduleLoad": false
-            }
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

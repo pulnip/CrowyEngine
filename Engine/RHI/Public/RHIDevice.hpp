@@ -23,9 +23,6 @@ namespace Crowy
             const RHITextureCreateDesc&,
             StrView name = {}
         ) = 0;
-        virtual RHISamplerRAII CreateSampler(
-            const RHISamplerState&
-        ) = 0;
 
         virtual RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
@@ -47,7 +44,15 @@ namespace Crowy
 
         virtual void SignalFence(RHIFence&, u64 value) = 0;
 
-        virtual void Submit(std::span<RHICommandList*>) = 0;
+        virtual void Submit(
+            std::span<RHICommandList*>,
+            RHIFence&
+        ) = 0;
+        virtual void SubmitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            RHIFence&
+        ) = 0;
 
         virtual u64& GetFrameIndexRef() noexcept = 0;
 

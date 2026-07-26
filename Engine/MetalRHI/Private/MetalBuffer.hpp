@@ -4,22 +4,35 @@
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLBuffer.hpp>
 #include "RHIAPI.hpp"
-#include "RHIDefinitions.hpp"
 #include "RHIBuffer.hpp"
+#include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
     class MetalBuffer final: public RHIBuffer{
     private:
-        MTL::Buffer* buffer;
+        struct FrameResource{
+            MTL::Buffer* buffer = nullptr;
+            void* mapped = nullptr;
+            // for Enhanced Resource Barrier
+            RHIBarrierSync syncState;
+            RHIBarrierAccess accessState;
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            bool slotWritten = false;
+        #endif
+        };
+        std::vector<FrameResource> resources;
+        const u64& frameIndex;
 
-        bool isManaged = false;
-        RHIResourceState currentState = RHIResourceState::Common;
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        bool tracksSlotWrites = false;
+    #endif
 
     public:
         MetalBuffer(
             MTL::Device& device,
             const RHIBufferCreateDesc& desc,
+            const u64& frameIndex,
             StrView name = {}
         );
         ~MetalBuffer();
@@ -28,27 +41,112 @@ namespace Crowy
             const void* data,
             u32 size,
             u32 offset = 0
-        ) RHI_OVERRIDE;
+        ) RHI_OVERRIDE{
+            upload(
+                currentIndex(),
+                data,
+                size,
+                offset
+            );
+        }
+        void UploadAll(
+            const void* data,
+            u32 size,
+            u32 offset = 0
+        ) RHI_OVERRIDE{
+            for(u32 i=0; i<resources.size(); ++i){
+                upload(
+                    i,
+                    data,
+                    size,
+                    offset
+                );
+            }
+        }
 
         void Download(
             void* data,
             u32 size,
             u32 offset = 0
-        ) RHI_OVERRIDE;
+        ) RHI_OVERRIDE{
+            download(
+                currentIndex(),
+                data,
+                size,
+                offset
+            );
+        }
 
         u32 GetSize() const noexcept RHI_OVERRIDE{
-            return buffer->length();
+            return resources[currentIndex()].buffer->length();
         }
 
-        RHIResourceState GetState() const RHI_OVERRIDE{
-            return currentState;
+        RHIBarrierSync GetSyncState() const RHI_OVERRIDE{
+            auto& frameResource = resources[currentIndex()];
+            return frameResource.syncState;
+        }
+        RHIBarrierSync TransitionState(RHIBarrierSync newState) RHI_OVERRIDE{
+            auto& frameResource = resources[currentIndex()];
+
+            const auto oldState = frameResource.syncState;
+            frameResource.syncState = newState;
+            return oldState;
+        }
+        RHIBarrierAccess GetAccessState() const RHI_OVERRIDE{
+            auto& frameResource = resources[currentIndex()];
+            return frameResource.accessState;
+        }
+        RHIBarrierAccess TransitionState(RHIBarrierAccess newState) RHI_OVERRIDE{
+            auto& frameResource = resources[currentIndex()];
+
+            const auto oldState = frameResource.accessState;
+            frameResource.accessState = newState;
+            return oldState;
         }
 
-        void SetState(RHIResourceState state) RHI_OVERRIDE{
-            currentState = state;
+        u64 GetReadableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
+        u64 GetWritableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
         }
 
-        MTL::Buffer* Get() noexcept{ return buffer; }
-        const MTL::Buffer* Get() const noexcept{ return buffer; }
+        MTL::Buffer* Get() noexcept{ return resources[currentIndex()].buffer; }
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        // call wherever the GPU is about to be pointed at the current slot
+        void AssertSlotWritten() const noexcept{
+            if(!tracksSlotWrites)
+                return;
+
+            auto index = currentIndex();
+            CROWY_ASSERT(resources[index].slotWritten,
+                "slot {} was never written.",
+                index
+            );
+        }
+    #endif
+
+    private:
+        u32 currentIndex() const noexcept{
+            return static_cast<u32>(
+                frameIndex % resources.size()
+            );
+        }
+
+        void upload(
+            u32 index,
+            const void* data,
+            u32 size,
+            u32 offset = 0
+        );
+        void download(
+            u32 index,
+            void* data,
+            u32 size,
+            u32 offset = 0
+        );
+
+        u64 getResourceID(const RHIBufferViewDesc&);
     };
 }

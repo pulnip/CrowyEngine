@@ -1,22 +1,20 @@
 #pragma once
 
 #include <Metal/MTLCommandQueue.hpp>
-#include <Metal/MTLDevice.hpp>
-#include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
 #include <SDL3/SDL_metal.h>
 #include "MetalTexture.hpp"
 #include "Primitives.hpp"
 #include "RHIAPI.hpp"
-#include "RHICommandList.hpp"
-#include "RHIDefinitions.hpp"
 #include "RHISwapchain.hpp"
 
 namespace Crowy
 {
+    class MetalCommandList;
+
     class MetalSwapchain final: public RHISwapchain{
     private:
-        SDL_MetalView view;
+        SDL_MetalView view = nullptr;
         // Cache MetalLayer
         CA::MetalLayer* metalLayer = nullptr;
         CA::MetalDrawable* currentDrawable = nullptr;
@@ -25,8 +23,8 @@ namespace Crowy
 
     public:
         MetalSwapchain(
-            MTL::Device& device,
-            const RHISwapchainCreateDesc& desc
+            MTL::Device&,
+            const RHISwapchainCreateDesc&
         );
 
         ~MetalSwapchain();
@@ -35,9 +33,6 @@ namespace Crowy
 
         void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
 
-        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE{
-            return backBuffer->GetFormat();
-        }
         u32 GetWidth() const noexcept RHI_OVERRIDE{
             return backBuffer->GetWidth();
         }
@@ -48,14 +43,7 @@ namespace Crowy
         RHITexture& GetCurrentTexture() RHI_OVERRIDE{
             return *backBuffer;
         }
-        const RHITexture& GetCurrentTexture() const RHI_OVERRIDE{
-            return *backBuffer;
-        }
 
-        void Present(RHICommandList&) RHI_OVERRIDE;
-
-        CA::MetalDrawable* GetCurrentDrawable() const noexcept{
-            return currentDrawable;
-        }
+        void Present(MTL::CommandBuffer&);
     };
 }

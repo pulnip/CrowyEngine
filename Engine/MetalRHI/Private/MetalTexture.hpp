@@ -1,23 +1,20 @@
 #pragma once
 
-#include <Metal/Metal.hpp>
+#include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
-#include "RHIDefinitions.hpp"
 #include "RHITexture.hpp"
-#include "MetalUtil.hpp"
 
 namespace Crowy
 {
     class MetalTexture final: public RHITexture{
     private:
         MTL::Texture* texture;
-        RHIResourceState currentState = RHIResourceState::Common;
 
     public:
         MetalTexture(
-            MTL::Device& device,
-            const RHITextureCreateDesc& desc,
+            MTL::Device&,
+            MTL::TextureDescriptor*,
             StrView name = {}
         );
         MetalTexture(
@@ -25,9 +22,9 @@ namespace Crowy
         );
         ~MetalTexture();
 
-        RHIPixelFormat GetFormat() const noexcept RHI_OVERRIDE{
-            return convert(texture->pixelFormat());
-        }
+        MetalTexture(MetalTexture&&);
+        MetalTexture& operator=(MetalTexture&&);
+
         u32 GetWidth() const noexcept RHI_OVERRIDE{
             return texture->width();
         }
@@ -38,18 +35,21 @@ namespace Crowy
         using RHITexture::GetWidth;
         using RHITexture::GetHeight;
 
+
+        u64 GetReadableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
+        u64 GetWritableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+            return getResourceID(view);
+        }
+
         virtual void* GetNative() noexcept RHI_OVERRIDE{
             return texture;
         }
 
-        RHIResourceState GetState() const noexcept RHI_OVERRIDE{
-            return currentState;
-        }
-
-        void SetState(RHIResourceState state) noexcept RHI_OVERRIDE{
-            currentState = state;
-        }
-
         MTL::Texture* Get(){ return texture; }
+
+    private:
+        u64 getResourceID(const RHITextureViewDesc&);
     };
 }

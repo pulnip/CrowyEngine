@@ -23,7 +23,7 @@ namespace Crowy
         ~CommandListPool();
 
         void BeginFrame();
-        void SubmitFrame();
+        std::vector<RHICommandList*> ExtractRecorded();
 
         RHICommandList& Acquire();
 

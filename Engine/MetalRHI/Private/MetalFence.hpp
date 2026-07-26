@@ -1,7 +1,9 @@
 #pragma once
 
 #include <Metal/MTLDevice.hpp>
+#include <Metal/MTLCommandBuffer.hpp>
 #include "RHIAPI.hpp"
+#include "RHIFWD.hpp"
 #include "RHIFence.hpp"
 
 namespace Crowy
@@ -26,11 +28,6 @@ namespace Crowy
 
         bool IsComplete(u64 value) RHI_OVERRIDE;
 
-        MTL::SharedEvent* Get() noexcept{
-            return sharedEvent;
-        }
-        const MTL::SharedEvent* Get() const noexcept{
-            return sharedEvent;
-        }
+        void Encode(MTL::CommandBuffer&, u64 value);
     };
 }

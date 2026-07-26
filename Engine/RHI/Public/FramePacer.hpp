@@ -1,29 +1,39 @@
 #pragma once
 
+#include <span>
 #include "Primitives.hpp"
 #include "Semantics.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
-    class RHIDevice;
     // Frame pacing and synchronization system
     // Manages triple buffering, frame timing, and CPU-GPU synchronization
     class FramePacer{
     private:
-        class Impl;
-        RAII<Impl> impl;
+        RHIDevice& device;
+        RHIFenceRAII fence;
+        u64& frameIndex;
+
+        RHIFrameScopeRAII scope;
 
     public:
-        FramePacer(RHIDevice& device);
+        FramePacer(RHIDevice&);
         ~FramePacer();
-        CROWY_DECLARE_MOVE_ONLY(FramePacer)
+        CROWY_DECLARE_PINNED(FramePacer)
 
         // Begin a new frame
-        // Returns true if ready to render, false if should skip
-        bool BeginFrame();
+        void BeginFrame();
 
-        // End the current frame
-        void EndFrame();
+        // End the current frame for rendering
+        void EndFrame(
+            std::span<RHICommandList*>,
+            RHISwapchain& swapchain
+        );
+        // End the current frame for computing only
+        void EndFrame(
+            std::span<RHICommandList*>
+        );
 
         // Wait for all frames to complete
         void WaitForIdle();

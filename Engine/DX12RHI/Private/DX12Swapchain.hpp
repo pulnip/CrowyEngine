@@ -43,7 +43,7 @@ namespace Crowy
             return *backBuffers[currentBackBufferIndex];
         }
 
-        void Present() RHI_OVERRIDE;
+        void Present();
 
     private:
         void createBackBuffers(u32 bufferCount);

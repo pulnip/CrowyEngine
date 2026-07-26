@@ -1,68 +1,46 @@
-#include <stdexcept>
 #include <utility>
-#include <Metal/Metal.hpp>
-#include <QuartzCore/QuartzCore.hpp>
+#include <Metal/MTLBlitCommandEncoder.hpp>
+#include <Metal/MTLComputeCommandEncoder.hpp>
+#include <Metal/MTLCommandQueue.hpp>
 #include "Assert.hpp"
 #include "MetalBuffer.hpp"
+#include "MetalCommandList.hpp"
 #include "MetalPipelineState.hpp"
 #include "MetalSampler.hpp"
-#include "MetalSwapchain.hpp"
+#include "MetalUtil.hpp"
 #include "MetalTexture.hpp"
-#include "RHIDefinitions.hpp"
-
-#include "MetalCommandList.hpp"
-
-namespace{
-    auto convert(Crowy::RHILoadAction action){
-        using namespace Crowy;
-        using enum RHILoadAction;
-        using namespace MTL;
-
-        switch(action){
-        case Load:     return LoadActionLoad;
-        case Clear:    return LoadActionClear;
-        case DontCare: return LoadActionDontCare;
-        default:
-            std::unreachable();
-        }
-    }
-
-    auto convert(Crowy::RHIStoreAction action){
-        using namespace Crowy;
-        using enum RHIStoreAction;
-        using namespace MTL;
-
-        switch(action){
-        case Store:    return StoreActionStore;
-        case DontCare: return StoreActionDontCare;
-        default:
-            std::unreachable();
-        }
-    }
-}
 
 namespace Crowy
 {
+    namespace{
+        auto convert(RHILoadAction action){
+            using enum RHILoadAction;
+
+            switch(action){
+            case Load:     return MTL::LoadActionLoad;
+            case Clear:    return MTL::LoadActionClear;
+            case DontCare: return MTL::LoadActionDontCare;
+            default:
+                std::unreachable();
+            }
+        }
+
+        auto convert(RHIStoreAction action){
+            using enum RHIStoreAction;
+
+            switch(action){
+            case Store:    return MTL::StoreActionStore;
+            case DontCare: return MTL::StoreActionDontCare;
+            default:
+                std::unreachable();
+            }
+        }
+    }
+
     MetalCommandList::MetalCommandList(MTL::CommandQueue* queue)
         : commandQueue(queue){}
 
     MetalCommandList::~MetalCommandList(){
-        Reset();
-    }
-
-    void MetalCommandList::Begin(){
-        CROWY_ASSERT(!isRecording,
-            "Did you call RHICommandList::close()?"
-        );
-
-        commandBuffer = commandQueue->commandBuffer();
-        commandBuffer->setLabel(
-            NS::String::string("Crowy Command Buffer", NS::UTF8StringEncoding)
-        );
-        isRecording = true;
-    }
-
-    void MetalCommandList::Flush(){
         if(renderEncoder){
             renderEncoder->endEncoding();
             renderEncoder = nullptr;
@@ -77,47 +55,40 @@ namespace Crowy
         }
     }
 
+    void MetalCommandList::Begin(){
+        CROWY_ASSERT(!isRecording,
+            "Did you call RHICommandList::Close()?"
+        );
+
+        commandBuffer = commandQueue->commandBuffer();
+        commandBuffer->setLabel(toNSString("Crowy Command Buffer"));
+
+        isRecording = true;
+    }
+
     void MetalCommandList::Close(){
         CROWY_ASSERT(isRecording,
-            "Did you call RHICommandList::begin()?"
+            "Did you call RHICommandList::Begin()?"
         );
 
         CROWY_ASSERT(renderEncoder == nullptr,
-            "Did you call RHICommandList::endRenderPass()?"
+            "Did you call RHICommandList::EndRenderPass()?"
         );
         CROWY_ASSERT(computeEncoder == nullptr,
-            "Did you call RHICommandList::endCompute()?"
+            "Did you call RHICommandList::EndCompute()?"
         );
-        if(blitEncoder != nullptr){
-            blitEncoder->endEncoding();
-            blitEncoder = nullptr;
-        }
+        CROWY_ASSERT(blitEncoder == nullptr,
+            "Did you call RHICommandList::EndBlit()?"
+        );
 
         isRecording = false;
     }
 
-    void MetalCommandList::Reset(){
-        if(isRecording){
-            Flush();
-
-            isRecording = false;
-        }
-        else{
-            CROWY_ASSERT( renderEncoder == nullptr);
-            CROWY_ASSERT(computeEncoder == nullptr);
-            CROWY_ASSERT(   blitEncoder == nullptr);
-        }
-    }
-
     void MetalCommandList::BeginRenderPass(const RHIRenderPassDesc& desc){
         CROWY_ASSERT(renderEncoder == nullptr,
-            "Did you call RHICommandList::endRenderPass()?"
+            "Did you call RHICommandList::EndRenderPass()?"
         );
-        CROWY_ASSERT(computeEncoder == nullptr);
-        if(blitEncoder != nullptr){
-            blitEncoder->endEncoding();
-            blitEncoder = nullptr;
-        }
+        CROWY_ASSERT(computeEncoder == nullptr && blitEncoder == nullptr);
         CROWY_ASSERT(desc.colorAttachments.size() > 0);
 
         auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
@@ -127,8 +98,8 @@ namespace Crowy
             auto& attachment = desc.colorAttachments[i];
             auto& mtlAttach = *passDesc->colorAttachments()->object(i);
             mtlAttach.setTexture(static_cast<MetalTexture*>(attachment.texture)->Get());
-            mtlAttach.setLoadAction(::convert(attachment.loadAction));
-            mtlAttach.setStoreAction(::convert(attachment.storeAction));
+            mtlAttach.setLoadAction(convert(attachment.loadAction));
+            mtlAttach.setStoreAction(convert(attachment.storeAction));
             mtlAttach.setClearColor(MTL::ClearColor::Make(
                 attachment.clearColor.x,
                 attachment.clearColor.y,
@@ -142,8 +113,8 @@ namespace Crowy
             auto& attachment = *desc.depthAttachment;
             auto& mtlAttach = *passDesc->depthAttachment();
             mtlAttach.setTexture(static_cast<MetalTexture*>(attachment.texture)->Get());
-            mtlAttach.setLoadAction(::convert(attachment.loadAction));
-            mtlAttach.setStoreAction(::convert(attachment.storeAction));
+            mtlAttach.setLoadAction(convert(attachment.loadAction));
+            mtlAttach.setStoreAction(convert(attachment.storeAction));
             mtlAttach.setClearDepth(attachment.clearDepthStencil.depth);
         }
 
@@ -159,7 +130,7 @@ namespace Crowy
 
     void MetalCommandList::EndRenderPass(){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
 
         renderEncoder->endEncoding();
@@ -171,19 +142,9 @@ namespace Crowy
         currentTopology = metalPSO.GetTopology();
 
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
         metalPSO.Bind(*renderEncoder);
-    }
-
-    void MetalCommandList::SetPipelineState(RHIComputePipelineState& pso){
-        auto& metalPSO = static_cast<MetalComputePipelineState&>(pso);
-        threadsPerThreadgroup = metalPSO.GetThreadsPerThreadgroup();
-
-        CROWY_ASSERT(computeEncoder != nullptr,
-            "Did you call RHICommandList::beginCompute()?"
-        );
-        metalPSO.Bind(*computeEncoder);
     }
 
     void MetalCommandList::SetVertexBuffer(
@@ -193,7 +154,7 @@ namespace Crowy
         u32 offset
     ){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
 
         auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
@@ -206,7 +167,7 @@ namespace Crowy
         u32 offset
     ){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
 
         currentIndexBuffer = static_cast<MetalBuffer&>(buffer).Get();
@@ -215,167 +176,54 @@ namespace Crowy
             MTL::IndexTypeUInt16 : MTL::IndexTypeUInt32;
     }
 
-    void MetalCommandList::SetConstantBuffer(
+    inline constexpr NS::UInteger PushConstantSlot = 0;
+    inline constexpr NS::UInteger ConstantBufferSlotBase = 1;
+
+    void MetalCommandList::SetPushGraphicsConstants(
+        const void* data,
+        u32 size
+    ){
+        CROWY_ASSERT(renderEncoder != nullptr,
+            "Did you call RHICommandList::BeginRenderPass()?"
+        );
+
+        renderEncoder->setVertexBytes(
+            data,
+            size,
+            PushConstantSlot
+        );
+        renderEncoder->setFragmentBytes(
+            data,
+            size,
+            PushConstantSlot
+        );
+    }
+
+    void MetalCommandList::SetGraphicsConstantBuffer(
         RHIBuffer& buffer,
         u32 slot,
-        RHIShaderStage stage,
         u32 offset
     ){
-        using enum RHIShaderStage;
+        CROWY_ASSERT(renderEncoder != nullptr,
+            "Did you call RHICommandList::BeginRenderPass()?"
+        );
         auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
 
-        switch(stage){
-        case VertexShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
-            break;
-        case FragmentShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setFragmentBuffer(mtlBuffer, offset, slot);
-            break;
-        case ComputeShader:
-            CROWY_ASSERT(computeEncoder != nullptr,
-                "Did you call RHICommandList::beginCompute()?"
-            );
-            computeEncoder->setBuffer(mtlBuffer, offset, slot);
-            break;
-        default:
-            std::unreachable();
-        }
-    }
-
-    void MetalCommandList::SetTexture(
-        RHITexture& texture,
-        u32 slot,
-        RHIBindingAccess,
-        RHIShaderStage stage
-    ){
-        using enum RHIShaderStage;
-        auto mtlTexture = static_cast<MetalTexture&>(texture).Get();
-
-        switch(stage){
-        case VertexShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setVertexTexture(mtlTexture, slot);
-            break;
-        case FragmentShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setFragmentTexture(mtlTexture, slot);
-            break;
-        case ComputeShader:
-            CROWY_ASSERT(computeEncoder != nullptr,
-                "Did you call RHICommandList::beginCompute()?"
-            );
-            computeEncoder->setTexture(mtlTexture, slot);
-            break;
-        default:
-            std::unreachable();
-        }
-    }
-
-    void MetalCommandList::SetBuffer(
-        RHIBuffer& buffer,
-        u32 slot,
-        RHIBindingAccess,
-        RHIShaderStage stage
-    ){
-        using enum RHIShaderStage;
-        auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
-
-        switch(stage){
-        case VertexShader:
-            [[fallthrough]];
-        case FragmentShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            throw std::runtime_error("Unimplemented");
-        case ComputeShader:
-            CROWY_ASSERT(computeEncoder != nullptr,
-                "Did you call RHICommandList::beginCompute()?"
-            );
-            computeEncoder->setBuffer(mtlBuffer, 0, slot);
-            break;
-        default:
-            std::unreachable();
-        }
-    }
-
-    void MetalCommandList::SetBytes(
-        const void* bytes,
-        usize size,
-        u32 slot,
-        RHIShaderStage stage
-    ){
-        using enum RHIShaderStage;
-
-        switch(stage){
-        case VertexShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setVertexBytes(bytes, size, slot);
-            break;
-        case FragmentShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setFragmentBytes(bytes, size, slot);
-            break;
-        case ComputeShader:
-            CROWY_ASSERT(computeEncoder != nullptr,
-                "Did you call RHICommandList::beginCompute()?"
-            );
-            computeEncoder->setBytes(bytes, size, slot);
-            break;
-        default:
-            std::unreachable();
-        }
-    }
-
-    void MetalCommandList::SetSampler(
-        RHISampler& sampler,
-        u32 slot,
-        RHIShaderStage stage
-    ){
-        using enum RHIShaderStage;
-        auto mtlSampler = static_cast<MetalSampler&>(sampler).Get();
-
-        switch(stage){
-        case VertexShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setVertexSamplerState(mtlSampler, slot);
-            break;
-        case FragmentShader:
-            CROWY_ASSERT(renderEncoder != nullptr,
-                "Did you call RHICommandList::beginRenderPass()?"
-            );
-            renderEncoder->setFragmentSamplerState(mtlSampler, slot);
-            break;
-        case ComputeShader:
-            CROWY_ASSERT(computeEncoder != nullptr,
-                "Did you call RHICommandList::beginCompute()?"
-            );
-            computeEncoder->setSamplerState(mtlSampler, slot);
-            break;
-        default:
-            std::unreachable();
-        }
+        renderEncoder->setVertexBuffer(
+            mtlBuffer,
+            offset,
+            ConstantBufferSlotBase + slot
+        );
+        renderEncoder->setFragmentBuffer(
+            mtlBuffer,
+            offset,
+            ConstantBufferSlotBase + slot
+        );
     }
 
     void MetalCommandList::SetViewport(const RHIViewport& viewport){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
 
         MTL::Viewport vp{
@@ -388,7 +236,7 @@ namespace Crowy
 
     void MetalCommandList::SetScissorRect(const RHIScissorRect& scissor){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
 
         MTL::ScissorRect rect{
@@ -407,7 +255,7 @@ namespace Crowy
         u32 startInstance
     ){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
 
         renderEncoder->drawPrimitives(
@@ -427,7 +275,7 @@ namespace Crowy
         u32 startInstance
     ){
         CROWY_ASSERT(renderEncoder != nullptr,
-            "Did you call RHICommandList::beginRenderPass()?"
+            "Did you call RHICommandList::BeginRenderPass()?"
         );
         CROWY_ASSERT(currentIndexBuffer != nullptr);
 
@@ -448,13 +296,9 @@ namespace Crowy
 
     void MetalCommandList::BeginCompute(){
         CROWY_ASSERT(computeEncoder == nullptr,
-            "Did you call RHICommandList::endCompute()?"
+            "Did you call RHICommandList::EndCompute()?"
         );
-        CROWY_ASSERT(renderEncoder == nullptr);
-        if(blitEncoder != nullptr){
-            blitEncoder->endEncoding();
-            blitEncoder = nullptr;
-        }
+        CROWY_ASSERT(renderEncoder == nullptr && blitEncoder == nullptr);
 
         threadsPerThreadgroup = {0, 0, 0};
         computeEncoder = commandBuffer->computeCommandEncoder();
@@ -462,16 +306,58 @@ namespace Crowy
 
     void MetalCommandList::EndCompute(){
         CROWY_ASSERT(computeEncoder != nullptr,
-            "Did you call RHICommandList::beginCompute()?"
+            "Did you call RHICommandList::BeginCompute()?"
         );
 
         computeEncoder->endEncoding();
         computeEncoder = nullptr;
     }
 
+    void MetalCommandList::SetPipelineState(RHIComputePipelineState& pso){
+        auto& metalPSO = static_cast<MetalComputePipelineState&>(pso);
+        threadsPerThreadgroup = metalPSO.GetThreadsPerThreadgroup();
+
+        CROWY_ASSERT(computeEncoder != nullptr,
+            "Did you call RHICommandList::BeginCompute()?"
+        );
+        metalPSO.Bind(*computeEncoder);
+    }
+
+    void MetalCommandList::SetPushComputeConstants(
+        const void* data,
+        u32 size
+    ){
+        CROWY_ASSERT(computeEncoder != nullptr,
+            "Did you call RHICommandList::BeginCompute()?"
+        );
+
+        computeEncoder->setBytes(
+            data,
+            size,
+            PushConstantSlot
+        );
+    }
+
+    void MetalCommandList::SetComputeConstantBuffer(
+        RHIBuffer& buffer,
+        u32 slot,
+        u32 offset
+    ){
+        CROWY_ASSERT(computeEncoder != nullptr,
+            "Did you call RHICommandList::BeginCompute()?"
+        );
+        auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
+
+        computeEncoder->setBuffer(
+            mtlBuffer,
+            offset,
+            ConstantBufferSlotBase + slot
+        );
+    }
+
     void MetalCommandList::Dispatch(Size3D gridSize){
         CROWY_ASSERT(computeEncoder != nullptr,
-            "Did you call RHICommandList::beginCompute()?"
+            "Did you call RHICommandList::BeginCompute()?"
         );
 
         auto threadsPerGrid = MTL::Size::Make(
@@ -486,22 +372,22 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::TransitionBarrier(
-        RHITexture& texture,
-        RHIResourceState after
-    ){
-        // Metal has implicit synchronization between render passes,
-        // so we only need to track state for API consistency.
-        // memoryBarrier is only needed for same-pass synchronization.
-        texture.SetState(after);
+    void MetalCommandList::BeginBlit(){
+        CROWY_ASSERT(blitEncoder == nullptr,
+            "Did you call RHICommandList::EndBlit()?"
+        );
+        CROWY_ASSERT(renderEncoder == nullptr && computeEncoder == nullptr);
+
+        blitEncoder = commandBuffer->blitCommandEncoder();
     }
 
-    void MetalCommandList::TransitionBarrier(
-        RHIBuffer& buffer,
-        RHIResourceState after
-    ){
-        // no-op for Metal
-        buffer.SetState(after);
+    void MetalCommandList::EndBlit(){
+        CROWY_ASSERT(blitEncoder != nullptr,
+            "Did you call RHICommandList::BeginBlit()?"
+        );
+
+        blitEncoder->endEncoding();
+        blitEncoder = nullptr;
     }
 
     void MetalCommandList::Copy(
@@ -511,8 +397,9 @@ namespace Crowy
         usize dstOffset,
         usize size
     ){
-        ensureBlitEncoder();
-
+        CROWY_ASSERT(blitEncoder != nullptr,
+            "Did you call RHICommandList::BeginBlit()?"
+        );
         auto srcBuf = static_cast<MetalBuffer&>(src).Get();
         auto dstBuf = static_cast<MetalBuffer&>(dst).Get();
 
@@ -527,8 +414,9 @@ namespace Crowy
         RHITexture& src,
         RHITexture& dst
     ){
-        ensureBlitEncoder();
-
+        CROWY_ASSERT(blitEncoder != nullptr,
+            "Did you call RHICommandList::BeginBlit()?"
+        );
         auto srcTex = static_cast<MetalTexture&>(src).Get();
         auto dstTex = static_cast<MetalTexture&>(dst).Get();
 
@@ -536,42 +424,71 @@ namespace Crowy
     }
 
     void MetalCommandList::Copy(
-        RHITexture& src,
-        RHISwapchain& swapchain
-    ){
-        ensureBlitEncoder();
-
-        auto& mtlSwapchain = static_cast<MetalSwapchain&>(swapchain);
-
-        auto& srcTex = static_cast<MetalTexture&>(src);
-        auto& dstTex = static_cast<MetalTexture&>(mtlSwapchain.GetCurrentTexture());
-
-        blitEncoder->copyFromTexture(srcTex.Get(), dstTex.Get());
-    }
-
-    void MetalCommandList::Copy(
         RHIBuffer& src,
+        u64 srcOffset,
+        u32 srcRowPitch,
         RHITexture& dst,
+        const RHITextureRegion& region,
         u32 mipLevel,
         u32 arraySlice
     ){
-        ensureBlitEncoder();
-
+        CROWY_ASSERT(blitEncoder != nullptr,
+            "Did you call RHICommandList::BeginBlit()?"
+        );
         auto srcBuf = static_cast<MetalBuffer&>(src).Get();
-        auto dstTex = static_cast<MetalTexture&>(dst).Get();
+        auto& metalDst = static_cast<MetalTexture&>(dst);
+        auto dstTex = metalDst.Get();
 
-        auto width = dstTex->width();
-        auto height = dstTex->height();
-        auto bytesPerRow = width * getBytesPerPixel(dst.GetFormat());
-        auto bytesPerImage = bytesPerRow * height;
+        CROWY_ASSERT(
+            region.x + region.width <= metalDst.GetWidth(mipLevel) &&
+            region.y + region.height <= metalDst.GetHeight(mipLevel),
+            "copy region reaches past the mip"
+        );
+
+        // Single 2D slice, so depth is 1 and the origin's z is 0.
+        const auto sourceSize = MTL::Size::Make(
+            region.width,
+            region.height,
+            1
+        );
+        const auto destinationOrigin = MTL::Origin::Make(
+            region.x,
+            region.y,
+            0
+        );
 
         blitEncoder->copyFromBuffer(
-            srcBuf, 0,
-            bytesPerRow, bytesPerImage,
-            MTL::Size::Make(width, height, 1),
-            dstTex, arraySlice, mipLevel,
-            MTL::Origin::Make(0, 0, 0)
+            srcBuf,
+            srcOffset,
+            srcRowPitch,
+            srcRowPitch * region.height,
+            sourceSize,
+            dstTex,
+            arraySlice,
+            mipLevel,
+            destinationOrigin
         );
+    }
+
+    void MetalCommandList::TransitionBarrier(
+        std::span<const RHITextureBarrier> textureBarriers,
+        std::span<const RHIBufferBarrier> bufferBarriers
+    ){
+        // Metal has implicit synchronization between render passes,
+        // so we only need to track state for API consistency.
+        // memoryBarrier is only needed for same-pass synchronization.
+        for(auto& barrier: textureBarriers){
+            auto& resource = barrier.texture;
+            const auto after = barrier.point;
+
+            resource.TransitionState(after, barrier.range);
+        }
+        for(auto& barrier: bufferBarriers){
+            auto& resource = barrier.buffer;
+
+            resource.TransitionState(barrier.syncAfter);
+            resource.TransitionState(barrier.accessAfter);
+        }
     }
 
     void MetalCommandList::WaitUntilCompleted(){
@@ -613,20 +530,6 @@ namespace Crowy
         }
         else if(blitEncoder != nullptr){
             blitEncoder->insertDebugSignpost(str);
-        }
-    }
-
-    void MetalCommandList::ensureBlitEncoder(){
-        CROWY_ASSERT(renderEncoder == nullptr,
-            "Did you call RHICommandList::endRenderPass()?"
-        );
-        CROWY_ASSERT(computeEncoder == nullptr,
-            "Did you call RHICommandList::endCompute()?"
-        );
-
-        // for reuse blit encoder
-        if(blitEncoder == nullptr){
-            blitEncoder = commandBuffer->blitCommandEncoder();
         }
     }
 }

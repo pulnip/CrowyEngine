@@ -203,11 +203,14 @@ namespace Crowy
         }
 
         // Vertex Shader
-        RHIShader vertexShader{
-            frontend.vertexShader,
+        RHIShader shaderProgram{
+            frontend.vertexShader.path,
             RHIBackend::DirectX12,
             "sm_6_6"
         };
+        auto vertexShader = shaderProgram.GetEntryPointCode(
+            frontend.vertexShader.entryPoint
+        );
 
         // RasterizerState
         D3D12_RASTERIZER_DESC rsDesc{
@@ -225,10 +228,15 @@ namespace Crowy
         };
 
         // Pixel Shader
-        RHIShader pixelShader(
-            desc.fragmentShader,
-            RHIBackend::DirectX12,
-            "sm_6_6"
+        if(frontend.vertexShader.path != desc.fragmentShader.path){
+            shaderProgram = RHIShader(
+                desc.fragmentShader.path,
+                RHIBackend::DirectX12,
+                "sm_6_6"
+            );
+        }
+        auto pixelShader = shaderProgram.GetEntryPointCode(
+            desc.fragmentShader.entryPoint
         );
 
         // DepthStencilState
@@ -290,12 +298,12 @@ namespace Crowy
         D3D12_GRAPHICS_PIPELINE_STATE_DESC dxDesc{
             .pRootSignature = &rootSignature,
             .VS = D3D12_SHADER_BYTECODE{
-                .pShaderBytecode = vertexShader.GetBytecode(),
-                .BytecodeLength = vertexShader.GetBytecodeLength()
+                .pShaderBytecode = vertexShader.data(),
+                .BytecodeLength = vertexShader.size()
             },
             .PS = D3D12_SHADER_BYTECODE{
-                .pShaderBytecode = pixelShader.GetBytecode(),
-                .BytecodeLength = pixelShader.GetBytecodeLength()
+                .pShaderBytecode = pixelShader.data(),
+                .BytecodeLength = pixelShader.size()
             },
             .BlendState = bsDesc,
             .SampleMask = UINT_MAX,
@@ -350,18 +358,24 @@ namespace Crowy
         RootSignature& rootSignature,
         StrView name
     ){
-        RHIShader computeShader(
-            desc.computeShader,
+        RHIShader shaderProgram(
+            desc.computeShader.path,
             RHIBackend::DirectX12,
             "sm_6_6"
         );
-        threadGroupSize = computeShader.GetRefl().threadGroupSize;
+        auto computeShader = shaderProgram.GetEntryPointCode(
+            desc.computeShader.entryPoint
+        );
+
+        threadGroupSize = shaderProgram.GetThreadGroupSize(
+            desc.computeShader.entryPoint
+        );
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC dxDesc{
             .pRootSignature = &rootSignature,
             .CS = D3D12_SHADER_BYTECODE{
-                .pShaderBytecode = computeShader.GetBytecode(),
-                .BytecodeLength = computeShader.GetBytecodeLength()
+                .pShaderBytecode = computeShader.data(),
+                .BytecodeLength = computeShader.size()
             },
             .NodeMask = 0,
             .CachedPSO = {nullptr, 0},

@@ -34,7 +34,7 @@ namespace Crowy
         return *acquiredCmdList;
     }
 
-    void CommandListPool::SubmitFrame(){
+    std::vector<RHICommandList*> CommandListPool::ExtractRecorded(){
         auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex == 0) [[unlikely]] {
@@ -49,6 +49,7 @@ namespace Crowy
         for(usize i=0; i<cmdLists.size(); ++i){
             cmdLists[i] = slot.cmdLists[i].get();
         }
-        device.Submit(cmdLists);
+
+        return cmdLists;
     }
 }

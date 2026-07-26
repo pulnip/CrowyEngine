@@ -1,12 +1,7 @@
 #pragma once
 
-#include <Metal/MTLTypes.hpp>
-#include <Metal/MTLArgument.hpp>
-#include <Metal/MTLBuffer.hpp>
-#include <Metal/MTLComputePipeline.hpp>
-#include <Metal/MTLDevice.hpp>
-#include <Metal/Metal.hpp>
-#include "RHIAPI.hpp"
+#include <Metal/MTLRenderCommandEncoder.hpp>
+#include <Metal/MTLComputeCommandEncoder.hpp>
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -15,13 +10,14 @@ namespace Crowy
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
     private:
         MTL::RenderPipelineState* pipeline = nullptr;
-        MTL::DepthStencilState* depthStencilState = nullptr;
         RHIRasterizerState rasterizerState{};
+        MTL::DepthStencilState* depthStencilState = nullptr;
+
         MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
 
-        RHIGraphicsBindingInfo bindingInfo;
-
+    #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
+    #endif
 
     public:
         MetalGraphicsPipelineState(
@@ -31,10 +27,6 @@ namespace Crowy
         );
 
         ~MetalGraphicsPipelineState();
-
-        const RHIGraphicsBindingInfo& GetInfo() const RHI_OVERRIDE{
-            return bindingInfo;
-        }
 
         void Bind(MTL::RenderCommandEncoder&);
 
@@ -51,13 +43,12 @@ namespace Crowy
 
     class MetalComputePipelineState final: public RHIComputePipelineState{
     private:
-        MTL::Function* cs = nullptr;
         MTL::ComputePipelineState* pipeline = nullptr;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
-        RHIComputeBindingInfo bindingInfo;
-
+    #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
+    #endif
 
     public:
         MetalComputePipelineState(
@@ -68,20 +59,10 @@ namespace Crowy
 
         ~MetalComputePipelineState();
 
-        const RHIComputeBindingInfo& GetInfo() const RHI_OVERRIDE{
-            return bindingInfo;
-        }
-
         void Bind(MTL::ComputeCommandEncoder&);
 
         MTL::Size GetThreadsPerThreadgroup() const{
             return threadsPerThreadgroup;
         }
-
-    private:
-        static MTL::Size DefaultGroupSize(
-            u32 numThreads,
-            const Size3D& gridSize
-        ) noexcept;
     };
 }

@@ -1,9 +1,18 @@
 #include <utility>
+#include "Assert.hpp"
+#include "EnumUtil.hpp"
 #include "MetalUtil.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
+    NS::String* toNSString(StrView str){
+        return NS::String::string(
+            str.data(),
+            NS::UTF8StringEncoding
+        );
+    }
+
     MTL::PixelFormat convert(RHIPixelFormat format){
         using enum RHIPixelFormat;
         using namespace MTL;
@@ -67,6 +76,22 @@ namespace Crowy
         case D24_UNORM_S8_UINT: return PixelFormatDepth24Unorm_Stencil8;
         case D32_FLOAT:         return PixelFormatDepth32Float;
         case D32_FLOAT_S8_UINT: return PixelFormatDepth32Float_Stencil8;
+
+        // Block-compressed formats
+        case BC1_UNORM:         return PixelFormatBC1_RGBA;
+        case BC1_UNORM_SRGB:    return PixelFormatBC1_RGBA_sRGB;
+        case BC2_UNORM:         return PixelFormatBC2_RGBA;
+        case BC2_UNORM_SRGB:    return PixelFormatBC2_RGBA_sRGB;
+        case BC3_UNORM:         return PixelFormatBC3_RGBA;
+        case BC3_UNORM_SRGB:    return PixelFormatBC3_RGBA_sRGB;
+        case BC4_UNORM:         return PixelFormatBC4_RUnorm;
+        case BC4_SNORM:         return PixelFormatBC4_RSnorm;
+        case BC5_UNORM:         return PixelFormatBC5_RGUnorm;
+        case BC5_SNORM:         return PixelFormatBC5_RGSnorm;
+        case BC6H_UF16:         return PixelFormatBC6H_RGBUfloat;
+        case BC6H_SF16:         return PixelFormatBC6H_RGBFloat;
+        case BC7_UNORM:         return PixelFormatBC7_RGBAUnorm;
+        case BC7_UNORM_SRGB:    return PixelFormatBC7_RGBAUnorm_sRGB;
         default:
             std::unreachable();
         }
@@ -88,6 +113,86 @@ namespace Crowy
         default:
             std::unreachable();
         }
+    }
+
+    namespace{
+        auto convert(RHITextureUsage usage){
+            using enum RHITextureUsage;
+            MTL::TextureUsage mtlUsage = 0;
+
+            if(hasFlag(usage, ShaderRead))
+                mtlUsage |= MTL::TextureUsageShaderRead;
+            if(hasFlag(usage, RenderTarget))
+                mtlUsage |= MTL::TextureUsageRenderTarget;
+            if(hasFlag(usage, DepthStencil))
+                mtlUsage |= MTL::TextureUsageRenderTarget;
+            if(hasFlag(usage, ShaderWrite))
+                mtlUsage |= MTL::TextureUsageShaderWrite;
+
+            return mtlUsage;
+        }
+
+        auto convert(u32 height, u32 depth, u32 arraySize){
+            CROWY_ASSERT(1 <= height && 1 <= depth,
+                "Invalid Texture Depth: {}",
+                depth
+            );
+            CROWY_ASSERT(0 < arraySize,
+                "ArraySize should be positive"
+            );
+
+            if(height == 1){
+                return arraySize > 1 ?
+                    MTL::TextureType1D :
+                    MTL::TextureType1DArray;
+            }
+            else if(depth == 1){
+                return arraySize > 1 ?
+                    MTL::TextureType2D :
+                    MTL::TextureType2DArray;
+            }
+
+            CROWY_ASSERT(arraySize == 1);
+            return MTL::TextureType3D;
+        }
+    }
+
+    MTL::TextureDescriptor* convert(const RHITextureCreateDesc& desc){
+        auto texDesc = MTL::TextureDescriptor::alloc()->init();
+        texDesc->setWidth(desc.width);
+        texDesc->setHeight(desc.height);
+        texDesc->setDepth(desc.depth);
+        texDesc->setMipmapLevelCount(desc.mipLevels);
+        if(desc.isCubeMap){
+            CROWY_ASSERT(desc.depth == 2 && desc.arraySize % 6 == 0);
+            texDesc->setArrayLength(desc.arraySize / 6);
+            texDesc->setTextureType(desc.arraySize == 6 ?
+                MTL::TextureTypeCube :
+                MTL::TextureTypeCubeArray
+            );
+        }
+        else{
+            texDesc->setArrayLength(desc.arraySize);
+            texDesc->setTextureType(convert(
+                desc.height,
+                desc.depth,
+                desc.arraySize
+            ));
+        }
+        texDesc->setPixelFormat(convert(desc.format));
+        texDesc->setUsage(convert(desc.usage));
+
+        using enum RHIMemoryAccess;
+
+        CROWY_ASSERT(desc.access == GPUOnly && desc.access == Transient,
+            "Use RHIBuffer for CPU-Accessable Resource"
+        );
+
+        texDesc->setStorageMode(desc.access == GPUOnly ?
+            MTL::StorageModePrivate : MTL::StorageModeMemoryless
+        );
+
+        return texDesc;
     }
 
     RHIPixelFormat convert(MTL::PixelFormat format){
@@ -153,6 +258,22 @@ namespace Crowy
         case PixelFormatDepth24Unorm_Stencil8: return D24_UNORM_S8_UINT;
         case PixelFormatDepth32Float:          return D32_FLOAT;
         case PixelFormatDepth32Float_Stencil8: return D32_FLOAT_S8_UINT;
+
+        // Block-compressed formats
+        case PixelFormatBC1_RGBA:              return BC1_UNORM;
+        case PixelFormatBC1_RGBA_sRGB:         return BC1_UNORM_SRGB;
+        case PixelFormatBC2_RGBA:              return BC2_UNORM;
+        case PixelFormatBC2_RGBA_sRGB:         return BC2_UNORM_SRGB;
+        case PixelFormatBC3_RGBA:              return BC3_UNORM;
+        case PixelFormatBC3_RGBA_sRGB:         return BC3_UNORM_SRGB;
+        case PixelFormatBC4_RUnorm:            return BC4_UNORM;
+        case PixelFormatBC4_RSnorm:            return BC4_SNORM;
+        case PixelFormatBC5_RGUnorm:           return BC5_UNORM;
+        case PixelFormatBC5_RGSnorm:           return BC5_SNORM;
+        case PixelFormatBC6H_RGBUfloat:        return BC6H_UF16;
+        case PixelFormatBC6H_RGBFloat:         return BC6H_SF16;
+        case PixelFormatBC7_RGBAUnorm:         return BC7_UNORM;
+        case PixelFormatBC7_RGBAUnorm_sRGB:    return BC7_UNORM_SRGB;
         default:
             std::unreachable();
         }
