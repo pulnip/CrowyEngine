@@ -341,17 +341,17 @@ namespace Crowy
             );
         }
 
-        virtual void WaitUntilCompleted() = 0;
+        // virtual void WaitUntilCompleted() = 0;
 
         // Debug markers (for GPU profiling)
         virtual void BeginEvent(CStr name) = 0;
         virtual void EndEvent() = 0;
         virtual void SetMarker(CStr name) = 0;
 
-        // for UI,
-        //   DeviceContext for D3D11,
-        //   CommandBuffer for Metal,
-        //   CommandList for D3D12
-        virtual void* GetNative() noexcept = 0;
+        // // for UI,
+        // //   DeviceContext for D3D11,
+        // //   CommandBuffer for Metal,
+        // //   CommandList for D3D12
+        // virtual void* GetNative() noexcept = 0;
     };
 }

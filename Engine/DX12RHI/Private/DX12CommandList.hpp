@@ -148,14 +148,11 @@ namespace Crowy
             std::span<const RHIBufferBarrier>
         ) RHI_OVERRIDE;
 
-        void WaitUntilCompleted() RHI_OVERRIDE;
-
         void BeginEvent(CStr name) RHI_OVERRIDE;
         void EndEvent() RHI_OVERRIDE;
         void SetMarker(CStr name) RHI_OVERRIDE;
 
         CommandList* Get() noexcept{ return commandList.Get(); }
-        void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 
     private:
         u32 currentIndex() const noexcept{

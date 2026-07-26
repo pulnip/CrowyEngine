@@ -66,8 +66,6 @@ namespace Crowy
 
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
 
-        NativeDeviceHandle Get() noexcept RHI_OVERRIDE;
-
         UINT64 QueryUploadLayout(
             RHITexture&,
             std::span<RHISubresourceLayout> out

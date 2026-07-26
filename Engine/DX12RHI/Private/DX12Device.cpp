@@ -602,10 +602,6 @@ namespace Crowy
             return frameIndex;
         }
 
-        Device* Get() noexcept{
-            return device.Get();
-        }
-
         UINT64 QueryUploadLayout(
             DX12Texture& texture,
             std::span<RHISubresourceLayout> out
@@ -736,10 +732,6 @@ namespace Crowy
             .textureRowPitchAlign = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
             .textureOffsetAlign = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT
         };
-    }
-
-    NativeDeviceHandle DX12Device::Get() noexcept{
-        return impl->Get();
     }
 
     UINT64 DX12Device::QueryUploadLayout(

@@ -609,10 +609,6 @@ namespace Crowy
         bufferBarrierScratch.clear();
     }
 
-    void DX12CommandList::WaitUntilCompleted(){
-        // TODO.
-    }
-
     void DX12CommandList::BeginEvent(CStr name){
         PIXBeginEvent(
             commandList.Get(),

@@ -57,10 +57,6 @@ namespace Crowy
         virtual u64& GetFrameIndexRef() noexcept = 0;
 
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
-
-        // return native type for UI
-        // in Metal, MTL::Device
-        virtual NativeDeviceHandle Get() noexcept = 0;
     };
 
 #if defined(_WIN32)
