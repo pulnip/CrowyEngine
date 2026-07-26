@@ -165,20 +165,32 @@ namespace Crowy
         const std::array searchPaths{
             searchDir.c_str()
         };
+        const std::array compilerOptions{
+            CompilerOptionEntry{
+                .name = CompilerOptionName::GenerateWholeProgram,
+                .value = {
+                    .kind = CompilerOptionValueKind::Int,
+                    .intValue0 = 1
+                }
+            }
+        };
         const SessionDesc sessionDesc{
             .targets = targetDescs.data(),
             .targetCount = targetDescs.size(),
             .defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
             .searchPaths = searchPaths.data(),
-            .searchPathCount = searchPaths.size()
+            .searchPathCount = searchPaths.size(),
+            .compilerOptionEntries = compilerOptions.data(),
+            .compilerOptionEntryCount = backend == RHIBackend::Metal ?
+                static_cast<u32>(compilerOptions.size()) : 0
         };
-        ComPtr<ISession> session = nullptr;
         CHECK_SRESULT(globalSession->createSession(
             sessionDesc,
-            session.writeRef()
+            &session
         ), "Failed to create session");
 
         // Compile
+        IModule* mod = nullptr;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
             mod = session->loadModule(
@@ -229,10 +241,11 @@ namespace Crowy
 
         reflection = extractReflection(*program->getLayout());
 
-        ComPtr<IMetadata> metadata;
-        {
+        for(auto& [name, refl]: reflection.shaderRefl){
+            ComPtr<IMetadata> metadata;
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT(program->getTargetMetadata(
+            CHECK_SRESULT(program->getEntryPointMetadata(
+                refl.entryPointIndex,
                 0,
                 metadata.writeRef(),
                 diagnostics.writeRef()
@@ -248,6 +261,10 @@ namespace Crowy
         if(program != nullptr){
             program->release();
             program = nullptr;
+        }
+        if(session != nullptr){
+            session->release();
+            session = nullptr;
         }
     }
 

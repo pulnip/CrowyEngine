@@ -5,8 +5,8 @@
 #include "RHIDefinitions.hpp"
 
 namespace slang{
-    struct IModule;
     struct IComponentType;
+    struct ISession;
 }
 
 namespace Crowy
@@ -16,7 +16,7 @@ namespace Crowy
 
     class RHIShader{
     private:
-        slang::IModule* mod = nullptr;
+        slang::ISession* session = nullptr;
         slang::IComponentType* program = nullptr;
         std::size_t hash = 0;
 
