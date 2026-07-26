@@ -298,7 +298,7 @@ namespace Crowy
         CROWY_ASSERT(computeEncoder == nullptr,
             "Did you call RHICommandList::EndCompute()?"
         );
-        CROWY_ASSERT(renderEncoder == nullptr && blitEncoder != nullptr);
+        CROWY_ASSERT(renderEncoder == nullptr && blitEncoder == nullptr);
 
         threadsPerThreadgroup = {0, 0, 0};
         computeEncoder = commandBuffer->computeCommandEncoder();
@@ -376,7 +376,7 @@ namespace Crowy
         CROWY_ASSERT(blitEncoder == nullptr,
             "Did you call RHICommandList::EndBlit()?"
         );
-        CROWY_ASSERT(renderEncoder == nullptr && computeEncoder != nullptr);
+        CROWY_ASSERT(renderEncoder == nullptr && computeEncoder == nullptr);
 
         blitEncoder = commandBuffer->blitCommandEncoder();
     }

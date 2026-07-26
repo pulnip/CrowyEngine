@@ -116,8 +116,8 @@ namespace Crowy
             return mtlUsage;
         }
 
-        auto convert(u32 depth, u32 arraySize){
-            CROWY_ASSERT(1 <= depth && depth <= 3,
+        auto convert(u32 height, u32 depth, u32 arraySize){
+            CROWY_ASSERT(1 <= height && 1 <= depth,
                 "Invalid Texture Depth: {}",
                 depth
             );
@@ -125,21 +125,19 @@ namespace Crowy
                 "ArraySize should be positive"
             );
 
-            switch(depth){
-            case 1:
+            if(height == 1){
                 return arraySize > 1 ?
                     MTL::TextureType1D :
                     MTL::TextureType1DArray;
-            case 2:
+            }
+            else if(depth == 1){
                 return arraySize > 1 ?
                     MTL::TextureType2D :
                     MTL::TextureType2DArray;
-            case 3:
-                CROWY_ASSERT(arraySize == 1);
-                return MTL::TextureType3D;
-            default:
-                std::unreachable();
             }
+
+            CROWY_ASSERT(arraySize == 1);
+            return MTL::TextureType3D;
         }
     }
 
