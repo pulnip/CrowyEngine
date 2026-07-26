@@ -45,7 +45,6 @@ endif()
 
 set(RENDER_BACKEND_LINK_OPTIONS "")
 set(RENDER_BACKENDS "")
-set(CANVAS_BACKENDS "")
 
 # OS config
 if(WIN32)
@@ -71,7 +70,6 @@ if(WIN32)
 
     list(APPEND RENDER_BACKEND_LINK_OPTIONS /DELAYLOAD:d3d12.dll)
     list(APPEND RENDER_BACKENDS Crowy::DX12RHI delayimp.lib)
-    list(APPEND CANVAS_BACKENDS Crowy::ImGuiCanvas)
 elseif(APPLE)
     execute_process(
         COMMAND xcrun --sdk macosx --show-sdk-path
@@ -86,7 +84,6 @@ elseif(APPLE)
     find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
 
     list(APPEND RENDER_BACKENDS Crowy::MetalRHI)
-    list(APPEND CANVAS_BACKENDS Crowy::ImGuiCanvas)
 endif()
 
 include(deps)

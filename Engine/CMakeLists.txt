@@ -2,7 +2,6 @@
 add_subdirectory(Core)
 
 # 2-0) Interface Layer
-add_subdirectory(Canvas2D)
 add_subdirectory(RHI)
 # 2-1) Infrastructure Layer
 add_subdirectory(Log)
@@ -14,7 +13,6 @@ if(WIN32)
 elseif(APPLE)
     add_subdirectory(MetalRHI)
 endif()
-add_subdirectory(ImGuiCanvas)
 
 add_subdirectory(UI)
 
