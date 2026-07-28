@@ -62,7 +62,5 @@ namespace Crowy
         u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
-
-        NativeDeviceHandle Get() noexcept RHI_OVERRIDE;
     };
 }

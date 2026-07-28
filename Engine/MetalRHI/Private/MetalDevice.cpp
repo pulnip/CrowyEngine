@@ -256,10 +256,6 @@ namespace Crowy
             return frameIndex;
         }
 
-        MTL::Device* Get() noexcept{
-            return device;
-        }
-
         // Metal has no GetCopyableFootprints equivalent,
         // so compute the staging-buffer footprint by hand.
         u64 QueryUploadLayout(
@@ -408,9 +404,5 @@ namespace Crowy
             static_cast<MetalSwapchain&>(swapchain),
             static_cast<MetalFence&>(fence)
         );
-    }
-
-    void* MetalDevice::Get() noexcept{
-        return impl->Get();
     }
 }

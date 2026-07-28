@@ -6,7 +6,6 @@
 #include "MetalBuffer.hpp"
 #include "MetalCommandList.hpp"
 #include "MetalPipelineState.hpp"
-#include "MetalSampler.hpp"
 #include "MetalUtil.hpp"
 #include "MetalTexture.hpp"
 
