@@ -56,14 +56,14 @@ namespace Crowy
 
     public:
         Impl(const RuntimeConfig&, RHIDevice&);
-        ~Impl();
+        ~Impl() = default;
 
         void Run(MainLoop&, RHIDevice&);
 
-        const InputProvider& GetInputProvider() noexcept{
+        const InputProvider& GetInputProvider() const noexcept{
             return inputProvider;
         }
-        const Window& GetWindow() noexcept{
+        const Window& GetWindow() const noexcept{
             return window;
         }
 
@@ -78,7 +78,7 @@ namespace Crowy
         const RuntimeConfig& config,
         RHIDevice& device
     )
-        : impl(std::make_unique<Impl>(config, device))
+        : impl(config, device)
     {
         singleton = this;
     }
@@ -111,10 +111,6 @@ namespace Crowy
 
     OS::~OS(){
         singleton = nullptr;
-    }
-
-    OS::Impl::~Impl(){
-
     }
 
     void OS::Run(MainLoop& mainLoop, RHIDevice& device){

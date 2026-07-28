@@ -627,9 +627,9 @@ namespace Crowy
     };
 
     DX12Device::DX12Device()
-        : impl(std::make_unique<Impl>(*this)){}
+        : impl(*this){}
 
-    DX12Device::~DX12Device(){}
+    DX12Device::~DX12Device() = default;
 
     RHIFrameScopeRAII DX12Device::CreateFrameScope(){
         return impl->CreateFrameScopoe();

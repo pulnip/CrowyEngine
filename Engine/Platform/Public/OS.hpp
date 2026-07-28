@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FastPimpl.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 #include "Semantics.hpp"
@@ -15,7 +16,9 @@ namespace Crowy
     class OS{
     private:
         class Impl;
-        RAII<Impl> impl;
+        static constexpr usize implSize = 328;
+        static constexpr usize implAlign = 8;
+        FastPimpl<Impl, implSize, implAlign> impl;
 
         static OS* singleton;
 

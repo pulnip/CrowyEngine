@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FastPimpl.hpp"
 #include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDefinitions.hpp"
@@ -12,7 +13,9 @@ namespace Crowy
     class DX12Device: public RHIDevice{
     private:
         class Impl;
-        RAII<Impl> impl;
+        static constexpr usize implSize = 168;
+        static constexpr usize implAlign = 8;
+        FastPimpl<Impl, implSize, implAlign> impl;
 
     public:
         DX12Device();

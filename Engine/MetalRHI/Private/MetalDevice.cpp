@@ -318,10 +318,8 @@ namespace Crowy
         }
     };
 
-    MetalDevice::MetalDevice()
-        : impl(std::make_unique<Impl>()){}
-
-    MetalDevice::~MetalDevice(){}
+    MetalDevice::MetalDevice() = default;
+    MetalDevice::~MetalDevice() = default;
 
     RHIFrameScopeRAII MetalDevice::CreateFrameScope(){
         return impl->CreateFrameScope();

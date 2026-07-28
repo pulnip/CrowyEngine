@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FastPimpl.hpp"
 #include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
 #include "RHIDevice.hpp"
@@ -9,7 +10,9 @@ namespace Crowy
     class MetalDevice final: public RHIDevice{
     private:
         class Impl;
-        RAII<Impl> impl;
+        static constexpr usize implSize = 128;
+        static constexpr usize implAlign = 8;
+        FastPimpl<Impl, implSize, implAlign> impl;
 
     public:
         MetalDevice();

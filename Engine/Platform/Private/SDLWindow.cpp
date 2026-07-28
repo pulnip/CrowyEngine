@@ -38,7 +38,7 @@ namespace Crowy
     };
 
     SDLWindow::SDLWindow(const WindowConfig& config)
-        : impl(std::make_unique<Impl>(config)) {}
+        : impl(config){}
 
     SDLWindow::Impl::Impl(const WindowConfig& config){
         SDL_InitFlags initFlags = SDL_INIT_VIDEO;
