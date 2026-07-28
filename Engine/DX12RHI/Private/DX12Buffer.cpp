@@ -152,6 +152,17 @@ namespace Crowy
     #if defined(_DEBUG) || !defined(NDEBUG)
         tracksSlotWrites = isCPUWrite && resources.size() > 1;
     #endif
+
+        if(desc.initialData != nullptr){
+            CROWY_ASSERT(!isCPURead);
+
+            if(isCPUWrite){
+                UploadAll(
+                    desc.initialData,
+                    desc.size
+                );
+            }
+        }
     }
 
     DX12Buffer::~DX12Buffer(){

@@ -405,36 +405,19 @@ namespace Crowy
                 name
             );
 
-            if(desc.initialData != nullptr){
-                using enum RHIMemoryAccess;
+            if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
+                ensureUploadBegin();
 
-                switch(desc.access){
-                case CPUWrite:
-                    buffer->UploadAll(
-                        desc.initialData,
-                        desc.size
-                    );
-                    break;
-                case GPUOnly:
-                    if(!uploadRecorded){
-                        uploadCmdList->Begin();
-                        uploadCmdList->BeginBlit();
-                        uploadRecorded = true;
+                UploadGpuOnlyBuffer(
+                    *uploadCmdList,
+                    uploadRing,
+                    D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
+                    *buffer,
+                    RHISubresourceData{
+                        .data = desc.initialData,
+                        .rowPitch = desc.size
                     }
-                    UploadGpuOnlyBuffer(
-                        *uploadCmdList,
-                        uploadRing,
-                        D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
-                        *buffer,
-                        RHISubresourceData{
-                            .data = desc.initialData,
-                            .rowPitch = desc.size
-                        }
-                    );
-                    break;
-                default:
-                    CROWY_ASSERT(false);
-                }
+                );
             }
 
             return buffer;
@@ -460,11 +443,7 @@ namespace Crowy
             );
             // Notice. RHIMemoryAccess::Transient == RHIMemoryAccess::GPUOnly
             if(!desc.initialData.empty()){
-                if(!uploadRecorded){
-                    uploadCmdList->Begin();
-                    uploadCmdList->BeginBlit();
-                    uploadRecorded = true;
-                }
+                ensureUploadBegin();
 
                 const usize n = desc.mipLevels * desc.arraySize;
                 CROWY_ASSERT(desc.initialData.size() == n);
@@ -635,6 +614,15 @@ namespace Crowy
             }
 
             return totalBytes;
+        }
+
+    private:
+        void ensureUploadBegin(){
+            if(!uploadRecorded){
+                uploadCmdList->Begin();
+                uploadCmdList->BeginBlit();
+                uploadRecorded = true;
+            }
         }
     };
 
