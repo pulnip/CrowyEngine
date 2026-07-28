@@ -9,9 +9,9 @@ namespace Crowy
 {
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
     private:
-        MTL::RenderPipelineState* pipeline = nullptr;
+        NS::SharedPtr<MTL::RenderPipelineState> pipeline;
         RHIRasterizerState rasterizerState{};
-        MTL::DepthStencilState* depthStencilState = nullptr;
+        NS::SharedPtr<MTL::DepthStencilState> depthStencilState;
 
         MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
 
@@ -43,7 +43,7 @@ namespace Crowy
 
     class MetalComputePipelineState final: public RHIComputePipelineState{
     private:
-        MTL::ComputePipelineState* pipeline = nullptr;
+        NS::SharedPtr<MTL::ComputePipelineState> pipeline;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
     #if defined(_DEBUG) || !defined(NDEBUG)

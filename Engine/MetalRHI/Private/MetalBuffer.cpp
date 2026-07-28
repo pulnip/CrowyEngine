@@ -90,15 +90,17 @@ namespace Crowy
         resources.reserve(policy.slotCount);
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource resource{
-                .buffer = desc.initialData != nullptr && !isGPUOnly ?
-                    device.newBuffer(
-                        desc.initialData,
-                        desc.size,
-                        policy.options
-                    ) :
-                    device.newBuffer(
-                        desc.size,
-                        policy.options
+                .buffer = NS::TransferPtr(
+                    desc.initialData != nullptr && !isGPUOnly ?
+                        device.newBuffer(
+                            desc.initialData,
+                            desc.size,
+                            policy.options
+                        ) :
+                        device.newBuffer(
+                            desc.size,
+                            policy.options
+                        )
                     ),
                 .syncState = policy.sync,
                 .accessState = policy.access,
@@ -125,17 +127,7 @@ namespace Crowy
     #endif
     }
 
-    MetalBuffer::~MetalBuffer(){
-        for(u32 i=0; i<resources.size(); ++i){
-            auto& resource = resources[i];
-
-            if(resource.buffer != nullptr){
-                resource.buffer->release();
-                resource.buffer = nullptr;
-            }
-
-        }
-    }
+    MetalBuffer::~MetalBuffer() = default;
 
     void MetalBuffer::upload(
         u32 index,

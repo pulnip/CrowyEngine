@@ -13,7 +13,7 @@ namespace Crowy
     class MetalCommandList final: public RHICommandList{
     private:
         MTL::CommandQueue* commandQueue = nullptr;
-        MTL::CommandBuffer* commandBuffer = nullptr;
+        NS::SharedPtr<MTL::CommandBuffer> commandBuffer;
 
         MTL::RenderCommandEncoder* renderEncoder = nullptr;
         MTL::ComputeCommandEncoder* computeEncoder = nullptr;
@@ -140,6 +140,6 @@ namespace Crowy
 
         void SetMarker(CStr name) RHI_OVERRIDE;
 
-        auto Get() const noexcept{ return commandBuffer; }
+        auto Get() const noexcept{ return commandBuffer.get(); }
     };
 }

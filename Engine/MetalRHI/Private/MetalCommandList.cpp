@@ -40,15 +40,15 @@ namespace Crowy
         : commandQueue(queue){}
 
     MetalCommandList::~MetalCommandList(){
-        if(renderEncoder){
+        if(renderEncoder != nullptr){
             renderEncoder->endEncoding();
             renderEncoder = nullptr;
         }
-        else if(computeEncoder){
+        else if(computeEncoder != nullptr){
             computeEncoder->endEncoding();
             computeEncoder = nullptr;
         }
-        else if(blitEncoder){
+        else if(blitEncoder != nullptr){
             blitEncoder->endEncoding();
             blitEncoder = nullptr;
         }
@@ -59,7 +59,7 @@ namespace Crowy
             "Did you call RHICommandList::Close()?"
         );
 
-        commandBuffer = commandQueue->commandBuffer();
+        commandBuffer = NS::TransferPtr(commandQueue->commandBuffer());
         commandBuffer->setLabel(toNSString("Crowy Command Buffer"));
 
         isRecording = true;
@@ -119,9 +119,7 @@ namespace Crowy
 
         renderEncoder = commandBuffer->renderCommandEncoder(passDesc);
         if(!desc.debugName.empty()){
-            renderEncoder->setLabel(
-                NS::String::string(desc.debugName.c_str(), NS::UTF8StringEncoding)
-            );
+            renderEncoder->setLabel(toNSString(desc.debugName));
         }
 
         passDesc->release();
@@ -495,7 +493,7 @@ namespace Crowy
     }
 
     void MetalCommandList::BeginEvent(CStr name){
-        auto str = NS::String::string(name, NS::UTF8StringEncoding);
+        auto str = toNSString(name);
         if(renderEncoder != nullptr){
             renderEncoder->pushDebugGroup(str);
         }
@@ -520,7 +518,7 @@ namespace Crowy
     }
 
     void MetalCommandList::SetMarker(CStr name){
-        auto str = NS::String::string(name, NS::UTF8StringEncoding);
+        auto str = toNSString(name);
         if(renderEncoder != nullptr){
             renderEncoder->insertDebugSignpost(str);
         }

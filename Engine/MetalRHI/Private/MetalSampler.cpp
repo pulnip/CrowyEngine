@@ -65,14 +65,11 @@ namespace Crowy
         samplerDesc->setMaxAnisotropy(desc.maxAnisotropy);
         samplerDesc->setCompareFunction(convert(desc.compareFunc));
 
-        sampler = device.newSamplerState(samplerDesc);
+        sampler = NS::TransferPtr(
+            device.newSamplerState(samplerDesc)
+        );
         samplerDesc->release();
     }
 
-    MetalSampler::~MetalSampler(){
-        if(sampler != nullptr){
-            sampler->release();
-            sampler = nullptr;
-        }
-    }
+    MetalSampler::~MetalSampler() = default;
 }

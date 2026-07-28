@@ -26,18 +26,21 @@ namespace Crowy
             desc.bufferDesc.height
         ));
 
-        backBuffer = std::make_unique<MetalTexture>(currentDrawable);
+        backBuffer = MetalTexture(currentDrawable);
 
         // NOTE. discard desc.debugName, desc.vsync
     }
 
     MetalSwapchain::~MetalSwapchain(){
+        backBuffer.SetNull();
+
+        SDL_Metal_DestroyView(view);
         currentDrawable = nullptr;
     }
 
     bool MetalSwapchain::AcquireNextImage() noexcept{
         currentDrawable = metalLayer->nextDrawable();
-        *backBuffer = MetalTexture(currentDrawable);
+        backBuffer = MetalTexture(currentDrawable);
 
         return currentDrawable != nullptr;
     }

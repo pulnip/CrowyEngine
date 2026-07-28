@@ -19,7 +19,7 @@ namespace Crowy
         CA::MetalLayer* metalLayer = nullptr;
         CA::MetalDrawable* currentDrawable = nullptr;
 
-        RAII<MetalTexture> backBuffer;
+        MetalTexture backBuffer;
 
     public:
         MetalSwapchain(
@@ -34,14 +34,14 @@ namespace Crowy
         void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
 
         u32 GetWidth() const noexcept RHI_OVERRIDE{
-            return backBuffer->GetWidth();
+            return backBuffer.GetWidth();
         }
         u32 GetHeight() const noexcept RHI_OVERRIDE{
-            return backBuffer->GetHeight();
+            return backBuffer.GetHeight();
         }
 
         RHITexture& GetCurrentTexture() RHI_OVERRIDE{
-            return *backBuffer;
+            return backBuffer;
         }
 
         void Present(MTL::CommandBuffer&);

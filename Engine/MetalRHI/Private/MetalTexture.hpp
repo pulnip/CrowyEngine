@@ -9,9 +9,11 @@ namespace Crowy
 {
     class MetalTexture final: public RHITexture{
     private:
-        MTL::Texture* texture;
+        MTL::Texture* texture = nullptr;
 
     public:
+        MetalTexture() = default;
+
         MetalTexture(
             MTL::Device&,
             MTL::TextureDescriptor*,
@@ -43,11 +45,16 @@ namespace Crowy
             return getResourceID(view);
         }
 
+        auto Get(){ return texture; }
+
         virtual void* GetNative() noexcept RHI_OVERRIDE{
-            return texture;
+            return Get();
         }
 
-        MTL::Texture* Get(){ return texture; }
+        // for prevent CA::MetalDrawable::texture() release
+        void SetNull() noexcept{
+            texture = nullptr;
+        }
 
     private:
         u64 getResourceID(const RHITextureViewDesc&);

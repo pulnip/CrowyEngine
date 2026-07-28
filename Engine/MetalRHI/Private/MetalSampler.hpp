@@ -8,7 +8,7 @@ namespace Crowy
 
     class MetalSampler final{
     private:
-        MTL::SamplerState* sampler = nullptr;
+        NS::SharedPtr<MTL::SamplerState> sampler;
 
     public:
         MetalSampler(
@@ -18,6 +18,6 @@ namespace Crowy
 
         ~MetalSampler();
 
-        MTL::SamplerState* Get(){ return sampler; }
+        auto Get(){ return sampler.get(); }
     };
 }

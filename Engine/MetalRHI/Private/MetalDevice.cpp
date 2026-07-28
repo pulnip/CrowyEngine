@@ -31,10 +31,10 @@ namespace Crowy
 
     class MetalDevice::Impl{
     private:
-        MTL::Device* device;
-        MTL::CommandQueue* commandQueue;
+        NS::SharedPtr<MTL::Device> device;
+        NS::SharedPtr<MTL::CommandQueue> commandQueue;
 
-        RAII<MetalCommandList> uploadCmdList;
+        MetalCommandList uploadCmdList;
         bool uploadRecorded = false;
         UploadRing uploadRing;
 
@@ -46,7 +46,7 @@ namespace Crowy
     public:
         auto CreateCommandList(){
             return std::make_unique<MetalCommandList>(
-                commandQueue
+                commandQueue.get()
             );
         }
 
@@ -57,17 +57,17 @@ namespace Crowy
             CROWY_ASSERT(desc.size % 4 == 0);
 
             auto buffer = std::make_unique<MetalBuffer>(
-                *device,
+                *device.get(),
                 desc,
                 frameIndex,
                 name
             );
 
             if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
-                ensureUpload();
+                ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
-                    *uploadCmdList,
+                    uploadCmdList,
                     uploadRing,
                     4,
                     *buffer,
@@ -82,17 +82,16 @@ namespace Crowy
         }
 
         Impl()
-            : device(MTL::CreateSystemDefaultDevice())
-            , commandQueue(device->newCommandQueue())
+            : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
+            , commandQueue(NS::TransferPtr(device->newCommandQueue()))
+            , uploadCmdList(commandQueue.get())
         {
-            CROWY_ASSERT(device != nullptr, "No GPU Available");
-            CROWY_ASSERT(commandQueue != nullptr,
+            CROWY_ASSERT(device, "No GPU Available");
+            CROWY_ASSERT(commandQueue,
                 "Failed to create command queue"
             );
 
             InitGlobalSession();
-
-            uploadCmdList = CreateCommandList();
 
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
@@ -106,15 +105,6 @@ namespace Crowy
         }
 
         ~Impl(){
-            if(commandQueue != nullptr){
-                commandQueue->release();
-                commandQueue = nullptr;
-            }
-            if(device != nullptr){
-                device->release();
-                device = nullptr;
-            }
-
             // _objc_autoreleasePoolPrint();
         }
 
@@ -130,14 +120,14 @@ namespace Crowy
             auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
             auto texture = std::make_unique<MetalTexture>(
-                *device,
+                *device.get(),
                 texDesc,
                 name
             );
             texDesc->release();
 
             if(!desc.initialData.empty()){
-                ensureUpload();
+                ensureUploadBegin();
 
                 const usize n = desc.mipLevels * desc.arraySize;
                 CROWY_ASSERT(desc.initialData.size() == n);
@@ -148,7 +138,7 @@ namespace Crowy
                     layouts
                 );
                 UploadTexture(
-                    *uploadCmdList,
+                    uploadCmdList,
                     uploadRing,
                     sizeAlign.align,
                     *texture,
@@ -165,7 +155,7 @@ namespace Crowy
             const RHISamplerState& desc
         ){
             return std::make_unique<MetalSampler>(
-                *device,
+                *device.get(),
                 desc
             );
         }
@@ -176,7 +166,7 @@ namespace Crowy
         ){
             if(std::get_if<RHILegacyFrontendDesc>(&desc.preRasterizer)){
                 return std::make_unique<MetalGraphicsPipelineState>(
-                    *device,
+                    *device.get(),
                     desc,
                     name
                 );
@@ -191,7 +181,7 @@ namespace Crowy
             StrView name
         ){
             return std::make_unique<MetalComputePipelineState>(
-                *device,
+                *device.get(),
                 desc,
                 name
             );
@@ -201,14 +191,14 @@ namespace Crowy
             const RHISwapchainCreateDesc& desc
         ){
             return std::make_unique<MetalSwapchain>(
-                *device,
+                *device.get(),
                 desc
             );
         }
 
         auto CreateFence(u64 initialValue){
             return std::make_unique<MetalFence>(
-                *device,
+                *device.get(),
                 initialValue
             );
         }
@@ -224,7 +214,7 @@ namespace Crowy
             std::span<RHICommandList*> cmdLists,
             MetalFence& fence
         ){
-            commitUpload();
+            ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
             fence.Encode(*lastCmdBuffer, ++frameIndex);
@@ -240,7 +230,7 @@ namespace Crowy
             MetalSwapchain& swapchain,
             MetalFence& fence
         ){
-            commitUpload();
+            ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
             swapchain.Present(*lastCmdBuffer);
@@ -293,20 +283,20 @@ namespace Crowy
         }
 
     private:
-        void ensureUpload(){
+        void ensureUploadBegin(){
             if(!uploadRecorded){
-                uploadCmdList->Begin();
-                uploadCmdList->BeginBlit();
+                uploadCmdList.Begin();
+                uploadCmdList.BeginBlit();
                 uploadRecorded = true;
             }
         }
 
-        void commitUpload(){
+        void ensureUploadCommit(){
             if(uploadRecorded){
-                uploadCmdList->EndBlit();
-                uploadCmdList->Close();
+                uploadCmdList.EndBlit();
+                uploadCmdList.Close();
 
-                auto mtlCmdList = uploadCmdList->Get();
+                auto mtlCmdList = uploadCmdList.Get();
                 mtlCmdList->commit();
 
                 uploadRecorded = false;

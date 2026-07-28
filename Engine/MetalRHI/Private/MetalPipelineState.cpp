@@ -330,35 +330,22 @@ namespace Crowy
         }
 
         NS::Error* error = nullptr;
-        pipeline = device.newRenderPipelineState(
+        pipeline = NS::TransferPtr(device.newRenderPipelineState(
             pipelineDesc,
             &error
-        );
+        ));
         pipelineDesc->release();
 
-        if(pipeline == nullptr){
+        if(!pipeline){
             auto msg = error->localizedDescription()->utf8String();
             throw std::runtime_error(msg);
         }
     }
 
-    MetalGraphicsPipelineState::~MetalGraphicsPipelineState(){
-        if(pipeline != nullptr){
-            pipeline->release();
-            pipeline = nullptr;
-        }
-        if(depthStencilState != nullptr){
-            depthStencilState->release();
-            depthStencilState = nullptr;
-        }
-    }
+    MetalGraphicsPipelineState::~MetalGraphicsPipelineState() = default;
 
     void MetalGraphicsPipelineState::Bind(MTL::RenderCommandEncoder& encoder){
-        encoder.setRenderPipelineState(pipeline);
-
-        if(depthStencilState != nullptr){
-            encoder.setDepthStencilState(depthStencilState);
-        }
+        encoder.setRenderPipelineState(pipeline.get());
 
         // Rasterizer state
         encoder.setCullMode(convert(rasterizerState.cullMode));
@@ -382,6 +369,8 @@ namespace Crowy
                 MTL::DepthClipModeClip :
                 MTL::DepthClipModeClamp
         );
+
+        encoder.setDepthStencilState(depthStencilState.get());
     }
 
     void MetalGraphicsPipelineState::createDepthStencilState(
@@ -409,7 +398,7 @@ namespace Crowy
             mtlDesc->release();
         }
 
-        depthStencilState = device.newDepthStencilState(dsDesc);
+        depthStencilState = NS::TransferPtr(device.newDepthStencilState(dsDesc));
         dsDesc->release();
     }
 
@@ -453,15 +442,15 @@ namespace Crowy
 
         MTL::AutoreleasedComputePipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
-        pipeline = device.newComputePipelineState(
+        pipeline = NS::TransferPtr(device.newComputePipelineState(
             pipelineDesc,
             MTL::PipelineOptionBindingInfo,
             &refl,
             &error
-        );
+        ));
         pipelineDesc->release();
 
-        if(pipeline == nullptr){
+        if(pipeline){
             throw std::runtime_error("Failed to create compute pipeline state");
         }
 
@@ -473,14 +462,9 @@ namespace Crowy
         );
     }
 
-    MetalComputePipelineState::~MetalComputePipelineState(){
-        if(pipeline != nullptr){
-            pipeline->release();
-            pipeline = nullptr;
-        }
-    }
+    MetalComputePipelineState::~MetalComputePipelineState() = default;
 
     void MetalComputePipelineState::Bind(MTL::ComputeCommandEncoder& encoder){
-        encoder.setComputePipelineState(pipeline);
+        encoder.setComputePipelineState(pipeline.get());
     }
 }

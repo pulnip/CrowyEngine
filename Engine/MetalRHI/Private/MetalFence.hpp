@@ -10,7 +10,7 @@ namespace Crowy
 {
     class MetalFence final: public RHIFence{
     private:
-        MTL::SharedEvent* sharedEvent = nullptr;
+        NS::SharedPtr<MTL::SharedEvent> sharedEvent;
 
     public:
         MetalFence(
