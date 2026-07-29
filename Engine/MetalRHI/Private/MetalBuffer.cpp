@@ -143,13 +143,6 @@ namespace Crowy
             data,
             size
         );
-
-        resource.buffer->didModifyRange(
-            NS::Range::Make(
-                offset,
-                size
-            )
-        );
     }
 
     void MetalBuffer::download(
