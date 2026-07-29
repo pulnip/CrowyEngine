@@ -9,6 +9,7 @@
 #include "AutoreleasePoolScope.hpp"
 #include "EnumUtil.hpp"
 #include "MetalPipelineState.hpp"
+#include "MetalSampler.hpp"
 #include "MetalUtil.hpp"
 #include "RHIShader.hpp"
 
@@ -128,6 +129,23 @@ namespace Crowy
             desc.setDepthStencilPassOperation(convert(op.passOp));
         }
 
+        auto resolveSamplers(
+            MetalReservedSamplers& samplers,
+            std::span<const RHISamplerUse> uses
+        ){
+            std::vector<MetalSamplerBinding> bindings;
+            bindings.reserve(uses.size());
+
+            for(const auto& use: uses){
+                bindings.push_back(MetalSamplerBinding{
+                    .slot = use.slot,
+                    .sampler = samplers.Get(use.samplerIndex)
+                });
+            }
+
+            return bindings;
+        }
+
         auto makeLibrary(
             MTL::Device& device,
             RHIShader& shader
@@ -158,6 +176,7 @@ namespace Crowy
 
     MetalGraphicsPipelineState::MetalGraphicsPipelineState(
         MTL::Device& device,
+        MetalReservedSamplers& samplers,
         const RHIGraphicsPipelineStateDesc& desc,
         StrView name
     )
@@ -220,6 +239,21 @@ namespace Crowy
         #endif
 
             pipelineDesc->setVertexFunction(func);
+
+            vsSamplers = resolveSamplers(
+                samplers,
+                shaderProgram.GetUsedSamplers(entryPoint)
+            );
+
+            // fragment entry point lives in the same program
+            if(desc.fragmentShader.path == filePath){
+                fsSamplers = resolveSamplers(
+                    samplers,
+                    shaderProgram.GetUsedSamplers(
+                        desc.fragmentShader.entryPoint
+                    )
+                );
+            }
         }
 
         // Store rasterizer state for command list
@@ -239,6 +273,13 @@ namespace Crowy
         #if defined(_DEBUG) || !defined(NDEBUG)
             library->setLabel(toNSString(toUTF8String(filePath)));
         #endif
+
+            fsSamplers = resolveSamplers(
+                samplers,
+                shaderProgram.GetUsedSamplers(
+                    desc.fragmentShader.entryPoint
+                )
+            );
         }
 
         {
@@ -347,6 +388,14 @@ namespace Crowy
     void MetalGraphicsPipelineState::Bind(MTL::RenderCommandEncoder& encoder){
         encoder.setRenderPipelineState(pipeline.get());
 
+        // bind sampler to reserved slot
+        for(const auto& binding: vsSamplers){
+            encoder.setVertexSamplerState(binding.sampler, binding.slot);
+        }
+        for(const auto& binding: fsSamplers){
+            encoder.setFragmentSamplerState(binding.sampler, binding.slot);
+        }
+
         // Rasterizer state
         encoder.setCullMode(convert(rasterizerState.cullMode));
         encoder.setFrontFacingWinding(
@@ -406,6 +455,7 @@ namespace Crowy
 
     MetalComputePipelineState::MetalComputePipelineState(
         MTL::Device& device,
+        MetalReservedSamplers& samplers,
         const RHIComputePipelineStateDesc& desc,
         StrView name
     )
@@ -439,6 +489,11 @@ namespace Crowy
             throw std::runtime_error("Compute shader is null");
         }
 
+        this->samplers = resolveSamplers(
+            samplers,
+            shaderProgram.GetUsedSamplers(entryPoint)
+        );
+
         auto pipelineDesc = MTL::ComputePipelineDescriptor::alloc()->init();
         pipelineDesc->setComputeFunction(func);
 
@@ -468,5 +523,10 @@ namespace Crowy
 
     void MetalComputePipelineState::Bind(MTL::ComputeCommandEncoder& encoder){
         encoder.setComputePipelineState(pipeline.get());
+
+        // bind sampler to reserved slot
+        for(const auto& binding: samplers){
+            encoder.setSamplerState(binding.sampler, binding.slot);
+        }
     }
 }

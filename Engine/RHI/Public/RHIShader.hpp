@@ -35,6 +35,8 @@ namespace Crowy
         }
         Size3D GetThreadGroupSize(StrView entryPoint);
 
+        std::span<const RHISamplerUse> GetUsedSamplers(StrView entryPoint);
+
         std::vector<u8> GetEntryPointCode(StrView entryPoint);
         std::vector<u8> GetTargetCode();
     };

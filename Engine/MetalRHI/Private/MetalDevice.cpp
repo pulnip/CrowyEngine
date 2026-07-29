@@ -34,6 +34,8 @@ namespace Crowy
         NS::SharedPtr<MTL::Device> device;
         NS::SharedPtr<MTL::CommandQueue> commandQueue;
 
+        MetalReservedSamplers samplers;
+
         MetalHeapPool privateHeap;
         MetalHeapPool sharedHeap;
         // MetalHeapPool memorylessHeap;
@@ -89,6 +91,7 @@ namespace Crowy
         Impl()
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
+            , samplers(*device.get())
             , privateHeap(
                 *device.get(), {
                     .heapSize = 128ull << 20
@@ -189,6 +192,7 @@ namespace Crowy
             if(std::get_if<RHILegacyFrontendDesc>(&desc.preRasterizer)){
                 return std::make_unique<MetalGraphicsPipelineState>(
                     *device.get(),
+                    samplers,
                     desc,
                     name
                 );
@@ -204,6 +208,7 @@ namespace Crowy
         ){
             return std::make_unique<MetalComputePipelineState>(
                 *device.get(),
+                samplers,
                 desc,
                 name
             );

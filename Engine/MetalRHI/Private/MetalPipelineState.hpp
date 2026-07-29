@@ -1,12 +1,24 @@
 #pragma once
 
+#include <vector>
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLComputeCommandEncoder.hpp>
+#include <Metal/MTLSampler.hpp>
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
+    class MetalReservedSamplers;
+
+    // a sampler resolved to its encoder slot
+    struct MetalSamplerBinding{
+        NS::UInteger slot;
+        // owned by MetalDevice's sampler table,
+        // which outlives every pipeline state
+        MTL::SamplerState* sampler;
+    };
+
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
     private:
         NS::SharedPtr<MTL::RenderPipelineState> pipeline;
@@ -15,14 +27,18 @@ namespace Crowy
 
         MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
 
+        std::vector<MetalSamplerBinding> vsSamplers;
+        std::vector<MetalSamplerBinding> fsSamplers;
+
     #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
     #endif
 
     public:
         MetalGraphicsPipelineState(
-            MTL::Device& device,
-            const RHIGraphicsPipelineStateDesc& desc,
+            MTL::Device&,
+            MetalReservedSamplers&,
+            const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
         );
 
@@ -46,14 +62,17 @@ namespace Crowy
         NS::SharedPtr<MTL::ComputePipelineState> pipeline;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
+        std::vector<MetalSamplerBinding> samplers;
+
     #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
     #endif
 
     public:
         MetalComputePipelineState(
-            MTL::Device& device,
-            const RHIComputePipelineStateDesc& desc,
+            MTL::Device&,
+            MetalReservedSamplers&,
+            const RHIComputePipelineStateDesc&,
             StrView name = {}
         );
 
