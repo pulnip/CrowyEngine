@@ -370,7 +370,9 @@ namespace Crowy
                 MTL::DepthClipModeClamp
         );
 
-        encoder.setDepthStencilState(depthStencilState.get());
+        if(depthStencilState){
+            encoder.setDepthStencilState(depthStencilState.get());
+        }
     }
 
     void MetalGraphicsPipelineState::createDepthStencilState(
