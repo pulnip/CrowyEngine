@@ -44,6 +44,10 @@ namespace Crowy
         mutable std::mutex mutex;
         u32 heapCounter  = 0;
 
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        Str debugName;
+    #endif
+
     public:
         MetalHeapPool() = default;
         ~MetalHeapPool();

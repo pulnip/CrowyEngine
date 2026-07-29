@@ -13,6 +13,9 @@ namespace Crowy
     )
         : device(&device)
         , desc(desc)
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        , debugName(name)
+    #endif
     {
         auto rsDesc = MTL::ResidencySetDescriptor::alloc()->init();
         rsDesc->setInitialCapacity(8);
@@ -28,7 +31,6 @@ namespace Crowy
         residencySet = NS::TransferPtr(
             device.newResidencySet(rsDesc, &error)
         );
-        const char* str = residencySet->label()->utf8String();
 
         rsDesc->release();
 
@@ -85,7 +87,6 @@ namespace Crowy
                     residencySet->removeAllocation(heap);
                     changed = true;
                 }
-                heap->release();
                 it = heaps.erase(it);
             }
             else{
@@ -132,10 +133,9 @@ namespace Crowy
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         heap->setLabel(toNSString(
-            std::format("heap{} ({}MiB)",
-                // residencySet->label()->utf8String(),
-                heapCounter++,
-                size
+            std::format("{}.heap{} ({:.2f}MiB)",
+                debugName, heapCounter++,
+                static_cast<f32>(size) / 1024 / 1024
             )
         ));
     #endif
