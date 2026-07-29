@@ -142,12 +142,12 @@ namespace Crowy
             );
 
             if(height == 1){
-                return arraySize > 1 ?
+                return arraySize == 1 ?
                     MTL::TextureType1D :
                     MTL::TextureType1DArray;
             }
             else if(depth == 1){
-                return arraySize > 1 ?
+                return arraySize == 1 ?
                     MTL::TextureType2D :
                     MTL::TextureType2DArray;
             }
