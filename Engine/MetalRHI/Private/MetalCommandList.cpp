@@ -59,7 +59,7 @@ namespace Crowy
             "Did you call RHICommandList::Close()?"
         );
 
-        commandBuffer = NS::TransferPtr(commandQueue->commandBuffer());
+        commandBuffer = NS::RetainPtr(commandQueue->commandBuffer());
         commandBuffer->setLabel(toNSString("Crowy Command Buffer"));
 
         isRecording = true;
