@@ -184,7 +184,7 @@ namespace Crowy
 
         using enum RHIMemoryAccess;
 
-        CROWY_ASSERT(desc.access == GPUOnly && desc.access == Transient,
+        CROWY_ASSERT(desc.access == GPUOnly || desc.access == Transient,
             "Use RHIBuffer for CPU-Accessable Resource"
         );
 
