@@ -450,7 +450,7 @@ namespace Crowy
         ));
         pipelineDesc->release();
 
-        if(pipeline){
+        if(!pipeline){
             throw std::runtime_error("Failed to create compute pipeline state");
         }
 
