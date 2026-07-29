@@ -9,6 +9,8 @@
 
 namespace Crowy
 {
+    class MetalHeapPool;
+
     class MetalBuffer final: public RHIBuffer{
     private:
         struct FrameResource{
@@ -30,8 +32,8 @@ namespace Crowy
 
     public:
         MetalBuffer(
-            MTL::Device& device,
-            const RHIBufferCreateDesc& desc,
+            MetalHeapPool&,
+            const RHIBufferCreateDesc&,
             const u64& frameIndex,
             StrView name = {}
         );

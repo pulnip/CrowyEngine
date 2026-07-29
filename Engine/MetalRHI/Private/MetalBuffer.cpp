@@ -4,6 +4,7 @@
 #include "Assert.hpp"
 #include "EnumUtil.hpp"
 #include "MetalBuffer.hpp"
+#include "MetalHeapPool.hpp"
 #include "MetalUtil.hpp"
 #include "PtrUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -13,7 +14,6 @@ namespace Crowy
     namespace{
         struct BufferPolicy{
             u32 slotCount;
-            MTL::ResourceOptions options;
             bool persistentMap;
             RHIBarrierSync sync;
             RHIBarrierAccess access;
@@ -30,7 +30,6 @@ namespace Crowy
             case GPUOnly:
                 return BufferPolicy{
                     .slotCount = 1,
-                    .options = MTL::ResourceStorageModePrivate,
                     .persistentMap = false,
                     .sync = RHIBarrierSync::None,
                     .access = RHIBarrierAccess::NoAccess
@@ -40,7 +39,6 @@ namespace Crowy
                     .slotCount = usage == CopySrc ?
                         1 :
                         RHI_FRAMES_IN_FLIGHT,
-                    .options = MTL::ResourceStorageModeShared,
                     .persistentMap = true,
                     .sync = RHIBarrierSync::None,
                     .access = RHIBarrierAccess::ConstantBuffer
@@ -48,7 +46,6 @@ namespace Crowy
             case CPURead:
                 return BufferPolicy{
                     .slotCount = RHI_FRAMES_IN_FLIGHT,
-                    .options = MTL::ResourceStorageModeShared,
                     .persistentMap = true,
                     .sync = RHIBarrierSync::Copy,
                     .access = RHIBarrierAccess::CopyDst
@@ -62,7 +59,7 @@ namespace Crowy
     }
 
     MetalBuffer::MetalBuffer(
-        MTL::Device& device,
+        MetalHeapPool& heap,
         const RHIBufferCreateDesc& desc,
         const u64& frameIndex,
         StrView name
@@ -90,18 +87,7 @@ namespace Crowy
         resources.reserve(policy.slotCount);
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource resource{
-                .buffer = NS::TransferPtr(
-                    desc.initialData != nullptr && !isGPUOnly ?
-                        device.newBuffer(
-                            desc.initialData,
-                            desc.size,
-                            policy.options
-                        ) :
-                        device.newBuffer(
-                            desc.size,
-                            policy.options
-                        )
-                    ),
+                .buffer = NS::TransferPtr(heap.NewBuffer(desc.size)),
                 .syncState = policy.sync,
                 .accessState = policy.access,
             #if defined(_DEBUG) || !defined(NDEBUG)
@@ -120,6 +106,10 @@ namespace Crowy
         #endif
 
             resources.emplace_back(std::move(resource));
+        }
+
+        if(desc.initialData != nullptr && isCPUWrite){
+            UploadAll(desc.initialData, desc.size);
         }
 
     #if defined(_DEBUG) || !defined(NDEBUG)

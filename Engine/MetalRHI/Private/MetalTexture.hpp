@@ -7,6 +7,8 @@
 
 namespace Crowy
 {
+    class MetalHeapPool;
+
     class MetalTexture final: public RHITexture{
     private:
         NS::SharedPtr<MTL::Texture> texture;
@@ -15,7 +17,7 @@ namespace Crowy
         MetalTexture() = default;
 
         MetalTexture(
-            MTL::Device&,
+            MetalHeapPool&,
             MTL::TextureDescriptor*,
             StrView name = {}
         );

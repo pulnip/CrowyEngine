@@ -6,7 +6,6 @@ extern "C"{
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
-#include <Metal/Metal.hpp>
 #include "Assert.hpp"
 #include "AutoreleasePoolScope.hpp"
 #include "MetalBuffer.hpp"
@@ -14,6 +13,7 @@ extern "C"{
 #include "MetalDevice.hpp"
 #include "MetalFence.hpp"
 #include "MetalFrameScope.hpp"
+#include "MetalHeapPool.hpp"
 #include "MetalPipelineState.hpp"
 #include "MetalSampler.hpp"
 #include "MetalSwapchain.hpp"
@@ -33,6 +33,10 @@ namespace Crowy
     private:
         NS::SharedPtr<MTL::Device> device;
         NS::SharedPtr<MTL::CommandQueue> commandQueue;
+
+        MetalHeapPool privateHeap;
+        MetalHeapPool sharedHeap;
+        // MetalHeapPool memorylessHeap;
 
         MetalCommandList uploadCmdList;
         bool uploadRecorded = false;
@@ -57,7 +61,8 @@ namespace Crowy
             CROWY_ASSERT(desc.size % 4 == 0);
 
             auto buffer = std::make_unique<MetalBuffer>(
-                *device.get(),
+                desc.access == RHIMemoryAccess::GPUOnly ?
+                    privateHeap : sharedHeap,
                 desc,
                 frameIndex,
                 name
@@ -84,14 +89,31 @@ namespace Crowy
         Impl()
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
+            , privateHeap(
+                *device.get(), {
+                    .heapSize = 128ull << 20
+                },
+                "PrivateHeap"
+            )
+            , sharedHeap(
+                *device.get(), {
+                    .storageMode = MTL::StorageModeShared,
+                    .heapSize = 128ull << 20
+                },
+                "SharedHeap"
+            )
             , uploadCmdList(commandQueue.get())
         {
+
             CROWY_ASSERT(device, "No GPU Available");
             CROWY_ASSERT(commandQueue,
                 "Failed to create command queue"
             );
 
             InitGlobalSession();
+
+            commandQueue->addResidencySet(privateHeap.ResidencySet());
+            commandQueue->addResidencySet(sharedHeap.ResidencySet());
 
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
@@ -120,7 +142,7 @@ namespace Crowy
             auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
             auto texture = std::make_unique<MetalTexture>(
-                *device.get(),
+                privateHeap,
                 texDesc,
                 name
             );

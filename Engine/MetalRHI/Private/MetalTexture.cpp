@@ -1,4 +1,6 @@
 #include <Metal/MTLDevice.hpp>
+#include "Assert.hpp"
+#include "MetalHeapPool.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
 #include "Primitives.hpp"
@@ -7,7 +9,7 @@
 namespace Crowy
 {
     MetalTexture::MetalTexture(
-        MTL::Device& device,
+        MetalHeapPool& heapPool,
         MTL::TextureDescriptor* desc,
         StrView name
     )
@@ -19,10 +21,8 @@ namespace Crowy
             desc->mipmapLevelCount(),
             desc->arrayLength()
         )
-        , texture(NS::TransferPtr(device.newTexture(desc)))
+        , texture(NS::TransferPtr(heapPool.NewTexture(desc)))
     {
-        texture = device.newTexture(desc);
-
     #if defined(_DEBUG) || !defined(NDEBUG)
         if(!name.empty()){
             texture->setLabel(toNSString(name));
