@@ -19,6 +19,7 @@ namespace Crowy
             desc->mipmapLevelCount(),
             desc->arrayLength()
         )
+        , texture(NS::TransferPtr(device.newTexture(desc)))
     {
         texture = device.newTexture(desc);
 
@@ -33,50 +34,17 @@ namespace Crowy
         CA::MetalDrawable* drawable
     )
         : RHITexture(
-            convert(
-                (texture = drawable->texture())->pixelFormat()
-            ),
+            convert(drawable->texture()->pixelFormat()),
             RHIBarrierSync::None,
             RHIBarrierAccess::NoAccess,
             RHIBarrierLayout::Present,
             1,
             1
         )
-    {
-        texture->retain();
-    }
+        , texture(NS::RetainPtr(drawable->texture()))
+    {}
 
-    MetalTexture::~MetalTexture(){
-        if(texture != nullptr){
-            texture->release();
-            texture = nullptr;
-        }
-    }
-
-    MetalTexture::MetalTexture(MetalTexture&& other)
-        : RHITexture(
-            other.GetFormat(),
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Undefined,
-            other.GetMipLevels(),
-            other.GetArraySize()
-        )
-        , texture(other.texture)
-    {
-        other.texture = nullptr;
-    }
-
-    MetalTexture& MetalTexture::operator=(MetalTexture&& other){
-        if(texture != nullptr){
-            texture->release();
-        }
-
-        texture = other.texture;
-        other.texture = nullptr;
-
-        return *this;
-    }
+    MetalTexture::~MetalTexture() = default;
 
     u64 MetalTexture::getResourceID(const RHITextureViewDesc&){
         return texture->gpuResourceID()._impl;

@@ -2,6 +2,7 @@
 
 #include <Metal/MTLCommandQueue.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
+#include <QuartzCore/CAMetalLayer.hpp>
 #include <SDL3/SDL_metal.h>
 #include "MetalTexture.hpp"
 #include "Primitives.hpp"
@@ -33,11 +34,13 @@ namespace Crowy
 
         void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
 
+        // read from the layer, not the backbuffer;
+        // the backbuffer is empty until the first AcquireNextImage.
         u32 GetWidth() const noexcept RHI_OVERRIDE{
-            return backBuffer.GetWidth();
+            return static_cast<u32>(metalLayer->drawableSize().width);
         }
         u32 GetHeight() const noexcept RHI_OVERRIDE{
-            return backBuffer.GetHeight();
+            return static_cast<u32>(metalLayer->drawableSize().height);
         }
 
         RHITexture& GetCurrentTexture() RHI_OVERRIDE{

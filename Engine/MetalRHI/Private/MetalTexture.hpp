@@ -9,7 +9,7 @@ namespace Crowy
 {
     class MetalTexture final: public RHITexture{
     private:
-        MTL::Texture* texture = nullptr;
+        NS::SharedPtr<MTL::Texture> texture;
 
     public:
         MetalTexture() = default;
@@ -24,8 +24,7 @@ namespace Crowy
         );
         ~MetalTexture();
 
-        MetalTexture(MetalTexture&&);
-        MetalTexture& operator=(MetalTexture&&);
+        CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(MetalTexture)
 
         u32 GetWidth() const noexcept RHI_OVERRIDE{
             return texture->width();
@@ -45,15 +44,10 @@ namespace Crowy
             return getResourceID(view);
         }
 
-        auto Get(){ return texture; }
+        auto Get(){ return texture.get(); }
 
         virtual void* GetNative() noexcept RHI_OVERRIDE{
             return Get();
-        }
-
-        // for prevent CA::MetalDrawable::texture() release
-        void SetNull() noexcept{
-            texture = nullptr;
         }
 
     private:

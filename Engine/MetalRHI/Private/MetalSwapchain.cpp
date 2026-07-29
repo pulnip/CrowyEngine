@@ -26,21 +26,19 @@ namespace Crowy
             desc.bufferDesc.height
         ));
 
-        backBuffer = MetalTexture(currentDrawable);
-
         // NOTE. discard desc.debugName, desc.vsync
     }
 
     MetalSwapchain::~MetalSwapchain(){
-        backBuffer.SetNull();
-
         SDL_Metal_DestroyView(view);
         currentDrawable = nullptr;
     }
 
     bool MetalSwapchain::AcquireNextImage() noexcept{
         currentDrawable = metalLayer->nextDrawable();
-        backBuffer = MetalTexture(currentDrawable);
+        backBuffer = currentDrawable != nullptr ?
+            MetalTexture(currentDrawable) :
+            MetalTexture{};
 
         return currentDrawable != nullptr;
     }
@@ -48,7 +46,7 @@ namespace Crowy
     void MetalSwapchain::Resize(u32 newWidth, u32 newHeight){
         metalLayer->setDrawableSize(CGSizeMake(newWidth, newHeight));
         currentDrawable = nullptr;
-        backBuffer = nullptr;
+        backBuffer = MetalTexture{};
     }
 
     void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer){
