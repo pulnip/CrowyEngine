@@ -98,7 +98,7 @@ int main(void){
         fence->WaitCPU(1);
 
         // forced push for resolve the in-flight state
-        device->GetFrameIndexRef() += 2;
+        device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
 
         std::vector<float> result(N, 0.0f);
         readback->Download(result.data(), sizeof(float) * result.size());
