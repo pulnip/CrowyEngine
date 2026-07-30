@@ -6,6 +6,7 @@ extern "C"{
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
+#include <Metal/MTLFence.hpp>
 #include "Assert.hpp"
 #include "AutoreleasePoolScope.hpp"
 #include "MetalBuffer.hpp"
@@ -33,6 +34,8 @@ namespace Crowy
     private:
         NS::SharedPtr<MTL::Device> device;
         NS::SharedPtr<MTL::CommandQueue> commandQueue;
+        // shared by every command list on the queue;
+        NS::SharedPtr<MTL::Fence> barrier;
 
         MetalReservedSamplers samplers;
 
@@ -40,11 +43,11 @@ namespace Crowy
         MetalHeapPool sharedHeap;
         // MetalHeapPool memorylessHeap;
 
+        AutoreleasePoolScope autoreleasePool;
+
         MetalCommandList uploadCmdList;
         bool uploadRecorded = false;
         UploadRing uploadRing;
-
-        AutoreleasePoolScope autoreleasePool;
 
         // increased on Submit
         u64 frameIndex = 0;
@@ -52,7 +55,8 @@ namespace Crowy
     public:
         auto CreateCommandList(){
             return std::make_unique<MetalCommandList>(
-                commandQueue.get()
+                commandQueue.get(),
+                barrier.get()
             );
         }
 
@@ -91,6 +95,7 @@ namespace Crowy
         Impl()
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
+            , barrier(NS::TransferPtr(device->newFence()))
             , samplers(*device.get())
             , privateHeap(
                 *device.get(), {
@@ -105,13 +110,17 @@ namespace Crowy
                 },
                 "SharedHeap"
             )
-            , uploadCmdList(commandQueue.get())
+            , uploadCmdList(commandQueue.get(), barrier.get())
         {
 
             CROWY_ASSERT(device, "No GPU Available");
             CROWY_ASSERT(commandQueue,
                 "Failed to create command queue"
             );
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            barrier->setLabel(toNSString("Fence for Resource Barrier"));
+        #endif
 
             InitGlobalSession();
 

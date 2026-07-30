@@ -13,6 +13,8 @@ namespace Crowy
     class MetalCommandList final: public RHICommandList{
     private:
         MTL::CommandQueue* commandQueue = nullptr;
+        // Queue-shared fence for explicit barriers
+        MTL::Fence* barrier = nullptr;
         NS::SharedPtr<MTL::CommandBuffer> commandBuffer;
 
         MTL::RenderCommandEncoder* renderEncoder = nullptr;
@@ -29,9 +31,15 @@ namespace Crowy
         MTL::PrimitiveType currentTopology = MTL::PrimitiveType::PrimitiveTypeTriangle;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
         bool isRecording = false;
+        // set by TransitionBarrier between passes;
+        // consumed by the next encoder as waitForFence
+        bool barrierPending = false;
 
     public:
-        MetalCommandList(MTL::CommandQueue* queue);
+        MetalCommandList(
+            MTL::CommandQueue*,
+            MTL::Fence*
+        );
         ~MetalCommandList();
 
         void Begin() RHI_OVERRIDE;

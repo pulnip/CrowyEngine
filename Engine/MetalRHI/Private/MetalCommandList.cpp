@@ -2,6 +2,7 @@
 #include <Metal/MTLBlitCommandEncoder.hpp>
 #include <Metal/MTLComputeCommandEncoder.hpp>
 #include <Metal/MTLCommandQueue.hpp>
+#include <Metal/MTLFence.hpp>
 #include "Assert.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalCommandList.hpp"
@@ -36,8 +37,12 @@ namespace Crowy
         }
     }
 
-    MetalCommandList::MetalCommandList(MTL::CommandQueue* queue)
-        : commandQueue(queue){}
+    MetalCommandList::MetalCommandList(
+        MTL::CommandQueue* queue,
+        MTL::Fence* barrier
+    )
+        : commandQueue(queue)
+        , barrier(barrier){}
 
     MetalCommandList::~MetalCommandList(){
         if(renderEncoder != nullptr){
@@ -123,6 +128,14 @@ namespace Crowy
         }
 
         passDesc->release();
+
+        if(barrierPending){
+            renderEncoder->waitForFence(
+                barrier,
+                MTL::RenderStageVertex
+            );
+            barrierPending = false;
+        }
     }
 
     void MetalCommandList::EndRenderPass(){
@@ -130,6 +143,10 @@ namespace Crowy
             "Did you call RHICommandList::BeginRenderPass()?"
         );
 
+        renderEncoder->updateFence(
+            barrier,
+            MTL::RenderStageFragment
+        );
         renderEncoder->endEncoding();
         renderEncoder = nullptr;
     }
@@ -299,6 +316,11 @@ namespace Crowy
 
         threadsPerThreadgroup = {0, 0, 0};
         computeEncoder = commandBuffer->computeCommandEncoder();
+
+        if(barrierPending){
+            computeEncoder->waitForFence(barrier);
+            barrierPending = false;
+        }
     }
 
     void MetalCommandList::EndCompute(){
@@ -306,6 +328,7 @@ namespace Crowy
             "Did you call RHICommandList::BeginCompute()?"
         );
 
+        computeEncoder->updateFence(barrier);
         computeEncoder->endEncoding();
         computeEncoder = nullptr;
     }
@@ -376,6 +399,11 @@ namespace Crowy
         CROWY_ASSERT(renderEncoder == nullptr && computeEncoder == nullptr);
 
         blitEncoder = commandBuffer->blitCommandEncoder();
+
+        if(barrierPending){
+            blitEncoder->waitForFence(barrier);
+            barrierPending = false;
+        }
     }
 
     void MetalCommandList::EndBlit(){
@@ -383,6 +411,7 @@ namespace Crowy
             "Did you call RHICommandList::BeginBlit()?"
         );
 
+        blitEncoder->updateFence(barrier);
         blitEncoder->endEncoding();
         blitEncoder = nullptr;
     }
@@ -471,9 +500,22 @@ namespace Crowy
         std::span<const RHITextureBarrier> textureBarriers,
         std::span<const RHIBufferBarrier> bufferBarriers
     ){
-        // Metal has implicit synchronization between render passes,
-        // so we only need to track state for API consistency.
-        // memoryBarrier is only needed for same-pass synchronization.
+        if(computeEncoder != nullptr){
+            MTL::BarrierScope scope = 0;
+            if(!bufferBarriers.empty()){
+                scope |= MTL::BarrierScopeBuffers;
+            }
+            if(!textureBarriers.empty()){
+                scope |= MTL::BarrierScopeTextures;
+            }
+            computeEncoder->memoryBarrier(scope);
+        }
+        else if(renderEncoder == nullptr && blitEncoder == nullptr){
+            // commands never overlap on the same untracked resource within one pass
+            // so state tracking alone is enough
+            barrierPending = true;
+        }
+
         for(auto& barrier: textureBarriers){
             auto& resource = barrier.texture;
             const auto after = barrier.point;
