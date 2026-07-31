@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
@@ -12,6 +13,12 @@ namespace Crowy
     class MetalTexture final: public RHITexture{
     private:
         NS::SharedPtr<MTL::Texture> texture;
+        // views alias the base texture's heap allocation,
+        // so the heap's residency set covers them too
+        std::unordered_map<
+            RHITextureViewDesc,
+            NS::SharedPtr<MTL::Texture>
+        > views;
 
     public:
         MetalTexture() = default;

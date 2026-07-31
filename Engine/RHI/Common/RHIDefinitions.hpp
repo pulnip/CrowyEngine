@@ -416,10 +416,6 @@ namespace Crowy
         u32 depth = 1;
         u32 mipLevels = 1;
         u32 arraySize = 1;
-        // if isCubeMap,
-        //   depth must be 2,
-        //   arraySize must be multiple of 6
-        bool isCubeMap = false;
         RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;

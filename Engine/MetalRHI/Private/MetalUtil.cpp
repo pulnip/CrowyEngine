@@ -163,22 +163,12 @@ namespace Crowy
         texDesc->setHeight(desc.height);
         texDesc->setDepth(desc.depth);
         texDesc->setMipmapLevelCount(desc.mipLevels);
-        if(desc.isCubeMap){
-            CROWY_ASSERT(desc.depth == 2 && desc.arraySize % 6 == 0);
-            texDesc->setArrayLength(desc.arraySize / 6);
-            texDesc->setTextureType(desc.arraySize == 6 ?
-                MTL::TextureTypeCube :
-                MTL::TextureTypeCubeArray
-            );
-        }
-        else{
-            texDesc->setArrayLength(desc.arraySize);
-            texDesc->setTextureType(convert(
-                desc.height,
-                desc.depth,
-                desc.arraySize
-            ));
-        }
+        texDesc->setArrayLength(desc.arraySize);
+        texDesc->setTextureType(convert(
+            desc.height,
+            desc.depth,
+            desc.arraySize
+        ));
         texDesc->setPixelFormat(convert(desc.format));
         texDesc->setUsage(convert(desc.usage));
 
