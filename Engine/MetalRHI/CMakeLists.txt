@@ -15,4 +15,5 @@ PRIVATE
     ${QUARTZCORE_LIBRARY}
     ${FOUNDATION_LIBRARY}
     SDL3::SDL3
+    Crowy::Log
 )

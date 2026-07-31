@@ -2,6 +2,7 @@
 #include <QuartzCore/CAMetalLayer.hpp>
 #include <Metal/MTLCommandBuffer.hpp>
 #include "Assert.hpp"
+#include "MetalFrameDump.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
@@ -20,6 +21,7 @@ namespace Crowy
 
         metalLayer->setDevice(&device);
         metalLayer->setPixelFormat(convert(desc.bufferDesc.format));
+        // readable drawables; DumpFrameIfRequested depends on this
         metalLayer->setFramebufferOnly(false);
         metalLayer->setDrawableSize(CGSizeMake(
             desc.bufferDesc.width,
@@ -50,6 +52,7 @@ namespace Crowy
     }
 
     void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer){
+        DumpFrameIfRequested(cmdBuffer, currentDrawable);
         cmdBuffer.presentDrawable(currentDrawable);
     }
 }
