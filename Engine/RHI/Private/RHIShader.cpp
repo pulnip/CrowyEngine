@@ -36,7 +36,10 @@ namespace{
 
     void throwIfSlangError(ISlangBlob* diagnostics){
         if(diagnostics != nullptr && diagnostics->getBufferSize() > 0){
-            auto errors = diagnostics->getBufferPointer();
+            const Crowy::StrView errors{
+                static_cast<const char*>(diagnostics->getBufferPointer()),
+                diagnostics->getBufferSize()
+            };
             throw std::runtime_error(std::format(
                 "Slang compile failed: {}",
                 errors
