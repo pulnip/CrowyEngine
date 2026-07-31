@@ -339,7 +339,10 @@ namespace Crowy
                 0,
                 metadata.writeRef(),
                 diagnostics.writeRef()
-            ), "");
+            ), std::format(
+                "Failed to get entry point metadata for '{}' in {}",
+                name, path
+            ));
 
             ::throwIfSlangError(diagnostics.get());
 
