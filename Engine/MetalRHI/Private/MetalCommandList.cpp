@@ -170,9 +170,14 @@ namespace Crowy
         CROWY_ASSERT(renderEncoder != nullptr,
             "Did you call RHICommandList::BeginRenderPass()?"
         );
+        CROWY_ASSERT(slot < MaxVertexBufferSlots);
 
         auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
-        renderEncoder->setVertexBuffer(mtlBuffer, offset, slot);
+        renderEncoder->setVertexBuffer(
+            mtlBuffer,
+            offset,
+            toVertexBufferIndex(slot)
+        );
     }
 
     void MetalCommandList::SetIndexBuffer(

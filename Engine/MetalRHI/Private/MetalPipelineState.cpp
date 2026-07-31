@@ -1,3 +1,4 @@
+#include <array>
 #include <utility>
 #include <dispatch/dispatch.h>
 #include <Metal/MTLComputePipeline.hpp>
@@ -194,24 +195,33 @@ namespace Crowy
         if(frontend.vertexLayout.has_value()){
             const auto& vertexLayout = frontend.vertexLayout.value();
             auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
-            NS::UInteger stride = 0;
+            std::array<NS::UInteger, MaxVertexBufferSlots> strides{};
 
             for(usize i = 0; i < vertexLayout.size(); ++i){
                 const auto& elem = vertexLayout[i];
+                CROWY_ASSERT(elem.inputSlot < MaxVertexBufferSlots);
                 auto attr = vertexDesc->attributes()->object(i);
 
                 attr->setFormat(convertVertexFormat(elem.format));
                 attr->setOffset(elem.alignedByteOffset);
-                attr->setBufferIndex(elem.inputSlot);
+                attr->setBufferIndex(toVertexBufferIndex(elem.inputSlot));
 
                 auto elemSize = detail::GetBytesPerPixel(elem.format);
                 auto elemEnd = elem.alignedByteOffset + elemSize;
-                if(elemEnd > stride) stride = elemEnd;
+                if(elemEnd > strides[elem.inputSlot]){
+                    strides[elem.inputSlot] = elemEnd;
+                }
             }
 
-            auto layout = vertexDesc->layouts()->object(0);
-            layout->setStride(stride);
-            layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
+            for(u32 slot = 0; slot < MaxVertexBufferSlots; ++slot){
+                if(strides[slot] == 0) continue;
+
+                auto layout = vertexDesc->layouts()->object(
+                    toVertexBufferIndex(slot)
+                );
+                layout->setStride(strides[slot]);
+                layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
+            }
 
             pipelineDesc->setVertexDescriptor(vertexDesc);
             vertexDesc->release();
