@@ -3,6 +3,7 @@
 #include <TargetConditionals.h>
 #include "Assert.hpp"
 #include "EnumUtil.hpp"
+#include "IntMath.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalHeapPool.hpp"
 #include "MetalUtil.hpp"
@@ -87,7 +88,9 @@ namespace Crowy
         resources.reserve(policy.slotCount);
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource resource{
-                .buffer = NS::TransferPtr(heap.NewBuffer(desc.size)),
+                .buffer = NS::TransferPtr(heap.NewBuffer(
+                    nextMul(desc.size, 16u)
+                )),
                 .syncState = policy.sync,
                 .accessState = policy.access,
             #if defined(_DEBUG) || !defined(NDEBUG)

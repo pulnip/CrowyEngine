@@ -36,7 +36,7 @@ struct GeoState {
 
         return GeoDerives(
             vel,
-            -1.5 * rs / (r * r) * vperp_sq * nhat
+            -1.5 * bhPos_rs.w / (r * r) * vperp_sq * nhat
         );
     }
 
@@ -86,16 +86,16 @@ ConstantBuffer<ResourceData> resource;
 
 static const int PLANET_COUNT = 3;
 cbuffer params : register(b1) {
-    float3 bhPos;
-    float rs;
-    float3 camPos;
-    float aspect;
-    float3 camRight;
-    float tanHalfFov;
-    float3 camUp;
-    float diskInner;
-    float3 camForward;
-    float diskOuter;
+    // xyz = black hole position, w = Schwarzschild radius
+    float4 bhPos_rs;
+    // xyz = camera position, w = aspect ratio
+    float4 camPos_aspect;
+    // xyz = camera right, w = tan(fovY / 2)
+    float4 camRight_tanHalfFov;
+    // xyz = camera up, w = disk inner radius
+    float4 camUp_diskInner;
+    // xyz = camera forward, w = disk outer radius
+    float4 camForward_diskOuter;
     float4 posRadius[PLANET_COUNT];
     float4 planetColor[PLANET_COUNT];
     float elapsedTimeSeconds;
@@ -137,16 +137,27 @@ float3 sampleDiskWithDoppler(
 }
 
 struct FragmentOut {
-    float4 scene : COLOR0;
-    float4 brightMask : COLOR1;
+    float4 scene : SV_Target0;
+    float4 brightMask : SV_Target1;
 };
 
 [shader("fragment")]
-FragmentOut fs_main(VertexOut input) : SV_Target {
+FragmentOut fs_main(VertexOut input) {
     static const float4 far_color = float4(0.05, 0.05, 0.1, 1);
     FragmentOut output;
     output.scene = far_color;
     output.brightMask = float4(0, 0, 0, 1);
+
+    float3 bhPos = bhPos_rs.xyz;
+    float rs = bhPos_rs.w;
+    float3 camPos = camPos_aspect.xyz;
+    float aspect = camPos_aspect.w;
+    float3 camRight = camRight_tanHalfFov.xyz;
+    float tanHalfFov = camRight_tanHalfFov.w;
+    float3 camUp = camUp_diskInner.xyz;
+    float diskInner = camUp_diskInner.w;
+    float3 camForward = camForward_diskOuter.xyz;
+    float diskOuter = camForward_diskOuter.w;
 
     float2 ip = ndc2ip(input.ndc, aspect, tanHalfFov);
     float3 dir = ip2RayDir(ip, camRight, camUp, camForward);

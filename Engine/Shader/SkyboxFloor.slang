@@ -10,7 +10,7 @@ struct VertexIn {
 cbuffer frame : register(b1) {
     float4x4 viewProj;
     float4x4 model;
-    float3 toLight; float ambient;
+    float4 toLight_ambient;
 };
 
 struct VertexOut {
@@ -41,6 +41,10 @@ ConstantBuffer<ResourceData> resource : register(b0);
 [shader("fragment")]
 float4 fs_main(VertexOut input) : SV_Target {
     Texture2D albedoTex = resource.albedo;
+
+    float4 toLight_ambient;
+    float3 toLight = toLight_ambient.xyz;
+    float ambient = toLight_ambient.w;
 
     // the grid is the whole point of this scene, so it is sampled straight
     // with no parallax or normal mapping in the way
