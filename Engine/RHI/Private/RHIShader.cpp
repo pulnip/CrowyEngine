@@ -105,6 +105,8 @@ namespace Crowy
                             hasConstantBuffer = true;
                             break;
                         case ShaderResource:
+                            [[fallthrough]];
+                        case DescriptorTableSlot: // for Metal
                             break;
                         default:
                             throw std::runtime_error(
