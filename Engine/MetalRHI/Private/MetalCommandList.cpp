@@ -102,6 +102,7 @@ namespace Crowy
             auto& attachment = desc.colorAttachments[i];
             auto& mtlAttach = *passDesc->colorAttachments()->object(i);
             mtlAttach.setTexture(static_cast<MetalTexture*>(attachment.texture)->Get());
+            mtlAttach.setLevel(attachment.mipLevel);
             mtlAttach.setLoadAction(convert(attachment.loadAction));
             mtlAttach.setStoreAction(convert(attachment.storeAction));
             mtlAttach.setClearColor(MTL::ClearColor::Make(
@@ -117,6 +118,7 @@ namespace Crowy
             auto& attachment = *desc.depthAttachment;
             auto& mtlAttach = *passDesc->depthAttachment();
             mtlAttach.setTexture(static_cast<MetalTexture*>(attachment.texture)->Get());
+            mtlAttach.setLevel(attachment.mipLevel);
             mtlAttach.setLoadAction(convert(attachment.loadAction));
             mtlAttach.setStoreAction(convert(attachment.storeAction));
             mtlAttach.setClearDepth(attachment.clearDepthStencil.depth);
