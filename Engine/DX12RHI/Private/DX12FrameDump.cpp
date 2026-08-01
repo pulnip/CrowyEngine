@@ -1,10 +1,7 @@
-#include <cstdio>
 #include <cstdlib>
-#include <cstring>
-#include <string>
-#include <vector>
 #include "DX12FrameDump.hpp"
 #include "LogLocal.hpp"
+#include "RHIUtil.hpp"
 
 namespace Crowy
 {
@@ -26,74 +23,6 @@ namespace Crowy
             return request;
         }
 
-        // 32bpp bottom-up BMP; the header is packed by hand because
-        // BITMAPFILEHEADER needs 2-byte struct packing
-        void writeBMP(
-            const u8* pixels,
-            usize rowPitch,
-            u32 width,
-            u32 height,
-            bool bgra,
-            const std::string& path
-        ){
-            FILE* file = nullptr;
-            if(fopen_s(&file, path.c_str(), "wb") != 0 || file == nullptr){
-                LOG_WARN(
-                    "CROWY_DUMP_FRAME skipped: cannot open '{}'",
-                    path
-                );
-                return;
-            }
-
-            u8 header[54] = {};
-            const auto put16 = [&](usize at, u16 v){
-                header[at] = static_cast<u8>(v & 0xFF);
-                header[at + 1] = static_cast<u8>(v >> 8);
-            };
-            const auto put32 = [&](usize at, u32 v){
-                header[at] = static_cast<u8>(v & 0xFF);
-                header[at + 1] = static_cast<u8>((v >> 8) & 0xFF);
-                header[at + 2] = static_cast<u8>((v >> 16) & 0xFF);
-                header[at + 3] = static_cast<u8>((v >> 24) & 0xFF);
-            };
-
-            const u32 imageSize = width * height * 4;
-            header[0] = 'B'; header[1] = 'M';
-            put32(2, 54 + imageSize);   // file size
-            put32(10, 54);              // pixel data offset
-            put32(14, 40);              // BITMAPINFOHEADER size
-            put32(18, width);
-            put32(22, height);          // positive height = bottom-up
-            put16(26, 1);               // planes
-            put16(28, 32);              // bits per pixel
-            put32(30, 0);               // BI_RGB
-            put32(34, imageSize);
-            std::fwrite(header, 1, sizeof(header), file);
-
-            // BMP pixel order is BGRA, bottom row first
-            std::vector<u8> row(static_cast<usize>(width) * 4);
-            for(u32 y = height; y-- > 0;){
-                const u8* src = pixels + y * rowPitch;
-                if(bgra){
-                    std::memcpy(row.data(), src, row.size());
-                }
-                else{
-                    for(u32 x = 0; x < width; ++x){
-                        row[x * 4 + 0] = src[x * 4 + 2];
-                        row[x * 4 + 1] = src[x * 4 + 1];
-                        row[x * 4 + 2] = src[x * 4 + 0];
-                        row[x * 4 + 3] = src[x * 4 + 3];
-                    }
-                }
-                std::fwrite(row.data(), 1, row.size(), file);
-            }
-            std::fclose(file);
-
-            LOG_INFO(
-                "CROWY_DUMP_FRAME: wrote {}x{} frame to '{}'",
-                width, height, path
-            );
-        }
     }
 
     void DumpFrameIfRequested(
@@ -244,14 +173,26 @@ namespace Crowy
             return;
         }
 
-        writeBMP(
+        const auto width = static_cast<u32>(desc.Width);
+        if(!WriteBMP(
             mapped,
             footprint.Footprint.RowPitch,
-            static_cast<u32>(desc.Width),
+            width,
             desc.Height,
             bgra,
             request.path
-        );
+        )){
+            LOG_WARN(
+                "CROWY_DUMP_FRAME skipped: cannot open '{}'",
+                request.path
+            );
+        }
+        else{
+            LOG_INFO(
+                "CROWY_DUMP_FRAME: wrote {}x{} frame to '{}'",
+                width, desc.Height, request.path
+            );
+        }
 
         const D3D12_RANGE writtenRange{0, 0};
         readback->Unmap(0, &writtenRange);

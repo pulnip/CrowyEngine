@@ -10,11 +10,11 @@
 #   CROWY_SMOKE_DURATION=15 ctest --test-dir build -C Debug -L smoke
 #
 # capture saves one rendered frame as an image (PNG when sips can
-# convert, PPM otherwise). Either pass a path as the third argument, or
+# convert, BMP otherwise). Either pass a path as the third argument, or
 # set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per sample:
 #   CROWY_SMOKE_CAPTURE_DIR=captures ctest --test-dir build -C Debug -L smoke
-# It rides on the engine's CROWY_DUMP_FRAME hook (Metal only); the
-# captured frame index can be overridden with $CROWY_SMOKE_CAPTURE_AT.
+# It rides on the engine's CROWY_DUMP_FRAME hook; the captured frame
+# index can be overridden with $CROWY_SMOKE_CAPTURE_AT.
 #
 # Run from the repository root: samples load Engine/Shader and Content
 # by relative path.
@@ -25,7 +25,7 @@ DURATION="${2:-${CROWY_SMOKE_DURATION:-5}}"
 
 CAPTURE="${3:-}"
 if [ -z "$CAPTURE" ] && [ -n "${CROWY_SMOKE_CAPTURE_DIR:-}" ]; then
-    CAPTURE="$CROWY_SMOKE_CAPTURE_DIR/$(basename "$APP").ppm"
+    CAPTURE="$CROWY_SMOKE_CAPTURE_DIR/$(basename "$APP").bmp"
 fi
 
 LOG="${TMPDIR:-/tmp}/crowy-smoke-$$.log"
@@ -87,10 +87,10 @@ fi
 
 if [ -n "$CAPTURE" ]; then
     if [ -f "$CAPTURE" ]; then
-        # PPM is bulky and awkward to preview; convert when sips is around
+        # uncompressed BMP is bulky; convert when sips is around
         case "$CAPTURE" in
-        *.ppm)
-            PNG="${CAPTURE%.ppm}.png"
+        *.bmp)
+            PNG="${CAPTURE%.bmp}.png"
             if sips -s format png "$CAPTURE" --out "$PNG" >/dev/null 2>&1; then
                 rm -f "$CAPTURE"
                 CAPTURE="$PNG"

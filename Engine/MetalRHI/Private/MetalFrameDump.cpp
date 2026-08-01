@@ -6,6 +6,7 @@
 #include "LogLocal.hpp"
 #include "MetalFrameDump.hpp"
 #include "Primitives.hpp"
+#include "RHIUtil.hpp"
 
 namespace Crowy
 {
@@ -27,7 +28,7 @@ namespace Crowy
             return request;
         }
 
-        void writePPM(MTL::Texture& texture, const std::string& path){
+        void writeBMP(MTL::Texture& texture, const std::string& path){
             const auto format = texture.pixelFormat();
             const bool bgra =
                 format == MTL::PixelFormatBGRA8Unorm ||
@@ -55,31 +56,20 @@ namespace Crowy
                 0
             );
 
-            FILE* file = std::fopen(path.c_str(), "wb");
-            if(file == nullptr){
+            if(!WriteBMP(
+                pixels.data(),
+                width * 4,
+                static_cast<u32>(width),
+                static_cast<u32>(height),
+                bgra,
+                path
+            )){
                 LOG_WARN(
                     "CROWY_DUMP_FRAME skipped: cannot open '{}'",
                     path
                 );
                 return;
             }
-
-            std::fprintf(file, "P6\n%zu %zu\n255\n",
-                static_cast<usize>(width),
-                static_cast<usize>(height)
-            );
-
-            const usize red = bgra ? 2 : 0;
-            const usize blue = bgra ? 0 : 2;
-            for(usize i = 0; i < width * height; ++i){
-                const u8 rgb[3] = {
-                    pixels[i * 4 + red],
-                    pixels[i * 4 + 1],
-                    pixels[i * 4 + blue]
-                };
-                std::fwrite(rgb, 1, sizeof(rgb), file);
-            }
-            std::fclose(file);
 
             LOG_INFO(
                 "CROWY_DUMP_FRAME: wrote {}x{} frame to '{}'",
@@ -111,7 +101,7 @@ namespace Crowy
         const std::string path = request.path;
         cmdBuffer.addCompletedHandler(MTL::HandlerFunction(
             [texture, path](MTL::CommandBuffer*){
-                writePPM(*texture, path);
+                writeBMP(*texture, path);
                 texture->release();
             }
         ));
