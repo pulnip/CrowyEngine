@@ -42,7 +42,6 @@ ConstantBuffer<ResourceData> resource : register(b0);
 float4 fs_main(VertexOut input) : SV_Target {
     Texture2D albedoTex = resource.albedo;
 
-    float4 toLight_ambient;
     float3 toLight = toLight_ambient.xyz;
     float ambient = toLight_ambient.w;
 
