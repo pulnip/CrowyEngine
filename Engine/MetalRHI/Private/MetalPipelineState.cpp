@@ -1,6 +1,7 @@
 #include <array>
 #include <utility>
 #include <dispatch/dispatch.h>
+#include <Metal/MTLArgument.hpp>
 #include <Metal/MTLComputePipeline.hpp>
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLLibrary.hpp>
@@ -145,6 +146,26 @@ namespace Crowy
             }
 
             return bindings;
+        }
+
+        u32 collectUsedBuffers(NS::Array* bindings){
+            u32 mask = 0;
+            if(bindings == nullptr){
+                return mask;
+            }
+
+            for(NS::UInteger i=0; i<bindings->count(); ++i){
+                auto binding = bindings->object<MTL::Binding>(i);
+                if(binding->type() != MTL::BindingTypeBuffer)
+                    continue;
+                if(!binding->used())
+                    continue;
+
+                CROWY_ASSERT(binding->index() < 32);
+                mask |= 1u << binding->index();
+            }
+
+            return mask;
         }
 
         auto makeLibrary(
@@ -380,9 +401,12 @@ namespace Crowy
             );
         }
 
+        MTL::AutoreleasedRenderPipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
         pipeline = NS::TransferPtr(device.newRenderPipelineState(
             pipelineDesc,
+            MTL::PipelineOptionBindingInfo,
+            &refl,
             &error
         ));
         pipelineDesc->release();
@@ -391,6 +415,11 @@ namespace Crowy
             auto msg = error->localizedDescription()->utf8String();
             throw std::runtime_error(msg);
         }
+
+        // which buffer indices each stage actually reads,
+        // command list can skip bindings a stage never uses
+        vsUsedBuffers = collectUsedBuffers(refl->vertexBindings());
+        fsUsedBuffers = collectUsedBuffers(refl->fragmentBindings());
     }
 
     MetalGraphicsPipelineState::~MetalGraphicsPipelineState() = default;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <variant>
 #include <Metal/MTLCommandBuffer.hpp>
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLStageInputOutputDescriptor.hpp>
@@ -10,26 +11,46 @@
 
 namespace Crowy
 {
+    class MetalGraphicsPipelineState;
+
     class MetalCommandList final: public RHICommandList{
+    private:
+        struct RenderPassState{
+            MTL::RenderCommandEncoder* encoder = nullptr;
+
+            MetalGraphicsPipelineState* pso = nullptr;
+            MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangle;
+
+            MTL::Buffer* indexBuffer = nullptr;
+            u32 indexBufferOffset = 0;
+            MTL::IndexType indexFormat = MTL::IndexTypeUInt32;
+        };
+
+        struct ComputePassState{
+            MTL::ComputeCommandEncoder* encoder = nullptr;
+
+            MTL::Size threadsPerThreadgroup = {0, 0, 0};
+        };
+
+        struct BlitPassState{
+            MTL::BlitCommandEncoder* encoder = nullptr;
+        };
+
     private:
         MTL::CommandQueue* commandQueue = nullptr;
         // Queue-shared fence for explicit barriers
         MTL::Fence* barrier = nullptr;
         NS::SharedPtr<MTL::CommandBuffer> commandBuffer;
 
-        MTL::RenderCommandEncoder* renderEncoder = nullptr;
-        MTL::ComputeCommandEncoder* computeEncoder = nullptr;
-        MTL::BlitCommandEncoder* blitEncoder = nullptr;
+        std::variant<
+            RenderPassState,
+            ComputePassState,
+            BlitPassState,
+            std::monostate
+        > passState = std::monostate{};
 
         CA::MetalDrawable* currentDrawable = nullptr;
 
-        // Index buffer state
-        MTL::Buffer* currentIndexBuffer = nullptr;
-        u32 currentIndexBufferOffset = 0;
-        MTL::IndexType currentIndexFormat = MTL::IndexTypeUInt32;
-
-        MTL::PrimitiveType currentTopology = MTL::PrimitiveType::PrimitiveTypeTriangle;
-        MTL::Size threadsPerThreadgroup = {0, 0, 0};
         bool isRecording = false;
         // set by TransitionBarrier between passes;
         // consumed by the next encoder as waitForFence

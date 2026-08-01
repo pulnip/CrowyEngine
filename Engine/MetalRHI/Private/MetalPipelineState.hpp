@@ -30,6 +30,11 @@ namespace Crowy
         std::vector<MetalSamplerBinding> vsSamplers;
         std::vector<MetalSamplerBinding> fsSamplers;
 
+        // buffer-argument-table usage per stage, bit i = buffer index i;
+        // the table has 31 entries, so u32 covers it
+        u32 vsUsedBuffers = 0;
+        u32 fsUsedBuffers = 0;
+
     #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
     #endif
@@ -48,6 +53,13 @@ namespace Crowy
 
         MTL::PrimitiveType GetTopology() const noexcept{
             return topology;
+        }
+
+        bool UsesVertexBuffer(NS::UInteger index) const noexcept{
+            return (vsUsedBuffers >> index) & 1u;
+        }
+        bool UsesFragmentBuffer(NS::UInteger index) const noexcept{
+            return (fsUsedBuffers >> index) & 1u;
         }
 
     private:
