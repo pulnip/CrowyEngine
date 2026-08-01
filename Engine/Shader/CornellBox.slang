@@ -7,16 +7,22 @@ struct VertexIn {
 
 cbuffer frame : register(b1) {
     float4x4 viewProj;
-    float3 cameraPos;     float _pad0;
-    float3 lightCenter;   float lightArea;
-    float3 lightNormal;   float _pad1;
-    float3 lightRadiance; float ambient;
+    // xyz = camera position, w unused
+    float4 cameraPos;
+    // xyz = light center, w = light area
+    float4 lightCenter_lightArea;
+    // xyz = light normal, w unused
+    float4 lightNormal;
+    // xyz = light radiance, w = ambient strength
+    float4 lightRadiance_ambient;
 };
 
 cbuffer object : register(b2) {
     float4x4 model;
-    float3 albedo;   float metallic;
-    float3 emissive; float roughness;
+    // xyz = albedo, w = metallic
+    float4 albedo_metallic;
+    // xyz = emissive, w = roughness
+    float4 emissive_roughness;
 };
 
 struct VertexOut {
@@ -63,6 +69,18 @@ float visibilitySmith(float NoV, float NoL, float a) {
 
 [shader("fragment")]
 float4 fs_main(VertexOut input) : SV_Target {
+    float3 cameraPos = cameraPos.xyz;
+    float3 lightCenter = lightCenter_lightArea.xyz;
+    float lightArea = lightCenter_lightArea.w;
+    float3 lightNormal = lightNormal.xyz;
+    float3 lightRadiance = lightRadiance_ambient.xyz;
+    float ambient = lightRadiance_ambient.w;
+
+    float3 albedo = albedo_metallic.xyz;
+    float metallic = albedo_metallic.w;
+    float3 emissive = emissive_roughness.xyz;
+    float roughness = emissive_roughness.w;
+
     float3 N = normalize(input.normal);
     float3 V = normalize(cameraPos - input.posWorld);
 

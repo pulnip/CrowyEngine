@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <utility>
 #include <variant>
+#include <vector>
 #include "HashUtil.hpp"
 #include "IntMath.hpp"
 #include "Primitives.hpp"
@@ -415,10 +416,6 @@ namespace Crowy
         u32 depth = 1;
         u32 mipLevels = 1;
         u32 arraySize = 1;
-        // if isCubeMap,
-        //   depth must be 2,
-        //   arraySize must be multiple of 6
-        bool isCubeMap = false;
         RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
         RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
@@ -994,6 +991,19 @@ namespace Crowy
         .addressV = RHIAddressMode::Border,
         .addressW = RHIAddressMode::Border
     };
+
+    // the fixed sampler table.
+    // order must match Sampler.slang
+    inline constexpr std::array RHI_STATIC_SAMPLERS{
+        LINEAR_WRAP_SAMPLER,
+        LINEAR_CLAMP_SAMPLER,
+        LINEAR_MIRROR_SAMPLER,
+        LINEAR_BORDER_SAMPLER,
+        NEAREST_WRAP_SAMPLER,
+        NEAREST_CLAMP_SAMPLER,
+        NEAREST_MIRROR_SAMPLER,
+        NEAREST_BORDER_SAMPLER
+    };
 }
 
 template<>
@@ -1133,11 +1143,20 @@ struct std::hash<Crowy::RHITextureViewDesc>{
 
 namespace Crowy
 {
+    struct RHISamplerUse{
+        // backend binding index ([[sampler(n)]] on Metal)
+        u32 slot = 0;
+        // index into RHI_STATIC_SAMPLERS
+        u32 samplerIndex = 0;
+    };
+
     // Shader Reflection for bindless model
     struct RHIShaderReflection{
         u64 entryPointIndex = std::numeric_limits<u64>::max();
         // for compute pipeline, (0, 0, 0) for others.
         Size3D threadGroupSize{0, 0, 0};
+
+        std::vector<RHISamplerUse> usedSamplers;
     };
     struct RHIProgramReflection{
         std::unordered_map<Str, u32> nameToSlot;

@@ -9,10 +9,12 @@
 
 namespace Crowy
 {
+    class MetalHeapPool;
+
     class MetalBuffer final: public RHIBuffer{
     private:
         struct FrameResource{
-            MTL::Buffer* buffer = nullptr;
+            NS::SharedPtr<MTL::Buffer> buffer;
             void* mapped = nullptr;
             // for Enhanced Resource Barrier
             RHIBarrierSync syncState;
@@ -30,8 +32,8 @@ namespace Crowy
 
     public:
         MetalBuffer(
-            MTL::Device& device,
-            const RHIBufferCreateDesc& desc,
+            MetalHeapPool&,
+            const RHIBufferCreateDesc&,
             const u64& frameIndex,
             StrView name = {}
         );
@@ -111,7 +113,7 @@ namespace Crowy
             return getResourceID(view);
         }
 
-        MTL::Buffer* Get() noexcept{ return resources[currentIndex()].buffer; }
+        MTL::Buffer* Get() noexcept{ return resources[currentIndex()].buffer.get(); }
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         // call wherever the GPU is about to be pointed at the current slot

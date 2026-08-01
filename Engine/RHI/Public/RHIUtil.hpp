@@ -25,4 +25,16 @@ namespace Crowy
     );
 
     RHIPixelFormat toSrgb(RHIPixelFormat format);
+
+    // 8-bit 4-channel pixels with rows rowPitch bytes apart; bgra
+    // selects the channel order. Writes a 32bpp bottom-up BMP.
+    // Returns false when the file cannot be created.
+    bool WriteBMP(
+        const u8* pixels,
+        usize rowPitch,
+        u32 width,
+        u32 height,
+        bool bgra,
+        const Str& path
+    );
 }

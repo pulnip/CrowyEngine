@@ -11,6 +11,9 @@ namespace Crowy
     class DX12Swapchain: public RHISwapchain{
     private:
         SwapchainRAII swapchain = nullptr;
+        // owned by DX12Device, which outlives the swapchain;
+        // kept for the CROWY_DUMP_FRAME readback copy
+        CommandQueue* queue = nullptr;
         bool vsync, allowTearing;
 
         DescriptorHeapAllocator& cbvsrvuavHeap;

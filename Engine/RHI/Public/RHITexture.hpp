@@ -23,6 +23,8 @@ namespace Crowy
         std::vector<RHIBarrierPoint> barriers;
 
     public:
+        RHITexture() = default;
+
         RHITexture(
             RHIPixelFormat format,
             RHIBarrierSync syncState,
@@ -46,7 +48,7 @@ namespace Crowy
             CROWY_ASSERT(arraySize > 0, "texture needs at least one array slice");
         }
         virtual ~RHITexture() = default;
-        CROWY_DECLARE_PINNED(RHITexture)
+        CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(RHITexture)
 
         RHIPixelFormat GetFormat() const noexcept{
             return format;

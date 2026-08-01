@@ -23,6 +23,41 @@ function(crowy_rhi_sample NAME)
             delayimp.lib
         )
     endif()
+
+    # launch-and-watch smoke test (see Tools/smoke_run.sh|.ps1);
+    # registered here so every new sample gets one automatically.
+    # run them with
+    #   ctest --test-dir build -C Debug -L smoke
+    # duration and frame capture come from CROWY_SMOKE_* environment
+    # variables read by the scripts, so no values are baked in here.
+    if(APPLE)
+        set(SMOKE_COMMAND
+            "${CMAKE_SOURCE_DIR}/Tools/smoke_run.sh"
+            "$<TARGET_FILE:${NAME}>"
+        )
+    elseif(WIN32)
+        set(SMOKE_COMMAND
+            powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${CMAKE_SOURCE_DIR}/Tools/smoke_run.ps1"
+            "$<TARGET_FILE:${NAME}>"
+        )
+    endif()
+    if(DEFINED SMOKE_COMMAND)
+        add_test(
+            NAME ${NAME}Smoke
+            COMMAND ${SMOKE_COMMAND}
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        )
+        set_tests_properties(${NAME}Smoke
+        PROPERTIES
+            LABELS "smoke"
+            # windowed apps fight over focus, and the debug layer slows
+            # everything down; one at a time keeps results stable
+            RUN_SERIAL TRUE
+            # generous: the watch window is env-configurable
+            TIMEOUT 300
+        )
+    endif()
 endfunction()
 
 function(crowy_graphics_sample NAME)

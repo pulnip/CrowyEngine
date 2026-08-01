@@ -1,4 +1,6 @@
 #include <Metal/MTLDevice.hpp>
+#include "Assert.hpp"
+#include "MetalHeapPool.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
 #include "Primitives.hpp"
@@ -7,7 +9,7 @@
 namespace Crowy
 {
     MetalTexture::MetalTexture(
-        MTL::Device& device,
+        MetalHeapPool& heapPool,
         MTL::TextureDescriptor* desc,
         StrView name
     )
@@ -19,9 +21,8 @@ namespace Crowy
             desc->mipmapLevelCount(),
             desc->arrayLength()
         )
+        , texture(NS::TransferPtr(heapPool.NewTexture(desc)))
     {
-        texture = device.newTexture(desc);
-
     #if defined(_DEBUG) || !defined(NDEBUG)
         if(!name.empty()){
             texture->setLabel(toNSString(name));
@@ -33,52 +34,62 @@ namespace Crowy
         CA::MetalDrawable* drawable
     )
         : RHITexture(
-            convert(
-                (texture = drawable->texture())->pixelFormat()
-            ),
+            convert(drawable->texture()->pixelFormat()),
             RHIBarrierSync::None,
             RHIBarrierAccess::NoAccess,
             RHIBarrierLayout::Present,
             1,
             1
         )
-    {
-        texture->retain();
-    }
+        , texture(NS::RetainPtr(drawable->texture()))
+    {}
 
-    MetalTexture::~MetalTexture(){
-        if(texture != nullptr){
-            texture->release();
-            texture = nullptr;
-        }
-    }
+    MetalTexture::~MetalTexture() = default;
 
-    MetalTexture::MetalTexture(MetalTexture&& other)
-        : RHITexture(
-            other.GetFormat(),
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Undefined,
-            other.GetMipLevels(),
-            other.GetArraySize()
-        )
-        , texture(other.texture)
-    {
-        other.texture = nullptr;
-    }
+    u64 MetalTexture::getResourceID(const RHITextureViewDesc& view){
+        // Unlike D3D12, a Metal resource ID carries the texture's type,
+        // so a shader-side texturecube needs an actual cube-typed view;
+        const bool wantsCube = std::holds_alternative<
+            RHITextureViewDesc::TexCube
+        >(view.config);
+        const auto wantedType = wantsCube ?
+            MTL::TextureTypeCube :
+            MTL::TextureType2D;
+        const auto format = convert(view.format);
 
-    MetalTexture& MetalTexture::operator=(MetalTexture&& other){
-        if(texture != nullptr){
-            texture->release();
+        const bool wholeMipChain =
+            view.mostDetailedMip == 0 &&
+            view.mipCount == RHI_ALL_MIPS;
+        if(wholeMipChain &&
+            texture->textureType() == wantedType &&
+            texture->pixelFormat() == format
+        ){
+            return texture->gpuResourceID()._impl;
         }
 
-        texture = other.texture;
-        other.texture = nullptr;
+        if(auto it = views.find(view); it != views.end()){
+            return it->second->gpuResourceID()._impl;
+        }
 
-        return *this;
-    }
+        CROWY_ASSERT(view.mostDetailedMip < texture->mipmapLevelCount(),
+            "view's most detailed mip out of range"
+        );
+        const auto mipCount = view.mipCount == RHI_ALL_MIPS ?
+            texture->mipmapLevelCount() - view.mostDetailedMip :
+            view.mipCount;
+        const auto sliceCount = wantsCube ? 6 : 1;
 
-    u64 MetalTexture::getResourceID(const RHITextureViewDesc&){
-        return texture->gpuResourceID()._impl;
+        auto mtlView = NS::TransferPtr(texture->newTextureView(
+            format,
+            wantedType,
+            NS::Range::Make(view.mostDetailedMip, mipCount),
+            NS::Range::Make(0, sliceCount)
+        ));
+        CROWY_ASSERT(mtlView, "failed to create texture view");
+
+        const auto id = mtlView->gpuResourceID()._impl;
+        views.emplace(view, std::move(mtlView));
+
+        return id;
     }
 }

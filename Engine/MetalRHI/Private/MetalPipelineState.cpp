@@ -1,5 +1,7 @@
+#include <array>
 #include <utility>
 #include <dispatch/dispatch.h>
+#include <Metal/MTLArgument.hpp>
 #include <Metal/MTLComputePipeline.hpp>
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLLibrary.hpp>
@@ -9,6 +11,7 @@
 #include "AutoreleasePoolScope.hpp"
 #include "EnumUtil.hpp"
 #include "MetalPipelineState.hpp"
+#include "MetalSampler.hpp"
 #include "MetalUtil.hpp"
 #include "RHIShader.hpp"
 
@@ -128,6 +131,43 @@ namespace Crowy
             desc.setDepthStencilPassOperation(convert(op.passOp));
         }
 
+        auto resolveSamplers(
+            MetalReservedSamplers& samplers,
+            std::span<const RHISamplerUse> uses
+        ){
+            std::vector<MetalSamplerBinding> bindings;
+            bindings.reserve(uses.size());
+
+            for(const auto& use: uses){
+                bindings.push_back(MetalSamplerBinding{
+                    .slot = use.slot,
+                    .sampler = samplers.Get(use.samplerIndex)
+                });
+            }
+
+            return bindings;
+        }
+
+        u32 collectUsedBuffers(NS::Array* bindings){
+            u32 mask = 0;
+            if(bindings == nullptr){
+                return mask;
+            }
+
+            for(NS::UInteger i=0; i<bindings->count(); ++i){
+                auto binding = bindings->object<MTL::Binding>(i);
+                if(binding->type() != MTL::BindingTypeBuffer)
+                    continue;
+                if(!binding->used())
+                    continue;
+
+                CROWY_ASSERT(binding->index() < 32);
+                mask |= 1u << binding->index();
+            }
+
+            return mask;
+        }
+
         auto makeLibrary(
             MTL::Device& device,
             RHIShader& shader
@@ -158,6 +198,7 @@ namespace Crowy
 
     MetalGraphicsPipelineState::MetalGraphicsPipelineState(
         MTL::Device& device,
+        MetalReservedSamplers& samplers,
         const RHIGraphicsPipelineStateDesc& desc,
         StrView name
     )
@@ -175,24 +216,33 @@ namespace Crowy
         if(frontend.vertexLayout.has_value()){
             const auto& vertexLayout = frontend.vertexLayout.value();
             auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
-            NS::UInteger stride = 0;
+            std::array<NS::UInteger, MaxVertexBufferSlots> strides{};
 
             for(usize i = 0; i < vertexLayout.size(); ++i){
                 const auto& elem = vertexLayout[i];
+                CROWY_ASSERT(elem.inputSlot < MaxVertexBufferSlots);
                 auto attr = vertexDesc->attributes()->object(i);
 
                 attr->setFormat(convertVertexFormat(elem.format));
                 attr->setOffset(elem.alignedByteOffset);
-                attr->setBufferIndex(elem.inputSlot);
+                attr->setBufferIndex(toVertexBufferIndex(elem.inputSlot));
 
                 auto elemSize = detail::GetBytesPerPixel(elem.format);
                 auto elemEnd = elem.alignedByteOffset + elemSize;
-                if(elemEnd > stride) stride = elemEnd;
+                if(elemEnd > strides[elem.inputSlot]){
+                    strides[elem.inputSlot] = elemEnd;
+                }
             }
 
-            auto layout = vertexDesc->layouts()->object(0);
-            layout->setStride(stride);
-            layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
+            for(u32 slot = 0; slot < MaxVertexBufferSlots; ++slot){
+                if(strides[slot] == 0) continue;
+
+                auto layout = vertexDesc->layouts()->object(
+                    toVertexBufferIndex(slot)
+                );
+                layout->setStride(strides[slot]);
+                layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
+            }
 
             pipelineDesc->setVertexDescriptor(vertexDesc);
             vertexDesc->release();
@@ -220,6 +270,21 @@ namespace Crowy
         #endif
 
             pipelineDesc->setVertexFunction(func);
+
+            vsSamplers = resolveSamplers(
+                samplers,
+                shaderProgram.GetUsedSamplers(entryPoint)
+            );
+
+            // fragment entry point lives in the same program
+            if(desc.fragmentShader.path == filePath){
+                fsSamplers = resolveSamplers(
+                    samplers,
+                    shaderProgram.GetUsedSamplers(
+                        desc.fragmentShader.entryPoint
+                    )
+                );
+            }
         }
 
         // Store rasterizer state for command list
@@ -239,6 +304,13 @@ namespace Crowy
         #if defined(_DEBUG) || !defined(NDEBUG)
             library->setLabel(toNSString(toUTF8String(filePath)));
         #endif
+
+            fsSamplers = resolveSamplers(
+                samplers,
+                shaderProgram.GetUsedSamplers(
+                    desc.fragmentShader.entryPoint
+                )
+            );
         }
 
         {
@@ -329,35 +401,38 @@ namespace Crowy
             );
         }
 
+        MTL::AutoreleasedRenderPipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
-        pipeline = device.newRenderPipelineState(
+        pipeline = NS::TransferPtr(device.newRenderPipelineState(
             pipelineDesc,
+            MTL::PipelineOptionBindingInfo,
+            &refl,
             &error
-        );
+        ));
         pipelineDesc->release();
 
-        if(pipeline == nullptr){
+        if(!pipeline){
             auto msg = error->localizedDescription()->utf8String();
             throw std::runtime_error(msg);
         }
+
+        // which buffer indices each stage actually reads,
+        // command list can skip bindings a stage never uses
+        vsUsedBuffers = collectUsedBuffers(refl->vertexBindings());
+        fsUsedBuffers = collectUsedBuffers(refl->fragmentBindings());
     }
 
-    MetalGraphicsPipelineState::~MetalGraphicsPipelineState(){
-        if(pipeline != nullptr){
-            pipeline->release();
-            pipeline = nullptr;
-        }
-        if(depthStencilState != nullptr){
-            depthStencilState->release();
-            depthStencilState = nullptr;
-        }
-    }
+    MetalGraphicsPipelineState::~MetalGraphicsPipelineState() = default;
 
     void MetalGraphicsPipelineState::Bind(MTL::RenderCommandEncoder& encoder){
-        encoder.setRenderPipelineState(pipeline);
+        encoder.setRenderPipelineState(pipeline.get());
 
-        if(depthStencilState != nullptr){
-            encoder.setDepthStencilState(depthStencilState);
+        // bind sampler to reserved slot
+        for(const auto& binding: vsSamplers){
+            encoder.setVertexSamplerState(binding.sampler, binding.slot);
+        }
+        for(const auto& binding: fsSamplers){
+            encoder.setFragmentSamplerState(binding.sampler, binding.slot);
         }
 
         // Rasterizer state
@@ -382,6 +457,10 @@ namespace Crowy
                 MTL::DepthClipModeClip :
                 MTL::DepthClipModeClamp
         );
+
+        if(depthStencilState){
+            encoder.setDepthStencilState(depthStencilState.get());
+        }
     }
 
     void MetalGraphicsPipelineState::createDepthStencilState(
@@ -409,12 +488,13 @@ namespace Crowy
             mtlDesc->release();
         }
 
-        depthStencilState = device.newDepthStencilState(dsDesc);
+        depthStencilState = NS::TransferPtr(device.newDepthStencilState(dsDesc));
         dsDesc->release();
     }
 
     MetalComputePipelineState::MetalComputePipelineState(
         MTL::Device& device,
+        MetalReservedSamplers& samplers,
         const RHIComputePipelineStateDesc& desc,
         StrView name
     )
@@ -448,20 +528,25 @@ namespace Crowy
             throw std::runtime_error("Compute shader is null");
         }
 
+        this->samplers = resolveSamplers(
+            samplers,
+            shaderProgram.GetUsedSamplers(entryPoint)
+        );
+
         auto pipelineDesc = MTL::ComputePipelineDescriptor::alloc()->init();
         pipelineDesc->setComputeFunction(func);
 
         MTL::AutoreleasedComputePipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
-        pipeline = device.newComputePipelineState(
+        pipeline = NS::TransferPtr(device.newComputePipelineState(
             pipelineDesc,
             MTL::PipelineOptionBindingInfo,
             &refl,
             &error
-        );
+        ));
         pipelineDesc->release();
 
-        if(pipeline == nullptr){
+        if(!pipeline){
             throw std::runtime_error("Failed to create compute pipeline state");
         }
 
@@ -473,14 +558,14 @@ namespace Crowy
         );
     }
 
-    MetalComputePipelineState::~MetalComputePipelineState(){
-        if(pipeline != nullptr){
-            pipeline->release();
-            pipeline = nullptr;
-        }
-    }
+    MetalComputePipelineState::~MetalComputePipelineState() = default;
 
     void MetalComputePipelineState::Bind(MTL::ComputeCommandEncoder& encoder){
-        encoder.setComputePipelineState(pipeline);
+        encoder.setComputePipelineState(pipeline.get());
+
+        // bind sampler to reserved slot
+        for(const auto& binding: samplers){
+            encoder.setSamplerState(binding.sampler, binding.slot);
+        }
     }
 }

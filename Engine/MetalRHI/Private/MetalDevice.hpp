@@ -10,9 +10,7 @@ namespace Crowy
     class MetalDevice final: public RHIDevice{
     private:
         class Impl;
-        static constexpr usize implSize = 128;
-        static constexpr usize implAlign = 8;
-        FastPimpl<Impl, implSize, implAlign> impl;
+        FastPimpl<Impl, 592, 8> impl;
 
     public:
         MetalDevice();

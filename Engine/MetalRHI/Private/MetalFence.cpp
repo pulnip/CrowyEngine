@@ -10,16 +10,11 @@ namespace Crowy
         MTL::Device& device,
         u64 initialValue
     ){
-        sharedEvent = device.newSharedEvent();
+        sharedEvent = NS::TransferPtr(device.newSharedEvent());
         sharedEvent->setSignaledValue(initialValue);
     }
 
-    MetalFence::~MetalFence(){
-        if(sharedEvent != nullptr){
-            sharedEvent->release();
-            sharedEvent = nullptr;
-        }
-    }
+    MetalFence::~MetalFence() = default;
 
     void MetalFence::WaitCPU(u64 waitValue, u64 timeoutMs){
         using namespace std::chrono;
@@ -70,6 +65,6 @@ namespace Crowy
     }
 
     void MetalFence::Encode(MTL::CommandBuffer& cmdBuffer, u64 value){
-        cmdBuffer.encodeSignalEvent(sharedEvent, value);
+        cmdBuffer.encodeSignalEvent(sharedEvent.get(), value);
     }
 }

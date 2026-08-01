@@ -19,6 +19,18 @@
             "program": "${command:cmake.launchTargetPath}",
             "args": [],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "(lldb) CMake Target (Metal Validation)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "MTL_DEBUG_LAYER": "1",
+                "MTL_DEBUG_LAYER_WARNING_MODE": "nslog"
+            }
         }
     ]
 }

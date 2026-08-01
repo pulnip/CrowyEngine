@@ -142,12 +142,12 @@ namespace Crowy
             );
 
             if(height == 1){
-                return arraySize > 1 ?
+                return arraySize == 1 ?
                     MTL::TextureType1D :
                     MTL::TextureType1DArray;
             }
             else if(depth == 1){
-                return arraySize > 1 ?
+                return arraySize == 1 ?
                     MTL::TextureType2D :
                     MTL::TextureType2DArray;
             }
@@ -163,28 +163,18 @@ namespace Crowy
         texDesc->setHeight(desc.height);
         texDesc->setDepth(desc.depth);
         texDesc->setMipmapLevelCount(desc.mipLevels);
-        if(desc.isCubeMap){
-            CROWY_ASSERT(desc.depth == 2 && desc.arraySize % 6 == 0);
-            texDesc->setArrayLength(desc.arraySize / 6);
-            texDesc->setTextureType(desc.arraySize == 6 ?
-                MTL::TextureTypeCube :
-                MTL::TextureTypeCubeArray
-            );
-        }
-        else{
-            texDesc->setArrayLength(desc.arraySize);
-            texDesc->setTextureType(convert(
-                desc.height,
-                desc.depth,
-                desc.arraySize
-            ));
-        }
+        texDesc->setArrayLength(desc.arraySize);
+        texDesc->setTextureType(convert(
+            desc.height,
+            desc.depth,
+            desc.arraySize
+        ));
         texDesc->setPixelFormat(convert(desc.format));
         texDesc->setUsage(convert(desc.usage));
 
         using enum RHIMemoryAccess;
 
-        CROWY_ASSERT(desc.access == GPUOnly && desc.access == Transient,
+        CROWY_ASSERT(desc.access == GPUOnly || desc.access == Transient,
             "Use RHIBuffer for CPU-Accessable Resource"
         );
 

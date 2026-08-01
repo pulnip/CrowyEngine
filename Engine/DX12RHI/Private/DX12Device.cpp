@@ -1,4 +1,5 @@
 #include <array>
+#include <cstdlib>
 #include <print>
 #include <stdexcept>
 #include <vector>
@@ -127,6 +128,58 @@ namespace{
             BYTES(options16)
         );
         capabilities.gpuUploadHeap = SUCCEEDED(hr) && options16.GPUUploadHeapSupported;
+    }
+
+    // mirrors debug-layer messages to stderr so a headless run
+    // (e.g. Tools/smoke_run.ps1) can see the cause in its log
+    void CALLBACK debugMessageToStderr(
+        D3D12_MESSAGE_CATEGORY,
+        D3D12_MESSAGE_SEVERITY severity,
+        D3D12_MESSAGE_ID,
+        LPCSTR description,
+        void*
+    ){
+        const char* label = severity <= D3D12_MESSAGE_SEVERITY_ERROR ?
+            "D3D12 ERROR" : "D3D12 WARNING";
+        std::println(stderr, "{}: {}", label, description);
+    }
+
+    // With CROWY_D3D_DEBUG_BREAK set, validation errors raise a debug
+    // break; without a debugger attached that aborts the process, so a
+    // smoke run turns validation errors into a nonzero exit code — the
+    // same contract as Metal's MTL_DEBUG_LAYER assert mode.
+    // Needs the debug layer, so it only works in debug builds.
+    void setupValidationBreak(Crowy::Device& device){
+        using namespace Crowy;
+
+        if(std::getenv("CROWY_D3D_DEBUG_BREAK") == nullptr)
+            return;
+
+        COMRAII<ID3D12InfoQueue> infoQueue;
+        if(FAILED(device.QueryInterface(IID_PPV_ARGS(&infoQueue)))){
+            std::println(stderr,
+                "CROWY_D3D_DEBUG_BREAK ignored: debug layer is not active"
+            );
+            return;
+        }
+
+        infoQueue->SetBreakOnSeverity(
+            D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE
+        );
+        infoQueue->SetBreakOnSeverity(
+            D3D12_MESSAGE_SEVERITY_ERROR, TRUE
+        );
+
+        COMRAII<ID3D12InfoQueue1> infoQueue1;
+        if(SUCCEEDED(infoQueue.As(&infoQueue1))){
+            DWORD cookie = 0;
+            infoQueue1->RegisterMessageCallback(
+                &debugMessageToStderr,
+                D3D12_MESSAGE_CALLBACK_FLAG_NONE,
+                nullptr,
+                &cookie
+            );
+        }
     }
 
     void checkAgilitySDK(){
@@ -368,6 +421,7 @@ namespace Crowy
             ))
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
         {
+            setupValidationBreak(*device.Get());
             checkAgilitySDK();
             checkDeviceFeature(*device.Get(), dx12Capabilities);
             InitGlobalSession();

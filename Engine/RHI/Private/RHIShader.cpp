@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <format>
 #include <stdexcept>
@@ -35,7 +36,10 @@ namespace{
 
     void throwIfSlangError(ISlangBlob* diagnostics){
         if(diagnostics != nullptr && diagnostics->getBufferSize() > 0){
-            auto errors = diagnostics->getBufferPointer();
+            const Crowy::StrView errors{
+                static_cast<const char*>(diagnostics->getBufferPointer()),
+                diagnostics->getBufferSize()
+            };
             throw std::runtime_error(std::format(
                 "Slang compile failed: {}",
                 errors
@@ -104,6 +108,8 @@ namespace Crowy
                             hasConstantBuffer = true;
                             break;
                         case ShaderResource:
+                            [[fallthrough]];
+                        case DescriptorTableSlot: // for Metal
                             break;
                         default:
                             throw std::runtime_error(
@@ -155,6 +161,61 @@ namespace Crowy
             }
 
             return refl;
+        }
+
+        // names in RHI_STATIC_SAMPLERS order;
+        // must match Engine/Shader/Sampler.slang
+        constexpr std::array staticSamplerNames{
+            "linearWrap",
+            "linearClamp",
+            "linearMirror",
+            "linearBorder",
+            "nearestWrap",
+            "nearestClamp",
+            "nearestMirror",
+            "nearestBorder"
+        };
+
+        struct SamplerParam{
+            u32 slot;
+            u32 space;
+            u32 samplerIndex;
+        };
+
+        auto collectSamplerParams(slang::ProgramLayout& layout){
+            using namespace slang;
+
+            std::vector<SamplerParam> params;
+
+            const auto numParams = layout.getParameterCount();
+            for(u32 i=0; i<numParams; ++i){
+                auto param = layout.getParameterByIndex(i);
+                if(param->getCategory() != SamplerState)
+                    continue;
+
+                const StrView name = param->getName();
+                const auto found = std::ranges::find(
+                    staticSamplerNames,
+                    name
+                );
+                if(found == staticSamplerNames.end()){
+                    throw std::runtime_error(std::format(
+                        "unknown global sampler '{}'; "
+                        "only the static samplers of Sampler.slang can be bound",
+                        name
+                    ));
+                }
+
+                params.push_back(SamplerParam{
+                    .slot = param->getBindingIndex(),
+                    .space = static_cast<u32>(param->getBindingSpace()),
+                    .samplerIndex = static_cast<u32>(
+                        found - staticSamplerNames.begin()
+                    )
+                });
+            }
+
+            return params;
         }
     }
 
@@ -269,6 +330,9 @@ namespace Crowy
         }
 
         reflection = extractReflection(*program->getLayout());
+        const auto samplerParams = collectSamplerParams(
+            *program->getLayout()
+        );
 
         for(auto& [name, refl]: reflection.shaderRefl){
             ComPtr<IMetadata> metadata;
@@ -278,11 +342,31 @@ namespace Crowy
                 0,
                 metadata.writeRef(),
                 diagnostics.writeRef()
-            ), "");
+            ), std::format(
+                "Failed to get entry point metadata for '{}' in {}",
+                name, path
+            ));
 
             ::throwIfSlangError(diagnostics.get());
 
             ::checkMetadata(*metadata);
+
+            for(const auto& sampler: samplerParams){
+                bool used = false;
+                CHECK_SRESULT(metadata->isParameterLocationUsed(
+                    SLANG_PARAMETER_CATEGORY_SAMPLER_STATE,
+                    sampler.space,
+                    sampler.slot,
+                    used
+                ), "Failed to query sampler usage");
+
+                if(used){
+                    refl.usedSamplers.push_back({
+                        .slot = sampler.slot,
+                        .samplerIndex = sampler.samplerIndex
+                    });
+                }
+            }
         }
     }
 
@@ -302,6 +386,15 @@ namespace Crowy
         CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
 
         return it->second.threadGroupSize;
+    }
+
+    std::span<const RHISamplerUse> RHIShader::GetUsedSamplers(
+        StrView entryPoint
+    ){
+        auto it = reflection.shaderRefl.find(entryPoint);
+        CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
+
+        return it->second.usedSamplers;
     }
 
     std::vector<u8> RHIShader::GetEntryPointCode(StrView entryPoint){

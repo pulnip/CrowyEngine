@@ -1,19 +1,39 @@
 #pragma once
 
+#include <vector>
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLComputeCommandEncoder.hpp>
+#include <Metal/MTLSampler.hpp>
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
+    class MetalReservedSamplers;
+
+    // a sampler resolved to its encoder slot
+    struct MetalSamplerBinding{
+        NS::UInteger slot;
+        // owned by MetalDevice's sampler table,
+        // which outlives every pipeline state
+        MTL::SamplerState* sampler;
+    };
+
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
     private:
-        MTL::RenderPipelineState* pipeline = nullptr;
+        NS::SharedPtr<MTL::RenderPipelineState> pipeline;
         RHIRasterizerState rasterizerState{};
-        MTL::DepthStencilState* depthStencilState = nullptr;
+        NS::SharedPtr<MTL::DepthStencilState> depthStencilState;
 
         MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
+
+        std::vector<MetalSamplerBinding> vsSamplers;
+        std::vector<MetalSamplerBinding> fsSamplers;
+
+        // buffer-argument-table usage per stage, bit i = buffer index i;
+        // the table has 31 entries, so u32 covers it
+        u32 vsUsedBuffers = 0;
+        u32 fsUsedBuffers = 0;
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
@@ -21,8 +41,9 @@ namespace Crowy
 
     public:
         MetalGraphicsPipelineState(
-            MTL::Device& device,
-            const RHIGraphicsPipelineStateDesc& desc,
+            MTL::Device&,
+            MetalReservedSamplers&,
+            const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
         );
 
@@ -34,6 +55,13 @@ namespace Crowy
             return topology;
         }
 
+        bool UsesVertexBuffer(NS::UInteger index) const noexcept{
+            return (vsUsedBuffers >> index) & 1u;
+        }
+        bool UsesFragmentBuffer(NS::UInteger index) const noexcept{
+            return (fsUsedBuffers >> index) & 1u;
+        }
+
     private:
         void createDepthStencilState(
             MTL::Device& device,
@@ -43,8 +71,10 @@ namespace Crowy
 
     class MetalComputePipelineState final: public RHIComputePipelineState{
     private:
-        MTL::ComputePipelineState* pipeline = nullptr;
+        NS::SharedPtr<MTL::ComputePipelineState> pipeline;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
+
+        std::vector<MetalSamplerBinding> samplers;
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
@@ -52,8 +82,9 @@ namespace Crowy
 
     public:
         MetalComputePipelineState(
-            MTL::Device& device,
-            const RHIComputePipelineStateDesc& desc,
+            MTL::Device&,
+            MetalReservedSamplers&,
+            const RHIComputePipelineStateDesc&,
             StrView name = {}
         );
 

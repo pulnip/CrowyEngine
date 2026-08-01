@@ -2,6 +2,7 @@
 #include <QuartzCore/CAMetalLayer.hpp>
 #include <Metal/MTLCommandBuffer.hpp>
 #include "Assert.hpp"
+#include "MetalFrameDump.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
@@ -20,24 +21,26 @@ namespace Crowy
 
         metalLayer->setDevice(&device);
         metalLayer->setPixelFormat(convert(desc.bufferDesc.format));
+        // readable drawables; DumpFrameIfRequested depends on this
         metalLayer->setFramebufferOnly(false);
         metalLayer->setDrawableSize(CGSizeMake(
             desc.bufferDesc.width,
             desc.bufferDesc.height
         ));
 
-        backBuffer = std::make_unique<MetalTexture>(currentDrawable);
-
         // NOTE. discard desc.debugName, desc.vsync
     }
 
     MetalSwapchain::~MetalSwapchain(){
+        SDL_Metal_DestroyView(view);
         currentDrawable = nullptr;
     }
 
     bool MetalSwapchain::AcquireNextImage() noexcept{
         currentDrawable = metalLayer->nextDrawable();
-        *backBuffer = MetalTexture(currentDrawable);
+        backBuffer = currentDrawable != nullptr ?
+            MetalTexture(currentDrawable) :
+            MetalTexture{};
 
         return currentDrawable != nullptr;
     }
@@ -45,10 +48,11 @@ namespace Crowy
     void MetalSwapchain::Resize(u32 newWidth, u32 newHeight){
         metalLayer->setDrawableSize(CGSizeMake(newWidth, newHeight));
         currentDrawable = nullptr;
-        backBuffer = nullptr;
+        backBuffer = MetalTexture{};
     }
 
     void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer){
+        DumpFrameIfRequested(cmdBuffer, currentDrawable);
         cmdBuffer.presentDrawable(currentDrawable);
     }
 }

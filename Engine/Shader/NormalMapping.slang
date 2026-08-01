@@ -12,10 +12,10 @@ cbuffer uniform : register(b1) {
     // rigid rotation, so it transforms normals and tangents unchanged
     float4x4 model;
     float4x4 viewProj;
-    float3 cameraPos;
-    float parallaxScale;
-    float3 toLight;
-    float specularPower;
+    // xyz = camera position, w = parallax scale
+    float4 cameraPos_parallaxScale;
+    // xyz = direction to the light, w = specular power
+    float4 toLight_specularPower;
     float ambient;
 };
 
@@ -63,6 +63,11 @@ float4 fs_main(VertexOut input) : SV_Target {
     Texture2D normalTex = resource.normal;
     Texture2D bumpTex = resource.bump;
 
+    float3 cameraPos = cameraPos_parallaxScale.xyz;
+    float parallaxScale = cameraPos_parallaxScale.w;
+    float3 toLight = toLight_specularPower.xyz;
+    float specularPower = toLight_specularPower.w;
+
     // interpolation leaves the frame slightly non-orthogonal, so re-orthogonalize.
     // bitangent runs along +v, which points down in texture space
     float3 N = normalize(input.normal);
@@ -72,7 +77,7 @@ float4 fs_main(VertexOut input) : SV_Target {
     // mul(v, tbn): tangent -> world
     float3x3 tbn = float3x3(T, B, N);
 
-    float3 viewDirW = normalize(cameraPos.xyz - input.posWorld);
+    float3 viewDirW = normalize(cameraPos - input.posWorld);
 
     // parallax with offset limiting. shifts the uv along the tangent-space view
     // direction so the height field looks displaced
@@ -89,7 +94,7 @@ float4 fs_main(VertexOut input) : SV_Target {
 
     float3 albedo = diffuseTex.Sample(linearWrap, uv).rgb;
 
-    float3 L = normalize(toLight.xyz);
+    float3 L = normalize(toLight);
     float3 H = normalize(L + viewDirW);
 
     float ndotl = saturate(dot(n, L));

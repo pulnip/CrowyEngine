@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
 #include "RHIAPI.hpp"
@@ -7,13 +8,23 @@
 
 namespace Crowy
 {
+    class MetalHeapPool;
+
     class MetalTexture final: public RHITexture{
     private:
-        MTL::Texture* texture;
+        NS::SharedPtr<MTL::Texture> texture;
+        // views alias the base texture's heap allocation,
+        // so the heap's residency set covers them too
+        std::unordered_map<
+            RHITextureViewDesc,
+            NS::SharedPtr<MTL::Texture>
+        > views;
 
     public:
+        MetalTexture() = default;
+
         MetalTexture(
-            MTL::Device&,
+            MetalHeapPool&,
             MTL::TextureDescriptor*,
             StrView name = {}
         );
@@ -22,8 +33,7 @@ namespace Crowy
         );
         ~MetalTexture();
 
-        MetalTexture(MetalTexture&&);
-        MetalTexture& operator=(MetalTexture&&);
+        CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(MetalTexture)
 
         u32 GetWidth() const noexcept RHI_OVERRIDE{
             return texture->width();
@@ -43,11 +53,11 @@ namespace Crowy
             return getResourceID(view);
         }
 
-        virtual void* GetNative() noexcept RHI_OVERRIDE{
-            return texture;
-        }
+        auto Get(){ return texture.get(); }
 
-        MTL::Texture* Get(){ return texture; }
+        virtual void* GetNative() noexcept RHI_OVERRIDE{
+            return Get();
+        }
 
     private:
         u64 getResourceID(const RHITextureViewDesc&);
