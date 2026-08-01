@@ -1,5 +1,6 @@
 #include <SDL3/SDL_video.h>
 #include "DX12Definitions.hpp"
+#include "DX12FrameDump.hpp"
 #include "DX12Util.hpp"
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
@@ -36,6 +37,7 @@ namespace Crowy
         StrView name
     )
         : RHISwapchain(desc.bufferDesc.format)
+        , queue(&commandQueue)
         , vsync(desc.vsync)
         , allowTearing(desc.allowTearing)
         , cbvsrvuavHeap(cbvsrvuavHeap)
@@ -153,6 +155,11 @@ namespace Crowy
     }
 
     void DX12Swapchain::Present(){
+        DumpFrameIfRequested(
+            *queue,
+            *static_cast<DX12Texture&>(GetCurrentTexture()).Get()
+        );
+
         UINT syncInterval = vsync ? 1 : 0;
         UINT flags = (!vsync && allowTearing) ?
             DXGI_PRESENT_ALLOW_TEARING : 0;
