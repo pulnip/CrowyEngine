@@ -252,22 +252,23 @@ namespace Crowy
         if(auto it = srvs.find(desc); it != srvs.end())
             return it->second;
 
-        const auto NumElements = GetSize() / 4;
+        const auto sizeBytes = GetSize();
         const auto dxDesc = std::visit(overload{
             [&](const RHIBufferViewDesc::Raw&){
+                // raw views address 4-byte words
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::RawBuffer(
-                    NumElements
+                    sizeBytes / 4
                 );
             },
             [&](const RHIBufferViewDesc::Typed& c){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TypedBuffer(
                     convert(c.format),
-                    NumElements
+                    sizeBytes / detail::GetBytesPerPixel(c.format)
                 );
             },
             [&](const RHIBufferViewDesc::Structured& c){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::StructuredBuffer(
-                    NumElements,
+                    sizeBytes / c.stride,
                     c.stride
                 );
             }
@@ -289,22 +290,23 @@ namespace Crowy
         if(auto it = uavs.find(desc); it != uavs.end())
             return it->second;
 
-        const auto NumElements = GetSize() / 4;
+        const auto sizeBytes = GetSize();
         const auto dxDesc = std::visit(overload{
             [&](const RHIBufferViewDesc::Raw&){
+                // raw views address 4-byte words
                 return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::RawBuffer(
-                    NumElements
+                    sizeBytes / 4
                 );
             },
             [&](const RHIBufferViewDesc::Typed& c){
                 return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::TypedBuffer(
                     convert(c.format),
-                    NumElements
+                    sizeBytes / detail::GetBytesPerPixel(c.format)
                 );
             },
             [&](const RHIBufferViewDesc::Structured& c){
                 return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::StructuredBuffer(
-                    NumElements,
+                    sizeBytes / c.stride,
                     c.stride
                 );
             }
