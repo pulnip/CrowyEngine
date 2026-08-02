@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <numbers>
 #include <vector>
 #include "AppFramework.hpp"
+#include "GeometryPool.hpp"
 #include "InputProvider.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
@@ -12,11 +14,14 @@
 
 namespace Crowy
 {
-    // 10,000 unit cubes on a sparse 3D lattice (SkyGrid style), all issued
+    // 10,000 blocks on a sparse 3D lattice (SkyGrid style), all issued
     // by one ExecuteIndirect call. The camera flies around inside:
     // hold RButton to look, WASD to move, Space/Shift for up/down.
-    // Cube color is a 3-axis gradient derived from the drawID in the
+    // Block color is a 3-axis gradient derived from the drawID in the
     // shader, so a broken drawID channel is immediately visible.
+    // Three mesh types (box, sphere, camera-facing plane) live side by
+    // side in one GeometryPool, so every draw shares the same buffer
+    // bindings and differs only by firstIndex/baseVertex in its args.
     // The args and DrawData buffers are fully rewritten every frame even
     // though the scene is static — that is the pattern a culling pass
     // will later write into.
@@ -56,12 +61,17 @@ namespace Crowy
             Mat4 viewProj;
         };
 
+        static constexpr u32 MESH_TYPE_COUNT = 3;
+        // generous headroom so the allocation stats show real utilization
+        static constexpr u32 VERTEX_POOL_CAPACITY = 1024;
+        static constexpr u32 INDEX_POOL_CAPACITY = 4096;
+
         RHIGraphicsPipelineStateRAII pso;
         RHITextureRAII depthBuffer;
         RHIDevice* device = nullptr;
 
-        RHIBufferRAII vertices, indices;
-        u32 indexCount = 0;
+        std::unique_ptr<GeometryPool> geometryPool;
+        std::array<GeometryAllocation, MESH_TYPE_COUNT> meshes;
 
         RHIBufferRAII frameCB;
         RHIBufferRAII drawDataBuffer;
@@ -129,20 +139,11 @@ namespace Crowy
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
             aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
 
-            const auto boxMesh = MakeBox(BLOCK_HALF_SIZE);
-            vertices = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(sizeof(Vertex) * boxMesh.vertices.size()),
-                .usage = RHIBufferUsage::VertexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
-                .initialData = boxMesh.vertices.data()
-            });
-            indices = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(sizeof(u32) * boxMesh.indices.size()),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
-                .initialData = boxMesh.indices.data()
-            });
-            indexCount = static_cast<u32>(boxMesh.indices.size());
+            geometryPool = std::make_unique<GeometryPool>(
+                device,
+                VERTEX_POOL_CAPACITY,
+                INDEX_POOL_CAPACITY
+            );
 
             frameCB = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(FrameUniforms),
@@ -162,6 +163,26 @@ namespace Crowy
 
             drawDataScratch.resize(DRAW_COUNT);
             argsScratch.resize(DRAW_COUNT);
+        }
+
+        void OnInitialRecord(RHICommandList& cmdList) override{
+            const auto boxMesh = MakeBox(BLOCK_HALF_SIZE);
+            const auto sphereMesh = MakeSphere(BLOCK_HALF_SIZE, 16, 8);
+            // single-sided quad facing the start camera (-Z normal)
+            const auto planeMesh = MakePlane(
+                Vec3{0.0f, 0.0f, -1.0f},
+                Vec3{1.0f, 0.0f, 0.0f},
+                BLOCK_HALF_SIZE
+            );
+
+            cmdList.BeginBlit();
+            meshes[0] = geometryPool->Add(cmdList, boxMesh.vertices, boxMesh.indices);
+            meshes[1] = geometryPool->Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
+            meshes[2] = geometryPool->Add(cmdList, planeMesh.vertices, planeMesh.indices);
+            geometryPool->FinishUploads(cmdList);
+            cmdList.EndBlit();
+
+            geometryPool->LogAllocationStats();
         }
 
         void ProcessInput(const InputProvider& input) override{
@@ -208,12 +229,16 @@ namespace Crowy
 
         void RewriteGPUBuffers(){
             for(u32 i=0; i<DRAW_COUNT; ++i){
+                const auto& mesh = meshes[i % MESH_TYPE_COUNT];
+
                 drawDataScratch[i] = DrawData{
                     .world = translateMat(BlockPosition(i)),
                     .objectID = i
                 };
                 argsScratch[i] = RHIDrawIndexedArgs{
-                    .indexCount = indexCount,
+                    .indexCount = mesh.indexCount,
+                    .firstIndex = mesh.firstIndex,
+                    .baseVertex = mesh.baseVertex,
                     .baseInstance = i
                 };
             }
@@ -254,8 +279,8 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetVertexBuffer(*vertices, 0, sizeof(Vertex));
-            cmdList.SetIndexBuffer(*indices);
+            cmdList.SetVertexBuffer(geometryPool->GetVertexBuffer(), 0, sizeof(Vertex));
+            cmdList.SetIndexBuffer(geometryPool->GetIndexBuffer());
             cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
             cmdList.SetPushGraphicsConstants(PassData{
                 .draws = drawDataBuffer->GetReadableID(
