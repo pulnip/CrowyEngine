@@ -200,6 +200,7 @@ namespace Crowy
         case None:                 return D3D12_BARRIER_SYNC_NONE;
         case All:                  return D3D12_BARRIER_SYNC_ALL;
         case Draw:                 return D3D12_BARRIER_SYNC_DRAW;
+        case IndexInput:           return D3D12_BARRIER_SYNC_INDEX_INPUT;
         case Vertex:               return D3D12_BARRIER_SYNC_VERTEX_SHADING;
         case Fragment:             return D3D12_BARRIER_SYNC_PIXEL_SHADING;
         case DepthStencil:         return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
