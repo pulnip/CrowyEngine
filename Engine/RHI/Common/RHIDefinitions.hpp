@@ -850,6 +850,9 @@ namespace Crowy
 
         std::array<RHIPixelFormat, RHI_MAX_RENDER_TARGETS> renderTargetFormats;
         usize renderTargetCount = 1;
+
+        // HLSL shader model; Metal ignores it
+        CStr profile = "sm_6_6";
     };
 
     struct RHIComputePipelineStateDesc{
@@ -867,7 +870,8 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc>{
         std::size_t h = hashAll(
             desc.preRasterizer,
             desc.rasterizer,
-            desc.fragmentShader
+            desc.fragmentShader,
+            StrView{desc.profile}
         );
 
         if(desc.depthStencil.has_value()){
