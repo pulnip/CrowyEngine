@@ -141,6 +141,13 @@ SOURCES
     BaseInstanceSpike.cpp
 )
 
+crowy_graphics_sample(TenThousandCubes
+SOURCES
+    TenThousandCubes.cpp
+DEPENDS
+    Crowy::Serialization
+)
+
 crowy_graphics_sample(BlackholeSimulation
 SOURCES
     BlackholeSimulation.cpp
