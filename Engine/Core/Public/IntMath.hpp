@@ -16,6 +16,16 @@ namespace Crowy
     }
 
     template<std::unsigned_integral T>
+    constexpr T floorDiv(T n, T d) noexcept{
+        return n / d;
+    }
+
+    template<std::unsigned_integral T>
+    constexpr T floorMod(T n, T d) noexcept{
+        return n % d;
+    }
+
+    template<std::unsigned_integral T>
     constexpr T ceilDiv(T n, T d) noexcept{
         return (n + (d-1)) / d;
     }
