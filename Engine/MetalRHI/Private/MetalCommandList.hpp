@@ -113,6 +113,8 @@ namespace Crowy
             u32 startInstance = 0
         ) RHI_OVERRIDE;
 
+        void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
+
         void BeginCompute() RHI_OVERRIDE;
         void EndCompute() RHI_OVERRIDE;
 

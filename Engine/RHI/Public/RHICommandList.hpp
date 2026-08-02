@@ -170,6 +170,10 @@ namespace Crowy
             u32 startInstance = 0
         ) = 0;
 
+        // binds batch.pso, then issues batch.drawCount
+        // indirect draws from batch.args (RHIDrawIndexedArgs[])
+        virtual void ExecuteIndirect(const DrawBatch& batch) = 0;
+
         virtual void BeginCompute() = 0;
         virtual void EndCompute() = 0;
 

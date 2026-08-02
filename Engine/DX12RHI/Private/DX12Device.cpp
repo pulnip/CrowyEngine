@@ -248,6 +248,33 @@ namespace{
 
         return commandQueue;
     }
+
+    // the one command signature every DrawBatch goes through: a single DRAW_INDEXED argument,
+    // so no root signature is needed at creation and no root arguments change per draw
+    auto createDrawIndexedSignature(Crowy::Device& device){
+        using namespace Crowy;
+
+        constexpr std::array args{
+            D3D12_INDIRECT_ARGUMENT_DESC{
+                .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED
+            }
+        };
+        const D3D12_COMMAND_SIGNATURE_DESC desc{
+            .ByteStride = sizeof(RHIDrawIndexedArgs),
+            .NumArgumentDescs = args.size(),
+            .pArgumentDescs = args.data(),
+            .NodeMask = 0
+        };
+
+        CommandSignatureRAII signature = nullptr;
+        CHECK_HRESULT(device.CreateCommandSignature(
+            &desc,
+            nullptr,
+            IID_PPV_ARGS(&signature)
+        ), "Failed to create draw-indexed command signature");
+
+        return signature;
+    }
 }
 
 namespace{
@@ -398,6 +425,7 @@ namespace Crowy
         DescriptorHeapAllocatorRAII samplerHeap = nullptr;
 
         RootSignatureRAII globalRootSignature;
+        CommandSignatureRAII drawIndexedSignature;
         DX12Capabilities dx12Capabilities{
             .gpuUploadHeap = false
         };
@@ -435,6 +463,7 @@ namespace Crowy
                 UINT(64)
             ))
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
+            , drawIndexedSignature(::createDrawIndexedSignature(*device.Get()))
         {
             setupValidationBreak(*device.Get());
             checkAgilitySDK();
@@ -594,6 +623,7 @@ namespace Crowy
                 *device.Get(),
                 *commandQueue.Get(),
                 *globalRootSignature.Get(),
+                *drawIndexedSignature.Get(),
                 frameIndex,
                 *cbvsrvuavHeap,
                 *rtvHeap,

@@ -10,6 +10,8 @@
 #include "MetalUtil.hpp"
 #include "MetalTexture.hpp"
 
+#include <stdexcept>
+
 namespace Crowy
 {
     namespace{
@@ -334,6 +336,10 @@ namespace Crowy
             baseVertex,
             startInstance
         );
+    }
+
+    void MetalCommandList::ExecuteIndirect(const DrawBatch&){
+        throw std::runtime_error("Unimplemented");
     }
 
     void MetalCommandList::BeginCompute(){

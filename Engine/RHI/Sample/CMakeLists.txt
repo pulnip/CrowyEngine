@@ -98,6 +98,11 @@ SOURCES
     helloCompute.cpp
 )
 
+crowy_graphics_sample(HelloIndirectDraw
+SOURCES
+    helloIndirectDraw.cpp
+)
+
 crowy_graphics_sample(CubeMapping
 SOURCES
     CubeMapping.cpp

@@ -1,0 +1,98 @@
+#include <array>
+#include "AppFramework.hpp"
+#include "RHIBuffer.hpp"
+#include "RHIPipelineState.hpp"
+
+namespace Crowy
+{
+    // Indirect twin of BaseInstanceSpike:
+    // the same four quads, but the draw arguments live in a GPU buffer
+    // and reach the hardware through a single ExecuteIndirect call.
+    // Rendering must be pixel-identical to BaseInstanceSpike
+    class HelloIndirectDraw: public App{
+        using App::App;
+
+        static constexpr u32 DRAW_COUNT = 4;
+
+        RHIGraphicsPipelineStateRAII pso;
+        RHIBufferRAII quadIndices;
+        RHIBufferRAII drawArgs;
+
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
+            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
+                .preRasterizer = RHILegacyFrontendDesc{
+                    .topology = RHIPrimitiveTopology::TriangleList,
+                    .vertexShader = {
+                        .path = "Engine/Shader/BaseInstanceSpike.slang",
+                        .entryPoint = "vs_main"
+                    }
+                },
+                .fragmentShader = {
+                    .path = "Engine/Shader/BaseInstanceSpike.slang",
+                    .entryPoint = "fs_main"
+                },
+                .renderTargetFormats = {
+                    swapchain.GetFormat()
+                },
+                .renderTargetCount = 1,
+                .profile = "sm_6_8"
+            });
+
+            constexpr std::array<u32, 6> indices = {
+                0, 1, 2,
+                0, 2, 3
+            };
+            quadIndices = device.CreateBuffer(RHIBufferCreateDesc{
+                .size = sizeof(indices),
+                .usage = RHIBufferUsage::IndexBuffer,
+                .access = RHIMemoryAccess::GPUOnly,
+                .initialData = indices.data()
+            });
+
+            std::array<RHIDrawIndexedArgs, DRAW_COUNT> args;
+            for(u32 i=0; i<DRAW_COUNT; ++i){
+                args[i] = RHIDrawIndexedArgs{
+                    .indexCount = indices.size(),
+                    .baseInstance = i + 1
+                };
+            }
+            drawArgs = device.CreateBuffer(RHIBufferCreateDesc{
+                .size = sizeof(args),
+                .usage = RHIBufferUsage::IndirectArgument,
+                .access = RHIMemoryAccess::CPUWrite,
+                .initialData = args.data()
+            });
+        }
+
+        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+            std::array colorAttachments = {backBuffer};
+            cmdList.BeginRenderPass(RHIRenderPassDesc{
+                .colorAttachments = colorAttachments
+            });
+            cmdList.SetViewport(FullViewport(*backBuffer.texture));
+            cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+
+            cmdList.SetIndexBuffer(*quadIndices);
+            cmdList.ExecuteIndirect(DrawBatch{
+                .pso = pso.get(),
+                .args = drawArgs.get(),
+                .drawCount = DRAW_COUNT
+            });
+
+            cmdList.EndRenderPass();
+        }
+    };
+}
+
+int main(void){
+    using namespace Crowy;
+
+    const WindowConfig windowConfig{
+        .title = "HelloIndirectDraw",
+        .width = 800, .height = 800,
+        .format = RHIPixelFormat::RGBA8_UNORM,
+        .fullscreen = false,
+        .resizable = true,
+    };
+    return Main<HelloIndirectDraw>(windowConfig);
+}

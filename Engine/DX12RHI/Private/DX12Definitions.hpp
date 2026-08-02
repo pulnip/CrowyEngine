@@ -19,6 +19,7 @@ namespace Crowy
     // Pipeline state types
     using PipelineState = ID3D12PipelineState;
     using RootSignature = ID3D12RootSignature;
+    using CommandSignature = ID3D12CommandSignature;
 
     // Resource types
     using Buffer = ID3D12Resource;
@@ -44,6 +45,7 @@ namespace Crowy
 
     using PipelineStateRAII = COMRAII<PipelineState>;
     using RootSignatureRAII = COMRAII<RootSignature>;
+    using CommandSignatureRAII = COMRAII<CommandSignature>;
 
     using BufferRAII = COMRAII<Buffer>;
     using TextureRAII = COMRAII<Texture>;

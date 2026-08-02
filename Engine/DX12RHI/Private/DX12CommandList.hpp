@@ -16,6 +16,7 @@ namespace Crowy
     private:
         CommandQueue& commandQueue;
         RootSignature& rootSignature;
+        CommandSignature& drawIndexedSignature;
         CommandAllocatorRAII commandAllocators[RHI_FRAMES_IN_FLIGHT];
         const u64& frameIndex;
 
@@ -39,6 +40,7 @@ namespace Crowy
             Device&,
             CommandQueue&,
             RootSignature&,
+            CommandSignature& drawIndexedSignature,
             const u64& frameIndex,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,
@@ -96,6 +98,8 @@ namespace Crowy
             i32 baseVertex = 0,
             u32 startInstance = 0
         ) RHI_OVERRIDE;
+
+        void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
 
         void BeginCompute() noexcept RHI_OVERRIDE;
         void EndCompute() noexcept RHI_OVERRIDE;

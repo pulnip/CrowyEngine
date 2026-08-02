@@ -900,6 +900,31 @@ struct std::hash<Crowy::RHIComputePipelineStateDesc>{
 
 namespace Crowy
 {
+    // hardware-consumed indirect draw arguments;
+    struct RHIDrawIndexedArgs{
+        u32 indexCount;
+        u32 instanceCount = 1;
+        u32 firstIndex = 0;
+        i32 baseVertex = 0;
+        // drawID; SV_StartInstanceLocation in the VS
+        u32 baseInstance = 0;
+    };
+    static_assert(sizeof(RHIDrawIndexedArgs) == 20);
+
+    // one ExecuteIndirect submission: every draw sharing a PSO
+    struct DrawBatch{
+        RHIGraphicsPipelineState* pso = nullptr;
+        // RHIDrawIndexedArgs[drawCount] at argsOffset
+        RHIBuffer* args = nullptr;
+        u64 argsOffset = 0;
+        u32 drawCount = 0;
+        // reserved for GPU-driven compaction; must stay null for now
+        RHIBuffer* countBuffer = nullptr;
+    };
+}
+
+namespace Crowy
+{
     enum class RHIFilter: u8{
         Nearest,
         Linear

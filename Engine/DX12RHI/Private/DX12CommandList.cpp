@@ -121,6 +121,7 @@ namespace Crowy
         Device& device,
         CommandQueue& commandQueue,
         RootSignature& rootSignature,
+        CommandSignature& drawIndexedSignature,
         const u64& frameIndex,
         DescriptorHeapAllocator& cbvsrvuavHeap,
         DescriptorHeapAllocator& rtvHeap,
@@ -129,6 +130,7 @@ namespace Crowy
     )
         : commandQueue(commandQueue)
         , rootSignature(rootSignature)
+        , drawIndexedSignature(drawIndexedSignature)
         , frameIndex(frameIndex)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
@@ -344,6 +346,34 @@ namespace Crowy
             startIndex,
             baseVertex,
             startInstance
+        );
+    }
+
+    // the args buffer is reinterpreted as D3D12_DRAW_INDEXED_ARGUMENTS[]
+    static_assert(sizeof(RHIDrawIndexedArgs) == sizeof(D3D12_DRAW_INDEXED_ARGUMENTS));
+    static_assert(offsetof(RHIDrawIndexedArgs, indexCount)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, IndexCountPerInstance));
+    static_assert(offsetof(RHIDrawIndexedArgs, instanceCount) == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, InstanceCount));
+    static_assert(offsetof(RHIDrawIndexedArgs, firstIndex)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartIndexLocation));
+    static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, BaseVertexLocation));
+    static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartInstanceLocation));
+
+    void DX12CommandList::ExecuteIndirect(const DrawBatch& batch){
+        CROWY_ASSERT(batch.pso != nullptr);
+        CROWY_ASSERT(batch.args != nullptr);
+        CROWY_ASSERT(batch.countBuffer == nullptr,
+            "countBuffer is reserved for GPU-driven compaction"
+        );
+
+        SetPipelineState(*batch.pso);
+
+        auto& dxArgs = static_cast<DX12Buffer&>(*batch.args);
+        commandList->ExecuteIndirect(
+            &drawIndexedSignature,
+            batch.drawCount,
+            dxArgs.Get(),
+            batch.argsOffset,
+            nullptr,
+            0
         );
     }
 
