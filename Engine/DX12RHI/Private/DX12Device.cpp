@@ -89,9 +89,8 @@ namespace{
     }
 
     void checkDeviceFeature(Crowy::Device& device, Crowy::DX12Capabilities& capabilities){
-        // Shader Model 6.6 Support
         D3D12_FEATURE_DATA_SHADER_MODEL shaderModel{
-            .HighestShaderModel = D3D_SHADER_MODEL_6_6
+            .HighestShaderModel = D3D_SHADER_MODEL_6_8
         };
         CHECK_HRESULT(device.CheckFeatureSupport(
             D3D12_FEATURE_SHADER_MODEL,
@@ -100,6 +99,22 @@ namespace{
         if(shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_6){
             throw std::runtime_error("Shader Model 6.6 not supported");
         }
+        // required for SV_StartInstanceLocation
+        capabilities.shaderModel6_8 =
+            shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_8;
+
+        // required for SV_StartInstanceLocation
+        D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21{};
+        capabilities.extendedCommandInfo = SUCCEEDED(device.CheckFeatureSupport(
+            D3D12_FEATURE_D3D12_OPTIONS21,
+            BYTES(options21)
+        )) && options21.ExtendedCommandInfoSupported;
+
+        std::println(
+            "Shader Model 6.8: {}, Extended command info: {}",
+            capabilities.shaderModel6_8,
+            capabilities.extendedCommandInfo
+        );
 
         // Resource Binding Tier 3 Support
         D3D12_FEATURE_DATA_D3D12_OPTIONS options{};

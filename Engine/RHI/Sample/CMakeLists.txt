@@ -131,6 +131,11 @@ SOURCES
     Checkerboard.cpp
 )
 
+crowy_graphics_sample(BaseInstanceSpike
+SOURCES
+    BaseInstanceSpike.cpp
+)
+
 crowy_graphics_sample(BlackholeSimulation
 SOURCES
     BlackholeSimulation.cpp

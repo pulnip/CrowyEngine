@@ -61,5 +61,8 @@ namespace Crowy
     // TODO. merge to RHICapabilities
     struct DX12Capabilities{
         bool gpuUploadHeap = false;
+        // both required by SV_StartInstanceLocation
+        bool shaderModel6_8 = false;
+        bool extendedCommandInfo = false;
     };
 }
