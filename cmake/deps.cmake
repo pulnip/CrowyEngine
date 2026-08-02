@@ -223,6 +223,24 @@ PUBLIC
     ${ufbx_SOURCE_DIR}
 )
 
+# OffsetAllocator - O(1) offset suballocator for GPU pools (sebbbi, MIT)
+FetchContent_Declare(offsetallocator
+    GIT_REPOSITORY "https://github.com/sebbbi/OffsetAllocator.git"
+    GIT_TAG "3610a7377088b1e8c8f1525f458c96038a4e6fc0"
+    # its CMakeLists.txt calls functions from the author's own build environment,
+    # so only the sources are consumed via the target below
+    SOURCE_SUBDIR "cmake-ignored"
+)
+FetchContent_MakeAvailable(offsetallocator)
+
+add_library(OffsetAllocator STATIC
+    ${offsetallocator_SOURCE_DIR}/offsetAllocator.cpp
+)
+target_include_directories(OffsetAllocator
+SYSTEM PUBLIC
+    "${offsetallocator_SOURCE_DIR}"
+)
+
 if(CROWY_ENABLE_TEST)
     FetchContent_Declare(
         GTest

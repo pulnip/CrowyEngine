@@ -11,6 +11,7 @@ PUBLIC
 PRIVATE
     Slang::Slang
     Crowy::Log
+    OffsetAllocator
 )
 
 if(SLANG_RUNTIME_LIBS)
