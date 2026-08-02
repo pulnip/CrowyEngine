@@ -12,6 +12,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             NOMINMAX
             VC_EXTRALEAN
             WIN32_LEAN_AND_MEAN
+            _CRT_SECURE_NO_WARNINGS # for std::getenv
         )
         target_compile_options(CrowyProjectInterface
         INTERFACE
@@ -28,6 +29,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         NOMINMAX
         VC_EXTRALEAN
         WIN32_LEAN_AND_MEAN
+        _CRT_SECURE_NO_WARNINGS
     )
     target_compile_options(CrowyProjectInterface
     INTERFACE
