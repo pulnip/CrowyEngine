@@ -50,22 +50,29 @@ set(RENDER_BACKENDS "")
 
 # OS config
 if(WIN32)
-    # find dxc compiler
-    file(GLOB WINDOWS_SDK_REDIST_D3D_PATHS
+    # find dxc compiler; prefer versioned SDK bin dirs over Redist/D3D —
+    # Redist is shared across SDK installs and can pair a new dxcompiler.dll
+    # with a stale dxil.dll, whose old validator rejects newer shader models
+    file(GLOB WINDOWS_SDK_DXC_PATHS
+        "$ENV{WindowsSdkVerBinPath}/x64"
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.*/x64"
+    )
+    list(SORT WINDOWS_SDK_DXC_PATHS COMPARE NATURAL ORDER DESCENDING)
+    list(APPEND WINDOWS_SDK_DXC_PATHS
         "$ENV{WindowsSdkDir}/Redist/D3D/x64"
         "C:/Program Files (x86)/Windows Kits/10/Redist/D3D/x64"
     )
     find_file(DXCOMPILER_DLL
         NAMES dxcompiler.dll
-        HINTS ${WINDOWS_SDK_REDIST_D3D_PATHS}
+        HINTS ${WINDOWS_SDK_DXC_PATHS}
     )
     find_file(DXIL_DLL
         NAMES dxil.dll
-        HINTS ${WINDOWS_SDK_REDIST_D3D_PATHS}
+        HINTS ${WINDOWS_SDK_DXC_PATHS}
     )
     if(NOT DXCOMPILER_DLL OR NOT DXIL_DLL)
         message(FATAL_ERROR
-            "dxcompiler.dll / dxil.dll not found under Windows SDK Redist/D3D. "
+            "dxcompiler.dll / dxil.dll not found under Windows SDK. "
             "Please check your Windows SDK installation."
         )
     endif()
