@@ -46,11 +46,19 @@ int main(void){
             .initialData = nullptr
         }, "ReadBack");
 
-        auto pipelineState = device->CreatePipelineState(
+        auto addPipeline = device->CreatePipelineState(
             RHIComputePipelineStateDesc{
                 .computeShader = {
                     .path = "Engine/Shader/HelloCompute.slang",
                     .entryPoint = "cs_main"
+                }
+            }
+        );
+        auto doublePipeline = device->CreatePipelineState(
+            RHIComputePipelineStateDesc{
+                .computeShader = {
+                    .path = "Engine/Shader/HelloCompute.slang",
+                    .entryPoint = "cs_double"
                 }
             }
         );
@@ -74,13 +82,28 @@ int main(void){
             };
             cmdList->BeginComputePass({}, acquires);
 
-            cmdList->SetPipelineState(*pipelineState);
-            cmdList->SetPushComputeConstants(PushConstants{
+            const PushConstants pushConstants{
                 .lhs = lhs->GetReadableID(sizeof(float)),
                 .rhs = rhs->GetReadableID(sizeof(float)),
                 .out = out->GetWritableID(sizeof(float))
-            });
+            };
 
+            cmdList->SetPipelineState(*addPipeline);
+            cmdList->SetPushComputeConstants(pushConstants);
+            cmdList->Dispatch({N, 1, 1});
+
+            // the second dispatch reads what the first just wrote —
+            // a UAV → UAV hazard inside one pass, DispatchBarrier territory
+            const std::array hazards{
+                MakeBarrier(*out,
+                    RHIResourceUsage::StorageCompute,
+                    RHIResourceUsage::StorageCompute
+                )
+            };
+            cmdList->DispatchBarrier({}, hazards);
+
+            cmdList->SetPipelineState(*doublePipeline);
+            cmdList->SetPushComputeConstants(pushConstants);
             cmdList->Dispatch({N, 1, 1});
 
             const std::array releases{outEdge};
@@ -116,10 +139,10 @@ int main(void){
         std::vector<float> result(N, 0.0f);
         readback->Download(result.data(), sizeof(float) * result.size());
 
-        // verify result
+        // verify result: (1 + 1) doubled by the chained dispatch
         usize i = 0;
         for(; i<N; ++i){
-            if(std::abs(result[i] - 2.0f) > 1e-3){
+            if(std::abs(result[i] - 4.0f) > 1e-3){
                 std::println("wrong result: out[{}] = {}", i, result[i]);
                 break;
             }
