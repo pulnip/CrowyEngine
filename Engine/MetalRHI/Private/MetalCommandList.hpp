@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <variant>
 #include <Metal/MTLCommandBuffer.hpp>
 #include <Metal/MTLRenderCommandEncoder.hpp>
@@ -11,19 +12,33 @@
 
 namespace Crowy
 {
-    class MetalGraphicsPipelineState;
-
     class MetalCommandList final: public RHICommandList{
     private:
         struct RenderPassState{
             MTL::RenderCommandEncoder* encoder = nullptr;
 
-            MetalGraphicsPipelineState* pso = nullptr;
+            // snapshotted from the PSO at SetPipelineState
             MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangle;
+            u32 vsUsedBufferMask = 0;
+            u32 fsUsedBufferMask = 0;
 
+            // snapshotted from the Index Buffer at SetIndexBuffer
             MTL::Buffer* indexBuffer = nullptr;
             u32 indexBufferOffset = 0;
             MTL::IndexType indexFormat = MTL::IndexTypeUInt32;
+
+            // cache for lazy bounding of PushConstant
+            std::array<u8, RHI_PUSH_CONSTANT_BYTES> pushConstants;
+            u32 pushConstantSize = 0;
+            bool pushDirty = false;
+
+            // cache for lazy bounding of ConstantBuffer
+            struct ConstantBufferBinding{
+                MTL::Buffer* buffer = nullptr;
+                u32 offset = 0;
+            };
+            std::array<ConstantBufferBinding, RHI_NUM_DIRECT_CBS> constantBuffers{};
+            u32 cbDirtyMask = 0;
         };
 
         struct ComputePassState{
@@ -55,6 +70,14 @@ namespace Crowy
         // set by TransitionBarrier between passes;
         // consumed by the next encoder as waitForFence
         bool barrierPending = false;
+
+        // write recorded-but-dirty constants to the encoder; every
+        // draw entry point calls this before encoding
+        static void flush(RenderPassState&);
+        // (re)bind recorded graphics constants through the
+        // snapshotted used-buffer masks
+        static void applyPushConstants(RenderPassState&);
+        static void applyConstantBuffer(RenderPassState&, u32 slot);
 
     public:
         MetalCommandList(

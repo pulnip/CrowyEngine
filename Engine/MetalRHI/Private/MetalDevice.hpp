@@ -10,7 +10,7 @@ namespace Crowy
     class MetalDevice final: public RHIDevice{
     private:
         class Impl;
-        FastPimpl<Impl, 592, 8> impl;
+        FastPimpl<Impl, 720, 8> impl;
 
     public:
         MetalDevice();

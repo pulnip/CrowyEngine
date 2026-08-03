@@ -55,12 +55,8 @@ namespace Crowy
             return topology;
         }
 
-        bool UsesVertexBuffer(NS::UInteger index) const noexcept{
-            return (vsUsedBuffers >> index) & 1u;
-        }
-        bool UsesFragmentBuffer(NS::UInteger index) const noexcept{
-            return (fsUsedBuffers >> index) & 1u;
-        }
+        u32 GetVSUsedBufferMask() const noexcept{ return vsUsedBuffers; }
+        u32 GetFSUsedBufferMask() const noexcept{ return fsUsedBuffers; }
 
     private:
         void createDepthStencilState(

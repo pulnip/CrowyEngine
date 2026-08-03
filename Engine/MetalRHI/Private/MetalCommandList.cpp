@@ -10,8 +10,6 @@
 #include "MetalUtil.hpp"
 #include "MetalTexture.hpp"
 
-#include <stdexcept>
-
 namespace Crowy
 {
     namespace{
@@ -160,7 +158,12 @@ namespace Crowy
         metalPSO.Bind(*state->encoder);
 
         state->topology = metalPSO.GetTopology();
-        state->pso = &metalPSO;
+        state->vsUsedBufferMask = metalPSO.GetVSUsedBufferMask();
+        state->fsUsedBufferMask = metalPSO.GetFSUsedBufferMask();
+
+        constexpr u32 CB_ALL_CLEAN = (1u << RHI_NUM_DIRECT_CBS) - 1u;
+        state->pushDirty = true;
+        state->cbDirtyMask = CB_ALL_CLEAN;
     }
 
     void MetalCommandList::SetVertexBuffer(
@@ -210,21 +213,29 @@ namespace Crowy
         CROWY_ASSERT(state != nullptr,
             "Did you call RHICommandList::BeginRenderPass()?"
         );
-        CROWY_ASSERT(state->pso != nullptr,
-            "Did you call RHICommandList::SetPipelineState()?"
-        );
+        CROWY_ASSERT(size <= RHI_PUSH_CONSTANT_BYTES);
 
-        if(state->pso->UsesVertexBuffer(PushConstantSlot)){
-            state->encoder->setVertexBytes(
-                data,
-                size,
+        std::memcpy(state->pushConstants.data(), data, size);
+        state->pushConstantSize = size;
+        state->pushDirty = true;
+    }
+
+    void MetalCommandList::applyPushConstants(RenderPassState& state){
+        if(state.pushConstantSize == 0){
+            return;
+        }
+
+        if((state.vsUsedBufferMask >> PushConstantSlot) & 1u){
+            state.encoder->setVertexBytes(
+                state.pushConstants.data(),
+                state.pushConstantSize,
                 PushConstantSlot
             );
         }
-        if(state->pso->UsesFragmentBuffer(PushConstantSlot)){
-            state->encoder->setFragmentBytes(
-                data,
-                size,
+        if((state.fsUsedBufferMask >> PushConstantSlot) & 1u){
+            state.encoder->setFragmentBytes(
+                state.pushConstants.data(),
+                state.pushConstantSize,
                 PushConstantSlot
             );
         }
@@ -239,26 +250,52 @@ namespace Crowy
         CROWY_ASSERT(state != nullptr,
             "Did you call RHICommandList::BeginRenderPass()?"
         );
-        CROWY_ASSERT(state->pso != nullptr,
-            "Did you call RHICommandList::SetPipelineState()?"
-        );
-        auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
+        CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+
+        state->constantBuffers[slot] = {
+            .buffer = static_cast<MetalBuffer&>(buffer).Get(),
+            .offset = offset
+        };
+        state->cbDirtyMask |= 1u << slot;
+    }
+
+    void MetalCommandList::applyConstantBuffer(
+        RenderPassState& state,
+        u32 slot
+    ){
+        const auto& binding = state.constantBuffers[slot];
+        if(binding.buffer == nullptr){
+            return;
+        }
         const auto index = ConstantBufferSlotBase + slot;
 
-        if(state->pso->UsesVertexBuffer(index)){
-            state->encoder->setVertexBuffer(
-                mtlBuffer,
-                offset,
+        if((state.vsUsedBufferMask >> index) & 1u){
+            state.encoder->setVertexBuffer(
+                binding.buffer,
+                binding.offset,
                 index
             );
         }
-        if(state->pso->UsesFragmentBuffer(index)){
-            state->encoder->setFragmentBuffer(
-                mtlBuffer,
-                offset,
+        if((state.fsUsedBufferMask >> index) & 1u){
+            state.encoder->setFragmentBuffer(
+                binding.buffer,
+                binding.offset,
                 index
             );
         }
+    }
+
+    void MetalCommandList::flush(RenderPassState& state){
+        if(state.pushDirty){
+            applyPushConstants(state);
+            state.pushDirty = false;
+        }
+        for(u32 slot=0; slot<RHI_NUM_DIRECT_CBS; ++slot){
+            if(state.cbDirtyMask & (1u << slot)){
+                applyConstantBuffer(state, slot);
+            }
+        }
+        state.cbDirtyMask = 0;
     }
 
     void MetalCommandList::SetViewport(const RHIViewport& viewport){
@@ -301,6 +338,7 @@ namespace Crowy
             "Did you call RHICommandList::BeginRenderPass()?"
         );
 
+        flush(*state);
         state->encoder->drawPrimitives(
             state->topology,
             startVertex,
@@ -323,6 +361,7 @@ namespace Crowy
         );
         CROWY_ASSERT(state->indexBuffer != nullptr);
 
+        flush(*state);
         auto indexSize = (state->indexFormat == MTL::IndexTypeUInt16) ? 2 : 4;
         auto indexOffset = state->indexBufferOffset + startIndex * indexSize;
 
@@ -338,8 +377,42 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::ExecuteIndirect(const DrawBatch&){
-        throw std::runtime_error("Unimplemented");
+    // the args buffer is reinterpreted as MTL::DrawIndexedPrimitivesIndirectArguments[]
+    static_assert(sizeof(RHIDrawIndexedArgs) == sizeof(MTL::DrawIndexedPrimitivesIndirectArguments));
+    static_assert(offsetof(RHIDrawIndexedArgs, indexCount)    == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, indexCount));
+    static_assert(offsetof(RHIDrawIndexedArgs, instanceCount) == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, instanceCount));
+    static_assert(offsetof(RHIDrawIndexedArgs, firstIndex)    == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, indexStart));
+    static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseVertex));
+    static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseInstance));
+
+    void MetalCommandList::ExecuteIndirect(const DrawBatch& batch){
+        CROWY_ASSERT(batch.pso != nullptr);
+        CROWY_ASSERT(batch.args != nullptr);
+        CROWY_ASSERT(batch.countBuffer == nullptr,
+            "countBuffer is reserved for GPU-driven compaction"
+        );
+
+        auto state = std::get_if<RenderPassState>(&passState);
+        CROWY_ASSERT(state != nullptr,
+            "Did you call RHICommandList::BeginRenderPass()?"
+        );
+        CROWY_ASSERT(state->indexBuffer != nullptr);
+
+        SetPipelineState(*batch.pso);
+        flush(*state);
+
+        auto mtlArgs = static_cast<MetalBuffer&>(*batch.args).Get();
+        // no multi-draw outside indirect command buffers, so unroll batch
+        for(u32 i = 0; i < batch.drawCount; ++i){
+            state->encoder->drawIndexedPrimitives(
+                state->topology,
+                state->indexFormat,
+                state->indexBuffer,
+                state->indexBufferOffset,
+                mtlArgs,
+                batch.argsOffset + i * sizeof(RHIDrawIndexedArgs)
+            );
+        }
     }
 
     void MetalCommandList::BeginCompute(){
