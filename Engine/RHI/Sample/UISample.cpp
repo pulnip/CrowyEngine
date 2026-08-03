@@ -1,4 +1,5 @@
 #include <array>
+#include <vector>
 #include "AppFramework.hpp"
 #include "Primitives.hpp"
 #include "UIRenderer.hpp"
@@ -84,13 +85,20 @@ namespace Crowy
                     .clearColor = context.clearColor
                 }
             };
+            // this pass samples the textures Prepare just updated, so their
+            // acquire halves ride along with the backbuffer's
+            std::vector<RHITextureBarrier> acquires{
+                AcquireBackBuffer(backBuffer)
+            };
+            acquires.append_range(uiRenderer->TextureAcquires());
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
-            });
+            }, acquires);
 
             uiRenderer->Record(cmdList);
 
-            cmdList.EndRenderPass();
+            const std::array releases{ReleaseBackBuffer(backBuffer)};
+            cmdList.EndRenderPass(releases);
         }
     };
 }

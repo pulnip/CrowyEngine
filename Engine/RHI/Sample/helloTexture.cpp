@@ -89,9 +89,10 @@ namespace Crowy
                     .clearColor = Colors::Grey
                 }
             };
+            const std::array acquires{AcquireBackBuffer(backBuffer)};
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
-            });
+            }, acquires);
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
@@ -104,7 +105,8 @@ namespace Crowy
             cmdList.SetPushGraphicsConstants(pushConstants);
             cmdList.Draw(4);
 
-            cmdList.EndRenderPass();
+            const std::array releases{ReleaseBackBuffer(backBuffer)};
+            cmdList.EndRenderPass(releases);
         }
     };
 }

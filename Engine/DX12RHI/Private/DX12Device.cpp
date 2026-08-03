@@ -170,7 +170,7 @@ namespace{
 
     // With CROWY_D3D_DEBUG_BREAK set, validation errors raise a debug
     // break; without a debugger attached that aborts the process, so a
-    // smoke run turns validation errors into a nonzero exit code — the
+    // smoke run turns validation errors into a nonzero exit code - the
     // same contract as Metal's MTL_DEBUG_LAYER assert mode.
     // Needs the debug layer, so it only works in debug builds.
     void setupValidationBreak(Crowy::Device& device){
@@ -520,6 +520,7 @@ namespace Crowy
                     uploadRing,
                     D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
                     *buffer,
+                    desc.usage,
                     RHISubresourceData{
                         .data = desc.initialData,
                         .rowPitch = desc.size
@@ -667,7 +668,8 @@ namespace Crowy
             usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
             std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
             if(uploadRecorded){
-                uploadCmdList->EndBlit();
+                // Close completes the upload releases nobody acquired here -
+                // the consumers live in the command lists submitted after
                 uploadCmdList->Close();
                 dxCmdLists[0] = uploadCmdList->Get();
 
@@ -727,8 +729,8 @@ namespace Crowy
     private:
         void ensureUploadBegin(){
             if(!uploadRecorded){
+                // each Upload* helper opens its own copy pass
                 uploadCmdList->Begin();
-                uploadCmdList->BeginBlit();
                 uploadRecorded = true;
             }
         }

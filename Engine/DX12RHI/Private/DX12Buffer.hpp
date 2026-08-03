@@ -13,10 +13,6 @@ namespace Crowy
         struct FrameResource{
             BufferRAII buffer = nullptr;
             void* mapped = nullptr;
-            // for Enhanced Resource Barrier
-            RHIBarrierSync syncState;
-            RHIBarrierAccess accessState;
-            // No Layout Barrier for Buffer (trivially Row-major Layout)
             // descriptor heap index
             std::unordered_map<RHIBufferViewDesc, UINT> cbvs;
             std::unordered_map<RHIBufferViewDesc, UINT> srvs;
@@ -88,29 +84,6 @@ namespace Crowy
         }
 
         u32 GetSize() const noexcept RHI_OVERRIDE;
-
-        RHIBarrierSync GetSyncState() const RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-            return frameResource.syncState;
-        }
-        RHIBarrierSync TransitionState(RHIBarrierSync newState) RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-
-            const auto oldState = frameResource.syncState;
-            frameResource.syncState = newState;
-            return oldState;
-        }
-        RHIBarrierAccess GetAccessState() const RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-            return frameResource.accessState;
-        }
-        RHIBarrierAccess TransitionState(RHIBarrierAccess newState) RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-
-            const auto oldState = frameResource.accessState;
-            frameResource.accessState = newState;
-            return oldState;
-        }
 
         Buffer* Get() noexcept{ return resources[currentIndex()].buffer.Get(); }
 

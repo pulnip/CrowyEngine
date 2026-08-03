@@ -41,6 +41,28 @@ namespace Crowy
     RHIViewport FullViewport(const RHITexture&, u32 mipLevel = 0);
     RHIScissorRect FullScissorRect(const RHITexture&, u32 mipLevel = 0);
 
+    // self-contained backbuffer barriers for the pass drawing to it.
+    // the acquire discards previous contents (fine while the pass clears);
+    // a sample that loads them instead should acquire Present → RenderTarget.
+    inline RHITextureBarrier AcquireBackBuffer(const RHIColorAttachment& backBuffer){
+        CROWY_ASSERT(backBuffer.loadAction != RHILoadAction::Load,
+            "discarding acquire but the pass loads previous contents"
+        );
+        return MakeBarrier(
+            *backBuffer.texture,
+            RHIResourceUsage::Undefined,
+            RHIResourceUsage::RenderTarget
+        );
+    }
+    // Present ordering is the swapchain's guarantee, so no pair needed
+    inline RHITextureBarrier ReleaseBackBuffer(const RHIColorAttachment& backBuffer){
+        return MakeBarrier(
+            *backBuffer.texture,
+            RHIResourceUsage::RenderTarget,
+            RHIResourceUsage::Present
+        );
+    }
+
     template<std::derived_from<App> T>
     int Main(const WindowConfig& windowConfig){
         RuntimeConfig runtimeConfig{

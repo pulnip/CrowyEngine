@@ -10,6 +10,7 @@
 #include "DX12PipelineState.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
+#include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -117,6 +118,109 @@ namespace{
 
 namespace Crowy
 {
+    // record-time validation - commandlist-local rules only,
+    // no resource-attached state involved
+    namespace{
+        // which producer stages each pass kind can release
+        constexpr auto RENDER_RELEASE_SYNC = combine(
+            RHIBarrierSync::All,
+            RHIBarrierSync::Draw,
+            RHIBarrierSync::IndexInput,
+            RHIBarrierSync::VertexShading,
+            RHIBarrierSync::PixelShading,
+            RHIBarrierSync::DepthStencil,
+            RHIBarrierSync::RenderTarget,
+            RHIBarrierSync::ExecuteIndirect
+        );
+        constexpr auto COMPUTE_RELEASE_SYNC = combine(
+            RHIBarrierSync::All,
+            RHIBarrierSync::Compute
+        );
+        constexpr auto COPY_RELEASE_SYNC = combine(
+            RHIBarrierSync::All,
+            RHIBarrierSync::Copy
+        );
+
+        [[maybe_unused]]
+        constexpr bool syncMatchesPass(RHIBarrierSync sync, RHIBarrierSync allowed){
+            return (static_cast<u32>(sync) & ~static_cast<u32>(allowed)) == 0;
+        }
+
+        // Sync::None demands Access::NoAccess. the reverse is allowed:
+        // NoAccess under real sync is an execution-only dependency
+        // (e.g. cross-submission discard - nothing to flush, only ordering)
+        [[maybe_unused]]
+        constexpr bool halfIsPaired(RHIBarrierSync sync, RHIBarrierAccess access){
+            return sync != RHIBarrierSync::None
+                || access == RHIBarrierAccess::NoAccess;
+        }
+
+        // write accesses cannot combine with anything
+        [[maybe_unused]]
+        constexpr bool writeAccessAlone(RHIBarrierAccess access){
+            constexpr auto writes = combine(
+                RHIBarrierAccess::RenderTarget,
+                RHIBarrierAccess::DepthWrite,
+                RHIBarrierAccess::UnorderedAccess,
+                RHIBarrierAccess::CopyDst
+            );
+            if(!hasFlag(access, writes)){
+                return true;
+            }
+
+            const auto bits = static_cast<u32>(access);
+            return (bits & (bits - 1)) == 0;
+        }
+
+        void validateEdge(const RHITextureBarrier& barrier){
+            CROWY_ASSERT(
+                halfIsPaired(barrier.syncBefore, barrier.accessBefore) &&
+                halfIsPaired(barrier.syncAfter, barrier.accessAfter),
+                "Sync::None and Access::NoAccess must pair up"
+            );
+            CROWY_ASSERT(
+                writeAccessAlone(barrier.accessBefore) &&
+                writeAccessAlone(barrier.accessAfter),
+                "write access must be a single bit"
+            );
+            CROWY_ASSERT(
+                barrier.discard == (barrier.layoutBefore == RHITextureLayout::Undefined),
+                "discard ⇔ layoutBefore == Undefined"
+            );
+            CROWY_ASSERT(barrier.layoutAfter != RHITextureLayout::Undefined,
+                "Undefined layout is only valid on the before side"
+            );
+        }
+
+        void validateEdge(const RHIBufferBarrier& barrier){
+            CROWY_ASSERT(
+                halfIsPaired(barrier.syncBefore, barrier.accessBefore) &&
+                halfIsPaired(barrier.syncAfter, barrier.accessAfter),
+                "Sync::None and Access::NoAccess must pair up"
+            );
+            CROWY_ASSERT(
+                writeAccessAlone(barrier.accessBefore) &&
+                writeAccessAlone(barrier.accessAfter),
+                "write access must be a single bit"
+            );
+        }
+
+        inline auto convert(const RHISubresourceRange& range){
+            if(range.numMips == 0){
+                // flat subresource index, RHI_ALL_SUBRESOURCES for everything
+                return CD3DX12_BARRIER_SUBRESOURCE_RANGE(range.firstMip);
+            }
+
+            // planes are left at the default single plane
+            return CD3DX12_BARRIER_SUBRESOURCE_RANGE(
+                range.firstMip,
+                range.numMips,
+                range.firstArraySlice,
+                range.numArraySlice
+            );
+        }
+    }
+
     DX12CommandList::DX12CommandList(
         Device& device,
         CommandQueue& commandQueue,
@@ -162,6 +266,10 @@ namespace Crowy
             nullptr
         ), "Failed to reset command list");
 
+        passState = PassKind::None;
+        pendingTextureReleases.clear();
+        pendingBufferReleases.clear();
+
         std::array heaps{
             cbvsrvuavHeap.Get(),
             samplerHeap.Get()
@@ -176,13 +284,29 @@ namespace Crowy
     }
 
     void DX12CommandList::Close(){
+        CROWY_ASSERT(passState == PassKind::None,
+            "Close inside a pass. Did you call the matching EndPass()?"
+        );
+        flushPendingReleases();
+
         CHECK_HRESULT(commandList->Close(),
             "Failed to close command list"
         );
     }
 
-    void DX12CommandList::BeginRenderPass(const RHIRenderPassDesc& desc){
+    void DX12CommandList::BeginRenderPass(
+        const RHIRenderPassDesc& desc,
+        std::span<const RHITextureBarrier> textureAcquires,
+        std::span<const RHIBufferBarrier> bufferAcquires
+    ){
+        CROWY_ASSERT(passState == PassKind::None,
+            "Already inside a pass. Did you call the matching EndPass()?"
+        );
         CROWY_ASSERT(desc.colorAttachments.size() > 0);
+
+        // barriers are illegal inside a D3D12 render pass,
+        // so the acquires land right before it
+        applyAcquires(textureAcquires, bufferAcquires);
 
         std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, RHI_MAX_RENDER_TARGETS> rts;
         for(usize i=0; i<desc.colorAttachments.size(); ++i)
@@ -200,10 +324,21 @@ namespace Crowy
                 nullptr,
             D3D12_RENDER_PASS_FLAG_NONE
         );
+
+        passState = PassKind::Render;
     }
 
-    void DX12CommandList::EndRenderPass(){
+    void DX12CommandList::EndRenderPass(
+        std::span<const RHITextureBarrier> textureReleases,
+        std::span<const RHIBufferBarrier> bufferReleases
+    ){
+        CROWY_ASSERT(passState == PassKind::Render,
+            "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+        );
         commandList->EndRenderPass();
+        passState = PassKind::None;
+
+        queueReleases(textureReleases, bufferReleases, RENDER_RELEASE_SYNC);
     }
 
     void DX12CommandList::SetPipelineState(RHIGraphicsPipelineState& pso){
@@ -377,24 +512,34 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::BeginCompute() noexcept{
-        CROWY_ASSERT(!inComputePass,
-            "Already in a compute pass. Did you call RHICommandList::EndCompute()?"
+    void DX12CommandList::BeginComputePass(
+        std::span<const RHITextureBarrier> textureAcquires,
+        std::span<const RHIBufferBarrier> bufferAcquires
+    ){
+        CROWY_ASSERT(passState == PassKind::None,
+            "Already inside a pass. Did you call the matching EndPass()?"
         );
-        inComputePass = true;
+        applyAcquires(textureAcquires, bufferAcquires);
+
+        passState = PassKind::Compute;
         currentComputePSO = nullptr;
     }
 
-    void DX12CommandList::EndCompute() noexcept{
-        CROWY_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+    void DX12CommandList::EndComputePass(
+        std::span<const RHITextureBarrier> textureReleases,
+        std::span<const RHIBufferBarrier> bufferReleases
+    ){
+        CROWY_ASSERT(passState == PassKind::Compute,
+            "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
         );
-        inComputePass = false;
+        passState = PassKind::None;
+
+        queueReleases(textureReleases, bufferReleases, COMPUTE_RELEASE_SYNC);
     }
 
     void DX12CommandList::SetPipelineState(RHIComputePipelineState& pso){
-        CROWY_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        CROWY_ASSERT(passState == PassKind::Compute,
+            "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
         );
         auto& dxPso = static_cast<DX12ComputePipelineState&>(pso);
         dxPso.Bind(*commandList.Get());
@@ -406,8 +551,8 @@ namespace Crowy
         const void* data,
         u32 size
     ){
-        CROWY_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        CROWY_ASSERT(passState == PassKind::Compute,
+            "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
         );
         CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
 
@@ -424,8 +569,8 @@ namespace Crowy
         u32 slot,
         u32 offset
     ){
-        CROWY_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        CROWY_ASSERT(passState == PassKind::Compute,
+            "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
         );
         CROWY_ASSERT(offset < buffer.GetSize());
 
@@ -442,8 +587,8 @@ namespace Crowy
     }
 
     void DX12CommandList::Dispatch(Size3D gridSize){
-        CROWY_ASSERT(inComputePass,
-            "Not in a compute pass. Did you call RHICommandList::BeginCompute()?"
+        CROWY_ASSERT(passState == PassKind::Compute,
+            "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
         );
         CROWY_ASSERT(currentComputePSO != nullptr,
             "Did you call RHICommandList::SetPipelineState(ComputePSO)?"
@@ -457,18 +602,64 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::BeginBlit() noexcept{
-        CROWY_ASSERT(!inBlitPass,
-            "Already in a blit pass. Did you call RHICommandList::EndBlit()?"
+    void DX12CommandList::BeginCopyPass(
+        std::span<const RHITextureBarrier> textureAcquires,
+        std::span<const RHIBufferBarrier> bufferAcquires
+    ){
+        CROWY_ASSERT(passState == PassKind::None,
+            "Already inside a pass. Did you call the matching EndPass()?"
         );
-        inBlitPass = true;
+        applyAcquires(textureAcquires, bufferAcquires);
+
+        passState = PassKind::Copy;
     }
 
-    void DX12CommandList::EndBlit() noexcept{
-        CROWY_ASSERT(inBlitPass,
-            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+    void DX12CommandList::EndCopyPass(
+        std::span<const RHITextureBarrier> textureReleases,
+        std::span<const RHIBufferBarrier> bufferReleases
+    ){
+        CROWY_ASSERT(passState == PassKind::Copy,
+            "Not in a copy pass. Did you call RHICommandList::BeginCopyPass()?"
         );
-        inBlitPass = false;
+        passState = PassKind::None;
+
+        queueReleases(textureReleases, bufferReleases, COPY_RELEASE_SYNC);
+    }
+
+    void DX12CommandList::DispatchBarrier(
+        std::span<const RHITextureBarrier> textureBarriers,
+        std::span<const RHIBufferBarrier> bufferBarriers
+    ){
+        CROWY_ASSERT(passState == PassKind::Compute,
+            "DispatchBarrier is only legal inside a compute pass"
+        );
+
+        for(const auto& barrier: textureBarriers){
+            CROWY_ASSERT(
+                barrier.syncBefore == RHIBarrierSync::Compute &&
+                barrier.syncAfter == RHIBarrierSync::Compute &&
+                barrier.accessBefore == RHIBarrierAccess::UnorderedAccess &&
+                barrier.accessAfter == RHIBarrierAccess::UnorderedAccess &&
+                barrier.layoutBefore == RHITextureLayout::UnorderedAccess &&
+                barrier.layoutAfter == RHITextureLayout::UnorderedAccess,
+                "DispatchBarrier only expresses UAV → UAV hazards; "
+                "anything else is a pass boundary"
+            );
+            pushFused(barrier);
+        }
+        for(const auto& barrier: bufferBarriers){
+            CROWY_ASSERT(
+                barrier.syncBefore == RHIBarrierSync::Compute &&
+                barrier.syncAfter == RHIBarrierSync::Compute &&
+                barrier.accessBefore == RHIBarrierAccess::UnorderedAccess &&
+                barrier.accessAfter == RHIBarrierAccess::UnorderedAccess,
+                "DispatchBarrier only expresses UAV → UAV hazards; "
+                "anything else is a pass boundary"
+            );
+            pushFused(barrier);
+        }
+
+        flushBarrierScratch();
     }
 
     void DX12CommandList::Copy(
@@ -478,8 +669,8 @@ namespace Crowy
         usize dstOffset,
         usize size
     ){
-        CROWY_ASSERT(inBlitPass,
-            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+        CROWY_ASSERT(passState == PassKind::Copy,
+            "Not in a copy pass. Did you call RHICommandList::BeginCopyPass()?"
         );
         auto& dxSrc = static_cast<DX12Buffer&>(src);
         auto& dxDst = static_cast<DX12Buffer&>(dst);
@@ -497,8 +688,8 @@ namespace Crowy
         RHITexture& src,
         RHITexture& dst
     ){
-        CROWY_ASSERT(inBlitPass,
-            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+        CROWY_ASSERT(passState == PassKind::Copy,
+            "Not in a copy pass. Did you call RHICommandList::BeginCopyPass()?"
         );
         commandList->CopyResource(
             static_cast<DX12Texture&>(dst).Get(),
@@ -515,8 +706,8 @@ namespace Crowy
         u32 mipLevel,
         u32 arraySlice
     ){
-        CROWY_ASSERT(inBlitPass,
-            "Not in a blit pass. Did you call RHICommandList::BeginBlit()?"
+        CROWY_ASSERT(passState == PassKind::Copy,
+            "Not in a copy pass. Did you call RHICommandList::BeginCopyPass()?"
         );
         auto& dxSrc = static_cast<DX12Buffer&>(src);
         auto& dxDst = static_cast<DX12Texture&>(dst);
@@ -558,85 +749,241 @@ namespace Crowy
         );
     }
 
-    namespace{
-        inline auto convert(const RHISubresourceRange& range){
-            if(range.numMips == 0){
-                // flat subresource index, RHI_ALL_SUBRESOURCES for everything
-                return CD3DX12_BARRIER_SUBRESOURCE_RANGE(range.firstMip);
-            }
-
-            // planes are left at the default single plane
-            return CD3DX12_BARRIER_SUBRESOURCE_RANGE(
-                range.firstMip,
-                range.numMips,
-                range.firstArraySlice,
-                range.numArraySlice
-            );
-        }
-
-        inline auto convert(const RHITextureBarrier& barrier){
-            auto& resource = barrier.texture;
-            const auto after = barrier.point;
-            const auto before = resource.TransitionState(after, barrier.range);
-
-            return CD3DX12_TEXTURE_BARRIER(
-                convert(before.sync),
-                convert(after.sync),
-                convert(before.access),
-                convert(after.access),
-                convert(before.layout),
-                convert(after.layout),
-                static_cast<DX12Texture&>(resource).Get(),
-                convert(barrier.range)
-            );
-        }
-
-        inline auto convert(const RHIBufferBarrier& barrier){
-            auto& resource = barrier.buffer;
-            const auto syncAfter = barrier.syncAfter;
-            const auto accessAfter = barrier.accessAfter;
-
-            return CD3DX12_BUFFER_BARRIER(
-                convert(resource.TransitionState(syncAfter)),
-                convert(syncAfter),
-                convert(resource.TransitionState(accessAfter)),
-                convert(accessAfter),
-                static_cast<DX12Buffer&>(resource).Get()
-            );
-        }
+    void DX12CommandList::pushFused(const RHITextureBarrier& barrier){
+        textureBarrierScratch.push_back(CD3DX12_TEXTURE_BARRIER(
+            convert(barrier.syncBefore),
+            convert(barrier.syncAfter),
+            convert(barrier.accessBefore),
+            convert(barrier.accessAfter),
+            convert(barrier.layoutBefore),
+            convert(barrier.layoutAfter),
+            static_cast<DX12Texture*>(barrier.texture)->Get(),
+            convert(barrier.range),
+            barrier.discard ?
+                D3D12_TEXTURE_BARRIER_FLAG_DISCARD :
+                D3D12_TEXTURE_BARRIER_FLAG_NONE
+        ));
     }
 
-    void DX12CommandList::TransitionBarrier(
-        std::span<const RHITextureBarrier> textureBarriers,
-        std::span<const RHIBufferBarrier> bufferBarriers
-    ){
-        textureBarrierScratch.reserve(textureBarriers.size());
-        for(auto& barrier: textureBarriers){
-            textureBarrierScratch.push_back(convert(barrier));
+    void DX12CommandList::pushFused(const RHIBufferBarrier& barrier){
+        bufferBarrierScratch.push_back(CD3DX12_BUFFER_BARRIER(
+            convert(barrier.syncBefore),
+            convert(barrier.syncAfter),
+            convert(barrier.accessBefore),
+            convert(barrier.accessAfter),
+            static_cast<DX12Buffer*>(barrier.buffer)->Get()
+        ));
+    }
+
+    void DX12CommandList::flushBarrierScratch(){
+        if(textureBarrierScratch.empty() && bufferBarrierScratch.empty()){
+            return;
         }
 
-        bufferBarrierScratch.reserve(bufferBarriers.size());
-        for(auto& barrier: bufferBarriers){
-            bufferBarrierScratch.push_back(convert(barrier));
-        }
-
-        const std::array barrierGroups{
-            CD3DX12_BARRIER_GROUP(
+        std::array<D3D12_BARRIER_GROUP, 2> barrierGroups;
+        u32 groupCount = 0;
+        if(!textureBarrierScratch.empty()){
+            barrierGroups[groupCount++] = CD3DX12_BARRIER_GROUP(
                 textureBarrierScratch.size(),
                 textureBarrierScratch.data()
-            ),
-            CD3DX12_BARRIER_GROUP(
+            );
+        }
+        if(!bufferBarrierScratch.empty()){
+            barrierGroups[groupCount++] = CD3DX12_BARRIER_GROUP(
                 bufferBarrierScratch.size(),
                 bufferBarrierScratch.data()
-            )
-        };
+            );
+        }
         commandList->Barrier(
-            barrierGroups.size(),
+            groupCount,
             barrierGroups.data()
         );
 
         textureBarrierScratch.clear();
         bufferBarrierScratch.clear();
+    }
+
+    void DX12CommandList::queueRelease(
+        const RHITextureBarrier& barrier,
+        RHIBarrierSync allowedSync
+    ){
+        CROWY_ASSERT(barrier.syncBefore != RHIBarrierSync::None,
+            "a release needs real producer work; "
+            "first use is a self-contained acquire instead"
+        );
+        CROWY_ASSERT(!barrier.crossSubmission,
+            "crossSubmission marks acquires; a release's producer is this pass"
+        );
+        CROWY_ASSERT(syncMatchesPass(barrier.syncBefore, allowedSync),
+            "release syncBefore does not match this pass kind"
+        );
+        validateEdge(barrier);
+
+        if(barrier.syncAfter == RHIBarrierSync::None){
+            // self-contained release (e.g. RenderTarget → Present):
+            // what follows is guaranteed elsewhere, so fuse on the spot
+            pushFused(barrier);
+            return;
+        }
+
+        auto& pending = pendingTextureReleases[barrier.texture];
+        for(auto& entry: pending){
+            if(entry.barrier.range == barrier.range){
+                // re-release of the same range = new producer. if the old edge
+                // was never acquired its transition is still unrecorded, so
+                // complete it here to keep the layout timeline coherent
+                if(!entry.consumed){
+                    pushFused(entry.barrier);
+                }
+                entry = {.barrier = barrier};
+                return;
+            }
+        }
+        pending.push_back({.barrier = barrier});
+    }
+
+    void DX12CommandList::queueRelease(
+        const RHIBufferBarrier& barrier,
+        RHIBarrierSync allowedSync
+    ){
+        CROWY_ASSERT(barrier.syncBefore != RHIBarrierSync::None,
+            "a release needs real producer work; "
+            "first use is a self-contained acquire instead"
+        );
+        CROWY_ASSERT(!barrier.crossSubmission,
+            "crossSubmission marks acquires; a release's producer is this pass"
+        );
+        CROWY_ASSERT(syncMatchesPass(barrier.syncBefore, allowedSync),
+            "release syncBefore does not match this pass kind"
+        );
+        validateEdge(barrier);
+
+        if(barrier.syncAfter == RHIBarrierSync::None){
+            pushFused(barrier);
+            return;
+        }
+
+        const auto [it, inserted] = pendingBufferReleases.try_emplace(
+            barrier.buffer,
+            PendingRelease<RHIBufferBarrier>{.barrier = barrier}
+        );
+        if(!inserted){
+            if(!it->second.consumed){
+                pushFused(it->second.barrier);
+            }
+            it->second = {.barrier = barrier};
+        }
+    }
+
+    void DX12CommandList::queueReleases(
+        std::span<const RHITextureBarrier> textureReleases,
+        std::span<const RHIBufferBarrier> bufferReleases,
+        RHIBarrierSync allowedSync
+    ){
+        for(const auto& release: textureReleases){
+            queueRelease(release, allowedSync);
+        }
+        for(const auto& release: bufferReleases){
+            queueRelease(release, allowedSync);
+        }
+        // self-contained releases recorded above land here
+        flushBarrierScratch();
+    }
+
+    void DX12CommandList::applyAcquire(const RHITextureBarrier& barrier){
+        validateEdge(barrier);
+
+        if(const auto it = pendingTextureReleases.find(barrier.texture);
+            it != pendingTextureReleases.end()
+        ){
+            for(auto& entry: it->second){
+                // full-edge equality doubles as the §5 cross validation:
+                // both halves carried the same value or they do not pair
+                if(entry.barrier == barrier){
+                    // extra consumers of an identical edge need no barrier in
+                    // the fuse strategy: sync scopes are queue-global, so the
+                    // first fused barrier already orders every later command
+                    // in the edge's consumer stages, and it also finished the
+                    // access flush and layout transition. equality matching
+                    // guarantees this consumer's stages are the same.
+                    if(!entry.consumed){
+                        entry.consumed = true;
+                        pushFused(barrier);
+                    }
+                    return;
+                }
+            }
+        }
+
+        CROWY_ASSERT(
+            barrier.syncBefore == RHIBarrierSync::None || barrier.crossSubmission,
+            "acquire with real before-sync has no matching release in this "
+            "command list; producers in earlier submissions need the "
+            "crossSubmission flag (MakeCrossSubmissionBarrier)"
+        );
+        pushFused(barrier);
+    }
+
+    void DX12CommandList::applyAcquire(const RHIBufferBarrier& barrier){
+        validateEdge(barrier);
+
+        if(const auto it = pendingBufferReleases.find(barrier.buffer);
+            it != pendingBufferReleases.end() && it->second.barrier == barrier
+        ){
+            // see the texture path: identical extra consumers ride the first
+            // fused barrier's queue-global sync scope
+            auto& entry = it->second;
+            if(!entry.consumed){
+                entry.consumed = true;
+                pushFused(barrier);
+            }
+            return;
+        }
+
+        CROWY_ASSERT(
+            barrier.syncBefore == RHIBarrierSync::None || barrier.crossSubmission,
+            "acquire with real before-sync has no matching release in this "
+            "command list; producers in earlier submissions need the "
+            "crossSubmission flag (MakeCrossSubmissionBarrier)"
+        );
+        pushFused(barrier);
+    }
+
+    void DX12CommandList::applyAcquires(
+        std::span<const RHITextureBarrier> textureAcquires,
+        std::span<const RHIBufferBarrier> bufferAcquires
+    ){
+        for(const auto& acquire: textureAcquires){
+            applyAcquire(acquire);
+        }
+        for(const auto& acquire: bufferAcquires){
+            applyAcquire(acquire);
+        }
+        flushBarrierScratch();
+    }
+
+    void DX12CommandList::flushPendingReleases(){
+        // releases nobody acquired complete here as single barriers - the
+        // hand-off point for consumers living in later submissions
+        // (e.g. resources uploaded at creation time).
+        // ordering across submissions is queue-level,
+        // so finishing the transition at Close is enough.
+        for(auto& [_, entries]: pendingTextureReleases){
+            for(auto& entry: entries){
+                if(!entry.consumed){
+                    pushFused(entry.barrier);
+                }
+            }
+        }
+        for(auto& [_, entry]: pendingBufferReleases){
+            if(!entry.consumed){
+                pushFused(entry.barrier);
+            }
+        }
+        pendingTextureReleases.clear();
+        pendingBufferReleases.clear();
+
+        flushBarrierScratch();
     }
 
     void DX12CommandList::BeginEvent(CStr name){

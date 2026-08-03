@@ -38,12 +38,25 @@ namespace Crowy
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
-            cmdList.TransitionBarrier(*checkerboard,
-                RHIResourceUsage::ComputeWrite
+            // the compute pass releases the checkerboard, the copy pass
+            // acquires it - one edge, same value on both ends
+            const auto checkerboardEdge = MakeBarrier(*checkerboard,
+                RHIResourceUsage::StorageCompute,
+                RHIResourceUsage::CopySrc
             );
 
             {
-                cmdList.BeginCompute();
+                const std::array acquires{
+                    // the previous frame's copy still reads the texture (WAR);
+                    // every texel is rewritten, so the contents can go
+                    MakeCrossSubmissionBarrier(
+                        *checkerboard,
+                        RHIResourceUsage::CopySrc,
+                        RHIResourceUsage::StorageCompute,
+                        /*discardContents=*/true
+                    )
+                };
+                cmdList.BeginComputePass(acquires);
 
                 cmdList.SetPipelineState(*pso);
                 cmdList.SetPushComputeConstants(PushConstants{
@@ -54,22 +67,31 @@ namespace Crowy
 
                 cmdList.Dispatch({W, H, 1});
 
-                cmdList.EndCompute();
+                const std::array releases{checkerboardEdge};
+                cmdList.EndComputePass(releases);
             }
 
-            std::array barriers = {
-                MakeBarrier(*checkerboard, RHIResourceUsage::CopySrc),
-                MakeBarrier(*backBuffer.texture, RHIResourceUsage::CopyDst)
-            };
-            cmdList.TransitionBarrier(barriers);
-
             {
-                cmdList.BeginBlit();
+                const std::array acquires{
+                    checkerboardEdge,
+                    // the backbuffer is a copy target here, not a render target
+                    MakeBarrier(*backBuffer.texture,
+                        RHIResourceUsage::Undefined,
+                        RHIResourceUsage::CopyDst
+                    )
+                };
+                cmdList.BeginCopyPass(acquires);
                 cmdList.Copy(
                     *checkerboard,
                     *backBuffer.texture
                 );
-                cmdList.EndBlit();
+                const std::array releases{
+                    MakeBarrier(*backBuffer.texture,
+                        RHIResourceUsage::CopyDst,
+                        RHIResourceUsage::Present
+                    )
+                };
+                cmdList.EndCopyPass(releases);
             }
         }
     };

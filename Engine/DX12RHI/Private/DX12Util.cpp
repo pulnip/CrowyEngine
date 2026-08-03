@@ -1,5 +1,7 @@
 #include <comdef.h>
+#include "Assert.hpp"
 #include "DX12Util.hpp"
+#include "EnumUtil.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
@@ -196,71 +198,72 @@ namespace Crowy
     D3D12_BARRIER_SYNC convert(RHIBarrierSync state){
         using enum RHIBarrierSync;
 
-        switch(state){
-        case None:                 return D3D12_BARRIER_SYNC_NONE;
-        case All:                  return D3D12_BARRIER_SYNC_ALL;
-        case Draw:                 return D3D12_BARRIER_SYNC_DRAW;
-        case IndexInput:           return D3D12_BARRIER_SYNC_INDEX_INPUT;
-        case Vertex:               return D3D12_BARRIER_SYNC_VERTEX_SHADING;
-        case Fragment:             return D3D12_BARRIER_SYNC_PIXEL_SHADING;
-        case DepthStencil:         return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
-        case RenderTarget:         return D3D12_BARRIER_SYNC_RENDER_TARGET;
-        case Compute:              return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
-        case Copy:                 return D3D12_BARRIER_SYNC_COPY;
-        case Resolve:              return D3D12_BARRIER_SYNC_RESOLVE;
-        case ExecuteIndirect:      return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
-        case AllShading:           return D3D12_BARRIER_SYNC_ALL_SHADING;
-        case NonFragment:          return D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
-        case ClearUnorderedAccess: return D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
-        case Split:                return D3D12_BARRIER_SYNC_SPLIT;
-        default:
-            std::unreachable();
-        }
+        auto result = D3D12_BARRIER_SYNC_NONE;
+        const auto mapBit = [&](RHIBarrierSync rhi, D3D12_BARRIER_SYNC dx){
+            if(hasFlag(state, rhi)){
+                result |= dx;
+            }
+        };
+        mapBit(All,             D3D12_BARRIER_SYNC_ALL);
+        mapBit(Draw,            D3D12_BARRIER_SYNC_DRAW);
+        mapBit(VertexShading,   D3D12_BARRIER_SYNC_VERTEX_SHADING);
+        mapBit(PixelShading,    D3D12_BARRIER_SYNC_PIXEL_SHADING);
+        mapBit(DepthStencil,    D3D12_BARRIER_SYNC_DEPTH_STENCIL);
+        mapBit(RenderTarget,    D3D12_BARRIER_SYNC_RENDER_TARGET);
+        mapBit(Compute,         D3D12_BARRIER_SYNC_COMPUTE_SHADING);
+        mapBit(Copy,            D3D12_BARRIER_SYNC_COPY);
+        mapBit(IndexInput,      D3D12_BARRIER_SYNC_INDEX_INPUT);
+        mapBit(ExecuteIndirect, D3D12_BARRIER_SYNC_EXECUTE_INDIRECT);
+
+        return result;
     }
 
     D3D12_BARRIER_ACCESS convert(RHIBarrierAccess state){
         using enum RHIBarrierAccess;
 
-        switch(state){
-        case Common:            return D3D12_BARRIER_ACCESS_COMMON;
-        case VertexBuffer:      return D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
-        case ConstantBuffer:    return D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
-        case IndexBuffer:       return D3D12_BARRIER_ACCESS_INDEX_BUFFER;
-        case RenderTarget:      return D3D12_BARRIER_ACCESS_RENDER_TARGET;
-        case UnorderedAccess:   return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
-        case DepthStencilWrite: return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
-        case DepthStencilRead:  return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
-        case ShaderResource:    return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
-        case StreamOutput:      return D3D12_BARRIER_ACCESS_STREAM_OUTPUT;
-        case IndirectArgument:  return D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
-        case CopyDst:           return D3D12_BARRIER_ACCESS_COPY_DEST;
-        case CopySrc:           return D3D12_BARRIER_ACCESS_COPY_SOURCE;
-        case ResolveDst:        return D3D12_BARRIER_ACCESS_RESOLVE_DEST;
-        case ResolveSrc:        return D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
-        case ShadingRateSource: return D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
-        case NoAccess:          return D3D12_BARRIER_ACCESS_NO_ACCESS;
-        default:
-            std::unreachable();
+        if(state == NoAccess){
+            return D3D12_BARRIER_ACCESS_NO_ACCESS;
         }
+        CROWY_ASSERT(!hasFlag(state, NoAccess),
+            "NoAccess cannot combine with other access bits"
+        );
+
+        // Common == 0 == D3D12_BARRIER_ACCESS_COMMON
+        auto result = D3D12_BARRIER_ACCESS_COMMON;
+        const auto mapBit = [&](RHIBarrierAccess rhi, D3D12_BARRIER_ACCESS dx){
+            if(hasFlag(state, rhi)){
+                result |= dx;
+            }
+        };
+        mapBit(VertexBuffer,    D3D12_BARRIER_ACCESS_VERTEX_BUFFER);
+        mapBit(IndexBuffer,     D3D12_BARRIER_ACCESS_INDEX_BUFFER);
+        mapBit(UniformBuffer,   D3D12_BARRIER_ACCESS_CONSTANT_BUFFER);
+        mapBit(ShaderResource,  D3D12_BARRIER_ACCESS_SHADER_RESOURCE);
+        mapBit(UnorderedAccess, D3D12_BARRIER_ACCESS_UNORDERED_ACCESS);
+        mapBit(RenderTarget,    D3D12_BARRIER_ACCESS_RENDER_TARGET);
+        mapBit(DepthWrite,      D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE);
+        mapBit(DepthRead,       D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ);
+        mapBit(IndirectArgs,    D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT);
+        mapBit(CopySrc,         D3D12_BARRIER_ACCESS_COPY_SOURCE);
+        mapBit(CopyDst,         D3D12_BARRIER_ACCESS_COPY_DEST);
+
+        return result;
     }
 
-    D3D12_BARRIER_LAYOUT convert(RHIBarrierLayout state){
-        using enum RHIBarrierLayout;
+    D3D12_BARRIER_LAYOUT convert(RHITextureLayout state){
+        using enum RHITextureLayout;
 
         switch(state){
-        case Undefined:         return D3D12_BARRIER_LAYOUT_UNDEFINED;
-        case Common:            return D3D12_BARRIER_LAYOUT_COMMON;
-        case GenericRead:       return D3D12_BARRIER_LAYOUT_GENERIC_READ;
-        case RenderTarget:      return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-        case UnorderedAccess:   return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
-        case DepthStencilWrite: return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
-        case DepthStencilRead:  return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
-        case ShaderResource:    return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
-        case CopyDst:           return D3D12_BARRIER_LAYOUT_COPY_DEST;
-        case CopySrc:           return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
-        case ResolveDst:        return D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
-        case ResolveSrc:        return D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
-        case ShadingRateSource: return D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
+        case Undefined:       return D3D12_BARRIER_LAYOUT_UNDEFINED;
+        case Common:          return D3D12_BARRIER_LAYOUT_COMMON;
+        case RenderTarget:    return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
+        case DepthWrite:      return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
+        case DepthRead:       return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
+        case ShaderResource:  return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+        case UnorderedAccess: return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
+        case CopySrc:         return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
+        case CopyDst:         return D3D12_BARRIER_LAYOUT_COPY_DEST;
+        case Present:         return D3D12_BARRIER_LAYOUT_PRESENT;
         default:
             std::unreachable();
         }

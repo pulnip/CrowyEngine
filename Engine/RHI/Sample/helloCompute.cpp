@@ -1,3 +1,4 @@
+#include <array>
 #include <print>
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -56,12 +57,22 @@ int main(void){
 
         cmdList->Begin();
 
-        cmdList->TransitionBarrier(*out,
-            RHIResourceUsage::ComputeWrite
+        // the compute pass releases `out`, the copy pass acquires it -
+        // one edge, same value on both ends
+        const auto outEdge = MakeBarrier(*out,
+            RHIResourceUsage::StorageCompute,
+            RHIResourceUsage::CopySrc
         );
 
         {
-            cmdList->BeginCompute();
+            const std::array acquires{
+                // first GPU use of `out`: self-contained acquire
+                MakeBarrier(*out,
+                    RHIResourceUsage::Undefined,
+                    RHIResourceUsage::StorageCompute
+                )
+            };
+            cmdList->BeginComputePass({}, acquires);
 
             cmdList->SetPipelineState(*pipelineState);
             cmdList->SetPushComputeConstants(PushConstants{
@@ -72,15 +83,15 @@ int main(void){
 
             cmdList->Dispatch({N, 1, 1});
 
-            cmdList->EndCompute();
+            const std::array releases{outEdge};
+            cmdList->EndComputePass({}, releases);
         }
 
-        cmdList->TransitionBarrier(*out,
-            RHIResourceUsage::CopySrc
-        );
-
         {
-            cmdList->BeginBlit();
+            // the readback buffer needs no acquire: readback-heap resources
+            // never transition, and this copy is its first GPU use
+            const std::array acquires{outEdge};
+            cmdList->BeginCopyPass({}, acquires);
             cmdList->Copy(
                 *out,
                 *readback,
@@ -88,7 +99,9 @@ int main(void){
                 0,
                 sizeof(float) * N
             );
-            cmdList->EndBlit();
+            // the CPU readback after the fence needs no release -
+            // that ordering is the fence's job
+            cmdList->EndCopyPass();
         }
 
         cmdList->Close();

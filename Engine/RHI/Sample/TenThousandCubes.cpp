@@ -23,7 +23,7 @@ namespace Crowy
     // side in one GeometryPool, so every draw shares the same buffer
     // bindings and differs only by firstIndex/baseVertex in its args.
     // The args and DrawData buffers are fully rewritten every frame even
-    // though the scene is static — that is the pattern a culling pass
+    // though the scene is static - that is the pattern a culling pass
     // will later write into.
     class TenThousandCubes: public App{
         using App::App;
@@ -82,7 +82,7 @@ namespace Crowy
         std::vector<RHIDrawIndexedArgs> argsScratch;
 
         // fly camera; the start pose sits between lattice rows looking
-        // straight down +Z — the pose the capture check is written against
+        // straight down +Z - the pose the capture check is written against
         Vec3 cameraPos{50.0f, 50.0f, 37.5f};
         f32 cameraYaw = 0.0f, cameraPitch = 0.0f;
         Vec3 moveInput{};
@@ -175,12 +175,15 @@ namespace Crowy
                 BLOCK_HALF_SIZE
             );
 
-            cmdList.BeginBlit();
+            const auto acquires = geometryPool->UploadAcquires();
+            cmdList.BeginCopyPass({}, acquires);
             meshes[0] = geometryPool->Add(cmdList, boxMesh.vertices, boxMesh.indices);
             meshes[1] = geometryPool->Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
             meshes[2] = geometryPool->Add(cmdList, planeMesh.vertices, planeMesh.indices);
-            geometryPool->FinishUploads(cmdList);
-            cmdList.EndBlit();
+            // the draws live in later submissions, so these releases complete
+            // at Close as the hand-off to vertex/index use
+            const auto releases = geometryPool->UploadReleases();
+            cmdList.EndCopyPass({}, releases);
 
             geometryPool->LogAllocationStats();
         }
@@ -262,11 +265,20 @@ namespace Crowy
                 .viewProj = proj * view
             });
 
-            cmdList.TransitionBarrier(*depthBuffer, RHIResourceUsage::DepthStencilWrite);
-
             auto colorAttachment = backBuffer;
             colorAttachment.clearColor = SKY_COLOR;
             std::array colorAttachments = {colorAttachment};
+            const std::array acquires{
+                AcquireBackBuffer(backBuffer),
+                // waits for the previous frame's depth work (WAR), contents
+                // discarded - the pass clears anyway
+                MakeCrossSubmissionBarrier(
+                    *depthBuffer,
+                    RHIResourceUsage::DepthWrite,
+                    RHIResourceUsage::DepthWrite,
+                    /*discardContents=*/true
+                )
+            };
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
                 .depthAttachment = RHIDepthAttachment{
@@ -275,7 +287,7 @@ namespace Crowy
                     .storeAction = RHIStoreAction::DontCare,
                     .clearDepthStencil = {.depth = 1.0f}
                 }
-            });
+            }, acquires);
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
@@ -294,7 +306,8 @@ namespace Crowy
                 .drawCount = DRAW_COUNT
             });
 
-            cmdList.EndRenderPass();
+            const std::array releases{ReleaseBackBuffer(backBuffer)};
+            cmdList.EndRenderPass(releases);
         }
 
         void OnResize(u32 width, u32 height) override{

@@ -14,9 +14,6 @@ namespace{
         D3D12_HEAP_TYPE heapType;
         Crowy::u32 slotCount;
         bool persistentMap;
-        // Initial State
-        Crowy::RHIBarrierSync syncState;
-        Crowy::RHIBarrierAccess accessState;
     };
 
     auto Resolve(
@@ -32,9 +29,7 @@ namespace{
             return BufferPolicy{
                 .heapType = D3D12_HEAP_TYPE_DEFAULT,
                 .slotCount = 1,
-                .persistentMap = false,
-                .syncState = RHIBarrierSync::None,
-                .accessState = RHIBarrierAccess::NoAccess
+                .persistentMap = false
             };
         case CPUWrite:
             return BufferPolicy{
@@ -43,17 +38,13 @@ namespace{
                 .slotCount = usage == RHIBufferUsage::CopySrc ?
                     1 :
                     RHI_FRAMES_IN_FLIGHT,
-                .persistentMap = true,
-                .syncState = RHIBarrierSync::None,
-                .accessState = RHIBarrierAccess::ConstantBuffer
+                .persistentMap = true
             };
         case CPURead:
             return BufferPolicy{
                 .heapType = D3D12_HEAP_TYPE_READBACK,
                 .slotCount = RHI_FRAMES_IN_FLIGHT,
-                .persistentMap = true,
-                .syncState = RHIBarrierSync::Copy,
-                .accessState = RHIBarrierAccess::CopyDst
+                .persistentMap = true
             };
         case Transient:
             CROWY_ASSERT(false, "Transient is texture-only");
@@ -109,8 +100,6 @@ namespace Crowy
         resources.reserve(policy.slotCount);
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource frameResource{
-                .syncState = policy.syncState,
-                .accessState = policy.accessState,
             #if defined(_DEBUG) || !defined(NDEBUG)
                 .slotWritten = false
             #endif

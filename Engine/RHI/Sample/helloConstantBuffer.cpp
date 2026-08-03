@@ -54,9 +54,10 @@ namespace Crowy
             constantBuffer->Upload(sceneData);
 
             std::array colorAttachments = {backBuffer};
+            const std::array acquires{AcquireBackBuffer(backBuffer)};
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
-            });
+            }, acquires);
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
@@ -67,7 +68,8 @@ namespace Crowy
             );
             cmdList.Draw(3);
 
-            cmdList.EndRenderPass();
+            const std::array releases{ReleaseBackBuffer(backBuffer)};
+            cmdList.EndRenderPass(releases);
         }
     };
 }

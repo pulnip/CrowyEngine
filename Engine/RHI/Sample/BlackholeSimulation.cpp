@@ -125,7 +125,14 @@ namespace Crowy
             blurred = device.CreateTexture(chainDesc, "bloomBlurred");
         }
 
+        // the caller's producing pass must have released
+        // `MakeBarrier(source, RenderTarget, SampledFragment)` (whole range);
+        // the first horizontal blur closes that edge here. the result stays
+        // released as `MakeBarrier(result, RenderTarget, SampledFragment)` -
+        // acquire that same edge in the pass that samples it.
         RHITexture& Execute(RHITexture& source, RHICommandList& cmdList){
+            using enum RHIResourceUsage;
+
             for(u32 i=0; i<levelCount; ++i){
                 // level 0 reads the source, deeper levels the mip above them
                 RHITexture& input = i == 0 ? source : *blurred;
@@ -134,62 +141,94 @@ namespace Crowy
                     RHISubresourceRange{} :
                     MipRange(inputMip);
 
-                {
-                    std::array barriers = {
-                        MakeBarrier(input, RHIResourceUsage::FragmentRead, inputRange),
-                        MakeBarrier(*temp, RHIResourceUsage::RenderTarget, MipRange(i))
-                    };
-                    cmdList.TransitionBarrier(barriers);
-                }
+                // i == 0: closes the caller's source edge (first consumer).
+                // i > 0: second consumer of blurred mip i-1 - the upsample
+                // already closed it, so the backend emits a sync-only barrier
+                const auto inputAcquire = MakeBarrier(
+                    input, RenderTarget, SampledFragment, inputRange
+                );
 
                 // horizontal blur, halving on the way out. the kernel steps in
                 // *input* texels, so 2 of them are 1 texel of the target mip.
-                singleBlur(
-                    cmdList,
-                    *blur,
-                    input, inputMip,
-                    *temp, i,
-                    Vec2{2, 0}, 1.0f,
-                    RHILoadAction::DontCare
-                );
-
                 {
-                    std::array barriers = {
-                        MakeBarrier(*temp, RHIResourceUsage::FragmentRead, MipRange(i)),
-                        MakeBarrier(*blurred, RHIResourceUsage::RenderTarget, MipRange(i))
+                    const std::array acquires{
+                        inputAcquire,
+                        // last frame's vertical blur read this mip (WAR);
+                        // it is fully overwritten, so drop the contents
+                        MakeCrossSubmissionBarrier(
+                            *temp, SampledFragment, RenderTarget,
+                            /*discardContents=*/true, MipRange(i)
+                        )
                     };
-                    cmdList.TransitionBarrier(barriers);
+                    const std::array releases{
+                        MakeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i))
+                    };
+                    singleBlur(
+                        cmdList,
+                        *blur,
+                        input, inputMip,
+                        *temp, i,
+                        Vec2{2, 0}, 1.0f,
+                        RHILoadAction::DontCare,
+                        acquires, releases
+                    );
                 }
 
                 // vertical blur, already at the target resolution
-                singleBlur(
-                    cmdList,
-                    *blur,
-                    *temp, i,
-                    *blurred, i,
-                    Vec2{0, 1}, 1.0f,
-                    RHILoadAction::DontCare
-                );
-
                 {
-                    std::array barriers = {
-                        MakeBarrier(*blurred, RHIResourceUsage::FragmentRead, MipRange(i)),
-                        MakeBarrier(*accum, RHIResourceUsage::RenderTarget)
+                    const std::array acquires{
+                        MakeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i)),
+                        MakeCrossSubmissionBarrier(
+                            *blurred, SampledFragment, RenderTarget,
+                            /*discardContents=*/true, MipRange(i)
+                        )
                     };
-                    cmdList.TransitionBarrier(barriers);
+                    const std::array releases{
+                        MakeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i))
+                    };
+                    singleBlur(
+                        cmdList,
+                        *blur,
+                        *temp, i,
+                        *blurred, i,
+                        Vec2{0, 1}, 1.0f,
+                        RHILoadAction::DontCare,
+                        acquires, releases
+                    );
                 }
 
                 // bilinear upsample back to full resolution, added on top of the coarser levels.
                 // a zero step collapses the kernel to a resample.
-                singleBlur(
-                    cmdList,
-                    *upsampleAccum,
-                    *blurred, i,
-                    *accum, 0,
-                    Vec2{0, 0}, 1.0f / static_cast<f32>(1u << i),
-                    // accum must start empty every frame
-                    i == 0 ? RHILoadAction::Clear : RHILoadAction::Load
-                );
+                {
+                    const std::array acquires{
+                        MakeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i)),
+                        // level 0 recycles accum from last frame's composite
+                        // read; later levels chain WAW on their own blend work
+                        i == 0 ?
+                            MakeCrossSubmissionBarrier(
+                                *accum, SampledFragment, RenderTarget,
+                                /*discardContents=*/true
+                            ) :
+                            MakeBarrier(*accum, RenderTarget, RenderTarget)
+                    };
+                    const std::array releases{
+                        // the last level hands accum to whoever samples the
+                        // result; earlier levels feed the next blend
+                        i + 1 == levelCount ?
+                            MakeBarrier(*accum, RenderTarget, SampledFragment) :
+                            MakeBarrier(*accum, RenderTarget, RenderTarget)
+                    };
+                    singleBlur(
+                        cmdList,
+                        *upsampleAccum,
+                        *blurred, i,
+                        *accum, 0,
+                        Vec2{0, 0}, 1.0f / static_cast<f32>(1u << i),
+                        // accum must start empty every frame
+                        i == 0 ? RHILoadAction::Clear : RHILoadAction::Load,
+                        acquires, releases
+                    );
+                }
             }
 
             return *accum;
@@ -203,7 +242,9 @@ namespace Crowy
             RHITexture& dst, u32 dstMip,
             Vec2 texelDir,
             f32 intensity,
-            RHILoadAction loadAction
+            RHILoadAction loadAction,
+            std::span<const RHITextureBarrier> acquires,
+            std::span<const RHITextureBarrier> releases
         ){
             std::array colorAttachments = {
                 RHIColorAttachment{
@@ -215,7 +256,7 @@ namespace Crowy
             };
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
-            });
+            }, acquires);
             cmdList.SetViewport(FullViewport(dst, dstMip));
             cmdList.SetScissorRect(FullScissorRect(dst, dstMip));
 
@@ -233,7 +274,7 @@ namespace Crowy
             });
             cmdList.Draw(4);
 
-            cmdList.EndRenderPass();
+            cmdList.EndRenderPass(releases);
         }
     };
 
@@ -404,41 +445,44 @@ namespace Crowy
         }
 
         void OnInitialRecord(RHICommandList& cmdList) override{
-            cmdList.TransitionBarrier(
-                *disk,
-                RHIResourceUsage::RenderTarget
-            );
+            std::array colorAttachments = {
+                RHIColorAttachment{
+                    .texture = disk.get(),
+                    .loadAction = RHILoadAction::DontCare,
+                    .storeAction = RHIStoreAction::Store
+                }
+            };
+            const std::array acquires{
+                // first use of the freshly created texture
+                MakeBarrier(*disk,
+                    RHIResourceUsage::Undefined,
+                    RHIResourceUsage::RenderTarget
+                )
+            };
+            cmdList.BeginRenderPass(RHIRenderPassDesc{
+                .colorAttachments = colorAttachments,
+            }, acquires);
+            cmdList.SetViewport(FullViewport(*disk));
+            cmdList.SetScissorRect(FullScissorRect(*disk));
 
-            {
-                std::array colorAttachments = {
-                    RHIColorAttachment{
-                        .texture = disk.get(),
-                        .loadAction = RHILoadAction::DontCare,
-                        .storeAction = RHIStoreAction::Store
-                    }
-                };
-                cmdList.BeginRenderPass(RHIRenderPassDesc{
-                    .colorAttachments = colorAttachments,
-                });
-                cmdList.SetViewport(FullViewport(*disk));
-                cmdList.SetScissorRect(FullScissorRect(*disk));
+            cmdList.SetPipelineState(*diskGenerator);
+            cmdList.SetPushGraphicsConstants(GenerationParam{
+                .rs = simParam.rs,
+                .diskInner = simParam.diskInner,
+                .diskOuter = simParam.diskOuter,
+                .maxTempKelvin = 1e+4
+            });
+            cmdList.Draw(4);
 
-                cmdList.SetPipelineState(*diskGenerator);
-                cmdList.SetPushGraphicsConstants(GenerationParam{
-                    .rs = simParam.rs,
-                    .diskInner = simParam.diskInner,
-                    .diskOuter = simParam.diskOuter,
-                    .maxTempKelvin = 1e+4
-                });
-                cmdList.Draw(4);
-
-                cmdList.EndRenderPass();
-            }
-
-            cmdList.TransitionBarrier(
-                *disk,
-                RHIResourceUsage::FragmentRead
-            );
+            // every consumer lives in later frames' command lists, so this
+            // release completes at Close as the hand-off to sampled use
+            const std::array releases{
+                MakeBarrier(*disk,
+                    RHIResourceUsage::RenderTarget,
+                    RHIResourceUsage::SampledFragment
+                )
+            };
+            cmdList.EndRenderPass(releases);
         }
 
         void OnUpdate(f64, f64 elapsedTime) override{
@@ -448,13 +492,18 @@ namespace Crowy
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             simParamBuffer->Upload(simParam);
 
-            {
-                std::array barriers = {
-                    MakeBarrier(*scene, RHIResourceUsage::RenderTarget),
-                    MakeBarrier(*brightMask, RHIResourceUsage::RenderTarget)
-                };
-                cmdList.TransitionBarrier(barriers);
-            }
+            // the scene edge skips the whole bloom chain: released by the
+            // simulation pass, acquired only by the composite - the
+            // non-adjacent dependency this barrier model exists for
+            const auto sceneEdge = MakeBarrier(*scene,
+                RHIResourceUsage::RenderTarget,
+                RHIResourceUsage::SampledFragment
+            );
+            // brightMask goes to the bloom's first blur instead (adjacent)
+            const auto brightMaskEdge = MakeBarrier(*brightMask,
+                RHIResourceUsage::RenderTarget,
+                RHIResourceUsage::SampledFragment
+            );
 
             {
                 std::array colorAttachments = {
@@ -469,33 +518,40 @@ namespace Crowy
                         .storeAction = RHIStoreAction::Store
                     }
                 };
+                const std::array acquires{
+                    // both were sampled by last frame's passes (WAR) and are
+                    // fully rewritten, so the contents can go
+                    MakeCrossSubmissionBarrier(*scene,
+                        RHIResourceUsage::SampledFragment,
+                        RHIResourceUsage::RenderTarget,
+                        /*discardContents=*/true
+                    ),
+                    MakeCrossSubmissionBarrier(*brightMask,
+                        RHIResourceUsage::SampledFragment,
+                        RHIResourceUsage::RenderTarget,
+                        /*discardContents=*/true
+                    )
+                };
                 cmdList.BeginRenderPass(RHIRenderPassDesc{
                     .colorAttachments = colorAttachments
-                });
+                }, acquires);
                 cmdList.SetViewport(FullViewport(*backBuffer.texture));
                 cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
                 cmdList.SetPipelineState(*blackholeSimulator);
                 cmdList.SetPushGraphicsConstants(PushConstants{
+                    // generated once in OnInitialRecord and handed off there
                     .disk = disk->GetReadableID()
                 });
                 cmdList.SetGraphicsConstantBuffer(*simParamBuffer, 0);
                 cmdList.Draw(4);
 
-                cmdList.EndRenderPass();
+                const std::array releases{sceneEdge, brightMaskEdge};
+                cmdList.EndRenderPass(releases);
             }
 
             RHITexture& bloom = bloomPass.Execute(*brightMask, cmdList);
 
-            {
-                std::array barriers = {
-                    MakeBarrier(*scene, RHIResourceUsage::FragmentRead),
-                    MakeBarrier(bloom, RHIResourceUsage::FragmentRead)
-                };
-                cmdList.TransitionBarrier(barriers);
-            }
-
-            // the framework already left the back buffer as a render target
             {
                 std::array colorAttachments = {
                     RHIColorAttachment{
@@ -505,9 +561,18 @@ namespace Crowy
                         .storeAction = backBuffer.storeAction
                     }
                 };
+                const std::array acquires{
+                    sceneEdge,
+                    // the edge Execute's last upsample released
+                    MakeBarrier(bloom,
+                        RHIResourceUsage::RenderTarget,
+                        RHIResourceUsage::SampledFragment
+                    ),
+                    AcquireBackBuffer(backBuffer)
+                };
                 cmdList.BeginRenderPass(RHIRenderPassDesc{
                     .colorAttachments = colorAttachments
-                });
+                }, acquires);
                 cmdList.SetViewport(FullViewport(*backBuffer.texture));
                 cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
@@ -518,7 +583,8 @@ namespace Crowy
                 });
                 cmdList.Draw(4);
 
-                cmdList.EndRenderPass();
+                const std::array releases{ReleaseBackBuffer(backBuffer)};
+                cmdList.EndRenderPass(releases);
             }
         }
 

@@ -52,6 +52,20 @@ namespace Crowy
 
     GeometryPool::~GeometryPool() = default;
 
+    std::array<RHIBufferBarrier, 2> GeometryPool::UploadAcquires(){
+        return {
+            MakeBarrier(*vertexBuffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst),
+            MakeBarrier(*indexBuffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
+        };
+    }
+
+    std::array<RHIBufferBarrier, 2> GeometryPool::UploadReleases(){
+        return {
+            MakeBarrier(*vertexBuffer, RHIResourceUsage::CopyDst, RHIResourceUsage::VertexBuffer),
+            MakeBarrier(*indexBuffer, RHIResourceUsage::CopyDst, RHIResourceUsage::IndexBuffer)
+        };
+    }
+
     GeometryAllocation GeometryPool::Add(
         RHICommandList& cmdList,
         std::span<const Vertex> vertices,
@@ -78,12 +92,6 @@ namespace Crowy
         }, "geometry pool staging");
         staging->Upload(vertices.data(), vertexBytes);
         staging->Upload(indices.data(), indexBytes, vertexBytes);
-
-        if(!uploading){
-            cmdList.TransitionBarrier(*vertexBuffer, RHIResourceUsage::CopyDst);
-            cmdList.TransitionBarrier(*indexBuffer, RHIResourceUsage::CopyDst);
-            uploading = true;
-        }
 
         cmdList.Copy(
             *staging,
@@ -119,18 +127,6 @@ namespace Crowy
             .offset = allocation.firstIndex,
             .metadata = allocation.indexMetadata
         });
-    }
-
-    void GeometryPool::FinishUploads(RHICommandList& cmdList){
-        cmdList.TransitionBarrier(
-            *vertexBuffer,
-            RHIResourceUsage::VertexBuffer
-        );
-        cmdList.TransitionBarrier(
-            *indexBuffer,
-            RHIResourceUsage::IndexBuffer
-        );
-        uploading = false;
     }
 
     void GeometryPool::LogAllocationStats() const{

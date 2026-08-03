@@ -43,9 +43,6 @@ namespace Crowy
     )
         : RHITexture(
             desc.format,
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Undefined,
             desc.mipLevels,
             desc.arraySize
         )
@@ -111,7 +108,7 @@ namespace Crowy
             D3D12_HEAP_FLAG_NONE,
             &texDesc,
             // undefined - no content
-            convert(RHIBarrierLayout::Undefined),
+            convert(RHITextureLayout::Undefined),
             pClearValue,
             // Hardware DRM
             nullptr,
@@ -140,14 +137,8 @@ namespace Crowy
         DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
-        : RHITexture(
-            logicalFormat,
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Present,
-            1,
-            1
-        )
+        // the swapchain hands buffers over in the Present layout
+        : RHITexture(logicalFormat, 1, 1)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)

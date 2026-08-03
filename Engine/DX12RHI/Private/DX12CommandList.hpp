@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+#include <vector>
 #include <d3dx12/d3dx12_barriers.h>
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
@@ -14,6 +16,20 @@ namespace Crowy
 
     class DX12CommandList: public RHICommandList{
     private:
+        enum class PassKind: u8{
+            None, Render, Compute, Copy
+        };
+
+        // ⚠️ record-time CPU bookkeeping for pairing barrier halves - NOT GPU
+        // state tracking. it stays commandlist-local so parallel recording
+        // keeps working; the GPU ordering comes only from recorded barriers.
+        template<typename Barrier>
+        struct PendingRelease{
+            Barrier barrier;
+            // at least one acquire already fused this edge (multi-consumer)
+            bool consumed = false;
+        };
+
         CommandQueue& commandQueue;
         RootSignature& rootSignature;
         CommandSignature& drawIndexedSignature;
@@ -22,7 +38,18 @@ namespace Crowy
 
         CommandListRAII commandList = nullptr;
         // simulate command recording
-        bool inComputePass = false, inBlitPass = false;
+        PassKind passState = PassKind::None;
+
+        // v1 fuse strategy: releases park here and each acquire fuses its
+        // matched pair into one Enhanced Barrier recorded before the consumer
+        std::unordered_map<
+            const RHITexture*,
+            std::vector<PendingRelease<RHITextureBarrier>>
+        > pendingTextureReleases;
+        std::unordered_map<
+            const RHIBuffer*,
+            PendingRelease<RHIBufferBarrier>
+        > pendingBufferReleases;
 
         DescriptorHeapAllocator& cbvsrvuavHeap;
         DescriptorHeapAllocator& rtvHeap;
@@ -52,8 +79,15 @@ namespace Crowy
         void Begin() RHI_OVERRIDE;
         void Close() RHI_OVERRIDE;
 
-        void BeginRenderPass(const RHIRenderPassDesc&) RHI_OVERRIDE;
-        void EndRenderPass() RHI_OVERRIDE;
+        void BeginRenderPass(
+            const RHIRenderPassDesc&,
+            std::span<const RHITextureBarrier> textureAcquires = {},
+            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        ) RHI_OVERRIDE;
+        void EndRenderPass(
+            std::span<const RHITextureBarrier> textureReleases = {},
+            std::span<const RHIBufferBarrier> bufferReleases = {}
+        ) RHI_OVERRIDE;
 
         void SetPipelineState(RHIGraphicsPipelineState& pso) RHI_OVERRIDE;
 
@@ -101,8 +135,14 @@ namespace Crowy
 
         void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
 
-        void BeginCompute() noexcept RHI_OVERRIDE;
-        void EndCompute() noexcept RHI_OVERRIDE;
+        void BeginComputePass(
+            std::span<const RHITextureBarrier> textureAcquires = {},
+            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        ) RHI_OVERRIDE;
+        void EndComputePass(
+            std::span<const RHITextureBarrier> textureReleases = {},
+            std::span<const RHIBufferBarrier> bufferReleases = {}
+        ) RHI_OVERRIDE;
 
         void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
 
@@ -119,8 +159,19 @@ namespace Crowy
 
         void Dispatch(Size3D gridSize) RHI_OVERRIDE;
 
-        void BeginBlit() noexcept RHI_OVERRIDE;
-        void EndBlit() noexcept RHI_OVERRIDE;
+        void BeginCopyPass(
+            std::span<const RHITextureBarrier> textureAcquires = {},
+            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        ) RHI_OVERRIDE;
+        void EndCopyPass(
+            std::span<const RHITextureBarrier> textureReleases = {},
+            std::span<const RHIBufferBarrier> bufferReleases = {}
+        ) RHI_OVERRIDE;
+
+        void DispatchBarrier(
+            std::span<const RHITextureBarrier> textureBarriers = {},
+            std::span<const RHIBufferBarrier> bufferBarriers = {}
+        ) RHI_OVERRIDE;
 
         void Copy(
             RHIBuffer& src,
@@ -147,11 +198,6 @@ namespace Crowy
 
         using RHICommandList::Copy;
 
-        void TransitionBarrier(
-            std::span<const RHITextureBarrier>,
-            std::span<const RHIBufferBarrier>
-        ) RHI_OVERRIDE;
-
         void BeginEvent(CStr name) RHI_OVERRIDE;
         void EndEvent() RHI_OVERRIDE;
         void SetMarker(CStr name) RHI_OVERRIDE;
@@ -164,5 +210,33 @@ namespace Crowy
                 frameIndex % RHI_FRAMES_IN_FLIGHT
             );
         }
+
+        // record the whole edge as one Enhanced Barrier into the scratch
+        void pushFused(const RHITextureBarrier&);
+        void pushFused(const RHIBufferBarrier&);
+        void flushBarrierScratch();
+
+        // End*Pass halves: self-contained releases fuse on the spot,
+        // real edges park in the pending map
+        void queueRelease(const RHITextureBarrier&, RHIBarrierSync allowedSync);
+        void queueRelease(const RHIBufferBarrier&, RHIBarrierSync allowedSync);
+        void queueReleases(
+            std::span<const RHITextureBarrier>,
+            std::span<const RHIBufferBarrier>,
+            RHIBarrierSync allowedSync
+        );
+
+        // Begin*Pass halves: fuse against the matching pending release,
+        // or record a self-contained acquire
+        void applyAcquire(const RHITextureBarrier&);
+        void applyAcquire(const RHIBufferBarrier&);
+        void applyAcquires(
+            std::span<const RHITextureBarrier>,
+            std::span<const RHIBufferBarrier>
+        );
+
+        // releases nobody acquired complete at Close - the hand-off point
+        // for consumers living in later submissions
+        void flushPendingReleases();
     };
 }
