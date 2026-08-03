@@ -60,6 +60,10 @@ $proc = Start-Process -FilePath $App `
     -RedirectStandardError $errLog `
     -NoNewWindow -PassThru
 
+# cache the process handle right away: without this, ExitCode reads back
+# null when the process exits before we query it (fast headless samples)
+$null = $proc.Handle
+
 $status = 0
 if ($proc.WaitForExit($Duration * 1000)) {
     $status = $proc.ExitCode
