@@ -80,7 +80,7 @@ namespace Crowy
                         RHIResourceUsage::CopyDst
                     )
                 };
-                cmdList.BeginCopyPass(acquires);
+                cmdList.BeginBlitPass(acquires);
                 cmdList.Copy(
                     *checkerboard,
                     *backBuffer.texture
@@ -91,7 +91,7 @@ namespace Crowy
                         RHIResourceUsage::Present
                     )
                 };
-                cmdList.EndCopyPass(releases);
+                cmdList.EndBlitPass(releases);
             }
         }
     };

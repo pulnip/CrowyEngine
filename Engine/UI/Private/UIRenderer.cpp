@@ -428,7 +428,7 @@ namespace Crowy
                 RHIResourceUsage::CopyDst
             )
         };
-        cmdList.BeginCopyPass(acquires);
+        cmdList.BeginBlitPass(acquires);
         cmdList.Copy(
             *staging,
             0,
@@ -448,7 +448,7 @@ namespace Crowy
                 RHIResourceUsage::SampledFragment
             )
         };
-        cmdList.EndCopyPass(releases);
+        cmdList.EndBlitPass(releases);
         textureAcquires.push_back(releases[0]);
 
         retire(std::move(staging));

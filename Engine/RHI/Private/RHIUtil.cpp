@@ -72,7 +72,7 @@ namespace Crowy
         const std::array acquires{
             MakeBarrier(buffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
         };
-        cmdList.BeginCopyPass({}, acquires);
+        cmdList.BeginBlitPass({}, acquires);
 
         cmdList.Copy(
             alloc.buffer,
@@ -94,7 +94,7 @@ namespace Crowy
                 .accessAfter = resting.access
             }
         };
-        cmdList.EndCopyPass({}, releases);
+        cmdList.EndBlitPass({}, releases);
     }
 
     void UploadTexture(
@@ -138,7 +138,7 @@ namespace Crowy
         const std::array acquires{
             MakeBarrier(texture, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
         };
-        cmdList.BeginCopyPass(acquires);
+        cmdList.BeginBlitPass(acquires);
 
         for(usize s=0; s<n; ++s){
             cmdList.Copy(
@@ -165,7 +165,7 @@ namespace Crowy
                 .layoutAfter = RHITextureLayout::ShaderResource
             }
         };
-        cmdList.EndCopyPass(releases);
+        cmdList.EndBlitPass(releases);
     }
 
     RHIPixelFormat toSrgb(RHIPixelFormat format){

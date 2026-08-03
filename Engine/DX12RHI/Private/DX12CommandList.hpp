@@ -16,11 +16,10 @@ namespace Crowy
 
     class DX12CommandList: public RHICommandList{
     private:
-        enum class PassKind: u8{
-            None, Render, Compute, Copy
-        };
+        using Super = RHICommandList;
 
-        // ⚠️ record-time CPU bookkeeping for pairing barrier halves - NOT GPU
+    private:
+        // record-time CPU bookkeeping for pairing barrier halves - NOT GPU
         // state tracking. it stays commandlist-local so parallel recording
         // keeps working; the GPU ordering comes only from recorded barriers.
         template<typename Barrier>
@@ -37,8 +36,6 @@ namespace Crowy
         const u64& frameIndex;
 
         CommandListRAII commandList = nullptr;
-        // simulate command recording
-        PassKind passState = PassKind::None;
 
         // v1 fuse strategy: releases park here and each acquire fuses its
         // matched pair into one Enhanced Barrier recorded before the consumer
@@ -81,12 +78,12 @@ namespace Crowy
 
         void BeginRenderPass(
             const RHIRenderPassDesc&,
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
         ) RHI_OVERRIDE;
         void EndRenderPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
         ) RHI_OVERRIDE;
 
         void SetPipelineState(RHIGraphicsPipelineState& pso) RHI_OVERRIDE;
@@ -136,12 +133,12 @@ namespace Crowy
         void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
 
         void BeginComputePass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
         ) RHI_OVERRIDE;
         void EndComputePass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
         ) RHI_OVERRIDE;
 
         void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
@@ -159,18 +156,18 @@ namespace Crowy
 
         void Dispatch(Size3D gridSize) RHI_OVERRIDE;
 
-        void BeginCopyPass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        void BeginBlitPass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
         ) RHI_OVERRIDE;
-        void EndCopyPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
+        void EndBlitPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
         ) RHI_OVERRIDE;
 
         void DispatchBarrier(
-            std::span<const RHITextureBarrier> textureBarriers = {},
-            std::span<const RHIBufferBarrier> bufferBarriers = {}
+            std::span<const RHITextureBarrier> textureBarriers,
+            std::span<const RHIBufferBarrier> bufferBarriers
         ) RHI_OVERRIDE;
 
         void Copy(
@@ -218,12 +215,11 @@ namespace Crowy
 
         // End*Pass halves: self-contained releases fuse on the spot,
         // real edges park in the pending map
-        void queueRelease(const RHITextureBarrier&, RHIBarrierSync allowedSync);
-        void queueRelease(const RHIBufferBarrier&, RHIBarrierSync allowedSync);
+        void queueRelease(const RHITextureBarrier&);
+        void queueRelease(const RHIBufferBarrier&);
         void queueReleases(
             std::span<const RHITextureBarrier>,
-            std::span<const RHIBufferBarrier>,
-            RHIBarrierSync allowedSync
+            std::span<const RHIBufferBarrier>
         );
 
         // Begin*Pass halves: fuse against the matching pending release,

@@ -176,14 +176,14 @@ namespace Crowy
             );
 
             const auto acquires = geometryPool->UploadAcquires();
-            cmdList.BeginCopyPass({}, acquires);
+            cmdList.BeginBlitPass({}, acquires);
             meshes[0] = geometryPool->Add(cmdList, boxMesh.vertices, boxMesh.indices);
             meshes[1] = geometryPool->Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
             meshes[2] = geometryPool->Add(cmdList, planeMesh.vertices, planeMesh.indices);
             // the draws live in later submissions, so these releases complete
             // at Close as the hand-off to vertex/index use
             const auto releases = geometryPool->UploadReleases();
-            cmdList.EndCopyPass({}, releases);
+            cmdList.EndBlitPass({}, releases);
 
             geometryPool->LogAllocationStats();
         }

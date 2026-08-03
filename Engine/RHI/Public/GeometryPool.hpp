@@ -44,16 +44,16 @@ namespace Crowy
         GeometryPool(RHIDevice&, u32 vertexCapacity, u32 indexCapacity);
         ~GeometryPool();
 
-        // barriers for the copy pass that fills the pool:
-        //   BeginCopyPass({}, pool.UploadAcquires());
+        // barriers for the blit pass that fills the pool:
+        //   BeginBlitPass({}, pool.UploadAcquires());
         //   pool.Add(...); ...
-        //   EndCopyPass({}, pool.UploadReleases());
+        //   EndBlitPass({}, pool.UploadReleases());
         // acquires are self-contained (startup packing writes the pool
         // for the first time); revisit when uploads become streaming
         std::array<RHIBufferBarrier, 2> UploadAcquires();
         std::array<RHIBufferBarrier, 2> UploadReleases();
 
-        // records staging copies; call inside the copy pass above
+        // records staging copies; call inside the blit pass above
         GeometryAllocation Add(
             RHICommandList&,
             std::span<const Vertex> vertices,

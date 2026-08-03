@@ -91,7 +91,7 @@ int main(void){
             // the readback buffer needs no acquire: readback-heap resources
             // never transition, and this copy is its first GPU use
             const std::array acquires{outEdge};
-            cmdList->BeginCopyPass({}, acquires);
+            cmdList->BeginBlitPass({}, acquires);
             cmdList->Copy(
                 *out,
                 *readback,
@@ -101,7 +101,7 @@ int main(void){
             );
             // the CPU readback after the fence needs no release -
             // that ordering is the fence's job
-            cmdList->EndCopyPass();
+            cmdList->EndBlitPass();
         }
 
         cmdList->Close();

@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Assert.hpp"
+#include "EnumUtil.hpp"
 #include "RHIFWD.hpp"
 #include "Semantics.hpp"
+#include "RHIBuffer.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
@@ -64,6 +67,141 @@ namespace Crowy
 
             // no default label: -Wswitch forces a triple for every new usage
             return {S::None, A::NoAccess, L::Undefined};
+        }
+
+        // which producer stages each pass kind can release
+        inline constexpr auto RENDER_RELEASE_SYNC = combine(
+            RHIBarrierSync::All,
+            RHIBarrierSync::Draw,
+            RHIBarrierSync::IndexInput,
+            RHIBarrierSync::VertexShading,
+            RHIBarrierSync::PixelShading,
+            RHIBarrierSync::DepthStencil,
+            RHIBarrierSync::RenderTarget,
+            RHIBarrierSync::ExecuteIndirect
+        );
+        inline constexpr auto COMPUTE_RELEASE_SYNC = combine(
+            RHIBarrierSync::All,
+            RHIBarrierSync::Compute
+        );
+        inline constexpr auto COPY_RELEASE_SYNC = combine(
+            RHIBarrierSync::All,
+            RHIBarrierSync::Copy
+        );
+
+        [[maybe_unused]]
+        inline constexpr bool syncMatchesPass(RHIBarrierSync sync, RHIBarrierSync allowed){
+            return (static_cast<u32>(sync) & ~static_cast<u32>(allowed)) == 0;
+        }
+
+        // Sync::None demands Access::NoAccess. the reverse is allowed:
+        // NoAccess under real sync is an execution-only dependency
+        // (e.g. cross-submission discard — nothing to flush, only ordering)
+        [[maybe_unused]]
+        inline constexpr bool halfIsPaired(RHIBarrierSync sync, RHIBarrierAccess access){
+            return sync != RHIBarrierSync::None ||
+                access == RHIBarrierAccess::NoAccess;
+        }
+
+        // write accesses cannot combine with anything
+        [[maybe_unused]]
+        inline constexpr bool writeAccessAlone(RHIBarrierAccess access){
+            constexpr auto writes = combine(
+                RHIBarrierAccess::RenderTarget,
+                RHIBarrierAccess::DepthWrite,
+                RHIBarrierAccess::UnorderedAccess,
+                RHIBarrierAccess::CopyDst
+            );
+            if(!hasFlag(access, writes)){
+                return true;
+            }
+
+            const auto bits = static_cast<u32>(access);
+            return (bits & (bits - 1)) == 0;
+        }
+
+        inline void validateEdge(const RHITextureBarrier& barrier){
+            CROWY_ASSERT(
+                halfIsPaired(barrier.syncBefore, barrier.accessBefore) &&
+                halfIsPaired(barrier.syncAfter, barrier.accessAfter),
+                "Sync::None demands Access::NoAccess on the same half"
+            );
+            CROWY_ASSERT(
+                writeAccessAlone(barrier.accessBefore) &&
+                writeAccessAlone(barrier.accessAfter),
+                "write access must be a single bit"
+            );
+            CROWY_ASSERT(
+                barrier.discard == (barrier.layoutBefore == RHITextureLayout::Undefined),
+                "discard ⇔ layoutBefore == Undefined"
+            );
+            CROWY_ASSERT(barrier.layoutAfter != RHITextureLayout::Undefined,
+                "Undefined layout is only valid on the before side"
+            );
+        }
+
+        inline void validateEdge(const RHIBufferBarrier& barrier){
+            CROWY_ASSERT(
+                halfIsPaired(barrier.syncBefore, barrier.accessBefore) &&
+                halfIsPaired(barrier.syncAfter, barrier.accessAfter),
+                "Sync::None demands Access::NoAccess on the same half"
+            );
+            CROWY_ASSERT(
+                writeAccessAlone(barrier.accessBefore) &&
+                writeAccessAlone(barrier.accessAfter),
+                "write access must be a single bit"
+            );
+        }
+
+        template<typename Barrier>
+        inline void validateAcquire(const Barrier& barrier){
+            validateEdge(barrier);
+            CROWY_ASSERT(
+                !barrier.crossSubmission ||
+                barrier.syncBefore != RHIBarrierSync::None,
+                "a cross-submission acquire names the earlier submission's "
+                "real work; without one it is a plain self-contained acquire"
+            );
+        }
+
+        template<typename Barrier>
+        void validateRelease(const Barrier& barrier, RHIBarrierSync allowedSync){
+            validateEdge(barrier);
+            CROWY_ASSERT(barrier.syncBefore != RHIBarrierSync::None,
+                "a release needs real producer work; "
+                "first use is a self-contained acquire instead"
+            );
+            CROWY_ASSERT(syncMatchesPass(barrier.syncBefore, allowedSync),
+                "release syncBefore does not match this pass kind"
+            );
+            CROWY_ASSERT(!barrier.crossSubmission,
+                "crossSubmission marks acquires; a release's producer is this pass"
+            );
+        }
+
+        inline void validateAcquires(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ){
+            for(const auto& acquire: textureAcquires){
+                validateAcquire(acquire);
+            }
+            for(const auto& acquire: bufferAcquires){
+                validateAcquire(acquire);
+            }
+        }
+
+        inline void validateReleases(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases,
+            RHIBarrierSync allowedSync
+        ){
+            for(const auto& release: textureReleases){
+                validateRelease(release, allowedSync);
+            }
+            for(const auto& release: bufferReleases){
+                validateRelease(release, allowedSync);
+            }
         }
     }
 
@@ -172,51 +310,67 @@ namespace Crowy
         == detail::Expand(RHIResourceUsage::SampledCompute).layout);
 
     class RHICommandList{
+    private:
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        enum class PassKind: u8{
+            None, Render, Compute, Blit
+        } passState = PassKind::None;
+    #endif
+
     public:
         CROWY_DECLARE_INTERFACE(RHICommandList)
 
         // Command list lifecycle
-        virtual void Begin() = 0;
-        virtual void Close() = 0;
+        virtual void Begin(){
+            CROWY_ASSERT(passState == PassKind::None,
+                "Begin inside a pass. Did you call the matching End*Pass()?"
+            );
+        }
+        virtual void Close(){
+            CROWY_ASSERT(passState == PassKind::None,
+                "Close inside a pass. Did you call the matching End*Pass()?"
+            );
+        }
 
-        // Pass control
+        // Render Pass control
         virtual void BeginRenderPass(
-            const RHIRenderPassDesc&,
+            const RHIRenderPassDesc& desc,
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::None,
+                "Already inside a pass. Did you call the matching End*Pass()?"
+            );
+            detail::validateAcquires(textureAcquires, bufferAcquires);
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            passState = PassKind::Render;
+        #endif
+        }
         virtual void EndRenderPass(
             std::span<const RHITextureBarrier> textureReleases = {},
             std::span<const RHIBufferBarrier> bufferReleases = {}
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+            detail::validateReleases(
+                textureReleases,
+                bufferReleases,
+                detail::RENDER_RELEASE_SYNC
+            );
 
-        virtual void BeginComputePass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
-        ) = 0;
-        virtual void EndComputePass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
-        ) = 0;
-
-        virtual void BeginCopyPass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
-        ) = 0;
-        virtual void EndCopyPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
-        ) = 0;
-
-        // hazards between dispatches *inside* one compute pass
-        // (encoder-internal barrier); illegal anywhere else
-        virtual void DispatchBarrier(
-            std::span<const RHITextureBarrier> textureBarriers = {},
-            std::span<const RHIBufferBarrier> bufferBarriers = {}
-        ) = 0;
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            passState = PassKind::None;
+        #endif
+        }
 
         // Pipeline state
-        virtual void SetPipelineState(RHIGraphicsPipelineState&) = 0;
+        virtual void SetPipelineState(RHIGraphicsPipelineState&){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
 
         // Vertex and index buffers
         // stride = sizeof(Vertex)
@@ -225,18 +379,32 @@ namespace Crowy
             u32 slot,
             u32 stride,
             u32 offset = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
 
         virtual void SetIndexBuffer(
             RHIBuffer&,
             RHIIndexFormat format = RHIIndexFormat::UInt32,
             u32 offset = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
 
         virtual void SetPushGraphicsConstants(
             const void* data,
             u32 size
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+
+            CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+        }
 
         template<typename T>
             requires (!std::is_pointer_v<T>)
@@ -248,11 +416,28 @@ namespace Crowy
             RHIBuffer& buffer,
             u32 slot,
             u32 offset = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+
+            CROWY_ASSERT(offset < buffer.GetSize());
+
+            CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+            CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
+        }
 
         // Viewport and scissor
-        virtual void SetViewport(const RHIViewport&) = 0;
-        virtual void SetScissorRect(const RHIScissorRect&) = 0;
+        virtual void SetViewport(const RHIViewport&){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
+        virtual void SetScissorRect(const RHIScissorRect&){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
 
         // Draw commands
         virtual void Draw(
@@ -260,7 +445,11 @@ namespace Crowy
             u32 instanceCount = 1,
             u32 startVertex = 0,
             u32 startInstance = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
 
         virtual void DrawIndexed(
             u32 indexCount,
@@ -268,18 +457,74 @@ namespace Crowy
             u32 startIndex = 0,
             i32 baseVertex = 0,
             u32 startInstance = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+        }
 
         // binds batch.pso, then issues batch.drawCount
         // indirect draws from batch.args (RHIDrawIndexedArgs[])
-        virtual void ExecuteIndirect(const DrawBatch& batch) = 0;
+        virtual void ExecuteIndirect(const DrawBatch& batch){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
 
-        virtual void SetPipelineState(RHIComputePipelineState&) = 0;
+            CROWY_ASSERT(batch.pso != nullptr);
+            CROWY_ASSERT(batch.args != nullptr);
+            CROWY_ASSERT(batch.countBuffer == nullptr,
+                "countBuffer is reserved for GPU-driven compaction"
+            );
+        }
+
+        // Compute Pass control
+        virtual void BeginComputePass(
+            std::span<const RHITextureBarrier> textureAcquires = {},
+            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        ){
+            CROWY_ASSERT(passState == PassKind::None,
+                "Already inside a pass. Did you call the matching End*Pass()?"
+            );
+            detail::validateAcquires(textureAcquires, bufferAcquires);
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            passState = PassKind::Compute;
+        #endif
+        }
+        virtual void EndComputePass(
+            std::span<const RHITextureBarrier> textureReleases = {},
+            std::span<const RHIBufferBarrier> bufferReleases = {}
+        ){
+            CROWY_ASSERT(passState == PassKind::Compute,
+                "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
+            );
+            detail::validateReleases(
+                textureReleases,
+                bufferReleases,
+                detail::COMPUTE_RELEASE_SYNC
+            );
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            passState = PassKind::None;
+        #endif
+        }
+
+        virtual void SetPipelineState(RHIComputePipelineState&){
+            CROWY_ASSERT(passState == PassKind::Compute,
+                "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
+            );
+        }
 
         virtual void SetPushComputeConstants(
             const void* data,
             u32 size
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Compute,
+                "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
+            );
+
+            CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+        }
 
         template<typename T>
             requires (!std::is_pointer_v<T>)
@@ -291,32 +536,125 @@ namespace Crowy
             RHIBuffer& buffer,
             u32 slot,
             u32 offset = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Compute,
+                "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
+            );
+
+            CROWY_ASSERT(offset < buffer.GetSize());
+
+            CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
+            CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
+        }
 
         // Compute dispatch
         virtual void Dispatch(
             Size3D gridSize
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Compute,
+                "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
+            );
+        }
 
-        // Copy operations (legal inside a copy pass only)
+        // hazards between dispatches *inside* one compute pass
+        // (encoder-internal barrier); illegal anywhere else
+        virtual void DispatchBarrier(
+            std::span<const RHITextureBarrier> textureBarriers = {},
+            std::span<const RHIBufferBarrier> bufferBarriers = {}
+        ){
+            CROWY_ASSERT(passState == PassKind::Compute,
+                "DispatchBarrier is only legal inside a compute pass"
+            );
+
+            for([[maybe_unused]] const auto& barrier: textureBarriers){
+                CROWY_ASSERT(
+                    barrier.syncBefore == RHIBarrierSync::Compute &&
+                    barrier.syncAfter == RHIBarrierSync::Compute &&
+                    barrier.accessBefore == RHIBarrierAccess::UnorderedAccess &&
+                    barrier.accessAfter == RHIBarrierAccess::UnorderedAccess &&
+                    barrier.layoutBefore == RHITextureLayout::UnorderedAccess &&
+                    barrier.layoutAfter == RHITextureLayout::UnorderedAccess,
+                    "DispatchBarrier only expresses UAV → UAV hazards; "
+                    "anything else is a pass boundary"
+                );
+            }
+            for([[maybe_unused]] const auto& barrier: bufferBarriers){
+                CROWY_ASSERT(
+                    barrier.syncBefore == RHIBarrierSync::Compute &&
+                    barrier.syncAfter == RHIBarrierSync::Compute &&
+                    barrier.accessBefore == RHIBarrierAccess::UnorderedAccess &&
+                    barrier.accessAfter == RHIBarrierAccess::UnorderedAccess,
+                    "DispatchBarrier only expresses UAV → UAV hazards; "
+                    "anything else is a pass boundary"
+                );
+            }
+        }
+
+        // Blit Pass control
+        virtual void BeginBlitPass(
+            std::span<const RHITextureBarrier> textureAcquires = {},
+            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        ){
+            CROWY_ASSERT(passState == PassKind::None,
+                "Already inside a pass. Did you call the matching End*Pass()?"
+            );
+            detail::validateAcquires(textureAcquires, bufferAcquires);
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            passState = PassKind::Blit;
+        #endif
+        }
+        virtual void EndBlitPass(
+            std::span<const RHITextureBarrier> textureReleases = {},
+            std::span<const RHIBufferBarrier> bufferReleases = {}
+        ){
+            CROWY_ASSERT(passState == PassKind::Blit,
+                "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
+            );
+            detail::validateReleases(
+                textureReleases,
+                bufferReleases,
+                detail::COPY_RELEASE_SYNC
+            );
+
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            passState = PassKind::None;
+        #endif
+        }
+
+        // Copy operations
         virtual void Copy(
             RHIBuffer& src,
             RHIBuffer& dst,
             usize srcOffset,
             usize dstOffset,
             usize size
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Blit,
+                "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
+            );
+        }
 
         virtual void Copy(
             RHITexture& src,
             RHITexture& dst
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Blit,
+                "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
+            );
+        }
 
         // helper for RHISwapchain(backBuffer)
         void Copy(
             RHITexture& src,
             RHISwapchain& dst
-        );
+        ){
+            auto& backBuffer = dst.GetCurrentTexture();
+            Copy(
+                src,
+                backBuffer
+            );
+        }
 
         virtual void Copy(
             RHIBuffer& src,
@@ -326,7 +664,11 @@ namespace Crowy
             const RHITextureRegion& region,
             u32 mipLevel = 0,
             u32 arraySlice = 0
-        ) = 0;
+        ){
+            CROWY_ASSERT(passState == PassKind::Blit,
+                "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
+            );
+        }
 
         void Copy(
             RHIBuffer& src,
