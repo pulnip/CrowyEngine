@@ -45,9 +45,10 @@ endif()
 # stb - header-only image loading library
 FetchContent_Declare(
     stb
-    GIT_REPOSITORY "https://github.com/nothings/stb.git"
-    GIT_TAG "31c1ad37456438565541f4919958214b6e762fb4"
-    GIT_SHALLOW TRUE
+    # commit snapshot via archive URL: pins content without downloading git history
+    # Notice. GIT_SHALLOW + GIT_HASH is not recommended
+    URL "https://github.com/nothings/stb/archive/31c1ad37456438565541f4919958214b6e762fb4.tar.gz"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(stb)
 
@@ -225,8 +226,8 @@ PUBLIC
 
 # OffsetAllocator - O(1) offset suballocator for GPU pools (sebbbi, MIT)
 FetchContent_Declare(offsetallocator
-    GIT_REPOSITORY "https://github.com/sebbbi/OffsetAllocator.git"
-    GIT_TAG "3610a7377088b1e8c8f1525f458c96038a4e6fc0"
+    URL "https://github.com/sebbbi/OffsetAllocator/archive/3610a7377088b1e8c8f1525f458c96038a4e6fc0.tar.gz"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     # its CMakeLists.txt calls functions from the author's own build environment,
     # so only the sources are consumed via the target below
     SOURCE_SUBDIR "cmake-ignored"
