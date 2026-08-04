@@ -293,79 +293,58 @@ namespace Crowy
         CopyDst         = 1 << 5,
     };
 
-    // based on D3D12 Enhanced Barrier for hazard tracking
-    // Pipeline Stage Scope
+    // based on D3D12 Enhanced Barrier for hazard tracking.
+    // barriers are edges whose release half rides the producer's EndPass and
+    //                    whose acquire half rides the consumer's BeginPass,
+    // both carrying the same edge value.
+    // a half whose opposite sync is None is self-contained and needs no pair.
+
+    // Pipeline Stage Scope (bit flags - stages combine)
     enum class RHIBarrierSync: u32{
-        None                 = 0,
-        All                  = 1 << 0,
-        Draw                 = 1 << 1,
-        IndexInput           = 1 << 2,
-        Vertex               = 1 << 3,
-        Fragment             = 1 << 4,
-        DepthStencil         = 1 << 5,
-        RenderTarget         = 1 << 6,
-        Compute              = 1 << 7,
-        Copy                 = 1 << 9,
-        Resolve              = 1 << 10,
-        ExecuteIndirect      = 1 << 11,
-        Predication          = ExecuteIndirect,
-        AllShading           = 1 << 12,
-        NonFragment          = 1 << 13,
-        ClearUnorderedAccess = 1 << 15,
-        Split                = 1 << 27
+        None            = 0,
+        All             = 1u << 0,
+        Draw            = 1u << 1,
+        VertexShading   = 1u << 2,
+        PixelShading    = 1u << 3,
+        DepthStencil    = 1u << 4,
+        RenderTarget    = 1u << 5,
+        Compute         = 1u << 6,
+        Copy            = 1u << 7,
+        IndexInput      = 1u << 8,
+        ExecuteIndirect = 1u << 9,
+        AllShading      = VertexShading | PixelShading | Compute,
     };
 
-    // Cache Visibility
+    // Cache Visibility (bit flags - read accesses combine, writes stand alone)
     enum class RHIBarrierAccess: u32{
-        Common           = 0,
-        VertexBuffer     = 1 << 0,
-        ConstantBuffer   = 1 << 1,
-        IndexBuffer      = 1 << 2,
-        RenderTarget     = 1 << 3,
-        UnorderedAccess  = 1 << 4,
-        DepthStencilWrite = 1 << 5,
-        DepthStencilRead  = 1 << 6,
-        ShaderResource    = 1 << 7,
-        StreamOutput      = 1 << 8,
-        IndirectArgument  = 1 << 9,
-        Predication       = IndirectArgument,
-        CopyDst           = 1 << 10,
-        CopySrc           = 1 << 11,
-        ResolveDst        = 1 << 12,
-        ResolveSrc        = 1 << 13,
-        ShadingRateSource = 1 << 16,
-        NoAccess          = 1 << 27
+        // "every access compatible with the current layout" (D3D12 semantics)
+        Common          = 0,
+        VertexBuffer    = 1u << 0,
+        IndexBuffer     = 1u << 1,
+        UniformBuffer   = 1u << 2,
+        ShaderResource  = 1u << 3,
+        UnorderedAccess = 1u << 4,
+        RenderTarget    = 1u << 5,
+        DepthWrite      = 1u << 6,
+        DepthRead       = 1u << 7,
+        IndirectArgs    = 1u << 8,
+        CopySrc         = 1u << 9,
+        CopyDst         = 1u << 10,
+        NoAccess        = 1u << 31,
     };
 
-    // Physical Layout in Memory (Texture Only)
-    enum class RHIBarrierLayout: u32{
-        Undefined = 0xFFFF'FFFF,
-        Common = 0,
-        Present = Common,
-        GenericRead = 1,
-        RenderTarget = 2,
-        UnorderedAccess = 3,
-        DepthStencilWrite = 4,
-        DepthStencilRead = 5,
-        ShaderResource = 6,
-        CopySrc = 7,
-        CopyDst = 8,
-        ResolveSrc = 9,
-        ResolveDst = 10,
-        ShadingRateSource = 11
-    };
-
-    struct RHIBufferBarrier{
-        RHIBuffer& buffer;
-
-        RHIBarrierSync syncAfter;
-        RHIBarrierAccess accessAfter;
+    // Physical Layout in Memory (Texture only, single value -
+    // a texture's physical bit arrangement is one thing at a time)
+    enum class RHITextureLayout: u8{
+        Undefined, Common, RenderTarget, DepthWrite, DepthRead,
+        ShaderResource, UnorderedAccess, CopySrc, CopyDst, Present,
     };
 
     struct RHIBarrierPoint{
         RHIBarrierSync sync;
         RHIBarrierAccess access;
-        RHIBarrierLayout layout;
+        // not consumed on the buffer path
+        RHITextureLayout layout;
 
         bool operator==(const RHIBarrierPoint&) const = default;
     };
@@ -379,13 +358,38 @@ namespace Crowy
         u32 numMips = 0;
         u32 firstArraySlice = 0;
         u32 numArraySlice = 0;
+
+        bool operator==(const RHISubresourceRange&) const = default;
+    };
+
+    // both before/after sides stay in the edge: each end consumes its own
+    // side and cross-checks the opposite side against the paired half.
+    struct RHIBufferBarrier{
+        RHIBuffer* buffer;
+
+        RHIBarrierSync syncBefore, syncAfter;
+        RHIBarrierAccess accessBefore, accessAfter;
+        // acquire whose producer lives in an earlier submission: no release
+        // in this command list can pair with it, so it is self-contained
+        // even though syncBefore names real work
+        bool crossSubmission = false;
+
+        bool operator==(const RHIBufferBarrier&) const = default;
     };
 
     struct RHITextureBarrier{
-        RHITexture& texture;
+        RHITexture* texture;
 
-        RHIBarrierPoint point;
+        RHIBarrierSync syncBefore, syncAfter;
+        RHIBarrierAccess accessBefore, accessAfter;
+        RHITextureLayout layoutBefore, layoutAfter;
         RHISubresourceRange range{};
+        // only valid when layoutBefore == Undefined
+        bool discard = false;
+        // see RHIBufferBarrier::crossSubmission
+        bool crossSubmission = false;
+
+        bool operator==(const RHITextureBarrier&) const = default;
     };
 
     struct RHIClearDepthStencil{

@@ -203,6 +203,7 @@ namespace Crowy
         ImGui::Render();
 
         collectRetired();
+        textureAcquires.clear();
         updateTextures(cmdList);
         uploadGeometry();
     }
@@ -418,8 +419,16 @@ namespace Crowy
             );
         }
 
-        cmdList.TransitionBarrier(texture, RHIResourceUsage::CopyDst);
-        cmdList.BeginBlit();
+        // the previous readers live in earlier submissions' UI passes;
+        // a partial rect update must keep the untouched texels, so no discard
+        const std::array acquires{
+            MakeCrossSubmissionBarrier(
+                texture,
+                RHIResourceUsage::SampledFragment,
+                RHIResourceUsage::CopyDst
+            )
+        };
+        cmdList.BeginBlitPass(acquires);
         cmdList.Copy(
             *staging,
             0,
@@ -430,8 +439,17 @@ namespace Crowy
                 .width = width, .height = height
             }
         );
-        cmdList.EndBlit();
-        cmdList.TransitionBarrier(texture, RHIResourceUsage::AnyRead);
+        // this frame's UI pass samples the texture again - a real edge whose
+        // acquire half goes back to the caller through TextureAcquires()
+        const std::array releases{
+            MakeBarrier(
+                texture,
+                RHIResourceUsage::CopyDst,
+                RHIResourceUsage::SampledFragment
+            )
+        };
+        cmdList.EndBlitPass(releases);
+        textureAcquires.push_back(releases[0]);
 
         retire(std::move(staging));
         tex.SetStatus(ImTextureStatus_OK);

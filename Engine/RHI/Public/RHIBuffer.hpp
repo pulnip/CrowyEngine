@@ -95,10 +95,5 @@ namespace Crowy
                 }
             });
         }
-
-        virtual RHIBarrierSync GetSyncState() const = 0;
-        virtual RHIBarrierSync TransitionState(RHIBarrierSync newState) = 0;
-        virtual RHIBarrierAccess GetAccessState() const = 0;
-        virtual RHIBarrierAccess TransitionState(RHIBarrierAccess newState) = 0;
     };
 }

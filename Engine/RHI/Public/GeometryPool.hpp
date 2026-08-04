@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <span>
 #include <vector>
 #include "Primitives.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 #include "Vertex.hpp"
 
@@ -36,24 +38,28 @@ namespace Crowy
         // stagings live until the pool dies; fine while meshes are packed
         // once at startup, revisit when uploads become streaming
         std::vector<RHIBufferRAII> stagings;
-        bool uploading = false;
 
     public:
         // capacities are element counts (Vertex / u32 index)
         GeometryPool(RHIDevice&, u32 vertexCapacity, u32 indexCapacity);
         ~GeometryPool();
 
-        // records staging copies; call between BeginBlit/EndBlit
+        // barriers for the blit pass that fills the pool:
+        //   BeginBlitPass({}, pool.UploadAcquires());
+        //   pool.Add(...); ...
+        //   EndBlitPass({}, pool.UploadReleases());
+        // acquires are self-contained (startup packing writes the pool
+        // for the first time); revisit when uploads become streaming
+        std::array<RHIBufferBarrier, 2> UploadAcquires();
+        std::array<RHIBufferBarrier, 2> UploadReleases();
+
+        // records staging copies; call inside the blit pass above
         GeometryAllocation Add(
             RHICommandList&,
             std::span<const Vertex> vertices,
             std::span<const u32> indices
         );
         void Free(const GeometryAllocation&);
-
-        // transitions the pool for draw use; call after the last Add,
-        // still inside the blit pass
-        void FinishUploads(RHICommandList&);
 
         RHIBuffer& GetVertexBuffer(){ return *vertexBuffer; }
         RHIBuffer& GetIndexBuffer(){ return *indexBuffer; }

@@ -16,8 +16,6 @@ namespace Crowy
         struct BufferPolicy{
             u32 slotCount;
             bool persistentMap;
-            RHIBarrierSync sync;
-            RHIBarrierAccess access;
         };
 
         auto resolve(
@@ -31,25 +29,19 @@ namespace Crowy
             case GPUOnly:
                 return BufferPolicy{
                     .slotCount = 1,
-                    .persistentMap = false,
-                    .sync = RHIBarrierSync::None,
-                    .access = RHIBarrierAccess::NoAccess
+                    .persistentMap = false
                 };
             case CPUWrite:
                 return BufferPolicy{
                     .slotCount = usage == CopySrc ?
                         1 :
                         RHI_FRAMES_IN_FLIGHT,
-                    .persistentMap = true,
-                    .sync = RHIBarrierSync::None,
-                    .access = RHIBarrierAccess::ConstantBuffer
+                    .persistentMap = true
                 };
             case CPURead:
                 return BufferPolicy{
                     .slotCount = RHI_FRAMES_IN_FLIGHT,
-                    .persistentMap = true,
-                    .sync = RHIBarrierSync::Copy,
-                    .access = RHIBarrierAccess::CopyDst
+                    .persistentMap = true
                 };
             case Transient:
                 CROWY_ASSERT(false, "Transient is texture-only");
@@ -91,8 +83,6 @@ namespace Crowy
                 .buffer = NS::TransferPtr(heap.NewBuffer(
                     nextMul(desc.size, 16u)
                 )),
-                .syncState = policy.sync,
-                .accessState = policy.access,
             #if defined(_DEBUG) || !defined(NDEBUG)
                 .slotWritten = false
             #endif

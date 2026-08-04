@@ -1,6 +1,8 @@
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include "EnumUtil.hpp"
 #include "RHIUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -11,11 +13,44 @@
 
 namespace Crowy
 {
+    namespace{
+        // resting state after a creation upload: every read use the buffer's
+        // usage flags allow. write usages do not shape it - a later writer
+        // must acquire with its own edge anyway.
+        RHIBarrierPoint restingReadPoint(RHIBufferUsage usage){
+            using enum RHIBufferUsage;
+            using S = RHIBarrierSync;
+            using A = RHIBarrierAccess;
+
+            auto sync = S::None;
+            auto access = A::Common;
+            const auto add = [&](RHIBufferUsage use, S s, A a){
+                if(hasFlag(usage, use)){
+                    sync = combine(sync, s);
+                    access = combine(access, a);
+                }
+            };
+            add(VertexBuffer,     S::VertexShading,   A::VertexBuffer);
+            add(IndexBuffer,      S::IndexInput,      A::IndexBuffer);
+            add(ConstantBuffer,   S::AllShading,      A::UniformBuffer);
+            add(IndirectArgument, S::ExecuteIndirect, A::IndirectArgs);
+            add(ShaderResource,   S::AllShading,      A::ShaderResource);
+
+            // usage flags say nothing about reads (bindless SRV) - stay broad
+            if(access == A::Common){
+                sync = S::AllShading;
+                access = A::ShaderResource;
+            }
+            return {sync, access, RHITextureLayout::Undefined};
+        }
+    }
+
     void UploadGpuOnlyBuffer(
         RHICommandList& cmdList,
         UploadRing& ring,
         u64 align,
         RHIBuffer& buffer,
+        RHIBufferUsage usage,
         const RHISubresourceData& sub
     ){
         const auto totalBytes = buffer.GetSize();
@@ -33,11 +68,11 @@ namespace Crowy
             alloc.offset
         );
 
-        // UNDEFINED to COPY_DST
-        cmdList.TransitionBarrier(
-            buffer,
-            RHIResourceUsage::CopyDst
-        );
+        // brand-new resource: first use is a self-contained acquire
+        const std::array acquires{
+            MakeBarrier(buffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
+        };
+        cmdList.BeginBlitPass({}, acquires);
 
         cmdList.Copy(
             alloc.buffer,
@@ -47,12 +82,19 @@ namespace Crowy
             sub.rowPitch
         );
 
-        // TODO.
-        // COPY_DST to SHADER_RESOURCE
-        cmdList.TransitionBarrier(
-            buffer,
-            RHIResourceUsage::AnyRead
-        );
+        // creation-time uploads are consumed by later submissions, so this
+        // release stays unmatched here and completes at Close
+        const auto resting = restingReadPoint(usage);
+        const std::array releases{
+            RHIBufferBarrier{
+                .buffer = &buffer,
+                .syncBefore = RHIBarrierSync::Copy,
+                .syncAfter = resting.sync,
+                .accessBefore = RHIBarrierAccess::CopyDst,
+                .accessAfter = resting.access
+            }
+        };
+        cmdList.EndBlitPass({}, releases);
     }
 
     void UploadTexture(
@@ -92,11 +134,11 @@ namespace Crowy
 
         const auto mipLevels = texture.GetMipLevels();
 
-        // UNDEFINED to COPY_DST
-        cmdList.TransitionBarrier(
-            texture,
-            RHIResourceUsage::CopyDst
-        );
+        // brand-new resource: first use is a self-contained acquire
+        const std::array acquires{
+            MakeBarrier(texture, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
+        };
+        cmdList.BeginBlitPass(acquires);
 
         for(usize s=0; s<n; ++s){
             cmdList.Copy(
@@ -109,11 +151,21 @@ namespace Crowy
             );
         }
 
-        // COPY_DST to SHADER_RESOURCE
-        cmdList.TransitionBarrier(
-            texture,
-            RHIResourceUsage::AnyRead
-        );
+        // creation-time uploads are consumed by later submissions, so this
+        // release stays unmatched here and completes at Close. any-shader
+        // read is deliberately broad - the caller does not know the consumer
+        const std::array releases{
+            RHITextureBarrier{
+                .texture = &texture,
+                .syncBefore = RHIBarrierSync::Copy,
+                .syncAfter = RHIBarrierSync::AllShading,
+                .accessBefore = RHIBarrierAccess::CopyDst,
+                .accessAfter = RHIBarrierAccess::ShaderResource,
+                .layoutBefore = RHITextureLayout::CopyDst,
+                .layoutAfter = RHITextureLayout::ShaderResource
+            }
+        };
+        cmdList.EndBlitPass(releases);
     }
 
     RHIPixelFormat toSrgb(RHIPixelFormat format){

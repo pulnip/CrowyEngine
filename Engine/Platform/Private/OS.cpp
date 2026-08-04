@@ -244,10 +244,6 @@ namespace Crowy
     void OS::Impl::EndFrame(RHIDevice& device){
         auto cmdLists = cmdListPool.ExtractRecorded();
 
-        swapchain->GetCurrentTexture().TransitionState(
-            RHIBarrierAccess::NoAccess
-        );
-
         framePacer.EndFrame(
             cmdLists,
             *swapchain.get()

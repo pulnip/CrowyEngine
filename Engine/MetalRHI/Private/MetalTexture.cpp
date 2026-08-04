@@ -15,9 +15,6 @@ namespace Crowy
     )
         : RHITexture(
             convert(desc->pixelFormat()),
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Undefined,
             desc->mipmapLevelCount(),
             desc->arrayLength()
         )
@@ -35,9 +32,6 @@ namespace Crowy
     )
         : RHITexture(
             convert(drawable->texture()->pixelFormat()),
-            RHIBarrierSync::None,
-            RHIBarrierAccess::NoAccess,
-            RHIBarrierLayout::Present,
             1,
             1
         )

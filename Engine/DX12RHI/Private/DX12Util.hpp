@@ -18,7 +18,7 @@ namespace Crowy
 
     D3D12_BARRIER_SYNC convert(RHIBarrierSync);
     D3D12_BARRIER_ACCESS convert(RHIBarrierAccess);
-    D3D12_BARRIER_LAYOUT convert(RHIBarrierLayout);
+    D3D12_BARRIER_LAYOUT convert(RHITextureLayout);
 
     Str HResultToString(HRESULT hr);
 }

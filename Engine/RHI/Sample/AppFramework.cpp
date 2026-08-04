@@ -22,10 +22,6 @@ namespace Crowy
     void App::Render(CommandListPool& pool, RHISwapchain& swapchain){
         auto& cmdList = pool.Acquire();
         cmdList.Begin();
-        cmdList.TransitionBarrier(
-            swapchain.GetCurrentTexture(),
-            RHIResourceUsage::RenderTarget
-        );
         RHIColorAttachment backBuffer{
             .texture = &swapchain.GetCurrentTexture(),
             .loadAction = RHILoadAction::Clear,
@@ -33,12 +29,10 @@ namespace Crowy
             .clearColor = Colors::Black
         };
 
+        // the sample owns its pass structure, so it also owns the
+        // backbuffer barriers (AcquireBackBuffer / ReleaseBackBuffer)
         OnRecord(cmdList, backBuffer);
 
-        cmdList.TransitionBarrier(
-            swapchain.GetCurrentTexture(),
-            RHIResourceUsage::Present
-        );
         cmdList.Close();
     }
 

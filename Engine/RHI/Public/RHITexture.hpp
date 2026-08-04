@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <vector>
 #include "Assert.hpp"
 #include "Semantics.hpp"
 #include "Primitives.hpp"
@@ -16,33 +15,19 @@ namespace Crowy
         RHIPixelFormat format = RHIPixelFormat::Unknown;
 
         u32 mipLevels = 1;
-        // [ arraySlice 0 = [mipLevel 0, mipLevel 1, ...],
-        //   arraySlice 1 = [...],
-        //   ...
-        // ] flattened as [arraySlice * mipLevels + mipLevel]
-        std::vector<RHIBarrierPoint> barriers;
+        u32 arraySize = 1;
 
     public:
         RHITexture() = default;
 
         RHITexture(
             RHIPixelFormat format,
-            RHIBarrierSync syncState,
-            RHIBarrierAccess accessState,
-            RHIBarrierLayout layoutState,
             u32 mipLevels = 1,
             u32 arraySize = 1
         )
             : format(format)
             , mipLevels(mipLevels)
-            , barriers(
-                static_cast<usize>(mipLevels) * arraySize,
-                RHIBarrierPoint{
-                    .sync = syncState,
-                    .access = accessState,
-                    .layout = layoutState
-                }
-            )
+            , arraySize(arraySize)
         {
             CROWY_ASSERT(mipLevels > 0, "texture needs at least one mip level");
             CROWY_ASSERT(arraySize > 0, "texture needs at least one array slice");
@@ -67,7 +52,7 @@ namespace Crowy
             return mipLevels;
         }
         u32 GetArraySize() const noexcept{
-            return static_cast<u32>(barriers.size()) / mipLevels;
+            return arraySize;
         }
         // Shader Resource
         virtual u64 GetReadableID(const RHITextureViewDesc&) = 0;
@@ -108,102 +93,6 @@ namespace Crowy
             };
         }
 
-        // before-state in range must be equal
-        RHIBarrierPoint TransitionState(
-            const RHIBarrierPoint& after,
-            const RHISubresourceRange& range = {}
-        ){
-            const auto resolved = ResolveRange(range);
-            CROWY_ASSERT(
-                resolved.firstMip + resolved.numMips <= GetMipLevels(),
-                "mip range out of bounds"
-            );
-            CROWY_ASSERT(
-                resolved.firstArraySlice + resolved.numArraySlice
-                    <= GetArraySize(),
-                "array slice range out of bounds"
-            );
-            CROWY_ASSERT(resolved.numMips > 0 && resolved.numArraySlice > 0,
-                "empty subresource range"
-            );
-
-            const RHIBarrierPoint before = barriers[SubresourceIndex(
-                resolved.firstMip,
-                resolved.firstArraySlice
-            )];
-
-            for(u32 slice=0; slice<resolved.numArraySlice; ++slice){
-                // flattened, so the mips of one slice are contiguous
-                const auto base = SubresourceIndex(
-                    resolved.firstMip,
-                    resolved.firstArraySlice + slice
-                );
-                for(u32 mip=0; mip<resolved.numMips; ++mip){
-                    auto& barrier = barriers[base + mip];
-                    CROWY_ASSERT(barrier == before,
-                        "subresources of one barrier are in different states"
-                    );
-                    barrier = after;
-                }
-            }
-
-            return before;
-        }
-
-        RHIBarrierSync GetSyncState(
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ) const{
-            auto& barrier = barriers[SubresourceIndex(mipLevel, arraySlice)];
-            return barrier.sync;
-        }
-        RHIBarrierSync TransitionState(
-            RHIBarrierSync newState,
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ){
-            auto& barrier = barriers[SubresourceIndex(mipLevel, arraySlice)];
-            const auto oldState = barrier.sync;
-            barrier.sync = newState;
-            return oldState;
-        }
-
-        RHIBarrierAccess GetAccessState(
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ) const{
-            auto& barrier = barriers[SubresourceIndex(mipLevel, arraySlice)];
-            return barrier.access;
-        }
-        RHIBarrierAccess TransitionState(
-            RHIBarrierAccess newState,
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ){
-            auto& barrier = barriers[SubresourceIndex(mipLevel, arraySlice)];
-            const auto oldState = barrier.access;
-            barrier.access = newState;
-            return oldState;
-        }
-
-        RHIBarrierLayout GetLayoutState(
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ) const{
-            auto& barrier = barriers[SubresourceIndex(mipLevel, arraySlice)];
-            return barrier.layout;
-        }
-        RHIBarrierLayout TransitionState(
-            RHIBarrierLayout newState,
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ){
-            auto& barrier = barriers[SubresourceIndex(mipLevel, arraySlice)];
-            const auto oldState = barrier.layout;
-            barrier.layout = newState;
-            return oldState;
-        }
-
     private:
         u32 MipExtent(u32 extent, u32 mipLevel) const noexcept{
             CROWY_ASSERT(mipLevel < mipLevels, "mip level out of range");
@@ -214,15 +103,6 @@ namespace Crowy
                 return 1;
             }
             return std::max(1u, extent >> mipLevel);
-        }
-
-        usize SubresourceIndex(u32 mipLevel, u32 arraySlice) const{
-            CROWY_ASSERT(mipLevel < mipLevels, "mip level out of range");
-
-            const usize index = static_cast<usize>(arraySlice) * mipLevels + mipLevel;
-            CROWY_ASSERT(index < barriers.size(), "array slice out of range");
-
-            return index;
         }
     };
 }

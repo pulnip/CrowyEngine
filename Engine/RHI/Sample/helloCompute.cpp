@@ -1,3 +1,4 @@
+#include <array>
 #include <print>
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -45,7 +46,7 @@ int main(void){
             .initialData = nullptr
         }, "ReadBack");
 
-        auto pipelineState = device->CreatePipelineState(
+        auto addPipeline = device->CreatePipelineState(
             RHIComputePipelineStateDesc{
                 .computeShader = {
                     .path = "Engine/Shader/HelloCompute.slang",
@@ -53,34 +54,67 @@ int main(void){
                 }
             }
         );
+        auto doublePipeline = device->CreatePipelineState(
+            RHIComputePipelineStateDesc{
+                .computeShader = {
+                    .path = "Engine/Shader/HelloCompute.slang",
+                    .entryPoint = "cs_double"
+                }
+            }
+        );
 
         cmdList->Begin();
 
-        cmdList->TransitionBarrier(*out,
-            RHIResourceUsage::ComputeWrite
-        );
-
-        {
-            cmdList->BeginCompute();
-
-            cmdList->SetPipelineState(*pipelineState);
-            cmdList->SetPushComputeConstants(PushConstants{
-                .lhs = lhs->GetReadableID(sizeof(float)),
-                .rhs = rhs->GetReadableID(sizeof(float)),
-                .out = out->GetWritableID(sizeof(float))
-            });
-
-            cmdList->Dispatch({N, 1, 1});
-
-            cmdList->EndCompute();
-        }
-
-        cmdList->TransitionBarrier(*out,
+        // the compute pass releases `out`, the copy pass acquires it -
+        // one edge, same value on both ends
+        const auto outEdge = MakeBarrier(*out,
+            RHIResourceUsage::StorageCompute,
             RHIResourceUsage::CopySrc
         );
 
         {
-            cmdList->BeginBlit();
+            const std::array acquires{
+                // first GPU use of `out`: self-contained acquire
+                MakeBarrier(*out,
+                    RHIResourceUsage::Undefined,
+                    RHIResourceUsage::StorageCompute
+                )
+            };
+            cmdList->BeginComputePass({}, acquires);
+
+            const PushConstants pushConstants{
+                .lhs = lhs->GetReadableID(sizeof(float)),
+                .rhs = rhs->GetReadableID(sizeof(float)),
+                .out = out->GetWritableID(sizeof(float))
+            };
+
+            cmdList->SetPipelineState(*addPipeline);
+            cmdList->SetPushComputeConstants(pushConstants);
+            cmdList->Dispatch({N, 1, 1});
+
+            // the second dispatch reads what the first just wrote —
+            // a UAV → UAV hazard inside one pass, DispatchBarrier territory
+            const std::array hazards{
+                MakeBarrier(*out,
+                    RHIResourceUsage::StorageCompute,
+                    RHIResourceUsage::StorageCompute
+                )
+            };
+            cmdList->DispatchBarrier({}, hazards);
+
+            cmdList->SetPipelineState(*doublePipeline);
+            cmdList->SetPushComputeConstants(pushConstants);
+            cmdList->Dispatch({N, 1, 1});
+
+            const std::array releases{outEdge};
+            cmdList->EndComputePass({}, releases);
+        }
+
+        {
+            // the readback buffer needs no acquire: readback-heap resources
+            // never transition, and this copy is its first GPU use
+            const std::array acquires{outEdge};
+            cmdList->BeginBlitPass({}, acquires);
             cmdList->Copy(
                 *out,
                 *readback,
@@ -88,7 +122,9 @@ int main(void){
                 0,
                 sizeof(float) * N
             );
-            cmdList->EndBlit();
+            // the CPU readback after the fence needs no release -
+            // that ordering is the fence's job
+            cmdList->EndBlitPass();
         }
 
         cmdList->Close();
@@ -103,10 +139,10 @@ int main(void){
         std::vector<float> result(N, 0.0f);
         readback->Download(result.data(), sizeof(float) * result.size());
 
-        // verify result
+        // verify result: (1 + 1) doubled by the chained dispatch
         usize i = 0;
         for(; i<N; ++i){
-            if(std::abs(result[i] - 2.0f) > 1e-3){
+            if(std::abs(result[i] - 4.0f) > 1e-3){
                 std::println("wrong result: out[{}] = {}", i, result[i]);
                 break;
             }
