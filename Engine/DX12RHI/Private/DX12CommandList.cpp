@@ -217,8 +217,6 @@ namespace Crowy
     ){
         Super::BeginRenderPass(desc, textureAcquires, bufferAcquires);
 
-        CROWY_ASSERT(desc.colorAttachments.size() > 0);
-
         // barriers are illegal inside a D3D12 render pass,
         // so the acquires land right before it
         applyAcquires(textureAcquires, bufferAcquires);
