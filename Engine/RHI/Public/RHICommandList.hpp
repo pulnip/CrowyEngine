@@ -341,6 +341,7 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::None,
                 "Already inside a pass. Did you call the matching End*Pass()?"
             );
+            CROWY_ASSERT(desc.colorAttachments.size() > 0);
             detail::validateAcquires(textureAcquires, bufferAcquires);
 
         #if defined(_DEBUG) || !defined(NDEBUG)

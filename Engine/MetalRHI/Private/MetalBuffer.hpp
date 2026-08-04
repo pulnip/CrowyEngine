@@ -16,9 +16,6 @@ namespace Crowy
         struct FrameResource{
             NS::SharedPtr<MTL::Buffer> buffer;
             void* mapped = nullptr;
-            // for Enhanced Resource Barrier
-            RHIBarrierSync syncState;
-            RHIBarrierAccess accessState;
         #if defined(_DEBUG) || !defined(NDEBUG)
             bool slotWritten = false;
         #endif
@@ -81,29 +78,6 @@ namespace Crowy
 
         u32 GetSize() const noexcept RHI_OVERRIDE{
             return resources[currentIndex()].buffer->length();
-        }
-
-        RHIBarrierSync GetSyncState() const RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-            return frameResource.syncState;
-        }
-        RHIBarrierSync TransitionState(RHIBarrierSync newState) RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-
-            const auto oldState = frameResource.syncState;
-            frameResource.syncState = newState;
-            return oldState;
-        }
-        RHIBarrierAccess GetAccessState() const RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-            return frameResource.accessState;
-        }
-        RHIBarrierAccess TransitionState(RHIBarrierAccess newState) RHI_OVERRIDE{
-            auto& frameResource = resources[currentIndex()];
-
-            const auto oldState = frameResource.accessState;
-            frameResource.accessState = newState;
-            return oldState;
         }
 
         u64 GetReadableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{

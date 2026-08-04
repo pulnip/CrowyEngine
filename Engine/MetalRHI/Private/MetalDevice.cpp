@@ -34,8 +34,14 @@ namespace Crowy
     private:
         NS::SharedPtr<MTL::Device> device;
         NS::SharedPtr<MTL::CommandQueue> commandQueue;
-        // shared by every command list on the queue;
-        NS::SharedPtr<MTL::Fence> barrier;
+        // cross-submission ordering:
+        // the last command buffer of every submitted wave signals here, and
+        // recordings that depend on prior waves (cross-submission acquires,
+        // the hand-off hangover window) lazily wait on the last signaled
+        // value. this restores the queue-global sync scope the barrier
+        // contract assumes, without giving up inter-wave GPU overlap
+        // for recordings that declare no such dependency.
+        NS::SharedPtr<MTL::Event> submissionEvent;
 
         MetalReservedSamplers samplers;
 
@@ -51,12 +57,21 @@ namespace Crowy
 
         // increased on Submit
         u64 frameIndex = 0;
+        // last value actually signaled on submissionEvent.
+        // distinct from frameIndex, which callers may bump out-of-band without a signal
+        // (FramePacer::WaitForIdle, helloCompute's slot skip)
+        // - a lazy gate must never wait a value nothing signals
+        u64 submissionSerial = 0;
+        // serial of the last wave that left un-acquired hand-off releases
+        u64 handoffSerial = 0;
 
     public:
         auto CreateCommandList(){
             return std::make_unique<MetalCommandList>(
                 commandQueue.get(),
-                barrier.get()
+                submissionEvent.get(),
+                submissionSerial,
+                handoffSerial
             );
         }
 
@@ -82,6 +97,7 @@ namespace Crowy
                     uploadRing,
                     4,
                     *buffer,
+                    desc.usage,
                     RHISubresourceData{
                         .data = desc.initialData,
                         .rowPitch = desc.size
@@ -95,7 +111,7 @@ namespace Crowy
         Impl()
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
-            , barrier(NS::TransferPtr(device->newFence()))
+            , submissionEvent(NS::TransferPtr(device->newEvent()))
             , samplers(*device.get())
             , privateHeap(
                 *device.get(), {
@@ -110,7 +126,14 @@ namespace Crowy
                 },
                 "SharedHeap"
             )
-            , uploadCmdList(commandQueue.get(), barrier.get())
+            // binds references to members that initialize later - fine,
+            // the command list only reads them inside Begin()
+            , uploadCmdList(
+                commandQueue.get(),
+                submissionEvent.get(),
+                submissionSerial,
+                handoffSerial
+            )
         {
 
             CROWY_ASSERT(device, "No GPU Available");
@@ -119,7 +142,7 @@ namespace Crowy
             );
 
         #if defined(_DEBUG) || !defined(NDEBUG)
-            barrier->setLabel(toNSString("Fence for Resource Barrier"));
+            submissionEvent->setLabel(toNSString("Crowy Submission Event"));
         #endif
 
             InitGlobalSession();
@@ -242,6 +265,13 @@ namespace Crowy
         void SignalFence(MetalFence& fence, u64 value){
             auto cmdBuffer = commandQueue->commandBuffer();
             fence.Encode(*cmdBuffer, value);
+            // keep the submission event in step with out-of-band
+            // frameIndex bumps (FramePacer::WaitForIdle signals through
+            // here) so lazy gates never overtake the event timeline
+            if(value > submissionSerial){
+                cmdBuffer->encodeSignalEvent(submissionEvent.get(), value);
+                submissionSerial = value;
+            }
 
             cmdBuffer->commit();
         }
@@ -254,6 +284,12 @@ namespace Crowy
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
             fence.Encode(*lastCmdBuffer, ++frameIndex);
+            // close the wave: later recordings that depend on it
+            // (lazy gates) wait on this value
+            submissionSerial = frameIndex;
+            lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
+
+            trackHandoffs(cmdLists);
 
             for(auto cmdList: cmdLists){
                 auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
@@ -271,6 +307,10 @@ namespace Crowy
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
             swapchain.Present(*lastCmdBuffer);
             fence.Encode(*lastCmdBuffer, ++frameIndex);
+            submissionSerial = frameIndex;
+            lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
+
+            trackHandoffs(cmdLists);
 
             for(auto cmdList: cmdLists){
                 auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
@@ -319,21 +359,39 @@ namespace Crowy
         }
 
     private:
+        // a wave that leaves un-acquired hand-off releases gates the
+        // recordings that may share the GPU with it
+        // (hangover window in MetalCommandList::Begin).
+        // the upload list is not scanned
+        // - its hand-offs are already closed by the CPU wait in ensureUploadCommit
+        void trackHandoffs(std::span<RHICommandList*> cmdLists){
+            for(auto cmdList: cmdLists){
+                if(static_cast<MetalCommandList*>(cmdList)->HasUnconsumedReleases()){
+                    handoffSerial = submissionSerial;
+                    return;
+                }
+            }
+        }
+
         void ensureUploadBegin(){
             if(!uploadRecorded){
                 uploadCmdList.Begin();
-                uploadCmdList.BeginBlit();
                 uploadRecorded = true;
             }
         }
 
         void ensureUploadCommit(){
             if(uploadRecorded){
-                uploadCmdList.EndBlit();
                 uploadCmdList.Close();
 
                 auto mtlCmdList = uploadCmdList.Get();
                 mtlCmdList->commit();
+                // the upload's hand-off releases are consumed by
+                // command buffers of this very wave,
+                // but those were recorded before this buffer existed,
+                // so the submission event cannot order them behind it.
+                // CPU-wait instead: creation uploads are load-time work
+                mtlCmdList->waitUntilCompleted();
 
                 uploadRecorded = false;
             }
