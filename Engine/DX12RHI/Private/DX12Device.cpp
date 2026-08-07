@@ -551,6 +551,11 @@ namespace Crowy
             );
             // Notice. RHIMemoryAccess::Transient == RHIMemoryAccess::GPUOnly
             if(!desc.initialData.empty()){
+                // RHISubresourceData carries no slice pitch, so the upload
+                // helpers only understand 2D subresources
+                CROWY_ASSERT(desc.depth == 1,
+                    "initial data upload is not supported for 3D textures"
+                );
                 ensureUploadBegin();
 
                 const usize n = desc.mipLevels * desc.arraySize;

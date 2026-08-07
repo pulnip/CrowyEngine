@@ -41,9 +41,13 @@ namespace Crowy
         u32 GetHeight() const noexcept RHI_OVERRIDE{
             return texture->height();
         }
+        u32 GetDepth() const noexcept RHI_OVERRIDE{
+            return texture->depth();
+        }
         // the overrides above would otherwise hide the per-mip overloads
         using RHITexture::GetWidth;
         using RHITexture::GetHeight;
+        using RHITexture::GetDepth;
 
 
         u64 GetReadableID(const RHITextureViewDesc& view) RHI_OVERRIDE{

@@ -41,12 +41,17 @@ namespace Crowy
         // mip 0
         virtual u32 GetWidth() const noexcept = 0;
         virtual u32 GetHeight() const noexcept = 0;
+        // 1 unless the texture is 3D
+        virtual u32 GetDepth() const noexcept = 0;
         // a mip never shrinks below one texel, so this is not a plain shift.
         u32 GetWidth(u32 mipLevel) const noexcept{
             return MipExtent(GetWidth(), mipLevel);
         }
         u32 GetHeight(u32 mipLevel) const noexcept{
             return MipExtent(GetHeight(), mipLevel);
+        }
+        u32 GetDepth(u32 mipLevel) const noexcept{
+            return MipExtent(GetDepth(), mipLevel);
         }
         u32 GetMipLevels() const noexcept{
             return mipLevels;
@@ -62,13 +67,13 @@ namespace Crowy
         u64 GetReadableID(){
             return GetReadableID(RHITextureViewDesc{
                 .format = GetFormat(),
-                .config = RHITextureViewDesc::Tex2D{}
+                .config = DefaultViewConfig()
             });
         }
         u64 GetWritableID(){
             return GetWritableID(RHITextureViewDesc{
                 .format = GetFormat(),
-                .config = RHITextureViewDesc::Tex2D{}
+                .config = DefaultViewConfig()
             });
         }
 
@@ -94,6 +99,13 @@ namespace Crowy
         }
 
     private:
+        // a 3D texture's whole-resource view must be 3D-typed
+        RHITextureViewDesc::Config DefaultViewConfig() const noexcept{
+            return GetDepth() > 1 ?
+                RHITextureViewDesc::Config{RHITextureViewDesc::Tex3D{}} :
+                RHITextureViewDesc::Config{RHITextureViewDesc::Tex2D{}};
+        }
+
         u32 MipExtent(u32 extent, u32 mipLevel) const noexcept{
             CROWY_ASSERT(mipLevel < mipLevels, "mip level out of range");
 

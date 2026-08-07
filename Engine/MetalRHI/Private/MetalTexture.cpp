@@ -46,8 +46,12 @@ namespace Crowy
         const bool wantsCube = std::holds_alternative<
             RHITextureViewDesc::TexCube
         >(view.config);
-        const auto wantedType = wantsCube ?
-            MTL::TextureTypeCube :
+        const bool wants3D = std::holds_alternative<
+            RHITextureViewDesc::Tex3D
+        >(view.config);
+        const auto wantedType =
+            wantsCube ? MTL::TextureTypeCube :
+            wants3D   ? MTL::TextureType3D :
             MTL::TextureType2D;
         const auto format = convert(view.format);
 

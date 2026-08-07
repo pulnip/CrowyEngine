@@ -669,6 +669,9 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Blit,
                 "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
             );
+            CROWY_ASSERT(dst.GetDepth(mipLevel) == 1,
+                "RHITextureRegion cannot address a 3D texture's depth slices"
+            );
         }
 
         void Copy(

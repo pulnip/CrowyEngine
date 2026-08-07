@@ -44,9 +44,11 @@ namespace Crowy
 
         u32 GetWidth() const noexcept RHI_OVERRIDE;
         u32 GetHeight() const noexcept RHI_OVERRIDE;
+        u32 GetDepth() const noexcept RHI_OVERRIDE;
         // the overrides above would otherwise hide the per-mip overloads
         using RHITexture::GetWidth;
         using RHITexture::GetHeight;
+        using RHITexture::GetDepth;
 
         void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 
