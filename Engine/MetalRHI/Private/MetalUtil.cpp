@@ -141,19 +141,21 @@ namespace Crowy
                 "ArraySize should be positive"
             );
 
-            if(height == 1){
+            if(depth != 1){
+                CROWY_ASSERT(arraySize == 1,
+                    "3D textures cannot be arrayed"
+                );
+                return MTL::TextureType3D;
+            }
+            else if(height == 1){
                 return arraySize == 1 ?
                     MTL::TextureType1D :
                     MTL::TextureType1DArray;
             }
-            else if(depth == 1){
-                return arraySize == 1 ?
-                    MTL::TextureType2D :
-                    MTL::TextureType2DArray;
-            }
 
-            CROWY_ASSERT(arraySize == 1);
-            return MTL::TextureType3D;
+            return arraySize == 1 ?
+                MTL::TextureType2D :
+                MTL::TextureType2DArray;
         }
     }
 

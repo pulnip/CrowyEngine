@@ -69,6 +69,15 @@ namespace Crowy
             "Depth format should be depth stencil usage"
         );
 
+        const auto is3D = desc.depth > 1;
+        CROWY_ASSERT(!is3D || desc.arraySize == 1,
+            "3D textures cannot be arrayed"
+        );
+        // the RTV/DSV paths only build TEXTURE2D views
+        CROWY_ASSERT(!is3D || (!isRenderTarget && !isDepthStencil),
+            "3D render/depth targets are not supported"
+        );
+
         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
         if(isRenderTarget)    flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         if(isDepthStencil)    flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -76,15 +85,24 @@ namespace Crowy
         if(!isShaderResource) flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 
         const auto dxFormat = toPhysicalFormat(desc.format, isShaderResource);
-        const auto texDesc = CD3DX12_RESOURCE_DESC1::Tex2D(
-            dxFormat,
-            desc.width,
-            desc.height,
-            desc.arraySize,
-            desc.mipLevels,
-            1, 0,
-            flags
-        );
+        const auto texDesc = is3D ?
+            CD3DX12_RESOURCE_DESC1::Tex3D(
+                dxFormat,
+                desc.width,
+                desc.height,
+                desc.depth,
+                desc.mipLevels,
+                flags
+            ) :
+            CD3DX12_RESOURCE_DESC1::Tex2D(
+                dxFormat,
+                desc.width,
+                desc.height,
+                desc.arraySize,
+                desc.mipLevels,
+                1, 0,
+                flags
+            );
 
         D3D12_CLEAR_VALUE clearValue{
             .Format = dxFormat
@@ -182,6 +200,12 @@ namespace Crowy
         const auto desc = texture->GetDesc();
         return desc.Height;
     }
+    u32 DX12Texture::GetDepth() const noexcept{
+        const auto desc = texture->GetDesc();
+        // DepthOrArraySize holds the array size for non-3D textures
+        return desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ?
+            desc.DepthOrArraySize : 1;
+    }
 
     UINT DX12Texture::GetOrCreateRTV(const RHITextureViewDesc& desc){
         if(auto it = rtvs.find(desc); it != rtvs.end())
@@ -250,6 +274,13 @@ namespace Crowy
                     desc.mipCount,
                     desc.mostDetailedMip
                 );
+            },
+            [&](const RHITextureViewDesc::Tex3D&){
+                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex3D(
+                    convert(desc.format),
+                    desc.mipCount,
+                    desc.mostDetailedMip
+                );
             }
         }, desc.config);
 
@@ -267,11 +298,30 @@ namespace Crowy
         if(auto it = uavs.find(desc); it != uavs.end())
             return it->second;
 
-        const auto dxDesc = CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex2D(
-            // unordered access binds a single mip, so mipCount plays no part
-            convert(desc.format),
-            desc.mostDetailedMip
-        );
+        // unordered access binds a single mip, so mipCount plays no part
+        const auto dxDesc = std::visit(overload{
+            [&](const RHITextureViewDesc::Tex2D&){
+                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex2D(
+                    convert(desc.format),
+                    desc.mostDetailedMip
+                );
+            },
+            [&](const RHITextureViewDesc::TexCube&){
+                CROWY_ASSERT(false,
+                    "cube unordered access views do not exist"
+                );
+                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC{};
+            },
+            [&](const RHITextureViewDesc::Tex3D&){
+                // -1 binds every W slice of the mip
+                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex3D(
+                    convert(desc.format),
+                    UINT(-1),
+                    0,
+                    desc.mostDetailedMip
+                );
+            }
+        }, desc.config);
 
         auto idx = cbvsrvuavHeap.Allocate(
             *texture.Get(),

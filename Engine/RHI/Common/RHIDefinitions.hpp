@@ -1111,7 +1111,10 @@ namespace Crowy
         struct TexCube{
             bool operator==(const TexCube&) const = default;
         };
-        using Config = std::variant<Tex2D, TexCube>;
+        struct Tex3D{
+            bool operator==(const Tex3D&) const = default;
+        };
+        using Config = std::variant<Tex2D, TexCube, Tex3D>;
 
         RHIPixelFormat format = RHIPixelFormat::Unknown;
         u32 mostDetailedMip = 0;
@@ -1168,6 +1171,9 @@ struct std::hash<Crowy::RHITextureViewDesc>{
                 return h;
             }
             if constexpr(std::is_same_v<T, RHITextureViewDesc::TexCube>){
+                return h;
+            }
+            if constexpr(std::is_same_v<T, RHITextureViewDesc::Tex3D>){
                 return h;
             }
         }, desc.config);
