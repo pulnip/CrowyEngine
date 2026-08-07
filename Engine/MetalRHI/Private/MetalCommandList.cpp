@@ -639,6 +639,35 @@ namespace Crowy
         );
     }
 
+    // the args buffer is reinterpreted as MTL::DrawPrimitivesIndirectArguments[]
+    static_assert(sizeof(RHIDrawArgs) == sizeof(MTL::DrawPrimitivesIndirectArguments));
+    static_assert(offsetof(RHIDrawArgs, vertexCount)   == offsetof(MTL::DrawPrimitivesIndirectArguments, vertexCount));
+    static_assert(offsetof(RHIDrawArgs, instanceCount) == offsetof(MTL::DrawPrimitivesIndirectArguments, instanceCount));
+    static_assert(offsetof(RHIDrawArgs, firstVertex)   == offsetof(MTL::DrawPrimitivesIndirectArguments, vertexStart));
+    static_assert(offsetof(RHIDrawArgs, baseInstance)  == offsetof(MTL::DrawPrimitivesIndirectArguments, baseInstance));
+
+    void MetalCommandList::ExecuteIndirect(const DrawBatch& batch){
+        Super::ExecuteIndirect(batch);
+
+        auto state = std::get_if<RenderPassState>(&passState);
+        CROWY_ASSERT(state != nullptr,
+            "Did you call RHICommandList::BeginRenderPass()?"
+        );
+
+        SetPipelineState(*batch.pso);
+        flush(*state);
+
+        auto mtlArgs = static_cast<MetalBuffer&>(*batch.args).Get();
+        // no multi-draw outside indirect command buffers, so unroll batch
+        for(u32 i = 0; i < batch.drawCount; ++i){
+            state->encoder->drawPrimitives(
+                state->topology,
+                mtlArgs,
+                batch.argsOffset + i * sizeof(RHIDrawArgs)
+            );
+        }
+    }
+
     // the args buffer is reinterpreted as MTL::DrawIndexedPrimitivesIndirectArguments[]
     static_assert(sizeof(RHIDrawIndexedArgs) == sizeof(MTL::DrawIndexedPrimitivesIndirectArguments));
     static_assert(offsetof(RHIDrawIndexedArgs, indexCount)    == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, indexCount));
@@ -647,8 +676,8 @@ namespace Crowy
     static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseVertex));
     static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseInstance));
 
-    void MetalCommandList::ExecuteIndirect(const DrawBatch& batch){
-        Super::ExecuteIndirect(batch);
+    void MetalCommandList::ExecuteIndirectIndexed(const DrawBatch& batch){
+        Super::ExecuteIndirectIndexed(batch);
 
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(state != nullptr,

@@ -15,7 +15,7 @@
 namespace Crowy
 {
     // 10,000 blocks on a sparse 3D lattice (SkyGrid style), all issued
-    // by one ExecuteIndirect call. The camera flies around inside:
+    // by one ExecuteIndirectIndexed call. The camera flies around inside:
     // hold RButton to look, WASD to move, Space/Shift for up/down.
     // Block color is a 3-axis gradient derived from the drawID in the
     // shader, so a broken drawID channel is immediately visible.
@@ -300,7 +300,7 @@ namespace Crowy
                 )
             });
 
-            cmdList.ExecuteIndirect(DrawBatch{
+            cmdList.ExecuteIndirectIndexed(DrawBatch{
                 .pso = pso.get(),
                 .args = argsBuffer.get(),
                 .drawCount = DRAW_COUNT

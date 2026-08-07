@@ -258,8 +258,33 @@ namespace{
         return commandQueue;
     }
 
-    // the one command signature every DrawBatch goes through: a single DRAW_INDEXED argument,
+    // the two command signatures every DrawBatch goes through: a single draw argument each,
     // so no root signature is needed at creation and no root arguments change per draw
+    auto createDrawSignature(Crowy::Device& device){
+        using namespace Crowy;
+
+        constexpr std::array args{
+            D3D12_INDIRECT_ARGUMENT_DESC{
+                .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW
+            }
+        };
+        const D3D12_COMMAND_SIGNATURE_DESC desc{
+            .ByteStride = sizeof(RHIDrawArgs),
+            .NumArgumentDescs = args.size(),
+            .pArgumentDescs = args.data(),
+            .NodeMask = 0
+        };
+
+        CommandSignatureRAII signature = nullptr;
+        CHECK_HRESULT(device.CreateCommandSignature(
+            &desc,
+            nullptr,
+            IID_PPV_ARGS(&signature)
+        ), "Failed to create draw command signature");
+
+        return signature;
+    }
+
     auto createDrawIndexedSignature(Crowy::Device& device){
         using namespace Crowy;
 
@@ -434,6 +459,7 @@ namespace Crowy
         DescriptorHeapAllocatorRAII samplerHeap = nullptr;
 
         RootSignatureRAII globalRootSignature;
+        CommandSignatureRAII drawSignature;
         CommandSignatureRAII drawIndexedSignature;
         DX12Capabilities dx12Capabilities{
             .gpuUploadHeap = false
@@ -472,6 +498,7 @@ namespace Crowy
                 UINT(64)
             ))
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
+            , drawSignature(::createDrawSignature(*device.Get()))
             , drawIndexedSignature(::createDrawIndexedSignature(*device.Get()))
         {
             setupValidationBreak(*device.Get());
@@ -638,6 +665,7 @@ namespace Crowy
                 *device.Get(),
                 *commandQueue.Get(),
                 *globalRootSignature.Get(),
+                *drawSignature.Get(),
                 *drawIndexedSignature.Get(),
                 frameIndex,
                 *cbvsrvuavHeap,

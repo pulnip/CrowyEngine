@@ -905,6 +905,15 @@ struct std::hash<Crowy::RHIComputePipelineStateDesc>{
 namespace Crowy
 {
     // hardware-consumed indirect draw arguments;
+    struct RHIDrawArgs{
+        u32 vertexCount;
+        u32 instanceCount = 1;
+        u32 firstVertex = 0;
+        // drawID; SV_StartInstanceLocation in the VS
+        u32 baseInstance = 0;
+    };
+    static_assert(sizeof(RHIDrawArgs) == 16);
+
     struct RHIDrawIndexedArgs{
         u32 indexCount;
         u32 instanceCount = 1;
@@ -915,10 +924,12 @@ namespace Crowy
     };
     static_assert(sizeof(RHIDrawIndexedArgs) == 20);
 
-    // one ExecuteIndirect submission: every draw sharing a PSO
+    // one ExecuteIndirect submission: every draw sharing a PSO.
+    // the args element type is the one its consumer expects:
+    // RHIDrawArgs for ExecuteIndirect, RHIDrawIndexedArgs for ExecuteIndirectIndexed
     struct DrawBatch{
         RHIGraphicsPipelineState* pso = nullptr;
-        // RHIDrawIndexedArgs[drawCount] at argsOffset
+        // args[drawCount] at argsOffset
         RHIBuffer* args = nullptr;
         u64 argsOffset = 0;
         u32 drawCount = 0;

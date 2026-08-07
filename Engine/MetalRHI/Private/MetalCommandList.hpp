@@ -208,6 +208,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
+        void ExecuteIndirectIndexed(const DrawBatch&) RHI_OVERRIDE;
 
         void BeginComputePass(
             std::span<const RHITextureBarrier> textureAcquires = {},

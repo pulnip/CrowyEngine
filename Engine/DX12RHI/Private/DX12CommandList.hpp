@@ -31,6 +31,7 @@ namespace Crowy
 
         CommandQueue& commandQueue;
         RootSignature& rootSignature;
+        CommandSignature& drawSignature;
         CommandSignature& drawIndexedSignature;
         CommandAllocatorRAII commandAllocators[RHI_FRAMES_IN_FLIGHT];
         const u64& frameIndex;
@@ -64,6 +65,7 @@ namespace Crowy
             Device&,
             CommandQueue&,
             RootSignature&,
+            CommandSignature& drawSignature,
             CommandSignature& drawIndexedSignature,
             const u64& frameIndex,
             DescriptorHeapAllocator& cbvsrvuavHeap,
@@ -131,6 +133,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
+        void ExecuteIndirectIndexed(const DrawBatch&) RHI_OVERRIDE;
 
         void BeginComputePass(
             std::span<const RHITextureBarrier> textureAcquires,

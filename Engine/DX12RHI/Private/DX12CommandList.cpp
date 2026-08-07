@@ -141,6 +141,7 @@ namespace Crowy
         Device& device,
         CommandQueue& commandQueue,
         RootSignature& rootSignature,
+        CommandSignature& drawSignature,
         CommandSignature& drawIndexedSignature,
         const u64& frameIndex,
         DescriptorHeapAllocator& cbvsrvuavHeap,
@@ -150,6 +151,7 @@ namespace Crowy
     )
         : commandQueue(commandQueue)
         , rootSignature(rootSignature)
+        , drawSignature(drawSignature)
         , drawIndexedSignature(drawIndexedSignature)
         , frameIndex(frameIndex)
         , cbvsrvuavHeap(cbvsrvuavHeap)
@@ -404,6 +406,29 @@ namespace Crowy
         );
     }
 
+    // the args buffer is reinterpreted as D3D12_DRAW_ARGUMENTS[]
+    static_assert(sizeof(RHIDrawArgs) == sizeof(D3D12_DRAW_ARGUMENTS));
+    static_assert(offsetof(RHIDrawArgs, vertexCount)   == offsetof(D3D12_DRAW_ARGUMENTS, VertexCountPerInstance));
+    static_assert(offsetof(RHIDrawArgs, instanceCount) == offsetof(D3D12_DRAW_ARGUMENTS, InstanceCount));
+    static_assert(offsetof(RHIDrawArgs, firstVertex)   == offsetof(D3D12_DRAW_ARGUMENTS, StartVertexLocation));
+    static_assert(offsetof(RHIDrawArgs, baseInstance)  == offsetof(D3D12_DRAW_ARGUMENTS, StartInstanceLocation));
+
+    void DX12CommandList::ExecuteIndirect(const DrawBatch& batch){
+        Super::ExecuteIndirect(batch);
+
+        SetPipelineState(*batch.pso);
+
+        auto& dxArgs = static_cast<DX12Buffer&>(*batch.args);
+        commandList->ExecuteIndirect(
+            &drawSignature,
+            batch.drawCount,
+            dxArgs.Get(),
+            batch.argsOffset,
+            nullptr,
+            0
+        );
+    }
+
     // the args buffer is reinterpreted as D3D12_DRAW_INDEXED_ARGUMENTS[]
     static_assert(sizeof(RHIDrawIndexedArgs) == sizeof(D3D12_DRAW_INDEXED_ARGUMENTS));
     static_assert(offsetof(RHIDrawIndexedArgs, indexCount)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, IndexCountPerInstance));
@@ -412,8 +437,8 @@ namespace Crowy
     static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, BaseVertexLocation));
     static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartInstanceLocation));
 
-    void DX12CommandList::ExecuteIndirect(const DrawBatch& batch){
-        Super::ExecuteIndirect(batch);
+    void DX12CommandList::ExecuteIndirectIndexed(const DrawBatch& batch){
+        Super::ExecuteIndirectIndexed(batch);
 
         SetPipelineState(*batch.pso);
 
