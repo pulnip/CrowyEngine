@@ -1200,7 +1200,14 @@ namespace Crowy
 namespace Crowy
 {
     // bindless rendering api
-    inline constexpr u32 RHI_PUSH_CONSTANT_BYTES = 64;
     inline constexpr u32 RHI_NUM_DIRECT_CBS = 3;
+    // ceiling set by D3D12 (Metal's setBytes allows 4 KB):
+    // - global root signature holds 64 DWORDs,
+    //   - root constants cost 1 DWORD per 4 bytes,
+    //   - and each direct CBV costs 2.
+    // Notice. for performance, keep push data around 64 bytes or less
+    // - larger blocks may be spilled out of user-data registers by the driver,
+    //   costing an extra memory read per access.
+    inline constexpr u32 RHI_PUSH_CONSTANT_BYTES = (64 - 2 * RHI_NUM_DIRECT_CBS) * 4;
     inline constexpr u32 RHI_CB_ALIGN = 256;
 }

@@ -404,7 +404,7 @@ namespace Crowy
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
 
-            CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+            CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
         }
 
         template<typename T>
@@ -524,7 +524,7 @@ namespace Crowy
                 "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
             );
 
-            CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+            CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
         }
 
         template<typename T>
