@@ -1,4 +1,6 @@
 add_library(CrowySampleTerrain STATIC
+    MarchingCubes.cpp
+    TerrainMarch.cpp
     TerrainSpan.cpp
     TerrainUI.cpp
 )
@@ -10,6 +12,8 @@ PUBLIC
 
 target_link_libraries(CrowySampleTerrain
 PUBLIC
+    # TerrainMarch.hpp hands out command list and resource types
+    Crowy::RHI
     Crowy::UI
 )
 

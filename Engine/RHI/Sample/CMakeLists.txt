@@ -170,6 +170,15 @@ DEPENDS
     Crowy::SampleTerrain
 )
 
+# headless; runs the marching passes once and checks the mesh landed on the
+# isosurface
+crowy_rhi_sample(TerrainMarchCheck
+SOURCES
+    TerrainMarchCheck.cpp
+DEPENDS
+    Crowy::SampleTerrain
+)
+
 crowy_graphics_sample(SpanTerrainSample
 SOURCES
     SpanTerrainSample.cpp
