@@ -186,3 +186,11 @@ DEPENDS
     Crowy::SampleTerrain
     Crowy::UI
 )
+
+crowy_graphics_sample(MarchingTerrainSample
+SOURCES
+    MarchingTerrainSample.cpp
+DEPENDS
+    Crowy::SampleTerrain
+    Crowy::UI
+)

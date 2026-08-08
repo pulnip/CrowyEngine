@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <numbers>
 #include <print>
 #include <vector>
@@ -8,9 +7,10 @@
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
 #include "RHIBuffer.hpp"
+#include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "Terrain.hpp"
-#include "TerrainSpan.hpp"
+#include "TerrainMarch.hpp"
 #include "TerrainUI.hpp"
 #include "UIRenderer.hpp"
 
@@ -18,17 +18,22 @@
 
 namespace Crowy
 {
-    // Terrain from per-column solid spans, meshed on the CPU.
-    // Deliberately faceted - the smooth reading of the same field is MarchingTerrainSample.
-    class SpanTerrainSample: public App{
+    // Terrain from marching cubes over the density field, meshed on the GPU.
+    // The smooth reading of the same field SpanTerrainSample facets.
+    //
+    // How many triangles came out is never known to the CPU: a compute pass
+    // writes the draw arguments and ExecuteIndirect consumes them. The only
+    // thing that comes back is the counter, a few frames late, to drive the
+    // stats and the overflow warning.
+    class MarchingTerrainSample: public App{
         using App::App;
 
         static constexpr RHIPixelFormat DEPTH_FORMAT = RHIPixelFormat::D32_FLOAT;
 
-        // measured: defaults mesh ~0.59M vertices, the busiest slider corner ~1.40M.
-        // Allocated once and never grown (no deferred free in the RHI);
-        // overflow drops the rest instead.
-        static constexpr u32 VERTEX_CAPACITY = 1'500'000;
+        // the defaults mesh ~99k triangles. This leaves room for the cave
+        // sliders without reserving the 1.5M the cell count would permit;
+        // past it the marcher drops cells and says so
+        static constexpr u32 TRIANGLE_CAPACITY = 600'000;
 
         static constexpr f32 FOV_Y = std::numbers::pi_v<f32> / 3;
         static constexpr f32 NEAR_Z = 0.1f, FAR_Z = 500.0f;
@@ -51,23 +56,22 @@ namespace Crowy
         RHIGraphicsPipelineStateRAII WIRE_NORMAL;
 
         RHITextureRAII depthBuffer;
-
         RHIBufferRAII frameCB;
-        RHIBufferRAII vertexBuffer;
+
+        RAII<TerrainMarcher> marcher;
+        RHIBufferRAII counterReadback;
 
         RAII<UIRenderer> uiRenderer = nullptr;
         UIContext ctx;
         RAII<TerrainPanel> panel;
 
-        TerrainSpanField field;
-        std::vector<TerrainVertex> mesh;
-        TerrainSpanMeshOptions meshOptions;
-        TerrainSpanMeshStats meshStats;
-        f64 buildTimeMs = 0.0;
-
-        // Notice. a CPUWrite buffer keeps one slot per frame in flight, so a
-        // mesh built once must be uploaded once per slot
-        u32 pendingUploads = 0;
+        // nothing can be drawn until the first march has run
+        bool rebuildPending = true;
+        // the counter copy is in flight; issuing another would race the read
+        bool counterCopyInFlight = false;
+        u64 counterCopyFrame = 0;
+        TerrainMarchCounter counter{};
+        bool overflowReported = false;
 
         Vec3 cameraPos = TERRAIN_CAMERA_START_POS;
         f32 cameraYaw = TERRAIN_CAMERA_START_YAW;
@@ -116,72 +120,57 @@ namespace Crowy
             };
         }
 
-        void Rebuild(){
-            using clock = std::chrono::steady_clock;
-            const auto start = clock::now();
+        RHIGraphicsPipelineState& SurfacePipeline(){
+            return ctx.debug.showNormals ?
+                (ctx.debug.wireframe ? *WIRE_NORMAL : *FILL_NORMAL) :
+                (ctx.debug.wireframe ? *WIRE_DEFAULT : *FILL_DEFAULT);
+        }
 
-            field = ExtractTerrainSpans(ctx.params);
-            meshStats = BuildTerrainSpanMesh(
-                field, mesh, VERTEX_CAPACITY, meshOptions
-            );
+        // The pacer waits for frame index F - RHI_FRAMES_IN_FLIGHT + 1 before
+        // recording frame F, so a copy recorded while the index read `at` has
+        // certainly landed once the index reaches at + RHI_FRAMES_IN_FLIGHT.
+        // Reading then costs no wait, and the stats trail by a few frames.
+        void CollectCounter(){
+            if(!counterCopyInFlight)
+                return;
+            if(device->GetFrameIndexRef() < counterCopyFrame + RHI_FRAMES_IN_FLIGHT)
+                return;
 
-            buildTimeMs = std::chrono::duration<f64, std::milli>(
-                clock::now() - start
-            ).count();
-            ctx.stats.vertexCount = meshStats.vertexCount;
-            ctx.stats.triangleCount = meshStats.vertexCount / 3;
+            counterReadback->Download(&counter, sizeof(counter));
+            counterCopyInFlight = false;
 
-            if(meshStats.overflowed){
-                std::println(
-                    "SpanTerrain: vertex capacity {} exceeded, terrain truncated. "
-                    "Lower caveFreq or raise caveThreshold.",
-                    VERTEX_CAPACITY
-                );
+            ctx.stats.triangleCount = counter.DrawableTriangles();
+            ctx.stats.vertexCount = ctx.stats.triangleCount * 3;
+
+            // once per episode, not once per rebuild - dragging a slider
+            // through an overflowing range re-marches every frame
+            if(counter.overflowed == 0){
+                overflowReported = false;
             }
-
-            pendingUploads = RHI_FRAMES_IN_FLIGHT;
+            else if(!overflowReported){
+                std::println(
+                    "MarchingTerrain: triangle capacity {} exceeded "
+                    "({} reserved), terrain truncated. "
+                    "Raise caveThreshold or lower caveFreq.",
+                    TRIANGLE_CAPACITY, counter.triangleCount
+                );
+                overflowReported = true;
+            }
         }
 
         std::vector<Widget> MakeSampleStats(){
             return {
                 FloatField{
-                    // the mesher is the CPU's whole job here, so this is the
-                    // number the auto-rebuild checkbox lives or dies by
-                    .label = "build (ms)",
-                    .get = [this]{ return static_cast<f32>(buildTimeMs); }
-                },
-                IntField{
-                    .label = "columns",
-                    .get = [this]{
-                        return static_cast<int>(meshStats.columnCount);
-                    }
-                },
-                IntField{
-                    .label = "spans",
-                    .get = [this]{
-                        return static_cast<int>(meshStats.spanCount);
-                    }
-                },
-                IntField{
-                    .label = "max spans / column",
-                    .get = [this]{
-                        return static_cast<int>(meshStats.maxSpansPerColumn);
-                    }
-                },
-                FloatField{
-                    // reads 100 exactly when the mesh was truncated
+                    // reservations, not written triangles, so this runs past
+                    // 100 to show by how much the parameters overshot
                     .label = "capacity used (%)",
                     .get = [this]{
-                        return 100.0f * meshStats.vertexCount / VERTEX_CAPACITY;
+                        return 100.0f * counter.triangleCount / TRIANGLE_CAPACITY;
                     }
                 },
-                Checkbox{
-                    .label = "vertical walls",
-                    .onChanged = [this](UIContext& c, bool v){
-                        meshOptions.emitWalls = v;
-                        c.paramsDirty = true;
-                    },
-                    .v = meshOptions.emitWalls
+                IntField{
+                    .label = "overflowed",
+                    .get = [this]{ return counter.overflowed != 0 ? 1 : 0; }
                 }
             };
         }
@@ -210,22 +199,20 @@ namespace Crowy
                 .usage = RHIBufferUsage::ConstantBuffer,
                 .access = RHIMemoryAccess::CPUWrite
             }, "TerrainFrameCB");
-            vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = VERTEX_CAPACITY * static_cast<u32>(sizeof(TerrainVertex)),
-                .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "TerrainVertices");
 
-            mesh.reserve(VERTEX_CAPACITY);
+            marcher = std::make_unique<TerrainMarcher>(device, TRIANGLE_CAPACITY);
+            counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
+                .size = sizeof(TerrainMarchCounter),
+                .usage = RHIBufferUsage::CopyDst,
+                .access = RHIMemoryAccess::CPURead
+            }, "TerrainMarchCounterReadback");
 
             uiRenderer = std::make_unique<UIRenderer>(
                 device, swapchain.GetFormat(), DEPTH_FORMAT
             );
-            // a CPU rebuild is tens of ms - too slow to chase a slider
-            ctx.autoRebuild = false;
+            // re-marching is cheap enough to chase a slider with
+            ctx.autoRebuild = true;
             panel = std::make_unique<TerrainPanel>(ctx, MakeSampleStats());
-
-            Rebuild();
         }
 
         void ProcessInput(const InputProvider& input) override{
@@ -264,6 +251,8 @@ namespace Crowy
         void OnUpdate(f64 deltaTime, f64) override{
             ctx.stats.frameTimeMs = deltaTime * 1000.0;
 
+            CollectCounter();
+
             if(moveInput.x != 0.0f || moveInput.y != 0.0f || moveInput.z != 0.0f){
                 const auto rot = rotateMat(CameraRotation());
                 const auto right = static_cast<Vec3>(rot[0]);
@@ -280,18 +269,42 @@ namespace Crowy
             // panel callbacks run during Prepare; a press lands here next frame
             if(ctx.ShouldRebuild()){
                 ctx.ClearRebuild();
-                Rebuild();
+                rebuildPending = true;
             }
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
-            const auto vertexCount = meshStats.vertexCount;
-            const auto vertexBytes =
-                vertexCount * static_cast<u32>(sizeof(TerrainVertex));
+            std::vector<RHIBufferBarrier> bufferAcquires;
 
-            if(pendingUploads > 0 && vertexBytes > 0){
-                vertexBuffer->Upload(mesh.data(), vertexBytes);
-                --pendingUploads;
+            if(rebuildPending){
+                // only ask for the counter when the last one has been read,
+                // so the copy never overtakes the CPU still reading it
+                const bool copyCounter = !counterCopyInFlight;
+
+                const auto edges = marcher->Record(cmdList, ctx.params, {
+                    .counter = copyCounter ?
+                        RHIResourceUsage::CopySrc :
+                        RHIResourceUsage::StorageCompute
+                });
+
+                if(copyCounter){
+                    const std::array acquires{edges.counter};
+                    cmdList.BeginBlitPass({}, acquires);
+                    cmdList.Copy(
+                        marcher->Counter(), *counterReadback,
+                        0, 0, sizeof(TerrainMarchCounter)
+                    );
+                    cmdList.EndBlitPass();
+
+                    counterCopyInFlight = true;
+                    counterCopyFrame = device->GetFrameIndexRef();
+                }
+
+                // the draw reads what the marching pass just wrote; a frame
+                // that skips the rebuild reads the same bytes again and needs
+                // no barrier at all
+                bufferAcquires = {edges.vertices, edges.args};
+                rebuildPending = false;
             }
 
             const auto view = viewMat(cameraPos, CameraRotation());
@@ -308,7 +321,7 @@ namespace Crowy
             colorAttachment.clearColor = SKY_COLOR;
             std::array colorAttachments = {colorAttachment};
 
-            std::vector<RHITextureBarrier> acquires{
+            std::vector<RHITextureBarrier> textureAcquires{
                 AcquireBackBuffer(backBuffer),
                 // WAR with the previous frame's depth; the pass clears anyway
                 MakeCrossSubmissionBarrier(
@@ -319,7 +332,7 @@ namespace Crowy
                 )
             };
             // the pass samples the font atlas Prepare just refreshed
-            acquires.append_range(uiRenderer->TextureAcquires());
+            textureAcquires.append_range(uiRenderer->TextureAcquires());
 
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
@@ -329,24 +342,22 @@ namespace Crowy
                     .storeAction = RHIStoreAction::DontCare,
                     .clearDepthStencil = {.depth = 1.0f}
                 }
-            }, acquires);
+            }, textureAcquires, bufferAcquires);
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            if(vertexCount > 0){
-                cmdList.SetPipelineState(
-                    ctx.debug.showNormals ?
-                        (ctx.debug.wireframe ? *WIRE_NORMAL : *FILL_NORMAL) :
-                        (ctx.debug.wireframe ? *WIRE_DEFAULT : *FILL_DEFAULT)
-                );
-                cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
-                cmdList.SetPushGraphicsConstants(PushConstants{
-                    .vertices = vertexBuffer->GetReadableID(
-                        static_cast<u32>(sizeof(TerrainVertex))
-                    )
-                });
-                cmdList.Draw(vertexCount);
-            }
+            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetPushGraphicsConstants(PushConstants{
+                .vertices = marcher->Vertices().GetReadableID(
+                    static_cast<u32>(sizeof(TerrainVertex))
+                )
+            });
+            // how many vertices this draws is only known to the GPU
+            cmdList.ExecuteIndirect(DrawBatch{
+                .pso = &SurfacePipeline(),
+                .args = &marcher->Args(),
+                .drawCount = 1
+            });
 
             uiRenderer->Record(cmdList);
 
@@ -365,11 +376,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "SpanTerrainSample",
+        .title = "MarchingTerrainSample",
         .width = 1280, .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<SpanTerrainSample>(windowConfig);
+    return Main<MarchingTerrainSample>(windowConfig);
 }

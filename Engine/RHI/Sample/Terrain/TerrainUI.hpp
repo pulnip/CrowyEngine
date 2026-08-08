@@ -12,11 +12,12 @@ namespace Crowy
     };
 
     // stats both samples report; sample-specific ones are injected into the
-    // panel instead - see TerrainPanel
+    // panel instead - see TerrainPanel. Build time is not here on purpose:
+    // only the CPU mesher knows how long it took, and a zero next to the GPU
+    // one would read as "instant" rather than "not measured"
     struct TerrainStats{
         u32 vertexCount = 0;
         u32 triangleCount = 0;
-        f64 buildTimeMs = 0.0;
         f64 frameTimeMs = 0.0;
     };
 

@@ -6,6 +6,25 @@
 
 namespace Crowy
 {
+    // Where a marching run leaves each buffer for whatever reads it next.
+    // The defaults suit a sample that draws the result indirectly.
+    struct TerrainMarchTargets{
+        RHIResourceUsage vertices = RHIResourceUsage::SampledVertex;
+        // nothing outside the compute passes reads it, but the release still
+        // stands: next frame's clear is a write-after-write
+        RHIResourceUsage counter = RHIResourceUsage::StorageCompute;
+        RHIResourceUsage args = RHIResourceUsage::IndirectArgs;
+    };
+
+    // The release halves a marching run emitted. The consuming pass has to
+    // acquire with these same values - that is what pairs the two ends of an
+    // edge.
+    struct TerrainMarchEdges{
+        RHIBufferBarrier vertices;
+        RHIBufferBarrier counter;
+        RHIBufferBarrier args;
+    };
+
     // The GPU side of the terrain: density evaluation and marching cubes, both
     // compute. Nothing comes back to the CPU - the triangle count only ever
     // exists in a buffer.
@@ -16,27 +35,22 @@ namespace Crowy
     private:
         u32 triangleCapacity;
 
-        RHIComputePipelineStateRAII clearPSO, densityPSO, marchPSO;
+        RHIComputePipelineStateRAII clearPSO, densityPSO, marchPSO, argsPSO;
 
         RHITextureRAII densityTexture;
         RHIBufferRAII vertexBuffer;
         RHIBufferRAII counterBuffer;
         RHIBufferRAII triTableBuffer;
+        RHIBufferRAII argsBuffer;
 
         // what the previous submission left each resource in.
         // Undefined until the first Record
         RHIResourceUsage densityResting = RHIResourceUsage::Undefined;
         RHIResourceUsage vertexResting = RHIResourceUsage::Undefined;
         RHIResourceUsage counterResting = RHIResourceUsage::Undefined;
+        RHIResourceUsage argsResting = RHIResourceUsage::Undefined;
 
     public:
-        // the release halves Record emitted. The consuming pass has to acquire
-        // with these same values - that is what pairs the two ends of an edge.
-        struct Edges{
-            RHIBufferBarrier vertices;
-            RHIBufferBarrier counter;
-        };
-
         TerrainMarcher(RHIDevice&, u32 triangleCapacity);
         // the RAII members hold types this header only forward-declares
         ~TerrainMarcher();
@@ -46,16 +60,16 @@ namespace Crowy
 
         RHIBuffer& Vertices() noexcept{ return *vertexBuffer; }
         RHIBuffer& Counter() noexcept{ return *counterBuffer; }
+        RHIBuffer& Args() noexcept{ return *argsBuffer; }
 
-        // Records the density pass and the marching pass, leaving the vertex
-        // and counter buffers in `verticesAfter` / `counterAfter`.
-        // Re-recording is the normal case: the acquires wind the buffers back
-        // from wherever the previous submission left them.
-        Edges Record(
+        // Records the density pass and the marching pass, leaving each buffer
+        // where `targets` says. Re-recording is the normal case: the acquires
+        // wind the buffers back from wherever the previous submission left
+        // them, which is the write-after-read this sample exists to exercise.
+        TerrainMarchEdges Record(
             RHICommandList&,
             const TerrainParams&,
-            RHIResourceUsage verticesAfter,
-            RHIResourceUsage counterAfter
+            TerrainMarchTargets = {}
         );
     };
 

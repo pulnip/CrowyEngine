@@ -29,6 +29,8 @@ struct ResourceData {
     // see TerrainMarchCounter in TerrainMarch.hpp for the four slots
     DescriptorHandle<RWStructuredBuffer<uint>> counter;            // 80
     DescriptorHandle<StructuredBuffer<int>> triTable;              // 88
+    // RHIDrawArgs as four uints; cs_args fills it for ExecuteIndirect
+    DescriptorHandle<RWStructuredBuffer<uint>> args;               // 96
 };
 
 [[vk::push_constant]]
@@ -175,4 +177,23 @@ void cs_march(uint3 tid: SV_DispatchThreadID) {
             vertices[(base + t) * 3 + k] = vertex;
         }
     }
+}
+
+// Turns the count the marching pass accumulated into draw arguments, so the
+// vertex count never has to reach the CPU. One thread, run after cs_march.
+[shader("compute")]
+[numthreads(1, 1, 1)]
+void cs_args() {
+    RWStructuredBuffer<uint> counter = resource.counter;
+    RWStructuredBuffer<uint> args = resource.args;
+
+    // reservations run past capacity once it overflows, and a dropped cell
+    // leaves its slots unwritten, so the contiguous mesh ends at the earlier
+    // of the two
+    uint drawable = min(counter[0], counter[2]);
+
+    args[0] = drawable * 3;  // vertexCount
+    args[1] = 1;             // instanceCount
+    args[2] = 0;             // firstVertex
+    args[3] = 0;             // baseInstance
 }

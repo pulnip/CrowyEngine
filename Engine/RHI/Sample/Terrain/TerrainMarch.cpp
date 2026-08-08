@@ -26,8 +26,9 @@ namespace{
         u64 vertices;
         u64 counter;
         u64 triTable;
+        u64 args;
     };
-    static_assert(sizeof(PushConstants) == 96);
+    static_assert(sizeof(PushConstants) == 104);
     static_assert(offsetof(PushConstants, cellsX) == 32);
     static_assert(offsetof(PushConstants, cellSize) == 44);
     static_assert(offsetof(PushConstants, triangleCapacity) == 48);
@@ -36,6 +37,7 @@ namespace{
     static_assert(offsetof(PushConstants, vertices) == 72);
     static_assert(offsetof(PushConstants, counter) == 80);
     static_assert(offsetof(PushConstants, triTable) == 88);
+    static_assert(offsetof(PushConstants, args) == 96);
 
     RHIComputePipelineStateRAII MakePipeline(RHIDevice& device, CStr entryPoint){
         return device.CreatePipelineState(RHIComputePipelineStateDesc{
@@ -79,6 +81,7 @@ namespace Crowy
         , clearPSO(MakePipeline(device, "cs_clear"))
         , densityPSO(MakePipeline(device, "cs_density"))
         , marchPSO(MakePipeline(device, "cs_march"))
+        , argsPSO(MakePipeline(device, "cs_args"))
     {
         densityTexture = device.CreateTexture(RHITextureCreateDesc{
             .width = TERRAIN_CORNERS_X,
@@ -117,15 +120,24 @@ namespace Crowy
             .access = RHIMemoryAccess::GPUOnly,
             .initialData = triTable.data()
         }, "MarchingCubesTriTable");
+
+        argsBuffer = device.CreateBuffer(RHIBufferCreateDesc{
+            .size = sizeof(RHIDrawArgs),
+            .usage = combine(
+                RHIBufferUsage::IndirectArgument,
+                RHIBufferUsage::UnorderedAccess,
+                RHIBufferUsage::CopySrc
+            ),
+            .access = RHIMemoryAccess::GPUOnly
+        }, "TerrainMarchArgs");
     }
 
     TerrainMarcher::~TerrainMarcher() = default;
 
-    TerrainMarcher::Edges TerrainMarcher::Record(
+    TerrainMarchEdges TerrainMarcher::Record(
         RHICommandList& cmdList,
         const TerrainParams& params,
-        RHIResourceUsage verticesAfter,
-        RHIResourceUsage counterAfter
+        TerrainMarchTargets targets
     ){
         const PushConstants pushConstants{
             .params = params,
@@ -144,7 +156,8 @@ namespace Crowy
             ),
             .triTable = triTableBuffer->GetReadableID(
                 static_cast<u32>(sizeof(i32))
-            )
+            ),
+            .args = argsBuffer->GetWritableID(static_cast<u32>(sizeof(u32)))
         };
 
         // the density pass releases the field, the marching pass acquires it -
@@ -170,14 +183,18 @@ namespace Crowy
             cmdList.EndComputePass(releases);
         }
 
-        const Edges edges{
+        const TerrainMarchEdges edges{
             .vertices = MakeBarrier(*vertexBuffer,
                 RHIResourceUsage::StorageCompute,
-                verticesAfter
+                targets.vertices
             ),
             .counter = MakeBarrier(*counterBuffer,
                 RHIResourceUsage::StorageCompute,
-                counterAfter
+                targets.counter
+            ),
+            .args = MakeBarrier(*argsBuffer,
+                RHIResourceUsage::StorageCompute,
+                targets.args
             )
         };
 
@@ -185,7 +202,8 @@ namespace Crowy
             const std::array textureAcquires{densityEdge};
             const std::array bufferAcquires{
                 AcquireForWrite(*vertexBuffer, vertexResting),
-                AcquireForWrite(*counterBuffer, counterResting)
+                AcquireForWrite(*counterBuffer, counterResting),
+                AcquireForWrite(*argsBuffer, argsResting)
             };
             cmdList.BeginComputePass(textureAcquires, bufferAcquires);
 
@@ -209,13 +227,24 @@ namespace Crowy
                 TERRAIN_CELLS_X, TERRAIN_CELLS_Y, TERRAIN_CELLS_Z
             });
 
-            const std::array releases{edges.vertices, edges.counter};
+            // the argument pass reads the count the marching pass just
+            // accumulated - the same hazard again
+            cmdList.DispatchBarrier({}, hazards);
+
+            cmdList.SetPipelineState(*argsPSO);
+            cmdList.SetPushComputeConstants(pushConstants);
+            cmdList.Dispatch({1, 1, 1});
+
+            const std::array releases{
+                edges.vertices, edges.counter, edges.args
+            };
             cmdList.EndComputePass({}, releases);
         }
 
         densityResting = RHIResourceUsage::SampledCompute;
-        vertexResting = verticesAfter;
-        counterResting = counterAfter;
+        vertexResting = targets.vertices;
+        counterResting = targets.counter;
+        argsResting = targets.args;
 
         return edges;
     }

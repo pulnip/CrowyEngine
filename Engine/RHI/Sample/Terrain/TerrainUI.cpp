@@ -128,7 +128,6 @@ namespace{
             Text{.data = "Stats"},
             StatInt("vertices", ctx, &TerrainStats::vertexCount),
             StatInt("triangles", ctx, &TerrainStats::triangleCount),
-            StatFloat("build (ms)", ctx, &TerrainStats::buildTimeMs),
             StatFloat("frame (ms)", ctx, &TerrainStats::frameTimeMs)
         };
 

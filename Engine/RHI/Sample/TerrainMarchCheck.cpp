@@ -201,6 +201,34 @@ namespace{
         return winding;
     }
 
+    // The draw arguments cs_args wrote. Nothing else ever computes this on
+    // the CPU, so getting it wrong would only show as a mis-sized draw.
+    bool ArgsAreRight(const RHIDrawArgs& args, const TerrainMarchCounter& counter){
+        const u32 expected = counter.DrawableTriangles() * 3;
+
+        std::println("  draw args: {} vertices, {} instances",
+            args.vertexCount, args.instanceCount
+        );
+
+        if(args.vertexCount != expected){
+            std::println(
+                "  FAIL: cs_args asked for {} vertices where the counter says {}",
+                args.vertexCount, expected
+            );
+            return false;
+        }
+        if(args.instanceCount != 1 || args.firstVertex != 0 || args.baseInstance != 0){
+            std::println(
+                "  FAIL: draw args carry junk beyond the vertex count "
+                "({} instances, first {}, base {})",
+                args.instanceCount, args.firstVertex, args.baseInstance
+            );
+            return false;
+        }
+
+        return true;
+    }
+
     // a reversed winding turns the weighted total negative and sends the rate
     // towards everything, so this sits orders of magnitude away from both
     constexpr f32 MAX_DISAGREEMENT_RATE = 0.005f;
@@ -287,6 +315,7 @@ int main(void){
         const TerrainParams params{};
 
         auto device = CreateDevice();
+        auto warmupList = device->CreateCommandList();
         auto cmdList = device->CreateCommandList();
         auto fence = device->CreateFence();
 
@@ -305,18 +334,38 @@ int main(void){
             .usage = RHIBufferUsage::CopyDst,
             .access = RHIMemoryAccess::CPURead
         }, "TerrainMarchVertexReadback");
+        auto argsReadback = device->CreateBuffer(RHIBufferCreateDesc{
+            .size = sizeof(RHIDrawArgs),
+            .usage = RHIBufferUsage::CopyDst,
+            .access = RHIMemoryAccess::CPURead
+        }, "TerrainMarchArgsReadback");
+
+        // A first run, submitted on its own, left the way a frame that drew
+        // the result would leave it. The run that follows then has to wind
+        // every buffer back from a read to a write across a submission
+        // boundary - the hazard auto-rebuild hits on every parameter change,
+        // and the reason this sample runs twice instead of once. The debug
+        // layer is what actually judges it.
+        {
+            warmupList->Begin();
+            marcher.Record(*warmupList, params);
+            warmupList->Close();
+
+            RHICommandList* warmup[] = {warmupList.get()};
+            device->Submit(warmup, *fence);
+            fence->WaitCPU(1);
+        }
 
         cmdList->Begin();
 
-        const auto edges = marcher.Record(
-            *cmdList,
-            params,
-            RHIResourceUsage::CopySrc,
-            RHIResourceUsage::CopySrc
-        );
+        const auto edges = marcher.Record(*cmdList, params, {
+            .vertices = RHIResourceUsage::CopySrc,
+            .counter = RHIResourceUsage::CopySrc,
+            .args = RHIResourceUsage::CopySrc
+        });
 
         {
-            const std::array acquires{edges.vertices, edges.counter};
+            const std::array acquires{edges.vertices, edges.counter, edges.args};
             cmdList->BeginBlitPass({}, acquires);
             cmdList->Copy(
                 marcher.Counter(), *counterReadback,
@@ -326,6 +375,10 @@ int main(void){
                 marcher.Vertices(), *vertexReadback,
                 0, 0, prefixBytes
             );
+            cmdList->Copy(
+                marcher.Args(), *argsReadback,
+                0, 0, sizeof(RHIDrawArgs)
+            );
             cmdList->EndBlitPass();
         }
 
@@ -333,7 +386,7 @@ int main(void){
         RHICommandList* cmdLists[] = {cmdList.get()};
         device->Submit(cmdLists, *fence);
 
-        fence->WaitCPU(1);
+        fence->WaitCPU(2);
 
         // forced push for resolve the in-flight state
         device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
@@ -378,7 +431,11 @@ int main(void){
 
         const bool wound = WindingIsRight(CheckWinding(vertices));
 
-        if(failures.Total() > 0 || !wound)
+        RHIDrawArgs args{};
+        argsReadback->Download(&args, sizeof(args));
+        const bool drawable = ArgsAreRight(args, counter);
+
+        if(failures.Total() > 0 || !wound || !drawable)
             return 1;
 
         std::println("Succeed!");
