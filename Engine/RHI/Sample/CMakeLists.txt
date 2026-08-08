@@ -169,3 +169,11 @@ SOURCES
 DEPENDS
     Crowy::SampleTerrain
 )
+
+crowy_graphics_sample(SpanTerrainSample
+SOURCES
+    SpanTerrainSample.cpp
+DEPENDS
+    Crowy::SampleTerrain
+    Crowy::UI
+)

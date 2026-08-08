@@ -1,4 +1,5 @@
 add_library(CrowySampleTerrain STATIC
+    TerrainSpan.cpp
     TerrainUI.cpp
 )
 
