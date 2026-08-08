@@ -110,7 +110,8 @@ namespace Crowy
 {
     UIRenderer::UIRenderer(
         RHIDevice& device,
-        RHIPixelFormat renderTargetFormat
+        RHIPixelFormat renderTargetFormat,
+        RHIPixelFormat depthFormat
     )
         : device(device)
         , frameIndex(device.GetFrameIndexRef())
@@ -154,6 +155,14 @@ namespace Crowy
                 .path = "Engine/Shader/UI.slang",
                 .entryPoint = "fs_main"
             },
+            // UI ignores the scene's depth but the formats must still agree
+            .depthStencil = depthFormat == RHIPixelFormat::Unknown ?
+                std::nullopt :
+                std::optional{RHIDepthStencilState{
+                    .format = depthFormat,
+                    .depthWriteEnable = false,
+                    .depthFunc = RHIComparisonFunc::Always
+                }},
             .blend = RHIBlendState{
                 .renderTargets = {
                     RHIRenderTargetBlendState{

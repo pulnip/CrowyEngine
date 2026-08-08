@@ -42,7 +42,13 @@ namespace Crowy
         std::vector<RHITextureBarrier> textureAcquires;
 
     public:
-        UIRenderer(RHIDevice&, RHIPixelFormat renderTargetFormat);
+        // pass the render pass's depth format when the UI is recorded inside
+        // a pass that binds one - the PSO formats must match the pass
+        UIRenderer(
+            RHIDevice&,
+            RHIPixelFormat renderTargetFormat,
+            RHIPixelFormat depthFormat = RHIPixelFormat::Unknown
+        );
         ~UIRenderer();
         CROWY_DECLARE_PINNED(UIRenderer)
 
