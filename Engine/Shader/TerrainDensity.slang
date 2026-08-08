@@ -13,6 +13,8 @@ struct TerrainParams {
     float heightBase;
     float heightAmp;
     float caveFreq;
+    // TODO: caveThreshold and caveStrength are a ridge in parameter space,
+    // not independent knobs - 0.45/80 and 0.50/120 both carve about 14%.
     float caveThreshold;
     float caveStrength;
 };
