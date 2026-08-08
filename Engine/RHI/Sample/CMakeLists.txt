@@ -75,6 +75,8 @@ endfunction()
 
 # ready-made scenes the samples can render
 add_subdirectory(Scene)
+# density field, noise and UI panel the two terrain samples share
+add_subdirectory(Terrain)
 
 crowy_graphics_sample(HelloWorld
 SOURCES
@@ -158,4 +160,12 @@ SOURCES
     UISample.cpp
 DEPENDS
     Crowy::UI
+)
+
+# headless; fails the smoke run if the CPU and GPU density fields drift apart
+crowy_rhi_sample(TerrainDensityCheck
+SOURCES
+    TerrainDensityCheck.cpp
+DEPENDS
+    Crowy::SampleTerrain
 )
