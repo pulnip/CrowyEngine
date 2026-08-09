@@ -25,9 +25,12 @@ namespace{
 
     // measured at the default parameters; see the count this prints
     constexpr u32 TRIANGLE_CAPACITY = 1'500'000;
-    // how much of the soup comes back. The atomic hands out slots in no
-    // particular order, so a prefix is an unbiased sample of the whole mesh
+    // how much comes back. The atomic hands out slots in no particular order,
+    // so a prefix is an unbiased sample of the whole mesh. Welding needs the
+    // vertex prefix to cover every vertex an index can name, which it does by
+    // a wide margin - welded vertices number about half the triangles
     constexpr u32 PREFIX_VERTICES = 300'000;
+    constexpr u32 PREFIX_INDICES = 300'000;
 
     // the CPU and GPU density fields agree to about this much
     // (TerrainDensityCheck measures it); the interpolated residual inherits
@@ -201,19 +204,105 @@ namespace{
         return winding;
     }
 
-    // The draw arguments cs_args wrote. Nothing else ever computes this on
-    // the CPU, so getting it wrong would only show as a mis-sized draw.
-    bool ArgsAreRight(const RHIDrawArgs& args, const TerrainMarchCounter& counter){
+    // Expands the welded mesh back into a triangle soup so the same geometry
+    // checks apply, and judges the indices on the way through: every one has
+    // to name a vertex that was actually written.
+    bool BuildWeldedSoup(
+        std::span<const u32> indices,
+        std::span<const TerrainVertex> stored,
+        const TerrainMarchCounter& counter,
+        std::vector<TerrainVertex>& soup
+    ){
+        const u32 triangles = counter.DrawableTriangles();
+
+        std::println("  {} vertices welded, {:.2f} per triangle",
+            counter.vertexCount,
+            static_cast<f32>(counter.vertexCount) / triangles
+        );
+
+        if(counter.vertexCount > PREFIX_VERTICES){
+            std::println(
+                "  FAIL: {} vertices is more than the {} read back, so the "
+                "indices cannot be resolved - raise PREFIX_VERTICES",
+                counter.vertexCount, PREFIX_VERTICES
+            );
+            return false;
+        }
+        // welding that saves nothing is welding that did not happen
+        if(counter.vertexCount >= triangles * 3){
+            std::println(
+                "  FAIL: {} vertices for {} triangles - no sharing at all, "
+                "so the edge slots are not being reused",
+                counter.vertexCount, triangles
+            );
+            return false;
+        }
+
+        const auto count = std::min(triangles * 3, PREFIX_INDICES);
+        soup.reserve(count);
+
+        for(u32 i = 0; i + 2 < count; i += 3){
+            for(u32 k = 0; k < 3; ++k){
+                const u32 index = indices[i + k];
+                if(index >= counter.vertexCount){
+                    std::println(
+                        "  FAIL: index {} at slot {} names vertex {} of {} - "
+                        "the edge slots and the vertex counter disagree",
+                        index, i + k, index, counter.vertexCount
+                    );
+                    return false;
+                }
+                soup.push_back(stored[index]);
+            }
+        }
+
+        return true;
+    }
+
+    // The draw arguments the argument kernel wrote. Nothing else ever computes
+    // this on the CPU, so getting it wrong would only show as a mis-sized draw.
+    bool ArgsAreRight(
+        RHIBuffer& readback,
+        const TerrainMarchCounter& counter,
+        TerrainMarchMode mode
+    ){
         const u32 expected = counter.DrawableTriangles() * 3;
 
-        std::println("  draw args: {} vertices, {} instances",
-            args.vertexCount, args.instanceCount
+        // the two layouts agree on the first three fields and differ after,
+        // so only the tail needs telling apart
+        RHIDrawArgs args{};
+        u32 baseVertex = 0;
+        if(mode == TerrainMarchMode::Welded){
+            RHIDrawIndexedArgs indexed{};
+            readback.Download(&indexed, sizeof(indexed));
+
+            args = RHIDrawArgs{
+                .vertexCount = indexed.indexCount,
+                .instanceCount = indexed.instanceCount,
+                .firstVertex = indexed.firstIndex,
+                .baseInstance = indexed.baseInstance
+            };
+            baseVertex = static_cast<u32>(indexed.baseVertex);
+        }
+        else{
+            readback.Download(&args, sizeof(args));
+        }
+
+        if(baseVertex != 0){
+            std::println("  FAIL: baseVertex should be 0, not {}", baseVertex);
+            return false;
+        }
+
+        const auto unit = mode == TerrainMarchMode::Welded ? "indices" : "vertices";
+        std::println("  draw args: {} {}, {} instances",
+            args.vertexCount, unit, args.instanceCount
         );
 
         if(args.vertexCount != expected){
             std::println(
-                "  FAIL: cs_args asked for {} vertices where the counter says {}",
-                args.vertexCount, expected
+                "  FAIL: the argument kernel asked for {} {} where the counter "
+                "says {}",
+                args.vertexCount, unit, expected
             );
             return false;
         }
@@ -308,34 +397,48 @@ namespace{
     }
 }
 
-int main(void){
-    try{
-        using namespace Crowy;
+namespace{
+    // Runs one mode end to end and judges what came back. Both modes mesh the
+    // same field, so the same geometry checks apply to both - the welded one
+    // just has to be dereferenced through its indices first.
+    bool CheckMode(
+        RHIDevice& device,
+        const TerrainParams& params,
+        TerrainMarchMode mode
+    ){
+        const bool welded = mode == TerrainMarchMode::Welded;
+        std::println("--- {} ---", welded ? "welded" : "soup");
 
-        const TerrainParams params{};
+        auto warmupList = device.CreateCommandList();
+        auto cmdList = device.CreateCommandList();
+        auto fence = device.CreateFence();
 
-        auto device = CreateDevice();
-        auto warmupList = device->CreateCommandList();
-        auto cmdList = device->CreateCommandList();
-        auto fence = device->CreateFence();
+        TerrainMarcher marcher(device, TRIANGLE_CAPACITY);
 
-        TerrainMarcher marcher(*device, TRIANGLE_CAPACITY);
-
-        const auto prefixBytes =
+        const auto vertexBytes =
             PREFIX_VERTICES * static_cast<u32>(sizeof(TerrainVertex));
+        const auto indexBytes = PREFIX_INDICES * static_cast<u32>(sizeof(u32));
+        const auto argsBytes = static_cast<u32>(
+            welded ? sizeof(RHIDrawIndexedArgs) : sizeof(RHIDrawArgs)
+        );
 
-        auto counterReadback = device->CreateBuffer(RHIBufferCreateDesc{
+        auto counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(TerrainMarchCounter),
             .usage = RHIBufferUsage::CopyDst,
             .access = RHIMemoryAccess::CPURead
         }, "TerrainMarchCounterReadback");
-        auto vertexReadback = device->CreateBuffer(RHIBufferCreateDesc{
-            .size = prefixBytes,
+        auto vertexReadback = device.CreateBuffer(RHIBufferCreateDesc{
+            .size = vertexBytes,
             .usage = RHIBufferUsage::CopyDst,
             .access = RHIMemoryAccess::CPURead
         }, "TerrainMarchVertexReadback");
-        auto argsReadback = device->CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(RHIDrawArgs),
+        auto indexReadback = device.CreateBuffer(RHIBufferCreateDesc{
+            .size = indexBytes,
+            .usage = RHIBufferUsage::CopyDst,
+            .access = RHIMemoryAccess::CPURead
+        }, "TerrainMarchIndexReadback");
+        auto argsReadback = device.CreateBuffer(RHIBufferCreateDesc{
+            .size = argsBytes,
             .usage = RHIBufferUsage::CopyDst,
             .access = RHIMemoryAccess::CPURead
         }, "TerrainMarchArgsReadback");
@@ -344,57 +447,58 @@ int main(void){
         // the result would leave it. The run that follows then has to wind
         // every buffer back from a read to a write across a submission
         // boundary - the hazard auto-rebuild hits on every parameter change,
-        // and the reason this sample runs twice instead of once. The debug
-        // layer is what actually judges it.
+        // and the reason this runs twice instead of once. The debug layer is
+        // what actually judges it.
         {
             warmupList->Begin();
-            marcher.Record(*warmupList, params);
+            marcher.Record(*warmupList, params, mode);
             warmupList->Close();
 
             RHICommandList* warmup[] = {warmupList.get()};
-            device->Submit(warmup, *fence);
-            fence->WaitCPU(1);
+            device.Submit(warmup, *fence);
+            fence->WaitCPU(device.GetFrameIndexRef());
         }
 
         cmdList->Begin();
 
-        const auto edges = marcher.Record(*cmdList, params, {
+        const auto edges = marcher.Record(*cmdList, params, mode, {
             .vertices = RHIResourceUsage::CopySrc,
             .counter = RHIResourceUsage::CopySrc,
-            .args = RHIResourceUsage::CopySrc
+            .args = RHIResourceUsage::CopySrc,
+            .indices = RHIResourceUsage::CopySrc
         });
 
         {
-            const std::array acquires{edges.vertices, edges.counter, edges.args};
+            std::vector acquires{edges.vertices, edges.counter, edges.args};
+            if(welded)
+                acquires.push_back(edges.indices);
+
             cmdList->BeginBlitPass({}, acquires);
             cmdList->Copy(
                 marcher.Counter(), *counterReadback,
                 0, 0, sizeof(TerrainMarchCounter)
             );
-            cmdList->Copy(
-                marcher.Vertices(), *vertexReadback,
-                0, 0, prefixBytes
-            );
-            cmdList->Copy(
-                marcher.Args(), *argsReadback,
-                0, 0, sizeof(RHIDrawArgs)
-            );
+            cmdList->Copy(marcher.Vertices(), *vertexReadback, 0, 0, vertexBytes);
+            cmdList->Copy(marcher.Args(mode), *argsReadback, 0, 0, argsBytes);
+            if(welded)
+                cmdList->Copy(marcher.Indices(), *indexReadback, 0, 0, indexBytes);
+
             cmdList->EndBlitPass();
         }
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists, *fence);
+        device.Submit(cmdLists, *fence);
 
-        fence->WaitCPU(2);
+        fence->WaitCPU(device.GetFrameIndexRef());
 
         // forced push for resolve the in-flight state
-        device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
+        device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
 
         TerrainMarchCounter counter;
         counterReadback->Download(&counter, sizeof(counter));
 
-        std::println("TerrainMarchCheck: {} triangles of {} capacity ({:.1f}%)",
+        std::println("  {} triangles of {} capacity ({:.1f}%)",
             counter.triangleCount,
             TRIANGLE_CAPACITY,
             100.0f * counter.triangleCount / TRIANGLE_CAPACITY
@@ -406,36 +510,63 @@ int main(void){
                 "raise TRIANGLE_CAPACITY past {}",
                 counter.firstDropped, counter.triangleCount
             );
-            return 1;
+            return false;
         }
         if(counter.triangleCount == 0){
             std::println(
                 "  FAIL: no triangles - the case index never leaves 0 or 255, "
                 "so the density texture is probably empty"
             );
-            return 1;
+            return false;
         }
 
-        std::vector<TerrainVertex> vertices(PREFIX_VERTICES);
-        vertexReadback->Download(vertices.data(), prefixBytes);
+        std::vector<TerrainVertex> stored(PREFIX_VERTICES);
+        vertexReadback->Download(stored.data(), vertexBytes);
 
-        // whole triangles only, and never past what was actually written
-        const auto emitted = std::min(
-            counter.DrawableTriangles() * 3,
-            PREFIX_VERTICES
-        );
-        vertices.resize(emitted - emitted % 3);
+        std::vector<TerrainVertex> soup;
+        bool indicesAreRight = true;
 
-        const auto failures = CheckVertices(vertices, params);
-        Report(failures, static_cast<u32>(vertices.size()));
+        if(welded){
+            std::vector<u32> indices(PREFIX_INDICES);
+            indexReadback->Download(indices.data(), indexBytes);
 
-        const bool wound = WindingIsRight(CheckWinding(vertices));
+            indicesAreRight = BuildWeldedSoup(indices, stored, counter, soup);
+        }
+        else{
+            // whole triangles only, and never past what was actually written
+            const auto emitted = std::min(
+                counter.DrawableTriangles() * 3,
+                PREFIX_VERTICES
+            );
+            stored.resize(emitted - emitted % 3);
+            soup = std::move(stored);
+        }
 
-        RHIDrawArgs args{};
-        argsReadback->Download(&args, sizeof(args));
-        const bool drawable = ArgsAreRight(args, counter);
+        const auto failures = CheckVertices(soup, params);
+        Report(failures, static_cast<u32>(soup.size()));
 
-        if(failures.Total() > 0 || !wound || !drawable)
+        const bool wound = WindingIsRight(CheckWinding(soup));
+        const bool drawable = ArgsAreRight(*argsReadback, counter, mode);
+
+        return failures.Total() == 0 && wound && drawable && indicesAreRight;
+    }
+}
+
+int main(void){
+    try{
+        using namespace Crowy;
+
+        const TerrainParams params{};
+
+        auto device = CreateDevice();
+
+        std::println("TerrainMarchCheck");
+
+        // both run even if the first fails, so one report covers both
+        bool ok = CheckMode(*device, params, TerrainMarchMode::Soup);
+        ok = CheckMode(*device, params, TerrainMarchMode::Welded) && ok;
+
+        if(!ok)
             return 1;
 
         std::println("Succeed!");

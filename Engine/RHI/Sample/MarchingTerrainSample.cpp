@@ -50,6 +50,10 @@ namespace Crowy
         u64 counterCopyFrame = 0;
         TerrainMarchCounter counter{};
         bool overflowReported = false;
+        // what the panel asks for, and what the mesh in the buffers actually
+        // is - they differ between a toggle and the rebuild that follows it
+        TerrainMarchMode mode = TerrainMarchMode::Soup;
+        TerrainMarchMode drawnMode = TerrainMarchMode::Soup;
 
         TerrainCamera camera;
 
@@ -76,7 +80,11 @@ namespace Crowy
             counterCopyInFlight = false;
 
             ctx.stats.triangleCount = counter.DrawableTriangles();
-            ctx.stats.vertexCount = ctx.stats.triangleCount * 3;
+            // the soup spends three vertices on every triangle; welding spends
+            // one per crossing edge and says so in the counter
+            ctx.stats.vertexCount = mode == TerrainMarchMode::Soup ?
+                ctx.stats.triangleCount * 3 :
+                counter.vertexCount;
 
             // once per episode, not once per rebuild - dragging a slider
             // through an overflowing range re-marches every frame
@@ -94,8 +102,34 @@ namespace Crowy
             }
         }
 
+        // bytes the mesh occupies as drawn, so the welding toggle shows its
+        // work rather than being taken on faith
+        u32 MeshBytes() const{
+            const auto vertexBytes =
+                ctx.stats.vertexCount * static_cast<u32>(sizeof(TerrainVertex));
+            if(mode == TerrainMarchMode::Soup)
+                return vertexBytes;
+
+            return vertexBytes +
+                ctx.stats.triangleCount * 3 * static_cast<u32>(sizeof(u32));
+        }
+
         std::vector<Widget> MakeSampleStats(){
             return {
+                Checkbox{
+                    .label = "weld vertices",
+                    .onChanged = [this](UIContext& c, bool v){
+                        mode = v ?
+                            TerrainMarchMode::Welded :
+                            TerrainMarchMode::Soup;
+                        c.paramsDirty = true;
+                    },
+                    .v = mode == TerrainMarchMode::Welded
+                },
+                FloatField{
+                    .label = "mesh (MB)",
+                    .get = [this]{ return MeshBytes() / (1024.0f * 1024.0f); }
+                },
                 FloatField{
                     // reservations, not written triangles, so this runs past
                     // 100 to show by how much the parameters overshot
@@ -165,7 +199,11 @@ namespace Crowy
                 // so the copy never overtakes the CPU still reading it
                 const bool copyCounter = !counterCopyInFlight;
 
-                const auto edges = marcher->Record(cmdList, ctx.params, {
+                // the mode is latched here so the pass, the draw and the
+                // stats all speak about the same recording
+                drawnMode = mode;
+
+                const auto edges = marcher->Record(cmdList, ctx.params, drawnMode, {
                     .counter = copyCounter ?
                         RHIResourceUsage::CopySrc :
                         RHIResourceUsage::StorageCompute
@@ -188,6 +226,9 @@ namespace Crowy
                 // that skips the rebuild reads the same bytes again and needs
                 // no barrier at all
                 bufferAcquires = {edges.vertices, edges.args};
+                if(drawnMode == TerrainMarchMode::Welded)
+                    bufferAcquires.push_back(edges.indices);
+
                 rebuildPending = false;
             }
 
@@ -234,12 +275,19 @@ namespace Crowy
                     static_cast<u32>(sizeof(TerrainVertex))
                 )
             });
-            // how many vertices this draws is only known to the GPU
-            cmdList.ExecuteIndirect(DrawBatch{
+            // how much this draws is only ever known to the GPU
+            const DrawBatch batch{
                 .pso = &surface->Pipeline(ctx.debug),
-                .args = &marcher->Args(),
+                .args = &marcher->Args(drawnMode),
                 .drawCount = 1
-            });
+            };
+            if(drawnMode == TerrainMarchMode::Welded){
+                cmdList.SetIndexBuffer(marcher->Indices());
+                cmdList.ExecuteIndirectIndexed(batch);
+            }
+            else{
+                cmdList.ExecuteIndirect(batch);
+            }
 
             uiRenderer->Record(cmdList);
 
