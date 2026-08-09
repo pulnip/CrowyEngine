@@ -38,11 +38,11 @@ namespace{
             dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 
             // validates descriptor-heap indexing and indirect argument reads
-            // that the CPU-side debug layer cannot see
             if(std::getenv("CROWY_D3D_GBV") != nullptr){
-                COMRAII<ID3D12Debug1> debug1;
-                if(SUCCEEDED(debugController.As(&debug1))){
-                    debug1->SetEnableGPUBasedValidation(TRUE);
+                COMRAII<ID3D12Debug5> debug5;
+                if(SUCCEEDED(debugController.As(&debug5))){
+                    debug5->SetEnableGPUBasedValidation(TRUE);
+                    debug5->SetEnableAutoName(TRUE);
                 }
             }
         }
