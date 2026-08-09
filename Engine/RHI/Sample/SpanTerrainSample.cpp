@@ -1,20 +1,15 @@
-#include <algorithm>
 #include <array>
 #include <chrono>
-#include <numbers>
 #include <print>
 #include <vector>
 #include "AppFramework.hpp"
-#include "InputProvider.hpp"
-#include "LinearAlgebra.hpp"
 #include "RHIBuffer.hpp"
-#include "RHIPipelineState.hpp"
 #include "Terrain.hpp"
+#include "TerrainCamera.hpp"
 #include "TerrainSpan.hpp"
+#include "TerrainSurface.hpp"
 #include "TerrainUI.hpp"
 #include "UIRenderer.hpp"
-
-#include <imgui.h>
 
 namespace Crowy
 {
@@ -23,33 +18,16 @@ namespace Crowy
     class SpanTerrainSample: public App{
         using App::App;
 
-        static constexpr RHIPixelFormat DEPTH_FORMAT = RHIPixelFormat::D32_FLOAT;
-
         // measured: defaults mesh ~0.59M vertices, the busiest slider corner ~1.40M.
         // Allocated once and never grown (no deferred free in the RHI);
         // overflow drops the rest instead.
         static constexpr u32 VERTEX_CAPACITY = 1'500'000;
 
-        static constexpr f32 FOV_Y = std::numbers::pi_v<f32> / 3;
-        static constexpr f32 NEAR_Z = 0.1f, FAR_Z = 500.0f;
-        static constexpr f32 MOVE_SPEED = 40.0f;
-        static constexpr f32 LOOK_SENSITIVITY = 0.003f;
-
         static constexpr Color SKY_COLOR{0.52f, 0.68f, 0.86f, 1.0f};
-
-        // mirrors ResourceData in Engine/Shader/Terrain.slang
-        struct PushConstants{
-            u64 vertices;
-        };
-        static_assert(sizeof(PushConstants) == 8);
 
         RHIDevice* device = nullptr;
 
-        RHIGraphicsPipelineStateRAII FILL_DEFAULT;
-        RHIGraphicsPipelineStateRAII WIRE_DEFAULT;
-        RHIGraphicsPipelineStateRAII FILL_NORMAL;
-        RHIGraphicsPipelineStateRAII WIRE_NORMAL;
-
+        RAII<TerrainSurface> surface;
         RHITextureRAII depthBuffer;
 
         RHIBufferRAII frameCB;
@@ -69,51 +47,15 @@ namespace Crowy
         // mesh built once must be uploaded once per slot
         u32 pendingUploads = 0;
 
-        Vec3 cameraPos = TERRAIN_CAMERA_START_POS;
-        f32 cameraYaw = TERRAIN_CAMERA_START_YAW;
-        f32 cameraPitch = TERRAIN_CAMERA_START_PITCH;
-        Vec3 moveInput{};
-        f32 aspect = 1.0f;
+        TerrainCamera camera;
 
         void CreateDepthBuffer(RHIDevice& device, u32 width, u32 height){
             depthBuffer = device.CreateTexture(RHITextureCreateDesc{
                 .width = width, .height = height,
-                .format = DEPTH_FORMAT,
+                .format = TERRAIN_DEPTH_FORMAT,
                 .usage = RHITextureUsage::DepthStencil,
                 .clearDepthStencil = {.depth = 1.0f}
             });
-        }
-
-        static RHIGraphicsPipelineStateDesc PipelineDesc(
-            RHIPixelFormat colorFormat,
-            RHIFillMode fillMode,
-            bool debugNormal
-        ){
-            return RHIGraphicsPipelineStateDesc{
-                // no vertex layout: vertices pulled by SV_VertexID
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleList,
-                    .vertexShader = {
-                        .path = "Engine/Shader/Terrain.slang",
-                        .entryPoint = "vs_main"
-                    }
-                },
-                .rasterizer = RHIRasterizerState{
-                    .fillMode = fillMode,
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = {
-                    .path = "Engine/Shader/Terrain.slang",
-                    .entryPoint = debugNormal ? "fs_debug_normal" : "fs_main"
-                },
-                .depthStencil = RHIDepthStencilState{
-                    .format = DEPTH_FORMAT,
-                    .depthWriteEnable = true,
-                    .depthFunc = RHIComparisonFunc::Less
-                },
-                .renderTargetFormats = {colorFormat},
-                .renderTargetCount = 1
-            };
         }
 
         void Rebuild(){
@@ -189,21 +131,10 @@ namespace Crowy
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             this->device = &device;
 
-            FILL_DEFAULT = device.CreatePipelineState(
-                PipelineDesc(swapchain.GetFormat(), RHIFillMode::Solid, false)
-            );
-            WIRE_DEFAULT = device.CreatePipelineState(
-                PipelineDesc(swapchain.GetFormat(), RHIFillMode::Wireframe, false)
-            );
-            FILL_NORMAL = device.CreatePipelineState(
-                PipelineDesc(swapchain.GetFormat(), RHIFillMode::Solid, true)
-            );
-            WIRE_NORMAL = device.CreatePipelineState(
-                PipelineDesc(swapchain.GetFormat(), RHIFillMode::Wireframe, true)
-            );
+            surface = std::make_unique<TerrainSurface>(device, swapchain.GetFormat());
 
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
-            aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
+            camera.SetViewport(swapchain.GetWidth(), swapchain.GetHeight());
 
             frameCB = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(TerrainFrameUniforms),
@@ -219,7 +150,7 @@ namespace Crowy
             mesh.reserve(VERTEX_CAPACITY);
 
             uiRenderer = std::make_unique<UIRenderer>(
-                device, swapchain.GetFormat(), DEPTH_FORMAT
+                device, swapchain.GetFormat(), TERRAIN_DEPTH_FORMAT
             );
             // a CPU rebuild is tens of ms - too slow to chase a slider
             ctx.autoRebuild = false;
@@ -229,53 +160,13 @@ namespace Crowy
         }
 
         void ProcessInput(const InputProvider& input) override{
-            const auto& io = ImGui::GetIO();
-
-            if(input.IsKeyDown(MouseButton::RButton) && !io.WantCaptureMouse){
-                const auto dpos = input.GetMouseDPos();
-                cameraYaw += dpos.x * LOOK_SENSITIVITY;
-                cameraPitch = std::clamp(
-                    cameraPitch + dpos.y * LOOK_SENSITIVITY,
-                    -std::numbers::pi_v<f32> / 2 + 0.01f,
-                    std::numbers::pi_v<f32> / 2 - 0.01f
-                );
-            }
-
-            // otherwise typing a seed into the panel flies the camera away
-            if(io.WantCaptureKeyboard){
-                moveInput = Vec3{};
-                return;
-            }
-
-            moveInput = Vec3{
-                (input.IsKeyDown(KeyCode::D) ? 1.0f : 0.0f) -
-                (input.IsKeyDown(KeyCode::A) ? 1.0f : 0.0f),
-                (input.IsKeyDown(KeyCode::Space) ? 1.0f : 0.0f) -
-                (input.IsKeyDown(KeyCode::Shift) ? 1.0f : 0.0f),
-                (input.IsKeyDown(KeyCode::W) ? 1.0f : 0.0f) -
-                (input.IsKeyDown(KeyCode::S) ? 1.0f : 0.0f)
-            };
-        }
-
-        Vec4 CameraRotation() const{
-            return quat(rotateY(cameraYaw), rotateX(cameraPitch));
+            camera.ProcessInput(input);
         }
 
         void OnUpdate(f64 deltaTime, f64) override{
             ctx.stats.frameTimeMs = deltaTime * 1000.0;
 
-            if(moveInput.x != 0.0f || moveInput.y != 0.0f || moveInput.z != 0.0f){
-                const auto rot = rotateMat(CameraRotation());
-                const auto right = static_cast<Vec3>(rot[0]);
-                const auto forward = static_cast<Vec3>(rot[2]);
-
-                const auto direction = normalize(
-                    right * moveInput.x +
-                    unitY() * moveInput.y +
-                    forward * moveInput.z
-                );
-                cameraPos += direction * (MOVE_SPEED * static_cast<f32>(deltaTime));
-            }
+            camera.Update(deltaTime);
 
             // panel callbacks run during Prepare; a press lands here next frame
             if(ctx.ShouldRebuild()){
@@ -294,10 +185,8 @@ namespace Crowy
                 --pendingUploads;
             }
 
-            const auto view = viewMat(cameraPos, CameraRotation());
-            const auto proj = perspective(FOV_Y, aspect, NEAR_Z, FAR_Z);
             frameCB->Upload(TerrainFrameUniforms{
-                .viewProj = proj * view,
+                .viewProj = camera.ViewProj(),
                 .toLight = {0.38f, 0.82f, 0.43f},
                 .ambient = 0.28f
             });
@@ -334,13 +223,9 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             if(vertexCount > 0){
-                cmdList.SetPipelineState(
-                    ctx.debug.showNormals ?
-                        (ctx.debug.wireframe ? *WIRE_NORMAL : *FILL_NORMAL) :
-                        (ctx.debug.wireframe ? *WIRE_DEFAULT : *FILL_DEFAULT)
-                );
+                cmdList.SetPipelineState(surface->Pipeline(ctx.debug));
                 cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
-                cmdList.SetPushGraphicsConstants(PushConstants{
+                cmdList.SetPushGraphicsConstants(TerrainSurfacePush{
                     .vertices = vertexBuffer->GetReadableID(
                         static_cast<u32>(sizeof(TerrainVertex))
                     )
@@ -356,7 +241,7 @@ namespace Crowy
 
         void OnResize(u32 width, u32 height) override{
             CreateDepthBuffer(*device, width, height);
-            aspect = static_cast<f32>(width) / height;
+            camera.SetViewport(width, height);
         }
     };
 }
