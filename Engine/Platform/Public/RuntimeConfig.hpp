@@ -20,7 +20,6 @@ namespace Crowy
         // a timed run wants Present(0, 0): with vsync on, every frame time
         // is really the refresh rate talking
         bool vsync = true;
-        bool allowTearing = false;
     };
 
     template<>

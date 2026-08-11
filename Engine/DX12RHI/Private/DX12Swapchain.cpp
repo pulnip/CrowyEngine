@@ -39,19 +39,16 @@ namespace Crowy
         : RHISwapchain(desc.bufferDesc.format)
         , queue(&commandQueue)
         , vsync(desc.vsync)
-        , allowTearing(desc.allowTearing)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)
     {
-        if(desc.allowTearing){
+        {
             BOOL supported = FALSE;
-            CHECK_HRESULT(factory.CheckFeatureSupport(
+            allowTearing = SUCCEEDED(factory.CheckFeatureSupport(
                 DXGI_FEATURE_PRESENT_ALLOW_TEARING,
                 BYTES(supported)
-            ), "Failed to query tearing support");
-
-            allowTearing = supported != FALSE;
+            )) && supported != FALSE;
         }
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {

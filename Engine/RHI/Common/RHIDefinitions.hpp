@@ -1088,7 +1088,6 @@ namespace Crowy
         RHITextureCreateDesc bufferDesc;
         u32 bufferCount = RHI_FRAMES_IN_FLIGHT; // Triple buffering
         bool vsync = true;                           // VSync enabled by default
-        bool allowTearing = false;                   // Variable refresh rate
     };
 
     struct RHIBufferViewDesc{

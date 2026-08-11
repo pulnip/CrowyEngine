@@ -112,8 +112,7 @@ namespace Crowy
             .bufferDesc = backBufferDesc,
             // triple buffering
             .bufferCount = 3,
-            .vsync = config.window.vsync,
-            .allowTearing = config.window.allowTearing
+            .vsync = config.window.vsync
         }, std::format("Swapchain for {}", config.window.title));
     }
 
