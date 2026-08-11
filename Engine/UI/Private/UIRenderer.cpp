@@ -139,6 +139,9 @@ namespace Crowy
             18.0f
         );
 
+        // dockspace with BeginDockSpace()
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
         pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
             .preRasterizer = RHILegacyFrontendDesc{
                 .vertexLayout = UI_VERTEX_LAYOUT,
@@ -196,6 +199,13 @@ namespace Crowy
         io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset;
 
         ImGui::DestroyContext(context);
+    }
+
+    u32 UIRenderer::BeginDockSpace(){
+        return ImGui::DockSpaceOverViewport(
+            0, nullptr,
+            ImGuiDockNodeFlags_PassthruCentralNode
+        );
     }
 
     void UIRenderer::Prepare(

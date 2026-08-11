@@ -72,6 +72,8 @@ namespace Crowy
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+            uiRenderer->BeginDockSpace();
+
             if(context.showDemo)
                 ImGui::ShowDemoWindow(&context.showDemo);
 

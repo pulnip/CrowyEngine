@@ -52,6 +52,8 @@ namespace Crowy
         ~UIRenderer();
         CROWY_DECLARE_PINNED(UIRenderer)
 
+        u32 BeginDockSpace();
+
         void Prepare(RHICommandList&, Widget&, UIContext&);
         void Record(RHICommandList&);
 
