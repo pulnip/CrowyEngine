@@ -45,10 +45,13 @@ namespace Crowy
         , dsvHeap(dsvHeap)
     {
         if(desc.allowTearing){
+            BOOL supported = FALSE;
             CHECK_HRESULT(factory.CheckFeatureSupport(
                 DXGI_FEATURE_PRESENT_ALLOW_TEARING,
-                BYTES(allowTearing)
-            ), "Allow Tearing feature not supported");
+                BYTES(supported)
+            ), "Failed to query tearing support");
+
+            allowTearing = supported != FALSE;
         }
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {
@@ -63,7 +66,7 @@ namespace Crowy
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_IGNORE,
-            .Flags = desc.allowTearing ?
+            .Flags = allowTearing ?
                 DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : UINT(0)
         };
 
