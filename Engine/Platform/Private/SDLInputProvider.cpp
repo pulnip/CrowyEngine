@@ -70,6 +70,11 @@ namespace{
         case Space:   return SDL_SCANCODE_SPACE;
         case Enter:   return SDL_SCANCODE_RETURN;
         case Escape:  return SDL_SCANCODE_ESCAPE;
+        // Arrows
+        case Left:    return SDL_SCANCODE_LEFT;
+        case Right:   return SDL_SCANCODE_RIGHT;
+        case Up:      return SDL_SCANCODE_UP;
+        case Down:    return SDL_SCANCODE_DOWN;
         // Sentinel
         case Unknown: [[fallthrough]];
         default:
@@ -141,6 +146,11 @@ namespace{
         case SDL_SCANCODE_SPACE:  return Space;
         case SDL_SCANCODE_RETURN: return Enter;
         case SDL_SCANCODE_ESCAPE: return Escape;
+        // Arrows
+        case SDL_SCANCODE_LEFT:   return Left;
+        case SDL_SCANCODE_RIGHT:  return Right;
+        case SDL_SCANCODE_UP:     return Up;
+        case SDL_SCANCODE_DOWN:   return Down;
         // Sentinel
         default:
             return Unknown;

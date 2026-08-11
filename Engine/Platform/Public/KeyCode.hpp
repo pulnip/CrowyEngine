@@ -19,6 +19,8 @@ namespace Crowy
         Ctrl, Alt, Shift,
         // Special
         Tab, Space, Enter, Escape,
+        // Arrows
+        Left, Right, Up, Down,
         // Sentinel
         Unknown
     };
