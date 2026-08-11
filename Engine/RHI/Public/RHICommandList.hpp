@@ -404,7 +404,7 @@ namespace Crowy
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
 
-            CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+            CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
         }
 
         template<typename T>
@@ -465,8 +465,22 @@ namespace Crowy
         }
 
         // binds batch.pso, then issues batch.drawCount
-        // indirect draws from batch.args (RHIDrawIndexedArgs[])
+        // indirect draws from batch.args (RHIDrawArgs[])
         virtual void ExecuteIndirect(const DrawBatch& batch){
+            CROWY_ASSERT(passState == PassKind::Render,
+                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
+            );
+
+            CROWY_ASSERT(batch.pso != nullptr);
+            CROWY_ASSERT(batch.args != nullptr);
+            CROWY_ASSERT(batch.countBuffer == nullptr,
+                "countBuffer is reserved for GPU-driven compaction"
+            );
+        }
+
+        // binds batch.pso, then issues batch.drawCount indirect draws from
+        // batch.args (RHIDrawIndexedArgs[]), all sharing the bound index buffer
+        virtual void ExecuteIndirectIndexed(const DrawBatch& batch){
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
@@ -524,7 +538,7 @@ namespace Crowy
                 "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
             );
 
-            CROWY_ASSERT(size % 4 == 0 && size < RHI_PUSH_CONSTANT_BYTES);
+            CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
         }
 
         template<typename T>

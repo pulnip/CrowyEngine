@@ -75,6 +75,8 @@ endfunction()
 
 # ready-made scenes the samples can render
 add_subdirectory(Scene)
+# density field, noise and UI panel the two terrain samples share
+add_subdirectory(Terrain)
 
 crowy_graphics_sample(HelloWorld
 SOURCES
@@ -157,5 +159,38 @@ crowy_graphics_sample(UISample
 SOURCES
     UISample.cpp
 DEPENDS
+    Crowy::UI
+)
+
+# headless; fails the smoke run if the CPU and GPU density fields drift apart
+crowy_rhi_sample(TerrainDensityCheck
+SOURCES
+    TerrainDensityCheck.cpp
+DEPENDS
+    Crowy::SampleTerrain
+)
+
+# headless; runs the marching passes once and checks the mesh landed on the
+# isosurface
+crowy_rhi_sample(TerrainMarchCheck
+SOURCES
+    TerrainMarchCheck.cpp
+DEPENDS
+    Crowy::SampleTerrain
+)
+
+crowy_graphics_sample(SpanTerrainSample
+SOURCES
+    SpanTerrainSample.cpp
+DEPENDS
+    Crowy::SampleTerrain
+    Crowy::UI
+)
+
+crowy_graphics_sample(MarchingTerrainSample
+SOURCES
+    MarchingTerrainSample.cpp
+DEPENDS
+    Crowy::SampleTerrain
     Crowy::UI
 )

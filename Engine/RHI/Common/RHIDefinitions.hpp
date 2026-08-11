@@ -905,6 +905,15 @@ struct std::hash<Crowy::RHIComputePipelineStateDesc>{
 namespace Crowy
 {
     // hardware-consumed indirect draw arguments;
+    struct RHIDrawArgs{
+        u32 vertexCount;
+        u32 instanceCount = 1;
+        u32 firstVertex = 0;
+        // drawID; SV_StartInstanceLocation in the VS
+        u32 baseInstance = 0;
+    };
+    static_assert(sizeof(RHIDrawArgs) == 16);
+
     struct RHIDrawIndexedArgs{
         u32 indexCount;
         u32 instanceCount = 1;
@@ -915,10 +924,12 @@ namespace Crowy
     };
     static_assert(sizeof(RHIDrawIndexedArgs) == 20);
 
-    // one ExecuteIndirect submission: every draw sharing a PSO
+    // one ExecuteIndirect submission: every draw sharing a PSO.
+    // the args element type is the one its consumer expects:
+    // RHIDrawArgs for ExecuteIndirect, RHIDrawIndexedArgs for ExecuteIndirectIndexed
     struct DrawBatch{
         RHIGraphicsPipelineState* pso = nullptr;
-        // RHIDrawIndexedArgs[drawCount] at argsOffset
+        // args[drawCount] at argsOffset
         RHIBuffer* args = nullptr;
         u64 argsOffset = 0;
         u32 drawCount = 0;
@@ -1206,7 +1217,14 @@ namespace Crowy
 namespace Crowy
 {
     // bindless rendering api
-    inline constexpr u32 RHI_PUSH_CONSTANT_BYTES = 64;
     inline constexpr u32 RHI_NUM_DIRECT_CBS = 3;
+    // ceiling set by D3D12 (Metal's setBytes allows 4 KB):
+    // - global root signature holds 64 DWORDs,
+    //   - root constants cost 1 DWORD per 4 bytes,
+    //   - and each direct CBV costs 2.
+    // Notice. for performance, keep push data around 64 bytes or less
+    // - larger blocks may be spilled out of user-data registers by the driver,
+    //   costing an extra memory read per access.
+    inline constexpr u32 RHI_PUSH_CONSTANT_BYTES = (64 - 2 * RHI_NUM_DIRECT_CBS) * 4;
     inline constexpr u32 RHI_CB_ALIGN = 256;
 }

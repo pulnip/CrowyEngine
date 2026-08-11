@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
@@ -17,6 +18,10 @@
 
 namespace Crowy
 {
+    // well under ImGui's KeyRepeatDelay (0.275s),
+    // so no single hitch can reach it
+    inline constexpr f32 UI_MAX_DELTA_TIME = 0.1f;
+
     OS* OS::singleton = nullptr;
 
     class SDLInitializer final{
@@ -154,6 +159,12 @@ namespace Crowy
 
             if(imguiEnabled){
                 ImGui_ImplSDL3_NewFrame();
+                // ImGui accumulates this into key/button hold times,
+                // so an unbounded hitch trips auto-repeat (> KeyRepeatDelay)
+                // on the next frame and one click steps twice
+                auto& io = ImGui::GetIO();
+                io.DeltaTime = std::min(io.DeltaTime, UI_MAX_DELTA_TIME);
+
                 ImGui::NewFrame();
             }
             mainLoop.Render(cmdListPool, *swapchain);

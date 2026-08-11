@@ -7,7 +7,7 @@ namespace Crowy
 {
     // Indirect twin of BaseInstanceSpike:
     // the same four quads, but the draw arguments live in a GPU buffer
-    // and reach the hardware through a single ExecuteIndirect call.
+    // and reach the hardware through a single ExecuteIndirectIndexed call.
     // Rendering must be pixel-identical to BaseInstanceSpike
     class HelloIndirectDraw: public App{
         using App::App;
@@ -74,7 +74,7 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetIndexBuffer(*quadIndices);
-            cmdList.ExecuteIndirect(DrawBatch{
+            cmdList.ExecuteIndirectIndexed(DrawBatch{
                 .pso = pso.get(),
                 .args = drawArgs.get(),
                 .drawCount = DRAW_COUNT
