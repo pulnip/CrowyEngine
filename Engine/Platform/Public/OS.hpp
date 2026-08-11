@@ -16,7 +16,7 @@ namespace Crowy
     class OS{
     private:
         class Impl;
-        static constexpr usize implSize = 328;
+        static constexpr usize implSize = 640;
         static constexpr usize implAlign = 8;
         FastPimpl<Impl, implSize, implAlign> impl;
 

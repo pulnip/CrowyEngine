@@ -15,8 +15,15 @@ namespace Crowy
     void CommandListPool::BeginFrame(){
         auto& slot = slots[currentIndex()];
 
-        slot.cmdLists.clear();
+        // the lists stay: each one owns an allocator per frame slot and
+        // Begin() resets the one belonging to this frame, which is the
+        // whole reason they are built that way. the pacer already waited
+        // out frame N - RHI_FRAMES_IN_FLIGHT, so this slot is free.
         slot.nextIndex = 0;
+
+    #if CROWY_BENCHMARK
+        frameStats = RHIFrameStats{};
+    #endif
     }
 
     RHICommandList& CommandListPool::Acquire(){
@@ -26,6 +33,10 @@ namespace Crowy
             // reserve new commandList, if not enough
             auto newCmdList = device.CreateCommandList();
             slot.cmdLists.emplace_back(std::move(newCmdList));
+
+        #if CROWY_BENCHMARK
+            ++frameStats.commandListCreateCount;
+        #endif
         }
 
         auto acquireIndex = slot.nextIndex++;
@@ -45,9 +56,15 @@ namespace Crowy
             cmdList.Close();
         }
 
-        std::vector<RHICommandList*> cmdLists(slot.cmdLists.size());
+        // cmdLists is a high-water mark now, so only what was handed out
+        // this frame gets submitted
+        std::vector<RHICommandList*> cmdLists(slot.nextIndex);
         for(usize i=0; i<cmdLists.size(); ++i){
             cmdLists[i] = slot.cmdLists[i].get();
+
+        #if CROWY_BENCHMARK
+            frameStats += cmdLists[i]->GetStats();
+        #endif
         }
 
         return cmdLists;

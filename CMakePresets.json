@@ -32,6 +32,15 @@
             }
         },
         {
+            "name": "Windows-llvm-x64-Bench",
+            "displayName": "llvm-x64-bench",
+            "inherits": "Windows-llvm-x64",
+            "binaryDir": "build-bench",
+            "cacheVariables": {
+                "CROWY_BENCHMARK": "ON"
+            }
+        },
+        {
             "name": "Windows-llvm-x86",
             "displayName": "llvm-x86",
             "inherits": "Windows-llvm",
@@ -112,6 +121,18 @@
             "name": "Windows-llvm-x64-Release",
             "displayName": "Release",
             "configurePreset": "Windows-llvm-x64",
+            "configuration": "Release"
+        },
+        {
+            "name": "Windows-llvm-x64-Bench-Debug",
+            "displayName": "Debug",
+            "configurePreset": "Windows-llvm-x64-Bench",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Windows-llvm-x64-Bench-Release",
+            "displayName": "Release",
+            "configurePreset": "Windows-llvm-x64-Bench",
             "configuration": "Release"
         },
         {

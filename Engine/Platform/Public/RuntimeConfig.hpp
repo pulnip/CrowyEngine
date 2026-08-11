@@ -16,11 +16,32 @@ namespace Crowy
         bool resizable = false;
         bool borderless = false;
         bool always_on_top = false;
+
+        // a timed run wants Present(0, 0): with vsync on, every frame time
+        // is really the refresh rate talking
+        bool vsync = true;
+        bool allowTearing = false;
     };
 
     template<>
     struct TomlTraits<WindowConfig>{
         static WindowConfig from(const DOM::Value&);
+    };
+
+    // Set by the sample itself, so its source says what the run is for.
+    // Only has teeth in a CROWY_BENCHMARK build.
+    struct BenchmarkConfig{
+        bool enabled = false;
+        // dropped, not measured: pipeline creation, shader caches, first-touch
+        // page faults and the GPU settling on its clocks all land in here.
+        // long enough to cover two seconds of real time
+        u32 warmupFrames = 400;
+        // measured, then the loop quits on its own
+        u32 measureFrames = 1000;
+
+        // both optional; empty means don't write that one
+        Str reportPath;  // percentile summary, for reading
+        Str framePath;   // one row per frame, for regressing against draw counts
     };
 
     struct RuntimeConfig{
@@ -29,6 +50,7 @@ namespace Crowy
         Str identifier = "AnonymousIdentifier";
 
         WindowConfig window;
+        BenchmarkConfig benchmark;
     };
 
     template<>

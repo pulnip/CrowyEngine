@@ -4,6 +4,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
 
 # Compiler Config
 add_library(CrowyProjectInterface INTERFACE)
+
+# always defined, so #if CROWY_BENCHMARK reads the same everywhere
+target_compile_definitions(CrowyProjectInterface
+INTERFACE
+    CROWY_BENCHMARK=$<BOOL:${CROWY_BENCHMARK}>
+)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if(CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
         # clang-cl config

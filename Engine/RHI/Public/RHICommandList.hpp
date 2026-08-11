@@ -6,6 +6,7 @@
 #include "Semantics.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHIFrameStats.hpp"
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
 
@@ -317,14 +318,33 @@ namespace Crowy
         } passState = PassKind::None;
     #endif
 
+    #if CROWY_BENCHMARK
+        RHIFrameStats stats;
+    #endif
+
     public:
         CROWY_DECLARE_INTERFACE(RHICommandList)
+
+    #if CROWY_BENCHMARK
+        // what this command list recorded since its last Begin()
+        const RHIFrameStats& GetStats() const noexcept{ return stats; }
+    #else
+        const RHIFrameStats& GetStats() const noexcept{
+            static constexpr RHIFrameStats none;
+            return none;
+        }
+    #endif
 
         // Command list lifecycle
         virtual void Begin(){
             CROWY_ASSERT(passState == PassKind::None,
                 "Begin inside a pass. Did you call the matching End*Pass()?"
             );
+
+        #if CROWY_BENCHMARK
+            stats = RHIFrameStats{};
+        #endif
+            CROWY_STAT(commandListBeginCount);
         }
         virtual void Close(){
             CROWY_ASSERT(passState == PassKind::None,
@@ -344,6 +364,11 @@ namespace Crowy
             CROWY_ASSERT(desc.colorAttachments.size() > 0);
             detail::validateAcquires(textureAcquires, bufferAcquires);
 
+            CROWY_STAT(renderPassCount);
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureAcquires.size() + bufferAcquires.size()
+            );
+
         #if defined(_DEBUG) || !defined(NDEBUG)
             passState = PassKind::Render;
         #endif
@@ -361,6 +386,10 @@ namespace Crowy
                 detail::RENDER_RELEASE_SYNC
             );
 
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureReleases.size() + bufferReleases.size()
+            );
+
         #if defined(_DEBUG) || !defined(NDEBUG)
             passState = PassKind::None;
         #endif
@@ -371,6 +400,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
+
+            CROWY_STAT(pipelineSetCount);
         }
 
         // Vertex and index buffers
@@ -384,6 +415,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
+
+            CROWY_STAT(vertexBufferSetCount);
         }
 
         virtual void SetIndexBuffer(
@@ -394,6 +427,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
+
+            CROWY_STAT(indexBufferSetCount);
         }
 
         virtual void SetPushGraphicsConstants(
@@ -405,6 +440,8 @@ namespace Crowy
             );
 
             CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
+
+            CROWY_STAT(pushConstantSetCount);
         }
 
         template<typename T>
@@ -426,6 +463,8 @@ namespace Crowy
 
             CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
             CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
+
+            CROWY_STAT(constantBufferSetCount);
         }
 
         // Viewport and scissor
@@ -450,6 +489,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
+
+            CROWY_STAT(drawCount);
         }
 
         virtual void DrawIndexed(
@@ -462,6 +503,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
+
+            CROWY_STAT(drawCount);
         }
 
         // binds batch.pso, then issues batch.drawCount
@@ -476,6 +519,10 @@ namespace Crowy
             CROWY_ASSERT(batch.countBuffer == nullptr,
                 "countBuffer is reserved for GPU-driven compaction"
             );
+
+            CROWY_STAT(pipelineSetCount);
+            CROWY_STAT(indirectBatchCount);
+            CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
         }
 
         // binds batch.pso, then issues batch.drawCount indirect draws from
@@ -490,6 +537,10 @@ namespace Crowy
             CROWY_ASSERT(batch.countBuffer == nullptr,
                 "countBuffer is reserved for GPU-driven compaction"
             );
+
+            CROWY_STAT(pipelineSetCount);
+            CROWY_STAT(indirectBatchCount);
+            CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
         }
 
         // Compute Pass control
@@ -501,6 +552,11 @@ namespace Crowy
                 "Already inside a pass. Did you call the matching End*Pass()?"
             );
             detail::validateAcquires(textureAcquires, bufferAcquires);
+
+            CROWY_STAT(computePassCount);
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureAcquires.size() + bufferAcquires.size()
+            );
 
         #if defined(_DEBUG) || !defined(NDEBUG)
             passState = PassKind::Compute;
@@ -519,6 +575,10 @@ namespace Crowy
                 detail::COMPUTE_RELEASE_SYNC
             );
 
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureReleases.size() + bufferReleases.size()
+            );
+
         #if defined(_DEBUG) || !defined(NDEBUG)
             passState = PassKind::None;
         #endif
@@ -528,6 +588,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Compute,
                 "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
             );
+
+            CROWY_STAT(pipelineSetCount);
         }
 
         virtual void SetPushComputeConstants(
@@ -539,6 +601,8 @@ namespace Crowy
             );
 
             CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
+
+            CROWY_STAT(pushConstantSetCount);
         }
 
         template<typename T>
@@ -560,6 +624,8 @@ namespace Crowy
 
             CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
             CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
+
+            CROWY_STAT(constantBufferSetCount);
         }
 
         // Compute dispatch
@@ -569,6 +635,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Compute,
                 "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
             );
+
+            CROWY_STAT(dispatchCount);
         }
 
         // hazards between dispatches *inside* one compute pass
@@ -579,6 +647,10 @@ namespace Crowy
         ){
             CROWY_ASSERT(passState == PassKind::Compute,
                 "DispatchBarrier is only legal inside a compute pass"
+            );
+
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureBarriers.size() + bufferBarriers.size()
             );
 
             for([[maybe_unused]] const auto& barrier: textureBarriers){
@@ -615,6 +687,11 @@ namespace Crowy
             );
             detail::validateAcquires(textureAcquires, bufferAcquires);
 
+            CROWY_STAT(blitPassCount);
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureAcquires.size() + bufferAcquires.size()
+            );
+
         #if defined(_DEBUG) || !defined(NDEBUG)
             passState = PassKind::Blit;
         #endif
@@ -630,6 +707,10 @@ namespace Crowy
                 textureReleases,
                 bufferReleases,
                 detail::COPY_RELEASE_SYNC
+            );
+
+            CROWY_STAT_ADD(barrierEdgeCount,
+                textureReleases.size() + bufferReleases.size()
             );
 
         #if defined(_DEBUG) || !defined(NDEBUG)
@@ -648,6 +729,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Blit,
                 "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
             );
+
+            CROWY_STAT(copyCount);
         }
 
         virtual void Copy(
@@ -657,6 +740,8 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Blit,
                 "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
             );
+
+            CROWY_STAT(copyCount);
         }
 
         // helper for RHISwapchain(backBuffer)
@@ -686,6 +771,8 @@ namespace Crowy
             CROWY_ASSERT(dst.GetDepth(mipLevel) == 1,
                 "RHITextureRegion cannot address a 3D texture's depth slices"
             );
+
+            CROWY_STAT(copyCount);
         }
 
         void Copy(

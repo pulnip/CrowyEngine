@@ -5,6 +5,7 @@
 #include <imgui_impl_sdl3.h>
 #include "CommandListPool.hpp"
 #include "FramePacer.hpp"
+#include "FrameProfiler.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
 #include "RHIDefinitions.hpp"
@@ -56,6 +57,7 @@ namespace Crowy
         Timer sysTimer;
         FramePacer framePacer;
         CommandListPool cmdListPool;
+        FrameProfiler profiler;
 
         bool imguiEnabled = false;
 
@@ -97,6 +99,7 @@ namespace Crowy
         , inputProvider()
         , framePacer(device)
         , cmdListPool(device)
+        , profiler(config)
     {
         RHITextureCreateDesc backBufferDesc{
             .width = config.window.width,
@@ -109,8 +112,8 @@ namespace Crowy
             .bufferDesc = backBufferDesc,
             // triple buffering
             .bufferCount = 3,
-            .vsync = true,
-            .allowTearing = false
+            .vsync = config.window.vsync,
+            .allowTearing = config.window.allowTearing
         }, std::format("Swapchain for {}", config.window.title));
     }
 
@@ -145,31 +148,59 @@ namespace Crowy
             framePacer.EndFrame(cmdLists);
         }
 
+        // the scopes below are blocks because the loop leaves from the
+        // middle of two of them, and a section still has to close
         while(true){
             sysTimer.NewFrame();
+            profiler.BeginFrame();
 
-            if(!ProcessEvents(mainLoop)) [[unlikely]]
-                break;
-            mainLoop.ProcessInput(inputProvider);
+            {
+                FrameProfiler::Scope section(profiler, FrameSection::Events);
 
-            if(!mainLoop.Update()) [[unlikely]]
-                break;
-
-            BeginFrame(device);
-
-            if(imguiEnabled){
-                ImGui_ImplSDL3_NewFrame();
-                // ImGui accumulates this into key/button hold times,
-                // so an unbounded hitch trips auto-repeat (> KeyRepeatDelay)
-                // on the next frame and one click steps twice
-                auto& io = ImGui::GetIO();
-                io.DeltaTime = std::min(io.DeltaTime, UI_MAX_DELTA_TIME);
-
-                ImGui::NewFrame();
+                if(!ProcessEvents(mainLoop)) [[unlikely]]
+                    break;
+                mainLoop.ProcessInput(inputProvider);
             }
-            mainLoop.Render(cmdListPool, *swapchain);
 
-            EndFrame(device);
+            {
+                FrameProfiler::Scope section(profiler, FrameSection::Update);
+
+                if(!mainLoop.Update()) [[unlikely]]
+                    break;
+            }
+
+            {
+                FrameProfiler::Scope section(profiler, FrameSection::Acquire);
+                BeginFrame(device);
+            }
+
+            {
+                FrameProfiler::Scope section(profiler, FrameSection::Record);
+
+                if(imguiEnabled){
+                    ImGui_ImplSDL3_NewFrame();
+                    // ImGui accumulates this into key/button hold times,
+                    // so an unbounded hitch trips auto-repeat (> KeyRepeatDelay)
+                    // on the next frame and one click steps twice
+                    auto& io = ImGui::GetIO();
+                    io.DeltaTime = std::min(io.DeltaTime, UI_MAX_DELTA_TIME);
+
+                    ImGui::NewFrame();
+                }
+                mainLoop.Render(cmdListPool, *swapchain);
+            }
+
+            {
+                FrameProfiler::Scope section(profiler, FrameSection::Submit);
+                EndFrame(device);
+            }
+
+            profiler.EndFrame(
+                cmdListPool.GetFrameStats(),
+                framePacer.GetLastWaitTime()
+            );
+            if(profiler.ShouldStop()) [[unlikely]]
+                break;
         }
 
         framePacer.WaitForIdle();
@@ -179,6 +210,8 @@ namespace Crowy
         }
 
         mainLoop.Finalize();
+
+        profiler.WriteReport();
     }
 
     bool OS::Impl::ProcessEvents(MainLoop& mainLoop){

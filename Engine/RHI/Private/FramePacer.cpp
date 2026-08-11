@@ -1,3 +1,6 @@
+#if CROWY_BENCHMARK
+#include <chrono>
+#endif
 #include "Assert.hpp"
 #include "FramePacer.hpp"
 #include "RHIDevice.hpp"
@@ -21,9 +24,24 @@ namespace Crowy
     void FramePacer::BeginFrame(){
         scope = device.CreateFrameScope();
 
+    #if CROWY_BENCHMARK
+        lastWaitSeconds = 0.0;
+    #endif
+
         if(frameIndex >= RHI_FRAMES_IN_FLIGHT) [[likely]] {
             auto waitValue = frameIndex - RHI_FRAMES_IN_FLIGHT + 1;
+
+        #if CROWY_BENCHMARK
+            const auto before = std::chrono::steady_clock::now();
+        #endif
+
             fence->WaitCPU(waitValue);
+
+        #if CROWY_BENCHMARK
+            lastWaitSeconds = std::chrono::duration<f64>(
+                std::chrono::steady_clock::now() - before
+            ).count();
+        #endif
         }
     }
 

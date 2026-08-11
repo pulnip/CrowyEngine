@@ -64,11 +64,7 @@ namespace Crowy
     }
 
     template<std::derived_from<App> T>
-    int Main(const WindowConfig& windowConfig){
-        RuntimeConfig runtimeConfig{
-            .window = windowConfig
-        };
-
+    int Main(const RuntimeConfig& runtimeConfig){
         try{
             auto device = CreateDevice();
 
@@ -89,6 +85,14 @@ namespace Crowy
         }
 
         return 0;
+    }
+
+    // a sample that only cares about its window
+    template<std::derived_from<App> T>
+    int Main(const WindowConfig& windowConfig){
+        return Main<T>(RuntimeConfig{
+            .window = windowConfig
+        });
     }
 }
 
