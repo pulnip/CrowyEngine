@@ -1,4 +1,5 @@
 #include "AppFramework.hpp"
+#include "RHIDebugScope.hpp"
 #include "RHITexture.hpp"
 
 #if defined(_WIN32)
@@ -14,7 +15,10 @@ namespace Crowy
         auto& cmdList = pool.Acquire();
         cmdList.Begin();
 
-        OnInitialRecord(cmdList);
+        {
+            RHIEventScope event(cmdList, "InitialRecord");
+            OnInitialRecord(cmdList);
+        }
 
         cmdList.Close();
     }
@@ -29,9 +33,12 @@ namespace Crowy
             .clearColor = Colors::Black
         };
 
-        // the sample owns its pass structure, so it also owns the
-        // backbuffer barriers (AcquireBackBuffer / ReleaseBackBuffer)
-        OnRecord(cmdList, backBuffer);
+        {
+            // the sample owns its pass structure, so it also owns the
+            // backbuffer barriers (AcquireBackBuffer / ReleaseBackBuffer)
+            RHIEventScope event(cmdList, "Frame");
+            OnRecord(cmdList, backBuffer);
+        }
 
         cmdList.Close();
     }

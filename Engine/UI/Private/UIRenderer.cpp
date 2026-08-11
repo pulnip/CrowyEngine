@@ -9,6 +9,7 @@
 #include "IntMath.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
+#include "RHIDebugScope.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
@@ -221,6 +222,8 @@ namespace Crowy
 
         ImGui::Render();
 
+        RHIEventScope event(cmdList, "UI Upload");
+
         collectRetired();
         textureAcquires.clear();
         updateTextures(cmdList);
@@ -230,6 +233,8 @@ namespace Crowy
     void UIRenderer::Record(
         RHICommandList& cmdList
     ){
+        RHIEventScope event(cmdList, "UI");
+
         auto& drawData = *ImGui::GetDrawData();
 
         const Vec2 framebuffer{
