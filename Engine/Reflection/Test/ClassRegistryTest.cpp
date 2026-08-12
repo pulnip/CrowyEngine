@@ -100,3 +100,103 @@ scale = [6.0, 5.0, 4.0]
         EXPECT_EQ(nested->transform.scale, expected.scale);
     }
 }
+
+struct Health{
+    i32 current = 0;
+    i32 maximum = 100;
+};
+
+struct Stats{
+    Health health;
+    f32 speed = 1.0f;
+};
+
+CROWY_STRUCT(Health)
+    .SetProperty("current", &Health::current)
+    .SetProperty("maximum", &Health::maximum)
+CROWY_STRUCT_END(Health)
+
+CROWY_STRUCT(Stats)
+    .SetProperty("health", &Stats::health)
+    .SetProperty("speed", &Stats::speed)
+CROWY_STRUCT_END(Stats)
+
+class StructTestObject final: public Object{
+    CROWY_OBJECT_BODY(StructTestObject)
+
+public:
+    StructTestObject() = default;
+    ~StructTestObject() = default;
+    CROWY_DECLARE_MOVE_ONLY(StructTestObject)
+
+    Stats stats;
+};
+
+CROWY_OBJECT(StructTestObject)
+    .SetProperty("stats", &StructTestObject::stats)
+CROWY_OBJECT_END(StructTestObject)
+
+TEST(Reflection, NestedStructDesc){
+    ASSERT_TRUE(IsHealthRegistered);
+    ASSERT_TRUE(IsStatsRegistered);
+    ASSERT_TRUE(IsStructTestObjectRegistered);
+
+    auto object = ClassRegistry::Create("StructTestObject");
+    ASSERT_TRUE(object != nullptr);
+
+    auto testObject = dynamic_cast<StructTestObject*>(object.get());
+    ASSERT_TRUE(testObject != nullptr);
+
+    // a single registered property, two levels of struct below it
+    auto dom = parseTomlString(R"(
+[stats]
+speed = 3.5
+
+[stats.health]
+current = 7
+)");
+    ApplyProperties(testObject, dom);
+
+    EXPECT_EQ(testObject->stats.speed, 3.5f);
+    EXPECT_EQ(testObject->stats.health.current, 7);
+    // not specified in the DOM, so the default survives
+    EXPECT_EQ(testObject->stats.health.maximum, 100);
+}
+
+class AliasTestObject final: public Object{
+    CROWY_OBJECT_BODY(AliasTestObject)
+
+public:
+    AliasTestObject() = default;
+    ~AliasTestObject() = default;
+    CROWY_DECLARE_MOVE_ONLY(AliasTestObject)
+
+    Stats stats;
+};
+
+// a member chain ending on a reflected struct: both features compose
+CROWY_OBJECT(AliasTestObject)
+    .SetProperty("hp", &AliasTestObject::stats, &Stats::health)
+CROWY_OBJECT_END(AliasTestObject)
+
+TEST(Reflection, ChainedStructDesc){
+    ASSERT_TRUE(IsAliasTestObjectRegistered);
+
+    auto object = ClassRegistry::Create("AliasTestObject");
+    ASSERT_TRUE(object != nullptr);
+
+    auto testObject = dynamic_cast<AliasTestObject*>(object.get());
+    ASSERT_TRUE(testObject != nullptr);
+
+    auto dom = parseTomlString(R"(
+[hp]
+current = 3
+maximum = 12
+)");
+    ApplyProperties(testObject, dom);
+
+    EXPECT_EQ(testObject->stats.health.current, 3);
+    EXPECT_EQ(testObject->stats.health.maximum, 12);
+    // "stats" itself is not a property of AliasTestObject
+    EXPECT_EQ(testObject->stats.speed, 1.0f);
+}

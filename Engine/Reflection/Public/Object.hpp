@@ -30,6 +30,12 @@ namespace Crowy
     ClassBuilder<T> Reflect(){
         return ClassBuilder<T>();
     }
+
+    template<typename T>
+        requires (!std::is_base_of_v<Object, T>)
+    StructBuilder<T> ReflectStruct(){
+        return StructBuilder<T>();
+    }
 }
 
 #define CROWY_MACRO_DISPATCHER_FOR_2_ARGS(_1, _2, NAME, ...) NAME
@@ -86,4 +92,16 @@ auto TYPE::_CrowyReflectImpl(){ \
 } \
 namespace{ \
     const auto Is##TYPE##Registered = TYPE::_CrowyReflectImpl(); \
+}
+
+// Struct(non Object) registration start macro.
+// ReflectStruct rejects an Object derived type
+#define CROWY_STRUCT(TYPE) \
+namespace{ \
+    const auto Is##TYPE##Registered = ::Crowy::ReflectStruct<TYPE>() \
+        .SetName(#TYPE)
+
+// Struct registration end macro
+#define CROWY_STRUCT_END(TYPE) \
+        .Build(); \
 }

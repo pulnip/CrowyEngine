@@ -32,7 +32,25 @@ namespace Crowy
 
     namespace detail
     {
-        void ApplyProperties(const ClassDesc& desc, void* object, const DOM::Value& table){
+        static bool HasProperties(const TypeDesc& desc){
+            if(!desc.properties.empty()){
+                return true;
+            }
+
+            return desc.parent != nullptr && HasProperties(*desc.parent);
+        }
+
+        // a registered type, or nullptr when the property is a leaf
+        static const TypeDesc* NestedDesc(const PropertyDesc& prop){
+            if(prop.typeInfo.getDesc == nullptr){
+                return nullptr;
+            }
+
+            const TypeDesc* desc = prop.typeInfo.getDesc();
+            return HasProperties(*desc) ? desc : nullptr;
+        }
+
+        void ApplyProperties(const TypeDesc& desc, void* object, const DOM::Value& table){
             if(desc.parent != nullptr){
                 ApplyProperties(*desc.parent, object, table);
             }
@@ -46,7 +64,16 @@ namespace Crowy
                 }
 
                 auto member = prop.accessor->Get(object);
-                prop.typeInfo.deserialize(member, *node);
+
+                // a reflected type is filled property by property,
+                // so its unspecified members keep their default too
+                auto nested = NestedDesc(prop);
+                if(nested != nullptr && node->is_table()){
+                    ApplyProperties(*nested, member, *node);
+                }
+                else if(prop.typeInfo.deserialize != nullptr){
+                    prop.typeInfo.deserialize(member, *node);
+                }
             }
         }
     }

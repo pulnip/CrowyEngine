@@ -13,8 +13,12 @@
 
 namespace Crowy
 {
+    struct TypeDesc;
+
+    // empty by default, so a type without traits can still be
+    // reflected property by property. see MakeTypeInfo
     template<typename T>
-    struct TypeTraits;
+    struct TypeTraits{};
 
     template<typename T>
         requires std::is_enum_v<T>
@@ -45,22 +49,23 @@ namespace Crowy
     DECLARE_TYPETRAITS(Size2D)
     DECLARE_TYPETRAITS(Transform)
 
-    // use TypeInfo for type erasure
-    struct TypeInfo{
-        CStr name;
-        usize size;
-        void (*deserialize)(void*, const DOM::Value&);
+    template<typename T>
+    concept HasTypeTraits = requires{
+        TypeTraits<T>::name;
+        TypeTraits<T>::deserialize;
     };
 
-    template<typename T>
-    const TypeInfo* GetTypeInfo(){
-        static const TypeInfo info{
-            .name = TypeTraits<T>::name,
-            .size = sizeof(T),
-            .deserialize = &TypeTraits<T>::deserialize
-        };
-        return &info;
-    }
+    // use TypeInfo for type erasure.
+    // built by MakeTypeInfo, see ClassRegistry.hpp
+    struct TypeInfo{
+        CStr name = nullptr;
+        usize size = 0;
+        // leaf type: parses the whole value at once
+        void (*deserialize)(void*, const DOM::Value&) = nullptr;
+        // reflected type: filled property by property.
+        // resolved lazily, so the desc may register after this TypeInfo was built
+        const TypeDesc* (*getDesc)() = nullptr;
+    };
 }
 
 #undef DECLARE_TYPETRAITS
