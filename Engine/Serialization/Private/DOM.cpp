@@ -244,7 +244,7 @@ namespace Crowy
     template<>
     std::optional<Transform> DOM::Value::getImpl<Transform>() const noexcept{
         auto pos = get<Vec3>("position");
-        auto rot = get<Vec3>("rotation");
+        auto rot = get<Vec4>("rotation");
         auto scale = get<Vec3>("scale");
         if(!pos || !rot || !scale){
             return std::nullopt;
