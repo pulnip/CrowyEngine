@@ -1,6 +1,4 @@
-crowy_declare_module(Log)
-
-target_link_libraries(CrowyLog
+crowy_declare_module(Log
 PUBLIC
     Crowy::Core
 )

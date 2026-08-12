@@ -1,11 +1,4 @@
-crowy_declare_module(Serialization)
-
-target_compile_definitions(CrowySerialization
-PRIVATE
-    TOML_EXCEPTIONS=1
-)
-
-target_link_libraries(CrowySerialization
+crowy_declare_module(Serialization
 PUBLIC
     Crowy::Core
     Crowy::RHI
@@ -15,6 +8,11 @@ PRIVATE
     tomlplusplus::tomlplusplus
     ufbx
     Crowy::Log
+)
+
+target_compile_definitions(CrowySerialization
+PRIVATE
+    TOML_EXCEPTIONS=1
 )
 
 crowy_declare_private_interface(Serialization)

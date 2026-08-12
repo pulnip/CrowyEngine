@@ -2,9 +2,7 @@ crowy_declare_interface(CommonRHI
     DIRECTORY Common
 )
 
-crowy_declare_module(RHI)
-
-target_link_libraries(CrowyRHI
+crowy_declare_module(RHI
 PUBLIC
     Crowy::CommonRHI
     Crowy::Core

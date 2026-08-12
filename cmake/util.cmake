@@ -33,6 +33,8 @@ crowy_link_or_copy_directory(Content)
 crowy_link_or_copy_directory(Config)
 
 function(crowy_declare_module NAME)
+    cmake_parse_arguments(ARG "" "" "PUBLIC;PRIVATE" ${ARGN})
+
     add_library(Crowy${NAME} STATIC)
 
     file(GLOB_RECURSE PUBLIC_SOURCES
@@ -58,6 +60,9 @@ function(crowy_declare_module NAME)
     target_link_libraries(Crowy${NAME}
     PUBLIC
         CrowyProjectInterface
+        ${ARG_PUBLIC}
+    PRIVATE
+        ${ARG_PRIVATE}
     )
 
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})

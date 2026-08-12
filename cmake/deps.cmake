@@ -80,7 +80,8 @@ if(WIN32)
     )
     FetchContent_MakeAvailable(AgilitySDK)
 
-    set(AGILITY_SDK_BIN_DIR "${agilitysdk_SOURCE_DIR}/build/native/bin/x64")
+    set(AGILITY_SDK_ROOT_DIR "${agilitysdk_SOURCE_DIR}/build/native")
+    set(AGILITY_SDK_BIN_DIR "${AGILITY_SDK_ROOT_DIR}/bin/x64")
 elseif(APPLE)
     # Metal-cpp
     FetchContent_Declare(

@@ -1,8 +1,21 @@
-crowy_declare_module(DX12RHI)
+crowy_declare_module(DX12RHI
+PUBLIC
+    Crowy::CommonRHI
+    Crowy::RHI
+PRIVATE
+    d3d12.lib
+    dxgi.lib
+    dxguid.lib
+    # Process Status API
+    # for Check DirectX Agility SDK
+    psapi.lib
+    SDL3::SDL3
+    Crowy::Log
+)
 
 target_include_directories(CrowyDX12RHI
 BEFORE PRIVATE
-    "${agilitysdk_SOURCE_DIR}/build/native/include"
+    "${AGILITY_SDK_ROOT_DIR}/include"
 )
 
 target_precompile_headers(CrowyDX12RHI
@@ -16,21 +29,6 @@ PRIVATE
     <d3dx12/d3dx12_core.h>
     <d3dx12/d3dx12_root_signature.h>
     <wrl/client.h>
-)
-
-target_link_libraries(CrowyDX12RHI
-PUBLIC
-    Crowy::CommonRHI
-    Crowy::RHI
-PRIVATE
-    d3d12.lib
-    dxgi.lib
-    dxguid.lib
-    # Process Status API
-    # for Check DirectX Agility SDK
-    psapi.lib
-    SDL3::SDL3
-    Crowy::Log
 )
 
 add_custom_command(TARGET CrowyDX12RHI POST_BUILD

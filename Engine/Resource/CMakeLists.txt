@@ -1,6 +1,4 @@
-crowy_declare_module(Resource)
-
-target_link_libraries(CrowyResource
+crowy_declare_module(Resource
 PUBLIC
     Crowy::Core
     Crowy::RHI

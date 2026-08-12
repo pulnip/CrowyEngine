@@ -1,6 +1,4 @@
-crowy_declare_module(Platform)
-
-target_link_libraries(CrowyPlatform
+crowy_declare_module(Platform
 PUBLIC
     Crowy::Core
     Crowy::Serialization
