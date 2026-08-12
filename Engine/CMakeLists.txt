@@ -6,6 +6,7 @@ add_subdirectory(RHI)
 # 2-1) Infrastructure Layer
 add_subdirectory(Log)
 add_subdirectory(Platform)
+add_subdirectory(Reflection)
 add_subdirectory(Serialization)
 # 2-2) Infrastructure Implement Layer
 if(WIN32)
