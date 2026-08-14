@@ -208,6 +208,8 @@ FetchContent_Declare(ktx
     GIT_SUBMODULES ""
 )
 FetchContent_MakeAvailable(ktx)
+# KTX builds itself shared, and leaves BUILD_SHARED_LIBS on for everyone below
+unset(BUILD_SHARED_LIBS CACHE)
 
 # ufbx - single source file FBX file loader
 FetchContent_Declare(ufbx

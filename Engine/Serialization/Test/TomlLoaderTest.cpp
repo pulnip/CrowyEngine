@@ -36,7 +36,7 @@ frame_duration_ms = 60
 TEST(Serializer, SpriteTOML){
     auto v = parseTomlString(TEST_TOML1);
 
-    if(auto* n = v.at("metadata.image")){
+    if(auto* n = v.at("metadata.name")){
         if(auto s = n->asString()){
             auto str = *s;
             EXPECT_EQ(str, "character.png");
