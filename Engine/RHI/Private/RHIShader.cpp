@@ -6,6 +6,7 @@
 #include <slang-com-ptr.h>
 #include "Assert.hpp"
 #include "HashUtil.hpp"
+#include "LogLocal.hpp"
 #include "RHIShader.hpp"
 #include "StringUtil.hpp"
 
@@ -34,16 +35,19 @@ namespace{
     #undef CASE_RETURN
     }
 
-    void throwIfSlangError(ISlangBlob* diagnostics){
-        if(diagnostics != nullptr && diagnostics->getBufferSize() > 0){
-            const Crowy::StrView errors{
-                static_cast<const char*>(diagnostics->getBufferPointer()),
-                diagnostics->getBufferSize()
-            };
-            throw std::runtime_error(std::format(
-                "Slang compile failed: {}",
-                errors
-            ));
+    Crowy::StrView slangDiagnostics(ISlangBlob* diagnostics){
+        if(diagnostics == nullptr || diagnostics->getBufferSize() == 0){
+            return {};
+        }
+        return {
+            static_cast<const char*>(diagnostics->getBufferPointer()),
+            diagnostics->getBufferSize()
+        };
+    }
+
+    void logSlangDiagnostics(ISlangBlob* diagnostics){
+        if(const auto text = ::slangDiagnostics(diagnostics); !text.empty()){
+            LOG_WARN("{}", text);
         }
     }
 
@@ -67,6 +71,20 @@ namespace{
                 "{}: {}", msg, ::SlangResultToString(hr) \
             )); \
         } \
+    } while(false)
+
+// The result decides success;
+// the blob only carries the explanation;
+// which is worth keeping on failure and worth logging on success.
+#define CHECK_SRESULT_DIAG(expr, diagnostics, msg) \
+    do{ \
+        if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]]{ \
+            throw std::runtime_error(std::format( \
+                "{}: {}\n{}", msg, ::SlangResultToString(hr), \
+                ::slangDiagnostics(diagnostics) \
+            )); \
+        } \
+        ::logSlangDiagnostics(diagnostics); \
     } while(false)
 
 namespace Crowy
@@ -287,8 +305,14 @@ namespace Crowy
                 path.c_str(),
                 diagnostics.writeRef()
             );
-            // warning and errors
-            ::throwIfSlangError(diagnostics.get());
+            // loadModule reports failure by returning null, not by a result
+            if(mod == nullptr) [[unlikely]]{
+                throw std::runtime_error(std::format(
+                    "Failed to load slang module '{}'\n{}",
+                    path, ::slangDiagnostics(diagnostics.get())
+                ));
+            }
+            ::logSlangDiagnostics(diagnostics.get());
         }
 
         // entry points
@@ -321,12 +345,10 @@ namespace Crowy
         // link to single program
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT(composed->link(
+            CHECK_SRESULT_DIAG(composed->link(
                 &program,
                 diagnostics.writeRef()
-            ), "Failed to link slang component");
-
-            ::throwIfSlangError(diagnostics.get());
+            ), diagnostics.get(), "Failed to link slang component");
         }
 
         reflection = extractReflection(*program->getLayout());
@@ -337,17 +359,15 @@ namespace Crowy
         for(auto& [name, refl]: reflection.shaderRefl){
             ComPtr<IMetadata> metadata;
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT(program->getEntryPointMetadata(
+            CHECK_SRESULT_DIAG(program->getEntryPointMetadata(
                 refl.entryPointIndex,
                 0,
                 metadata.writeRef(),
                 diagnostics.writeRef()
-            ), std::format(
+            ), diagnostics.get(), std::format(
                 "Failed to get entry point metadata for '{}' in {}",
                 name, path
             ));
-
-            ::throwIfSlangError(diagnostics.get());
 
             ::checkMetadata(*metadata);
 
@@ -405,14 +425,12 @@ namespace Crowy
 
         ComPtr<ISlangBlob> code = nullptr;
         ComPtr<ISlangBlob> diagnostics = nullptr;
-        CHECK_SRESULT(program->getEntryPointCode(
+        CHECK_SRESULT_DIAG(program->getEntryPointCode(
             it->second.entryPointIndex,
             0,
             code.writeRef(),
             diagnostics.writeRef()
-        ), "failed to get target entry code");
-
-        ::throwIfSlangError(diagnostics.get());
+        ), diagnostics.get(), "failed to get target entry code");
 
         std::vector<u8> bytecode(code->getBufferSize());
         std::memcpy(
@@ -429,13 +447,11 @@ namespace Crowy
 
         ComPtr<ISlangBlob> code = nullptr;
         ComPtr<ISlangBlob> diagnostics = nullptr;
-        CHECK_SRESULT(program->getTargetCode(
+        CHECK_SRESULT_DIAG(program->getTargetCode(
             0,
             code.writeRef(),
             diagnostics.writeRef()
-        ), "failed to get target entry code");
-
-        ::throwIfSlangError(diagnostics.get());
+        ), diagnostics.get(), "failed to get target code");
 
         std::vector<u8> bytecode(code->getBufferSize());
         std::memcpy(
