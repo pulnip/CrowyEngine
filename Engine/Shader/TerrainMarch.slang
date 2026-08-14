@@ -18,7 +18,9 @@ struct TerrainVertex {
 // sides so the offsets can be asserted there.
 struct ResourceData {
     TerrainParams params;                                          //  0 .. 31
-    uint3 cells;                                                   // 32 .. 43
+    uint cellsX;                                                   // 32
+    uint cellsY;                                                   // 36
+    uint cellsZ;                                                   // 40
     float cellSize;                                                // 44
     // in triangles; cs_march drops a cell rather than run past it
     uint triangleCapacity;                                         // 48
@@ -56,8 +58,12 @@ static const uint2 MC_EDGE_CORNERS[12] = {
     uint2(0, 4), uint2(1, 5), uint2(2, 6), uint2(3, 7)
 };
 
+uint3 cells() {
+    return uint3(resource.cellsX, resource.cellsY, resource.cellsZ);
+}
+
 uint3 cornerGrid() {
-    return resource.cells + 1;
+    return cells() + 1;
 }
 
 // no vertex welded onto this edge - it does not cross the surface, or it
@@ -163,7 +169,7 @@ float3 edgeVertex(uint3 cell, int edge, float corner[8]) {
 [shader("compute")]
 [numthreads(4, 4, 4)]
 void cs_march(uint3 tid: SV_DispatchThreadID) {
-    if (any(tid >= resource.cells))
+    if (any(tid >= cells()))
         return;
 
     Texture3D<float> density = resource.densityRead;
@@ -246,7 +252,7 @@ void cs_edges(uint3 tid: SV_DispatchThreadID) {
         uint slot = edgeSlot(tid, axis);
 
         // the last corner on an axis owns no edge along it
-        if (tid[axis] >= resource.cells[axis]) {
+        if (tid[axis] >= cells()[axis]) {
             edgeVertices[slot] = NO_VERTEX;
             continue;
         }
@@ -286,7 +292,7 @@ void cs_edges(uint3 tid: SV_DispatchThreadID) {
 [shader("compute")]
 [numthreads(4, 4, 4)]
 void cs_indices(uint3 tid: SV_DispatchThreadID) {
-    if (any(tid >= resource.cells))
+    if (any(tid >= cells()))
         return;
 
     Texture3D<float> density = resource.densityRead;
