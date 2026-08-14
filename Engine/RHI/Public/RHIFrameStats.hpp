@@ -30,7 +30,6 @@ namespace Crowy
         u32 constantBufferSetCount = 0;
         u32 pushConstantSetCount = 0;
         u32 vertexBufferSetCount = 0;
-        u32 indexBufferSetCount = 0;
 
         // edges the frontend asked for, not the barriers a backend emits:
         // DX12 fuses adjacent ones. O(pass) is healthy, O(draw) is not
@@ -54,7 +53,6 @@ namespace Crowy
             constantBufferSetCount += rhs.constantBufferSetCount;
             pushConstantSetCount += rhs.pushConstantSetCount;
             vertexBufferSetCount += rhs.vertexBufferSetCount;
-            indexBufferSetCount += rhs.indexBufferSetCount;
 
             barrierEdgeCount += rhs.barrierEdgeCount;
 

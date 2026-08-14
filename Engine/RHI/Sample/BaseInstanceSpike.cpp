@@ -55,12 +55,14 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            cmdList.SetIndexBuffer(*quadIndices);
 
             // drawIDs start at 1 so a semantic that silently reads 0
             // cannot pass as the first draw
             for(u32 drawID = 1; drawID <= DRAW_COUNT; ++drawID){
                 cmdList.DrawIndexed(
+                    RHIIndexBufferView{
+                        .buffer = quadIndices.get()
+                    },
                     6,
                     1,
                     0,

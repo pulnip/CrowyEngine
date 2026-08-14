@@ -292,7 +292,6 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetVertexBuffer(geometryPool->GetVertexBuffer(), 0, sizeof(Vertex));
-            cmdList.SetIndexBuffer(geometryPool->GetIndexBuffer());
             cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
             cmdList.SetPushGraphicsConstants(PassData{
                 .draws = drawDataBuffer->GetReadableID(
@@ -300,10 +299,13 @@ namespace Crowy
                 )
             });
 
-            cmdList.ExecuteIndirectIndexed(DrawBatch{
+            cmdList.ExecuteIndirectIndexed(DrawBatchIndexed{
                 .pso = pso.get(),
                 .args = argsBuffer.get(),
-                .drawCount = DRAW_COUNT
+                .drawCount = DRAW_COUNT,
+                .indices = RHIIndexBufferView{
+                    .buffer = &geometryPool->GetIndexBuffer()
+                }
             });
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};

@@ -307,7 +307,6 @@ namespace Crowy
 
             cmdList.SetPipelineState(*skyPSO);
             cmdList.SetVertexBuffer(*skyVertices, 0, sizeof(Vertex));
-            cmdList.SetIndexBuffer(*skyIndices, RHIIndexFormat::UInt32);
             cmdList.SetPushGraphicsConstants(SkyPushConstants{
                 .texture = cubeMap->GetReadableID(RHITextureViewDesc{
                     .format = cubeMap->GetFormat(),
@@ -315,16 +314,25 @@ namespace Crowy
                 })
             });
             cmdList.SetGraphicsConstantBuffer(*skyCB, 0);
-            cmdList.DrawIndexed(skyIndexCount);
+            cmdList.DrawIndexed(
+                RHIIndexBufferView{
+                    .buffer = skyIndices.get()
+                },
+                skyIndexCount
+            );
 
             cmdList.SetPipelineState(*floorPSO);
             cmdList.SetVertexBuffer(*floorVertices, 0, sizeof(Vertex));
-            cmdList.SetIndexBuffer(*floorIndices, RHIIndexFormat::UInt32);
             cmdList.SetPushGraphicsConstants(FloorPushConstants{
                 .albedo = floorAlbedo->GetReadableID()
             });
             cmdList.SetGraphicsConstantBuffer(*floorCB, 0);
-            cmdList.DrawIndexed(floorIndexCount);
+            cmdList.DrawIndexed(
+                RHIIndexBufferView{
+                    .buffer = floorIndices.get()
+                },
+                floorIndexCount
+            );
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};
             cmdList.EndRenderPass(releases);

@@ -73,11 +73,13 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetIndexBuffer(*quadIndices);
-            cmdList.ExecuteIndirectIndexed(DrawBatch{
+            cmdList.ExecuteIndirectIndexed(DrawBatchIndexed{
                 .pso = pso.get(),
                 .args = drawArgs.get(),
-                .drawCount = DRAW_COUNT
+                .drawCount = DRAW_COUNT,
+                .indices = RHIIndexBufferView{
+                    .buffer = quadIndices.get()
+                }
             });
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};

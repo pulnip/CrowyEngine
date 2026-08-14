@@ -276,17 +276,25 @@ namespace Crowy
                 )
             });
             // how much this draws is only ever known to the GPU
-            const DrawBatch batch{
-                .pso = &surface->Pipeline(ctx.debug),
-                .args = &marcher->Args(drawnMode),
-                .drawCount = 1
-            };
+            auto& pipeline = surface->Pipeline(ctx.debug);
+            auto& args = marcher->Args(drawnMode);
             if(drawnMode == TerrainMarchMode::Welded){
-                cmdList.SetIndexBuffer(marcher->Indices());
-                cmdList.ExecuteIndirectIndexed(batch);
+                cmdList.ExecuteIndirectIndexed(DrawBatchIndexed{
+                    .pso = &pipeline,
+                    .args = &args,
+                    .drawCount = 1,
+                    .indices = RHIIndexBufferView{
+                        .buffer = &marcher->Indices()
+                    }
+                });
             }
             else{
-                cmdList.ExecuteIndirect(batch);
+                // the soup path emits its triangles unindexed
+                cmdList.ExecuteIndirect(DrawBatch{
+                    .pso = &pipeline,
+                    .args = &args,
+                    .drawCount = 1
+                });
             }
 
             uiRenderer->Record(cmdList);

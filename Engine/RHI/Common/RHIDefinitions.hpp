@@ -477,6 +477,17 @@ namespace Crowy
         UInt32,
     };
 
+    inline constexpr u32 IndexSize(RHIIndexFormat format){
+        return format == RHIIndexFormat::UInt16 ? 2 : 4;
+    }
+
+    struct RHIIndexBufferView{
+        RHIBuffer* buffer = nullptr;
+        RHIIndexFormat format = RHIIndexFormat::UInt32;
+        // byte offset of index 0; a draw's startIndex adds on top of it
+        u32 offset = 0;
+    };
+
     struct RHIViewport{
         f32 x, y;
         f32 width, height;
@@ -924,15 +935,26 @@ namespace Crowy
     };
     static_assert(sizeof(RHIDrawIndexedArgs) == 20);
 
-    // one ExecuteIndirect submission: every draw sharing a PSO.
-    // the args element type is the one its consumer expects:
-    // RHIDrawArgs for ExecuteIndirect, RHIDrawIndexedArgs for ExecuteIndirectIndexed
+    // one ExecuteIndirect submission: every draw sharing a PSO
     struct DrawBatch{
         RHIGraphicsPipelineState* pso = nullptr;
-        // args[drawCount] at argsOffset
+        // RHIDrawArgs[drawCount] at argsOffset
         RHIBuffer* args = nullptr;
         u64 argsOffset = 0;
         u32 drawCount = 0;
+        // reserved for GPU-driven compaction; must stay null for now
+        RHIBuffer* countBuffer = nullptr;
+    };
+
+    // one ExecuteIndirectIndexed submission
+    struct DrawBatchIndexed{
+        RHIGraphicsPipelineState* pso = nullptr;
+        // RHIDrawIndexedArgs[drawCount] at argsOffset
+        RHIBuffer* args = nullptr;
+        u64 argsOffset = 0;
+        u32 drawCount = 0;
+        // every draw in the batch reads this one
+        RHIIndexBufferView indices{};
         // reserved for GPU-driven compaction; must stay null for now
         RHIBuffer* countBuffer = nullptr;
     };

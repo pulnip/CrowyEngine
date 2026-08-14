@@ -97,12 +97,6 @@ namespace Crowy
             u32 offset
         ) RHI_OVERRIDE;
 
-        void SetIndexBuffer(
-            RHIBuffer& buffer,
-            RHIIndexFormat format,
-            u32 offset
-        ) RHI_OVERRIDE;
-
         void SetPushGraphicsConstants(
             const void* data,
             u32 size
@@ -125,6 +119,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void DrawIndexed(
+            const RHIIndexBufferView& indices,
             u32 indexCount,
             u32 instanceCount = 1,
             u32 startIndex = 0,
@@ -133,7 +128,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
-        void ExecuteIndirectIndexed(const DrawBatch&) RHI_OVERRIDE;
+        void ExecuteIndirectIndexed(const DrawBatchIndexed&) RHI_OVERRIDE;
 
         void BeginComputePass(
             std::span<const RHITextureBarrier> textureAcquires,

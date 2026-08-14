@@ -229,9 +229,13 @@ namespace Crowy
 
             for(const auto& item: drawItems){
                 cmdList.SetVertexBuffer(*item.vertices, 0, sizeof(Vertex));
-                cmdList.SetIndexBuffer(*item.indices, RHIIndexFormat::UInt32);
                 cmdList.SetGraphicsConstantBuffer(*item.objectCB, 1);
-                cmdList.DrawIndexed(item.indexCount);
+                cmdList.DrawIndexed(
+                    RHIIndexBufferView{
+                        .buffer = item.indices.get()
+                    },
+                    item.indexCount
+                );
             }
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};

@@ -204,6 +204,16 @@ namespace Crowy
                 validateRelease(release, allowedSync);
             }
         }
+
+        inline void validateIndices(const RHIIndexBufferView& indices){
+            CROWY_ASSERT(indices.buffer != nullptr,
+                "an indexed draw needs an index buffer in its RHIIndexBufferView"
+            );
+            CROWY_ASSERT(indices.offset % IndexSize(indices.format) == 0,
+                "index buffer offset must land on an index boundary"
+            );
+            CROWY_ASSERT(indices.offset < indices.buffer->GetSize());
+        }
     }
 
     inline constexpr bool IsBufferOnlyUsage(RHIResourceUsage u){
@@ -404,7 +414,6 @@ namespace Crowy
             CROWY_STAT(pipelineSetCount);
         }
 
-        // Vertex and index buffers
         // stride = sizeof(Vertex)
         virtual void SetVertexBuffer(
             RHIBuffer&,
@@ -417,18 +426,6 @@ namespace Crowy
             );
 
             CROWY_STAT(vertexBufferSetCount);
-        }
-
-        virtual void SetIndexBuffer(
-            RHIBuffer&,
-            RHIIndexFormat format = RHIIndexFormat::UInt32,
-            u32 offset = 0
-        ){
-            CROWY_ASSERT(passState == PassKind::Render,
-                "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
-            );
-
-            CROWY_STAT(indexBufferSetCount);
         }
 
         virtual void SetPushGraphicsConstants(
@@ -494,6 +491,7 @@ namespace Crowy
         }
 
         virtual void DrawIndexed(
+            const RHIIndexBufferView& indices,
             u32 indexCount,
             u32 instanceCount = 1,
             u32 startIndex = 0,
@@ -503,6 +501,7 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
+            detail::validateIndices(indices);
 
             CROWY_STAT(drawCount);
         }
@@ -526,14 +525,14 @@ namespace Crowy
         }
 
         // binds batch.pso, then issues batch.drawCount indirect draws from
-        // batch.args (RHIDrawIndexedArgs[]), all sharing the bound index buffer
-        virtual void ExecuteIndirectIndexed(const DrawBatch& batch){
+        virtual void ExecuteIndirectIndexed(const DrawBatchIndexed& batch){
             CROWY_ASSERT(passState == PassKind::Render,
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
 
             CROWY_ASSERT(batch.pso != nullptr);
             CROWY_ASSERT(batch.args != nullptr);
+            detail::validateIndices(batch.indices);
             CROWY_ASSERT(batch.countBuffer == nullptr,
                 "countBuffer is reserved for GPU-driven compaction"
             );

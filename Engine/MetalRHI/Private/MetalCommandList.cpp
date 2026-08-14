@@ -38,6 +38,12 @@ namespace Crowy
             }
         }
 
+        auto convert(RHIIndexFormat format){
+            return format == RHIIndexFormat::UInt16 ?
+                MTL::IndexTypeUInt16 :
+                MTL::IndexTypeUInt32;
+        }
+
         // sync → fence stage. the two directions round differently:
         // a producer signals after its latest stage,
         // a consumer waits before its earliest.
@@ -436,24 +442,6 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::SetIndexBuffer(
-        RHIBuffer& buffer,
-        RHIIndexFormat format,
-        u32 offset
-    ){
-        Super::SetIndexBuffer(buffer, format, offset);
-
-        auto state = std::get_if<RenderPassState>(&passState);
-        CROWY_ASSERT(state != nullptr,
-            "Did you call RHICommandList::BeginRenderPass()?"
-        );
-
-        state->indexBuffer = static_cast<MetalBuffer&>(buffer).Get();
-        state->indexBufferOffset = offset;
-        state->indexFormat = (format == RHIIndexFormat::UInt16) ?
-            MTL::IndexTypeUInt16 : MTL::IndexTypeUInt32;
-    }
-
     inline constexpr NS::UInteger PushConstantSlot = 0;
     inline constexpr NS::UInteger ConstantBufferSlotBase = 1;
 
@@ -609,29 +597,29 @@ namespace Crowy
     }
 
     void MetalCommandList::DrawIndexed(
+        const RHIIndexBufferView& indices,
         u32 indexCount,
         u32 instanceCount,
         u32 startIndex,
         i32 baseVertex,
         u32 startInstance
     ){
-        Super::DrawIndexed(indexCount, instanceCount, startIndex, baseVertex, startInstance);
+        Super::DrawIndexed(indices, indexCount, instanceCount, startIndex, baseVertex, startInstance);
 
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(state != nullptr,
             "Did you call RHICommandList::BeginRenderPass()?"
         );
-        CROWY_ASSERT(state->indexBuffer != nullptr);
 
         flush(*state);
-        auto indexSize = (state->indexFormat == MTL::IndexTypeUInt16) ? 2 : 4;
-        auto indexOffset = state->indexBufferOffset + startIndex * indexSize;
+        // Metal has no startIndex parameter - it is folded into the offset
+        auto indexOffset = indices.offset + startIndex * IndexSize(indices.format);
 
         state->encoder->drawIndexedPrimitives(
             state->topology,
             indexCount,
-            state->indexFormat,
-            state->indexBuffer,
+            convert(indices.format),
+            static_cast<MetalBuffer&>(*indices.buffer).Get(),
             indexOffset,
             instanceCount,
             baseVertex,
@@ -676,26 +664,26 @@ namespace Crowy
     static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseVertex));
     static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseInstance));
 
-    void MetalCommandList::ExecuteIndirectIndexed(const DrawBatch& batch){
+    void MetalCommandList::ExecuteIndirectIndexed(const DrawBatchIndexed& batch){
         Super::ExecuteIndirectIndexed(batch);
 
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(state != nullptr,
             "Did you call RHICommandList::BeginRenderPass()?"
         );
-        CROWY_ASSERT(state->indexBuffer != nullptr);
 
         SetPipelineState(*batch.pso);
         flush(*state);
 
         auto mtlArgs = static_cast<MetalBuffer&>(*batch.args).Get();
+        auto mtlIndices = static_cast<MetalBuffer&>(*batch.indices.buffer).Get();
         // no multi-draw outside indirect command buffers, so unroll batch
         for(u32 i = 0; i < batch.drawCount; ++i){
             state->encoder->drawIndexedPrimitives(
                 state->topology,
-                state->indexFormat,
-                state->indexBuffer,
-                state->indexBufferOffset,
+                convert(batch.indices.format),
+                mtlIndices,
+                batch.indices.offset,
                 mtlArgs,
                 batch.argsOffset + i * sizeof(RHIDrawIndexedArgs)
             );

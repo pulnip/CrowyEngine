@@ -30,11 +30,6 @@ namespace Crowy
             u32 vsUsedBufferMask = 0;
             u32 fsUsedBufferMask = 0;
 
-            // snapshotted from the Index Buffer at SetIndexBuffer
-            MTL::Buffer* indexBuffer = nullptr;
-            u32 indexBufferOffset = 0;
-            MTL::IndexType indexFormat = MTL::IndexTypeUInt32;
-
             // cache for lazy binding of PushConstant
             std::array<u8, RHI_PUSH_CONSTANT_BYTES> pushConstants;
             u32 pushConstantSize = 0;
@@ -172,12 +167,6 @@ namespace Crowy
             u32 offset = 0
         ) RHI_OVERRIDE;
 
-        void SetIndexBuffer(
-            RHIBuffer&,
-            RHIIndexFormat format = RHIIndexFormat::UInt32,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
         void SetPushGraphicsConstants(
             const void* data,
             u32 size
@@ -200,6 +189,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void DrawIndexed(
+            const RHIIndexBufferView& indices,
             u32 indexCount,
             u32 instanceCount = 1,
             u32 startIndex = 0,
@@ -208,7 +198,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
-        void ExecuteIndirectIndexed(const DrawBatch&) RHI_OVERRIDE;
+        void ExecuteIndirectIndexed(const DrawBatchIndexed&) RHI_OVERRIDE;
 
         void BeginComputePass(
             std::span<const RHITextureBarrier> textureAcquires = {},

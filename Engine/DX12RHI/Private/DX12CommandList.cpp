@@ -114,6 +114,20 @@ namespace{
             .StencilEndingAccess = hasStencil ? endingAccess : noEndingAccess
         };
     }
+
+    D3D12_INDEX_BUFFER_VIEW convert(const Crowy::RHIIndexBufferView& indices){
+        using namespace Crowy;
+
+        auto& dxBuffer = static_cast<DX12Buffer&>(*indices.buffer);
+
+        return D3D12_INDEX_BUFFER_VIEW{
+            .BufferLocation = dxBuffer.GetGPUAddress() + indices.offset,
+            .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - indices.offset),
+            .Format = RHIIndexFormat::UInt32 == indices.format ?
+                DXGI_FORMAT_R32_UINT :
+                DXGI_FORMAT_R16_UINT
+        };
+    }
 }
 
 namespace Crowy
@@ -285,27 +299,6 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::SetIndexBuffer(
-        RHIBuffer& buffer,
-        RHIIndexFormat format,
-        u32 offset
-    ){
-        Super::SetIndexBuffer(buffer, format, offset);
-
-        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
-        const D3D12_INDEX_BUFFER_VIEW ibView{
-            .BufferLocation = dxBuffer.GetGPUAddress() + offset,
-            .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - offset),
-            .Format = RHIIndexFormat::UInt32 == format ?
-                DXGI_FORMAT_R32_UINT :
-                DXGI_FORMAT_R16_UINT
-        };
-
-        commandList->IASetIndexBuffer(
-            &ibView
-        );
-    }
-
     void DX12CommandList::SetPushGraphicsConstants(
         const void* data,
         u32 size
@@ -389,13 +382,17 @@ namespace Crowy
     }
 
     void DX12CommandList::DrawIndexed(
+        const RHIIndexBufferView& indices,
         u32 indexCount,
         u32 instanceCount,
         u32 startIndex,
         i32 baseVertex,
         u32 startInstance
     ){
-        Super::DrawIndexed(indexCount, instanceCount, startIndex, baseVertex, startInstance);
+        Super::DrawIndexed(indices, indexCount, instanceCount, startIndex, baseVertex, startInstance);
+
+        const auto ibView = ::convert(indices);
+        commandList->IASetIndexBuffer(&ibView);
 
         commandList->DrawIndexedInstanced(
             indexCount,
@@ -437,10 +434,13 @@ namespace Crowy
     static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, BaseVertexLocation));
     static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartInstanceLocation));
 
-    void DX12CommandList::ExecuteIndirectIndexed(const DrawBatch& batch){
+    void DX12CommandList::ExecuteIndirectIndexed(const DrawBatchIndexed& batch){
         Super::ExecuteIndirectIndexed(batch);
 
         SetPipelineState(*batch.pso);
+
+        const auto ibView = ::convert(batch.indices);
+        commandList->IASetIndexBuffer(&ibView);
 
         auto& dxArgs = static_cast<DX12Buffer&>(*batch.args);
         commandList->ExecuteIndirect(

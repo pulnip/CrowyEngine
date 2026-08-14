@@ -163,11 +163,6 @@ namespace Crowy
                 0,
                 sizeof(Vertex)
             );
-            cmdList.SetIndexBuffer(
-                *indices,
-                RHIIndexFormat::UInt32
-            );
-
             cmdList.SetPushGraphicsConstants(PushConstants{
                 .texture = cubeMap->GetReadableID(RHITextureViewDesc{
                     .format = cubeMap->GetFormat(),
@@ -178,7 +173,12 @@ namespace Crowy
                 *uniformsCB,
                 0
             );
-            cmdList.DrawIndexed(indexCount);
+            cmdList.DrawIndexed(
+                RHIIndexBufferView{
+                    .buffer = indices.get()
+                },
+                indexCount
+            );
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};
             cmdList.EndRenderPass(releases);

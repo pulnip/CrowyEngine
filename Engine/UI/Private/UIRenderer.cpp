@@ -265,6 +265,13 @@ namespace Crowy
 
         setupRenderState(cmdList, framebuffer);
 
+        // every command in every list indexes the same buffer;
+        // only the element range moves
+        const RHIIndexBufferView indices{
+            .buffer = indexBuffer.get(),
+            .format = UI_INDEX_FORMAT
+        };
+
         // the lists share one pair of buffers, so their offsets accumulate
         u32 globalVertexOffset = 0, globalIndexOffset = 0;
         for(const ImDrawList* list: drawData.CmdLists){
@@ -285,6 +292,7 @@ namespace Crowy
                 cmdList.SetPushGraphicsConstants(pushConstants);
 
                 cmdList.DrawIndexed(
+                    indices,
                     cmd.ElemCount,
                     1,
                     cmd.IdxOffset + globalIndexOffset,
@@ -313,7 +321,6 @@ namespace Crowy
             0,
             static_cast<u32>(sizeof(ImDrawVert))
         );
-        cmdList.SetIndexBuffer(*indexBuffer, UI_INDEX_FORMAT);
     }
 
     void UIRenderer::collectRetired(){
