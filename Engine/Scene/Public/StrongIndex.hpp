@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <limits>
 #include "Primitives.hpp"
 
@@ -22,3 +23,10 @@ namespace Crowy
         friend auto operator<=>(StrongIndex, StrongIndex) noexcept = default;
     };
 }
+
+template<typename T>
+struct std::hash<Crowy::StrongIndex<T>>{
+    std::size_t operator()(Crowy::StrongIndex<T> index) const noexcept{
+        return std::hash<Crowy::usize>{}(index.value);
+    }
+};

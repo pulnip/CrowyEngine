@@ -1,6 +1,8 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
+#include "Assert.hpp"
 #include "GenericHandle.hpp"
 #include "HandleTable.hpp"
 #include "Primitives.hpp"
@@ -36,18 +38,44 @@ namespace Crowy
     // Nodes are kept in one preorder array,
     // so a parent sits in front of its children
     // and its subtree occupies a contiguous range.
+    //
+    // Structural changes land on CommitStructuralChanges(),
+    // not on the call that asks for them.
+    // Handles and local transforms do not wait for it:
+    //   a handle is valid the moment CreateNode() returns,
+    //   and its local transform reads and writes right away.
+    // Everything else answers as of the last commit.
     class TransformHierarchy{
     private:
+        // A slot holding a handle to a node that is not in the array yet. Never a
+        // position, but valid, so the handle it was issued for stays valid too.
+        static constexpr TransformIndex PENDING_INDEX{TransformIndex::INVALID - 1};
+
+        struct PendingCreate{
+            TransformSlot slot;
+            TransformSlot parentSlot;
+        };
+
         // preorder
         std::vector<TransformNode> nodes;
         TransformNodeTable slots;
 
+        std::vector<PendingCreate> pendingCreates;
+        std::unordered_map<TransformSlot, Transform> pendingLocals;
+
     private:
         auto& nodeOf(this auto& self, TransformHandle handle) noexcept{
-            return self.nodes[self.slots.IndexOf(handle).value];
+            auto index = self.slots.IndexOf(handle);
+            CROWY_ASSERT(index != PENDING_INDEX);
+
+            return self.nodes[index.value];
         }
         auto& localTransform(this auto& self, TransformHandle handle) noexcept{
-            return self.nodeOf(handle).local;
+            auto index = self.slots.IndexOf(handle);
+
+            return index == PENDING_INDEX ?
+                self.pendingLocals.at(TransformNodeTable::SlotOf(handle)) :
+                self.nodes[index.value].local;
         }
 
     public:
@@ -57,8 +85,21 @@ namespace Crowy
 
         // lifetime
         TransformHandle CreateNode(const Transform& local = Transform::Identity());
+        TransformHandle CreateNode(
+            TransformHandle parent,
+            const Transform& local = Transform::Identity()
+        );
         // Asserts on a node that still has children
         void DestroyNode(TransformHandle handle);
+
+        void CommitStructuralChanges();
+        bool HasPendingChanges() const noexcept{
+            return !pendingCreates.empty();
+        }
+
+        // hierarchy, as of the last commit
+        TransformHandle GetParent(TransformHandle handle) const noexcept;
+        usize GetChildCount(TransformHandle handle) const noexcept;
 
         bool IsValid(TransformHandle handle) const noexcept{
             return slots.IsValid(handle);
@@ -90,6 +131,7 @@ namespace Crowy
             localTransform(handle).scale = scale;
         }
 
+        // committed nodes only
         usize Size() const noexcept{
             return nodes.size();
         }
@@ -98,7 +140,15 @@ namespace Crowy
         }
 
     private:
-        // The only place allowed to write parentIndex and slot bindings.
-        void rebuildDerived() noexcept;
+        TransformIndex insertionPointOf(TransformSlot parentSlot) const noexcept;
+        void insertNode(TransformIndex at, TransformNode node);
+        void eraseNode(TransformIndex at);
+        // Keeps the slot table pointing at nodes that a shift moved
+        void rebindFrom(TransformIndex from) noexcept;
+        void growAncestors(TransformSlot parentSlot) noexcept;
+        void shrinkAncestors(TransformSlot parentSlot) noexcept;
+
+        // The only place allowed to write parentIndex
+        void rebuildParentIndexes() noexcept;
     };
 }

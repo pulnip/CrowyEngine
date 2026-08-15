@@ -24,15 +24,30 @@ namespace{
 class TransformHierarchyTest: public ::testing::Test{
 protected:
     TransformHierarchy hierarchy;
+
+    TransformHandle commitedNode(const Transform& local = Transform::Identity()){
+        auto handle = hierarchy.CreateNode(local);
+        hierarchy.CommitStructuralChanges();
+
+        return handle;
+    }
 };
 
 TEST_F(TransformHierarchyTest, EmptyHierarchy){
     EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_FALSE(hierarchy.HasPendingChanges());
     EXPECT_FALSE(hierarchy.IsValid(TransformHandle::InvalidHandle()));
 }
 
+TEST_F(TransformHierarchyTest, CommitOnEmptyHierarchy){
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_FALSE(hierarchy.HasPendingChanges());
+}
+
 TEST_F(TransformHierarchyTest, CreateNodeDefaultsToIdentity){
-    auto handle = hierarchy.CreateNode();
+    auto handle = commitedNode();
 
     EXPECT_TRUE(hierarchy.IsValid(handle));
     EXPECT_EQ(hierarchy.Size(), 1);
@@ -41,13 +56,13 @@ TEST_F(TransformHierarchyTest, CreateNodeDefaultsToIdentity){
 
 TEST_F(TransformHierarchyTest, CreateNodeKeepsGivenLocal){
     auto local = makeLocal(1.0f);
-    auto handle = hierarchy.CreateNode(local);
+    auto handle = commitedNode(local);
 
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
 TEST_F(TransformHierarchyTest, SetLocalTransform){
-    auto handle = hierarchy.CreateNode();
+    auto handle = commitedNode();
     auto local = makeLocal(2.0f);
 
     hierarchy.SetLocalTransform(handle, local);
@@ -56,7 +71,7 @@ TEST_F(TransformHierarchyTest, SetLocalTransform){
 }
 
 TEST_F(TransformHierarchyTest, SetLocalComponents){
-    auto handle = hierarchy.CreateNode();
+    auto handle = commitedNode();
     auto local = makeLocal(3.0f);
 
     hierarchy.SetLocalPosition(handle, local.position);
@@ -66,10 +81,148 @@ TEST_F(TransformHierarchyTest, SetLocalComponents){
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
+TEST_F(TransformHierarchyTest, CreationIsDeferredButHandleIsValid){
+    auto handle = hierarchy.CreateNode(makeLocal(1.0f));
+
+    EXPECT_TRUE(hierarchy.IsValid(handle));
+    EXPECT_TRUE(hierarchy.HasPendingChanges());
+    // the array has not moved yet
+    EXPECT_TRUE(hierarchy.IsEmpty());
+
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_TRUE(hierarchy.IsValid(handle));
+    EXPECT_FALSE(hierarchy.HasPendingChanges());
+    EXPECT_EQ(hierarchy.Size(), 1);
+}
+
+TEST_F(TransformHierarchyTest, LocalTransformWrittenBeforeCommitSurvivesIt){
+    auto handle = hierarchy.CreateNode();
+    auto local = makeLocal(4.0f);
+
+    hierarchy.SetLocalTransform(handle, local);
+    expectSameTransform(hierarchy.GetLocalTransform(handle), local);
+
+    hierarchy.CommitStructuralChanges();
+
+    expectSameTransform(hierarchy.GetLocalTransform(handle), local);
+}
+
+TEST_F(TransformHierarchyTest, ChildAttachesToParent){
+    auto parent = commitedNode();
+    auto child = hierarchy.CreateNode(parent);
+
+    // structural queries answer as of the last commit
+    EXPECT_FALSE(hierarchy.GetParent(child).IsValid());
+    EXPECT_EQ(hierarchy.GetChildCount(parent), 0);
+
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_EQ(hierarchy.Size(), 2);
+    EXPECT_EQ(hierarchy.GetParent(child), parent);
+    EXPECT_EQ(hierarchy.GetChildCount(parent), 1);
+    EXPECT_FALSE(hierarchy.GetParent(parent).IsValid());
+}
+
+TEST_F(TransformHierarchyTest, ParentCreatedInTheSameCommit){
+    auto parent = hierarchy.CreateNode();
+    auto child = hierarchy.CreateNode(parent);
+
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_EQ(hierarchy.Size(), 2);
+    EXPECT_EQ(hierarchy.GetParent(child), parent);
+    EXPECT_EQ(hierarchy.GetChildCount(parent), 1);
+}
+
+TEST_F(TransformHierarchyTest, SiblingsShareOneParent){
+    auto parent = hierarchy.CreateNode();
+    auto first = hierarchy.CreateNode(parent);
+    auto second = hierarchy.CreateNode(parent);
+    auto third = hierarchy.CreateNode(parent);
+
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_EQ(hierarchy.GetChildCount(parent), 3);
+    EXPECT_EQ(hierarchy.GetParent(first), parent);
+    EXPECT_EQ(hierarchy.GetParent(second), parent);
+    EXPECT_EQ(hierarchy.GetParent(third), parent);
+}
+
+TEST_F(TransformHierarchyTest, ChildLandsBehindAnExistingDeepSubtree){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    auto leaf = hierarchy.CreateNode(branch);
+    hierarchy.CommitStructuralChanges();
+
+    // root's subtree is 3 long now, so the newcomer has to clear all of it
+    auto late = hierarchy.CreateNode(root);
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_EQ(hierarchy.Size(), 4);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 2);
+    EXPECT_EQ(hierarchy.GetChildCount(branch), 1);
+    EXPECT_EQ(hierarchy.GetParent(leaf), branch);
+    EXPECT_EQ(hierarchy.GetParent(late), root);
+}
+
+TEST_F(TransformHierarchyTest, DeepChainKeepsEveryLink){
+    constexpr usize DEPTH = 1000;
+
+    std::vector<TransformHandle> chain;
+    chain.reserve(DEPTH);
+    chain.push_back(hierarchy.CreateNode());
+    for(usize i=1; i<DEPTH; ++i){
+        chain.push_back(hierarchy.CreateNode(chain.back()));
+    }
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_EQ(hierarchy.Size(), DEPTH);
+    for(usize i=1; i<DEPTH; ++i){
+        ASSERT_EQ(hierarchy.GetParent(chain[i]), chain[i-1]);
+    }
+    EXPECT_EQ(hierarchy.GetChildCount(chain.back()), 0);
+}
+
+TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut){
+    auto handle = hierarchy.CreateNode(makeLocal(1.0f));
+
+    hierarchy.DestroyNode(handle);
+
+    EXPECT_FALSE(hierarchy.IsValid(handle));
+    EXPECT_FALSE(hierarchy.HasPendingChanges());
+
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+}
+
+TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    auto leaf = hierarchy.CreateNode(branch);
+    hierarchy.CommitStructuralChanges();
+
+    hierarchy.DestroyNode(leaf);
+
+    EXPECT_EQ(hierarchy.Size(), 2);
+    EXPECT_EQ(hierarchy.GetChildCount(branch), 0);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 1);
+    EXPECT_EQ(hierarchy.GetParent(branch), root);
+
+    // the shrunk chain still accepts a newcomer at the right place
+    auto late = hierarchy.CreateNode(root);
+    hierarchy.CommitStructuralChanges();
+
+    EXPECT_EQ(hierarchy.GetChildCount(root), 2);
+    EXPECT_EQ(hierarchy.GetParent(late), root);
+}
+
 TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
     auto first = hierarchy.CreateNode(makeLocal(1.0f));
     auto second = hierarchy.CreateNode(makeLocal(2.0f));
     auto third = hierarchy.CreateNode(makeLocal(3.0f));
+    hierarchy.CommitStructuralChanges();
 
     hierarchy.DestroyNode(second);
 
@@ -84,10 +237,10 @@ TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
 }
 
 TEST_F(TransformHierarchyTest, DestroyedSlotIsReusedWithNewGeneration){
-    auto old = hierarchy.CreateNode(makeLocal(1.0f));
+    auto old = commitedNode(makeLocal(1.0f));
     hierarchy.DestroyNode(old);
 
-    auto fresh = hierarchy.CreateNode(makeLocal(2.0f));
+    auto fresh = commitedNode(makeLocal(2.0f));
 
     EXPECT_EQ(fresh.GetIndex(), old.GetIndex());
     EXPECT_NE(fresh.GetGeneration(), old.GetGeneration());
@@ -104,6 +257,7 @@ TEST_F(TransformHierarchyTest, SlotTableGrowthKeepsHandlesValid){
     for(usize i=0; i<COUNT; ++i){
         handles.push_back(hierarchy.CreateNode(makeLocal(static_cast<f32>(i))));
     }
+    hierarchy.CommitStructuralChanges();
 
     EXPECT_EQ(hierarchy.Size(), COUNT);
     for(usize i=0; i<COUNT; ++i){
@@ -123,6 +277,7 @@ TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals){
     for(usize i=0; i<COUNT; ++i){
         handles.push_back(hierarchy.CreateNode(makeLocal(static_cast<f32>(i))));
     }
+    hierarchy.CommitStructuralChanges();
 
     for(usize i=0; i<COUNT; ++i){
         hierarchy.DestroyNode(handles[i]);
@@ -137,5 +292,5 @@ TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals){
         }
     }
 
-    EXPECT_EQ(hierarchy.Size(), 0);
+    EXPECT_TRUE(hierarchy.IsEmpty());
 }
