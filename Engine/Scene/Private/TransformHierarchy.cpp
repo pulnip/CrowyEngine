@@ -43,12 +43,6 @@ namespace Crowy
         rebindFrom(at);
     }
 
-    void TransformHierarchy::eraseNode(TransformIndex at){
-        // erase keeps the relative order of the survivors, so preorder holds
-        nodes.erase(nodes.begin() + static_cast<isize>(at.value));
-        rebindFrom(at);
-    }
-
     void TransformHierarchy::growAncestors(TransformSlot parentSlot) noexcept{
         for(auto slot=parentSlot; slot.IsValid();){
             auto& ancestor = nodes[slots.IndexOf(slot).value];
@@ -63,6 +57,20 @@ namespace Crowy
             --ancestor.subtreeSize;
             slot = ancestor.parentSlot;
         }
+    }
+
+    bool TransformHierarchy::everyDescendantIsDestroyed(
+        TransformIndex index
+    ) const noexcept{
+        auto end = index.value + nodes[index.value].subtreeSize;
+
+        for(usize i=index.value+1; i<end; ++i){
+            if(!pendingDestroys.contains(nodes[i].slot)){
+                return false;
+            }
+        }
+
+        return true;
     }
 
     TransformHandle TransformHierarchy::CreateNode(const Transform& local){
@@ -89,7 +97,9 @@ namespace Crowy
     }
 
     void TransformHierarchy::DestroyNode(TransformHandle handle){
+        auto index = indexOf(handle);
         auto slot = TransformNodeTable::SlotOf(handle);
+
         CROWY_ASSERT(
             std::ranges::none_of(
                 pendingCreates,
@@ -100,7 +110,7 @@ namespace Crowy
             "DestroyNode: an uncommitted child still names this node as its parent"
         );
 
-        if(slots.IndexOf(handle) == PENDING_INDEX){
+        if(index == PENDING_INDEX){
             // the node never reached the array, so create and destroy cancel out
             std::erase_if(
                 pendingCreates,
@@ -114,22 +124,42 @@ namespace Crowy
             return;
         }
 
-        auto index = slots.IndexOf(handle);
-        auto& node = nodes[index.value];
         CROWY_ASSERT(
-            node.subtreeSize == 1,
-            "DestroyNode: node (slot {}) still has {} descendant(s)",
-            slot.value, node.subtreeSize - 1
+            everyDescendantIsDestroyed(index),
+            "DestroyNode: node (slot {}) still has a living descendant",
+            slot.value
         );
 
-        shrinkAncestors(node.parentSlot);
-        eraseNode(index);
-        slots.Release(handle);
-
-        rebuildParentIndexes();
+        pendingDestroys.insert(slot);
     }
 
-    void TransformHierarchy::CommitStructuralChanges(){
+    void TransformHierarchy::commitDestroys(){
+        if(pendingDestroys.empty()){
+            return;
+        }
+
+        // while every slot still points at its node
+        for(auto slot: pendingDestroys){
+            shrinkAncestors(nodes[slots.IndexOf(slot).value].parentSlot);
+        }
+
+        // erase_if keeps the relative order of the survivors, so preorder holds
+        std::erase_if(
+            nodes,
+            [this](const TransformNode& node){
+                return pendingDestroys.contains(node.slot);
+            }
+        );
+
+        for(auto slot: pendingDestroys){
+            slots.Release(slots.HandleOf(slot));
+        }
+        pendingDestroys.clear();
+
+        rebindFrom(TransformIndex{0});
+    }
+
+    void TransformHierarchy::commitCreates(){
         for(const auto& create: pendingCreates){
             auto node = TransformNode{
                 .local = pendingLocals.at(create.slot),
@@ -145,7 +175,14 @@ namespace Crowy
             growAncestors(create.parentSlot);
         }
         pendingCreates.clear();
+
         CROWY_ASSERT(pendingLocals.empty());
+    }
+
+    void TransformHierarchy::CommitStructuralChanges(){
+        // destroys first, so a create never has to make room next to a corpse
+        commitDestroys();
+        commitCreates();
 
         rebuildParentIndexes();
     }
@@ -153,7 +190,7 @@ namespace Crowy
     TransformHandle TransformHierarchy::GetParent(
         TransformHandle handle
     ) const noexcept{
-        if(slots.IndexOf(handle) == PENDING_INDEX){
+        if(indexOf(handle) == PENDING_INDEX){
             return TransformHandle::InvalidHandle();
         }
 
@@ -167,11 +204,11 @@ namespace Crowy
     usize TransformHierarchy::GetChildCount(
         TransformHandle handle
     ) const noexcept{
-        if(slots.IndexOf(handle) == PENDING_INDEX){
+        auto index = indexOf(handle);
+        if(index == PENDING_INDEX){
             return 0;
         }
 
-        auto index = slots.IndexOf(handle);
         auto end = index.value + nodes[index.value].subtreeSize;
 
         usize count = 0;

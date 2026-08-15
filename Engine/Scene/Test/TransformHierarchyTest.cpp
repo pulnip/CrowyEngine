@@ -209,6 +209,78 @@ TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
+TEST_F(TransformHierarchyTest, DestructionIsDeferredButHandleDiesNow){
+    auto handle = commitedNode();
+
+    hierarchy.DestroyNode(handle);
+
+    EXPECT_FALSE(hierarchy.IsValid(handle));
+    EXPECT_TRUE(hierarchy.HasPendingChanges());
+    // the array has not moved yet
+    EXPECT_EQ(hierarchy.Size(), 1);
+
+    Commit();
+
+    EXPECT_FALSE(hierarchy.IsValid(handle));
+    EXPECT_FALSE(hierarchy.HasPendingChanges());
+    EXPECT_TRUE(hierarchy.IsEmpty());
+}
+
+TEST_F(TransformHierarchyTest, SubtreeGoesLeafFirstInOneCommit){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    auto leaf = hierarchy.CreateNode(branch);
+    auto tail = hierarchy.CreateNode(root);
+    Commit();
+
+    // the whole subtree in one batch, deepest first
+    hierarchy.DestroyNode(leaf);
+    hierarchy.DestroyNode(branch);
+    hierarchy.DestroyNode(tail);
+    hierarchy.DestroyNode(root);
+
+    Commit();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_FALSE(hierarchy.IsValid(root));
+    EXPECT_FALSE(hierarchy.IsValid(leaf));
+}
+
+TEST_F(TransformHierarchyTest, TwoDestroysUnderOneAncestorEachCountOnce){
+    auto root = hierarchy.CreateNode();
+    auto left = hierarchy.CreateNode(root);
+    auto leftFirst = hierarchy.CreateNode(left);
+    auto leftSecond = hierarchy.CreateNode(left);
+    auto right = hierarchy.CreateNode(root);
+    auto rightOnly = hierarchy.CreateNode(right);
+    Commit();
+
+    hierarchy.DestroyNode(leftFirst);
+    hierarchy.DestroyNode(leftSecond);
+    Commit();
+
+    EXPECT_EQ(hierarchy.Size(), 4);
+    EXPECT_EQ(hierarchy.GetChildCount(left), 0);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 2);
+    EXPECT_EQ(hierarchy.GetChildCount(right), 1);
+    EXPECT_EQ(hierarchy.GetParent(rightOnly), right);
+}
+
+TEST_F(TransformHierarchyTest, DestroyAndCreateShareOneCommit){
+    auto root = hierarchy.CreateNode();
+    auto doomed = hierarchy.CreateNode(root);
+    Commit();
+
+    hierarchy.DestroyNode(doomed);
+    auto fresh = hierarchy.CreateNode(root);
+
+    Commit();
+
+    EXPECT_EQ(hierarchy.Size(), 2);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 1);
+    EXPECT_EQ(hierarchy.GetParent(fresh), root);
+}
+
 TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
@@ -216,6 +288,7 @@ TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
     Commit();
 
     hierarchy.DestroyNode(leaf);
+    Commit();
 
     EXPECT_EQ(hierarchy.Size(), 2);
     EXPECT_EQ(hierarchy.GetChildCount(branch), 0);
@@ -237,6 +310,7 @@ TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
     Commit();
 
     hierarchy.DestroyNode(second);
+    Commit();
 
     EXPECT_FALSE(hierarchy.IsValid(second));
     EXPECT_TRUE(hierarchy.IsValid(first));
@@ -251,6 +325,7 @@ TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
 TEST_F(TransformHierarchyTest, DestroyedSlotIsReusedWithNewGeneration){
     auto old = commitedNode(makeLocal(1.0f));
     hierarchy.DestroyNode(old);
+    Commit();
 
     auto fresh = commitedNode(makeLocal(2.0f));
 
@@ -293,6 +368,7 @@ TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals){
 
     for(usize i=0; i<COUNT; ++i){
         hierarchy.DestroyNode(handles[i]);
+        Commit();
 
         EXPECT_EQ(hierarchy.Size(), COUNT - i - 1);
         for(usize j=i+1; j<COUNT; ++j){

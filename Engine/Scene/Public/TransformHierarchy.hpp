@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "Assert.hpp"
 #include "GenericHandle.hpp"
@@ -62,16 +63,22 @@ namespace Crowy
 
         std::vector<PendingCreate> pendingCreates;
         std::unordered_map<TransformSlot, Transform> pendingLocals;
+        std::unordered_set<TransformSlot> pendingDestroys;
 
     private:
+        TransformIndex indexOf(TransformHandle handle) const noexcept{
+            CROWY_ASSERT(IsValid(handle));
+
+            return slots.IndexOf(handle);
+        }
         auto& nodeOf(this auto& self, TransformHandle handle) noexcept{
-            auto index = self.slots.IndexOf(handle);
+            auto index = self.indexOf(handle);
             CROWY_ASSERT(index != PENDING_INDEX);
 
             return self.nodes[index.value];
         }
         auto& localTransform(this auto& self, TransformHandle handle) noexcept{
-            auto index = self.slots.IndexOf(handle);
+            auto index = self.indexOf(handle);
 
             return index == PENDING_INDEX ?
                 self.pendingLocals.at(TransformNodeTable::SlotOf(handle)) :
@@ -89,20 +96,24 @@ namespace Crowy
             TransformHandle parent,
             const Transform& local = Transform::Identity()
         );
-        // Asserts on a node that still has children
+        // Asserts unless every descendant is already destroyed, so a whole subtree
+        // has to go leaf first. No handle but the given one is ever invalidated.
         void DestroyNode(TransformHandle handle);
 
         void CommitStructuralChanges();
         bool HasPendingChanges() const noexcept{
-            return !pendingCreates.empty();
+            return !pendingCreates.empty() || !pendingDestroys.empty();
         }
 
         // hierarchy, as of the last commit
         TransformHandle GetParent(TransformHandle handle) const noexcept;
         usize GetChildCount(TransformHandle handle) const noexcept;
 
+        // A destroyed node keeps its place in the array until the commit, but its
+        // handle dies right away, the same way a created one lives right away.
         bool IsValid(TransformHandle handle) const noexcept{
-            return slots.IsValid(handle);
+            return slots.IsValid(handle) &&
+                !pendingDestroys.contains(TransformNodeTable::SlotOf(handle));
         }
 
         Transform GetLocalTransform(TransformHandle handle) noexcept{
@@ -140,9 +151,12 @@ namespace Crowy
         }
 
     private:
+        void commitDestroys();
+        void commitCreates();
+
+        bool everyDescendantIsDestroyed(TransformIndex index) const noexcept;
         TransformIndex insertionPointOf(TransformSlot parentSlot) const noexcept;
         void insertNode(TransformIndex at, TransformNode node);
-        void eraseNode(TransformIndex at);
         // Keeps the slot table pointing at nodes that a shift moved
         void rebindFrom(TransformIndex from) noexcept;
         void growAncestors(TransformSlot parentSlot) noexcept;
