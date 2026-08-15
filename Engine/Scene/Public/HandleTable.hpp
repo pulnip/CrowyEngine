@@ -5,6 +5,7 @@
 #include "GenericHandle.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
+#include "StrongIndex.hpp"
 
 namespace Crowy
 {
@@ -14,81 +15,110 @@ namespace Crowy
     public:
         using Handle = GenericHandle<T>;
 
+        struct SlotTag;
+        struct IndexTag;
+        // stable, survives element moves
+        using Slot = StrongIndex<SlotTag>;
+        // position in the caller's container, moves with the element
+        using Index = StrongIndex<IndexTag>;
+
     private:
+        struct Entry{
+            Index index = Index::Invalid();
+            usize generation = 0;
+
+            bool IsValid() const noexcept{
+                return index.IsValid();
+            }
+
+            void Reset() noexcept{
+                index = Index::Invalid();
+                ++generation;
+            }
+        };
         // indexed by slot number
-        std::vector<usize> indexes;
-        std::vector<usize> generations;
-        std::vector<usize> freeSlots;
+        std::vector<Entry> entries;
+        std::vector<Slot> freeSlots;
 
     public:
         HandleTable() = default;
         ~HandleTable() = default;
         CROWY_DECLARE_TRANSFERABLE(HandleTable)
 
-        Handle Acquire(usize index){
-            CROWY_ASSERT(index != Handle::INVALID_INDEX);
+        static Slot SlotOf(Handle handle) noexcept{
+            return Slot{handle.GetIndex()};
+        }
 
+        Handle Acquire(Index index){
+            CROWY_ASSERT(index.IsValid());
+
+            // the slot only starts living once it carries an index
             auto slot = acquireSlot();
-            indexes[slot] = index;
+            entries[slot.value].index = index;
 
-            return Handle(slot, generations[slot]);
+            return HandleOf(slot);
         }
 
         void Release(Handle handle) noexcept{
             CROWY_ASSERT(IsValid(handle));
-            auto slot = handle.GetIndex();
+            auto slot = SlotOf(handle);
 
             // expire old handles before the slot is reused
-            ++generations[slot];
-            indexes[slot] = Handle::INVALID_INDEX;
+            entries[slot.value].Reset();
             freeSlots.push_back(slot);
         }
 
+        // Answers for dead slots too, so it cannot lean on the guarded accessors
         bool IsValid(Handle handle) const noexcept{
-            auto slot = handle.GetIndex();
-            if(slot >= indexes.size())
-                return false;
-            if(generations[slot] != handle.GetGeneration())
+            auto slot = SlotOf(handle);
+            if(slot.value >= entries.size())
                 return false;
 
-            return indexes[slot] != Handle::INVALID_INDEX;
+            const auto& entry = entries[slot.value];
+
+            return entry.IsValid() && entry.generation == handle.GetGeneration();
         }
 
-        usize IndexOf(Handle handle) const noexcept{
+        Index IndexOf(Handle handle) const noexcept{
             CROWY_ASSERT(IsValid(handle));
 
-            return indexes[handle.GetIndex()];
+            return entries[SlotOf(handle).value].index;
         }
-        usize IndexOfSlot(usize slot) const noexcept{
+        Index IndexOf(Slot slot) const noexcept{
             CROWY_ASSERT(isLiving(slot));
 
-            return indexes[slot];
+            return entries[slot.value].index;
+        }
+        usize GenerationOf(Slot slot) const noexcept{
+            CROWY_ASSERT(isLiving(slot));
+
+            return entries[slot.value].generation;
         }
 
         // Points an already living slot at another position.
-        void Bind(usize slot, usize index) noexcept{
+        void Bind(Slot slot, Index index) noexcept{
             CROWY_ASSERT(isLiving(slot));
-            CROWY_ASSERT(index != Handle::INVALID_INDEX);
+            CROWY_ASSERT(index.IsValid());
 
-            indexes[slot] = index;
+            entries[slot.value].index = index;
         }
 
-        Handle HandleOfSlot(usize slot) const noexcept{
+        Handle HandleOf(Slot slot) const noexcept{
             CROWY_ASSERT(isLiving(slot));
 
-            return Handle(slot, generations[slot]);
+            return Handle{slot.value, GenerationOf(slot)};
         }
 
         // Every slot ever handed out, living or not.
         usize SlotCount() const noexcept{
-            return indexes.size();
+            return entries.size();
         }
         usize LiveCount() const noexcept{
-            return indexes.size() - freeSlots.size();
+            return entries.size() - freeSlots.size();
         }
 
     private:
-        usize acquireSlot(){
+        Slot acquireSlot(){
             if(!freeSlots.empty()){
                 auto slot = freeSlots.back();
                 freeSlots.pop_back();
@@ -97,16 +127,15 @@ namespace Crowy
             }
 
             // growing table for keeping slot vaild
-            auto slot = indexes.size();
-            indexes.push_back(Handle::INVALID_INDEX);
-            generations.push_back(0);
+            auto slot = Slot{entries.size()};
+            entries.emplace_back();
 
             return slot;
         }
 
-        bool isLiving(usize slot) const noexcept{
-            return slot < indexes.size() &&
-                indexes[slot] != Handle::INVALID_INDEX;
+        bool isLiving(Slot slot) const noexcept{
+            return slot.value < entries.size() &&
+                entries[slot.value].IsValid();
         }
     };
 }
