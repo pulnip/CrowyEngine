@@ -1,7 +1,7 @@
 #include <vector>
 #include <gtest/gtest.h>
 #include "Primitives.hpp"
-#include "TransformHierarchy.hpp"
+#include "TransformHierarchyInspect.hpp"
 
 using namespace Crowy;
 
@@ -25,9 +25,21 @@ class TransformHierarchyTest: public ::testing::Test{
 protected:
     TransformHierarchy hierarchy;
 
+    void TearDown() override{
+        Str error;
+        EXPECT_TRUE(CheckInvariants(hierarchy, &error)) << error;
+    }
+
+    void Commit(){
+        hierarchy.CommitStructuralChanges();
+
+        Str error;
+        ASSERT_TRUE(CheckInvariants(hierarchy, &error)) << error;
+    }
+
     TransformHandle commitedNode(const Transform& local = Transform::Identity()){
         auto handle = hierarchy.CreateNode(local);
-        hierarchy.CommitStructuralChanges();
+        Commit();
 
         return handle;
     }
@@ -40,7 +52,7 @@ TEST_F(TransformHierarchyTest, EmptyHierarchy){
 }
 
 TEST_F(TransformHierarchyTest, CommitOnEmptyHierarchy){
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_TRUE(hierarchy.IsEmpty());
     EXPECT_FALSE(hierarchy.HasPendingChanges());
@@ -89,7 +101,7 @@ TEST_F(TransformHierarchyTest, CreationIsDeferredButHandleIsValid){
     // the array has not moved yet
     EXPECT_TRUE(hierarchy.IsEmpty());
 
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_TRUE(hierarchy.IsValid(handle));
     EXPECT_FALSE(hierarchy.HasPendingChanges());
@@ -103,7 +115,7 @@ TEST_F(TransformHierarchyTest, LocalTransformWrittenBeforeCommitSurvivesIt){
     hierarchy.SetLocalTransform(handle, local);
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
@@ -116,7 +128,7 @@ TEST_F(TransformHierarchyTest, ChildAttachesToParent){
     EXPECT_FALSE(hierarchy.GetParent(child).IsValid());
     EXPECT_EQ(hierarchy.GetChildCount(parent), 0);
 
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.Size(), 2);
     EXPECT_EQ(hierarchy.GetParent(child), parent);
@@ -128,7 +140,7 @@ TEST_F(TransformHierarchyTest, ParentCreatedInTheSameCommit){
     auto parent = hierarchy.CreateNode();
     auto child = hierarchy.CreateNode(parent);
 
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.Size(), 2);
     EXPECT_EQ(hierarchy.GetParent(child), parent);
@@ -141,7 +153,7 @@ TEST_F(TransformHierarchyTest, SiblingsShareOneParent){
     auto second = hierarchy.CreateNode(parent);
     auto third = hierarchy.CreateNode(parent);
 
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.GetChildCount(parent), 3);
     EXPECT_EQ(hierarchy.GetParent(first), parent);
@@ -153,11 +165,11 @@ TEST_F(TransformHierarchyTest, ChildLandsBehindAnExistingDeepSubtree){
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     // root's subtree is 3 long now, so the newcomer has to clear all of it
     auto late = hierarchy.CreateNode(root);
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.Size(), 4);
     EXPECT_EQ(hierarchy.GetChildCount(root), 2);
@@ -175,7 +187,7 @@ TEST_F(TransformHierarchyTest, DeepChainKeepsEveryLink){
     for(usize i=1; i<DEPTH; ++i){
         chain.push_back(hierarchy.CreateNode(chain.back()));
     }
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.Size(), DEPTH);
     for(usize i=1; i<DEPTH; ++i){
@@ -192,7 +204,7 @@ TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut){
     EXPECT_FALSE(hierarchy.IsValid(handle));
     EXPECT_FALSE(hierarchy.HasPendingChanges());
 
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
@@ -201,7 +213,7 @@ TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     hierarchy.DestroyNode(leaf);
 
@@ -212,7 +224,7 @@ TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
 
     // the shrunk chain still accepts a newcomer at the right place
     auto late = hierarchy.CreateNode(root);
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.GetChildCount(root), 2);
     EXPECT_EQ(hierarchy.GetParent(late), root);
@@ -222,7 +234,7 @@ TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
     auto first = hierarchy.CreateNode(makeLocal(1.0f));
     auto second = hierarchy.CreateNode(makeLocal(2.0f));
     auto third = hierarchy.CreateNode(makeLocal(3.0f));
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     hierarchy.DestroyNode(second);
 
@@ -257,7 +269,7 @@ TEST_F(TransformHierarchyTest, SlotTableGrowthKeepsHandlesValid){
     for(usize i=0; i<COUNT; ++i){
         handles.push_back(hierarchy.CreateNode(makeLocal(static_cast<f32>(i))));
     }
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     EXPECT_EQ(hierarchy.Size(), COUNT);
     for(usize i=0; i<COUNT; ++i){
@@ -277,7 +289,7 @@ TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals){
     for(usize i=0; i<COUNT; ++i){
         handles.push_back(hierarchy.CreateNode(makeLocal(static_cast<f32>(i))));
     }
-    hierarchy.CommitStructuralChanges();
+    Commit();
 
     for(usize i=0; i<COUNT; ++i){
         hierarchy.DestroyNode(handles[i]);

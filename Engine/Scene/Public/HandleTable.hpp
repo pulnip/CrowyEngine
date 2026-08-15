@@ -85,28 +85,33 @@ namespace Crowy
             return entries[SlotOf(handle).value].index;
         }
         Index IndexOf(Slot slot) const noexcept{
-            CROWY_ASSERT(isLiving(slot));
+            CROWY_ASSERT(IsLiving(slot));
 
             return entries[slot.value].index;
         }
         usize GenerationOf(Slot slot) const noexcept{
-            CROWY_ASSERT(isLiving(slot));
+            CROWY_ASSERT(IsLiving(slot));
 
             return entries[slot.value].generation;
         }
 
         // Points an already living slot at another position.
         void Bind(Slot slot, Index index) noexcept{
-            CROWY_ASSERT(isLiving(slot));
+            CROWY_ASSERT(IsLiving(slot));
             CROWY_ASSERT(index.IsValid());
 
             entries[slot.value].index = index;
         }
 
         Handle HandleOf(Slot slot) const noexcept{
-            CROWY_ASSERT(isLiving(slot));
+            CROWY_ASSERT(IsLiving(slot));
 
             return Handle{slot.value, GenerationOf(slot)};
+        }
+
+        bool IsLiving(Slot slot) const noexcept{
+            return slot.value < entries.size() &&
+                entries[slot.value].IsValid();
         }
 
         // Every slot ever handed out, living or not.
@@ -131,11 +136,6 @@ namespace Crowy
             entries.emplace_back();
 
             return slot;
-        }
-
-        bool isLiving(Slot slot) const noexcept{
-            return slot.value < entries.size() &&
-                entries[slot.value].IsValid();
         }
     };
 }

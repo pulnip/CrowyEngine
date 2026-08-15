@@ -150,5 +150,7 @@ namespace Crowy
 
         // The only place allowed to write parentIndex
         void rebuildParentIndexes() noexcept;
+
+        friend class TransformHierarchyAttorney;
     };
 }
