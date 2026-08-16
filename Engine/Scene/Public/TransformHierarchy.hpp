@@ -21,9 +21,15 @@ namespace Crowy
     using TransformIndex = TransformNodeTable::Index;
 
     struct TransformNode{
+        // this node or an ancestor scales unevenly
+        static constexpr u32 NON_UNIFORM_IN_CHAIN = 1u << 0;
+        // already warned about, so the log stays readable
+        static constexpr u32 WARNED_NON_UNIFORM = 1u << 1;
+
         Transform local = Transform::Identity();
         // cache, refreshed by UpdateWorldTransforms
         Mat4 world = unitMat();
+        mutable u32 flags = 0;
 
         // reverse mapping
         TransformSlot slot = TransformSlot::Invalid();
@@ -49,6 +55,9 @@ namespace Crowy
     //   a handle is valid the moment CreateNode() returns,
     //   and its local transform reads and writes right away.
     // Everything else answers as of the last commit.
+    //
+    // Not thread safe, const methods included: the inverse cache and the warned
+    // flag are filled in on read.
     class TransformHierarchy{
     private:
         // A slot holding a handle to a node that is not in the array yet. Never a
@@ -74,6 +83,12 @@ namespace Crowy
         std::vector<PendingReparent> pendingReparents;
         std::unordered_map<TransformSlot, Transform> pendingLocals;
         std::unordered_set<TransformSlot> pendingDestroys;
+
+        // Kept out of TransformNode on purpose: another 64 bytes per node would
+        // slow the sequential pass in UpdateWorldTransforms down for the few nodes
+        // that ever get asked for an inverse.
+        mutable std::vector<Mat4> worldInverses;
+        mutable std::vector<u8> inverseValid;
 
     private:
         TransformIndex indexOf(TransformHandle handle) const noexcept{
@@ -168,6 +183,12 @@ namespace Crowy
         // cache alone
         Mat4 ComputeWorldMatrixNow(TransformHandle handle) const noexcept;
 
+        Vec3 GetWorldPosition(TransformHandle handle) const noexcept;
+        // Warns once per node when the chain scales unevenly, since the rotation
+        // it hands back is an approximation there
+        Vec4 GetWorldRotation(TransformHandle handle) const noexcept;
+        const Mat4& GetWorldInverse(TransformHandle handle) const noexcept;
+
         // committed nodes only
         usize Size() const noexcept{
             return nodes.size();
@@ -195,6 +216,9 @@ namespace Crowy
 
         // The only place allowed to write parentIndex
         void rebuildParentIndexes() noexcept;
+
+        void invalidateInverses() const noexcept;
+        void warnOnNonUniformChain(const TransformNode& node) const;
 
         friend class TransformHierarchyAttorney;
     };

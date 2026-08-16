@@ -1,10 +1,33 @@
 #include <algorithm>
+#include <cmath>
 #include <utility>
 #include "TransformHierarchy.hpp"
 #include "Assert.hpp"
+#include "LogLocal.hpp"
 
 namespace Crowy
 {
+    namespace{
+        // f32 carries about 7 digits, and a scale that came back from a matrix
+        // decomposition drifts a few of the last ones. Relative to the largest
+        // component, so a large uniform scale is not reported either.
+        constexpr f32 SCALE_EPSILON = 1e-5f;
+
+        bool isUniform(Vec3 scale) noexcept{
+            auto largest = std::max({
+                std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)
+            });
+            auto tolerance = SCALE_EPSILON * std::max(largest, 1.0f);
+
+            return std::abs(scale.x - scale.y) <= tolerance &&
+                std::abs(scale.y - scale.z) <= tolerance;
+        }
+
+        void setFlag(u32& flags, u32 bit, bool on) noexcept{
+            flags = on ? (flags | bit) : (flags & ~bit);
+        }
+    }
+
     void TransformHierarchy::rebindFrom(TransformIndex from) noexcept{
         for(usize i=from.value; i<nodes.size(); ++i){
             slots.Bind(nodes[i].slot, TransformIndex{i});
@@ -319,6 +342,8 @@ namespace Crowy
         commitReparents();
 
         rebuildParentIndexes();
+        // positions moved, so a cached inverse would answer for another node now
+        invalidateInverses();
     }
 
     void TransformHierarchy::UpdateWorldTransforms() noexcept{
@@ -329,10 +354,22 @@ namespace Crowy
         for(auto& node: nodes){
             // I1 puts every parent in front, so its world is already this frame's
             auto local = modelMat(node.local);
+            auto inherited = !node.IsRoot() &&
+                (nodes[node.parentIndex.value].flags &
+                    TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
+
             node.world = node.IsRoot() ?
                 local :
                 nodes[node.parentIndex.value].world * local;
+
+            setFlag(
+                node.flags,
+                TransformNode::NON_UNIFORM_IN_CHAIN,
+                inherited || !isUniform(node.local.scale)
+            );
         }
+
+        invalidateInverses();
     }
 
     Mat4 TransformHierarchy::ComputeWorldMatrixNow(
@@ -348,6 +385,61 @@ namespace Crowy
         }
 
         return world;
+    }
+
+    void TransformHierarchy::invalidateInverses() const noexcept{
+        worldInverses.resize(nodes.size());
+        inverseValid.assign(nodes.size(), 0);
+    }
+
+    void TransformHierarchy::warnOnNonUniformChain(const TransformNode& node) const{
+        auto chainIsUneven = (node.flags & TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
+        auto alreadyWarned = (node.flags & TransformNode::WARNED_NON_UNIFORM) != 0;
+        if(!chainIsUneven || alreadyWarned){
+            return;
+        }
+
+        node.flags |= TransformNode::WARNED_NON_UNIFORM;
+        LOG_WARN(
+            "GetWorldRotation: non-uniform scale in the chain of slot {}, "
+            "the rotation is an approximation",
+            node.slot.value
+        );
+    }
+
+    Vec3 TransformHierarchy::GetWorldPosition(
+        TransformHandle handle
+    ) const noexcept{
+        return static_cast<Vec3>(nodeOf(handle).world[3]);
+    }
+
+    Vec4 TransformHierarchy::GetWorldRotation(
+        TransformHandle handle
+    ) const noexcept{
+        const auto& node = nodeOf(handle);
+        warnOnNonUniformChain(node);
+
+        // the basis carries the scale, so it has to come off before the quaternion
+        return quat(
+            normalize(static_cast<Vec3>(node.world[0])),
+            normalize(static_cast<Vec3>(node.world[1])),
+            normalize(static_cast<Vec3>(node.world[2]))
+        );
+    }
+
+    const Mat4& TransformHierarchy::GetWorldInverse(
+        TransformHandle handle
+    ) const noexcept{
+        auto index = indexOf(handle);
+        CROWY_ASSERT(index != PENDING_INDEX);
+        CROWY_ASSERT(index.value < inverseValid.size());
+
+        if(!inverseValid[index.value]){
+            worldInverses[index.value] = inverseAffine(nodes[index.value].world);
+            inverseValid[index.value] = 1;
+        }
+
+        return worldInverses[index.value];
     }
 
     TransformHandle TransformHierarchy::GetParent(
