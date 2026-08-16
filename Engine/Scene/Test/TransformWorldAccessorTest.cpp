@@ -133,22 +133,51 @@ TEST_F(WorldAccessorTest, ChainClearsWhenTheParentTurnsEvenAgain){
     EXPECT_TRUE(hierarchy.IsValid(child));
 }
 
-TEST_F(WorldAccessorTest, RotationWarnsOnceAndOnlyForTheUnevenNode){
-    auto root = Create(scaled(Vec3{1.0f, 2.0f, 1.0f}));
-    auto even = Create(Transform::Identity());
+TEST_F(WorldAccessorTest, UpdateWarnsOnceAndOnlyForTheUnevenNode){
+    Create(scaled(Vec3{1.0f, 2.0f, 1.0f}));
+    Create(Transform::Identity());
+
+    // nobody asked for a rotation, the scene itself is what is being reported
     hierarchy.UpdateWorldTransforms();
 
-    ASSERT_FALSE(HasWarned(FlagsAt(0)));
-
-    hierarchy.GetWorldRotation(root);
     EXPECT_TRUE(HasWarned(FlagsAt(0)));
-
-    // the bit is what keeps a second call from logging again
-    hierarchy.GetWorldRotation(root);
-    EXPECT_TRUE(HasWarned(FlagsAt(0)));
-
-    hierarchy.GetWorldRotation(even);
     EXPECT_FALSE(HasWarned(FlagsAt(1)));
+
+    // the bit is what keeps the next frame from logging again
+    hierarchy.UpdateWorldTransforms();
+    EXPECT_TRUE(HasWarned(FlagsAt(0)));
+    EXPECT_FALSE(HasWarned(FlagsAt(1)));
+}
+
+TEST_F(WorldAccessorTest, RotationSurvivesAZeroScale){
+    constexpr f32 QUARTER = std::numbers::pi_v<f32> / 2;
+
+    auto local = rotationZ(QUARTER);
+    local.scale = zeros();
+    auto hidden = Create(local);
+    auto child = Create(hidden, rotationZ(QUARTER));
+
+    hierarchy.UpdateWorldTransforms();
+
+    // reading the rotation back out of the basis would divide by zero here
+    auto rotation = hierarchy.GetWorldRotation(child);
+    auto expected = Vec4{0.0f, 0.0f, std::sin(QUARTER), std::cos(QUARTER)};
+    EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
+}
+
+TEST_F(WorldAccessorTest, RotationSurvivesAMirroringScale){
+    constexpr f32 QUARTER = std::numbers::pi_v<f32> / 2;
+
+    auto local = rotationZ(QUARTER);
+    local.scale = Vec3{-1.0f, 1.0f, 1.0f};
+    auto mirrored = Create(local);
+
+    hierarchy.UpdateWorldTransforms();
+
+    // the mirror stays in the scale, it does not leak into the rotation
+    auto rotation = hierarchy.GetWorldRotation(mirrored);
+    auto expected = Vec4{0.0f, 0.0f, std::sin(QUARTER/2), std::cos(QUARTER/2)};
+    EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
 }
 
 TEST_F(WorldAccessorTest, InverseUndoesTheWorldMatrix){

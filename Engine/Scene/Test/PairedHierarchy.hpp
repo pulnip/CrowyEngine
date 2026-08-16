@@ -4,6 +4,7 @@
 // against each other.
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <unordered_map>
 #include <vector>
@@ -129,6 +130,14 @@ namespace Crowy
                     pair.node->world,
                     pair.node
                 );
+                // a quaternion and its negation are the same rotation
+                EXPECT_NEAR(
+                    std::abs(dot(
+                        real.GetWorldRotation(pair.handle),
+                        pair.node->worldRotation
+                    )),
+                    1.0f, EPSILON
+                ) << "node " << pair.node;
             }
         }
 

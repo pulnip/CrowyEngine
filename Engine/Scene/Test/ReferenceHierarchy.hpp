@@ -2,7 +2,6 @@
 
 // Test only. Speed does not matter here, being obviously right does.
 
-#include <algorithm>
 #include <memory>
 #include <vector>
 #include "Assert.hpp"
@@ -14,6 +13,7 @@ namespace Crowy
     struct RefNode{
         Transform local = Transform::Identity();
         Mat4 world = unitMat();
+        Vec4 worldRotation = unitQuat();
         RefNode* parent = nullptr;
         std::vector<RefNode*> children;
     };
@@ -66,7 +66,7 @@ namespace Crowy
         void UpdateWorldTransforms(){
             for(auto& held: owned){
                 if(!held->parent){
-                    update(held.get(), unitMat());
+                    update(held.get(), unitMat(), unitQuat());
                 }
             }
         }
@@ -76,11 +76,12 @@ namespace Crowy
         }
 
     private:
-        void update(RefNode* node, const Mat4& parentWorld){
+        void update(RefNode* node, const Mat4& parentWorld, Vec4 parentRotation){
             node->world = parentWorld * modelMat(node->local);
+            node->worldRotation = quat(parentRotation, node->local.rotation);
 
             for(auto* child: node->children){
-                update(child, node->world);
+                update(child, node->world, node->worldRotation);
             }
         }
     };

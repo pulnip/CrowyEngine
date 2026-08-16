@@ -27,9 +27,12 @@ namespace Crowy
         static constexpr u32 WARNED_NON_UNIFORM = 1u << 1;
 
         Transform local = Transform::Identity();
-        // cache, refreshed by UpdateWorldTransforms
+        // caches, refreshed by UpdateWorldTransforms
         Mat4 world = unitMat();
-        mutable u32 flags = 0;
+        // composed along the chain instead of read back out of world, which would
+        // divide by a zero scale and read a mirrored basis as a rotation
+        Vec4 worldRotation = unitQuat();
+        u32 flags = 0;
 
         // reverse mapping
         TransformSlot slot = TransformSlot::Invalid();
@@ -174,7 +177,7 @@ namespace Crowy
         }
 
         // world transform
-        void UpdateWorldTransforms() noexcept;
+        void UpdateWorldTransforms();
 
         const Mat4& GetWorldMatrix(TransformHandle handle) const noexcept{
             return nodeOf(handle).world;
@@ -183,10 +186,15 @@ namespace Crowy
         // cache alone
         Mat4 ComputeWorldMatrixNow(TransformHandle handle) const noexcept;
 
-        Vec3 GetWorldPosition(TransformHandle handle) const noexcept;
-        // Warns once per node when the chain scales unevenly, since the rotation
-        // it hands back is an approximation there
-        Vec4 GetWorldRotation(TransformHandle handle) const noexcept;
+        Vec3 GetWorldPosition(TransformHandle handle) const noexcept{
+            return static_cast<Vec3>(nodeOf(handle).world[3]);
+        }
+        // The rotation of the TRS chain. Where the chain scales unevenly this is
+        // no longer the rotation of GetWorldMatrix, which carries shear as well;
+        // UpdateWorldTransforms warns about those nodes once.
+        Vec4 GetWorldRotation(TransformHandle handle) const noexcept{
+            return nodeOf(handle).worldRotation;
+        }
         const Mat4& GetWorldInverse(TransformHandle handle) const noexcept;
 
         // committed nodes only
@@ -218,7 +226,7 @@ namespace Crowy
         void rebuildParentIndexes() noexcept;
 
         void invalidateInverses() const noexcept;
-        void warnOnNonUniformChain(const TransformNode& node) const;
+        static void warnOnNonUniformChain(TransformNode& node);
 
         friend class TransformHierarchyAttorney;
     };

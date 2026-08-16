@@ -9,7 +9,7 @@ namespace{
     Transform makeLocal(f32 seed){
         return Transform{
             .position = Vec3{seed, seed + 1.0f, seed + 2.0f},
-            .rotation = Vec4{0.0f, 0.0f, 0.0f, 1.0f},
+            .rotation = unitQuat(),
             .scale = Vec3{seed + 3.0f, seed + 4.0f, seed + 5.0f}
         };
     }

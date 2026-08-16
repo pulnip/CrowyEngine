@@ -28,6 +28,21 @@ namespace Crowy
         }
     }
 
+    void TransformHierarchy::warnOnNonUniformChain(TransformNode& node){
+        auto chainIsUneven = (node.flags & TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
+        auto alreadyWarned = (node.flags & TransformNode::WARNED_NON_UNIFORM) != 0;
+        if(!chainIsUneven || alreadyWarned){
+            return;
+        }
+
+        node.flags |= TransformNode::WARNED_NON_UNIFORM;
+        LOG_WARN(
+            "slot {} scales unevenly somewhere in its chain, so its world matrix "
+            "carries shear that the position and rotation accessors cannot show",
+            node.slot.value
+        );
+    }
+
     void TransformHierarchy::rebindFrom(TransformIndex from) noexcept{
         for(usize i=from.value; i<nodes.size(); ++i){
             slots.Bind(nodes[i].slot, TransformIndex{i});
@@ -346,27 +361,34 @@ namespace Crowy
         invalidateInverses();
     }
 
-    void TransformHierarchy::UpdateWorldTransforms() noexcept{
+    void TransformHierarchy::UpdateWorldTransforms(){
         // Parallel note: root subtrees are independent of each other, and by I2
         // each one is a contiguous range, so a fork-join over roots parallelizes
         // as is. One thread is enough for now, so it stays a plain loop.
         // (Commit is a different story: it memmoves and its phases are ordered.)
         for(auto& node: nodes){
             // I1 puts every parent in front, so its world is already this frame's
-            auto local = modelMat(node.local);
-            auto inherited = !node.IsRoot() &&
+            const auto local = modelMat(node.local);
+            const auto inherited = !node.IsRoot() &&
                 (nodes[node.parentIndex.value].flags &
                     TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
 
-            node.world = node.IsRoot() ?
-                local :
-                nodes[node.parentIndex.value].world * local;
+            if(node.IsRoot()){
+                node.world = local;
+                node.worldRotation = node.local.rotation;
+            }
+            else{
+                const auto& parent = nodes[node.parentIndex.value];
+                node.world = parent.world * local;
+                node.worldRotation = quat(parent.worldRotation, node.local.rotation);
+            }
 
             setFlag(
                 node.flags,
                 TransformNode::NON_UNIFORM_IN_CHAIN,
                 inherited || !isUniform(node.local.scale)
             );
+            warnOnNonUniformChain(node);
         }
 
         invalidateInverses();
@@ -390,41 +412,6 @@ namespace Crowy
     void TransformHierarchy::invalidateInverses() const noexcept{
         worldInverses.resize(nodes.size());
         inverseValid.assign(nodes.size(), 0);
-    }
-
-    void TransformHierarchy::warnOnNonUniformChain(const TransformNode& node) const{
-        auto chainIsUneven = (node.flags & TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
-        auto alreadyWarned = (node.flags & TransformNode::WARNED_NON_UNIFORM) != 0;
-        if(!chainIsUneven || alreadyWarned){
-            return;
-        }
-
-        node.flags |= TransformNode::WARNED_NON_UNIFORM;
-        LOG_WARN(
-            "GetWorldRotation: non-uniform scale in the chain of slot {}, "
-            "the rotation is an approximation",
-            node.slot.value
-        );
-    }
-
-    Vec3 TransformHierarchy::GetWorldPosition(
-        TransformHandle handle
-    ) const noexcept{
-        return static_cast<Vec3>(nodeOf(handle).world[3]);
-    }
-
-    Vec4 TransformHierarchy::GetWorldRotation(
-        TransformHandle handle
-    ) const noexcept{
-        const auto& node = nodeOf(handle);
-        warnOnNonUniformChain(node);
-
-        // the basis carries the scale, so it has to come off before the quaternion
-        return quat(
-            normalize(static_cast<Vec3>(node.world[0])),
-            normalize(static_cast<Vec3>(node.world[1])),
-            normalize(static_cast<Vec3>(node.world[2]))
-        );
     }
 
     const Mat4& TransformHierarchy::GetWorldInverse(
