@@ -334,6 +334,120 @@ TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
     EXPECT_EQ(hierarchy.GetParent(late), root);
 }
 
+TEST_F(TransformHierarchyTest, DestroySubtreeTakesEveryDescendant){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    auto leaf = hierarchy.CreateNode(branch);
+    auto tail = hierarchy.CreateNode(root);
+    Commit();
+
+    std::vector<TransformHandle> destroyed;
+    hierarchy.DestroySubtree(branch, destroyed);
+
+    // the caller never named leaf, so it has to be told
+    EXPECT_EQ(destroyed.size(), 2);
+    EXPECT_FALSE(hierarchy.IsValid(branch));
+    EXPECT_FALSE(hierarchy.IsValid(leaf));
+    EXPECT_TRUE(hierarchy.IsValid(tail));
+
+    Commit();
+
+    EXPECT_EQ(hierarchy.Size(), 2);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 1);
+    EXPECT_EQ(hierarchy.GetParent(tail), root);
+}
+
+TEST_F(TransformHierarchyTest, DestroySubtreeReportsInPreorder){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    auto leaf = hierarchy.CreateNode(branch);
+    Commit();
+
+    std::vector<TransformHandle> destroyed;
+    hierarchy.DestroySubtree(root, destroyed);
+
+    EXPECT_EQ(destroyed, (std::vector{root, branch, leaf}));
+
+    Commit();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+}
+
+TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode){
+    auto fresh = hierarchy.CreateNode();
+
+    std::vector<TransformHandle> destroyed;
+    hierarchy.DestroySubtree(fresh, destroyed);
+
+    EXPECT_EQ(destroyed, (std::vector{fresh}));
+    EXPECT_FALSE(hierarchy.IsValid(fresh));
+    EXPECT_FALSE(hierarchy.HasPendingChanges());
+
+    Commit();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+}
+
+// found by the seeded fuzz: an uncommitted child of a doomed node would have been
+// left behind, pointing at a parent that no longer exists
+TEST_F(TransformHierarchyTest, DestroySubtreeTakesUncommittedChildrenToo){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    Commit();
+
+    auto fresh = hierarchy.CreateNode(branch);
+    auto freshChild = hierarchy.CreateNode(fresh);
+
+    std::vector<TransformHandle> destroyed;
+    hierarchy.DestroySubtree(branch, destroyed);
+
+    EXPECT_EQ(destroyed.size(), 3);
+    EXPECT_FALSE(hierarchy.IsValid(fresh));
+    EXPECT_FALSE(hierarchy.IsValid(freshChild));
+
+    Commit();
+
+    EXPECT_EQ(hierarchy.Size(), 1);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 0);
+}
+
+TEST_F(TransformHierarchyTest, DestroySubtreeOfAnUncommittedParent){
+    auto parent = hierarchy.CreateNode();
+    auto child = hierarchy.CreateNode(parent);
+
+    std::vector<TransformHandle> destroyed;
+    hierarchy.DestroySubtree(parent, destroyed);
+
+    EXPECT_EQ(destroyed.size(), 2);
+    EXPECT_FALSE(hierarchy.IsValid(parent));
+    EXPECT_FALSE(hierarchy.IsValid(child));
+
+    Commit();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+}
+
+TEST_F(TransformHierarchyTest, DestroyingAnAlreadyDeadHandleIsIgnored){
+    auto root = hierarchy.CreateNode();
+    auto leaf = hierarchy.CreateNode(root);
+    Commit();
+
+    std::vector<TransformHandle> destroyed;
+    hierarchy.DestroySubtree(root, destroyed);
+
+    // a caller sweeping its own list may name the same node again
+    hierarchy.DestroyNode(leaf);
+    hierarchy.DestroyNode(root);
+    hierarchy.DestroySubtree(root, destroyed);
+    hierarchy.DestroyNode(TransformHandle::InvalidHandle());
+
+    EXPECT_EQ(destroyed.size(), 2);
+
+    Commit();
+
+    EXPECT_TRUE(hierarchy.IsEmpty());
+}
+
 TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
     auto first = hierarchy.CreateNode(makeLocal(1.0f));
     auto second = hierarchy.CreateNode(makeLocal(2.0f));

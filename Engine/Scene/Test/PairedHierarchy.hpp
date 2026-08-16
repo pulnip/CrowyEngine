@@ -66,6 +66,33 @@ namespace Crowy
             pair.node = nullptr;
         }
 
+        void DestroySubtree(usize index){
+            auto victims = SubtreeOf(index);
+
+            std::vector<TransformHandle> destroyed;
+            real.DestroySubtree(pairs[index].handle, destroyed);
+            EXPECT_EQ(destroyed.size(), victims.size());
+
+            // leaf first, which is all the reference will accept
+            for(auto victim=victims.rbegin(); victim!=victims.rend(); ++victim){
+                auto& pair = pairs[*victim];
+
+                reference.DestroyNode(pair.node);
+                indexOfNode.erase(pair.node);
+                std::erase(living, *victim);
+                pair.alive = false;
+                pair.node = nullptr;
+            }
+        }
+
+        // preorder, so reversing it gives a leaf first order
+        std::vector<usize> SubtreeOf(usize index) const{
+            std::vector<usize> subtree;
+            collectSubtree(pairs[index].node, subtree);
+
+            return subtree;
+        }
+
         void SetParent(usize index, usize parent){
             real.SetParent(
                 pairs[index].handle,
@@ -176,6 +203,14 @@ namespace Crowy
         }
 
     private:
+        void collectSubtree(const RefNode* node, std::vector<usize>& out) const{
+            out.push_back(indexOfNode.at(node));
+
+            for(const auto* child: node->children){
+                collectSubtree(child, out);
+            }
+        }
+
         TransformHandle handleOf(const RefNode* node) const noexcept{
             auto found = indexOfNode.find(node);
 

@@ -107,6 +107,20 @@ TEST_F(ReparentTest, PromoteToRoot){
     EXPECT_EQ(hierarchy.GetChildCount(branch), 1);
 }
 
+TEST_F(ReparentTest, PromoteToRootSaysWhatSetParentMeant){
+    auto root = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode(root);
+    auto leaf = hierarchy.CreateNode(branch);
+    Commit();
+
+    hierarchy.PromoteToRoot(branch);
+    Commit();
+
+    EXPECT_FALSE(hierarchy.GetParent(branch).IsValid());
+    EXPECT_EQ(hierarchy.GetParent(leaf), branch);
+    EXPECT_EQ(hierarchy.GetChildCount(root), 0);
+}
+
 TEST_F(ReparentTest, RootBecomesAChild){
     auto host = hierarchy.CreateNode();
     auto guest = hierarchy.CreateNode();

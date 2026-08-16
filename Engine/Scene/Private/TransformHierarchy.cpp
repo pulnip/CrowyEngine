@@ -164,10 +164,9 @@ namespace Crowy
         return handle;
     }
 
-    void TransformHierarchy::DestroyNode(TransformHandle handle){
-        auto index = indexOf(handle);
-        auto slot = TransformNodeTable::SlotOf(handle);
-
+    void TransformHierarchy::scheduleDestroy(
+        TransformIndex index, TransformSlot slot
+    ){
         CROWY_ASSERT(
             std::ranges::none_of(
                 pendingCreates,
@@ -188,26 +187,110 @@ namespace Crowy
         );
 
         if(index == PENDING_INDEX){
-            // the node never reached the array, so create and destroy cancel out
-            std::erase_if(
-                pendingCreates,
-                [slot](const PendingCreate& create){
-                    return create.slot == slot;
-                }
-            );
-            pendingLocals.erase(slot);
-            slots.Release(handle);
+            cancelPendingCreate(slot);
 
             return;
         }
 
+        pendingDestroys.insert(slot);
+    }
+
+    void TransformHierarchy::cancelPendingCreate(TransformSlot slot){
+        // the node never reached the array, so create and destroy cancel out
+        std::erase_if(
+            pendingCreates,
+            [slot](const PendingCreate& create){
+                return create.slot == slot;
+            }
+        );
+        pendingLocals.erase(slot);
+        slots.Release(slots.HandleOf(slot));
+    }
+
+    void TransformHierarchy::cancelPendingCreatesUnder(
+        std::unordered_set<TransformSlot>& doomed,
+        std::vector<TransformHandle>& outCancelled
+    ){
+        // a cancelled node may itself be the parent of another uncommitted one
+        for(bool spreading=true; spreading; ){
+            spreading = false;
+
+            std::vector<TransformSlot> orphans;
+            for(const auto& create: pendingCreates){
+                if(create.parentSlot.IsValid() && doomed.contains(create.parentSlot)){
+                    orphans.push_back(create.slot);
+                }
+            }
+
+            for(auto slot: orphans){
+                doomed.insert(slot);
+                outCancelled.push_back(slots.HandleOf(slot));
+                cancelPendingCreate(slot);
+                spreading = true;
+            }
+        }
+    }
+
+    void TransformHierarchy::DestroyNode(TransformHandle handle){
+        // a subtree sweep can name the same node twice, and the second time is
+        // nothing to complain about
+        if(!IsValid(handle)){
+            return;
+        }
+
+        auto index = indexOf(handle);
         CROWY_ASSERT(
-            everyDescendantIsDestroyed(index),
+            index == PENDING_INDEX || everyDescendantIsDestroyed(index),
             "DestroyNode: node (slot {}) still has a living descendant",
-            slot.value
+            TransformNodeTable::SlotOf(handle).value
         );
 
-        pendingDestroys.insert(slot);
+        scheduleDestroy(index, TransformNodeTable::SlotOf(handle));
+    }
+
+    void TransformHierarchy::DestroySubtree(
+        TransformHandle handle, std::vector<TransformHandle>& outDestroyed
+    ){
+        if(!IsValid(handle)){
+            return;
+        }
+
+        auto index = indexOf(handle);
+
+        // I2 makes the whole subtree one range, so no descendant guard is needed
+        std::unordered_set<TransformSlot> doomed;
+        std::vector<TransformSlot> committed;
+        if(index == PENDING_INDEX){
+            doomed.insert(TransformNodeTable::SlotOf(handle));
+        }
+        else{
+            auto end = index.value + nodes[index.value].subtreeSize;
+            for(usize i=index.value; i<end; ++i){
+                auto slot = nodes[i].slot;
+                if(pendingDestroys.contains(slot)){
+                    continue;
+                }
+
+                doomed.insert(slot);
+                committed.push_back(slot);
+            }
+        }
+
+        // uncommitted nodes parented into the subtree go down with it, and they
+        // have to leave before the array nodes, which assert on a pending child
+        std::vector<TransformHandle> cancelled;
+        cancelPendingCreatesUnder(doomed, cancelled);
+
+        for(auto slot: committed){
+            outDestroyed.push_back(slots.HandleOf(slot));
+            scheduleDestroy(slots.IndexOf(slot), slot);
+        }
+        if(index == PENDING_INDEX){
+            outDestroyed.push_back(handle);
+            cancelPendingCreate(TransformNodeTable::SlotOf(handle));
+        }
+
+        outDestroyed.insert(outDestroyed.end(), cancelled.begin(), cancelled.end());
     }
 
     void TransformHierarchy::SetParent(

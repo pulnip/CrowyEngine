@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <format>
 #include <random>
 #include <unordered_set>
@@ -87,8 +88,11 @@ namespace{
             else if(weight < 75){
                 setParent(living);
             }
-            else if(weight < 90){
+            else if(weight < 85){
                 destroy(living);
+            }
+            else if(weight < 90){
+                destroySubtree(living);
             }
             else{
                 commit();
@@ -153,6 +157,27 @@ namespace{
 
                 paired.Destroy(index);
                 log.push_back(std::format("destroy({})", index));
+
+                return;
+            }
+        }
+
+        void destroySubtree(const std::vector<usize>& living){
+            for(usize attempt=0; attempt<8; ++attempt){
+                auto index = living[roll(living.size())];
+                auto subtree = paired.SubtreeOf(index);
+
+                auto held = std::ranges::any_of(subtree, [this](usize member){
+                    return pinned.contains(member);
+                });
+                if(held){
+                    continue;
+                }
+
+                paired.DestroySubtree(index);
+                log.push_back(std::format(
+                    "destroySubtree({}) of {}", index, subtree.size()
+                ));
 
                 return;
             }

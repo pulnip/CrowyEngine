@@ -59,8 +59,7 @@ namespace Crowy
     //   and its local transform reads and writes right away.
     // Everything else answers as of the last commit.
     //
-    // Not thread safe, const methods included: the inverse cache and the warned
-    // flag are filled in on read.
+    // Not thread safe, const methods included: the inverse cache is filled in on read.
     class TransformHierarchy{
     private:
         // A slot holding a handle to a node that is not in the array yet. Never a
@@ -125,12 +124,23 @@ namespace Crowy
             const Transform& local = Transform::Identity()
         );
         // Asserts unless every descendant is already destroyed, so a whole subtree
-        // has to go leaf first. No handle but the given one is ever invalidated.
+        // has to go leaf first. No handle but the given one is invalidated, and an
+        // already invalid one is ignored.
         void DestroyNode(TransformHandle handle);
+        // Notice! This invalidates handles the caller never named. Every one of
+        // them lands in outDestroyed, and the caller is expected to reconcile
+        // whatever it maps them from.
+        void DestroySubtree(
+            TransformHandle handle,
+            std::vector<TransformHandle>& outDestroyed
+        );
 
         // An invalid parent promotes to root. Asserts on a parent that sits inside
         // the moved subtree.
         void SetParent(TransformHandle handle, TransformHandle newParent);
+        void PromoteToRoot(TransformHandle handle){
+            SetParent(handle, TransformHandle::InvalidHandle());
+        }
 
         void CommitStructuralChanges();
         bool HasPendingChanges() const noexcept{
@@ -226,6 +236,12 @@ namespace Crowy
         void rebuildParentIndexes() noexcept;
 
         void invalidateInverses() const noexcept;
+        void scheduleDestroy(TransformIndex index, TransformSlot slot);
+        void cancelPendingCreate(TransformSlot slot);
+        void cancelPendingCreatesUnder(
+            std::unordered_set<TransformSlot>& doomed,
+            std::vector<TransformHandle>& outCancelled
+        );
         static void warnOnNonUniformChain(TransformNode& node);
 
         friend class TransformHierarchyAttorney;
