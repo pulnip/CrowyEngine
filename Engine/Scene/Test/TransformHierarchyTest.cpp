@@ -161,6 +161,22 @@ TEST_F(TransformHierarchyTest, SiblingsShareOneParent){
     EXPECT_EQ(hierarchy.GetParent(third), parent);
 }
 
+// world transforms cannot see sibling order, so the array itself has to say it
+TEST_F(TransformHierarchyTest, SiblingsKeepCreationOrderInTheArray){
+    auto parent = hierarchy.CreateNode();
+    auto first = hierarchy.CreateNode(parent);
+    auto second = hierarchy.CreateNode(parent);
+    auto third = hierarchy.CreateNode(parent);
+    Commit();
+
+    auto nodes = MakeView(hierarchy).nodes;
+    ASSERT_EQ(nodes.size(), 4);
+    EXPECT_EQ(nodes[0].slot, TransformNodeTable::SlotOf(parent));
+    EXPECT_EQ(nodes[1].slot, TransformNodeTable::SlotOf(first));
+    EXPECT_EQ(nodes[2].slot, TransformNodeTable::SlotOf(second));
+    EXPECT_EQ(nodes[3].slot, TransformNodeTable::SlotOf(third));
+}
+
 TEST_F(TransformHierarchyTest, ChildLandsBehindAnExistingDeepSubtree){
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);

@@ -1,0 +1,73 @@
+#pragma once
+
+// Test only. Speed does not matter here, being obviously right does.
+
+#include <algorithm>
+#include <memory>
+#include <vector>
+#include "Assert.hpp"
+#include "LinearAlgebra.hpp"
+#include "Primitives.hpp"
+
+namespace Crowy
+{
+    struct RefNode{
+        Transform local = Transform::Identity();
+        Mat4 world = unitMat();
+        RefNode* parent = nullptr;
+        std::vector<RefNode*> children;
+    };
+
+    class ReferenceHierarchy{
+    private:
+        std::vector<std::unique_ptr<RefNode>> owned;
+
+    public:
+        RefNode* CreateNode(RefNode* parent, const Transform& local){
+            auto held = std::make_unique<RefNode>(RefNode{
+                .local = local,
+                .parent = parent
+            });
+            auto* node = held.get();
+            owned.push_back(std::move(held));
+
+            if(parent){
+                parent->children.push_back(node);
+            }
+
+            return node;
+        }
+
+        void DestroyNode(RefNode* node){
+            CROWY_ASSERT(node->children.empty());
+
+            if(node->parent){
+                std::erase(node->parent->children, node);
+            }
+            std::erase_if(owned, [node](const auto& held){
+                return held.get() == node;
+            });
+        }
+
+        void UpdateWorldTransforms(){
+            for(auto& held: owned){
+                if(!held->parent){
+                    update(held.get(), unitMat());
+                }
+            }
+        }
+
+        usize Size() const noexcept{
+            return owned.size();
+        }
+
+    private:
+        void update(RefNode* node, const Mat4& parentWorld){
+            node->world = parentWorld * modelMat(node->local);
+
+            for(auto* child: node->children){
+                update(child, node->world);
+            }
+        }
+    };
+}
