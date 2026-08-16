@@ -235,6 +235,29 @@ namespace Crowy
         };
     }
 
+    // inverse for Mat4 with scale, but no projection (last row is 0 0 0 1)
+    inline constexpr Mat4 inverseAffine(const Mat4 mat) noexcept{
+        // basis vector
+        const auto x = static_cast<Vec3>(mat[0]);
+        const auto y = static_cast<Vec3>(mat[1]);
+        const auto z = static_cast<Vec3>(mat[2]);
+        // translation
+        const auto t = static_cast<Vec3>(mat[3]);
+
+        // rows of the inverted basis, adjugate over determinant
+        const auto invDet = 1.0f / dot(x, cross(y, z));
+        const auto r0 = cross(y, z) * invDet;
+        const auto r1 = cross(z, x) * invDet;
+        const auto r2 = cross(x, y) * invDet;
+
+        return Mat4{
+            Vec4{r0.x, r1.x, r2.x, 0.0f},
+            Vec4{r0.y, r1.y, r2.y, 0.0f},
+            Vec4{r0.z, r1.z, r2.z, 0.0f},
+            Vec4{-dot(r0, t), -dot(r1, t), -dot(r2, t), 1.0f}
+        };
+    }
+
     // expected multiplication form
     inline constexpr Vec4 operator*(const Mat4& lhs, const Vec4& rhs) noexcept{
         return lhs[0]*rhs.x + lhs[1]*rhs.y + lhs[2]*rhs.z + lhs[3]*rhs.w;
