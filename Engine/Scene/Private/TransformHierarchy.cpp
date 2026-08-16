@@ -187,6 +187,35 @@ namespace Crowy
         rebuildParentIndexes();
     }
 
+    void TransformHierarchy::UpdateWorldTransforms() noexcept{
+        // Parallel note: root subtrees are independent of each other, and by I2
+        // each one is a contiguous range, so a fork-join over roots parallelizes
+        // as is. One thread is enough for now, so it stays a plain loop.
+        // (Commit is a different story: it memmoves and its phases are ordered.)
+        for(auto& node: nodes){
+            // I1 puts every parent in front, so its world is already this frame's
+            auto local = modelMat(node.local);
+            node.world = node.IsRoot() ?
+                local :
+                nodes[node.parentIndex.value].world * local;
+        }
+    }
+
+    Mat4 TransformHierarchy::ComputeWorldMatrixNow(
+        TransformHandle handle
+    ) const noexcept{
+        const auto& node = nodeOf(handle);
+        auto world = modelMat(node.local);
+
+        for(auto index=node.parentIndex; index.IsValid(); ){
+            const auto& ancestor = nodes[index.value];
+            world = modelMat(ancestor.local) * world;
+            index = ancestor.parentIndex;
+        }
+
+        return world;
+    }
+
     TransformHandle TransformHierarchy::GetParent(
         TransformHandle handle
     ) const noexcept{

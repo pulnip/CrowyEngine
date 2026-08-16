@@ -5,6 +5,7 @@
 #include <vector>
 #include "Assert.hpp"
 #include "GenericHandle.hpp"
+#include "LinearAlgebra.hpp"
 #include "HandleTable.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
@@ -21,6 +22,8 @@ namespace Crowy
 
     struct TransformNode{
         Transform local = Transform::Identity();
+        // cache, refreshed by UpdateWorldTransforms
+        Mat4 world = unitMat();
 
         // reverse mapping
         TransformSlot slot = TransformSlot::Invalid();
@@ -141,6 +144,16 @@ namespace Crowy
         void SetLocalScale(TransformHandle handle, const Vec3& scale) noexcept{
             localTransform(handle).scale = scale;
         }
+
+        // world transform
+        void UpdateWorldTransforms() noexcept;
+
+        const Mat4& GetWorldMatrix(TransformHandle handle) const noexcept{
+            return nodeOf(handle).world;
+        }
+        // Walks the ancestor chain instead of reading the cache, and leaves the
+        // cache alone
+        Mat4 ComputeWorldMatrixNow(TransformHandle handle) const noexcept;
 
         // committed nodes only
         usize Size() const noexcept{
