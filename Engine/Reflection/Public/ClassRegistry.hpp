@@ -68,6 +68,10 @@ namespace Crowy
 
     public:
         static ObjectRAII Create(StrView type);
+        template<std::derived_from<Object> T>
+        static ObjectRAII Create(){
+            return Create(T::StaticClassName());
+        }
 
         static ClassRegistry& Get();
 

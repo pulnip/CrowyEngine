@@ -22,6 +22,10 @@ namespace Crowy
         virtual bool IsA(StrView name) const{
             return name == StaticClassName();
         }
+        template<std::derived_from<Object> T>
+        bool IsA() const{
+            return IsA(T::StaticClassName());
+        }
         static auto _CrowyReflectImpl();
     };
 
