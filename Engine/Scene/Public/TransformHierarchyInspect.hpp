@@ -75,6 +75,14 @@ namespace Crowy
                 ));
             }
 
+            // asked before IndexOf, which asserts on a slot that is not living
+            if(!node.IsRoot() && !view.slots->IsLiving(node.parentSlot)){
+                return fail(std::format(
+                    "I3 [{}] parentSlot {} is not living",
+                    i, node.parentSlot.value
+                ));
+            }
+
             const auto expected = node.IsRoot() ?
                 TransformIndex::Invalid() :
                 view.slots->IndexOf(node.parentSlot);
@@ -82,12 +90,6 @@ namespace Crowy
                 return fail(std::format(
                     "I3 [{}] parentIndex {} disagrees with parentSlot {}",
                     i, node.parentIndex.value, node.parentSlot.value
-                ));
-            }
-            if(!node.IsRoot() && !view.slots->IsLiving(node.parentSlot)){
-                return fail(std::format(
-                    "I3 [{}] parentSlot is not living",
-                    i
                 ));
             }
         }
