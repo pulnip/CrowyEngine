@@ -38,6 +38,20 @@ namespace Crowy
             return node;
         }
 
+        void SetParent(RefNode* node, RefNode* parent){
+            for(auto* walk=parent; walk; walk=walk->parent){
+                CROWY_ASSERT(walk != node);
+            }
+
+            if(node->parent){
+                std::erase(node->parent->children, node);
+            }
+            node->parent = parent;
+            if(parent){
+                parent->children.push_back(node);
+            }
+        }
+
         void DestroyNode(RefNode* node){
             CROWY_ASSERT(node->children.empty());
 

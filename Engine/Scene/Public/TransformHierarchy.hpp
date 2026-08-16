@@ -59,12 +59,19 @@ namespace Crowy
             TransformSlot slot;
             TransformSlot parentSlot;
         };
+        // Slots, not indexes: every command before this one moves nodes around,
+        // so the position has to be looked up when the turn comes.
+        struct PendingReparent{
+            TransformSlot slot;
+            TransformSlot parentSlot;
+        };
 
         // preorder
         std::vector<TransformNode> nodes;
         TransformNodeTable slots;
 
         std::vector<PendingCreate> pendingCreates;
+        std::vector<PendingReparent> pendingReparents;
         std::unordered_map<TransformSlot, Transform> pendingLocals;
         std::unordered_set<TransformSlot> pendingDestroys;
 
@@ -103,9 +110,15 @@ namespace Crowy
         // has to go leaf first. No handle but the given one is ever invalidated.
         void DestroyNode(TransformHandle handle);
 
+        // An invalid parent promotes to root. Asserts on a parent that sits inside
+        // the moved subtree.
+        void SetParent(TransformHandle handle, TransformHandle newParent);
+
         void CommitStructuralChanges();
         bool HasPendingChanges() const noexcept{
-            return !pendingCreates.empty() || !pendingDestroys.empty();
+            return !pendingCreates.empty() ||
+                !pendingReparents.empty() ||
+                !pendingDestroys.empty();
         }
 
         // hierarchy, as of the last commit
@@ -166,14 +179,18 @@ namespace Crowy
     private:
         void commitDestroys();
         void commitCreates();
+        void commitReparents();
+        void reparent(TransformSlot slot, TransformSlot newParentSlot);
 
         bool everyDescendantIsDestroyed(TransformIndex index) const noexcept;
+        bool isInSubtree(TransformIndex root, TransformIndex candidate) const noexcept;
         TransformIndex insertionPointOf(TransformSlot parentSlot) const noexcept;
         void insertNode(TransformIndex at, TransformNode node);
+        void moveBlock(TransformIndex from, usize size, TransformIndex to);
         // Keeps the slot table pointing at nodes that a shift moved
         void rebindFrom(TransformIndex from) noexcept;
-        void growAncestors(TransformSlot parentSlot) noexcept;
-        void shrinkAncestors(TransformSlot parentSlot) noexcept;
+        void growAncestors(TransformSlot parentSlot, usize count = 1) noexcept;
+        void shrinkAncestors(TransformSlot parentSlot, usize count = 1) noexcept;
 
         // The only place allowed to write parentIndex
         void rebuildParentIndexes() noexcept;

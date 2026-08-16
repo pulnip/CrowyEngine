@@ -43,20 +43,50 @@ namespace Crowy
         rebindFrom(at);
     }
 
-    void TransformHierarchy::growAncestors(TransformSlot parentSlot) noexcept{
+    void TransformHierarchy::growAncestors(
+        TransformSlot parentSlot, usize count
+    ) noexcept{
         for(auto slot=parentSlot; slot.IsValid();){
             auto& ancestor = nodes[slots.IndexOf(slot).value];
-            ++ancestor.subtreeSize;
+            ancestor.subtreeSize += count;
             slot = ancestor.parentSlot;
         }
     }
 
-    void TransformHierarchy::shrinkAncestors(TransformSlot parentSlot) noexcept{
+    void TransformHierarchy::shrinkAncestors(
+        TransformSlot parentSlot, usize count
+    ) noexcept{
         for(auto slot=parentSlot; slot.IsValid();){
             auto& ancestor = nodes[slots.IndexOf(slot).value];
-            --ancestor.subtreeSize;
+            ancestor.subtreeSize -= count;
             slot = ancestor.parentSlot;
         }
+    }
+
+    bool TransformHierarchy::isInSubtree(
+        TransformIndex root, TransformIndex candidate
+    ) const noexcept{
+        // I2 makes this a range test instead of a walk
+        return candidate.value >= root.value &&
+            candidate.value < root.value + nodes[root.value].subtreeSize;
+    }
+
+    void TransformHierarchy::moveBlock(
+        TransformIndex from, usize size, TransformIndex to
+    ){
+        auto begin = nodes.begin();
+        auto first = static_cast<isize>(from.value);
+        auto last = static_cast<isize>(from.value + size);
+        auto target = static_cast<isize>(to.value);
+
+        if(to.value > from.value){
+            std::rotate(begin + first, begin + last, begin + target);
+        }
+        else{
+            std::rotate(begin + target, begin + first, begin + last);
+        }
+
+        rebindFrom(TransformIndex{std::min(from.value, to.value)});
     }
 
     bool TransformHierarchy::everyDescendantIsDestroyed(
@@ -109,6 +139,15 @@ namespace Crowy
             ),
             "DestroyNode: an uncommitted child still names this node as its parent"
         );
+        CROWY_ASSERT(
+            std::ranges::none_of(
+                pendingReparents,
+                [slot](const PendingReparent& command){
+                    return command.slot == slot || command.parentSlot == slot;
+                }
+            ),
+            "DestroyNode: an uncommitted reparent still names this node"
+        );
 
         if(index == PENDING_INDEX){
             // the node never reached the array, so create and destroy cancel out
@@ -131,6 +170,73 @@ namespace Crowy
         );
 
         pendingDestroys.insert(slot);
+    }
+
+    void TransformHierarchy::SetParent(
+        TransformHandle handle, TransformHandle newParent
+    ){
+        CROWY_ASSERT(IsValid(handle));
+        CROWY_ASSERT(!newParent.IsValid() || IsValid(newParent));
+        CROWY_ASSERT(handle != newParent, "SetParent: a node cannot be its own parent");
+
+        auto slot = TransformNodeTable::SlotOf(handle);
+        auto parentSlot = newParent.IsValid() ?
+            TransformNodeTable::SlotOf(newParent) :
+            TransformSlot::Invalid();
+
+        // still only a plan, so rewriting the plan is the whole job
+        for(auto& create: pendingCreates){
+            if(create.slot == slot){
+                create.parentSlot = parentSlot;
+
+                return;
+            }
+        }
+
+        pendingReparents.push_back(PendingReparent{
+            .slot = slot,
+            .parentSlot = parentSlot
+        });
+    }
+
+    void TransformHierarchy::reparent(
+        TransformSlot slot, TransformSlot newParentSlot
+    ){
+        auto index = slots.IndexOf(slot);
+        auto& node = nodes[index.value];
+        if(node.parentSlot == newParentSlot){
+            return;
+        }
+
+        auto size = node.subtreeSize;
+        CROWY_ASSERT(
+            !newParentSlot.IsValid() ||
+                !isInSubtree(index, slots.IndexOf(newParentSlot)),
+            "SetParent: slot {} sits inside the subtree of slot {}",
+            newParentSlot.value, slot.value
+        );
+
+        // Measured before anything moves. std::rotate lands the block exactly
+        // where a destination read off the old array points, so the gap the block
+        // leaves behind needs no correction of its own.
+        auto destination = insertionPointOf(newParentSlot);
+
+        auto oldParentSlot = node.parentSlot;
+        // the block root carries the only link that changes
+        node.parentSlot = newParentSlot;
+
+        // while the slot table still points at the old positions
+        shrinkAncestors(oldParentSlot, size);
+        growAncestors(newParentSlot, size);
+
+        moveBlock(index, size, destination);
+    }
+
+    void TransformHierarchy::commitReparents(){
+        for(const auto& command: pendingReparents){
+            reparent(command.slot, command.parentSlot);
+        }
+        pendingReparents.clear();
     }
 
     void TransformHierarchy::commitDestroys(){
@@ -180,9 +286,12 @@ namespace Crowy
     }
 
     void TransformHierarchy::CommitStructuralChanges(){
-        // destroys first, so a create never has to make room next to a corpse
+        // Destroys first, so a create never has to make room next to a corpse.
+        // Reparents last, so a node can be moved under a parent born in the very
+        // same batch.
         commitDestroys();
         commitCreates();
+        commitReparents();
 
         rebuildParentIndexes();
     }

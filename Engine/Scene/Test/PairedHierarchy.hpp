@@ -53,6 +53,19 @@ namespace Crowy
             pair.alive = false;
         }
 
+        void SetParent(usize index, usize parent){
+            real.SetParent(
+                pairs[index].handle,
+                parent == NO_PARENT ?
+                    TransformHandle::InvalidHandle() :
+                    pairs[parent].handle
+            );
+            reference.SetParent(
+                pairs[index].node,
+                parent == NO_PARENT ? nullptr : pairs[parent].node
+            );
+        }
+
         void SetLocal(usize index, const Transform& local){
             real.SetLocalTransform(pairs[index].handle, local);
             pairs[index].node->local = local;
