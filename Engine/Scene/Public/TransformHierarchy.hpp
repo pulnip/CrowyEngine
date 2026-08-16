@@ -5,8 +5,8 @@
 #include <vector>
 #include "Assert.hpp"
 #include "GenericHandle.hpp"
-#include "LinearAlgebra.hpp"
 #include "HandleTable.hpp"
+#include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
@@ -147,20 +147,20 @@ namespace Crowy
                 !pendingDestroys.contains(TransformNodeTable::SlotOf(handle));
         }
 
-        Transform GetLocalTransform(TransformHandle handle) noexcept{
+        Transform GetLocalTransform(TransformHandle handle) const noexcept{
             return localTransform(handle);
         }
         void SetLocalTransform(TransformHandle handle, const Transform& transform) noexcept{
             localTransform(handle) = transform;
         }
 
-        Vec3 GetLocalPosition(TransformHandle handle) noexcept{
+        Vec3 GetLocalPosition(TransformHandle handle) const noexcept{
             return localTransform(handle).position;
         }
-        Vec4 GetLocalRotation(TransformHandle handle){
+        Vec4 GetLocalRotation(TransformHandle handle) const noexcept{
             return localTransform(handle).rotation;
         }
-        Vec3 GetLocalScale(TransformHandle handle){
+        Vec3 GetLocalScale(TransformHandle handle) const noexcept{
             return localTransform(handle).scale;
         }
         void SetLocalPosition(TransformHandle handle, const Vec3& position) noexcept{

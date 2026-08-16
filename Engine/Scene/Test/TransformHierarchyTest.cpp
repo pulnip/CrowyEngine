@@ -82,6 +82,21 @@ TEST_F(TransformHierarchyTest, SetLocalTransform){
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
+TEST_F(TransformHierarchyTest, ReadsThroughAConstReference){
+    auto committed = commitedNode(makeLocal(1.0f));
+    auto uncommitted = hierarchy.CreateNode(makeLocal(2.0f));
+
+    const auto& readOnly = hierarchy;
+
+    EXPECT_TRUE(readOnly.IsValid(committed));
+    expectSameTransform(readOnly.GetLocalTransform(committed), makeLocal(1.0f));
+    EXPECT_EQ(readOnly.GetLocalScale(committed), makeLocal(1.0f).scale);
+    // pending nodes read through the same door
+    expectSameTransform(readOnly.GetLocalTransform(uncommitted), makeLocal(2.0f));
+
+    Commit();
+}
+
 TEST_F(TransformHierarchyTest, SetLocalComponents){
     auto handle = commitedNode();
     auto local = makeLocal(3.0f);
