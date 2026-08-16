@@ -225,7 +225,8 @@ namespace Crowy
         // the block root carries the only link that changes
         node.parentSlot = newParentSlot;
 
-        // while the slot table still points at the old positions
+        // after the destination is measured: growing first would push it past the
+        // block by the block's own size
         shrinkAncestors(oldParentSlot, size);
         growAncestors(newParentSlot, size);
 
@@ -265,22 +266,46 @@ namespace Crowy
         rebindFrom(TransformIndex{0});
     }
 
-    void TransformHierarchy::commitCreates(){
-        for(const auto& create: pendingCreates){
-            auto node = TransformNode{
-                .local = pendingLocals.at(create.slot),
-                .slot = create.slot,
-                .parentSlot = create.parentSlot
-            };
-            pendingLocals.erase(create.slot);
+    void TransformHierarchy::insertPendingNode(const PendingCreate& create){
+        auto node = TransformNode{
+            .local = pendingLocals.at(create.slot),
+            .slot = create.slot,
+            .parentSlot = create.parentSlot
+        };
+        pendingLocals.erase(create.slot);
 
-            insertNode(
-                insertionPointOf(create.parentSlot),
-                std::move(node)
+        insertNode(
+            insertionPointOf(create.parentSlot),
+            std::move(node)
+        );
+        growAncestors(create.parentSlot);
+    }
+
+    void TransformHierarchy::commitCreates(){
+        // A create can name another create from the same batch as its parent, and
+        // SetParent can put that parent behind its own child in the list, so the
+        // list drains over several passes instead of one.
+        while(!pendingCreates.empty()){
+            std::vector<PendingCreate> waiting;
+
+            for(const auto& create: pendingCreates){
+                auto parentIsWaiting = create.parentSlot.IsValid() &&
+                    slots.IndexOf(create.parentSlot) == PENDING_INDEX;
+
+                if(parentIsWaiting){
+                    waiting.push_back(create);
+                    continue;
+                }
+
+                insertPendingNode(create);
+            }
+
+            CROWY_ASSERT(
+                waiting.size() < pendingCreates.size(),
+                "CommitStructuralChanges: uncommitted nodes name each other as parent"
             );
-            growAncestors(create.parentSlot);
+            pendingCreates = std::move(waiting);
         }
-        pendingCreates.clear();
 
         CROWY_ASSERT(pendingLocals.empty());
     }

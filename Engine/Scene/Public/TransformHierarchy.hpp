@@ -179,6 +179,7 @@ namespace Crowy
     private:
         void commitDestroys();
         void commitCreates();
+        void insertPendingNode(const PendingCreate& create);
         void commitReparents();
         void reparent(TransformSlot slot, TransformSlot newParentSlot);
 

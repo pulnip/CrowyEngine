@@ -204,6 +204,36 @@ TEST_F(ReparentTest, ReparentingAnUncommittedNodeRewritesItsPlan){
     EXPECT_EQ(hierarchy.GetChildCount(second), 1);
 }
 
+// found by the seeded fuzz: the parent ended up behind its own child in the
+// pending list, so the child was placed against a parent that had no position yet
+TEST_F(ReparentTest, UncommittedParentQueuedBehindItsChild){
+    auto child = hierarchy.CreateNode();
+    auto parent = hierarchy.CreateNode();
+
+    hierarchy.SetParent(child, parent);
+    Commit();
+
+    EXPECT_EQ(hierarchy.Size(), 2);
+    EXPECT_EQ(hierarchy.GetParent(child), parent);
+    EXPECT_EQ(hierarchy.GetChildCount(parent), 1);
+    EXPECT_EQ(Order(), (std::vector{SlotOf(parent), SlotOf(child)}));
+}
+
+TEST_F(ReparentTest, UncommittedChainQueuedBackwards){
+    auto leaf = hierarchy.CreateNode();
+    auto branch = hierarchy.CreateNode();
+    auto root = hierarchy.CreateNode();
+
+    hierarchy.SetParent(leaf, branch);
+    hierarchy.SetParent(branch, root);
+    Commit();
+
+    EXPECT_EQ(hierarchy.Size(), 3);
+    EXPECT_EQ(hierarchy.GetParent(leaf), branch);
+    EXPECT_EQ(hierarchy.GetParent(branch), root);
+    EXPECT_EQ(Order(), (std::vector{SlotOf(root), SlotOf(branch), SlotOf(leaf)}));
+}
+
 class ReparentAgainstReferenceTest: public ::testing::Test{
 protected:
     PairedHierarchy paired;
