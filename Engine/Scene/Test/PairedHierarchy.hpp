@@ -3,7 +3,9 @@
 // Test only. Feeds one operation sequence to both implementations and holds them
 // against each other.
 
+#include <algorithm>
 #include <limits>
+#include <unordered_map>
 #include <vector>
 #include <gtest/gtest.h>
 #include "ReferenceHierarchy.hpp"
@@ -29,6 +31,9 @@ namespace Crowy
         TransformHierarchy real;
         ReferenceHierarchy reference;
         std::vector<Pair> pairs;
+        // living nodes only, so a recycled address never resolves to a dead pair
+        std::unordered_map<const RefNode*, usize> indexOfNode;
+        std::vector<usize> living;
 
     public:
         usize Create(usize parent, const Transform& local = Transform::Identity()){
@@ -41,6 +46,8 @@ namespace Crowy
             );
 
             pairs.push_back(Pair{.handle = handle, .node = node});
+            indexOfNode.emplace(node, pairs.size() - 1);
+            living.push_back(pairs.size() - 1);
 
             return pairs.size() - 1;
         }
@@ -50,7 +57,12 @@ namespace Crowy
 
             real.DestroyNode(pair.handle);
             reference.DestroyNode(pair.node);
+            // the allocator hands the same address out again, so a dangling entry
+            // here would make a later node look like this one
+            indexOfNode.erase(pair.node);
+            std::erase(living, index);
             pair.alive = false;
+            pair.node = nullptr;
         }
 
         void SetParent(usize index, usize parent){
@@ -128,36 +140,39 @@ namespace Crowy
         }
 
         usize LivingCount() const noexcept{
-            usize count = 0;
-            for(const auto& pair: pairs){
-                count += pair.alive ? 1 : 0;
-            }
-
-            return count;
+            return living.size();
         }
-        std::vector<usize> LivingIndexes() const{
-            std::vector<usize> living;
-            for(usize i=0; i<pairs.size(); ++i){
-                if(pairs[i].alive){
-                    living.push_back(i);
-                }
-            }
-
+        const std::vector<usize>& LivingIndexes() const noexcept{
             return living;
         }
         bool IsLeaf(usize index) const noexcept{
             return pairs[index].node->children.empty();
         }
+        usize ParentOf(usize index) const noexcept{
+            const auto* parent = pairs[index].node->parent;
+            if(!parent){
+                return NO_PARENT;
+            }
 
-    private:
-        TransformHandle handleOf(const RefNode* node) const noexcept{
-            for(const auto& pair: pairs){
-                if(pair.node == node){
-                    return pair.handle;
+            return indexOfNode.at(parent);
+        }
+        bool IsInSubtreeOf(usize root, usize candidate) const noexcept{
+            for(auto* walk=pairs[candidate].node; walk; walk=walk->parent){
+                if(walk == pairs[root].node){
+                    return true;
                 }
             }
 
-            return TransformHandle::InvalidHandle();
+            return false;
+        }
+
+    private:
+        TransformHandle handleOf(const RefNode* node) const noexcept{
+            auto found = indexOfNode.find(node);
+
+            return found == indexOfNode.end() ?
+                TransformHandle::InvalidHandle() :
+                pairs[found->second].handle;
         }
 
         static void expectNearMatrix(
