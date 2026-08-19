@@ -1,4 +1,7 @@
-// Orbit trails as screen-space expanded polylines.
+#include "OrbitCommon.slang"
+
+// Orbit trails as screen-space expanded polylines, plus the marker discs that
+// sit on their heads.
 //
 // One draw per body, one instance per segment, four vertices per instance as a
 // triangle strip. bodyIdx arrives as the draw's baseInstance and segIdx as the
@@ -8,10 +11,6 @@
 //
 // Mirrors Engine/RHI/Sample/OrbitFrameSample.cpp; the C++ side asserts the
 // offsets spelled out below.
-
-// keep in sync with ORBIT_BODY_COUNT / ORBIT_EARTH_INDEX in Kepler.hpp
-static const uint BODY_COUNT = 9;
-static const uint EARTH_INDEX = 3;
 
 // Mirrors OrbitBodyDraw in OrbitFrameSample.cpp. Four 4-byte scalars rather
 // than a float3 and a uint: a float3 struct member is 16-byte aligned in MSL
@@ -37,6 +36,8 @@ struct TrailPush{
     // next slot to be written; the newest sample is at head - 1
     uint head;                                            // 32
     uint capacity;                                        // 36
+    float markerRadiusPx;                                 // 40
+    float _pad0;                                          // 44
 };
 
 [[vk::push_constant]]
@@ -52,6 +53,16 @@ struct VertexOut{
     float4 color : COLOR0;
 };
 
+struct MarkerOut{
+    float4 position : SV_Position;
+    float4 color : COLOR0;
+    float2 uv : TEXCOORD0;
+};
+
+float2 viewportSize(){
+    return float2(push.viewportX, push.viewportY);
+}
+
 // The origin subtracted is the Earth position *at that sample's instant*, not
 // the current one. Using the current position would slide every orbit sideways
 // and leave the shapes untouched, which is the whole demo gone. Reading both
@@ -65,20 +76,11 @@ float3 framePosition(uint sampleIdx, uint bodyIdx){
     return samples[base + bodyIdx] - origin;
 }
 
-// Interpolate first, warp second. The other order does the subtraction in a
-// nonlinear space and the geometry comes apart.
-//
-// Because the warp runs afterwards its centre is always the current frame's
-// origin, so it slides from an Earth-centred log to a Sun-centred one as alpha
-// moves without being told anything about alpha.
-//
-// Positions are already in AU, so the AU in log(1 + r/AU) is 1. Linear, 30 AU
-// against 0.39 AU is 77:1 and Mercury is a pixel; through the log it is 10:1
-// and every planet is on screen at once.
-float3 logWarp(float3 pLin){
-    const float r = length(pLin);
-
-    return r > 1e-6 ? pLin * (log(1.0 + r) / r) : float3(0.0, 0.0, 0.0);
+// Newest first, so the segment a body draws never reaches back past its oldest
+// stored sample. The ring seam - oldest joined to newest - is not skipped by a
+// special case anywhere; this indexing simply never asks for it.
+uint slotForAge(uint age){
+    return (push.head + push.capacity - 1 - age) % push.capacity;
 }
 
 [shader("vertex")]
@@ -90,49 +92,17 @@ VertexOut vs_main(
     StructuredBuffer<BodyDraw> bodies = push.bodies;
     const BodyDraw body = bodies[bodyIdx];
 
-    // Newest first, so the segment a body draws never reaches back past its
-    // oldest stored sample. The ring seam - oldest joined to newest - is not
-    // skipped by a special case here; this indexing simply never asks for it.
-    const uint i0 = (push.head + push.capacity - 1 - segIdx) % push.capacity;
-    const uint i1 = (push.head + push.capacity - 2 - segIdx) % push.capacity;
+    const float3 p0 = orbitLogWarp(framePosition(slotForAge(segIdx), bodyIdx));
+    const float3 p1 = orbitLogWarp(framePosition(slotForAge(segIdx + 1), bodyIdx));
 
-    const float3 p0 = logWarp(framePosition(i0, bodyIdx));
-    const float3 p1 = logWarp(framePosition(i1, bodyIdx));
-
-    const float4 c0 = mul(viewProj, float4(p0, 1.0));
-    const float4 c1 = mul(viewProj, float4(p1, 1.0));
-
-    const float2 ndc0 = c0.xy / c0.w;
-    const float2 ndc1 = c1.xy / c1.w;
-
-    // strip order: (p0,-1) (p0,+1) (p1,-1) (p1,+1)
-    const uint endpoint = vertexID >> 1;
-    const float side = (vertexID & 1) != 0 ? 1.0 : -1.0;
-
-    const float2 viewport = float2(push.viewportX, push.viewportY);
-    const float2 halfViewport = viewport * 0.5;
-
-    // the perpendicular is taken in pixels, not in NDC. NDC units are not
-    // square on a non-square viewport, so a perpendicular computed there
-    // shears every line that is not axis-aligned
-    const float2 deltaPx = (ndc1 - ndc0) * halfViewport;
-    const float lengthPx = length(deltaPx);
-    // a zero-length segment has no direction to be perpendicular to; the Sun's
-    // trail is entirely made of them at alpha = 1
-    const float2 dirPx = lengthPx > 1e-6 ?
-        deltaPx / lengthPx :
-        float2(1.0, 0.0);
-    const float2 perpPx = float2(-dirPx.y, dirPx.x) *
-        (push.thicknessPx * 0.5) * side;
-
-    const float4 clip = endpoint == 0 ? c0 : c1;
-    const float2 ndc = (endpoint == 0 ? ndc0 : ndc1) + perpPx / halfViewport;
-
-    // back through the perspective divide the rasterizer is about to redo.
-    // The camera is orthographic here, so w is 1 and this is a no-op - it is
-    // written out anyway so the off-ecliptic camera later costs nothing.
     VertexOut output;
-    output.position = float4(ndc * clip.w, clip.z, clip.w);
+    output.position = orbitExpandSegment(
+        mul(viewProj, float4(p0, 1.0)),
+        mul(viewProj, float4(p1, 1.0)),
+        vertexID,
+        viewportSize(),
+        push.thicknessPx
+    );
     output.color = float4(
         body.colorR, body.colorG, body.colorB,
         // age fade: segIdx is the segment's age in ticks
@@ -145,4 +115,48 @@ VertexOut vs_main(
 [shader("fragment")]
 float4 fs_main(VertexOut input) : SV_Target {
     return input.color;
+}
+
+// One instance per body rather than one draw: there is no per-draw data to
+// index, so the instance index is the body index directly.
+[shader("vertex")]
+MarkerOut vs_marker(
+    uint vertexID : SV_VertexID,
+    uint bodyIdx : SV_InstanceID
+){
+    StructuredBuffer<BodyDraw> bodies = push.bodies;
+    const BodyDraw body = bodies[bodyIdx];
+
+    // age 0 is the sample pushed last tick, so the marker lands exactly on the
+    // head of the trail rather than near it
+    const float3 p = orbitLogWarp(framePosition(slotForAge(0), bodyIdx));
+
+    MarkerOut output;
+    output.position = orbitExpandPoint(
+        mul(viewProj, float4(p, 1.0)),
+        vertexID,
+        viewportSize(),
+        push.markerRadiusPx,
+        output.uv
+    );
+    // brighter than the trail it caps, but the same hue
+    output.color = float4(
+        saturate(float3(body.colorR, body.colorG, body.colorB) * 1.35 + 0.12),
+        1.0
+    );
+
+    return output;
+}
+
+[shader("fragment")]
+float4 fs_marker(MarkerOut input) : SV_Target {
+    const float r = length(input.uv);
+    if(r > 1.0)
+        discard;
+
+    // one pixel of falloff at the rim, so the disc does not look stepped
+    float4 color = input.color;
+    color.a *= saturate((1.0 - r) * push.markerRadiusPx);
+
+    return color;
 }

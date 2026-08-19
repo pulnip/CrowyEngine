@@ -25,6 +25,7 @@ namespace Crowy
         // read-only stats
         f32 orbitTurns = 1.0f;
         f32 halfHeight = 1.0f;
+        f32 gridStepAU = 1.0f;
         f64 frameTimeMs = 0.0;
         u32 filled = 0;
         u64 totalTicks = 0;
@@ -91,14 +92,58 @@ namespace Crowy
             f32 alpha;
             u32 head;
             u32 capacity;
+            f32 markerRadiusPx;
+            f32 _pad0 = 0.0f;
         };
-        static_assert(sizeof(TrailPush) == 40);
+        static_assert(sizeof(TrailPush) == 48);
         static_assert(offsetof(TrailPush, bodies) == 8);
         static_assert(offsetof(TrailPush, viewportX) == 16);
         static_assert(offsetof(TrailPush, thicknessPx) == 24);
         static_assert(offsetof(TrailPush, alpha) == 28);
         static_assert(offsetof(TrailPush, head) == 32);
         static_assert(offsetof(TrailPush, capacity) == 36);
+        static_assert(offsetof(TrailPush, markerRadiusPx) == 40);
+
+        // mirrors GridPush in Engine/Shader/OrbitGrid.slang
+        struct GridPush{
+            f32 viewportX, viewportY;
+            f32 thinThicknessPx;
+            f32 thickThicknessPx;
+            f32 colorR, colorG, colorB;
+            f32 thinAlpha;
+            f32 thickAlpha;
+            f32 baseStepAU;
+            f32 pxPerWarpUnit;
+            f32 spokeRadiusAU;
+            f32 minGapPx;
+            f32 fadeGapPx;
+            f32 referenceAlpha;
+            f32 _pad0 = 0.0f;
+        };
+        static_assert(sizeof(GridPush) == 64);
+        static_assert(offsetof(GridPush, colorR) == 16);
+        static_assert(offsetof(GridPush, baseStepAU) == 36);
+        static_assert(offsetof(GridPush, minGapPx) == 48);
+        static_assert(offsetof(GridPush, referenceAlpha) == 56);
+
+        // keep in sync with Engine/Shader/OrbitGrid.slang
+        static constexpr u32 GRID_LEVEL_COUNT = 8;
+        static constexpr u32 GRID_RINGS_PER_LEVEL = 16;
+        static constexpr u32 GRID_RING_SEGMENTS = 192;
+        static constexpr u32 GRID_SPOKE_COUNT = 12;
+        static constexpr u32 GRID_DRAW_RINGS = 0;
+        static constexpr u32 GRID_DRAW_SPOKES = 1;
+        static constexpr u32 GRID_DRAW_REFERENCE = 2;
+
+        // The finest ring step is a power of five AU, picked so its rings sit
+        // roughly this far apart near the origin. Quantizing to powers of five
+        // is what keeps the step a round number a viewer can name - it walks
+        // 1 AU, 0.2 AU, 0.04 AU as the zoom goes in.
+        static constexpr f32 GRID_TARGET_GAP_PX = 100.0f;
+        static constexpr f32 GRID_MIN_GAP_PX = 3.5f;
+        static constexpr f32 GRID_FADE_GAP_PX = 11.0f;
+
+        static constexpr f32 MARKER_RADIUS_PX = 4.0f;
 
         struct FrameUniforms{
             Mat4 viewProj;
@@ -125,7 +170,7 @@ namespace Crowy
         RHIDevice* device = nullptr;
         RAII<OrbitTrail> trail;
 
-        RHIGraphicsPipelineStateRAII pso;
+        RHIGraphicsPipelineStateRAII trailPSO, gridPSO, markerPSO;
         RHIBufferRAII frameCB;
         RHIBufferRAII bodyBuffer;
 
@@ -148,35 +193,30 @@ namespace Crowy
         // held between ProcessInput and OnUpdate
         f32 zoomInput = 0.0f, turnsInput = 0.0f;
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            this->device = &device;
-
-            trail = std::make_unique<OrbitTrail>(
-                device,
-                DAY_PER_SAMPLE,
-                ORBIT_TRAIL_CAPACITY,
-                RHIResourceUsage::SampledVertex
-            );
-            // without this the outer planets would take real minutes to draw
-            // themselves in - Neptune's orbit is 60,225 ticks
-            trail->Prefill(START_DAY);
-
-            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
+        // Every pass in this sample expands screen-space quads out of nothing:
+        // no vertex buffer, a strip of four, blended, and unculled because an
+        // expanded quad's winding follows whatever direction it was expanded
+        // along.
+        static RHIGraphicsPipelineStateDesc LineExpansionDesc(
+            CStr path,
+            CStr vertexEntry,
+            CStr fragmentEntry,
+            RHIPixelFormat format
+        ){
+            return RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
-                        .path = "Engine/Shader/OrbitTrail.slang",
-                        .entryPoint = "vs_main"
+                        .path = path,
+                        .entryPoint = vertexEntry
                     }
                 },
                 .rasterizer = RHIRasterizerState{
-                    // an expanded quad's winding follows the segment direction,
-                    // so half of every trail would vanish under back-face culling
                     .cullMode = RHICullMode::None
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/OrbitTrail.slang",
-                    .entryPoint = "fs_main"
+                    .path = path,
+                    .entryPoint = fragmentEntry
                 },
                 .blend = RHIBlendState{
                     .renderTargets = {
@@ -191,13 +231,50 @@ namespace Crowy
                         }
                     }
                 },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
+                .renderTargetFormats = {format},
                 .renderTargetCount = 1,
                 // SV_StartInstanceLocation needs it
                 .profile = "sm_6_8"
-            }, "OrbitTrailPSO");
+            };
+        }
+
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
+            this->device = &device;
+
+            trail = std::make_unique<OrbitTrail>(
+                device,
+                DAY_PER_SAMPLE,
+                ORBIT_TRAIL_CAPACITY,
+                RHIResourceUsage::SampledVertex
+            );
+            // without this the outer planets would take real minutes to draw
+            // themselves in - Neptune's orbit is 60,225 ticks
+            trail->Prefill(START_DAY);
+
+            trailPSO = device.CreatePipelineState(
+                LineExpansionDesc(
+                    "Engine/Shader/OrbitTrail.slang",
+                    "vs_main", "fs_main",
+                    swapchain.GetFormat()
+                ),
+                "OrbitTrailPSO"
+            );
+            gridPSO = device.CreatePipelineState(
+                LineExpansionDesc(
+                    "Engine/Shader/OrbitGrid.slang",
+                    "vs_main", "fs_main",
+                    swapchain.GetFormat()
+                ),
+                "OrbitGridPSO"
+            );
+            markerPSO = device.CreatePipelineState(
+                LineExpansionDesc(
+                    "Engine/Shader/OrbitTrail.slang",
+                    "vs_marker", "fs_marker",
+                    swapchain.GetFormat()
+                ),
+                "OrbitMarkerPSO"
+            );
 
             frameCB = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(FrameUniforms),
@@ -242,6 +319,16 @@ namespace Crowy
                 },
                 Text{.data = "0 geocentric  <->  1 heliocentric"},
                 Text{.data = ""},
+                // the rings carry no world-space labels: the UI layer draws a
+                // widget tree into one window and hands out no draw list, so
+                // there is nowhere to put text at an arbitrary screen point.
+                // The step is the label instead - thin rings sit one step
+                // apart, thick ones five, and 1 AU is always marked.
+                Text{.data = "rings: thin 1 step, thick 5, plus 1 AU"},
+                FloatField{
+                    .label = "grid step (AU)",
+                    .get = [&ctx = context]{ return ctx.gridStepAU; }
+                },
                 Text{.data = "keys: Up/Down zoom, Left/Right trail, Space pause"},
                 FloatField{
                     .label = "orbit turns",
@@ -315,6 +402,7 @@ namespace Crowy
             context.frameTimeMs = 1000.0 * deltaTime;
             context.orbitTurns = orbitTurns;
             context.halfHeight = std::exp(zoomLog);
+            context.gridStepAU = GridBaseStepAU();
         }
 
         Mat4 ViewProj() const{
@@ -335,6 +423,50 @@ namespace Crowy
             );
 
             return proj * view;
+        }
+
+        // screen pixels per unit of warped radius
+        f32 PxPerWarpUnit() const{
+            return 0.5f * viewportHeight / std::exp(zoomLog);
+        }
+
+        // The step of the finest ring level, quantized to a power of five AU.
+        // Solving step * pxPerWarp == GRID_TARGET_GAP_PX for the step and
+        // rounding in log-5 keeps it a number worth printing in the panel.
+        f32 GridBaseStepAU() const{
+            const auto wanted = GRID_TARGET_GAP_PX / PxPerWarpUnit();
+            const auto level = std::round(std::log(wanted) / std::log(5.0f));
+
+            return std::pow(5.0f, level);
+        }
+
+        GridPush MakeGridPush() const{
+            const auto pxPerWarp = PxPerWarpUnit();
+
+            // the screen corner in warped units, turned back into AU, so the
+            // spokes reach past the far corner instead of stopping somewhere
+            // inside the view
+            const auto halfHeight = std::exp(zoomLog);
+            const auto cornerWarped = halfHeight * std::hypot(
+                viewportWidth / viewportHeight,
+                1.0f
+            );
+
+            return GridPush{
+                .viewportX = viewportWidth,
+                .viewportY = viewportHeight,
+                .thinThicknessPx = 1.0f,
+                .thickThicknessPx = 1.6f,
+                .colorR = 0.45f, .colorG = 0.55f, .colorB = 0.70f,
+                .thinAlpha = 0.16f,
+                .thickAlpha = 0.30f,
+                .baseStepAU = GridBaseStepAU(),
+                .pxPerWarpUnit = pxPerWarp,
+                .spokeRadiusAU = std::expm1(cornerWarped),
+                .minGapPx = GRID_MIN_GAP_PX,
+                .fadeGapPx = GRID_FADE_GAP_PX,
+                .referenceAlpha = 0.5f
+            };
         }
 
         void UpdateBodyDraws(){
@@ -405,9 +537,22 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetPipelineState(*pso);
             cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
-            cmdList.SetPushGraphicsConstants(TrailPush{
+
+            // no depth buffer: order is the layering. Grid behind, trails over
+            // it, markers on top of their own heads.
+            cmdList.SetPipelineState(*gridPSO);
+            cmdList.SetPushGraphicsConstants(MakeGridPush());
+            cmdList.Draw(
+                4,
+                GRID_LEVEL_COUNT * GRID_RINGS_PER_LEVEL * GRID_RING_SEGMENTS,
+                0,
+                GRID_DRAW_RINGS
+            );
+            cmdList.Draw(4, GRID_SPOKE_COUNT, 0, GRID_DRAW_SPOKES);
+            cmdList.Draw(4, GRID_RING_SEGMENTS, 0, GRID_DRAW_REFERENCE);
+
+            const TrailPush trailPush{
                 .samples = trail->Buffer().GetReadableID(
                     static_cast<u32>(sizeof(Vec3))
                 ),
@@ -419,9 +564,12 @@ namespace Crowy
                 .thicknessPx = thicknessPx,
                 .alpha = context.alpha,
                 .head = trail->Head(),
-                .capacity = trail->Capacity()
-            });
+                .capacity = trail->Capacity(),
+                .markerRadiusPx = MARKER_RADIUS_PX
+            };
 
+            cmdList.SetPipelineState(*trailPSO);
+            cmdList.SetPushGraphicsConstants(trailPush);
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
                 if(bodyDraws[b].segCount == 0)
                     continue;
@@ -431,6 +579,12 @@ namespace Crowy
                 // ExecuteIndirect without the shader noticing
                 cmdList.Draw(4, bodyDraws[b].segCount, 0, b);
             }
+
+            // one instance per body, so the instance index is the body index -
+            // there is no per-draw table to look up here
+            cmdList.SetPipelineState(*markerPSO);
+            cmdList.SetPushGraphicsConstants(trailPush);
+            cmdList.Draw(4, ORBIT_BODY_COUNT, 0, 0);
 
             uiRenderer->Record(cmdList);
 
