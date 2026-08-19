@@ -145,6 +145,11 @@ SOURCES
     BaseInstanceSpike.cpp
 )
 
+crowy_graphics_sample(InstanceIdSpike
+SOURCES
+    InstanceIdSpike.cpp
+)
+
 crowy_graphics_sample(TenThousandCubes
 SOURCES
     TenThousandCubes.cpp
@@ -179,6 +184,13 @@ SOURCES
     TerrainMarchCheck.cpp
 DEPENDS
     Crowy::SampleTerrain
+)
+
+crowy_graphics_sample(OrbitFrameSample
+SOURCES
+    OrbitFrameSample.cpp
+DEPENDS
+    SampleOrbit
 )
 
 # headless; copies the trail ring back and holds it against the Kepler solver

@@ -114,9 +114,10 @@ namespace Crowy
         // Fixed sim timestep, so trail length in days does not follow the frame
         // rate. Returns the number of ticks pushed.
         //
-        // Exactly one Advance per Record: the staging buffer holds one frame's
-        // samples, and a second Advance would overwrite them before the copy
-        // that reads them has been recorded.
+        // Pushes nothing while an earlier write is still waiting for its
+        // Record - the staging region holds one frame's samples, and the first
+        // frame's is the prefill. The elapsed time is kept either way, so the
+        // only effect is that those ticks land one frame later.
         u32 Advance(f64 deltaSeconds, f64 daysPerSecond);
 
         // dayPerSample only means something together with the samples already

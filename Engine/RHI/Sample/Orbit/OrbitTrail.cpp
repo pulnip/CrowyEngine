@@ -65,15 +65,17 @@ namespace Crowy
     }
 
     u32 OrbitTrail::Advance(f64 deltaSeconds, f64 daysPerSecond){
-        CROWY_ASSERT(pendingSamples == 0,
-            "Record() has to run between two Advance() calls - "
-            "the staging buffer only holds one frame's worth"
-        );
         CROWY_ASSERT(daysPerSecond >= 0.0, "sim time does not run backwards");
 
         stats.tickCount = 0;
         stats.copyCount = 0;
         accumDays += deltaSeconds * daysPerSecond;
+
+        // an unrecorded write is still sitting in this frame's staging region -
+        // the prefill on the first frame, normally. The elapsed time is not
+        // lost, it just ticks once the copy has been recorded.
+        if(pendingSamples != 0)
+            return 0;
 
         // a tiny ring would otherwise let one frame lap itself, and the copy
         // below assumes the write wraps at most once
