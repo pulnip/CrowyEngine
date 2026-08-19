@@ -181,6 +181,14 @@ DEPENDS
     Crowy::SampleTerrain
 )
 
+# headless; copies the trail ring back and holds it against the Kepler solver
+crowy_rhi_sample(OrbitTrailCheck
+SOURCES
+    OrbitTrailCheck.cpp
+DEPENDS
+    SampleOrbit
+)
+
 crowy_graphics_sample(SpanTerrainSample
 SOURCES
     SpanTerrainSample.cpp

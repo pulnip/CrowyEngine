@@ -1,5 +1,6 @@
 add_library(SampleOrbit STATIC
     Kepler.cpp
+    OrbitTrail.cpp
 )
 
 target_include_directories(SampleOrbit
@@ -10,6 +11,8 @@ PUBLIC
 target_link_libraries(SampleOrbit
 PUBLIC
     Crowy::Core
+    # OrbitTrail.hpp hands out command list and buffer types
+    Crowy::RHI
 )
 
 if(CROWY_ENABLE_TEST)
