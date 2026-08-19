@@ -77,6 +77,8 @@ endfunction()
 add_subdirectory(Scene)
 # density field, noise and UI panel the two terrain samples share
 add_subdirectory(Terrain)
+# Keplerian orbits, trail ring buffer and panel for OrbitFrameSample
+add_subdirectory(Orbit)
 
 crowy_graphics_sample(HelloWorld
 SOURCES
