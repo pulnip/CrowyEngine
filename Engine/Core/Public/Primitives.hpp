@@ -487,9 +487,13 @@ namespace Crowy
     }
 
     struct Transform{
-        Vec3 position;
-        Vec4 rotation;
-        Vec3 scale;
+        Vec3 position = zeros();
+        Vec4 rotation = unitQuat();
+        Vec3 scale = ones();
+
+        static constexpr Transform Identity() noexcept{
+            return Transform{};
+        }
 
         // Defined in LinearAlgebra.hpp
         explicit constexpr operator Transform2D() const noexcept{

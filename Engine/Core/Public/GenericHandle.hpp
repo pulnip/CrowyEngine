@@ -9,9 +9,10 @@ namespace Crowy
 {
     template<typename T>
     struct GenericHandle final{
-    private:
+    public:
         static constexpr auto INVALID_INDEX = std::numeric_limits<usize>::max();
 
+    private:
         usize index = INVALID_INDEX;
         usize generation = 0;
 

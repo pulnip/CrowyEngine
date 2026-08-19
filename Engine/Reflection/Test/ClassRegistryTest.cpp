@@ -21,12 +21,12 @@ CROWY_OBJECT_END(CreationTestObject)
 TEST(Reflection, CreationTestObject){
     ASSERT_TRUE(IsCreationTestObjectRegistered);
 
-    CStr objectName = "CreationTestObject";
-    auto object = ClassRegistry::Create(objectName);
+    Str objectName = "CreationTestObject";
+    auto object = ClassRegistry::Create<CreationTestObject>();
     ASSERT_TRUE(object != nullptr);
-    EXPECT_TRUE(object->GetClassName() == objectName);
-    EXPECT_TRUE(object->IsA("Object"));
-    EXPECT_TRUE(object->IsA(objectName));
+    EXPECT_TRUE(std::strcmp(object->GetClassName(), "CreationTestObject") == 0);
+    EXPECT_TRUE(object->IsA<Object>());
+    EXPECT_TRUE(object->IsA<CreationTestObject>());
 
     auto testObject = dynamic_cast<CreationTestObject*>(object.get());
     EXPECT_TRUE(testObject != nullptr);
