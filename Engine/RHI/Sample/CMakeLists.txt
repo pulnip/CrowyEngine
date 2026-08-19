@@ -191,6 +191,7 @@ SOURCES
     OrbitFrameSample.cpp
 DEPENDS
     SampleOrbit
+    Crowy::UI
 )
 
 # headless; copies the trail ring back and holds it against the Kepler solver

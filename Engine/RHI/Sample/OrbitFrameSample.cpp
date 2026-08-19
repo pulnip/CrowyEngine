@@ -12,19 +12,38 @@
 #include "OrbitTrail.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
+#include "UIRenderer.hpp"
+
+#include <imgui.h>
 
 namespace Crowy
 {
+    struct UIContext{
+        // heliocentricity: 0 geocentric, 1 heliocentric. The point of the demo.
+        f32 alpha = 0.0f;
+
+        // read-only stats
+        f32 orbitTurns = 1.0f;
+        f32 halfHeight = 1.0f;
+        f64 frameTimeMs = 0.0;
+        u32 filled = 0;
+        u64 totalTicks = 0;
+    };
+
     // Planet trails drawn as screen-space expanded polylines, straight out of
     // the GPU ring buffer. One draw per body, one instance per segment.
     //
-    // Step 3 of the plan: the frame interpolation and the logarithmic radius
-    // warp are not here yet, so this is the plain heliocentric picture at a
-    // linear scale - Neptune fills the view and Mercury is a speck. That is
-    // exactly the reason the warp exists, and seeing it first makes the case.
+    // The origin is interpolated between Earth and the Sun rather than the
+    // camera being moved: the slider is a shader constant, not a view matrix.
+    // Push it to 0 and the heliocentric ellipses come apart into Ptolemy's
+    // epicycles - Mars doubling back on itself, Venus tracing a rose.
     //
-    // Controls are keys because the input layer has no scroll wheel; the panel
-    // replaces them later.
+    // Radius is compressed logarithmically after the interpolation, so the
+    // warp centre follows whatever the current origin is. 30 AU against
+    // 0.39 AU is 77:1 linear and 10:1 through the log.
+    //
+    // Zoom and trail length are keys because the input layer has no scroll
+    // wheel; the panel takes them over later.
     //   Up / Down     zoom
     //   Left / Right  trail length (orbit turns)
     //   Space         pause
@@ -35,19 +54,20 @@ namespace Crowy
         static constexpr f64 START_DAY = 0.0;
         static constexpr f64 TIME_SCALE = 120.0;   // sim days per second
 
-        // Step 4 hands this to a slider. Held at 1 for now: a bug in the line
-        // expansion is obvious against clean ellipses and invisible against the
-        // geocentric tangle, so the two are worth separating.
-        static constexpr f32 ALPHA = 1.0f;
-
         static constexpr Color BACKGROUND{0.02f, 0.02f, 0.05f, 1.0f};
 
-        static constexpr f32 ZOOM_LOG_MIN = -1.6f;   // ~0.2 AU half-height
-        static constexpr f32 ZOOM_LOG_MAX = 4.1f;    // ~60 AU
+        // half-heights are in warped units now: the whole system reaches
+        // log(1 + 30) = 3.43, and Mercury sits at log(1 + 0.39) = 0.33
+        static constexpr f32 ZOOM_LOG_MIN = -2.0f;   // ~0.14
+        static constexpr f32 ZOOM_LOG_MAX = 2.1f;    // ~8.2
         static constexpr f32 ZOOM_SPEED = 1.2f;      // log units per second
 
-        static constexpr f32 TURNS_MIN = 0.05f, TURNS_MAX = 3.0f;
-        static constexpr f32 TURNS_SPEED = 0.6f;     // per second
+        // The plan says 3.0, but Venus's rose only closes after 13 Venus years
+        // (8 Earth years), and that is the shape Step 4 asks to see. Anything
+        // that runs past the ring clamps to what is stored, so the ceiling
+        // costs nothing.
+        static constexpr f32 TURNS_MIN = 0.05f, TURNS_MAX = 15.0f;
+        static constexpr f32 TURNS_SPEED = 2.5f;     // per second
 
         // the camera sits off the ecliptic looking back down +Z; nothing in the
         // scene reaches anywhere near these planes
@@ -109,12 +129,17 @@ namespace Crowy
         RHIBufferRAII frameCB;
         RHIBufferRAII bodyBuffer;
 
+        RAII<UIRenderer> uiRenderer;
+        UIContext context;
+        Widget panel;
+
         std::array<OrbitBodyDraw, ORBIT_BODY_COUNT> bodyDraws{};
 
         f64 pendingSeconds = 0.0;
         bool paused = false;
 
-        f32 zoomLog = 3.47f;        // ~32 AU half-height: the whole system
+        // 3.8 in warped units clears log(1 + 30) = 3.43 with a margin
+        f32 zoomLog = 1.34f;
         f32 orbitTurns = 1.0f;
         f32 thicknessPx = 2.0f;
 
@@ -193,9 +218,70 @@ namespace Crowy
                     .colorB = BODY_COLORS[b].z
                 };
             }
+
+            uiRenderer = std::make_unique<UIRenderer>(
+                device,
+                swapchain.GetFormat()
+            );
+            BuildPanel();
+        }
+
+        void BuildPanel(){
+            // the getters capture the context by reference and outlive this
+            // call - it is a member, so that holds
+            panel = Column({
+                Text{.data = "Heliocentricity"},
+                Slider{
+                    .label = "alpha",
+                    .onChanged = [](UIContext& c, f32 v){
+                        c.alpha = v;
+                    },
+                    .v = context.alpha,
+                    .v_min = 0.0f,
+                    .v_max = 1.0f
+                },
+                Text{.data = "0 geocentric  <->  1 heliocentric"},
+                Text{.data = ""},
+                Text{.data = "keys: Up/Down zoom, Left/Right trail, Space pause"},
+                FloatField{
+                    .label = "orbit turns",
+                    .get = [&ctx = context]{ return ctx.orbitTurns; }
+                },
+                FloatField{
+                    .label = "half-height (warped)",
+                    .get = [&ctx = context]{ return ctx.halfHeight; }
+                },
+                IntField{
+                    .label = "samples stored",
+                    .get = [&ctx = context]{
+                        return static_cast<int>(ctx.filled);
+                    }
+                },
+                IntField{
+                    .label = "ticks pushed",
+                    .get = [&ctx = context]{
+                        return static_cast<int>(ctx.totalTicks);
+                    }
+                },
+                FloatField{
+                    .label = "ms / frame",
+                    .get = [&ctx = context]{
+                        return static_cast<f32>(ctx.frameTimeMs);
+                    }
+                }
+            });
         }
 
         void ProcessInput(const InputProvider& input) override{
+            // the OS layer already drops events ImGui claimed, but IsKeyDown is
+            // a level query: a key-up swallowed mid-drag would stick
+            if(ImGui::GetIO().WantCaptureKeyboard){
+                zoomInput = 0.0f;
+                turnsInput = 0.0f;
+
+                return;
+            }
+
             zoomInput =
                 (input.IsKeyDown(KeyCode::Up) ? 1.0f : 0.0f) -
                 (input.IsKeyDown(KeyCode::Down) ? 1.0f : 0.0f);
@@ -225,6 +311,10 @@ namespace Crowy
                 TURNS_MIN,
                 TURNS_MAX
             );
+
+            context.frameTimeMs = 1000.0 * deltaTime;
+            context.orbitTurns = orbitTurns;
+            context.halfHeight = std::exp(zoomLog);
         }
 
         Mat4 ViewProj() const{
@@ -281,17 +371,28 @@ namespace Crowy
             viewportWidth = static_cast<f32>(backBuffer.texture->GetWidth());
             viewportHeight = static_cast<f32>(backBuffer.texture->GetHeight());
 
+            context.filled = trail->Filled();
+            context.totalTicks = trail->Stats().totalTicks;
+
             UpdateBodyDraws();
             frameCB->Upload(FrameUniforms{.viewProj = ViewProj()});
 
             // outside any pass: the copies are their own blit pass
             const auto trailEdge = trail->Record(cmdList);
 
+            // the slider callbacks run in here, so alpha below is this frame's
+            uiRenderer->Prepare(cmdList, panel, context);
+
             auto colorAttachment = backBuffer;
             colorAttachment.clearColor = BACKGROUND;
             std::array colorAttachments = {colorAttachment};
 
-            const std::array textureAcquires{AcquireBackBuffer(backBuffer)};
+            std::vector<RHITextureBarrier> textureAcquires{
+                AcquireBackBuffer(backBuffer)
+            };
+            // the pass samples the font atlas Prepare just refreshed
+            textureAcquires.append_range(uiRenderer->TextureAcquires());
+
             // only when something was actually copied; an idle frame leaves the
             // ring already resting where the vertex stage wants it
             std::vector<RHIBufferBarrier> bufferAcquires;
@@ -316,7 +417,7 @@ namespace Crowy
                 .viewportX = viewportWidth,
                 .viewportY = viewportHeight,
                 .thicknessPx = thicknessPx,
-                .alpha = ALPHA,
+                .alpha = context.alpha,
                 .head = trail->Head(),
                 .capacity = trail->Capacity()
             });
@@ -330,6 +431,8 @@ namespace Crowy
                 // ExecuteIndirect without the shader noticing
                 cmdList.Draw(4, bodyDraws[b].segCount, 0, b);
             }
+
+            uiRenderer->Record(cmdList);
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};
             cmdList.EndRenderPass(releases);

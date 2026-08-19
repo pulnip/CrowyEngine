@@ -65,6 +65,22 @@ float3 framePosition(uint sampleIdx, uint bodyIdx){
     return samples[base + bodyIdx] - origin;
 }
 
+// Interpolate first, warp second. The other order does the subtraction in a
+// nonlinear space and the geometry comes apart.
+//
+// Because the warp runs afterwards its centre is always the current frame's
+// origin, so it slides from an Earth-centred log to a Sun-centred one as alpha
+// moves without being told anything about alpha.
+//
+// Positions are already in AU, so the AU in log(1 + r/AU) is 1. Linear, 30 AU
+// against 0.39 AU is 77:1 and Mercury is a pixel; through the log it is 10:1
+// and every planet is on screen at once.
+float3 logWarp(float3 pLin){
+    const float r = length(pLin);
+
+    return r > 1e-6 ? pLin * (log(1.0 + r) / r) : float3(0.0, 0.0, 0.0);
+}
+
 [shader("vertex")]
 VertexOut vs_main(
     uint vertexID : SV_VertexID,
@@ -80,8 +96,8 @@ VertexOut vs_main(
     const uint i0 = (push.head + push.capacity - 1 - segIdx) % push.capacity;
     const uint i1 = (push.head + push.capacity - 2 - segIdx) % push.capacity;
 
-    const float3 p0 = framePosition(i0, bodyIdx);
-    const float3 p1 = framePosition(i1, bodyIdx);
+    const float3 p0 = logWarp(framePosition(i0, bodyIdx));
+    const float3 p1 = logWarp(framePosition(i1, bodyIdx));
 
     const float4 c0 = mul(viewProj, float4(p0, 1.0));
     const float4 c1 = mul(viewProj, float4(p1, 1.0));
