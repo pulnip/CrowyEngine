@@ -24,8 +24,9 @@ namespace Crowy
             RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
             Color clearColor = Colors::Black;
 
-            // worst case, not the visible count
+            // worst cases, not live counts
             u32 drawCapacity = 4096;
+            u32 materialCapacity = 256;
             u32 viewCount = 1;
 
             // element counts, as GeometryPool takes them
@@ -89,7 +90,11 @@ namespace Crowy
 
         // Override to push a struct starting with the same members
         // when a shader wants more root constants.
-        virtual void OnBindPass(RHICommandList& cmdList, u64 drawDataID);
+        virtual void OnBindPass(RHICommandList& cmdList, const ScenePush& push);
+
+        // The sample's own per-frame buffers, written here
+        // because the pass has not opened yet.
+        virtual void OnUpdateFrameData() {}
 
         RHIDevice& Device() noexcept { return *device; }
         GeometryPool& Geometry() noexcept { return *geometryPool; }

@@ -1,25 +1,24 @@
 #pragma once
 
-#include <span>
 #include <vector>
 
-#include "GenericHandle.hpp"
 #include "Geometry/Overlap3D.hpp"
 #include "GeometryPool.hpp"
-#include "HandleTable.hpp"
 #include "LinearAlgebra.hpp"
+#include "PackedTable.hpp"
 #include "Primitives.hpp"
+#include "RenderMaterial.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
+    struct MeshResource;
     struct PrimitiveSnapshot;
-    struct PrimitiveTag;
 
-    using PrimitiveHandle = GenericHandle<PrimitiveTag>;
-    using PrimitiveTable = HandleTable<PrimitiveTag>;
-    using PrimitiveSlots = std::vector<PrimitiveTable::Slot>;
-    using PrimitiveSnapshots = std::vector<PrimitiveSnapshot>;
+    using MeshHandle = GenericHandle<MeshResource>;
+    using MeshTable = PackedTable<MeshResource>;
+    using PrimitiveHandle = GenericHandle<PrimitiveSnapshot>;
+    using PrimitiveTable = PackedTable<PrimitiveSnapshot>;
 
     enum class PrimitiveFlags : u32 {
         None = 0,
@@ -27,12 +26,31 @@ namespace Crowy
         CastShadow = 1u << 1,
     };
 
+    // One draw's worth of geometry, plus which of the mesh's materials it uses.
+    struct SubMesh {
+        GeometryAllocation geometry{};
+        AABB3D localBounds{};
+        // index into MeshResource::materials, not a row in the material table
+        u32 materialSlot = 0;
+    };
+
+    using SubMeshes = std::vector<SubMesh>;
+    using MaterialHandles = std::vector<MaterialHandle>;
+
+    struct MeshResource {
+        SubMeshes subMeshes;
+        // one per material slot the submeshes name
+        MaterialHandles materials;
+        AABB3D localBounds{};
+    };
+
+    // What extraction writes and the only thing the renderer reads.
     // Note. View-independent
     struct PrimitiveSnapshot {
         Mat4 localToWorld = unitMat();
         // local bounds pushed through localToWorld at extract time
         AABB3D worldBounds{};
-        GeometryAllocation geometry{};
+        MeshHandle mesh;
         PrimitiveFlags flags = PrimitiveFlags::Visible;
     };
 
@@ -40,41 +58,23 @@ namespace Crowy
     // persistent, written only by extraction.
     class RenderScene {
     private:
-        PrimitiveTable slots;
-        PrimitiveSnapshots primitives;
-        // HandleTable does not store, needed by swap-remove.
-        // Kept out of PrimitiveSnapshot so the row stays what extraction writes.
-        PrimitiveSlots slotOfRow;
+        MaterialTable materials;
+        MeshTable meshes;
+        PrimitiveTable primitives;
 
     public:
         RenderScene() = default;
         ~RenderScene() = default;
         CROWY_DECLARE_TRANSFERABLE(RenderScene)
 
-        PrimitiveHandle Add(const PrimitiveSnapshot& snapshot);
-        void Write(PrimitiveHandle handle, const PrimitiveSnapshot& snapshot);
-        void Remove(PrimitiveHandle handle);
-        // expires every handle ever issued
-        void Clear() noexcept;
+        auto& Materials(this auto& self) noexcept { return self.materials; }
+        auto& Meshes(this auto& self) noexcept { return self.meshes; }
+        auto& Primitives(this auto& self) noexcept { return self.primitives; }
 
-        bool IsValid(PrimitiveHandle handle) const noexcept {
-            return slots.IsValid(handle);
-        }
-
-        const PrimitiveSnapshot& Read(PrimitiveHandle handle) const noexcept {
-            CROWY_ASSERT(IsValid(handle));
-
-            return primitives[slots.IndexOf(handle).value];
-        }
-
-        usize PrimitiveCount() const noexcept { return primitives.size(); }
-        const PrimitiveSnapshot& PrimitiveAt(usize index) const noexcept {
-            CROWY_ASSERT(index < primitives.size());
-
-            return primitives[index];
-        }
-        std::span<const PrimitiveSnapshot> Primitives() const noexcept {
-            return primitives;
+        void Clear() noexcept {
+            primitives.Clear();
+            meshes.Clear();
+            materials.Clear();
         }
     };
 }

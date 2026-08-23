@@ -14,12 +14,12 @@ namespace Crowy
 
     SceneRenderer::SceneRenderer(
         RHIDevice& device,
-        u32 drawCapacity,
-        u32 viewCount
+        const SceneRendererDesc& desc
     )
         : drawDataBuffer(device.CreateBuffer(
               RHIBufferCreateDesc{
-                  .size = static_cast<u32>(sizeof(DrawData) * drawCapacity),
+                  .size =
+                      static_cast<u32>(sizeof(DrawData) * desc.drawCapacity),
                   .usage = RHIBufferUsage::ShaderResource,
                   .access = RHIMemoryAccess::CPUWrite
               }
@@ -27,28 +27,50 @@ namespace Crowy
           argsBuffer(device.CreateBuffer(
               RHIBufferCreateDesc{
                   .size = static_cast<u32>(
-                      sizeof(RHIDrawIndexedArgs) * drawCapacity
+                      sizeof(RHIDrawIndexedArgs) * desc.drawCapacity
                   ),
                   .usage = RHIBufferUsage::IndirectArgument,
                   .access = RHIMemoryAccess::CPUWrite
               }
           )),
+          materialBuffer(device.CreateBuffer(
+              RHIBufferCreateDesc{
+                  .size = static_cast<u32>(
+                      sizeof(MaterialData) * desc.materialCapacity
+                  ),
+                  .usage = RHIBufferUsage::ShaderResource,
+                  .access = RHIMemoryAccess::CPUWrite
+              }
+          )),
           viewCB(device.CreateBuffer(
               RHIBufferCreateDesc{
-                  .size = static_cast<u32>(sizeof(ViewData) * viewCount),
+                  .size = static_cast<u32>(sizeof(ViewData) * desc.viewCount),
                   .usage = RHIBufferUsage::ConstantBuffer,
                   .access = RHIMemoryAccess::CPUWrite
               }
           )),
-          drawScratch(drawCapacity),
-          argsScratch(drawCapacity),
-          views(viewCount) {}
+          drawScratch(desc.drawCapacity),
+          argsScratch(desc.drawCapacity),
+          materialScratch(desc.materialCapacity),
+          views(desc.viewCount) {}
 
     void SceneRenderer::BuildFrame(const RenderScene& scene, u32 viewIndex) {
         CROWY_ASSERT(viewIndex < views.size());
 
+        const auto& materials = scene.Materials();
+        const auto& meshes = scene.Meshes();
+        const auto primitives = scene.Primitives().All();
+
+        materialCount = static_cast<u32>(materials.Count());
+        CROWY_ASSERT(
+            materialCount <= materialScratch.size(),
+            "SceneRenderer ran out of material rows; raise materialCapacity"
+        );
+        for(u32 i = 0; i < materialCount; ++i) {
+            materialScratch[i] = materials.At(i).data;
+        }
+
         const auto frustum = makeFrustum3D(views[viewIndex].viewProj);
-        const auto primitives = scene.Primitives();
 
         // Linear over a packed array, no acceleration structure:
         // this loop is what a compute shader replaces
@@ -61,23 +83,28 @@ namespace Crowy
             if(!OverlapFrustumAABB3D(frustum, primitive.worldBounds))
                 continue;
 
-            CROWY_ASSERT(
-                drawCount < DrawCapacity(),
-                "SceneRenderer ran out of draw rows; raise drawCapacity"
-            );
+            const auto& mesh = meshes.Read(primitive.mesh);
+            for(const auto& subMesh: mesh.subMeshes) {
+                CROWY_ASSERT(
+                    drawCount < DrawCapacity(),
+                    "SceneRenderer ran out of draw rows; raise drawCapacity"
+                );
 
-            const auto& geometry = primitive.geometry;
-            drawScratch[drawCount] = DrawData{
-                .world = primitive.localToWorld,
-                .objectID = static_cast<u32>(i)
-            };
-            argsScratch[drawCount] = RHIDrawIndexedArgs{
-                .indexCount = geometry.indexCount,
-                .firstIndex = geometry.firstIndex,
-                .baseVertex = geometry.baseVertex,
-                .baseInstance = drawCount
-            };
-            ++drawCount;
+                const auto material = mesh.materials[subMesh.materialSlot];
+                drawScratch[drawCount] = DrawData{
+                    .world = primitive.localToWorld,
+                    .materialIndex =
+                        static_cast<u32>(materials.IndexOf(material)),
+                    .objectID = static_cast<u32>(i)
+                };
+                argsScratch[drawCount] = RHIDrawIndexedArgs{
+                    .indexCount = subMesh.geometry.indexCount,
+                    .firstIndex = subMesh.geometry.firstIndex,
+                    .baseVertex = subMesh.geometry.baseVertex,
+                    .baseInstance = drawCount
+                };
+                ++drawCount;
+            }
         }
 
         uploaded = false;
@@ -95,6 +122,12 @@ namespace Crowy
                 static_cast<u32>(sizeof(RHIDrawIndexedArgs) * drawCount)
             );
         }
+        if(materialCount > 0) {
+            materialBuffer->Upload(
+                materialScratch.data(),
+                static_cast<u32>(sizeof(MaterialData) * materialCount)
+            );
+        }
         viewCB->Upload(
             views.data(),
             static_cast<u32>(sizeof(ViewData) * views.size())
@@ -103,16 +136,21 @@ namespace Crowy
         uploaded = true;
     }
 
-    u64 SceneRenderer::DrawDataID() {
+    ScenePush SceneRenderer::Push() {
         CROWY_ASSERT(
             uploaded,
-            "DrawDataID() before Upload(): a CPUWrite buffer has no descriptor "
-            "for a frame slot that has not been written yet"
+            "Push() before Upload(): a CPUWrite buffer has no descriptor for a "
+            "frame slot that has not been written yet"
         );
 
-        return drawDataBuffer->GetReadableID(
-            static_cast<u32>(sizeof(DrawData))
-        );
+        return ScenePush{
+            .draws = drawDataBuffer->GetReadableID(
+                static_cast<u32>(sizeof(DrawData))
+            ),
+            .materials = materialBuffer->GetReadableID(
+                static_cast<u32>(sizeof(MaterialData))
+            )
+        };
     }
 
     void SceneRenderer::BindView(

@@ -42,8 +42,11 @@ namespace Crowy
     struct ScenePush {
         // DescriptorHandle<StructuredBuffer<DrawData>>
         u64 draws = 0;
+        // DescriptorHandle<StructuredBuffer<MaterialData>>
+        u64 materials = 0;
     };
-    static_assert(sizeof(ScenePush) == 8);
+    static_assert(sizeof(ScenePush) == 16);
+    static_assert(offsetof(ScenePush, materials) == 8);
     static_assert(sizeof(ScenePush) <= RHI_PUSH_CONSTANT_BYTES);
     static_assert(std::is_trivially_copyable_v<ScenePush>);
 }

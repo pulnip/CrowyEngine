@@ -1,4 +1,18 @@
-// mirror of DrawData in Engine/Render/Public/RenderSceneData.hpp;
+// mirror of DrawData in RenderSceneData.hpp;
+// mirror of MaterialData in RenderMaterial.hpp;
+// unused here - this sample colours by objectID - but declared so the push
+// constant layout matches the C++ side exactly
+struct MaterialData{
+    float3 albedo;
+    float metallic;
+    float3 emissive;
+    float roughness;
+    uint albedoMapID;
+    uint normalMapID;
+    uint mrMapID;
+    uint _pad0;
+};
+
 struct DrawData{
     float4x4 world;
     uint materialIndex;
@@ -11,6 +25,7 @@ struct DrawData{
 // per-draw data rides in draws[drawID], never here
 struct ScenePush{
     DescriptorHandle<StructuredBuffer<DrawData>> draws;
+    DescriptorHandle<StructuredBuffer<MaterialData>> materials;
 };
 
 [[vk::push_constant]]

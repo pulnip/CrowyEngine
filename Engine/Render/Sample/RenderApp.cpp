@@ -42,8 +42,11 @@ namespace Crowy
         );
         renderer = std::make_unique<SceneRenderer>(
             device,
-            config.drawCapacity,
-            config.viewCount
+            SceneRendererDesc{
+                .drawCapacity = config.drawCapacity,
+                .materialCapacity = config.materialCapacity,
+                .viewCount = config.viewCount
+            }
         );
 
         OnCreatePipelines(device, swapchain.GetFormat(), config.depthFormat);
@@ -73,8 +76,8 @@ namespace Crowy
         camera.Update(deltaTime);
     }
 
-    void RenderApp::OnBindPass(RHICommandList& cmdList, u64 drawDataID) {
-        cmdList.SetPushGraphicsConstants(ScenePush{.draws = drawDataID});
+    void RenderApp::OnBindPass(RHICommandList& cmdList, const ScenePush& push) {
+        cmdList.SetPushGraphicsConstants(push);
     }
 
     // does not prove the culling did anything.
@@ -87,7 +90,7 @@ namespace Crowy
             "RenderApp",
             "first frame: {} of {} primitives survived culling",
             renderer->DrawCount(),
-            scene.PrimitiveCount()
+            scene.Primitives().Count()
         );
     }
 
@@ -98,6 +101,7 @@ namespace Crowy
         renderer->View(ViewMain).viewProj = camera.ViewProj(aspect);
 
         // every per-frame buffer settles before the pass opens
+        OnUpdateFrameData();
         renderer->BuildFrame(scene, ViewMain);
         renderer->Upload();
         reportCullStatsOnce();
@@ -138,7 +142,7 @@ namespace Crowy
             sizeof(Vertex)
         );
         renderer->BindView(cmdList, ViewCBSlot, ViewMain);
-        OnBindPass(cmdList, renderer->DrawDataID());
+        OnBindPass(cmdList, renderer->Push());
 
         renderer->Submit(
             cmdList,

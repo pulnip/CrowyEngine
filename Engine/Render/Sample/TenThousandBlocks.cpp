@@ -21,12 +21,15 @@ namespace Crowy
         static constexpr f32 BlockHalfSize = 0.5f;
 
         static constexpr u32 MeshTypeCount = 3;
-        using Meshes = std::array<GeometryAllocation, MeshTypeCount>;
+        using Geometries = std::array<GeometryAllocation, MeshTypeCount>;
+        using Meshes = std::array<MeshHandle, MeshTypeCount>;
 
         static constexpr Color SkyColor{0.55f, 0.78f, 0.95f, 1.0f};
 
         RHIGraphicsPipelineStateRAII pso;
+        Geometries geometry;
         Meshes meshes;
+        MaterialHandle material;
 
     public:
         TenThousandBlocks()
@@ -77,18 +80,37 @@ namespace Crowy
             // single-sided quad facing the start camera
             const auto planeMesh = MakePlane(-unitZ(), unitX(), BlockHalfSize);
 
-            meshes[0] = pool.Add(cmdList, boxMesh.vertices, boxMesh.indices);
-            meshes[1] =
+            geometry[0] = pool.Add(cmdList, boxMesh.vertices, boxMesh.indices);
+            geometry[1] =
                 pool.Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
-            meshes[2] =
+            geometry[2] =
                 pool.Add(cmdList, planeMesh.vertices, planeMesh.indices);
         }
 
         void ExtractScene(RenderScene& scene) override {
+            // the shader colours by objectID and ignores the material,
+            // so one row covers the whole lattice
+            material = scene.Materials().Add(MaterialResource{});
+
+            const auto localBounds =
+                AABB3D{.center = zeros(), .halfScale = BlockHalfSize * ones()};
+            for(u32 i = 0; i < MeshTypeCount; ++i) {
+                meshes[i] = scene.Meshes().Add(
+                    MeshResource{
+                        .subMeshes = {SubMesh{
+                            .geometry = geometry[i],
+                            .localBounds = localBounds
+                        }},
+                        .materials = {material},
+                        .localBounds = localBounds
+                    }
+                );
+            }
+
             for(u32 i = 0; i < BlockCount; ++i) {
                 const auto position = blockPosition(i);
 
-                scene.Add(
+                scene.Primitives().Add(
                     PrimitiveSnapshot{
                         .localToWorld = translateMat(position),
                         // every mesh type fits the box's extent
@@ -97,7 +119,7 @@ namespace Crowy
                                 .center = position,
                                 .halfScale = BlockHalfSize * ones()
                             },
-                        .geometry = meshes[i % MeshTypeCount]
+                        .mesh = meshes[i % MeshTypeCount]
                     }
                 );
             }
