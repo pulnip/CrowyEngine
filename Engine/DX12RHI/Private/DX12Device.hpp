@@ -14,7 +14,7 @@ namespace Crowy
     class DX12Device: public RHIDevice{
     private:
         class Impl;
-        static constexpr usize implSize = 264;
+        static constexpr usize implSize = 344;
         static constexpr usize implAlign = 8;
         FastPimpl<Impl, implSize, implAlign> impl;
 

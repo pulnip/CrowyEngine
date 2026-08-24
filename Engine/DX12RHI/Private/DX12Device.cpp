@@ -529,7 +529,11 @@ namespace Crowy
                     .initialData = nullptr
                 }, "staging buffer"
             );
-            uploadRing = UploadRing(std::move(stagingBuffer));
+            uploadRing = UploadRing(
+                dxDevice,
+                std::move(stagingBuffer),
+                [this]{ flushUploads(); }
+            );
         }
 
         ~Impl(){
@@ -698,6 +702,7 @@ namespace Crowy
             ++frameIndex;
             signalFrame();
             retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
         }
 
         void SubmitAndPresent(
@@ -713,6 +718,7 @@ namespace Crowy
             ++frameIndex;
             signalFrame();
             retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
         }
 
         u64 GetSubmittedFrame() const noexcept{
@@ -791,6 +797,25 @@ namespace Crowy
                 uploadCmdList->Begin();
                 uploadRecorded = true;
             }
+        }
+
+        // The upload ring's escape hatch: the copies holding its space are
+        // still sitting in uploadCmdList, so give them a batch of their own
+        // and the frame value that comes with it.
+        //
+        // Called from inside UploadRing::Allocate, which runs before its
+        // caller records anything - so what goes out here is strictly the
+        // uploads that came before, and the caller still needs an open list.
+        void flushUploads(){
+            if(!uploadRecorded)
+                return;
+
+            Submit(std::span<RHICommandList*>{});
+            // creation uploads are load-time work, and draining first is what
+            // makes the allocator Begin() is about to reset provably idle
+            WaitFrame(frameIndex);
+
+            ensureUploadBegin();
         }
 
         void executeCommandLists(std::span<RHICommandList*> cmdLists){

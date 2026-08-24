@@ -112,7 +112,7 @@ namespace Crowy
             return buffer;
         }
 
-        Impl()
+        Impl(MetalDevice& mtlDevice)
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
             , submissionEvent(NS::TransferPtr(device->newEvent()))
@@ -163,7 +163,11 @@ namespace Crowy
                     .initialData = nullptr
                 }, "staging buffer"
             );
-            uploadRing = UploadRing(std::move(stagingBuffer));
+            uploadRing = UploadRing(
+                mtlDevice,
+                std::move(stagingBuffer),
+                [this]{ flushUploads(); }
+            );
         }
 
         ~Impl(){
@@ -279,6 +283,7 @@ namespace Crowy
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
             retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
 
             trackHandoffs(cmdLists);
 
@@ -302,6 +307,7 @@ namespace Crowy
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
             retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
 
             trackHandoffs(cmdLists);
 
@@ -434,9 +440,32 @@ namespace Crowy
                 uploadRecorded = false;
             }
         }
+
+        // The upload ring's escape hatch: the copies holding its space are
+        // still sitting in uploadCmdList. ensureUploadCommit already
+        // CPU-waits them out, so the fresh signal only exists to give the
+        // ring a frame value it can retire against.
+        //
+        // Called from inside UploadRing::Allocate, which runs before its
+        // caller records anything - so what goes out here is strictly the
+        // uploads that came before, and the caller still needs an open list.
+        void flushUploads(){
+            if(!uploadRecorded)
+                return;
+
+            ensureUploadCommit();
+
+            ++frameIndex;
+            signalFrame(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
+
+            ensureUploadBegin();
+        }
     };
 
-    MetalDevice::MetalDevice() = default;
+    MetalDevice::MetalDevice()
+        : impl(*this){}
+
     MetalDevice::~MetalDevice() = default;
 
     RHIFrameScopeRAII MetalDevice::CreateFrameScope(){
