@@ -105,12 +105,11 @@ namespace Crowy
                 , .slotWritten = false
             #endif
             };
-            frameResource.buffer = frameResource.allocation.resource;
 
             if(policy.persistentMap){
                 CROWY_ASSERT(isCPUWrite || isCPURead);
                 const CD3DX12_RANGE noRead(0, 0);
-                CHECK_HRESULT(frameResource.buffer->Map(
+                CHECK_HRESULT(frameResource.allocation.resource->Map(
                     0,
                     &noRead,
                     &frameResource.mapped
@@ -141,7 +140,7 @@ namespace Crowy
             auto& frameResource = resources[i];
 
             if(frameResource.mapped != nullptr){
-                frameResource.buffer->Unmap(
+                frameResource.allocation.resource->Unmap(
                     0,
                     nullptr
                 );
@@ -158,7 +157,6 @@ namespace Crowy
                 heap.Free(idx);
             }
 
-            frameResource.buffer = nullptr;
             allocator.Free(frameResource.allocation);
         }
     }
@@ -202,9 +200,10 @@ namespace Crowy
     }
 
     u32 DX12Buffer::GetSize() const noexcept{
-        auto& frameResource = resources[currentIndex()];
-        auto desc = frameResource.buffer->GetDesc();
-        return desc.Width;
+        // buffers pad to no more than a few hundred bytes (constant-buffer
+        // alignment), so the allocator's byte count fits u32 exactly the
+        // same as GetDesc().Width did
+        return static_cast<u32>(resources[currentIndex()].allocation.size);
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS DX12Buffer::GetGPUAddress(){
@@ -213,7 +212,7 @@ namespace Crowy
     #endif
 
         auto& frameResource = resources[currentIndex()];
-        return frameResource.buffer->GetGPUVirtualAddress();
+        return frameResource.allocation.resource->GetGPUVirtualAddress();
     }
 
     u64 DX12Buffer::GetReadableID(const RHIBufferViewDesc& desc){
@@ -249,7 +248,7 @@ namespace Crowy
         }, desc.config);
 
         auto idx = heap.Allocate(
-            *frameResource.buffer.Get(),
+            *frameResource.allocation.resource,
             dxDesc
         );
         auto [it, ret] = srvs.emplace(desc, idx);
@@ -287,7 +286,7 @@ namespace Crowy
         }, desc.config);
 
         auto idx = heap.Allocate(
-            *frameResource.buffer.Get(),
+            *frameResource.allocation.resource,
             dxDesc
         );
         auto [it, ret] = uavs.emplace(desc, idx);

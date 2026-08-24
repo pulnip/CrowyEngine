@@ -5,7 +5,6 @@
 #include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "MetalBuffer.hpp"
-#include "MetalHeapPool.hpp"
 #include "MetalUtil.hpp"
 #include "PtrUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -94,9 +93,7 @@ namespace Crowy
                 , .slotWritten = false
             #endif
             };
-            resource.buffer = NS::RetainPtr(
-                static_cast<MTL::Buffer*>(resource.allocation.resource)
-            );
+            resource.buffer = static_cast<MTL::Buffer*>(resource.allocation.resource);
 
             if(policy.persistentMap){
                 CROWY_ASSERT(isCPUWrite || isCPURead);
@@ -117,7 +114,7 @@ namespace Crowy
 
     MetalBuffer::~MetalBuffer(){
         for(auto& resource: resources){
-            resource.buffer.reset();
+            resource.buffer = nullptr;
             allocator.Free(resource.allocation);
         }
     }

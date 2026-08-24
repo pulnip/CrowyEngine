@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Foundation/NSTypes.hpp>
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLBuffer.hpp>
 #include "MetalAllocator.hpp"
@@ -14,7 +13,7 @@ namespace Crowy
     private:
         struct FrameResource{
             RHIAllocation allocation{};
-            NS::SharedPtr<MTL::Buffer> buffer;
+            MTL::Buffer* buffer = nullptr;
             void* mapped = nullptr;
         #if defined(_DEBUG) || !defined(NDEBUG)
             bool slotWritten = false;
@@ -78,7 +77,9 @@ namespace Crowy
         }
 
         u32 GetSize() const noexcept RHI_OVERRIDE{
-            return resources[currentIndex()].buffer->length();
+            // buffers round up to no more than 16 bytes, so the allocator's
+            // byte count fits u32 exactly the same as length() did
+            return static_cast<u32>(resources[currentIndex()].allocation.size);
         }
 
         u64 GetReadableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
@@ -88,7 +89,7 @@ namespace Crowy
             return getResourceID(view);
         }
 
-        MTL::Buffer* Get() noexcept{ return resources[currentIndex()].buffer.get(); }
+        MTL::Buffer* Get() noexcept{ return resources[currentIndex()].buffer; }
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         // call wherever the GPU is about to be pointed at the current slot

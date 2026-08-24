@@ -13,7 +13,6 @@ namespace Crowy
     private:
         struct FrameResource{
             RHIAllocation allocation{};
-            BufferRAII buffer = nullptr;
             void* mapped = nullptr;
             // descriptor heap index
             std::unordered_map<RHIBufferViewDesc, UINT> cbvs;
@@ -87,7 +86,7 @@ namespace Crowy
 
         u32 GetSize() const noexcept RHI_OVERRIDE;
 
-        Buffer* Get() noexcept{ return resources[currentIndex()].buffer.Get(); }
+        Buffer* Get() noexcept{ return resources[currentIndex()].allocation.resource; }
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress();
 
