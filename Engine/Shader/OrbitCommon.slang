@@ -9,6 +9,13 @@
 static const uint BODY_COUNT = 9;
 static const uint EARTH_INDEX = 3;
 
+static const float ORBIT_PI = 3.14159265358979324;
+
+float orbitWrapToPi(float radians){
+    return radians - 6.28318530717958648 *
+        floor((radians + ORBIT_PI) * 0.159154943091895336);
+}
+
 // Interpolate first, warp second. The other order does the subtraction in a
 // nonlinear space and the geometry comes apart.
 //
