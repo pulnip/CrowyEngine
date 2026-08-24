@@ -2,7 +2,6 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
-#include "EnumUtil.hpp"
 #include "RHIUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -13,44 +12,11 @@
 
 namespace Crowy
 {
-    namespace{
-        // resting state after a creation upload: every read use the buffer's
-        // usage flags allow. write usages do not shape it - a later writer
-        // must acquire with its own edge anyway.
-        RHIBarrierPoint restingReadPoint(RHIBufferUsage usage){
-            using enum RHIBufferUsage;
-            using S = RHIBarrierSync;
-            using A = RHIBarrierAccess;
-
-            auto sync = S::None;
-            auto access = A::Common;
-            const auto add = [&](RHIBufferUsage use, S s, A a){
-                if(hasFlag(usage, use)){
-                    sync = combine(sync, s);
-                    access = combine(access, a);
-                }
-            };
-            add(VertexBuffer,     S::VertexShading,   A::VertexBuffer);
-            add(IndexBuffer,      S::IndexInput,      A::IndexBuffer);
-            add(ConstantBuffer,   S::AllShading,      A::UniformBuffer);
-            add(IndirectArgument, S::ExecuteIndirect, A::IndirectArgs);
-            add(ShaderResource,   S::AllShading,      A::ShaderResource);
-
-            // usage flags say nothing about reads (bindless SRV) - stay broad
-            if(access == A::Common){
-                sync = S::AllShading;
-                access = A::ShaderResource;
-            }
-            return {sync, access, RHITextureLayout::Undefined};
-        }
-    }
-
     void UploadGpuOnlyBuffer(
         RHICommandList& cmdList,
         UploadRing& ring,
         u64 align,
         RHIBuffer& buffer,
-        RHIBufferUsage usage,
         const RHISubresourceData& sub
     ){
         const auto totalBytes = buffer.GetSize();
@@ -83,15 +49,16 @@ namespace Crowy
         );
 
         // creation-time uploads are consumed by later submissions, so this
-        // release stays unmatched here and completes at Close
-        const auto resting = restingReadPoint(usage);
+        // release stays unmatched here and completes at Close.
+        // it runs once per resource, which is why it rests wide open rather
+        // than naming the reads a caller happens to have in mind
         const std::array releases{
             RHIBufferBarrier{
                 .buffer = &buffer,
                 .syncBefore = RHIBarrierSync::Copy,
-                .syncAfter = resting.sync,
+                .syncAfter = RHIBarrierSync::All,
                 .accessBefore = RHIBarrierAccess::CopyDst,
-                .accessAfter = resting.access
+                .accessAfter = RHIBarrierAccess::Common
             }
         };
         cmdList.EndBlitPass({}, releases);

@@ -74,14 +74,10 @@ namespace Crowy
             auto boxMesh = MakeBox(1.0f);
             vertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * boxMesh.vertices.size()),
-                .usage = RHIBufferUsage::VertexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = boxMesh.vertices.data()
             });
             indices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * boxMesh.indices.size()),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = boxMesh.indices.data()
             });
             indexCount = static_cast<u32>(boxMesh.indices.size());

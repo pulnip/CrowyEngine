@@ -1,7 +1,6 @@
 #include <format>
 #include <stdexcept>
 #include <offsetAllocator.hpp>
-#include "EnumUtil.hpp"
 #include "GeometryPool.hpp"
 #include "IntMath.hpp"
 #include "LogLocal.hpp"
@@ -44,18 +43,10 @@ namespace Crowy
         , indexCapacity(indexCapacity)
     {
         vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = vertexCapacity * static_cast<u32>(sizeof(Vertex)),
-            .usage = combine(
-                RHIBufferUsage::VertexBuffer,
-                RHIBufferUsage::ShaderResource,
-                RHIBufferUsage::CopyDst
-            ),
-            .location = RHIMemoryLocation::Device
+            .size = vertexCapacity * static_cast<u32>(sizeof(Vertex))
         }, "geometry pool vertices");
         indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = indexCapacity * static_cast<u32>(sizeof(u32)),
-            .usage = combine(RHIBufferUsage::IndexBuffer, RHIBufferUsage::CopyDst),
-            .location = RHIMemoryLocation::Device
+            .size = indexCapacity * static_cast<u32>(sizeof(u32))
         }, "geometry pool indices");
 
         // sized for the whole pool at once: no flush hook, so a request the
@@ -66,9 +57,7 @@ namespace Crowy
         );
         auto stagingBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(stagingBytes),
-            .usage = RHIBufferUsage::CopySrc,
-            .location = RHIMemoryLocation::Upload,
-            .cpuAccess = RHICpuAccess::Write
+            .memory = RHIMemoryType::CPUWrite
         }, "geometry pool staging");
         staging = UploadRing(device, std::move(stagingBuffer));
     }

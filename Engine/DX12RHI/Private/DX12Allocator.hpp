@@ -3,19 +3,11 @@
 #include <unordered_map>
 #include "DX12Definitions.hpp"
 #include "Primitives.hpp"
+#include "RHIDefinitions.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    // Where an allocation lives. GPU_UPLOAD is deliberately not a class of
-    // its own: whether Upload can take it is a runtime capability, not
-    // something a caller is in a position to ask for.
-    enum class RHIMemoryClass : u8 {
-        Device,
-        Upload,
-        Readback
-    };
-
     // One allocation, borrowed. DX12Allocator owns the resource until Free,
     // so this stays a plain value that can be copied around freely.
     //
@@ -48,9 +40,11 @@ namespace Crowy
         ~DX12Allocator();
         CROWY_DECLARE_PINNED(DX12Allocator)
 
+        // GPU_UPLOAD is deliberately not a type of its own: whether Upload
+        // can take it is a runtime capability, not something a caller asks for
         [[nodiscard]] RHIAllocation Allocate(
             const D3D12_RESOURCE_DESC1&,
-            RHIMemoryClass,
+            RHIMemoryType,
             const D3D12_CLEAR_VALUE* clearValue = nullptr,
             StrView name = {}
         );

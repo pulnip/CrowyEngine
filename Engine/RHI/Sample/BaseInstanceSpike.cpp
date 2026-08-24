@@ -39,8 +39,6 @@ namespace Crowy
             static constexpr u32 indices[] = {0, 1, 2, 0, 2, 3};
             quadIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(indices),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = indices
             });
         }

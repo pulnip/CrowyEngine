@@ -1,5 +1,4 @@
 #include <array>
-#include "EnumUtil.hpp"
 #include "OrbitDrawArgs.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
@@ -55,29 +54,17 @@ namespace Crowy
         // been accessed can never be acquired from Undefined again.
         bodies = device.CreateBuffer(RHIBufferCreateDesc{
             .size = count * BODY_STRIDE,
-            .usage = RHIBufferUsage::ShaderResource,
-            .location = RHIMemoryLocation::Device,
             .initialData = table.data()
         }, "OrbitBodyDraws");
 
         segCounts = device.CreateBuffer(RHIBufferCreateDesc{
             .size = count * static_cast<u32>(sizeof(u32)),
-            .usage = combine(
-                RHIBufferUsage::ShaderResource,
-                RHIBufferUsage::UnorderedAccess
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "OrbitSegCounts");
 
         args = device.CreateBuffer(RHIBufferCreateDesc{
             .size = count * static_cast<u32>(sizeof(RHIDrawArgs)),
-            .usage = combine(
-                RHIBufferUsage::IndirectArgument,
-                RHIBufferUsage::UnorderedAccess,
-                // the headless check reads them back
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "OrbitTrailArgs");
     }
 

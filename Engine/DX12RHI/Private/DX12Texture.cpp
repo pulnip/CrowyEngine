@@ -52,7 +52,6 @@ namespace Crowy
         , dsvHeap(dsvHeap)
     {
         using enum RHITextureUsage;
-        using enum RHIMemoryAccess;
 
         const auto isShaderResource  = hasFlag(desc.usage, ShaderResource);
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
@@ -120,7 +119,7 @@ namespace Crowy
 
         allocation = allocator.Allocate(
             texDesc,
-            RHIMemoryClass::Device,
+            RHIMemoryType::GPUOnly,
             pClearValue,
             name
         );

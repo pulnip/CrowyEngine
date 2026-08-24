@@ -345,14 +345,8 @@ namespace Crowy
             beltScratch.resize(belt.Count());
 
             beltGpuBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(
-                    belt.Count() * sizeof(Vec3)
-                ),
-                .usage = combine(
-                    RHIBufferUsage::ShaderResource,
-                    RHIBufferUsage::UnorderedAccess
-                ),
-                .location = RHIMemoryLocation::Device
+                .size = static_cast<u32>(belt.Count() * sizeof(Vec3)),
+                .shaderWrite = true
             }, "OrbitAsteroidBeltGPU");
             beltFill = std::make_unique<OrbitKeplerFill>(
                 device, belt.Elements()

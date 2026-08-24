@@ -532,10 +532,7 @@ namespace Crowy
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
-                    .usage = RHIBufferUsage::CopySrc,
-                    .location = RHIMemoryLocation::Upload,
-                    .cpuAccess = RHICpuAccess::Write,
-                    .initialData = nullptr
+                    .memory = RHIMemoryType::CPUWrite
                 }, "staging buffer"
             );
             uploadRing = UploadRing(
@@ -564,7 +561,7 @@ namespace Crowy
                 name
             );
 
-            if(desc.initialData != nullptr && desc.cpuAccess == RHICpuAccess::None){
+            if(desc.initialData != nullptr && desc.memory == RHIMemoryType::GPUOnly){
                 ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
@@ -572,7 +569,6 @@ namespace Crowy
                     uploadRing,
                     D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
                     *buffer,
-                    desc.usage,
                     RHISubresourceData{
                         .data = desc.initialData,
                         .rowPitch = desc.size
@@ -587,9 +583,9 @@ namespace Crowy
             const RHITextureCreateDesc& desc,
             StrView name
         ){
-            using enum RHIMemoryAccess;
+            using enum RHIMemoryType;
 
-            CROWY_ASSERT(desc.access != CPUWrite && desc.access != CPURead,
+            CROWY_ASSERT(desc.memory != CPUWrite && desc.memory != CPURead,
                 "Use RHIBuffer for CPU-Accessable Resource"
             );
 
@@ -601,7 +597,6 @@ namespace Crowy
                 *dsvHeap,
                 name
             );
-            // Notice. RHIMemoryAccess::Transient == RHIMemoryAccess::GPUOnly
             if(!desc.initialData.empty()){
                 // RHISubresourceData carries no slice pitch, so the upload
                 // helpers only understand 2D subresources

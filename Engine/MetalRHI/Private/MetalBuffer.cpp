@@ -2,7 +2,6 @@
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
 #include "Assert.hpp"
-#include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalUtil.hpp"
@@ -11,20 +10,6 @@
 
 namespace Crowy
 {
-    namespace{
-        RHIMemoryClass toMemoryClass(RHIMemoryLocation location){
-            using enum RHIMemoryLocation;
-
-            switch(location){
-            case Device:   return RHIMemoryClass::Device;
-            case Upload:   return RHIMemoryClass::Upload;
-            case Readback: return RHIMemoryClass::Readback;
-            default:
-                std::unreachable();
-            }
-        }
-    }
-
     MetalBuffer::MetalBuffer(
         MetalAllocator& allocator,
         const RHIBufferCreateDesc& desc,
@@ -33,37 +18,27 @@ namespace Crowy
         : size(desc.size)
         , allocator(allocator)
     {
-        using enum RHIBufferUsage;
+        using enum RHIMemoryType;
 
-        const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
-        const auto isCopyDst = hasFlag(desc.usage, CopyDst);
-
-        const auto isCPUWrite = (desc.cpuAccess == RHICpuAccess::Write);
-        CROWY_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
-        const auto isCPURead = (desc.cpuAccess == RHICpuAccess::Read);
-        CROWY_ASSERT(!isCPURead || (desc.usage == CopyDst));
-
-        CROWY_ASSERT(
-            (desc.location == RHIMemoryLocation::Upload) == isCPUWrite,
-            "Upload memory is exactly what the CPU writes"
+        CROWY_ASSERT(desc.memory != Transient,
+            "tile memory holds render targets, not buffers"
         );
-        CROWY_ASSERT(
-            (desc.location == RHIMemoryLocation::Readback) == isCPURead,
-            "Readback memory is exactly what the CPU reads"
+        CROWY_ASSERT(desc.memory == GPUOnly || !desc.shaderWrite,
+            "a shader cannot write CPU-visible memory"
         );
 
         allocation = allocator.AllocateBuffer(
             nextMul(desc.size, 16u),
-            toMemoryClass(desc.location),
+            desc.memory,
             name
         );
         buffer = static_cast<MTL::Buffer*>(allocation.resource);
 
-        if(isCPUWrite || isCPURead){
+        if(desc.memory != GPUOnly){
             mapped = buffer->contents();
         }
 
-        if(desc.initialData != nullptr && isCPUWrite){
+        if(desc.initialData != nullptr && desc.memory == CPUWrite){
             Upload(desc.initialData, desc.size);
         }
     }

@@ -158,14 +158,10 @@ namespace Crowy
             floorModel = floor.transform;
             floorVertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * floor.mesh.vertices.size()),
-                .usage = RHIBufferUsage::VertexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = floor.mesh.vertices.data()
             });
             floorIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * floor.mesh.indices.size()),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = floor.mesh.indices.data()
             });
             floorIndexCount = static_cast<u32>(floor.mesh.indices.size());
@@ -176,15 +172,11 @@ namespace Crowy
             auto skyMesh = MakeSphere(50.0f);
             skyVertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * skyMesh.vertices.size()),
-                .usage = RHIBufferUsage::VertexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = skyMesh.vertices.data()
             });
             std::reverse(skyMesh.indices.begin(), skyMesh.indices.end());
             skyIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * skyMesh.indices.size()),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = skyMesh.indices.data()
             });
             skyIndexCount = static_cast<u32>(skyMesh.indices.size());

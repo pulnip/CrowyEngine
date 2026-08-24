@@ -405,9 +405,7 @@ namespace Crowy
 
         auto staging = device.CreateBuffer(RHIBufferCreateDesc{
             .size = rowPitch * height,
-            .usage = RHIBufferUsage::CopySrc,
-            .location = RHIMemoryLocation::Upload,
-            .cpuAccess = RHICpuAccess::Write
+            .memory = RHIMemoryType::CPUWrite
         }, "ImGui texture update");
 
         for(u32 row=0; row<height; ++row){

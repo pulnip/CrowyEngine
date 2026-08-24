@@ -174,13 +174,13 @@ namespace Crowy
         texDesc->setPixelFormat(convert(desc.format));
         texDesc->setUsage(convert(desc.usage));
 
-        using enum RHIMemoryAccess;
+        using enum RHIMemoryType;
 
-        CROWY_ASSERT(desc.access == GPUOnly || desc.access == Transient,
+        CROWY_ASSERT(desc.memory == GPUOnly || desc.memory == Transient,
             "Use RHIBuffer for CPU-Accessable Resource"
         );
 
-        texDesc->setStorageMode(desc.access == GPUOnly ?
+        texDesc->setStorageMode(desc.memory == GPUOnly ?
             MTL::StorageModePrivate : MTL::StorageModeMemoryless
         );
 

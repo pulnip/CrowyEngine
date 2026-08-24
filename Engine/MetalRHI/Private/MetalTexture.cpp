@@ -21,7 +21,7 @@ namespace Crowy
         , allocator(&allocator)
         , allocation(allocator.AllocateTexture(
             desc,
-            RHIMemoryClass::Device,
+            RHIMemoryType::GPUOnly,
             name
         ))
     {

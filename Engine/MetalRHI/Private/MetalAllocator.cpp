@@ -18,10 +18,12 @@ namespace Crowy
         );
     }
 
-    MetalHeapPool& MetalAllocator::poolFor(RHIMemoryClass memoryClass) const{
+    MetalHeapPool& MetalAllocator::poolFor(RHIMemoryType memory) const{
+        using enum RHIMemoryType;
+
         // Upload and Readback are both CPU-visible, which on Metal is one
         // storage mode rather than two heap types
-        return memoryClass == RHIMemoryClass::Device ?
+        return memory == GPUOnly || memory == Transient ?
             privateHeap : sharedHeap;
     }
 
@@ -55,11 +57,11 @@ namespace Crowy
 
     RHIAllocation MetalAllocator::AllocateBuffer(
         u64 length,
-        RHIMemoryClass memoryClass,
+        RHIMemoryType memory,
         StrView name
     ){
         return track(
-            poolFor(memoryClass).NewBuffer(length),
+            poolFor(memory).NewBuffer(length),
             length,
             name
         );
@@ -67,10 +69,10 @@ namespace Crowy
 
     RHIAllocation MetalAllocator::AllocateTexture(
         MTL::TextureDescriptor* desc,
-        RHIMemoryClass memoryClass,
+        RHIMemoryType memory,
         StrView name
     ){
-        auto& pool = poolFor(memoryClass);
+        auto& pool = poolFor(memory);
         auto* texture = pool.NewTexture(desc);
 
         return track(

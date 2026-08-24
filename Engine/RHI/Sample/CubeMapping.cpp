@@ -66,8 +66,6 @@ namespace Crowy
             auto cubeMesh = MakeSphere(10.0f);
             vertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * cubeMesh.vertices.size()),
-                .usage = RHIBufferUsage::VertexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = cubeMesh.vertices.data()
             });
             // MakeSphere winds its faces for a viewer outside the mesh,
@@ -75,8 +73,6 @@ namespace Crowy
             std::reverse(cubeMesh.indices.begin(), cubeMesh.indices.end());
             indices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * cubeMesh.indices.size()),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .location = RHIMemoryLocation::Device,
                 .initialData = cubeMesh.indices.data()
             });
             indexCount = static_cast<u32>(cubeMesh.indices.size());

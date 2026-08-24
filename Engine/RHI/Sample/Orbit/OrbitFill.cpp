@@ -44,8 +44,6 @@ namespace Crowy
 
         elementBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(packed.size() * ELEMENT_STRIDE),
-            .usage = RHIBufferUsage::ShaderResource,
-            .location = RHIMemoryLocation::Device,
             .initialData = packed.data()
         }, "OrbitElements");
 

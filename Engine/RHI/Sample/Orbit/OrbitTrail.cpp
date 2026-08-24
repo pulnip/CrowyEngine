@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <array>
 #include <span>
-#include "EnumUtil.hpp"
 #include "OrbitTrail.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
@@ -32,17 +31,7 @@ namespace Crowy
 
         trail = device.CreateBuffer(RHIBufferCreateDesc{
             .size = ringBytes,
-            .usage = combine(
-                // the trail is pulled by SV_VertexID/SV_InstanceID, never bound
-                // as a vertex buffer
-                RHIBufferUsage::ShaderResource,
-                // the compute fill writes it through a UAV
-                RHIBufferUsage::UnorderedAccess,
-                RHIBufferUsage::CopyDst,
-                // the headless check reads the ring back; harmless otherwise
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "OrbitTrailRing");
 
         gpuFill = std::make_unique<OrbitKeplerFill>(device, ORBIT_ELEMENTS);

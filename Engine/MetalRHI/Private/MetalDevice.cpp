@@ -96,7 +96,7 @@ namespace Crowy
                 name
             );
 
-            if(desc.initialData != nullptr && desc.cpuAccess == RHICpuAccess::None){
+            if(desc.initialData != nullptr && desc.memory == RHIMemoryType::GPUOnly){
                 ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
@@ -104,7 +104,6 @@ namespace Crowy
                     uploadRing,
                     4,
                     *buffer,
-                    desc.usage,
                     RHISubresourceData{
                         .data = desc.initialData,
                         .rowPitch = desc.size
@@ -162,10 +161,7 @@ namespace Crowy
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
-                    .usage = RHIBufferUsage::CopySrc,
-                    .location = RHIMemoryLocation::Upload,
-                    .cpuAccess = RHICpuAccess::Write,
-                    .initialData = nullptr
+                    .memory = RHIMemoryType::CPUWrite
                 }, "staging buffer"
             );
             uploadRing = UploadRing(

@@ -5,7 +5,6 @@
 #include <span>
 #include <vector>
 #include "AppFramework.hpp"
-#include "EnumUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "Terrain.hpp"
 #include "TerrainCamera.hpp"
@@ -143,12 +142,7 @@ namespace Crowy
             // device-local: the mesh outlives the frame that built it, so it
             // is staged through a copy rather than rewritten in place
             vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = VERTEX_CAPACITY * static_cast<u32>(sizeof(TerrainVertex)),
-                .usage = combine(
-                    RHIBufferUsage::ShaderResource,
-                    RHIBufferUsage::CopyDst
-                ),
-                .location = RHIMemoryLocation::Device
+                .size = VERTEX_CAPACITY * static_cast<u32>(sizeof(TerrainVertex))
             }, "TerrainVertices");
 
             mesh.reserve(VERTEX_CAPACITY);

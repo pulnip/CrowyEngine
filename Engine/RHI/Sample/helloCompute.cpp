@@ -24,8 +24,6 @@ int main(void){
         std::vector<float> floats(N, 1.0f);
         RHIBufferCreateDesc desc{
             .size = sizeof(float) * N,
-            .usage = RHIBufferUsage::None,
-            .location = RHIMemoryLocation::Device,
             .initialData = floats.data()
         };
         auto lhs = device->CreateBuffer(desc, "LHS");
@@ -33,16 +31,11 @@ int main(void){
 
         auto out = device->CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(float) * N,
-            .usage = RHIBufferUsage::UnorderedAccess,
-            .location = RHIMemoryLocation::Device,
-            .initialData = nullptr
+            .shaderWrite = true
         }, "OUT");
         auto readback = device->CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(float) * N,
-            .usage = RHIBufferUsage::CopyDst,
-            .location = RHIMemoryLocation::Readback,
-            .cpuAccess = RHICpuAccess::Read,
-            .initialData = nullptr
+            .memory = RHIMemoryType::CPURead
         }, "ReadBack");
 
         auto addPipeline = device->CreatePipelineState(

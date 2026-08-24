@@ -118,14 +118,10 @@ namespace Crowy
                 DrawItem item;
                 item.vertices = device.CreateBuffer(RHIBufferCreateDesc{
                     .size = static_cast<u32>(sizeof(Vertex) * mesh.vertices.size()),
-                    .usage = RHIBufferUsage::VertexBuffer,
-                    .location = RHIMemoryLocation::Device,
                     .initialData = mesh.vertices.data()
                 });
                 item.indices = device.CreateBuffer(RHIBufferCreateDesc{
                     .size = static_cast<u32>(sizeof(u32) * mesh.indices.size()),
-                    .usage = RHIBufferUsage::IndexBuffer,
-                    .location = RHIMemoryLocation::Device,
                     .initialData = mesh.indices.data()
                 });
                 item.indexCount = static_cast<u32>(mesh.indices.size());
@@ -139,9 +135,7 @@ namespace Crowy
                 };
                 item.objectCB = device.CreateBuffer(RHIBufferCreateDesc{
                     .size = sizeof(uniforms),
-                    .usage = RHIBufferUsage::ConstantBuffer,
-                    .location = RHIMemoryLocation::Upload,
-                    .cpuAccess = RHICpuAccess::Write,
+                    .memory = RHIMemoryType::CPUWrite,
                     .initialData = &uniforms
                 });
 

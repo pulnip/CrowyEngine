@@ -31,7 +31,7 @@ namespace Crowy
         u32 textureOffsetAlign = 1;
     };
 
-    enum class RHIMemoryAccess : u8 {
+    enum class RHIMemoryType : u8 {
         GPUOnly = 0,
         CPUWrite = 1,
         CPURead = 2,
@@ -39,41 +39,10 @@ namespace Crowy
         Transient = 3
     };
 
-    enum class RHIMemoryLocation : u8 {
-        Device = 0,
-        Upload = 1,
-        Readback = 2
-    };
-
-    enum class RHICpuAccess : u8 {
-        None = 0,
-        Write = 1,
-        Read = 2
-    };
-
-    enum class RHIBufferUsage : u16 {
-        None = 0,
-        // fixed binding
-        VertexBuffer = 1 << 0,
-        IndexBuffer = 1 << 1,
-        ConstantBuffer = 1 << 2,
-        // Indirect Draw Argument Buffer
-        IndirectArgument = 1 << 3,
-        // view capability
-        ShaderResource = 1 << 4,
-        ShaderRead = ShaderResource,
-        UnorderedAccess = 1 << 5,
-        ShaderWrite = UnorderedAccess,
-        // (D3D12) blit pass capability
-        CopySrc = 1 << 6,
-        CopyDst = 1 << 7
-    };
-
     struct RHIBufferCreateDesc {
         u32 size;
-        RHIBufferUsage usage = RHIBufferUsage::None;
-        RHIMemoryLocation location = RHIMemoryLocation::Device;
-        RHICpuAccess cpuAccess = RHICpuAccess::None;
+        RHIMemoryType memory = RHIMemoryType::GPUOnly;
+        bool shaderWrite = false;
         const void* initialData = nullptr;
     };
 
@@ -514,7 +483,7 @@ namespace Crowy
         u32 arraySize = 1;
         RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
-        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
+        RHIMemoryType memory = RHIMemoryType::GPUOnly;
         // mip + arraySlice
         std::span<const RHISubresourceData> initialData{};
         // ClearColor for optimize (only Valid at D3D12)

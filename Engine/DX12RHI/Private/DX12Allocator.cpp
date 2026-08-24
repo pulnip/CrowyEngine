@@ -5,20 +5,23 @@
 
 namespace{
     D3D12_HEAP_TYPE toHeapType(
-        Crowy::RHIMemoryClass memoryClass,
+        Crowy::RHIMemoryType memory,
         const Crowy::DX12Capabilities& capabilities
     ){
-        using enum Crowy::RHIMemoryClass;
+        using enum Crowy::RHIMemoryType;
 
-        switch(memoryClass){
-        case Device:
+        switch(memory){
+        case GPUOnly:
+            [[fallthrough]];
+        // D3D12 has no tile memory to keep it in
+        case Transient:
             return D3D12_HEAP_TYPE_DEFAULT;
-        case Upload:
+        case CPUWrite:
             // ReBAR turns the upload heap into device-local memory the CPU
             // can still write, which is strictly better where it exists
             return capabilities.gpuUploadHeap ?
                 D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
-        case Readback:
+        case CPURead:
             return D3D12_HEAP_TYPE_READBACK;
         default:
             std::unreachable();
@@ -44,12 +47,12 @@ namespace Crowy
 
     RHIAllocation DX12Allocator::Allocate(
         const D3D12_RESOURCE_DESC1& desc,
-        RHIMemoryClass memoryClass,
+        RHIMemoryType memory,
         const D3D12_CLEAR_VALUE* clearValue,
         StrView name
     ){
         const auto heapProp = CD3DX12_HEAP_PROPERTIES(
-            ::toHeapType(memoryClass, capabilities)
+            ::toHeapType(memory, capabilities)
         );
 
         COMRAII<Buffer> resource;

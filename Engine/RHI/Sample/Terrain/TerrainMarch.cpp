@@ -112,65 +112,38 @@ namespace Crowy
 
         vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = VertexCapacity() * static_cast<u32>(sizeof(TerrainVertex)),
-            .usage = combine(
-                RHIBufferUsage::ShaderResource,
-                RHIBufferUsage::UnorderedAccess,
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "TerrainMarchVertices");
 
         counterBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(TerrainMarchCounter),
-            .usage = combine(
-                RHIBufferUsage::UnorderedAccess,
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "TerrainMarchCounter");
 
         const auto triTable = MarchingCubesTriTable();
         triTableBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(triTable.size_bytes()),
-            .usage = RHIBufferUsage::ShaderResource,
-            .location = RHIMemoryLocation::Device,
             .initialData = triTable.data()
         }, "MarchingCubesTriTable");
 
         argsBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(RHIDrawArgs),
-            .usage = combine(
-                RHIBufferUsage::IndirectArgument,
-                RHIBufferUsage::UnorderedAccess,
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "TerrainMarchArgs");
 
         edgeVertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = EDGE_SLOT_COUNT * static_cast<u32>(sizeof(u32)),
-            .usage = RHIBufferUsage::UnorderedAccess,
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "TerrainMarchEdgeVertices");
 
         indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = triangleCapacity * 3 * static_cast<u32>(sizeof(u32)),
-            .usage = combine(
-                RHIBufferUsage::IndexBuffer,
-                RHIBufferUsage::UnorderedAccess,
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "TerrainMarchIndices");
 
         argsIndexedBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(RHIDrawIndexedArgs),
-            .usage = combine(
-                RHIBufferUsage::IndirectArgument,
-                RHIBufferUsage::UnorderedAccess,
-                RHIBufferUsage::CopySrc
-            ),
-            .location = RHIMemoryLocation::Device
+            .shaderWrite = true
         }, "TerrainMarchArgsIndexed");
     }
 

@@ -155,9 +155,7 @@ namespace Crowy
             marcher = std::make_unique<TerrainMarcher>(device, TRIANGLE_CAPACITY);
             counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(TerrainMarchCounter),
-                .usage = RHIBufferUsage::CopyDst,
-                .location = RHIMemoryLocation::Readback,
-                .cpuAccess = RHICpuAccess::Read
+                .memory = RHIMemoryType::CPURead
             }, "TerrainMarchCounterReadback");
 
             uiRenderer = std::make_unique<UIRenderer>(

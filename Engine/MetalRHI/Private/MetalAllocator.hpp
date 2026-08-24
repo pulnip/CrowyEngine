@@ -7,19 +7,11 @@
 #include <Metal/MTLTexture.hpp>
 #include "MetalHeapPool.hpp"
 #include "Primitives.hpp"
+#include "RHIDefinitions.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    // Where an allocation lives. Metal has no GPU_UPLOAD equivalent to hide,
-    // but the axis is spelled the same way on both backends so the callers
-    // read identically.
-    enum class RHIMemoryClass : u8 {
-        Device,
-        Upload,
-        Readback
-    };
-
     // One allocation, borrowed. MetalAllocator owns the resource until Free,
     // so this stays a plain value that can be copied around freely.
     //
@@ -33,7 +25,7 @@ namespace Crowy
     };
 
     // The single place that turns a description into memory. Picking the
-    // heap pool is what `memoryClass` means on this backend.
+    // heap pool is what the memory type means on this backend.
     class MetalAllocator {
     private:
         MetalHeapPool& privateHeap;
@@ -50,19 +42,19 @@ namespace Crowy
 
         [[nodiscard]] RHIAllocation AllocateBuffer(
             u64 length,
-            RHIMemoryClass,
+            RHIMemoryType,
             StrView name = {}
         );
         [[nodiscard]] RHIAllocation AllocateTexture(
             MTL::TextureDescriptor*,
-            RHIMemoryClass,
+            RHIMemoryType,
             StrView name = {}
         );
 
         void Free(const RHIAllocation&);
 
     private:
-        MetalHeapPool& poolFor(RHIMemoryClass) const;
+        MetalHeapPool& poolFor(RHIMemoryType) const;
         RHIAllocation track(MTL::Resource*, u64 size, StrView name);
     };
 }

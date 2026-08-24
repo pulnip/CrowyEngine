@@ -4,26 +4,11 @@
 #include "DX12Buffer.hpp"
 #include "DX12Definitions.hpp"
 #include "DX12Util.hpp"
-#include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "PtrUtil.hpp"
 #include "VariantUtil.hpp"
 
 namespace{
-    Crowy::RHIMemoryClass toMemoryClass(
-        Crowy::RHIMemoryLocation location
-    ){
-        using enum Crowy::RHIMemoryLocation;
-
-        switch(location){
-        case Device:   return Crowy::RHIMemoryClass::Device;
-        case Upload:   return Crowy::RHIMemoryClass::Upload;
-        case Readback: return Crowy::RHIMemoryClass::Readback;
-        default:
-            std::unreachable();
-        }
-    }
-
     // the element range a view covers, in whatever unit that view addresses
     struct ViewRange{
         UINT64 firstElement;
@@ -66,46 +51,38 @@ namespace Crowy
         , allocator(allocator)
         , heap(heap)
     {
-        using enum RHIBufferUsage;
+        using enum RHIMemoryType;
 
-        const auto hasConstantUsage = hasFlag(desc.usage, ConstantBuffer);
-        const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
-        const auto isCopyDst = hasFlag(desc.usage, CopyDst);
-
-        const auto isCPUWrite = (desc.cpuAccess == RHICpuAccess::Write);
-        CROWY_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
-        const auto isCPURead = (desc.cpuAccess == RHICpuAccess::Read);
-        CROWY_ASSERT(!isCPURead || (desc.usage == CopyDst));
-
-        CROWY_ASSERT(
-            (desc.location == RHIMemoryLocation::Upload) == isCPUWrite,
-            "Upload memory is exactly what the CPU writes"
+        CROWY_ASSERT(desc.memory != Transient,
+            "tile memory holds render targets, not buffers"
         );
-        CROWY_ASSERT(
-            (desc.location == RHIMemoryLocation::Readback) == isCPURead,
-            "Readback memory is exactly what the CPU reads"
+        CROWY_ASSERT(desc.memory == GPUOnly || !desc.shaderWrite,
+            "a shader cannot write CPU-visible memory"
         );
 
+        // every buffer is rounded to the constant-buffer placement, so any of
+        // them can back a CBV; the heap granularity swallows the padding
         const auto bufDesc = CD3DX12_RESOURCE_DESC1::Buffer(
             D3D12_RESOURCE_ALLOCATION_INFO{
-                .SizeInBytes = hasConstantUsage ?
-                    nextMul<u32>(desc.size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT) :
+                .SizeInBytes = nextMul<u32>(
                     desc.size,
+                    D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT
+                ),
                 .Alignment = 0
             },
-            isUnorderedAccess ?
+            desc.shaderWrite ?
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
                 D3D12_RESOURCE_FLAG_NONE
         );
 
         allocation = allocator.Allocate(
             bufDesc,
-            ::toMemoryClass(desc.location),
+            desc.memory,
             nullptr,
             name
         );
 
-        if(isCPUWrite || isCPURead){
+        if(desc.memory != GPUOnly){
             const CD3DX12_RANGE noRead(0, 0);
             CHECK_HRESULT(allocation.resource->Map(
                 0,
@@ -114,7 +91,7 @@ namespace Crowy
             ), "Failed to Map DX12 Buffer");
         }
 
-        if(desc.initialData != nullptr && isCPUWrite){
+        if(desc.initialData != nullptr && desc.memory == CPUWrite){
             Upload(desc.initialData, desc.size);
         }
     }
