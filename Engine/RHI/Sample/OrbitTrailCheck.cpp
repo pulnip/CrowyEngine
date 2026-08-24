@@ -16,11 +16,9 @@
 // Nothing is drawn: the ring is copied back and every slot is compared with the
 // position that slot is supposed to hold.
 //
-// The ring lives in a GPU-only buffer written by staging copies rather than in
-// a CPUWrite buffer, because CPUWrite storage is multiplexed across
-// RHI_FRAMES_IN_FLIGHT physical slots and an incremental append would land in
-// one of three. This check rotates the frame index between probes precisely so
-// that mistake cannot pass.
+// The ring lives in a device-local buffer written by staging copies: an
+// incremental append only means anything on top of what earlier appends left,
+// which is exactly what transient storage does not promise.
 
 namespace{
     using namespace Crowy;

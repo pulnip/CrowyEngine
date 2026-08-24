@@ -52,12 +52,11 @@ namespace Crowy
     // ORBIT_SAMPLE_BYTES, so a frame's new samples reach the GPU in a single
     // copy - two only where the write wraps past the end of the ring.
     //
-    // The ring has to survive between frames, which rules out a CPUWrite
-    // buffer: those are multiplexed across RHI_FRAMES_IN_FLIGHT physical slots,
-    // so an incremental append would land in one slot out of three and the
-    // other two would hold stale samples. Hence GPU-only storage plus an
-    // explicit staging copy - or, in OrbitFillMode::Gpu, a compute pass that
-    // writes the ring in place and never touches the bus at all.
+    // The ring has to survive between frames, which rules out transient
+    // storage: an incremental append only means anything on top of what the
+    // earlier appends left. Hence device-local storage plus an explicit
+    // staging copy - or, in OrbitFillMode::Gpu, a compute pass that writes
+    // the ring in place and never touches the bus at all.
     class OrbitTrail{
     private:
         u32 capacity;
