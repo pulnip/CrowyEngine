@@ -35,6 +35,13 @@ namespace{
     // below: a ring that only ever wraps on nice boundaries hides bugs
     constexpr u32 SMALL_CAPACITY = 37;
 
+    // The compute path solves in float where the CPU solves in double, so it
+    // cannot be held to equality. A whole ring of fixed-point phase drifts
+    // 1.6e-5 degrees (see KeplerPhase.ReconstructsMeanAnomaly) and float Newton
+    // plus six trigonometric functions add about a part in a million - at
+    // Neptune that is tens of microns of an AU.
+    constexpr f32 GPU_TOLERANCE_AU = 1e-4f;
+
     f32 Delta(Vec3 lhs, Vec3 rhs){
         return std::max({
             std::abs(lhs.x - rhs.x),
@@ -368,6 +375,155 @@ namespace{
 
         return Report("after overflow", trail, m);
     }
+
+    // Same ring, filled both ways, held against each other rather than against
+    // the solver: this is the only check that can catch the compute path
+    // disagreeing with the CPU it is replacing.
+    bool CheckGpuMatchesCpu(RHIDevice& device){
+        constexpr u32 FRAMES = 24;
+        constexpr f64 FRAME_SECONDS = 1.0 / 60.0;
+        constexpr f64 DAYS_PER_SECOND = 5.0 * 60.0;
+
+        std::println("cpu vs gpu fill, {} slots, {} frames",
+            SMALL_CAPACITY, FRAMES
+        );
+
+        OrbitTrail cpu(device, 1.0, SMALL_CAPACITY, RHIResourceUsage::CopySrc);
+        OrbitTrail gpu(device, 1.0, SMALL_CAPACITY, RHIResourceUsage::CopySrc);
+        gpu.SetFillMode(OrbitFillMode::Gpu);
+
+        RingProbe cpuProbe(device, SMALL_CAPACITY);
+        RingProbe gpuProbe(device, SMALL_CAPACITY);
+
+        const usize ringSize =
+            static_cast<usize>(SMALL_CAPACITY) * ORBIT_BODY_COUNT;
+        std::vector<Vec3> cpuRing(ringSize), gpuRing(ringSize);
+
+        f32 worst = 0.0f;
+        u32 worstAge = 0, worstBody = 0;
+
+        const auto compare = [&](u32 frame){
+            for(u32 age=0; age<cpu.Filled(); ++age){
+                const auto base =
+                    static_cast<usize>(cpu.SlotForAge(age)) * ORBIT_BODY_COUNT;
+                for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
+                    const auto delta = Delta(cpuRing[base + b], gpuRing[base + b]);
+                    if(delta > worst){
+                        worst = delta;
+                        worstAge = age;
+                        worstBody = b;
+                    }
+                }
+            }
+
+            if(worst <= GPU_TOLERANCE_AU)
+                return true;
+
+            std::println(
+                "  FAIL: frame {} disagrees by {:.3e} AU at age {} ({})",
+                frame, worst, worstAge, ORBIT_BODY_NAMES[worstBody]
+            );
+
+            return false;
+        };
+
+        cpu.Prefill(START_DAY);
+        gpu.Prefill(START_DAY);
+        cpuProbe.Flush(cpu, cpuRing);
+        gpuProbe.Flush(gpu, gpuRing);
+
+        if(gpu.Stats().dispatchCount != 1){
+            std::println("  FAIL: the GPU prefill recorded {} dispatches, not 1",
+                gpu.Stats().dispatchCount
+            );
+
+            return false;
+        }
+        if(gpu.Stats().copyCount != 0){
+            std::println("  FAIL: the GPU path still issued {} copies",
+                gpu.Stats().copyCount
+            );
+
+            return false;
+        }
+        if(!compare(0))
+            return false;
+
+        for(u32 frame=1; frame<=FRAMES; ++frame){
+            cpu.Advance(FRAME_SECONDS, DAYS_PER_SECOND);
+            gpu.Advance(FRAME_SECONDS, DAYS_PER_SECOND);
+            cpuProbe.Flush(cpu, cpuRing);
+            gpuProbe.Flush(gpu, gpuRing);
+
+            if(cpu.Head() != gpu.Head()){
+                std::println("  FAIL: frame {} left the heads at {} and {}",
+                    frame, cpu.Head(), gpu.Head()
+                );
+
+                return false;
+            }
+            if(!compare(frame))
+                return false;
+        }
+
+        std::println(
+            "  ticks {}, split frames {}, worst delta {:.3e} AU at age {} ({})",
+            gpu.Stats().totalTicks, gpu.Stats().splitFrameCount,
+            worst, worstAge, ORBIT_BODY_NAMES[worstBody]
+        );
+
+        if(gpu.Stats().splitFrameCount == 0){
+            std::println("  FAIL: the ring never wrapped on the GPU path");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    // What the step is for: the same 65536 * 9 solves, off the CPU. The number
+    // to compare is the CPU prefill printed above.
+    bool CheckGpuPrefill(RHIDevice& device){
+        std::println("gpu prefill, full capacity ({} samples)",
+            ORBIT_TRAIL_CAPACITY
+        );
+
+        OrbitTrail trail(
+            device, 1.0, ORBIT_TRAIL_CAPACITY, RHIResourceUsage::CopySrc
+        );
+        trail.SetFillMode(OrbitFillMode::Gpu);
+
+        RingProbe probe(device, ORBIT_TRAIL_CAPACITY);
+        std::vector<Vec3> ring(
+            static_cast<usize>(ORBIT_TRAIL_CAPACITY) * ORBIT_BODY_COUNT
+        );
+
+        // all that is left on this side is nine phase epochs and a 144-byte
+        // upload; Newton and the rotations have gone
+        const auto before = std::chrono::steady_clock::now();
+        trail.Prefill(START_DAY);
+        const auto prefillMs = std::chrono::duration<f64, std::milli>(
+            std::chrono::steady_clock::now() - before
+        ).count();
+
+        probe.Flush(trail, ring);
+
+        std::println("  CPU cost of a GPU prefill: {:.3f} ms", prefillMs);
+
+        const auto m = Compare(trail, ring);
+        std::println("  worst delta against the double solver: {:.3e} AU", m.worst);
+
+        if(m.worst > GPU_TOLERANCE_AU){
+            std::println(
+                "  FAIL: the compute solve drifted past {:.0e} AU",
+                GPU_TOLERANCE_AU
+            );
+
+            return false;
+        }
+
+        return true;
+    }
 }
 
 int main(void){
@@ -381,6 +537,8 @@ int main(void){
         ok = CheckWraparound(*device) && ok;
         ok = CheckFixedTimestep(*device) && ok;
         ok = CheckTickOverflow(*device) && ok;
+        ok = CheckGpuMatchesCpu(*device) && ok;
+        ok = CheckGpuPrefill(*device) && ok;
 
         if(!ok)
             return 1;

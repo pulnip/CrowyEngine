@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include "Kepler.hpp"
+#include "OrbitFill.hpp"
 #include "RHICommandList.hpp"
 #include "RHIFWD.hpp"
 
@@ -20,11 +21,20 @@ namespace Crowy
     inline constexpr u32 ORBIT_SAMPLE_BYTES =
         ORBIT_BODY_COUNT * static_cast<u32>(sizeof(Vec3));
 
+    enum class OrbitFillMode: u8{
+        // the CPU solves and a staging copy carries the result across
+        Cpu,
+        // a compute pass solves straight into the ring; nothing crosses the bus
+        Gpu
+    };
+
     struct OrbitTrailStats{
         // this frame
         u32 tickCount = 0;
         // 0 when idle, 1 normally, 2 when the write straddles the ring seam
         u32 copyCount = 0;
+        // 1 when the GPU path filled the ring this frame
+        u32 dispatchCount = 0;
 
         // cumulative
         u64 totalTicks = 0;
@@ -46,8 +56,8 @@ namespace Crowy
     // buffer: those are multiplexed across RHI_FRAMES_IN_FLIGHT physical slots,
     // so an incremental append would land in one slot out of three and the
     // other two would hold stale samples. Hence GPU-only storage plus an
-    // explicit staging copy. Step 7 replaces the staging path with a compute
-    // fill and the ring itself does not change.
+    // explicit staging copy - or, in OrbitFillMode::Gpu, a compute pass that
+    // writes the ring in place and never touches the bus at all.
     class OrbitTrail{
     private:
         u32 capacity;
@@ -71,15 +81,20 @@ namespace Crowy
         // the device's own staging). Writing one region while another frame's
         // copy is still reading its own is the whole point.
         //
-        // Costs three rings' worth of upload heap, which Step 7 deletes when
-        // compute takes over the fill.
+        // Costs three rings' worth of upload heap, live only for the CPU
+        // path; the GPU path leaves it untouched.
         RHIBufferRAII staging;
         const u64& frameIndex;
 
-        // written into `staging` by Advance/Prefill, copied by Record
+        OrbitFillMode fillMode = OrbitFillMode::Cpu;
+        RAII<OrbitKeplerFill> gpuFill;
+
+        // staged by Advance/Prefill, consumed by Record
         u32 pendingSamples = 0;
         u32 pendingFirstSlot = 0;
         u64 pendingStagingOffset = 0;
+        // which path staged it - the mode can be flipped between the two calls
+        bool pendingGpu = false;
 
         std::vector<Vec3> scratch;
 
@@ -124,7 +139,13 @@ namespace Crowy
         // stored, so changing it refills the ring.
         void SetDayPerSample(f64);
 
-        // Records this frame's staging -> ring copies. Call outside any pass.
+        // Which path fills the ring. Both write the same samples, so the ring
+        // stays valid across a switch and the two can be compared in place.
+        void SetFillMode(OrbitFillMode mode) noexcept{ fillMode = mode; }
+        OrbitFillMode FillMode() const noexcept{ return fillMode; }
+
+        // Records this frame's fill - staging copies or a compute pass,
+        // depending on the mode. Call outside any pass.
         // Returns the release half of the copy, which whatever reads the trail
         // must acquire with; empty when no samples were pushed, in which case
         // the reader needs no acquire either - nothing wrote the buffer.

@@ -39,6 +39,8 @@ namespace Crowy
 
         std::array<bool, ORBIT_BODY_COUNT> bodyEnabled{};
         bool beltEnabled = true;
+        // where every Kepler solve in the frame runs
+        bool gpuFill = true;
         f32 beltAlpha = 0.55f;
         bool paused = false;
 
@@ -218,6 +220,11 @@ namespace Crowy
         RHIBufferRAII frameCB;
         RHIBufferRAII bodyBuffer;
         RHIBufferRAII beltBuffer;
+        // the compute path cannot write a CPU-write buffer, so the two fills
+        // own separate destinations and the draw picks one
+        RHIBufferRAII beltGpuBuffer;
+        RAII<OrbitKeplerFill> beltFill;
+        RHIResourceUsage beltResting = RHIResourceUsage::Undefined;
 
         RAII<UIRenderer> uiRenderer;
         UIContext context;
@@ -294,6 +301,10 @@ namespace Crowy
             );
             // without this the outer planets would take real minutes to draw
             // themselves in - Neptune's orbit is 60,225 ticks
+            trail->SetFillMode(context.gpuFill ?
+                OrbitFillMode::Gpu :
+                OrbitFillMode::Cpu
+            );
             trail->Prefill(START_DAY);
 
             trailPSO = device.CreatePipelineState(
@@ -351,6 +362,20 @@ namespace Crowy
                 .usage = RHIBufferUsage::ShaderResource,
                 .access = RHIMemoryAccess::CPUWrite
             }, "OrbitAsteroidBelt");
+
+            beltGpuBuffer = device.CreateBuffer(RHIBufferCreateDesc{
+                .size = static_cast<u32>(
+                    belt.Count() * sizeof(Vec3)
+                ),
+                .usage = combine(
+                    RHIBufferUsage::ShaderResource,
+                    RHIBufferUsage::UnorderedAccess
+                ),
+                .access = RHIMemoryAccess::GPUOnly
+            }, "OrbitAsteroidBeltGPU");
+            beltFill = std::make_unique<OrbitKeplerFill>(
+                device, belt.Elements()
+            );
 
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
                 bodyDraws[b] = OrbitBodyDraw{
@@ -451,6 +476,19 @@ namespace Crowy
             ImGui::TextUnformatted("thin 1 step, thick 5, plus 1 AU");
             ImGui::Text("step        %.3g AU", context.gridStepAU);
             ImGui::Text("half-height %.3f", context.halfHeight);
+
+            ImGui::SeparatorText("Solver");
+            // Both paths write the same positions, so this can be flipped mid
+            // flight and the picture must not move. What changes is where the
+            // Newton solve runs: on the CPU it is 2400 asteroids every frame
+            // plus 65536 * 9 on every reset, on the GPU it is a mean anomaly
+            // each and a dispatch.
+            if(ImGui::Checkbox("kepler on gpu", &context.gpuFill)){
+                trail->SetFillMode(context.gpuFill ?
+                    OrbitFillMode::Gpu :
+                    OrbitFillMode::Cpu
+                );
+            }
 
             ImGui::SeparatorText("Stats");
             ImGui::Text("sim day     %.0f", context.simDay);
@@ -652,11 +690,25 @@ namespace Crowy
             bodyBuffer->Upload(bodyDraws.data(), sizeof(bodyDraws));
         }
 
-        // Every asteroid, every frame, on the CPU. Cheap enough at a couple of
-        // thousand, and it is the clearest argument for moving the solver to a
-        // compute pass: this is the same Kepler code the ring fill runs, redone
-        // from scratch each frame because nothing keeps it.
+        RHIBuffer& BeltPositions() const{
+            return context.gpuFill ? *beltGpuBuffer : *beltBuffer;
+        }
+
+        // Every asteroid, every frame - the belt keeps no history, so its whole
+        // state is recomputed from the elements each time. That makes it the
+        // clearest case for the compute path: a couple of thousand Newton
+        // solves and six trigonometric functions each, or a couple of thousand
+        // mean anomalies and a dispatch.
         void UpdateBelt(){
+            if(context.gpuFill){
+                // the epoch is the entire handoff; RecordBelt turns it into one
+                // dispatch. Nothing touches the CPU-write buffer this frame,
+                // and nothing hands out its descriptor either
+                beltFill->SetEpoch(trail->NewestDay(), DAY_PER_SAMPLE);
+
+                return;
+            }
+
             // The solve is skipped when the belt is hidden, but the upload is
             // not: every trail draw carries the buffer's descriptor whether or
             // not the belt is drawn, and a CPUWrite slot that was never written
@@ -668,6 +720,38 @@ namespace Crowy
                 beltScratch.data(),
                 static_cast<u32>(beltScratch.size() * sizeof(Vec3))
             );
+        }
+
+        // Its own compute pass rather than the trail's: the trail only fills on
+        // frames that ticked, and the belt has to move every frame.
+        std::optional<RHIBufferBarrier> RecordBelt(RHICommandList& cmdList){
+            if(!context.gpuFill)
+                return std::nullopt;
+
+            const auto acquire = beltResting == RHIResourceUsage::Undefined ?
+                MakeBarrier(*beltGpuBuffer,
+                    RHIResourceUsage::Undefined,
+                    RHIResourceUsage::StorageCompute
+                ) :
+                MakeCrossSubmissionBarrier(*beltGpuBuffer,
+                    beltResting,
+                    RHIResourceUsage::StorageCompute
+                );
+            const auto release = MakeBarrier(*beltGpuBuffer,
+                RHIResourceUsage::StorageCompute,
+                RHIResourceUsage::SampledVertex
+            );
+
+            const std::array acquires{acquire};
+            const std::array releases{release};
+
+            cmdList.BeginComputePass({}, acquires);
+            beltFill->RecordPoints(cmdList, *beltGpuBuffer);
+            cmdList.EndComputePass({}, releases);
+
+            beltResting = RHIResourceUsage::SampledVertex;
+
+            return release;
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
@@ -702,6 +786,7 @@ namespace Crowy
 
             // outside any pass: the copies are their own blit pass
             const auto trailEdge = trail->Record(cmdList);
+            const auto beltEdge = RecordBelt(cmdList);
 
             // Prepare opens its own window unconditionally, and its saved
             // position lands right on top of the panel. SetNextWindow* applies
@@ -732,6 +817,8 @@ namespace Crowy
             std::vector<RHIBufferBarrier> bufferAcquires;
             if(trailEdge.has_value())
                 bufferAcquires.push_back(*trailEdge);
+            if(beltEdge.has_value())
+                bufferAcquires.push_back(*beltEdge);
 
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
@@ -773,7 +860,7 @@ namespace Crowy
                 .earthRadPerDay = EarthRadPerDay(),
                 .dayPerSample = static_cast<f32>(DAY_PER_SAMPLE),
                 .beltRadiusPx = BELT_RADIUS_PX,
-                .belt = beltBuffer->GetReadableID(
+                .belt = BeltPositions().GetReadableID(
                     static_cast<u32>(sizeof(Vec3))
                 ),
                 .beltAlpha = context.beltAlpha

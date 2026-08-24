@@ -281,3 +281,82 @@ TEST(Kepler, SampleOrbitsMatchesIndividualCalls){
         }
     }
 }
+
+// The GPU solve reconstructs its mean anomaly from 32-bit fixed-point turns
+// rather than from a sim day, because a float cannot hold L0 + n*t once t is a
+// few thousand days. Everything about that scheme is integer arithmetic the CPU
+// runs identically, so it can be held to the exact double answer here - no GPU
+// in the room.
+TEST(KeplerPhase, ReconstructsMeanAnomaly){
+    constexpr f64 DAY_PER_SAMPLE = 1.0;
+    // the far end of a full ring, which is the worst case the split is sized for
+    constexpr u32 STEPS = ORBIT_PHASE_MAX_STEPS;
+
+    f64 worstDeg = 0.0;
+    CStr worstBody = ORBIT_BODY_NAMES[0];
+
+    for(u32 b=1; b<ORBIT_BODY_COUNT; ++b){
+        const auto& el = ORBIT_ELEMENTS[b];
+        // an epoch far enough out that the naive float expression is already
+        // hopeless: Mercury's mean anomaly here is over a quarter million degrees
+        const f64 startDay = 60000.0;
+        const auto phase = MakePhaseGPU(el, startDay, DAY_PER_SAMPLE);
+
+        for(u32 i=0; i<STEPS; i += 337){
+            const auto expected = MeanAnomalyDeg(el, startDay + i * DAY_PER_SAMPLE);
+            const auto actual = toDegree(PhaseToRadians(phase, i));
+
+            const auto delta = std::abs(NormalizeDegrees(actual - expected));
+            if(delta > worstDeg){
+                worstDeg = delta;
+                worstBody = ORBIT_BODY_NAMES[b];
+            }
+        }
+    }
+
+    std::printf("[ INFO     ] worst fixed-point phase error: %.3e deg (%s)\n",
+        worstDeg, worstBody
+    );
+    // half an ulp of perStep per product, two products, never accumulating
+    // further - see the block split in OrbitPhaseGPU
+    EXPECT_LT(worstDeg, 1e-4);
+}
+
+// Straight multiplication is what the split exists to avoid; this pins the
+// difference so nobody "simplifies" it away.
+TEST(KeplerPhase, BlockSplitBeatsFlatStepping){
+    const auto& el = ORBIT_ELEMENTS[1];   // Mercury, the fastest phase
+    const auto phase = MakePhaseGPU(el, 0.0, 1.0);
+
+    constexpr u32 INDEX = ORBIT_PHASE_MAX_STEPS - 1;
+
+    const auto expected = MeanAnomalyDeg(el, INDEX);
+    const auto split = toDegree(PhaseToRadians(phase, INDEX));
+    const auto flat = 360.0 *
+        static_cast<f64>(static_cast<i32>(phase.phase0 + phase.perStep * INDEX)) /
+        4294967296.0;
+
+    const auto splitError = std::abs(NormalizeDegrees(split - expected));
+    const auto flatError = std::abs(NormalizeDegrees(flat - expected));
+
+    std::printf("[ INFO     ] phase error at %u steps: split %.3e deg, flat %.3e deg\n",
+        INDEX, splitError, flatError
+    );
+    EXPECT_LT(splitError, flatError);
+}
+
+TEST(KeplerPhase, ElementsGPUMatchTheTable){
+    for(u32 b=1; b<ORBIT_BODY_COUNT; ++b){
+        const auto& el = ORBIT_ELEMENTS[b];
+        const auto gpu = MakeElementsGPU(el);
+
+        EXPECT_FLOAT_EQ(gpu.a, static_cast<f32>(el.a)) << ORBIT_BODY_NAMES[b];
+        EXPECT_FLOAT_EQ(gpu.e, static_cast<f32>(el.e)) << ORBIT_BODY_NAMES[b];
+
+        // the packed sine/cosine pairs have to be unit, or a rotation quietly
+        // became a scale
+        EXPECT_NEAR(gpu.cosPeri*gpu.cosPeri + gpu.sinPeri*gpu.sinPeri, 1.0f, 1e-6f);
+        EXPECT_NEAR(gpu.cosInc*gpu.cosInc + gpu.sinInc*gpu.sinInc, 1.0f, 1e-6f);
+        EXPECT_NEAR(gpu.cosNode*gpu.cosNode + gpu.sinNode*gpu.sinNode, 1.0f, 1e-6f);
+    }
+}

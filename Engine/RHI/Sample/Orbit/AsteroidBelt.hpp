@@ -34,6 +34,9 @@ namespace Crowy
 
         usize Count() const noexcept{ return elements.size(); }
         const OrbitalElements& At(usize i) const{ return elements[i]; }
+        std::span<const OrbitalElements> Elements() const noexcept{
+            return elements;
+        }
 
         // heliocentric positions at `day`, one per asteroid
         void Sample(f64 day, std::span<Vec3> out) const;

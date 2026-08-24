@@ -4,6 +4,20 @@
 #include "LinearAlgebra.hpp"
 
 namespace{
+    // one turn of the 32-bit fixed-point phase
+    constexpr Crowy::f64 TURN_FIXED_SCALE = 4294967296.0;
+
+    // wraps into [0, 1) turns first, so the cast never overflows whatever the
+    // caller's absolute angle was
+    Crowy::u32 turnsToFixed(Crowy::f64 turns) noexcept{
+        const auto frac = turns - std::floor(turns);
+
+        return static_cast<Crowy::u32>(
+            static_cast<Crowy::u64>(std::llround(frac * TURN_FIXED_SCALE)) &
+            0xFFFFFFFFull
+        );
+    }
+
     // "no orbit in this frame" - only the Sun row carries it
     constexpr bool IsDegenerate(const Crowy::OrbitalElements& el) noexcept{
         return el.a <= 0.0;
@@ -127,5 +141,54 @@ namespace Crowy
         for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
             out[b] = OrbitPosition(ORBIT_ELEMENTS[b], day);
         }
+    }
+
+    OrbitElementsGPU MakeElementsGPU(const OrbitalElements& el) noexcept{
+        const auto peri = toRadian(el.varpi - el.Omega);
+        const auto inc = toRadian(el.i);
+        const auto node = toRadian(el.Omega);
+
+        return OrbitElementsGPU{
+            .a = static_cast<f32>(el.a),
+            .e = static_cast<f32>(el.e),
+            .cosPeri = static_cast<f32>(std::cos(peri)),
+            .sinPeri = static_cast<f32>(std::sin(peri)),
+            .cosInc = static_cast<f32>(std::cos(inc)),
+            .sinInc = static_cast<f32>(std::sin(inc)),
+            .cosNode = static_cast<f32>(std::cos(node)),
+            .sinNode = static_cast<f32>(std::sin(node))
+        };
+    }
+
+    OrbitPhaseGPU MakePhaseGPU(
+        const OrbitalElements& el,
+        f64 day,
+        f64 dayPerSample
+    ) noexcept{
+        CROWY_ASSERT(dayPerSample > 0.0);
+
+        const auto n = MeanMotionDegPerDay(el);
+        const auto perStep = n * dayPerSample / 360.0;
+
+        return OrbitPhaseGPU{
+            .phase0 = turnsToFixed((el.L0 + n * day - el.varpi) / 360.0),
+            .perStep = turnsToFixed(perStep),
+            .perBlock = turnsToFixed(perStep * ORBIT_PHASE_BLOCK)
+        };
+    }
+
+    f64 PhaseToRadians(const OrbitPhaseGPU& phase, u32 index) noexcept{
+        // unsigned overflow is the whole point: it reduces mod a full turn for
+        // free, and it is well defined on both sides
+        const u32 fixed = phase.phase0 +
+            phase.perBlock * (index >> ORBIT_PHASE_BLOCK_SHIFT) +
+            phase.perStep * (index & (ORBIT_PHASE_BLOCK - 1));
+
+        // reinterpreting as signed lands it in (-0.5, 0.5] turns, which is the
+        // range Newton wants to start from
+        const auto turns = static_cast<f64>(static_cast<i32>(fixed)) /
+            TURN_FIXED_SCALE;
+
+        return toRadian(turns * 360.0);
     }
 }

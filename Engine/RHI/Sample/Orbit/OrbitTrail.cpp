@@ -25,6 +25,10 @@ namespace Crowy
         CROWY_ASSERT(capacity <=
             0xFFFFFFFFu / (ORBIT_SAMPLE_BYTES * RHI_FRAMES_IN_FLIGHT)
         );
+        CROWY_ASSERT(capacity <= ORBIT_PHASE_MAX_STEPS,
+            "a prefill walks the fixed-point phase over the whole ring, and "
+            "the block split only reaches ORBIT_PHASE_MAX_STEPS"
+        );
 
         const auto ringBytes = capacity * ORBIT_SAMPLE_BYTES;
 
@@ -34,12 +38,16 @@ namespace Crowy
                 // the trail is pulled by SV_VertexID/SV_InstanceID, never bound
                 // as a vertex buffer
                 RHIBufferUsage::ShaderResource,
+                // the compute fill writes it through a UAV
+                RHIBufferUsage::UnorderedAccess,
                 RHIBufferUsage::CopyDst,
                 // the headless check reads the ring back; harmless otherwise
                 RHIBufferUsage::CopySrc
             ),
             .access = RHIMemoryAccess::GPUOnly
         }, "OrbitTrailRing");
+
+        gpuFill = std::make_unique<OrbitKeplerFill>(device, ORBIT_ELEMENTS);
 
         staging = device.CreateBuffer(RHIBufferCreateDesc{
             .size = ringBytes * RHI_FRAMES_IN_FLIGHT,
@@ -127,6 +135,7 @@ namespace Crowy
 
     std::optional<RHIBufferBarrier> OrbitTrail::Record(RHICommandList& cmdList){
         stats.copyCount = 0;
+        stats.dispatchCount = 0;
 
         if(pendingSamples == 0)
             return std::nullopt;
@@ -134,23 +143,54 @@ namespace Crowy
         const auto firstRun = std::min(pendingSamples, capacity - pendingFirstSlot);
         const auto secondRun = pendingSamples - firstRun;
 
+        // the two paths differ only in how the ring is written; the edge either
+        // way carries it from whatever the last submission left behind to
+        // whatever reads it next
+        const auto writeAs = pendingGpu ?
+            RHIResourceUsage::StorageCompute :
+            RHIResourceUsage::CopyDst;
+
         // the ring keeps its older samples, so this is a partial write and the
         // acquire must not discard
         const auto acquire = resting == RHIResourceUsage::Undefined ?
             MakeBarrier(*trail,
                 RHIResourceUsage::Undefined,
-                RHIResourceUsage::CopyDst
+                writeAs
             ) :
             MakeCrossSubmissionBarrier(*trail,
                 resting,
-                RHIResourceUsage::CopyDst
+                writeAs
             );
-        const auto release = MakeBarrier(*trail,
-            RHIResourceUsage::CopyDst,
-            nextUse
-        );
+        const auto release = MakeBarrier(*trail, writeAs, nextUse);
 
         const std::array acquires{acquire};
+        const std::array releases{release};
+
+        if(pendingGpu){
+            cmdList.BeginComputePass({}, acquires);
+
+            // one thread per (sample, body); the wrap is the shader's modulo,
+            // so unlike the copy path there is no second run to issue
+            gpuFill->RecordRing(
+                cmdList,
+                *trail,
+                pendingFirstSlot,
+                pendingSamples,
+                capacity
+            );
+
+            cmdList.EndComputePass({}, releases);
+
+            stats.dispatchCount = 1;
+            if(secondRun > 0)
+                ++stats.splitFrameCount;
+
+            resting = nextUse;
+            pendingSamples = 0;
+
+            return release;
+        }
+
         cmdList.BeginBlitPass({}, acquires);
 
         cmdList.Copy(
@@ -173,7 +213,6 @@ namespace Crowy
             );
         }
 
-        const std::array releases{release};
         cmdList.EndBlitPass({}, releases);
 
         stats.copyCount = secondRun > 0 ? 2 : 1;
@@ -190,6 +229,23 @@ namespace Crowy
         CROWY_ASSERT(pendingSamples == 0);
         CROWY_ASSERT(0 < count && count <= capacity);
         CROWY_ASSERT(firstSlot < capacity);
+
+        pendingFirstSlot = firstSlot;
+        pendingSamples = count;
+        pendingGpu = fillMode == OrbitFillMode::Gpu;
+
+        if(pendingGpu){
+            // nothing to generate here: the epoch is the whole handoff, and
+            // Record turns it into one dispatch. Sample 0 of the run is the
+            // oldest, so the epoch counts back from endDay the same way the
+            // CPU path's day expression does.
+            gpuFill->SetEpoch(
+                endDay - (count - 1) * dayPerSample,
+                dayPerSample
+            );
+
+            return;
+        }
 
         scratch.resize(static_cast<usize>(count) * ORBIT_BODY_COUNT);
 
@@ -219,8 +275,6 @@ namespace Crowy
             offset
         );
 
-        pendingFirstSlot = firstSlot;
-        pendingSamples = count;
         pendingStagingOffset = offset;
     }
 }

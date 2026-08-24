@@ -129,4 +129,67 @@ namespace Crowy
     // One ring-buffer sample: every body at the same instant. The shared
     // instant is what makes the frame interpolation legal - see the design doc.
     void SampleOrbits(f64 day, std::span<Vec3d, ORBIT_BODY_COUNT> out) noexcept;
+
+    // ---- GPU mirror --------------------------------------------------------
+    //
+    // The solve moves to a compute shader; the clock does not. A mean anomaly
+    // is L0 + n*t - varpi, and once t is 60,000 days that expression has spent
+    // its float precision before Newton even starts - Mercury's M reaches a
+    // quarter of a million degrees. So the CPU keeps time and hands the GPU an
+    // angle plus a step it can walk exactly.
+    //
+    // The angle rides as 32-bit fixed point in turns: one turn is 2^32, so uint
+    // overflow *is* the reduction mod a full circle and stepping is exact
+    // integer arithmetic with no growing error term.
+
+    inline constexpr u32 ORBIT_PHASE_BLOCK_SHIFT = 8;
+    inline constexpr u32 ORBIT_PHASE_BLOCK = 1u << ORBIT_PHASE_BLOCK_SHIFT;
+    // two levels of ORBIT_PHASE_BLOCK is as far as the split reaches
+    inline constexpr u32 ORBIT_PHASE_MAX_STEPS =
+        ORBIT_PHASE_BLOCK * ORBIT_PHASE_BLOCK;
+
+    // Mirrors OrbitElements in Engine/Shader/OrbitKepler.slang.
+    //
+    // The three rotations arrive pre-resolved to sine and cosine: they are the
+    // same for every sample of a body, and rebuilding them per sample would be
+    // six transcendentals spent on a constant.
+    struct OrbitElementsGPU{
+        f32 a;
+        f32 e;
+        // argument of perihelion, varpi - Omega
+        f32 cosPeri, sinPeri;
+        f32 cosInc, sinInc;
+        f32 cosNode, sinNode;
+    };
+    static_assert(sizeof(OrbitElementsGPU) == 32);
+
+    // Mirrors OrbitPhase in Engine/Shader/OrbitKepler.slang.
+    //
+    //   phase(i) = phase0 + perBlock * (i >> SHIFT) + perStep * (i & (BLOCK-1))
+    //
+    // Splitting the walk keeps both products under BLOCK steps, so the half-ulp
+    // rounding in perStep cannot pile up across a whole ring. Straight
+    // multiplication would drift 0.003 degrees over 65,536 samples; in blocks
+    // it stays under 0.00002.
+    struct OrbitPhaseGPU{
+        u32 phase0;
+        u32 perStep;
+        u32 perBlock;
+        u32 _pad0 = 0;
+    };
+    static_assert(sizeof(OrbitPhaseGPU) == 16);
+
+    OrbitElementsGPU MakeElementsGPU(const OrbitalElements&) noexcept;
+
+    // `day` is the instant of sample 0; sample i is dayPerSample * i later.
+    OrbitPhaseGPU MakePhaseGPU(
+        const OrbitalElements&,
+        f64 day,
+        f64 dayPerSample
+    ) noexcept;
+
+    // The mean anomaly the shader will reconstruct for sample `index`, in
+    // radians and reduced to (-pi, pi]. Exposed so the fixed-point scheme can
+    // be held to the exact double answer without a GPU in the room.
+    f64 PhaseToRadians(const OrbitPhaseGPU&, u32 index) noexcept;
 }

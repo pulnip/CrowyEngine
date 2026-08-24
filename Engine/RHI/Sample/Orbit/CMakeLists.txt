@@ -1,6 +1,7 @@
 add_library(SampleOrbit STATIC
     AsteroidBelt.cpp
     Kepler.cpp
+    OrbitFill.cpp
     OrbitTrail.cpp
 )
 
