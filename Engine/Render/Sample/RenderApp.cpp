@@ -149,13 +149,12 @@ namespace Crowy
         cmdList.SetViewport(FullViewport(*backBuffer.texture));
         cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-        cmdList.SetVertexBuffer(
-            geometryPool->GetVertexBuffer(),
-            0,
-            sizeof(Vertex)
-        );
         renderer->BindView(cmdList, ViewCBSlot, ViewMain);
-        OnBindPass(cmdList, renderer->Push());
+        auto push = renderer->Push();
+        // the pool is GPUOnly, so unlike the renderer's own buffers this one
+        // does not have to be re-resolved
+        push.vertices = geometryPool->GetVertexBufferID();
+        OnBindPass(cmdList, push);
 
         renderer->Submit(
             cmdList,

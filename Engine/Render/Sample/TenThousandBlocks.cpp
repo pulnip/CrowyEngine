@@ -69,7 +69,6 @@ namespace Crowy
                             {.path = "Engine/Shader/TenThousandBlocks.slang",
                              .entryPoint = "fs_main"},
                         .rasterizer = {.frontCounterClockwise = false},
-                        .vertexLayout = VERTEX_INPUT_LAYOUT,
                         // SV_StartInstanceLocation carries the draw ID
                         .profile = "sm_6_8"
                     }

@@ -17,7 +17,8 @@ namespace Crowy
         RHIGraphicsPipelineStateDesc desc{
             .preRasterizer =
                 RHILegacyFrontendDesc{
-                    .vertexLayout = material.vertexLayout,
+                    // no vertex layout: vertices are pulled by SV_VertexID, so
+                    // a mesh's attribute set never reaches the pipeline key
                     .topology = material.topology,
                     .vertexShader = material.vertexShader
                 },

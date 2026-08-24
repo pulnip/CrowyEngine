@@ -35,6 +35,7 @@ namespace Crowy
         RHIBufferRAII vertexBuffer, indexBuffer;
         std::unique_ptr<OffsetAllocator::Allocator> vertexAllocator, indexAllocator;
         u32 vertexCapacity = 0, indexCapacity = 0;
+        u64 vertexBufferID = 0;
         // stagings live until the pool dies; fine while meshes are packed
         // once at startup, revisit when uploads become streaming
         std::vector<RHIBufferRAII> stagings;
@@ -63,6 +64,9 @@ namespace Crowy
 
         RHIBuffer& GetVertexBuffer(){ return *vertexBuffer; }
         RHIBuffer& GetIndexBuffer(){ return *indexBuffer; }
+
+        // For vertex pulling.
+        u64 GetVertexBufferID();
 
         void LogAllocationStats() const;
     };

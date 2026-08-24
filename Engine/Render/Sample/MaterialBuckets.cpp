@@ -164,7 +164,6 @@ namespace Crowy
                     {.path = "Engine/Shader/MaterialBuckets.slang",
                      .entryPoint = fragmentEntry},
                 .rasterizer = {.frontCounterClockwise = false},
-                .vertexLayout = VERTEX_INPUT_LAYOUT,
                 .profile = "sm_6_8"
             };
         }

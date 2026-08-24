@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <optional>
-#include <span>
 #include <type_traits>
 
 #include "PackedTable.hpp"
@@ -42,9 +41,6 @@ namespace Crowy
         std::optional<RHIBlendState> blend = std::nullopt;
         RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
         bool depthWrite = true;
-        // the input layout leaves this struct once vertex pulling lands
-        std::optional<std::span<const RHIVertexElement>> vertexLayout =
-            std::nullopt;
         CStr profile = "sm_6_8";
     };
 

@@ -60,9 +60,9 @@ TEST(PipelineKey, ProfileComparesByValueNotAddress) {
 }
 
 // The one the handoff missed: RHIVertexElement::semanticName is a CStr too.
+// Vertex pulling took the layout out of MaterialPipelineDesc, but the RHI type
+// is still a pipeline key, so the comparison still has to hold.
 TEST(PipelineKey, VertexLayoutComparesItsElements) {
-    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
-
     static char position[] = "POSITION";
     const std::array layout = {RHIVertexElement{
         .semanticName = position,
@@ -83,23 +83,23 @@ TEST(PipelineKey, VertexLayoutComparesItsElements) {
         .instanceDataStepRate = 0
     }};
 
-    auto lhsMaterial = OpaqueMaterial();
-    lhsMaterial.vertexLayout = layout;
-    auto rhsMaterial = OpaqueMaterial();
-    rhsMaterial.vertexLayout = sameLayout;
+    const RHILegacyFrontendDesc lhs{.vertexLayout = layout};
+    const RHILegacyFrontendDesc rhs{.vertexLayout = sameLayout};
+    const RHILegacyFrontendDesc none{};
 
-    EXPECT_EQ(
-        Compose(lhsMaterial, BasePass(formats)),
-        Compose(rhsMaterial, BasePass(formats))
-    );
+    ASSERT_NE(layout[0].semanticName, sameLayout[0].semanticName);
+    EXPECT_EQ(lhs, rhs);
+    EXPECT_NE(lhs, none);
+}
 
-    // and a layout that really differs still separates them
-    auto differentMaterial = OpaqueMaterial();
-    differentMaterial.vertexLayout = std::nullopt;
-    EXPECT_NE(
-        Compose(lhsMaterial, BasePass(formats)),
-        Compose(differentMaterial, BasePass(formats))
-    );
+// Vertex pulling's payoff: a mesh's attribute set never reaches the key, so
+// two materials that once needed two pipelines now share one.
+TEST(PipelineKey, MeshAttributesDoNotReachTheKey) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+    const auto desc = Compose(OpaqueMaterial(), BasePass(formats));
+
+    const auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
+    EXPECT_FALSE(frontend.vertexLayout.has_value());
 }
 
 // The reason MaterialPipelineDesc carries no render target state: the same

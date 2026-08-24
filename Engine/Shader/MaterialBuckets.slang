@@ -1,3 +1,12 @@
+// mirror of Vertex in Engine/RHI/Common/Vertex.hpp.
+// A structured buffer pack tightly
+struct Vertex{
+    float3 position;
+    float3 normal;
+    float2 texCoord;
+    float4 tangent;
+};
+
 // mirror of DrawData / MaterialData / ScenePush
 struct DrawData{
     float4x4 world;
@@ -21,6 +30,7 @@ struct MaterialData{
 struct ScenePush{
     DescriptorHandle<StructuredBuffer<DrawData>> draws;
     DescriptorHandle<StructuredBuffer<MaterialData>> materials;
+    DescriptorHandle<StructuredBuffer<Vertex>> vertices;
 };
 
 [[vk::push_constant]]
@@ -30,11 +40,6 @@ cbuffer view : register(b1) {
     float4x4 viewProj;
 };
 
-struct VertexIn {
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-};
-
 struct VertexOut {
     float4 posProj : SV_Position;
     float3 normal : NORMAL;
@@ -42,9 +47,17 @@ struct VertexOut {
 };
 
 [shader("vertex")]
-VertexOut vs_main(VertexIn input, uint drawID : SV_StartInstanceLocation){
+VertexOut vs_main(
+    uint vertexID : SV_VertexID,
+    uint drawID : SV_StartInstanceLocation
+){
     StructuredBuffer<DrawData> draws = pass.draws;
     DrawData d = draws[drawID];
+
+    // SV_VertexID on an indexed draw is the index value plus baseVertex,
+    // which is exactly the vertex's position in the shared pool.
+    StructuredBuffer<Vertex> vertices = pass.vertices;
+    Vertex input = vertices[vertexID];
 
     VertexOut output;
     output.posProj = mul(viewProj, mul(d.world, float4(input.position, 1.0)));

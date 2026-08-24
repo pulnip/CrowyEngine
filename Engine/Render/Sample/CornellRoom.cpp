@@ -227,7 +227,6 @@ namespace Crowy
                     {.path = "Engine/Shader/CornellRoom.slang",
                      .entryPoint = "fs_main"},
                 .rasterizer = {.frontCounterClockwise = false},
-                .vertexLayout = VERTEX_INPUT_LAYOUT,
                 .profile = "sm_6_8"
             };
         }
