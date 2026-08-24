@@ -3,6 +3,7 @@
 #include <offsetAllocator.hpp>
 #include "EnumUtil.hpp"
 #include "GeometryPool.hpp"
+#include "IntMath.hpp"
 #include "LogLocal.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -11,6 +12,10 @@
 namespace Crowy
 {
     namespace{
+        // one alignment for every staged copy - nothing here ever binds a
+        // view on the staging side, so all that matters is a safe upper bound
+        inline constexpr u64 STAGING_ALIGN = 16;
+
         OffsetAllocator::Allocation allocateOrThrow(
             OffsetAllocator::Allocator& allocator,
             u32 count,
@@ -52,6 +57,19 @@ namespace Crowy
             .usage = combine(RHIBufferUsage::IndexBuffer, RHIBufferUsage::CopyDst),
             .access = RHIMemoryAccess::GPUOnly
         }, "geometry pool indices");
+
+        // sized for the whole pool at once: no flush hook, so a request the
+        // ring cannot free space for asserts instead of blocking
+        const auto stagingBytes = nextMul<u64>(
+            vertexCapacity * sizeof(Vertex) + indexCapacity * sizeof(u32),
+            512
+        );
+        auto stagingBuffer = device.CreateBuffer(RHIBufferCreateDesc{
+            .size = static_cast<u32>(stagingBytes),
+            .usage = RHIBufferUsage::CopySrc,
+            .access = RHIMemoryAccess::CPUWrite
+        }, "geometry pool staging");
+        staging = UploadRing(device, std::move(stagingBuffer));
     }
 
     GeometryPool::~GeometryPool() = default;
@@ -98,29 +116,25 @@ namespace Crowy
         const auto vertexBytes = static_cast<u32>(vertices.size_bytes());
         const auto indexBytes = static_cast<u32>(indices.size_bytes());
 
-        auto staging = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = vertexBytes + indexBytes,
-            .usage = RHIBufferUsage::CopySrc,
-            .access = RHIMemoryAccess::CPUWrite
-        }, "geometry pool staging");
-        staging->Upload(vertices.data(), vertexBytes);
-        staging->Upload(indices.data(), indexBytes, vertexBytes);
+        const auto alloc = staging.Allocate(vertexBytes + indexBytes, STAGING_ALIGN);
+        const auto stagingOffset = static_cast<u32>(alloc.offset);
+        alloc.buffer.Upload(vertices.data(), vertexBytes, stagingOffset);
+        alloc.buffer.Upload(indices.data(), indexBytes, stagingOffset + vertexBytes);
 
         cmdList.Copy(
-            *staging,
+            alloc.buffer,
             *vertexBuffer,
-            0,
+            stagingOffset,
             vertexAlloc.offset * sizeof(Vertex),
             vertexBytes
         );
         cmdList.Copy(
-            *staging,
+            alloc.buffer,
             *indexBuffer,
-            vertexBytes,
+            stagingOffset + vertexBytes,
             indexAlloc.offset * sizeof(u32),
             indexBytes
         );
-        stagings.push_back(std::move(staging));
 
         return GeometryAllocation{
             .firstIndex = indexAlloc.offset,
