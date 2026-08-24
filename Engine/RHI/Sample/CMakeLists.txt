@@ -77,6 +77,8 @@ endfunction()
 add_subdirectory(Scene)
 # density field, noise and UI panel the two terrain samples share
 add_subdirectory(Terrain)
+# Keplerian orbits, trail ring buffer and panel for OrbitFrameSample
+add_subdirectory(Orbit)
 
 crowy_graphics_sample(HelloWorld
 SOURCES
@@ -143,6 +145,11 @@ SOURCES
     BaseInstanceSpike.cpp
 )
 
+crowy_graphics_sample(InstanceIdSpike
+SOURCES
+    InstanceIdSpike.cpp
+)
+
 crowy_graphics_sample(TenThousandCubes
 SOURCES
     TenThousandCubes.cpp
@@ -177,6 +184,22 @@ SOURCES
     TerrainMarchCheck.cpp
 DEPENDS
     Crowy::SampleTerrain
+)
+
+crowy_graphics_sample(OrbitFrameSample
+SOURCES
+    OrbitFrameSample.cpp
+DEPENDS
+    SampleOrbit
+    Crowy::UI
+)
+
+# headless; copies the trail ring back and holds it against the Kepler solver
+crowy_rhi_sample(OrbitTrailCheck
+SOURCES
+    OrbitTrailCheck.cpp
+DEPENDS
+    SampleOrbit
 )
 
 crowy_graphics_sample(SpanTerrainSample
