@@ -65,11 +65,17 @@ function(crowy_graphics_sample NAME)
 
     crowy_rhi_sample(${NAME}
     SOURCES
-        AppFramework.cpp
+        # callers outside this directory resolve to this one.
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AppFramework.cpp"
         ${ARG_SOURCES}
     DEPENDS
         Crowy::Platform
         ${ARG_DEPENDS}
+    )
+
+    target_include_directories(${NAME}
+    PRIVATE
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}"
     )
 endfunction()
 

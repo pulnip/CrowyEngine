@@ -40,7 +40,11 @@ namespace Crowy
     {
         vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = vertexCapacity * static_cast<u32>(sizeof(Vertex)),
-            .usage = combine(RHIBufferUsage::VertexBuffer, RHIBufferUsage::CopyDst),
+            .usage = combine(
+                RHIBufferUsage::VertexBuffer,
+                RHIBufferUsage::ShaderResource,
+                RHIBufferUsage::CopyDst
+            ),
             .access = RHIMemoryAccess::GPUOnly
         }, "geometry pool vertices");
         indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
@@ -51,6 +55,15 @@ namespace Crowy
     }
 
     GeometryPool::~GeometryPool() = default;
+
+    u64 GeometryPool::GetVertexBufferID(){
+        if(vertexBufferID == 0){
+            vertexBufferID =
+                vertexBuffer->GetReadableID(static_cast<u32>(sizeof(Vertex)));
+        }
+
+        return vertexBufferID;
+    }
 
     std::array<RHIBufferBarrier, 2> GeometryPool::UploadAcquires(){
         return {
