@@ -1,10 +1,8 @@
 #if CROWY_BENCHMARK
 #include <chrono>
 #endif
-#include "Assert.hpp"
 #include "FramePacer.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 #include "RHIFrameScope.hpp"
 
 namespace Crowy
@@ -14,10 +12,7 @@ namespace Crowy
     )
         : device(device)
         , frameIndex(device.GetFrameIndexRef())
-        , fence(device.CreateFence(0))
-    {
-        CROWY_ASSERT(fence != nullptr);
-    }
+    {}
 
     FramePacer::~FramePacer() = default;
 
@@ -35,7 +30,7 @@ namespace Crowy
             const auto before = std::chrono::steady_clock::now();
         #endif
 
-            fence->WaitCPU(waitValue);
+            device.WaitFrame(waitValue);
 
         #if CROWY_BENCHMARK
             lastWaitSeconds = std::chrono::duration<f64>(
@@ -49,21 +44,18 @@ namespace Crowy
         std::span<RHICommandList*> cmdLists,
         RHISwapchain& swapchain
     ){
-        device.SubmitAndPresent(cmdLists, swapchain, *fence);
+        device.SubmitAndPresent(cmdLists, swapchain);
 
         scope = nullptr;
     }
 
     void FramePacer::EndFrame(std::span<RHICommandList*> cmdLists){
-        device.Submit(cmdLists, *fence);
+        device.Submit(cmdLists);
 
         scope = nullptr;
     }
 
     void FramePacer::WaitForIdle(){
-        // Signal fresh so this also waits on any GPU work queued
-        // after the last per-frame signal (e.g. swapchain Present).
-        device.SignalFence(*fence, ++frameIndex);
-        fence->WaitCPU(frameIndex);
+        device.WaitIdle();
     }
 }

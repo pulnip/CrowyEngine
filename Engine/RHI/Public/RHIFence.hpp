@@ -14,9 +14,9 @@ namespace Crowy
         virtual void WaitCPU(u64 waitValue, u64 timeoutMs = 0) = 0;
 
         // Get current fence value (non-blocking query)
-        virtual u64 GetValue() = 0;
+        virtual u64 GetValue() const = 0;
 
         // Check if fence has reached a value
-        virtual bool IsComplete(u64) = 0;
+        virtual bool IsComplete(u64) const = 0;
     };
 }

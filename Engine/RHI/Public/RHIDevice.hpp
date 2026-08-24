@@ -40,19 +40,20 @@ namespace Crowy
 
         virtual RHICommandListRAII CreateCommandList() = 0;
 
-        virtual RHIFenceRAII CreateFence(u64 initialValue = 0) = 0;
-
-        virtual void SignalFence(RHIFence&, u64 value) = 0;
-
-        virtual void Submit(
-            std::span<RHICommandList*>,
-            RHIFence&
-        ) = 0;
+        virtual void Submit(std::span<RHICommandList*>) = 0;
         virtual void SubmitAndPresent(
             std::span<RHICommandList*>,
-            RHISwapchain&,
-            RHIFence&
+            RHISwapchain&
         ) = 0;
+
+        // the frame value the last Submit/SubmitAndPresent tagged
+        virtual u64 GetSubmittedFrame() const noexcept = 0;
+        // the frame value the GPU has actually finished
+        virtual u64 GetCompletedFrame() const noexcept = 0;
+        // block the CPU until GetCompletedFrame() >= value
+        virtual void WaitFrame(u64 value) = 0;
+        // block until every submission so far has completed
+        virtual void WaitIdle() = 0;
 
         virtual u64& GetFrameIndexRef() noexcept = 0;
 

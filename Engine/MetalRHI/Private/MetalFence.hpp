@@ -24,9 +24,9 @@ namespace Crowy
 
         void WaitCPU(u64 waitValue, u64 timeoutMs) RHI_OVERRIDE;
 
-        u64 GetValue() RHI_OVERRIDE;
+        u64 GetValue() const RHI_OVERRIDE;
 
-        bool IsComplete(u64 value) RHI_OVERRIDE;
+        bool IsComplete(u64 value) const RHI_OVERRIDE;
 
         void Encode(MTL::CommandBuffer&, u64 value);
     };

@@ -7,7 +7,6 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 #include "Terrain.hpp"
 #include "TerrainDensity.hpp"
 #include "TerrainMarch.hpp"
@@ -411,7 +410,6 @@ namespace{
 
         auto warmupList = device.CreateCommandList();
         auto cmdList = device.CreateCommandList();
-        auto fence = device.CreateFence();
 
         TerrainMarcher marcher(device, TRIANGLE_CAPACITY);
 
@@ -455,8 +453,8 @@ namespace{
             warmupList->Close();
 
             RHICommandList* warmup[] = {warmupList.get()};
-            device.Submit(warmup, *fence);
-            fence->WaitCPU(device.GetFrameIndexRef());
+            device.Submit(warmup);
+            device.WaitFrame(device.GetSubmittedFrame());
         }
 
         cmdList->Begin();
@@ -488,9 +486,9 @@ namespace{
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device.Submit(cmdLists, *fence);
+        device.Submit(cmdLists);
 
-        fence->WaitCPU(device.GetFrameIndexRef());
+        device.WaitFrame(device.GetSubmittedFrame());
 
         // forced push for resolve the in-flight state
         device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;

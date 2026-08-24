@@ -65,6 +65,8 @@ namespace Crowy
         // serial of the last wave that left un-acquired hand-off releases
         u64 handoffSerial = 0;
 
+        RAII<MetalFence> frameFence;
+
     public:
         auto CreateCommandList(){
             return std::make_unique<MetalCommandList>(
@@ -134,6 +136,7 @@ namespace Crowy
                 submissionSerial,
                 handoffSerial
             )
+            , frameFence(std::make_unique<MetalFence>(*device.get(), 0))
         {
 
             CROWY_ASSERT(device, "No GPU Available");
@@ -260,35 +263,11 @@ namespace Crowy
             );
         }
 
-        auto CreateFence(u64 initialValue){
-            return std::make_unique<MetalFence>(
-                *device.get(),
-                initialValue
-            );
-        }
-
-        void SignalFence(MetalFence& fence, u64 value){
-            auto cmdBuffer = commandQueue->commandBuffer();
-            fence.Encode(*cmdBuffer, value);
-            // keep the submission event in step with out-of-band
-            // frameIndex bumps (FramePacer::WaitForIdle signals through
-            // here) so lazy gates never overtake the event timeline
-            if(value > submissionSerial){
-                cmdBuffer->encodeSignalEvent(submissionEvent.get(), value);
-                submissionSerial = value;
-            }
-
-            cmdBuffer->commit();
-        }
-
-        void Submit(
-            std::span<RHICommandList*> cmdLists,
-            MetalFence& fence
-        ){
+        void Submit(std::span<RHICommandList*> cmdLists){
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
-            fence.Encode(*lastCmdBuffer, ++frameIndex);
+            frameFence->Encode(*lastCmdBuffer, ++frameIndex);
             // close the wave: later recordings that depend on it
             // (lazy gates) wait on this value
             submissionSerial = frameIndex;
@@ -304,14 +283,13 @@ namespace Crowy
 
         void SubmitAndPresent(
             std::span<RHICommandList*> cmdLists,
-            MetalSwapchain& swapchain,
-            MetalFence& fence
+            MetalSwapchain& swapchain
         ){
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
             swapchain.Present(*lastCmdBuffer);
-            fence.Encode(*lastCmdBuffer, ++frameIndex);
+            frameFence->Encode(*lastCmdBuffer, ++frameIndex);
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
 
@@ -321,6 +299,26 @@ namespace Crowy
                 auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
                 mtlCmdList->commit();
             }
+        }
+
+        u64 GetSubmittedFrame() const noexcept{
+            return frameIndex;
+        }
+
+        u64 GetCompletedFrame() const noexcept{
+            return frameFence->GetValue();
+        }
+
+        void WaitFrame(u64 value){
+            frameFence->WaitCPU(value, 0);
+        }
+
+        void WaitIdle(){
+            // signal fresh so this also waits on any GPU work queued
+            // after the last per-frame signal (e.g. swapchain Present)
+            ++frameIndex;
+            signalFrame(frameIndex);
+            frameFence->WaitCPU(frameIndex, 0);
         }
 
         u64& GetFrameIndexRef() noexcept{
@@ -364,6 +362,21 @@ namespace Crowy
         }
 
     private:
+        // out-of-band signal (WaitIdle) that is not tied to a submitted
+        // wave, so it needs its own command buffer to carry it
+        void signalFrame(u64 value){
+            auto cmdBuffer = commandQueue->commandBuffer();
+            frameFence->Encode(*cmdBuffer, value);
+            // keep the submission event in step with the out-of-band bump
+            // so lazy gates never overtake the event timeline
+            if(value > submissionSerial){
+                cmdBuffer->encodeSignalEvent(submissionEvent.get(), value);
+                submissionSerial = value;
+            }
+
+            cmdBuffer->commit();
+        }
+
         // a wave that leaves un-acquired hand-off releases gates the
         // recordings that may share the GPU with it
         // (hangover window in MetalCommandList::Begin).
@@ -449,17 +462,6 @@ namespace Crowy
         return impl->CreateCommandList();
     }
 
-    RHIFenceRAII MetalDevice::CreateFence(u64 initialValue){
-        return impl->CreateFence(initialValue);
-    }
-
-    void MetalDevice::SignalFence(
-        RHIFence& fence,
-        u64 value
-    ){
-        impl->SignalFence(static_cast<MetalFence&>(fence), value);
-    }
-
     u64& MetalDevice::GetFrameIndexRef() noexcept{
         return impl->GetFrameIndexRef();
     }
@@ -474,24 +476,33 @@ namespace Crowy
         };
     }
 
-    void MetalDevice::Submit(
-        std::span<RHICommandList*> cmdLists,
-        RHIFence& fence
-    ){
-        impl->Submit(
-            cmdLists,
-            static_cast<MetalFence&>(fence)
-        );
+    void MetalDevice::Submit(std::span<RHICommandList*> cmdLists){
+        impl->Submit(cmdLists);
     }
+
     void MetalDevice::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain,
-        RHIFence& fence
+        RHISwapchain& swapchain
     ){
         impl->SubmitAndPresent(
             cmdLists,
-            static_cast<MetalSwapchain&>(swapchain),
-            static_cast<MetalFence&>(fence)
+            static_cast<MetalSwapchain&>(swapchain)
         );
+    }
+
+    u64 MetalDevice::GetSubmittedFrame() const noexcept{
+        return impl->GetSubmittedFrame();
+    }
+
+    u64 MetalDevice::GetCompletedFrame() const noexcept{
+        return impl->GetCompletedFrame();
+    }
+
+    void MetalDevice::WaitFrame(u64 value){
+        impl->WaitFrame(value);
+    }
+
+    void MetalDevice::WaitIdle(){
+        impl->WaitIdle();
     }
 }

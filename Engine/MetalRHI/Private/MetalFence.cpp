@@ -56,11 +56,11 @@ namespace Crowy
         // dispatch_release(sem);
     }
 
-    u64 MetalFence::GetValue(){
+    u64 MetalFence::GetValue() const{
         return sharedEvent->signaledValue();
     }
 
-    bool MetalFence::IsComplete(u64 value){
+    bool MetalFence::IsComplete(u64 value) const{
         return sharedEvent->signaledValue() >= value;
     }
 

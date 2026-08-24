@@ -469,7 +469,8 @@ namespace Crowy
         bool uploadRecorded = false;
         UploadRing uploadRing;
 
-        // increased by FramePacer
+        RAII<DX12Fence> frameFence;
+        // increased on Submit / SubmitAndPresent
         u64 frameIndex = 0;
 
     public:
@@ -500,6 +501,7 @@ namespace Crowy
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
             , drawSignature(::createDrawSignature(*device.Get()))
             , drawIndexedSignature(::createDrawIndexedSignature(*device.Get()))
+            , frameFence(std::make_unique<DX12Fence>(*device.Get(), 0))
         {
             setupValidationBreak(*device.Get());
             checkAgilitySDK();
@@ -675,49 +677,43 @@ namespace Crowy
             );
         }
 
-        RAII<DX12Fence> CreateFence(u64 initialValue){
-            return std::make_unique<DX12Fence>(
-                *device.Get(),
-                initialValue
-            );
+        void Submit(std::span<RHICommandList*> cmdLists){
+            executeCommandLists(cmdLists);
+
+            ++frameIndex;
+            signalFrame();
         }
 
-        void SignalFence(RHIFence& fence, u64 value){
-            auto& dxFence = static_cast<DX12Fence&>(fence);
-
-            CHECK_HRESULT(commandQueue->Signal(
-                dxFence.Get(),
-                value
-            ), "Failed to signal fence");
-        }
-
-        void SignalFence(RHIFence& fence){
-            SignalFence(fence, ++frameIndex);
-        }
-
-        void Submit(
-            std::span<RHICommandList*> cmdLists
+        void SubmitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            RHISwapchain& swapchain
         ){
-            usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
-            std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
-            if(uploadRecorded){
-                // Close completes the upload releases nobody acquired here -
-                // the consumers live in the command lists submitted after
-                uploadCmdList->Close();
-                dxCmdLists[0] = uploadCmdList->Get();
+            executeCommandLists(cmdLists);
 
-                uploadRecorded = false;
-            }
+            static_cast<DX12Swapchain&>(swapchain).Present();
 
-            for(usize i=0; i<cmdLists.size(); ++i){
-                auto dxCmdList = static_cast<DX12CommandList*>(cmdLists[i]);
-                dxCmdLists[recordedUploadCmdListCount + i] = dxCmdList->Get();
-            }
+            ++frameIndex;
+            signalFrame();
+        }
 
-            commandQueue->ExecuteCommandLists(
-                dxCmdLists.size(),
-                dxCmdLists.data()
-            );
+        u64 GetSubmittedFrame() const noexcept{
+            return frameIndex;
+        }
+
+        u64 GetCompletedFrame() const noexcept{
+            return frameFence->GetValue();
+        }
+
+        void WaitFrame(u64 value){
+            frameFence->WaitCPU(value, 0);
+        }
+
+        void WaitIdle(){
+            // signal fresh so this also waits on any GPU work queued
+            // after the last per-frame signal (e.g. swapchain Present)
+            ++frameIndex;
+            signalFrame();
+            frameFence->WaitCPU(frameIndex, 0);
         }
 
         u64& GetFrameIndexRef() noexcept{
@@ -766,6 +762,36 @@ namespace Crowy
                 uploadCmdList->Begin();
                 uploadRecorded = true;
             }
+        }
+
+        void executeCommandLists(std::span<RHICommandList*> cmdLists){
+            usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
+            std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
+            if(uploadRecorded){
+                // Close completes the upload releases nobody acquired here -
+                // the consumers live in the command lists submitted after
+                uploadCmdList->Close();
+                dxCmdLists[0] = uploadCmdList->Get();
+
+                uploadRecorded = false;
+            }
+
+            for(usize i=0; i<cmdLists.size(); ++i){
+                auto dxCmdList = static_cast<DX12CommandList*>(cmdLists[i]);
+                dxCmdLists[recordedUploadCmdListCount + i] = dxCmdList->Get();
+            }
+
+            commandQueue->ExecuteCommandLists(
+                dxCmdLists.size(),
+                dxCmdLists.data()
+            );
+        }
+
+        void signalFrame(){
+            CHECK_HRESULT(commandQueue->Signal(
+                frameFence->Get(),
+                frameIndex
+            ), "Failed to signal fence");
         }
     };
 
@@ -823,33 +849,31 @@ namespace Crowy
         return impl->CreateCommandList();
     }
 
-    RHIFenceRAII DX12Device::CreateFence(u64 initialValue){
-        return impl->CreateFence(initialValue);
-    }
-
-    void DX12Device::SignalFence(RHIFence& fence, u64 value){
-        impl->SignalFence(fence, value);
-    }
-
-    void DX12Device::Submit(
-        std::span<RHICommandList*> cmdLists,
-        RHIFence& fence
-    ){
+    void DX12Device::Submit(std::span<RHICommandList*> cmdLists){
         impl->Submit(cmdLists);
-
-        impl->SignalFence(fence);
     }
 
     void DX12Device::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain,
-        RHIFence& fence
+        RHISwapchain& swapchain
     ){
-        impl->Submit(cmdLists);
+        impl->SubmitAndPresent(cmdLists, swapchain);
+    }
 
-        static_cast<DX12Swapchain&>(swapchain).Present();
+    u64 DX12Device::GetSubmittedFrame() const noexcept{
+        return impl->GetSubmittedFrame();
+    }
 
-        impl->SignalFence(fence);
+    u64 DX12Device::GetCompletedFrame() const noexcept{
+        return impl->GetCompletedFrame();
+    }
+
+    void DX12Device::WaitFrame(u64 value){
+        impl->WaitFrame(value);
+    }
+
+    void DX12Device::WaitIdle(){
+        impl->WaitIdle();
     }
 
     u64& DX12Device::GetFrameIndexRef() noexcept{

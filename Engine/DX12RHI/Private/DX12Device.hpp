@@ -13,7 +13,7 @@ namespace Crowy
     class DX12Device: public RHIDevice{
     private:
         class Impl;
-        static constexpr usize implSize = 184;
+        static constexpr usize implSize = 192;
         static constexpr usize implAlign = 8;
         FastPimpl<Impl, implSize, implAlign> impl;
 
@@ -51,19 +51,16 @@ namespace Crowy
 
         RAII<RHICommandList> CreateCommandList() RHI_OVERRIDE;
 
-        RHIFenceRAII CreateFence(u64 initialValue = 0) RHI_OVERRIDE;
-
-        void SignalFence(RHIFence&, u64) RHI_OVERRIDE;
-
-        void Submit(
-            std::span<RHICommandList*>,
-            RHIFence&
-        ) RHI_OVERRIDE;
+        void Submit(std::span<RHICommandList*>) RHI_OVERRIDE;
         void SubmitAndPresent(
             std::span<RHICommandList*>,
-            RHISwapchain&,
-            RHIFence&
+            RHISwapchain&
         ) RHI_OVERRIDE;
+
+        u64 GetSubmittedFrame() const noexcept RHI_OVERRIDE;
+        u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
+        void WaitFrame(u64 value) RHI_OVERRIDE;
+        void WaitIdle() RHI_OVERRIDE;
 
         u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 

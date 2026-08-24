@@ -11,7 +11,6 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 
 // Holds the GPU trail ring against the Kepler solver it was filled from.
 // Nothing is drawn: the ring is copied back and every slot is compared with the
@@ -61,7 +60,6 @@ namespace{
     private:
         RHIDevice& device;
         RHICommandListRAII cmdList;
-        RHIFenceRAII fence;
         RHIBufferRAII readback;
         u32 ringBytes;
 
@@ -69,7 +67,6 @@ namespace{
         RingProbe(RHIDevice& device, u32 capacity)
             : device(device)
             , cmdList(device.CreateCommandList())
-            , fence(device.CreateFence())
             , ringBytes(capacity * ORBIT_SAMPLE_BYTES)
         {
             readback = device.CreateBuffer(RHIBufferCreateDesc{
@@ -99,8 +96,8 @@ namespace{
             cmdList->Close();
 
             RHICommandList* lists[] = {cmdList.get()};
-            device.Submit(lists, *fence);
-            fence->WaitCPU(device.GetFrameIndexRef());
+            device.Submit(lists);
+            device.WaitFrame(device.GetSubmittedFrame());
 
             device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
             readback->Download(out.data(), ringBytes);
@@ -542,7 +539,6 @@ namespace{
         OrbitTrailArgs args(device, table, RHIResourceUsage::CopySrc);
 
         auto cmdList = device.CreateCommandList();
-        auto fence = device.CreateFence();
 
         const u32 argsBytes = ORBIT_BODY_COUNT *
             static_cast<u32>(sizeof(RHIDrawArgs));
@@ -582,8 +578,8 @@ namespace{
             cmdList->Close();
 
             RHICommandList* lists[] = {cmdList.get()};
-            device.Submit(lists, *fence);
-            fence->WaitCPU(device.GetFrameIndexRef());
+            device.Submit(lists);
+            device.WaitFrame(device.GetSubmittedFrame());
 
             device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
             std::array<RHIDrawArgs, ORBIT_BODY_COUNT> got{};

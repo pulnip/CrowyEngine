@@ -43,19 +43,16 @@ namespace Crowy
 
         RHICommandListRAII CreateCommandList() RHI_OVERRIDE;
 
-        RHIFenceRAII CreateFence(u64 initialValue = 0) RHI_OVERRIDE;
-
-        void SignalFence(RHIFence&, u64 value) RHI_OVERRIDE;
-
-        void Submit(
-            std::span<RHICommandList*>,
-            RHIFence&
-        ) RHI_OVERRIDE;
+        void Submit(std::span<RHICommandList*>) RHI_OVERRIDE;
         void SubmitAndPresent(
             std::span<RHICommandList*>,
-            RHISwapchain&,
-            RHIFence&
+            RHISwapchain&
         ) RHI_OVERRIDE;
+
+        u64 GetSubmittedFrame() const noexcept RHI_OVERRIDE;
+        u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
+        void WaitFrame(u64 value) RHI_OVERRIDE;
+        void WaitIdle() RHI_OVERRIDE;
 
         u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 

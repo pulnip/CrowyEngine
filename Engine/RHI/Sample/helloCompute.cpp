@@ -3,7 +3,6 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace{
@@ -20,7 +19,6 @@ int main(void){
 
         auto device = CreateDevice();
         auto cmdList = device->CreateCommandList();
-        auto fence = device->CreateFence();
 
         constexpr size_t N = 1 << 20;
         std::vector<float> floats(N, 1.0f);
@@ -129,9 +127,9 @@ int main(void){
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists, *fence);
+        device->Submit(cmdLists);
 
-        fence->WaitCPU(1);
+        device->WaitFrame(1);
 
         // forced push for resolve the in-flight state
         device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
