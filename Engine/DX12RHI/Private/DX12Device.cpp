@@ -17,6 +17,7 @@
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
+#include "RHIRetireQueue.hpp"
 #include "RHIUtil.hpp"
 #include "RHIShader.hpp"
 #include "UploadRing.hpp"
@@ -473,6 +474,8 @@ namespace Crowy
         // increased on Submit / SubmitAndPresent
         u64 frameIndex = 0;
 
+        RHIRetireQueue retireQueue;
+
     public:
         Impl(DX12Device& dxDevice)
             : factory(::createFactory())
@@ -522,7 +525,9 @@ namespace Crowy
             uploadRing = UploadRing(std::move(stagingBuffer));
         }
 
-        ~Impl()= default;
+        ~Impl(){
+            retireQueue.CollectAll();
+        }
 
         auto CreateFrameScopoe() noexcept{
             return std::make_unique<DX12FrameScope>();
@@ -678,22 +683,29 @@ namespace Crowy
         }
 
         void Submit(std::span<RHICommandList*> cmdLists){
+            // completed-as-of-entry, before this batch's own tag exists
+            retireQueue.Collect(GetCompletedFrame());
+
             executeCommandLists(cmdLists);
 
             ++frameIndex;
             signalFrame();
+            retireQueue.Tag(frameIndex);
         }
 
         void SubmitAndPresent(
             std::span<RHICommandList*> cmdLists,
             RHISwapchain& swapchain
         ){
+            retireQueue.Collect(GetCompletedFrame());
+
             executeCommandLists(cmdLists);
 
             static_cast<DX12Swapchain&>(swapchain).Present();
 
             ++frameIndex;
             signalFrame();
+            retireQueue.Tag(frameIndex);
         }
 
         u64 GetSubmittedFrame() const noexcept{
@@ -714,6 +726,16 @@ namespace Crowy
             ++frameIndex;
             signalFrame();
             frameFence->WaitCPU(frameIndex, 0);
+
+            // everything up to and including the fresh signal is now done,
+            // so this drains the queue rather than leaving stragglers for
+            // a Submit that may never come
+            retireQueue.Tag(frameIndex);
+            retireQueue.Collect(frameIndex);
+        }
+
+        void DeferRetire(std::move_only_function<void()> reclaim){
+            retireQueue.Defer(std::move(reclaim));
         }
 
         u64& GetFrameIndexRef() noexcept{
@@ -874,6 +896,10 @@ namespace Crowy
 
     void DX12Device::WaitIdle(){
         impl->WaitIdle();
+    }
+
+    void DX12Device::DeferRetire(std::move_only_function<void()> reclaim){
+        impl->DeferRetire(std::move(reclaim));
     }
 
     u64& DX12Device::GetFrameIndexRef() noexcept{

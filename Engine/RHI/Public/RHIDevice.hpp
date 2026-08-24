@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include "Semantics.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
@@ -55,9 +56,16 @@ namespace Crowy
         // block until every submission so far has completed
         virtual void WaitIdle() = 0;
 
+        // runs `reclaim` once the batch about to be submitted next has
+        // completed on the GPU
+        virtual void DeferRetire(std::move_only_function<void()> reclaim) = 0;
+
         virtual u64& GetFrameIndexRef() noexcept = 0;
 
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
+
+        void Retire(RHIBufferRAII buffer);
+        void Retire(RHITextureRAII texture);
     };
 
 #if defined(_WIN32)

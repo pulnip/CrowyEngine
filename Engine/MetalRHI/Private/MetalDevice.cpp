@@ -20,6 +20,7 @@ extern "C"{
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
+#include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
 #include "RHIUtil.hpp"
 #include "UploadRing.hpp"
@@ -66,6 +67,7 @@ namespace Crowy
         u64 handoffSerial = 0;
 
         RAII<MetalFence> frameFence;
+        RHIRetireQueue retireQueue;
 
     public:
         auto CreateCommandList(){
@@ -165,6 +167,7 @@ namespace Crowy
         }
 
         ~Impl(){
+            retireQueue.CollectAll();
             // _objc_autoreleasePoolPrint();
         }
 
@@ -264,6 +267,9 @@ namespace Crowy
         }
 
         void Submit(std::span<RHICommandList*> cmdLists){
+            // completed-as-of-entry, before this batch's own tag exists
+            retireQueue.Collect(GetCompletedFrame());
+
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
@@ -272,6 +278,7 @@ namespace Crowy
             // (lazy gates) wait on this value
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
+            retireQueue.Tag(frameIndex);
 
             trackHandoffs(cmdLists);
 
@@ -285,6 +292,8 @@ namespace Crowy
             std::span<RHICommandList*> cmdLists,
             MetalSwapchain& swapchain
         ){
+            retireQueue.Collect(GetCompletedFrame());
+
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
@@ -292,6 +301,7 @@ namespace Crowy
             frameFence->Encode(*lastCmdBuffer, ++frameIndex);
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
+            retireQueue.Tag(frameIndex);
 
             trackHandoffs(cmdLists);
 
@@ -319,6 +329,16 @@ namespace Crowy
             ++frameIndex;
             signalFrame(frameIndex);
             frameFence->WaitCPU(frameIndex, 0);
+
+            // everything up to and including the fresh signal is now done,
+            // so this drains the queue rather than leaving stragglers for
+            // a Submit that may never come
+            retireQueue.Tag(frameIndex);
+            retireQueue.Collect(frameIndex);
+        }
+
+        void DeferRetire(std::move_only_function<void()> reclaim){
+            retireQueue.Defer(std::move(reclaim));
         }
 
         u64& GetFrameIndexRef() noexcept{
@@ -504,5 +524,9 @@ namespace Crowy
 
     void MetalDevice::WaitIdle(){
         impl->WaitIdle();
+    }
+
+    void MetalDevice::DeferRetire(std::move_only_function<void()> reclaim){
+        impl->DeferRetire(std::move(reclaim));
     }
 }

@@ -1,8 +1,11 @@
 #include <format>
 #include <stdexcept>
+#include <utility>
 #include "EnumUtil.hpp"
+#include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHITexture.hpp"
 
 namespace Crowy
 {
@@ -12,6 +15,20 @@ namespace Crowy
 #elif defined(__APPLE__)
     RHIDeviceRAII CreateMetalDevice();
 #endif
+
+    void RHIDevice::Retire(RHIBufferRAII buffer){
+        if(buffer == nullptr)
+            return;
+
+        DeferRetire([buffer = std::move(buffer)]{});
+    }
+
+    void RHIDevice::Retire(RHITextureRAII texture){
+        if(texture == nullptr)
+            return;
+
+        DeferRetire([texture = std::move(texture)]{});
+    }
 
     RHIDeviceRAII CreateDevice(RHIBackend backend){
         using enum RHIBackend;

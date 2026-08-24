@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include "FastPimpl.hpp"
 #include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
@@ -53,6 +54,8 @@ namespace Crowy
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
         void WaitFrame(u64 value) RHI_OVERRIDE;
         void WaitIdle() RHI_OVERRIDE;
+
+        void DeferRetire(std::move_only_function<void()> reclaim) RHI_OVERRIDE;
 
         u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
 
