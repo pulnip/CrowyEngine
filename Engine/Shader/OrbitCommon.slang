@@ -9,6 +9,23 @@
 static const uint BODY_COUNT = 9;
 static const uint EARTH_INDEX = 3;
 
+// Mirrors OrbitBodyDraw in Engine/RHI/Sample/Orbit/OrbitDrawArgs.hpp.
+//
+// Four-byte scalars only: a float3 struct member is 16-byte aligned in MSL and
+// 4-byte aligned in DXIL, and this table is small enough that spelling the
+// channels out costs nothing.
+//
+// Colour and period only - both set once at creation and never written again,
+// which is what keeps this buffer out of the barrier bookkeeping entirely. The
+// segment counts move every frame and live in their own buffer beside it.
+struct BodyDraw{
+    float colorR;
+    float colorG;
+    float colorB;
+    // one full turn of this body, in days
+    float trailPeriodDays;
+};
+
 static const float ORBIT_PI = 3.14159265358979324;
 
 float orbitWrapToPi(float radians){

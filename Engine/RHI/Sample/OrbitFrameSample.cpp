@@ -11,6 +11,7 @@
 #include "Kepler.hpp"
 #include "LinearAlgebra.hpp"
 #include "AsteroidBelt.hpp"
+#include "OrbitDrawArgs.hpp"
 #include "OrbitTrail.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
@@ -51,7 +52,7 @@ namespace Crowy
         f64 simDay = 0.0;
         u32 filled = 0;
         u64 totalTicks = 0;
-        u32 drawnSegments = 0;
+
 
         UIContext(){
             bodyEnabled.fill(true);
@@ -107,13 +108,6 @@ namespace Crowy
         static constexpr f32 CAMERA_DISTANCE = 100.0f;
         static constexpr f32 NEAR_Z = 1.0f, FAR_Z = 200.0f;
 
-        // mirrors BodyDraw in Engine/Shader/OrbitTrail.slang
-        struct OrbitBodyDraw{
-            f32 colorR, colorG, colorB;
-            u32 segCount;
-        };
-        static_assert(sizeof(OrbitBodyDraw) == 16);
-        static_assert(offsetof(OrbitBodyDraw, segCount) == 12);
 
         // mirrors TrailPush in Engine/Shader/OrbitTrail.slang
         struct TrailPush{
@@ -133,8 +127,9 @@ namespace Crowy
             u64 belt;
             f32 beltAlpha;
             f32 _pad0 = 0.0f;
+            u64 segCounts;
         };
-        static_assert(sizeof(TrailPush) == 80);
+        static_assert(sizeof(TrailPush) == 88);
         static_assert(offsetof(TrailPush, bodies) == 8);
         static_assert(offsetof(TrailPush, viewportX) == 16);
         static_assert(offsetof(TrailPush, thicknessPx) == 24);
@@ -146,6 +141,7 @@ namespace Crowy
         static_assert(offsetof(TrailPush, dayPerSample) == 56);
         static_assert(offsetof(TrailPush, belt) == 64);
         static_assert(offsetof(TrailPush, beltAlpha) == 72);
+        static_assert(offsetof(TrailPush, segCounts) == 80);
 
         // mirrors GridPush in Engine/Shader/OrbitGrid.slang
         struct GridPush{
@@ -218,7 +214,7 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII trailPSO, gridPSO, markerPSO, beltPSO;
         RHIBufferRAII frameCB;
-        RHIBufferRAII bodyBuffer;
+        RAII<OrbitTrailArgs> trailArgs;
         RHIBufferRAII beltBuffer;
         // the compute path cannot write a CPU-write buffer, so the two fills
         // own separate destinations and the draw picks one
@@ -233,7 +229,7 @@ namespace Crowy
         // empty Column and leaves that window blank.
         Widget emptyPanel = Column({});
 
-        std::array<OrbitBodyDraw, ORBIT_BODY_COUNT> bodyDraws{};
+
 
         f64 pendingSeconds = 0.0;
         f32 viewportWidth = 1.0f, viewportHeight = 1.0f;
@@ -346,11 +342,6 @@ namespace Crowy
                 .access = RHIMemoryAccess::CPUWrite
             }, "OrbitFrameCB");
 
-            bodyBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(bodyDraws),
-                .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "OrbitBodyDraws");
 
             // rewritten in full every frame, which is the only safe way to use
             // a CPUWrite buffer - see OrbitTrail.hpp for why
@@ -377,13 +368,18 @@ namespace Crowy
                 device, belt.Elements()
             );
 
+            // colour and period only; segCount belongs to the compute pass
+            // from here on, and so do the draw arguments beside it
+            std::array<OrbitBodyDraw, ORBIT_BODY_COUNT> table{};
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
-                bodyDraws[b] = OrbitBodyDraw{
+                table[b] = OrbitBodyDraw{
                     .colorR = BODY_COLORS[b].x,
                     .colorG = BODY_COLORS[b].y,
-                    .colorB = BODY_COLORS[b].z
+                    .colorB = BODY_COLORS[b].z,
+                    .trailPeriodDays = static_cast<f32>(TrailPeriodDays(b))
                 };
             }
+            trailArgs = std::make_unique<OrbitTrailArgs>(device, table);
 
             uiRenderer = std::make_unique<UIRenderer>(
                 device,
@@ -493,9 +489,7 @@ namespace Crowy
             ImGui::SeparatorText("Stats");
             ImGui::Text("sim day     %.0f", context.simDay);
             ImGui::Text("samples     %u", context.filled);
-            // does not move with the frame lock: the lock changes the path the
-            // samples trace, never how many of them there are
-            ImGui::Text("segments    %u", context.drawnSegments);
+            ImGui::Text("draws       %u indirect", ORBIT_BODY_COUNT);
             ImGui::Text("ticks       %llu",
                 static_cast<unsigned long long>(context.totalTicks)
             );
@@ -659,35 +653,16 @@ namespace Crowy
             };
         }
 
-        void UpdateBodyDraws(){
-            const auto filled = trail->Filled();
-
-            context.drawnSegments = 0;
+        // One bit per body, so a toggle flipped in the panel this frame lands
+        // in this frame's draw arguments rather than the next one.
+        u32 EnabledMask() const{
+            u32 mask = 0;
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
-                // a switched-off body draws nothing. Zero is unambiguous: even
-                // the shortest trail the panel allows is several samples of
-                // Mercury, so nothing else reaches it.
-                if(!context.bodyEnabled[b]){
-                    bodyDraws[b].segCount = 0;
-                    continue;
-                }
-
-                // each body shows the same fraction of its own orbit; a shared
-                // length would make Neptune a stub and Mercury a smear
-                const auto wanted = static_cast<f64>(context.orbitTurns) *
-                    TrailPeriodDays(b) / DAY_PER_SAMPLE;
-                const auto usable = std::min(
-                    filled,
-                    static_cast<u32>(std::min(wanted, static_cast<f64>(filled)))
-                );
-
-                // n samples make n - 1 segments, and that is also what keeps
-                // the oldest segment from reaching across the ring seam
-                bodyDraws[b].segCount = usable > 1 ? usable - 1 : 0;
-                context.drawnSegments += bodyDraws[b].segCount;
+                if(context.bodyEnabled[b])
+                    mask |= 1u << b;
             }
 
-            bodyBuffer->Upload(bodyDraws.data(), sizeof(bodyDraws));
+            return mask;
         }
 
         RHIBuffer& BeltPositions() const{
@@ -780,13 +755,21 @@ namespace Crowy
             viewportWidth = static_cast<f32>(backBuffer.texture->GetWidth());
             viewportHeight = static_cast<f32>(backBuffer.texture->GetHeight());
 
-            UpdateBodyDraws();
             UpdateBelt();
+
             frameCB->Upload(FrameUniforms{.viewProj = ViewProj()});
 
             // outside any pass: the copies are their own blit pass
             const auto trailEdge = trail->Record(cmdList);
             const auto beltEdge = RecordBelt(cmdList);
+            // the counts the draws below run on, written by the GPU for itself
+            const auto argsEdges = trailArgs->Record(
+                cmdList,
+                trail->Filled(),
+                context.orbitTurns,
+                static_cast<f32>(DAY_PER_SAMPLE),
+                EnabledMask()
+            );
 
             // Prepare opens its own window unconditionally, and its saved
             // position lands right on top of the panel. SetNextWindow* applies
@@ -819,6 +802,10 @@ namespace Crowy
                 bufferAcquires.push_back(*trailEdge);
             if(beltEdge.has_value())
                 bufferAcquires.push_back(*beltEdge);
+            // the counts the vertex stage fades against, and the arguments
+            // the ExecuteIndirect itself reads
+            bufferAcquires.push_back(argsEdges.segCounts);
+            bufferAcquires.push_back(argsEdges.args);
 
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
@@ -845,7 +832,7 @@ namespace Crowy
                 .samples = trail->Buffer().GetReadableID(
                     static_cast<u32>(sizeof(Vec3))
                 ),
-                .bodies = bodyBuffer->GetReadableID(
+                .bodies = trailArgs->Bodies().GetReadableID(
                     static_cast<u32>(sizeof(OrbitBodyDraw))
                 ),
                 .viewportX = viewportWidth,
@@ -863,20 +850,25 @@ namespace Crowy
                 .belt = BeltPositions().GetReadableID(
                     static_cast<u32>(sizeof(Vec3))
                 ),
-                .beltAlpha = context.beltAlpha
+                .beltAlpha = context.beltAlpha,
+                .segCounts = trailArgs->SegCounts().GetReadableID(
+                    static_cast<u32>(sizeof(u32))
+                )
             };
 
-            cmdList.SetPipelineState(*trailPSO);
+            // Nine draws, no loop and no counts on this side. ExecuteIndirect
+            // binds the PSO itself; the push constants set before it survive,
+            // the root signature being bound once per command list.
+            //
+            // What made the swap free is that the shader already read its body
+            // index off the draw rather than off a uniform - a per-draw push
+            // constant would have made this impossible.
             cmdList.SetPushGraphicsConstants(trailPush);
-            for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
-                if(bodyDraws[b].segCount == 0)
-                    continue;
-
-                // baseInstance is the drawID the shader reads as bodyIdx;
-                // Step 8 turns this loop into nine RHIDrawArgs and one
-                // ExecuteIndirect without the shader noticing
-                cmdList.Draw(4, bodyDraws[b].segCount, 0, b);
-            }
+            cmdList.ExecuteIndirect(DrawBatch{
+                .pso = trailPSO.get(),
+                .args = &trailArgs->Args(),
+                .drawCount = trailArgs->DrawCount()
+            });
 
             // under the markers, over the trails: a couple of thousand dots
             // should not cover a planet's head

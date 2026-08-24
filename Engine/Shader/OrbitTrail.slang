@@ -5,24 +5,14 @@
 //
 // One draw per body, one instance per segment, four vertices per instance as a
 // triangle strip. bodyIdx arrives as the draw's baseInstance and segIdx as the
-// instance index inside that draw, so the same shader serves the direct draws
-// here and the single ExecuteIndirect that replaces them later - only where the
-// counts come from changes.
+// instance index inside that draw.
+//
+// The nine draws are issued as one ExecuteIndirect over arguments a compute
+// pass writes, and this shader never learned about it: reading the body index
+// off the draw rather than off a uniform is exactly what made that swap free.
 //
 // Mirrors Engine/RHI/Sample/OrbitFrameSample.cpp; the C++ side asserts the
 // offsets spelled out below.
-
-// Mirrors OrbitBodyDraw in OrbitFrameSample.cpp. Four 4-byte scalars rather
-// than a float3 and a uint: a float3 struct member is 16-byte aligned in MSL
-// and 4-byte aligned in DXIL, and this table is small enough that spelling the
-// channels out costs nothing.
-struct BodyDraw{
-    float colorR;
-    float colorG;
-    float colorB;
-    // segments this body draws; also the denominator of the age fade
-    uint segCount;
-};
 
 struct TrailPush{
     // the ring, sample-major: [sampleIdx * BODY_COUNT + bodyIdx]
@@ -51,7 +41,10 @@ struct TrailPush{
     // heliocentric asteroid positions at the current instant, one per dot
     DescriptorHandle<StructuredBuffer<float3>> belt;      // 64
     float beltAlpha;                                      // 72
-    float _pad0;                                          // 76
+    // segments per body, written every frame by cs_trail_args alongside the
+    // indirect arguments, so the fade denominator and the instance count come
+    // out of one pass and cannot drift
+    DescriptorHandle<StructuredBuffer<uint>> segCounts;   // 80
 };
 
 [[vk::push_constant]]
@@ -156,6 +149,7 @@ VertexOut vs_main(
 ){
     StructuredBuffer<BodyDraw> bodies = push.bodies;
     const BodyDraw body = bodies[bodyIdx];
+    StructuredBuffer<uint> segCounts = push.segCounts;
 
     const float3 p0 = orbitLogWarp(framePosition(segIdx, bodyIdx));
     const float3 p1 = orbitLogWarp(framePosition(segIdx + 1, bodyIdx));
@@ -171,7 +165,7 @@ VertexOut vs_main(
     output.color = float4(
         body.colorR, body.colorG, body.colorB,
         // age fade: segIdx is the segment's age in ticks
-        1.0 - float(segIdx) / float(max(body.segCount, 1u))
+        1.0 - float(segIdx) / float(max(segCounts[bodyIdx], 1u))
     );
 
     return output;
@@ -191,10 +185,11 @@ MarkerOut vs_marker(
 ){
     StructuredBuffer<BodyDraw> bodies = push.bodies;
     const BodyDraw body = bodies[bodyIdx];
+    StructuredBuffer<uint> segCounts = push.segCounts;
 
     // a body switched off in the panel draws no segments, and its marker goes
     // with them
-    if(body.segCount == 0){
+    if(segCounts[bodyIdx] == 0){
         MarkerOut culled;
         culled.position = float4(0.0, 0.0, 0.0, 1.0);
         culled.color = float4(0.0, 0.0, 0.0, 0.0);

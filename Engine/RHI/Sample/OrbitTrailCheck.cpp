@@ -6,6 +6,7 @@
 #include <span>
 #include <vector>
 #include "Kepler.hpp"
+#include "OrbitDrawArgs.hpp"
 #include "OrbitTrail.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -524,6 +525,134 @@ namespace{
 
         return true;
     }
+
+    // The draw arguments the GPU writes for itself, read back and held against
+    // the same formula in double. This is the only thing that can catch the
+    // compute pass and the CPU disagreeing about how long a trail is - the
+    // picture cannot, because a wrong count looks like a slightly shorter
+    // trail and nothing else.
+    bool CheckDrawArgs(RHIDevice& device){
+        std::println("indirect draw arguments");
+
+        std::array<OrbitBodyDraw, ORBIT_BODY_COUNT> table{};
+        for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
+            table[b].trailPeriodDays = static_cast<f32>(TrailPeriodDays(b));
+        }
+
+        OrbitTrailArgs args(device, table, RHIResourceUsage::CopySrc);
+
+        auto cmdList = device.CreateCommandList();
+        auto fence = device.CreateFence();
+
+        const u32 argsBytes = ORBIT_BODY_COUNT *
+            static_cast<u32>(sizeof(RHIDrawArgs));
+        auto readback = device.CreateBuffer(RHIBufferCreateDesc{
+            .size = argsBytes,
+            .usage = RHIBufferUsage::CopyDst,
+            .access = RHIMemoryAccess::CPURead
+        }, "OrbitArgsReadback");
+
+        struct Case{
+            u32 filled;
+            f32 orbitTurns;
+            u32 enabledMask;
+            CStr what;
+        };
+        // the ends of every control, plus a mask with holes in it
+        const std::array<Case, 6> cases{
+            Case{65536, 1.00f, 0x1FFu, "full ring, one turn"},
+            Case{65536, 15.0f, 0x1FFu, "full ring, fifteen turns - Neptune clamps"},
+            Case{65536, 0.05f, 0x1FFu, "full ring, shortest trail"},
+            Case{  120, 1.00f, 0x1FFu, "barely filled - everything clamps"},
+            Case{65536, 1.00f, 0x000u, "everything switched off"},
+            Case{65536, 1.00f, 0x155u, "alternating bodies"}
+        };
+
+        bool ok = true;
+        for(const auto& c: cases){
+            cmdList->Begin();
+            const auto edges = args.Record(
+                *cmdList, c.filled, c.orbitTurns, 1.0f, c.enabledMask
+            );
+
+            const std::array acquires{edges.args};
+            cmdList->BeginBlitPass({}, acquires);
+            cmdList->Copy(args.Args(), *readback, 0, 0, argsBytes);
+            cmdList->EndBlitPass();
+            cmdList->Close();
+
+            RHICommandList* lists[] = {cmdList.get()};
+            device.Submit(lists, *fence);
+            fence->WaitCPU(device.GetFrameIndexRef());
+
+            device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
+            std::array<RHIDrawArgs, ORBIT_BODY_COUNT> got{};
+            readback->Download(got.data(), argsBytes);
+            device.GetFrameIndexRef() += 1;
+
+            for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
+                // the same expression the CPU used to run every frame
+                const auto wanted = static_cast<f64>(c.orbitTurns) *
+                    TrailPeriodDays(b);
+                const auto usable = std::min(
+                    c.filled,
+                    static_cast<u32>(std::min(
+                        wanted, static_cast<f64>(c.filled)
+                    ))
+                );
+                const bool enabled = (c.enabledMask & (1u << b)) != 0;
+                const u32 expected = (enabled && usable > 1) ? usable - 1 : 0;
+
+                if(got[b].vertexCount != 4 || got[b].firstVertex != 0){
+                    std::println(
+                        "  FAIL: {} - {} got vertexCount {} firstVertex {}",
+                        c.what, ORBIT_BODY_NAMES[b],
+                        got[b].vertexCount, got[b].firstVertex
+                    );
+                    ok = false;
+                }
+                // baseInstance is the drawID the vertex stage reads as bodyIdx;
+                // getting this wrong recolours every trail
+                if(got[b].baseInstance != b){
+                    std::println("  FAIL: {} - {} got baseInstance {}, not {}",
+                        c.what, ORBIT_BODY_NAMES[b], got[b].baseInstance, b
+                    );
+                    ok = false;
+                }
+                // The shader works in float where this works in double, so the
+                // truncation to a whole sample could in principle land either
+                // side of a boundary. Over every extreme the panel allows it
+                // never does, so this demands equality: a drifting formula is
+                // worth a failure, not a shrug.
+                const auto delta = static_cast<i64>(got[b].instanceCount) -
+                    static_cast<i64>(expected);
+                if(delta != 0){
+                    std::println(
+                        "  FAIL: {} - {} got {} instances, expected {}",
+                        c.what, ORBIT_BODY_NAMES[b],
+                        got[b].instanceCount, expected
+                    );
+                    ok = false;
+                }
+                if(!enabled && got[b].instanceCount != 0){
+                    std::println(
+                        "  FAIL: {} - {} is switched off but draws {}",
+                        c.what, ORBIT_BODY_NAMES[b], got[b].instanceCount
+                    );
+                    ok = false;
+                }
+            }
+
+            u64 total = 0;
+            for(const auto& a: got)
+                total += a.instanceCount;
+            std::println("  {}: {} instances over {} draws",
+                c.what, total, ORBIT_BODY_COUNT
+            );
+        }
+
+        return ok;
+    }
 }
 
 int main(void){
@@ -539,6 +668,7 @@ int main(void){
         ok = CheckTickOverflow(*device) && ok;
         ok = CheckGpuMatchesCpu(*device) && ok;
         ok = CheckGpuPrefill(*device) && ok;
+        ok = CheckDrawArgs(*device) && ok;
 
         if(!ok)
             return 1;
