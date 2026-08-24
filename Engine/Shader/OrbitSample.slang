@@ -23,6 +23,9 @@ struct OrbitFillPush{
     uint firstSlot;                                              // 32
     // the write wraps here; cs_points ignores it
     uint capacity;                                               // 36
+    // row 0 of this dispatch's phase slice inside the shared buffer
+    uint phaseBase;                                              // 40
+    uint _pad0;                                                  // 44
 };
 
 [[vk::push_constant]]
@@ -46,7 +49,7 @@ void cs_ring(uint tid: SV_DispatchThreadID){
 
     output[slot * push.bodyCount + bodyIdx] = orbitKeplerPosition(
         elements[bodyIdx],
-        phases[bodyIdx],
+        phases[push.phaseBase + bodyIdx],
         sampleOffset
     );
 }
@@ -62,7 +65,9 @@ void cs_points(uint tid: SV_DispatchThreadID){
     RWStructuredBuffer<float3> output = push.output;
 
     // the phase epoch is the instant asked for, so there is no step to walk
-    output[tid] = orbitKeplerPosition(elements[tid], phases[tid], 0);
+    output[tid] = orbitKeplerPosition(
+        elements[tid], phases[push.phaseBase + tid], 0
+    );
 }
 
 // ---------------------------------------------------------------------------

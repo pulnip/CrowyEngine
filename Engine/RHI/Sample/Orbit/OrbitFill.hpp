@@ -18,10 +18,14 @@ namespace Crowy
         u32 sampleCount;
         u32 firstSlot;
         u32 capacity;
+        // row 0 of this dispatch's phase slice inside the shared buffer
+        u32 phaseBase;
+        u32 _pad0;
     };
-    static_assert(sizeof(OrbitFillPush) == 40);
+    static_assert(sizeof(OrbitFillPush) == 48);
     static_assert(offsetof(OrbitFillPush, output) == 16);
     static_assert(offsetof(OrbitFillPush, bodyCount) == 24);
+    static_assert(offsetof(OrbitFillPush, phaseBase) == 40);
 
     // Solves a table of Keplerian orbits on the GPU.
     //
@@ -38,7 +42,8 @@ namespace Crowy
     private:
         RHIComputePipelineStateRAII ringPSO, pointPSO;
         RHIBufferRAII elementBuffer;
-        RHIBufferRAII phaseBuffer;
+        RHIDevice& device;
+        RHIBufferSlice phaseSlice;
 
         std::vector<OrbitalElements> elements;
         std::vector<OrbitPhaseGPU> phaseScratch;
