@@ -12,7 +12,6 @@ namespace Crowy
     class FramePacer{
     private:
         RHIDevice& device;
-        u64& frameIndex;
 
         RHIFrameScopeRAII scope;
 

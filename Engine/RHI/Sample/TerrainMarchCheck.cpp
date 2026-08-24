@@ -493,10 +493,6 @@ namespace{
         device.Submit(cmdLists);
 
         device.WaitFrame(device.GetSubmittedFrame());
-
-        // forced push for resolve the in-flight state
-        device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-
         TerrainMarchCounter counter;
         counterReadback->Download(&counter, sizeof(counter));
 

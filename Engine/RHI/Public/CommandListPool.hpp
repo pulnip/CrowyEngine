@@ -17,7 +17,7 @@ namespace Crowy
             usize nextIndex = 0;
         };
         std::array<FrameSlot, RHI_FRAMES_IN_FLIGHT> slots;
-        const u64& frameIndex;
+        u64 frameIndex = 0;
 
     #if CROWY_BENCHMARK
         RHIFrameStats frameStats;

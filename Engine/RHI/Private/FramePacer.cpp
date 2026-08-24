@@ -10,9 +10,7 @@ namespace Crowy
     FramePacer::FramePacer(
         RHIDevice& device
     )
-        : device(device)
-        , frameIndex(device.GetFrameIndexRef())
-    {}
+        : device(device){}
 
     FramePacer::~FramePacer() = default;
 
@@ -23,8 +21,11 @@ namespace Crowy
         lastWaitSeconds = 0.0;
     #endif
 
-        if(frameIndex >= RHI_FRAMES_IN_FLIGHT) [[likely]] {
-            auto waitValue = frameIndex - RHI_FRAMES_IN_FLIGHT + 1;
+        // keep RHI_FRAMES_IN_FLIGHT batches in flight: before recording the
+        // next one, wait out the oldest still outstanding
+        const auto submitted = device.GetSubmittedFrame();
+        if(submitted >= RHI_FRAMES_IN_FLIGHT) [[likely]] {
+            const auto waitValue = submitted - RHI_FRAMES_IN_FLIGHT + 1;
 
         #if CROWY_BENCHMARK
             const auto before = std::chrono::steady_clock::now();

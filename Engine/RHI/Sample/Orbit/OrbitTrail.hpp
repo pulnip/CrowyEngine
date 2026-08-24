@@ -71,20 +71,7 @@ namespace Crowy
         f64 accumDays = 0.0;
 
         RHIBufferRAII trail;
-        // RHI_FRAMES_IN_FLIGHT regions of one full ring each.
-        //
-        // A full ring because a prefill writes every slot, and one region per
-        // frame in flight because a CPUWrite buffer declared CopySrc is a
-        // single physical allocation - the RHI only multiplexes buffers that
-        // are not pure copy sources, on the grounds that a copy source needs
-        // fence-aware suballocation instead (that is what UploadRing does with
-        // the device's own staging). Writing one region while another frame's
-        // copy is still reading its own is the whole point.
-        //
-        // Costs three rings' worth of upload heap, live only for the CPU
-        // path; the GPU path leaves it untouched.
-        RHIBufferRAII staging;
-        const u64& frameIndex;
+        RHIDevice& device;
 
         OrbitFillMode fillMode = OrbitFillMode::Cpu;
         RAII<OrbitKeplerFill> gpuFill;
@@ -92,7 +79,7 @@ namespace Crowy
         // staged by Advance/Prefill, consumed by Record
         u32 pendingSamples = 0;
         u32 pendingFirstSlot = 0;
-        u64 pendingStagingOffset = 0;
+        RHIBufferSlice pendingStaging;
         // which path staged it - the mode can be flipped between the two calls
         bool pendingGpu = false;
 

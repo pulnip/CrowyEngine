@@ -131,10 +131,6 @@ int main(void){
         device->Submit(cmdLists);
 
         device->WaitFrame(1);
-
-        // forced push for resolve the in-flight state
-        device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-
         std::vector<float> result(N, 0.0f);
         readback->Download(result.data(), sizeof(float) * result.size());
 

@@ -757,10 +757,6 @@ namespace Crowy
         void DeferRetire(std::move_only_function<void()> reclaim){
             retireQueue.Defer(std::move(reclaim));
         }
-        u64& GetFrameIndexRef() noexcept{
-            return frameIndex;
-        }
-
 
         RHIBufferSlice AllocateTransient(u32 size, u32 align){
             const auto alloc = uploadRing.Allocate(size, align);
@@ -949,10 +945,6 @@ namespace Crowy
 
     void DX12Device::DeferRetire(std::move_only_function<void()> reclaim){
         impl->DeferRetire(std::move(reclaim));
-    }
-
-    u64& DX12Device::GetFrameIndexRef() noexcept{
-        return impl->GetFrameIndexRef();
     }
 
     RHIBufferSlice DX12Device::AllocateTransient(u32 size, u32 align){

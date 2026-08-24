@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <span>
 #include "EnumUtil.hpp"
 #include "OrbitTrail.hpp"
 #include "RHIBuffer.hpp"
@@ -15,16 +16,13 @@ namespace Crowy
     )
         : capacity(capacity)
         , dayPerSample(dayPerSample)
-        , frameIndex(device.GetFrameIndexRef())
+        , device(device)
         , nextUse(nextUse)
     {
         CROWY_ASSERT(capacity > 1, "a trail needs two samples to have a segment");
         CROWY_ASSERT(dayPerSample > 0.0);
-        // buffer sizes are u32; 7 MB of ring at the default capacity, and three
-        // times that in staging - nowhere near the limit
-        CROWY_ASSERT(capacity <=
-            0xFFFFFFFFu / (ORBIT_SAMPLE_BYTES * RHI_FRAMES_IN_FLIGHT)
-        );
+        // buffer sizes are u32; 7 MB of ring at the default capacity
+        CROWY_ASSERT(capacity <= 0xFFFFFFFFu / ORBIT_SAMPLE_BYTES);
         CROWY_ASSERT(capacity <= ORBIT_PHASE_MAX_STEPS,
             "a prefill walks the fixed-point phase over the whole ring, and "
             "the block split only reaches ORBIT_PHASE_MAX_STEPS"
@@ -48,13 +46,6 @@ namespace Crowy
         }, "OrbitTrailRing");
 
         gpuFill = std::make_unique<OrbitKeplerFill>(device, ORBIT_ELEMENTS);
-
-        staging = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = ringBytes * RHI_FRAMES_IN_FLIGHT,
-            .usage = RHIBufferUsage::CopySrc,
-            .location = RHIMemoryLocation::Upload,
-            .cpuAccess = RHICpuAccess::Write
-        }, "OrbitTrailStaging");
 
         scratch.reserve(static_cast<usize>(capacity) * ORBIT_BODY_COUNT);
     }
@@ -195,9 +186,9 @@ namespace Crowy
         cmdList.BeginBlitPass({}, acquires);
 
         cmdList.Copy(
-            *staging,
+            *pendingStaging.buffer,
             *trail,
-            pendingStagingOffset,
+            pendingStaging.offset,
             static_cast<usize>(pendingFirstSlot) * ORBIT_SAMPLE_BYTES,
             static_cast<usize>(firstRun) * ORBIT_SAMPLE_BYTES
         );
@@ -205,9 +196,9 @@ namespace Crowy
             // sample-major pays off here: even the wrapped case is two runs,
             // not one copy per body
             cmdList.Copy(
-                *staging,
+                *pendingStaging.buffer,
                 *trail,
-                pendingStagingOffset +
+                pendingStaging.offset +
                     static_cast<usize>(firstRun) * ORBIT_SAMPLE_BYTES,
                 0,
                 static_cast<usize>(secondRun) * ORBIT_SAMPLE_BYTES
@@ -266,16 +257,14 @@ namespace Crowy
             }
         }
 
-        // one memcpy into this frame's staging region; the GPU only sees it
-        // once Record turns it into a copy
-        const auto region = static_cast<u32>(frameIndex % RHI_FRAMES_IN_FLIGHT);
-        const auto offset = region * capacity * ORBIT_SAMPLE_BYTES;
-        staging->Upload(
-            scratch.data(),
-            count * ORBIT_SAMPLE_BYTES,
-            offset
+        // one memcpy into this frame's slice; the GPU only sees it once
+        // Record turns it into a copy
+        pendingStaging = device.UploadTransient(
+            std::span<const Vec3>(
+                scratch.data(),
+                static_cast<usize>(count) * ORBIT_BODY_COUNT
+            ),
+            static_cast<u32>(sizeof(Vec3))
         );
-
-        pendingStagingOffset = offset;
     }
 }

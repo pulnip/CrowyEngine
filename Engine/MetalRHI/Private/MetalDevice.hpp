@@ -58,8 +58,6 @@ namespace Crowy
         void DeferRetire(std::move_only_function<void()> reclaim) RHI_OVERRIDE;
 
         RHIBufferSlice AllocateTransient(u32 size, u32 align) RHI_OVERRIDE;
-        u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
-
 
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
     };

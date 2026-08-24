@@ -99,13 +99,7 @@ namespace{
             RHICommandList* lists[] = {cmdList.get()};
             device.Submit(lists);
             device.WaitFrame(device.GetSubmittedFrame());
-
-            device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-            readback->Download(out.data(), ringBytes);
-
-            // next probe records against the next physical slot
-            device.GetFrameIndexRef() += 1;
-        }
+            readback->Download(out.data(), ringBytes);        }
     };
 
     struct Mismatch{
@@ -582,12 +576,8 @@ namespace{
             RHICommandList* lists[] = {cmdList.get()};
             device.Submit(lists);
             device.WaitFrame(device.GetSubmittedFrame());
-
-            device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
             std::array<RHIDrawArgs, ORBIT_BODY_COUNT> got{};
             readback->Download(got.data(), argsBytes);
-            device.GetFrameIndexRef() += 1;
-
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
                 // the same expression the CPU used to run every frame
                 const auto wanted = static_cast<f64>(c.orbitTurns) *

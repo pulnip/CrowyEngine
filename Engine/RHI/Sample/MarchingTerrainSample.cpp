@@ -66,14 +66,13 @@ namespace Crowy
             });
         }
 
-        // The pacer waits for frame index F - RHI_FRAMES_IN_FLIGHT + 1 before
-        // recording frame F, so a copy recorded while the index read `at` has
-        // certainly landed once the index reaches at + RHI_FRAMES_IN_FLIGHT.
-        // Reading then costs no wait, and the stats trail by a few frames.
+        // The copy rides the batch tagged counterCopyFrame, so the bytes are
+        // there the moment the GPU reports that value complete. Reading then
+        // costs no wait, and the stats trail by a few frames.
         void CollectCounter(){
             if(!counterCopyInFlight)
                 return;
-            if(device->GetFrameIndexRef() < counterCopyFrame + RHI_FRAMES_IN_FLIGHT)
+            if(device->GetCompletedFrame() < counterCopyFrame)
                 return;
 
             counterReadback->Download(&counter, sizeof(counter));
@@ -214,7 +213,8 @@ namespace Crowy
                     cmdList.EndBlitPass();
 
                     counterCopyInFlight = true;
-                    counterCopyFrame = device->GetFrameIndexRef();
+                    // this recording goes out with the next submit
+                    counterCopyFrame = device->GetSubmittedFrame() + 1;
                 }
 
                 // the draw reads what the marching pass just wrote; a frame

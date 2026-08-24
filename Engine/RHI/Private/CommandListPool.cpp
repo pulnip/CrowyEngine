@@ -6,13 +6,15 @@
 namespace Crowy
 {
     CommandListPool::CommandListPool(RHIDevice& device)
-        : device(device)
-        , frameIndex(device.GetFrameIndexRef())
-    {}
+        : device(device){}
 
     CommandListPool::~CommandListPool() = default;
 
     void CommandListPool::BeginFrame(){
+        // the pacer has already waited out the frame that last used this
+        // slot, so advancing here is what makes it free
+        ++frameIndex;
+
         auto& slot = slots[currentIndex()];
 
         // the lists stay: each one owns an allocator per frame slot and

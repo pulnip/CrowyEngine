@@ -69,8 +69,6 @@ namespace Crowy
             u32 size,
             u32 align
         ) = 0;
-        virtual u64& GetFrameIndexRef() noexcept = 0;
-
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
 
         void Retire(RHIBufferRAII buffer);
