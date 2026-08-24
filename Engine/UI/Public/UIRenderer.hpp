@@ -12,17 +12,10 @@ struct ImTextureData;
 namespace Crowy
 {
     class UIRenderer{
-        template<typename T>
-        struct Retired{
-            u64 frame;
-            RAII<T> resource;
-        };
-
     private:
         ImGuiContext* context = nullptr;
 
         RHIDevice& device;
-        const u64& frameIndex;
         RHICapabilities capabilities;
         u32 srgbTarget = 0;
 
@@ -33,9 +26,6 @@ namespace Crowy
         u32 vertexCapacity = 0, indexCapacity = 0;
 
         std::unordered_map<u64, RHITextureRAII> textures;
-
-        std::vector<Retired<RHIBuffer>> retiredBuffers;
-        std::vector<Retired<RHITexture>> retiredTextures;
 
         // acquire halves of this frame's texture-update edges;
         // consumed by the render pass that samples them
@@ -66,10 +56,6 @@ namespace Crowy
 
     private:
         void setupRenderState(RHICommandList&, Vec2 framebuffer);
-
-        void collectRetired();
-        void retire(RHIBufferRAII);
-        void retire(RHITextureRAII);
 
         void createTexture(ImTextureData&);
         void updateTextures(RHICommandList&);

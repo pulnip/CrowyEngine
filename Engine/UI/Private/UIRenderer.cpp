@@ -115,7 +115,6 @@ namespace Crowy
         RHIPixelFormat depthFormat
     )
         : device(device)
-        , frameIndex(device.GetFrameIndexRef())
         , capabilities(device.GetCapabilities())
         , srgbTarget(encodesOnWrite(renderTargetFormat) ? 1u : 0u)
     {
@@ -224,7 +223,6 @@ namespace Crowy
 
         RHIEventScope event(cmdList, "UI Upload");
 
-        collectRetired();
         textureAcquires.clear();
         updateTextures(cmdList);
         uploadGeometry();
@@ -321,35 +319,6 @@ namespace Crowy
             0,
             static_cast<u32>(sizeof(ImDrawVert))
         );
-    }
-
-    void UIRenderer::collectRetired(){
-        const auto expired = [this](const auto& retired){
-            return frameIndex - retired.frame >= RHI_FRAMES_IN_FLIGHT;
-        };
-
-        std::erase_if(retiredBuffers, expired);
-        std::erase_if(retiredTextures, expired);
-    }
-
-    void UIRenderer::retire(RHIBufferRAII buffer){
-        if(buffer == nullptr)
-            return;
-
-        retiredBuffers.push_back(Retired{
-            .frame = frameIndex,
-            .resource = std::move(buffer)
-        });
-    }
-
-    void UIRenderer::retire(RHITextureRAII texture){
-        if(texture == nullptr)
-            return;
-
-        retiredTextures.push_back(Retired{
-            .frame = frameIndex,
-            .resource = std::move(texture)
-        });
     }
 
     void UIRenderer::updateTextures(
@@ -482,13 +451,13 @@ namespace Crowy
         cmdList.EndBlitPass(releases);
         textureAcquires.push_back(releases[0]);
 
-        retire(std::move(staging));
+        device.Retire(std::move(staging));
         tex.SetStatus(ImTextureStatus_OK);
     }
 
     void UIRenderer::destroyTexture(ImTextureData& tex){
         if(auto it = textures.find(tex.TexID); it != textures.end()){
-            retire(std::move(it->second));
+            device.Retire(std::move(it->second));
             textures.erase(it);
         }
 
@@ -507,7 +476,7 @@ namespace Crowy
 
         if(vertexCapacity < vertexCount){
             vertexCapacity = vertexCount + VERTEX_HEADROOM;
-            retire(std::move(vertexBuffer));
+            device.Retire(std::move(vertexBuffer));
             vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = vertexCapacity * static_cast<u32>(sizeof(ImDrawVert)),
                 .usage = RHIBufferUsage::VertexBuffer,
@@ -517,7 +486,7 @@ namespace Crowy
         }
         if(indexCapacity < indexCount){
             indexCapacity = indexCount + INDEX_HEADROOM;
-            retire(std::move(indexBuffer));
+            device.Retire(std::move(indexBuffer));
             indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = indexCapacity * static_cast<u32>(sizeof(ImDrawIdx)),
                 .usage = RHIBufferUsage::IndexBuffer,
