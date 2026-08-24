@@ -144,8 +144,9 @@ namespace Crowy
     {
         CHECK_HRESULT(swapchain.GetBuffer(
             bufferIndex,
-            IID_PPV_ARGS(&texture)
+            IID_PPV_ARGS(&backBufferOwner)
         ), "Failed to Get Buffer from Swapchain");
+        texture = backBufferOwner.Get();
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         if(!name.empty()){
@@ -208,7 +209,7 @@ namespace Crowy
         };
 
         auto idx = rtvHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = rtvs.emplace(desc, idx);
@@ -232,7 +233,7 @@ namespace Crowy
         };
 
         auto idx = dsvHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = dsvs.emplace(desc, idx);
@@ -271,7 +272,7 @@ namespace Crowy
         }, desc.config);
 
         auto idx = cbvsrvuavHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = srvs.emplace(desc, idx);
@@ -310,7 +311,7 @@ namespace Crowy
         }, desc.config);
 
         auto idx = cbvsrvuavHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = uavs.emplace(desc, idx);

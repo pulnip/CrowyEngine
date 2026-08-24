@@ -11,7 +11,10 @@ namespace Crowy
 {
     class DX12Texture: public RHITexture{
     private:
-        TextureRAII texture = nullptr;
+        Texture* texture = nullptr;
+        // holds the reference for a swapchain back buffer; null for an
+        // allocated texture, whose ownership lives in DX12Allocator::live
+        TextureRAII backBufferOwner = nullptr;
         // null for a swapchain back buffer: that memory belongs to the
         // swapchain, so nothing here allocated it and nothing frees it
         DX12Allocator* allocator = nullptr;
@@ -57,7 +60,7 @@ namespace Crowy
 
         void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 
-        Texture* Get() noexcept{ return texture.Get(); }
+        Texture* Get() noexcept{ return texture; }
 
         UINT GetOrCreateRTV(const RHITextureViewDesc&);
         UINT GetOrCreateDSV(const RHITextureViewDesc&);
