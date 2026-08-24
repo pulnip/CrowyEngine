@@ -3,16 +3,19 @@
 #include <unordered_map>
 #include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
+#include "MetalAllocator.hpp"
 #include "RHIAPI.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
 {
-    class MetalHeapPool;
-
     class MetalTexture final: public RHITexture{
     private:
         NS::SharedPtr<MTL::Texture> texture;
+        // null for a drawable-backed texture: that memory belongs to the
+        // layer, so nothing here allocated it and nothing frees it
+        MetalAllocator* allocator = nullptr;
+        RHIAllocation allocation{};
         // views alias the base texture's heap allocation,
         // so the heap's residency set covers them too
         std::unordered_map<
@@ -24,7 +27,7 @@ namespace Crowy
         MetalTexture() = default;
 
         MetalTexture(
-            MetalHeapPool&,
+            MetalAllocator&,
             MTL::TextureDescriptor*,
             StrView name = {}
         );

@@ -4,6 +4,7 @@
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIBuffer.hpp"
+#include "DX12Allocator.hpp"
 #include "DX12Definitions.hpp"
 
 namespace Crowy
@@ -11,6 +12,7 @@ namespace Crowy
     class DX12Buffer: public RHIBuffer{
     private:
         struct FrameResource{
+            RHIAllocation allocation{};
             BufferRAII buffer = nullptr;
             void* mapped = nullptr;
             // descriptor heap index
@@ -24,6 +26,7 @@ namespace Crowy
         // 1 for default heap, RHI_FRAMES_IN_FLIGHT for others.
         std::vector<FrameResource> resources;
         const u64& frameIndex;
+        DX12Allocator& allocator;
         // CBV, SRV, UAV
         DescriptorHeapAllocator& heap;
 
@@ -33,9 +36,8 @@ namespace Crowy
 
     public:
         DX12Buffer(
-            Device&,
+            DX12Allocator&,
             const RHIBufferCreateDesc&,
-            const DX12Capabilities&,
             const u64& frameIndex,
             DescriptorHeapAllocator&,
             StrView name

@@ -3,17 +3,17 @@
 #include <Foundation/NSTypes.hpp>
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLBuffer.hpp>
+#include "MetalAllocator.hpp"
 #include "RHIAPI.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
-    class MetalHeapPool;
-
     class MetalBuffer final: public RHIBuffer{
     private:
         struct FrameResource{
+            RHIAllocation allocation{};
             NS::SharedPtr<MTL::Buffer> buffer;
             void* mapped = nullptr;
         #if defined(_DEBUG) || !defined(NDEBUG)
@@ -22,6 +22,7 @@ namespace Crowy
         };
         std::vector<FrameResource> resources;
         const u64& frameIndex;
+        MetalAllocator& allocator;
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         bool tracksSlotWrites = false;
@@ -29,7 +30,7 @@ namespace Crowy
 
     public:
         MetalBuffer(
-            MetalHeapPool&,
+            MetalAllocator&,
             const RHIBufferCreateDesc&,
             const u64& frameIndex,
             StrView name = {}

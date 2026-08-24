@@ -19,6 +19,7 @@ extern "C"{
 #include "MetalSampler.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
+#include "MetalAllocator.hpp"
 #include "MetalUtil.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
@@ -49,6 +50,10 @@ namespace Crowy
         MetalHeapPool privateHeap;
         MetalHeapPool sharedHeap;
         // MetalHeapPool memorylessHeap;
+
+        // every resource below is allocated through this, so it has to
+        // outlive them - the staging buffer inside uploadRing included
+        MetalAllocator allocator;
 
         AutoreleasePoolScope autoreleasePool;
 
@@ -86,8 +91,7 @@ namespace Crowy
             CROWY_ASSERT(desc.size % 4 == 0);
 
             auto buffer = std::make_unique<MetalBuffer>(
-                desc.access == RHIMemoryAccess::GPUOnly ?
-                    privateHeap : sharedHeap,
+                allocator,
                 desc,
                 frameIndex,
                 name
@@ -130,6 +134,7 @@ namespace Crowy
                 },
                 "SharedHeap"
             )
+            , allocator(privateHeap, sharedHeap)
             // binds references to members that initialize later - fine,
             // the command list only reads them inside Begin()
             , uploadCmdList(
@@ -187,7 +192,7 @@ namespace Crowy
             auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
             auto texture = std::make_unique<MetalTexture>(
-                privateHeap,
+                allocator,
                 texDesc,
                 name
             );

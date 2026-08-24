@@ -4,6 +4,7 @@
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHITexture.hpp"
+#include "DX12Allocator.hpp"
 #include "DX12Definitions.hpp"
 
 namespace Crowy
@@ -11,6 +12,10 @@ namespace Crowy
     class DX12Texture: public RHITexture{
     private:
         TextureRAII texture = nullptr;
+        // null for a swapchain back buffer: that memory belongs to the
+        // swapchain, so nothing here allocated it and nothing frees it
+        DX12Allocator* allocator = nullptr;
+        RHIAllocation allocation{};
         // descriptor heap index
         std::unordered_map<RHITextureViewDesc, UINT> srvs;
         std::unordered_map<RHITextureViewDesc, UINT> uavs;
@@ -23,7 +28,7 @@ namespace Crowy
 
     public:
         DX12Texture(
-            Device&,
+            DX12Allocator&,
             const RHITextureCreateDesc&,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,

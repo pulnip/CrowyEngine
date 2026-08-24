@@ -11,15 +11,14 @@
 
 namespace{
     struct BufferPolicy{
-        D3D12_HEAP_TYPE heapType;
+        Crowy::RHIMemoryClass memoryClass;
         Crowy::u32 slotCount;
         bool persistentMap;
     };
 
     auto Resolve(
         Crowy::RHIBufferUsage usage,
-        Crowy::RHIMemoryAccess access,
-        const Crowy::DX12Capabilities& capabilities
+        Crowy::RHIMemoryAccess access
     ){
         using namespace Crowy;
         using enum RHIMemoryAccess;
@@ -27,14 +26,13 @@ namespace{
         switch(access){
         case GPUOnly:
             return BufferPolicy{
-                .heapType = D3D12_HEAP_TYPE_DEFAULT,
+                .memoryClass = RHIMemoryClass::Device,
                 .slotCount = 1,
                 .persistentMap = false
             };
         case CPUWrite:
             return BufferPolicy{
-                .heapType = capabilities.gpuUploadHeap ?
-                    D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD,
+                .memoryClass = RHIMemoryClass::Upload,
                 .slotCount = usage == RHIBufferUsage::CopySrc ?
                     1 :
                     RHI_FRAMES_IN_FLIGHT,
@@ -42,7 +40,7 @@ namespace{
             };
         case CPURead:
             return BufferPolicy{
-                .heapType = D3D12_HEAP_TYPE_READBACK,
+                .memoryClass = RHIMemoryClass::Readback,
                 .slotCount = RHI_FRAMES_IN_FLIGHT,
                 .persistentMap = true
             };
@@ -57,20 +55,20 @@ namespace{
 namespace Crowy
 {
     DX12Buffer::DX12Buffer(
-        Device& device,
+        DX12Allocator& allocator,
         const RHIBufferCreateDesc& desc,
-        const DX12Capabilities& capabilities,
         const u64& frameIndex,
         DescriptorHeapAllocator& heap,
         StrView name
     )
         : frameIndex(frameIndex)
+        , allocator(allocator)
         , heap(heap)
     {
         using enum RHIBufferUsage;
         using enum RHIMemoryAccess;
 
-        const auto policy = Resolve(desc.usage, desc.access, capabilities);
+        const auto policy = Resolve(desc.usage, desc.access);
 
         const auto hasConstantUsage = hasFlag(desc.usage, ConstantBuffer);
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
@@ -93,27 +91,21 @@ namespace Crowy
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
                 D3D12_RESOURCE_FLAG_NONE
         );
-        const auto heapProp = CD3DX12_HEAP_PROPERTIES(
-            policy.heapType
-        );
 
         resources.reserve(policy.slotCount);
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource frameResource{
+                .allocation = allocator.Allocate(
+                    bufDesc,
+                    policy.memoryClass,
+                    nullptr,
+                    name
+                )
             #if defined(_DEBUG) || !defined(NDEBUG)
-                .slotWritten = false
+                , .slotWritten = false
             #endif
             };
-            CHECK_HRESULT(device.CreateCommittedResource3(
-                &heapProp,
-                D3D12_HEAP_FLAG_NONE,
-                &bufDesc,
-                D3D12_BARRIER_LAYOUT_UNDEFINED,
-                nullptr,
-                nullptr,
-                0, nullptr,
-                IID_PPV_ARGS(&frameResource.buffer)
-            ), "Failed to create DX12 buffer");
+            frameResource.buffer = frameResource.allocation.resource;
 
             if(policy.persistentMap){
                 CROWY_ASSERT(isCPUWrite || isCPURead);
@@ -124,16 +116,6 @@ namespace Crowy
                     &frameResource.mapped
                 ), "Failed to Map DX12 Buffer");
             }
-
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!name.empty()){
-                frameResource.buffer->SetPrivateData(
-                    WKPDID_D3DDebugObjectName,
-                    static_cast<UINT>(name.length()),
-                    name.data()
-                );
-            }
-        #endif
 
             resources.emplace_back(std::move(frameResource));
         }
@@ -175,6 +157,9 @@ namespace Crowy
             for(const auto& [_, idx]: frameResource.uavs){
                 heap.Free(idx);
             }
+
+            frameResource.buffer = nullptr;
+            allocator.Free(frameResource.allocation);
         }
     }
 

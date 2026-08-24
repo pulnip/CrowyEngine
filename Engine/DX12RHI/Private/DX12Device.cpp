@@ -6,6 +6,7 @@
 #include <d3dx12/d3dx12_root_signature.h>
 #include <Psapi.h>
 #include "DescriptorHeapAllocator.hpp"
+#include "DX12Allocator.hpp"
 #include "DX12Buffer.hpp"
 #include "DX12CommandList.hpp"
 #include "DX12Definitions.hpp"
@@ -471,6 +472,10 @@ namespace Crowy
             .gpuUploadHeap = false
         };
 
+        // every resource below is allocated through this, so it has to
+        // outlive them - the staging buffer inside uploadRing included
+        DX12Allocator allocator;
+
         RAII<DX12CommandList> uploadCmdList;
         bool uploadRecorded = false;
         UploadRing uploadRing;
@@ -511,6 +516,9 @@ namespace Crowy
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
             , drawSignature(::createDrawSignature(*device.Get()))
             , drawIndexedSignature(::createDrawIndexedSignature(*device.Get()))
+            // capabilities are still zeroed here; the allocator only reads
+            // them when it allocates, which is after checkDeviceFeature
+            , allocator(*device.Get(), dx12Capabilities)
             , frameFence(std::make_unique<DX12Fence>(*device.Get(), 0))
         {
             setupValidationBreak(*device.Get());
@@ -549,9 +557,8 @@ namespace Crowy
             StrView name
         ){
             auto buffer = std::make_unique<DX12Buffer>(
-                *device.Get(),
+                allocator,
                 desc,
-                dx12Capabilities,
                 frameIndex,
                 *cbvsrvuavHeap,
                 name
@@ -587,7 +594,7 @@ namespace Crowy
             );
 
             auto texture = std::make_unique<DX12Texture>(
-                *device.Get(),
+                allocator,
                 desc,
                 *cbvsrvuavHeap,
                 *rtvHeap,

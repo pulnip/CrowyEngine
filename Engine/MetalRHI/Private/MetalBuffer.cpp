@@ -14,6 +14,7 @@ namespace Crowy
 {
     namespace{
         struct BufferPolicy{
+            RHIMemoryClass memoryClass;
             u32 slotCount;
             bool persistentMap;
         };
@@ -28,11 +29,13 @@ namespace Crowy
             switch(access){
             case GPUOnly:
                 return BufferPolicy{
+                    .memoryClass = RHIMemoryClass::Device,
                     .slotCount = 1,
                     .persistentMap = false
                 };
             case CPUWrite:
                 return BufferPolicy{
+                    .memoryClass = RHIMemoryClass::Upload,
                     .slotCount = usage == CopySrc ?
                         1 :
                         RHI_FRAMES_IN_FLIGHT,
@@ -40,6 +43,7 @@ namespace Crowy
                 };
             case CPURead:
                 return BufferPolicy{
+                    .memoryClass = RHIMemoryClass::Readback,
                     .slotCount = RHI_FRAMES_IN_FLIGHT,
                     .persistentMap = true
                 };
@@ -52,12 +56,13 @@ namespace Crowy
     }
 
     MetalBuffer::MetalBuffer(
-        MetalHeapPool& heap,
+        MetalAllocator& allocator,
         const RHIBufferCreateDesc& desc,
         const u64& frameIndex,
         StrView name
     )
         : frameIndex(frameIndex)
+        , allocator(allocator)
     {
         using enum RHIBufferUsage;
         using enum RHIMemoryAccess;
@@ -80,23 +85,23 @@ namespace Crowy
         resources.reserve(policy.slotCount);
         for(u32 i=0; i<policy.slotCount; ++i){
             FrameResource resource{
-                .buffer = NS::TransferPtr(heap.NewBuffer(
-                    nextMul(desc.size, 16u)
-                )),
+                .allocation = allocator.AllocateBuffer(
+                    nextMul(desc.size, 16u),
+                    policy.memoryClass,
+                    name
+                )
             #if defined(_DEBUG) || !defined(NDEBUG)
-                .slotWritten = false
+                , .slotWritten = false
             #endif
             };
+            resource.buffer = NS::RetainPtr(
+                static_cast<MTL::Buffer*>(resource.allocation.resource)
+            );
+
             if(policy.persistentMap){
                 CROWY_ASSERT(isCPUWrite || isCPURead);
                 resource.mapped = resource.buffer->contents();
             }
-
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!name.empty()){
-                resource.buffer->setLabel(toNSString(name));
-            }
-        #endif
 
             resources.emplace_back(std::move(resource));
         }
@@ -110,7 +115,12 @@ namespace Crowy
     #endif
     }
 
-    MetalBuffer::~MetalBuffer() = default;
+    MetalBuffer::~MetalBuffer(){
+        for(auto& resource: resources){
+            resource.buffer.reset();
+            allocator.Free(resource.allocation);
+        }
+    }
 
     void MetalBuffer::upload(
         u32 index,

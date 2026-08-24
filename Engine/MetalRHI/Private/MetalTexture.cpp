@@ -1,6 +1,6 @@
 #include <Metal/MTLDevice.hpp>
 #include "Assert.hpp"
-#include "MetalHeapPool.hpp"
+#include "MetalAllocator.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
 #include "Primitives.hpp"
@@ -9,7 +9,7 @@
 namespace Crowy
 {
     MetalTexture::MetalTexture(
-        MetalHeapPool& heapPool,
+        MetalAllocator& allocator,
         MTL::TextureDescriptor* desc,
         StrView name
     )
@@ -18,13 +18,16 @@ namespace Crowy
             desc->mipmapLevelCount(),
             desc->arrayLength()
         )
-        , texture(NS::TransferPtr(heapPool.NewTexture(desc)))
+        , allocator(&allocator)
+        , allocation(allocator.AllocateTexture(
+            desc,
+            RHIMemoryClass::Device,
+            name
+        ))
     {
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()){
-            texture->setLabel(toNSString(name));
-        }
-    #endif
+        texture = NS::RetainPtr(
+            static_cast<MTL::Texture*>(allocation.resource)
+        );
     }
 
     MetalTexture::MetalTexture(
@@ -38,7 +41,17 @@ namespace Crowy
         , texture(NS::RetainPtr(drawable->texture()))
     {}
 
-    MetalTexture::~MetalTexture() = default;
+    MetalTexture::~MetalTexture(){
+        // this type is movable, and the defaulted move copies both the
+        // allocator pointer and the allocation. `texture` is what tells the
+        // two apart: NS::SharedPtr nulls the source it was moved out of, so
+        // only the object still holding the reference does the freeing
+        if(allocator == nullptr || !texture)
+            return;
+
+        texture.reset();
+        allocator->Free(allocation);
+    }
 
     u64 MetalTexture::getResourceID(const RHITextureViewDesc& view){
         // Unlike D3D12, a Metal resource ID carries the texture's type,
