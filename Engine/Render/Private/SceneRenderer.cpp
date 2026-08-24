@@ -17,43 +17,7 @@ namespace Crowy
         RHIDevice& device,
         const SceneRendererDesc& desc
     )
-        : drawDataBuffer(device.CreateBuffer(
-              RHIBufferCreateDesc{
-                  .size =
-                      static_cast<u32>(sizeof(DrawData) * desc.drawCapacity),
-                  .usage = RHIBufferUsage::ShaderResource,
-                  .location = RHIMemoryLocation::Upload,
-                  .cpuAccess = RHICpuAccess::Write
-              }
-          )),
-          argsBuffer(device.CreateBuffer(
-              RHIBufferCreateDesc{
-                  .size = static_cast<u32>(
-                      sizeof(RHIDrawIndexedArgs) * desc.drawCapacity
-                  ),
-                  .usage = RHIBufferUsage::IndirectArgument,
-                  .location = RHIMemoryLocation::Upload,
-                  .cpuAccess = RHICpuAccess::Write
-              }
-          )),
-          materialBuffer(device.CreateBuffer(
-              RHIBufferCreateDesc{
-                  .size = static_cast<u32>(
-                      sizeof(MaterialData) * desc.materialCapacity
-                  ),
-                  .usage = RHIBufferUsage::ShaderResource,
-                  .location = RHIMemoryLocation::Upload,
-                  .cpuAccess = RHICpuAccess::Write
-              }
-          )),
-          viewCB(device.CreateBuffer(
-              RHIBufferCreateDesc{
-                  .size = static_cast<u32>(sizeof(ViewData) * desc.viewCount),
-                  .usage = RHIBufferUsage::ConstantBuffer,
-                  .location = RHIMemoryLocation::Upload,
-                  .cpuAccess = RHICpuAccess::Write
-              }
-          )),
+        : device(device),
           pipelines(device),
           drawScratch(desc.drawCapacity),
           argsScratch(desc.drawCapacity),
@@ -180,24 +144,28 @@ namespace Crowy
     void SceneRenderer::Upload() {
         // only the rows this frame filled
         if(drawCount > 0) {
-            drawDataBuffer->Upload(
-                drawScratch.data(),
-                static_cast<u32>(sizeof(DrawData) * drawCount)
+            drawDataSlice = device.UploadTransient(
+                std::span<const DrawData>(drawScratch.data(), drawCount),
+                static_cast<u32>(sizeof(DrawData))
             );
-            argsBuffer->Upload(
-                argsScratch.data(),
-                static_cast<u32>(sizeof(RHIDrawIndexedArgs) * drawCount)
+            argsSlice = device.UploadTransient(
+                std::span<const RHIDrawIndexedArgs>(
+                    argsScratch.data(), drawCount
+                ),
+                static_cast<u32>(sizeof(RHIDrawIndexedArgs))
             );
         }
         if(materialCount > 0) {
-            materialBuffer->Upload(
-                materialScratch.data(),
-                static_cast<u32>(sizeof(MaterialData) * materialCount)
+            materialSlice = device.UploadTransient(
+                std::span<const MaterialData>(
+                    materialScratch.data(), materialCount
+                ),
+                static_cast<u32>(sizeof(MaterialData))
             );
         }
-        viewCB->Upload(
-            views.data(),
-            static_cast<u32>(sizeof(ViewData) * views.size())
+        viewSlice = device.UploadTransient(
+            std::span<const ViewData>(views),
+            RHI_CB_ALIGN
         );
 
         uploaded = true;
@@ -206,17 +174,23 @@ namespace Crowy
     ScenePush SceneRenderer::Push() {
         CROWY_ASSERT(
             uploaded,
-            "Push() before Upload(): a CPUWrite buffer has no descriptor for a "
-            "frame slot that has not been written yet"
+            "Push() before Upload(): this frame's rows have no slice yet"
         );
 
+        constexpr auto drawStride = static_cast<u32>(sizeof(DrawData));
+        constexpr auto materialStride = static_cast<u32>(sizeof(MaterialData));
+
+        // one descriptor spans the whole transient buffer; the base index is
+        // what points the shader at this frame's rows inside it
         return ScenePush{
-            .draws = drawDataBuffer->GetReadableID(
-                static_cast<u32>(sizeof(DrawData))
-            ),
-            .materials = materialBuffer->GetReadableID(
-                static_cast<u32>(sizeof(MaterialData))
-            )
+            .draws = drawCount > 0 ?
+                drawDataSlice.buffer->GetReadableID(drawStride) : 0,
+            .materials = materialCount > 0 ?
+                materialSlice.buffer->GetReadableID(materialStride) : 0,
+            .drawBase = drawCount > 0 ?
+                drawDataSlice.offset / drawStride : 0,
+            .materialBase = materialCount > 0 ?
+                materialSlice.offset / materialStride : 0
         };
     }
 
@@ -228,9 +202,9 @@ namespace Crowy
         CROWY_ASSERT(viewIndex < views.size());
 
         cmdList.SetGraphicsConstantBuffer(
-            *viewCB,
+            *viewSlice.buffer,
             slot,
-            viewIndex * static_cast<u32>(sizeof(ViewData))
+            viewSlice.offset + viewIndex * static_cast<u32>(sizeof(ViewData))
         );
     }
 
@@ -245,8 +219,9 @@ namespace Crowy
             cmdList.ExecuteIndirectIndexed(
                 DrawBatchIndexed{
                     .pso = bucket.pso,
-                    .args = argsBuffer.get(),
-                    .argsOffset = bucket.firstDraw * sizeof(RHIDrawIndexedArgs),
+                    .args = argsSlice.buffer,
+                    .argsOffset = argsSlice.offset +
+                        bucket.firstDraw * sizeof(RHIDrawIndexedArgs),
                     .drawCount = bucket.drawCount,
                     .indices = indices
                 }

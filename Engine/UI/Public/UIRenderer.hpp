@@ -21,9 +21,9 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII pso;
 
-        RHIBufferRAII vertexBuffer;
-        RHIBufferRAII indexBuffer;
-        u32 vertexCapacity = 0, indexCapacity = 0;
+        // this frame's geometry, refreshed by every Prepare()
+        RHIBufferSlice vertices;
+        RHIBufferSlice indices;
 
         std::unordered_map<u64, RHITextureRAII> textures;
 

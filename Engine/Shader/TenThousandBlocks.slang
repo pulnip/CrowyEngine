@@ -36,6 +36,9 @@ struct ScenePush{
     DescriptorHandle<StructuredBuffer<DrawData>> draws;
     DescriptorHandle<StructuredBuffer<MaterialData>> materials;
     DescriptorHandle<StructuredBuffer<Vertex>> vertices;
+    // row 0 of this frame's slice inside the shared transient buffer
+    uint drawBase;
+    uint materialBase;
 };
 
 [[vk::push_constant]]
@@ -69,7 +72,7 @@ VertexOut vs_main(
     uint drawID : SV_StartInstanceLocation
 ){
     StructuredBuffer<DrawData> draws = pass.draws;
-    DrawData d = draws[drawID];
+    DrawData d = draws[pass.drawBase + drawID];
 
     // SV_VertexID on an indexed draw is the index value plus baseVertex,
     // which is exactly the vertex's position in the shared pool.

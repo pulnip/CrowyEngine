@@ -41,6 +41,8 @@ struct TrailPush{
     // heliocentric asteroid positions at the current instant, one per dot
     DescriptorHandle<StructuredBuffer<float3>> belt;      // 64
     float beltAlpha;                                      // 72
+    // dot 0 of this frame's slice inside the shared transient buffer
+    uint beltBase;                                        // 76
     // segments per body, written every frame by cs_trail_args alongside the
     // indirect arguments, so the fade denominator and the instance count come
     // out of one pass and cannot drift
@@ -233,7 +235,9 @@ MarkerOut vs_belt(
 
     const float3 earthNow =
         samples[slotForAge(0) * BODY_COUNT + EARTH_INDEX];
-    const float3 p = orbitLogWarp(toFrame(belt[asteroidIdx], earthNow, 0));
+    const float3 p = orbitLogWarp(
+        toFrame(belt[push.beltBase + asteroidIdx], earthNow, 0)
+    );
 
     MarkerOut output;
     output.position = orbitExpandPoint(
