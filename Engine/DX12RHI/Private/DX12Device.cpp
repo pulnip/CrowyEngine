@@ -454,6 +454,11 @@ namespace Crowy
         FactoryRAII factory = nullptr;
         DeviceRAII device = nullptr;
         CommandQueueRAII commandQueue = nullptr;
+
+        // descriptor indices retire through here too, so this must outlive
+        // every DescriptorHeapAllocator below
+        RHIRetireQueue retireQueue;
+
         DescriptorHeapAllocatorRAII cbvsrvuavHeap = nullptr;
         DescriptorHeapAllocatorRAII rtvHeap = nullptr;
         DescriptorHeapAllocatorRAII dsvHeap = nullptr;
@@ -474,8 +479,6 @@ namespace Crowy
         // increased on Submit / SubmitAndPresent
         u64 frameIndex = 0;
 
-        RHIRetireQueue retireQueue;
-
     public:
         Impl(DX12Device& dxDevice)
             : factory(::createFactory())
@@ -484,22 +487,26 @@ namespace Crowy
             , cbvsrvuavHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-                UINT(65536)
+                UINT(65536),
+                retireQueue
             ))
             , rtvHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-                UINT(64)
+                UINT(64),
+                retireQueue
             ))
             , dsvHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-                UINT(32)
+                UINT(32),
+                retireQueue
             ))
             , samplerHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-                UINT(64)
+                UINT(64),
+                retireQueue
             ))
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
             , drawSignature(::createDrawSignature(*device.Get()))
