@@ -73,7 +73,7 @@ namespace Crowy
         std::unique_ptr<GeometryPool> geometryPool;
         std::array<GeometryAllocation, MESH_TYPE_COUNT> meshes;
 
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
         RHIBufferRAII drawDataBuffer;
         RHIBufferRAII argsBuffer;
 
@@ -144,21 +144,17 @@ namespace Crowy
                 VERTEX_POOL_CAPACITY,
                 INDEX_POOL_CAPACITY
             );
-
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(FrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
             drawDataBuffer = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(DrawData) * DRAW_COUNT),
                 .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
+                .location = RHIMemoryLocation::Upload,
+                .cpuAccess = RHICpuAccess::Write
             });
             argsBuffer = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(RHIDrawIndexedArgs) * DRAW_COUNT),
                 .usage = RHIBufferUsage::IndirectArgument,
-                .access = RHIMemoryAccess::CPUWrite
+                .location = RHIMemoryLocation::Upload,
+                .cpuAccess = RHICpuAccess::Write
             });
 
             drawDataScratch.resize(DRAW_COUNT);
@@ -261,7 +257,7 @@ namespace Crowy
 
             const auto view = viewMat(cameraPos, CameraRotation());
             const auto proj = perspective(FOV_Y, aspect, NEAR_Z, FAR_Z);
-            frameCB->Upload(FrameUniforms{
+            frameCB = Device().UploadTransient(FrameUniforms{
                 .viewProj = proj * view
             });
 
@@ -292,7 +288,7 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetVertexBuffer(geometryPool->GetVertexBuffer(), 0, sizeof(Vertex));
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.SetPushGraphicsConstants(PassData{
                 .draws = drawDataBuffer->GetReadableID(
                     static_cast<u32>(sizeof(DrawData))

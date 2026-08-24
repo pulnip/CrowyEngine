@@ -45,14 +45,14 @@ namespace Crowy
         struct SkyUniforms{
             Mat4 viewProj = unitMat();
         };
-        RHIBufferRAII skyCB;
+        RHIBufferSlice skyCB;
 
         struct FloorUniforms{
             Mat4 viewProj = unitMat();
             Mat4 model = unitMat();
             Vec3 toLight{};  f32 ambient = 0.25f;
         };
-        RHIBufferRAII floorCB;
+        RHIBufferSlice floorCB;
         Mat4 floorModel = unitMat();
 
         static constexpr Vec3 toLight{0.4f, 0.8f, -0.45f};
@@ -159,13 +159,13 @@ namespace Crowy
             floorVertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * floor.mesh.vertices.size()),
                 .usage = RHIBufferUsage::VertexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = floor.mesh.vertices.data()
             });
             floorIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * floor.mesh.indices.size()),
                 .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = floor.mesh.indices.data()
             });
             floorIndexCount = static_cast<u32>(floor.mesh.indices.size());
@@ -177,14 +177,14 @@ namespace Crowy
             skyVertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * skyMesh.vertices.size()),
                 .usage = RHIBufferUsage::VertexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = skyMesh.vertices.data()
             });
             std::reverse(skyMesh.indices.begin(), skyMesh.indices.end());
             skyIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * skyMesh.indices.size()),
                 .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = skyMesh.indices.data()
             });
             skyIndexCount = static_cast<u32>(skyMesh.indices.size());
@@ -214,17 +214,6 @@ namespace Crowy
 
             aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
-
-            skyCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(SkyUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
-            floorCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(FloorUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
         }
 
         void ProcessInput(const InputProvider& input) override{
@@ -270,10 +259,10 @@ namespace Crowy
 
             // the sky rotates with the camera but never translates, which is
             // what keeps it infinitely far away
-            skyCB->Upload(SkyUniforms{
+            skyCB = Device().UploadTransient(SkyUniforms{
                 .viewProj = proj * viewMat(zeros(), rot)
             });
-            floorCB->Upload(FloorUniforms{
+            floorCB = Device().UploadTransient(FloorUniforms{
                 .viewProj = proj * viewMat(eye, rot),
                 .model = floorModel,
                 .toLight = normalize(toLight)
@@ -313,7 +302,7 @@ namespace Crowy
                     .config = RHITextureViewDesc::TexCube{}
                 })
             });
-            cmdList.SetGraphicsConstantBuffer(*skyCB, 0);
+            cmdList.SetGraphicsConstantBuffer(skyCB, 0);
             cmdList.DrawIndexed(
                 RHIIndexBufferView{
                     .buffer = skyIndices.get()
@@ -326,7 +315,7 @@ namespace Crowy
             cmdList.SetPushGraphicsConstants(FloorPushConstants{
                 .albedo = floorAlbedo->GetReadableID()
             });
-            cmdList.SetGraphicsConstantBuffer(*floorCB, 0);
+            cmdList.SetGraphicsConstantBuffer(floorCB, 0);
             cmdList.DrawIndexed(
                 RHIIndexBufferView{
                     .buffer = floorIndices.get()

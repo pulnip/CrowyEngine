@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include "Assert.hpp"
 #include "IntMath.hpp"
+#include "PtrUtil.hpp"
 #include "UploadRing.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
@@ -37,9 +38,16 @@ namespace Crowy
             capacity, size
         );
 
-        u64 newHead = nextMul(head, align);
-        if(u64 p = newHead % capacity; p + size > capacity){
-            newHead += capacity - p;
+        u64 newHead = head;
+        u64 phys = newHead % capacity;
+
+        const u64 alignedPhys = nextMul(phys, align);
+        newHead += alignedPhys - phys;
+        phys = alignedPhys;
+
+        if(phys + size > capacity){
+            newHead += capacity - phys;
+            phys = 0;
         }
 
         while(newHead + size > tail + capacity){
@@ -73,11 +81,14 @@ namespace Crowy
                 break;
         }
 
-        const u64 phys = newHead % capacity;
+        CROWY_ASSERT(phys == newHead % capacity);
+        CROWY_ASSERT(phys % align == 0);
+
         head = newHead + size;
         return Allocation{
             .buffer = *staging,
-            .offset = phys
+            .offset = phys,
+            .cpuPtr = ptrAdd(staging->GetMappedPtr(), phys)
         };
     }
 

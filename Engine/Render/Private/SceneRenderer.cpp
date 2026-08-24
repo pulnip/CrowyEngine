@@ -22,7 +22,8 @@ namespace Crowy
                   .size =
                       static_cast<u32>(sizeof(DrawData) * desc.drawCapacity),
                   .usage = RHIBufferUsage::ShaderResource,
-                  .access = RHIMemoryAccess::CPUWrite
+                  .location = RHIMemoryLocation::Upload,
+                  .cpuAccess = RHICpuAccess::Write
               }
           )),
           argsBuffer(device.CreateBuffer(
@@ -31,7 +32,8 @@ namespace Crowy
                       sizeof(RHIDrawIndexedArgs) * desc.drawCapacity
                   ),
                   .usage = RHIBufferUsage::IndirectArgument,
-                  .access = RHIMemoryAccess::CPUWrite
+                  .location = RHIMemoryLocation::Upload,
+                  .cpuAccess = RHICpuAccess::Write
               }
           )),
           materialBuffer(device.CreateBuffer(
@@ -40,14 +42,16 @@ namespace Crowy
                       sizeof(MaterialData) * desc.materialCapacity
                   ),
                   .usage = RHIBufferUsage::ShaderResource,
-                  .access = RHIMemoryAccess::CPUWrite
+                  .location = RHIMemoryLocation::Upload,
+                  .cpuAccess = RHICpuAccess::Write
               }
           )),
           viewCB(device.CreateBuffer(
               RHIBufferCreateDesc{
                   .size = static_cast<u32>(sizeof(ViewData) * desc.viewCount),
                   .usage = RHIBufferUsage::ConstantBuffer,
-                  .access = RHIMemoryAccess::CPUWrite
+                  .location = RHIMemoryLocation::Upload,
+                  .cpuAccess = RHICpuAccess::Write
               }
           )),
           pipelines(device),

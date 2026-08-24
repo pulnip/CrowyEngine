@@ -213,7 +213,7 @@ namespace Crowy
         std::vector<Vec3> beltScratch;
 
         RHIGraphicsPipelineStateRAII trailPSO, gridPSO, markerPSO, beltPSO;
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
         RAII<OrbitTrailArgs> trailArgs;
         RHIBufferRAII beltBuffer;
         // the compute path cannot write a CPU-write buffer, so the two fills
@@ -336,12 +336,6 @@ namespace Crowy
                 "OrbitBeltPSO"
             );
 
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(FrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "OrbitFrameCB");
-
 
             // rewritten in full every frame, which is the only safe way to use
             // a CPUWrite buffer - see OrbitTrail.hpp for why
@@ -351,7 +345,8 @@ namespace Crowy
                     belt.Count() * sizeof(Vec3)
                 ),
                 .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
+                .location = RHIMemoryLocation::Upload,
+                .cpuAccess = RHICpuAccess::Write
             }, "OrbitAsteroidBelt");
 
             beltGpuBuffer = device.CreateBuffer(RHIBufferCreateDesc{
@@ -362,7 +357,7 @@ namespace Crowy
                     RHIBufferUsage::ShaderResource,
                     RHIBufferUsage::UnorderedAccess
                 ),
-                .access = RHIMemoryAccess::GPUOnly
+                .location = RHIMemoryLocation::Device
             }, "OrbitAsteroidBeltGPU");
             beltFill = std::make_unique<OrbitKeplerFill>(
                 device, belt.Elements()
@@ -757,7 +752,7 @@ namespace Crowy
 
             UpdateBelt();
 
-            frameCB->Upload(FrameUniforms{.viewProj = ViewProj()});
+            frameCB = Device().UploadTransient(FrameUniforms{.viewProj = ViewProj()});
 
             // outside any pass: the copies are their own blit pass
             const auto trailEdge = trail->Record(cmdList);
@@ -813,7 +808,7 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
 
             // no depth buffer: order is the layering. Grid behind, trails over
             // it, markers on top of their own heads.

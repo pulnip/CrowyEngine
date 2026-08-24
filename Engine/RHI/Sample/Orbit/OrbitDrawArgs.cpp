@@ -56,7 +56,7 @@ namespace Crowy
         bodies = device.CreateBuffer(RHIBufferCreateDesc{
             .size = count * BODY_STRIDE,
             .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::GPUOnly,
+            .location = RHIMemoryLocation::Device,
             .initialData = table.data()
         }, "OrbitBodyDraws");
 
@@ -66,7 +66,7 @@ namespace Crowy
                 RHIBufferUsage::ShaderResource,
                 RHIBufferUsage::UnorderedAccess
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "OrbitSegCounts");
 
         args = device.CreateBuffer(RHIBufferCreateDesc{
@@ -77,7 +77,7 @@ namespace Crowy
                 // the headless check reads them back
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "OrbitTrailArgs");
     }
 

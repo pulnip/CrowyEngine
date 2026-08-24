@@ -30,7 +30,7 @@ namespace Crowy
         RAII<TerrainSurface> surface;
         RHITextureRAII depthBuffer;
 
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
         RHIBufferRAII vertexBuffer;
 
         RAII<UIRenderer> uiRenderer = nullptr;
@@ -135,16 +135,11 @@ namespace Crowy
 
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
             camera.SetViewport(swapchain.GetWidth(), swapchain.GetHeight());
-
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(TerrainFrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "TerrainFrameCB");
             vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = VERTEX_CAPACITY * static_cast<u32>(sizeof(TerrainVertex)),
                 .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
+                .location = RHIMemoryLocation::Upload,
+                .cpuAccess = RHICpuAccess::Write
             }, "TerrainVertices");
 
             mesh.reserve(VERTEX_CAPACITY);
@@ -185,7 +180,7 @@ namespace Crowy
                 --pendingUploads;
             }
 
-            frameCB->Upload(TerrainFrameUniforms{
+            frameCB = Device().UploadTransient(TerrainFrameUniforms{
                 .viewProj = camera.ViewProj(),
                 .toLight = {0.38f, 0.82f, 0.43f},
                 .ambient = 0.28f
@@ -224,7 +219,7 @@ namespace Crowy
 
             if(vertexCount > 0){
                 cmdList.SetPipelineState(surface->Pipeline(ctx.debug));
-                cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+                cmdList.SetGraphicsConstantBuffer(frameCB, 0);
                 cmdList.SetPushGraphicsConstants(TerrainSurfacePush{
                     .vertices = vertexBuffer->GetReadableID(
                         static_cast<u32>(sizeof(TerrainVertex))

@@ -39,7 +39,6 @@ namespace Crowy
         struct Uniforms{
             Mat4 viewProj = unitMat();
         };
-        RHIBufferRAII uniformsCB;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
@@ -68,7 +67,7 @@ namespace Crowy
             vertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * cubeMesh.vertices.size()),
                 .usage = RHIBufferUsage::VertexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = cubeMesh.vertices.data()
             });
             // MakeSphere winds its faces for a viewer outside the mesh,
@@ -77,7 +76,7 @@ namespace Crowy
             indices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * cubeMesh.indices.size()),
                 .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = cubeMesh.indices.data()
             });
             indexCount = static_cast<u32>(cubeMesh.indices.size());
@@ -108,11 +107,6 @@ namespace Crowy
             });
 
             aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
-            uniformsCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(Uniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
         }
 
         void ProcessInput(const InputProvider& input) override{
@@ -140,7 +134,7 @@ namespace Crowy
             Uniforms uniforms{
                 .viewProj = proj * view
             };
-            uniformsCB->Upload(uniforms);
+            const auto frameCB = Device().UploadTransient(uniforms);
 
             std::array colorAttachments = {
                 RHIColorAttachment{
@@ -169,10 +163,7 @@ namespace Crowy
                     .config = RHITextureViewDesc::TexCube{}
                 })
             });
-            cmdList.SetGraphicsConstantBuffer(
-                *uniformsCB,
-                0
-            );
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.DrawIndexed(
                 RHIIndexBufferView{
                     .buffer = indices.get()

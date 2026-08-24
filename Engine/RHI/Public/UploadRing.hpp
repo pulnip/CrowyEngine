@@ -16,6 +16,8 @@ namespace Crowy
         struct Allocation{
             RHIBuffer& buffer;
             u64 offset;
+            // into the staging buffer's persistent mapping, already offset
+            void* cpuPtr;
         };
 
         // Submits copies that are recorded but not yet handed to the queue.

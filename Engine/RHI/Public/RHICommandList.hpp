@@ -464,6 +464,15 @@ namespace Crowy
             CROWY_STAT(constantBufferSetCount);
         }
 
+        void SetGraphicsConstantBuffer(
+            const RHIBufferSlice& slice,
+            u32 slot
+        ){
+            CROWY_ASSERT(slice.IsValid());
+
+            SetGraphicsConstantBuffer(*slice.buffer, slot, slice.offset);
+        }
+
         // Viewport and scissor
         virtual void SetViewport(const RHIViewport&){
             CROWY_ASSERT(passState == PassKind::Render,
@@ -625,6 +634,15 @@ namespace Crowy
             CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
 
             CROWY_STAT(constantBufferSetCount);
+        }
+
+        void SetComputeConstantBuffer(
+            const RHIBufferSlice& slice,
+            u32 slot
+        ){
+            CROWY_ASSERT(slice.IsValid());
+
+            SetComputeConstantBuffer(*slice.buffer, slot, slice.offset);
         }
 
         // Compute dispatch

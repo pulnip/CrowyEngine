@@ -39,7 +39,7 @@ namespace Crowy
             Vec3 lightNormal{};    f32 pad1 = 0.0f;
             Vec3 lightRadiance{};  f32 ambient = 0.04f;
         };
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
 
         struct ObjectUniforms{
             Mat4 model = unitMat();
@@ -119,13 +119,13 @@ namespace Crowy
                 item.vertices = device.CreateBuffer(RHIBufferCreateDesc{
                     .size = static_cast<u32>(sizeof(Vertex) * mesh.vertices.size()),
                     .usage = RHIBufferUsage::VertexBuffer,
-                    .access = RHIMemoryAccess::GPUOnly,
+                    .location = RHIMemoryLocation::Device,
                     .initialData = mesh.vertices.data()
                 });
                 item.indices = device.CreateBuffer(RHIBufferCreateDesc{
                     .size = static_cast<u32>(sizeof(u32) * mesh.indices.size()),
                     .usage = RHIBufferUsage::IndexBuffer,
-                    .access = RHIMemoryAccess::GPUOnly,
+                    .location = RHIMemoryLocation::Device,
                     .initialData = mesh.indices.data()
                 });
                 item.indexCount = static_cast<u32>(mesh.indices.size());
@@ -140,7 +140,8 @@ namespace Crowy
                 item.objectCB = device.CreateBuffer(RHIBufferCreateDesc{
                     .size = sizeof(uniforms),
                     .usage = RHIBufferUsage::ConstantBuffer,
-                    .access = RHIMemoryAccess::CPUWrite,
+                    .location = RHIMemoryLocation::Upload,
+                    .cpuAccess = RHICpuAccess::Write,
                     .initialData = &uniforms
                 });
 
@@ -158,12 +159,6 @@ namespace Crowy
 
             aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
-
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(FrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
         }
 
         void ProcessInput(const InputProvider& input) override{
@@ -189,7 +184,7 @@ namespace Crowy
             const auto view = lookAt(eye, zeros(), Vec3{0.0f, 1.0f, 0.0f});
             const auto proj = perspective(fovY, aspect, nearZ, farZ);
 
-            frameCB->Upload(FrameUniforms{
+            frameCB = Device().UploadTransient(FrameUniforms{
                 .viewProj = proj * view,
                 .cameraPos = eye,
                 .lightCenter = lightCenter,
@@ -225,7 +220,7 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
 
             for(const auto& item: drawItems){
                 cmdList.SetVertexBuffer(*item.vertices, 0, sizeof(Vertex));

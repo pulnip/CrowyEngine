@@ -117,7 +117,7 @@ namespace Crowy
                 RHIBufferUsage::UnorderedAccess,
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainMarchVertices");
 
         counterBuffer = device.CreateBuffer(RHIBufferCreateDesc{
@@ -126,14 +126,14 @@ namespace Crowy
                 RHIBufferUsage::UnorderedAccess,
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainMarchCounter");
 
         const auto triTable = MarchingCubesTriTable();
         triTableBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(triTable.size_bytes()),
             .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::GPUOnly,
+            .location = RHIMemoryLocation::Device,
             .initialData = triTable.data()
         }, "MarchingCubesTriTable");
 
@@ -144,13 +144,13 @@ namespace Crowy
                 RHIBufferUsage::UnorderedAccess,
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainMarchArgs");
 
         edgeVertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = EDGE_SLOT_COUNT * static_cast<u32>(sizeof(u32)),
             .usage = RHIBufferUsage::UnorderedAccess,
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainMarchEdgeVertices");
 
         indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
@@ -160,7 +160,7 @@ namespace Crowy
                 RHIBufferUsage::UnorderedAccess,
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainMarchIndices");
 
         argsIndexedBuffer = device.CreateBuffer(RHIBufferCreateDesc{
@@ -170,7 +170,7 @@ namespace Crowy
                 RHIBufferUsage::UnorderedAccess,
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainMarchArgsIndexed");
     }
 

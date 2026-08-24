@@ -72,7 +72,8 @@ namespace{
             readback = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = ringBytes,
                 .usage = RHIBufferUsage::CopyDst,
-                .access = RHIMemoryAccess::CPURead
+                .location = RHIMemoryLocation::Readback,
+                .cpuAccess = RHICpuAccess::Read
             }, "OrbitTrailReadback");
         }
 
@@ -545,7 +546,8 @@ namespace{
         auto readback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = argsBytes,
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read
         }, "OrbitArgsReadback");
 
         struct Case{

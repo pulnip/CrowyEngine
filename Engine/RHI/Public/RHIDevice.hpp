@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstring>
 #include <functional>
+#include <span>
+#include <type_traits>
 #include "Semantics.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
@@ -60,12 +63,44 @@ namespace Crowy
         // completed on the GPU
         virtual void DeferRetire(std::move_only_function<void()> reclaim) = 0;
 
+        // A CPU-writable range that stays readable by the GPU until the
+        // batch it is recorded into completes.
+        virtual RHIBufferSlice AllocateTransient(
+            u32 size,
+            u32 align
+        ) = 0;
         virtual u64& GetFrameIndexRef() noexcept = 0;
 
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
 
         void Retire(RHIBufferRAII buffer);
         void Retire(RHITextureRAII texture);
+
+        // allocate a transient slice and fill it in one step
+        template<typename T>
+            requires (!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
+        RHIBufferSlice UploadTransient(const T& data, u32 align = RHI_CB_ALIGN){
+            const auto slice = AllocateTransient(
+                static_cast<u32>(sizeof(T)),
+                align
+            );
+            std::memcpy(slice.cpuPtr, &data, sizeof(T));
+
+            return slice;
+        }
+
+        template<typename T>
+            requires std::is_trivially_copyable_v<T>
+        RHIBufferSlice UploadTransient(
+            std::span<const T> data,
+            u32 align = RHI_CB_ALIGN
+        ){
+            const auto bytes = static_cast<u32>(data.size_bytes());
+            const auto slice = AllocateTransient(bytes, align);
+            std::memcpy(slice.cpuPtr, data.data(), bytes);
+
+            return slice;
+        }
     };
 
 #if defined(_WIN32)

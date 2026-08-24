@@ -39,7 +39,7 @@ namespace Crowy
         SceneData source = MakeCornellBox(BoxHalfSize);
         // walls first, then the spheres and the light quad
         Geometries geometry;
-        RHIBufferRAII lightCB;
+        RHIBufferSlice lightCB;
         LightUniforms light{};
 
     public:
@@ -65,13 +65,6 @@ namespace Crowy
         }
 
         void ExtractScene(RenderScene& scene) override {
-            lightCB = Device().CreateBuffer(
-                RHIBufferCreateDesc{
-                    .size = sizeof(LightUniforms),
-                    .usage = RHIBufferUsage::ConstantBuffer,
-                    .access = RHIMemoryAccess::CPUWrite
-                }
-            );
             if(!source.lights.empty()) {
                 const auto& source = this->source.lights.front();
 
@@ -124,7 +117,7 @@ namespace Crowy
 
         void OnUpdateFrameData() override {
             light.cameraPos = Camera().Position();
-            lightCB->Upload(light);
+            lightCB = Device().UploadTransient(light);
         }
 
         void OnBindPass(
@@ -132,7 +125,7 @@ namespace Crowy
             const ScenePush& push
         ) override {
             RenderApp::OnBindPass(cmdList, push);
-            cmdList.SetGraphicsConstantBuffer(*lightCB, LightCBSlot);
+            cmdList.SetGraphicsConstantBuffer(lightCB, LightCBSlot);
         }
 
     private:

@@ -25,7 +25,7 @@ int main(void){
         RHIBufferCreateDesc desc{
             .size = sizeof(float) * N,
             .usage = RHIBufferUsage::None,
-            .access = RHIMemoryAccess::GPUOnly,
+            .location = RHIMemoryLocation::Device,
             .initialData = floats.data()
         };
         auto lhs = device->CreateBuffer(desc, "LHS");
@@ -34,13 +34,14 @@ int main(void){
         auto out = device->CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(float) * N,
             .usage = RHIBufferUsage::UnorderedAccess,
-            .access = RHIMemoryAccess::GPUOnly,
+            .location = RHIMemoryLocation::Device,
             .initialData = nullptr
         }, "OUT");
         auto readback = device->CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(float) * N,
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead,
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read,
             .initialData = nullptr
         }, "ReadBack");
 

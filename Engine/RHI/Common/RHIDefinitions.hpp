@@ -39,6 +39,18 @@ namespace Crowy
         Transient = 3
     };
 
+    enum class RHIMemoryLocation : u8 {
+        Device = 0,
+        Upload = 1,
+        Readback = 2
+    };
+
+    enum class RHICpuAccess : u8 {
+        None = 0,
+        Write = 1,
+        Read = 2
+    };
+
     enum class RHIBufferUsage : u16 {
         None = 0,
         // fixed binding
@@ -60,7 +72,8 @@ namespace Crowy
     struct RHIBufferCreateDesc {
         u32 size;
         RHIBufferUsage usage = RHIBufferUsage::None;
-        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
+        RHIMemoryLocation location = RHIMemoryLocation::Device;
+        RHICpuAccess cpuAccess = RHICpuAccess::None;
         const void* initialData = nullptr;
     };
 
@@ -1275,6 +1288,19 @@ namespace Crowy
             const RHIBufferViewDesc&,
             const RHIBufferViewDesc&
         ) = default;
+    };
+
+    struct RHIBufferSlice {
+        RHIBuffer* buffer = nullptr;
+        // borrowed range
+        u32 offset = 0;
+        u32 size = 0;
+        // where to write it from the CPU; null for a device-local slice
+        void* cpuPtr = nullptr;
+
+        [[nodiscard]] bool IsValid() const noexcept{
+            return buffer != nullptr;
+        }
     };
 
     inline constexpr u32 RHI_ALL_MIPS = 0xFFFF'FFFF;

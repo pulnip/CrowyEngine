@@ -44,7 +44,7 @@ namespace Crowy
         elementBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(packed.size() * ELEMENT_STRIDE),
             .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::GPUOnly,
+            .location = RHIMemoryLocation::Device,
             .initialData = packed.data()
         }, "OrbitElements");
 
@@ -53,7 +53,8 @@ namespace Crowy
         phaseBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(phaseScratch.size() * PHASE_STRIDE),
             .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::CPUWrite
+            .location = RHIMemoryLocation::Upload,
+            .cpuAccess = RHICpuAccess::Write
         }, "OrbitPhases");
     }
 

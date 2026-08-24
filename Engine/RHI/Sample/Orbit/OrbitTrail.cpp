@@ -44,7 +44,7 @@ namespace Crowy
                 // the headless check reads the ring back; harmless otherwise
                 RHIBufferUsage::CopySrc
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "OrbitTrailRing");
 
         gpuFill = std::make_unique<OrbitKeplerFill>(device, ORBIT_ELEMENTS);
@@ -52,7 +52,8 @@ namespace Crowy
         staging = device.CreateBuffer(RHIBufferCreateDesc{
             .size = ringBytes * RHI_FRAMES_IN_FLIGHT,
             .usage = RHIBufferUsage::CopySrc,
-            .access = RHIMemoryAccess::CPUWrite
+            .location = RHIMemoryLocation::Upload,
+            .cpuAccess = RHICpuAccess::Write
         }, "OrbitTrailStaging");
 
         scratch.reserve(static_cast<usize>(capacity) * ORBIT_BODY_COUNT);

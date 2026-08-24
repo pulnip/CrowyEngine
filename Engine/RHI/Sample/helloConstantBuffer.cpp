@@ -12,7 +12,6 @@ namespace Crowy
         } sceneData;
 
         RHIGraphicsPipelineStateRAII pso;
-        RHIBufferRAII constantBuffer;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
@@ -36,12 +35,6 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            constantBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(sceneData),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite,
-                .initialData = &sceneData
-            });
         }
 
         void OnUpdate(f64 dt, f64 et) override{
@@ -51,7 +44,7 @@ namespace Crowy
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
-            constantBuffer->Upload(sceneData);
+            const auto scene = Device().UploadTransient(sceneData);
 
             std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
@@ -62,10 +55,7 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            cmdList.SetGraphicsConstantBuffer(
-                *constantBuffer,
-                0
-            );
+            cmdList.SetGraphicsConstantBuffer(scene, 0);
             cmdList.Draw(3);
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};

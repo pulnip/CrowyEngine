@@ -47,7 +47,6 @@ namespace Crowy
             float specularPower = 64.0f;
             float ambient = 0.15f;
         };
-        RHIBufferRAII uniformsCB;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
@@ -76,13 +75,13 @@ namespace Crowy
             vertices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(Vertex) * boxMesh.vertices.size()),
                 .usage = RHIBufferUsage::VertexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = boxMesh.vertices.data()
             });
             indices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = static_cast<u32>(sizeof(u32) * boxMesh.indices.size()),
                 .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = boxMesh.indices.data()
             });
             indexCount = static_cast<u32>(boxMesh.indices.size());
@@ -121,11 +120,6 @@ namespace Crowy
             });
 
             aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
-            uniformsCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(Uniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
         }
 
         void ProcessInput(const InputProvider& input) override{
@@ -154,7 +148,7 @@ namespace Crowy
                 .cameraPos = eye,
                 .toLight = toLight
             };
-            uniformsCB->Upload(uniforms);
+            const auto frameCB = Device().UploadTransient(uniforms);
 
             std::array colorAttachments = {
                 backBuffer
@@ -177,10 +171,7 @@ namespace Crowy
                 .normal = normal->GetReadableID(),
                 .bump = bump->GetReadableID()
             });
-            cmdList.SetGraphicsConstantBuffer(
-                *uniformsCB,
-                0
-            );
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.DrawIndexed(
                 RHIIndexBufferView{
                     .buffer = indices.get()

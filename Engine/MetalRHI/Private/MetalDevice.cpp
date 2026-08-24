@@ -93,11 +93,10 @@ namespace Crowy
             auto buffer = std::make_unique<MetalBuffer>(
                 allocator,
                 desc,
-                frameIndex,
                 name
             );
 
-            if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
+            if(desc.initialData != nullptr && desc.cpuAccess == RHICpuAccess::None){
                 ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
@@ -164,7 +163,8 @@ namespace Crowy
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
                     .usage = RHIBufferUsage::CopySrc,
-                    .access = RHIMemoryAccess::CPUWrite,
+                    .location = RHIMemoryLocation::Upload,
+                    .cpuAccess = RHICpuAccess::Write,
                     .initialData = nullptr
                 }, "staging buffer"
             );
@@ -351,9 +351,20 @@ namespace Crowy
         void DeferRetire(std::move_only_function<void()> reclaim){
             retireQueue.Defer(std::move(reclaim));
         }
-
         u64& GetFrameIndexRef() noexcept{
             return frameIndex;
+        }
+
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align){
+            const auto alloc = uploadRing.Allocate(size, align);
+
+            return RHIBufferSlice{
+                .buffer = &alloc.buffer,
+                .offset = static_cast<u32>(alloc.offset),
+                .size = size,
+                .cpuPtr = alloc.cpuPtr
+            };
         }
 
         // Metal has no GetCopyableFootprints equivalent,
@@ -515,11 +526,6 @@ namespace Crowy
     RHICommandListRAII MetalDevice::CreateCommandList(){
         return impl->CreateCommandList();
     }
-
-    u64& MetalDevice::GetFrameIndexRef() noexcept{
-        return impl->GetFrameIndexRef();
-    }
-
     RHICapabilities MetalDevice::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,
@@ -562,5 +568,13 @@ namespace Crowy
 
     void MetalDevice::DeferRetire(std::move_only_function<void()> reclaim){
         impl->DeferRetire(std::move(reclaim));
+    }
+
+    u64& MetalDevice::GetFrameIndexRef() noexcept{
+        return impl->GetFrameIndexRef();
+    }
+
+    RHIBufferSlice MetalDevice::AllocateTransient(u32 size, u32 align){
+        return impl->AllocateTransient(size, align);
     }
 }

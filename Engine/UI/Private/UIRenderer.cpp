@@ -405,7 +405,8 @@ namespace Crowy
         auto staging = device.CreateBuffer(RHIBufferCreateDesc{
             .size = rowPitch * height,
             .usage = RHIBufferUsage::CopySrc,
-            .access = RHIMemoryAccess::CPUWrite
+            .location = RHIMemoryLocation::Upload,
+            .cpuAccess = RHICpuAccess::Write
         }, "ImGui texture update");
 
         for(u32 row=0; row<height; ++row){
@@ -481,7 +482,8 @@ namespace Crowy
                 .size = vertexCapacity * static_cast<u32>(sizeof(ImDrawVert)),
                 .usage = RHIBufferUsage::VertexBuffer,
                 // one slot per frame in flight, rotated for us
-                .access = RHIMemoryAccess::CPUWrite
+                .location = RHIMemoryLocation::Upload,
+                .cpuAccess = RHICpuAccess::Write
             }, "ImGui vertices");
         }
         if(indexCapacity < indexCount){
@@ -490,7 +492,8 @@ namespace Crowy
             indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = indexCapacity * static_cast<u32>(sizeof(ImDrawIdx)),
                 .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::CPUWrite
+                .location = RHIMemoryLocation::Upload,
+                .cpuAccess = RHICpuAccess::Write
             }, "ImGui indices");
         }
 

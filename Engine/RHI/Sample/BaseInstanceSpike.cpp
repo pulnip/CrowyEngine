@@ -40,7 +40,7 @@ namespace Crowy
             quadIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(indices),
                 .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
+                .location = RHIMemoryLocation::Device,
                 .initialData = indices
             });
         }

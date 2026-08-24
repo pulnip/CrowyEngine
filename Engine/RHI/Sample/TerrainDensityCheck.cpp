@@ -190,18 +190,19 @@ int main(void){
         auto pointBuffer = device->CreateBuffer(RHIBufferCreateDesc{
             .size = pointBytes,
             .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::GPUOnly,
+            .location = RHIMemoryLocation::Device,
             .initialData = points.data()
         }, "TerrainSamplePoints");
         auto resultBuffer = device->CreateBuffer(RHIBufferCreateDesc{
             .size = resultBytes,
             .usage = RHIBufferUsage::UnorderedAccess,
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "TerrainDensityResults");
         auto readback = device->CreateBuffer(RHIBufferCreateDesc{
             .size = resultBytes,
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read
         }, "TerrainDensityReadback");
 
         auto pipeline = device->CreatePipelineState(RHIComputePipelineStateDesc{

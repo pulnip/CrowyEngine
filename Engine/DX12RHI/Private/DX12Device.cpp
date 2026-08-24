@@ -533,7 +533,8 @@ namespace Crowy
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
                     .usage = RHIBufferUsage::CopySrc,
-                    .access = RHIMemoryAccess::CPUWrite,
+                    .location = RHIMemoryLocation::Upload,
+                    .cpuAccess = RHICpuAccess::Write,
                     .initialData = nullptr
                 }, "staging buffer"
             );
@@ -559,12 +560,11 @@ namespace Crowy
             auto buffer = std::make_unique<DX12Buffer>(
                 allocator,
                 desc,
-                frameIndex,
                 *cbvsrvuavHeap,
                 name
             );
 
-            if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
+            if(desc.initialData != nullptr && desc.cpuAccess == RHICpuAccess::None){
                 ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
@@ -757,11 +757,21 @@ namespace Crowy
         void DeferRetire(std::move_only_function<void()> reclaim){
             retireQueue.Defer(std::move(reclaim));
         }
-
         u64& GetFrameIndexRef() noexcept{
             return frameIndex;
         }
 
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align){
+            const auto alloc = uploadRing.Allocate(size, align);
+
+            return RHIBufferSlice{
+                .buffer = &alloc.buffer,
+                .offset = static_cast<u32>(alloc.offset),
+                .size = size,
+                .cpuPtr = alloc.cpuPtr
+            };
+        }
         UINT64 QueryUploadLayout(
             DX12Texture& texture,
             std::span<RHISubresourceLayout> out
@@ -945,6 +955,9 @@ namespace Crowy
         return impl->GetFrameIndexRef();
     }
 
+    RHIBufferSlice DX12Device::AllocateTransient(u32 size, u32 align){
+        return impl->AllocateTransient(size, align);
+    }
     RHICapabilities DX12Device::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,

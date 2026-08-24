@@ -12,42 +12,13 @@
 namespace Crowy
 {
     namespace{
-        struct BufferPolicy{
-            RHIMemoryClass memoryClass;
-            u32 slotCount;
-            bool persistentMap;
-        };
+        RHIMemoryClass toMemoryClass(RHIMemoryLocation location){
+            using enum RHIMemoryLocation;
 
-        auto resolve(
-            RHIBufferUsage usage,
-            RHIMemoryAccess access
-        ){
-            using enum RHIMemoryAccess;
-            using enum RHIBufferUsage;
-
-            switch(access){
-            case GPUOnly:
-                return BufferPolicy{
-                    .memoryClass = RHIMemoryClass::Device,
-                    .slotCount = 1,
-                    .persistentMap = false
-                };
-            case CPUWrite:
-                return BufferPolicy{
-                    .memoryClass = RHIMemoryClass::Upload,
-                    .slotCount = usage == CopySrc ?
-                        1 :
-                        RHI_FRAMES_IN_FLIGHT,
-                    .persistentMap = true
-                };
-            case CPURead:
-                return BufferPolicy{
-                    .memoryClass = RHIMemoryClass::Readback,
-                    .slotCount = RHI_FRAMES_IN_FLIGHT,
-                    .persistentMap = true
-                };
-            case Transient:
-                CROWY_ASSERT(false, "Transient is texture-only");
+            switch(location){
+            case Device:   return RHIMemoryClass::Device;
+            case Upload:   return RHIMemoryClass::Upload;
+            case Readback: return RHIMemoryClass::Readback;
             default:
                 std::unreachable();
             }
@@ -57,101 +28,85 @@ namespace Crowy
     MetalBuffer::MetalBuffer(
         MetalAllocator& allocator,
         const RHIBufferCreateDesc& desc,
-        const u64& frameIndex,
         StrView name
     )
-        : frameIndex(frameIndex)
+        : size(desc.size)
         , allocator(allocator)
     {
         using enum RHIBufferUsage;
-        using enum RHIMemoryAccess;
 
-        const auto policy = resolve(
-            desc.usage,
-            desc.access
-        );
-
-        const auto hasConstantUsage = hasFlag(desc.usage, ConstantBuffer);
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
         const auto isCopyDst = hasFlag(desc.usage, CopyDst);
 
-        const auto isCPUWrite = (desc.access == CPUWrite);
+        const auto isCPUWrite = (desc.cpuAccess == RHICpuAccess::Write);
         CROWY_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
-        const auto isCPURead  = (desc.access == CPURead);
+        const auto isCPURead = (desc.cpuAccess == RHICpuAccess::Read);
         CROWY_ASSERT(!isCPURead || (desc.usage == CopyDst));
-        const auto isGPUOnly  = (desc.access == GPUOnly);
 
-        resources.reserve(policy.slotCount);
-        for(u32 i=0; i<policy.slotCount; ++i){
-            FrameResource resource{
-                .allocation = allocator.AllocateBuffer(
-                    nextMul(desc.size, 16u),
-                    policy.memoryClass,
-                    name
-                )
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                , .slotWritten = false
-            #endif
-            };
-            resource.buffer = static_cast<MTL::Buffer*>(resource.allocation.resource);
+        CROWY_ASSERT(
+            (desc.location == RHIMemoryLocation::Upload) == isCPUWrite,
+            "Upload memory is exactly what the CPU writes"
+        );
+        CROWY_ASSERT(
+            (desc.location == RHIMemoryLocation::Readback) == isCPURead,
+            "Readback memory is exactly what the CPU reads"
+        );
 
-            if(policy.persistentMap){
-                CROWY_ASSERT(isCPUWrite || isCPURead);
-                resource.mapped = resource.buffer->contents();
-            }
+        allocation = allocator.AllocateBuffer(
+            nextMul(desc.size, 16u),
+            toMemoryClass(desc.location),
+            name
+        );
+        buffer = static_cast<MTL::Buffer*>(allocation.resource);
 
-            resources.emplace_back(std::move(resource));
+        if(isCPUWrite || isCPURead){
+            mapped = buffer->contents();
         }
 
         if(desc.initialData != nullptr && isCPUWrite){
-            UploadAll(desc.initialData, desc.size);
+            Upload(desc.initialData, desc.size);
         }
-
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        tracksSlotWrites = isCPUWrite && resources.size() > 1;
-    #endif
     }
 
     MetalBuffer::~MetalBuffer(){
-        for(auto& resource: resources){
-            resource.buffer = nullptr;
-            allocator.Free(resource.allocation);
-        }
+        buffer = nullptr;
+        mapped = nullptr;
+        allocator.Free(allocation);
     }
 
-    void MetalBuffer::upload(
-        u32 index,
+    void MetalBuffer::Upload(
         const void* data,
-        u32 size,
+        u32 uploadSize,
         u32 offset
     ){
-        CROWY_ASSERT(size + offset <= GetSize());
-        auto& resource = resources[index];
+        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-writable");
+        CROWY_ASSERT(uploadSize + offset <= size);
 
         std::memcpy(
-            ptrAdd(resource.mapped, offset),
+            ptrAdd(mapped, offset),
             data,
-            size
+            uploadSize
         );
     }
 
-    void MetalBuffer::download(
-        u32 index,
+    void MetalBuffer::Download(
         void* data,
-        u32 size,
+        u32 downloadSize,
         u32 offset
     ){
-        CROWY_ASSERT(offset + size <= GetSize());
-        auto& resource = resources[index];
+        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-readable");
+        CROWY_ASSERT(downloadSize + offset <= size);
 
         std::memcpy(
             data,
-            ptrAdd(resource.mapped, offset),
-            size
+            ptrAdd(mapped, offset),
+            downloadSize
         );
     }
 
-    u64 MetalBuffer::getResourceID(const RHIBufferViewDesc&){
-        return resources[currentIndex()].buffer->gpuAddress();
+    u64 MetalBuffer::getResourceID(const RHIBufferViewDesc& view){
+        // a Metal resource ID is the address itself, so a sub-range view is
+        // just that address moved forward
+        return buffer->gpuAddress() + view.offset;
     }
 }

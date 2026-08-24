@@ -50,12 +50,12 @@ namespace Crowy
                 RHIBufferUsage::ShaderResource,
                 RHIBufferUsage::CopyDst
             ),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "geometry pool vertices");
         indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = indexCapacity * static_cast<u32>(sizeof(u32)),
             .usage = combine(RHIBufferUsage::IndexBuffer, RHIBufferUsage::CopyDst),
-            .access = RHIMemoryAccess::GPUOnly
+            .location = RHIMemoryLocation::Device
         }, "geometry pool indices");
 
         // sized for the whole pool at once: no flush hook, so a request the
@@ -67,7 +67,8 @@ namespace Crowy
         auto stagingBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(stagingBytes),
             .usage = RHIBufferUsage::CopySrc,
-            .access = RHIMemoryAccess::CPUWrite
+            .location = RHIMemoryLocation::Upload,
+            .cpuAccess = RHICpuAccess::Write
         }, "geometry pool staging");
         staging = UploadRing(device, std::move(stagingBuffer));
     }

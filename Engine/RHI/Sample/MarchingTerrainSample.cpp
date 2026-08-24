@@ -34,7 +34,7 @@ namespace Crowy
 
         RAII<TerrainSurface> surface;
         RHITextureRAII depthBuffer;
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
 
         RAII<TerrainMarcher> marcher;
         RHIBufferRAII counterReadback;
@@ -153,17 +153,12 @@ namespace Crowy
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
             camera.SetViewport(swapchain.GetWidth(), swapchain.GetHeight());
 
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(TerrainFrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "TerrainFrameCB");
-
             marcher = std::make_unique<TerrainMarcher>(device, TRIANGLE_CAPACITY);
             counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(TerrainMarchCounter),
                 .usage = RHIBufferUsage::CopyDst,
-                .access = RHIMemoryAccess::CPURead
+                .location = RHIMemoryLocation::Readback,
+                .cpuAccess = RHICpuAccess::Read
             }, "TerrainMarchCounterReadback");
 
             uiRenderer = std::make_unique<UIRenderer>(
@@ -232,7 +227,7 @@ namespace Crowy
                 rebuildPending = false;
             }
 
-            frameCB->Upload(TerrainFrameUniforms{
+            frameCB = Device().UploadTransient(TerrainFrameUniforms{
                 .viewProj = camera.ViewProj(),
                 .toLight = {0.38f, 0.82f, 0.43f},
                 .ambient = 0.28f
@@ -269,7 +264,7 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.SetPushGraphicsConstants(TerrainSurfacePush{
                 .vertices = marcher->Vertices().GetReadableID(
                     static_cast<u32>(sizeof(TerrainVertex))

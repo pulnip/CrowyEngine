@@ -423,22 +423,26 @@ namespace{
         auto counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(TerrainMarchCounter),
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read
         }, "TerrainMarchCounterReadback");
         auto vertexReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = vertexBytes,
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read
         }, "TerrainMarchVertexReadback");
         auto indexReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = indexBytes,
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read
         }, "TerrainMarchIndexReadback");
         auto argsReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = argsBytes,
             .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .location = RHIMemoryLocation::Readback,
+            .cpuAccess = RHICpuAccess::Read
         }, "TerrainMarchArgsReadback");
 
         // A first run, submitted on its own, left the way a frame that drew
