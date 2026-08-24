@@ -6,6 +6,7 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
+#include "RHIPipelineState.hpp"
 #include "RenderScene.hpp"
 
 namespace Crowy
@@ -49,32 +50,63 @@ namespace Crowy
                   .access = RHIMemoryAccess::CPUWrite
               }
           )),
+          pipelines(device),
           drawScratch(desc.drawCapacity),
           argsScratch(desc.drawCapacity),
           materialScratch(desc.materialCapacity),
           views(desc.viewCount) {}
 
-    void SceneRenderer::BuildFrame(const RenderScene& scene, u32 viewIndex) {
-        CROWY_ASSERT(viewIndex < views.size());
+    u32 SceneRenderer::bucketOf(RHIGraphicsPipelineState* pso) {
+        for(u32 i = 0; i < buckets.size(); ++i) {
+            if(buckets[i].pso == pso)
+                return i;
+        }
 
+        buckets.push_back(DrawBucket{.pso = pso});
+
+        return static_cast<u32>(buckets.size() - 1);
+    }
+
+    void SceneRenderer::resolvePipelines(
+        const RenderScene& scene,
+        const PassPipelineDesc& pass
+    ) {
         const auto& materials = scene.Materials();
-        const auto& meshes = scene.Meshes();
-        const auto primitives = scene.Primitives().All();
 
         materialCount = static_cast<u32>(materials.Count());
         CROWY_ASSERT(
             materialCount <= materialScratch.size(),
             "SceneRenderer ran out of material rows; raise materialCapacity"
         );
-        for(u32 i = 0; i < materialCount; ++i) {
-            materialScratch[i] = materials.At(i).data;
-        }
 
+        pipelineOfMaterial.resize(materialCount);
+        for(u32 i = 0; i < materialCount; ++i) {
+            const auto& material = materials.At(i);
+
+            materialScratch[i] = material.data;
+            // once per material per pass, never inside the draw loop
+            pipelineOfMaterial[i] = &pipelines.Resolve(material.pipeline, pass);
+        }
+    }
+
+    void SceneRenderer::BuildFrame(
+        const RenderScene& scene,
+        const PassPipelineDesc& pass,
+        u32 viewIndex
+    ) {
+        CROWY_ASSERT(viewIndex < views.size());
+
+        resolvePipelines(scene, pass);
+
+        const auto& materials = scene.Materials();
+        const auto& meshes = scene.Meshes();
+        const auto primitives = scene.Primitives().All();
         const auto frustum = makeFrustum3D(views[viewIndex].viewProj);
 
         // Linear over a packed array, no acceleration structure:
         // this loop is what a compute shader replaces
-        drawCount = 0;
+        visibleScratch.clear();
+        buckets.clear();
         for(usize i = 0; i < primitives.size(); ++i) {
             const auto& primitive = primitives[i];
 
@@ -85,28 +117,59 @@ namespace Crowy
 
             const auto& mesh = meshes.Read(primitive.mesh);
             for(const auto& subMesh: mesh.subMeshes) {
-                CROWY_ASSERT(
-                    drawCount < DrawCapacity(),
-                    "SceneRenderer ran out of draw rows; raise drawCapacity"
-                );
-
                 const auto material = mesh.materials[subMesh.materialSlot];
-                drawScratch[drawCount] = DrawData{
-                    .world = primitive.localToWorld,
-                    .materialIndex =
-                        static_cast<u32>(materials.IndexOf(material)),
-                    .objectID = static_cast<u32>(i)
-                };
-                argsScratch[drawCount] = RHIDrawIndexedArgs{
-                    .indexCount = subMesh.geometry.indexCount,
-                    .firstIndex = subMesh.geometry.firstIndex,
-                    .baseVertex = subMesh.geometry.baseVertex,
-                    .baseInstance = drawCount
-                };
-                ++drawCount;
+                const auto materialIndex =
+                    static_cast<u32>(materials.IndexOf(material));
+
+                const auto bucket = bucketOf(pipelineOfMaterial[materialIndex]);
+                ++buckets[bucket].drawCount;
+
+                visibleScratch.push_back(
+                    VisibleDraw{
+                        .geometry = subMesh.geometry,
+                        .bucket = bucket,
+                        .primitive = static_cast<u32>(i),
+                        .materialIndex = materialIndex
+                    }
+                );
             }
         }
 
+        CROWY_ASSERT(
+            visibleScratch.size() <= DrawCapacity(),
+            "SceneRenderer ran out of draw rows; raise drawCapacity"
+        );
+
+        // Each bucket becomes one contiguous run of the args buffer,
+        // so the offsets have to be known before any row is written.
+        u32 offset = 0;
+        for(auto& bucket: buckets) {
+            bucket.firstDraw = offset;
+            offset += bucket.drawCount;
+            // reused as a write cursor below, then restored
+            bucket.drawCount = 0;
+        }
+
+        for(const auto& visible: visibleScratch) {
+            auto& bucket = buckets[visible.bucket];
+            const auto slot = bucket.firstDraw + bucket.drawCount;
+            ++bucket.drawCount;
+
+            drawScratch[slot] = DrawData{
+                .world = primitives[visible.primitive].localToWorld,
+                .materialIndex = visible.materialIndex,
+                .objectID = visible.primitive
+            };
+            argsScratch[slot] = RHIDrawIndexedArgs{
+                .indexCount = visible.geometry.indexCount,
+                .firstIndex = visible.geometry.firstIndex,
+                .baseVertex = visible.geometry.baseVertex,
+                // the row index is global, not bucket-relative
+                .baseInstance = slot
+            };
+        }
+
+        drawCount = offset;
         uploaded = false;
     }
 
@@ -169,19 +232,21 @@ namespace Crowy
 
     void SceneRenderer::Submit(
         RHICommandList& cmdList,
-        RHIGraphicsPipelineState& pso,
         const RHIIndexBufferView& indices
     ) const {
-        if(drawCount == 0)
-            return;
+        for(const auto& bucket: buckets) {
+            if(bucket.drawCount == 0)
+                continue;
 
-        cmdList.ExecuteIndirectIndexed(
-            DrawBatchIndexed{
-                .pso = &pso,
-                .args = argsBuffer.get(),
-                .drawCount = drawCount,
-                .indices = indices
-            }
-        );
+            cmdList.ExecuteIndirectIndexed(
+                DrawBatchIndexed{
+                    .pso = bucket.pso,
+                    .args = argsBuffer.get(),
+                    .argsOffset = bucket.firstDraw * sizeof(RHIDrawIndexedArgs),
+                    .drawCount = bucket.drawCount,
+                    .indices = indices
+                }
+            );
+        }
     }
 }

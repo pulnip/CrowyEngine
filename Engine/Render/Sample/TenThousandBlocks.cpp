@@ -1,6 +1,8 @@
 #include <array>
+#include <memory>
 #include <numbers>
 
+#include "FlyCamera.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
@@ -26,51 +28,18 @@ namespace Crowy
 
         static constexpr Color SkyColor{0.55f, 0.78f, 0.95f, 1.0f};
 
-        RHIGraphicsPipelineStateRAII pso;
         Geometries geometry;
         Meshes meshes;
         MaterialHandle material;
 
     public:
         TenThousandBlocks()
-            : RenderApp(makeConfig()) {}
+            : RenderApp(
+                  makeConfig(),
+                  std::make_unique<FlyCamera>(makeCamera())
+              ) {}
 
     protected:
-        void OnCreatePipelines(
-            RHIDevice& device,
-            RHIPixelFormat colorFormat,
-            RHIPixelFormat depthFormat
-        ) override {
-            pso = device.CreatePipelineState(
-                RHIGraphicsPipelineStateDesc{
-                    .preRasterizer =
-                        RHILegacyFrontendDesc{
-                            .vertexLayout = VERTEX_INPUT_LAYOUT,
-                            .topology = RHIPrimitiveTopology::TriangleList,
-                            .vertexShader =
-                                {.path =
-                                     "Engine/Shader/TenThousandBlocks.slang",
-                                 .entryPoint = "vs_main"}
-                        },
-                    .rasterizer =
-                        RHIRasterizerState{.frontCounterClockwise = false},
-                    .fragmentShader =
-                        {.path = "Engine/Shader/TenThousandBlocks.slang",
-                         .entryPoint = "fs_main"},
-                    .depthStencil =
-                        RHIDepthStencilState{
-                            .format = depthFormat,
-                            .depthWriteEnable = true,
-                            .depthFunc = RHIComparisonFunc::Less
-                        },
-                    .renderTargetFormats = {colorFormat},
-                    .renderTargetCount = 1,
-                    // SV_StartInstanceLocation carries the draw ID
-                    .profile = "sm_6_8"
-                }
-            );
-        }
-
         void OnBuildGeometry(
             RHICommandList& cmdList,
             GeometryPool& pool
@@ -90,7 +59,22 @@ namespace Crowy
         void ExtractScene(RenderScene& scene) override {
             // the shader colours by objectID and ignores the material,
             // so one row covers the whole lattice
-            material = scene.Materials().Add(MaterialResource{});
+            material = scene.Materials().Add(
+                MaterialResource{
+                    .pipeline = MaterialPipelineDesc{
+                        .vertexShader =
+                            {.path = "Engine/Shader/TenThousandBlocks.slang",
+                             .entryPoint = "vs_main"},
+                        .fragmentShader =
+                            {.path = "Engine/Shader/TenThousandBlocks.slang",
+                             .entryPoint = "fs_main"},
+                        .rasterizer = {.frontCounterClockwise = false},
+                        .vertexLayout = VERTEX_INPUT_LAYOUT,
+                        // SV_StartInstanceLocation carries the draw ID
+                        .profile = "sm_6_8"
+                    }
+                }
+            );
 
             const auto localBounds =
                 AABB3D{.center = zeros(), .halfScale = BlockHalfSize * ones()};
@@ -125,21 +109,22 @@ namespace Crowy
             }
         }
 
-        RHIGraphicsPipelineState& Pipeline() override { return *pso; }
-
     private:
         static Config makeConfig() {
             return Config{
                 .clearColor = SkyColor,
                 .drawCapacity = BlockCount,
                 .vertexPoolCapacity = 1024,
-                .indexPoolCapacity = 4096,
-                .camera = FlyCamera::Config{
-                    .position = {50.0f, 50.0f, 37.5f},
-                    .fovY = std::numbers::pi_v<f32> / 3,
-                    .nearZ = 0.1f,
-                    .farZ = 300.0f
-                }
+                .indexPoolCapacity = 4096
+            };
+        }
+
+        static FlyCamera::Config makeCamera() {
+            return FlyCamera::Config{
+                .position = {50.0f, 50.0f, 37.5f},
+                .fovY = std::numbers::pi_v<f32> / 3,
+                .nearZ = 0.1f,
+                .farZ = 300.0f
             };
         }
 

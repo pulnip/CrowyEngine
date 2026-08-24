@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "AppFramework.hpp"
-#include "FlyCamera.hpp"
+#include "Camera.hpp"
 #include "GeometryPool.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -32,8 +32,6 @@ namespace Crowy
             // element counts, as GeometryPool takes them
             u32 vertexPoolCapacity = 1024;
             u32 indexPoolCapacity = 4096;
-
-            FlyCamera::Config camera{};
         };
 
         static constexpr u32 ViewMain = 0;
@@ -44,12 +42,14 @@ namespace Crowy
 
         RHIDevice* device = nullptr;
         RHITextureRAII depthBuffer;
+        // storage the pass description's span points at
+        RHIPixelFormat colorFormat = RHIPixelFormat::RGBA8_UNORM;
         f32 aspect = 1.0f;
 
         GeometryPoolPtr geometryPool;
         SceneRendererPtr renderer;
         RenderScene scene;
-        FlyCamera camera;
+        CameraRAII camera;
 
         bool reportedCullStats = false;
 
@@ -57,7 +57,7 @@ namespace Crowy
         ~RenderApp() override;
         CROWY_DECLARE_PINNED(RenderApp)
 
-        explicit RenderApp(const Config& config);
+        RenderApp(const Config& config, CameraRAII camera);
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override final;
         void OnInitialRecord(RHICommandList& cmdList) override final;
@@ -70,12 +70,6 @@ namespace Crowy
         void OnResize(u32 width, u32 height) override final;
 
     protected:
-        virtual void OnCreatePipelines(
-            RHIDevice& device,
-            RHIPixelFormat colorFormat,
-            RHIPixelFormat depthFormat
-        ) = 0;
-
         // inside the geometry pool's blit pass, which the framework opens
         virtual void OnBuildGeometry(
             RHICommandList& cmdList,
@@ -85,8 +79,6 @@ namespace Crowy
         // The only sample code allowed to see both where a thing is in the
         // world and what the renderer stores about it.
         virtual void ExtractScene(RenderScene& scene) = 0;
-
-        virtual RHIGraphicsPipelineState& Pipeline() = 0;
 
         // Override to push a struct starting with the same members
         // when a shader wants more root constants.
@@ -100,7 +92,7 @@ namespace Crowy
         GeometryPool& Geometry() noexcept { return *geometryPool; }
         RenderScene& Scene() noexcept { return scene; }
         SceneRenderer& Renderer() noexcept { return *renderer; }
-        const FlyCamera& Camera() const noexcept { return camera; }
+        const Crowy::Camera& Camera() const noexcept { return *camera; }
         f32 Aspect() const noexcept { return aspect; }
 
     private:

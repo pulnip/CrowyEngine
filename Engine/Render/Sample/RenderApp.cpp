@@ -1,6 +1,7 @@
 #include "RenderApp.hpp"
 
 #include <array>
+#include <utility>
 
 #include "Log.hpp"
 #include "RHIBuffer.hpp"
@@ -14,8 +15,8 @@ namespace Crowy
 {
     RenderApp::~RenderApp() = default;
 
-    RenderApp::RenderApp(const Config& config)
-        : config(config), camera(config.camera) {}
+    RenderApp::RenderApp(const Config& config, CameraRAII camera)
+        : config(config), camera(std::move(camera)) {}
 
     void RenderApp::createDepthBuffer(u32 width, u32 height) {
         depthBuffer = device->CreateTexture(
@@ -49,7 +50,7 @@ namespace Crowy
             }
         );
 
-        OnCreatePipelines(device, swapchain.GetFormat(), config.depthFormat);
+        colorFormat = swapchain.GetFormat();
     }
 
     void RenderApp::OnInitialRecord(RHICommandList& cmdList) {
@@ -69,11 +70,11 @@ namespace Crowy
     }
 
     void RenderApp::ProcessInput(const InputProvider& input) {
-        camera.ProcessInput(input);
+        camera->ProcessInput(input);
     }
 
     void RenderApp::OnUpdate(f64 deltaTime, f64) {
-        camera.Update(deltaTime);
+        camera->Update(deltaTime);
     }
 
     void RenderApp::OnBindPass(RHICommandList& cmdList, const ScenePush& push) {
@@ -88,9 +89,13 @@ namespace Crowy
         reportedCullStats = true;
         LOG_INFO(
             "RenderApp",
-            "first frame: {} of {} primitives survived culling",
+            "first frame: {} of {} primitives survived culling, "
+            "{} draws in {} buckets over {} pipelines",
             renderer->DrawCount(),
-            scene.Primitives().Count()
+            scene.Primitives().Count(),
+            renderer->DrawCount(),
+            renderer->BucketCount(),
+            renderer->PipelineCount()
         );
     }
 
@@ -98,11 +103,19 @@ namespace Crowy
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
     ) {
-        renderer->View(ViewMain).viewProj = camera.ViewProj(aspect);
+        renderer->View(ViewMain).viewProj = camera->ViewProj(aspect);
 
         // every per-frame buffer settles before the pass opens
         OnUpdateFrameData();
-        renderer->BuildFrame(scene, ViewMain);
+        const std::array passFormats = {colorFormat};
+        renderer->BuildFrame(
+            scene,
+            PassPipelineDesc{
+                .renderTargetFormats = passFormats,
+                .depthFormat = config.depthFormat
+            },
+            ViewMain
+        );
         renderer->Upload();
         reportCullStatsOnce();
 
@@ -146,7 +159,6 @@ namespace Crowy
 
         renderer->Submit(
             cmdList,
-            Pipeline(),
             RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()}
         );
 

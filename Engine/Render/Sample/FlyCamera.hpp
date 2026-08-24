@@ -1,13 +1,12 @@
 #pragma once
 
+#include "Camera.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 
 namespace Crowy
 {
-    class InputProvider;
-
-    class FlyCamera {
+    class FlyCamera: public Camera {
     public:
         // start pose, for frame capture comparable and reproducible
         struct Config {
@@ -34,16 +33,12 @@ namespace Crowy
               yaw(config.yaw),
               pitch(config.pitch) {}
 
-        void ProcessInput(const InputProvider& input);
-        void Update(f64 deltaTime);
+        void ProcessInput(const InputProvider& input) override;
+        void Update(f64 deltaTime) override;
 
-        Vec3 Position() const noexcept { return position; }
+        Vec3 Position() const noexcept override { return position; }
         Vec4 Rotation() const noexcept;
-        Mat4 View() const noexcept;
-        Mat4 Projection(f32 aspect) const noexcept;
-
-        Mat4 ViewProj(f32 aspect) const noexcept {
-            return Projection(aspect) * View();
-        }
+        Mat4 View() const noexcept override;
+        Mat4 Projection(f32 aspect) const noexcept override;
     };
 }
