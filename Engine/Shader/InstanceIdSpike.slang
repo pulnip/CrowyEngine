@@ -1,14 +1,19 @@
-// Does SV_InstanceID restart at 0 in a draw whose baseInstance is not 0?
+// Does the engine's instance index restart at 0 in a draw whose baseInstance
+// is not 0?
 //
 // D3D12 says yes: StartInstanceLocation feeds SV_StartInstanceLocation and
 // leaves SV_InstanceID zero-based. Metal's [[instance_id]] instead counts from
-// the base instance, so whether the two agree comes down to what Slang emits.
-// OrbitFrameSample builds its whole segment addressing on the zero-based
-// reading, and one segment there is sub-pixel - it could never show this.
+// the base instance, and Slang's Metal target emits it raw - this spike drew
+// the staircase on Metal until zeroBasedInstanceID papered over the gap.
+// It now guards that contract: OrbitFrameSample builds its whole segment
+// addressing on the zero-based reading, and one segment there is sub-pixel -
+// it could never show this.
 //
 // Row comes from the draw (baseInstance, already proven by BaseInstanceSpike),
-// column from SV_InstanceID. Zero-based gives a left-aligned block; a base
-// instance leaking into SV_InstanceID gives a staircase.
+// column from the zero-based index. The helper working gives a left-aligned
+// block on every backend; a base instance leaking through gives a staircase.
+
+#include "InstanceIndex.slang"
 
 static const uint ROW_COUNT = 3;
 static const uint COLUMN_SLOTS = 8;
@@ -40,7 +45,7 @@ VertexOut vs_main(
     // draws start at baseInstance 1, matching BaseInstanceSpike's convention
     // that index 0 must never appear
     const uint row = drawID - 1;
-    const uint column = instanceID;
+    const uint column = zeroBasedInstanceID(instanceID, drawID);
 
     const float cellW = 2.0 / COLUMN_SLOTS;
     const float cellH = 2.0 / ROW_COUNT;

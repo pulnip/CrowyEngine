@@ -1,3 +1,4 @@
+#include "InstanceIndex.slang"
 #include "OrbitCommon.slang"
 
 // The polar grid the trails are read against: concentric rings at a regular AU
@@ -93,9 +94,10 @@ uint ringMultiplier(uint slot){
 [shader("vertex")]
 VertexOut vs_main(
     uint vertexID : SV_VertexID,
-    uint segIdx : SV_InstanceID,
+    uint instanceID : SV_InstanceID,
     uint drawID : SV_StartInstanceLocation
 ){
+    const uint segIdx = zeroBasedInstanceID(instanceID, drawID);
     float3 p0, p1;
     float thickness = push.thinThicknessPx;
     float alpha = push.thinAlpha;

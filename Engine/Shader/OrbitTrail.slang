@@ -1,3 +1,4 @@
+#include "InstanceIndex.slang"
 #include "OrbitCommon.slang"
 
 // Orbit trails as screen-space expanded polylines, plus the marker discs that
@@ -146,9 +147,10 @@ float3 framePosition(uint age, uint bodyIdx){
 [shader("vertex")]
 VertexOut vs_main(
     uint vertexID : SV_VertexID,
-    uint segIdx : SV_InstanceID,
+    uint instanceID : SV_InstanceID,
     uint bodyIdx : SV_StartInstanceLocation
 ){
+    const uint segIdx = zeroBasedInstanceID(instanceID, bodyIdx);
     StructuredBuffer<BodyDraw> bodies = push.bodies;
     const BodyDraw body = bodies[bodyIdx];
     StructuredBuffer<uint> segCounts = push.segCounts;

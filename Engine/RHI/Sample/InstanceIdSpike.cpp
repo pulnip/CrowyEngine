@@ -5,15 +5,17 @@
 namespace Crowy
 {
     // Companion to BaseInstanceSpike: that one proved baseInstance reaches the
-    // shader as SV_StartInstanceLocation, this one asks whether it also leaks
-    // into SV_InstanceID.
+    // shader as SV_StartInstanceLocation, this one guards that the zero-based
+    // instance index (zeroBasedInstanceID in InstanceIndex.slang) really is
+    // zero-based on every backend. Slang's Metal target emits [[instance_id]]
+    // raw, which counts from the base instance - the helper subtracts it there.
     //
     // Three draws of four instances each, baseInstance 1, 2, 3. Row comes from
-    // the draw, column from SV_InstanceID.
+    // the draw, column from the zero-based index.
     //
     //   PASS: three left-aligned rows of four quads, columns 0-3 in every row.
     //   FAIL: a staircase - row 2 starting at column 2, row 3 at column 3 -
-    //         which means SV_InstanceID counted from the base instance.
+    //         which means a base instance leaked through the helper.
     //
     // OrbitFrameSample addresses trail segments by SV_InstanceID while carrying
     // the body index in baseInstance, so the zero-based reading is load-bearing
