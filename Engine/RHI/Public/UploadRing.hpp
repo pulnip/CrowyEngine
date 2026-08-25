@@ -1,7 +1,7 @@
 #pragma once
 
 #include <deque>
-#include <functional>
+#include "Function.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstring>
-#include <functional>
 #include <span>
 #include <type_traits>
+#include "Function.hpp"
 #include "Semantics.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"

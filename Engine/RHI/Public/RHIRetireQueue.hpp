@@ -1,8 +1,8 @@
 #pragma once
 
 #include <deque>
-#include <functional>
 #include <vector>
+#include "Function.hpp"
 #include "Primitives.hpp"
 
 namespace Crowy
