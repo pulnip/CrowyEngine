@@ -323,7 +323,7 @@ namespace Crowy
             };
             f32 elapsedTimeSeconds = 0.0f;
         } simParam;
-        RHIBufferRAII simParamBuffer = nullptr;
+        RHIBufferSlice simParamBuffer;
 
         BloomPass bloomPass;
         RHITextureRAII brightMask = nullptr;
@@ -405,13 +405,6 @@ namespace Crowy
 
             simParam.aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
 
-            simParamBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(simParam),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite,
-                .initialData = &simParam
-            });
-
             brightMask = device.CreateTexture(RHITextureCreateDesc{
                 .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
                 .format = HDR_FORMAT,
@@ -490,7 +483,7 @@ namespace Crowy
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
-            simParamBuffer->Upload(simParam);
+            simParamBuffer = Device().UploadTransient(simParam);
 
             // the scene edge skips the whole bloom chain: released by the
             // simulation pass, acquired only by the composite - the
@@ -543,7 +536,7 @@ namespace Crowy
                     // generated once in OnInitialRecord and handed off there
                     .disk = disk->GetReadableID()
                 });
-                cmdList.SetGraphicsConstantBuffer(*simParamBuffer, 0);
+                cmdList.SetGraphicsConstantBuffer(simParamBuffer, 0);
                 cmdList.Draw(4);
 
                 const std::array releases{sceneEdge, brightMaskEdge};

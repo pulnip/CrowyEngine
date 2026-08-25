@@ -19,7 +19,9 @@ extern "C"{
 #include "MetalSampler.hpp"
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
+#include "MetalAllocator.hpp"
 #include "MetalUtil.hpp"
+#include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
 #include "RHIUtil.hpp"
 #include "UploadRing.hpp"
@@ -49,6 +51,10 @@ namespace Crowy
         MetalHeapPool sharedHeap;
         // MetalHeapPool memorylessHeap;
 
+        // every resource below is allocated through this, so it has to
+        // outlive them - the staging buffer inside uploadRing included
+        MetalAllocator allocator;
+
         AutoreleasePoolScope autoreleasePool;
 
         MetalCommandList uploadCmdList;
@@ -64,6 +70,9 @@ namespace Crowy
         u64 submissionSerial = 0;
         // serial of the last wave that left un-acquired hand-off releases
         u64 handoffSerial = 0;
+
+        RAII<MetalFence> frameFence;
+        RHIRetireQueue retireQueue;
 
     public:
         auto CreateCommandList(){
@@ -82,14 +91,12 @@ namespace Crowy
             CROWY_ASSERT(desc.size % 4 == 0);
 
             auto buffer = std::make_unique<MetalBuffer>(
-                desc.access == RHIMemoryAccess::GPUOnly ?
-                    privateHeap : sharedHeap,
+                allocator,
                 desc,
-                frameIndex,
                 name
             );
 
-            if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
+            if(desc.initialData != nullptr && desc.memory == RHIMemoryType::GPUOnly){
                 ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
@@ -97,7 +104,6 @@ namespace Crowy
                     uploadRing,
                     4,
                     *buffer,
-                    desc.usage,
                     RHISubresourceData{
                         .data = desc.initialData,
                         .rowPitch = desc.size
@@ -108,7 +114,7 @@ namespace Crowy
             return buffer;
         }
 
-        Impl()
+        Impl(MetalDevice& mtlDevice)
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
             , submissionEvent(NS::TransferPtr(device->newEvent()))
@@ -126,6 +132,7 @@ namespace Crowy
                 },
                 "SharedHeap"
             )
+            , allocator(privateHeap, sharedHeap)
             // binds references to members that initialize later - fine,
             // the command list only reads them inside Begin()
             , uploadCmdList(
@@ -134,6 +141,7 @@ namespace Crowy
                 submissionSerial,
                 handoffSerial
             )
+            , frameFence(std::make_unique<MetalFence>(*device.get(), 0))
         {
 
             CROWY_ASSERT(device, "No GPU Available");
@@ -153,15 +161,18 @@ namespace Crowy
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
-                    .usage = RHIBufferUsage::CopySrc,
-                    .access = RHIMemoryAccess::CPUWrite,
-                    .initialData = nullptr
+                    .memory = RHIMemoryType::CPUWrite
                 }, "staging buffer"
             );
-            uploadRing = UploadRing(std::move(stagingBuffer));
+            uploadRing = UploadRing(
+                mtlDevice,
+                std::move(stagingBuffer),
+                [this]{ flushUploads(); }
+            );
         }
 
         ~Impl(){
+            retireQueue.CollectAll();
             // _objc_autoreleasePoolPrint();
         }
 
@@ -177,7 +188,7 @@ namespace Crowy
             auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
             auto texture = std::make_unique<MetalTexture>(
-                privateHeap,
+                allocator,
                 texDesc,
                 name
             );
@@ -260,39 +271,20 @@ namespace Crowy
             );
         }
 
-        auto CreateFence(u64 initialValue){
-            return std::make_unique<MetalFence>(
-                *device.get(),
-                initialValue
-            );
-        }
+        void Submit(std::span<RHICommandList*> cmdLists){
+            // completed-as-of-entry, before this batch's own tag exists
+            retireQueue.Collect(GetCompletedFrame());
 
-        void SignalFence(MetalFence& fence, u64 value){
-            auto cmdBuffer = commandQueue->commandBuffer();
-            fence.Encode(*cmdBuffer, value);
-            // keep the submission event in step with out-of-band
-            // frameIndex bumps (FramePacer::WaitForIdle signals through
-            // here) so lazy gates never overtake the event timeline
-            if(value > submissionSerial){
-                cmdBuffer->encodeSignalEvent(submissionEvent.get(), value);
-                submissionSerial = value;
-            }
-
-            cmdBuffer->commit();
-        }
-
-        void Submit(
-            std::span<RHICommandList*> cmdLists,
-            MetalFence& fence
-        ){
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
-            fence.Encode(*lastCmdBuffer, ++frameIndex);
+            frameFence->Encode(*lastCmdBuffer, ++frameIndex);
             // close the wave: later recordings that depend on it
             // (lazy gates) wait on this value
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
+            retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
 
             trackHandoffs(cmdLists);
 
@@ -304,16 +296,19 @@ namespace Crowy
 
         void SubmitAndPresent(
             std::span<RHICommandList*> cmdLists,
-            MetalSwapchain& swapchain,
-            MetalFence& fence
+            MetalSwapchain& swapchain
         ){
+            retireQueue.Collect(GetCompletedFrame());
+
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
             swapchain.Present(*lastCmdBuffer);
-            fence.Encode(*lastCmdBuffer, ++frameIndex);
+            frameFence->Encode(*lastCmdBuffer, ++frameIndex);
             submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
+            retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
 
             trackHandoffs(cmdLists);
 
@@ -323,8 +318,45 @@ namespace Crowy
             }
         }
 
-        u64& GetFrameIndexRef() noexcept{
+        u64 GetSubmittedFrame() const noexcept{
             return frameIndex;
+        }
+
+        u64 GetCompletedFrame() const noexcept{
+            return frameFence->GetValue();
+        }
+
+        void WaitFrame(u64 value){
+            frameFence->WaitCPU(value, 0);
+        }
+
+        void WaitIdle(){
+            // signal fresh so this also waits on any GPU work queued
+            // after the last per-frame signal (e.g. swapchain Present)
+            ++frameIndex;
+            signalFrame(frameIndex);
+            frameFence->WaitCPU(frameIndex, 0);
+
+            // everything up to and including the fresh signal is now done,
+            // so this drains the queue rather than leaving stragglers for
+            // a Submit that may never come
+            retireQueue.Tag(frameIndex);
+            retireQueue.Collect(frameIndex);
+        }
+
+        void DeferRetire(std::move_only_function<void()> reclaim){
+            retireQueue.Defer(std::move(reclaim));
+        }
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align){
+            const auto alloc = uploadRing.Allocate(size, align);
+
+            return RHIBufferSlice{
+                .buffer = &alloc.buffer,
+                .offset = static_cast<u32>(alloc.offset),
+                .size = size,
+                .cpuPtr = alloc.cpuPtr
+            };
         }
 
         // Metal has no GetCopyableFootprints equivalent,
@@ -364,6 +396,21 @@ namespace Crowy
         }
 
     private:
+        // out-of-band signal (WaitIdle) that is not tied to a submitted
+        // wave, so it needs its own command buffer to carry it
+        void signalFrame(u64 value){
+            auto cmdBuffer = commandQueue->commandBuffer();
+            frameFence->Encode(*cmdBuffer, value);
+            // keep the submission event in step with the out-of-band bump
+            // so lazy gates never overtake the event timeline
+            if(value > submissionSerial){
+                cmdBuffer->encodeSignalEvent(submissionEvent.get(), value);
+                submissionSerial = value;
+            }
+
+            cmdBuffer->commit();
+        }
+
         // a wave that leaves un-acquired hand-off releases gates the
         // recordings that may share the GPU with it
         // (hangover window in MetalCommandList::Begin).
@@ -401,9 +448,32 @@ namespace Crowy
                 uploadRecorded = false;
             }
         }
+
+        // The upload ring's escape hatch: the copies holding its space are
+        // still sitting in uploadCmdList. ensureUploadCommit already
+        // CPU-waits them out, so the fresh signal only exists to give the
+        // ring a frame value it can retire against.
+        //
+        // Called from inside UploadRing::Allocate, which runs before its
+        // caller records anything - so what goes out here is strictly the
+        // uploads that came before, and the caller still needs an open list.
+        void flushUploads(){
+            if(!uploadRecorded)
+                return;
+
+            ensureUploadCommit();
+
+            ++frameIndex;
+            signalFrame(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
+
+            ensureUploadBegin();
+        }
     };
 
-    MetalDevice::MetalDevice() = default;
+    MetalDevice::MetalDevice()
+        : impl(*this){}
+
     MetalDevice::~MetalDevice() = default;
 
     RHIFrameScopeRAII MetalDevice::CreateFrameScope(){
@@ -448,22 +518,6 @@ namespace Crowy
     RHICommandListRAII MetalDevice::CreateCommandList(){
         return impl->CreateCommandList();
     }
-
-    RHIFenceRAII MetalDevice::CreateFence(u64 initialValue){
-        return impl->CreateFence(initialValue);
-    }
-
-    void MetalDevice::SignalFence(
-        RHIFence& fence,
-        u64 value
-    ){
-        impl->SignalFence(static_cast<MetalFence&>(fence), value);
-    }
-
-    u64& MetalDevice::GetFrameIndexRef() noexcept{
-        return impl->GetFrameIndexRef();
-    }
-
     RHICapabilities MetalDevice::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,
@@ -474,24 +528,41 @@ namespace Crowy
         };
     }
 
-    void MetalDevice::Submit(
-        std::span<RHICommandList*> cmdLists,
-        RHIFence& fence
-    ){
-        impl->Submit(
-            cmdLists,
-            static_cast<MetalFence&>(fence)
-        );
+    void MetalDevice::Submit(std::span<RHICommandList*> cmdLists){
+        impl->Submit(cmdLists);
     }
+
     void MetalDevice::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain,
-        RHIFence& fence
+        RHISwapchain& swapchain
     ){
         impl->SubmitAndPresent(
             cmdLists,
-            static_cast<MetalSwapchain&>(swapchain),
-            static_cast<MetalFence&>(fence)
+            static_cast<MetalSwapchain&>(swapchain)
         );
+    }
+
+    u64 MetalDevice::GetSubmittedFrame() const noexcept{
+        return impl->GetSubmittedFrame();
+    }
+
+    u64 MetalDevice::GetCompletedFrame() const noexcept{
+        return impl->GetCompletedFrame();
+    }
+
+    void MetalDevice::WaitFrame(u64 value){
+        impl->WaitFrame(value);
+    }
+
+    void MetalDevice::WaitIdle(){
+        impl->WaitIdle();
+    }
+
+    void MetalDevice::DeferRetire(std::move_only_function<void()> reclaim){
+        impl->DeferRetire(std::move(reclaim));
+    }
+
+    RHIBufferSlice MetalDevice::AllocateTransient(u32 size, u32 align){
+        return impl->AllocateTransient(size, align);
     }
 }

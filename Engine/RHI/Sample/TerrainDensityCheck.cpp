@@ -9,7 +9,6 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 #include "RHIPipelineState.hpp"
 #include "Terrain.hpp"
 #include "TerrainDensity.hpp"
@@ -184,26 +183,21 @@ int main(void){
 
         auto device = CreateDevice();
         auto cmdList = device->CreateCommandList();
-        auto fence = device->CreateFence();
 
         const auto pointBytes = static_cast<u32>(sizeof(Vec4) * points.size());
         const auto resultBytes = static_cast<u32>(sizeof(DensitySample) * points.size());
 
         auto pointBuffer = device->CreateBuffer(RHIBufferCreateDesc{
             .size = pointBytes,
-            .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::GPUOnly,
             .initialData = points.data()
         }, "TerrainSamplePoints");
         auto resultBuffer = device->CreateBuffer(RHIBufferCreateDesc{
             .size = resultBytes,
-            .usage = RHIBufferUsage::UnorderedAccess,
-            .access = RHIMemoryAccess::GPUOnly
+            .shaderWrite = true
         }, "TerrainDensityResults");
         auto readback = device->CreateBuffer(RHIBufferCreateDesc{
             .size = resultBytes,
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .memory = RHIMemoryType::CPURead
         }, "TerrainDensityReadback");
 
         auto pipeline = device->CreatePipelineState(RHIComputePipelineStateDesc{
@@ -257,13 +251,9 @@ int main(void){
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists, *fence);
+        device->Submit(cmdLists);
 
-        fence->WaitCPU(1);
-
-        // forced push for resolve the in-flight state
-        device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-
+        device->WaitFrame(1);
         std::vector<DensitySample> gpu(points.size());
         readback->Download(gpu.data(), resultBytes);
 

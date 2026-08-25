@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include "Assert.hpp"
 #include "IntMath.hpp"
+#include "PtrUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDebugScope.hpp"
@@ -52,8 +53,6 @@ namespace{
         RHIIndexFormat::UInt16 :
         RHIIndexFormat::UInt32;
 
-    inline constexpr u32 VERTEX_HEADROOM = 5000;
-    inline constexpr u32 INDEX_HEADROOM = 10000;
 
     // a render target that encodes on write needs colors handed to it linear
     constexpr bool encodesOnWrite(RHIPixelFormat format) noexcept{
@@ -115,7 +114,6 @@ namespace Crowy
         RHIPixelFormat depthFormat
     )
         : device(device)
-        , frameIndex(device.GetFrameIndexRef())
         , capabilities(device.GetCapabilities())
         , srgbTarget(encodesOnWrite(renderTargetFormat) ? 1u : 0u)
     {
@@ -224,7 +222,6 @@ namespace Crowy
 
         RHIEventScope event(cmdList, "UI Upload");
 
-        collectRetired();
         textureAcquires.clear();
         updateTextures(cmdList);
         uploadGeometry();
@@ -247,7 +244,7 @@ namespace Crowy
         if(drawData.TotalVtxCount == 0)
             return;
 
-        CROWY_ASSERT(vertexBuffer != nullptr && indexBuffer != nullptr,
+        CROWY_ASSERT(vertices.IsValid() && indices.IsValid(),
             "Did you call UIRenderer::Prepare() with this frame's draw data?"
         );
 
@@ -265,11 +262,12 @@ namespace Crowy
 
         setupRenderState(cmdList, framebuffer);
 
-        // every command in every list indexes the same buffer;
+        // every command in every list indexes the same slice;
         // only the element range moves
-        const RHIIndexBufferView indices{
-            .buffer = indexBuffer.get(),
-            .format = UI_INDEX_FORMAT
+        const RHIIndexBufferView indexView{
+            .buffer = indices.buffer,
+            .format = UI_INDEX_FORMAT,
+            .offset = indices.offset
         };
 
         // the lists share one pair of buffers, so their offsets accumulate
@@ -292,7 +290,7 @@ namespace Crowy
                 cmdList.SetPushGraphicsConstants(pushConstants);
 
                 cmdList.DrawIndexed(
-                    indices,
+                    indexView,
                     cmd.ElemCount,
                     1,
                     cmd.IdxOffset + globalIndexOffset,
@@ -317,39 +315,11 @@ namespace Crowy
 
         cmdList.SetPipelineState(*pso);
         cmdList.SetVertexBuffer(
-            *vertexBuffer,
+            *vertices.buffer,
             0,
-            static_cast<u32>(sizeof(ImDrawVert))
+            static_cast<u32>(sizeof(ImDrawVert)),
+            vertices.offset
         );
-    }
-
-    void UIRenderer::collectRetired(){
-        const auto expired = [this](const auto& retired){
-            return frameIndex - retired.frame >= RHI_FRAMES_IN_FLIGHT;
-        };
-
-        std::erase_if(retiredBuffers, expired);
-        std::erase_if(retiredTextures, expired);
-    }
-
-    void UIRenderer::retire(RHIBufferRAII buffer){
-        if(buffer == nullptr)
-            return;
-
-        retiredBuffers.push_back(Retired{
-            .frame = frameIndex,
-            .resource = std::move(buffer)
-        });
-    }
-
-    void UIRenderer::retire(RHITextureRAII texture){
-        if(texture == nullptr)
-            return;
-
-        retiredTextures.push_back(Retired{
-            .frame = frameIndex,
-            .resource = std::move(texture)
-        });
     }
 
     void UIRenderer::updateTextures(
@@ -435,8 +405,7 @@ namespace Crowy
 
         auto staging = device.CreateBuffer(RHIBufferCreateDesc{
             .size = rowPitch * height,
-            .usage = RHIBufferUsage::CopySrc,
-            .access = RHIMemoryAccess::CPUWrite
+            .memory = RHIMemoryType::CPUWrite
         }, "ImGui texture update");
 
         for(u32 row=0; row<height; ++row){
@@ -482,13 +451,13 @@ namespace Crowy
         cmdList.EndBlitPass(releases);
         textureAcquires.push_back(releases[0]);
 
-        retire(std::move(staging));
+        device.Retire(std::move(staging));
         tex.SetStatus(ImTextureStatus_OK);
     }
 
     void UIRenderer::destroyTexture(ImTextureData& tex){
         if(auto it = textures.find(tex.TexID); it != textures.end()){
-            retire(std::move(it->second));
+            device.Retire(std::move(it->second));
             textures.erase(it);
         }
 
@@ -502,28 +471,16 @@ namespace Crowy
         if(drawData.TotalVtxCount == 0)
             return;
 
-        const auto vertexCount = static_cast<u32>(drawData.TotalVtxCount);
-        const auto indexCount = static_cast<u32>(drawData.TotalIdxCount);
-
-        if(vertexCapacity < vertexCount){
-            vertexCapacity = vertexCount + VERTEX_HEADROOM;
-            retire(std::move(vertexBuffer));
-            vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = vertexCapacity * static_cast<u32>(sizeof(ImDrawVert)),
-                .usage = RHIBufferUsage::VertexBuffer,
-                // one slot per frame in flight, rotated for us
-                .access = RHIMemoryAccess::CPUWrite
-            }, "ImGui vertices");
-        }
-        if(indexCapacity < indexCount){
-            indexCapacity = indexCount + INDEX_HEADROOM;
-            retire(std::move(indexBuffer));
-            indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = indexCapacity * static_cast<u32>(sizeof(ImDrawIdx)),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "ImGui indices");
-        }
+        // ImGui rebuilds its whole geometry every frame, so it never wants a
+        // buffer of its own - one slice per frame, sized to what came out
+        vertices = device.AllocateTransient(
+            static_cast<u32>(drawData.TotalVtxCount * sizeof(ImDrawVert)),
+            static_cast<u32>(sizeof(ImDrawVert))
+        );
+        indices = device.AllocateTransient(
+            static_cast<u32>(drawData.TotalIdxCount * sizeof(ImDrawIdx)),
+            static_cast<u32>(sizeof(ImDrawIdx))
+        );
 
         u32 vertexOffset = 0, indexOffset = 0;
         for(const ImDrawList* list: drawData.CmdLists){
@@ -535,17 +492,17 @@ namespace Crowy
             );
 
             if(vertexBytes > 0){
-                vertexBuffer->Upload(
+                std::memcpy(
+                    ptrAdd(vertices.cpuPtr, vertexOffset),
                     list->VtxBuffer.Data,
-                    vertexBytes,
-                    vertexOffset
+                    vertexBytes
                 );
             }
             if(indexBytes > 0){
-                indexBuffer->Upload(
+                std::memcpy(
+                    ptrAdd(indices.cpuPtr, indexOffset),
                     list->IdxBuffer.Data,
-                    indexBytes,
-                    indexOffset
+                    indexBytes
                 );
             }
 

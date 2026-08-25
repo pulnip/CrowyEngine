@@ -6,6 +6,7 @@
 #include <d3dx12/d3dx12_root_signature.h>
 #include <Psapi.h>
 #include "DescriptorHeapAllocator.hpp"
+#include "DX12Allocator.hpp"
 #include "DX12Buffer.hpp"
 #include "DX12CommandList.hpp"
 #include "DX12Definitions.hpp"
@@ -17,6 +18,7 @@
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
+#include "RHIRetireQueue.hpp"
 #include "RHIUtil.hpp"
 #include "RHIShader.hpp"
 #include "UploadRing.hpp"
@@ -453,6 +455,11 @@ namespace Crowy
         FactoryRAII factory = nullptr;
         DeviceRAII device = nullptr;
         CommandQueueRAII commandQueue = nullptr;
+
+        // descriptor indices retire through here too, so this must outlive
+        // every DescriptorHeapAllocator below
+        RHIRetireQueue retireQueue;
+
         DescriptorHeapAllocatorRAII cbvsrvuavHeap = nullptr;
         DescriptorHeapAllocatorRAII rtvHeap = nullptr;
         DescriptorHeapAllocatorRAII dsvHeap = nullptr;
@@ -465,11 +472,16 @@ namespace Crowy
             .gpuUploadHeap = false
         };
 
+        // every resource below is allocated through this, so it has to
+        // outlive them - the staging buffer inside uploadRing included
+        DX12Allocator allocator;
+
         RAII<DX12CommandList> uploadCmdList;
         bool uploadRecorded = false;
         UploadRing uploadRing;
 
-        // increased by FramePacer
+        RAII<DX12Fence> frameFence;
+        // increased on Submit / SubmitAndPresent
         u64 frameIndex = 0;
 
     public:
@@ -480,26 +492,34 @@ namespace Crowy
             , cbvsrvuavHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-                UINT(65536)
+                UINT(65536),
+                retireQueue
             ))
             , rtvHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-                UINT(64)
+                UINT(64),
+                retireQueue
             ))
             , dsvHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-                UINT(32)
+                UINT(32),
+                retireQueue
             ))
             , samplerHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-                UINT(64)
+                UINT(64),
+                retireQueue
             ))
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
             , drawSignature(::createDrawSignature(*device.Get()))
             , drawIndexedSignature(::createDrawIndexedSignature(*device.Get()))
+            // capabilities are still zeroed here; the allocator only reads
+            // them when it allocates, which is after checkDeviceFeature
+            , allocator(*device.Get(), dx12Capabilities)
+            , frameFence(std::make_unique<DX12Fence>(*device.Get(), 0))
         {
             setupValidationBreak(*device.Get());
             checkAgilitySDK();
@@ -512,15 +532,19 @@ namespace Crowy
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
-                    .usage = RHIBufferUsage::CopySrc,
-                    .access = RHIMemoryAccess::CPUWrite,
-                    .initialData = nullptr
+                    .memory = RHIMemoryType::CPUWrite
                 }, "staging buffer"
             );
-            uploadRing = UploadRing(std::move(stagingBuffer));
+            uploadRing = UploadRing(
+                dxDevice,
+                std::move(stagingBuffer),
+                [this]{ flushUploads(); }
+            );
         }
 
-        ~Impl()= default;
+        ~Impl(){
+            retireQueue.CollectAll();
+        }
 
         auto CreateFrameScopoe() noexcept{
             return std::make_unique<DX12FrameScope>();
@@ -531,15 +555,13 @@ namespace Crowy
             StrView name
         ){
             auto buffer = std::make_unique<DX12Buffer>(
-                *device.Get(),
+                allocator,
                 desc,
-                dx12Capabilities,
-                frameIndex,
                 *cbvsrvuavHeap,
                 name
             );
 
-            if(desc.initialData != nullptr && desc.access == RHIMemoryAccess::GPUOnly){
+            if(desc.initialData != nullptr && desc.memory == RHIMemoryType::GPUOnly){
                 ensureUploadBegin();
 
                 UploadGpuOnlyBuffer(
@@ -547,7 +569,6 @@ namespace Crowy
                     uploadRing,
                     D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
                     *buffer,
-                    desc.usage,
                     RHISubresourceData{
                         .data = desc.initialData,
                         .rowPitch = desc.size
@@ -562,21 +583,20 @@ namespace Crowy
             const RHITextureCreateDesc& desc,
             StrView name
         ){
-            using enum RHIMemoryAccess;
+            using enum RHIMemoryType;
 
-            CROWY_ASSERT(desc.access != CPUWrite && desc.access != CPURead,
+            CROWY_ASSERT(desc.memory != CPUWrite && desc.memory != CPURead,
                 "Use RHIBuffer for CPU-Accessable Resource"
             );
 
             auto texture = std::make_unique<DX12Texture>(
-                *device.Get(),
+                allocator,
                 desc,
                 *cbvsrvuavHeap,
                 *rtvHeap,
                 *dsvHeap,
                 name
             );
-            // Notice. RHIMemoryAccess::Transient == RHIMemoryAccess::GPUOnly
             if(!desc.initialData.empty()){
                 // RHISubresourceData carries no slice pitch, so the upload
                 // helpers only understand 2D subresources
@@ -675,55 +695,74 @@ namespace Crowy
             );
         }
 
-        RAII<DX12Fence> CreateFence(u64 initialValue){
-            return std::make_unique<DX12Fence>(
-                *device.Get(),
-                initialValue
-            );
+        void Submit(std::span<RHICommandList*> cmdLists){
+            // completed-as-of-entry, before this batch's own tag exists
+            retireQueue.Collect(GetCompletedFrame());
+
+            executeCommandLists(cmdLists);
+
+            ++frameIndex;
+            signalFrame();
+            retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
         }
 
-        void SignalFence(RHIFence& fence, u64 value){
-            auto& dxFence = static_cast<DX12Fence&>(fence);
-
-            CHECK_HRESULT(commandQueue->Signal(
-                dxFence.Get(),
-                value
-            ), "Failed to signal fence");
-        }
-
-        void SignalFence(RHIFence& fence){
-            SignalFence(fence, ++frameIndex);
-        }
-
-        void Submit(
-            std::span<RHICommandList*> cmdLists
+        void SubmitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            RHISwapchain& swapchain
         ){
-            usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
-            std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
-            if(uploadRecorded){
-                // Close completes the upload releases nobody acquired here -
-                // the consumers live in the command lists submitted after
-                uploadCmdList->Close();
-                dxCmdLists[0] = uploadCmdList->Get();
+            retireQueue.Collect(GetCompletedFrame());
 
-                uploadRecorded = false;
-            }
+            executeCommandLists(cmdLists);
 
-            for(usize i=0; i<cmdLists.size(); ++i){
-                auto dxCmdList = static_cast<DX12CommandList*>(cmdLists[i]);
-                dxCmdLists[recordedUploadCmdListCount + i] = dxCmdList->Get();
-            }
+            static_cast<DX12Swapchain&>(swapchain).Present();
 
-            commandQueue->ExecuteCommandLists(
-                dxCmdLists.size(),
-                dxCmdLists.data()
-            );
+            ++frameIndex;
+            signalFrame();
+            retireQueue.Tag(frameIndex);
+            uploadRing.OnSubmit(frameIndex);
         }
 
-        u64& GetFrameIndexRef() noexcept{
+        u64 GetSubmittedFrame() const noexcept{
             return frameIndex;
         }
 
+        u64 GetCompletedFrame() const noexcept{
+            return frameFence->GetValue();
+        }
+
+        void WaitFrame(u64 value){
+            frameFence->WaitCPU(value, 0);
+        }
+
+        void WaitIdle(){
+            // signal fresh so this also waits on any GPU work queued
+            // after the last per-frame signal (e.g. swapchain Present)
+            ++frameIndex;
+            signalFrame();
+            frameFence->WaitCPU(frameIndex, 0);
+
+            // everything up to and including the fresh signal is now done,
+            // so this drains the queue rather than leaving stragglers for
+            // a Submit that may never come
+            retireQueue.Tag(frameIndex);
+            retireQueue.Collect(frameIndex);
+        }
+
+        void DeferRetire(std::move_only_function<void()> reclaim){
+            retireQueue.Defer(std::move(reclaim));
+        }
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align){
+            const auto alloc = uploadRing.Allocate(size, align);
+
+            return RHIBufferSlice{
+                .buffer = &alloc.buffer,
+                .offset = static_cast<u32>(alloc.offset),
+                .size = size,
+                .cpuPtr = alloc.cpuPtr
+            };
+        }
         UINT64 QueryUploadLayout(
             DX12Texture& texture,
             std::span<RHISubresourceLayout> out
@@ -766,6 +805,55 @@ namespace Crowy
                 uploadCmdList->Begin();
                 uploadRecorded = true;
             }
+        }
+
+        // The upload ring's escape hatch: the copies holding its space are
+        // still sitting in uploadCmdList, so give them a batch of their own
+        // and the frame value that comes with it.
+        //
+        // Called from inside UploadRing::Allocate, which runs before its
+        // caller records anything - so what goes out here is strictly the
+        // uploads that came before, and the caller still needs an open list.
+        void flushUploads(){
+            if(!uploadRecorded)
+                return;
+
+            Submit(std::span<RHICommandList*>{});
+            // creation uploads are load-time work, and draining first is what
+            // makes the allocator Begin() is about to reset provably idle
+            WaitFrame(frameIndex);
+
+            ensureUploadBegin();
+        }
+
+        void executeCommandLists(std::span<RHICommandList*> cmdLists){
+            usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
+            std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
+            if(uploadRecorded){
+                // Close completes the upload releases nobody acquired here -
+                // the consumers live in the command lists submitted after
+                uploadCmdList->Close();
+                dxCmdLists[0] = uploadCmdList->Get();
+
+                uploadRecorded = false;
+            }
+
+            for(usize i=0; i<cmdLists.size(); ++i){
+                auto dxCmdList = static_cast<DX12CommandList*>(cmdLists[i]);
+                dxCmdLists[recordedUploadCmdListCount + i] = dxCmdList->Get();
+            }
+
+            commandQueue->ExecuteCommandLists(
+                dxCmdLists.size(),
+                dxCmdLists.data()
+            );
+        }
+
+        void signalFrame(){
+            CHECK_HRESULT(commandQueue->Signal(
+                frameFence->Get(),
+                frameIndex
+            ), "Failed to signal fence");
         }
     };
 
@@ -823,39 +911,40 @@ namespace Crowy
         return impl->CreateCommandList();
     }
 
-    RHIFenceRAII DX12Device::CreateFence(u64 initialValue){
-        return impl->CreateFence(initialValue);
-    }
-
-    void DX12Device::SignalFence(RHIFence& fence, u64 value){
-        impl->SignalFence(fence, value);
-    }
-
-    void DX12Device::Submit(
-        std::span<RHICommandList*> cmdLists,
-        RHIFence& fence
-    ){
+    void DX12Device::Submit(std::span<RHICommandList*> cmdLists){
         impl->Submit(cmdLists);
-
-        impl->SignalFence(fence);
     }
 
     void DX12Device::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain,
-        RHIFence& fence
+        RHISwapchain& swapchain
     ){
-        impl->Submit(cmdLists);
-
-        static_cast<DX12Swapchain&>(swapchain).Present();
-
-        impl->SignalFence(fence);
+        impl->SubmitAndPresent(cmdLists, swapchain);
     }
 
-    u64& DX12Device::GetFrameIndexRef() noexcept{
-        return impl->GetFrameIndexRef();
+    u64 DX12Device::GetSubmittedFrame() const noexcept{
+        return impl->GetSubmittedFrame();
     }
 
+    u64 DX12Device::GetCompletedFrame() const noexcept{
+        return impl->GetCompletedFrame();
+    }
+
+    void DX12Device::WaitFrame(u64 value){
+        impl->WaitFrame(value);
+    }
+
+    void DX12Device::WaitIdle(){
+        impl->WaitIdle();
+    }
+
+    void DX12Device::DeferRetire(std::move_only_function<void()> reclaim){
+        impl->DeferRetire(std::move(reclaim));
+    }
+
+    RHIBufferSlice DX12Device::AllocateTransient(u32 size, u32 align){
+        return impl->AllocateTransient(size, align);
+    }
     RHICapabilities DX12Device::GetCapabilities() const noexcept{
         return {
             .flipTextureV = true,

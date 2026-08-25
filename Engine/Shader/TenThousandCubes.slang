@@ -11,6 +11,9 @@ struct DrawData{
 // pass-scope only — per-draw data rides in draws[drawID], never here
 struct PassData{
     DescriptorHandle<StructuredBuffer<DrawData>> draws;
+    // row 0 of this frame's slice inside the shared transient buffer
+    uint drawBase;
+    uint _pad0;
 };
 
 [[vk::push_constant]]
@@ -48,7 +51,7 @@ VertexOut vs_main(
     uint drawID : SV_StartInstanceLocation
 ){
     StructuredBuffer<DrawData> draws = pass.draws;
-    DrawData d = draws[drawID];
+    DrawData d = draws[pass.drawBase + drawID];
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 

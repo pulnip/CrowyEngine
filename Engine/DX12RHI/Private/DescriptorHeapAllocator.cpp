@@ -1,4 +1,6 @@
+#include <cstdlib>
 #include <stdexcept>
+#include <d3dx12/d3dx12_core.h>
 #include "DescriptorHeapAllocator.hpp"
 #include "DX12Util.hpp"
 
@@ -7,10 +9,16 @@ namespace Crowy
     DescriptorHeapAllocator::DescriptorHeapAllocator(
         Device& device,
         D3D12_DESCRIPTOR_HEAP_TYPE type,
-        UINT capacity
+        UINT capacity,
+        RHIRetireQueue& retireQueue
     )
         : device(device)
         , descriptorSize(device.GetDescriptorHandleIncrementSize(type))
+        , type(type)
+        , retireQueue(retireQueue)
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        , poisonMode(std::getenv("CROWY_RHI_POISON") != nullptr)
+    #endif
     {
         auto shaderVisible =
             (type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) ||
@@ -139,4 +147,34 @@ namespace Crowy
         freeIndexes.pop_back();
         return index;
     }
+
+    void DescriptorHeapAllocator::Free(UINT index){
+        retireQueue.Defer([this, index]{
+        #if defined(_DEBUG) || !defined(NDEBUG)
+            if(poisonMode){
+                poisonSlot(index);
+                return;
+            }
+        #endif
+
+            freeIndexes.push_back(index);
+        });
+    }
+
+#if defined(_DEBUG) || !defined(NDEBUG)
+    void DescriptorHeapAllocator::poisonSlot(UINT index){
+        // only CBV/SRV/UAV descriptors are ever read as a bindless index
+        // from shader code; a null raw-buffer SRV is a safe, format-agnostic
+        // overwrite regardless of which of the three previously lived here
+        if(type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+            return;
+
+        const auto nullDesc = CD3DX12_SHADER_RESOURCE_VIEW_DESC::RawBuffer(1);
+        device.CreateShaderResourceView(
+            nullptr,
+            &nullDesc,
+            GetCPUHandle(index)
+        );
+    }
+#endif
 }

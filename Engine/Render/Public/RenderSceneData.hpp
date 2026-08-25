@@ -46,10 +46,16 @@ namespace Crowy
         u64 materials = 0;
         // DescriptorHandle<StructuredBuffer<Vertex>>, indexed by SV_VertexID
         u64 vertices = 0;
+        // `draws` and `materials` name one descriptor over storage many
+        // frames share, so row 0 of this frame's slice sits at these offsets
+        u32 drawBase = 0;
+        u32 materialBase = 0;
     };
-    static_assert(sizeof(ScenePush) == 24);
+    static_assert(sizeof(ScenePush) == 32);
     static_assert(offsetof(ScenePush, materials) == 8);
     static_assert(offsetof(ScenePush, vertices) == 16);
+    static_assert(offsetof(ScenePush, drawBase) == 24);
+    static_assert(offsetof(ScenePush, materialBase) == 28);
     static_assert(sizeof(ScenePush) <= RHI_PUSH_CONSTANT_BYTES);
     static_assert(std::is_trivially_copyable_v<ScenePush>);
 }

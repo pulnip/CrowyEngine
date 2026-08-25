@@ -34,7 +34,7 @@ namespace Crowy
 
         RAII<TerrainSurface> surface;
         RHITextureRAII depthBuffer;
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
 
         RAII<TerrainMarcher> marcher;
         RHIBufferRAII counterReadback;
@@ -66,14 +66,13 @@ namespace Crowy
             });
         }
 
-        // The pacer waits for frame index F - RHI_FRAMES_IN_FLIGHT + 1 before
-        // recording frame F, so a copy recorded while the index read `at` has
-        // certainly landed once the index reaches at + RHI_FRAMES_IN_FLIGHT.
-        // Reading then costs no wait, and the stats trail by a few frames.
+        // The copy rides the batch tagged counterCopyFrame, so the bytes are
+        // there the moment the GPU reports that value complete. Reading then
+        // costs no wait, and the stats trail by a few frames.
         void CollectCounter(){
             if(!counterCopyInFlight)
                 return;
-            if(device->GetFrameIndexRef() < counterCopyFrame + RHI_FRAMES_IN_FLIGHT)
+            if(device->GetCompletedFrame() < counterCopyFrame)
                 return;
 
             counterReadback->Download(&counter, sizeof(counter));
@@ -153,17 +152,10 @@ namespace Crowy
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
             camera.SetViewport(swapchain.GetWidth(), swapchain.GetHeight());
 
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(TerrainFrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "TerrainFrameCB");
-
             marcher = std::make_unique<TerrainMarcher>(device, TRIANGLE_CAPACITY);
             counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(TerrainMarchCounter),
-                .usage = RHIBufferUsage::CopyDst,
-                .access = RHIMemoryAccess::CPURead
+                .memory = RHIMemoryType::CPURead
             }, "TerrainMarchCounterReadback");
 
             uiRenderer = std::make_unique<UIRenderer>(
@@ -219,7 +211,8 @@ namespace Crowy
                     cmdList.EndBlitPass();
 
                     counterCopyInFlight = true;
-                    counterCopyFrame = device->GetFrameIndexRef();
+                    // this recording goes out with the next submit
+                    counterCopyFrame = device->GetSubmittedFrame() + 1;
                 }
 
                 // the draw reads what the marching pass just wrote; a frame
@@ -232,7 +225,7 @@ namespace Crowy
                 rebuildPending = false;
             }
 
-            frameCB->Upload(TerrainFrameUniforms{
+            frameCB = Device().UploadTransient(TerrainFrameUniforms{
                 .viewProj = camera.ViewProj(),
                 .toLight = {0.38f, 0.82f, 0.43f},
                 .ambient = 0.28f
@@ -269,7 +262,7 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.SetPushGraphicsConstants(TerrainSurfacePush{
                 .vertices = marcher->Vertices().GetReadableID(
                     static_cast<u32>(sizeof(TerrainVertex))

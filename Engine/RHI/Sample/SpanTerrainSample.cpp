@@ -1,6 +1,8 @@
 #include <array>
 #include <chrono>
+#include <optional>
 #include <print>
+#include <span>
 #include <vector>
 #include "AppFramework.hpp"
 #include "RHIBuffer.hpp"
@@ -30,7 +32,7 @@ namespace Crowy
         RAII<TerrainSurface> surface;
         RHITextureRAII depthBuffer;
 
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
         RHIBufferRAII vertexBuffer;
 
         RAII<UIRenderer> uiRenderer = nullptr;
@@ -43,9 +45,11 @@ namespace Crowy
         TerrainSpanMeshStats meshStats;
         f64 buildTimeMs = 0.0;
 
-        // Notice. a CPUWrite buffer keeps one slot per frame in flight, so a
-        // mesh built once must be uploaded once per slot
-        u32 pendingUploads = 0;
+        // a rebuild replaces the whole mesh; the copy that carries it to the
+        // GPU is recorded on the next frame that draws
+        bool meshDirty = false;
+        // Undefined until the first copy lands
+        RHIResourceUsage vertexResting = RHIResourceUsage::Undefined;
 
         TerrainCamera camera;
 
@@ -81,7 +85,7 @@ namespace Crowy
                 );
             }
 
-            pendingUploads = RHI_FRAMES_IN_FLIGHT;
+            meshDirty = true;
         }
 
         std::vector<Widget> MakeSampleStats(){
@@ -135,16 +139,10 @@ namespace Crowy
 
             CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
             camera.SetViewport(swapchain.GetWidth(), swapchain.GetHeight());
-
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(TerrainFrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "TerrainFrameCB");
+            // device-local: the mesh outlives the frame that built it, so it
+            // is staged through a copy rather than rewritten in place
             vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = VERTEX_CAPACITY * static_cast<u32>(sizeof(TerrainVertex)),
-                .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
+                .size = VERTEX_CAPACITY * static_cast<u32>(sizeof(TerrainVertex))
             }, "TerrainVertices");
 
             mesh.reserve(VERTEX_CAPACITY);
@@ -180,12 +178,50 @@ namespace Crowy
             const auto vertexBytes =
                 vertexCount * static_cast<u32>(sizeof(TerrainVertex));
 
-            if(pendingUploads > 0 && vertexBytes > 0){
-                vertexBuffer->Upload(mesh.data(), vertexBytes);
-                --pendingUploads;
+            // the copy has to precede this frame's draw, and the draw's
+            // acquire is the other half of the edge it releases
+            std::optional<RHIBufferBarrier> vertexEdge;
+            if(meshDirty && vertexBytes > 0){
+                const auto staging = Device().UploadTransient(
+                    std::span<const TerrainVertex>(mesh.data(), vertexCount),
+                    static_cast<u32>(sizeof(TerrainVertex))
+                );
+
+                // a full rewrite, so nothing older is worth preserving
+                const std::array acquires{
+                    vertexResting == RHIResourceUsage::Undefined ?
+                        MakeBarrier(*vertexBuffer,
+                            RHIResourceUsage::Undefined,
+                            RHIResourceUsage::CopyDst
+                        ) :
+                        MakeCrossSubmissionBarrier(*vertexBuffer,
+                            vertexResting,
+                            RHIResourceUsage::CopyDst
+                        )
+                };
+                const std::array releases{
+                    MakeBarrier(*vertexBuffer,
+                        RHIResourceUsage::CopyDst,
+                        RHIResourceUsage::SampledVertex
+                    )
+                };
+
+                cmdList.BeginBlitPass({}, acquires);
+                cmdList.Copy(
+                    *staging.buffer,
+                    *vertexBuffer,
+                    staging.offset,
+                    0,
+                    vertexBytes
+                );
+                cmdList.EndBlitPass({}, releases);
+
+                vertexEdge = releases[0];
+                vertexResting = RHIResourceUsage::SampledVertex;
+                meshDirty = false;
             }
 
-            frameCB->Upload(TerrainFrameUniforms{
+            frameCB = Device().UploadTransient(TerrainFrameUniforms{
                 .viewProj = camera.ViewProj(),
                 .toLight = {0.38f, 0.82f, 0.43f},
                 .ambient = 0.28f
@@ -210,6 +246,11 @@ namespace Crowy
             // the pass samples the font atlas Prepare just refreshed
             acquires.append_range(uiRenderer->TextureAcquires());
 
+            // the acquire half of the mesh copy above, on the frames that made one
+            std::vector<RHIBufferBarrier> bufferAcquires;
+            if(vertexEdge.has_value())
+                bufferAcquires.push_back(*vertexEdge);
+
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
                 .depthAttachment = RHIDepthAttachment{
@@ -218,13 +259,13 @@ namespace Crowy
                     .storeAction = RHIStoreAction::DontCare,
                     .clearDepthStencil = {.depth = 1.0f}
                 }
-            }, acquires);
+            }, acquires, bufferAcquires);
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             if(vertexCount > 0){
                 cmdList.SetPipelineState(surface->Pipeline(ctx.debug));
-                cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+                cmdList.SetGraphicsConstantBuffer(frameCB, 0);
                 cmdList.SetPushGraphicsConstants(TerrainSurfacePush{
                     .vertices = vertexBuffer->GetReadableID(
                         static_cast<u32>(sizeof(TerrainVertex))

@@ -3,7 +3,6 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace{
@@ -20,14 +19,11 @@ int main(void){
 
         auto device = CreateDevice();
         auto cmdList = device->CreateCommandList();
-        auto fence = device->CreateFence();
 
         constexpr size_t N = 1 << 20;
         std::vector<float> floats(N, 1.0f);
         RHIBufferCreateDesc desc{
             .size = sizeof(float) * N,
-            .usage = RHIBufferUsage::None,
-            .access = RHIMemoryAccess::GPUOnly,
             .initialData = floats.data()
         };
         auto lhs = device->CreateBuffer(desc, "LHS");
@@ -35,15 +31,11 @@ int main(void){
 
         auto out = device->CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(float) * N,
-            .usage = RHIBufferUsage::UnorderedAccess,
-            .access = RHIMemoryAccess::GPUOnly,
-            .initialData = nullptr
+            .shaderWrite = true
         }, "OUT");
         auto readback = device->CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(float) * N,
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead,
-            .initialData = nullptr
+            .memory = RHIMemoryType::CPURead
         }, "ReadBack");
 
         auto addPipeline = device->CreatePipelineState(
@@ -129,13 +121,9 @@ int main(void){
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists, *fence);
+        device->Submit(cmdLists);
 
-        fence->WaitCPU(1);
-
-        // forced push for resolve the in-flight state
-        device->GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-
+        device->WaitFrame(1);
         std::vector<float> result(N, 0.0f);
         readback->Download(result.data(), sizeof(float) * result.size());
 

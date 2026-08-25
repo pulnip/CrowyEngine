@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include "FastPimpl.hpp"
 #include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
@@ -10,7 +11,7 @@ namespace Crowy
     class MetalDevice final: public RHIDevice{
     private:
         class Impl;
-        FastPimpl<Impl, 1032, 8> impl;
+        FastPimpl<Impl, 1192, 8> impl;
 
     public:
         MetalDevice();
@@ -43,21 +44,20 @@ namespace Crowy
 
         RHICommandListRAII CreateCommandList() RHI_OVERRIDE;
 
-        RHIFenceRAII CreateFence(u64 initialValue = 0) RHI_OVERRIDE;
-
-        void SignalFence(RHIFence&, u64 value) RHI_OVERRIDE;
-
-        void Submit(
-            std::span<RHICommandList*>,
-            RHIFence&
-        ) RHI_OVERRIDE;
+        void Submit(std::span<RHICommandList*>) RHI_OVERRIDE;
         void SubmitAndPresent(
             std::span<RHICommandList*>,
-            RHISwapchain&,
-            RHIFence&
+            RHISwapchain&
         ) RHI_OVERRIDE;
 
-        u64& GetFrameIndexRef() noexcept RHI_OVERRIDE;
+        u64 GetSubmittedFrame() const noexcept RHI_OVERRIDE;
+        u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
+        void WaitFrame(u64 value) RHI_OVERRIDE;
+        void WaitIdle() RHI_OVERRIDE;
+
+        void DeferRetire(std::move_only_function<void()> reclaim) RHI_OVERRIDE;
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align) RHI_OVERRIDE;
 
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
     };

@@ -15,10 +15,6 @@ namespace Crowy
             const void* data, u32 size,
             u32 offset = 0
         ) = 0;
-        virtual void UploadAll(
-            const void* data, u32 size,
-            u32 offset = 0
-        ) = 0;
 
         // type-safe helper
         template<typename T>
@@ -41,6 +37,11 @@ namespace Crowy
         }
 
         virtual u32 GetSize() const noexcept = 0;
+
+        // Persistently mapped storage, or null when the CPU cannot reach it.
+        // Feeds RHIBufferSlice::cpuPtr; prefer Upload/Download elsewhere.
+        virtual void* GetMappedPtr() noexcept = 0;
+
         // Shader Resource
         virtual u64 GetReadableID(const RHIBufferViewDesc&) = 0;
         u64 GetReadableID(){

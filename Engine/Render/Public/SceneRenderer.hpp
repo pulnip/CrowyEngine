@@ -49,12 +49,14 @@ namespace Crowy
 
     class SceneRenderer {
     private:
-        // per-frame buffers, internally frame-indexed
-        RHIBufferRAII drawDataBuffer;
-        RHIBufferRAII argsBuffer;
-        RHIBufferRAII materialBuffer;
+        RHIDevice& device;
+
+        // this frame's transient slices, refreshed by Upload()
+        RHIBufferSlice drawDataSlice;
+        RHIBufferSlice argsSlice;
+        RHIBufferSlice materialSlice;
         // one RHI_CB_ALIGN record per view, selected by offset
-        RHIBufferRAII viewCB;
+        RHIBufferSlice viewSlice;
 
         PipelineCache pipelines;
 

@@ -4,13 +4,21 @@
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHITexture.hpp"
+#include "DX12Allocator.hpp"
 #include "DX12Definitions.hpp"
 
 namespace Crowy
 {
     class DX12Texture: public RHITexture{
     private:
-        TextureRAII texture = nullptr;
+        Texture* texture = nullptr;
+        // holds the reference for a swapchain back buffer; null for an
+        // allocated texture, whose ownership lives in DX12Allocator::live
+        TextureRAII backBufferOwner = nullptr;
+        // null for a swapchain back buffer: that memory belongs to the
+        // swapchain, so nothing here allocated it and nothing frees it
+        DX12Allocator* allocator = nullptr;
+        RHIAllocation allocation{};
         // descriptor heap index
         std::unordered_map<RHITextureViewDesc, UINT> srvs;
         std::unordered_map<RHITextureViewDesc, UINT> uavs;
@@ -23,7 +31,7 @@ namespace Crowy
 
     public:
         DX12Texture(
-            Device&,
+            DX12Allocator&,
             const RHITextureCreateDesc&,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,
@@ -52,7 +60,7 @@ namespace Crowy
 
         void* GetNative() noexcept RHI_OVERRIDE{ return Get(); }
 
-        Texture* Get() noexcept{ return texture.Get(); }
+        Texture* Get() noexcept{ return texture; }
 
         UINT GetOrCreateRTV(const RHITextureViewDesc&);
         UINT GetOrCreateDSV(const RHITextureViewDesc&);

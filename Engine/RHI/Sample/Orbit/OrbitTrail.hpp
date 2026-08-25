@@ -52,12 +52,11 @@ namespace Crowy
     // ORBIT_SAMPLE_BYTES, so a frame's new samples reach the GPU in a single
     // copy - two only where the write wraps past the end of the ring.
     //
-    // The ring has to survive between frames, which rules out a CPUWrite
-    // buffer: those are multiplexed across RHI_FRAMES_IN_FLIGHT physical slots,
-    // so an incremental append would land in one slot out of three and the
-    // other two would hold stale samples. Hence GPU-only storage plus an
-    // explicit staging copy - or, in OrbitFillMode::Gpu, a compute pass that
-    // writes the ring in place and never touches the bus at all.
+    // The ring has to survive between frames, which rules out transient
+    // storage: an incremental append only means anything on top of what the
+    // earlier appends left. Hence device-local storage plus an explicit
+    // staging copy - or, in OrbitFillMode::Gpu, a compute pass that writes
+    // the ring in place and never touches the bus at all.
     class OrbitTrail{
     private:
         u32 capacity;
@@ -71,20 +70,7 @@ namespace Crowy
         f64 accumDays = 0.0;
 
         RHIBufferRAII trail;
-        // RHI_FRAMES_IN_FLIGHT regions of one full ring each.
-        //
-        // A full ring because a prefill writes every slot, and one region per
-        // frame in flight because a CPUWrite buffer declared CopySrc is a
-        // single physical allocation - the RHI only multiplexes buffers that
-        // are not pure copy sources, on the grounds that a copy source needs
-        // fence-aware suballocation instead (that is what UploadRing does with
-        // the device's own staging). Writing one region while another frame's
-        // copy is still reading its own is the whole point.
-        //
-        // Costs three rings' worth of upload heap, live only for the CPU
-        // path; the GPU path leaves it untouched.
-        RHIBufferRAII staging;
-        const u64& frameIndex;
+        RHIDevice& device;
 
         OrbitFillMode fillMode = OrbitFillMode::Cpu;
         RAII<OrbitKeplerFill> gpuFill;
@@ -92,7 +78,7 @@ namespace Crowy
         // staged by Advance/Prefill, consumed by Record
         u32 pendingSamples = 0;
         u32 pendingFirstSlot = 0;
-        u64 pendingStagingOffset = 0;
+        RHIBufferSlice pendingStaging;
         // which path staged it - the mode can be flipped between the two calls
         bool pendingGpu = false;
 

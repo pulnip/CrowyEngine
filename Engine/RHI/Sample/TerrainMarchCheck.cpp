@@ -7,7 +7,6 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 #include "Terrain.hpp"
 #include "TerrainDensity.hpp"
 #include "TerrainMarch.hpp"
@@ -411,7 +410,6 @@ namespace{
 
         auto warmupList = device.CreateCommandList();
         auto cmdList = device.CreateCommandList();
-        auto fence = device.CreateFence();
 
         TerrainMarcher marcher(device, TRIANGLE_CAPACITY);
 
@@ -424,23 +422,19 @@ namespace{
 
         auto counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = sizeof(TerrainMarchCounter),
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .memory = RHIMemoryType::CPURead
         }, "TerrainMarchCounterReadback");
         auto vertexReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = vertexBytes,
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .memory = RHIMemoryType::CPURead
         }, "TerrainMarchVertexReadback");
         auto indexReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = indexBytes,
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .memory = RHIMemoryType::CPURead
         }, "TerrainMarchIndexReadback");
         auto argsReadback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = argsBytes,
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .memory = RHIMemoryType::CPURead
         }, "TerrainMarchArgsReadback");
 
         // A first run, submitted on its own, left the way a frame that drew
@@ -455,8 +449,8 @@ namespace{
             warmupList->Close();
 
             RHICommandList* warmup[] = {warmupList.get()};
-            device.Submit(warmup, *fence);
-            fence->WaitCPU(device.GetFrameIndexRef());
+            device.Submit(warmup);
+            device.WaitFrame(device.GetSubmittedFrame());
         }
 
         cmdList->Begin();
@@ -488,13 +482,9 @@ namespace{
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device.Submit(cmdLists, *fence);
+        device.Submit(cmdLists);
 
-        fence->WaitCPU(device.GetFrameIndexRef());
-
-        // forced push for resolve the in-flight state
-        device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-
+        device.WaitFrame(device.GetSubmittedFrame());
         TerrainMarchCounter counter;
         counterReadback->Download(&counter, sizeof(counter));
 

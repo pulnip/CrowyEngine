@@ -4,310 +4,222 @@
 #include "DX12Buffer.hpp"
 #include "DX12Definitions.hpp"
 #include "DX12Util.hpp"
-#include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "PtrUtil.hpp"
 #include "VariantUtil.hpp"
 
 namespace{
-    struct BufferPolicy{
-        D3D12_HEAP_TYPE heapType;
-        Crowy::u32 slotCount;
-        bool persistentMap;
+    // the element range a view covers, in whatever unit that view addresses
+    struct ViewRange{
+        UINT64 firstElement;
+        UINT numElements;
     };
 
-    auto Resolve(
-        Crowy::RHIBufferUsage usage,
-        Crowy::RHIMemoryAccess access,
-        const Crowy::DX12Capabilities& capabilities
+    ViewRange resolveRange(
+        const Crowy::RHIBufferViewDesc& desc,
+        Crowy::u32 bufferSize,
+        Crowy::u32 elementSize
     ){
-        using namespace Crowy;
-        using enum RHIMemoryAccess;
+        CROWY_ASSERT(elementSize > 0);
+        CROWY_ASSERT(desc.offset % elementSize == 0,
+            "buffer view offset {} does not land on a {}-byte element",
+            desc.offset, elementSize
+        );
 
-        switch(access){
-        case GPUOnly:
-            return BufferPolicy{
-                .heapType = D3D12_HEAP_TYPE_DEFAULT,
-                .slotCount = 1,
-                .persistentMap = false
-            };
-        case CPUWrite:
-            return BufferPolicy{
-                .heapType = capabilities.gpuUploadHeap ?
-                    D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD,
-                .slotCount = usage == RHIBufferUsage::CopySrc ?
-                    1 :
-                    RHI_FRAMES_IN_FLIGHT,
-                .persistentMap = true
-            };
-        case CPURead:
-            return BufferPolicy{
-                .heapType = D3D12_HEAP_TYPE_READBACK,
-                .slotCount = RHI_FRAMES_IN_FLIGHT,
-                .persistentMap = true
-            };
-        case Transient:
-            CROWY_ASSERT(false, "Transient is texture-only");
-        default:
-            std::unreachable();
-        }
+        const auto bytes = desc.size != 0 ? desc.size : bufferSize - desc.offset;
+        CROWY_ASSERT(desc.offset + bytes <= bufferSize,
+            "buffer view [{}, {}) runs past the {}-byte buffer",
+            desc.offset, desc.offset + bytes, bufferSize
+        );
+
+        return ViewRange{
+            .firstElement = desc.offset / elementSize,
+            .numElements = bytes / elementSize
+        };
     }
 }
 
 namespace Crowy
 {
     DX12Buffer::DX12Buffer(
-        Device& device,
+        DX12Allocator& allocator,
         const RHIBufferCreateDesc& desc,
-        const DX12Capabilities& capabilities,
-        const u64& frameIndex,
         DescriptorHeapAllocator& heap,
         StrView name
     )
-        : frameIndex(frameIndex)
+        : size(desc.size)
+        , allocator(allocator)
         , heap(heap)
     {
-        using enum RHIBufferUsage;
-        using enum RHIMemoryAccess;
+        using enum RHIMemoryType;
 
-        const auto policy = Resolve(desc.usage, desc.access, capabilities);
+        CROWY_ASSERT(desc.memory != Transient,
+            "tile memory holds render targets, not buffers"
+        );
+        CROWY_ASSERT(desc.memory == GPUOnly || !desc.shaderWrite,
+            "a shader cannot write CPU-visible memory"
+        );
 
-        const auto hasConstantUsage = hasFlag(desc.usage, ConstantBuffer);
-        const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
-        const auto isCopyDst = hasFlag(desc.usage, CopyDst);
-
-        const auto isCPUWrite = (desc.access == CPUWrite);
-        CROWY_ASSERT(!isCPUWrite || (!isUnorderedAccess && !isCopyDst));
-        const auto isCPURead  = (desc.access == CPURead);
-        CROWY_ASSERT(!isCPURead || (desc.usage == CopyDst));
-        const auto isGPUOnly  = (desc.access == GPUOnly);
-
+        // every buffer is rounded to the constant-buffer placement, so any of
+        // them can back a CBV; the heap granularity swallows the padding
         const auto bufDesc = CD3DX12_RESOURCE_DESC1::Buffer(
             D3D12_RESOURCE_ALLOCATION_INFO{
-                .SizeInBytes = hasConstantUsage ?
-                    nextMul<u32>(desc.size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT) :
+                .SizeInBytes = nextMul<u32>(
                     desc.size,
+                    D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT
+                ),
                 .Alignment = 0
             },
-            isUnorderedAccess ?
+            desc.shaderWrite ?
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
                 D3D12_RESOURCE_FLAG_NONE
         );
-        const auto heapProp = CD3DX12_HEAP_PROPERTIES(
-            policy.heapType
+
+        allocation = allocator.Allocate(
+            bufDesc,
+            desc.memory,
+            nullptr,
+            name
         );
 
-        resources.reserve(policy.slotCount);
-        for(u32 i=0; i<policy.slotCount; ++i){
-            FrameResource frameResource{
-            #if defined(_DEBUG) || !defined(NDEBUG)
-                .slotWritten = false
-            #endif
-            };
-            CHECK_HRESULT(device.CreateCommittedResource3(
-                &heapProp,
-                D3D12_HEAP_FLAG_NONE,
-                &bufDesc,
-                D3D12_BARRIER_LAYOUT_UNDEFINED,
-                nullptr,
-                nullptr,
-                0, nullptr,
-                IID_PPV_ARGS(&frameResource.buffer)
-            ), "Failed to create DX12 buffer");
-
-            if(policy.persistentMap){
-                CROWY_ASSERT(isCPUWrite || isCPURead);
-                const CD3DX12_RANGE noRead(0, 0);
-                CHECK_HRESULT(frameResource.buffer->Map(
-                    0,
-                    &noRead,
-                    &frameResource.mapped
-                ), "Failed to Map DX12 Buffer");
-            }
-
-        #if defined(_DEBUG) || !defined(NDEBUG)
-            if(!name.empty()){
-                frameResource.buffer->SetPrivateData(
-                    WKPDID_D3DDebugObjectName,
-                    static_cast<UINT>(name.length()),
-                    name.data()
-                );
-            }
-        #endif
-
-            resources.emplace_back(std::move(frameResource));
+        if(desc.memory != GPUOnly){
+            const CD3DX12_RANGE noRead(0, 0);
+            CHECK_HRESULT(allocation.resource->Map(
+                0,
+                &noRead,
+                &mapped
+            ), "Failed to Map DX12 Buffer");
         }
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        tracksSlotWrites = isCPUWrite && resources.size() > 1;
-    #endif
-
-        if(desc.initialData != nullptr){
-            CROWY_ASSERT(!isCPURead);
-
-            if(isCPUWrite){
-                UploadAll(
-                    desc.initialData,
-                    desc.size
-                );
-            }
+        if(desc.initialData != nullptr && desc.memory == CPUWrite){
+            Upload(desc.initialData, desc.size);
         }
     }
 
     DX12Buffer::~DX12Buffer(){
-        for(u32 i=0; i<resources.size(); ++i){
-            auto& frameResource = resources[i];
-
-            if(frameResource.mapped != nullptr){
-                frameResource.buffer->Unmap(
-                    0,
-                    nullptr
-                );
-                frameResource.mapped = nullptr;
-            }
-
-            for(const auto& [_, idx]: frameResource.cbvs){
-                heap.Free(idx);
-            }
-            for(const auto& [_, idx]: frameResource.srvs){
-                heap.Free(idx);
-            }
-            for(const auto& [_, idx]: frameResource.uavs){
-                heap.Free(idx);
-            }
+        if(mapped != nullptr){
+            allocation.resource->Unmap(0, nullptr);
+            mapped = nullptr;
         }
+
+        for(const auto& [_, idx]: cbvs){
+            heap.Free(idx);
+        }
+        for(const auto& [_, idx]: srvs){
+            heap.Free(idx);
+        }
+        for(const auto& [_, idx]: uavs){
+            heap.Free(idx);
+        }
+
+        allocator.Free(allocation);
     }
 
-    void DX12Buffer::upload(
-        u32 index,
+    void DX12Buffer::Upload(
         const void* src,
         u32 srcSize,
         u32 offset
     ){
-        CROWY_ASSERT(srcSize <= GetSize() - offset);
-
-        auto& frameResource = resources[index];
+        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-writable");
+        CROWY_ASSERT(srcSize <= size - offset);
 
         std::memcpy(
-            ptrAdd(frameResource.mapped, offset),
+            ptrAdd(mapped, offset),
             src,
             srcSize
         );
-
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        frameResource.slotWritten = true;
-    #endif
     }
 
-    void DX12Buffer::download(
-        u32 index,
+    void DX12Buffer::Download(
         void* dst,
         u32 dstSize,
         u32 offset
     ){
-        CROWY_ASSERT(dstSize <= GetSize() - offset);
-
-        auto& frameResource = resources[index];
+        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-readable");
+        CROWY_ASSERT(dstSize <= size - offset);
 
         std::memcpy(
             dst,
-            ptrAdd(frameResource.mapped, offset),
+            ptrAdd(mapped, offset),
             dstSize
         );
     }
 
-    u32 DX12Buffer::GetSize() const noexcept{
-        auto& frameResource = resources[currentIndex()];
-        auto desc = frameResource.buffer->GetDesc();
-        return desc.Width;
-    }
+    UINT DX12Buffer::createView(
+        const RHIBufferViewDesc& desc,
+        std::unordered_map<RHIBufferViewDesc, UINT>& cache,
+        bool writable
+    ){
+        if(auto it = cache.find(desc); it != cache.end())
+            return it->second;
 
-    D3D12_GPU_VIRTUAL_ADDRESS DX12Buffer::GetGPUAddress(){
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        AssertSlotWritten();
-    #endif
+        const auto idx = std::visit(overload{
+            [&](const RHIBufferViewDesc::Raw&){
+                // raw views address 4-byte words
+                const auto range = ::resolveRange(desc, size, 4);
+                return writable ?
+                    heap.Allocate(
+                        *allocation.resource,
+                        CD3DX12_UNORDERED_ACCESS_VIEW_DESC::RawBuffer(
+                            range.numElements, range.firstElement
+                        )
+                    ) :
+                    heap.Allocate(
+                        *allocation.resource,
+                        CD3DX12_SHADER_RESOURCE_VIEW_DESC::RawBuffer(
+                            range.numElements, range.firstElement
+                        )
+                    );
+            },
+            [&](const RHIBufferViewDesc::Typed& c){
+                const auto range = ::resolveRange(
+                    desc, size, detail::GetBytesPerPixel(c.format)
+                );
+                return writable ?
+                    heap.Allocate(
+                        *allocation.resource,
+                        CD3DX12_UNORDERED_ACCESS_VIEW_DESC::TypedBuffer(
+                            convert(c.format),
+                            range.numElements, range.firstElement
+                        )
+                    ) :
+                    heap.Allocate(
+                        *allocation.resource,
+                        CD3DX12_SHADER_RESOURCE_VIEW_DESC::TypedBuffer(
+                            convert(c.format),
+                            range.numElements, range.firstElement
+                        )
+                    );
+            },
+            [&](const RHIBufferViewDesc::Structured& c){
+                const auto range = ::resolveRange(desc, size, c.stride);
+                return writable ?
+                    heap.Allocate(
+                        *allocation.resource,
+                        CD3DX12_UNORDERED_ACCESS_VIEW_DESC::StructuredBuffer(
+                            range.numElements, c.stride, range.firstElement
+                        )
+                    ) :
+                    heap.Allocate(
+                        *allocation.resource,
+                        CD3DX12_SHADER_RESOURCE_VIEW_DESC::StructuredBuffer(
+                            range.numElements, c.stride, range.firstElement
+                        )
+                    );
+            }
+        }, desc.config);
 
-        auto& frameResource = resources[currentIndex()];
-        return frameResource.buffer->GetGPUVirtualAddress();
+        auto [it, ret] = cache.emplace(desc, idx);
+        CROWY_ASSERT(ret);
+
+        return idx;
     }
 
     u64 DX12Buffer::GetReadableID(const RHIBufferViewDesc& desc){
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        AssertSlotWritten();
-    #endif
-
-        auto& frameResource = resources[currentIndex()];
-        auto& srvs = frameResource.srvs;
-        if(auto it = srvs.find(desc); it != srvs.end())
-            return it->second;
-
-        const auto sizeBytes = GetSize();
-        const auto dxDesc = std::visit(overload{
-            [&](const RHIBufferViewDesc::Raw&){
-                // raw views address 4-byte words
-                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::RawBuffer(
-                    sizeBytes / 4
-                );
-            },
-            [&](const RHIBufferViewDesc::Typed& c){
-                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TypedBuffer(
-                    convert(c.format),
-                    sizeBytes / detail::GetBytesPerPixel(c.format)
-                );
-            },
-            [&](const RHIBufferViewDesc::Structured& c){
-                return CD3DX12_SHADER_RESOURCE_VIEW_DESC::StructuredBuffer(
-                    sizeBytes / c.stride,
-                    c.stride
-                );
-            }
-        }, desc.config);
-
-        auto idx = heap.Allocate(
-            *frameResource.buffer.Get(),
-            dxDesc
-        );
-        auto [it, ret] = srvs.emplace(desc, idx);
-        CROWY_ASSERT(ret);
-
-        return idx;
+        return createView(desc, srvs, false);
     }
 
     u64 DX12Buffer::GetWritableID(const RHIBufferViewDesc& desc){
-        auto& frameResource = resources[currentIndex()];
-        auto& uavs = frameResource.uavs;
-        if(auto it = uavs.find(desc); it != uavs.end())
-            return it->second;
-
-        const auto sizeBytes = GetSize();
-        const auto dxDesc = std::visit(overload{
-            [&](const RHIBufferViewDesc::Raw&){
-                // raw views address 4-byte words
-                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::RawBuffer(
-                    sizeBytes / 4
-                );
-            },
-            [&](const RHIBufferViewDesc::Typed& c){
-                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::TypedBuffer(
-                    convert(c.format),
-                    sizeBytes / detail::GetBytesPerPixel(c.format)
-                );
-            },
-            [&](const RHIBufferViewDesc::Structured& c){
-                return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::StructuredBuffer(
-                    sizeBytes / c.stride,
-                    c.stride
-                );
-            }
-        }, desc.config);
-
-        auto idx = heap.Allocate(
-            *frameResource.buffer.Get(),
-            dxDesc
-        );
-        auto [it, ret] = uavs.emplace(desc, idx);
-        CROWY_ASSERT(ret);
-
-        return idx;
+        return createView(desc, uavs, true);
     }
 }

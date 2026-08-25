@@ -55,6 +55,9 @@ namespace Crowy
 
         struct PassData{
             u64 draws;
+            // row 0 of this frame's slice inside the shared transient buffer
+            u32 drawBase;
+            u32 _pad0;
         };
 
         struct FrameUniforms{
@@ -73,9 +76,9 @@ namespace Crowy
         std::unique_ptr<GeometryPool> geometryPool;
         std::array<GeometryAllocation, MESH_TYPE_COUNT> meshes;
 
-        RHIBufferRAII frameCB;
-        RHIBufferRAII drawDataBuffer;
-        RHIBufferRAII argsBuffer;
+        RHIBufferSlice frameCB;
+        RHIBufferSlice drawData;
+        RHIBufferSlice drawArgs;
 
         // CPU staging reused every frame for the full rewrite
         std::vector<DrawData> drawDataScratch;
@@ -144,23 +147,6 @@ namespace Crowy
                 VERTEX_POOL_CAPACITY,
                 INDEX_POOL_CAPACITY
             );
-
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(FrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            });
-            drawDataBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(sizeof(DrawData) * DRAW_COUNT),
-                .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
-            });
-            argsBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(sizeof(RHIDrawIndexedArgs) * DRAW_COUNT),
-                .usage = RHIBufferUsage::IndirectArgument,
-                .access = RHIMemoryAccess::CPUWrite
-            });
-
             drawDataScratch.resize(DRAW_COUNT);
             argsScratch.resize(DRAW_COUNT);
         }
@@ -246,13 +232,13 @@ namespace Crowy
                 };
             }
 
-            drawDataBuffer->Upload(
-                drawDataScratch.data(),
-                static_cast<u32>(sizeof(DrawData) * DRAW_COUNT)
+            drawData = Device().UploadTransient(
+                std::span<const DrawData>(drawDataScratch),
+                static_cast<u32>(sizeof(DrawData))
             );
-            argsBuffer->Upload(
-                argsScratch.data(),
-                static_cast<u32>(sizeof(RHIDrawIndexedArgs) * DRAW_COUNT)
+            drawArgs = Device().UploadTransient(
+                std::span<const RHIDrawIndexedArgs>(argsScratch),
+                static_cast<u32>(sizeof(RHIDrawIndexedArgs))
             );
         }
 
@@ -261,7 +247,7 @@ namespace Crowy
 
             const auto view = viewMat(cameraPos, CameraRotation());
             const auto proj = perspective(FOV_Y, aspect, NEAR_Z, FAR_Z);
-            frameCB->Upload(FrameUniforms{
+            frameCB = Device().UploadTransient(FrameUniforms{
                 .viewProj = proj * view
             });
 
@@ -292,16 +278,18 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetVertexBuffer(geometryPool->GetVertexBuffer(), 0, sizeof(Vertex));
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.SetPushGraphicsConstants(PassData{
-                .draws = drawDataBuffer->GetReadableID(
+                .draws = drawData.buffer->GetReadableID(
                     static_cast<u32>(sizeof(DrawData))
-                )
+                ),
+                .drawBase = drawData.offset / static_cast<u32>(sizeof(DrawData))
             });
 
             cmdList.ExecuteIndirectIndexed(DrawBatchIndexed{
                 .pso = pso.get(),
-                .args = argsBuffer.get(),
+                .args = drawArgs.buffer,
+                .argsOffset = drawArgs.offset,
                 .drawCount = DRAW_COUNT,
                 .indices = RHIIndexBufferView{
                     .buffer = &geometryPool->GetIndexBuffer()

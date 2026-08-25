@@ -1,6 +1,7 @@
 #pragma once
 
 #include <print>
+#include "Assert.hpp"
 #include "CommandListPool.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
@@ -16,9 +17,16 @@ namespace Crowy
     class App: public MainLoop{
     private:
         Timer timer;
+        RHIDevice* device = nullptr;
 
     public:
         virtual ~App() = default;
+
+        void BindDevice(RHIDevice& device) noexcept{ this->device = &device; }
+        RHIDevice& Device() const noexcept{
+            CROWY_ASSERT(device != nullptr);
+            return *device;
+        }
 
         virtual void OnInitialRecord(RHICommandList&){};
         void RenderOnce(CommandListPool& pool) override final;
@@ -70,6 +78,7 @@ namespace Crowy
 
             OS os(runtimeConfig, *device);
             T app;
+            app.BindDevice(*device);
 
             os.Run(app, *device);
         }

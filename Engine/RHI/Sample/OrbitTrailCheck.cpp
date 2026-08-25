@@ -11,17 +11,14 @@
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIFence.hpp"
 
 // Holds the GPU trail ring against the Kepler solver it was filled from.
 // Nothing is drawn: the ring is copied back and every slot is compared with the
 // position that slot is supposed to hold.
 //
-// The ring lives in a GPU-only buffer written by staging copies rather than in
-// a CPUWrite buffer, because CPUWrite storage is multiplexed across
-// RHI_FRAMES_IN_FLIGHT physical slots and an incremental append would land in
-// one of three. This check rotates the frame index between probes precisely so
-// that mistake cannot pass.
+// The ring lives in a device-local buffer written by staging copies: an
+// incremental append only means anything on top of what earlier appends left,
+// which is exactly what transient storage does not promise.
 
 namespace{
     using namespace Crowy;
@@ -61,7 +58,6 @@ namespace{
     private:
         RHIDevice& device;
         RHICommandListRAII cmdList;
-        RHIFenceRAII fence;
         RHIBufferRAII readback;
         u32 ringBytes;
 
@@ -69,13 +65,11 @@ namespace{
         RingProbe(RHIDevice& device, u32 capacity)
             : device(device)
             , cmdList(device.CreateCommandList())
-            , fence(device.CreateFence())
             , ringBytes(capacity * ORBIT_SAMPLE_BYTES)
         {
             readback = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = ringBytes,
-                .usage = RHIBufferUsage::CopyDst,
-                .access = RHIMemoryAccess::CPURead
+                .memory = RHIMemoryType::CPURead
             }, "OrbitTrailReadback");
         }
 
@@ -99,15 +93,9 @@ namespace{
             cmdList->Close();
 
             RHICommandList* lists[] = {cmdList.get()};
-            device.Submit(lists, *fence);
-            fence->WaitCPU(device.GetFrameIndexRef());
-
-            device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
-            readback->Download(out.data(), ringBytes);
-
-            // next probe records against the next physical slot
-            device.GetFrameIndexRef() += 1;
-        }
+            device.Submit(lists);
+            device.WaitFrame(device.GetSubmittedFrame());
+            readback->Download(out.data(), ringBytes);        }
     };
 
     struct Mismatch{
@@ -542,14 +530,12 @@ namespace{
         OrbitTrailArgs args(device, table, RHIResourceUsage::CopySrc);
 
         auto cmdList = device.CreateCommandList();
-        auto fence = device.CreateFence();
 
         const u32 argsBytes = ORBIT_BODY_COUNT *
             static_cast<u32>(sizeof(RHIDrawArgs));
         auto readback = device.CreateBuffer(RHIBufferCreateDesc{
             .size = argsBytes,
-            .usage = RHIBufferUsage::CopyDst,
-            .access = RHIMemoryAccess::CPURead
+            .memory = RHIMemoryType::CPURead
         }, "OrbitArgsReadback");
 
         struct Case{
@@ -582,14 +568,10 @@ namespace{
             cmdList->Close();
 
             RHICommandList* lists[] = {cmdList.get()};
-            device.Submit(lists, *fence);
-            fence->WaitCPU(device.GetFrameIndexRef());
-
-            device.GetFrameIndexRef() += RHI_FRAMES_IN_FLIGHT - 1;
+            device.Submit(lists);
+            device.WaitFrame(device.GetSubmittedFrame());
             std::array<RHIDrawArgs, ORBIT_BODY_COUNT> got{};
             readback->Download(got.data(), argsBytes);
-            device.GetFrameIndexRef() += 1;
-
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
                 // the same expression the CPU used to run every frame
                 const auto wanted = static_cast<f64>(c.orbitTurns) *

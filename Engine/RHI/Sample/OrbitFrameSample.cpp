@@ -126,7 +126,9 @@ namespace Crowy
             f32 beltRadiusPx;
             u64 belt;
             f32 beltAlpha;
-            f32 _pad0 = 0.0f;
+            // dot 0 of this frame's slice; 0 on the GPU path, which owns
+            // its buffer outright
+            u32 beltBase = 0;
             u64 segCounts;
         };
         static_assert(sizeof(TrailPush) == 88);
@@ -141,6 +143,7 @@ namespace Crowy
         static_assert(offsetof(TrailPush, dayPerSample) == 56);
         static_assert(offsetof(TrailPush, belt) == 64);
         static_assert(offsetof(TrailPush, beltAlpha) == 72);
+        static_assert(offsetof(TrailPush, beltBase) == 76);
         static_assert(offsetof(TrailPush, segCounts) == 80);
 
         // mirrors GridPush in Engine/Shader/OrbitGrid.slang
@@ -213,9 +216,9 @@ namespace Crowy
         std::vector<Vec3> beltScratch;
 
         RHIGraphicsPipelineStateRAII trailPSO, gridPSO, markerPSO, beltPSO;
-        RHIBufferRAII frameCB;
+        RHIBufferSlice frameCB;
         RAII<OrbitTrailArgs> trailArgs;
-        RHIBufferRAII beltBuffer;
+        RHIBufferSlice beltSlice;
         // the compute path cannot write a CPU-write buffer, so the two fills
         // own separate destinations and the draw picks one
         RHIBufferRAII beltGpuBuffer;
@@ -336,33 +339,14 @@ namespace Crowy
                 "OrbitBeltPSO"
             );
 
-            frameCB = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(FrameUniforms),
-                .usage = RHIBufferUsage::ConstantBuffer,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "OrbitFrameCB");
-
 
             // rewritten in full every frame, which is the only safe way to use
             // a CPUWrite buffer - see OrbitTrail.hpp for why
             beltScratch.resize(belt.Count());
-            beltBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(
-                    belt.Count() * sizeof(Vec3)
-                ),
-                .usage = RHIBufferUsage::ShaderResource,
-                .access = RHIMemoryAccess::CPUWrite
-            }, "OrbitAsteroidBelt");
 
             beltGpuBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(
-                    belt.Count() * sizeof(Vec3)
-                ),
-                .usage = combine(
-                    RHIBufferUsage::ShaderResource,
-                    RHIBufferUsage::UnorderedAccess
-                ),
-                .access = RHIMemoryAccess::GPUOnly
+                .size = static_cast<u32>(belt.Count() * sizeof(Vec3)),
+                .shaderWrite = true
             }, "OrbitAsteroidBeltGPU");
             beltFill = std::make_unique<OrbitKeplerFill>(
                 device, belt.Elements()
@@ -665,8 +649,18 @@ namespace Crowy
             return mask;
         }
 
-        RHIBuffer& BeltPositions() const{
-            return context.gpuFill ? *beltGpuBuffer : *beltBuffer;
+        // the GPU path owns its buffer outright, so its rows start at 0;
+        // the CPU path rides a slice of the shared transient storage
+        RHIBufferSlice BeltPositions() const{
+            if(context.gpuFill){
+                return RHIBufferSlice{
+                    .buffer = beltGpuBuffer.get(),
+                    .offset = 0,
+                    .size = beltGpuBuffer->GetSize()
+                };
+            }
+
+            return beltSlice;
         }
 
         // Every asteroid, every frame - the belt keeps no history, so its whole
@@ -691,9 +685,9 @@ namespace Crowy
             if(context.beltEnabled)
                 belt.Sample(trail->NewestDay(), beltScratch);
 
-            beltBuffer->Upload(
-                beltScratch.data(),
-                static_cast<u32>(beltScratch.size() * sizeof(Vec3))
+            beltSlice = Device().UploadTransient(
+                std::span<const Vec3>(beltScratch),
+                static_cast<u32>(sizeof(Vec3))
             );
         }
 
@@ -757,7 +751,7 @@ namespace Crowy
 
             UpdateBelt();
 
-            frameCB->Upload(FrameUniforms{.viewProj = ViewProj()});
+            frameCB = Device().UploadTransient(FrameUniforms{.viewProj = ViewProj()});
 
             // outside any pass: the copies are their own blit pass
             const auto trailEdge = trail->Record(cmdList);
@@ -813,7 +807,7 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-            cmdList.SetGraphicsConstantBuffer(*frameCB, 0);
+            cmdList.SetGraphicsConstantBuffer(frameCB, 0);
 
             // no depth buffer: order is the layering. Grid behind, trails over
             // it, markers on top of their own heads.
@@ -828,6 +822,7 @@ namespace Crowy
             cmdList.Draw(4, GRID_SPOKE_COUNT, 0, GRID_DRAW_SPOKES);
             cmdList.Draw(4, GRID_RING_SEGMENTS, 0, GRID_DRAW_REFERENCE);
 
+            const auto beltPositions = BeltPositions();
             const TrailPush trailPush{
                 .samples = trail->Buffer().GetReadableID(
                     static_cast<u32>(sizeof(Vec3))
@@ -847,10 +842,11 @@ namespace Crowy
                 .earthRadPerDay = EarthRadPerDay(),
                 .dayPerSample = static_cast<f32>(DAY_PER_SAMPLE),
                 .beltRadiusPx = BELT_RADIUS_PX,
-                .belt = BeltPositions().GetReadableID(
+                .belt = beltPositions.buffer->GetReadableID(
                     static_cast<u32>(sizeof(Vec3))
                 ),
                 .beltAlpha = context.beltAlpha,
+                .beltBase = beltPositions.offset / static_cast<u32>(sizeof(Vec3)),
                 .segCounts = trailArgs->SegCounts().GetReadableID(
                     static_cast<u32>(sizeof(u32))
                 )

@@ -34,7 +34,7 @@ namespace{
 namespace Crowy
 {
     DX12Texture::DX12Texture(
-        Device& device,
+        DX12Allocator& allocator,
         const RHITextureCreateDesc& desc,
         DescriptorHeapAllocator& cbvsrvuavHeap,
         DescriptorHeapAllocator& rtvHeap,
@@ -46,16 +46,12 @@ namespace Crowy
             desc.mipLevels,
             desc.arraySize
         )
+        , allocator(&allocator)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)
     {
         using enum RHITextureUsage;
-        using enum RHIMemoryAccess;
-
-        const auto heapProp = CD3DX12_HEAP_PROPERTIES(
-            D3D12_HEAP_TYPE_DEFAULT
-        );
 
         const auto isShaderResource  = hasFlag(desc.usage, ShaderResource);
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
@@ -121,29 +117,13 @@ namespace Crowy
             pClearValue = &clearValue;
         }
 
-        CHECK_HRESULT(device.CreateCommittedResource3(
-            &heapProp,
-            D3D12_HEAP_FLAG_NONE,
-            &texDesc,
-            // undefined - no content
-            convert(RHITextureLayout::Undefined),
+        allocation = allocator.Allocate(
+            texDesc,
+            RHIMemoryType::GPUOnly,
             pClearValue,
-            // Hardware DRM
-            nullptr,
-            // Relaxed Format Casting
-            0, nullptr,
-            IID_PPV_ARGS(&texture)
-        ), "Failed to create DX12 texture");
-
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()){
-            texture->SetPrivateData(
-                WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(name.length()),
-                name.data()
-            );
-        }
-    #endif
+            name
+        );
+        texture = allocation.resource;
     }
 
     DX12Texture::DX12Texture(
@@ -163,8 +143,9 @@ namespace Crowy
     {
         CHECK_HRESULT(swapchain.GetBuffer(
             bufferIndex,
-            IID_PPV_ARGS(&texture)
+            IID_PPV_ARGS(&backBufferOwner)
         ), "Failed to Get Buffer from Swapchain");
+        texture = backBufferOwner.Get();
 
     #if defined(_DEBUG) || !defined(NDEBUG)
         if(!name.empty()){
@@ -189,6 +170,11 @@ namespace Crowy
         }
         for(const auto& [_, idx]: dsvs){
             dsvHeap.Free(idx);
+        }
+
+        texture = nullptr;
+        if(allocator != nullptr){
+            allocator->Free(allocation);
         }
     }
 
@@ -222,7 +208,7 @@ namespace Crowy
         };
 
         auto idx = rtvHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = rtvs.emplace(desc, idx);
@@ -246,7 +232,7 @@ namespace Crowy
         };
 
         auto idx = dsvHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = dsvs.emplace(desc, idx);
@@ -285,7 +271,7 @@ namespace Crowy
         }, desc.config);
 
         auto idx = cbvsrvuavHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = srvs.emplace(desc, idx);
@@ -324,7 +310,7 @@ namespace Crowy
         }, desc.config);
 
         auto idx = cbvsrvuavHeap.Allocate(
-            *texture.Get(),
+            *texture,
             dxDesc
         );
         auto [it, ret] = uavs.emplace(desc, idx);

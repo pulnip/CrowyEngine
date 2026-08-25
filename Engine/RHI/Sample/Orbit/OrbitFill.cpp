@@ -30,6 +30,7 @@ namespace Crowy
     )
         : ringPSO(MakePipeline(device, "cs_ring"))
         , pointPSO(MakePipeline(device, "cs_points"))
+        , device(device)
         , elements(table.begin(), table.end())
         , phaseScratch(table.size())
     {
@@ -43,18 +44,9 @@ namespace Crowy
 
         elementBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = static_cast<u32>(packed.size() * ELEMENT_STRIDE),
-            .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::GPUOnly,
             .initialData = packed.data()
         }, "OrbitElements");
 
-        // rewritten before every dispatch, so it wants the frame multiplexing
-        // a CPU-write buffer gets
-        phaseBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = static_cast<u32>(phaseScratch.size() * PHASE_STRIDE),
-            .usage = RHIBufferUsage::ShaderResource,
-            .access = RHIMemoryAccess::CPUWrite
-        }, "OrbitPhases");
     }
 
     OrbitKeplerFill::~OrbitKeplerFill() = default;
@@ -65,14 +57,13 @@ namespace Crowy
         }
     }
 
-    // The upload waits for the dispatch rather than riding SetEpoch, because a
-    // CPU-write buffer is one physical slot per frame in flight: writing it in
-    // one frame and binding it in another hands the GPU a slot nobody filled.
-    // Doing both here makes that impossible to get wrong from outside.
+    // The slice waits for the dispatch rather than riding SetEpoch: a
+    // transient range is only good until the batch it was recorded into
+    // completes, so it has to be taken by whoever records that batch.
     void OrbitKeplerFill::uploadPhases(){
-        phaseBuffer->Upload(
-            phaseScratch.data(),
-            static_cast<u32>(phaseScratch.size() * PHASE_STRIDE)
+        phaseSlice = device.UploadTransient(
+            std::span<const OrbitPhaseGPU>(phaseScratch),
+            PHASE_STRIDE
         );
     }
 
@@ -97,12 +88,13 @@ namespace Crowy
         cmdList.SetPipelineState(*ringPSO);
         cmdList.SetPushComputeConstants(OrbitFillPush{
             .elements = elementBuffer->GetReadableID(ELEMENT_STRIDE),
-            .phases = phaseBuffer->GetReadableID(PHASE_STRIDE),
+            .phases = phaseSlice.buffer->GetReadableID(PHASE_STRIDE),
             .output = output.GetWritableID(POSITION_STRIDE),
             .bodyCount = count,
             .sampleCount = sampleCount,
             .firstSlot = firstSlot,
-            .capacity = capacity
+            .capacity = capacity,
+            .phaseBase = phaseSlice.offset / PHASE_STRIDE
         });
         cmdList.Dispatch({sampleCount * count, 1, 1});
     }
@@ -118,12 +110,13 @@ namespace Crowy
         cmdList.SetPipelineState(*pointPSO);
         cmdList.SetPushComputeConstants(OrbitFillPush{
             .elements = elementBuffer->GetReadableID(ELEMENT_STRIDE),
-            .phases = phaseBuffer->GetReadableID(PHASE_STRIDE),
+            .phases = phaseSlice.buffer->GetReadableID(PHASE_STRIDE),
             .output = output.GetWritableID(POSITION_STRIDE),
             .bodyCount = count,
             .sampleCount = 1,
             .firstSlot = 0,
-            .capacity = 1
+            .capacity = 1,
+            .phaseBase = phaseSlice.offset / PHASE_STRIDE
         });
         cmdList.Dispatch({count, 1, 1});
     }

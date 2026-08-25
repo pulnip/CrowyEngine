@@ -11,8 +11,6 @@ namespace Crowy
         UploadRing& ring,
         u64 align,
         RHIBuffer& buffer,
-        // shapes the resting state after the upload (which read uses to cover)
-        RHIBufferUsage usage,
         const RHISubresourceData& sub
     );
 

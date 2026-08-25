@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstring>
+#include <span>
+#include <type_traits>
+#include "Function.hpp"
 #include "Semantics.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
@@ -40,23 +44,61 @@ namespace Crowy
 
         virtual RHICommandListRAII CreateCommandList() = 0;
 
-        virtual RHIFenceRAII CreateFence(u64 initialValue = 0) = 0;
-
-        virtual void SignalFence(RHIFence&, u64 value) = 0;
-
-        virtual void Submit(
-            std::span<RHICommandList*>,
-            RHIFence&
-        ) = 0;
+        virtual void Submit(std::span<RHICommandList*>) = 0;
         virtual void SubmitAndPresent(
             std::span<RHICommandList*>,
-            RHISwapchain&,
-            RHIFence&
+            RHISwapchain&
         ) = 0;
 
-        virtual u64& GetFrameIndexRef() noexcept = 0;
+        // the frame value the last Submit/SubmitAndPresent tagged
+        virtual u64 GetSubmittedFrame() const noexcept = 0;
+        // the frame value the GPU has actually finished
+        virtual u64 GetCompletedFrame() const noexcept = 0;
+        // block the CPU until GetCompletedFrame() >= value
+        virtual void WaitFrame(u64 value) = 0;
+        // block until every submission so far has completed
+        virtual void WaitIdle() = 0;
 
+        // runs `reclaim` once the batch about to be submitted next has
+        // completed on the GPU
+        virtual void DeferRetire(std::move_only_function<void()> reclaim) = 0;
+
+        // A CPU-writable range that stays readable by the GPU until the
+        // batch it is recorded into completes.
+        virtual RHIBufferSlice AllocateTransient(
+            u32 size,
+            u32 align
+        ) = 0;
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
+
+        void Retire(RHIBufferRAII buffer);
+        void Retire(RHITextureRAII texture);
+
+        // allocate a transient slice and fill it in one step
+        template<typename T>
+            requires (!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
+        RHIBufferSlice UploadTransient(const T& data, u32 align = RHI_CB_ALIGN){
+            const auto slice = AllocateTransient(
+                static_cast<u32>(sizeof(T)),
+                align
+            );
+            std::memcpy(slice.cpuPtr, &data, sizeof(T));
+
+            return slice;
+        }
+
+        template<typename T>
+            requires std::is_trivially_copyable_v<T>
+        RHIBufferSlice UploadTransient(
+            std::span<const T> data,
+            u32 align = RHI_CB_ALIGN
+        ){
+            const auto bytes = static_cast<u32>(data.size_bytes());
+            const auto slice = AllocateTransient(bytes, align);
+            std::memcpy(slice.cpuPtr, data.data(), bytes);
+
+            return slice;
+        }
     };
 
 #if defined(_WIN32)

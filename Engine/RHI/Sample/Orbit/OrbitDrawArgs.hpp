@@ -22,7 +22,7 @@ namespace Crowy
     static_assert(sizeof(OrbitBodyDraw) == 16);
     static_assert(offsetof(OrbitBodyDraw, trailPeriodDays) == 12);
 
-    // Mirrors OrbitArgsPush in Engine/Shader/OrbitSample.slang.
+    // Mirrors OrbitArgsPush in Engine/Shader/OrbitArgs.slang.
     struct OrbitArgsPush{
         u64 bodies;
         u64 args;

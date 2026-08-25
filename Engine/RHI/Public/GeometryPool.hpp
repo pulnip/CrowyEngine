@@ -3,10 +3,10 @@
 #include <array>
 #include <memory>
 #include <span>
-#include <vector>
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
+#include "UploadRing.hpp"
 #include "Vertex.hpp"
 
 namespace OffsetAllocator{
@@ -36,9 +36,10 @@ namespace Crowy
         std::unique_ptr<OffsetAllocator::Allocator> vertexAllocator, indexAllocator;
         u32 vertexCapacity = 0, indexCapacity = 0;
         u64 vertexBufferID = 0;
-        // stagings live until the pool dies; fine while meshes are packed
-        // once at startup, revisit when uploads become streaming
-        std::vector<RHIBufferRAII> stagings;
+        // sized for the whole pool packed in one shot: startup packing runs
+        // Add() many times before the first Submit, so nothing retires until
+        // then and the ring has to hold everything queued up to that point
+        UploadRing staging;
 
     public:
         // capacities are element counts (Vertex / u32 index)

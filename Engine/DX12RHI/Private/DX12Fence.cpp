@@ -42,11 +42,11 @@ namespace Crowy
         }
     }
 
-    u64 DX12Fence::GetValue(){
+    u64 DX12Fence::GetValue() const{
         return fence->GetCompletedValue();
     }
 
-    bool DX12Fence::IsComplete(u64 value){
+    bool DX12Fence::IsComplete(u64 value) const{
         return fence->GetCompletedValue() >= value;
     }
 }

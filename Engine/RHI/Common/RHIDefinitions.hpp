@@ -31,7 +31,7 @@ namespace Crowy
         u32 textureOffsetAlign = 1;
     };
 
-    enum class RHIMemoryAccess : u8 {
+    enum class RHIMemoryType : u8 {
         GPUOnly = 0,
         CPUWrite = 1,
         CPURead = 2,
@@ -39,28 +39,10 @@ namespace Crowy
         Transient = 3
     };
 
-    enum class RHIBufferUsage : u16 {
-        None = 0,
-        // fixed binding
-        VertexBuffer = 1 << 0,
-        IndexBuffer = 1 << 1,
-        ConstantBuffer = 1 << 2,
-        // Indirect Draw Argument Buffer
-        IndirectArgument = 1 << 3,
-        // view capability
-        ShaderResource = 1 << 4,
-        ShaderRead = ShaderResource,
-        UnorderedAccess = 1 << 5,
-        ShaderWrite = UnorderedAccess,
-        // (D3D12) blit pass capability
-        CopySrc = 1 << 6,
-        CopyDst = 1 << 7
-    };
-
     struct RHIBufferCreateDesc {
         u32 size;
-        RHIBufferUsage usage = RHIBufferUsage::None;
-        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
+        RHIMemoryType memory = RHIMemoryType::GPUOnly;
+        bool shaderWrite = false;
         const void* initialData = nullptr;
     };
 
@@ -501,7 +483,7 @@ namespace Crowy
         u32 arraySize = 1;
         RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM;
         RHITextureUsage usage = RHITextureUsage::None;
-        RHIMemoryAccess access = RHIMemoryAccess::GPUOnly;
+        RHIMemoryType memory = RHIMemoryType::GPUOnly;
         // mip + arraySlice
         std::span<const RHISubresourceData> initialData{};
         // ClearColor for optimize (only Valid at D3D12)
@@ -1275,6 +1257,19 @@ namespace Crowy
             const RHIBufferViewDesc&,
             const RHIBufferViewDesc&
         ) = default;
+    };
+
+    struct RHIBufferSlice {
+        RHIBuffer* buffer = nullptr;
+        // borrowed range
+        u32 offset = 0;
+        u32 size = 0;
+        // where to write it from the CPU; null for a device-local slice
+        void* cpuPtr = nullptr;
+
+        [[nodiscard]] bool IsValid() const noexcept{
+            return buffer != nullptr;
+        }
     };
 
     inline constexpr u32 RHI_ALL_MIPS = 0xFFFF'FFFF;

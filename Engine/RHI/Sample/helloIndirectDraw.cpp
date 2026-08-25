@@ -44,8 +44,6 @@ namespace Crowy
             };
             quadIndices = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(indices),
-                .usage = RHIBufferUsage::IndexBuffer,
-                .access = RHIMemoryAccess::GPUOnly,
                 .initialData = indices.data()
             });
 
@@ -58,8 +56,7 @@ namespace Crowy
             }
             drawArgs = device.CreateBuffer(RHIBufferCreateDesc{
                 .size = sizeof(args),
-                .usage = RHIBufferUsage::IndirectArgument,
-                .access = RHIMemoryAccess::CPUWrite,
+                .memory = RHIMemoryType::CPUWrite,
                 .initialData = args.data()
             });
         }
