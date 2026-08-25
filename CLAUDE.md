@@ -8,15 +8,19 @@ environment and configures when the cache is missing; a hand-written `cmake` or
 into a full rebuild.
 
 ```bash
-pwsh -NoProfile -File Tools/build.ps1 -Config Debug -Target CrowySceneTest -Detach
+powershell -NoProfile -File Tools/build.ps1 -Config Debug -Target CrowySceneTest -Detach
 ```
 
 `-Detach` survives tool timeouts. Poll it until `running : False`:
 
 ```bash
-pwsh -NoProfile -File Tools/build.ps1 -Status
+powershell -NoProfile -File Tools/build.ps1 -Status
 ```
 
+- Windows PowerShell 5.1 (`powershell`) is the baseline — the same host
+  `Engine/RHI/Sample/CMakeLists.txt` runs the smoke tests with, and every script
+  under `Tools/` stays inside what it parses. Do not write `pwsh`; PowerShell 7
+  is not assumed to be installed.
 - One target per call. `-Target A,B` reaches ninja as one name and fails.
 - One build at a time, and never kill one — orphans hold `.ninja_lock` and force
   the next build into a full rebuild.
@@ -39,7 +43,12 @@ registered, so a linkage problem reads as a pass.
 
 ## Smoke Running
 
-`Tools/smoke_run.ps1 <exe>` from the repo root.
+```bash
+powershell -NoProfile -File Tools/smoke_run.ps1 <exe>
+```
+
+From the repo root.
+
 `CROWY_SMOKE_CAPTURE_DIR` plus `CROWY_DUMP_FRAME` dumps a frame BMP (32bpp BGRA, bottom-up) at presented frame 60.
 
 ## Guideline
