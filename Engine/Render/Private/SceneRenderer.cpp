@@ -126,12 +126,15 @@ namespace Crowy
             drawScratch[slot] = DrawData{
                 .world = primitives[visible.primitive].localToWorld,
                 .materialIndex = visible.materialIndex,
-                .objectID = visible.primitive
+                .objectID = visible.primitive,
+                .vbIndex = static_cast<u32>(visible.geometry.baseVertex)
             };
             argsScratch[slot] = RHIDrawIndexedArgs{
                 .indexCount = visible.geometry.indexCount,
                 .firstIndex = visible.geometry.firstIndex,
-                .baseVertex = visible.geometry.baseVertex,
+                // the pool offset rides in vbIndex instead, because
+                // SV_VertexID picks this up on Metal but not on D3D12
+                .baseVertex = 0,
                 // the row index is global, not bucket-relative
                 .baseInstance = slot
             };

@@ -71,10 +71,10 @@ VertexOut vs_main(
     StructuredBuffer<DrawData> draws = pass.draws;
     DrawData d = draws[pass.drawBase + drawID];
 
-    // SV_VertexID on an indexed draw is the index value plus baseVertex,
-    // which is exactly the vertex's position in the shared pool.
+    // SV_VertexID is the raw index value: Metal folds the draw's baseVertex
+    // into it and D3D12 does not, so the pool row comes from the draw instead.
     StructuredBuffer<Vertex> vertices = pass.vertices;
-    Vertex input = vertices[vertexID];
+    Vertex input = vertices[d.vbIndex + vertexID];
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 

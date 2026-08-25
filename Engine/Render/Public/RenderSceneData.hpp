@@ -18,8 +18,8 @@ namespace Crowy
         // survives culling, unlike drawID
         // drawID와 달리 컬링 후에도 살아남는 식별자
         u32 objectID = 0;
-        // for vertex pulling
-        // vertex pulling용
+        // first pool row of this mesh's vertices: the draws pass baseVertex 0,
+        // because SV_VertexID adds it on Metal but not on D3D12
         u32 vbIndex = 0;
         u32 _pad0 = 0;
     };

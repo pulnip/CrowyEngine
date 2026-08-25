@@ -25,3 +25,14 @@ SOURCES
 DEPENDS
     Crowy::Render
 )
+
+# guards the shared-pool vertex pulling contract: a mesh's pool offset travels
+# in DrawData::vbIndex, never in the args' baseVertex
+crowy_graphics_sample(VertexPullSpike
+SOURCES
+    FlyCamera.cpp
+    RenderApp.cpp
+    VertexPullSpike.cpp
+DEPENDS
+    Crowy::Render
+)
