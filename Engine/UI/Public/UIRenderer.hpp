@@ -45,6 +45,9 @@ namespace Crowy
         u32 BeginDockSpace();
 
         void Prepare(RHICommandList&, Widget&, UIContext&);
+        // the ImGui frame must end even on a frame that draws no panel;
+        // this closes it with nothing submitted
+        void Prepare(RHICommandList&);
         void Record(RHICommandList&);
 
         // Prepare's texture updates release edges whose acquire halves must

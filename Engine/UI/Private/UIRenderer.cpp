@@ -218,6 +218,10 @@ namespace Crowy
         }, widget);
         ImGui::End();
 
+        Prepare(cmdList);
+    }
+
+    void UIRenderer::Prepare(RHICommandList& cmdList){
         ImGui::Render();
 
         RHIEventScope event(cmdList, "UI Upload");
