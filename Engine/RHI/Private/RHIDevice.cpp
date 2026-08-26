@@ -42,7 +42,7 @@ namespace Crowy
         default:
             throw std::runtime_error(std::format(
                 "Unsupported Backend: {}",
-                EnumTraits<RHIBackend>::convert(backend)
+                enumName(backend)
             ));
         }
     }

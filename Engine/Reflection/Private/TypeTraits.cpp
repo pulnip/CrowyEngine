@@ -1,4 +1,4 @@
-#include "TypeInfo.hpp"
+#include "TypeOps.hpp"
 
 #define DEFINE_TYPETRAITS(TYPE) \
     void TypeTraits<TYPE>::deserialize(void* data, const DOM::Value& value){ \

@@ -200,3 +200,187 @@ maximum = 12
     // "stats" itself is not a property of AliasTestObject
     EXPECT_EQ(testObject->stats.speed, 1.0f);
 }
+
+struct OrderProbe{
+    f32 alpha = 0.0f;
+    bool beta = false;
+    i32 gamma = 0;
+    f32 delta = 0.0f;
+};
+
+// deliberately not member order
+CROWY_STRUCT(OrderProbe)
+    .SetProperty("delta", &OrderProbe::delta)
+        .SetUIRange(0.0f, 1.0f)
+    .SetProperty("alpha", &OrderProbe::alpha)
+    .SetProperty("gamma", &OrderProbe::gamma)
+    .SetProperty("beta", &OrderProbe::beta)
+CROWY_STRUCT_END(OrderProbe)
+
+TEST(Reflection, RegistrationOrderSurvives){
+    ASSERT_TRUE(IsOrderProbeRegistered);
+
+    const auto* desc = GetDesc<OrderProbe>();
+    ASSERT_EQ(desc->properties.size(), 4u);
+    EXPECT_EQ(desc->properties[0].name, "delta");
+    EXPECT_EQ(desc->properties[1].name, "alpha");
+    EXPECT_EQ(desc->properties[2].name, "gamma");
+    EXPECT_EQ(desc->properties[3].name, "beta");
+}
+
+TEST(Reflection, RangeReachesTheMeta){
+    const auto* desc = GetDesc<OrderProbe>();
+
+    const auto* ranged = desc->Find("delta");
+    ASSERT_TRUE(ranged != nullptr);
+    ASSERT_TRUE(ranged->meta.uiRange.has_value());
+    EXPECT_EQ(ranged->meta.uiRange->first, 0.0f);
+    EXPECT_EQ(ranged->meta.uiRange->second, 1.0f);
+
+    const auto* rangeless = desc->Find("alpha");
+    ASSERT_TRUE(rangeless != nullptr);
+    EXPECT_FALSE(rangeless->meta.uiRange.has_value());
+}
+
+TEST(Reflection, FindByName){
+    const auto* desc = GetDesc<OrderProbe>();
+
+    const auto* found = desc->Find("gamma");
+    ASSERT_TRUE(found != nullptr);
+    EXPECT_EQ(found->name, "gamma");
+
+    EXPECT_TRUE(desc->Find("epsilon") == nullptr);
+}
+
+class InheritanceBaseObject: public Object{
+    CROWY_OBJECT_BODY(InheritanceBaseObject)
+
+public:
+    InheritanceBaseObject() = default;
+    ~InheritanceBaseObject() = default;
+    CROWY_DECLARE_MOVE_ONLY(InheritanceBaseObject)
+
+    f32 baseValue = 0.0f;
+};
+
+CROWY_OBJECT(InheritanceBaseObject)
+    .SetProperty("baseValue", &InheritanceBaseObject::baseValue)
+CROWY_OBJECT_END(InheritanceBaseObject)
+
+class InheritanceChildObject final: public InheritanceBaseObject{
+    CROWY_OBJECT_BODY(InheritanceChildObject, InheritanceBaseObject)
+
+public:
+    InheritanceChildObject() = default;
+    ~InheritanceChildObject() = default;
+    CROWY_DECLARE_MOVE_ONLY(InheritanceChildObject)
+
+    f32 ownValue = 0.0f;
+};
+
+CROWY_OBJECT(InheritanceChildObject, InheritanceBaseObject)
+    .SetProperty("ownValue", &InheritanceChildObject::ownValue)
+CROWY_OBJECT_END(InheritanceChildObject)
+
+TEST(Reflection, InheritedPropertyApplies){
+    ASSERT_TRUE(IsInheritanceBaseObjectRegistered);
+    ASSERT_TRUE(IsInheritanceChildObjectRegistered);
+
+    auto object = ClassRegistry::Create("InheritanceChildObject");
+    ASSERT_TRUE(object != nullptr);
+
+    auto child = dynamic_cast<InheritanceChildObject*>(object.get());
+    ASSERT_TRUE(child != nullptr);
+
+    auto dom = parseTomlString(R"(
+baseValue = 2.5
+ownValue = 7.5
+)");
+    ApplyProperties(child, dom);
+
+    EXPECT_EQ(child->baseValue, 2.5f);
+    EXPECT_EQ(child->ownValue, 7.5f);
+}
+
+TEST(Reflection, InheritedPropertyStaysOnTheParentTable){
+    const auto* desc = GetDesc<InheritanceChildObject>();
+
+    // per-class tables are not merged: a consumer follows parent itself
+    EXPECT_TRUE(desc->Find("ownValue") != nullptr);
+    EXPECT_TRUE(desc->Find("baseValue") == nullptr);
+
+    ASSERT_TRUE(desc->parent != nullptr);
+    EXPECT_TRUE(desc->parent->Find("baseValue") != nullptr);
+}
+
+enum class BlendProbe : u8{
+    Off = 0,
+    Additive = 1,
+    // deliberately sparse: value != index
+    Multiply = 4,
+};
+
+namespace Crowy
+{
+    CROWY_ENUM_BEGIN(BlendProbe)
+        CROWY_ENUM_VALUE(Off)
+        CROWY_ENUM_VALUE(Additive)
+        CROWY_ENUM_VALUE(Multiply)
+    CROWY_ENUM_END()
+}
+
+class EnumTestObject final: public Object{
+    CROWY_OBJECT_BODY(EnumTestObject)
+
+public:
+    EnumTestObject() = default;
+    ~EnumTestObject() = default;
+    CROWY_DECLARE_MOVE_ONLY(EnumTestObject)
+
+    BlendProbe mode = BlendProbe::Off;
+};
+
+CROWY_OBJECT(EnumTestObject)
+    .SetProperty("mode", &EnumTestObject::mode)
+CROWY_OBJECT_END(EnumTestObject)
+
+TEST(Reflection, EnumNameLookupsRoundTrip){
+    EXPECT_STREQ(enumName(BlendProbe::Multiply), "Multiply");
+    EXPECT_TRUE(enumName(static_cast<BlendProbe>(9)) == nullptr);
+
+    EXPECT_EQ(enumFromName<BlendProbe>("Additive"), BlendProbe::Additive);
+    EXPECT_FALSE(enumFromName<BlendProbe>("Screen").has_value());
+}
+
+TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps){
+    ASSERT_TRUE(IsEnumTestObjectRegistered);
+
+    const auto* prop = GetDesc<EnumTestObject>()->Find("mode");
+    ASSERT_TRUE(prop != nullptr);
+    EXPECT_STREQ(prop->type.name, "BlendProbe");
+
+    ASSERT_TRUE(prop->type.enumerators != nullptr);
+    const auto enumerators = prop->type.enumerators();
+    ASSERT_EQ(enumerators.size(), 3u);
+    EXPECT_STREQ(enumerators[0].name, "Off");
+    EXPECT_EQ(enumerators[1].value, 1);
+    EXPECT_STREQ(enumerators[2].name, "Multiply");
+    EXPECT_EQ(enumerators[2].value, 4);
+}
+
+TEST(Reflection, EnumDeserializesByName){
+    auto object = ClassRegistry::Create("EnumTestObject");
+    ASSERT_TRUE(object != nullptr);
+
+    auto testObject = dynamic_cast<EnumTestObject*>(object.get());
+    ASSERT_TRUE(testObject != nullptr);
+
+    auto dom = parseTomlString(R"(mode = "Multiply")");
+    ApplyProperties(testObject, dom);
+    EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
+
+    // an unknown name keeps the current value, like an absent key
+    auto unknown = parseTomlString(R"(mode = "Screen")");
+    ApplyProperties(testObject, unknown);
+    EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
+}
