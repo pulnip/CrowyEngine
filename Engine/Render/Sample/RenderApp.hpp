@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <span>
 
 #include "AppFramework.hpp"
 #include "Camera.hpp"
@@ -88,11 +89,31 @@ namespace Crowy
         // because the pass has not opened yet.
         virtual void OnUpdateFrameData() {}
 
-        RHIDevice& Device() noexcept { return *device; }
-        GeometryPool& Geometry() noexcept { return *geometryPool; }
-        RenderScene& Scene() noexcept { return scene; }
-        SceneRenderer& Renderer() noexcept { return *renderer; }
-        const Crowy::Camera& Camera() const noexcept { return *camera; }
+        // input a sample reads beyond the camera's
+        virtual void OnProcessInput(const InputProvider&) {}
+
+        virtual void OnInitUI(
+            RHIDevice&,
+            RHIPixelFormat colorFormat,
+            RHIPixelFormat depthFormat
+        ) {
+            // default no-op so a sample without UI is unchanged
+        }
+
+        // runs before the render pass
+        virtual std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList&) {
+            return {};
+        }
+
+        // runs inside the pass, after the scene submit
+        virtual void OnRecordUI(RHICommandList&) {}
+
+        auto& Device() noexcept { return *device; }
+        auto& Geometry() noexcept { return *geometryPool; }
+        auto& Scene() noexcept { return scene; }
+        auto& Renderer() noexcept { return *renderer; }
+        const auto& Camera() const noexcept { return *camera; }
+        auto& Camera() noexcept { return *camera; }
         f32 Aspect() const noexcept { return aspect; }
 
     private:

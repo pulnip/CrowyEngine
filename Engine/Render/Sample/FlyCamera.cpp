@@ -8,15 +8,18 @@
 namespace Crowy
 {
     void FlyCamera::ProcessInput(const InputProvider& input) {
+        constexpr auto pi_2 = std::numbers::pi_v<f32> / 2;
+
         if(input.IsKeyDown(MouseButton::RButton)) {
             const auto dpos = input.GetMouseDPos();
 
             yaw += dpos.x * config.lookSensitivity;
             pitch = std::clamp(
                 pitch + dpos.y * config.lookSensitivity,
-                -std::numbers::pi_v<f32> / 2 + 0.01f,
-                std::numbers::pi_v<f32> / 2 - 0.01f
+                -pi_2 + 0.01f,
+                pi_2 - 0.01f
             );
+            RecomputeView();
         }
 
         moveInput = Vec3{
@@ -43,17 +46,18 @@ namespace Crowy
 
         const auto moveAmount = config.moveSpeed * static_cast<f32>(deltaTime);
         position = position + direction * moveAmount;
+        RecomputeView();
     }
 
     Vec4 FlyCamera::Rotation() const noexcept {
         return quat(rotateY(yaw), rotateX(pitch));
     }
 
-    Mat4 FlyCamera::View() const noexcept {
-        return viewMat(position, Rotation());
-    }
-
     Mat4 FlyCamera::Projection(f32 aspect) const noexcept {
         return perspective(config.fovY, aspect, config.nearZ, config.farZ);
+    }
+
+    void FlyCamera::RecomputeView() noexcept {
+        view = viewMat(position, Rotation());
     }
 }

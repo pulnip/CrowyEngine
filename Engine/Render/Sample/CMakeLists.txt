@@ -24,6 +24,8 @@ SOURCES
     MaterialBuckets.cpp
 DEPENDS
     Crowy::Render
+    Crowy::Reflection
+    Crowy::UI
 )
 
 # guards the shared-pool vertex pulling contract: a mesh's pool offset travels

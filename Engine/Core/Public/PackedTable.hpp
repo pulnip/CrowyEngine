@@ -51,16 +51,10 @@ namespace Crowy
             return slots.IndexOf(handle).value;
         }
 
-        const T& Read(Handle handle) const noexcept {
-            CROWY_ASSERT(IsValid(handle));
+        auto& GetRef(this auto& self, Handle handle) noexcept {
+            CROWY_ASSERT(self.IsValid(handle));
 
-            return rows[IndexOf(handle)];
-        }
-
-        void Write(Handle handle, const T& row) {
-            CROWY_ASSERT(IsValid(handle));
-
-            rows[IndexOf(handle)] = row;
+            return self.rows[self.IndexOf(handle)];
         }
 
         void Remove(Handle handle) {

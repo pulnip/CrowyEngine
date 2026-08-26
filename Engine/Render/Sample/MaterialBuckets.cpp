@@ -2,13 +2,40 @@
 #include <memory>
 #include <numbers>
 
+#include <imgui.h>
+
 #include "FlyCamera.hpp"
+#include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
+#include "Log.hpp"
 #include "MeshGenerator.hpp"
+#include "Object.hpp"
+#include "PropertyWalker.hpp"
 #include "RenderApp.hpp"
+#include "UIRenderer.hpp"
 
 namespace Crowy
 {
+    struct UIContext{};
+
+    CROWY_STRUCT(MaterialData)
+        .SetProperty("albedo", &MaterialData::albedo)
+        .SetProperty("metallic", &MaterialData::metallic)
+            .SetUIRange(0.0f, 1.0f)
+        .SetProperty("emissive", &MaterialData::emissive)
+        .SetProperty("roughness", &MaterialData::roughness)
+            .SetUIRange(0.0f, 1.0f)
+    CROWY_STRUCT_END(MaterialData)
+
+    CROWY_STRUCT(FlyCamera)
+        .SetProperty("position", &FlyCamera::position)
+        .SetProperty("yaw", &FlyCamera::yaw)
+        .SetProperty("pitch", &FlyCamera::pitch)
+            .SetUIRange(-1.55f, 1.55f)
+        .SetProperty("fovY", &FlyCamera::config, &FlyCamera::Config::fovY)
+            .SetUIRange(0.35f, 2.4f)
+    CROWY_STRUCT_END(FlyCamera)
+
     // Bucket order is discovery order, which is primitive order,
     // so the opaque primitives are registered first.
     // There is no sort key yet; the moment a second pass or
@@ -20,10 +47,18 @@ namespace Crowy
         static constexpr u32 SphereCount = 3;
         static constexpr u32 PaneCount = 3;
 
+        static constexpr auto PanelToggleKey = KeyCode::P;
+
         GeometryAllocation sphere{};
         // faces away from the camera, so a back-face-culled pipeline drops it
         GeometryAllocation pane{};
         GeometryAllocation glass{};
+
+        RAII<UIRenderer> uiRenderer;
+        UIContext uiContext;
+        Widget panel = Column({});
+        // hidden by default so the smoke capture matches the panel-less one
+        bool panelVisible = false;
 
     public:
         MaterialBuckets()
@@ -82,9 +117,88 @@ namespace Crowy
 
                 addPrimitive(scene, glassMesh, {x, 0.0f, -1.2f}, 1.0f);
             }
+
+            panel = Column({
+                materialSection(scene, "opaque", opaque),
+                materialSection(scene, "double-sided", doubleSided),
+                materialSection(scene, "translucent", translucent),
+                cameraSection()
+            });
+        }
+
+        void OnProcessInput(const InputProvider& input) override {
+            if(input.IsKeyPressed(PanelToggleKey)) {
+                panelVisible = !panelVisible;
+            }
+        }
+
+        void OnInitUI(
+            RHIDevice& device,
+            RHIPixelFormat colorFormat,
+            RHIPixelFormat depthFormat
+        ) override {
+            uiRenderer = std::make_unique<UIRenderer>(
+                device,
+                colorFormat,
+                depthFormat
+            );
+
+            LOG_INFO("MaterialBuckets", "P toggles the inspector panel");
+        }
+
+        std::span<const RHITextureBarrier> OnPrepareUI(
+            RHICommandList& cmdList
+        ) override {
+            if(panelVisible) {
+                // Prepare opens the shared "Crowy" window, whose saved rect
+                // another sample may have left collapsed or off-screen
+                ImGui::SetNextWindowPos(ImVec2(8.0f, 8.0f), ImGuiCond_Appearing);
+                ImGui::SetNextWindowSize(
+                    ImVec2(360.0f, 640.0f),
+                    ImGuiCond_Appearing
+                );
+                ImGui::SetNextWindowCollapsed(false, ImGuiCond_Appearing);
+
+                uiRenderer->Prepare(cmdList, panel, uiContext);
+            } else {
+                uiRenderer->Prepare(cmdList);
+            }
+
+            return uiRenderer->TextureAcquires();
+        }
+
+        void OnRecordUI(RHICommandList& cmdList) override {
+            uiRenderer->Record(cmdList);
         }
 
     private:
+        // rows do not move after extraction, so the row's address holds as
+        // the panel's write-back target
+        Widget materialSection(
+            RenderScene& scene,
+            CStr label,
+            MaterialHandle handle
+        ) {
+            // BuildFrame re-reads the table every frame; no dirty consumer
+            return buildPropertyTree(
+                label,
+                &scene.Materials().GetRef(handle).data,
+                *GetDesc<MaterialData>(),
+                []{}
+            );
+        }
+
+        Widget cameraSection() {
+            auto& camera = static_cast<FlyCamera&>(Camera());
+
+            return buildPropertyTree(
+                "camera",
+                &camera,
+                *GetDesc<FlyCamera>(),
+                [&camera]{ camera.RecomputeView(); }
+            );
+        }
+
         static Config makeConfig() {
             return Config{
                 .clearColor = SkyColor,

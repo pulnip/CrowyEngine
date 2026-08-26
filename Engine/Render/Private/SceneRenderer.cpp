@@ -83,7 +83,7 @@ namespace Crowy
             if(!OverlapFrustumAABB3D(frustum, primitive.worldBounds))
                 continue;
 
-            const auto& mesh = meshes.Read(primitive.mesh);
+            const auto& mesh = meshes.GetRef(primitive.mesh);
             for(const auto& subMesh: mesh.subMeshes) {
                 const auto material = mesh.materials[subMesh.materialSlot];
                 const auto materialIndex =
