@@ -12,7 +12,7 @@
 // pass writes, and this shader never learned about it: reading the body index
 // off the draw rather than off a uniform is exactly what made that swap free.
 //
-// Mirrors Engine/RHI/Sample/OrbitFrameSample.cpp; the C++ side asserts the
+// Mirrors Engine/RHI/Sample/OrbitFrame.cpp; the C++ side asserts the
 // offsets spelled out below.
 
 struct TrailPush{

@@ -16,8 +16,8 @@
 namespace Crowy
 {
     // Terrain from per-column solid spans, meshed on the CPU.
-    // Deliberately faceted - the smooth reading of the same field is MarchingTerrainSample.
-    class SpanTerrainSample: public App{
+    // Deliberately faceted - the smooth reading of the same field is MarchingTerrain.
+    class SpanTerrain: public App{
         using App::App;
 
         // measured: defaults mesh ~0.59M vertices, the busiest slider corner ~1.40M.
@@ -291,11 +291,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "SpanTerrainSample",
+        .title = "SpanTerrain",
         .width = 1280, .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<SpanTerrainSample>(windowConfig);
+    return Main<SpanTerrain>(windowConfig);
 }

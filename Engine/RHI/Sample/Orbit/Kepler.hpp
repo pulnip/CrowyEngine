@@ -6,7 +6,7 @@
 
 namespace Crowy
 {
-    // Keplerian two-body orbits for OrbitFrameSample, solved on the CPU.
+    // Keplerian two-body orbits for OrbitFrame, solved on the CPU.
     //
     // Everything here lives in the J2000 ecliptic frame: the ecliptic is the
     // XY plane, +Z is the ecliptic north pole, the Sun is at the origin.
@@ -148,7 +148,7 @@ namespace Crowy
     inline constexpr u32 ORBIT_PHASE_MAX_STEPS =
         ORBIT_PHASE_BLOCK * ORBIT_PHASE_BLOCK;
 
-    // Mirrors OrbitElements in Engine/Shader/OrbitKepler.slang.
+    // Mirrors OrbitElements in Engine/RHI/Sample/Orbit/OrbitKepler.slang.
     //
     // The three rotations arrive pre-resolved to sine and cosine: they are the
     // same for every sample of a body, and rebuilding them per sample would be
@@ -163,7 +163,7 @@ namespace Crowy
     };
     static_assert(sizeof(OrbitElementsGPU) == 32);
 
-    // Mirrors OrbitPhase in Engine/Shader/OrbitKepler.slang.
+    // Mirrors OrbitPhase in Engine/RHI/Sample/Orbit/OrbitKepler.slang.
     //
     //   phase(i) = phase0 + perBlock * (i >> SHIFT) + perStep * (i & (BLOCK-1))
     //

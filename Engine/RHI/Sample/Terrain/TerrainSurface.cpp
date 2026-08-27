@@ -5,7 +5,7 @@
 namespace{
     using namespace Crowy;
 
-    constexpr CStr SHADER_PATH = "Engine/Shader/Terrain.slang";
+    constexpr CStr SHADER_PATH = "Engine/RHI/Sample/Terrain/Terrain.slang";
 
     RHIGraphicsPipelineStateDesc PipelineDesc(
         RHIPixelFormat colorFormat,

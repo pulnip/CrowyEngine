@@ -272,10 +272,10 @@ namespace Crowy
         static MaterialPipelineDesc basePipeline(CStr fragmentEntry) {
             return MaterialPipelineDesc{
                 .vertexShader =
-                    {.path = "Engine/Shader/MaterialBuckets.slang",
+                    {.path = "Engine/Render/Sample/MaterialBuckets.slang",
                      .entryPoint = "vs_main"},
                 .fragmentShader =
-                    {.path = "Engine/Shader/MaterialBuckets.slang",
+                    {.path = "Engine/Render/Sample/MaterialBuckets.slang",
                      .entryPoint = fragmentEntry},
                 .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"

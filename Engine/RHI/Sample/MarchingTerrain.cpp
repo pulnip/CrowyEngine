@@ -14,13 +14,13 @@
 namespace Crowy
 {
     // Terrain from marching cubes over the density field, meshed on the GPU.
-    // The smooth reading of the same field SpanTerrainSample facets.
+    // The smooth reading of the same field SpanTerrain facets.
     //
     // How many triangles came out is never known to the CPU: a compute pass
     // writes the draw arguments and ExecuteIndirect consumes them. The only
     // thing that comes back is the counter, a few frames late, to drive the
     // stats and the overflow warning.
-    class MarchingTerrainSample: public App{
+    class MarchingTerrain: public App{
         using App::App;
 
         // the defaults mesh ~99k triangles. This leaves room for the cave
@@ -307,11 +307,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "MarchingTerrainSample",
+        .title = "MarchingTerrain",
         .width = 1280, .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<MarchingTerrainSample>(windowConfig);
+    return Main<MarchingTerrain>(windowConfig);
 }

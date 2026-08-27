@@ -14,7 +14,7 @@
 
 namespace Crowy
 {
-    class SkyboxFloorSample: public App{
+    class SkyboxFloor: public App{
     private:
         static constexpr RHIPixelFormat DEPTH_FORMAT = RHIPixelFormat::D32_FLOAT;
         static constexpr f32 FLOOR_HALF_SIZE = 10.0f;
@@ -103,7 +103,7 @@ namespace Crowy
                     .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/CubeMapping.slang",
+                        .path = "Engine/RHI/Sample/CubeMapping.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -111,7 +111,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/CubeMapping.slang",
+                    .path = "Engine/RHI/Sample/CubeMapping.slang",
                     .entryPoint = "fs_main"
                 },
                 .depthStencil = RHIDepthStencilState{
@@ -130,7 +130,7 @@ namespace Crowy
                     .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/SkyboxFloor.slang",
+                        .path = "Engine/RHI/Sample/SkyboxFloor.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -138,7 +138,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/SkyboxFloor.slang",
+                    .path = "Engine/RHI/Sample/SkyboxFloor.slang",
                     .entryPoint = "fs_main"
                 },
                 .depthStencil = RHIDepthStencilState{
@@ -336,10 +336,10 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "SkyboxFloorSample",
+        .title = "SkyboxFloor",
         .width = 1280, .height = 720,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<SkyboxFloorSample>(windowConfig);
+    return Main<SkyboxFloor>(windowConfig);
 }

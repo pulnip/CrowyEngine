@@ -11,7 +11,7 @@
 namespace Crowy
 {
     // Regression check for the shared-pool vertex pulling contract, described
-    // in full in Engine/Shader/VertexPullSpike.slang: a mesh's pool offset
+    // in full in Engine/Render/Spike/VertexPullSpike.slang: a mesh's pool offset
     // reaches the shader through DrawData::vbIndex, because SV_VertexID
     // carries the draw's baseVertex on Metal and not on D3D12.
     //
@@ -116,10 +116,10 @@ namespace Crowy
         static MaterialPipelineDesc makePipeline() {
             return MaterialPipelineDesc{
                 .vertexShader =
-                    {.path = "Engine/Shader/VertexPullSpike.slang",
+                    {.path = "Engine/Render/Spike/VertexPullSpike.slang",
                      .entryPoint = "vs_main"},
                 .fragmentShader =
-                    {.path = "Engine/Shader/VertexPullSpike.slang",
+                    {.path = "Engine/Render/Spike/VertexPullSpike.slang",
                      .entryPoint = "fs_main"},
                 .rasterizer = {.cullMode = RHICullMode::None},
                 .profile = "sm_6_8"

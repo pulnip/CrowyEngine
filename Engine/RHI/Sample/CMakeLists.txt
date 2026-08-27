@@ -1,224 +1,103 @@
-function(crowy_rhi_sample NAME)
-    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
-
-    add_executable(${NAME}
-        ${ARG_SOURCES}
-    )
-
-    target_link_options(${NAME}
-    PRIVATE
-        ${RENDER_BACKEND_LINK_OPTIONS}
-    )
-    target_link_libraries(${NAME}
-    PUBLIC
-        CrowyProjectInterface
-    PRIVATE
-        ${RENDER_BACKENDS}
-        Crowy::Log
-        ${ARG_DEPENDS}
-    )
-    if(WIN32)
-        target_link_libraries(${NAME}
-        PRIVATE
-            delayimp.lib
-        )
-    endif()
-
-    # launch-and-watch smoke test (see Tools/smoke_run.sh|.ps1);
-    # registered here so every new sample gets one automatically.
-    # run them with
-    #   ctest --test-dir build -C Debug -L smoke
-    # duration and frame capture come from CROWY_SMOKE_* environment
-    # variables read by the scripts, so no values are baked in here.
-    if(APPLE)
-        set(SMOKE_COMMAND
-            "${CMAKE_SOURCE_DIR}/Tools/smoke_run.sh"
-            "$<TARGET_FILE:${NAME}>"
-        )
-    elseif(WIN32)
-        set(SMOKE_COMMAND
-            powershell -NoProfile -ExecutionPolicy Bypass
-            -File "${CMAKE_SOURCE_DIR}/Tools/smoke_run.ps1"
-            "$<TARGET_FILE:${NAME}>"
-        )
-    endif()
-    if(DEFINED SMOKE_COMMAND)
-        add_test(
-            NAME ${NAME}Smoke
-            COMMAND ${SMOKE_COMMAND}
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        )
-        set_tests_properties(${NAME}Smoke
-        PROPERTIES
-            LABELS "smoke"
-            # windowed apps fight over focus, and the debug layer slows
-            # everything down; one at a time keeps results stable
-            RUN_SERIAL TRUE
-            # generous: the watch window is env-configurable
-            TIMEOUT 300
-        )
-    endif()
-endfunction()
-
-function(crowy_graphics_sample NAME)
-    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
-
-    crowy_rhi_sample(${NAME}
-    SOURCES
-        # callers outside this directory resolve to this one.
-        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AppFramework.cpp"
-        ${ARG_SOURCES}
-    DEPENDS
-        Crowy::Platform
-        ${ARG_DEPENDS}
-    )
-
-    target_include_directories(${NAME}
-    PRIVATE
-        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}"
-    )
-endfunction()
-
 # ready-made scenes the samples can render
 add_subdirectory(Scene)
 # density field, noise and UI panel the two terrain samples share
 add_subdirectory(Terrain)
-# Keplerian orbits, trail ring buffer and panel for OrbitFrameSample
+# Keplerian orbits, trail ring buffer and panel for OrbitFrame
 add_subdirectory(Orbit)
 
-crowy_graphics_sample(HelloWorld
+crowy_declare_example(HelloWorld
 SOURCES
-    helloWorld.cpp
+    HelloWorld.cpp
 )
 
-crowy_graphics_sample(HelloConstantBuffer
+crowy_declare_example(HelloConstantBuffer
 SOURCES
-    helloConstantBuffer.cpp
+    HelloConstantBuffer.cpp
 )
 
-crowy_graphics_sample(HelloTexture
+crowy_declare_example(HelloTexture
 SOURCES
-    helloTexture.cpp
+    HelloTexture.cpp
 DEPENDS
     Crowy::Serialization
 )
 
-crowy_rhi_sample(HelloCompute
+# computes and exits, so it opens no window
+crowy_declare_example(HelloCompute
+    HEADLESS
 SOURCES
-    helloCompute.cpp
+    HelloCompute.cpp
 )
 
-crowy_graphics_sample(HelloIndirectDraw
+crowy_declare_example(HelloIndirectDraw
 SOURCES
-    helloIndirectDraw.cpp
+    HelloIndirectDraw.cpp
 )
 
-crowy_graphics_sample(CubeMapping
+crowy_declare_example(CubeMapping
 SOURCES
     CubeMapping.cpp
 DEPENDS
     Crowy::Serialization
 )
 
-crowy_graphics_sample(NormalMapping
+crowy_declare_example(NormalMapping
 SOURCES
     NormalMapping.cpp
 DEPENDS
     Crowy::Serialization
 )
 
-crowy_graphics_sample(CornellBoxSample
+crowy_declare_example(CornellBox
 SOURCES
-    CornellBoxSample.cpp
+    CornellBox.cpp
 DEPENDS
     Crowy::SampleScene
 )
 
-crowy_graphics_sample(SkyboxFloorSample
+crowy_declare_example(SkyboxFloor
 SOURCES
-    SkyboxFloorSample.cpp
+    SkyboxFloor.cpp
 DEPENDS
     Crowy::SampleScene
 )
 
-crowy_graphics_sample(Checkerboard
+crowy_declare_example(Checkerboard
 SOURCES
     Checkerboard.cpp
 )
 
-crowy_graphics_sample(BaseInstanceSpike
-SOURCES
-    BaseInstanceSpike.cpp
-)
-
-crowy_graphics_sample(InstanceIdSpike
-SOURCES
-    InstanceIdSpike.cpp
-)
-
-crowy_graphics_sample(TenThousandCubes
+crowy_declare_example(TenThousandCubes
 SOURCES
     TenThousandCubes.cpp
 DEPENDS
     Crowy::Serialization
 )
 
-crowy_graphics_sample(BlackholeSimulation
+crowy_declare_example(BlackholeSimulation
 SOURCES
     BlackholeSimulation.cpp
 )
 
-crowy_graphics_sample(UISample
+crowy_declare_example(OrbitFrame
 SOURCES
-    UISample.cpp
-DEPENDS
-    Crowy::UI
-)
-
-# headless; fails the smoke run if the CPU and GPU density fields drift apart
-crowy_rhi_sample(TerrainDensityCheck
-SOURCES
-    TerrainDensityCheck.cpp
-DEPENDS
-    Crowy::SampleTerrain
-)
-
-# headless; runs the marching passes once and checks the mesh landed on the
-# isosurface
-crowy_rhi_sample(TerrainMarchCheck
-SOURCES
-    TerrainMarchCheck.cpp
-DEPENDS
-    Crowy::SampleTerrain
-)
-
-crowy_graphics_sample(OrbitFrameSample
-SOURCES
-    OrbitFrameSample.cpp
+    OrbitFrame.cpp
 DEPENDS
     SampleOrbit
     Crowy::UI
 )
 
-# headless; copies the trail ring back and holds it against the Kepler solver
-crowy_rhi_sample(OrbitTrailCheck
+crowy_declare_example(SpanTerrain
 SOURCES
-    OrbitTrailCheck.cpp
-DEPENDS
-    SampleOrbit
-)
-
-crowy_graphics_sample(SpanTerrainSample
-SOURCES
-    SpanTerrainSample.cpp
+    SpanTerrain.cpp
 DEPENDS
     Crowy::SampleTerrain
     Crowy::UI
 )
 
-crowy_graphics_sample(MarchingTerrainSample
+crowy_declare_example(MarchingTerrain
 SOURCES
-    MarchingTerrainSample.cpp
+    MarchingTerrain.cpp
 DEPENDS
     Crowy::SampleTerrain
     Crowy::UI

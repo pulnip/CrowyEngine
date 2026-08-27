@@ -41,7 +41,7 @@ int main(void){
         auto addPipeline = device->CreatePipelineState(
             RHIComputePipelineStateDesc{
                 .computeShader = {
-                    .path = "Engine/Shader/HelloCompute.slang",
+                    .path = "Engine/RHI/Sample/HelloCompute.slang",
                     .entryPoint = "cs_main"
                 }
             }
@@ -49,7 +49,7 @@ int main(void){
         auto doublePipeline = device->CreatePipelineState(
             RHIComputePipelineStateDesc{
                 .computeShader = {
-                    .path = "Engine/Shader/HelloCompute.slang",
+                    .path = "Engine/RHI/Sample/HelloCompute.slang",
                     .entryPoint = "cs_double"
                 }
             }

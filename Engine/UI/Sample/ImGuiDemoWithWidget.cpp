@@ -14,7 +14,7 @@ namespace Crowy
         f64 frameTime = 0.0;
     };
 
-    class UISample: public App{
+    class ImGuiDemoWithWidget: public App{
     private:
         RAII<UIRenderer> uiRenderer = nullptr;
         UIContext context;
@@ -109,10 +109,10 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "UISample",
+        .title = "ImGuiDemoWithWidget",
         .width = 1280, .height = 720,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<UISample>(windowConfig);
+    return Main<ImGuiDemoWithWidget>(windowConfig);
 }

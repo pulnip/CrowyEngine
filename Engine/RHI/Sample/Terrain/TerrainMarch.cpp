@@ -12,9 +12,9 @@
 namespace{
     using namespace Crowy;
 
-    constexpr CStr SHADER_PATH = "Engine/Shader/TerrainMarch.slang";
+    constexpr CStr SHADER_PATH = "Engine/RHI/Sample/Terrain/TerrainMarch.slang";
 
-    // must match ResourceData in Engine/Shader/TerrainMarch.slang;
+    // must match ResourceData in Engine/RHI/Sample/Terrain/TerrainMarch.slang;
     // padding spelled out on both sides
     struct PushConstants{
         TerrainParams params;

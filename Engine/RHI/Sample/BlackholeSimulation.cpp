@@ -64,7 +64,7 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
-                        .path = "Engine/Shader/Bloom.slang",
+                        .path = "Engine/RHI/Sample/Bloom.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -72,7 +72,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/Bloom.slang",
+                    .path = "Engine/RHI/Sample/Bloom.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
@@ -343,7 +343,7 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
-                        .path = "Engine/Shader/BlackholeDisk.slang",
+                        .path = "Engine/RHI/Sample/BlackholeDisk.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -351,7 +351,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/BlackholeDisk.slang",
+                    .path = "Engine/RHI/Sample/BlackholeDisk.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
@@ -373,7 +373,7 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
-                        .path = "Engine/Shader/Blackhole.slang",
+                        .path = "Engine/RHI/Sample/Blackhole.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -381,7 +381,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/Blackhole.slang",
+                    .path = "Engine/RHI/Sample/Blackhole.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
@@ -419,7 +419,7 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
-                        .path = "Engine/Shader/Composite.slang",
+                        .path = "Engine/RHI/Sample/Composite.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -427,7 +427,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/Composite.slang",
+                    .path = "Engine/RHI/Sample/Composite.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {

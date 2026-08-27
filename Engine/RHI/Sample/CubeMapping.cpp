@@ -46,7 +46,7 @@ namespace Crowy
                     .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/CubeMapping.slang",
+                        .path = "Engine/RHI/Sample/CubeMapping.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -54,7 +54,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/CubeMapping.slang",
+                    .path = "Engine/RHI/Sample/CubeMapping.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {

@@ -270,8 +270,15 @@ namespace Crowy
         const auto path = toUTF8String(absPath);
 
         const auto searchDir = toUTF8String(absPath.parent_path());
+        // a shader lives beside whatever owns it and includes its neighbours
+        // from there; Engine/Shader is the engine's own library, so it is an
+        // include root for every shader in the tree
+        const auto libraryDir = toUTF8String(
+            std::filesystem::absolute("Engine/Shader")
+        );
         const std::array searchPaths{
-            searchDir.c_str()
+            searchDir.c_str(),
+            libraryDir.c_str()
         };
         const std::array compilerOptions{
             CompilerOptionEntry{

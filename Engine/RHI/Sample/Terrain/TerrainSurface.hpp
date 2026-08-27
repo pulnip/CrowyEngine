@@ -8,13 +8,13 @@ namespace Crowy
 {
     inline constexpr RHIPixelFormat TERRAIN_DEPTH_FORMAT = RHIPixelFormat::D32_FLOAT;
 
-    // Mirrors ResourceData in Engine/Shader/Terrain.slang.
+    // Mirrors ResourceData in Engine/RHI/Sample/Terrain/Terrain.slang.
     struct TerrainSurfacePush{
         u64 vertices;
     };
     static_assert(sizeof(TerrainSurfacePush) == 8);
 
-    // The pipelines that draw Engine/Shader/Terrain.slang, one per debug
+    // The pipelines that draw Engine/RHI/Sample/Terrain/Terrain.slang, one per debug
     // toggle combination. Vertices are pulled by SV_VertexID from a structured
     // buffer, so there is no input layout and none of this depends on how the
     // mesh was built - which is why both samples can share it.

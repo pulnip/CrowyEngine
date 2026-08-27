@@ -1,44 +1,32 @@
-#include <array>
 #include "AppFramework.hpp"
+#include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    // Companion to BaseInstanceSpike: that one proved baseInstance reaches the
-    // shader as SV_StartInstanceLocation, this one guards that the zero-based
-    // instance index (zeroBasedInstanceID in InstanceIndex.slang) really is
-    // zero-based on every backend. Slang's Metal target emits [[instance_id]]
-    // raw, which counts from the base instance - the helper subtracts it there.
-    //
-    // Three draws of four instances each, baseInstance 1, 2, 3. Row comes from
-    // the draw, column from the zero-based index.
-    //
-    //   PASS: three left-aligned rows of four quads, columns 0-3 in every row.
-    //   FAIL: a staircase - row 2 starting at column 2, row 3 at column 3 -
-    //         which means a base instance leaked through the helper.
-    //
-    // OrbitFrameSample addresses trail segments by SV_InstanceID while carrying
-    // the body index in baseInstance, so the zero-based reading is load-bearing
-    // there; a segment is sub-pixel in that sample and could never show this.
-    class InstanceIdSpike: public App{
+    // Verifies that SV_StartInstanceLocation (SM6.8) delivers the
+    // baseInstance of each draw: four DrawIndexed calls carry
+    // baseInstance 1..4, and the vertex shader derives both column
+    // and color from it (red, green, blue, white on black).
+    class BaseInstanceSpike: public App{
         using App::App;
 
-        static constexpr u32 ROW_COUNT = 3;
-        static constexpr u32 INSTANCES_PER_ROW = 4;
+        static constexpr u32 DRAW_COUNT = 4;
 
         RHIGraphicsPipelineStateRAII pso;
+        RHIBufferRAII quadIndices;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/InstanceIdSpike.slang",
+                        .path = "Engine/RHI/Spike/BaseInstanceSpike.slang",
                         .entryPoint = "vs_main"
                     }
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/InstanceIdSpike.slang",
+                    .path = "Engine/RHI/Spike/BaseInstanceSpike.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
@@ -46,6 +34,12 @@ namespace Crowy
                 },
                 .renderTargetCount = 1,
                 .profile = "sm_6_8"
+            });
+
+            static constexpr u32 indices[] = {0, 1, 2, 0, 2, 3};
+            quadIndices = device.CreateBuffer(RHIBufferCreateDesc{
+                .size = sizeof(indices),
+                .initialData = indices
             });
         }
 
@@ -59,8 +53,20 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            for(u32 row=0; row<ROW_COUNT; ++row){
-                cmdList.Draw(4, INSTANCES_PER_ROW, 0, row + 1);
+
+            // drawIDs start at 1 so a semantic that silently reads 0
+            // cannot pass as the first draw
+            for(u32 drawID = 1; drawID <= DRAW_COUNT; ++drawID){
+                cmdList.DrawIndexed(
+                    RHIIndexBufferView{
+                        .buffer = quadIndices.get()
+                    },
+                    6,
+                    1,
+                    0,
+                    0,
+                    drawID
+                );
             }
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};
@@ -73,11 +79,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "InstanceIdSpike",
-        .width = 800, .height = 600,
+        .title = "BaseInstanceSpike",
+        .width = 800, .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<InstanceIdSpike>(windowConfig);
+    return Main<BaseInstanceSpike>(windowConfig);
 }

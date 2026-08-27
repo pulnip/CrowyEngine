@@ -41,7 +41,7 @@ namespace{
         u64 points;
         u64 results;
     };
-    // must match ResourceData in Engine/Shader/TerrainDensityCheck.slang;
+    // must match ResourceData in Engine/RHI/Sample/Terrain/TerrainDensityCheck.slang;
     // padding spelled out on both sides
     static_assert(sizeof(PushConstants) == 56);
     static_assert(offsetof(PushConstants, pointCount) == 32);
@@ -202,7 +202,7 @@ int main(void){
 
         auto pipeline = device->CreatePipelineState(RHIComputePipelineStateDesc{
             .computeShader = {
-                .path = "Engine/Shader/TerrainDensityCheck.slang",
+                .path = "Engine/RHI/Sample/Terrain/TerrainDensityCheck.slang",
                 .entryPoint = "cs_main"
             }
         });

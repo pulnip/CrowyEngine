@@ -1,10 +1,15 @@
 #include "AppFramework.hpp"
+#include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class HelloWorld: public App{
+    class HelloConstantBuffer: public App{
         using App::App;
+
+        struct SceneData{
+            Vec4 offset{0, 0, 0, 0};
+        } sceneData;
 
         RHIGraphicsPipelineStateRAII pso;
 
@@ -13,7 +18,7 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/Triangle.slang",
+                        .path = "Engine/RHI/Sample/HelloConstantBuffer.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -21,7 +26,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/Triangle.slang",
+                    .path = "Engine/RHI/Sample/HelloConstantBuffer.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {
@@ -29,9 +34,18 @@ namespace Crowy
                 },
                 .renderTargetCount = 1
             });
+
+        }
+
+        void OnUpdate(f64 dt, f64 et) override{
+            constexpr f32 scale = 0.5f;
+            sceneData.offset.x = scale * std::cosf(et);
+            sceneData.offset.y = scale * std::sinf(et);
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+            const auto scene = Device().UploadTransient(sceneData);
+
             std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
             cmdList.BeginRenderPass(RHIRenderPassDesc{
@@ -41,6 +55,7 @@ namespace Crowy
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
+            cmdList.SetGraphicsConstantBuffer(scene, 0);
             cmdList.Draw(3);
 
             const std::array releases{ReleaseBackBuffer(backBuffer)};
@@ -53,11 +68,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloWorld",
+        .title = "HelloConstantBuffer",
         .width = 800, .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<HelloWorld>(windowConfig);
+    return Main<HelloConstantBuffer>(windowConfig);
 }

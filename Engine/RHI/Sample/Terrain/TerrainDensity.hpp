@@ -37,7 +37,7 @@ namespace Crowy
         }
     }
 
-    // CPU half of Engine/Shader/TerrainDensity.slang.
+    // CPU half of Engine/RHI/Sample/Terrain/TerrainDensity.slang.
     // density > 0 is solid; the isosurface is density == 0.
 
     inline f32 terrainBaseHeight(f32 x, f32 z, const TerrainParams& params) noexcept{

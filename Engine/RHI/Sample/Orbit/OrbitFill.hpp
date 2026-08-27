@@ -9,7 +9,7 @@
 
 namespace Crowy
 {
-    // Mirrors OrbitFillPush in Engine/Shader/OrbitSample.slang.
+    // Mirrors OrbitFillPush in Engine/RHI/Sample/Orbit/OrbitSample.slang.
     struct OrbitFillPush{
         u64 elements;
         u64 phases;

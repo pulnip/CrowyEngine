@@ -8,7 +8,7 @@
 
 namespace Crowy
 {
-    // Mirrors BodyDraw in Engine/Shader/OrbitCommon.slang.
+    // Mirrors BodyDraw in Engine/RHI/Sample/Orbit/OrbitCommon.slang.
     //
     // Colour and period only, set once at construction and never written
     // again. Keeping the mutable segment counts out of here is what lets this
@@ -22,7 +22,7 @@ namespace Crowy
     static_assert(sizeof(OrbitBodyDraw) == 16);
     static_assert(offsetof(OrbitBodyDraw, trailPeriodDays) == 12);
 
-    // Mirrors OrbitArgsPush in Engine/Shader/OrbitArgs.slang.
+    // Mirrors OrbitArgsPush in Engine/RHI/Sample/Orbit/OrbitArgs.slang.
     struct OrbitArgsPush{
         u64 bodies;
         u64 args;

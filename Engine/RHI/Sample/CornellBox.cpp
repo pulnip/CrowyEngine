@@ -13,7 +13,7 @@
 
 namespace Crowy
 {
-    class CornellBoxSample: public App{
+    class CornellBox: public App{
     private:
         static constexpr RHIPixelFormat DEPTH_FORMAT = RHIPixelFormat::D32_FLOAT;
         static constexpr f32 BOX_HALF_SIZE = 1.0f;
@@ -87,7 +87,7 @@ namespace Crowy
                     .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/CornellBox.slang",
+                        .path = "Engine/RHI/Sample/CornellBox.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -95,7 +95,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/CornellBox.slang",
+                    .path = "Engine/RHI/Sample/CornellBox.slang",
                     .entryPoint = "fs_main"
                 },
                 .depthStencil = RHIDepthStencilState{
@@ -248,11 +248,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "CornellBoxSample",
+        .title = "CornellBox",
         .width = 800, .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<CornellBoxSample>(windowConfig);
+    return Main<CornellBox>(windowConfig);
 }

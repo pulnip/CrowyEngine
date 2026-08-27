@@ -104,6 +104,7 @@ endif()
 
 include(deps)
 include(util)
+include(sample)
 
 if(CROWY_ENABLE_TEST)
     enable_testing()

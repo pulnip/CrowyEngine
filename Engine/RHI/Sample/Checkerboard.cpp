@@ -25,7 +25,7 @@ namespace Crowy
             pso = device.CreatePipelineState(
                 RHIComputePipelineStateDesc{
                     .computeShader = {
-                        .path = "Engine/Shader/Checkerboard.slang",
+                        .path = "Engine/RHI/Sample/Checkerboard.slang",
                         .entryPoint = "cs_main"
                     }
                 }

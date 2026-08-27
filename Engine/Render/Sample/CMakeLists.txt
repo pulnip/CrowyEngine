@@ -1,4 +1,4 @@
-crowy_graphics_sample(TenThousandBlocks
+crowy_declare_example(TenThousandBlocks
 SOURCES
     FlyCamera.cpp
     RenderApp.cpp
@@ -7,7 +7,7 @@ DEPENDS
     Crowy::Render
 )
 
-crowy_graphics_sample(CornellRoom
+crowy_declare_example(CornellRoom
 SOURCES
     OrbitCamera.cpp
     RenderApp.cpp
@@ -17,7 +17,7 @@ DEPENDS
     Crowy::SampleScene
 )
 
-crowy_graphics_sample(MaterialBuckets
+crowy_declare_example(MaterialBuckets
 SOURCES
     FlyCamera.cpp
     RenderApp.cpp
@@ -26,15 +26,4 @@ DEPENDS
     Crowy::Render
     Crowy::Reflection
     Crowy::UI
-)
-
-# guards the shared-pool vertex pulling contract: a mesh's pool offset travels
-# in DrawData::vbIndex, never in the args' baseVertex
-crowy_graphics_sample(VertexPullSpike
-SOURCES
-    FlyCamera.cpp
-    RenderApp.cpp
-    VertexPullSpike.cpp
-DEPENDS
-    Crowy::Render
 )

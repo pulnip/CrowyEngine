@@ -78,7 +78,7 @@ namespace Crowy
     //   Left / Right  trail length
     //   Space         pause
     //   R             reset to J2000
-    class OrbitFrameSample: public App{
+    class OrbitFrame: public App{
         using App::App;
 
         static constexpr f64 DAY_PER_SAMPLE = 1.0;
@@ -109,7 +109,7 @@ namespace Crowy
         static constexpr f32 NEAR_Z = 1.0f, FAR_Z = 200.0f;
 
 
-        // mirrors TrailPush in Engine/Shader/OrbitTrail.slang
+        // mirrors TrailPush in Engine/RHI/Sample/Orbit/OrbitTrail.slang
         struct TrailPush{
             u64 samples;
             u64 bodies;
@@ -146,7 +146,7 @@ namespace Crowy
         static_assert(offsetof(TrailPush, beltBase) == 76);
         static_assert(offsetof(TrailPush, segCounts) == 80);
 
-        // mirrors GridPush in Engine/Shader/OrbitGrid.slang
+        // mirrors GridPush in Engine/RHI/Sample/Orbit/OrbitGrid.slang
         struct GridPush{
             f32 viewportX, viewportY;
             f32 thinThicknessPx;
@@ -168,7 +168,7 @@ namespace Crowy
         static_assert(offsetof(GridPush, minGapPx) == 48);
         static_assert(offsetof(GridPush, referenceAlpha) == 56);
 
-        // keep in sync with Engine/Shader/OrbitGrid.slang
+        // keep in sync with Engine/RHI/Sample/Orbit/OrbitGrid.slang
         static constexpr u32 GRID_LEVEL_COUNT = 8;
         static constexpr u32 GRID_RINGS_PER_LEVEL = 16;
         static constexpr u32 GRID_RING_SEGMENTS = 192;
@@ -308,7 +308,7 @@ namespace Crowy
 
             trailPSO = device.CreatePipelineState(
                 LineExpansionDesc(
-                    "Engine/Shader/OrbitTrail.slang",
+                    "Engine/RHI/Sample/Orbit/OrbitTrail.slang",
                     "vs_main", "fs_main",
                     swapchain.GetFormat()
                 ),
@@ -316,7 +316,7 @@ namespace Crowy
             );
             gridPSO = device.CreatePipelineState(
                 LineExpansionDesc(
-                    "Engine/Shader/OrbitGrid.slang",
+                    "Engine/RHI/Sample/Orbit/OrbitGrid.slang",
                     "vs_main", "fs_main",
                     swapchain.GetFormat()
                 ),
@@ -324,7 +324,7 @@ namespace Crowy
             );
             markerPSO = device.CreatePipelineState(
                 LineExpansionDesc(
-                    "Engine/Shader/OrbitTrail.slang",
+                    "Engine/RHI/Sample/Orbit/OrbitTrail.slang",
                     "vs_marker", "fs_marker",
                     swapchain.GetFormat()
                 ),
@@ -332,7 +332,7 @@ namespace Crowy
             );
             beltPSO = device.CreatePipelineState(
                 LineExpansionDesc(
-                    "Engine/Shader/OrbitTrail.slang",
+                    "Engine/RHI/Sample/Orbit/OrbitTrail.slang",
                     "vs_belt", "fs_marker",
                     swapchain.GetFormat()
                 ),
@@ -385,7 +385,7 @@ namespace Crowy
         void DrawPanel(){
             ImGui::SetNextWindowPos(ImVec2(12.0f, 6.0f), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(352.0f, 708.0f), ImGuiCond_FirstUseEver);
-            ImGui::Begin("OrbitFrameSample");
+            ImGui::Begin("OrbitFrame");
             // leave room for the label, which ImGui draws to the right of the
             // control and happily clips against the window edge
             ImGui::PushItemWidth(-132.0f);
@@ -892,11 +892,11 @@ int main(void){
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "OrbitFrameSample",
+        .title = "OrbitFrame",
         .width = 1280, .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<OrbitFrameSample>(windowConfig);
+    return Main<OrbitFrame>(windowConfig);
 }

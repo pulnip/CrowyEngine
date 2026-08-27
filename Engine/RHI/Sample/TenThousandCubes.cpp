@@ -116,7 +116,7 @@ namespace Crowy
                     .vertexLayout = VERTEX_INPUT_LAYOUT,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/TenThousandCubes.slang",
+                        .path = "Engine/RHI/Sample/TenThousandCubes.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -124,7 +124,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/TenThousandCubes.slang",
+                    .path = "Engine/RHI/Sample/TenThousandCubes.slang",
                     .entryPoint = "fs_main"
                 },
                 .depthStencil = RHIDepthStencilState{

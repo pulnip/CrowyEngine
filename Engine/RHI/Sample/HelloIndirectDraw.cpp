@@ -23,12 +23,12 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
-                        .path = "Engine/Shader/BaseInstanceSpike.slang",
+                        .path = "Engine/RHI/Spike/BaseInstanceSpike.slang",
                         .entryPoint = "vs_main"
                     }
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/BaseInstanceSpike.slang",
+                    .path = "Engine/RHI/Spike/BaseInstanceSpike.slang",
                     .entryPoint = "fs_main"
                 },
                 .renderTargetFormats = {

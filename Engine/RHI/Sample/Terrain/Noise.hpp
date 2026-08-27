@@ -7,7 +7,7 @@
 
 namespace Crowy
 {
-    // CPU half of Engine/Shader/Noise.slang, laid out in the same order.
+    // CPU half of Engine/RHI/Sample/Terrain/Noise.slang, laid out in the same order.
     // TerrainDensityCheck compares both on every smoke run.
 
     namespace detail{

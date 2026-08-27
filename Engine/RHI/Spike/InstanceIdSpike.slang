@@ -5,7 +5,7 @@
 // leaves SV_InstanceID zero-based. Metal's [[instance_id]] instead counts from
 // the base instance, and Slang's Metal target emits it raw - this spike drew
 // the staircase on Metal until zeroBasedInstanceID papered over the gap.
-// It now guards that contract: OrbitFrameSample builds its whole segment
+// It now guards that contract: OrbitFrame builds its whole segment
 // addressing on the zero-based reading, and one segment there is sub-pixel -
 // it could never show this.
 //

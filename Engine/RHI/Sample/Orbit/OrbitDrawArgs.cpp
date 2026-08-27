@@ -37,7 +37,7 @@ namespace Crowy
     )
         : pso(device.CreatePipelineState(RHIComputePipelineStateDesc{
             .computeShader = {
-                .path = "Engine/Shader/OrbitArgs.slang",
+                .path = "Engine/RHI/Sample/Orbit/OrbitArgs.slang",
                 .entryPoint = "cs_trail_args"
             }
         }))

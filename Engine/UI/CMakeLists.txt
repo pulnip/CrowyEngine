@@ -19,4 +19,6 @@ if(CROWY_ENABLE_TEST)
         DEPENDS Crowy::UI
         LABELS "unit"
     )
+
+    add_subdirectory(Sample)
 endif()

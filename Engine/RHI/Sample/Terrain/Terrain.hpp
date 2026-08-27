@@ -18,7 +18,7 @@ namespace Crowy
 
     inline constexpr f32 TERRAIN_CELL_SIZE = 1.0f;
 
-    // Mirrors TerrainParams in Engine/Shader/TerrainDensity.slang.
+    // Mirrors TerrainParams in Engine/RHI/Sample/Terrain/TerrainDensity.slang.
     struct TerrainParams{
         u32 seed = 1337;
         // fbm2D base frequency, in cycles per world unit
@@ -36,7 +36,7 @@ namespace Crowy
     static_assert(sizeof(TerrainParams) == 32);
     static_assert(alignof(TerrainParams) == 4);
 
-    // Mirrors TerrainVertex in Engine/Shader/Terrain.slang.
+    // Mirrors TerrainVertex in Engine/RHI/Sample/Terrain/Terrain.slang.
     // no UV (triplanar), no index buffer (triangle soup)
     struct TerrainVertex{
         Vec3 position;
@@ -50,7 +50,7 @@ namespace Crowy
     inline constexpr f32 TERRAIN_CAMERA_START_YAW = 0.0f;
     inline constexpr f32 TERRAIN_CAMERA_START_PITCH = 0.42f;
 
-    // Mirrors the `frame` cbuffer (b1) in Engine/Shader/Terrain.slang.
+    // Mirrors the `frame` cbuffer (b1) in Engine/RHI/Sample/Terrain/Terrain.slang.
     struct TerrainFrameUniforms{
         Mat4 viewProj;
         Vec3 toLight;

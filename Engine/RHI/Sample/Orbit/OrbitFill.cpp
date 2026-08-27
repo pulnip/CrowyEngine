@@ -6,7 +6,7 @@
 namespace{
     using namespace Crowy;
 
-    constexpr CStr SHADER_PATH = "Engine/Shader/OrbitSample.slang";
+    constexpr CStr SHADER_PATH = "Engine/RHI/Sample/Orbit/OrbitSample.slang";
 
     RHIComputePipelineStateRAII MakePipeline(RHIDevice& device, CStr entryPoint){
         return device.CreatePipelineState(RHIComputePipelineStateDesc{

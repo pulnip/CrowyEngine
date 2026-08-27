@@ -10,7 +10,7 @@
 
 namespace Crowy
 {
-    // CornellBoxSample built on RenderScene.
+    // CornellBox built on RenderScene.
     //
     // The five walls are one mesh with five submeshes here,
     // where the RHI sample draws five separate objects.
@@ -214,10 +214,10 @@ namespace Crowy
         static MaterialPipelineDesc opaquePipeline() {
             return MaterialPipelineDesc{
                 .vertexShader =
-                    {.path = "Engine/Shader/CornellRoom.slang",
+                    {.path = "Engine/Render/Sample/CornellRoom.slang",
                      .entryPoint = "vs_main"},
                 .fragmentShader =
-                    {.path = "Engine/Shader/CornellRoom.slang",
+                    {.path = "Engine/Render/Sample/CornellRoom.slang",
                      .entryPoint = "fs_main"},
                 .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"

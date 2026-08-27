@@ -63,10 +63,10 @@ namespace Crowy
                 MaterialResource{
                     .pipeline = MaterialPipelineDesc{
                         .vertexShader =
-                            {.path = "Engine/Shader/TenThousandBlocks.slang",
+                            {.path = "Engine/Render/Sample/TenThousandBlocks.slang",
                              .entryPoint = "vs_main"},
                         .fragmentShader =
-                            {.path = "Engine/Shader/TenThousandBlocks.slang",
+                            {.path = "Engine/Render/Sample/TenThousandBlocks.slang",
                              .entryPoint = "fs_main"},
                         .rasterizer = {.frontCounterClockwise = false},
                         // SV_StartInstanceLocation carries the draw ID

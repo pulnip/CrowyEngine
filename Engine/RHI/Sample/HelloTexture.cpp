@@ -24,7 +24,7 @@ namespace Crowy
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
                     .vertexShader = {
-                        .path = "Engine/Shader/HelloTexture.slang",
+                        .path = "Engine/RHI/Sample/HelloTexture.slang",
                         .entryPoint = "vs_main"
                     }
                 },
@@ -32,7 +32,7 @@ namespace Crowy
                     .frontCounterClockwise = false
                 },
                 .fragmentShader = {
-                    .path = "Engine/Shader/HelloTexture.slang",
+                    .path = "Engine/RHI/Sample/HelloTexture.slang",
                     .entryPoint = "fs_main"
                 },
                 .blend = RHIBlendState{
