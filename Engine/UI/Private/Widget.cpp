@@ -162,6 +162,28 @@ namespace Crowy
         }
     }
 
+    void Dropdown::submit(UIContext& ctx){
+        const auto preview = current.has_value() ?
+            entries[*current].c_str() : "";
+
+        if(!ImGui::BeginCombo(label.c_str(), preview))
+            return;
+
+        for(usize i = 0; i < entries.size(); ++i){
+            const bool selected = current == i;
+
+            if(ImGui::Selectable(entries[i].c_str(), selected)){
+                current = i;
+                onChanged(ctx, i);
+            }
+            if(selected){
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
     void Text::submit(UIContext&){
         ImGui::Text("%s", data.c_str());
     }

@@ -26,6 +26,23 @@ CROWY_STRUCT(WalkerBase)
     .SetProperty("exposure", &WalkerBase::exposure)
 CROWY_STRUCT_END(WalkerBase)
 
+// non-contiguous, and negative in a signed underlying type: the two things
+// an index-is-the-value dropdown would get wrong
+enum class WalkerBlend: i16{
+    Opaque = -1,
+    Masked = 7,
+    Additive = 300
+};
+
+namespace Crowy
+{
+    CROWY_ENUM_BEGIN(WalkerBlend)
+        CROWY_ENUM_VALUE(Opaque)
+        CROWY_ENUM_VALUE(Masked)
+        CROWY_ENUM_VALUE(Additive)
+    CROWY_ENUM_END()
+}
+
 struct WalkerFixture: WalkerBase{
     bool visible = true;
     i32 count = 3;
@@ -35,6 +52,7 @@ struct WalkerFixture: WalkerBase{
     Str title = "untitled";
     u32 flags = 0;
     WalkerNested nested;
+    WalkerBlend blend = WalkerBlend::Masked;
 };
 
 CROWY_STRUCT(WalkerFixture)
@@ -48,6 +66,7 @@ CROWY_STRUCT(WalkerFixture)
     .SetProperty("title", &WalkerFixture::title)
     .SetProperty("flags", &WalkerFixture::flags)
     .SetProperty("nested", &WalkerFixture::nested)
+    .SetProperty("blend", &WalkerFixture::blend)
 CROWY_STRUCT_END(WalkerFixture)
 
 TEST(PropertyWalker, TreeShape){
@@ -66,7 +85,7 @@ TEST(PropertyWalker, TreeShape){
     EXPECT_TRUE(root->defaultOpen);
     EXPECT_EQ(root->scopeId, &fixture);
 
-    ASSERT_EQ(root->children.size(), 9u);
+    ASSERT_EQ(root->children.size(), 10u);
 
     // the inherited property comes first, then own declaration order
     auto* exposure = std::get_if<DragFloat>(&root->children[0]);
@@ -122,6 +141,51 @@ TEST(PropertyWalker, TreeShape){
     ASSERT_TRUE(amount != nullptr);
     EXPECT_EQ(amount->label, "amount");
     EXPECT_EQ(amount->v, 0.25f);
+
+    // a registered enum lists its enumerators in declaration order, and
+    // points at the one the member currently holds
+    auto* blend = std::get_if<Dropdown>(&root->children[9]);
+    ASSERT_TRUE(blend != nullptr);
+    EXPECT_EQ(blend->label, "blend");
+    EXPECT_EQ(blend->entries, (std::vector<Str>{"Opaque", "Masked", "Additive"}));
+    ASSERT_TRUE(blend->current.has_value());
+    EXPECT_EQ(*blend->current, 1u);
+}
+
+TEST(PropertyWalker, DropdownWritesTheValueNotTheIndex){
+    WalkerFixture fixture;
+    int dirty = 0;
+    UIContext ctx;
+
+    auto tree = buildPropertyTree(
+        "Fixture", &fixture, *GetDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
+    );
+    auto& root = std::get<Collapsing>(tree);
+    auto& blend = std::get<Dropdown>(root.children[9]);
+
+    // index 2 is the enumerator 300, not the value 2
+    blend.onChanged(ctx, 2);
+    EXPECT_EQ(fixture.blend, WalkerBlend::Additive);
+    EXPECT_EQ(dirty, 1);
+
+    // and index 0 is negative in a signed underlying type
+    blend.onChanged(ctx, 0);
+    EXPECT_EQ(fixture.blend, WalkerBlend::Opaque);
+    EXPECT_EQ(dirty, 2);
+}
+
+TEST(PropertyWalker, DropdownSelectsNothingForAnUnlistedValue){
+    WalkerFixture fixture;
+    fixture.blend = static_cast<WalkerBlend>(42);
+
+    auto tree = buildPropertyTree(
+        "Fixture", &fixture, *GetDesc<WalkerFixture>(), []{}
+    );
+    auto& root = std::get<Collapsing>(tree);
+    auto& blend = std::get<Dropdown>(root.children[9]);
+
+    EXPECT_EQ(blend.entries.size(), 3u);
+    EXPECT_FALSE(blend.current.has_value());
 }
 
 TEST(PropertyWalker, WritesLandAndNotify){

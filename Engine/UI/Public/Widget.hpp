@@ -91,6 +91,19 @@ namespace Crowy
         void submit(UIContext&);
     };
 
+    // onChanged carries the index into entries, never the underlying value:
+    // an enumerator's value is neither its position nor contiguous, so the
+    // mapping back belongs to whoever built the entries.
+    struct Dropdown{
+        Str label;
+        std::function<void(UIContext&, usize)> onChanged = [](UIContext&, usize){};
+        std::vector<Str> entries;
+        // no entry matches the current value; nothing is selected
+        std::optional<usize> current = std::nullopt;
+
+        void submit(UIContext&);
+    };
+
     struct Text{
         Str data;
 
@@ -158,7 +171,7 @@ namespace Crowy
 
     using Widget = std::variant<
         IntField, FloatField, Float2Field, Float3Field, Float4Field,
-        Checkbox, TextButton, Slider, DragFloat, Text, SearchBar,
+        Checkbox, TextButton, Slider, DragFloat, Dropdown, Text, SearchBar,
         Collapsing, Box
     >;
 

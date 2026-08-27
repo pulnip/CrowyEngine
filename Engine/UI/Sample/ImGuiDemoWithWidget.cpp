@@ -1,10 +1,45 @@
 #include <array>
 #include <vector>
 #include "AppFramework.hpp"
+#include "ClassRegistry.hpp"
+#include "Object.hpp"
 #include "Primitives.hpp"
+#include "PropertyWalker.hpp"
 #include "UIRenderer.hpp"
 
 #include <imgui.h>
+
+enum class GalleryShape: Crowy::u8{
+    Triangle,
+    Square,
+    Hexagon
+};
+
+namespace Crowy
+{
+    CROWY_ENUM_BEGIN(GalleryShape)
+        CROWY_ENUM_VALUE(Triangle)
+        CROWY_ENUM_VALUE(Square)
+        CROWY_ENUM_VALUE(Hexagon)
+    CROWY_ENUM_END()
+}
+
+// Nothing here draws: the point is that the section below it is built from
+// this registration alone, with no per-type UI code anywhere.
+struct GalleryKnobs{
+    GalleryShape shape = GalleryShape::Square;
+    Crowy::f32 scale = 1.0f;
+    bool wireframe = false;
+    Crowy::Str name = "knobs";
+};
+
+CROWY_STRUCT(GalleryKnobs)
+    .SetProperty("shape", &GalleryKnobs::shape)
+    .SetProperty("scale", &GalleryKnobs::scale)
+        .SetUIRange(0.1f, 4.0f)
+    .SetProperty("wireframe", &GalleryKnobs::wireframe)
+    .SetProperty("name", &GalleryKnobs::name)
+CROWY_STRUCT_END(GalleryKnobs)
 
 namespace Crowy
 {
@@ -18,6 +53,7 @@ namespace Crowy
     private:
         RAII<UIRenderer> uiRenderer = nullptr;
         UIContext context;
+        GalleryKnobs knobs;
 
         Widget panel;
 
@@ -63,7 +99,11 @@ namespace Crowy
                     .get = [&ctx = context]{
                         return static_cast<f32>(1000.0 * ctx.frameTime);
                     }
-                }
+                },
+                // every widget below this line was chosen by property type
+                buildPropertyTree(
+                    "Reflected", &knobs, *GetDesc<GalleryKnobs>(), []{}
+                )
             });
         }
 
