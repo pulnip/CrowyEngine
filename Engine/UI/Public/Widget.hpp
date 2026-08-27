@@ -4,6 +4,7 @@
 #include <optional>
 #include <type_traits>
 #include <variant>
+#include <vector>
 #include "Primitives.hpp"
 
 namespace Crowy
@@ -80,6 +81,16 @@ namespace Crowy
         void submit(UIContext&);
     };
 
+    struct DragFloat{
+        Str label;
+        std::function<void(UIContext&, float)> onChanged = [](UIContext&, float){};
+        float v = 0.0f;
+        std::optional<std::function<float()>> get = std::nullopt;
+        float v_speed = 0.01f;
+
+        void submit(UIContext&);
+    };
+
     struct Text{
         Str data;
 
@@ -143,11 +154,22 @@ namespace Crowy
         }
     };
 
+    struct Collapsing;
+
     using Widget = std::variant<
         IntField, FloatField, Float2Field, Float3Field, Float4Field,
-        Checkbox, TextButton, Slider, Text, SearchBar,
-        Box
+        Checkbox, TextButton, Slider, DragFloat, Text, SearchBar,
+        Collapsing, Box
     >;
+
+    struct Collapsing{
+        Str label;
+        std::vector<Widget> children;
+        bool defaultOpen = false;
+        const void* scopeId = nullptr;
+
+        void submit(UIContext&);
+    };
 
     Widget Row(
         std::vector<Widget>&& children,

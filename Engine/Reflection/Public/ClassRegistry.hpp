@@ -1,13 +1,16 @@
 #pragma once
 
+#include <array>
 #include <functional>
+#include <ranges>
 #include <typeindex>
 #include <unordered_map>
+#include <vector>
 #include "Assert.hpp"
 #include "Primitives.hpp"
 #include "PropertyDesc.hpp"
 #include "StringUtil.hpp"
-#include "TypeInfo.hpp"
+#include "TypeOps.hpp"
 
 namespace Crowy
 {
@@ -17,13 +20,15 @@ namespace Crowy
     using ObjectRAII = RAII<Object>;
 
     template<typename T>
-    const TypeInfo* GetTypeInfo();
+    const TypeOps* GetTypeOps();
 
     // name, inheritance and properties are common to both
     struct TypeDesc{
         Str name;
         const TypeDesc* parent = nullptr;
-        StringHashMap<PropertyDesc> properties;
+        // registration order, which consumers treat as declaration order
+        std::vector<PropertyDesc> properties;
+        StringHashMap<usize> indexByName;
 
         // owned as RAII<TypeDesc>, so the destructor must be virtual
         virtual ~TypeDesc() = default;
@@ -33,17 +38,29 @@ namespace Crowy
         PropertyDesc& AddProperty(CStr name, Ptrs... ptrs){
             using Leaf = typename detail::MemberChain<Ptrs...>::Leaf;
 
-            auto [it, ret] = properties.try_emplace(
-                name,
-                PropertyDesc{
-                    .typeInfo = *GetTypeInfo<Leaf>(),
-                    .accessor = std::make_unique<MemberAccessor<Ptrs...>>(ptrs...),
-                    .meta = {}
-                }
+            static_assert(
+                HasTypeTraits<Leaf> ||
+                    (std::is_class_v<Leaf> && !std::ranges::range<Leaf>),
+                "container properties are not supported; "
+                "register a leaf type or a reflectable struct"
             );
 
+            auto [it, ret] = indexByName.try_emplace(name, properties.size());
             CROWY_ASSERT(ret);
-            return it->second;
+
+            properties.push_back(PropertyDesc{
+                .name = name,
+                .type = *GetTypeOps<Leaf>(),
+                .accessor = std::make_unique<MemberAccessor<Ptrs...>>(ptrs...),
+                .meta = {}
+            });
+
+            return properties.back();
+        }
+
+        const PropertyDesc* Find(StrView name) const{
+            auto it = indexByName.find(name);
+            return it == indexByName.end() ? nullptr : &properties[it->second];
         }
     };
 
@@ -99,41 +116,67 @@ namespace Crowy
     namespace detail
     {
         template<typename T>
-        TypeInfo MakeTypeInfo(){
+            requires HasEnumTraits<T>
+        std::span<const EnumeratorDesc> EnumeratorsOf(){
+            static constexpr auto list = []{
+                constexpr auto count = EnumTraits<T>::entries.size();
+
+                std::array<EnumeratorDesc, count> out{};
+                for(usize i = 0; i < count; ++i){
+                    out[i] = EnumeratorDesc{
+                        EnumTraits<T>::entries[i].name,
+                        static_cast<i64>(EnumTraits<T>::entries[i].value)
+                    };
+                }
+                return out;
+            }();
+
+            return list;
+        }
+
+        template<typename T>
+        TypeOps MakeTypeOps(){
             static_assert(
                 HasTypeTraits<T> || std::is_class_v<T>,
                 "type has no TypeTraits and cannot be reflected"
             );
 
-            TypeInfo info{
+            TypeOps ops{
                 .name = typeid(T).name(),
                 .size = sizeof(T)
             };
 
             if constexpr(HasTypeTraits<T>){
-                info.name = TypeTraits<T>::name;
-                info.deserialize = &TypeTraits<T>::deserialize;
+                ops.name = TypeTraits<T>::name;
+                ops.deserialize = &TypeTraits<T>::deserialize;
             }
             // the desc may stay empty, which just means
             // the type was never registered
             if constexpr(std::is_class_v<T>){
-                info.getDesc = &GetDesc<T>;
+                ops.getDesc = &GetDesc<T>;
+            }
+            if constexpr(HasEnumTraits<T>){
+                ops.enumerators = &EnumeratorsOf<T>;
             }
 
-            return info;
+            return ops;
         }
     }
 
     template<typename T>
-    const TypeInfo* GetTypeInfo(){
-        static const TypeInfo info = detail::MakeTypeInfo<T>();
-        return &info;
+    const TypeOps* GetTypeOps(){
+        static const TypeOps ops = detail::MakeTypeOps<T>();
+        return &ops;
     }
 
     namespace detail
     {
         void ApplyProperties(const TypeDesc&, void* object, const DOM::Value&);
     }
+
+    // the registered type this property recurses into,
+    // or nullptr when the property is a leaf
+    const TypeDesc* NestedDesc(const PropertyDesc&);
 
     template<typename T>
         requires (!std::is_pointer_v<T>)
@@ -182,6 +225,14 @@ namespace Crowy
         Self& SetTooltip(CStr tooltip){
             if(lastProp != nullptr){
                 lastProp->meta.tooltip = tooltip;
+            }
+
+            return self();
+        }
+
+        Self& SetUIRange(f32 min, f32 max){
+            if(lastProp != nullptr){
+                lastProp->meta.uiRange = {min, max};
             }
 
             return self();

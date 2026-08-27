@@ -2,6 +2,7 @@
 
 #include <array>
 #include <utility>
+#include <vector>
 
 #include "Log.hpp"
 #include "RHIBuffer.hpp"
@@ -51,6 +52,8 @@ namespace Crowy
         );
 
         colorFormat = swapchain.GetFormat();
+
+        OnInitUI(device, colorFormat, config.depthFormat);
     }
 
     void RenderApp::OnInitialRecord(RHICommandList& cmdList) {
@@ -71,6 +74,7 @@ namespace Crowy
 
     void RenderApp::ProcessInput(const InputProvider& input) {
         camera->ProcessInput(input);
+        OnProcessInput(input);
     }
 
     void RenderApp::OnUpdate(f64 deltaTime, f64) {
@@ -119,10 +123,12 @@ namespace Crowy
         renderer->Upload();
         reportCullStatsOnce();
 
+        const auto uiAcquires = OnPrepareUI(cmdList);
+
         auto colorAttachment = backBuffer;
         colorAttachment.clearColor = config.clearColor;
         std::array colorAttachments = {colorAttachment};
-        const std::array acquires{
+        std::vector<RHITextureBarrier> acquires{
             AcquireBackBuffer(backBuffer),
             // waits for the previous frame's depth work (WAR),
             // contents discarded - the pass clears anyway
@@ -133,6 +139,7 @@ namespace Crowy
                 /*discardContents=*/true
             )
         };
+        acquires.append_range(uiAcquires);
         cmdList.BeginRenderPass(
             RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
@@ -160,6 +167,8 @@ namespace Crowy
             cmdList,
             RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()}
         );
+
+        OnRecordUI(cmdList);
 
         const std::array releases{ReleaseBackBuffer(backBuffer)};
         cmdList.EndRenderPass(releases);

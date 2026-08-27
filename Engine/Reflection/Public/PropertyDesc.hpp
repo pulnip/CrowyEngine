@@ -3,7 +3,7 @@
 #include <optional>
 #include <tuple>
 #include "Primitives.hpp"
-#include "TypeInfo.hpp"
+#include "TypeOps.hpp"
 
 namespace Crowy
 {
@@ -93,12 +93,15 @@ namespace Crowy
     };
 
     struct PropertyMeta{
-        std::optional<std::pair<f32, f32>> range = std::nullopt;
+        // slider travel range, not a hard clamp
+        // - a widget walks it, nothing enforces it on write
+        std::optional<std::pair<f32, f32>> uiRange = std::nullopt;
         CStr tooltip = nullptr;
     };
 
     struct PropertyDesc{
-        const TypeInfo& typeInfo;
+        Str name;
+        const TypeOps& type;
         RAII<PropertyAccessor> accessor;
         PropertyMeta meta;
     };

@@ -19,10 +19,14 @@ namespace{
             for(Crowy::usize i = 0; i < children.size(); ++i){
                 if(i > 0 && axis == Axis::horizontal)
                     ImGui::SameLine(0, spacing);
+                if(i > 0 && axis == Axis::vertical && spacing > 0.0)
+                    ImGui::Dummy(ImVec2(0.0f, static_cast<float>(spacing)));
 
+                ImGui::PushID(static_cast<int>(i));
                 std::visit([&ctx](auto& widget){
                     widget.submit(ctx);
                 }, children[i]);
+                ImGui::PopID();
             }
             ImGui::EndGroup();
         }
@@ -141,6 +145,23 @@ namespace Crowy
             onChanged(ctx, v);
     }
 
+    void DragFloat::submit(UIContext& ctx){
+        bool readonly = get.has_value();
+
+        if(readonly){
+            ImGui::BeginDisabled();
+            v = (*get)();
+        }
+
+        if(ImGui::DragFloat(label.c_str(), &v, v_speed)){
+            onChanged(ctx, v);
+        }
+
+        if(readonly){
+            ImGui::EndDisabled();
+        }
+    }
+
     void Text::submit(UIContext&){
         ImGui::Text("%s", data.c_str());
     }
@@ -148,6 +169,27 @@ namespace Crowy
     void SearchBar::submit(UIContext& ctx){
         if(ImGui::InputText(label.c_str(), &str))
             onChanged(ctx, str);
+    }
+
+    void Collapsing::submit(UIContext& ctx){
+        if(scopeId != nullptr)
+            ImGui::PushID(scopeId);
+
+        const auto flags = defaultOpen ?
+            ImGuiTreeNodeFlags_DefaultOpen :
+            ImGuiTreeNodeFlags_None;
+        if(ImGui::CollapsingHeader(label.c_str(), flags)){
+            for(usize i = 0; i < children.size(); ++i){
+                ImGui::PushID(static_cast<int>(i));
+                std::visit([&ctx](auto& widget){
+                    widget.submit(ctx);
+                }, children[i]);
+                ImGui::PopID();
+            }
+        }
+
+        if(scopeId != nullptr)
+            ImGui::PopID();
     }
 
     Widget Row(

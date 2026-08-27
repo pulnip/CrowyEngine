@@ -201,7 +201,7 @@ namespace Crowy
             const auto& material = source.objects[wall].material;
 
             for(u32 slot = 0; slot < room.materials.size(); ++slot) {
-                if(scene.Materials().Read(room.materials[slot]).data.albedo ==
+                if(scene.Materials().GetRef(room.materials[slot]).data.albedo ==
                    material.albedo)
                     return slot;
             }

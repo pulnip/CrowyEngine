@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include "DOM.hpp"
 #include "EnumUtil.hpp"
 #include "Primitives.hpp"
@@ -16,17 +17,20 @@ namespace Crowy
     struct TypeDesc;
 
     // empty by default, so a type without traits can still be
-    // reflected property by property. see MakeTypeInfo
+    // reflected property by property. see MakeTypeOps
     template<typename T>
     struct TypeTraits{};
 
     template<typename T>
-        requires std::is_enum_v<T>
+        requires HasEnumTraits<T>
     struct TypeTraits<T>{
-        inline static CStr name = EnumTraits<T>::name;
+        static constexpr CStr name = EnumTraits<T>::name;
         static void deserialize(void* data, const DOM::Value& value){
             if(auto v = value.asString()){
-                *static_cast<T*>(data) = EnumTraits<T>::convert(*v);
+                // an unknown name keeps the default, like an absent key
+                if(auto parsed = enumFromName<T>(*v)){
+                    *static_cast<T*>(data) = *parsed;
+                }
             }
         }
     };
@@ -55,16 +59,23 @@ namespace Crowy
         TypeTraits<T>::deserialize;
     };
 
-    // use TypeInfo for type erasure.
-    // built by MakeTypeInfo, see ClassRegistry.hpp
-    struct TypeInfo{
+    struct EnumeratorDesc{
+        CStr name;
+        i64 value;
+    };
+
+    // erased operations and identity of one type.
+    // built by MakeTypeOps, see ClassRegistry.hpp
+    struct TypeOps{
         CStr name = nullptr;
         usize size = 0;
         // leaf type: parses the whole value at once
         void (*deserialize)(void*, const DOM::Value&) = nullptr;
         // reflected type: filled property by property.
-        // resolved lazily, so the desc may register after this TypeInfo was built
+        // resolved lazily, so the desc may register after this TypeOps was built
         const TypeDesc* (*getDesc)() = nullptr;
+        // enum type: its enumerators, for dropdowns and by-name writers
+        std::span<const EnumeratorDesc> (*enumerators)() = nullptr;
     };
 }
 

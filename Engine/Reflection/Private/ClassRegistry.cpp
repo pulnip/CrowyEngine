@@ -30,33 +30,35 @@ namespace Crowy
         return ret;
     }
 
-    namespace detail
+    namespace
     {
-        static bool HasProperties(const TypeDesc& desc){
+        bool HasProperties(const TypeDesc& desc){
             if(!desc.properties.empty()){
                 return true;
             }
 
             return desc.parent != nullptr && HasProperties(*desc.parent);
         }
+    }
 
-        // a registered type, or nullptr when the property is a leaf
-        static const TypeDesc* NestedDesc(const PropertyDesc& prop){
-            if(prop.typeInfo.getDesc == nullptr){
-                return nullptr;
-            }
-
-            const TypeDesc* desc = prop.typeInfo.getDesc();
-            return HasProperties(*desc) ? desc : nullptr;
+    const TypeDesc* NestedDesc(const PropertyDesc& prop){
+        if(prop.type.getDesc == nullptr){
+            return nullptr;
         }
 
+        const TypeDesc* desc = prop.type.getDesc();
+        return HasProperties(*desc) ? desc : nullptr;
+    }
+
+    namespace detail
+    {
         void ApplyProperties(const TypeDesc& desc, void* object, const DOM::Value& table){
             if(desc.parent != nullptr){
                 ApplyProperties(*desc.parent, object, table);
             }
 
-            for(const auto& [name, prop]: desc.properties){
-                auto node = table.at(name);
+            for(const auto& prop: desc.properties){
+                auto node = table.at(prop.name);
 
                 // use default value if prop is not specified
                 if(node == nullptr){
@@ -71,8 +73,8 @@ namespace Crowy
                 if(nested != nullptr && node->is_table()){
                     ApplyProperties(*nested, member, *node);
                 }
-                else if(prop.typeInfo.deserialize != nullptr){
-                    prop.typeInfo.deserialize(member, *node);
+                else if(prop.type.deserialize != nullptr){
+                    prop.type.deserialize(member, *node);
                 }
             }
         }

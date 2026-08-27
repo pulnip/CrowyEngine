@@ -28,16 +28,16 @@ TEST(PackedTable, AddPacksInOrder) {
     EXPECT_EQ(table.At(2).value, 2);
 }
 
-TEST(PackedTable, WriteFindsTheRowThroughTheHandle) {
+TEST(PackedTable, GetRefFindsTheRowThroughTheHandle) {
     Table table;
 
     table.Add(Row{0});
     const auto handle = table.Add(Row{1});
     table.Add(Row{2});
 
-    table.Write(handle, Row{9});
+    table.GetRef(handle) = Row{9};
 
-    EXPECT_EQ(table.Read(handle).value, 9);
+    EXPECT_EQ(table.GetRef(handle).value, 9);
     EXPECT_EQ(table.At(1).value, 9);
 }
 
@@ -55,11 +55,11 @@ TEST(PackedTable, RemoveSwapsTheLastRowIntoTheHole) {
 
     // its handle followed it into the hole
     EXPECT_TRUE(table.IsValid(last));
-    EXPECT_EQ(table.Read(last).value, 2);
+    EXPECT_EQ(table.GetRef(last).value, 2);
     EXPECT_EQ(table.At(1).value, 2);
 
     EXPECT_TRUE(table.IsValid(first));
-    EXPECT_EQ(table.Read(first).value, 0);
+    EXPECT_EQ(table.GetRef(first).value, 0);
 }
 
 // IndexOf is what a GPU row index is read from, so it has to track the swap
@@ -86,7 +86,7 @@ TEST(PackedTable, RemoveLastNeedsNoSwap) {
     ASSERT_EQ(table.Count(), 1u);
     EXPECT_FALSE(table.IsValid(last));
     EXPECT_TRUE(table.IsValid(first));
-    EXPECT_EQ(table.Read(first).value, 0);
+    EXPECT_EQ(table.GetRef(first).value, 0);
 }
 
 // the generation bump is all that separates the two handles
@@ -99,7 +99,7 @@ TEST(PackedTable, ReusedSlotDoesNotReviveTheOldHandle) {
 
     EXPECT_FALSE(table.IsValid(stale));
     EXPECT_TRUE(table.IsValid(fresh));
-    EXPECT_EQ(table.Read(fresh).value, 1);
+    EXPECT_EQ(table.GetRef(fresh).value, 1);
 }
 
 TEST(PackedTable, RemoveEveryRowInOrder) {
@@ -113,7 +113,7 @@ TEST(PackedTable, RemoveEveryRowInOrder) {
     for(usize i = 0; i < handles.size(); ++i) {
         for(usize j = i; j < handles.size(); ++j) {
             ASSERT_TRUE(table.IsValid(handles[j]));
-            EXPECT_EQ(table.Read(handles[j]).value, static_cast<int>(j));
+            EXPECT_EQ(table.GetRef(handles[j]).value, static_cast<int>(j));
         }
         table.Remove(handles[i]);
     }

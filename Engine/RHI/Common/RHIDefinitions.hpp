@@ -10,6 +10,7 @@
 #include <variant>
 #include <vector>
 
+#include "EnumUtil.hpp"
 #include "HashUtil.hpp"
 #include "IntMath.hpp"
 #include "Primitives.hpp"
@@ -23,6 +24,12 @@ namespace Crowy
         Metal = 2,
         WebGPU = 3,
     };
+
+    CROWY_ENUM_BEGIN(RHIBackend)
+        CROWY_ENUM_VALUE(DirectX12)
+        CROWY_ENUM_VALUE(Metal)
+        CROWY_ENUM_VALUE(WebGPU)
+    CROWY_ENUM_END()
 
     struct RHICapabilities {
         bool flipTextureV;

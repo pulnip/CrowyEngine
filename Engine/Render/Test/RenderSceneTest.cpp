@@ -44,13 +44,26 @@ TEST(RenderScene, MaterialRowFollowsARemoval) {
     EXPECT_EQ(scene.Materials().At(1).data.albedo.z, 1.0f);
 }
 
+// the inspector's write-back path
+// a row edited in place is what the next BuildFrame reads
+TEST(RenderScene, EditedMaterialRowIsWhatTheTableReads) {
+    RenderScene scene;
+
+    const auto handle = AddMaterial(scene, {1.0f, 0.0f, 0.0f});
+
+    scene.Materials().GetRef(handle).data.roughness = 0.75f;
+
+    EXPECT_EQ(scene.Materials().GetRef(handle).data.roughness, 0.75f);
+    EXPECT_EQ(scene.Materials().At(0).data.roughness, 0.75f);
+}
+
 TEST(RenderScene, MeshKeepsItsSubMeshesAndMaterial) {
     RenderScene scene;
 
     const auto material = AddMaterial(scene, {1.0f, 1.0f, 1.0f});
     const auto mesh = AddMesh(scene, material, 5);
 
-    const auto& stored = scene.Meshes().Read(mesh);
+    const auto& stored = scene.Meshes().GetRef(mesh);
     ASSERT_EQ(stored.subMeshes.size(), 5u);
     ASSERT_EQ(stored.materials.size(), 1u);
     EXPECT_EQ(scene.Materials().IndexOf(stored.materials[0]), 0u);
@@ -65,7 +78,7 @@ TEST(RenderScene, PrimitiveReferencesAMesh) {
         scene.Primitives().Add(PrimitiveSnapshot{.mesh = mesh});
 
     EXPECT_TRUE(
-        scene.Meshes().IsValid(scene.Primitives().Read(primitive).mesh)
+        scene.Meshes().IsValid(scene.Primitives().GetRef(primitive).mesh)
     );
 }
 
