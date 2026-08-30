@@ -212,6 +212,18 @@ TEST(Serializer, JsonParseErrors){
     EXPECT_THROW(parseJsonString("18446744073709551615"), std::out_of_range);
 }
 
+TEST(Serializer, Size2DFromPair){
+    auto v = parseJsonString(R"({"pair": [8, 4], "quad": [8, 4, 2, 1], "single": [8]})");
+
+    auto size = v.get<Size2D>("pair");
+    ASSERT_TRUE(size.has_value());
+    EXPECT_EQ(size->x, 8u);
+    EXPECT_EQ(size->y, 4u);
+
+    EXPECT_FALSE(v.get<Size2D>("quad").has_value());
+    EXPECT_FALSE(v.get<Size2D>("single").has_value());
+}
+
 TEST(Serializer, JsonNumberStrictness){
     auto v = parseJsonString(R"({"i": 1, "f": 1.0, "big": 9223372036854775807})");
 

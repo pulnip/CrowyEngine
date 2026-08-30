@@ -227,7 +227,7 @@ namespace Crowy
     template<>
     std::optional<Size2D> DOM::Value::getImpl<Size2D>() const noexcept{
         auto a = asArray();
-        if(a == nullptr || a->size() != 4){
+        if(a == nullptr || a->size() != 2){
             return std::nullopt;
         }
 
