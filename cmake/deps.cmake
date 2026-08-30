@@ -68,6 +68,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tomlplusplus)
 
+# nlohmann/json - JSON parser library
+set(JSON_BuildTests OFF)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY "https://github.com/nlohmann/json.git"
+    GIT_TAG "v3.12.0"
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 if(WIN32)
     set(AGILITY_SDK_VERSION "1.619.4")
 

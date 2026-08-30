@@ -4,6 +4,7 @@ PUBLIC
     Crowy::RHI
 PRIVATE
     ktx
+    nlohmann_json::nlohmann_json
     stb
     tomlplusplus::tomlplusplus
     ufbx
