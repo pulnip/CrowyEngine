@@ -59,15 +59,6 @@ SYSTEM INTERFACE
     "${stb_SOURCE_DIR}"
 )
 
-# tomlplusplus - TOML parser library
-FetchContent_Declare(
-    tomlplusplus
-    GIT_REPOSITORY "https://github.com/marzer/tomlplusplus.git"
-    GIT_TAG "v3.4.0"
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(tomlplusplus)
-
 # nlohmann/json - JSON parser library
 set(JSON_BuildTests OFF)
 FetchContent_Declare(

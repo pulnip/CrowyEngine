@@ -6,14 +6,8 @@ PRIVATE
     ktx
     nlohmann_json::nlohmann_json
     stb
-    tomlplusplus::tomlplusplus
     ufbx
     Crowy::Log
-)
-
-target_compile_definitions(CrowySerialization
-PRIVATE
-    TOML_EXCEPTIONS=1
 )
 
 crowy_declare_private_interface(Serialization)
