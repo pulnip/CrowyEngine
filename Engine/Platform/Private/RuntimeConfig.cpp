@@ -1,10 +1,10 @@
 #include "RuntimeConfig.hpp"
 #include "DOM.hpp"
-#include "TomlLoader.hpp"
+#include "DomTraits.hpp"
 
 namespace Crowy
 {
-    WindowConfig TomlTraits<WindowConfig>::from(
+    WindowConfig DomTraits<WindowConfig>::from(
         const DOM::Value& root
     ){
         auto title = root.get<Str>("runtime.window.title")
@@ -35,7 +35,7 @@ namespace Crowy
         };
     }
 
-    RuntimeConfig TomlTraits<RuntimeConfig>::from(
+    RuntimeConfig DomTraits<RuntimeConfig>::from(
         const DOM::Value& root
     ){
         auto name = root.get<Str>("runtime.app_name")
@@ -49,7 +49,7 @@ namespace Crowy
             .name = name,
             .version = version,
             .identifier = identifier,
-            .window = TomlTraits<WindowConfig>::from(root)
+            .window = DomTraits<WindowConfig>::from(root)
         };
     }
 }

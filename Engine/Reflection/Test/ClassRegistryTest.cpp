@@ -2,7 +2,7 @@
 #include "ClassRegistry.hpp"
 #include "Object.hpp"
 #include "Semantics.hpp"
-#include "TomlLoader.hpp"
+#include "JsonLoader.hpp"
 
 using namespace Crowy;
 
@@ -62,12 +62,13 @@ TEST(Reflection, NestedProperty){
 
 
     {
-        auto dom = Crowy::parseTomlString(R"(
-[transform]
-position = [1.0, 2.0, 3.0]
-rotation = [0.0, 0.0, 0.0, 1.0]
-scale = [4.0, 5.0, 6.0]
-)");
+        auto dom = Crowy::parseJsonString(R"({
+"transform": {
+    "position": [1.0, 2.0, 3.0],
+    "rotation": [0.0, 0.0, 0.0, 1.0],
+    "scale": [4.0, 5.0, 6.0]
+}
+})");
         Crowy::ApplyProperties(nested, dom);
 
         Transform expected{
@@ -82,11 +83,11 @@ scale = [4.0, 5.0, 6.0]
     }
 
     {
-        auto dom = Crowy::parseTomlString(R"(
-position = [3.0, 2.0, 1.0]
-rotation = [1.0, 0.0, 0.0, 0.0]
-scale = [6.0, 5.0, 4.0]
-)");
+        auto dom = Crowy::parseJsonString(R"({
+"position": [3.0, 2.0, 1.0],
+"rotation": [1.0, 0.0, 0.0, 0.0],
+"scale": [6.0, 5.0, 4.0]
+})");
         Crowy::ApplyProperties(nested, dom);
 
         Transform expected{
@@ -148,13 +149,12 @@ TEST(Reflection, NestedStructDesc){
     ASSERT_TRUE(testObject != nullptr);
 
     // a single registered property, two levels of struct below it
-    auto dom = parseTomlString(R"(
-[stats]
-speed = 3.5
-
-[stats.health]
-current = 7
-)");
+    auto dom = parseJsonString(R"({
+"stats": {
+    "speed": 3.5,
+    "health": {"current": 7}
+}
+})");
     ApplyProperties(testObject, dom);
 
     EXPECT_EQ(testObject->stats.speed, 3.5f);
@@ -188,11 +188,12 @@ TEST(Reflection, ChainedStructDesc){
     auto testObject = dynamic_cast<AliasTestObject*>(object.get());
     ASSERT_TRUE(testObject != nullptr);
 
-    auto dom = parseTomlString(R"(
-[hp]
-current = 3
-maximum = 12
-)");
+    auto dom = parseJsonString(R"({
+"hp": {
+    "current": 3,
+    "maximum": 12
+}
+})");
     ApplyProperties(testObject, dom);
 
     EXPECT_EQ(testObject->stats.health.current, 3);
@@ -292,10 +293,10 @@ TEST(Reflection, InheritedPropertyApplies){
     auto child = dynamic_cast<InheritanceChildObject*>(object.get());
     ASSERT_TRUE(child != nullptr);
 
-    auto dom = parseTomlString(R"(
-baseValue = 2.5
-ownValue = 7.5
-)");
+    auto dom = parseJsonString(R"({
+"baseValue": 2.5,
+"ownValue": 7.5
+})");
     ApplyProperties(child, dom);
 
     EXPECT_EQ(child->baseValue, 2.5f);
@@ -375,12 +376,12 @@ TEST(Reflection, EnumDeserializesByName){
     auto testObject = dynamic_cast<EnumTestObject*>(object.get());
     ASSERT_TRUE(testObject != nullptr);
 
-    auto dom = parseTomlString(R"(mode = "Multiply")");
+    auto dom = parseJsonString(R"({"mode": "Multiply"})");
     ApplyProperties(testObject, dom);
     EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
 
     // an unknown name keeps the current value, like an absent key
-    auto unknown = parseTomlString(R"(mode = "Screen")");
+    auto unknown = parseJsonString(R"({"mode": "Screen"})");
     ApplyProperties(testObject, unknown);
     EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
 }

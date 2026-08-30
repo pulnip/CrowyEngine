@@ -1,8 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include "DOM.hpp"
-#include "TomlLoader.hpp"
+#include "DomTraits.hpp"
 
 namespace Crowy
 {
@@ -19,16 +18,16 @@ namespace Crowy
     template<typename T>
     T loadJson(StrView str){
         auto tbl = parseJsonString(str);
-        auto metadata = TomlTraits<TomlMetadata>::from(tbl);
+        auto metadata = DomTraits<DocMetadata>::from(tbl);
 
-        return TomlTraits<T>::from(tbl, metadata);
+        return DomTraits<T>::from(tbl, metadata);
     }
 
     template<typename T>
     T loadJsonFile(const std::filesystem::path& path){
         auto tbl = parseJsonFile(path);
-        auto metadata = TomlTraits<TomlMetadata>::from(tbl);
+        auto metadata = DomTraits<DocMetadata>::from(tbl);
 
-        return TomlTraits<T>::from(tbl, metadata);
+        return DomTraits<T>::from(tbl, metadata);
     }
 }

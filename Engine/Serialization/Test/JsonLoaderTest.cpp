@@ -74,7 +74,7 @@ TEST(Serializer, SpriteJSON){
 }
 
 struct JsonTestResult1{
-    TomlMetadata metadata;
+    DocMetadata metadata;
     struct Grid{
         i64 columns = 0;
         i64 rows = 0;
@@ -89,8 +89,8 @@ struct JsonTestResult1{
 };
 
 template<>
-struct Crowy::TomlTraits<JsonTestResult1>{
-    static JsonTestResult1 from(const DOM::Value& root, const TomlMetadata& metadata){
+struct Crowy::DomTraits<JsonTestResult1>{
+    static JsonTestResult1 from(const DOM::Value& root, const DocMetadata& metadata){
         JsonTestResult1 result{
             .metadata = metadata
         };

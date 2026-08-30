@@ -1,9 +1,9 @@
 #include "DOM.hpp"
+#include "JsonLoader.hpp"
 #include "LogLocal.hpp"
 #include "ResourceRegistry.hpp"
 #include "RHITexture.hpp"
 #include "StringUtil.hpp"
-#include "TomlLoader.hpp"
 
 namespace{
     Crowy::StringHashMap<Crowy::SpriteAnimation> gatherAnimations(const Crowy::DOM::Value& node){
@@ -39,7 +39,7 @@ namespace{
     }
 
     struct SpriteConfig{
-        Crowy::TomlMetadata metadata;
+        Crowy::DocMetadata metadata;
         Crowy::SpriteRequest data;
     };
 
@@ -53,7 +53,7 @@ namespace{
         auto sprite = dom.get<Str>("file");
         if(sprite.has_value()){
             auto path = contentRoot / *sprite;
-            auto config = loadTomlFile<SpriteConfig>(path);
+            auto config = loadJsonFile<SpriteConfig>(path);
 
             return config.data;
         }
@@ -75,8 +75,8 @@ namespace{
 namespace Crowy
 {
     template<>
-    struct TomlTraits<SpriteConfig>{
-        static SpriteConfig from(const DOM::Value& dom, const TomlMetadata& metadata){
+    struct DomTraits<SpriteConfig>{
+        static SpriteConfig from(const DOM::Value& dom, const DocMetadata& metadata){
             auto image = dom.get<Str>("sheet.image")
                 .value_or({});
             auto rows = dom.get<u32>("sheet.rows")
@@ -103,7 +103,7 @@ namespace Crowy
         : spriteLoader(std::move(spriteLoader))
         , spriteManager(*(this->spriteLoader))
     {
-        auto metadata = TomlTraits<TomlMetadata>::from(manifest);
+        auto metadata = DomTraits<DocMetadata>::from(manifest);
         CROWY_ASSERT(metadata.type == "resources");
 
         manifest.forEach("sprites", [&](const DOM::Value& node){

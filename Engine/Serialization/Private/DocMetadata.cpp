@@ -1,8 +1,8 @@
-#include "TomlLoader.hpp"
+#include "DomTraits.hpp"
 
 namespace Crowy
 {
-    TomlMetadata TomlTraits<TomlMetadata>::from(
+    DocMetadata DomTraits<DocMetadata>::from(
         const DOM::Value& root
     ){
         auto version = root.get<u32>("metadata.version")
@@ -12,7 +12,7 @@ namespace Crowy
         auto name = root.get<Str>("metadata.name")
             .value_or("Unnamed");
 
-        return TomlMetadata{
+        return DocMetadata{
             .version = version,
             .type = type,
             .name = name,

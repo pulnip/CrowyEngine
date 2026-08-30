@@ -86,7 +86,7 @@ TEST(Serializer, SpriteTOML){
 }
 
 struct TestResult1{
-    TomlMetadata metadata;
+    DocMetadata metadata;
     struct Grid{
         i64 columns = 0;
         i64 rows = 0;
@@ -101,8 +101,8 @@ struct TestResult1{
 };
 
 template<>
-struct TomlTraits<TestResult1>{
-    static TestResult1 from(const DOM::Value& root, const TomlMetadata& metadata){
+struct DomTraits<TestResult1>{
+    static TestResult1 from(const DOM::Value& root, const DocMetadata& metadata){
         TestResult1 result{
             .metadata = metadata
         };

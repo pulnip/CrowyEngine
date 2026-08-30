@@ -1,0 +1,30 @@
+{
+    "metadata": {
+        "version": 0,
+        "name": "Default",
+        "type": "app"
+    },
+    "runtime": {
+        "app_name": "CrowyApp",
+        "app_version": "v1.0.0",
+        "app_identifier": "io.github.pulnip.crowy",
+        "window": {
+            "title": "CrowyApp",
+            "width": 1280,
+            "height": 720,
+            "fullscreen": false,
+            "resizable": false,
+            "borderless": false,
+            "always_on_top": false
+        }
+    },
+    "project": {
+        "content_root": "Content/"
+    },
+    "boot": {
+        "resource_manifest": "Default.resources.json",
+        "prefab_manifest": "Default.prefabs.json",
+        "default_input": "Input/Default.input.json",
+        "startup_scene": "Scene/Default.scene.json"
+    }
+}

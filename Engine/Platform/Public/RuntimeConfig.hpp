@@ -1,9 +1,9 @@
 #pragma once
 
 #include "DOM.hpp"
+#include "DomTraits.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
-#include "TomlLoader.hpp"
 
 namespace Crowy
 {
@@ -23,7 +23,7 @@ namespace Crowy
     };
 
     template<>
-    struct TomlTraits<WindowConfig>{
+    struct DomTraits<WindowConfig>{
         static WindowConfig from(const DOM::Value&);
     };
 
@@ -53,7 +53,7 @@ namespace Crowy
     };
 
     template<>
-    struct TomlTraits<RuntimeConfig>{
+    struct DomTraits<RuntimeConfig>{
         static RuntimeConfig from(const DOM::Value&);
     };
 }
