@@ -4,7 +4,6 @@
     "editor.formatOnSave": true,
     "editor.formatOnSaveMode": "modifications",
     "files.associations": {
-        "*.toml": "toml",
         "*.h": "c",
         "*.c": "c",
         "*.hpp": "cpp",

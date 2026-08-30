@@ -1,7 +1,6 @@
 {
     "recommendations": [
         "editorconfig.editorconfig",
-        "tamasfe.even-better-toml",
         "llvm-vs-code-extensions.vscode-clangd",
         "ms-vscode.cmake-tools"
     ]
