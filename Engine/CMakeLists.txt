@@ -8,6 +8,7 @@ add_subdirectory(Log)
 add_subdirectory(Platform)
 add_subdirectory(Reflection)
 add_subdirectory(Serialization)
+add_subdirectory(Remote)
 # 2-2) Infrastructure Implement Layer
 if(WIN32)
     add_subdirectory(DX12RHI)
