@@ -129,6 +129,101 @@ namespace Crowy
                 pendingCapture = std::move(reply);
             }
         );
+        // the same numbers reportCullStatsOnce spends on one log line,
+        // readable at any frame
+        port->RegisterVerb("read_stats", [this](const DOM::Value&, Reply reply) {
+            DOM::Table result;
+            result.emplace(
+                "frame",
+                DOM::Value(static_cast<i64>(FrameNumber()))
+            );
+            result.emplace(
+                "primitives",
+                DOM::Value(static_cast<i64>(scene.Primitives().Count()))
+            );
+            result.emplace(
+                "draws",
+                DOM::Value(static_cast<i64>(renderer->DrawCount()))
+            );
+            result.emplace(
+                "buckets",
+                DOM::Value(static_cast<i64>(renderer->BucketCount()))
+            );
+            result.emplace(
+                "pipelines",
+                DOM::Value(static_cast<i64>(renderer->PipelineCount()))
+            );
+            result.emplace("benchmark", DOM::Value(static_cast<bool>(CROWY_BENCHMARK)));
+        #if CROWY_BENCHMARK
+            const auto& s = lastFrameStats;
+            DOM::Table rhi;
+            rhi.emplace(
+                "commandListBegins",
+                DOM::Value(static_cast<i64>(s.commandListBeginCount))
+            );
+            rhi.emplace(
+                "commandListCreates",
+                DOM::Value(static_cast<i64>(s.commandListCreateCount))
+            );
+            rhi.emplace(
+                "renderPasses",
+                DOM::Value(static_cast<i64>(s.renderPassCount))
+            );
+            rhi.emplace(
+                "computePasses",
+                DOM::Value(static_cast<i64>(s.computePassCount))
+            );
+            rhi.emplace(
+                "blitPasses",
+                DOM::Value(static_cast<i64>(s.blitPassCount))
+            );
+            rhi.emplace(
+                "draws",
+                DOM::Value(static_cast<i64>(s.drawCount))
+            );
+            rhi.emplace(
+                "indirectBatches",
+                DOM::Value(static_cast<i64>(s.indirectBatchCount))
+            );
+            rhi.emplace(
+                "indirectDraws",
+                DOM::Value(static_cast<i64>(s.indirectDrawCount))
+            );
+            rhi.emplace(
+                "dispatches",
+                DOM::Value(static_cast<i64>(s.dispatchCount))
+            );
+            rhi.emplace(
+                "copies",
+                DOM::Value(static_cast<i64>(s.copyCount))
+            );
+            rhi.emplace(
+                "pipelineSets",
+                DOM::Value(static_cast<i64>(s.pipelineSetCount))
+            );
+            rhi.emplace(
+                "constantBufferSets",
+                DOM::Value(static_cast<i64>(s.constantBufferSetCount))
+            );
+            rhi.emplace(
+                "pushConstantSets",
+                DOM::Value(static_cast<i64>(s.pushConstantSetCount))
+            );
+            rhi.emplace(
+                "vertexBufferSets",
+                DOM::Value(static_cast<i64>(s.vertexBufferSetCount))
+            );
+            rhi.emplace(
+                "barrierEdges",
+                DOM::Value(static_cast<i64>(s.barrierEdgeCount))
+            );
+            result.emplace(
+                "rhi",
+                DOM::Value(std::move(rhi))
+            );
+        #endif
+            reply.Ok(DOM::Value(std::move(result)));
+        });
     }
 
     void RenderApp::pollCapture() {
@@ -279,6 +374,8 @@ namespace Crowy
 
         const std::array releases{ReleaseBackBuffer(backBuffer)};
         cmdList.EndRenderPass(releases);
+
+        lastFrameStats = cmdList.GetStats();
     }
 
     void RenderApp::OnResize(u32 width, u32 height) {
