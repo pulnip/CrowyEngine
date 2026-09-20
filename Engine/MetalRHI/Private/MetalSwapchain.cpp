@@ -1,3 +1,4 @@
+#include <utility>
 #include <CoreGraphics/CGGeometry.h>
 #include <QuartzCore/CAMetalLayer.hpp>
 #include <Metal/MTLCommandBuffer.hpp>
@@ -21,7 +22,7 @@ namespace Crowy
 
         metalLayer->setDevice(&device);
         metalLayer->setPixelFormat(convert(desc.bufferDesc.format));
-        // readable drawables; DumpFrameIfRequested depends on this
+        // readable drawables; DumpFrame depends on this
         metalLayer->setFramebufferOnly(false);
         metalLayer->setDrawableSize(CGSizeMake(
             desc.bufferDesc.width,
@@ -52,7 +53,17 @@ namespace Crowy
     }
 
     void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer){
-        DumpFrameIfRequested(cmdBuffer, currentDrawable);
+        // a frame without a drawable is not a presented frame
+        if(currentDrawable != nullptr){
+            if(auto path = TakeFrameDump()){
+                DumpFrame(
+                    cmdBuffer,
+                    *currentDrawable,
+                    std::move(*path),
+                    FrameDumpCompletion()
+                );
+            }
+        }
         cmdBuffer.presentDrawable(currentDrawable);
     }
 }

@@ -155,10 +155,13 @@ namespace Crowy
     }
 
     void DX12Swapchain::Present(){
-        DumpFrameIfRequested(
-            *queue,
-            *static_cast<DX12Texture&>(GetCurrentTexture()).Get()
-        );
+        if(auto path = TakeFrameDump()){
+            FrameDumpCompletion()(DumpFrame(
+                *queue,
+                *static_cast<DX12Texture&>(GetCurrentTexture()).Get(),
+                *path
+            ));
+        }
 
         UINT syncInterval = vsync ? 1 : 0;
         UINT flags = (!vsync && allowTearing) ?

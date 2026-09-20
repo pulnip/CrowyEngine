@@ -12,7 +12,7 @@ namespace Crowy
     private:
         SwapchainRAII swapchain = nullptr;
         // owned by DX12Device, which outlives the swapchain;
-        // kept for the CROWY_DUMP_FRAME readback copy
+        // kept for the frame dump readback copy
         CommandQueue* queue = nullptr;
         bool vsync, allowTearing;
 

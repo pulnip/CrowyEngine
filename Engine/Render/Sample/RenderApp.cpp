@@ -35,6 +35,7 @@ namespace Crowy
 
     void RenderApp::OnInit(RHIDevice& device, RHISwapchain& swapchain) {
         this->device = &device;
+        this->swapchain = &swapchain;
 
         createDepthBuffer(swapchain.GetWidth(), swapchain.GetHeight());
         aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
@@ -103,11 +104,63 @@ namespace Crowy
             RequestQuit();
             reply.Ok(DOM::Value(DOM::Table{}));
         });
+        port->RegisterVerb(
+            "capture_frame",
+            [this](const DOM::Value& args, Reply reply) {
+                const auto path = args.get<Str>("path");
+                if(!path || path->empty()) {
+                    reply.Error("\"path\" is missing or not a string");
+
+                    return;
+                }
+                if(pendingCapture.has_value()) {
+                    reply.Error("a capture is already pending");
+
+                    return;
+                }
+                // the boot-time CROWY_DUMP_FRAME request occupies the same slot
+                if(!swapchain->RequestFrameDump(*path)) {
+                    reply.Error("a frame dump is already pending");
+
+                    return;
+                }
+
+                pendingCapturePath = *path;
+                pendingCapture = std::move(reply);
+            }
+        );
+    }
+
+    void RenderApp::pollCapture() {
+        if(!pendingCapture.has_value())
+            return;
+
+        switch(swapchain->GetFrameDumpState()) {
+        case FrameDumpState::Written: {
+            DOM::Table result;
+            result.emplace("path", DOM::Value(pendingCapturePath));
+            pendingCapture->Ok(DOM::Value(std::move(result)));
+            pendingCapture.reset();
+            break;
+        }
+        case FrameDumpState::Failed:
+            pendingCapture->Error("frame dump failed; see the log");
+            pendingCapture.reset();
+            break;
+        case FrameDumpState::Idle:
+            [[fallthrough]];
+        case FrameDumpState::Pending:
+            break;
+        }
     }
 
     void RenderApp::NewFrame() {
-        if(port != nullptr)
-            port->Drain();
+        if(port == nullptr)
+            return;
+
+        // the completion goes out on this same drain
+        pollCapture();
+        port->Drain();
     }
 
     void RenderApp::OnInitialRecord(RHICommandList& cmdList) {

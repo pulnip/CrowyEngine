@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <span>
 
 #include "AppFramework.hpp"
@@ -44,6 +45,7 @@ namespace Crowy
         Config config;
 
         RHIDevice* device = nullptr;
+        RHISwapchain* swapchain = nullptr;
         RHITextureRAII depthBuffer;
         // storage the pass description's span points at
         RHIPixelFormat colorFormat = RHIPixelFormat::RGBA8_UNORM;
@@ -56,6 +58,10 @@ namespace Crowy
 
         // debug builds only; null when disabled or when no port could bind
         CommandPortPtr port;
+        // capture_frame answers only once the swapchain reports the file
+        // written, so its reply waits here across frames
+        std::optional<Reply> pendingCapture;
+        Str pendingCapturePath;
 
         bool reportedCullStats = false;
 
@@ -127,6 +133,7 @@ namespace Crowy
     private:
         void createDepthBuffer(u32 width, u32 height);
         void openCommandPort();
+        void pollCapture();
         void reportCullStatsOnce();
     };
 }

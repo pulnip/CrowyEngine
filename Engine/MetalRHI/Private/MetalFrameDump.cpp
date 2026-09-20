@@ -1,6 +1,5 @@
 #include <cstdio>
-#include <cstdlib>
-#include <string>
+#include <utility>
 #include <vector>
 #include <Metal/MTLTexture.hpp>
 #include "LogLocal.hpp"
@@ -11,24 +10,7 @@
 namespace Crowy
 {
     namespace{
-        struct DumpRequest{
-            const char* path = nullptr;
-            int frameIndex = 60;
-        };
-
-        DumpRequest readRequest(){
-            DumpRequest request;
-            request.path = std::getenv("CROWY_DUMP_FRAME");
-
-            if(const char* at = std::getenv("CROWY_DUMP_FRAME_AT")){
-                if(const int parsed = std::atoi(at); parsed > 0)
-                    request.frameIndex = parsed;
-            }
-
-            return request;
-        }
-
-        void writeBMP(MTL::Texture& texture, const std::string& path){
+        bool writeBMP(MTL::Texture& texture, const Str& path){
             const auto format = texture.pixelFormat();
             const bool bgra =
                 format == MTL::PixelFormatBGRA8Unorm ||
@@ -38,11 +20,11 @@ namespace Crowy
                 format == MTL::PixelFormatRGBA8Unorm_sRGB;
             if(!bgra && !rgba){
                 LOG_WARN(
-                    "CROWY_DUMP_FRAME skipped: "
+                    "frame dump skipped: "
                     "drawable format ({}) is not 8-bit RGBA/BGRA",
                     static_cast<u32>(format)
                 );
-                return;
+                return false;
             }
 
             const auto width = texture.width();
@@ -64,44 +46,33 @@ namespace Crowy
                 bgra,
                 path
             )){
-                LOG_WARN(
-                    "CROWY_DUMP_FRAME skipped: cannot open '{}'",
-                    path
-                );
-                return;
+                LOG_WARN("frame dump skipped: cannot open '{}'", path);
+                return false;
             }
 
-            LOG_INFO(
-                "CROWY_DUMP_FRAME: wrote {}x{} frame to '{}'",
-                width, height, path
-            );
+            LOG_INFO("frame dump: wrote {}x{} frame to '{}'", width, height, path);
+            return true;
         }
     }
 
-    void DumpFrameIfRequested(
+    void DumpFrame(
         MTL::CommandBuffer& cmdBuffer,
-        CA::MetalDrawable* drawable
+        CA::MetalDrawable& drawable,
+        Str path,
+        std::function<void(bool)> onDone
     ){
-        static const DumpRequest request = readRequest();
-        if(request.path == nullptr || drawable == nullptr)
-            return;
-
-        static int presentedCount = 0;
-        if(++presentedCount != request.frameIndex)
-            return;
-
-        auto* texture = drawable->texture();
+        auto* texture = drawable.texture();
         if(texture->storageMode() == MTL::StorageModePrivate){
-            LOG_WARN("CROWY_DUMP_FRAME skipped: drawable is not CPU-readable");
+            LOG_WARN("frame dump skipped: drawable is not CPU-readable");
+            onDone(false);
             return;
         }
 
         // the handler outlives this call, so it keeps its own references
         texture->retain();
-        const std::string path = request.path;
         cmdBuffer.addCompletedHandler(MTL::HandlerFunction(
-            [texture, path](MTL::CommandBuffer*){
-                writeBMP(*texture, path);
+            [texture, path = std::move(path), onDone = std::move(onDone)](MTL::CommandBuffer*){
+                onDone(writeBMP(*texture, path));
                 texture->release();
             }
         ));
