@@ -67,6 +67,8 @@ namespace Crowy
         u64 drainCount = 0;
         // drainCount when lastVerb was dispatched
         u64 lastVerbDrain = 0;
+        // open connections, the pending ones among them
+        u32 connectionCount = 0;
         u32 pendingCount = 0;
         bool lastReplyFailed = false;
     };

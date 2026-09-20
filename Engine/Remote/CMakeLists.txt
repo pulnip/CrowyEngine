@@ -18,5 +18,12 @@ endif()
 crowy_declare_private_interface(Remote)
 
 if(CROWY_ENABLE_TEST)
+    # the client side goes through Private/Socket.hpp, hence ::Private
+    crowy_declare_test(Remote
+        DIRECTORY Test
+        DEPENDS Crowy::Remote::Private
+        LABELS "unit"
+    )
+
     add_subdirectory(Sample)
 endif()

@@ -220,6 +220,7 @@ namespace Crowy
 
         CommandPortStatus Status() const{
             auto snapshot = status;
+            snapshot.connectionCount = static_cast<u32>(connections.size());
             snapshot.pendingCount = static_cast<u32>(std::ranges::count_if(
                 connections,
                 [](const Connection& c){ return c.state == ConnectionState::Pending; }
