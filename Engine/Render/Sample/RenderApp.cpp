@@ -1,6 +1,8 @@
 #include "RenderApp.hpp"
 
 #include <array>
+#include <charconv>
+#include <cstdlib>
 #include <utility>
 #include <vector>
 
@@ -54,6 +56,58 @@ namespace Crowy
         colorFormat = swapchain.GetFormat();
 
         OnInitUI(device, colorFormat, config.depthFormat);
+
+    #if defined(_DEBUG) || !defined(NDEBUG)
+        openCommandPort();
+    #endif
+    }
+
+    // CROWY_COMMAND_PORT: unset is the default port with retries,
+    // 0 disables, N forces exactly that port
+    void RenderApp::openCommandPort() {
+        CommandPortConfig portConfig;
+        if(const char* env = std::getenv("CROWY_COMMAND_PORT")) {
+            const StrView text = env;
+            u16 forced = 0;
+            const auto [ptr, ec] =
+                std::from_chars(text.data(), text.data() + text.size(), forced);
+            if(ec != std::errc{} || ptr != text.data() + text.size()) {
+                LOG_WARN(
+                    "RenderApp",
+                    "CROWY_COMMAND_PORT='{}' is not a port number; using the default",
+                    text
+                );
+            } else if(forced == 0) {
+                return;
+            } else {
+                portConfig.port = forced;
+                portConfig.portRetries = 0;
+            }
+        }
+
+        port = std::make_unique<CommandPort>(portConfig);
+        if(port->Port() == 0) {
+            port = nullptr;
+
+            return;
+        }
+
+        port->RegisterVerb("ping", [this](const DOM::Value&, Reply reply) {
+            DOM::Table result;
+            result.emplace("pong", DOM::Value(true));
+            result.emplace("app", DOM::Value(Runtime().window.title));
+            result.emplace("frame", DOM::Value(static_cast<i64>(FrameNumber())));
+            reply.Ok(DOM::Value(std::move(result)));
+        });
+        port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply) {
+            RequestQuit();
+            reply.Ok(DOM::Value(DOM::Table{}));
+        });
+    }
+
+    void RenderApp::NewFrame() {
+        if(port != nullptr)
+            port->Drain();
     }
 
     void RenderApp::OnInitialRecord(RHICommandList& cmdList) {

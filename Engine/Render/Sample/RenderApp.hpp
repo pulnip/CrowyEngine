@@ -5,6 +5,7 @@
 
 #include "AppFramework.hpp"
 #include "Camera.hpp"
+#include "CommandPort.hpp"
 #include "GeometryPool.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -16,6 +17,7 @@ namespace Crowy
 {
     using GeometryPoolPtr = RAII<GeometryPool>;
     using SceneRendererPtr = RAII<SceneRenderer>;
+    using CommandPortPtr = RAII<CommandPort>;
 
     // Sample framework for Engine/Render: Owns the frame order and seals it
     class RenderApp: public App {
@@ -52,6 +54,9 @@ namespace Crowy
         RenderScene scene;
         CameraRAII camera;
 
+        // debug builds only; null when disabled or when no port could bind
+        CommandPortPtr port;
+
         bool reportedCullStats = false;
 
     public:
@@ -62,6 +67,7 @@ namespace Crowy
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override final;
         void OnInitialRecord(RHICommandList& cmdList) override final;
+        void NewFrame() override final;
         void ProcessInput(const InputProvider& input) override final;
         void OnUpdate(f64 deltaTime, f64 elapsedTime) override final;
         void OnRecord(
@@ -115,9 +121,12 @@ namespace Crowy
         const auto& Camera() const noexcept { return *camera; }
         auto& Camera() noexcept { return *camera; }
         f32 Aspect() const noexcept { return aspect; }
+        // for a sample that registers verbs of its own
+        CommandPort* Port() noexcept { return port.get(); }
 
     private:
         void createDepthBuffer(u32 width, u32 height);
+        void openCommandPort();
         void reportCullStatsOnce();
     };
 }

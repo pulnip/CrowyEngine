@@ -18,6 +18,8 @@ namespace Crowy
     private:
         Timer timer;
         RHIDevice* device = nullptr;
+        const RuntimeConfig* runtime = nullptr;
+        bool quitRequested = false;
 
     public:
         virtual ~App() = default;
@@ -26,6 +28,17 @@ namespace Crowy
         RHIDevice& Device() const noexcept{
             CROWY_ASSERT(device != nullptr);
             return *device;
+        }
+        void BindRuntime(const RuntimeConfig& runtime) noexcept{
+            this->runtime = &runtime;
+        }
+        const RuntimeConfig& Runtime() const noexcept{
+            CROWY_ASSERT(runtime != nullptr);
+            return *runtime;
+        }
+
+        u64 FrameNumber() const noexcept{
+            return timer.GetFrameNumber();
         }
 
         virtual void OnInitialRecord(RHICommandList&){};
@@ -39,11 +52,17 @@ namespace Crowy
                 timer.GetDeltaTime(),
                 timer.GetElapsedTime()
             );
-            return true;
+            return !quitRequested;
         }
 
         virtual void OnRecord(RHICommandList&, const RHIColorAttachment& backBuffer) = 0;
         void Render(CommandListPool& pool, RHISwapchain& swapchain) override final;
+
+    protected:
+        // the frame finishes, then the loop leaves through Update()
+        void RequestQuit() noexcept{
+            quitRequested = true;
+        }
     };
 
     RHIViewport FullViewport(const RHITexture&, u32 mipLevel = 0);
@@ -79,6 +98,7 @@ namespace Crowy
             OS os(runtimeConfig, *device);
             T app;
             app.BindDevice(*device);
+            app.BindRuntime(runtimeConfig);
 
             os.Run(app, *device);
         }

@@ -4,6 +4,7 @@ SOURCES
     RenderApp.cpp
     TenThousandBlocks.cpp
 DEPENDS
+    Crowy::Remote
     Crowy::Render
 )
 
@@ -13,6 +14,7 @@ SOURCES
     RenderApp.cpp
     CornellRoom.cpp
 DEPENDS
+    Crowy::Remote
     Crowy::Render
     Crowy::SampleScene
 )
@@ -23,6 +25,7 @@ SOURCES
     RenderApp.cpp
     MaterialBuckets.cpp
 DEPENDS
+    Crowy::Remote
     Crowy::Render
     Crowy::Reflection
     Crowy::UI

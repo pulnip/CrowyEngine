@@ -14,6 +14,10 @@ namespace Crowy
         virtual void OnInit(RHIDevice&, RHISwapchain& swapchain){}
         virtual void RenderOnce(CommandListPool&){}
 
+        // the CPU-side frame boundary, before any input of the frame is
+        // read: the drain point for whatever collected between frames
+        virtual void NewFrame(){}
+
         virtual void ProcessInput(const InputProvider&){}
         virtual bool Update(){ return true; };
         // TODO. support multi-window if needed

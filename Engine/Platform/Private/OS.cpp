@@ -152,6 +152,7 @@ namespace Crowy
         while(true){
             sysTimer.NewFrame();
             profiler.BeginFrame();
+            mainLoop.NewFrame();
 
             {
                 FrameProfiler::Scope section(profiler, FrameSection::Events);

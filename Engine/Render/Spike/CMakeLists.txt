@@ -8,6 +8,7 @@ SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../Sample/RenderApp.cpp"
     VertexPullSpike.cpp
 DEPENDS
+    Crowy::Remote
     Crowy::Render
 )
 
