@@ -120,6 +120,26 @@ namespace Crowy
                     std::nullopt;
             }
 
+            // the write half of get<T>: builds the Value get<T> reads back
+            template<typename T>
+            static Value from(const T& v){
+                if constexpr(std::same_as<T, bool>){
+                    return Value(v);
+                }
+                else if constexpr(std::integral<T>){
+                    return Value(static_cast<i64>(v));
+                }
+                else if constexpr(std::floating_point<T>){
+                    return Value(static_cast<f64>(v));
+                }
+                else if constexpr(std::same_as<T, Str>){
+                    return Value(v);
+                }
+                else{
+                    return fromImpl<T>(v);
+                }
+            }
+
             template<std::invocable<const DOM::Value&> F>
             void forEach(F&& fn) const{
                 auto arr = asArray();
@@ -171,6 +191,11 @@ namespace Crowy
             std::optional<T> getImpl() const noexcept{
                 static_assert(false);
             }
+
+            template<typename T>
+            static Value fromImpl(const T&){
+                static_assert(false);
+            }
         };
 
     #define DECLARE_VALUE_GETIMPL_NOEXCEPT(TYPE) \
@@ -184,5 +209,17 @@ namespace Crowy
         DECLARE_VALUE_GETIMPL_NOEXCEPT(Transform)
 
     #undef DECLARE_VALUE_GETIMPL_NOEXCEPT
+
+    #define DECLARE_VALUE_FROMIMPL(TYPE) \
+        template<> \
+        Value Value::fromImpl<TYPE>(const TYPE&);
+
+        DECLARE_VALUE_FROMIMPL(Vec2)
+        DECLARE_VALUE_FROMIMPL(Vec3)
+        DECLARE_VALUE_FROMIMPL(Vec4)
+        DECLARE_VALUE_FROMIMPL(Size2D)
+        DECLARE_VALUE_FROMIMPL(Transform)
+
+    #undef DECLARE_VALUE_FROMIMPL
     }
 }

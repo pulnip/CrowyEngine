@@ -256,4 +256,62 @@ namespace Crowy
             .scale = *scale
         };
     }
+
+    template<>
+    DOM::Value DOM::Value::fromImpl<Vec2>(const Vec2& v){
+        DOM::Array a;
+        a.reserve(2);
+
+        a.emplace_back(static_cast<f64>(v.x));
+        a.emplace_back(static_cast<f64>(v.y));
+
+        return DOM::Value(std::move(a));
+    }
+
+    template<>
+    DOM::Value DOM::Value::fromImpl<Vec3>(const Vec3& v){
+        DOM::Array a;
+        a.reserve(3);
+
+        a.emplace_back(static_cast<f64>(v.x));
+        a.emplace_back(static_cast<f64>(v.y));
+        a.emplace_back(static_cast<f64>(v.z));
+
+        return DOM::Value(std::move(a));
+    }
+
+    template<>
+    DOM::Value DOM::Value::fromImpl<Vec4>(const Vec4& v){
+        DOM::Array a;
+        a.reserve(4);
+
+        a.emplace_back(static_cast<f64>(v.x));
+        a.emplace_back(static_cast<f64>(v.y));
+        a.emplace_back(static_cast<f64>(v.z));
+        a.emplace_back(static_cast<f64>(v.w));
+
+        return DOM::Value(std::move(a));
+    }
+
+    template<>
+    DOM::Value DOM::Value::fromImpl<Size2D>(const Size2D& v){
+        DOM::Array a;
+        a.reserve(2);
+
+        a.emplace_back(static_cast<i64>(v.x));
+        a.emplace_back(static_cast<i64>(v.y));
+
+        return DOM::Value(std::move(a));
+    }
+
+    template<>
+    DOM::Value DOM::Value::fromImpl<Transform>(const Transform& v){
+        DOM::Table t;
+
+        t.emplace("position", from(v.position));
+        t.emplace("rotation", from(v.rotation));
+        t.emplace("scale", from(v.scale));
+
+        return DOM::Value(std::move(t));
+    }
 }

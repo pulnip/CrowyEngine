@@ -9,7 +9,8 @@
     template<> \
     struct TypeTraits<TYPE>{ \
         static constexpr CStr name = #TYPE; \
-        static void deserialize(void*, const DOM::Value&); \
+        static bool deserialize(void*, const DOM::Value&); \
+        static void serialize(const void*, DOM::Value&); \
     };
 
 namespace Crowy
@@ -25,13 +26,20 @@ namespace Crowy
         requires HasEnumTraits<T>
     struct TypeTraits<T>{
         static constexpr CStr name = EnumTraits<T>::name;
-        static void deserialize(void* data, const DOM::Value& value){
+        static bool deserialize(void* data, const DOM::Value& value){
             if(auto v = value.asString()){
-                // an unknown name keeps the default, like an absent key
                 if(auto parsed = enumFromName<T>(*v)){
                     *static_cast<T*>(data) = *parsed;
+                    return true;
                 }
             }
+            // an unknown name keeps the value; the caller decides what that means
+            return false;
+        }
+        static void serialize(const void* data, DOM::Value& out){
+            // a value with no enumerator has no name; null says so
+            const auto name = enumName(*static_cast<const T*>(data));
+            out = name != nullptr ? DOM::Value(name) : DOM::Value();
         }
     };
 
@@ -57,6 +65,7 @@ namespace Crowy
     concept HasTypeTraits = requires{
         TypeTraits<T>::name;
         TypeTraits<T>::deserialize;
+        TypeTraits<T>::serialize;
     };
 
     struct EnumeratorDesc{
@@ -69,8 +78,11 @@ namespace Crowy
     struct TypeOps{
         CStr name = nullptr;
         usize size = 0;
-        // leaf type: parses the whole value at once
-        void (*deserialize)(void*, const DOM::Value&) = nullptr;
+        // leaf type: parses the whole value at once.
+        // false when the value does not bind, and the member is untouched
+        bool (*deserialize)(void*, const DOM::Value&) = nullptr;
+        // leaf type: emits the value deserialize reads back
+        void (*serialize)(const void*, DOM::Value&) = nullptr;
         // reflected type: filled property by property.
         // resolved lazily, so the desc may register after this TypeOps was built
         const TypeDesc* (*getDesc)() = nullptr;

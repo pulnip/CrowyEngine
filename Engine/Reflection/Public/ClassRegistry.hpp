@@ -149,6 +149,7 @@ namespace Crowy
             if constexpr(HasTypeTraits<T>){
                 ops.name = TypeTraits<T>::name;
                 ops.deserialize = &TypeTraits<T>::deserialize;
+                ops.serialize = &TypeTraits<T>::serialize;
             }
             // the desc may stay empty, which just means
             // the type was never registered
