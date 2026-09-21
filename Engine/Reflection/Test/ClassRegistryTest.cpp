@@ -385,3 +385,98 @@ TEST(Reflection, EnumDeserializesByName){
     ApplyProperties(testObject, unknown);
     EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
 }
+
+TEST(Reflection, FindInChainReachesTheParent){
+    const auto* desc = GetDesc<InheritanceChildObject>();
+
+    EXPECT_TRUE(desc->FindInChain("ownValue") != nullptr);
+    EXPECT_TRUE(desc->FindInChain("baseValue") != nullptr);
+    EXPECT_TRUE(desc->FindInChain("nope") == nullptr);
+}
+
+TEST(Reflection, SerializedObjectAppliesBack){
+    StructTestObject source;
+    source.stats.speed = 3.5f;
+    source.stats.health.current = 7;
+    source.stats.health.maximum = 42;
+
+    DOM::Value out;
+    SerializeProperties(&source, out);
+    ASSERT_TRUE(out.is_table());
+    // two levels of struct below the one registered property
+    EXPECT_TRUE(out.at("stats.health.current") != nullptr);
+
+    StructTestObject back;
+    ApplyProperties(&back, parseJsonString(emitJson(out)));
+    EXPECT_EQ(back.stats.speed, 3.5f);
+    EXPECT_EQ(back.stats.health.current, 7);
+    EXPECT_EQ(back.stats.health.maximum, 42);
+}
+
+TEST(Reflection, SerializeFlattensTheParentChain){
+    InheritanceChildObject child;
+    child.baseValue = 2.5f;
+    child.ownValue = 7.5f;
+
+    DOM::Value out;
+    SerializeProperties(&child, out);
+
+    // the parent's keys sit beside the child's, the shape ApplyProperties reads
+    EXPECT_EQ(out.get<f32>("baseValue"), 2.5f);
+    EXPECT_EQ(out.get<f32>("ownValue"), 7.5f);
+}
+
+TEST(Reflection, ResolvePropertyWalksDots){
+    StructTestObject object;
+    const auto& desc = *GetDesc<StructTestObject>();
+
+    auto speed = ResolveProperty(&object, desc, "stats.speed");
+    ASSERT_TRUE(speed.desc != nullptr);
+    EXPECT_TRUE(speed.member == &object.stats.speed);
+    EXPECT_EQ(speed.desc->name, "speed");
+
+    auto current = ResolveProperty(&object, desc, "stats.health.current");
+    ASSERT_TRUE(current.desc != nullptr);
+    EXPECT_TRUE(current.member == &object.stats.health.current);
+
+    // a terminal struct resolves too; it has no leaf serializer
+    auto stats = ResolveProperty(&object, desc, "stats");
+    ASSERT_TRUE(stats.desc != nullptr);
+    EXPECT_TRUE(stats.member == &object.stats);
+    EXPECT_TRUE(stats.desc->type.serialize == nullptr);
+    EXPECT_TRUE(NestedDesc(*stats.desc) != nullptr);
+}
+
+TEST(Reflection, ResolvePropertyReachesTheParent){
+    InheritanceChildObject child;
+
+    auto base = ResolveProperty(&child, *GetDesc<InheritanceChildObject>(), "baseValue");
+    ASSERT_TRUE(base.desc != nullptr);
+    EXPECT_TRUE(base.member == &child.baseValue);
+}
+
+TEST(Reflection, ResolvePropertyNamesTheFailure){
+    StructTestObject object;
+    const auto& desc = *GetDesc<StructTestObject>();
+
+    auto unknown = ResolveProperty(&object, desc, "nope");
+    EXPECT_TRUE(unknown.desc == nullptr);
+    EXPECT_EQ(unknown.error, "no property 'nope' on 'StructTestObject'");
+
+    auto unknownNested = ResolveProperty(&object, desc, "stats.nope");
+    EXPECT_TRUE(unknownNested.desc == nullptr);
+    EXPECT_EQ(unknownNested.error, "no property 'nope' on 'Stats'");
+
+    auto intoLeaf = ResolveProperty(&object, desc, "stats.speed.x");
+    EXPECT_TRUE(intoLeaf.desc == nullptr);
+    EXPECT_EQ(intoLeaf.error, "'speed' has no properties");
+
+    EXPECT_TRUE(ResolveProperty(&object, desc, "").desc == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, "stats.").desc == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, ".stats").desc == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, "stats..speed").desc == nullptr);
+
+    auto indexed = ResolveProperty(&object, desc, "stats[0]");
+    EXPECT_TRUE(indexed.desc == nullptr);
+    EXPECT_EQ(indexed.error, "index paths are not supported: 'stats[0]'");
+}

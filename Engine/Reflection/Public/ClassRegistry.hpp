@@ -62,6 +62,16 @@ namespace Crowy
             auto it = indexByName.find(name);
             return it == indexByName.end() ? nullptr : &properties[it->second];
         }
+
+        // own properties shadow the parent chain's
+        const PropertyDesc* FindInChain(StrView name) const{
+            for(const auto* desc = this; desc != nullptr; desc = desc->parent){
+                if(const auto* prop = desc->Find(name)){
+                    return prop;
+                }
+            }
+            return nullptr;
+        }
     };
 
     struct StructDesc: public TypeDesc{};
@@ -170,21 +180,40 @@ namespace Crowy
         return &ops;
     }
 
-    namespace detail
-    {
-        void ApplyProperties(const TypeDesc&, void* object, const DOM::Value&);
-    }
-
     // the registered type this property recurses into,
     // or nullptr when the property is a leaf
     const TypeDesc* NestedDesc(const PropertyDesc&);
+
+    // parents first, then own properties in declaration order;
+    // a key the table lacks keeps the member's value
+    void ApplyProperties(const TypeDesc&, void* object, const DOM::Value& table);
+    // the same walk in the other direction, into one flat table
+    void SerializeProperties(const TypeDesc&, const void* object, DOM::Value& out);
 
     template<typename T>
         requires (!std::is_pointer_v<T>)
     void ApplyProperties(T* object, const DOM::Value& dom){
         auto& desc = Crowy::ClassRegistry::Get().DescFor<T>();
-        detail::ApplyProperties(desc, object, dom);
+        ApplyProperties(desc, object, dom);
     }
+
+    template<typename T>
+        requires (!std::is_pointer_v<T>)
+    void SerializeProperties(const T* object, DOM::Value& out){
+        auto& desc = Crowy::ClassRegistry::Get().DescFor<T>();
+        SerializeProperties(desc, object, out);
+    }
+
+    struct ResolvedProperty{
+        void* member = nullptr;
+        // null on failure; error says which segment and why
+        const PropertyDesc* desc = nullptr;
+        Str error;
+    };
+
+    // "a.b.c" from target: each interior segment must be a reflected struct;
+    // no [index], containers are not reflected
+    ResolvedProperty ResolveProperty(void* target, const TypeDesc&, StrView path);
 
     // everything a Class and a Struct declare the same way
     template<typename Self, typename T, typename Desc>
