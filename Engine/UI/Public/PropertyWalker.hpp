@@ -1,19 +1,12 @@
 #pragma once
 
-#include <functional>
 #include "ClassRegistry.hpp"
 #include "Primitives.hpp"
+#include "PropertyWrite.hpp"
 #include "Widget.hpp"
 
 namespace Crowy
 {
-    // Fired by the tree after every write it performs.
-    // Every writer must notify through its target's callback
-    // - a future writer (the remote port) fires this same path,
-    // and the moment a second writer exists the
-    // shared write-then-notify helper gets hoisted into Reflection.
-    using DirtyCallback = std::function<void()>;
-
     // Builds one target's section:
     //   parent-chain properties first,
     //   then own properties in declaration order,

@@ -136,3 +136,20 @@ TEST(Serialize, DeserializeReportsWhetherItWrote){
     EXPECT_TRUE(GetTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Opaque")));
     EXPECT_EQ(blend, SerializeBlend::Opaque);
 }
+
+TEST(Serialize, EnumOpsCarryTheEnumeratorValue){
+    const auto* ops = GetTypeOps<SerializeBlend>();
+    ASSERT_TRUE(ops->enumLoad != nullptr);
+    ASSERT_TRUE(ops->enumStore != nullptr);
+    // no enum ops on a leaf
+    EXPECT_TRUE(GetTypeOps<i32>()->enumLoad == nullptr);
+
+    // negative in a signed underlying type reads back signed,
+    // the same i64 enumerators() lists it as
+    auto blend = SerializeBlend::Opaque;
+    EXPECT_EQ(ops->enumLoad(&blend), -1);
+    EXPECT_EQ(ops->enumerators()[0].value, -1);
+
+    ops->enumStore(&blend, 300);
+    EXPECT_EQ(blend, SerializeBlend::Additive);
+}

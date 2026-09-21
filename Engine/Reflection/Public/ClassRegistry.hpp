@@ -168,6 +168,12 @@ namespace Crowy
             }
             if constexpr(HasEnumTraits<T>){
                 ops.enumerators = &EnumeratorsOf<T>;
+                ops.enumLoad = [](const void* member){
+                    return static_cast<i64>(*static_cast<const T*>(member));
+                };
+                ops.enumStore = [](void* member, i64 value){
+                    *static_cast<T*>(member) = static_cast<T>(value);
+                };
             }
 
             return ops;

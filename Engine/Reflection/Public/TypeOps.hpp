@@ -88,6 +88,10 @@ namespace Crowy
         const TypeDesc* (*getDesc)() = nullptr;
         // enum type: its enumerators, for dropdowns and by-name writers
         std::span<const EnumeratorDesc> (*enumerators)() = nullptr;
+        // enum type: the member as the i64 enumerators() lists,
+        // so an erased reader compares with no width or sign guess
+        i64 (*enumLoad)(const void*) = nullptr;
+        void (*enumStore)(void*, i64) = nullptr;
     };
 }
 

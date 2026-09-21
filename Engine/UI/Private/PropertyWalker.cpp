@@ -25,44 +25,6 @@ namespace
         }
     }
 
-    // An enum's storage is whatever its underlying type is, and TypeOps
-    // records the width but not the signedness. Comparing the raw bits of
-    // that width settles both at once: a negative enumerator of a signed
-    // enum and a large one of an unsigned enum each match themselves and
-    // nothing else. The second writer (the remote port) is when these
-    // belong in Reflection.
-    u64 loadEnumBits(const void* member, usize size){
-        switch(size){
-        case 1: return *static_cast<const u8*>(member);
-        case 2: return *static_cast<const u16*>(member);
-        case 4: return *static_cast<const u32*>(member);
-        case 8: return *static_cast<const u64*>(member);
-        }
-        CROWY_ASSERT(false, "enum of unsupported width");
-        return 0;
-    }
-
-    u64 enumBits(i64 value, usize size){
-        switch(size){
-        case 1: return static_cast<u8>(value);
-        case 2: return static_cast<u16>(value);
-        case 4: return static_cast<u32>(value);
-        case 8: return static_cast<u64>(value);
-        }
-        CROWY_ASSERT(false, "enum of unsupported width");
-        return 0;
-    }
-
-    void storeEnum(void* member, usize size, i64 value){
-        switch(size){
-        case 1: *static_cast<u8*>(member) = static_cast<u8>(value); return;
-        case 2: *static_cast<u16*>(member) = static_cast<u16>(value); return;
-        case 4: *static_cast<u32*>(member) = static_cast<u32>(value); return;
-        case 8: *static_cast<u64*>(member) = static_cast<u64>(value); return;
-        }
-        CROWY_ASSERT(false, "enum of unsupported width");
-    }
-
     template<typename T>
     auto writeThrough(void* member, const DirtyCallback& onDirty){
         return [member, onDirty](UIContext&, T v){
@@ -131,8 +93,7 @@ namespace
         }
         if(info->enumerators != nullptr){
             const auto enumerators = info->enumerators();
-            const auto size = info->size;
-            const auto bits = loadEnumBits(member, size);
+            const auto value = info->enumLoad(member);
 
             std::vector<Str> entries;
             entries.reserve(enumerators.size());
@@ -140,18 +101,17 @@ namespace
 
             for(usize i = 0; i < enumerators.size(); ++i){
                 entries.emplace_back(enumerators[i].name);
-                if(!current.has_value() &&
-                    enumBits(enumerators[i].value, size) == bits){
+                if(!current.has_value() && enumerators[i].value == value){
                     current = i;
                 }
             }
 
             return Dropdown{
                 .label = prop.name,
-                .onChanged = [member, size, enumerators, onDirty](
+                .onChanged = [member, info, enumerators, onDirty](
                     UIContext&, usize index
                 ){
-                    storeEnum(member, size, enumerators[index].value);
+                    info->enumStore(member, enumerators[index].value);
                     onDirty();
                 },
                 .entries = std::move(entries),
