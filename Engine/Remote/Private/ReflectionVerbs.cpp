@@ -140,4 +140,101 @@ namespace Crowy
 
         reply.Ok(std::move(result));
     }
+
+    void getProperty(
+        const Exposures& exposures,
+        const DOM::Value& args,
+        Reply reply
+    ) {
+        const auto* exposure = findTarget(exposures, args, reply);
+        if(exposure == nullptr)
+            return;
+
+        DOM::Value value;
+        if(const auto* node = args.at("path")) {
+            const auto* path = node->asString();
+            if(path == nullptr) {
+                reply.Error("\"path\" is not a string");
+
+                return;
+            }
+
+            auto resolved = ResolveProperty(exposure->target, *exposure->desc, *path);
+            if(resolved.desc == nullptr) {
+                reply.Error(std::move(resolved.error));
+
+                return;
+            }
+
+            if(const auto* nested = NestedDesc(*resolved.desc)) {
+                SerializeProperties(*nested, resolved.member, value);
+            }
+            else {
+                resolved.desc->type.serialize(resolved.member, value);
+            }
+        }
+        else {
+            SerializeProperties(*exposure->desc, exposure->target, value);
+        }
+
+        DOM::Table result;
+        result.emplace("value", std::move(value));
+
+        reply.Ok(std::move(result));
+    }
+
+    void setProperty(
+        const Exposures& exposures,
+        const DOM::Value& args,
+        Reply reply
+    ) {
+        const auto* exposure = findTarget(exposures, args, reply);
+        if(exposure == nullptr)
+            return;
+
+        const auto path = args.get<Str>("path");
+        if(!path) {
+            reply.Error("\"path\" is missing or not a string");
+
+            return;
+        }
+
+        const auto* value = args.at("value");
+        if(value == nullptr) {
+            reply.Error("\"value\" is missing");
+
+            return;
+        }
+
+        auto resolved = ResolveProperty(exposure->target, *exposure->desc, *path);
+        if(resolved.desc == nullptr) {
+            reply.Error(std::move(resolved.error));
+
+            return;
+        }
+
+        // a whole-struct write would go through ApplyProperties, which skips
+        // what does not bind; the port answers per leaf instead
+        if(NestedDesc(*resolved.desc) != nullptr) {
+            reply.Error(std::format(
+                "'{}' is a struct; set one of its properties", *path
+            ));
+
+            return;
+        }
+
+        if(!resolved.desc->type.deserialize(resolved.member, *value)) {
+            reply.Error(std::format(
+                "'{}' expects {}", *path, resolved.desc->type.name
+            ));
+
+            return;
+        }
+
+        if(exposure->onDirty) {
+            exposure->onDirty();
+        }
+
+        reply.Ok(DOM::Table{});
+    }
 }

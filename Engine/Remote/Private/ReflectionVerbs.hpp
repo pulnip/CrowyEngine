@@ -18,4 +18,6 @@ namespace Crowy
     // the reflection verbs, each generic over whatever was exposed
     void listObjects(const Exposures&, const DOM::Value& args, Reply);
     void describeObject(const Exposures&, const DOM::Value& args, Reply);
+    void getProperty(const Exposures&, const DOM::Value& args, Reply);
+    void setProperty(const Exposures&, const DOM::Value& args, Reply);
 }

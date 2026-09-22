@@ -261,6 +261,12 @@ namespace Crowy
         RegisterVerb("describe", [this](const DOM::Value& args, Reply reply){
             describeObject(exposures, args, std::move(reply));
         });
+        RegisterVerb("get_property", [this](const DOM::Value& args, Reply reply){
+            getProperty(exposures, args, std::move(reply));
+        });
+        RegisterVerb("set_property", [this](const DOM::Value& args, Reply reply){
+            setProperty(exposures, args, std::move(reply));
+        });
 
         listen();
     }

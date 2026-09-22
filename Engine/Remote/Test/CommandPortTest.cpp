@@ -257,7 +257,9 @@ TEST_F(CommandPortTest, InfoListsRegisteredVerbs) {
     response.json.forEach("result.verbs", [&](const DOM::Value& v) {
         verbs.push_back(*v.asString());
     });
-    EXPECT_EQ(verbs, (std::vector<Str>{"alpha", "describe", "list_objects", "ping"}));
+    EXPECT_EQ(verbs, (std::vector<Str>{
+        "alpha", "describe", "get_property", "list_objects", "ping", "set_property"
+    }));
 }
 
 TEST_F(CommandPortTest, HeaderNamesAreCaseInsensitiveAndContentTypeIgnored) {
@@ -552,4 +554,100 @@ TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
     auto missing = exchange(post(R"({"cmd":"describe"})"));
     EXPECT_FALSE(missing.ok());
     EXPECT_EQ(missing.error(), "\"target\" is missing or not a string");
+}
+
+TEST_F(CommandPortTest, GetPropertyReadsAPathOrTheWholeObject) {
+    PortProbe probe;
+    port.Expose("probe", &probe, *GetDesc<PortProbe>());
+
+    auto tint = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":"tint"}})"));
+    ASSERT_TRUE(tint.ok()) << tint.body;
+    EXPECT_EQ(tint.json.get<Vec3>("result.value"), Vec3(1.0f, 0.5f, 0.25f));
+
+    auto amount = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":"nested.amount"}})"));
+    ASSERT_TRUE(amount.ok()) << amount.body;
+    EXPECT_EQ(amount.json.get<f32>("result.value"), 0.25f);
+
+    auto blend = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":"blend"}})"));
+    ASSERT_TRUE(blend.ok()) << blend.body;
+    EXPECT_EQ(blend.json.get<Str>("result.value"), "Masked");
+
+    // a struct path reads the whole struct
+    auto nested = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":"nested"}})"));
+    ASSERT_TRUE(nested.ok()) << nested.body;
+    EXPECT_EQ(nested.json.get<f32>("result.value.amount"), 0.25f);
+
+    // no path reads the whole object, the parent's key flat beside the rest
+    auto whole = exchange(post(R"({"cmd":"get_property","args":{"target":"probe"}})"));
+    ASSERT_TRUE(whole.ok()) << whole.body;
+    EXPECT_EQ(whole.json.get<f32>("result.value.exposure"), 1.0f);
+    EXPECT_EQ(whole.json.get<f32>("result.value.roughness"), 0.5f);
+    EXPECT_EQ(whole.json.get<f32>("result.value.nested.amount"), 0.25f);
+
+    auto badPath = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":"nested.nope"}})"));
+    EXPECT_FALSE(badPath.ok());
+    EXPECT_EQ(badPath.error(), "no property 'nope' on 'PortNested'");
+
+    auto notAString = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":3}})"));
+    EXPECT_FALSE(notAString.ok());
+    EXPECT_EQ(notAString.error(), "\"path\" is not a string");
+}
+
+TEST_F(CommandPortTest, SetPropertyWritesAndFiresDirtyOnce) {
+    PortProbe probe;
+    int dirty = 0;
+    port.Expose("probe", &probe, *GetDesc<PortProbe>(), [&dirty] { ++dirty; });
+
+    auto tint = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"tint","value":[1,0,0]}})"));
+    ASSERT_TRUE(tint.ok()) << tint.body;
+    EXPECT_EQ(probe.tint, Vec3(1.0f, 0.0f, 0.0f));
+    EXPECT_EQ(dirty, 1);
+
+    auto amount = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"nested.amount","value":0.75}})"));
+    ASSERT_TRUE(amount.ok()) << amount.body;
+    EXPECT_EQ(probe.nested.amount, 0.75f);
+    EXPECT_EQ(dirty, 2);
+
+    auto blend = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"blend","value":"Opaque"}})"));
+    ASSERT_TRUE(blend.ok()) << blend.body;
+    EXPECT_EQ(probe.blend, PortBlend::Opaque);
+    EXPECT_EQ(dirty, 3);
+
+    // the inherited leaf writes through to the base member
+    auto exposure = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"exposure","value":4}})"));
+    ASSERT_TRUE(exposure.ok()) << exposure.body;
+    EXPECT_EQ(probe.exposure, 4.0f);
+    EXPECT_EQ(dirty, 4);
+}
+
+TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
+    PortProbe probe;
+    int dirty = 0;
+    port.Expose("probe", &probe, *GetDesc<PortProbe>(), [&dirty] { ++dirty; });
+
+    auto unknown = exchange(post(R"({"cmd":"set_property","args":{"target":"nope","path":"tint","value":1}})"));
+    EXPECT_EQ(unknown.error(), "unknown target 'nope'");
+
+    auto badPath = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"nested.nope","value":1}})"));
+    EXPECT_EQ(badPath.error(), "no property 'nope' on 'PortNested'");
+
+    auto mismatch = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"roughness","value":"text"}})"));
+    EXPECT_EQ(mismatch.error(), "'roughness' expects f32");
+
+    auto unknownName = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"blend","value":"Glow"}})"));
+    EXPECT_EQ(unknownName.error(), "'blend' expects PortBlend");
+
+    auto wholeStruct = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"nested","value":{"amount":1}}})"));
+    EXPECT_EQ(wholeStruct.error(), "'nested' is a struct; set one of its properties");
+
+    auto noValue = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"tint"}})"));
+    EXPECT_EQ(noValue.error(), "\"value\" is missing");
+
+    auto noPath = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","value":1}})"));
+    EXPECT_EQ(noPath.error(), "\"path\" is missing or not a string");
+
+    EXPECT_EQ(dirty, 0);
+    EXPECT_EQ(probe.roughness, 0.5f);
+    EXPECT_EQ(probe.blend, PortBlend::Masked);
+    EXPECT_EQ(probe.nested.amount, 0.25f);
 }
