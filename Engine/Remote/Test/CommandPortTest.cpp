@@ -6,11 +6,63 @@
 
 #include <gtest/gtest.h>
 
+#include "ClassRegistry.hpp"
 #include "CommandPort.hpp"
 #include "JsonLoader.hpp"
+#include "Object.hpp"
 #include "Socket.hpp"
 
 using namespace Crowy;
+
+// what the reflection verbs see: a parent chain, ranged and documented
+// leaves, an enum with a negative enumerator, one nested struct
+struct PortNested{
+    f32 amount = 0.25f;
+};
+
+CROWY_STRUCT(PortNested)
+    .SetProperty("amount", &PortNested::amount)
+CROWY_STRUCT_END(PortNested)
+
+struct PortProbeBase{
+    f32 exposure = 1.0f;
+};
+
+CROWY_STRUCT(PortProbeBase)
+    .SetProperty("exposure", &PortProbeBase::exposure)
+CROWY_STRUCT_END(PortProbeBase)
+
+enum class PortBlend: i16{
+    Opaque = -1,
+    Masked = 7,
+    Additive = 300
+};
+
+namespace Crowy
+{
+    CROWY_ENUM_BEGIN(PortBlend)
+        CROWY_ENUM_VALUE(Opaque)
+        CROWY_ENUM_VALUE(Masked)
+        CROWY_ENUM_VALUE(Additive)
+    CROWY_ENUM_END()
+}
+
+struct PortProbe: PortProbeBase{
+    f32 roughness = 0.5f;
+    Vec3 tint{1.0f, 0.5f, 0.25f};
+    PortBlend blend = PortBlend::Masked;
+    PortNested nested;
+};
+
+CROWY_STRUCT(PortProbe)
+    .Inherits<PortProbeBase>()
+    .SetProperty("roughness", &PortProbe::roughness)
+        .SetUIRange(0.0f, 1.0f)
+        .SetTooltip("microfacet spread")
+    .SetProperty("tint", &PortProbe::tint)
+    .SetProperty("blend", &PortProbe::blend)
+    .SetProperty("nested", &PortProbe::nested)
+CROWY_STRUCT_END(PortProbe)
 
 namespace
 {
@@ -205,7 +257,7 @@ TEST_F(CommandPortTest, InfoListsRegisteredVerbs) {
     response.json.forEach("result.verbs", [&](const DOM::Value& v) {
         verbs.push_back(*v.asString());
     });
-    EXPECT_EQ(verbs, (std::vector<Str>{"alpha", "ping"}));
+    EXPECT_EQ(verbs, (std::vector<Str>{"alpha", "describe", "list_objects", "ping"}));
 }
 
 TEST_F(CommandPortTest, HeaderNamesAreCaseInsensitiveAndContentTypeIgnored) {
@@ -437,4 +489,67 @@ TEST(CommandPortConfigTest, RetriesStepPastAnOccupiedPort) {
     };
 
     EXPECT_EQ(second.Port(), first.Port() + 1);
+}
+
+TEST_F(CommandPortTest, ListObjectsNamesEachExposure) {
+    auto empty = exchange(post(R"({"cmd":"list_objects"})"));
+    ASSERT_TRUE(empty.ok()) << empty.body;
+    EXPECT_EQ(empty.json.at("result.objects")->asArray()->size(), 0u);
+
+    PortProbe probe;
+    port.Expose("probe", &probe, *GetDesc<PortProbe>());
+
+    auto one = exchange(post(R"({"cmd":"list_objects"})"));
+    ASSERT_TRUE(one.ok()) << one.body;
+    EXPECT_EQ(one.json.get<Str>("result.objects[0].name"), "probe");
+    EXPECT_EQ(one.json.get<Str>("result.objects[0].type"), "PortProbe");
+
+    port.Unexpose("probe");
+    auto gone = exchange(post(R"({"cmd":"list_objects"})"));
+    ASSERT_TRUE(gone.ok()) << gone.body;
+    EXPECT_EQ(gone.json.at("result.objects")->asArray()->size(), 0u);
+}
+
+TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
+    PortProbe probe;
+    port.Expose("probe", &probe, *GetDesc<PortProbe>());
+
+    auto response = exchange(post(R"({"cmd":"describe","args":{"target":"probe"}})"));
+    ASSERT_TRUE(response.ok()) << response.body;
+    const auto& json = response.json;
+    EXPECT_EQ(json.get<Str>("result.type"), "PortProbe");
+
+    const auto* properties = json.at("result.properties");
+    ASSERT_TRUE(properties != nullptr && properties->is_array());
+    ASSERT_EQ(properties->asArray()->size(), 5u);
+
+    // the parent's property comes first
+    EXPECT_EQ(json.get<Str>("result.properties[0].name"), "exposure");
+    EXPECT_EQ(json.get<Str>("result.properties[0].type"), "f32");
+    EXPECT_TRUE(json.at("result.properties[0].uiRange") == nullptr);
+
+    EXPECT_EQ(json.get<Str>("result.properties[1].name"), "roughness");
+    EXPECT_EQ(json.get<Vec2>("result.properties[1].uiRange"), Vec2(0.0f, 1.0f));
+    EXPECT_EQ(json.get<Str>("result.properties[1].tooltip"), "microfacet spread");
+
+    EXPECT_EQ(json.get<Str>("result.properties[2].type"), "Vec3");
+
+    EXPECT_EQ(json.get<Str>("result.properties[3].type"), "PortBlend");
+    std::vector<Str> names;
+    json.forEach("result.properties[3].enumerators", [&](const DOM::Value& v) {
+        names.push_back(*v.asString());
+    });
+    EXPECT_EQ(names, (std::vector<Str>{"Opaque", "Masked", "Additive"}));
+
+    // a nested struct carries its own tree, under its registered name
+    EXPECT_EQ(json.get<Str>("result.properties[4].type"), "PortNested");
+    EXPECT_EQ(json.get<Str>("result.properties[4].properties[0].name"), "amount");
+
+    auto unknown = exchange(post(R"({"cmd":"describe","args":{"target":"nope"}})"));
+    EXPECT_FALSE(unknown.ok());
+    EXPECT_EQ(unknown.error(), "unknown target 'nope'");
+
+    auto missing = exchange(post(R"({"cmd":"describe"})"));
+    EXPECT_FALSE(missing.ok());
+    EXPECT_EQ(missing.error(), "\"target\" is missing or not a string");
 }

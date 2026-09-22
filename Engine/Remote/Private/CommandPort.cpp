@@ -13,6 +13,7 @@
 
 #include "JsonLoader.hpp"
 #include "LogLocal.hpp"
+#include "ReflectionVerbs.hpp"
 #include "Socket.hpp"
 
 namespace Crowy
@@ -203,6 +204,7 @@ namespace Crowy
 
         CommandPortConfig config;
         Verbs verbs;
+        Exposures exposures;
         Connections connections;
         std::vector<char> receiveBuffer;
         Socket::Handle listener = Socket::Invalid;
@@ -216,6 +218,8 @@ namespace Crowy
         explicit CommandPortImpl(const CommandPortConfig& config);
 
         void RegisterVerb(Str name, VerbHandler handler);
+        void Expose(Str name, void* target, const TypeDesc& desc, DirtyCallback onDirty);
+        void Unexpose(StrView name);
         void Drain();
 
         CommandPortStatus Status() const{
@@ -251,6 +255,13 @@ namespace Crowy
         : config(config)
         , receiveBuffer(ReceiveChunkBytes)
     {
+        RegisterVerb("list_objects", [this](const DOM::Value& args, Reply reply){
+            listObjects(exposures, args, std::move(reply));
+        });
+        RegisterVerb("describe", [this](const DOM::Value& args, Reply reply){
+            describeObject(exposures, args, std::move(reply));
+        });
+
         listen();
     }
 
@@ -304,6 +315,26 @@ namespace Crowy
     void CommandPortImpl::RegisterVerb(Str name, VerbHandler handler){
         CROWY_ASSERT(!verbs.contains(name), "verb registered twice");
         verbs.emplace(std::move(name), std::move(handler));
+    }
+
+    void CommandPortImpl::Expose(
+        Str name,
+        void* target,
+        const TypeDesc& desc,
+        DirtyCallback onDirty
+    ){
+        CROWY_ASSERT(!exposures.contains(name), "target exposed twice");
+        exposures.emplace(std::move(name), Exposure{
+            .target = target,
+            .desc = &desc,
+            .onDirty = std::move(onDirty)
+        });
+    }
+
+    void CommandPortImpl::Unexpose(StrView name){
+        if(const auto it = exposures.find(name); it != exposures.end()){
+            exposures.erase(it);
+        }
     }
 
     void CommandPortImpl::Drain(){
@@ -647,6 +678,19 @@ namespace Crowy
 
     void CommandPort::RegisterVerb(Str name, VerbHandler handler){
         impl->RegisterVerb(std::move(name), std::move(handler));
+    }
+
+    void CommandPort::Expose(
+        Str name,
+        void* target,
+        const TypeDesc& desc,
+        DirtyCallback onDirty
+    ){
+        impl->Expose(std::move(name), target, desc, std::move(onDirty));
+    }
+
+    void CommandPort::Unexpose(StrView name){
+        impl->Unexpose(name);
     }
 
     void CommandPort::Drain(){

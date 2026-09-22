@@ -5,6 +5,7 @@
 
 #include "DOM.hpp"
 #include "Primitives.hpp"
+#include "PropertyWrite.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
@@ -12,6 +13,7 @@ namespace Crowy
     using RequestId = u64;
 
     class CommandPortImpl;
+    struct TypeDesc;
 
     // One reply per request.
     // Answer inside the handler, or keep the token and answer from a later.
@@ -77,7 +79,9 @@ namespace Crowy
     // the calling thread: accept, read, dispatch, reply, all inline.
     // POST /rpc {"cmd": "<verb>", "args": {...}} -> {"ok": true, "result": ...}
     // or {"ok": false, "error": "..."}; GET / lists the registered verbs.
-    // The core knows no verb by name; whoever owns the port registers them.
+    // The port itself registers only the reflection verbs - list_objects,
+    // describe, get_property, set_property - generic over what Expose gave
+    // it; every other verb is the owner's to register.
     class CommandPort{
     private:
         std::shared_ptr<CommandPortImpl> impl;
@@ -89,6 +93,11 @@ namespace Crowy
         explicit CommandPort(const CommandPortConfig& config = {});
 
         void RegisterVerb(Str name, VerbHandler);
+        // A name the reflection verbs address. The target must outlive the
+        // port or be unexposed first; the callback fires after every
+        // successful write.
+        void Expose(Str name, void* target, const TypeDesc&, DirtyCallback onDirty = {});
+        void Unexpose(StrView name);
         void Drain();
 
         CommandPortStatus Status() const;
