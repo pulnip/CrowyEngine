@@ -10,6 +10,7 @@
 #include "Log.hpp"
 #include "MeshGenerator.hpp"
 #include "Object.hpp"
+#include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "RenderApp.hpp"
 #include "UIRenderer.hpp"
@@ -176,6 +177,11 @@ namespace Crowy
         std::span<const RHITextureBarrier> OnPrepareUI(
             RHICommandList& cmdList
         ) override {
+            // its own window, closed before the SetNextWindow* below land
+            if(auto* port = Port()) {
+                drawPortStatusChip(port->Status());
+            }
+
             if(panelVisible) {
                 // Prepare opens the shared "Crowy" window, whose saved rect
                 // another sample may have left collapsed or off-screen

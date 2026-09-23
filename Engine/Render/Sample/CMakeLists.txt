@@ -23,6 +23,7 @@ crowy_declare_example(MaterialBuckets
 SOURCES
     FlyCamera.cpp
     RenderApp.cpp
+    PortStatusChip.cpp
     MaterialBuckets.cpp
 DEPENDS
     Crowy::Remote
