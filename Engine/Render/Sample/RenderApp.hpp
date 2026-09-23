@@ -57,7 +57,8 @@ namespace Crowy
         RenderScene scene;
         CameraRAII camera;
 
-        // debug builds only; null when disabled or when no port could bind
+        // debug builds only; null when disabled, inert with
+        // Status().server == BindFailed when no port could bind
         CommandPortPtr port;
         // capture_frame answers only once the swapchain reports the file
         // written, so its reply waits here across frames

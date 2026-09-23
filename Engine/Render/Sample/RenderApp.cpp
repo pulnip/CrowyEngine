@@ -87,11 +87,10 @@ namespace Crowy
         }
 
         port = std::make_unique<CommandPort>(portConfig);
-        if(port->Port() == 0) {
-            port = nullptr;
-
+        // a port that could not bind stays, inert, so a sample can show
+        // that it did not; only its verbs are skipped
+        if(port->Port() == 0)
             return;
-        }
 
         port->RegisterVerb("ping", [this](const DOM::Value&, Reply reply) {
             DOM::Table result;

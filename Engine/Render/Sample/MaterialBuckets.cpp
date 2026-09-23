@@ -124,6 +124,33 @@ namespace Crowy
                 materialSection(scene, "translucent", translucent),
                 cameraSection()
             });
+
+            // the port's targets are the panel's, under the same rule
+            if(auto* port = Port()) {
+                auto& camera = static_cast<FlyCamera&>(Camera());
+
+                port->Expose(
+                    "material.opaque",
+                    &materialData(scene, opaque),
+                    *GetDesc<MaterialData>()
+                );
+                port->Expose(
+                    "material.double-sided",
+                    &materialData(scene, doubleSided),
+                    *GetDesc<MaterialData>()
+                );
+                port->Expose(
+                    "material.translucent",
+                    &materialData(scene, translucent),
+                    *GetDesc<MaterialData>()
+                );
+                port->Expose(
+                    "camera",
+                    &camera,
+                    *GetDesc<FlyCamera>(),
+                    [&camera]{ camera.RecomputeView(); }
+                );
+            }
         }
 
         void OnProcessInput(const InputProvider& input) override {
@@ -173,7 +200,14 @@ namespace Crowy
 
     private:
         // rows do not move after extraction, so the row's address holds as
-        // the panel's write-back target
+        // a write-back target for the panel and the port alike
+        static MaterialData& materialData(
+            RenderScene& scene,
+            MaterialHandle handle
+        ) {
+            return scene.Materials().GetRef(handle).data;
+        }
+
         Widget materialSection(
             RenderScene& scene,
             CStr label,
@@ -182,7 +216,7 @@ namespace Crowy
             // BuildFrame re-reads the table every frame; no dirty consumer
             return buildPropertyTree(
                 label,
-                &scene.Materials().GetRef(handle).data,
+                &materialData(scene, handle),
                 *GetDesc<MaterialData>(),
                 []{}
             );
