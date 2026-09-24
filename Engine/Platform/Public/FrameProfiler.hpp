@@ -29,6 +29,15 @@ namespace Crowy
 
     CStr ToString(FrameSection) noexcept;
 
+    // What one loop frame measured, handed to the app as the frame ends.
+    // Every build has it; without CROWY_FRAME_STATS it stays empty.
+    struct FrameReport{
+        // the loop's frame number, counted from 1
+        u64 frame = 0;
+        std::array<f64, NUM_FRAME_SECTION> seconds{};
+        RHIFrameStats rhi;
+    };
+
 #if CROWY_FRAME_STATS
     // Times each section of the frame loop, keeps every sample, and writes
     // percentiles out at the end. Nothing is printed while running: a
@@ -37,22 +46,15 @@ namespace Crowy
     private:
         using Clock = std::chrono::steady_clock;
 
-        struct FrameRecord{
-            u64 frameNumber = 0;
-            std::array<f64, NUM_FRAME_SECTION> sections{};
-            RHIFrameStats stats;
-        };
-
         BenchmarkConfig config;
         // for the report header, so a stray file still says what produced it
         Str title;
         u32 width = 0, height = 0;
         bool vsync = true;
 
-        u64 frameNumber = 0;
-        std::vector<FrameRecord> records;
+        std::vector<FrameReport> records;
 
-        std::array<f64, NUM_FRAME_SECTION> current{};
+        FrameReport current;
         Clock::time_point frameStart;
 
     public:
@@ -83,7 +85,10 @@ namespace Crowy
         };
 
         void BeginFrame() noexcept;
-        void EndFrame(const RHIFrameStats&, f64 fenceWaitSeconds) noexcept;
+        const FrameReport& EndFrame(
+            const RHIFrameStats&,
+            f64 fenceWaitSeconds
+        ) noexcept;
 
         // true once the measured window is full, so the loop can leave
         // through its normal shutdown instead of dying where it stands
@@ -95,7 +100,7 @@ namespace Crowy
         void Accumulate(FrameSection, f64 seconds) noexcept;
 
         bool IsMeasuring() const noexcept{
-            return config.enabled && frameNumber >= config.warmupFrames;
+            return config.enabled && current.frame > config.warmupFrames;
         }
     };
 #else
@@ -110,7 +115,10 @@ namespace Crowy
         constexpr explicit FrameProfiler(const RuntimeConfig&) noexcept{}
 
         constexpr void BeginFrame() noexcept{}
-        constexpr void EndFrame(const RHIFrameStats&, f64) noexcept{}
+        const FrameReport& EndFrame(const RHIFrameStats&, f64) noexcept{
+            static constexpr FrameReport none;
+            return none;
+        }
         constexpr bool ShouldStop() const noexcept{ return false; }
         constexpr void WriteReport() const noexcept{}
     };

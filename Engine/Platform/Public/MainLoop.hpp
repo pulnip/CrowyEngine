@@ -6,6 +6,7 @@
 namespace Crowy
 {
     class InputProvider;
+    struct FrameReport;
 
     class MainLoop{
     public:
@@ -22,6 +23,10 @@ namespace Crowy
         virtual bool Update(){ return true; };
         // TODO. support multi-window if needed
         virtual void Render(CommandListPool&, RHISwapchain& swapchain) = 0;
+
+        // the frame is submitted; what it measured, pushed so the app never
+        // has to reach into OS for it
+        virtual void OnFrameEnd(const FrameReport&){}
 
         virtual void Finalize(){}
 

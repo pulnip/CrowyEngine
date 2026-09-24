@@ -195,10 +195,10 @@ namespace Crowy
                 EndFrame(device);
             }
 
-            profiler.EndFrame(
+            mainLoop.OnFrameEnd(profiler.EndFrame(
                 cmdListPool.GetFrameStats(),
                 framePacer.GetLastWaitTime()
-            );
+            ));
             if(profiler.ShouldStop()) [[unlikely]]
                 break;
         }

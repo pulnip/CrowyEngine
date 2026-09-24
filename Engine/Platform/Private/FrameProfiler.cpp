@@ -110,36 +110,34 @@ namespace Crowy
     }
 
     void FrameProfiler::BeginFrame() noexcept{
-        current.fill(0.0);
+        current = FrameReport{.frame = current.frame + 1};
         frameStart = Clock::now();
     }
 
     void FrameProfiler::Accumulate(FrameSection section, f64 seconds) noexcept{
-        current[static_cast<usize>(section)] += seconds;
+        current.seconds[static_cast<usize>(section)] += seconds;
     }
 
-    void FrameProfiler::EndFrame(
+    const FrameReport& FrameProfiler::EndFrame(
         const RHIFrameStats& stats,
         f64 fenceWaitSeconds
     ) noexcept{
+        auto& seconds = current.seconds;
+
         // the scope covering BeginFrame() swallowed the fence wait, and the
         // two are worth telling apart: one is setup, the other is the GPU
-        auto& acquire = current[static_cast<usize>(FrameSection::Acquire)];
+        auto& acquire = seconds[static_cast<usize>(FrameSection::Acquire)];
         acquire = std::max(0.0, acquire - fenceWaitSeconds);
 
-        current[static_cast<usize>(FrameSection::FenceWait)] = fenceWaitSeconds;
-        current[static_cast<usize>(FrameSection::Frame)] =
+        seconds[static_cast<usize>(FrameSection::FenceWait)] = fenceWaitSeconds;
+        seconds[static_cast<usize>(FrameSection::Frame)] =
             std::chrono::duration<f64>(Clock::now() - frameStart).count();
+        current.rhi = stats;
 
-        if(IsMeasuring() && records.size() < config.measureFrames){
-            records.push_back(FrameRecord{
-                .frameNumber = frameNumber,
-                .sections = current,
-                .stats = stats
-            });
-        }
+        if(IsMeasuring() && records.size() < config.measureFrames)
+            records.push_back(current);
 
-        ++frameNumber;
+        return current;
     }
 
     bool FrameProfiler::ShouldStop() const noexcept{
@@ -163,7 +161,7 @@ namespace Crowy
             std::vector<u32> values;
             values.reserve(records.size());
             for(const auto& record: records)
-                values.push_back(record.stats.*field);
+                values.push_back(record.rhi.*field);
 
             auto nth = values.begin() + values.size() / 2;
             std::nth_element(values.begin(), nth, values.end());
@@ -175,7 +173,7 @@ namespace Crowy
             std::vector<f64> values;
             values.reserve(records.size());
             for(const auto& record: records)
-                values.push_back(record.sections[i] * SECONDS_TO_MS);
+                values.push_back(record.seconds[i] * SECONDS_TO_MS);
 
             summaries[i] = summarize(values);
         }
@@ -189,22 +187,22 @@ namespace Crowy
                 "cb_sets,push_sets,cmd_lists,cmd_lists_created\n";
 
             for(const auto& record: records){
-                frames << std::format("{}", record.frameNumber);
+                frames << std::format("{}", record.frame);
                 for(usize i = 0; i < NUM_FRAME_SECTION; ++i){
                     frames << std::format(",{:.6f}",
-                        record.sections[i] * SECONDS_TO_MS
+                        record.seconds[i] * SECONDS_TO_MS
                     );
                 }
                 frames << std::format(",{},{},{},{},{},{},{},{},{}\n",
-                    record.stats.drawCount,
-                    record.stats.indirectDrawCount,
-                    record.stats.dispatchCount,
-                    record.stats.pipelineSetCount,
-                    record.stats.barrierEdgeCount,
-                    record.stats.constantBufferSetCount,
-                    record.stats.pushConstantSetCount,
-                    record.stats.commandListBeginCount,
-                    record.stats.commandListCreateCount
+                    record.rhi.drawCount,
+                    record.rhi.indirectDrawCount,
+                    record.rhi.dispatchCount,
+                    record.rhi.pipelineSetCount,
+                    record.rhi.barrierEdgeCount,
+                    record.rhi.constantBufferSetCount,
+                    record.rhi.pushConstantSetCount,
+                    record.rhi.commandListBeginCount,
+                    record.rhi.commandListCreateCount
                 );
             }
         }

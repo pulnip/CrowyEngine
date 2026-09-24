@@ -7,11 +7,11 @@
 #include "AppFramework.hpp"
 #include "Camera.hpp"
 #include "CommandPort.hpp"
+#include "FrameProfiler.hpp"
 #include "GeometryPool.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
-#include "RHIFrameStats.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
 
@@ -39,6 +39,16 @@ namespace Crowy
             u32 indexPoolCapacity = 4096;
         };
 
+        // one finished frame: what the loop measured and what the renderer
+        // counted, taken together so every reader sees the same frame
+        struct FrameStats {
+            FrameReport report;
+            usize primitives = 0;
+            u32 draws = 0;
+            usize buckets = 0;
+            usize pipelines = 0;
+        };
+
         static constexpr u32 ViewMain = 0;
         static constexpr u32 ViewCBSlot = 0;
 
@@ -64,9 +74,7 @@ namespace Crowy
         // written, so its reply waits here across frames
         std::optional<Reply> pendingCapture;
         Str pendingCapturePath;
-        // what the last recorded frame asked the RHI to do; all zeros
-        // unless CROWY_FRAME_STATS counts them
-        RHIFrameStats lastFrameStats;
+        FrameStats frameStats;
 
         bool reportedCullStats = false;
 
@@ -85,6 +93,7 @@ namespace Crowy
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override final;
+        void OnFrameEnd(const FrameReport& report) override final;
         void OnResize(u32 width, u32 height) override final;
 
     protected:
@@ -134,6 +143,7 @@ namespace Crowy
         f32 Aspect() const noexcept { return aspect; }
         // for a sample that registers verbs of its own
         CommandPort* Port() noexcept { return port.get(); }
+        const FrameStats& LastFrameStats() const noexcept { return frameStats; }
 
     private:
         void createDepthBuffer(u32 width, u32 height);

@@ -128,33 +128,48 @@ namespace Crowy
                 pendingCapture = std::move(reply);
             }
         );
-        // the same numbers reportCullStatsOnce spends on one log line,
-        // readable at any frame
+        // every number describes `frame`, the last frame to finish: verbs
+        // drain before the next one records
         port->RegisterVerb("read_stats", [this](const DOM::Value&, Reply reply) {
+            constexpr auto MsPerSecond = 1000.0;
+            const auto& stats = frameStats;
+
             DOM::Table result;
             result.emplace(
                 "frame",
-                DOM::Value(static_cast<i64>(FrameNumber()))
+                DOM::Value(static_cast<i64>(stats.report.frame))
             );
             result.emplace(
                 "primitives",
-                DOM::Value(static_cast<i64>(scene.Primitives().Count()))
+                DOM::Value(static_cast<i64>(stats.primitives))
             );
             result.emplace(
                 "draws",
-                DOM::Value(static_cast<i64>(renderer->DrawCount()))
+                DOM::Value(static_cast<i64>(stats.draws))
             );
             result.emplace(
                 "buckets",
-                DOM::Value(static_cast<i64>(renderer->BucketCount()))
+                DOM::Value(static_cast<i64>(stats.buckets))
             );
             result.emplace(
                 "pipelines",
-                DOM::Value(static_cast<i64>(renderer->PipelineCount()))
+                DOM::Value(static_cast<i64>(stats.pipelines))
             );
             result.emplace("benchmark", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
-        #if CROWY_FRAME_STATS
-            const auto& s = lastFrameStats;
+
+            DOM::Table cpu;
+            for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
+                cpu.emplace(
+                    Str{ToString(static_cast<FrameSection>(i))} + "Ms",
+                    DOM::Value(stats.report.seconds[i] * MsPerSecond)
+                );
+            }
+            result.emplace(
+                "cpu",
+                DOM::Value(std::move(cpu))
+            );
+
+            const auto& s = stats.report.rhi;
             DOM::Table rhi;
             rhi.emplace(
                 "commandListBegins",
@@ -220,7 +235,6 @@ namespace Crowy
                 "rhi",
                 DOM::Value(std::move(rhi))
             );
-        #endif
             reply.Ok(DOM::Value(std::move(result)));
         });
     }
@@ -373,8 +387,20 @@ namespace Crowy
 
         const std::array releases{ReleaseBackBuffer(backBuffer)};
         cmdList.EndRenderPass(releases);
+    }
 
-        lastFrameStats = cmdList.GetStats();
+    void RenderApp::OnFrameEnd(const FrameReport& report) {
+        CROWY_ASSERT(report.frame == FrameNumber(),
+            "the profiler and the app count different frames"
+        );
+
+        frameStats = FrameStats{
+            .report = report,
+            .primitives = scene.Primitives().Count(),
+            .draws = renderer->DrawCount(),
+            .buckets = renderer->BucketCount(),
+            .pipelines = renderer->PipelineCount()
+        };
     }
 
     void RenderApp::OnResize(u32 width, u32 height) {
