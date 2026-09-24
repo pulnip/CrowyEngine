@@ -17,11 +17,27 @@ powershell -NoProfile -File Tools/build.ps1 -Config Debug -Target CrowySceneTest
 powershell -NoProfile -File Tools/build.ps1 -Status
 ```
 
+On macOS, build only through `Tools/build.sh`, the same script with sh-style
+flags. It configures with the `macOS-brew-llvm` preset when the cache is
+missing, and refuses to run when `brew` is not on PATH: the toolchain file
+would otherwise configure AppleClang without a word.
+
+```bash
+Tools/build.sh --config Debug --target CrowySceneTest --detach
+```
+
+Poll it until `running : false`:
+
+```bash
+Tools/build.sh --status
+```
+
 - Windows PowerShell 5.1 (`powershell`) is the baseline — the same host
   `Engine/RHI/Sample/CMakeLists.txt` runs the smoke tests with, and every script
   under `Tools/` stays inside what it parses. Do not write `pwsh`; PowerShell 7
   is not assumed to be installed.
-- One target per call. `-Target A,B` reaches ninja as one name and fails.
+- One target per call. `-Target A,B` reaches ninja as one name and fails;
+  `build.sh` refuses a second `--target`.
 - One build at a time, and never kill one — orphans hold `.ninja_lock` and force
   the next build into a full rebuild.
 - A tool timeout is not a failure. The detached build is still going, so poll
