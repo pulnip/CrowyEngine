@@ -59,6 +59,27 @@ TEST(PipelineKey, ProfileComparesByValueNotAddress) {
     EXPECT_EQ(lhs, rhs);
 }
 
+// The cache compares only inside a bucket, so equal keys must also hash alike.
+// A null profile is a key too: RHIShader reads it as "no profile".
+TEST(PipelineKey, ProfileHashesByValueNotAddress) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
+
+    auto material = OpaqueMaterial();
+    static char otherProfile[] = "sm_6_8";
+    material.profile = otherProfile;
+
+    auto lhs = Compose(OpaqueMaterial(), BasePass(formats));
+    auto rhs = Compose(material, BasePass(formats));
+
+    ASSERT_NE(lhs.profile, rhs.profile);
+    EXPECT_EQ(hash(lhs), hash(rhs));
+
+    lhs.profile = nullptr;
+    rhs.profile = nullptr;
+    EXPECT_EQ(hash(lhs), hash(rhs));
+}
+
 // The one the handoff missed: RHIVertexElement::semanticName is a CStr too.
 // Vertex pulling took the layout out of MaterialPipelineDesc, but the RHI type
 // is still a pipeline key, so the comparison still has to hold.
@@ -90,6 +111,32 @@ TEST(PipelineKey, VertexLayoutComparesItsElements) {
     ASSERT_NE(layout[0].semanticName, sameLayout[0].semanticName);
     EXPECT_EQ(lhs, rhs);
     EXPECT_NE(lhs, none);
+}
+
+// The layout hash mixes in each element's hash, so the element has to hash
+// what semanticName says, like its comparison does.
+TEST(PipelineKey, VertexElementHashesByValueNotAddress) {
+    const auto hash = std::hash<RHIVertexElement>{};
+
+    static char position[] = "POSITION";
+    RHIVertexElement lhs{
+        .semanticName = position,
+        .semanticIndex = 0,
+        .format = RHIPixelFormat::RGB32_FLOAT,
+        .inputSlot = 0,
+        .alignedByteOffset = 0,
+        .classification = RHIInputClassification::PerVertex,
+        .instanceDataStepRate = 0
+    };
+    auto rhs = lhs;
+    rhs.semanticName = "POSITION";
+
+    ASSERT_NE(lhs.semanticName, rhs.semanticName);
+    EXPECT_EQ(hash(lhs), hash(rhs));
+
+    lhs.semanticName = nullptr;
+    rhs.semanticName = nullptr;
+    EXPECT_EQ(hash(lhs), hash(rhs));
 }
 
 // Vertex pulling's payoff: a mesh's attribute set never reaches the key, so

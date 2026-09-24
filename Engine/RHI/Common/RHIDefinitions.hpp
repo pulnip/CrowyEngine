@@ -601,7 +601,9 @@ struct std::hash<Crowy::RHIVertexElement> {
         using namespace Crowy;
 
         return hashAll(
-            elm.semanticName,
+            elm.semanticName ?
+                StrView{elm.semanticName} :
+                StrView{},
             elm.semanticIndex,
             elm.format,
             elm.inputSlot,
@@ -1024,7 +1026,9 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc> {
             desc.preRasterizer,
             desc.rasterizer,
             desc.fragmentShader,
-            StrView{desc.profile}
+            desc.profile ?
+                StrView{desc.profile} :
+                StrView{}
         );
 
         if(desc.depthStencil.has_value()) {
