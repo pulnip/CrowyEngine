@@ -65,7 +65,7 @@ namespace Crowy
         std::optional<Reply> pendingCapture;
         Str pendingCapturePath;
         // what the last recorded frame asked the RHI to do; all zeros
-        // unless CROWY_BENCHMARK counts them
+        // unless CROWY_FRAME_STATS counts them
         RHIFrameStats lastFrameStats;
 
         bool reportedCullStats = false;

@@ -61,9 +61,17 @@ namespace Crowy
     };
 }
 
+// Counters and section timers.
+// Every file that tests this includes this header.
+#if CROWY_BENCHMARK || defined(_DEBUG) || !defined(NDEBUG)
+    #define CROWY_FRAME_STATS 1
+#else
+    #define CROWY_FRAME_STATS 0
+#endif
+
 // Counting helpers for RHICommandList, which owns a member named `stats`.
 // Off, they leave nothing behind: no member, no reset, no increment.
-#if CROWY_BENCHMARK
+#if CROWY_FRAME_STATS
     #define CROWY_STAT(field)        (++(stats.field))
     #define CROWY_STAT_ADD(field, n) ((stats.field) += static_cast<Crowy::u32>(n))
 #else

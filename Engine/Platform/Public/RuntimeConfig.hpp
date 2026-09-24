@@ -28,7 +28,7 @@ namespace Crowy
     };
 
     // Set by the sample itself, so its source says what the run is for.
-    // Only has teeth in a CROWY_BENCHMARK build.
+    // Only has teeth where CROWY_FRAME_STATS is on: Debug, or CROWY_BENCHMARK.
     struct BenchmarkConfig{
         bool enabled = false;
         // dropped, not measured: pipeline creation, shader caches, first-touch

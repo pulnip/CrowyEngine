@@ -328,14 +328,14 @@ namespace Crowy
         } passState = PassKind::None;
     #endif
 
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         RHIFrameStats stats;
     #endif
 
     public:
         CROWY_DECLARE_INTERFACE(RHICommandList)
 
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         // what this command list recorded since its last Begin()
         const RHIFrameStats& GetStats() const noexcept{ return stats; }
     #else
@@ -351,7 +351,7 @@ namespace Crowy
                 "Begin inside a pass. Did you call the matching End*Pass()?"
             );
 
-        #if CROWY_BENCHMARK
+        #if CROWY_FRAME_STATS
             stats = RHIFrameStats{};
         #endif
             CROWY_STAT(commandListBeginCount);

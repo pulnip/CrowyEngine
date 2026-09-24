@@ -152,8 +152,8 @@ namespace Crowy
                 "pipelines",
                 DOM::Value(static_cast<i64>(renderer->PipelineCount()))
             );
-            result.emplace("benchmark", DOM::Value(static_cast<bool>(CROWY_BENCHMARK)));
-        #if CROWY_BENCHMARK
+            result.emplace("benchmark", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
+        #if CROWY_FRAME_STATS
             const auto& s = lastFrameStats;
             DOM::Table rhi;
             rhi.emplace(

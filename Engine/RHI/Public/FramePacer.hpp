@@ -4,6 +4,7 @@
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 #include "RHIFWD.hpp"
+#include "RHIFrameStats.hpp"
 
 namespace Crowy
 {
@@ -15,7 +16,7 @@ namespace Crowy
 
         RHIFrameScopeRAII scope;
 
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         f64 lastWaitSeconds = 0.0;
     #endif
 
@@ -26,7 +27,7 @@ namespace Crowy
 
         // How long the last BeginFrame() blocked on the GPU. Large means the
         // GPU is the bottleneck; near zero means the CPU is.
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         f64 GetLastWaitTime() const noexcept{ return lastWaitSeconds; }
     #else
         constexpr f64 GetLastWaitTime() const noexcept{ return 0.0; }

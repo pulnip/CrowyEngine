@@ -29,7 +29,7 @@ namespace Crowy
 
     CStr ToString(FrameSection) noexcept;
 
-#if CROWY_BENCHMARK
+#if CROWY_FRAME_STATS
     // Times each section of the frame loop, keeps every sample, and writes
     // percentiles out at the end. Nothing is printed while running: a
     // benchmark is read afterwards, not watched.
@@ -99,7 +99,7 @@ namespace Crowy
         }
     };
 #else
-    // Not a benchmark build: every one of these folds to nothing.
+    // Release without CROWY_BENCHMARK: every one of these folds to nothing.
     class FrameProfiler{
     public:
         class Scope{

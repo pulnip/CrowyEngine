@@ -23,7 +23,7 @@ namespace Crowy
         // out frame N - RHI_FRAMES_IN_FLIGHT, so this slot is free.
         slot.nextIndex = 0;
 
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         frameStats = RHIFrameStats{};
     #endif
     }
@@ -36,7 +36,7 @@ namespace Crowy
             auto newCmdList = device.CreateCommandList();
             slot.cmdLists.emplace_back(std::move(newCmdList));
 
-        #if CROWY_BENCHMARK
+        #if CROWY_FRAME_STATS
             ++frameStats.commandListCreateCount;
         #endif
         }
@@ -64,7 +64,7 @@ namespace Crowy
         for(usize i=0; i<cmdLists.size(); ++i){
             cmdLists[i] = slot.cmdLists[i].get();
 
-        #if CROWY_BENCHMARK
+        #if CROWY_FRAME_STATS
             frameStats += cmdLists[i]->GetStats();
         #endif
         }

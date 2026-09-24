@@ -17,7 +17,7 @@ namespace Crowy
     }
 }
 
-#if CROWY_BENCHMARK
+#if CROWY_FRAME_STATS
 
 #include <algorithm>
 #include <filesystem>

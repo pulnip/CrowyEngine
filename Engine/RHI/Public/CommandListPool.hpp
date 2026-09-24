@@ -19,7 +19,7 @@ namespace Crowy
         std::array<FrameSlot, RHI_FRAMES_IN_FLIGHT> slots;
         u64 frameIndex = 0;
 
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         RHIFrameStats frameStats;
     #endif
 
@@ -32,7 +32,7 @@ namespace Crowy
 
         RHICommandList& Acquire();
 
-    #if CROWY_BENCHMARK
+    #if CROWY_FRAME_STATS
         // valid once ExtractRecorded() has folded in this frame's lists
         const RHIFrameStats& GetFrameStats() const noexcept{ return frameStats; }
     #else
