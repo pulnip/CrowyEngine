@@ -24,6 +24,7 @@ SOURCES
     FlyCamera.cpp
     RenderApp.cpp
     PortStatusChip.cpp
+    StatsOverlay.cpp
     MaterialBuckets.cpp
 DEPENDS
     Crowy::Remote

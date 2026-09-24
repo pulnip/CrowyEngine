@@ -13,6 +13,7 @@
 #include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "RenderApp.hpp"
+#include "StatsOverlay.hpp"
 #include "UIRenderer.hpp"
 
 namespace Crowy
@@ -49,6 +50,7 @@ namespace Crowy
         static constexpr u32 PaneCount = 3;
 
         static constexpr auto PanelToggleKey = KeyCode::P;
+        static constexpr auto StatsToggleKey = KeyCode::I;
 
         GeometryAllocation sphere{};
         // faces away from the camera, so a back-face-culled pipeline drops it
@@ -60,6 +62,10 @@ namespace Crowy
         Widget panel = Column({});
         // hidden by default so the smoke capture matches the panel-less one
         bool panelVisible = false;
+
+        StatsOverlay statsOverlay;
+        // hidden by default, for the same reason as the panel
+        bool statsVisible = false;
 
     public:
         MaterialBuckets()
@@ -158,6 +164,9 @@ namespace Crowy
             if(input.IsKeyPressed(PanelToggleKey)) {
                 panelVisible = !panelVisible;
             }
+            if(input.IsKeyPressed(StatsToggleKey)) {
+                statsVisible = !statsVisible;
+            }
         }
 
         void OnInitUI(
@@ -171,15 +180,21 @@ namespace Crowy
                 depthFormat
             );
 
-            LOG_INFO("MaterialBuckets", "P toggles the inspector panel");
+            LOG_INFO(
+                "MaterialBuckets",
+                "P toggles the inspector panel, I the frame stats"
+            );
         }
 
         std::span<const RHITextureBarrier> OnPrepareUI(
             RHICommandList& cmdList
         ) override {
-            // its own window, closed before the SetNextWindow* below land
+            // their own windows, closed before the SetNextWindow* below land
             if(auto* port = Port()) {
                 drawPortStatusChip(port->Status());
+            }
+            if(statsVisible) {
+                statsOverlay.Draw(LastFrameStats());
             }
 
             if(panelVisible) {
