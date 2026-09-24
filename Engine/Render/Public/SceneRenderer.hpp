@@ -70,6 +70,8 @@ namespace Crowy
         DrawBuckets buckets;
         u32 drawCount = 0;
         u32 materialCount = 0;
+        u32 visiblePrimitiveCount = 0;
+        u64 triangleCount = 0;
 
         bool uploaded = false;
 
@@ -91,6 +93,10 @@ namespace Crowy
             return static_cast<u32>(drawScratch.size());
         }
         u32 DrawCount() const noexcept { return drawCount; }
+        u32 VisiblePrimitiveCount() const noexcept {
+            return visiblePrimitiveCount;
+        }
+        u64 TriangleCount() const noexcept { return triangleCount; }
         usize BucketCount() const noexcept { return buckets.size(); }
         usize PipelineCount() const noexcept { return pipelines.Count(); }
 

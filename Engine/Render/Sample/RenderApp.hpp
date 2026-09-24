@@ -44,6 +44,8 @@ namespace Crowy
         struct FrameStats {
             FrameReport report;
             usize primitives = 0;
+            u32 visiblePrimitives = 0;
+            u64 triangles = 0;
             u32 draws = 0;
             usize buckets = 0;
             usize pipelines = 0;

@@ -75,6 +75,8 @@ namespace Crowy
         // this loop is what a compute shader replaces
         visibleScratch.clear();
         buckets.clear();
+        visiblePrimitiveCount = 0;
+        triangleCount = 0;
         for(usize i = 0; i < primitives.size(); ++i) {
             const auto& primitive = primitives[i];
 
@@ -82,6 +84,7 @@ namespace Crowy
                 continue;
             if(!OverlapFrustumAABB3D(frustum, primitive.worldBounds))
                 continue;
+            ++visiblePrimitiveCount;
 
             const auto& mesh = meshes.GetRef(primitive.mesh);
             for(const auto& subMesh: mesh.subMeshes) {
@@ -91,6 +94,15 @@ namespace Crowy
 
                 const auto bucket = bucketOf(pipelineOfMaterial[materialIndex]);
                 ++buckets[bucket].drawCount;
+
+                const auto topology =
+                    materials.At(materialIndex).pipeline.topology;
+                CROWY_ASSERT(
+                    topology != RHIPrimitiveTopology::TriangleStrip,
+                    "a strip material needs its own triangle count"
+                );
+                if(topology == RHIPrimitiveTopology::TriangleList)
+                    triangleCount += subMesh.geometry.indexCount / 3;
 
                 visibleScratch.push_back(
                     VisibleDraw{

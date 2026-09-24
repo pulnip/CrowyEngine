@@ -144,6 +144,14 @@ namespace Crowy
                 DOM::Value(static_cast<i64>(stats.primitives))
             );
             result.emplace(
+                "visiblePrimitives",
+                DOM::Value(static_cast<i64>(stats.visiblePrimitives))
+            );
+            result.emplace(
+                "triangles",
+                DOM::Value(static_cast<i64>(stats.triangles))
+            );
+            result.emplace(
                 "draws",
                 DOM::Value(static_cast<i64>(stats.draws))
             );
@@ -155,7 +163,7 @@ namespace Crowy
                 "pipelines",
                 DOM::Value(static_cast<i64>(stats.pipelines))
             );
-            result.emplace("benchmark", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
+            result.emplace("instrumented", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
 
             DOM::Table cpu;
             for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
@@ -192,7 +200,7 @@ namespace Crowy
                 DOM::Value(static_cast<i64>(s.blitPassCount))
             );
             rhi.emplace(
-                "draws",
+                "directDraws",
                 DOM::Value(static_cast<i64>(s.drawCount))
             );
             rhi.emplace(
@@ -310,7 +318,7 @@ namespace Crowy
             "RenderApp",
             "first frame: {} of {} primitives survived culling, "
             "{} draws in {} buckets over {} pipelines",
-            renderer->DrawCount(),
+            renderer->VisiblePrimitiveCount(),
             scene.Primitives().Count(),
             renderer->DrawCount(),
             renderer->BucketCount(),
@@ -397,6 +405,8 @@ namespace Crowy
         frameStats = FrameStats{
             .report = report,
             .primitives = scene.Primitives().Count(),
+            .visiblePrimitives = renderer->VisiblePrimitiveCount(),
+            .triangles = renderer->TriangleCount(),
             .draws = renderer->DrawCount(),
             .buckets = renderer->BucketCount(),
             .pipelines = renderer->PipelineCount()

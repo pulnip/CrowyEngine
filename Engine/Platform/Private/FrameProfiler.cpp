@@ -232,17 +232,20 @@ namespace Crowy
             );
         }
 
-        auto drawCount = medianCounter(&RHIFrameStats::drawCount);
+        const auto directDraws = medianCounter(&RHIFrameStats::drawCount);
+        const auto indirectDraws =
+            medianCounter(&RHIFrameStats::indirectDrawCount);
+        const auto drawCount = directDraws + indirectDraws;
 
         report << std::format(
             "\n## Per-frame RHI counters (median)\n\n"
-            "- draws {}, indirect draws {}, dispatches {}\n"
+            "- direct draws {}, indirect draws {}, dispatches {}\n"
             "- pipeline sets {}, constant buffer sets {}, push constant sets {}\n"
             "- barrier edges {}, copies {}\n"
             "- render passes {}, compute passes {}, blit passes {}\n"
             "- command lists {}, created this frame {}\n",
-            drawCount,
-            medianCounter(&RHIFrameStats::indirectDrawCount),
+            directDraws,
+            indirectDraws,
             medianCounter(&RHIFrameStats::dispatchCount),
             medianCounter(&RHIFrameStats::pipelineSetCount),
             medianCounter(&RHIFrameStats::constantBufferSetCount),

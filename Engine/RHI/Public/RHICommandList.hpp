@@ -528,7 +528,6 @@ namespace Crowy
                 "countBuffer is reserved for GPU-driven compaction"
             );
 
-            CROWY_STAT(pipelineSetCount);
             CROWY_STAT(indirectBatchCount);
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
         }
@@ -546,7 +545,6 @@ namespace Crowy
                 "countBuffer is reserved for GPU-driven compaction"
             );
 
-            CROWY_STAT(pipelineSetCount);
             CROWY_STAT(indirectBatchCount);
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
         }
