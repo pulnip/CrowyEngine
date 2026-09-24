@@ -1,0 +1,19 @@
+{
+    "metadata": {
+        "version": 0,
+        "name": "Bench",
+        "type": "app"
+    },
+    "runtime": {
+        "window": {
+            "vsync": false
+        },
+        "benchmark": {
+            "enabled": true,
+            "warmup_frames": 400,
+            "measure_frames": 1000,
+            "report_path": "bench/report.md",
+            "frame_path": "bench/frames.csv"
+        }
+    }
+}

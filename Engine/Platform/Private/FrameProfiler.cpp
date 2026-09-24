@@ -31,6 +31,34 @@ namespace Crowy
         constexpr f64 SECONDS_TO_MS = 1000.0;
         constexpr f64 MS_TO_US = 1000.0;
 
+        struct CounterColumn{
+            CStr name;
+            u32 RHIFrameStats::* field;
+        };
+
+        // the CSV and the report both write every counter from this list
+        constexpr std::array COUNTER_COLUMNS{
+            CounterColumn{"cmd_lists", &RHIFrameStats::commandListBeginCount},
+            CounterColumn{"cmd_lists_created", &RHIFrameStats::commandListCreateCount},
+            CounterColumn{"render_passes", &RHIFrameStats::renderPassCount},
+            CounterColumn{"compute_passes", &RHIFrameStats::computePassCount},
+            CounterColumn{"blit_passes", &RHIFrameStats::blitPassCount},
+            CounterColumn{"direct_draws", &RHIFrameStats::drawCount},
+            CounterColumn{"indirect_batches", &RHIFrameStats::indirectBatchCount},
+            CounterColumn{"indirect_draws", &RHIFrameStats::indirectDrawCount},
+            CounterColumn{"dispatches", &RHIFrameStats::dispatchCount},
+            CounterColumn{"copies", &RHIFrameStats::copyCount},
+            CounterColumn{"pso_sets", &RHIFrameStats::pipelineSetCount},
+            CounterColumn{"cb_sets", &RHIFrameStats::constantBufferSetCount},
+            CounterColumn{"push_sets", &RHIFrameStats::pushConstantSetCount},
+            CounterColumn{"vb_sets", &RHIFrameStats::vertexBufferSetCount},
+            CounterColumn{"barrier_edges", &RHIFrameStats::barrierEdgeCount}
+        };
+        static_assert(
+            COUNTER_COLUMNS.size() * sizeof(u32) == sizeof(RHIFrameStats),
+            "every RHIFrameStats counter needs a column"
+        );
+
         // the same gate DX12Device puts its debug layer behind
     #if defined(_DEBUG) || !defined(NDEBUG)
         constexpr CStr BUILD_KIND = "Debug";
@@ -182,9 +210,10 @@ namespace Crowy
         if(std::ofstream frames; openOutput(config.framePath, frames)){
             frames <<
                 "frame,events_ms,update_ms,fence_wait_ms,acquire_ms,"
-                "record_ms,submit_ms,frame_ms,"
-                "draws,indirect_draws,dispatches,pso_sets,barrier_edges,"
-                "cb_sets,push_sets,cmd_lists,cmd_lists_created\n";
+                "record_ms,submit_ms,frame_ms";
+            for(const auto& column: COUNTER_COLUMNS)
+                frames << "," << column.name;
+            frames << "\n";
 
             for(const auto& record: records){
                 frames << std::format("{}", record.frame);
@@ -193,17 +222,9 @@ namespace Crowy
                         record.seconds[i] * SECONDS_TO_MS
                     );
                 }
-                frames << std::format(",{},{},{},{},{},{},{},{},{}\n",
-                    record.rhi.drawCount,
-                    record.rhi.indirectDrawCount,
-                    record.rhi.dispatchCount,
-                    record.rhi.pipelineSetCount,
-                    record.rhi.barrierEdgeCount,
-                    record.rhi.constantBufferSetCount,
-                    record.rhi.pushConstantSetCount,
-                    record.rhi.commandListBeginCount,
-                    record.rhi.commandListCreateCount
-                );
+                for(const auto& column: COUNTER_COLUMNS)
+                    frames << std::format(",{}", record.rhi.*column.field);
+                frames << "\n";
             }
         }
 
@@ -237,27 +258,15 @@ namespace Crowy
             medianCounter(&RHIFrameStats::indirectDrawCount);
         const auto drawCount = directDraws + indirectDraws;
 
-        report << std::format(
+        report <<
             "\n## Per-frame RHI counters (median)\n\n"
-            "- direct draws {}, indirect draws {}, dispatches {}\n"
-            "- pipeline sets {}, constant buffer sets {}, push constant sets {}\n"
-            "- barrier edges {}, copies {}\n"
-            "- render passes {}, compute passes {}, blit passes {}\n"
-            "- command lists {}, created this frame {}\n",
-            directDraws,
-            indirectDraws,
-            medianCounter(&RHIFrameStats::dispatchCount),
-            medianCounter(&RHIFrameStats::pipelineSetCount),
-            medianCounter(&RHIFrameStats::constantBufferSetCount),
-            medianCounter(&RHIFrameStats::pushConstantSetCount),
-            medianCounter(&RHIFrameStats::barrierEdgeCount),
-            medianCounter(&RHIFrameStats::copyCount),
-            medianCounter(&RHIFrameStats::renderPassCount),
-            medianCounter(&RHIFrameStats::computePassCount),
-            medianCounter(&RHIFrameStats::blitPassCount),
-            medianCounter(&RHIFrameStats::commandListBeginCount),
-            medianCounter(&RHIFrameStats::commandListCreateCount)
-        );
+            "| counter           | median |\n"
+            "|-------------------|--------|\n";
+        for(const auto& column: COUNTER_COLUMNS){
+            report << std::format("| {:<17} | {:>6} |\n",
+                column.name, medianCounter(column.field)
+            );
+        }
 
         report << "\n## Verdict\n\n";
         if(drawCount == 0){

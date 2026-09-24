@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include "DOM.hpp"
 #include "DomTraits.hpp"
 #include "Primitives.hpp"
@@ -54,6 +55,11 @@ namespace Crowy
 
     template<>
     struct DomTraits<RuntimeConfig>{
-        static RuntimeConfig from(const DOM::Value&);
+        // refuses any document whose metadata.type is not "app"
+        static RuntimeConfig from(const DOM::Value&, const DocMetadata&);
     };
+
+    // The arguments after the program name. The only one is --config <path>:
+    // that app document's benchmark and window.vsync replace the sample's.
+    void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
 }

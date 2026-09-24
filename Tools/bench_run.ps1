@@ -1,6 +1,6 @@
 # Drive a benchmark: run one or two samples alternately, and file away what
 # each run wrote. The frame counts, warmup and output paths live in the
-# sample's own source, so this script only orchestrates and collects.
+# -Config document, so this script only orchestrates and collects.
 #
 # Alternating A and B is the point when comparing two builds or two APIs:
 # it cancels the thermal drift and background load that a run of five A's
@@ -8,10 +8,11 @@
 #
 # usage: bench_run.ps1 [-AppA <exe>] [-AppB <exe>] [-Reps 5]
 #                      [-StageDir bench] [-OutDir bench-runs]
+#                      [-Config Tools/bench.app.json]
 #
-# Every argument falls back to the default below. The sample must be built
-# with CROWY_BENCHMARK=ON and have benchmark.enabled set, otherwise it never
-# stops on its own and the run trips -TimeoutSeconds.
+# Every argument falls back to the default below. The sample must be a
+# Debug or CROWY_BENCHMARK build, run with --config; the config's report and
+# frame paths must point into -StageDir.
 #
 # Run from the repository root: samples load Engine/Shader and Content by
 # relative path.
@@ -23,6 +24,8 @@ param(
     [string]$StageDir = "bench",
     # where this script keeps each run
     [string]$OutDir = "bench-runs",
+    # the app document every run is started with
+    [string]$Config = "Tools/bench.app.json",
     [int]$TimeoutSeconds = 300
 )
 
@@ -44,6 +47,11 @@ if ($apps.Count -eq 0) {
     exit 1
 }
 
+if (-not (Test-Path $Config -PathType Leaf)) {
+    Write-Host "FAIL: no such config: $Config"
+    exit 1
+}
+
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 for ($rep = 1; $rep -le $Reps; $rep++) {
@@ -58,6 +66,7 @@ for ($rep = 1; $rep -le $Reps; $rep++) {
 
         Write-Host "running $label ..."
         $proc = Start-Process -FilePath $app `
+            -ArgumentList "--config", "`"$Config`"" `
             -WorkingDirectory (Get-Location) `
             -NoNewWindow -PassThru
         $null = $proc.Handle
@@ -67,7 +76,7 @@ for ($rep = 1; $rep -le $Reps; $rep++) {
             $proc.WaitForExit() | Out-Null
 
             Write-Host "FAIL: $label ran past $TimeoutSeconds s."
-            Write-Host "      is this a CROWY_BENCHMARK build with benchmark.enabled?"
+            Write-Host "      is this a Debug or CROWY_BENCHMARK build, run with --config?"
             exit 1
         }
 
@@ -79,7 +88,7 @@ for ($rep = 1; $rep -le $Reps; $rep++) {
         $produced = @(Get-ChildItem -File -ErrorAction SilentlyContinue $StageDir)
         if ($produced.Count -eq 0) {
             Write-Host "FAIL: $label wrote nothing into $StageDir"
-            Write-Host "      do reportPath and framePath point in there?"
+            Write-Host "      do $Config's report_path and frame_path point in there?"
             exit 1
         }
 

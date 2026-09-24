@@ -1,6 +1,7 @@
 #pragma once
 
 #include <print>
+#include <span>
 #include "Assert.hpp"
 #include "CommandListPool.hpp"
 #include "MainLoop.hpp"
@@ -122,6 +123,30 @@ namespace Crowy
         return Main<T>(RuntimeConfig{
             .window = windowConfig
         });
+    }
+
+    // a sample a run can configure from the command line (--config)
+    template<std::derived_from<App> T>
+    int Main(int argc, char** argv, const WindowConfig& windowConfig){
+        RuntimeConfig runtimeConfig{
+            .window = windowConfig
+        };
+
+        try{
+            const auto args =
+                std::span<char* const>(argv, static_cast<usize>(argc));
+            applyCommandLine(
+                runtimeConfig,
+                args.empty() ? args : args.subspan(1)
+            );
+        }
+        catch(const std::exception& e){
+            std::println("{}", e.what());
+
+            return 1;
+        }
+
+        return Main<T>(runtimeConfig);
     }
 }
 
