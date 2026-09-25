@@ -137,16 +137,6 @@ namespace Crowy
 
         sysTimer.Reset();
 
-        {
-            framePacer.BeginFrame();
-            cmdListPool.BeginFrame();
-
-            mainLoop.RenderOnce(cmdListPool);
-
-            auto cmdLists = cmdListPool.ExtractRecorded();
-            framePacer.EndFrame(cmdLists);
-        }
-
         // the scopes below are blocks because the loop leaves from the
         // middle of two of them, and a section still has to close
         while(true){

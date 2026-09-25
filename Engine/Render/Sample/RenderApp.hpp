@@ -87,7 +87,6 @@ namespace Crowy
         RenderApp(const Config& config, CameraRAII camera);
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override final;
-        void OnInitialRecord(RHICommandList& cmdList) override final;
         void NewFrame() override final;
         void ProcessInput(const InputProvider& input) override final;
         void OnUpdate(f64 deltaTime, f64 elapsedTime) override final;
@@ -99,11 +98,9 @@ namespace Crowy
         void OnResize(u32 width, u32 height) override final;
 
     protected:
-        // inside the geometry pool's blit pass, which the framework opens
-        virtual void OnBuildGeometry(
-            RHICommandList& cmdList,
-            GeometryPool& pool
-        ) = 0;
+        // once, from OnInit; the pool queues the copies and the first frame
+        // records them
+        virtual void OnBuildGeometry(GeometryPool& pool) = 0;
 
         // The only sample code allowed to see both where a thing is in the
         // world and what the renderer stores about it.

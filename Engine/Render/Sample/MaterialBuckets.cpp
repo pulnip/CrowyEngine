@@ -75,17 +75,14 @@ namespace Crowy
               ) {}
 
     protected:
-        void OnBuildGeometry(
-            RHICommandList& cmdList,
-            GeometryPool& pool
-        ) override {
+        void OnBuildGeometry(GeometryPool& pool) override {
             const auto sphereMesh = MakeSphere(Radius, 32, 16);
             const auto paneMesh = MakePlane(unitZ(), unitX(), 1.0f);
             const auto glassMesh = MakePlane(-unitZ(), unitX(), 1.0f);
 
-            sphere = pool.Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
-            pane = pool.Add(cmdList, paneMesh.vertices, paneMesh.indices);
-            glass = pool.Add(cmdList, glassMesh.vertices, glassMesh.indices);
+            sphere = pool.Add(sphereMesh.vertices, sphereMesh.indices);
+            pane = pool.Add(paneMesh.vertices, paneMesh.indices);
+            glass = pool.Add(glassMesh.vertices, glassMesh.indices);
         }
 
         void ExtractScene(RenderScene& scene) override {

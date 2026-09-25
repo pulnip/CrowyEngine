@@ -41,10 +41,6 @@ namespace Crowy
             std::span<RHICommandList*>,
             RHISwapchain& swapchain
         );
-        // End the current frame for computing only
-        void EndFrame(
-            std::span<RHICommandList*>
-        );
 
         // Wait for all frames to complete
         void WaitForIdle();

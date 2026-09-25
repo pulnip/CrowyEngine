@@ -50,17 +50,12 @@ namespace Crowy
               ) {}
 
     protected:
-        void OnBuildGeometry(
-            RHICommandList& cmdList,
-            GeometryPool& pool
-        ) override {
+        void OnBuildGeometry(GeometryPool& pool) override {
             geometry.reserve(source.objects.size());
             for(const auto& object: source.objects) {
                 const auto mesh = bakeTransform(object);
 
-                geometry.push_back(
-                    pool.Add(cmdList, mesh.vertices, mesh.indices)
-                );
+                geometry.push_back(pool.Add(mesh.vertices, mesh.indices));
             }
         }
 

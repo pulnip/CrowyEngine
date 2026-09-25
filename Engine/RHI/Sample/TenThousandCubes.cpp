@@ -149,9 +149,7 @@ namespace Crowy
             );
             drawDataScratch.resize(DRAW_COUNT);
             argsScratch.resize(DRAW_COUNT);
-        }
 
-        void OnInitialRecord(RHICommandList& cmdList) override{
             const auto boxMesh = MakeBox(BLOCK_HALF_SIZE);
             const auto sphereMesh = MakeSphere(BLOCK_HALF_SIZE, 16, 8);
             // single-sided quad facing the start camera (-Z normal)
@@ -161,15 +159,10 @@ namespace Crowy
                 BLOCK_HALF_SIZE
             );
 
-            const auto acquires = geometryPool->UploadAcquires();
-            cmdList.BeginBlitPass({}, acquires);
-            meshes[0] = geometryPool->Add(cmdList, boxMesh.vertices, boxMesh.indices);
-            meshes[1] = geometryPool->Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
-            meshes[2] = geometryPool->Add(cmdList, planeMesh.vertices, planeMesh.indices);
-            // the draws live in later submissions, so these releases complete
-            // at Close as the hand-off to vertex/index use
-            const auto releases = geometryPool->UploadReleases();
-            cmdList.EndBlitPass({}, releases);
+            // the pool queues the copies; the first frame records them
+            meshes[0] = geometryPool->Add(boxMesh.vertices, boxMesh.indices);
+            meshes[1] = geometryPool->Add(sphereMesh.vertices, sphereMesh.indices);
+            meshes[2] = geometryPool->Add(planeMesh.vertices, planeMesh.indices);
 
             geometryPool->LogAllocationStats();
         }
@@ -265,6 +258,8 @@ namespace Crowy
                     /*discardContents=*/true
                 )
             };
+            // this pass is the pool's first reader, so it takes the releases
+            const auto geometryAcquires = geometryPool->RecordUploads(cmdList);
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
                 .depthAttachment = RHIDepthAttachment{
@@ -273,7 +268,7 @@ namespace Crowy
                     .storeAction = RHIStoreAction::DontCare,
                     .clearDepthStencil = {.depth = 1.0f}
                 }
-            }, acquires);
+            }, acquires, geometryAcquires);
             cmdList.SetViewport(FullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 

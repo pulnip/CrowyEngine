@@ -40,20 +40,15 @@ namespace Crowy
               ) {}
 
     protected:
-        void OnBuildGeometry(
-            RHICommandList& cmdList,
-            GeometryPool& pool
-        ) override {
+        void OnBuildGeometry(GeometryPool& pool) override {
             const auto boxMesh = MakeBox(BlockHalfSize);
             const auto sphereMesh = MakeSphere(BlockHalfSize, 16, 8);
             // single-sided quad facing the start camera
             const auto planeMesh = MakePlane(-unitZ(), unitX(), BlockHalfSize);
 
-            geometry[0] = pool.Add(cmdList, boxMesh.vertices, boxMesh.indices);
-            geometry[1] =
-                pool.Add(cmdList, sphereMesh.vertices, sphereMesh.indices);
-            geometry[2] =
-                pool.Add(cmdList, planeMesh.vertices, planeMesh.indices);
+            geometry[0] = pool.Add(boxMesh.vertices, boxMesh.indices);
+            geometry[1] = pool.Add(sphereMesh.vertices, sphereMesh.indices);
+            geometry[2] = pool.Add(planeMesh.vertices, planeMesh.indices);
         }
 
         void ExtractScene(RenderScene& scene) override {

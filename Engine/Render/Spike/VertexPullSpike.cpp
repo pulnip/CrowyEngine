@@ -45,14 +45,11 @@ namespace Crowy
               ) {}
 
     protected:
-        void OnBuildGeometry(
-            RHICommandList& cmdList,
-            GeometryPool& pool
-        ) override {
+        void OnBuildGeometry(GeometryPool& pool) override {
             for(u32 i = 0; i < SlotCount; ++i) {
                 const auto mesh = makePolygon(FirstSideCount + i);
 
-                polygons[i] = pool.Add(cmdList, mesh.vertices, mesh.indices);
+                polygons[i] = pool.Add(mesh.vertices, mesh.indices);
             }
         }
 

@@ -48,12 +48,6 @@ namespace Crowy
         scope = nullptr;
     }
 
-    void FramePacer::EndFrame(std::span<RHICommandList*> cmdLists){
-        device.Submit(cmdLists);
-
-        scope = nullptr;
-    }
-
     void FramePacer::WaitForIdle(){
         device.WaitIdle();
     }

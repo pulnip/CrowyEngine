@@ -287,6 +287,8 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII diskGenerator = nullptr;
         RHITextureRAII disk = nullptr;
+        // procedural and never resized, so drawn once, by the first frame
+        bool diskRecorded = false;
         struct GenerationParam{
             f32 rs;
             f32 diskInner;
@@ -437,7 +439,8 @@ namespace Crowy
             }, "composite");
         }
 
-        void OnInitialRecord(RHICommandList& cmdList) override{
+        // the caller's first pass that samples the disk acquires `release`
+        void recordDisk(RHICommandList& cmdList, const RHITextureBarrier& release){
             std::array colorAttachments = {
                 RHIColorAttachment{
                     .texture = disk.get(),
@@ -467,14 +470,7 @@ namespace Crowy
             });
             cmdList.Draw(4);
 
-            // every consumer lives in later frames' command lists, so this
-            // release completes at Close as the hand-off to sampled use
-            const std::array releases{
-                MakeBarrier(*disk,
-                    RHIResourceUsage::RenderTarget,
-                    RHIResourceUsage::SampledFragment
-                )
-            };
+            const std::array releases{release};
             cmdList.EndRenderPass(releases);
         }
 
@@ -484,6 +480,17 @@ namespace Crowy
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             simParamBuffer = Device().UploadTransient(simParam);
+
+            // the simulation pass below is the disk's first reader
+            const auto diskEdge = MakeBarrier(*disk,
+                RHIResourceUsage::RenderTarget,
+                RHIResourceUsage::SampledFragment
+            );
+            const bool recordsDisk = !diskRecorded;
+            if(recordsDisk){
+                recordDisk(cmdList, diskEdge);
+                diskRecorded = true;
+            }
 
             // the scene edge skips the whole bloom chain: released by the
             // simulation pass, acquired only by the composite - the
@@ -523,17 +530,19 @@ namespace Crowy
                         RHIResourceUsage::SampledFragment,
                         RHIResourceUsage::RenderTarget,
                         /*discardContents=*/true
-                    )
+                    ),
+                    // last, so the frames that did not draw the disk drop it
+                    diskEdge
                 };
                 cmdList.BeginRenderPass(RHIRenderPassDesc{
                     .colorAttachments = colorAttachments
-                }, acquires);
+                }, std::span(acquires).first(recordsDisk ? 3 : 2));
                 cmdList.SetViewport(FullViewport(*backBuffer.texture));
                 cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
                 cmdList.SetPipelineState(*blackholeSimulator);
                 cmdList.SetPushGraphicsConstants(PushConstants{
-                    // generated once in OnInitialRecord and handed off there
+                    // drawn once, by recordDisk in the first frame
                     .disk = disk->GetReadableID()
                 });
                 cmdList.SetGraphicsConstantBuffer(simParamBuffer, 0);

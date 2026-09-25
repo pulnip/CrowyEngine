@@ -42,9 +42,6 @@ namespace Crowy
             return timer.GetFrameNumber();
         }
 
-        virtual void OnInitialRecord(RHICommandList&){};
-        void RenderOnce(CommandListPool& pool) override final;
-
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
         bool Update() override final{
             timer.NewFrame();

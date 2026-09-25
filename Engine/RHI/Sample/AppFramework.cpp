@@ -11,18 +11,6 @@ extern "C" {
 
 namespace Crowy
 {
-    void App::RenderOnce(CommandListPool& pool){
-        auto& cmdList = pool.Acquire();
-        cmdList.Begin();
-
-        {
-            RHIEventScope event(cmdList, "InitialRecord");
-            OnInitialRecord(cmdList);
-        }
-
-        cmdList.Close();
-    }
-
     void App::Render(CommandListPool& pool, RHISwapchain& swapchain){
         auto& cmdList = pool.Acquire();
         cmdList.Begin();

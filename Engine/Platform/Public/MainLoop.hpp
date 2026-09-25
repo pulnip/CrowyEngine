@@ -13,7 +13,6 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE(MainLoop)
 
         virtual void OnInit(RHIDevice&, RHISwapchain& swapchain){}
-        virtual void RenderOnce(CommandListPool&){}
 
         // the CPU-side frame boundary, before any input of the frame is
         // read: the drain point for whatever collected between frames

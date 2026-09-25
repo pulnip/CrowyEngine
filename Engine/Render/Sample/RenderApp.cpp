@@ -61,6 +61,13 @@ namespace Crowy
     #if defined(_DEBUG) || !defined(NDEBUG)
         openCommandPort();
     #endif
+
+        // after the port, so the scene can expose itself before the loop
+        OnBuildGeometry(*geometryPool);
+        geometryPool->LogAllocationStats();
+
+        // after the geometry, because a snapshot carries the allocation
+        ExtractScene(scene);
     }
 
     // CROWY_COMMAND_PORT: unset is the default port with retries,
@@ -279,22 +286,6 @@ namespace Crowy
         port->Drain();
     }
 
-    void RenderApp::OnInitialRecord(RHICommandList& cmdList) {
-        const auto acquires = geometryPool->UploadAcquires();
-        cmdList.BeginBlitPass({}, acquires);
-        OnBuildGeometry(cmdList, *geometryPool);
-        // the draws live in later submissions,
-        // so these releases complete at Close
-        // as the hand-off to vertex/index use
-        const auto releases = geometryPool->UploadReleases();
-        cmdList.EndBlitPass({}, releases);
-
-        geometryPool->LogAllocationStats();
-
-        // after the geometry, because a snapshot carries the allocation
-        ExtractScene(scene);
-    }
-
     void RenderApp::ProcessInput(const InputProvider& input) {
         camera->ProcessInput(input);
         OnProcessInput(input);
@@ -346,6 +337,8 @@ namespace Crowy
         renderer->Upload();
         reportCullStatsOnce();
 
+        // the scene pass is the pool's first reader, so it takes the releases
+        const auto geometryAcquires = geometryPool->RecordUploads(cmdList);
         const auto uiAcquires = OnPrepareUI(cmdList);
 
         auto colorAttachment = backBuffer;
@@ -374,7 +367,8 @@ namespace Crowy
                         .clearDepthStencil = {.depth = 1.0f}
                     }
             },
-            acquires
+            acquires,
+            geometryAcquires
         );
         cmdList.SetViewport(FullViewport(*backBuffer.texture));
         cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
