@@ -8,6 +8,7 @@
 #include "DescriptorHeapAllocator.hpp"
 #include "DX12Buffer.hpp"
 #include "DX12CommandList.hpp"
+#include "DX12Fence.hpp"
 #include "DX12PipelineState.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
@@ -157,7 +158,7 @@ namespace Crowy
         RootSignature& rootSignature,
         CommandSignature& drawSignature,
         CommandSignature& drawIndexedSignature,
-        const u64& serial,
+        DX12Fence& serialFence,
         DescriptorHeapAllocator& cbvsrvuavHeap,
         DescriptorHeapAllocator& rtvHeap,
         DescriptorHeapAllocator& dsvHeap,
@@ -167,16 +168,16 @@ namespace Crowy
         , rootSignature(rootSignature)
         , drawSignature(drawSignature)
         , drawIndexedSignature(drawIndexedSignature)
-        , serial(serial)
+        , serialFence(serialFence)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)
         , samplerHeap(samplerHeap)
     {
-        for(u32 i = 0; i < RHI_FRAMES_IN_FLIGHT; ++i){
+        for(auto& slot: allocators){
             CHECK_HRESULT(device.CreateCommandAllocator(
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
-                IID_PPV_ARGS(&commandAllocators[i])
+                IID_PPV_ARGS(&slot.allocator)
             ), "Failed to create command allocator");
         }
 
@@ -193,10 +194,16 @@ namespace Crowy
     void DX12CommandList::Begin(){
         Super::Begin();
 
-        auto allocator = commandAllocators[currentIndex()];
-        CHECK_HRESULT(allocator->Reset(), "Failed to reset command allocator");
+        cursor = (cursor + 1) % RHI_FRAMES_IN_FLIGHT;
+        auto& slot = allocators[cursor];
+        // a pooled list comes back RHI_FRAMES_IN_FLIGHT frames later and finds
+        // its batch long done; the device's upload list may not
+        if(serialFence.GetValue() < slot.serial)
+            serialFence.WaitCPU(slot.serial, 0);
+
+        CHECK_HRESULT(slot.allocator->Reset(), "Failed to reset command allocator");
         CHECK_HRESULT(commandList->Reset(
-            allocator.Get(),
+            slot.allocator.Get(),
             nullptr
         ), "Failed to reset command list");
 

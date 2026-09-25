@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <unordered_map>
 #include <vector>
 #include <d3dx12/d3dx12_barriers.h>
@@ -10,6 +11,7 @@
 namespace Crowy
 {
     class DX12Buffer;
+    class DX12Fence;
     class DX12Texture;
     class DX12GraphicsPipelineState;
     class DX12ComputePipelineState;
@@ -33,9 +35,16 @@ namespace Crowy
         RootSignature& rootSignature;
         CommandSignature& drawSignature;
         CommandSignature& drawIndexedSignature;
-        CommandAllocatorRAII commandAllocators[RHI_FRAMES_IN_FLIGHT];
-        // the device's serial; Begin() picks the allocator from it
-        const u64& serial;
+        // Begin() takes the next allocator in the ring. Each carries the
+        // serial of the batch that last ran its commands, so reuse waits on
+        // exactly that and nothing here needs to know which frame it is
+        struct AllocatorSlot{
+            CommandAllocatorRAII allocator;
+            u64 serial = 0;
+        };
+        std::array<AllocatorSlot, RHI_FRAMES_IN_FLIGHT> allocators;
+        u32 cursor = 0;
+        DX12Fence& serialFence;
 
         CommandListRAII commandList = nullptr;
 
@@ -68,7 +77,7 @@ namespace Crowy
             RootSignature&,
             CommandSignature& drawSignature,
             CommandSignature& drawIndexedSignature,
-            const u64& serial,
+            DX12Fence& serialFence,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,
             DescriptorHeapAllocator& dsvHeap,
@@ -200,13 +209,11 @@ namespace Crowy
 
         CommandList* Get() noexcept{ return commandList.Get(); }
 
-    private:
-        u32 currentIndex() const noexcept{
-            return static_cast<u32>(
-                serial % RHI_FRAMES_IN_FLIGHT
-            );
-        }
+        // the device stamps the recording as it executes it: `serial` is what
+        // the batch signals once these commands have run
+        void MarkSubmitted(u64 serial) noexcept{ allocators[cursor].serial = serial; }
 
+    private:
         // record the whole edge as one Enhanced Barrier into the scratch
         void pushFused(const RHITextureBarrier&);
         void pushFused(const RHIBufferBarrier&);

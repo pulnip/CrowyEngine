@@ -567,7 +567,7 @@ namespace Crowy
             retireQueue.CollectAll();
         }
 
-        auto CreateFrameScopoe() noexcept{
+        auto CreateFrameScope() noexcept{
             return std::make_unique<DX12FrameScope>();
         }
 
@@ -708,7 +708,7 @@ namespace Crowy
                 *globalRootSignature.Get(),
                 *drawSignature.Get(),
                 *drawIndexedSignature.Get(),
-                serial,
+                *serialFence,
                 *cbvsrvuavHeap,
                 *rtvHeap,
                 *dsvHeap,
@@ -721,7 +721,7 @@ namespace Crowy
             const auto completed = serialFence->GetValue();
             retireQueue.Collect(completed);
 
-            executeCommandLists(cmdLists);
+            executeCommandLists(cmdLists, serial + 1);
 
             signalSerial();
             retireQueue.Tag(serial);
@@ -738,7 +738,7 @@ namespace Crowy
             const auto completed = serialFence->GetValue();
             retireQueue.Collect(completed);
 
-            executeCommandLists(cmdLists);
+            executeCommandLists(cmdLists, serial + 1);
 
             static_cast<DX12Swapchain&>(swapchain).Present(frame);
 
@@ -842,23 +842,29 @@ namespace Crowy
 
             // the upload list alone, marking only its own ring: transients and
             // deferred retires wait for the batch they were recorded for
-            executeCommandLists(std::span<RHICommandList*>{});
+            executeCommandLists(std::span<RHICommandList*>{}, serial + 1);
             signalSerial();
             uploadRing.OnSubmit(serial);
-            // creation uploads are load-time work, and draining first is what
-            // makes the allocator Begin() is about to reset provably idle
+            // creation uploads are load-time work, so drain them at once;
+            // the next Begin() would otherwise wait on its allocator's stamp
             serialFence->WaitCPU(serial, 0);
 
             ensureUploadBegin();
         }
 
-        void executeCommandLists(std::span<RHICommandList*> cmdLists){
+        // `batchSerial` is the serial the caller signals right after; every
+        // list executed here, the upload list included, is stamped with it
+        void executeCommandLists(
+            std::span<RHICommandList*> cmdLists,
+            u64 batchSerial
+        ){
             usize recordedUploadCmdListCount = uploadRecorded ? 1 : 0;
             std::vector<ID3D12CommandList*> dxCmdLists(recordedUploadCmdListCount + cmdLists.size());
             if(uploadRecorded){
                 // Close completes the upload releases nobody acquired here -
                 // the consumers live in the command lists submitted after
                 uploadCmdList->Close();
+                uploadCmdList->MarkSubmitted(batchSerial);
                 dxCmdLists[0] = uploadCmdList->Get();
 
                 uploadRecorded = false;
@@ -866,6 +872,7 @@ namespace Crowy
 
             for(usize i=0; i<cmdLists.size(); ++i){
                 auto dxCmdList = static_cast<DX12CommandList*>(cmdLists[i]);
+                dxCmdList->MarkSubmitted(batchSerial);
                 dxCmdLists[recordedUploadCmdListCount + i] = dxCmdList->Get();
             }
 
@@ -890,7 +897,7 @@ namespace Crowy
     DX12Device::~DX12Device() = default;
 
     RHIFrameScopeRAII DX12Device::CreateFrameScope(){
-        return impl->CreateFrameScopoe();
+        return impl->CreateFrameScope();
     }
 
     RHIBufferRAII DX12Device::CreateBuffer(
