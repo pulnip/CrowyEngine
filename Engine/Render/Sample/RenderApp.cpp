@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <format>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -21,6 +22,26 @@ namespace Crowy
 {
     namespace
     {
+        constexpr StrView FramePlaceholder = "{frame}";
+
+        // "captures/f-{frame}.bmp" names frame 60 "captures/f-60.bmp"
+        Str withFrame(StrView path, u64 frame) {
+            const auto number = std::to_string(frame);
+
+            Str named;
+            usize at = 0;
+            for(auto found = path.find(FramePlaceholder);
+                found != StrView::npos;
+                found = path.find(FramePlaceholder, at)) {
+                named += path.substr(at, found - at);
+                named += number;
+                at = found + FramePlaceholder.size();
+            }
+            named += path.substr(at);
+
+            return named;
+        }
+
         // every number describes stats.report.frame, one frame that ended
         DOM::Value statsToDom(const RenderApp::FrameStats& stats) {
             constexpr auto MsPerSecond = 1000.0;
@@ -238,6 +259,14 @@ namespace Crowy
             result.emplace("pong", DOM::Value(true));
             result.emplace("app", DOM::Value(Runtime().window.title));
             result.emplace("elapsed", DOM::Value(ElapsedSeconds()));
+            result.emplace(
+                "capturesPending",
+                DOM::Value(static_cast<i64>(swapchain->PendingFrameDumps()))
+            );
+            result.emplace(
+                "captureFailures",
+                DOM::Value(static_cast<i64>(captureFailures))
+            );
             reply.Ok(DOM::Value(std::move(result)));
         });
         port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply) {
@@ -315,6 +344,8 @@ namespace Crowy
                 );
             }
         );
+        // answers at once with what it queued; ping's capturesPending says
+        // when the files are on disk, and captureFailures whether one failed
         port->RegisterVerb(
             "capture_frame",
             [this](const DOM::Value& args, Reply reply) {
@@ -324,20 +355,71 @@ namespace Crowy
 
                     return;
                 }
-                if(pendingCapture.has_value()) {
-                    reply.Error("a capture is already pending");
+
+                auto selector = parseFrameSelector(args);
+                if(!selector.error.empty()) {
+                    reply.Error(selector.error);
 
                     return;
                 }
-                // the boot-time CROWY_DUMP_FRAME request occupies the same slot
-                if(!swapchain->RequestFrameDump(*path)) {
-                    reply.Error("a frame dump is already pending");
+                if(selector.frames.empty())
+                    selector.frames.push_back(FrameNumber() + 1);
+
+                const auto& frames = selector.frames;
+                if(frames.size() > 1 && !path->contains(FramePlaceholder)) {
+                    reply.Error("path needs {frame} for more than one frame");
 
                     return;
                 }
 
-                pendingCapturePath = *path;
-                pendingCapture = std::move(reply);
+                std::vector<Str> paths;
+                paths.reserve(frames.size());
+                for(const auto frame: frames) {
+                    if(frame <= FrameNumber()) {
+                        reply.Error(std::format(
+                            "frame {} has already been submitted (the last frame is {})",
+                            frame,
+                            FrameNumber()
+                        ));
+
+                        return;
+                    }
+                    paths.push_back(withFrame(*path, frame));
+                }
+
+                const auto pending = swapchain->PendingFrameDumps();
+                if(pending + frames.size() > MaxFrameDumps) {
+                    reply.Error(std::format(
+                        "the capture queue is full ({} pending)",
+                        pending
+                    ));
+
+                    return;
+                }
+                for(usize i = 0; i < frames.size(); ++i) {
+                    if(swapchain->IsFrameDumpQueued(frames[i], paths[i])) {
+                        reply.Error(std::format(
+                            "a capture for frame {} or to '{}' is already queued",
+                            frames[i],
+                            paths[i]
+                        ));
+
+                        return;
+                    }
+                }
+
+                DOM::Array queuedFrames;
+                DOM::Array queuedPaths;
+                for(usize i = 0; i < frames.size(); ++i) {
+                    swapchain->RequestFrameDump(paths[i], frames[i]);
+                    queuedFrames.emplace_back(static_cast<i64>(frames[i]));
+                    queuedPaths.emplace_back(paths[i]);
+                }
+
+                DOM::Table result;
+                result.emplace("frames", DOM::Value(std::move(queuedFrames)));
+                result.emplace("paths", DOM::Value(std::move(queuedPaths)));
+                reply.Ok(DOM::Value(std::move(result)));
             }
         );
         // with no selector, the last frame to finish: verbs drain before the
@@ -388,26 +470,21 @@ namespace Crowy
         });
     }
 
-    void RenderApp::pollCapture() {
-        if(!pendingCapture.has_value())
-            return;
+    // a capture's reply went out when it was queued, so a failure reaches
+    // the client through ping and the log
+    void RenderApp::collectCaptures() {
+        for(const auto& outcome: swapchain->TakeFrameDumpOutcomes()) {
+            if(outcome.written)
+                continue;
 
-        switch(swapchain->GetFrameDumpState()) {
-        case FrameDumpState::Written: {
-            DOM::Table result;
-            result.emplace("path", DOM::Value(pendingCapturePath));
-            pendingCapture->Ok(DOM::Value(std::move(result)));
-            pendingCapture.reset();
-            break;
-        }
-        case FrameDumpState::Failed:
-            pendingCapture->Error("frame dump failed; see the log");
-            pendingCapture.reset();
-            break;
-        case FrameDumpState::Idle:
-            [[fallthrough]];
-        case FrameDumpState::Pending:
-            break;
+            ++captureFailures;
+            LOG_WARN(
+                "RenderApp",
+                "capture of frame {} (presented {}) to '{}' failed",
+                outcome.requested,
+                outcome.presented,
+                outcome.path
+            );
         }
     }
 
@@ -443,7 +520,7 @@ namespace Crowy
             return;
 
         // the completions go out on this same drain
-        pollCapture();
+        collectCaptures();
         answerWaits();
         port->Drain();
     }

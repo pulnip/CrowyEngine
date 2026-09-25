@@ -155,11 +155,11 @@ namespace Crowy
     }
 
     void DX12Swapchain::Present(u64 frame){
-        if(auto path = TakeFrameDump(frame)){
-            FrameDumpCompletion()(DumpFrame(
+        while(auto job = TakeFrameDump(frame)){
+            job->completion(DumpFrame(
                 *queue,
                 *static_cast<DX12Texture&>(GetCurrentTexture()).Get(),
-                *path
+                job->path
             ));
         }
 

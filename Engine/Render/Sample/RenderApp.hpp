@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -84,14 +83,12 @@ namespace Crowy
         // debug builds only; null when disabled, inert with
         // Status().server == BindFailed when no port could bind
         CommandPortPtr port;
-        // capture_frame answers only once the swapchain reports the file
-        // written, so its reply waits here across frames
-        std::optional<Reply> pendingCapture;
-        Str pendingCapturePath;
         // a wait the port already timed out stays until its frame ends, and
         // answering it then does nothing
         std::vector<PendingWait> pendingWaits;
         FrameStatsHistory frameStats;
+        // captures whose dump failed, since launch
+        u32 captureFailures = 0;
 
         bool reportedCullStats = false;
 
@@ -164,7 +161,7 @@ namespace Crowy
         void createDepthBuffer(u32 width, u32 height);
         void openCommandPort();
         DOM::Table controlStatus() const;
-        void pollCapture();
+        void collectCaptures();
         void answerWaits();
         void reportCullStatsOnce();
     };

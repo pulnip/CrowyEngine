@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <vector>
 #include "Semantics.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -11,34 +12,62 @@
 
 namespace Crowy
 {
+    inline constexpr u32 MaxFrameDumps = 64;
+
     enum class FrameDumpState: u8{
-        Idle,
         Pending,
         Written,
         Failed
     };
 
+    // what became of one frame dump request
+    struct FrameDumpOutcome{
+        // the frame asked for, and the one whose image was written: a later
+        // one when the frame asked for presented nothing
+        u64 requested = 0;
+        u64 presented = 0;
+        Str path;
+        bool written = false;
+    };
+
     // Swapchain for presenting rendered images to the screen
     class RHISwapchain{
+    protected:
+        // the backend's half of one request: write the presented image to
+        // path, then report through completion, from any thread
+        struct FrameDumpJob{
+            Str path;
+            std::function<void(bool written)> completion;
+        };
+
     private:
         using FrameDumpSignal = std::shared_ptr<std::atomic<FrameDumpState>>;
+
+        struct FrameDumpRequest{
+            u64 frame = 0;
+            Str path;
+        };
+
+        struct FrameDumpInFlight{
+            FrameDumpOutcome outcome;
+            // completion may arrive from another thread (Metal)
+            FrameDumpSignal state;
+        };
 
         // Requested format; Could be differ from Actual format
         RHIPixelFormat format;
 
-        // one frame dump request at a time: a path, and the loop frame it is
-        // for (0 = the next one presented). CROWY_DUMP_FRAME /
-        // CROWY_DUMP_FRAME_AT seed it once at construction, RequestFrameDump
-        // sets it at runtime
-        Str dumpPath;
-        u64 dumpAtFrame = 0;
-        // completion may arrive from another thread (Metal), so the backend
-        // gets a handle it can hand to a completion handler
-        FrameDumpSignal dumpState = std::make_shared<std::atomic<FrameDumpState>>(FrameDumpState::Idle);
+        // in frame order, one per frame. CROWY_DUMP_FRAME / _AT seed one at
+        // construction
+        std::vector<FrameDumpRequest> dumpRequests;
+        // taken by the backend, until TakeFrameDumpOutcomes hands them over
+        std::vector<FrameDumpInFlight> dumpsInFlight;
 
     public:
         RHISwapchain(RHIPixelFormat format);
-        virtual ~RHISwapchain() = default;
+        // joins the dumps still being written; logs every request that
+        // never ran
+        virtual ~RHISwapchain();
         CROWY_DECLARE_PINNED(RHISwapchain)
 
         virtual bool AcquireNextImage() = 0;
@@ -53,20 +82,23 @@ namespace Crowy
 
         virtual RHITexture& GetCurrentTexture() = 0;
 
-        // dump the next presented frame to path as a BMP; false while an
-        // earlier request is still pending. Poll GetFrameDumpState for the
-        // outcome, which is written only once the file is on disk
-        bool RequestFrameDump(Str path);
-        FrameDumpState GetFrameDumpState() const noexcept{
-            return dumpState->load(std::memory_order_acquire);
-        }
+        // whether that frame or that path already has a dump queued or
+        // being written
+        bool IsFrameDumpQueued(u64 frame, StrView path) const noexcept;
+        // dump `frame` to path as a BMP once it presents. The caller checks
+        // IsFrameDumpQueued and the MaxFrameDumps cap first
+        void RequestFrameDump(Str path, u64 frame);
+        // queued, plus finished but not yet taken: 0 only once every
+        // outcome is in hand
+        u32 PendingFrameDumps() const noexcept;
+        // the dumps that finished since the last call, oldest first
+        std::vector<FrameDumpOutcome> TakeFrameDumpOutcomes();
 
     protected:
-        // the backend's half, called once per presented frame: hands back
-        // the pending request on the first presented frame at or after the
-        // one it asked for
-        std::optional<Str> TakeFrameDump(u64 frame) noexcept;
-        // what the backend calls with the write result, from any thread
-        std::function<void(bool written)> FrameDumpCompletion() const;
+        // the backend's half, called once per presented frame until it
+        // comes back empty: every request due at or before `frame`. A frame
+        // without a drawable presents nothing, so its request rides on the
+        // next one, and the outcome says which
+        std::optional<FrameDumpJob> TakeFrameDump(u64 frame);
     };
 }

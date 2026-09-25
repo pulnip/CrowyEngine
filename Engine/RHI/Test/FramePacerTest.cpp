@@ -1,9 +1,9 @@
-#include <exception>
 #include <span>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "FakeSwapchain.hpp"
 #include "FramePacer.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -66,19 +66,6 @@ namespace
         void DeferRetire(std::move_only_function<void()>) override {}
         RHIBufferSlice AllocateTransient(u32, u32) override { return {}; }
         RHICapabilities GetCapabilities() const noexcept override { return {}; }
-    };
-
-    // presents nothing; the pacer only passes it through to the device
-    class FakeSwapchain final: public RHISwapchain {
-    public:
-        FakeSwapchain()
-            : RHISwapchain(RHIPixelFormat::RGBA8_UNORM) {}
-
-        bool AcquireNextImage() override { return true; }
-        void Resize(u32, u32) override {}
-        u32 GetWidth() const noexcept override { return 0; }
-        u32 GetHeight() const noexcept override { return 0; }
-        RHITexture& GetCurrentTexture() override { std::terminate(); }
     };
 
     void runFrames(FramePacer& pacer, FakeSwapchain& swapchain, u64 count) {

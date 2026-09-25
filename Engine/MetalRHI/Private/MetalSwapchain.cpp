@@ -55,12 +55,12 @@ namespace Crowy
     void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer, u64 frame){
         // a frame without a drawable is not a presented frame
         if(currentDrawable != nullptr){
-            if(auto path = TakeFrameDump(frame)){
+            while(auto job = TakeFrameDump(frame)){
                 DumpFrame(
                     cmdBuffer,
                     *currentDrawable,
-                    std::move(*path),
-                    FrameDumpCompletion()
+                    std::move(job->path),
+                    std::move(job->completion)
                 );
             }
         }
