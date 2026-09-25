@@ -501,6 +501,22 @@ namespace Crowy
             result.emplace("frames", DOM::Value(std::move(frames)));
             reply.Ok(DOM::Value(std::move(result)));
         });
+        // every cached pipeline, recompiled from disk; a failed compile keeps
+        // the old ones drawing and throws its diagnostic into the error reply
+        port->RegisterVerb(
+            "reload_shaders",
+            [this](const DOM::Value&, Reply reply) {
+                const auto rebuild = renderer->ReloadPipelines();
+
+                DOM::Table result;
+                result.emplace(
+                    "pipelines",
+                    DOM::Value(static_cast<i64>(rebuild.pipelines))
+                );
+                result.emplace("ms", DOM::Value(rebuild.milliseconds));
+                reply.Ok(DOM::Value(std::move(result)));
+            }
+        );
     }
 
     // a capture's reply went out when it was queued, so a failure reaches

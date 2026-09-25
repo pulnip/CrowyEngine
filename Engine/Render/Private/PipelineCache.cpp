@@ -1,10 +1,45 @@
 #include "PipelineCache.hpp"
 
 #include <algorithm>
+#include <chrono>
+#include <exception>
+#include <format>
+#include <stdexcept>
+#include <utility>
 
 #include "Assert.hpp"
+#include "LogLocal.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
+#include "StringUtil.hpp"
+
+namespace
+{
+    // a key's shaders, as a failed rebuild names them
+    Crowy::Str describeShaders(const Crowy::RHIGraphicsPipelineStateDesc& desc) {
+        using namespace Crowy;
+
+        const auto& vertex =
+            std::get<RHILegacyFrontendDesc>(desc.preRasterizer).vertexShader;
+        const auto& fragment = desc.fragmentShader;
+        if(vertex.path == fragment.path) {
+            return std::format(
+                "{} ({}, {})",
+                toUTF8String(vertex.path),
+                vertex.entryPoint,
+                fragment.entryPoint
+            );
+        }
+
+        return std::format(
+            "{} ({}), {} ({})",
+            toUTF8String(vertex.path),
+            vertex.entryPoint,
+            toUTF8String(fragment.path),
+            fragment.entryPoint
+        );
+    }
+}
 
 namespace Crowy
 {
@@ -59,5 +94,40 @@ namespace Crowy
             states.emplace(std::move(desc), std::move(state));
 
         return *inserted->second;
+    }
+
+    PipelineRebuild PipelineCache::Rebuild() {
+        const auto started = std::chrono::steady_clock::now();
+
+        PipelineStates rebuilt;
+        rebuilt.reserve(states.size());
+        for(const auto& [desc, _]: states) {
+            try {
+                rebuilt.emplace(desc, device.CreatePipelineState(desc));
+            } catch(const std::exception& e) {
+                throw std::runtime_error(
+                    std::format("{}: {}", describeShaders(desc), e.what())
+                );
+            }
+        }
+
+        // one in-order queue: every list that bound an old state was
+        // submitted before the next frame, which binds only new ones
+        std::swap(states, rebuilt);
+        for(auto& [_, old]: rebuilt)
+            device.Retire(std::move(old));
+
+        const std::chrono::duration<f64, std::milli> elapsed =
+            std::chrono::steady_clock::now() - started;
+        LOG_INFO(
+            "reloaded {} pipelines in {:.0f} ms",
+            states.size(),
+            elapsed.count()
+        );
+
+        return PipelineRebuild{
+            .pipelines = states.size(),
+            .milliseconds = elapsed.count()
+        };
     }
 }

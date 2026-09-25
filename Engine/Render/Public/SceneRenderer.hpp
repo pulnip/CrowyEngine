@@ -99,6 +99,8 @@ namespace Crowy
         u64 TriangleCount() const noexcept { return triangleCount; }
         usize BucketCount() const noexcept { return buckets.size(); }
         usize PipelineCount() const noexcept { return pipelines.Count(); }
+        // every cached pipeline, recompiled from disk (PipelineCache::Rebuild)
+        PipelineRebuild ReloadPipelines() { return pipelines.Rebuild(); }
 
         // Culls against the given view,
         // then flattens the survivors into one row per submesh.

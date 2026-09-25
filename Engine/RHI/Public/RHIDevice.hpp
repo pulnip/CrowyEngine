@@ -84,6 +84,7 @@ namespace Crowy
 
         void Retire(RHIBufferRAII buffer);
         void Retire(RHITextureRAII texture);
+        void Retire(RHIGraphicsPipelineStateRAII state);
 
         // allocate a transient slice and fill it in one step
         template<typename T>

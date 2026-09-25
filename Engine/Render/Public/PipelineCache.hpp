@@ -26,6 +26,12 @@ namespace Crowy
         RHIGraphicsPipelineStateDesc,
         RHIGraphicsPipelineStateRAII>;
 
+    // what one Rebuild did
+    struct PipelineRebuild {
+        usize pipelines = 0;
+        f64 milliseconds = 0.0;
+    };
+
     class PipelineCache {
     private:
         RHIDevice& device;
@@ -44,5 +50,10 @@ namespace Crowy
         );
 
         usize Count() const noexcept { return states.size(); }
+
+        // recompiles every stored key into new states and swaps only when
+        // all of them built; a failure leaves the old states live and
+        // rethrows with the key's shaders named
+        PipelineRebuild Rebuild();
     };
 }
