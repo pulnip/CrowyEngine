@@ -59,7 +59,12 @@ namespace Crowy
 
         MetalCommandList uploadCmdList;
         bool uploadRecorded = false;
+        // creation staging: marked whenever the upload list goes out, with a
+        // submitted wave or through flushUploads
         UploadRing uploadRing;
+        // AllocateTransient's staging: marked only when a wave is submitted,
+        // so a flush never retires a slice an open recording still reads
+        UploadRing transientRing;
 
         // the device's one timeline: every submitted wave and every out-of-band
         // signal takes the next value, on serialFence and submissionEvent alike
@@ -158,12 +163,25 @@ namespace Crowy
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
                     .memory = RHIMemoryType::CPUWrite
-                }, "staging buffer"
+                }, "upload staging"
             );
             uploadRing = UploadRing(
                 mtlDevice,
                 std::move(stagingBuffer),
                 [this]{ flushUploads(); }
+            );
+
+            // no flush hook: only a submitted wave may retire a transient, so
+            // running out means the size is wrong, not that work is pending
+            auto transientBuffer = CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size = 1 << 25,
+                    .memory = RHIMemoryType::CPUWrite
+                }, "transient staging"
+            );
+            transientRing = UploadRing(
+                mtlDevice,
+                std::move(transientBuffer)
             );
         }
 
@@ -280,6 +298,7 @@ namespace Crowy
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
             retireQueue.Tag(submissionSerial);
             uploadRing.OnSubmit(submissionSerial);
+            transientRing.OnSubmit(submissionSerial);
 
             trackHandoffs(cmdLists);
 
@@ -303,6 +322,7 @@ namespace Crowy
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
             retireQueue.Tag(submissionSerial);
             uploadRing.OnSubmit(submissionSerial);
+            transientRing.OnSubmit(submissionSerial);
 
             trackHandoffs(cmdLists);
 
@@ -342,7 +362,7 @@ namespace Crowy
         }
 
         RHIBufferSlice AllocateTransient(u32 size, u32 align){
-            const auto alloc = uploadRing.Allocate(size, align);
+            const auto alloc = transientRing.Allocate(size, align);
 
             return RHIBufferSlice{
                 .buffer = &alloc.buffer,

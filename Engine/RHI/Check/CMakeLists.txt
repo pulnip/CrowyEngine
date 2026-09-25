@@ -21,3 +21,10 @@ SOURCES
 DEPENDS
     SampleOrbit
 )
+
+# forces a creation-upload flush while a transient slice waits in an
+# unsubmitted copy, and fails if the flush let the slice be overwritten
+crowy_declare_check(UploadFlushCheck
+SOURCES
+    UploadFlushCheck.cpp
+)

@@ -478,7 +478,12 @@ namespace Crowy
 
         RAII<DX12CommandList> uploadCmdList;
         bool uploadRecorded = false;
+        // creation staging: marked whenever the upload list goes out, with a
+        // submitted batch or through flushUploads
         UploadRing uploadRing;
+        // AllocateTransient's staging: marked only when a batch is submitted,
+        // so a flush never retires a slice an open recording still reads
+        UploadRing transientRing;
 
         RAII<DX12Fence> serialFence;
         // the device's one timeline: every submitted batch and every
@@ -534,12 +539,25 @@ namespace Crowy
                 RHIBufferCreateDesc{
                     .size = 1 << 25,
                     .memory = RHIMemoryType::CPUWrite
-                }, "staging buffer"
+                }, "upload staging"
             );
             uploadRing = UploadRing(
                 dxDevice,
                 std::move(stagingBuffer),
                 [this]{ flushUploads(); }
+            );
+
+            // no flush hook: only a submitted batch may retire a transient, so
+            // running out means the size is wrong, not that work is pending
+            auto transientBuffer = CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size = 1 << 25,
+                    .memory = RHIMemoryType::CPUWrite
+                }, "transient staging"
+            );
+            transientRing = UploadRing(
+                dxDevice,
+                std::move(transientBuffer)
             );
         }
 
@@ -705,6 +723,7 @@ namespace Crowy
             signalSerial();
             retireQueue.Tag(serial);
             uploadRing.OnSubmit(serial);
+            transientRing.OnSubmit(serial);
         }
 
         void SubmitAndPresent(
@@ -720,6 +739,7 @@ namespace Crowy
             signalSerial();
             retireQueue.Tag(serial);
             uploadRing.OnSubmit(serial);
+            transientRing.OnSubmit(serial);
         }
 
         u64 GetSubmittedFrame() const noexcept{
@@ -752,7 +772,7 @@ namespace Crowy
         }
 
         RHIBufferSlice AllocateTransient(u32 size, u32 align){
-            const auto alloc = uploadRing.Allocate(size, align);
+            const auto alloc = transientRing.Allocate(size, align);
 
             return RHIBufferSlice{
                 .buffer = &alloc.buffer,
@@ -816,10 +836,14 @@ namespace Crowy
             if(!uploadRecorded)
                 return;
 
-            Submit(std::span<RHICommandList*>{});
+            // the upload list alone, marking only its own ring: transients and
+            // deferred retires wait for the batch they were recorded for
+            executeCommandLists(std::span<RHICommandList*>{});
+            signalSerial();
+            uploadRing.OnSubmit(serial);
             // creation uploads are load-time work, and draining first is what
             // makes the allocator Begin() is about to reset provably idle
-            WaitFrame(serial);
+            serialFence->WaitCPU(serial, 0);
 
             ensureUploadBegin();
         }
