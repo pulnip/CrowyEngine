@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <vector>
 
 #include "AppFramework.hpp"
 #include "Camera.hpp"
@@ -55,6 +56,12 @@ namespace Crowy
         static constexpr u32 ViewCBSlot = 0;
 
     private:
+        // a wait_frame reply, held until its frame has ended
+        struct PendingWait {
+            u64 frame = 0;
+            Reply reply;
+        };
+
         Config config;
 
         RHIDevice* device = nullptr;
@@ -76,6 +83,9 @@ namespace Crowy
         // written, so its reply waits here across frames
         std::optional<Reply> pendingCapture;
         Str pendingCapturePath;
+        // a wait the port already timed out stays until its frame ends, and
+        // answering it then does nothing
+        std::vector<PendingWait> pendingWaits;
         FrameStats frameStats;
 
         bool reportedCullStats = false;
@@ -147,7 +157,9 @@ namespace Crowy
     private:
         void createDepthBuffer(u32 width, u32 height);
         void openCommandPort();
+        DOM::Table controlStatus() const;
         void pollCapture();
+        void answerWaits();
         void reportCullStatsOnce();
     };
 }

@@ -19,6 +19,12 @@ namespace Crowy
         // frame N - 1 has ended here and frame N has not begun
         virtual void NewFrame(){}
 
+        // between frames, right after NewFrame: false holds the loop there.
+        // A held iteration keeps the window alive and drains again; nothing
+        // that costs a frame number runs, and input that arrives meanwhile
+        // is dropped
+        virtual bool ShouldAdvance(){ return true; }
+
         // frame N has begun: the pacer assigned the number and waited for
         // frame N - RHI_FRAMES_IN_FLIGHT to complete
         virtual void OnFrameBegin(u64 frame){}

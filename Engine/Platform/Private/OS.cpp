@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <utility>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
@@ -10,6 +11,7 @@
 #include "OS.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
+#include "RHIFrameScope.hpp"
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
 #include "RuntimeConfig.hpp"
@@ -21,6 +23,9 @@ namespace Crowy
     // well under ImGui's KeyRepeatDelay (0.275s),
     // so no single hitch can reach it
     inline constexpr f32 UI_MAX_DELTA_TIME = 0.1f;
+
+    // the port is not an SDL event, so this is how late a held loop answers it
+    inline constexpr i32 HELD_WAIT_MS = 4;
 
     OS* OS::singleton = nullptr;
 
@@ -73,6 +78,9 @@ namespace Crowy
 
     private:
         bool ProcessEvents(MainLoop&);
+        // the held iteration's pump: the window stays alive, input is dropped
+        bool PumpHeld(MainLoop&, RHIDevice&);
+        void HandleWindowEvent(MainLoop&, const SDL_WindowEvent&);
 
         void BeginFrame(RHIDevice&);
         void EndFrame(RHIDevice&);
@@ -132,11 +140,27 @@ namespace Crowy
             ImGui_ImplSDL3_InitForOther(sdlWindow);
         }
 
+        // set by a held iteration, which drops input on the way
+        bool held = false;
+
         // the scopes below are blocks because the loop leaves from the
         // middle of two of them, and a section still has to close
         while(true){
             // between frames: the last one has ended, the next has not begun
             mainLoop.NewFrame();
+
+            if(!mainLoop.ShouldAdvance()){
+                if(!PumpHeld(mainLoop, device)) [[unlikely]]
+                    break;
+                held = true;
+                continue;
+            }
+            // what the hold dropped included releases, so nothing may stay down
+            if(std::exchange(held, false) && imguiEnabled){
+                auto& io = ImGui::GetIO();
+                io.ClearInputKeys();
+                io.ClearInputMouse();
+            }
 
             const auto frame = framePacer.BeginFrame();
             profiler.BeginFrame(frame, framePacer.GetLastWaitTime());
@@ -244,21 +268,43 @@ namespace Crowy
                 break;
 
             // Window Event
-            if(SDL_EVENT_WINDOW_FIRST <= event.type && event.type <= SDL_EVENT_WINDOW_LAST){
-                if(event.type == SDL_EVENT_WINDOW_RESIZED){
-                    int w = event.window.data1;
-                    int h = event.window.data2;
-
-                    framePacer.WaitForIdle();
-
-                    swapchain->Resize(w, h);
-                    mainLoop.OnResize(w, h);
-                }
-                window.OnPlatformEvent(event.window);
-            }
+            if(SDL_EVENT_WINDOW_FIRST <= event.type && event.type <= SDL_EVENT_WINDOW_LAST)
+                HandleWindowEvent(mainLoop, event.window);
         }
 
         return keepRunning;
+    }
+
+    bool OS::Impl::PumpHeld(MainLoop& mainLoop, RHIDevice& device){
+        // no frame's pool is open between frames, and a resize allocates
+        const auto scope = device.CreateFrameScope();
+
+        // so the next frame's mouse delta spans one wait, not the whole hold
+        inputProvider.NewFrame();
+
+        SDL_Event event;
+        for(bool have = SDL_WaitEventTimeout(&event, HELD_WAIT_MS); have; have = SDL_PollEvent(&event)){
+            if(SDL_EVENT_QUIT == event.type) [[unlikely]]
+                return false;
+
+            if(SDL_EVENT_WINDOW_FIRST <= event.type && event.type <= SDL_EVENT_WINDOW_LAST)
+                HandleWindowEvent(mainLoop, event.window);
+        }
+
+        return true;
+    }
+
+    void OS::Impl::HandleWindowEvent(MainLoop& mainLoop, const SDL_WindowEvent& event){
+        if(event.type == SDL_EVENT_WINDOW_RESIZED){
+            int w = event.data1;
+            int h = event.data2;
+
+            framePacer.WaitForIdle();
+
+            swapchain->Resize(w, h);
+            mainLoop.OnResize(w, h);
+        }
+        window.OnPlatformEvent(event);
     }
 
     void OS::Impl::BeginFrame(RHIDevice& device){

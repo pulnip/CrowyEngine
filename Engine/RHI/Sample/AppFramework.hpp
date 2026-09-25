@@ -4,6 +4,7 @@
 #include <span>
 #include "Assert.hpp"
 #include "CommandListPool.hpp"
+#include "FrameControl.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
 #include "RHICommandList.hpp"
@@ -18,6 +19,7 @@ namespace Crowy
     class App: public MainLoop{
     private:
         Timer timer;
+        FrameControl control;
         RHIDevice* device = nullptr;
         const RuntimeConfig* runtime = nullptr;
         // the pacer's frame: the one being recorded, or between frames the
@@ -47,6 +49,14 @@ namespace Crowy
         void OnFrameBegin(u64 frame) override final{
             this->frame = frame;
         }
+        bool ShouldAdvance() override final{
+            // a quit leaves through Update(), so it releases any hold, even
+            // one that arrives after it
+            if(quitRequested)
+                return true;
+
+            return control.Advance(frame) != FrameControl::Gate::Hold;
+        }
 
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
         bool Update() override final{
@@ -67,6 +77,9 @@ namespace Crowy
         void RequestQuit() noexcept{
             quitRequested = true;
         }
+
+        FrameControl& Control() noexcept{ return control; }
+        const FrameControl& Control() const noexcept{ return control; }
     };
 
     RHIViewport FullViewport(const RHITexture&, u32 mipLevel = 0);

@@ -51,6 +51,10 @@ namespace Crowy
 
         WindowConfig window;
         BenchmarkConfig benchmark;
+
+        // argv only: --hold starts the loop held before frame 1. Debug
+        // builds only, since only the command port can release it
+        bool hold = false;
     };
 
     template<>
@@ -59,7 +63,7 @@ namespace Crowy
         static RuntimeConfig from(const DOM::Value&, const DocMetadata&);
     };
 
-    // The arguments after the program name. The only one is --config <path>:
-    // that app document's benchmark and window.vsync replace the sample's.
+    // The arguments after the program name: --config <path>, whose app
+    // document's benchmark and window.vsync replace the sample's, and --hold.
     void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
 }

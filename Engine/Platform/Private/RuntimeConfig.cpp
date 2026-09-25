@@ -84,10 +84,14 @@ namespace Crowy
     }
 
     void applyCommandLine(RuntimeConfig& config, std::span<char* const> args){
-        constexpr auto Usage = "usage: <app> [--config <path>]";
+        constexpr auto Usage = "usage: <app> [--config <path>] [--hold]";
 
         for(usize i = 0; i < args.size(); ++i){
             const StrView arg = args[i];
+            if(arg == "--hold"){
+                config.hold = true;
+                continue;
+            }
             if(arg != "--config"){
                 throw std::runtime_error(std::format(
                     "unknown argument '{}'\n{}", arg, Usage

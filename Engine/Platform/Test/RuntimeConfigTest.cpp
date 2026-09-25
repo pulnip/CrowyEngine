@@ -65,3 +65,19 @@ TEST(RuntimeConfig, CommandLineRefusesWhatItDoesNotKnow){
         std::runtime_error
     );
 }
+
+TEST(RuntimeConfig, CommandLineTakesHold){
+    RuntimeConfig config;
+    EXPECT_FALSE(config.hold);
+
+    static char holdFlag[] = "--hold";
+    applyCommandLine(config, std::array{holdFlag});
+    EXPECT_TRUE(config.hold);
+
+    // still loud about whatever follows it
+    static char misspelled[] = "--confg";
+    EXPECT_THROW(
+        applyCommandLine(config, std::array{holdFlag, misspelled}),
+        std::runtime_error
+    );
+}

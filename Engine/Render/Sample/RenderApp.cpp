@@ -3,6 +3,8 @@
 #include <array>
 #include <charconv>
 #include <cstdlib>
+#include <format>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -16,6 +18,21 @@
 
 namespace Crowy
 {
+    namespace
+    {
+        // a frame number or a frame count on the wire: an integer from 1 up
+        std::optional<u64> positiveInteger(const DOM::Value* value) {
+            if(value == nullptr)
+                return std::nullopt;
+
+            const auto integer = value->asInt();
+            if(!integer || *integer < 1)
+                return std::nullopt;
+
+            return static_cast<u64>(*integer);
+        }
+    }
+
     RenderApp::~RenderApp() = default;
 
     RenderApp::RenderApp(const Config& config, CameraRAII camera)
@@ -62,6 +79,17 @@ namespace Crowy
         openCommandPort();
     #endif
 
+        // only a port verb can release the hold, so no port is no hold
+        if(Runtime().hold) {
+            if(port == nullptr || port->Port() == 0) {
+                throw std::runtime_error(
+                    "--hold needs the command port "
+                    "(Debug builds, and a port that binds)"
+                );
+            }
+            Control().Hold();
+        }
+
         // after the port, so the scene can expose itself before the loop
         OnBuildGeometry(*geometryPool);
         geometryPool->LogAllocationStats();
@@ -100,16 +128,86 @@ namespace Crowy
             return;
 
         port->RegisterVerb("ping", [this](const DOM::Value&, Reply reply) {
-            DOM::Table result;
+            auto result = controlStatus();
             result.emplace("pong", DOM::Value(true));
             result.emplace("app", DOM::Value(Runtime().window.title));
-            result.emplace("frame", DOM::Value(static_cast<i64>(FrameNumber())));
             reply.Ok(DOM::Value(std::move(result)));
         });
         port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply) {
             RequestQuit();
             reply.Ok(DOM::Value(DOM::Table{}));
         });
+        port->RegisterVerb("run", [this](const DOM::Value& args, Reply reply) {
+            const auto* frames = args.at("frames");
+            const auto* until = args.at("until");
+            if(frames != nullptr && until != nullptr) {
+                reply.Error("run takes frames or until, not both");
+
+                return;
+            }
+
+            if(frames != nullptr) {
+                const auto count = positiveInteger(frames);
+                if(!count) {
+                    reply.Error("frames must be a positive integer");
+
+                    return;
+                }
+                Control().RunFrames(*count);
+            } else if(until != nullptr) {
+                const auto frame = positiveInteger(until);
+                if(!frame) {
+                    reply.Error("until must be a positive integer");
+
+                    return;
+                }
+                if(*frame <= FrameNumber()) {
+                    reply.Error(std::format(
+                        "frame {} has already ended (the last frame is {})",
+                        *frame,
+                        FrameNumber()
+                    ));
+
+                    return;
+                }
+                Control().RunUntil(*frame);
+            } else {
+                Control().Run();
+            }
+
+            reply.Ok(DOM::Value(controlStatus()));
+        });
+        // the gate runs right after this drain, so the loop stops at the
+        // frame that has just ended
+        port->RegisterVerb("hold", [this](const DOM::Value&, Reply reply) {
+            Control().Hold();
+            reply.Ok(DOM::Value(controlStatus()));
+        });
+        port->RegisterVerb("step", [this](const DOM::Value&, Reply reply) {
+            Control().RunFrames(1);
+            reply.Ok(DOM::Value(controlStatus()));
+        });
+        // answers once `frame` has ended; it never advances the loop itself
+        port->RegisterVerb(
+            "wait_frame",
+            [this](const DOM::Value& args, Reply reply) {
+                const auto frame = positiveInteger(args.at("frame"));
+                if(!frame) {
+                    reply.Error("\"frame\" is missing or not a positive integer");
+
+                    return;
+                }
+                if(*frame <= FrameNumber()) {
+                    reply.Ok(DOM::Value(controlStatus()));
+
+                    return;
+                }
+
+                pendingWaits.push_back(
+                    PendingWait{.frame = *frame, .reply = std::move(reply)}
+                );
+            }
+        );
         port->RegisterVerb(
             "capture_frame",
             [this](const DOM::Value& args, Reply reply) {
@@ -277,12 +375,40 @@ namespace Crowy
         }
     }
 
+    // every control verb answers with where the loop stands afterwards
+    DOM::Table RenderApp::controlStatus() const {
+        const auto frame = FrameNumber();
+        const auto holdAt = Control().HoldAt(frame);
+
+        DOM::Table status;
+        status.emplace("frame", DOM::Value(static_cast<i64>(frame)));
+        status.emplace("held", DOM::Value(Control().IsHeld(frame)));
+        status.emplace(
+            "holdAt",
+            holdAt ? DOM::Value(static_cast<i64>(*holdAt)) : DOM::Value()
+        );
+
+        return status;
+    }
+
+    void RenderApp::answerWaits() {
+        const auto frame = FrameNumber();
+        for(auto& wait: pendingWaits) {
+            if(wait.frame <= frame)
+                wait.reply.Ok(DOM::Value(controlStatus()));
+        }
+        std::erase_if(pendingWaits, [frame](const PendingWait& wait) {
+            return wait.frame <= frame;
+        });
+    }
+
     void RenderApp::NewFrame() {
         if(port == nullptr)
             return;
 
-        // the completion goes out on this same drain
+        // the completions go out on this same drain
         pollCapture();
+        answerWaits();
         port->Drain();
     }
 
