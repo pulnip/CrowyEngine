@@ -187,6 +187,44 @@ namespace Crowy
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&commandList)
         ), "Failed to create command list");
+
+        constexpr UINT TimestampCount = 2 * RHI_FRAMES_IN_FLIGHT;
+
+        const D3D12_QUERY_HEAP_DESC queryDesc{
+            .Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
+            .Count = TimestampCount,
+            .NodeMask = 0
+        };
+        CHECK_HRESULT(device.CreateQueryHeap(
+            &queryDesc,
+            IID_PPV_ARGS(&timestamps)
+        ), "Failed to create timestamp query heap");
+
+        const D3D12_HEAP_PROPERTIES readbackHeap{
+            .Type = D3D12_HEAP_TYPE_READBACK
+        };
+        const D3D12_RESOURCE_DESC readbackDesc{
+            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            .Alignment = 0,
+            .Width = TimestampCount * sizeof(u64),
+            .Height = 1,
+            .DepthOrArraySize = 1,
+            .MipLevels = 1,
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .SampleDesc = {1, 0},
+            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            .Flags = D3D12_RESOURCE_FLAG_NONE
+        };
+        // a readback buffer stays in COPY_DEST for good, which is what
+        // ResolveQueryData writes into
+        CHECK_HRESULT(device.CreateCommittedResource(
+            &readbackHeap,
+            D3D12_HEAP_FLAG_NONE,
+            &readbackDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&timestampReadback)
+        ), "Failed to create timestamp readback buffer");
     }
 
     DX12CommandList::~DX12CommandList() = default;
@@ -206,6 +244,11 @@ namespace Crowy
             slot.allocator.Get(),
             nullptr
         ), "Failed to reset command list");
+        commandList->EndQuery(
+            timestamps.Get(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            2 * cursor
+        );
 
         pendingTextureReleases.clear();
         pendingBufferReleases.clear();
@@ -227,6 +270,22 @@ namespace Crowy
         Super::Close();
 
         flushPendingReleases();
+
+        // after the last command, so the span covers all of them
+        const UINT first = 2 * cursor;
+        commandList->EndQuery(
+            timestamps.Get(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            first + 1
+        );
+        commandList->ResolveQueryData(
+            timestamps.Get(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            first,
+            2,
+            timestampReadback.Get(),
+            first * sizeof(u64)
+        );
 
         CHECK_HRESULT(commandList->Close(),
             "Failed to close command list"

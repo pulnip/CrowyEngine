@@ -14,7 +14,7 @@ namespace Crowy
     class DX12Device: public RHIDevice{
     private:
         class Impl;
-        static constexpr usize implSize = 664;
+        static constexpr usize implSize = 832;
         static constexpr usize implAlign = 8;
         FastPimpl<Impl, implSize, implAlign> impl;
 
@@ -60,6 +60,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept RHI_OVERRIDE;
         void WaitFrame(u64 frame) RHI_OVERRIDE;
         void WaitIdle() RHI_OVERRIDE;
 

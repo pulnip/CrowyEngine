@@ -30,6 +30,7 @@ namespace Crowy
     using Blob = ID3DBlob;
     using Fence = ID3D12Fence;
     using ShaderReflection = ID3D12ShaderReflection;
+    using QueryHeap = ID3D12QueryHeap;
 
     // RAII wrappers for COM interfaces
     template<typename T>
@@ -56,6 +57,7 @@ namespace Crowy
 	using BlobRAII = COMRAII<Blob>;
     using FenceRAII = COMRAII<Fence>;
     using ShaderReflectionRAII = COMRAII<ShaderReflection>;
+    using QueryHeapRAII = COMRAII<QueryHeap>;
 
     inline constexpr UINT RootParamPush = 0;
     inline constexpr UINT RootParamCBBase = 1;

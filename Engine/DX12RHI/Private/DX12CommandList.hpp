@@ -17,6 +17,15 @@ namespace Crowy
     class DX12ComputePipelineState;
 
     class DX12CommandList: public RHICommandList{
+    public:
+        // where a submitted recording leaves its two GPU timestamps, begin
+        // at 2 * slot and end at 2 * slot + 1. It holds the buffer, so the
+        // device can read it after the list itself is gone
+        struct TimestampSlot{
+            BufferRAII readback;
+            u32 slot = 0;
+        };
+
     private:
         using Super = RHICommandList;
 
@@ -45,6 +54,10 @@ namespace Crowy
         std::array<AllocatorSlot, RHI_FRAMES_IN_FLIGHT> allocators;
         u32 cursor = 0;
         DX12Fence& serialFence;
+        // a begin and an end timestamp per allocator slot, following the
+        // cursor; Close resolves the pair into the readback buffer
+        QueryHeapRAII timestamps;
+        BufferRAII timestampReadback;
 
         CommandListRAII commandList = nullptr;
 
@@ -212,6 +225,9 @@ namespace Crowy
         // the device stamps the recording as it executes it: `serial` is what
         // the batch signals once these commands have run
         void MarkSubmitted(u64 serial) noexcept{ allocators[cursor].serial = serial; }
+        // the timestamps of the recording just submitted, readable once its
+        // batch's serial has completed
+        TimestampSlot SubmittedTimestamps() const{ return {timestampReadback, cursor}; }
 
     private:
         // record the whole edge as one Enhanced Barrier into the scratch

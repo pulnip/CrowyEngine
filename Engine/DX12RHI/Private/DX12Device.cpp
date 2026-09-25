@@ -1,5 +1,6 @@
 #include <array>
 #include <cstdlib>
+#include <cstring>
 #include <print>
 #include <stdexcept>
 #include <vector>
@@ -19,6 +20,7 @@
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
 #include "RHIFrameTimeline.hpp"
+#include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIUtil.hpp"
 #include "RHIShader.hpp"
@@ -261,6 +263,16 @@ namespace{
         return commandQueue;
     }
 
+    // ticks per second of the timestamps this queue's lists write
+    Crowy::f64 readTimestampFrequency(Crowy::CommandQueue& commandQueue){
+        UINT64 frequency = 0;
+        CHECK_HRESULT(commandQueue.GetTimestampFrequency(&frequency),
+            "Failed to read the queue's timestamp frequency"
+        );
+
+        return static_cast<Crowy::f64>(frequency);
+    }
+
     // the two command signatures every DrawBatch goes through: a single draw argument each,
     // so no root signature is needed at creation and no root arguments change per draw
     auto createDrawSignature(Crowy::Device& device){
@@ -453,9 +465,18 @@ namespace Crowy
 
     class DX12Device::Impl{
     private:
+        // a submitted frame's lists, kept as the timestamp slots they left:
+        // readable once `serial` completes, whether or not the lists live on
+        struct UntimedFrame{
+            u64 frame = 0;
+            u64 serial = 0;
+            std::vector<DX12CommandList::TimestampSlot> stamps;
+        };
+
         FactoryRAII factory = nullptr;
         DeviceRAII device = nullptr;
         CommandQueueRAII commandQueue = nullptr;
+        f64 timestampFrequency = 0.0;
 
         // descriptor indices retire through here too, so this must outlive
         // every DescriptorHeapAllocator below
@@ -492,11 +513,16 @@ namespace Crowy
         u64 serial = 0;
         RHIFrameTimeline timeline;
 
+        // in submission order; the upload list is never among them
+        std::vector<UntimedFrame> untimedFrames;
+        RHIGPUTimeHistory gpuTimes;
+
     public:
         Impl()
             : factory(::createFactory())
             , device(::createDevice(*factory.Get()))
             , commandQueue(::createCommandQueue(*device.Get()))
+            , timestampFrequency(::readTimestampFrequency(*commandQueue.Get()))
             , cbvsrvuavHeap(std::make_unique<DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -720,6 +746,7 @@ namespace Crowy
             // completed-as-of-entry, before this batch's own tag exists
             const auto completed = serialFence->GetValue();
             retireQueue.Collect(completed);
+            harvestGPUTimes(completed);
 
             executeCommandLists(cmdLists, serial + 1);
 
@@ -728,6 +755,7 @@ namespace Crowy
             uploadRing.OnSubmit(serial);
             transientRing.OnSubmit(serial);
             timeline.OnSubmit(frame, serial, completed);
+            holdForGPUTime(cmdLists, frame);
         }
 
         void SubmitAndPresent(
@@ -737,6 +765,7 @@ namespace Crowy
         ){
             const auto completed = serialFence->GetValue();
             retireQueue.Collect(completed);
+            harvestGPUTimes(completed);
 
             executeCommandLists(cmdLists, serial + 1);
 
@@ -747,10 +776,18 @@ namespace Crowy
             uploadRing.OnSubmit(serial);
             transientRing.OnSubmit(serial);
             timeline.OnSubmit(frame, serial, completed);
+            holdForGPUTime(cmdLists, frame);
         }
 
         u64 GetCompletedFrame() const noexcept{
             return timeline.CompletedFrame(serialFence->GetValue());
+        }
+
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept{
+            if(const auto* seconds = gpuTimes.Find(frame))
+                return *seconds;
+
+            return std::nullopt;
         }
 
         void WaitFrame(u64 frame){
@@ -769,6 +806,7 @@ namespace Crowy
             // a Submit that may never come
             retireQueue.Tag(serial);
             retireQueue.Collect(serial);
+            harvestGPUTimes(serial);
         }
 
         void DeferRetire(std::move_only_function<void()> reclaim){
@@ -821,6 +859,67 @@ namespace Crowy
         }
 
     private:
+        void holdForGPUTime(std::span<RHICommandList*> cmdLists, u64 frame){
+            UntimedFrame held{.frame = frame, .serial = serial};
+            held.stamps.reserve(cmdLists.size());
+            for(auto cmdList: cmdLists){
+                held.stamps.push_back(
+                    static_cast<DX12CommandList*>(cmdList)->SubmittedTimestamps()
+                );
+            }
+
+            untimedFrames.push_back(std::move(held));
+        }
+
+        // each list resolved its timestamps into its readback as the batch
+        // ran, so a completed serial is all a frame needs before reading
+        void harvestGPUTimes(u64 completed){
+            usize harvested = 0;
+            for(const auto& held: untimedFrames){
+                // serials grow with frames
+                if(held.serial > completed)
+                    break;
+
+                std::vector<RHIGPUInterval> intervals;
+                intervals.reserve(held.stamps.size());
+                for(const auto& stamp: held.stamps)
+                    intervals.push_back(readTimestamps(stamp));
+
+                gpuTimes.Push(held.frame, busySeconds(intervals));
+                ++harvested;
+            }
+
+            untimedFrames.erase(
+                untimedFrames.begin(),
+                untimedFrames.begin() + static_cast<std::ptrdiff_t>(harvested)
+            );
+        }
+
+        // mapped per read with the range read, so the CPU cache is
+        // invalidated for exactly the two values
+        RHIGPUInterval readTimestamps(const DX12CommandList::TimestampSlot& stamp) const{
+            const auto first = static_cast<SIZE_T>(2 * stamp.slot * sizeof(u64));
+            const D3D12_RANGE readRange{first, first + 2 * sizeof(u64)};
+
+            void* mapped = nullptr;
+            CHECK_HRESULT(stamp.readback->Map(0, &readRange, &mapped),
+                "Failed to map the timestamp readback"
+            );
+            std::array<u64, 2> ticks{};
+            std::memcpy(
+                ticks.data(),
+                static_cast<const std::byte*>(mapped) + first,
+                sizeof(ticks)
+            );
+            const D3D12_RANGE nothingWritten{0, 0};
+            stamp.readback->Unmap(0, &nothingWritten);
+
+            return RHIGPUInterval{
+                .begin = static_cast<f64>(ticks[0]) / timestampFrequency,
+                .end = static_cast<f64>(ticks[1]) / timestampFrequency
+            };
+        }
+
         void ensureUploadBegin(){
             if(!uploadRecorded){
                 // each Upload* helper opens its own copy pass
@@ -959,6 +1058,10 @@ namespace Crowy
 
     u64 DX12Device::GetCompletedFrame() const noexcept{
         return impl->GetCompletedFrame();
+    }
+
+    std::optional<f64> DX12Device::GetGPUFrameTime(u64 frame) const noexcept{
+        return impl->GetGPUFrameTime(frame);
     }
 
     void DX12Device::WaitFrame(u64 frame){
