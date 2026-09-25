@@ -8,6 +8,7 @@
 #include "AppFramework.hpp"
 #include "Camera.hpp"
 #include "CommandPort.hpp"
+#include "FrameHistory.hpp"
 #include "FrameProfiler.hpp"
 #include "GeometryPool.hpp"
 #include "Primitives.hpp"
@@ -56,6 +57,10 @@ namespace Crowy
         static constexpr u32 ViewCBSlot = 0;
 
     private:
+        // how far back read_stats can name a frame
+        static constexpr usize FrameStatsDepth = 64;
+        using FrameStatsHistory = FrameHistory<FrameStats, FrameStatsDepth>;
+
         // a wait_frame reply, held until its frame has ended
         struct PendingWait {
             u64 frame = 0;
@@ -86,7 +91,7 @@ namespace Crowy
         // a wait the port already timed out stays until its frame ends, and
         // answering it then does nothing
         std::vector<PendingWait> pendingWaits;
-        FrameStats frameStats;
+        FrameStatsHistory frameStats;
 
         bool reportedCullStats = false;
 
@@ -152,7 +157,8 @@ namespace Crowy
         f32 Aspect() const noexcept { return aspect; }
         // for a sample that registers verbs of its own
         CommandPort* Port() noexcept { return port.get(); }
-        const FrameStats& LastFrameStats() const noexcept { return frameStats; }
+        // the newest frame that ended; empty before frame 1 has
+        const FrameStats& LastFrameStats() const noexcept;
 
     private:
         void createDepthBuffer(u32 width, u32 height);

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "FrameSelector.hpp"
 #include "Log.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -20,16 +21,121 @@ namespace Crowy
 {
     namespace
     {
-        // a frame number or a frame count on the wire: an integer from 1 up
-        std::optional<u64> positiveInteger(const DOM::Value* value) {
-            if(value == nullptr)
-                return std::nullopt;
+        // every number describes stats.report.frame, one frame that ended
+        DOM::Value statsToDom(const RenderApp::FrameStats& stats) {
+            constexpr auto MsPerSecond = 1000.0;
 
-            const auto integer = value->asInt();
-            if(!integer || *integer < 1)
-                return std::nullopt;
+            DOM::Table result;
+            result.emplace(
+                "frame",
+                DOM::Value(static_cast<i64>(stats.report.frame))
+            );
+            result.emplace(
+                "primitives",
+                DOM::Value(static_cast<i64>(stats.primitives))
+            );
+            result.emplace(
+                "visiblePrimitives",
+                DOM::Value(static_cast<i64>(stats.visiblePrimitives))
+            );
+            result.emplace(
+                "triangles",
+                DOM::Value(static_cast<i64>(stats.triangles))
+            );
+            result.emplace(
+                "draws",
+                DOM::Value(static_cast<i64>(stats.draws))
+            );
+            result.emplace(
+                "buckets",
+                DOM::Value(static_cast<i64>(stats.buckets))
+            );
+            result.emplace(
+                "pipelines",
+                DOM::Value(static_cast<i64>(stats.pipelines))
+            );
+            result.emplace("instrumented", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
 
-            return static_cast<u64>(*integer);
+            DOM::Table cpu;
+            for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
+                cpu.emplace(
+                    Str{ToString(static_cast<FrameSection>(i))} + "Ms",
+                    DOM::Value(stats.report.seconds[i] * MsPerSecond)
+                );
+            }
+            result.emplace(
+                "cpu",
+                DOM::Value(std::move(cpu))
+            );
+
+            const auto& s = stats.report.rhi;
+            DOM::Table rhi;
+            rhi.emplace(
+                "commandListBegins",
+                DOM::Value(static_cast<i64>(s.commandListBeginCount))
+            );
+            rhi.emplace(
+                "commandListCreates",
+                DOM::Value(static_cast<i64>(s.commandListCreateCount))
+            );
+            rhi.emplace(
+                "renderPasses",
+                DOM::Value(static_cast<i64>(s.renderPassCount))
+            );
+            rhi.emplace(
+                "computePasses",
+                DOM::Value(static_cast<i64>(s.computePassCount))
+            );
+            rhi.emplace(
+                "blitPasses",
+                DOM::Value(static_cast<i64>(s.blitPassCount))
+            );
+            rhi.emplace(
+                "directDraws",
+                DOM::Value(static_cast<i64>(s.drawCount))
+            );
+            rhi.emplace(
+                "indirectBatches",
+                DOM::Value(static_cast<i64>(s.indirectBatchCount))
+            );
+            rhi.emplace(
+                "indirectDraws",
+                DOM::Value(static_cast<i64>(s.indirectDrawCount))
+            );
+            rhi.emplace(
+                "dispatches",
+                DOM::Value(static_cast<i64>(s.dispatchCount))
+            );
+            rhi.emplace(
+                "copies",
+                DOM::Value(static_cast<i64>(s.copyCount))
+            );
+            rhi.emplace(
+                "pipelineSets",
+                DOM::Value(static_cast<i64>(s.pipelineSetCount))
+            );
+            rhi.emplace(
+                "constantBufferSets",
+                DOM::Value(static_cast<i64>(s.constantBufferSetCount))
+            );
+            rhi.emplace(
+                "pushConstantSets",
+                DOM::Value(static_cast<i64>(s.pushConstantSetCount))
+            );
+            rhi.emplace(
+                "vertexBufferSets",
+                DOM::Value(static_cast<i64>(s.vertexBufferSetCount))
+            );
+            rhi.emplace(
+                "barrierEdges",
+                DOM::Value(static_cast<i64>(s.barrierEdgeCount))
+            );
+            result.emplace(
+                "rhi",
+                DOM::Value(std::move(rhi))
+            );
+
+            return DOM::Value(std::move(result));
         }
     }
 
@@ -148,7 +254,7 @@ namespace Crowy
             }
 
             if(frames != nullptr) {
-                const auto count = positiveInteger(frames);
+                const auto count = parsePositiveInteger(frames);
                 if(!count) {
                     reply.Error("frames must be a positive integer");
 
@@ -156,7 +262,7 @@ namespace Crowy
                 }
                 Control().RunFrames(*count);
             } else if(until != nullptr) {
-                const auto frame = positiveInteger(until);
+                const auto frame = parsePositiveInteger(until);
                 if(!frame) {
                     reply.Error("until must be a positive integer");
 
@@ -192,7 +298,7 @@ namespace Crowy
         port->RegisterVerb(
             "wait_frame",
             [this](const DOM::Value& args, Reply reply) {
-                const auto frame = positiveInteger(args.at("frame"));
+                const auto frame = parsePositiveInteger(args.at("frame"));
                 if(!frame) {
                     reply.Error("\"frame\" is missing or not a positive integer");
 
@@ -234,121 +340,50 @@ namespace Crowy
                 pendingCapture = std::move(reply);
             }
         );
-        // every number describes `frame`, the last frame to finish: verbs
-        // drain before the next one records
-        port->RegisterVerb("read_stats", [this](const DOM::Value&, Reply reply) {
-            constexpr auto MsPerSecond = 1000.0;
-            const auto& stats = frameStats;
+        // with no selector, the last frame to finish: verbs drain before the
+        // next one records. With one, each frame it names, from the history
+        port->RegisterVerb("read_stats", [this](const DOM::Value& args, Reply reply) {
+            const auto selector = parseFrameSelector(args);
+            if(!selector.error.empty()) {
+                reply.Error(selector.error);
+
+                return;
+            }
+            if(selector.frames.empty()) {
+                reply.Ok(statsToDom(LastFrameStats()));
+
+                return;
+            }
+
+            DOM::Array frames;
+            frames.reserve(selector.frames.size());
+            for(const auto frame: selector.frames) {
+                if(frame > FrameNumber()) {
+                    reply.Error(std::format(
+                        "frame {} has not ended (the last frame is {})",
+                        frame,
+                        FrameNumber()
+                    ));
+
+                    return;
+                }
+
+                const auto* stats = frameStats.Find(frame);
+                if(stats == nullptr) {
+                    reply.Error(std::format(
+                        "frame {} is not in the history (it keeps frames {}..{})",
+                        frame,
+                        frameStats.Oldest(),
+                        frameStats.Newest()
+                    ));
+
+                    return;
+                }
+                frames.push_back(statsToDom(*stats));
+            }
 
             DOM::Table result;
-            result.emplace(
-                "frame",
-                DOM::Value(static_cast<i64>(stats.report.frame))
-            );
-            result.emplace(
-                "primitives",
-                DOM::Value(static_cast<i64>(stats.primitives))
-            );
-            result.emplace(
-                "visiblePrimitives",
-                DOM::Value(static_cast<i64>(stats.visiblePrimitives))
-            );
-            result.emplace(
-                "triangles",
-                DOM::Value(static_cast<i64>(stats.triangles))
-            );
-            result.emplace(
-                "draws",
-                DOM::Value(static_cast<i64>(stats.draws))
-            );
-            result.emplace(
-                "buckets",
-                DOM::Value(static_cast<i64>(stats.buckets))
-            );
-            result.emplace(
-                "pipelines",
-                DOM::Value(static_cast<i64>(stats.pipelines))
-            );
-            result.emplace("instrumented", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
-
-            DOM::Table cpu;
-            for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
-                cpu.emplace(
-                    Str{ToString(static_cast<FrameSection>(i))} + "Ms",
-                    DOM::Value(stats.report.seconds[i] * MsPerSecond)
-                );
-            }
-            result.emplace(
-                "cpu",
-                DOM::Value(std::move(cpu))
-            );
-
-            const auto& s = stats.report.rhi;
-            DOM::Table rhi;
-            rhi.emplace(
-                "commandListBegins",
-                DOM::Value(static_cast<i64>(s.commandListBeginCount))
-            );
-            rhi.emplace(
-                "commandListCreates",
-                DOM::Value(static_cast<i64>(s.commandListCreateCount))
-            );
-            rhi.emplace(
-                "renderPasses",
-                DOM::Value(static_cast<i64>(s.renderPassCount))
-            );
-            rhi.emplace(
-                "computePasses",
-                DOM::Value(static_cast<i64>(s.computePassCount))
-            );
-            rhi.emplace(
-                "blitPasses",
-                DOM::Value(static_cast<i64>(s.blitPassCount))
-            );
-            rhi.emplace(
-                "directDraws",
-                DOM::Value(static_cast<i64>(s.drawCount))
-            );
-            rhi.emplace(
-                "indirectBatches",
-                DOM::Value(static_cast<i64>(s.indirectBatchCount))
-            );
-            rhi.emplace(
-                "indirectDraws",
-                DOM::Value(static_cast<i64>(s.indirectDrawCount))
-            );
-            rhi.emplace(
-                "dispatches",
-                DOM::Value(static_cast<i64>(s.dispatchCount))
-            );
-            rhi.emplace(
-                "copies",
-                DOM::Value(static_cast<i64>(s.copyCount))
-            );
-            rhi.emplace(
-                "pipelineSets",
-                DOM::Value(static_cast<i64>(s.pipelineSetCount))
-            );
-            rhi.emplace(
-                "constantBufferSets",
-                DOM::Value(static_cast<i64>(s.constantBufferSetCount))
-            );
-            rhi.emplace(
-                "pushConstantSets",
-                DOM::Value(static_cast<i64>(s.pushConstantSetCount))
-            );
-            rhi.emplace(
-                "vertexBufferSets",
-                DOM::Value(static_cast<i64>(s.vertexBufferSetCount))
-            );
-            rhi.emplace(
-                "barrierEdges",
-                DOM::Value(static_cast<i64>(s.barrierEdgeCount))
-            );
-            result.emplace(
-                "rhi",
-                DOM::Value(std::move(rhi))
-            );
+            result.emplace("frames", DOM::Value(std::move(frames)));
             reply.Ok(DOM::Value(std::move(result)));
         });
     }
@@ -523,7 +558,8 @@ namespace Crowy
             "the profiler and the app count different frames"
         );
 
-        frameStats = FrameStats{
+        // keyed by the app's own number, which every build keeps
+        frameStats.Push(FrameNumber(), FrameStats{
             .report = report,
             .primitives = scene.Primitives().Count(),
             .visiblePrimitives = renderer->VisiblePrimitiveCount(),
@@ -531,7 +567,14 @@ namespace Crowy
             .draws = renderer->DrawCount(),
             .buckets = renderer->BucketCount(),
             .pipelines = renderer->PipelineCount()
-        };
+        });
+    }
+
+    const RenderApp::FrameStats& RenderApp::LastFrameStats() const noexcept {
+        static const FrameStats none;
+        const auto* newest = frameStats.Find(frameStats.Newest());
+
+        return newest != nullptr ? *newest : none;
     }
 
     void RenderApp::OnResize(u32 width, u32 height) {
