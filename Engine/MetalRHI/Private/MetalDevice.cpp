@@ -21,6 +21,7 @@ extern "C"{
 #include "MetalTexture.hpp"
 #include "MetalAllocator.hpp"
 #include "MetalUtil.hpp"
+#include "RHIFrameTimeline.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
 #include "RHIUtil.hpp"
@@ -73,6 +74,7 @@ namespace Crowy
         u64 handoffSerial = 0;
 
         RAII<MetalFence> serialFence;
+        RHIFrameTimeline timeline;
         RHIRetireQueue retireQueue;
 
     public:
@@ -115,7 +117,7 @@ namespace Crowy
             return buffer;
         }
 
-        Impl(MetalDevice& mtlDevice)
+        Impl()
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice()))
             , commandQueue(NS::TransferPtr(device->newCommandQueue()))
             , submissionEvent(NS::TransferPtr(device->newEvent()))
@@ -166,7 +168,7 @@ namespace Crowy
                 }, "upload staging"
             );
             uploadRing = UploadRing(
-                mtlDevice,
+                *serialFence,
                 std::move(stagingBuffer),
                 [this]{ flushUploads(); }
             );
@@ -180,7 +182,7 @@ namespace Crowy
                 }, "transient staging"
             );
             transientRing = UploadRing(
-                mtlDevice,
+                *serialFence,
                 std::move(transientBuffer)
             );
         }
@@ -285,9 +287,10 @@ namespace Crowy
             );
         }
 
-        void Submit(std::span<RHICommandList*> cmdLists){
+        void Submit(std::span<RHICommandList*> cmdLists, u64 frame){
             // completed-as-of-entry, before this batch's own tag exists
-            retireQueue.Collect(GetCompletedFrame());
+            const auto completed = serialFence->GetValue();
+            retireQueue.Collect(completed);
 
             ensureUploadCommit();
 
@@ -299,6 +302,7 @@ namespace Crowy
             retireQueue.Tag(submissionSerial);
             uploadRing.OnSubmit(submissionSerial);
             transientRing.OnSubmit(submissionSerial);
+            timeline.OnSubmit(frame, submissionSerial, completed);
 
             trackHandoffs(cmdLists);
 
@@ -310,19 +314,22 @@ namespace Crowy
 
         void SubmitAndPresent(
             std::span<RHICommandList*> cmdLists,
-            MetalSwapchain& swapchain
+            MetalSwapchain& swapchain,
+            u64 frame
         ){
-            retireQueue.Collect(GetCompletedFrame());
+            const auto completed = serialFence->GetValue();
+            retireQueue.Collect(completed);
 
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
-            swapchain.Present(*lastCmdBuffer);
+            swapchain.Present(*lastCmdBuffer, frame);
             serialFence->Encode(*lastCmdBuffer, ++submissionSerial);
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
             retireQueue.Tag(submissionSerial);
             uploadRing.OnSubmit(submissionSerial);
             transientRing.OnSubmit(submissionSerial);
+            timeline.OnSubmit(frame, submissionSerial, completed);
 
             trackHandoffs(cmdLists);
 
@@ -332,16 +339,13 @@ namespace Crowy
             }
         }
 
-        u64 GetSubmittedFrame() const noexcept{
-            return submissionSerial;
-        }
-
         u64 GetCompletedFrame() const noexcept{
-            return serialFence->GetValue();
+            return timeline.CompletedFrame(serialFence->GetValue());
         }
 
-        void WaitFrame(u64 value){
-            serialFence->WaitCPU(value, 0);
+        void WaitFrame(u64 frame){
+            if(const auto serial = timeline.SerialOf(frame))
+                serialFence->WaitCPU(*serial, 0);
         }
 
         void WaitIdle(){
@@ -478,8 +482,7 @@ namespace Crowy
         }
     };
 
-    MetalDevice::MetalDevice()
-        : impl(*this){}
+    MetalDevice::MetalDevice() = default;
 
     MetalDevice::~MetalDevice() = default;
 
@@ -535,30 +538,28 @@ namespace Crowy
         };
     }
 
-    void MetalDevice::Submit(std::span<RHICommandList*> cmdLists){
-        impl->Submit(cmdLists);
+    void MetalDevice::Submit(std::span<RHICommandList*> cmdLists, u64 frame){
+        impl->Submit(cmdLists, frame);
     }
 
     void MetalDevice::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain
+        RHISwapchain& swapchain,
+        u64 frame
     ){
         impl->SubmitAndPresent(
             cmdLists,
-            static_cast<MetalSwapchain&>(swapchain)
+            static_cast<MetalSwapchain&>(swapchain),
+            frame
         );
-    }
-
-    u64 MetalDevice::GetSubmittedFrame() const noexcept{
-        return impl->GetSubmittedFrame();
     }
 
     u64 MetalDevice::GetCompletedFrame() const noexcept{
         return impl->GetCompletedFrame();
     }
 
-    void MetalDevice::WaitFrame(u64 value){
-        impl->WaitFrame(value);
+    void MetalDevice::WaitFrame(u64 frame){
+        impl->WaitFrame(frame);
     }
 
     void MetalDevice::WaitIdle(){

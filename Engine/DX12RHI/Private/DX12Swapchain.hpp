@@ -46,7 +46,8 @@ namespace Crowy
             return *backBuffers[currentBackBufferIndex];
         }
 
-        void Present();
+        // `frame` is the loop frame this present belongs to
+        void Present(u64 frame);
 
     private:
         void createBackBuffers(u32 bufferCount);

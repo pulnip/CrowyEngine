@@ -44,18 +44,20 @@ namespace Crowy
 
         virtual RHICommandListRAII CreateCommandList() = 0;
 
-        virtual void Submit(std::span<RHICommandList*>) = 0;
+        // the batch is frame `frame`'s; frames arrive contiguously from 1, and
+        // frame N only once frame N - RHI_FRAMES_IN_FLIGHT has completed
+        virtual void Submit(std::span<RHICommandList*>, u64 frame) = 0;
         virtual void SubmitAndPresent(
             std::span<RHICommandList*>,
-            RHISwapchain&
+            RHISwapchain&,
+            u64 frame
         ) = 0;
 
-        // the frame value the last Submit/SubmitAndPresent tagged
-        virtual u64 GetSubmittedFrame() const noexcept = 0;
-        // the frame value the GPU has actually finished
+        // the newest frame whose submission the GPU has finished; 0 before
+        // the first
         virtual u64 GetCompletedFrame() const noexcept = 0;
-        // block the CPU until GetCompletedFrame() >= value
-        virtual void WaitFrame(u64 value) = 0;
+        // block the CPU until frame `frame`'s submission has finished
+        virtual void WaitFrame(u64 frame) = 0;
         // block until every submission so far has completed
         virtual void WaitIdle() = 0;
 

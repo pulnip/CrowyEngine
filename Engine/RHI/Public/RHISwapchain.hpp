@@ -26,12 +26,12 @@ namespace Crowy
         // Requested format; Could be differ from Actual format
         RHIPixelFormat format;
 
-        // one frame dump request at a time: a path, and the present index it
-        // is for (0 = the next one). CROWY_DUMP_FRAME / CROWY_DUMP_FRAME_AT
-        // seed it once at construction, RequestFrameDump sets it at runtime
+        // one frame dump request at a time: a path, and the loop frame it is
+        // for (0 = the next one presented). CROWY_DUMP_FRAME /
+        // CROWY_DUMP_FRAME_AT seed it once at construction, RequestFrameDump
+        // sets it at runtime
         Str dumpPath;
-        u64 dumpAtPresent = 0;
-        u64 presentedCount = 0;
+        u64 dumpAtFrame = 0;
         // completion may arrive from another thread (Metal), so the backend
         // gets a handle it can hand to a completion handler
         FrameDumpSignal dumpState = std::make_shared<std::atomic<FrameDumpState>>(FrameDumpState::Idle);
@@ -63,8 +63,9 @@ namespace Crowy
 
     protected:
         // the backend's half, called once per presented frame: hands back
-        // the pending request when this is the frame it asked for
-        std::optional<Str> TakeFrameDump() noexcept;
+        // the pending request on the first presented frame at or after the
+        // one it asked for
+        std::optional<Str> TakeFrameDump(u64 frame) noexcept;
         // what the backend calls with the write result, from any thread
         std::function<void(bool written)> FrameDumpCompletion() const;
     };

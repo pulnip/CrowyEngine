@@ -251,7 +251,7 @@ int main(void){
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists);
+        device->Submit(cmdLists, 1);
 
         device->WaitFrame(1);
         std::vector<DensitySample> gpu(points.size());

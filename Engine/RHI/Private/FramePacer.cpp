@@ -12,24 +12,20 @@ namespace Crowy
 
     FramePacer::~FramePacer() = default;
 
-    void FramePacer::BeginFrame(){
+    u64 FramePacer::BeginFrame(){
         scope = device.CreateFrameScope();
+        ++frame;
 
     #if CROWY_FRAME_STATS
         lastWaitSeconds = 0.0;
     #endif
 
-        // keep RHI_FRAMES_IN_FLIGHT batches in flight: before recording the
-        // next one, wait out the oldest still outstanding
-        const auto submitted = device.GetSubmittedFrame();
-        if(submitted >= RHI_FRAMES_IN_FLIGHT) [[likely]] {
-            const auto waitValue = submitted - RHI_FRAMES_IN_FLIGHT + 1;
-
+        if(frame > RHI_FRAMES_IN_FLIGHT) [[likely]] {
         #if CROWY_FRAME_STATS
             const auto before = std::chrono::steady_clock::now();
         #endif
 
-            device.WaitFrame(waitValue);
+            device.WaitFrame(frame - RHI_FRAMES_IN_FLIGHT);
 
         #if CROWY_FRAME_STATS
             lastWaitSeconds = std::chrono::duration<f64>(
@@ -37,13 +33,15 @@ namespace Crowy
             ).count();
         #endif
         }
+
+        return frame;
     }
 
     void FramePacer::EndFrame(
         std::span<RHICommandList*> cmdLists,
         RHISwapchain& swapchain
     ){
-        device.SubmitAndPresent(cmdLists, swapchain);
+        device.SubmitAndPresent(cmdLists, swapchain, frame);
 
         scope = nullptr;
     }

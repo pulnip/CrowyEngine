@@ -21,7 +21,7 @@ namespace Crowy
         Acquire,    // swapchain image and command list setup
         Record,     // draw submission
         Submit,     // execute and present
-        Frame,      // the whole iteration
+        Frame,      // the fence wait through the submit
         // Sentinel
         Unknown
     };
@@ -32,7 +32,7 @@ namespace Crowy
     // What one loop frame measured, handed to the app as the frame ends.
     // Every build has it; without CROWY_FRAME_STATS it stays empty.
     struct FrameReport{
-        // the loop's frame number, counted from 1
+        // the pacer's frame number, counted from 1
         u64 frame = 0;
         std::array<f64, NUM_FRAME_SECTION> seconds{};
         RHIFrameStats rhi;
@@ -84,11 +84,9 @@ namespace Crowy
             CROWY_DECLARE_PINNED(Scope)
         };
 
-        void BeginFrame() noexcept;
-        const FrameReport& EndFrame(
-            const RHIFrameStats&,
-            f64 fenceWaitSeconds
-        ) noexcept;
+        // the pacer has already assigned `frame` and waited for its fence
+        void BeginFrame(u64 frame, f64 fenceWaitSeconds) noexcept;
+        const FrameReport& EndFrame(const RHIFrameStats&) noexcept;
 
         // true once the measured window is full, so the loop can leave
         // through its normal shutdown instead of dying where it stands
@@ -114,8 +112,8 @@ namespace Crowy
 
         constexpr explicit FrameProfiler(const RuntimeConfig&) noexcept{}
 
-        constexpr void BeginFrame() noexcept{}
-        const FrameReport& EndFrame(const RHIFrameStats&, f64) noexcept{
+        constexpr void BeginFrame(u64, f64) noexcept{}
+        const FrameReport& EndFrame(const RHIFrameStats&) noexcept{
             static constexpr FrameReport none;
             return none;
         }

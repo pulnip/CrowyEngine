@@ -40,6 +40,14 @@ namespace{
     // Neptune that is tens of microns of an AU.
     constexpr f32 GPU_TOLERANCE_AU = 1e-4f;
 
+    // every submit here is a frame of its own, drained before the next; the
+    // device counts frames across the whole program, so the count lives here
+    void SubmitAndWait(RHIDevice& device, std::span<RHICommandList*> lists){
+        static u64 frame = 0;
+        device.Submit(lists, ++frame);
+        device.WaitFrame(frame);
+    }
+
     f32 Delta(Vec3 lhs, Vec3 rhs){
         return std::max({
             std::abs(lhs.x - rhs.x),
@@ -88,8 +96,7 @@ namespace{
             cmdList->Close();
 
             RHICommandList* lists[] = {cmdList.get()};
-            device.Submit(lists);
-            device.WaitFrame(device.GetSubmittedFrame());
+            SubmitAndWait(device, lists);
             readback->Download(out.data(), ringBytes);
         }
     };
@@ -564,8 +571,7 @@ namespace{
             cmdList->Close();
 
             RHICommandList* lists[] = {cmdList.get()};
-            device.Submit(lists);
-            device.WaitFrame(device.GetSubmittedFrame());
+            SubmitAndWait(device, lists);
             std::array<RHIDrawArgs, ORBIT_BODY_COUNT> got{};
             readback->Download(got.data(), argsBytes);
             for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){

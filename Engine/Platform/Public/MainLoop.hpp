@@ -15,8 +15,13 @@ namespace Crowy
         virtual void OnInit(RHIDevice&, RHISwapchain& swapchain){}
 
         // the CPU-side frame boundary, before any input of the frame is
-        // read: the drain point for whatever collected between frames
+        // read: the drain point for whatever collected between frames.
+        // frame N - 1 has ended here and frame N has not begun
         virtual void NewFrame(){}
+
+        // frame N has begun: the pacer assigned the number and waited for
+        // frame N - RHI_FRAMES_IN_FLIGHT to complete
+        virtual void OnFrameBegin(u64 frame){}
 
         virtual void ProcessInput(const InputProvider&){}
         virtual bool Update(){ return true; };

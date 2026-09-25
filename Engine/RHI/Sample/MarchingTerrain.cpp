@@ -66,8 +66,8 @@ namespace Crowy
             });
         }
 
-        // The copy rides the batch tagged counterCopyFrame, so the bytes are
-        // there the moment the GPU reports that value complete. Reading then
+        // The copy rides frame counterCopyFrame's batch, so the bytes are
+        // there the moment the GPU reports that frame complete. Reading then
         // costs no wait, and the stats trail by a few frames.
         void CollectCounter(){
             if(!counterCopyInFlight)
@@ -211,8 +211,7 @@ namespace Crowy
                     cmdList.EndBlitPass();
 
                     counterCopyInFlight = true;
-                    // this recording goes out with the next submit
-                    counterCopyFrame = device->GetSubmittedFrame() + 1;
+                    counterCopyFrame = FrameNumber();
                 }
 
                 // the draw reads what the marching pass just wrote; a frame

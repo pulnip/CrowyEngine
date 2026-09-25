@@ -47,6 +47,7 @@ namespace Crowy
             return backBuffer;
         }
 
-        void Present(MTL::CommandBuffer&);
+        // `frame` is the loop frame this present belongs to
+        void Present(MTL::CommandBuffer&, u64 frame);
     };
 }

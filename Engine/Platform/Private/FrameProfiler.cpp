@@ -137,8 +137,10 @@ namespace Crowy
             records.reserve(config.measureFrames);
     }
 
-    void FrameProfiler::BeginFrame() noexcept{
-        current = FrameReport{.frame = current.frame + 1};
+    void FrameProfiler::BeginFrame(u64 frame, f64 fenceWaitSeconds) noexcept{
+        current = FrameReport{.frame = frame};
+        current.seconds[static_cast<usize>(FrameSection::FenceWait)] =
+            fenceWaitSeconds;
         frameStart = Clock::now();
     }
 
@@ -146,20 +148,13 @@ namespace Crowy
         current.seconds[static_cast<usize>(section)] += seconds;
     }
 
-    const FrameReport& FrameProfiler::EndFrame(
-        const RHIFrameStats& stats,
-        f64 fenceWaitSeconds
-    ) noexcept{
+    const FrameReport& FrameProfiler::EndFrame(const RHIFrameStats& stats) noexcept{
         auto& seconds = current.seconds;
 
-        // the scope covering BeginFrame() swallowed the fence wait, and the
-        // two are worth telling apart: one is setup, the other is the GPU
-        auto& acquire = seconds[static_cast<usize>(FrameSection::Acquire)];
-        acquire = std::max(0.0, acquire - fenceWaitSeconds);
-
-        seconds[static_cast<usize>(FrameSection::FenceWait)] = fenceWaitSeconds;
+        // the fence wait ran before BeginFrame started the clock
         seconds[static_cast<usize>(FrameSection::Frame)] =
-            std::chrono::duration<f64>(Clock::now() - frameStart).count();
+            std::chrono::duration<f64>(Clock::now() - frameStart).count() +
+            seconds[static_cast<usize>(FrameSection::FenceWait)];
         current.rhi = stats;
 
         if(IsMeasuring() && records.size() < config.measureFrames)

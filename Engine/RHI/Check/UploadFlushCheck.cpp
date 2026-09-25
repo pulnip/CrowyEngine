@@ -65,10 +65,9 @@ int main(void){
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device->Submit(cmdLists);
-
-        // the flush took a device value of its own, so a literal 1 would name it
-        device->WaitFrame(device->GetSubmittedFrame());
+        // the flush took a serial of its own, but no frame number
+        device->Submit(cmdLists, 1);
+        device->WaitFrame(1);
         std::array<u32, PatternWords> result{};
         readback->Download(result.data(), PatternBytes);
 

@@ -18,6 +18,7 @@
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
+#include "RHIFrameTimeline.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIUtil.hpp"
 #include "RHIShader.hpp"
@@ -489,9 +490,10 @@ namespace Crowy
         // the device's one timeline: every submitted batch and every
         // out-of-band signal (WaitIdle) takes the next value
         u64 serial = 0;
+        RHIFrameTimeline timeline;
 
     public:
-        Impl(DX12Device& dxDevice)
+        Impl()
             : factory(::createFactory())
             , device(::createDevice(*factory.Get()))
             , commandQueue(::createCommandQueue(*device.Get()))
@@ -542,7 +544,7 @@ namespace Crowy
                 }, "upload staging"
             );
             uploadRing = UploadRing(
-                dxDevice,
+                *serialFence,
                 std::move(stagingBuffer),
                 [this]{ flushUploads(); }
             );
@@ -556,7 +558,7 @@ namespace Crowy
                 }, "transient staging"
             );
             transientRing = UploadRing(
-                dxDevice,
+                *serialFence,
                 std::move(transientBuffer)
             );
         }
@@ -714,9 +716,10 @@ namespace Crowy
             );
         }
 
-        void Submit(std::span<RHICommandList*> cmdLists){
+        void Submit(std::span<RHICommandList*> cmdLists, u64 frame){
             // completed-as-of-entry, before this batch's own tag exists
-            retireQueue.Collect(GetCompletedFrame());
+            const auto completed = serialFence->GetValue();
+            retireQueue.Collect(completed);
 
             executeCommandLists(cmdLists);
 
@@ -724,34 +727,35 @@ namespace Crowy
             retireQueue.Tag(serial);
             uploadRing.OnSubmit(serial);
             transientRing.OnSubmit(serial);
+            timeline.OnSubmit(frame, serial, completed);
         }
 
         void SubmitAndPresent(
             std::span<RHICommandList*> cmdLists,
-            RHISwapchain& swapchain
+            RHISwapchain& swapchain,
+            u64 frame
         ){
-            retireQueue.Collect(GetCompletedFrame());
+            const auto completed = serialFence->GetValue();
+            retireQueue.Collect(completed);
 
             executeCommandLists(cmdLists);
 
-            static_cast<DX12Swapchain&>(swapchain).Present();
+            static_cast<DX12Swapchain&>(swapchain).Present(frame);
 
             signalSerial();
             retireQueue.Tag(serial);
             uploadRing.OnSubmit(serial);
             transientRing.OnSubmit(serial);
-        }
-
-        u64 GetSubmittedFrame() const noexcept{
-            return serial;
+            timeline.OnSubmit(frame, serial, completed);
         }
 
         u64 GetCompletedFrame() const noexcept{
-            return serialFence->GetValue();
+            return timeline.CompletedFrame(serialFence->GetValue());
         }
 
-        void WaitFrame(u64 value){
-            serialFence->WaitCPU(value, 0);
+        void WaitFrame(u64 frame){
+            if(const auto frameSerial = timeline.SerialOf(frame))
+                serialFence->WaitCPU(*frameSerial, 0);
         }
 
         void WaitIdle(){
@@ -881,8 +885,7 @@ namespace Crowy
         }
     };
 
-    DX12Device::DX12Device()
-        : impl(*this){}
+    DX12Device::DX12Device() = default;
 
     DX12Device::~DX12Device() = default;
 
@@ -935,27 +938,24 @@ namespace Crowy
         return impl->CreateCommandList();
     }
 
-    void DX12Device::Submit(std::span<RHICommandList*> cmdLists){
-        impl->Submit(cmdLists);
+    void DX12Device::Submit(std::span<RHICommandList*> cmdLists, u64 frame){
+        impl->Submit(cmdLists, frame);
     }
 
     void DX12Device::SubmitAndPresent(
         std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain
+        RHISwapchain& swapchain,
+        u64 frame
     ){
-        impl->SubmitAndPresent(cmdLists, swapchain);
-    }
-
-    u64 DX12Device::GetSubmittedFrame() const noexcept{
-        return impl->GetSubmittedFrame();
+        impl->SubmitAndPresent(cmdLists, swapchain, frame);
     }
 
     u64 DX12Device::GetCompletedFrame() const noexcept{
         return impl->GetCompletedFrame();
     }
 
-    void DX12Device::WaitFrame(u64 value){
-        impl->WaitFrame(value);
+    void DX12Device::WaitFrame(u64 frame){
+        impl->WaitFrame(frame);
     }
 
     void DX12Device::WaitIdle(){

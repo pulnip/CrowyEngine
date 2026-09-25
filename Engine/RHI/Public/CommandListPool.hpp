@@ -17,7 +17,8 @@ namespace Crowy
             usize nextIndex = 0;
         };
         std::array<FrameSlot, RHI_FRAMES_IN_FLIGHT> slots;
-        u64 frameIndex = 0;
+        // the pacer's frame this pool is recording for
+        u64 frame = 0;
 
     #if CROWY_FRAME_STATS
         RHIFrameStats frameStats;
@@ -27,7 +28,7 @@ namespace Crowy
         CommandListPool(RHIDevice&);
         ~CommandListPool();
 
-        void BeginFrame();
+        void BeginFrame(u64 frame);
         std::vector<RHICommandList*> ExtractRecorded();
 
         RHICommandList& Acquire();
@@ -45,7 +46,7 @@ namespace Crowy
     private:
         u32 currentIndex() const noexcept{
             return static_cast<u32>(
-                frameIndex % RHI_FRAMES_IN_FLIGHT
+                frame % RHI_FRAMES_IN_FLIGHT
             );
         }
     };

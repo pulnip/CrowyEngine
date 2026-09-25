@@ -81,6 +81,14 @@ namespace{
         return axis == 0 ? v.x : (axis == 1 ? v.y : v.z);
     }
 
+    // every submit here is a frame of its own, drained before the next; the
+    // device counts frames across the whole program, so the count lives here
+    void SubmitAndWait(RHIDevice& device, std::span<RHICommandList*> lists){
+        static u64 frame = 0;
+        device.Submit(lists, ++frame);
+        device.WaitFrame(frame);
+    }
+
     void SetAxis(Vec3& v, u32 axis, f32 value) noexcept{
         (axis == 0 ? v.x : (axis == 1 ? v.y : v.z)) = value;
     }
@@ -449,8 +457,7 @@ namespace{
             warmupList->Close();
 
             RHICommandList* warmup[] = {warmupList.get()};
-            device.Submit(warmup);
-            device.WaitFrame(device.GetSubmittedFrame());
+            SubmitAndWait(device, warmup);
         }
 
         cmdList->Begin();
@@ -482,9 +489,8 @@ namespace{
 
         cmdList->Close();
         RHICommandList* cmdLists[] = {cmdList.get()};
-        device.Submit(cmdLists);
+        SubmitAndWait(device, cmdLists);
 
-        device.WaitFrame(device.GetSubmittedFrame());
         TerrainMarchCounter counter;
         counterReadback->Download(&counter, sizeof(counter));
 

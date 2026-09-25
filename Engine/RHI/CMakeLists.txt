@@ -25,6 +25,12 @@ if(SLANG_RUNTIME_LIBS)
 endif()
 
 if(CROWY_ENABLE_TEST)
+    crowy_declare_test(RHI
+        DIRECTORY Test
+        DEPENDS Crowy::RHI
+        LABELS "unit"
+    )
+
     add_subdirectory(Sample)
     add_subdirectory(Spike)
     add_subdirectory(Check)

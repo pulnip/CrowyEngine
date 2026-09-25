@@ -20,6 +20,9 @@ namespace Crowy
         Timer timer;
         RHIDevice* device = nullptr;
         const RuntimeConfig* runtime = nullptr;
+        // the pacer's frame: the one being recorded, or between frames the
+        // last one that ended
+        u64 frame = 0;
         bool quitRequested = false;
 
     public:
@@ -39,7 +42,10 @@ namespace Crowy
         }
 
         u64 FrameNumber() const noexcept{
-            return timer.GetFrameNumber();
+            return frame;
+        }
+        void OnFrameBegin(u64 frame) override final{
+            this->frame = frame;
         }
 
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}

@@ -52,10 +52,10 @@ namespace Crowy
         backBuffer = MetalTexture{};
     }
 
-    void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer){
+    void MetalSwapchain::Present(MTL::CommandBuffer& cmdBuffer, u64 frame){
         // a frame without a drawable is not a presented frame
         if(currentDrawable != nullptr){
-            if(auto path = TakeFrameDump()){
+            if(auto path = TakeFrameDump(frame)){
                 DumpFrame(
                     cmdBuffer,
                     *currentDrawable,

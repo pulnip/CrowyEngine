@@ -154,8 +154,8 @@ namespace Crowy
         return desc.Height;
     }
 
-    void DX12Swapchain::Present(){
-        if(auto path = TakeFrameDump()){
+    void DX12Swapchain::Present(u64 frame){
+        if(auto path = TakeFrameDump(frame)){
             FrameDumpCompletion()(DumpFrame(
                 *queue,
                 *static_cast<DX12Texture&>(GetCurrentTexture()).Get(),

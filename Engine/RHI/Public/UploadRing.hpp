@@ -7,10 +7,9 @@
 
 namespace Crowy
 {
-    // Ring over one staging buffer, retired against the device's frame
-    // timeline: an allocation stays readable until the batch it was submitted
-    // with completes. The ring never sees a fence - the device hands it frame
-    // values, the same split the rest of the RHI uses.
+    // Ring over one staging buffer, retired against the device's serial
+    // fence: an allocation stays readable until the batch it was submitted
+    // with completes. The device hands it the serial each batch signals.
     class UploadRing{
     public:
         struct Allocation{
@@ -22,7 +21,7 @@ namespace Crowy
 
         // Submits copies that are recorded but not yet handed to the queue.
         // Without it a ring filled entirely from one unsubmitted command list
-        // has no frame value to wait on and would block forever.
+        // has no serial to wait on and would block forever.
         using Flush = std::move_only_function<void()>;
 
     private:
@@ -30,7 +29,7 @@ namespace Crowy
             u64 head;
             u64 tag;
         };
-        RHIDevice* device = nullptr;
+        RHIFence* fence = nullptr;
         RHIBufferRAII staging;
         Flush flush;
         u64 capacity = 0;
@@ -47,7 +46,7 @@ namespace Crowy
         UploadRing() = default;
         // size should be mutiples of 512
         UploadRing(
-            RHIDevice&,
+            RHIFence& serialFence,
             RHIBufferRAII stagingBuffer,
             Flush flush = {}
         );
@@ -57,7 +56,7 @@ namespace Crowy
             u64 align
         );
 
-        // call from the device's submit path once the batch's frame value is
+        // call from the device's submit path once the batch's serial is
         // final: everything allocated since the last call rides that batch
         void OnSubmit(u64 tag);
 

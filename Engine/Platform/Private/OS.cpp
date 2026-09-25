@@ -15,7 +15,6 @@
 #include "RuntimeConfig.hpp"
 #include "SDLInputProvider.hpp"
 #include "SDLWindow.hpp"
-#include "Timer.hpp"
 
 namespace Crowy
 {
@@ -53,8 +52,6 @@ namespace Crowy
 
         SDLInputProvider inputProvider;
 
-        // Non-stop timer
-        Timer sysTimer;
         FramePacer framePacer;
         CommandListPool cmdListPool;
         FrameProfiler profiler;
@@ -135,14 +132,15 @@ namespace Crowy
             ImGui_ImplSDL3_InitForOther(sdlWindow);
         }
 
-        sysTimer.Reset();
-
         // the scopes below are blocks because the loop leaves from the
         // middle of two of them, and a section still has to close
         while(true){
-            sysTimer.NewFrame();
-            profiler.BeginFrame();
+            // between frames: the last one has ended, the next has not begun
             mainLoop.NewFrame();
+
+            const auto frame = framePacer.BeginFrame();
+            profiler.BeginFrame(frame, framePacer.GetLastWaitTime());
+            mainLoop.OnFrameBegin(frame);
 
             {
                 FrameProfiler::Scope section(profiler, FrameSection::Events);
@@ -185,10 +183,7 @@ namespace Crowy
                 EndFrame(device);
             }
 
-            mainLoop.OnFrameEnd(profiler.EndFrame(
-                cmdListPool.GetFrameStats(),
-                framePacer.GetLastWaitTime()
-            ));
+            mainLoop.OnFrameEnd(profiler.EndFrame(cmdListPool.GetFrameStats()));
             if(profiler.ShouldStop()) [[unlikely]]
                 break;
         }
@@ -267,12 +262,10 @@ namespace Crowy
     }
 
     void OS::Impl::BeginFrame(RHIDevice& device){
-        framePacer.BeginFrame();
-
         if(swapchain != nullptr) [[unlikely]]
             swapchain->AcquireNextImage();
 
-        cmdListPool.BeginFrame();
+        cmdListPool.BeginFrame(framePacer.CurrentFrame());
     }
 
     void OS::Impl::EndFrame(RHIDevice& device){

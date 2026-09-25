@@ -6,16 +6,16 @@
 #include "PtrUtil.hpp"
 #include "UploadRing.hpp"
 #include "RHIBuffer.hpp"
-#include "RHIDevice.hpp"
+#include "RHIFence.hpp"
 
 namespace Crowy
 {
     UploadRing::UploadRing(
-        RHIDevice& device,
+        RHIFence& serialFence,
         RHIBufferRAII stagingBuffer,
         Flush flush
     )
-        : device(&device)
+        : fence(&serialFence)
         , staging(std::move(stagingBuffer))
         , flush(std::move(flush))
         , capacity(staging->GetSize())
@@ -56,13 +56,13 @@ namespace Crowy
                 break;
 
             if(!inFlight.empty()){
-                device->WaitFrame(inFlight.front().tag);
+                fence->WaitCPU(inFlight.front().tag);
                 continue;
             }
 
             // Nothing is in flight and the ring is still full: the space is
             // held by copies sitting in a command list nobody submitted, so
-            // no frame value will ever free it.
+            // no serial will ever free it.
             const bool canFlush = tail != head && flush != nullptr;
             CROWY_ASSERT(canFlush,
                 "upload ring cannot free {} bytes - no pending copies to "
@@ -93,7 +93,7 @@ namespace Crowy
     }
 
     void UploadRing::OnSubmit(u64 tag){
-        // an untouched ring, and a frame that allocated nothing, both would
+        // an untouched ring, and a batch that allocated nothing, both would
         // otherwise push an entry per submit and grow without bound
         if(capacity == 0 || head == tail)
             return;
@@ -107,7 +107,7 @@ namespace Crowy
     }
 
     void UploadRing::retireCompleted(){
-        const auto completed = device->GetCompletedFrame();
+        const auto completed = fence->GetValue();
 
         while(!inFlight.empty() && inFlight.front().tag <= completed){
             const auto retired = inFlight.front().head;

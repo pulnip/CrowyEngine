@@ -10,15 +10,15 @@ namespace Crowy
 
     CommandListPool::~CommandListPool() = default;
 
-    void CommandListPool::BeginFrame(){
-        // the pacer has already waited out the frame that last used this
-        // slot, so advancing here is what makes it free
-        ++frameIndex;
+    void CommandListPool::BeginFrame(u64 frame){
+        CROWY_ASSERT(frame == this->frame + 1,
+            "the pool records frame {} after frame {}", frame, this->frame
+        );
+        this->frame = frame;
 
+        // the lists stay: the pacer guarantees frame N - RHI_FRAMES_IN_FLIGHT,
+        // their last user, has completed, so Begin() may reset them
         auto& slot = slots[currentIndex()];
-
-        // the lists stay: the same wait means none of them is still on the
-        // GPU, so their Begin() may reset what they recorded
         slot.nextIndex = 0;
 
     #if CROWY_FRAME_STATS

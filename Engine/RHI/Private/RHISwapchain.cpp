@@ -6,7 +6,7 @@
 namespace Crowy
 {
     namespace{
-        constexpr u64 DefaultDumpPresent = 60;
+        constexpr u64 DefaultDumpFrame = 60;
     }
 
     RHISwapchain::RHISwapchain(RHIPixelFormat format)
@@ -14,10 +14,10 @@ namespace Crowy
     {
         if(const char* path = std::getenv("CROWY_DUMP_FRAME")){
             dumpPath = path;
-            dumpAtPresent = DefaultDumpPresent;
+            dumpAtFrame = DefaultDumpFrame;
             if(const char* at = std::getenv("CROWY_DUMP_FRAME_AT")){
                 if(const int parsed = std::atoi(at); parsed > 0)
-                    dumpAtPresent = static_cast<u64>(parsed);
+                    dumpAtFrame = static_cast<u64>(parsed);
             }
             dumpState->store(FrameDumpState::Pending, std::memory_order_release);
         }
@@ -28,18 +28,17 @@ namespace Crowy
             return false;
 
         dumpPath = std::move(path);
-        dumpAtPresent = 0;
+        dumpAtFrame = 0;
         dumpState->store(FrameDumpState::Pending, std::memory_order_release);
 
         return true;
     }
 
-    std::optional<Str> RHISwapchain::TakeFrameDump() noexcept{
-        ++presentedCount;
-
+    std::optional<Str> RHISwapchain::TakeFrameDump(u64 frame) noexcept{
         if(GetFrameDumpState() != FrameDumpState::Pending || dumpPath.empty())
             return std::nullopt;
-        if(dumpAtPresent != 0 && presentedCount != dumpAtPresent)
+        // at or after, not equal: a frame without a drawable presents nothing
+        if(dumpAtFrame != 0 && frame < dumpAtFrame)
             return std::nullopt;
 
         return std::exchange(dumpPath, Str{});

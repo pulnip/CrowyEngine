@@ -9,7 +9,6 @@ namespace Crowy
     void Timer::NewFrame() noexcept{
         if(paused) [[unlikely]] return;
 
-        ++frameNumber;
         auto now = Clock::now();
 
         deltaTime = now - lastPoint;
@@ -20,7 +19,6 @@ namespace Crowy
 
     void Timer::Reset() noexcept{
         lastPoint = Clock::now();
-        frameNumber = 0;
         deltaTime = elapsedTime = Duration(0);
     }
 
@@ -36,17 +34,6 @@ namespace Crowy
 
         auto sec = duration<f64>(elapsedTime);
         return scale * sec.count();
-    }
-
-    f64 Timer::GetFPS() const noexcept{
-        using namespace std::chrono;
-
-        auto sec = scale * duration<f64>(elapsedTime).count();
-        // Avoid Div by 0
-        if(sec <= 0.0)
-            return 0.0;
-
-        return frameNumber / sec;
     }
 
     void Timer::SetScale(f64 scale) noexcept{
