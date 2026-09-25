@@ -131,6 +131,7 @@ namespace Crowy
             auto result = controlStatus();
             result.emplace("pong", DOM::Value(true));
             result.emplace("app", DOM::Value(Runtime().window.title));
+            result.emplace("elapsed", DOM::Value(ElapsedSeconds()));
             reply.Ok(DOM::Value(std::move(result)));
         });
         port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply) {

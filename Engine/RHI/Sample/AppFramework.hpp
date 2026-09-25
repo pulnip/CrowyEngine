@@ -1,7 +1,10 @@
 #pragma once
 
+#include <chrono>
 #include <print>
+#include <ratio>
 #include <span>
+#include <utility>
 #include "Assert.hpp"
 #include "CommandListPool.hpp"
 #include "FrameControl.hpp"
@@ -18,6 +21,13 @@ namespace Crowy
 {
     class App: public MainLoop{
     private:
+        // what a frame let through by a counted run takes, whatever the
+        // clock says, so two runs of the same steps agree. 1/60 s rounds
+        // once, to the clock's tick
+        static constexpr auto FixedStep = std::chrono::round<Timer::Duration>(
+            std::chrono::duration<i64, std::ratio<1, 60>>(1)
+        );
+
         Timer timer;
         FrameControl control;
         RHIDevice* device = nullptr;
@@ -25,6 +35,11 @@ namespace Crowy
         // the pacer's frame: the one being recorded, or between frames the
         // last one that ended
         u64 frame = 0;
+        // the gap before a frame - a hold, or OnInit before frame 1 - is not
+        // that frame's time
+        bool held = true;
+        // let through by a counted run: this frame's time is the fixed step
+        bool stepped = false;
         bool quitRequested = false;
 
     public:
@@ -52,15 +67,26 @@ namespace Crowy
         bool ShouldAdvance() override final{
             // a quit leaves through Update(), so it releases any hold, even
             // one that arrives after it
-            if(quitRequested)
-                return true;
+            const auto gate = quitRequested ?
+                FrameControl::Gate::Free :
+                control.Advance(frame);
+            if(gate == FrameControl::Gate::Hold){
+                held = true;
+                return false;
+            }
 
-            return control.Advance(frame) != FrameControl::Gate::Hold;
+            if(std::exchange(held, false))
+                timer.Rebase();
+            stepped = gate == FrameControl::Gate::Step;
+            return true;
         }
 
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
         bool Update() override final{
-            timer.NewFrame();
+            if(stepped)
+                timer.Step(FixedStep);
+            else
+                timer.NewFrame();
 
             OnUpdate(
                 timer.GetDeltaTime(),
@@ -80,6 +106,9 @@ namespace Crowy
 
         FrameControl& Control() noexcept{ return control; }
         const FrameControl& Control() const noexcept{ return control; }
+        // what OnUpdate has been told so far: fixed steps plus wall-clock
+        // frames, with no hold in it
+        f64 ElapsedSeconds() const noexcept{ return timer.GetElapsedTime(); }
     };
 
     RHIViewport FullViewport(const RHITexture&, u32 mipLevel = 0);
