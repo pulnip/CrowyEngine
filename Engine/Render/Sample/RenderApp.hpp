@@ -162,6 +162,8 @@ namespace Crowy
         void openCommandPort();
         DOM::Table controlStatus() const;
         void collectCaptures();
+        // the history's entry for the frame stats.report.gpu times, if kept
+        const FrameStats* gpuFrameStats(const FrameStats& stats) const noexcept;
         void answerWaits();
         void reportCullStatsOnce();
     };

@@ -2,8 +2,10 @@
 
 #include <array>
 #include <chrono>
+#include <optional>
 #include <vector>
 #include "Primitives.hpp"
+#include "RHIFWD.hpp"
 #include "RHIFrameStats.hpp"
 #include "RuntimeConfig.hpp"
 #include "Semantics.hpp"
@@ -29,6 +31,13 @@ namespace Crowy
 
     CStr ToString(FrameSection) noexcept;
 
+    // a GPU time and the frame it belongs to: the GPU runs behind, so it is
+    // an earlier frame than the one whose report carries it
+    struct GPUFrameTime{
+        u64 frame = 0;
+        f64 seconds = 0.0;
+    };
+
     // What one loop frame measured, handed to the app as the frame ends.
     // Every build has it; without CROWY_FRAME_STATS it stays empty.
     struct FrameReport{
@@ -36,6 +45,9 @@ namespace Crowy
         u64 frame = 0;
         std::array<f64, NUM_FRAME_SECTION> seconds{};
         RHIFrameStats rhi;
+        // the newest GPU time known when this frame ended. In the
+        // benchmark's records it is this frame's own, filled in once read
+        std::optional<GPUFrameTime> gpu;
     };
 
 #if CROWY_FRAME_STATS
@@ -46,6 +58,7 @@ namespace Crowy
     private:
         using Clock = std::chrono::steady_clock;
 
+        const RHIDevice& device;
         BenchmarkConfig config;
         // for the report header, so a stray file still says what produced it
         Str title;
@@ -57,8 +70,13 @@ namespace Crowy
         FrameReport current;
         Clock::time_point frameStart;
 
+        // every frame before this one has its GPU time, or aged out of the
+        // device without one
+        u64 gpuPending = 1;
+        std::optional<GPUFrameTime> newestGPU;
+
     public:
-        explicit FrameProfiler(const RuntimeConfig&);
+        FrameProfiler(const RuntimeConfig&, const RHIDevice&);
         ~FrameProfiler() = default;
         CROWY_DECLARE_PINNED(FrameProfiler)
 
@@ -87,6 +105,9 @@ namespace Crowy
         // the pacer has already assigned `frame` and waited for its fence
         void BeginFrame(u64 frame, f64 fenceWaitSeconds) noexcept;
         const FrameReport& EndFrame(const RHIFrameStats&) noexcept;
+        // after the loop's last WaitForIdle: every frame still without a
+        // GPU time, so the report's last rows are not left empty
+        void CollectGPUTimes() noexcept;
 
         // true once the measured window is full, so the loop can leave
         // through its normal shutdown instead of dying where it stands
@@ -96,6 +117,8 @@ namespace Crowy
 
     private:
         void Accumulate(FrameSection, f64 seconds) noexcept;
+        // asks the device for frames gpuPending..last, in order
+        void readGPUTimesThrough(u64 last) noexcept;
 
         bool IsMeasuring() const noexcept{
             return config.enabled && current.frame > config.warmupFrames;
@@ -110,13 +133,14 @@ namespace Crowy
             constexpr Scope(FrameProfiler&, FrameSection) noexcept{}
         };
 
-        constexpr explicit FrameProfiler(const RuntimeConfig&) noexcept{}
+        constexpr FrameProfiler(const RuntimeConfig&, const RHIDevice&) noexcept{}
 
         constexpr void BeginFrame(u64, f64) noexcept{}
         const FrameReport& EndFrame(const RHIFrameStats&) noexcept{
             static constexpr FrameReport none;
             return none;
         }
+        constexpr void CollectGPUTimes() noexcept{}
         constexpr bool ShouldStop() const noexcept{ return false; }
         constexpr void WriteReport() const noexcept{}
     };

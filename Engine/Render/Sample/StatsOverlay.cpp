@@ -50,6 +50,15 @@ namespace Crowy
             lastFrame = report.frame;
         }
 
+        // fed once per new GPU time, not per drawn frame
+        if(report.gpu && report.gpu->frame != lastGPUFrame) {
+            const auto raw = report.gpu->seconds * MsPerSecond;
+            const bool reseed = report.gpu->frame != lastGPUFrame + 1;
+            averageGPUMs =
+                reseed ? raw : averageGPUMs + Smoothing * (raw - averageGPUMs);
+            lastGPUFrame = report.gpu->frame;
+        }
+
         const auto* viewport = ImGui::GetMainViewport();
         const ImVec2 corner{
             viewport->WorkPos.x + viewport->WorkSize.x - Pad,
@@ -70,6 +79,14 @@ namespace Crowy
                     "%7.2f ms",
                     averageMs[static_cast<usize>(row.section)]
                 );
+            }
+            // hidden until the device has timed a frame at all
+            if(report.gpu) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("GPU");
+                ImGui::TableNextColumn();
+                ImGui::Text("%7.2f ms", averageGPUMs);
             }
             ImGui::EndTable();
         }

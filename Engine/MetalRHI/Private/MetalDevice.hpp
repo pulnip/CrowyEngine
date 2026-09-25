@@ -11,7 +11,7 @@ namespace Crowy
     class MetalDevice final: public RHIDevice{
     private:
         class Impl;
-        FastPimpl<Impl, 1400, 8> impl;
+        FastPimpl<Impl, 1560, 8> impl;
 
     public:
         MetalDevice();
@@ -52,6 +52,7 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept RHI_OVERRIDE;
         void WaitFrame(u64 frame) RHI_OVERRIDE;
         void WaitIdle() RHI_OVERRIDE;
 

@@ -42,8 +42,13 @@ namespace Crowy
             return named;
         }
 
-        // every number describes stats.report.frame, one frame that ended
-        DOM::Value statsToDom(const RenderApp::FrameStats& stats) {
+        // every number describes stats.report.frame, one frame that ended,
+        // except gpu: the newest GPU time then, with what that frame drew
+        // from gpuFrame; the time alone once gpuFrame has aged out
+        DOM::Value statsToDom(
+            const RenderApp::FrameStats& stats,
+            const RenderApp::FrameStats* gpuFrame
+        ) {
             constexpr auto MsPerSecond = 1000.0;
 
             DOM::Table result;
@@ -155,6 +160,33 @@ namespace Crowy
                 "rhi",
                 DOM::Value(std::move(rhi))
             );
+
+            if(!stats.report.gpu) {
+                result.emplace("gpu", DOM::Value());
+
+                return DOM::Value(std::move(result));
+            }
+
+            const auto& time = *stats.report.gpu;
+            DOM::Table gpu;
+            gpu.emplace("frame", DOM::Value(static_cast<i64>(time.frame)));
+            gpu.emplace("frameMs", DOM::Value(time.seconds * MsPerSecond));
+            if(gpuFrame != nullptr) {
+                const auto& drawn = gpuFrame->report.rhi;
+                gpu.emplace(
+                    "directDraws",
+                    DOM::Value(static_cast<i64>(drawn.drawCount))
+                );
+                gpu.emplace(
+                    "indirectDraws",
+                    DOM::Value(static_cast<i64>(drawn.indirectDrawCount))
+                );
+                gpu.emplace(
+                    "triangles",
+                    DOM::Value(static_cast<i64>(gpuFrame->triangles))
+                );
+            }
+            result.emplace("gpu", DOM::Value(std::move(gpu)));
 
             return DOM::Value(std::move(result));
         }
@@ -432,7 +464,8 @@ namespace Crowy
                 return;
             }
             if(selector.frames.empty()) {
-                reply.Ok(statsToDom(LastFrameStats()));
+                const auto& last = LastFrameStats();
+                reply.Ok(statsToDom(last, gpuFrameStats(last)));
 
                 return;
             }
@@ -461,7 +494,7 @@ namespace Crowy
 
                     return;
                 }
-                frames.push_back(statsToDom(*stats));
+                frames.push_back(statsToDom(*stats, gpuFrameStats(*stats)));
             }
 
             DOM::Table result;
@@ -645,6 +678,13 @@ namespace Crowy
             .buckets = renderer->BucketCount(),
             .pipelines = renderer->PipelineCount()
         });
+    }
+
+    const RenderApp::FrameStats* RenderApp::gpuFrameStats(
+        const FrameStats& stats
+    ) const noexcept {
+        return stats.report.gpu ? frameStats.Find(stats.report.gpu->frame)
+                                : nullptr;
     }
 
     const RenderApp::FrameStats& RenderApp::LastFrameStats() const noexcept {

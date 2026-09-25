@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <optional>
 #include <span>
 #include <type_traits>
 #include "Function.hpp"
@@ -60,6 +61,14 @@ namespace Crowy
         virtual void WaitFrame(u64 frame) = 0;
         // block until every submission so far has completed
         virtual void WaitIdle() = 0;
+
+        // how long the GPU was busy with frame `frame`: the union of its
+        // command lists' runs. Empty until the frame has completed and been
+        // read back, once it ages out, and on a backend that cannot time the
+        // GPU - never a silent 0
+        virtual std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept{
+            return std::nullopt;
+        }
 
         // runs `reclaim` once the batch about to be submitted next has
         // completed on the GPU

@@ -6,6 +6,8 @@ extern "C"{
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
+#include <algorithm>
+#include <vector>
 #include <Metal/MTLFence.hpp>
 #include "Assert.hpp"
 #include "AutoreleasePoolScope.hpp"
@@ -22,6 +24,7 @@ extern "C"{
 #include "MetalAllocator.hpp"
 #include "MetalUtil.hpp"
 #include "RHIFrameTimeline.hpp"
+#include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
 #include "RHIUtil.hpp"
@@ -35,6 +38,13 @@ namespace Crowy
 
     class MetalDevice::Impl{
     private:
+        // a submitted frame's command buffers, held past their lists' next
+        // Begin until the frame completes and its GPU time is read back
+        struct UntimedFrame{
+            u64 frame = 0;
+            std::vector<NS::SharedPtr<MTL::CommandBuffer>> cmdBuffers;
+        };
+
         NS::SharedPtr<MTL::Device> device;
         NS::SharedPtr<MTL::CommandQueue> commandQueue;
         // cross-submission ordering:
@@ -76,6 +86,10 @@ namespace Crowy
         RAII<MetalFence> serialFence;
         RHIFrameTimeline timeline;
         RHIRetireQueue retireQueue;
+
+        // in submission order; the upload list is never among them
+        std::vector<UntimedFrame> untimedFrames;
+        RHIGPUTimeHistory gpuTimes;
 
     public:
         auto CreateCommandList(){
@@ -291,6 +305,7 @@ namespace Crowy
             // completed-as-of-entry, before this batch's own tag exists
             const auto completed = serialFence->GetValue();
             retireQueue.Collect(completed);
+            harvestGPUTimes();
 
             ensureUploadCommit();
 
@@ -310,6 +325,7 @@ namespace Crowy
                 auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
                 mtlCmdList->commit();
             }
+            holdForGPUTime(cmdLists, frame);
         }
 
         void SubmitAndPresent(
@@ -319,6 +335,7 @@ namespace Crowy
         ){
             const auto completed = serialFence->GetValue();
             retireQueue.Collect(completed);
+            harvestGPUTimes();
 
             ensureUploadCommit();
 
@@ -337,10 +354,18 @@ namespace Crowy
                 auto mtlCmdList = static_cast<MetalCommandList*>(cmdList)->Get();
                 mtlCmdList->commit();
             }
+            holdForGPUTime(cmdLists, frame);
         }
 
         u64 GetCompletedFrame() const noexcept{
             return timeline.CompletedFrame(serialFence->GetValue());
+        }
+
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept{
+            if(const auto* seconds = gpuTimes.Find(frame))
+                return *seconds;
+
+            return std::nullopt;
         }
 
         void WaitFrame(u64 frame){
@@ -359,6 +384,14 @@ namespace Crowy
             // a Submit that may never come
             retireQueue.Tag(submissionSerial);
             retireQueue.Collect(submissionSerial);
+
+            // the event can fire before a buffer's status says Completed, and
+            // nothing after the loop's last WaitIdle would read them again
+            for(const auto& held: untimedFrames){
+                for(const auto& cmdBuffer: held.cmdBuffers)
+                    cmdBuffer->waitUntilCompleted();
+            }
+            harvestGPUTimes();
         }
 
         void DeferRetire(std::move_only_function<void()> reclaim){
@@ -413,6 +446,55 @@ namespace Crowy
         }
 
     private:
+        void holdForGPUTime(std::span<RHICommandList*> cmdLists, u64 frame){
+            UntimedFrame held{.frame = frame};
+            held.cmdBuffers.reserve(cmdLists.size());
+            for(auto cmdList: cmdLists){
+                held.cmdBuffers.push_back(NS::RetainPtr(
+                    static_cast<MetalCommandList*>(cmdList)->Get()
+                ));
+            }
+
+            untimedFrames.push_back(std::move(held));
+        }
+
+        // no completion handler: the times are read here, on the submitting
+        // thread, once every command buffer of a frame reports completion.
+        // A frame that failed on the GPU gets no time rather than a wrong one
+        void harvestGPUTimes(){
+            usize harvested = 0;
+            for(const auto& held: untimedFrames){
+                const bool completed = std::ranges::all_of(held.cmdBuffers,
+                    [](const NS::SharedPtr<MTL::CommandBuffer>& cmdBuffer){
+                        return cmdBuffer->status() >= MTL::CommandBufferStatusCompleted;
+                    }
+                );
+                // one queue completes in order, so no later frame has either
+                if(!completed)
+                    break;
+
+                std::vector<RHIGPUInterval> intervals;
+                intervals.reserve(held.cmdBuffers.size());
+                bool failed = false;
+                for(const auto& cmdBuffer: held.cmdBuffers){
+                    failed |= cmdBuffer->status() == MTL::CommandBufferStatusError;
+                    intervals.push_back(RHIGPUInterval{
+                        .begin = cmdBuffer->GPUStartTime(),
+                        .end = cmdBuffer->GPUEndTime()
+                    });
+                }
+                if(!failed)
+                    gpuTimes.Push(held.frame, busySeconds(intervals));
+
+                ++harvested;
+            }
+
+            untimedFrames.erase(
+                untimedFrames.begin(),
+                untimedFrames.begin() + static_cast<std::ptrdiff_t>(harvested)
+            );
+        }
+
         // out-of-band signal (WaitIdle, flushUploads) that is not tied to a
         // submitted wave, so it needs its own command buffer to carry it
         void signalSerial(){
@@ -556,6 +638,10 @@ namespace Crowy
 
     u64 MetalDevice::GetCompletedFrame() const noexcept{
         return impl->GetCompletedFrame();
+    }
+
+    std::optional<f64> MetalDevice::GetGPUFrameTime(u64 frame) const noexcept{
+        return impl->GetGPUFrameTime(frame);
     }
 
     void MetalDevice::WaitFrame(u64 frame){

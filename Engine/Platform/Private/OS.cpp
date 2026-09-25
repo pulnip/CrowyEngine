@@ -104,7 +104,7 @@ namespace Crowy
         , inputProvider()
         , framePacer(device)
         , cmdListPool(device)
-        , profiler(config)
+        , profiler(config, device)
     {
         RHITextureCreateDesc backBufferDesc{
             .width = config.window.width,
@@ -213,6 +213,7 @@ namespace Crowy
         }
 
         framePacer.WaitForIdle();
+        profiler.CollectGPUTimes();
 
         if(imguiEnabled){
             ImGui_ImplSDL3_Shutdown();

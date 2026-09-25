@@ -24,6 +24,8 @@ namespace Crowy
 #include <format>
 #include <fstream>
 #include "LogLocal.hpp"
+#include "RHIDevice.hpp"
+#include "RHIGPUTime.hpp"
 
 namespace Crowy
 {
@@ -126,8 +128,12 @@ namespace Crowy
         }
     }
 
-    FrameProfiler::FrameProfiler(const RuntimeConfig& runtimeConfig)
-        : config(runtimeConfig.benchmark)
+    FrameProfiler::FrameProfiler(
+        const RuntimeConfig& runtimeConfig,
+        const RHIDevice& device
+    )
+        : device(device)
+        , config(runtimeConfig.benchmark)
         , title(runtimeConfig.window.title)
         , width(runtimeConfig.window.width)
         , height(runtimeConfig.window.height)
@@ -157,10 +163,44 @@ namespace Crowy
             seconds[static_cast<usize>(FrameSection::FenceWait)];
         current.rhi = stats;
 
-        if(IsMeasuring() && records.size() < config.measureFrames)
+        // this frame's own time is at least a frame away
+        readGPUTimesThrough(current.frame - 1);
+        current.gpu = newestGPU;
+
+        if(IsMeasuring() && records.size() < config.measureFrames){
             records.push_back(current);
+            // backfilled with its own once read
+            records.back().gpu.reset();
+        }
 
         return current;
+    }
+
+    void FrameProfiler::CollectGPUTimes() noexcept{
+        readGPUTimesThrough(current.frame);
+    }
+
+    void FrameProfiler::readGPUTimesThrough(u64 last) noexcept{
+        for(; gpuPending <= last; ++gpuPending){
+            const auto seconds = device.GetGPUFrameTime(gpuPending);
+            if(!seconds){
+                // not read back yet; a frame the device's history has
+                // already passed never will be
+                if(last - gpuPending < GPUTimeHistoryDepth)
+                    return;
+
+                continue;
+            }
+
+            newestGPU = GPUFrameTime{.frame = gpuPending, .seconds = *seconds};
+
+            // measured records run one per frame from warmupFrames + 1
+            if(gpuPending > config.warmupFrames){
+                const auto index = gpuPending - config.warmupFrames - 1;
+                if(index < records.size())
+                    records[index].gpu = newestGPU;
+            }
+        }
     }
 
     bool FrameProfiler::ShouldStop() const noexcept{
@@ -205,7 +245,7 @@ namespace Crowy
         if(std::ofstream frames; openOutput(config.framePath, frames)){
             frames <<
                 "frame,events_ms,update_ms,fence_wait_ms,acquire_ms,"
-                "record_ms,submit_ms,frame_ms";
+                "record_ms,submit_ms,frame_ms,gpu_ms";
             for(const auto& column: COUNTER_COLUMNS)
                 frames << "," << column.name;
             frames << "\n";
@@ -217,6 +257,10 @@ namespace Crowy
                         record.seconds[i] * SECONDS_TO_MS
                     );
                 }
+                // empty when the GPU was never timed, never a 0
+                frames << ",";
+                if(record.gpu)
+                    frames << std::format("{:.6f}", record.gpu->seconds * SECONDS_TO_MS);
                 for(const auto& column: COUNTER_COLUMNS)
                     frames << std::format(",{}", record.rhi.*column.field);
                 frames << "\n";
@@ -245,6 +289,30 @@ namespace Crowy
                 "| {:<9} | {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} |\n",
                 ToString(static_cast<FrameSection>(i)),
                 summary.p50, summary.p95, summary.p99, summary.max, summary.mean
+            );
+        }
+
+        std::vector<f64> gpuMs;
+        gpuMs.reserve(records.size());
+        for(const auto& record: records){
+            if(record.gpu)
+                gpuMs.push_back(record.gpu->seconds * SECONDS_TO_MS);
+        }
+        const auto timed = gpuMs.size();
+        const auto gpu = summarize(gpuMs);
+
+        report << std::format(
+            "\n## GPU (ms)\n\n{} of {} frames timed\n",
+            timed, records.size()
+        );
+        // no row of zeros for a backend that cannot time the GPU
+        if(timed > 0){
+            report << std::format(
+                "\n"
+                "|   p50 |   p95 |   p99 |   max |  mean |\n"
+                "|-------|-------|-------|-------|-------|\n"
+                "| {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} |\n",
+                gpu.p50, gpu.p95, gpu.p99, gpu.max, gpu.mean
             );
         }
 
