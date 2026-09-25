@@ -77,6 +77,8 @@ namespace Crowy
         }
 
     private:
+        // returns when the loop ends by itself; a throw leaves it mid-frame
+        void RunLoop(MainLoop&, RHIDevice&);
         bool ProcessEvents(MainLoop&);
         // the held iteration's pump: the window stays alive, input is dropped
         bool PumpHeld(MainLoop&, RHIDevice&);
@@ -140,6 +142,32 @@ namespace Crowy
             ImGui_ImplSDL3_InitForOther(sdlWindow);
         }
 
+        try{
+            RunLoop(mainLoop, device);
+        }
+        catch(...){
+            // the app is torn down right behind this, and it frees what the
+            // GPU may still read and the context the backend is attached to
+            framePacer.WaitForIdle();
+            if(imguiEnabled)
+                ImGui_ImplSDL3_Shutdown();
+
+            throw;
+        }
+
+        framePacer.WaitForIdle();
+        profiler.CollectGPUTimes();
+
+        if(imguiEnabled){
+            ImGui_ImplSDL3_Shutdown();
+        }
+
+        mainLoop.Finalize();
+
+        profiler.WriteReport();
+    }
+
+    void OS::Impl::RunLoop(MainLoop& mainLoop, RHIDevice& device){
         // set by a held iteration, which drops input on the way
         bool held = false;
 
@@ -151,7 +179,7 @@ namespace Crowy
 
             if(!mainLoop.ShouldAdvance()){
                 if(!PumpHeld(mainLoop, device)) [[unlikely]]
-                    break;
+                    return;
                 held = true;
                 continue;
             }
@@ -170,7 +198,7 @@ namespace Crowy
                 FrameProfiler::Scope section(profiler, FrameSection::Events);
 
                 if(!ProcessEvents(mainLoop)) [[unlikely]]
-                    break;
+                    return;
                 mainLoop.ProcessInput(inputProvider);
             }
 
@@ -178,7 +206,7 @@ namespace Crowy
                 FrameProfiler::Scope section(profiler, FrameSection::Update);
 
                 if(!mainLoop.Update()) [[unlikely]]
-                    break;
+                    return;
             }
 
             {
@@ -209,19 +237,8 @@ namespace Crowy
 
             mainLoop.OnFrameEnd(profiler.EndFrame(cmdListPool.GetFrameStats()));
             if(profiler.ShouldStop()) [[unlikely]]
-                break;
+                return;
         }
-
-        framePacer.WaitForIdle();
-        profiler.CollectGPUTimes();
-
-        if(imguiEnabled){
-            ImGui_ImplSDL3_Shutdown();
-        }
-
-        mainLoop.Finalize();
-
-        profiler.WriteReport();
     }
 
     bool OS::Impl::ProcessEvents(MainLoop& mainLoop){

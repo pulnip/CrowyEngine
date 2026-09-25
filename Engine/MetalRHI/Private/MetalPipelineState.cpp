@@ -209,7 +209,9 @@ namespace Crowy
         AutoreleasePoolScope _;
 
         auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
-        auto pipelineDesc = MTL::RenderPipelineDescriptor::alloc()->init();
+        auto pipelineDesc = NS::TransferPtr(
+            MTL::RenderPipelineDescriptor::alloc()->init()
+        );
         topology = convert(frontend.topology);
 
         // Vertex Layout
@@ -248,7 +250,7 @@ namespace Crowy
             vertexDesc->release();
         }
 
-        MTL::Library* library = nullptr;
+        NS::SharedPtr<MTL::Library> library;
         // Vertex Shader
         {
             const auto& filePath = frontend.vertexShader.path;
@@ -258,18 +260,25 @@ namespace Crowy
                 filePath,
                 RHIBackend::Metal
             };
-            library = makeLibrary(device, shaderProgram);
+            library = NS::TransferPtr(makeLibrary(device, shaderProgram));
         #if defined(_DEBUG) || !defined(NDEBUG)
             library->setLabel(toNSString(toUTF8String(filePath)));
         #endif
 
-            auto func = library->newFunction(toNSString(entryPoint));
+            auto func = NS::TransferPtr(
+                library->newFunction(toNSString(entryPoint))
+            );
+            if(!func){
+                throw std::runtime_error(std::format(
+                    "no function '{}' in {}", entryPoint, filePath
+                ));
+            }
         #if defined(_DEBUG) || !defined(NDEBUG)
             auto identifier = std::format("{}_{}", filePath, entryPoint);
             func->setLabel(toNSString(identifier));
         #endif
 
-            pipelineDesc->setVertexFunction(func);
+            pipelineDesc->setVertexFunction(func.get());
 
             vsSamplers = resolveSamplers(
                 samplers,
@@ -292,15 +301,13 @@ namespace Crowy
 
         // Fragment Shader
         if(desc.fragmentShader.path != frontend.vertexShader.path){
-            library->release();
-
             const auto& filePath = desc.fragmentShader.path;
 
             RHIShader shaderProgram{
                 filePath,
                 RHIBackend::Metal
             };
-            library = makeLibrary(device, shaderProgram);
+            library = NS::TransferPtr(makeLibrary(device, shaderProgram));
         #if defined(_DEBUG) || !defined(NDEBUG)
             library->setLabel(toNSString(toUTF8String(filePath)));
         #endif
@@ -317,16 +324,21 @@ namespace Crowy
             const auto& filePath = desc.fragmentShader.path;
             const auto& entryPoint = desc.fragmentShader.entryPoint;
 
-            auto func = library->newFunction(toNSString(entryPoint));
+            auto func = NS::TransferPtr(
+                library->newFunction(toNSString(entryPoint))
+            );
+            if(!func){
+                throw std::runtime_error(std::format(
+                    "no function '{}' in {}", entryPoint, filePath
+                ));
+            }
         #if defined(_DEBUG) || !defined(NDEBUG)
             auto identifier = std::format("{}_{}", filePath, entryPoint);
             func->setLabel(toNSString(identifier));
         #endif
 
-            pipelineDesc->setFragmentFunction(func);
+            pipelineDesc->setFragmentFunction(func.get());
         }
-        // func holds reference
-        library->release();
 
         if(desc.depthStencil.has_value()){
             // Depth Stencil State
@@ -404,12 +416,11 @@ namespace Crowy
         MTL::AutoreleasedRenderPipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
         pipeline = NS::TransferPtr(device.newRenderPipelineState(
-            pipelineDesc,
+            pipelineDesc.get(),
             MTL::PipelineOptionBindingInfo,
             &refl,
             &error
         ));
-        pipelineDesc->release();
 
         if(!pipeline){
             auto msg = error->localizedDescription()->utf8String();
@@ -511,40 +522,42 @@ namespace Crowy
             filePath,
             RHIBackend::Metal
         };
-        auto library = makeLibrary(device, shaderProgram);
+        auto library = NS::TransferPtr(makeLibrary(device, shaderProgram));
     #if defined(_DEBUG) || !defined(NDEBUG)
         library->setLabel(toNSString(toUTF8String(filePath)));
     #endif
 
-        auto func = library->newFunction(toNSString(entryPoint));
+        auto func = NS::TransferPtr(
+            library->newFunction(toNSString(entryPoint))
+        );
+        if(!func){
+            throw std::runtime_error(std::format(
+                "no function '{}' in {}", entryPoint, filePath
+            ));
+        }
     #if defined(_DEBUG) || !defined(NDEBUG)
         auto identifier = std::format("{}_{}", filePath, entryPoint);
         func->setLabel(toNSString(identifier));
     #endif
-        // func holds reference
-        library->release();
-
-        if(func == nullptr){
-            throw std::runtime_error("Compute shader is null");
-        }
 
         this->samplers = resolveSamplers(
             samplers,
             shaderProgram.GetUsedSamplers(entryPoint)
         );
 
-        auto pipelineDesc = MTL::ComputePipelineDescriptor::alloc()->init();
-        pipelineDesc->setComputeFunction(func);
+        auto pipelineDesc = NS::TransferPtr(
+            MTL::ComputePipelineDescriptor::alloc()->init()
+        );
+        pipelineDesc->setComputeFunction(func.get());
 
         MTL::AutoreleasedComputePipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
         pipeline = NS::TransferPtr(device.newComputePipelineState(
-            pipelineDesc,
+            pipelineDesc.get(),
             MTL::PipelineOptionBindingInfo,
             &refl,
             &error
         ));
-        pipelineDesc->release();
 
         if(!pipeline){
             throw std::runtime_error("Failed to create compute pipeline state");

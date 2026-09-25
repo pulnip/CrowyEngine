@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <format>
+#include <memory>
 #include <stdexcept>
 #include <slang.h>
 #include <slang-com-ptr.h>
@@ -246,15 +248,30 @@ namespace Crowy
         ), "Failed to create Global session");
     }
 
+    void RHIShader::SlangRelease::operator()(
+        slang::ISession* session
+    ) const noexcept{
+        session->release();
+    }
+
+    void RHIShader::SlangRelease::operator()(
+        slang::IComponentType* program
+    ) const noexcept{
+        program->release();
+    }
+
     RHIShader::RHIShader(
         const std::filesystem::path& filePath,
         RHIBackend backend,
         CStr profile
     )
-        : hash(hashAll(filePath))
+        : path(toUTF8String(filePath)),
+          hash(hashAll(filePath))
     {
         using namespace slang;
         using namespace Slang;
+
+        const auto started = std::chrono::steady_clock::now();
 
         CROWY_ASSERT(globalSession != nullptr,
             "Did you call InitGlobalSession()?"
@@ -267,7 +284,7 @@ namespace Crowy
             }
         };
         const auto absPath = std::filesystem::absolute(filePath);
-        const auto path = toUTF8String(absPath);
+        const auto modulePath = toUTF8String(absPath);
 
         const auto searchDir = toUTF8String(absPath.parent_path());
         // a shader lives beside whatever owns it and includes its neighbours
@@ -301,7 +318,7 @@ namespace Crowy
         };
         CHECK_SRESULT(globalSession->createSession(
             sessionDesc,
-            &session
+            std::out_ptr(session)
         ), "Failed to create session");
 
         // Compile
@@ -309,7 +326,7 @@ namespace Crowy
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
             mod = session->loadModule(
-                path.c_str(),
+                modulePath.c_str(),
                 diagnostics.writeRef()
             );
             // loadModule reports failure by returning null, not by a result
@@ -353,7 +370,7 @@ namespace Crowy
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
             CHECK_SRESULT_DIAG(composed->link(
-                &program,
+                std::out_ptr(program),
                 diagnostics.writeRef()
             ), diagnostics.get(), "Failed to link slang component");
         }
@@ -395,45 +412,31 @@ namespace Crowy
                 }
             }
         }
-    }
 
-    RHIShader::~RHIShader(){
-        if(program != nullptr){
-            program->release();
-            program = nullptr;
-        }
-        if(session != nullptr){
-            session->release();
-            session = nullptr;
-        }
+        const std::chrono::duration<f64, std::milli> elapsed =
+            std::chrono::steady_clock::now() - started;
+        LOG_DEBUG("compiled {} in {:.0f} ms", path, elapsed.count());
     }
 
     Size3D RHIShader::GetThreadGroupSize(StrView entryPoint){
-        auto it = reflection.shaderRefl.find(entryPoint);
-        CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
-
-        return it->second.threadGroupSize;
+        return findEntryPoint(entryPoint).threadGroupSize;
     }
 
     std::span<const RHISamplerUse> RHIShader::GetUsedSamplers(
         StrView entryPoint
     ){
-        auto it = reflection.shaderRefl.find(entryPoint);
-        CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
-
-        return it->second.usedSamplers;
+        return findEntryPoint(entryPoint).usedSamplers;
     }
 
     std::vector<u8> RHIShader::GetEntryPointCode(StrView entryPoint){
         using namespace Slang;
 
-        const auto it = reflection.shaderRefl.find(entryPoint);
-        CROWY_ASSERT(it != reflection.shaderRefl.end(), "unknown entry point");
+        const auto& refl = findEntryPoint(entryPoint);
 
         ComPtr<ISlangBlob> code = nullptr;
         ComPtr<ISlangBlob> diagnostics = nullptr;
         CHECK_SRESULT_DIAG(program->getEntryPointCode(
-            it->second.entryPointIndex,
+            refl.entryPointIndex,
             0,
             code.writeRef(),
             diagnostics.writeRef()
@@ -468,5 +471,18 @@ namespace Crowy
         );
 
         return bytecode;
+    }
+
+    const RHIShaderReflection& RHIShader::findEntryPoint(
+        StrView entryPoint
+    ) const{
+        const auto found = reflection.shaderRefl.find(entryPoint);
+        if(found == reflection.shaderRefl.end()){
+            throw std::runtime_error(std::format(
+                "unknown entry point '{}' in {}", entryPoint, path
+            ));
+        }
+
+        return found->second;
     }
 }
