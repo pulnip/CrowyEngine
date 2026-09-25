@@ -157,7 +157,7 @@ namespace Crowy
         RootSignature& rootSignature,
         CommandSignature& drawSignature,
         CommandSignature& drawIndexedSignature,
-        const u64& frameIndex,
+        const u64& serial,
         DescriptorHeapAllocator& cbvsrvuavHeap,
         DescriptorHeapAllocator& rtvHeap,
         DescriptorHeapAllocator& dsvHeap,
@@ -167,7 +167,7 @@ namespace Crowy
         , rootSignature(rootSignature)
         , drawSignature(drawSignature)
         , drawIndexedSignature(drawIndexedSignature)
-        , frameIndex(frameIndex)
+        , serial(serial)
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)

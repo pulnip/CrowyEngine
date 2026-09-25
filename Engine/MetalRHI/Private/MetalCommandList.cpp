@@ -113,8 +113,8 @@ namespace Crowy
         // hangover gate: acquire-less consumption of a hand-off release rides queue order,
         // so a recording that may share the GPU with the hand-off wave must be ordered behind it.
         // anything older is already CPU-fenced - FramePacer::BeginFrame
-        // waits the (frameIndex - RHI_FRAMES_IN_FLIGHT + 1) fence before recording,
-        // and out-of-band frameIndex bumps only narrow the true window.
+        // waits the (submissionSerial - RHI_FRAMES_IN_FLIGHT + 1) fence before recording,
+        // and out-of-band signals only narrow the true window.
         if(handoffSerial != 0 &&
             submissionSerial < handoffSerial + RHI_FRAMES_IN_FLIGHT - 1
         ){

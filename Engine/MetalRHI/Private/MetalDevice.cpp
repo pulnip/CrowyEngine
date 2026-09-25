@@ -61,17 +61,13 @@ namespace Crowy
         bool uploadRecorded = false;
         UploadRing uploadRing;
 
-        // increased on Submit
-        u64 frameIndex = 0;
-        // last value actually signaled on submissionEvent.
-        // distinct from frameIndex, which callers may bump out-of-band without a signal
-        // (FramePacer::WaitForIdle, helloCompute's slot skip)
-        // - a lazy gate must never wait a value nothing signals
+        // the device's one timeline: every submitted wave and every out-of-band
+        // signal takes the next value, on serialFence and submissionEvent alike
         u64 submissionSerial = 0;
         // serial of the last wave that left un-acquired hand-off releases
         u64 handoffSerial = 0;
 
-        RAII<MetalFence> frameFence;
+        RAII<MetalFence> serialFence;
         RHIRetireQueue retireQueue;
 
     public:
@@ -141,7 +137,7 @@ namespace Crowy
                 submissionSerial,
                 handoffSerial
             )
-            , frameFence(std::make_unique<MetalFence>(*device.get(), 0))
+            , serialFence(std::make_unique<MetalFence>(*device.get(), 0))
         {
 
             CROWY_ASSERT(device, "No GPU Available");
@@ -278,13 +274,12 @@ namespace Crowy
             ensureUploadCommit();
 
             auto lastCmdBuffer = static_cast<MetalCommandList*>(cmdLists.back())->Get();
-            frameFence->Encode(*lastCmdBuffer, ++frameIndex);
+            serialFence->Encode(*lastCmdBuffer, ++submissionSerial);
             // close the wave: later recordings that depend on it
             // (lazy gates) wait on this value
-            submissionSerial = frameIndex;
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
-            retireQueue.Tag(frameIndex);
-            uploadRing.OnSubmit(frameIndex);
+            retireQueue.Tag(submissionSerial);
+            uploadRing.OnSubmit(submissionSerial);
 
             trackHandoffs(cmdLists);
 
@@ -304,11 +299,10 @@ namespace Crowy
 
             auto lastCmdBuffer = static_cast<MetalCommandList&>(*cmdLists.back()).Get();
             swapchain.Present(*lastCmdBuffer);
-            frameFence->Encode(*lastCmdBuffer, ++frameIndex);
-            submissionSerial = frameIndex;
+            serialFence->Encode(*lastCmdBuffer, ++submissionSerial);
             lastCmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
-            retireQueue.Tag(frameIndex);
-            uploadRing.OnSubmit(frameIndex);
+            retireQueue.Tag(submissionSerial);
+            uploadRing.OnSubmit(submissionSerial);
 
             trackHandoffs(cmdLists);
 
@@ -319,29 +313,28 @@ namespace Crowy
         }
 
         u64 GetSubmittedFrame() const noexcept{
-            return frameIndex;
+            return submissionSerial;
         }
 
         u64 GetCompletedFrame() const noexcept{
-            return frameFence->GetValue();
+            return serialFence->GetValue();
         }
 
         void WaitFrame(u64 value){
-            frameFence->WaitCPU(value, 0);
+            serialFence->WaitCPU(value, 0);
         }
 
         void WaitIdle(){
             // signal fresh so this also waits on any GPU work queued
             // after the last per-frame signal (e.g. swapchain Present)
-            ++frameIndex;
-            signalFrame(frameIndex);
-            frameFence->WaitCPU(frameIndex, 0);
+            signalSerial();
+            serialFence->WaitCPU(submissionSerial, 0);
 
             // everything up to and including the fresh signal is now done,
             // so this drains the queue rather than leaving stragglers for
             // a Submit that may never come
-            retireQueue.Tag(frameIndex);
-            retireQueue.Collect(frameIndex);
+            retireQueue.Tag(submissionSerial);
+            retireQueue.Collect(submissionSerial);
         }
 
         void DeferRetire(std::move_only_function<void()> reclaim){
@@ -396,17 +389,12 @@ namespace Crowy
         }
 
     private:
-        // out-of-band signal (WaitIdle) that is not tied to a submitted
-        // wave, so it needs its own command buffer to carry it
-        void signalFrame(u64 value){
+        // out-of-band signal (WaitIdle, flushUploads) that is not tied to a
+        // submitted wave, so it needs its own command buffer to carry it
+        void signalSerial(){
             auto cmdBuffer = commandQueue->commandBuffer();
-            frameFence->Encode(*cmdBuffer, value);
-            // keep the submission event in step with the out-of-band bump
-            // so lazy gates never overtake the event timeline
-            if(value > submissionSerial){
-                cmdBuffer->encodeSignalEvent(submissionEvent.get(), value);
-                submissionSerial = value;
-            }
+            serialFence->Encode(*cmdBuffer, ++submissionSerial);
+            cmdBuffer->encodeSignalEvent(submissionEvent.get(), submissionSerial);
 
             cmdBuffer->commit();
         }
@@ -452,7 +440,7 @@ namespace Crowy
         // The upload ring's escape hatch: the copies holding its space are
         // still sitting in uploadCmdList. ensureUploadCommit already
         // CPU-waits them out, so the fresh signal only exists to give the
-        // ring a frame value it can retire against.
+        // ring a serial it can retire against.
         //
         // Called from inside UploadRing::Allocate, which runs before its
         // caller records anything - so what goes out here is strictly the
@@ -463,9 +451,8 @@ namespace Crowy
 
             ensureUploadCommit();
 
-            ++frameIndex;
-            signalFrame(frameIndex);
-            uploadRing.OnSubmit(frameIndex);
+            signalSerial();
+            uploadRing.OnSubmit(submissionSerial);
 
             ensureUploadBegin();
         }

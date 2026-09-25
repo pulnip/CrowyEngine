@@ -88,10 +88,8 @@ namespace Crowy
         //  - at Begin, while a hand-off wave may still be on the GPU
         //    (the hangover window below)
         MTL::Event* submissionEvent = nullptr;
-        // last value actually signaled on the event.
-        // tracked separately from the device frameIndex, which callers may bump out-of-band
-        // (FramePacer::WaitForIdle) - a gate must never wait a value
-        // nothing signals
+        // the device's serial; every advance of it is also signaled on the
+        // event, so a gate never waits on a value nothing signals
         const u64& submissionSerial;
         // serial of the last wave that left un-acquired hand-off releases;
         // 0 = none yet

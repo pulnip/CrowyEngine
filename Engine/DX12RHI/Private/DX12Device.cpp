@@ -480,9 +480,10 @@ namespace Crowy
         bool uploadRecorded = false;
         UploadRing uploadRing;
 
-        RAII<DX12Fence> frameFence;
-        // increased on Submit / SubmitAndPresent
-        u64 frameIndex = 0;
+        RAII<DX12Fence> serialFence;
+        // the device's one timeline: every submitted batch and every
+        // out-of-band signal (WaitIdle) takes the next value
+        u64 serial = 0;
 
     public:
         Impl(DX12Device& dxDevice)
@@ -519,7 +520,7 @@ namespace Crowy
             // capabilities are still zeroed here; the allocator only reads
             // them when it allocates, which is after checkDeviceFeature
             , allocator(*device.Get(), dx12Capabilities)
-            , frameFence(std::make_unique<DX12Fence>(*device.Get(), 0))
+            , serialFence(std::make_unique<DX12Fence>(*device.Get(), 0))
         {
             setupValidationBreak(*device.Get());
             checkAgilitySDK();
@@ -687,7 +688,7 @@ namespace Crowy
                 *globalRootSignature.Get(),
                 *drawSignature.Get(),
                 *drawIndexedSignature.Get(),
-                frameIndex,
+                serial,
                 *cbvsrvuavHeap,
                 *rtvHeap,
                 *dsvHeap,
@@ -701,10 +702,9 @@ namespace Crowy
 
             executeCommandLists(cmdLists);
 
-            ++frameIndex;
-            signalFrame();
-            retireQueue.Tag(frameIndex);
-            uploadRing.OnSubmit(frameIndex);
+            signalSerial();
+            retireQueue.Tag(serial);
+            uploadRing.OnSubmit(serial);
         }
 
         void SubmitAndPresent(
@@ -717,36 +717,34 @@ namespace Crowy
 
             static_cast<DX12Swapchain&>(swapchain).Present();
 
-            ++frameIndex;
-            signalFrame();
-            retireQueue.Tag(frameIndex);
-            uploadRing.OnSubmit(frameIndex);
+            signalSerial();
+            retireQueue.Tag(serial);
+            uploadRing.OnSubmit(serial);
         }
 
         u64 GetSubmittedFrame() const noexcept{
-            return frameIndex;
+            return serial;
         }
 
         u64 GetCompletedFrame() const noexcept{
-            return frameFence->GetValue();
+            return serialFence->GetValue();
         }
 
         void WaitFrame(u64 value){
-            frameFence->WaitCPU(value, 0);
+            serialFence->WaitCPU(value, 0);
         }
 
         void WaitIdle(){
             // signal fresh so this also waits on any GPU work queued
             // after the last per-frame signal (e.g. swapchain Present)
-            ++frameIndex;
-            signalFrame();
-            frameFence->WaitCPU(frameIndex, 0);
+            signalSerial();
+            serialFence->WaitCPU(serial, 0);
 
             // everything up to and including the fresh signal is now done,
             // so this drains the queue rather than leaving stragglers for
             // a Submit that may never come
-            retireQueue.Tag(frameIndex);
-            retireQueue.Collect(frameIndex);
+            retireQueue.Tag(serial);
+            retireQueue.Collect(serial);
         }
 
         void DeferRetire(std::move_only_function<void()> reclaim){
@@ -809,7 +807,7 @@ namespace Crowy
 
         // The upload ring's escape hatch: the copies holding its space are
         // still sitting in uploadCmdList, so give them a batch of their own
-        // and the frame value that comes with it.
+        // and the serial that comes with it.
         //
         // Called from inside UploadRing::Allocate, which runs before its
         // caller records anything - so what goes out here is strictly the
@@ -821,7 +819,7 @@ namespace Crowy
             Submit(std::span<RHICommandList*>{});
             // creation uploads are load-time work, and draining first is what
             // makes the allocator Begin() is about to reset provably idle
-            WaitFrame(frameIndex);
+            WaitFrame(serial);
 
             ensureUploadBegin();
         }
@@ -849,10 +847,12 @@ namespace Crowy
             );
         }
 
-        void signalFrame(){
+        // takes the next serial and signals it behind everything queued so far
+        void signalSerial(){
+            ++serial;
             CHECK_HRESULT(commandQueue->Signal(
-                frameFence->Get(),
-                frameIndex
+                serialFence->Get(),
+                serial
             ), "Failed to signal fence");
         }
     };

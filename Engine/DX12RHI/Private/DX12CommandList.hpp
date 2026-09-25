@@ -34,7 +34,8 @@ namespace Crowy
         CommandSignature& drawSignature;
         CommandSignature& drawIndexedSignature;
         CommandAllocatorRAII commandAllocators[RHI_FRAMES_IN_FLIGHT];
-        const u64& frameIndex;
+        // the device's serial; Begin() picks the allocator from it
+        const u64& serial;
 
         CommandListRAII commandList = nullptr;
 
@@ -67,7 +68,7 @@ namespace Crowy
             RootSignature&,
             CommandSignature& drawSignature,
             CommandSignature& drawIndexedSignature,
-            const u64& frameIndex,
+            const u64& serial,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,
             DescriptorHeapAllocator& dsvHeap,
@@ -202,7 +203,7 @@ namespace Crowy
     private:
         u32 currentIndex() const noexcept{
             return static_cast<u32>(
-                frameIndex % RHI_FRAMES_IN_FLIGHT
+                serial % RHI_FRAMES_IN_FLIGHT
             );
         }
 

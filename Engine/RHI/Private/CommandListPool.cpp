@@ -17,10 +17,8 @@ namespace Crowy
 
         auto& slot = slots[currentIndex()];
 
-        // the lists stay: each one owns an allocator per frame slot and
-        // Begin() resets the one belonging to this frame, which is the
-        // whole reason they are built that way. the pacer already waited
-        // out frame N - RHI_FRAMES_IN_FLIGHT, so this slot is free.
+        // the lists stay: the same wait means none of them is still on the
+        // GPU, so their Begin() may reset what they recorded
         slot.nextIndex = 0;
 
     #if CROWY_FRAME_STATS

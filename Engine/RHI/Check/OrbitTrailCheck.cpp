@@ -49,11 +49,6 @@ namespace{
     }
 
     // One frame's worth of work, fully serialized: push, copy, read back, wait.
-    //
-    // Submit signals ++frameIndex, so getting back to the physical slot the
-    // copy was recorded against takes another RHI_FRAMES_IN_FLIGHT - 1 - the
-    // same nudge the other headless checks make. The extra step after the
-    // download rotates the staging slot, which is the point of the exercise.
     class RingProbe{
     private:
         RHIDevice& device;
@@ -95,7 +90,8 @@ namespace{
             RHICommandList* lists[] = {cmdList.get()};
             device.Submit(lists);
             device.WaitFrame(device.GetSubmittedFrame());
-            readback->Download(out.data(), ringBytes);        }
+            readback->Download(out.data(), ringBytes);
+        }
     };
 
     struct Mismatch{
