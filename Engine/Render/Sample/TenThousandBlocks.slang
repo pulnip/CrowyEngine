@@ -1,53 +1,4 @@
-// mirror of Vertex in Engine/RHI/Common/Vertex.hpp.
-// A structured buffer pack tightly
-struct Vertex{
-    float3 position;
-    float3 normal;
-    float2 texCoord;
-    float4 tangent;
-};
-
-// mirror of MaterialData in RenderMaterial.hpp;
-// unused here - this sample colours by objectID - but declared so the push
-// constant layout matches the C++ side exactly
-struct MaterialData{
-    float3 albedo;
-    float metallic;
-    float3 emissive;
-    float roughness;
-    uint albedoMapID;
-    uint normalMapID;
-    uint mrMapID;
-    uint _pad0;
-};
-
-// mirror of DrawData in RenderSceneData.hpp
-struct DrawData{
-    float4x4 world;
-    uint materialIndex;
-    uint objectID;
-    uint vbIndex;
-    uint _pad0;
-};
-
-// mirror of ScenePush in the same header;
-// per-draw data rides in draws[drawID], never here
-struct ScenePush{
-    DescriptorHandle<StructuredBuffer<DrawData>> draws;
-    DescriptorHandle<StructuredBuffer<MaterialData>> materials;
-    DescriptorHandle<StructuredBuffer<Vertex>> vertices;
-    // row 0 of this frame's slice inside the shared transient buffer
-    uint drawBase;
-    uint materialBase;
-};
-
-[[vk::push_constant]]
-ConstantBuffer<ScenePush> pass : register(b0);
-
-// mirror of ViewData's prefix
-cbuffer view : register(b1) {
-    float4x4 viewProj;
-};
+#include "SceneData.slang"
 
 struct VertexOut{
     float4 posProj : SV_Position;
@@ -71,13 +22,8 @@ VertexOut vs_main(
     uint vertexID : SV_VertexID,
     uint drawID : SV_StartInstanceLocation
 ){
-    StructuredBuffer<DrawData> draws = pass.draws;
-    DrawData d = draws[pass.drawBase + drawID];
-
-    // SV_VertexID is the raw index value: Metal folds the draw's baseVertex
-    // into it and D3D12 does not, so the pool row comes from the draw instead.
-    StructuredBuffer<Vertex> vertices = pass.vertices;
-    Vertex input = vertices[d.vbIndex + vertexID];
+    DrawData d = LoadDraw(drawID);
+    Vertex input = LoadVertex(d, vertexID);
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 

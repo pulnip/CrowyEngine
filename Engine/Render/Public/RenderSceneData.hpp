@@ -31,10 +31,13 @@ namespace Crowy
 
     struct ViewData {
         Mat4 viewProj = unitMat();
+        // which debug view a shader that branches on it draws; 0 is none
+        u32 debugMode = 0;
 
-        f32 _pad[48]{};
+        f32 _pad[47]{};
     };
     static_assert(sizeof(ViewData) == RHI_CB_ALIGN);
+    static_assert(offsetof(ViewData, debugMode) == 64);
     static_assert(std::is_trivially_copyable_v<ViewData>);
 
     // A shader wanting more declares a struct beginning with these members,

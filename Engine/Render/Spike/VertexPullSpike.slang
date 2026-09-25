@@ -15,54 +15,11 @@
 //   FAIL: any other shape. Every draw but the first read the pool from row 0,
 //         which is what putting the offset back into baseVertex does on D3D12.
 //
-// MaterialBuckets, TenThousandBlocks and CornellRoom all pull this way; each
-// one lost every mesh but the first on D3D12 before the contract was fixed.
+// Every Render shader pulls through LoadVertex (Engine/Shader/SceneData.slang),
+// and so does this spike. Before the contract was fixed, each sample lost every
+// mesh but the first on D3D12.
 
-// mirror of Vertex in Engine/RHI/Common/Vertex.hpp.
-// A structured buffer pack tightly
-struct Vertex{
-    float3 position;
-    float3 normal;
-    float2 texCoord;
-    float4 tangent;
-};
-
-// mirror of DrawData / MaterialData / ScenePush
-struct DrawData{
-    float4x4 world;
-    uint materialIndex;
-    uint objectID;
-    uint vbIndex;
-    uint _pad0;
-};
-
-struct MaterialData{
-    float3 albedo;
-    float metallic;
-    float3 emissive;
-    float roughness;
-    uint albedoMapID;
-    uint normalMapID;
-    uint mrMapID;
-    uint _pad0;
-};
-
-struct ScenePush{
-    DescriptorHandle<StructuredBuffer<DrawData>> draws;
-    DescriptorHandle<StructuredBuffer<MaterialData>> materials;
-    DescriptorHandle<StructuredBuffer<Vertex>> vertices;
-    // row 0 of this frame's slice inside the shared transient buffer
-    uint drawBase;
-    uint materialBase;
-};
-
-[[vk::push_constant]]
-ConstantBuffer<ScenePush> pass : register(b0);
-
-// mirror of ViewData's prefix
-cbuffer view : register(b1) {
-    float4x4 viewProj;
-};
+#include "SceneData.slang"
 
 // keep in sync with VertexPullSpike.cpp
 static const uint SLOT_COUNT = 4;
@@ -84,13 +41,10 @@ VertexOut vs_main(
         float3(0.95, 0.85, 0.25)
     };
 
-    StructuredBuffer<DrawData> draws = pass.draws;
-    DrawData d = draws[pass.drawBase + drawID];
-
+    DrawData d = LoadDraw(drawID);
     // the whole point of this spike: the pool offset travels in the draw row,
     // never in the args' baseVertex
-    StructuredBuffer<Vertex> vertices = pass.vertices;
-    Vertex input = vertices[d.vbIndex + vertexID];
+    Vertex input = LoadVertex(d, vertexID);
 
     VertexOut output;
     output.posProj = mul(viewProj, mul(d.world, float4(input.position, 1.0)));
