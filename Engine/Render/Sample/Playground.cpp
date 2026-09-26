@@ -21,7 +21,11 @@
 
 namespace Crowy
 {
-    struct UIContext {};
+    struct UIContext {
+        // a value changed behind the panel's widgets, which seed only when
+        // they are built
+        bool panelDirty = false;
+    };
 
     CROWY_STRUCT(MaterialData)
         .SetProperty("albedo", &MaterialData::albedo)
@@ -82,12 +86,27 @@ namespace Crowy
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
         Widget panel = Column({});
+        // the panel's material sections, and the port's targets besides
+        // `camera`
+        std::vector<NamedMaterial> exposedMaterials;
+        // what the panel's debug section was built from
+        RenderDebug shownDebug;
 
         // shown by debug.showStats, hidden by default like the panel so the
         // smoke capture matches the panel-less one
         StatsOverlay statsOverlay;
 
     public:
+        // the port outlives these members, and its callbacks point at them
+        ~Playground() override {
+            if(auto* port = Port()) {
+                port->Unexpose("camera");
+                for(const auto& material: exposedMaterials)
+                    port->Unexpose(std::format("material.{}", material.name));
+            }
+        }
+        CROWY_DECLARE_PINNED(Playground)
+
         Playground()
             : RenderApp(
                   makeConfig(),
@@ -343,7 +362,7 @@ namespace Crowy
             );
 
             constexpr auto Last = ChartColumns - 1;
-            const std::array exposed{
+            exposedMaterials = {
                 NamedMaterial{"floor", floorMaterial},
                 NamedMaterial{"smooth-dielectric", chartMaterials[0]},
                 NamedMaterial{"rough-dielectric", chartMaterials[Last]},
@@ -358,15 +377,11 @@ namespace Crowy
                 NamedMaterial{"emissive", emissiveMaterials[1]}
             };
 
-            std::vector<Widget> sections{debugSection(), cameraSection()};
-            for(const auto& material: exposed) {
-                sections.push_back(
-                    materialSection(scene, material.name, material.handle)
-                );
-            }
-            panel = Column(std::move(sections));
+            shownDebug = Debug();
+            panel = buildPanel();
 
-            // the port's targets are the panel's, under the same rule
+            // the port's targets are the panel's, under the same rule; a
+            // port write lands behind the panel's widgets, so it rebuilds them
             if(auto* port = Port()) {
                 auto& camera = static_cast<FlyCamera&>(Camera());
 
@@ -374,13 +389,17 @@ namespace Crowy
                     "camera",
                     &camera,
                     *GetDesc<FlyCamera>(),
-                    [&camera] { camera.RecomputeView(); }
+                    [this, &camera] {
+                        camera.RecomputeView();
+                        uiContext.panelDirty = true;
+                    }
                 );
-                for(const auto& material: exposed) {
+                for(const auto& material: exposedMaterials) {
                     port->Expose(
                         std::format("material.{}", material.name),
                         &materialData(scene, material.handle),
-                        *GetDesc<MaterialData>()
+                        *GetDesc<MaterialData>(),
+                        [this] { uiContext.panelDirty = true; }
                     );
                 }
             }
@@ -422,6 +441,16 @@ namespace Crowy
                 statsOverlay.Draw(LastFrameStats());
             }
 
+            // the port, the keys or the panel itself may have moved it
+            if(debug != shownDebug) {
+                shownDebug = debug;
+                uiContext.panelDirty = true;
+            }
+            // here, before Prepare: a callback runs inside the tree's submit
+            // and may only raise the flag
+            if(std::exchange(uiContext.panelDirty, false))
+                panel = buildPanel();
+
             if(debug.showPanel) {
                 // Prepare opens the shared "Crowy" window, whose saved rect
                 // another sample may have left collapsed or off-screen
@@ -455,6 +484,17 @@ namespace Crowy
             MaterialHandle handle
         ) {
             return scene.Materials().GetRef(handle).data;
+        }
+
+        Widget buildPanel() {
+            std::vector<Widget> sections{debugSection(), cameraSection()};
+            for(const auto& material: exposedMaterials) {
+                sections.push_back(
+                    materialSection(Scene(), material.name, material.handle)
+                );
+            }
+
+            return Column(std::move(sections));
         }
 
         Widget materialSection(
