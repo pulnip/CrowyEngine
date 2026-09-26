@@ -231,7 +231,15 @@ protected:
 };
 
 TEST_F(CommandPortTest, PingRoundTrip) {
-    const auto response = exchange(post(R"({"cmd":"ping"})"));
+    Client client(port.Port());
+    client.Send(post(R"({"cmd":"ping"})"));
+
+    // how many drains the client needs to see the close depends on the
+    // loopback stack, so the drain is read where the verb is dispatched
+    ASSERT_TRUE(pump(port, [&] { return port.Status().lastVerb == "ping"; }));
+    EXPECT_EQ(port.Status().lastVerbDrain, port.Status().drainCount);
+
+    const auto response = parseResponse(client.Receive(port));
 
     EXPECT_EQ(response.code, 200);
     EXPECT_TRUE(response.ok()) << response.body;
@@ -239,8 +247,6 @@ TEST_F(CommandPortTest, PingRoundTrip) {
 
     const auto status = port.Status();
     EXPECT_TRUE(status.everConnected);
-    EXPECT_EQ(status.lastVerb, "ping");
-    EXPECT_EQ(status.lastVerbDrain, status.drainCount - 1);
     EXPECT_FALSE(status.lastReplyFailed);
 }
 
