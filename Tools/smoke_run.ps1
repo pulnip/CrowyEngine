@@ -9,6 +9,12 @@
 #   a capture path falls back to $env:CROWY_SMOKE_CAPTURE_DIR\<sample>.bmp
 #   when that directory variable is set; capture rides on the engine's
 #   CROWY_DUMP_FRAME hook, frame index override via CROWY_SMOKE_CAPTURE_AT.
+#   a .bmp capture becomes a PNG through ImageCompareCheck.exe beside the
+#   executable (the BMP stays when that tool is not built).
+#   when Engine\*\Sample\Golden\<sample>.dx12.png (or Spike\Golden) exists,
+#   a capture of the default frame 60 is compared against it, and a
+#   difference fails the run with a heat map beside the capture; the
+#   failure prints the Copy-Item that accepts the new picture.
 #
 # Validation errors: the script sets CROWY_D3D_DEBUG_BREAK=1, which makes
 # the engine break on debug-layer errors — without a debugger that aborts
@@ -25,6 +31,32 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$sampleName = [IO.Path]::GetFileNameWithoutExtension($App)
+$tool = Join-Path (Split-Path -Parent $App) "ImageCompareCheck.exe"
+$backend = "dx12"
+
+# runs ImageCompareCheck.exe and returns its exit code; the tool reports
+# errors on stderr, which must not stop this script
+function Invoke-ImageCompare([string[]]$Arguments, [switch]$Quiet) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $lines = & $tool $Arguments
+        if (-not $Quiet) {
+            # foreach, not ForEach-Object: piping a silent run's $null would
+            # print an empty line
+            foreach ($line in $lines) {
+                Write-Host $line
+            }
+        }
+        return $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 if ($Duration -le 0) {
     $Duration = 5
     if ($env:CROWY_SMOKE_DURATION) {
@@ -33,7 +65,6 @@ if ($Duration -le 0) {
 }
 
 if (-not $Capture -and $env:CROWY_SMOKE_CAPTURE_DIR) {
-    $sampleName = [IO.Path]::GetFileNameWithoutExtension($App)
     $Capture = Join-Path $env:CROWY_SMOKE_CAPTURE_DIR "$sampleName.bmp"
 }
 
@@ -47,7 +78,14 @@ if ($Capture) {
     if ($captureDir) {
         New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
     }
+    # an earlier run's PNG or heat map must not read as this run's
     Remove-Item -Force -ErrorAction SilentlyContinue $Capture
+    Remove-Item -Force -ErrorAction SilentlyContinue `
+        ([IO.Path]::ChangeExtension($Capture, ".diff.png"))
+    if ($Capture.EndsWith(".bmp")) {
+        Remove-Item -Force -ErrorAction SilentlyContinue `
+            ([IO.Path]::ChangeExtension($Capture, ".png"))
+    }
     $env:CROWY_DUMP_FRAME = $Capture
     if ($env:CROWY_SMOKE_CAPTURE_AT) {
         $env:CROWY_DUMP_FRAME_AT = $env:CROWY_SMOKE_CAPTURE_AT
@@ -84,8 +122,9 @@ foreach ($f in @($outLog, $errLog)) {
     }
 }
 
+# case-sensitive, so a message that merely says "exception" passes
 $markers = "D3D12 ERROR|failed assertion|Assertion failed|Exception"
-if ($log | Select-String -Pattern $markers) {
+if ($log | Select-String -Pattern $markers -CaseSensitive) {
     Write-Host "FAIL: assertion or validation error"
     $status = 1
 }
@@ -96,16 +135,62 @@ if ($status -ne 0) {
     Remove-Item -Force -ErrorAction SilentlyContinue $outLog, $errLog
     exit 1
 }
+Remove-Item -Force -ErrorAction SilentlyContinue $outLog, $errLog
 
-if ($Capture) {
-    if (Test-Path $Capture) {
-        Write-Host "captured frame: $Capture"
-    }
-    else {
-        # headless samples have no swapchain, so nothing to dump
-        Write-Host "note: no frame captured (sample presented no frame?)"
-    }
+if (-not $Capture) {
+    exit 0
+}
+if (-not (Test-Path $Capture)) {
+    # headless samples have no swapchain, so nothing to dump
+    Write-Host "note: no frame captured (sample presented no frame?)"
+    exit 0
 }
 
-Remove-Item -Force -ErrorAction SilentlyContinue $outLog, $errLog
-exit 0
+# uncompressed BMP is bulky
+$haveTool = Test-Path $tool
+if ($Capture.EndsWith(".bmp") -and $haveTool) {
+    $png = [IO.Path]::ChangeExtension($Capture, ".png")
+    $converted = Invoke-ImageCompare -Arguments @("--convert", $Capture, $png)
+    if ($converted -eq 0) {
+        Remove-Item -Force $Capture
+        $Capture = $png
+    }
+}
+Write-Host "captured frame: $Capture"
+
+$golden = Get-ChildItem -ErrorAction SilentlyContinue -Path @(
+    (Join-Path $repoRoot "Engine\*\Sample\Golden\$sampleName.$backend.png"),
+    (Join-Path $repoRoot "Engine\*\Spike\Golden\$sampleName.$backend.png")
+) | Select-Object -First 1
+if (-not $golden) {
+    exit 0
+}
+$golden = $golden.FullName
+
+$captureAt = $env:CROWY_SMOKE_CAPTURE_AT
+if ($captureAt -and $captureAt -ne "60") {
+    Write-Host "note: not compared with $golden (captured frame $captureAt, the golden is frame 60)"
+    exit 0
+}
+if (-not $haveTool) {
+    Write-Host "FAIL: $golden exists, but $tool is not built"
+    exit 1
+}
+
+$compared = Invoke-ImageCompare -Arguments @($Capture, $golden)
+if ($compared -eq 0) {
+    exit 0
+}
+if ($compared -eq 1) {
+    $diff = [IO.Path]::ChangeExtension($Capture, ".diff.png")
+    Write-Host "FAIL: capture differs from $golden"
+    # a passing run leaves no heat map, so only a difference writes one
+    $null = Invoke-ImageCompare -Arguments @($Capture, $golden, "--diff", $diff) -Quiet
+    if (Test-Path $diff) {
+        Write-Host "diff: $diff"
+    }
+    Write-Host "to accept: Copy-Item -Force '$Capture' '$golden'"
+    exit 1
+}
+Write-Host "FAIL: could not compare against $golden"
+exit 1

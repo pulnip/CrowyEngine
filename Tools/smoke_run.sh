@@ -9,12 +9,20 @@
 # ctest run can be stretched without reconfiguring:
 #   CROWY_SMOKE_DURATION=15 ctest --test-dir build -C Debug -L smoke
 #
-# capture saves one rendered frame as an image (PNG when sips can
-# convert, BMP otherwise). Either pass a path as the third argument, or
-# set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per sample:
+# capture saves one rendered frame. Either pass a path as the third
+# argument, or set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per
+# sample:
 #   CROWY_SMOKE_CAPTURE_DIR=captures ctest --test-dir build -C Debug -L smoke
-# It rides on the engine's CROWY_DUMP_FRAME hook; the captured frame
-# index can be overridden with $CROWY_SMOKE_CAPTURE_AT.
+# It rides on the engine's CROWY_DUMP_FRAME hook, which writes a BMP; the
+# captured frame index can be overridden with $CROWY_SMOKE_CAPTURE_AT.
+# A .bmp capture becomes a PNG through ImageCompareCheck beside the
+# executable (the BMP stays when that tool is not built).
+#
+# golden: when Engine/*/Sample/Golden/<sample>.metal.png (or Spike/Golden)
+# exists, a capture of the default frame 60 is compared against it with
+# ImageCompareCheck's defaults, and a difference fails the run with a heat
+# map beside the capture. To accept a new picture, copy the capture over
+# the golden; the failure prints the command.
 #
 # Run from the repository root: samples load Engine/Shader and Content
 # by relative path.
@@ -23,9 +31,14 @@ set -u
 APP="$1"
 DURATION="${2:-${CROWY_SMOKE_DURATION:-5}}"
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+NAME="$(basename "$APP")"
+TOOL="$(dirname "$APP")/ImageCompareCheck"
+BACKEND=metal
+
 CAPTURE="${3:-}"
 if [ -z "$CAPTURE" ] && [ -n "${CROWY_SMOKE_CAPTURE_DIR:-}" ]; then
-    CAPTURE="$CROWY_SMOKE_CAPTURE_DIR/$(basename "$APP").bmp"
+    CAPTURE="$CROWY_SMOKE_CAPTURE_DIR/$NAME.bmp"
 fi
 
 LOG="${TMPDIR:-/tmp}/crowy-smoke-$$.log"
@@ -40,7 +53,11 @@ fi
 
 if [ -n "$CAPTURE" ]; then
     mkdir -p "$(dirname "$CAPTURE")"
-    rm -f "$CAPTURE"
+    # an earlier run's PNG or heat map must not read as this run's
+    rm -f "$CAPTURE" "${CAPTURE%.*}.diff.png"
+    case "$CAPTURE" in
+    *.bmp) rm -f "${CAPTURE%.bmp}.png" ;;
+    esac
     export CROWY_DUMP_FRAME="$CAPTURE"
     if [ -n "${CROWY_SMOKE_CAPTURE_AT:-}" ]; then
         export CROWY_DUMP_FRAME_AT="$CROWY_SMOKE_CAPTURE_AT"
@@ -85,23 +102,67 @@ if [ "$STATUS" -ne 0 ]; then
     exit 1
 fi
 
-if [ -n "$CAPTURE" ]; then
-    if [ -f "$CAPTURE" ]; then
-        # uncompressed BMP is bulky; convert when sips is around
-        case "$CAPTURE" in
-        *.bmp)
-            PNG="${CAPTURE%.bmp}.png"
-            if sips -s format png "$CAPTURE" --out "$PNG" >/dev/null 2>&1; then
-                rm -f "$CAPTURE"
-                CAPTURE="$PNG"
-            fi
-            ;;
-        esac
-        echo "captured frame: $CAPTURE"
-    else
-        # headless samples have no swapchain, so nothing to dump
-        echo "note: no frame captured (sample presented no frame?)" >&2
-    fi
+if [ -z "$CAPTURE" ]; then
+    exit 0
+fi
+if [ ! -f "$CAPTURE" ]; then
+    # headless samples have no swapchain, so nothing to dump
+    echo "note: no frame captured (sample presented no frame?)" >&2
+    exit 0
 fi
 
-exit 0
+# uncompressed BMP is bulky
+case "$CAPTURE" in
+*.bmp)
+    PNG="${CAPTURE%.bmp}.png"
+    if [ -x "$TOOL" ] && "$TOOL" --convert "$CAPTURE" "$PNG"; then
+        rm -f "$CAPTURE"
+        CAPTURE="$PNG"
+    fi
+    ;;
+esac
+echo "captured frame: $CAPTURE"
+
+GOLDEN=""
+for CANDIDATE in \
+    "$REPO_ROOT"/Engine/*/Sample/Golden/"$NAME.$BACKEND.png" \
+    "$REPO_ROOT"/Engine/*/Spike/Golden/"$NAME.$BACKEND.png"; do
+    if [ -f "$CANDIDATE" ]; then
+        GOLDEN="$CANDIDATE"
+        break
+    fi
+done
+if [ -z "$GOLDEN" ]; then
+    exit 0
+fi
+
+if [ "${CROWY_SMOKE_CAPTURE_AT:-60}" != 60 ]; then
+    echo "note: not compared with $GOLDEN (captured frame $CROWY_SMOKE_CAPTURE_AT, the golden is frame 60)" >&2
+    exit 0
+fi
+if [ ! -x "$TOOL" ]; then
+    echo "FAIL: $GOLDEN exists, but $TOOL is not built" >&2
+    exit 1
+fi
+
+"$TOOL" "$CAPTURE" "$GOLDEN"
+case $? in
+0)
+    exit 0
+    ;;
+1)
+    DIFF="${CAPTURE%.*}.diff.png"
+    echo "FAIL: capture differs from $GOLDEN" >&2
+    # a passing run leaves no heat map, so only a difference writes one
+    "$TOOL" "$CAPTURE" "$GOLDEN" --diff "$DIFF" >/dev/null
+    if [ -f "$DIFF" ]; then
+        echo "diff: $DIFF" >&2
+    fi
+    echo "to accept: cp \"$CAPTURE\" \"$GOLDEN\"" >&2
+    exit 1
+    ;;
+*)
+    echo "FAIL: could not compare against $GOLDEN" >&2
+    exit 1
+    ;;
+esac
