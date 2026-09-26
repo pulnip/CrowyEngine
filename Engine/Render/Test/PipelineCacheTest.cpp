@@ -110,3 +110,24 @@ TEST(PipelineCache, RebuildOfAnEmptyCacheCreatesNothing) {
     EXPECT_EQ(device.creates, 0u);
     EXPECT_TRUE(device.deferred.empty());
 }
+
+// A debug view's override keys every material apart from its plain state, so
+// the cache holds both variants side by side and toggling back costs nothing.
+TEST(PipelineCache, AnOverriddenPassResolvesItsOwnVariants) {
+    FakeDevice device;
+    PipelineCache cache(device);
+    const auto plain = ResolveAll(cache);
+
+    auto wireframe = BasePass();
+    wireframe.fillMode = RHIFillMode::Wireframe;
+    std::vector<RHIGraphicsPipelineState*> variants;
+    for(const auto& material: ThreeMaterials())
+        variants.push_back(&cache.Resolve(material, wireframe));
+
+    EXPECT_EQ(cache.Count(), 6u);
+    EXPECT_EQ(device.creates, 6u);
+    for(usize i = 0; i < variants.size(); ++i)
+        EXPECT_NE(variants[i], plain[i]);
+    EXPECT_EQ(ResolveAll(cache), plain);
+    EXPECT_EQ(device.creates, 6u);
+}

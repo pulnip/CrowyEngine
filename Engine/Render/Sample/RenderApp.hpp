@@ -7,6 +7,7 @@
 #include "AppFramework.hpp"
 #include "Camera.hpp"
 #include "CommandPort.hpp"
+#include "EnumUtil.hpp"
 #include "FrameHistory.hpp"
 #include "FrameProfiler.hpp"
 #include "GeometryPool.hpp"
@@ -21,6 +22,37 @@ namespace Crowy
     using GeometryPoolPtr = RAII<GeometryPool>;
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
+
+    // mirrored by the constants in Engine/Shader/DebugView.slang
+    enum class DebugMode : u32 {
+        Lit,
+        Unshaded,
+        Normals,
+        Depth,
+        Overdraw,
+    };
+
+    CROWY_ENUM_BEGIN(DebugMode)
+        CROWY_ENUM_VALUE(Lit)
+        CROWY_ENUM_VALUE(Unshaded)
+        CROWY_ENUM_VALUE(Normals)
+        CROWY_ENUM_VALUE(Depth)
+        CROWY_ENUM_VALUE(Overdraw)
+    CROWY_ENUM_END()
+
+    // what the frame shows instead of the plain lit picture, exposed as `debug`
+    struct RenderDebug {
+        DebugMode mode = DebugMode::Lit;
+        bool wireframe = false;
+        // read by a sample that hosts the stats overlay or a panel
+        bool showStats = false;
+        bool showPanel = false;
+
+        friend bool operator==(
+            const RenderDebug&,
+            const RenderDebug&
+        ) = default;
+    };
 
     // Sample framework for Engine/Render: Owns the frame order and seals it
     class RenderApp: public App {
@@ -71,7 +103,7 @@ namespace Crowy
         RHIDevice* device = nullptr;
         RHISwapchain* swapchain = nullptr;
         RHITextureRAII depthBuffer;
-        // storage the pass description's span points at
+        // the swapchain's, which the scene pass renders to
         RHIPixelFormat colorFormat = RHIPixelFormat::RGBA8_UNORM;
         f32 aspect = 1.0f;
 
@@ -79,6 +111,8 @@ namespace Crowy
         SceneRendererPtr renderer;
         RenderScene scene;
         CameraRAII camera;
+        // declared before the port, which points at it, so it outlives it
+        RenderDebug debug;
 
         // debug builds only; null when disabled, inert with
         // Status().server == BindFailed when no port could bind
@@ -151,6 +185,7 @@ namespace Crowy
         auto& Renderer() noexcept { return *renderer; }
         const auto& Camera() const noexcept { return *camera; }
         auto& Camera() noexcept { return *camera; }
+        RenderDebug& Debug() noexcept { return debug; }
         f32 Aspect() const noexcept { return aspect; }
         // for a sample that registers verbs of its own
         CommandPort* Port() noexcept { return port.get(); }

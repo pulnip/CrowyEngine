@@ -1,3 +1,4 @@
+#include "DebugView.slang"
 #include "SceneData.slang"
 #include "SRGB.slang"
 
@@ -115,6 +116,17 @@ float3 toDisplay(float3 color) {
     return linear2srgb(color / (1.0 + color));
 }
 
+// the lit picture, or the debug view the frame asks for
+float3 present(Surface s, VertexOut input) {
+    return ApplyDebugView(
+        debugMode,
+        toDisplay(shade(s, input.posWorld)),
+        toDisplay(s.albedo + s.emissive),
+        s.normal,
+        input.posProj.z
+    );
+}
+
 // 1 where a line of this spacing crosses the pixel, fading out before the
 // cells shrink below a few pixels and turn to noise
 float gridLine(float2 coord, float2 footprint, float spacing) {
@@ -160,7 +172,7 @@ float4 fs_grid(VertexOut input) : SV_Target {
     Surface s = loadSurface(input);
     s.albedo *= 1.0 - gridDarkening(input.posWorld, s.normal);
 
-    return float4(toDisplay(shade(s, input.posWorld)), 1.0);
+    return float4(present(s, input), 1.0);
 }
 
 [shader("fragment")]
@@ -171,7 +183,7 @@ float4 fs_opaque(VertexOut input, bool frontFace : SV_IsFrontFace) : SV_Target {
     if(!frontFace)
         s.normal = -s.normal;
 
-    return float4(toDisplay(shade(s, input.posWorld)), 1.0);
+    return float4(present(s, input), 1.0);
 }
 
 // A second entry point rather than an alpha channel in MaterialData
@@ -179,5 +191,5 @@ float4 fs_opaque(VertexOut input, bool frontFace : SV_IsFrontFace) : SV_Target {
 float4 fs_translucent(VertexOut input) : SV_Target {
     Surface s = loadSurface(input);
 
-    return float4(toDisplay(shade(s, input.posWorld)), 0.45);
+    return float4(present(s, input), 0.45);
 }

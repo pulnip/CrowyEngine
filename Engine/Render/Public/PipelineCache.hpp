@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <unordered_map>
 
@@ -15,6 +16,13 @@ namespace Crowy
     struct PassPipelineDesc {
         std::span<const RHIPixelFormat> renderTargetFormats;
         RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
+
+        // set, each replaces the same-named state of every material in the
+        // pass; the debug views are the first to set them
+        std::optional<RHIFillMode> fillMode;
+        std::optional<RHIBlendState> blend;
+        std::optional<RHIComparisonFunc> depthFunc;
+        std::optional<bool> depthWrite;
     };
 
     RHIGraphicsPipelineStateDesc Compose(

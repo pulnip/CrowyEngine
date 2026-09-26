@@ -182,3 +182,64 @@ TEST(PipelineKey, MaterialStateSeparatesPipelines) {
     EXPECT_NE(opaque, Compose(doubleSided, BasePass(formats)));
     EXPECT_NE(opaque, Compose(translucent, BasePass(formats)));
 }
+
+// The overdraw view's shape: every material, the translucent one included,
+// adds without testing or writing depth, whatever it asked for itself.
+TEST(PipelineKey, PassOverridesReplaceTheMaterialState) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+
+    auto translucent = OpaqueMaterial();
+    translucent.depthWrite = false;
+    RHIBlendState alpha{};
+    alpha.renderTargets[0] = RHIRenderTargetBlendState{
+        .blendEnable = true,
+        .srcBlend = RHIBlend::SrcAlpha,
+        .dstBlend = RHIBlend::InvSrcAlpha
+    };
+    translucent.blend = alpha;
+
+    RHIBlendState additive{};
+    additive.renderTargets[0] = RHIRenderTargetBlendState{
+        .blendEnable = true,
+        .srcBlend = RHIBlend::One,
+        .dstBlend = RHIBlend::One
+    };
+    auto overdraw = BasePass(formats);
+    overdraw.fillMode = RHIFillMode::Wireframe;
+    overdraw.blend = additive;
+    overdraw.depthFunc = RHIComparisonFunc::Always;
+    overdraw.depthWrite = false;
+
+    for(const auto& material: {OpaqueMaterial(), translucent}) {
+        const auto desc = Compose(material, overdraw);
+
+        EXPECT_EQ(desc.rasterizer.fillMode, RHIFillMode::Wireframe);
+        ASSERT_TRUE(desc.blend.has_value());
+        EXPECT_EQ(*desc.blend, additive);
+        // Metal blends whatever this says, D3D12 honours it
+        EXPECT_TRUE(desc.blend->renderTargets[0].blendEnable);
+        ASSERT_TRUE(desc.depthStencil.has_value());
+        EXPECT_EQ(desc.depthStencil->format, RHIPixelFormat::D32_FLOAT);
+        EXPECT_EQ(desc.depthStencil->depthFunc, RHIComparisonFunc::Always);
+        EXPECT_FALSE(desc.depthStencil->depthWriteEnable);
+        EXPECT_NE(desc, Compose(material, BasePass(formats)));
+    }
+}
+
+TEST(PipelineKey, APassWithoutOverridesKeepsTheMaterialState) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+
+    auto material = OpaqueMaterial();
+    material.rasterizer.fillMode = RHIFillMode::Wireframe;
+    material.blend = RHIBlendState{};
+    material.depthFunc = RHIComparisonFunc::LessEqual;
+    material.depthWrite = false;
+
+    const auto desc = Compose(material, BasePass(formats));
+
+    EXPECT_EQ(desc.rasterizer, material.rasterizer);
+    EXPECT_EQ(desc.blend, material.blend);
+    ASSERT_TRUE(desc.depthStencil.has_value());
+    EXPECT_EQ(desc.depthStencil->depthFunc, RHIComparisonFunc::LessEqual);
+    EXPECT_FALSE(desc.depthStencil->depthWriteEnable);
+}

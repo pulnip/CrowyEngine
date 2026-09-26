@@ -59,16 +59,21 @@ namespace Crowy
                 },
             .rasterizer = material.rasterizer,
             .fragmentShader = material.fragmentShader,
+            // always present, even when the pass overrides it: without it
+            // Metal loses the depth format and D3D12 gets DSVFormat UNKNOWN
             .depthStencil =
                 RHIDepthStencilState{
                     .format = pass.depthFormat,
-                    .depthWriteEnable = material.depthWrite,
-                    .depthFunc = material.depthFunc
+                    .depthWriteEnable =
+                        pass.depthWrite.value_or(material.depthWrite),
+                    .depthFunc = pass.depthFunc.value_or(material.depthFunc)
                 },
-            .blend = material.blend,
+            .blend = pass.blend ? pass.blend : material.blend,
             .renderTargetCount = pass.renderTargetFormats.size(),
             .profile = material.profile
         };
+        if(pass.fillMode)
+            desc.rasterizer.fillMode = *pass.fillMode;
         std::ranges::copy(
             pass.renderTargetFormats,
             desc.renderTargetFormats.begin()

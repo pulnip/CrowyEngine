@@ -11,6 +11,7 @@
 
 #include "FrameSelector.hpp"
 #include "Log.hpp"
+#include "Object.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
@@ -40,6 +41,36 @@ namespace Crowy
             named += path.substr(at);
 
             return named;
+        }
+
+        // what a debug view overrides in every material, for the whole pass
+        PassPipelineDesc debugPass(
+            const RenderDebug& debug,
+            std::span<const RHIPixelFormat> renderTargetFormats,
+            RHIPixelFormat depthFormat
+        ) {
+            PassPipelineDesc pass{
+                .renderTargetFormats = renderTargetFormats,
+                .depthFormat = depthFormat
+            };
+            if(debug.wireframe)
+                pass.fillMode = RHIFillMode::Wireframe;
+            if(debug.mode == DebugMode::Overdraw) {
+                // every fragment adds; blendEnable is spelled out because
+                // Metal blends without it and D3D12 would not
+                RHIBlendState additive{};
+                additive.renderTargets[0] = RHIRenderTargetBlendState{
+                    .blendEnable = true,
+                    .srcBlend = RHIBlend::One,
+                    .dstBlend = RHIBlend::One,
+                    .blendOp = RHIBlendOp::Add
+                };
+                pass.blend = additive;
+                pass.depthFunc = RHIComparisonFunc::Always;
+                pass.depthWrite = false;
+            }
+
+            return pass;
         }
 
         // every number describes stats.report.frame, one frame that ended,
@@ -192,6 +223,13 @@ namespace Crowy
         }
     }
 
+    CROWY_STRUCT(RenderDebug)
+        .SetProperty("mode", &RenderDebug::mode)
+        .SetProperty("wireframe", &RenderDebug::wireframe)
+        .SetProperty("showStats", &RenderDebug::showStats)
+        .SetProperty("showPanel", &RenderDebug::showPanel)
+    CROWY_STRUCT_END(RenderDebug)
+
     RenderApp::~RenderApp() = default;
 
     RenderApp::RenderApp(const Config& config, CameraRAII camera)
@@ -281,6 +319,9 @@ namespace Crowy
         }
 
         port = std::make_unique<CommandPort>(portConfig);
+        // no callback: every reader reads it each frame. Exposed even on an
+        // inert port, like the samples' own targets
+        port->Expose("debug", &debug, *GetDesc<RenderDebug>());
         // a port that could not bind stays, inert, so a sample can show
         // that it did not; only its verbs are skipped
         if(port->Port() == 0)
@@ -609,8 +650,13 @@ namespace Crowy
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
     ) {
+        // one copy for the whole frame: OnPrepareUI below may write the
+        // original, and the pipelines and the clear must agree
+        const auto frameDebug = debug;
+
         auto& view = renderer->View(ViewMain);
         view.viewProj = camera->ViewProj(aspect);
+        view.debugMode = static_cast<u32>(frameDebug.mode);
         view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
         // every per-frame buffer settles before the pass opens
@@ -618,10 +664,7 @@ namespace Crowy
         const std::array passFormats = {colorFormat};
         renderer->BuildFrame(
             scene,
-            PassPipelineDesc{
-                .renderTargetFormats = passFormats,
-                .depthFormat = config.depthFormat
-            },
+            debugPass(frameDebug, passFormats, config.depthFormat),
             ViewMain
         );
         renderer->Upload();
@@ -632,7 +675,10 @@ namespace Crowy
         const auto uiAcquires = OnPrepareUI(cmdList);
 
         auto colorAttachment = backBuffer;
-        colorAttachment.clearColor = config.clearColor;
+        // additive counts read only against black
+        colorAttachment.clearColor = frameDebug.mode == DebugMode::Overdraw ?
+            Colors::Black :
+            config.clearColor;
         std::array colorAttachments = {colorAttachment};
         std::vector<RHITextureBarrier> acquires{
             AcquireBackBuffer(backBuffer),

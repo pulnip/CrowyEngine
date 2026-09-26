@@ -82,12 +82,10 @@ namespace Crowy
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
         Widget panel = Column({});
-        // hidden by default so the smoke capture matches the panel-less one
-        bool panelVisible = false;
 
+        // shown by debug.showStats, hidden by default like the panel so the
+        // smoke capture matches the panel-less one
         StatsOverlay statsOverlay;
-        // hidden by default, for the same reason as the panel
-        bool statsVisible = false;
 
     public:
         Playground()
@@ -360,7 +358,7 @@ namespace Crowy
                 NamedMaterial{"emissive", emissiveMaterials[1]}
             };
 
-            std::vector<Widget> sections{cameraSection()};
+            std::vector<Widget> sections{debugSection(), cameraSection()};
             for(const auto& material: exposed) {
                 sections.push_back(
                     materialSection(scene, material.name, material.handle)
@@ -389,11 +387,12 @@ namespace Crowy
         }
 
         void OnProcessInput(const InputProvider& input) override {
+            auto& debug = Debug();
             if(input.IsKeyPressed(PanelToggleKey)) {
-                panelVisible = !panelVisible;
+                debug.showPanel = !debug.showPanel;
             }
             if(input.IsKeyPressed(StatsToggleKey)) {
-                statsVisible = !statsVisible;
+                debug.showStats = !debug.showStats;
             }
         }
 
@@ -418,11 +417,12 @@ namespace Crowy
             if(auto* port = Port()) {
                 drawPortStatusChip(port->Status());
             }
-            if(statsVisible) {
+            const auto& debug = Debug();
+            if(debug.showStats) {
                 statsOverlay.Draw(LastFrameStats());
             }
 
-            if(panelVisible) {
+            if(debug.showPanel) {
                 // Prepare opens the shared "Crowy" window, whose saved rect
                 // another sample may have left collapsed or off-screen
                 ImGui::SetNextWindowPos(
@@ -467,6 +467,16 @@ namespace Crowy
                 label,
                 &materialData(scene, handle),
                 *GetDesc<MaterialData>(),
+                [] {}
+            );
+        }
+
+        Widget debugSection() {
+            // OnRecord reads it every frame; no dirty consumer
+            return buildPropertyTree(
+                "debug",
+                &Debug(),
+                *GetDesc<RenderDebug>(),
                 [] {}
             );
         }
