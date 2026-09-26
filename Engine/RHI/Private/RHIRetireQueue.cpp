@@ -1,5 +1,7 @@
 #include "RHIRetireQueue.hpp"
 
+#include <utility>
+
 namespace Crowy
 {
     void RHIRetireQueue::Defer(Reclaim reclaim){
@@ -27,14 +29,19 @@ namespace Crowy
     }
 
     void RHIRetireQueue::CollectAll(){
-        for(auto& entry: tagged){
-            entry.reclaim();
-        }
-        tagged.clear();
+        // destroying a reclaim may Defer another (D3D12 frees a descriptor
+        // that way), so each round takes the queues out until none arrives
+        while(!tagged.empty() || !pending.empty()){
+            auto entries = std::exchange(tagged, {});
+            for(auto& entry: entries){
+                entry.reclaim();
+            }
+            entries.clear();
 
-        for(auto& reclaim: pending){
-            reclaim();
+            auto reclaims = std::exchange(pending, {});
+            for(auto& reclaim: reclaims){
+                reclaim();
+            }
         }
-        pending.clear();
     }
 }
