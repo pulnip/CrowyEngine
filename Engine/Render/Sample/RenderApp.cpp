@@ -609,7 +609,9 @@ namespace Crowy
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
     ) {
-        renderer->View(ViewMain).viewProj = camera->ViewProj(aspect);
+        auto& view = renderer->View(ViewMain);
+        view.viewProj = camera->ViewProj(aspect);
+        view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
         // every per-frame buffer settles before the pass opens
         OnUpdateFrameData();

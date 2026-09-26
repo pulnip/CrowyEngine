@@ -44,9 +44,15 @@ struct ScenePush{
 [[vk::push_constant]]
 ConstantBuffer<ScenePush> pass : register(b0);
 
+// scalars and float4 only, so HLSL and Metal lay it out alike
 cbuffer view : register(b1) {
     float4x4 viewProj;
     uint debugMode;
+    uint _pad0;
+    uint _pad1;
+    uint _pad2;
+    // xyz = camera position, w unused
+    float4 cameraPosition;
 };
 
 DrawData LoadDraw(uint drawID){

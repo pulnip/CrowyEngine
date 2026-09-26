@@ -29,15 +29,21 @@ namespace Crowy
     static_assert(offsetof(DrawData, vbIndex) == 72);
     static_assert(std::is_trivially_copyable_v<DrawData>);
 
+    // Only scalars and 16-byte vectors: HLSL packs a float3 after a scalar
+    // tighter than Metal does.
     struct ViewData {
         Mat4 viewProj = unitMat();
         // which debug view a shader that branches on it draws; 0 is none
         u32 debugMode = 0;
+        u32 _pad0[3]{};
+        // xyz = camera position, w unused
+        Vec4 cameraPosition{};
 
-        f32 _pad[47]{};
+        f32 _pad[40]{};
     };
     static_assert(sizeof(ViewData) == RHI_CB_ALIGN);
     static_assert(offsetof(ViewData, debugMode) == 64);
+    static_assert(offsetof(ViewData, cameraPosition) == 80);
     static_assert(std::is_trivially_copyable_v<ViewData>);
 
     // A shader wanting more declares a struct beginning with these members,

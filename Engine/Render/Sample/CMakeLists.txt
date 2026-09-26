@@ -32,3 +32,17 @@ DEPENDS
     Crowy::Reflection
     Crowy::UI
 )
+
+crowy_declare_example(Playground
+SOURCES
+    FlyCamera.cpp
+    RenderApp.cpp
+    PortStatusChip.cpp
+    StatsOverlay.cpp
+    Playground.cpp
+DEPENDS
+    Crowy::Remote
+    Crowy::Render
+    Crowy::Reflection
+    Crowy::UI
+)
