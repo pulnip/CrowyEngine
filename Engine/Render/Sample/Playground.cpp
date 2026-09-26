@@ -2,11 +2,13 @@
 #include <format>
 #include <memory>
 #include <numbers>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <imgui.h>
 
+#include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
@@ -26,6 +28,37 @@ namespace Crowy
         // they are built
         bool panelDirty = false;
     };
+
+    // a named camera pose per station; Free leaves the camera where it is
+    enum class CameraBookmark : u32 {
+        Free,
+        Overview,
+        Scale,
+        Emissive,
+        Materials,
+        Glass,
+        DoubleSided,
+    };
+
+    CROWY_ENUM_BEGIN(CameraBookmark)
+        CROWY_ENUM_VALUE(Free)
+        CROWY_ENUM_VALUE(Overview)
+        CROWY_ENUM_VALUE(Scale)
+        CROWY_ENUM_VALUE(Emissive)
+        CROWY_ENUM_VALUE(Materials)
+        CROWY_ENUM_VALUE(Glass)
+        CROWY_ENUM_VALUE(DoubleSided)
+    CROWY_ENUM_END()
+
+    // exposed as `bookmarks`; writing `current` snaps the camera, even to
+    // the bookmark it already names
+    struct CameraBookmarks {
+        CameraBookmark current = CameraBookmark::Overview;
+    };
+
+    CROWY_STRUCT(CameraBookmarks)
+        .SetProperty("current", &CameraBookmarks::current)
+    CROWY_STRUCT_END(CameraBookmarks)
 
     CROWY_STRUCT(MaterialData)
         .SetProperty("albedo", &MaterialData::albedo)
@@ -75,6 +108,12 @@ namespace Crowy
             MaterialHandle handle;
         };
 
+        struct CameraPose {
+            Vec3 position;
+            f32 yaw = 0.0f;
+            f32 pitch = 0.0f;
+        };
+
         GeometryAllocation sphere{};
         // stretched into walls, boards and bars, scaled into blocks
         GeometryAllocation unitBox{};
@@ -91,6 +130,7 @@ namespace Crowy
         std::vector<NamedMaterial> exposedMaterials;
         // what the panel's debug section was built from
         RenderDebug shownDebug;
+        CameraBookmarks bookmarks;
 
         // shown by debug.showStats, hidden by default like the panel so the
         // smoke capture matches the panel-less one
@@ -100,6 +140,7 @@ namespace Crowy
         // the port outlives these members, and its callbacks point at them
         ~Playground() override {
             if(auto* port = Port()) {
+                port->Unexpose("bookmarks");
                 port->Unexpose("camera");
                 for(const auto& material: exposedMaterials)
                     port->Unexpose(std::format("material.{}", material.name));
@@ -386,6 +427,12 @@ namespace Crowy
                 auto& camera = static_cast<FlyCamera&>(Camera());
 
                 port->Expose(
+                    "bookmarks",
+                    &bookmarks,
+                    *GetDesc<CameraBookmarks>(),
+                    [this] { snapCamera(); }
+                );
+                port->Expose(
                     "camera",
                     &camera,
                     *GetDesc<FlyCamera>(),
@@ -487,7 +534,11 @@ namespace Crowy
         }
 
         Widget buildPanel() {
-            std::vector<Widget> sections{debugSection(), cameraSection()};
+            std::vector<Widget> sections{
+                debugSection(),
+                bookmarksSection(),
+                cameraSection()
+            };
             for(const auto& material: exposedMaterials) {
                 sections.push_back(
                     materialSection(Scene(), material.name, material.handle)
@@ -521,6 +572,54 @@ namespace Crowy
             );
         }
 
+        Widget bookmarksSection() {
+            return buildPropertyTree(
+                "bookmarks",
+                &bookmarks,
+                *GetDesc<CameraBookmarks>(),
+                [this] { snapCamera(); }
+            );
+        }
+
+        // a snap changes the camera section too, so the panel rebuilds; from
+        // inside the panel's own submit this only raises the flag
+        void snapCamera() {
+            const auto pose = poseOf(bookmarks.current);
+            if(!pose)
+                return;
+
+            auto& camera = static_cast<FlyCamera&>(Camera());
+            camera.position = pose->position;
+            camera.yaw = pose->yaw;
+            camera.pitch = pose->pitch;
+            camera.RecomputeView();
+            uiContext.panelDirty = true;
+        }
+
+        // each close-up frames its station at eye height
+        static std::optional<CameraPose> poseOf(CameraBookmark bookmark) {
+            using enum CameraBookmark;
+
+            switch(bookmark) {
+            case Free:
+                return std::nullopt;
+            case Overview:
+                return CameraPose{{0.0f, 1.7f, -5.0f}, 0.0f, 0.1f};
+            case Scale:
+                return CameraPose{{-7.125f, 1.0f, 2.0f}, 0.0f, 0.2f};
+            case Emissive:
+                return CameraPose{{-4.25f, 1.25f, 0.75f}, 0.0f, 0.05f};
+            case Materials:
+                return CameraPose{{0.0f, 1.5f, 0.25f}, 0.0f, 0.1f};
+            case Glass:
+                return CameraPose{{4.25f, 1.25f, 0.75f}, 0.0f, 0.05f};
+            case DoubleSided:
+                return CameraPose{{7.125f, 1.0f, 1.25f}, 0.0f, 0.05f};
+            }
+
+            return std::nullopt;
+        }
+
         Widget cameraSection() {
             auto& camera = static_cast<FlyCamera&>(Camera());
 
@@ -542,10 +641,14 @@ namespace Crowy
             };
         }
 
+        // the start pose is the overview bookmark, which `current` starts on
         static FlyCamera::Config makeCamera() {
+            const auto overview = *poseOf(CameraBookmark::Overview);
+
             return FlyCamera::Config{
-                .position = {0.0f, 1.7f, -5.0f},
-                .pitch = 0.1f,
+                .position = overview.position,
+                .yaw = overview.yaw,
+                .pitch = overview.pitch,
                 .fovY = std::numbers::pi_v<f32> / 3,
                 .nearZ = 0.05f,
                 .farZ = 100.0f,
