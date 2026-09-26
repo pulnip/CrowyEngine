@@ -1,8 +1,47 @@
+#include <charconv>
+#include <cstdlib>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_video.h>
 #include <imgui_impl_sdl3.h>
+#include "LogLocal.hpp"
 #include "RuntimeConfig.hpp"
 #include "SDLWindow.hpp"
+
+namespace
+{
+    // CROWY_WINDOW_DISPLAY: unset leaves the placement to SDL, N centres the
+    // window on display N in SDL's order, 0 the primary
+    int initialPosition(){
+        const char* env = std::getenv("CROWY_WINDOW_DISPLAY");
+        if(env == nullptr)
+            return SDL_WINDOWPOS_UNDEFINED;
+
+        const std::string_view text = env;
+        int index = -1;
+        const auto [ptr, ec] =
+            std::from_chars(text.data(), text.data() + text.size(), index);
+
+        int count = 0;
+        SDL_DisplayID* displays = SDL_GetDisplays(&count);
+        const bool valid = ec == std::errc{} &&
+            ptr == text.data() + text.size() &&
+            displays != nullptr && index >= 0 && index < count;
+        const int position = valid ?
+            static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(displays[index])) :
+            SDL_WINDOWPOS_UNDEFINED;
+        SDL_free(displays);
+
+        if(!valid){
+            LOG_WARN(
+                "CROWY_WINDOW_DISPLAY='{}' is not a display index below {}; using the default",
+                text,
+                count
+            );
+        }
+
+        return position;
+    }
+}
 
 namespace Crowy
 {
@@ -54,12 +93,16 @@ namespace Crowy
             (config.resizable     ? SDL_WINDOW_RESIZABLE     : 0) |
             (config.borderless    ? SDL_WINDOW_BORDERLESS    : 0) |
             (config.always_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
-        window = SDL_CreateWindow(
-            config.title.c_str(),
-            config.width,
-            config.height,
-            windowFlags
-        );
+        const auto position = initialPosition();
+        const SDL_PropertiesID properties = SDL_CreateProperties();
+        SDL_SetStringProperty(properties, SDL_PROP_WINDOW_CREATE_TITLE_STRING, config.title.c_str());
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_X_NUMBER, position);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_Y_NUMBER, position);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, config.width);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, config.height);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, windowFlags);
+        window = SDL_CreateWindowWithProperties(properties);
+        SDL_DestroyProperties(properties);
 
         if(window == nullptr){
             SDL_QuitSubSystem(initFlags);

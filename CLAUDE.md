@@ -67,6 +67,8 @@ From the repo root.
 
 `CROWY_SMOKE_CAPTURE_DIR` plus `CROWY_DUMP_FRAME` dumps a frame BMP (32bpp BGRA, bottom-up) at presented frame 60.
 
+`CROWY_WINDOW_DISPLAY=<n>` centres every sample window on display `n` (0 the primary), so test runs stay off the screen in use.
+
 The scripts convert that capture to PNG through `ImageCompareCheck`, and when `Engine/*/Sample/Golden/<exe>.<metal|dx12>.png` exists they compare against it and exit 1 with a heat map on any difference; accept a new picture by running the `cp`/`Copy-Item` line the failure prints.
 
 ## Guideline
