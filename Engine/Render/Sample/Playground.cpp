@@ -93,8 +93,8 @@ namespace Crowy
         // roughness 0, 0.25, 0.5, 0.75, 1 from left to right
         static constexpr u32 ChartColumns = 5;
         static constexpr f32 SphereRadius = 0.25f;
-        // one colour for both rows, so metallic is all that differs;
-        // MaterialBuckets' orange, which a metal's highlight takes
+        // one colour for both rows, so metallic is all that differs; an
+        // orange, which a metal's highlight takes
         static constexpr Vec3 ChartAlbedo{0.85f, 0.55f, 0.30f};
 
         // Godot's editor-preview sky

@@ -19,20 +19,6 @@ DEPENDS
     Crowy::SampleScene
 )
 
-crowy_declare_example(MaterialBuckets
-SOURCES
-    FlyCamera.cpp
-    RenderApp.cpp
-    PortStatusChip.cpp
-    StatsOverlay.cpp
-    MaterialBuckets.cpp
-DEPENDS
-    Crowy::Remote
-    Crowy::Render
-    Crowy::Reflection
-    Crowy::UI
-)
-
 crowy_declare_example(Playground
 SOURCES
     FlyCamera.cpp
