@@ -212,18 +212,41 @@ TEST(ImageCompare, LocalThresholdInclusive) {
 
 // the concentrated regression a global fraction averages away
 TEST(ImageCompare, ClusterFailsLocalNotGlobal) {
+    constexpr ImageTolerance Loose{
+        .channelDelta = 2,
+        .maxGlobalFail = 0.001,
+        .maxLocalFail = 0.01
+    };
     const auto a = makeImage(200, 200, 50, 50, 50);
     auto b = makeImage(200, 200, 50, 50, 50);
     for(u32 k = 0; k < 11; ++k)
         channelAt(b, 60 + k, 140, 0) = 60;
 
-    const auto result = compareImages(a, b);
+    const auto result = compareImages(a, b, Loose);
 
     EXPECT_EQ(result.failing, 11u);
     EXPECT_DOUBLE_EQ(result.globalFail, 0.000275);
+    EXPECT_LE(result.globalFail, Loose.maxGlobalFail);
     EXPECT_DOUBLE_EQ(result.localFail, 0.0275);
     EXPECT_EQ(result.tileX, 3u);
     EXPECT_EQ(result.tileY, 7u);
+    EXPECT_FALSE(result.similar);
+}
+
+// one backend repeats a frame byte for byte, so the defaults let no pixel
+// fail, however large the image
+TEST(ImageCompare, DefaultsLetNoPixelFail) {
+    const auto a = makeImage(200, 200, 50, 50, 50);
+    auto b = makeImage(200, 200, 50, 50, 50);
+    channelAt(b, 120, 30, 1) = 52;
+
+    EXPECT_TRUE(compareImages(a, b).similar);
+
+    channelAt(b, 120, 30, 1) = 53;
+    const auto result = compareImages(a, b);
+
+    EXPECT_EQ(result.failing, 1u);
+    EXPECT_DOUBLE_EQ(result.globalFail, 0.000025);
     EXPECT_FALSE(result.similar);
 }
 

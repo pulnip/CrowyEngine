@@ -10,13 +10,15 @@
 
 namespace Crowy
 {
+    // One backend repeats its frames byte for byte, so by default no pixel
+    // may fail; a looser comparison, such as across backends, passes fractions.
     struct ImageTolerance {
         // per channel, absolute, inclusive
         u8 channelDelta = 2;
         // failing pixels over all pixels
-        f64 maxGlobalFail = 0.001;
+        f64 maxGlobalFail = 0.0;
         // failing pixels over the pixels of the worst tile in a 10 x 10 grid
-        f64 maxLocalFail = 0.01;
+        f64 maxLocalFail = 0.0;
         bool compareAlpha = false;
     };
 
