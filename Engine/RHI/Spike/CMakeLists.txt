@@ -7,3 +7,8 @@ crowy_declare_spike(InstanceIdSpike
 SOURCES
     InstanceIdSpike.cpp
 )
+
+crowy_declare_spike(ShadowSampleSpike
+SOURCES
+    ShadowSampleSpike.cpp
+)

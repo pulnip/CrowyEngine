@@ -29,6 +29,23 @@ namespace{
 
         return convert(format);
     }
+
+    // a depth texture reads its depth plane through the matching R format
+    DXGI_FORMAT toShaderReadFormat(Crowy::RHIPixelFormat format){
+        using namespace Crowy;
+        using enum RHIPixelFormat;
+
+        switch(format){
+        case D16_UNORM:         return DXGI_FORMAT_R16_UNORM;
+        case D24_UNORM_S8_UINT: return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        case D32_FLOAT:         return DXGI_FORMAT_R32_FLOAT;
+        case D32_FLOAT_S8_UINT: return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+        default:
+            break;
+        }
+
+        return convert(format);
+    }
 }
 
 namespace Crowy
@@ -101,7 +118,8 @@ namespace Crowy
             );
 
         D3D12_CLEAR_VALUE clearValue{
-            .Format = dxFormat
+            // a typeless resource still clears through its typed format
+            .Format = convert(desc.format)
         };
         D3D12_CLEAR_VALUE* pClearValue = nullptr;
         if(isRenderTarget && !isDepthStencil){
@@ -242,28 +260,33 @@ namespace Crowy
     }
 
     u64 DX12Texture::GetReadableID(const RHITextureViewDesc& desc){
+        CROWY_ASSERT(!IsDepthFormat(GetFormat()) || desc.format == GetFormat(),
+            "a depth texture is read through a view of its own depth format"
+        );
+
         if(auto it = srvs.find(desc); it != srvs.end())
             return it->second;
 
+        const auto format = toShaderReadFormat(desc.format);
         // RHI_ALL_MIPS is the same all-ones value D3D12 reads as "the rest"
         const auto dxDesc = std::visit(overload{
             [&](const RHITextureViewDesc::Tex2D&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex2D(
-                    convert(desc.format),
+                    format,
                     desc.mipCount,
                     desc.mostDetailedMip
                 );
             },
             [&](const RHITextureViewDesc::TexCube&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::TexCube(
-                    convert(desc.format),
+                    format,
                     desc.mipCount,
                     desc.mostDetailedMip
                 );
             },
             [&](const RHITextureViewDesc::Tex3D&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex3D(
-                    convert(desc.format),
+                    format,
                     desc.mipCount,
                     desc.mostDetailedMip
                 );

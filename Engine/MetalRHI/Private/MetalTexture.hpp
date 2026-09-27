@@ -54,6 +54,9 @@ namespace Crowy
 
 
         u64 GetReadableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+            CROWY_ASSERT(!IsDepthFormat(GetFormat()) || view.format == GetFormat(),
+                "a depth texture is read through a view of its own depth format"
+            );
             return getResourceID(view);
         }
         u64 GetWritableID(const RHITextureViewDesc& view) RHI_OVERRIDE{

@@ -59,7 +59,9 @@ namespace Crowy
         u32 GetArraySize() const noexcept{
             return arraySize;
         }
-        // Shader Resource
+        // Shader Resource.
+        // A depth texture is read through its own depth format,
+        // as Texture2D<float> whose .r is the depth.
         virtual u64 GetReadableID(const RHITextureViewDesc&) = 0;
         // Unordered Access
         virtual u64 GetWritableID(const RHITextureViewDesc&) = 0;
