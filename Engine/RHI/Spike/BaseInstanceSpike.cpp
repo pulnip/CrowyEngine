@@ -25,7 +25,7 @@ namespace Crowy
                         .entryPoint = "vs_main"
                     }
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Spike/BaseInstanceSpike.slang",
                     .entryPoint = "fs_main"
                 },

@@ -110,7 +110,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/CubeMapping.slang",
                     .entryPoint = "fs_main"
                 },
@@ -137,7 +137,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/SkyboxFloor.slang",
                     .entryPoint = "fs_main"
                 },

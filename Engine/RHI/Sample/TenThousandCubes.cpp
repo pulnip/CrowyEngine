@@ -123,7 +123,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/TenThousandCubes.slang",
                     .entryPoint = "fs_main"
                 },

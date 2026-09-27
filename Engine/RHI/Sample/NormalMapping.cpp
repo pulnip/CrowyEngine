@@ -61,7 +61,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/NormalMapping.slang",
                     .entryPoint = "fs_main"
                 },

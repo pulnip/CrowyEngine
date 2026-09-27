@@ -21,7 +21,15 @@ namespace
 
         const auto& vertex =
             std::get<RHILegacyFrontendDesc>(desc.preRasterizer).vertexShader;
-        const auto& fragment = desc.fragmentShader;
+        if(!desc.fragmentShader) {
+            return std::format(
+                "{} ({})",
+                toUTF8String(vertex.path),
+                vertex.entryPoint
+            );
+        }
+
+        const auto& fragment = *desc.fragmentShader;
         if(vertex.path == fragment.path) {
             return std::format(
                 "{} ({}, {})",

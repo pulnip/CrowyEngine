@@ -24,7 +24,7 @@ namespace{
                 // left-handed, so the right-hand normal is the front face
                 .frontCounterClockwise = false
             },
-            .fragmentShader = {
+            .fragmentShader = RHIShaderDesc{
                 .path = SHADER_PATH,
                 .entryPoint = debugNormal ? "fs_debug_normal" : "fs_main"
             },

@@ -265,7 +265,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .cullMode = RHICullMode::None
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = path,
                     .entryPoint = fragmentEntry
                 },

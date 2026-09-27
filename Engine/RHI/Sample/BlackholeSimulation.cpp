@@ -71,7 +71,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/Bloom.slang",
                     .entryPoint = "fs_main"
                 },
@@ -352,7 +352,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/BlackholeDisk.slang",
                     .entryPoint = "fs_main"
                 },
@@ -382,7 +382,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/Blackhole.slang",
                     .entryPoint = "fs_main"
                 },
@@ -428,7 +428,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
                 },
-                .fragmentShader = {
+                .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Sample/Composite.slang",
                     .entryPoint = "fs_main"
                 },

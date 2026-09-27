@@ -176,6 +176,8 @@ namespace Crowy
         RootSignature& rootSignature,
         StrView name
     ){
+        ValidateGraphicsPipelineDesc(desc);
+
         auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
         primitiveTopology = ::convert(frontend.topology);
 
@@ -228,16 +230,21 @@ namespace Crowy
         };
 
         // Pixel Shader
-        if(frontend.vertexShader.path != desc.fragmentShader.path){
-            shaderProgram = RHIShader(
-                desc.fragmentShader.path,
-                RHIBackend::DirectX12,
-                desc.profile
+        std::vector<u8> pixelShader;
+        if(desc.fragmentShader.has_value()){
+            const auto& fragmentShader = desc.fragmentShader.value();
+
+            if(frontend.vertexShader.path != fragmentShader.path){
+                shaderProgram = RHIShader(
+                    fragmentShader.path,
+                    RHIBackend::DirectX12,
+                    desc.profile
+                );
+            }
+            pixelShader = shaderProgram.GetEntryPointCode(
+                fragmentShader.entryPoint
             );
         }
-        auto pixelShader = shaderProgram.GetEntryPointCode(
-            desc.fragmentShader.entryPoint
-        );
 
         // DepthStencilState
         D3D12_DEPTH_STENCIL_DESC dsDesc{
@@ -302,7 +309,7 @@ namespace Crowy
                 .BytecodeLength = vertexShader.size()
             },
             .PS = D3D12_SHADER_BYTECODE{
-                .pShaderBytecode = pixelShader.data(),
+                .pShaderBytecode = pixelShader.empty() ? nullptr : pixelShader.data(),
                 .BytecodeLength = pixelShader.size()
             },
             .BlendState = bsDesc,

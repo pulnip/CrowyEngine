@@ -153,7 +153,7 @@ namespace Crowy
             .rasterizer = RHIRasterizerState{
                 .cullMode = RHICullMode::None
             },
-            .fragmentShader = {
+            .fragmentShader = RHIShaderDesc{
                 .path = "Engine/Shader/UI.slang",
                 .entryPoint = "fs_main"
             },

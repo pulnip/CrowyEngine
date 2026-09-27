@@ -1,4 +1,5 @@
 #include <array>
+#include <optional>
 
 #include <gtest/gtest.h>
 
@@ -242,4 +243,38 @@ TEST(PipelineKey, APassWithoutOverridesKeepsTheMaterialState) {
     ASSERT_TRUE(desc.depthStencil.has_value());
     EXPECT_EQ(desc.depthStencil->depthFunc, RHIComparisonFunc::LessEqual);
     EXPECT_FALSE(desc.depthStencil->depthWriteEnable);
+}
+
+// A masked depth pass keeps its fragment stage and an opaque one drops it;
+// with no render targets on either side, only the stage keys them apart.
+TEST(PipelineKey, AnAbsentFragmentStageKeysApart) {
+    const auto withStage = Compose(OpaqueMaterial(), BasePass({}));
+    auto withoutStage = withStage;
+    withoutStage.fragmentShader = std::nullopt;
+
+    ASSERT_EQ(withStage.renderTargetCount, 0u);
+    ASSERT_TRUE(withStage.fragmentShader.has_value());
+    EXPECT_NE(withStage, withoutStage);
+}
+
+TEST(PipelineKey, AbsentFragmentStagesCompareAndHashAlike) {
+    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
+
+    auto lhs = Compose(OpaqueMaterial(), BasePass({}));
+    auto rhs = Compose(OpaqueMaterial(), BasePass({}));
+    lhs.fragmentShader = std::nullopt;
+    rhs.fragmentShader = std::nullopt;
+
+    EXPECT_EQ(lhs, rhs);
+    EXPECT_EQ(hash(lhs), hash(rhs));
+}
+
+// dropping the stage for a pass without render targets is pass-split's rule
+TEST(PipelineKey, ComposeKeepsTheMaterialFragmentShader) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+
+    const auto desc = Compose(OpaqueMaterial(), BasePass(formats));
+
+    ASSERT_TRUE(desc.fragmentShader.has_value());
+    EXPECT_EQ(*desc.fragmentShader, OpaqueMaterial().fragmentShader);
 }

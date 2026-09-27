@@ -978,7 +978,8 @@ namespace Crowy
 
         // Geometry Backend
         RHIRasterizerState rasterizer = {};
-        RHIShaderDesc fragmentShader{.entryPoint = "fs_main"};
+        // absent: no fragment stage, and renderTargetCount must be 0
+        std::optional<RHIShaderDesc> fragmentShader = std::nullopt;
 
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         std::optional<RHIBlendState> blend = std::nullopt;
@@ -1025,12 +1026,14 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc> {
         std::size_t h = hashAll(
             desc.preRasterizer,
             desc.rasterizer,
-            desc.fragmentShader,
             desc.profile ?
                 StrView{desc.profile} :
                 StrView{}
         );
 
+        if(desc.fragmentShader.has_value()) {
+            h = hashAll(h, *desc.fragmentShader);
+        }
         if(desc.depthStencil.has_value()) {
             h = hashAll(h, *desc.depthStencil);
         }

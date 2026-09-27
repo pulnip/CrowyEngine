@@ -206,6 +206,8 @@ namespace Crowy
         : debugName(name)
     #endif
     {
+        ValidateGraphicsPipelineDesc(desc);
+
         AutoreleasePoolScope _;
 
         auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
@@ -286,11 +288,11 @@ namespace Crowy
             );
 
             // fragment entry point lives in the same program
-            if(desc.fragmentShader.path == filePath){
+            if(desc.fragmentShader && desc.fragmentShader->path == filePath){
                 fsSamplers = resolveSamplers(
                     samplers,
                     shaderProgram.GetUsedSamplers(
-                        desc.fragmentShader.entryPoint
+                        desc.fragmentShader->entryPoint
                     )
                 );
             }
@@ -300,8 +302,10 @@ namespace Crowy
         rasterizerState = desc.rasterizer;
 
         // Fragment Shader
-        if(desc.fragmentShader.path != frontend.vertexShader.path){
-            const auto& filePath = desc.fragmentShader.path;
+        if(desc.fragmentShader &&
+            desc.fragmentShader->path != frontend.vertexShader.path
+        ){
+            const auto& filePath = desc.fragmentShader->path;
 
             RHIShader shaderProgram{
                 filePath,
@@ -315,14 +319,14 @@ namespace Crowy
             fsSamplers = resolveSamplers(
                 samplers,
                 shaderProgram.GetUsedSamplers(
-                    desc.fragmentShader.entryPoint
+                    desc.fragmentShader->entryPoint
                 )
             );
         }
 
-        {
-            const auto& filePath = desc.fragmentShader.path;
-            const auto& entryPoint = desc.fragmentShader.entryPoint;
+        if(desc.fragmentShader){
+            const auto& filePath = desc.fragmentShader->path;
+            const auto& entryPoint = desc.fragmentShader->entryPoint;
 
             auto func = NS::TransferPtr(
                 library->newFunction(toNSString(entryPoint))

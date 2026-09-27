@@ -5,6 +5,11 @@
 
 namespace Crowy
 {
+    struct RHIGraphicsPipelineStateDesc;
+
+    // throws where a desc breaks a rule every backend shares
+    void ValidateGraphicsPipelineDesc(const RHIGraphicsPipelineStateDesc& desc);
+
     class RHIGraphicsPipelineState{
     public:
         CROWY_DECLARE_INTERFACE(RHIGraphicsPipelineState)
