@@ -57,6 +57,12 @@ namespace Crowy
     ) {
         CROWY_ASSERT(pass.renderTargetFormats.size() <= RHI_MAX_RENDER_TARGETS);
 
+        const bool depthOnly = pass.renderTargetFormats.empty();
+        CROWY_ASSERT(
+            !depthOnly || !pass.fragmentShader,
+            "a depth-only pass has no fragment stage to replace"
+        );
+
         RHIGraphicsPipelineStateDesc desc{
             .preRasterizer =
                 RHILegacyFrontendDesc{
@@ -66,22 +72,38 @@ namespace Crowy
                     .vertexShader = material.vertexShader
                 },
             .rasterizer = material.rasterizer,
-            .fragmentShader = material.fragmentShader,
             // always present, even when the pass overrides it: without it
             // Metal loses the depth format and D3D12 gets DSVFormat UNKNOWN
             .depthStencil =
                 RHIDepthStencilState{
                     .format = pass.depthFormat,
-                    .depthWriteEnable =
-                        pass.depthWrite.value_or(material.depthWrite),
-                    .depthFunc = pass.depthFunc.value_or(material.depthFunc)
+                    .depthWriteEnable = pass.depthWrite,
+                    .depthFunc = pass.depthFunc
                 },
-            .blend = pass.blend ? pass.blend : material.blend,
             .renderTargetCount = pass.renderTargetFormats.size(),
             .profile = material.profile
         };
-        if(pass.fillMode)
-            desc.rasterizer.fillMode = *pass.fillMode;
+        if(pass.depthBias) {
+            desc.rasterizer.depthBias = pass.depthBias->depthBias;
+            desc.rasterizer.depthBiasClamp = pass.depthBias->depthBiasClamp;
+            desc.rasterizer.slopeScaledDepthBias =
+                pass.depthBias->slopeScaledDepthBias;
+        }
+        // no fragment stage and no blend, so every material that rasterizes
+        // alike shares one depth-only pipeline
+        if(depthOnly)
+            return desc;
+
+        const auto& debug = pass.debug;
+        desc.fragmentShader =
+            pass.fragmentShader.value_or(material.fragmentShader);
+        desc.blend = debug.blend ? debug.blend : material.blend;
+        if(debug.fillMode)
+            desc.rasterizer.fillMode = *debug.fillMode;
+        if(debug.depthFunc)
+            desc.depthStencil->depthFunc = *debug.depthFunc;
+        if(debug.depthWrite)
+            desc.depthStencil->depthWriteEnable = *debug.depthWrite;
         std::ranges::copy(
             pass.renderTargetFormats,
             desc.renderTargetFormats.begin()

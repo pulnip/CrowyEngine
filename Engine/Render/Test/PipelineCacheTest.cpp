@@ -30,7 +30,7 @@ namespace
         doubleSided.rasterizer.cullMode = RHICullMode::None;
 
         auto translucent = OpaqueMaterial();
-        translucent.depthWrite = false;
+        translucent.domain = MaterialDomain::Translucent;
         translucent.blend = RHIBlendState{};
 
         return {OpaqueMaterial(), doubleSided, translucent};
@@ -119,7 +119,7 @@ TEST(PipelineCache, AnOverriddenPassResolvesItsOwnVariants) {
     const auto plain = ResolveAll(cache);
 
     auto wireframe = BasePass();
-    wireframe.fillMode = RHIFillMode::Wireframe;
+    wireframe.debug.fillMode = RHIFillMode::Wireframe;
     std::vector<RHIGraphicsPipelineState*> variants;
     for(const auto& material: ThreeMaterials())
         variants.push_back(&cache.Resolve(material, wireframe));
@@ -130,4 +130,25 @@ TEST(PipelineCache, AnOverriddenPassResolvesItsOwnVariants) {
         EXPECT_NE(variants[i], plain[i]);
     EXPECT_EQ(ResolveAll(cache), plain);
     EXPECT_EQ(device.creates, 6u);
+}
+
+// Playground's prepass: grid, opaque and double-sided materials rasterize
+// in two ways, so the depth-only pass compiles two pipelines, not three.
+TEST(PipelineCache, ADepthOnlyPassSharesKeysAcrossFragmentShaders) {
+    FakeDevice device;
+    PipelineCache cache(device);
+
+    auto grid = OpaqueMaterial();
+    grid.fragmentShader.entryPoint = "fs_grid";
+    auto doubleSided = OpaqueMaterial();
+    doubleSided.rasterizer.cullMode = RHICullMode::None;
+
+    const PassPipelineDesc prepass{.depthFormat = RHIPixelFormat::D32_FLOAT};
+    auto& gridState = cache.Resolve(grid, prepass);
+    auto& opaqueState = cache.Resolve(OpaqueMaterial(), prepass);
+    cache.Resolve(doubleSided, prepass);
+
+    EXPECT_EQ(cache.Count(), 2u);
+    EXPECT_EQ(device.creates, 2u);
+    EXPECT_EQ(&gridState, &opaqueState);
 }

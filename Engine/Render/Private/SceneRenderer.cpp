@@ -37,7 +37,8 @@ namespace Crowy
 
     void SceneRenderer::resolvePipelines(
         const RenderScene& scene,
-        const PassPipelineDesc& pass
+        const PassPipelineDesc& pass,
+        MaterialDomain domain
     ) {
         const auto& materials = scene.Materials();
 
@@ -52,19 +53,23 @@ namespace Crowy
             const auto& material = materials.At(i);
 
             materialScratch[i] = material.data;
-            // once per material per pass, never inside the draw loop
-            pipelineOfMaterial[i] = &pipelines.Resolve(material.pipeline, pass);
+            // once per material per pass, never inside the draw loop; another
+            // domain's material would compile a pipeline no draw here uses
+            pipelineOfMaterial[i] = material.pipeline.domain == domain ?
+                &pipelines.Resolve(material.pipeline, pass) :
+                nullptr;
         }
     }
 
     void SceneRenderer::BuildFrame(
         const RenderScene& scene,
         const PassPipelineDesc& pass,
+        MaterialDomain domain,
         u32 viewIndex
     ) {
         CROWY_ASSERT(viewIndex < views.size());
 
-        resolvePipelines(scene, pass);
+        resolvePipelines(scene, pass, domain);
 
         const auto& materials = scene.Materials();
         const auto& meshes = scene.Meshes();
@@ -91,6 +96,9 @@ namespace Crowy
                 const auto material = mesh.materials[subMesh.materialSlot];
                 const auto materialIndex =
                     static_cast<u32>(materials.IndexOf(material));
+                // skipped after the cull, so the survivors count every domain
+                if(pipelineOfMaterial[materialIndex] == nullptr)
+                    continue;
 
                 const auto bucket = bucketOf(pipelineOfMaterial[materialIndex]);
                 ++buckets[bucket].drawCount;

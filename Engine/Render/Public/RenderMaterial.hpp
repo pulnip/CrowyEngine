@@ -32,15 +32,22 @@ namespace Crowy
     static_assert(offsetof(MaterialData, albedoMapID) == 32);
     static_assert(std::is_trivially_copyable_v<MaterialData>);
 
-    // The slice of a pipeline state a material owns.
+    // which passes draw a material; a DrawFilter admits a mask of these
+    enum class MaterialDomain : u32 {
+        Opaque = 1u << 0,
+        Translucent = 1u << 1,
+    };
+
+    // The slice of a pipeline state a material owns. Depth state is the pass's.
     struct MaterialPipelineDesc {
         RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
+        // the color passes' default; a pass may replace it
         RHIShaderDesc fragmentShader{.entryPoint = "fs_main"};
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
+        // every pass culls alike, or Equal fails on double-sided back faces
         RHIRasterizerState rasterizer{};
         std::optional<RHIBlendState> blend = std::nullopt;
-        RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
-        bool depthWrite = true;
+        MaterialDomain domain = MaterialDomain::Opaque;
         CStr profile = "sm_6_8";
     };
 

@@ -279,12 +279,6 @@ namespace Crowy
             addPrimitive(
                 scene,
                 wallMesh,
-                {0.0f, 2.0f, 10.1f},
-                {20.4f, 4.0f, 0.2f}
-            );
-            addPrimitive(
-                scene,
-                wallMesh,
                 {-10.1f, 2.0f, 0.0f},
                 {0.2f, 4.0f, 20.4f}
             );
@@ -293,6 +287,14 @@ namespace Crowy
                 wallMesh,
                 {10.1f, 2.0f, 0.0f},
                 {0.2f, 4.0f, 20.4f}
+            );
+            // after the side walls: Equal behind the prepass keeps the last
+            // draw on the corner seams, and the golden has the back wall there
+            addPrimitive(
+                scene,
+                wallMesh,
+                {0.0f, 2.0f, 10.1f},
+                {20.4f, 4.0f, 0.2f}
             );
 
             // scale: blocks of 1, 0.5 and 0.25 m, left faces at these x
@@ -738,7 +740,7 @@ namespace Crowy
 
         static MaterialPipelineDesc translucentPipeline() {
             auto pipeline = basePipeline("fs_translucent");
-            pipeline.depthWrite = false;
+            pipeline.domain = MaterialDomain::Translucent;
 
             RHIBlendState blend{};
             blend.renderTargets[0] = RHIRenderTargetBlendState{

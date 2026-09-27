@@ -124,6 +124,10 @@ namespace Crowy
         // captures whose dump failed, since launch
         u32 captureFailures = 0;
 
+        // this frame's counts, summed over its rounds; OnFrameEnd adds the
+        // report and the totals
+        FrameStats recorded;
+
         bool reportedCullStats = false;
 
     public:
@@ -201,5 +205,9 @@ namespace Crowy
         const FrameStats* gpuFrameStats(const FrameStats& stats) const noexcept;
         void answerWaits();
         void reportCullStatsOnce();
+        // one BuildFrame and Upload; its counts join the frame's
+        void buildRound(const PassPipelineDesc& pass, MaterialDomain domain);
+        // the built round's view, push and draws, in the open pass
+        void submitRound(RHICommandList& cmdList);
     };
 }

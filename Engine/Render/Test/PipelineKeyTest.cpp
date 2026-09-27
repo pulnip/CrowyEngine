@@ -176,7 +176,7 @@ TEST(PipelineKey, MaterialStateSeparatesPipelines) {
     doubleSided.rasterizer.cullMode = RHICullMode::None;
 
     auto translucent = OpaqueMaterial();
-    translucent.depthWrite = false;
+    translucent.domain = MaterialDomain::Translucent;
     translucent.blend = RHIBlendState{};
 
     const auto opaque = Compose(OpaqueMaterial(), BasePass(formats));
@@ -185,12 +185,12 @@ TEST(PipelineKey, MaterialStateSeparatesPipelines) {
 }
 
 // The overdraw view's shape: every material, the translucent one included,
-// adds without testing or writing depth, whatever it asked for itself.
+// adds without testing or writing depth, whatever it or the pass asked for.
 TEST(PipelineKey, PassOverridesReplaceTheMaterialState) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
 
     auto translucent = OpaqueMaterial();
-    translucent.depthWrite = false;
+    translucent.domain = MaterialDomain::Translucent;
     RHIBlendState alpha{};
     alpha.renderTargets[0] = RHIRenderTargetBlendState{
         .blendEnable = true,
@@ -205,11 +205,16 @@ TEST(PipelineKey, PassOverridesReplaceTheMaterialState) {
         .srcBlend = RHIBlend::One,
         .dstBlend = RHIBlend::One
     };
+    // the opaque pass after a prepass, which the override still beats
     auto overdraw = BasePass(formats);
-    overdraw.fillMode = RHIFillMode::Wireframe;
-    overdraw.blend = additive;
-    overdraw.depthFunc = RHIComparisonFunc::Always;
+    overdraw.depthFunc = RHIComparisonFunc::Equal;
     overdraw.depthWrite = false;
+    overdraw.debug = MeshPassOverride{
+        .fillMode = RHIFillMode::Wireframe,
+        .blend = additive,
+        .depthFunc = RHIComparisonFunc::Always,
+        .depthWrite = false
+    };
 
     for(const auto& material: {OpaqueMaterial(), translucent}) {
         const auto desc = Compose(material, overdraw);
@@ -227,16 +232,19 @@ TEST(PipelineKey, PassOverridesReplaceTheMaterialState) {
     }
 }
 
+// the material's rasterizer and blend, the pass's depth
 TEST(PipelineKey, APassWithoutOverridesKeepsTheMaterialState) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
 
     auto material = OpaqueMaterial();
     material.rasterizer.fillMode = RHIFillMode::Wireframe;
     material.blend = RHIBlendState{};
-    material.depthFunc = RHIComparisonFunc::LessEqual;
-    material.depthWrite = false;
 
-    const auto desc = Compose(material, BasePass(formats));
+    auto pass = BasePass(formats);
+    pass.depthFunc = RHIComparisonFunc::LessEqual;
+    pass.depthWrite = false;
+
+    const auto desc = Compose(material, pass);
 
     EXPECT_EQ(desc.rasterizer, material.rasterizer);
     EXPECT_EQ(desc.blend, material.blend);
@@ -248,12 +256,12 @@ TEST(PipelineKey, APassWithoutOverridesKeepsTheMaterialState) {
 // A masked depth pass keeps its fragment stage and an opaque one drops it;
 // with no render targets on either side, only the stage keys them apart.
 TEST(PipelineKey, AnAbsentFragmentStageKeysApart) {
-    const auto withStage = Compose(OpaqueMaterial(), BasePass({}));
-    auto withoutStage = withStage;
-    withoutStage.fragmentShader = std::nullopt;
+    const auto withoutStage = Compose(OpaqueMaterial(), BasePass({}));
+    auto withStage = withoutStage;
+    withStage.fragmentShader = OpaqueMaterial().fragmentShader;
 
-    ASSERT_EQ(withStage.renderTargetCount, 0u);
-    ASSERT_TRUE(withStage.fragmentShader.has_value());
+    ASSERT_EQ(withoutStage.renderTargetCount, 0u);
+    ASSERT_FALSE(withoutStage.fragmentShader.has_value());
     EXPECT_NE(withStage, withoutStage);
 }
 
@@ -269,7 +277,7 @@ TEST(PipelineKey, AbsentFragmentStagesCompareAndHashAlike) {
     EXPECT_EQ(hash(lhs), hash(rhs));
 }
 
-// dropping the stage for a pass without render targets is pass-split's rule
+// a pass with render targets and no fragment override draws the material's
 TEST(PipelineKey, ComposeKeepsTheMaterialFragmentShader) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
 
@@ -277,4 +285,88 @@ TEST(PipelineKey, ComposeKeepsTheMaterialFragmentShader) {
 
     ASSERT_TRUE(desc.fragmentShader.has_value());
     EXPECT_EQ(*desc.fragmentShader, OpaqueMaterial().fragmentShader);
+}
+
+// The split the prepass needs: one material, a depth-only pass writing depth
+// and a color pass testing Equal against it, two pipelines.
+TEST(PipelineKey, OneMaterialKeysApartInTwoPasses) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+
+    auto opaque = BasePass(formats);
+    opaque.depthFunc = RHIComparisonFunc::Equal;
+    opaque.depthWrite = false;
+
+    const auto prepassDesc = Compose(OpaqueMaterial(), BasePass({}));
+    const auto opaqueDesc = Compose(OpaqueMaterial(), opaque);
+
+    EXPECT_NE(prepassDesc, opaqueDesc);
+    EXPECT_EQ(prepassDesc.preRasterizer, opaqueDesc.preRasterizer);
+    ASSERT_TRUE(prepassDesc.depthStencil.has_value());
+    EXPECT_EQ(prepassDesc.depthStencil->depthFunc, RHIComparisonFunc::Less);
+    EXPECT_TRUE(prepassDesc.depthStencil->depthWriteEnable);
+    ASSERT_TRUE(opaqueDesc.depthStencil.has_value());
+    EXPECT_EQ(opaqueDesc.depthStencil->depthFunc, RHIComparisonFunc::Equal);
+    EXPECT_FALSE(opaqueDesc.depthStencil->depthWriteEnable);
+    EXPECT_TRUE(opaqueDesc.fragmentShader.has_value());
+}
+
+// Playground's grid and opaque materials differ only in fragment entry, and
+// an opaque material may set a blend: a depth-only pass keys neither, and
+// ignores a debug override.
+TEST(PipelineKey, APassWithoutTargetsHasNoFragmentStage) {
+    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
+
+    auto grid = OpaqueMaterial();
+    grid.fragmentShader.entryPoint = "fs_grid";
+    grid.blend = RHIBlendState{};
+
+    auto prepass = BasePass({});
+    const auto opaqueDesc = Compose(OpaqueMaterial(), prepass);
+    const auto gridDesc = Compose(grid, prepass);
+    prepass.debug.fillMode = RHIFillMode::Wireframe;
+    prepass.debug.depthFunc = RHIComparisonFunc::Always;
+
+    EXPECT_FALSE(opaqueDesc.fragmentShader.has_value());
+    EXPECT_FALSE(gridDesc.blend.has_value());
+    EXPECT_EQ(opaqueDesc.renderTargetCount, 0u);
+    EXPECT_EQ(opaqueDesc, gridDesc);
+    EXPECT_EQ(hash(opaqueDesc), hash(gridDesc));
+    EXPECT_EQ(Compose(OpaqueMaterial(), prepass), opaqueDesc);
+}
+
+TEST(PipelineKey, APassFragmentShaderReplacesTheMaterials) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+    const RHIShaderDesc normals{
+        .path = "Engine/Shader/Y.slang",
+        .entryPoint = "fs_normals"
+    };
+
+    auto pass = BasePass(formats);
+    pass.fragmentShader = normals;
+    const auto desc = Compose(OpaqueMaterial(), pass);
+
+    ASSERT_TRUE(desc.fragmentShader.has_value());
+    EXPECT_EQ(*desc.fragmentShader, normals);
+    EXPECT_NE(desc, Compose(OpaqueMaterial(), BasePass(formats)));
+}
+
+// the ladder's second rung and the shadow pass's bias, in either kind of pass
+TEST(PipelineKey, PassDepthBiasReplacesTheMaterialsBias) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+
+    auto material = OpaqueMaterial();
+    material.rasterizer.depthBias = 3;
+    material.rasterizer.depthBiasClamp = 0.5f;
+    material.rasterizer.slopeScaledDepthBias = 1.5f;
+    material.rasterizer.cullMode = RHICullMode::None;
+
+    for(auto pass: {BasePass({}), BasePass(formats)}) {
+        pass.depthBias = PassDepthBias{.depthBias = -1};
+        const auto desc = Compose(material, pass);
+
+        EXPECT_EQ(desc.rasterizer.depthBias, -1);
+        EXPECT_EQ(desc.rasterizer.depthBiasClamp, 0.0f);
+        EXPECT_EQ(desc.rasterizer.slopeScaledDepthBias, 0.0f);
+        EXPECT_EQ(desc.rasterizer.cullMode, RHICullMode::None);
+    }
 }

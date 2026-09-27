@@ -63,8 +63,8 @@ namespace Crowy
         void Free(const GeometryAllocation&);
 
         // records every copy Add queued as one blit pass, outside any other
-        // pass, and returns the releases the first pass drawing from the pool
-        // must acquire; empty when nothing was queued
+        // pass, and returns the releases every pass drawing from the pool that
+        // frame must acquire; empty when nothing was queued
         std::span<const RHIBufferBarrier> RecordUploads(RHICommandList&);
 
         RHIBuffer& GetVertexBuffer(){ return *vertexBuffer; }

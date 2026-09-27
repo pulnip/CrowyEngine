@@ -64,7 +64,8 @@ namespace Crowy
         DrawArgs argsScratch;
         MaterialRows materialScratch;
         ViewRecords views;
-        // one resolved pipeline per material row, for the pass being built
+        // one resolved pipeline per material row of the domain being built,
+        // null for the others
         PipelineStatePtrs pipelineOfMaterial;
         VisibleDraws visibleScratch;
         DrawBuckets buckets;
@@ -103,11 +104,13 @@ namespace Crowy
         PipelineRebuild ReloadPipelines() { return pipelines.Rebuild(); }
 
         // Culls against the given view,
-        // then flattens the survivors into one row per submesh.
+        // then flattens the survivors of one domain into one row per submesh.
+        // Every material row is copied, only the domain's resolved.
         // visibility changes every frame, so fully rebuild
         void BuildFrame(
             const RenderScene& scene,
             const PassPipelineDesc& pass,
+            MaterialDomain domain,
             u32 viewIndex = 0
         );
         void Upload();
@@ -128,7 +131,8 @@ namespace Crowy
         u32 bucketOf(RHIGraphicsPipelineState* pso);
         void resolvePipelines(
             const RenderScene& scene,
-            const PassPipelineDesc& pass
+            const PassPipelineDesc& pass,
+            MaterialDomain domain
         );
     };
 }

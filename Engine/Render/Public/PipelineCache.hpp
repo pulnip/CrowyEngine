@@ -12,17 +12,34 @@
 
 namespace Crowy
 {
-    // The half of a pipeline state a pass owns.
-    struct PassPipelineDesc {
-        std::span<const RHIPixelFormat> renderTargetFormats;
-        RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
-
-        // set, each replaces the same-named state of every material in the
-        // pass; the debug views are the first to set them
+    // set, each replaces the same-named state in every color pass of a frame;
+    // the debug views are the first to set them
+    struct MeshPassOverride {
         std::optional<RHIFillMode> fillMode;
         std::optional<RHIBlendState> blend;
         std::optional<RHIComparisonFunc> depthFunc;
         std::optional<bool> depthWrite;
+    };
+
+    // replaces the rasterizer bias of every material in the pass
+    struct PassDepthBias {
+        i32 depthBias = 0;
+        f32 depthBiasClamp = 0.0f;
+        f32 slopeScaledDepthBias = 0.0f;
+    };
+
+    // The half of a pipeline state a pass owns.
+    struct PassPipelineDesc {
+        // empty: a depth-only pass, which has no fragment stage
+        std::span<const RHIPixelFormat> renderTargetFormats;
+        RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
+        RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
+        bool depthWrite = true;
+        // replaces the material's
+        std::optional<RHIShaderDesc> fragmentShader;
+        std::optional<PassDepthBias> depthBias;
+        // a depth-only pass ignores it
+        MeshPassOverride debug;
     };
 
     RHIGraphicsPipelineStateDesc Compose(
