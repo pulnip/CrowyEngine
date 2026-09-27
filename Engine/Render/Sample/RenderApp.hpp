@@ -19,6 +19,7 @@
 
 namespace Crowy
 {
+    using DrawListPtr = RAII<DrawList>;
     using GeometryPoolPtr = RAII<GeometryPool>;
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
@@ -65,7 +66,7 @@ namespace Crowy
             RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
             Color clearColor = Colors::Black;
 
-            // worst cases, not live counts
+            // reserves: the scratch grows, and the transient ring is the limit
             u32 drawCapacity = 4096;
             u32 materialCapacity = 256;
             u32 viewCount = 1;
@@ -83,7 +84,7 @@ namespace Crowy
             u32 visiblePrimitives = 0;
             u64 triangles = 0;
             u32 draws = 0;
-            usize buckets = 0;
+            usize runs = 0;
             usize pipelines = 0;
         };
 
@@ -112,6 +113,10 @@ namespace Crowy
 
         GeometryPoolPtr geometryPool;
         SceneRendererPtr renderer;
+        // one per mesh round of the frame
+        DrawListPtr prepassList;
+        DrawListPtr opaqueList;
+        DrawListPtr translucentList;
         RenderScene scene;
         CameraRAII camera;
         // declared before the port, which points at it, so it outlives it
@@ -127,7 +132,7 @@ namespace Crowy
         // captures whose dump failed, since launch
         u32 captureFailures = 0;
 
-        // this frame's counts, summed over its rounds; OnFrameEnd adds the
+        // this frame's counts, summed over its lists; OnFrameEnd adds the
         // report and the totals
         FrameStats recorded;
 
@@ -209,9 +214,15 @@ namespace Crowy
         const FrameStats* gpuFrameStats(const FrameStats& stats) const noexcept;
         void answerWaits();
         void reportCullStatsOnce();
-        // one BuildFrame and Upload; its counts join the frame's
-        void buildRound(const PassPipelineDesc& pass, MaterialDomain domain);
-        // the built round's view, push and draws, in the open pass
-        void submitRound(RHICommandList& cmdList);
+        // builds and uploads a list over the main view; its counts join the
+        // frame's
+        void buildList(
+            DrawList& list,
+            const PassPipelineDesc& pass,
+            const DrawFilter& filter,
+            DrawOrder order
+        );
+        // a list's view, push and draws, in the open pass
+        void submitList(RHICommandList& cmdList, const DrawList& list);
     };
 }

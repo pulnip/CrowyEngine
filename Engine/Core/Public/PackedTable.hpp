@@ -51,6 +51,13 @@ namespace Crowy
             return slots.IndexOf(handle).value;
         }
 
+        // the handle of the row at this position, valid until the next Remove
+        Handle HandleAt(usize index) const noexcept {
+            CROWY_ASSERT(index < rows.size());
+
+            return slots.HandleOf(slotOfRow[index]);
+        }
+
         auto& GetRef(this auto& self, Handle handle) noexcept {
             CROWY_ASSERT(self.IsValid(handle));
 

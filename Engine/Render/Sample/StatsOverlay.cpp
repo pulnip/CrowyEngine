@@ -123,11 +123,11 @@ namespace Crowy
 
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            ImGui::TextUnformatted("Buckets");
+            ImGui::TextUnformatted("Runs");
             ImGui::TableNextColumn();
             ImGui::Text(
                 "%zu over %zu pipelines",
-                stats.buckets,
+                stats.runs,
                 stats.pipelines
             );
 

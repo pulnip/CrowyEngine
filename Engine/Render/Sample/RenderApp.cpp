@@ -151,8 +151,8 @@ namespace Crowy
                 DOM::Value(static_cast<i64>(stats.draws))
             );
             result.emplace(
-                "buckets",
-                DOM::Value(static_cast<i64>(stats.buckets))
+                "runs",
+                DOM::Value(static_cast<i64>(stats.runs))
             );
             result.emplace(
                 "pipelines",
@@ -310,11 +310,14 @@ namespace Crowy
         renderer = std::make_unique<SceneRenderer>(
             device,
             SceneRendererDesc{
-                .drawCapacity = config.drawCapacity,
                 .materialCapacity = config.materialCapacity,
                 .viewCount = config.viewCount
             }
         );
+        prepassList = std::make_unique<DrawList>(device, config.drawCapacity);
+        opaqueList = std::make_unique<DrawList>(device, config.drawCapacity);
+        translucentList =
+            std::make_unique<DrawList>(device, config.drawCapacity);
 
         colorFormat = swapchain.GetFormat();
 
@@ -701,39 +704,46 @@ namespace Crowy
         LOG_INFO(
             "RenderApp",
             "first frame: {} of {} primitives survived culling, "
-            "{} draws in {} buckets over {} pipelines",
+            "{} draws in {} runs over {} pipelines",
             recorded.visiblePrimitives,
             scene.Primitives().Count(),
             recorded.draws,
-            recorded.buckets,
+            recorded.runs,
             renderer->PipelineCount()
         );
     }
 
-    void RenderApp::buildRound(
+    void RenderApp::buildList(
+        DrawList& list,
         const PassPipelineDesc& pass,
-        MaterialDomain domain
+        const DrawFilter& filter,
+        DrawOrder order
     ) {
-        renderer->BuildFrame(scene, pass, domain, ViewMain);
-        renderer->Upload();
+        list.Build(
+            scene,
+            renderer->Visible(ViewMain),
+            renderer->Pipelines(),
+            pass,
+            filter,
+            order
+        );
+        list.Upload();
 
-        // every round culls the same view
-        recorded.visiblePrimitives = renderer->VisiblePrimitiveCount();
-        recorded.triangles += renderer->TriangleCount();
-        recorded.draws += renderer->DrawCount();
-        recorded.buckets += renderer->BucketCount();
+        recorded.triangles += list.TriangleCount();
+        recorded.draws += list.DrawCount();
+        recorded.runs += list.RunCount();
     }
 
-    void RenderApp::submitRound(RHICommandList& cmdList) {
+    void RenderApp::submitList(RHICommandList& cmdList, const DrawList& list) {
         // Metal starts every pass with no push and no constant buffers
         renderer->BindView(cmdList, ViewCBSlot, ViewMain);
-        auto push = renderer->Push();
+        auto push = list.Push(renderer->FramePush());
         // the pool is GPUOnly, so unlike the renderer's own buffers this one
         // does not have to be re-resolved
         push.vertices = geometryPool->GetVertexBufferID();
         OnBindPass(cmdList, push);
 
-        renderer->Submit(
+        list.Submit(
             cmdList,
             RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()}
         );
@@ -759,8 +769,31 @@ namespace Crowy
             scenePasses(frameDebug, passFormats, config.depthFormat);
         recorded = FrameStats{};
 
-        if(passes.depthPrepass)
-            buildRound(passes.prepass, MaterialDomain::Opaque);
+        renderer->BeginFrame(scene);
+        recorded.visiblePrimitives = renderer->Visible(ViewMain).primitiveCount;
+        const DrawFilter opaque{.domains = MaterialDomain::Opaque};
+        if(passes.depthPrepass) {
+            buildList(
+                *prepassList,
+                passes.prepass,
+                opaque,
+                DrawOrder::PipelineThenNearFirst
+            );
+        }
+        buildList(
+            *opaqueList,
+            passes.opaque,
+            opaque,
+            DrawOrder::PipelineThenNearFirst
+        );
+        buildList(
+            *translucentList,
+            passes.translucent,
+            DrawFilter{.domains = MaterialDomain::Translucent},
+            DrawOrder::FarFirst
+        );
+        renderer->Upload();
+        reportCullStatsOnce();
 
         // every pass that draws from the pool takes the releases; a repeat
         // is free on D3D12 and a second wait on the same fence on Metal
@@ -802,13 +835,11 @@ namespace Crowy
             cmdList.SetViewport(FullViewport(*depthBuffer));
             cmdList.SetScissorRect(FullScissorRect(*depthBuffer));
 
-            submitRound(cmdList);
+            submitList(cmdList, *prepassList);
 
             const std::array releases{depthEdge};
             cmdList.EndRenderPass(releases);
         }
-
-        buildRound(passes.opaque, MaterialDomain::Opaque);
 
         RHIEventScope event(cmdList, "Scene");
 
@@ -842,12 +873,8 @@ namespace Crowy
         cmdList.SetViewport(FullViewport(*backBuffer.texture));
         cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
 
-        submitRound(cmdList);
-
-        // records nothing, so it may build with the pass open
-        buildRound(passes.translucent, MaterialDomain::Translucent);
-        submitRound(cmdList);
-        reportCullStatsOnce();
+        submitList(cmdList, *opaqueList);
+        submitList(cmdList, *translucentList);
 
         OnRecordUI(cmdList);
 

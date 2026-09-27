@@ -45,7 +45,7 @@ TEST(RenderScene, MaterialRowFollowsARemoval) {
 }
 
 // the inspector's write-back path
-// a row edited in place is what the next BuildFrame reads
+// a row edited in place is what the next frame's BeginFrame reads
 TEST(RenderScene, EditedMaterialRowIsWhatTheTableReads) {
     RenderScene scene;
 

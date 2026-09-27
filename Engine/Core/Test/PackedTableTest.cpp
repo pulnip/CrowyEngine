@@ -75,6 +75,21 @@ TEST(PackedTable, IndexOfFollowsTheSwap) {
     EXPECT_EQ(table.IndexOf(last), 1u);
 }
 
+// a draw list's identity is the slot HandleAt names, so it has to follow
+// the row the swap moved
+TEST(PackedTable, HandleAtFollowsTheSwap) {
+    Table table;
+
+    const auto first = table.Add(Row{0});
+    const auto middle = table.Add(Row{1});
+    const auto last = table.Add(Row{2});
+
+    EXPECT_EQ(table.HandleAt(2), last);
+    table.Remove(first);
+    EXPECT_EQ(table.HandleAt(0), last);
+    EXPECT_EQ(table.HandleAt(1), middle);
+}
+
 TEST(PackedTable, RemoveLastNeedsNoSwap) {
     Table table;
 

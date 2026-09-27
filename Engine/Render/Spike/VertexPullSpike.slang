@@ -4,7 +4,7 @@
 // SV_VertexID on an indexed draw is the raw index buffer value on D3D12, while
 // Metal's [[vertex_id]] folds the draw's baseVertex into it - the same split
 // zeroBasedInstanceID papers over for SV_InstanceID. Rather than branch per
-// target, SceneRenderer draws with baseVertex 0 and carries the pool offset in
+// target, a DrawList draws with baseVertex 0 and carries the pool offset in
 // DrawData::vbIndex, so every backend reads d.vbIndex + vertexID.
 //
 // Four polygons of 3, 4, 5 and 6 sides, each its own pool allocation, so only

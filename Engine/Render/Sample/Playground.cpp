@@ -79,10 +79,8 @@ namespace Crowy
         // The prototyping map, in metres: a row of test stations across the
         // back of a walled floor, each testing one thing, fronts on one line,
         // every box face on the 0.25 m grid the floor draws. Nothing floats.
-        // Bucket order is discovery order, which is primitive order, so the
-        // primitives go grid, opaque, double-sided, translucent last.
-        // There is no sort key yet; the moment a second pass or
-        // a real translucent scene arrives, there has to be one.
+        // Each pass's draw list orders its own draws: opaque ones by pipeline,
+        // then near first, the glass far first.
         class Playground: public RenderApp {
         // the line every station's front stands on
         static constexpr f32 FrontZ = 3.5f;
@@ -288,8 +286,8 @@ namespace Crowy
                 {10.1f, 2.0f, 0.0f},
                 {0.2f, 4.0f, 20.4f}
             );
-            // after the side walls: Equal behind the prepass keeps the last
-            // draw on the corner seams, and the golden has the back wall there
+            // nearer centres draw first, so the back wall draws after the side
+            // walls, and Equal behind the prepass keeps it on the corner seams
             addPrimitive(
                 scene,
                 wallMesh,
@@ -555,7 +553,7 @@ namespace Crowy
             CStr label,
             MaterialHandle handle
         ) {
-            // BuildFrame re-reads the table every frame; no dirty consumer
+            // the draw lists re-read the table every frame; no dirty consumer
             return buildPropertyTree(
                 label,
                 &materialData(scene, handle),

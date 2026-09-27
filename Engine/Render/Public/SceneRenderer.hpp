@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "Assert.hpp"
-#include "GeometryPool.hpp"
+#include "DrawList.hpp"
 #include "PipelineCache.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
@@ -15,64 +15,41 @@ namespace Crowy
 {
     class RenderScene;
 
-    // One ExecuteIndirectIndexed submission:
-    // a contiguous run of the args buffer whose draws all share a pipeline.
-    struct DrawBucket {
-        RHIGraphicsPipelineState* pso = nullptr;
-        u32 firstDraw = 0;
-        u32 drawCount = 0;
-    };
-
-    // Where a surviving draw wants to land,
-    // before the buckets know their offsets.
-    struct VisibleDraw {
-        GeometryAllocation geometry{};
-        u32 bucket = 0;
-        u32 primitive = 0;
-        u32 materialIndex = 0;
-    };
-
-    using DrawArgs = std::vector<RHIDrawIndexedArgs>;
-    using DrawBuckets = std::vector<DrawBucket>;
-    using DrawRows = std::vector<DrawData>;
     using MaterialRows = std::vector<MaterialData>;
-    using PipelineStatePtrs = std::vector<RHIGraphicsPipelineState*>;
     using ViewRecords = std::vector<ViewData>;
-    using VisibleDraws = std::vector<VisibleDraw>;
 
     struct SceneRendererDesc {
-        // worst cases, not live counts: the buffers cannot grow mid-frame
-        u32 drawCapacity = 4096;
+        // a reserve: the rows are transient, so the scratch grows
         u32 materialCapacity = 256;
         u32 viewCount = 1;
     };
 
+    // What every pass of a frame shares, and one cull per view.
     class SceneRenderer {
+    private:
+        // a view's cull, kept until the next BeginFrame
+        struct ViewCull {
+            VisibleSet visible;
+            bool culled = false;
+        };
+
+        using ViewCulls = std::vector<ViewCull>;
+
     private:
         RHIDevice& device;
 
         // this frame's transient slices, refreshed by Upload()
-        RHIBufferSlice drawDataSlice;
-        RHIBufferSlice argsSlice;
         RHIBufferSlice materialSlice;
         // one RHI_CB_ALIGN record per view, selected by offset
         RHIBufferSlice viewSlice;
 
         PipelineCache pipelines;
 
-        DrawRows drawScratch;
-        DrawArgs argsScratch;
         MaterialRows materialScratch;
         ViewRecords views;
-        // one resolved pipeline per material row of the domain being built,
-        // null for the others
-        PipelineStatePtrs pipelineOfMaterial;
-        VisibleDraws visibleScratch;
-        DrawBuckets buckets;
-        u32 drawCount = 0;
-        u32 materialCount = 0;
-        u32 visiblePrimitiveCount = 0;
-        u64 triangleCount = 0;
+        ViewCulls culls;
+        // what BeginFrame was given, and what Visible culls
+        const RenderScene* frameScene = nullptr;
 
         bool uploaded = false;
 
@@ -90,49 +67,21 @@ namespace Crowy
         u32 ViewCount() const noexcept {
             return static_cast<u32>(views.size());
         }
-        u32 DrawCapacity() const noexcept {
-            return static_cast<u32>(drawScratch.size());
-        }
-        u32 DrawCount() const noexcept { return drawCount; }
-        u32 VisiblePrimitiveCount() const noexcept {
-            return visiblePrimitiveCount;
-        }
-        u64 TriangleCount() const noexcept { return triangleCount; }
-        usize BucketCount() const noexcept { return buckets.size(); }
         usize PipelineCount() const noexcept { return pipelines.Count(); }
         // every cached pipeline, recompiled from disk (PipelineCache::Rebuild)
         PipelineRebuild ReloadPipelines() { return pipelines.Rebuild(); }
+        // the cache every draw list resolves through
+        auto& Pipelines(this auto& self) noexcept { return self.pipelines; }
 
-        // Culls against the given view,
-        // then flattens the survivors of one domain into one row per submesh.
-        // Every material row is copied, only the domain's resolved.
-        // visibility changes every frame, so fully rebuild
-        void BuildFrame(
-            const RenderScene& scene,
-            const PassPipelineDesc& pass,
-            MaterialDomain domain,
-            u32 viewIndex = 0
-        );
+        // every material row once for every list; forgets last frame's culls
+        void BeginFrame(const RenderScene& scene);
+        // culled on the view's first request of the frame
+        const VisibleSet& Visible(u32 viewIndex);
+        // the materials and the views
         void Upload();
-
-        ScenePush Push();
+        // the materials; a list adds its rows, the caller the vertices
+        ScenePush FramePush() const;
 
         void BindView(RHICommandList& cmdList, u32 slot, u32 viewIndex) const;
-        // one ExecuteIndirectIndexed per bucket, each pointing into the same
-        // args buffer by offset
-        void Submit(
-            RHICommandList& cmdList,
-            const RHIIndexBufferView& indices
-        ) const;
-
-    private:
-        // linear search, because a pass has a handful of buckets
-        // and a hash map costs more than the scan
-        u32 bucketOf(RHIGraphicsPipelineState* pso);
-        void resolvePipelines(
-            const RenderScene& scene,
-            const PassPipelineDesc& pass,
-            MaterialDomain domain
-        );
     };
 }
