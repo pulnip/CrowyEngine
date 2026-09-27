@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "EnumUtil.hpp"
 #include "Geometry/Overlap3D.hpp"
 #include "GeometryPool.hpp"
 #include "LinearAlgebra.hpp"
@@ -51,7 +52,8 @@ namespace Crowy
         // local bounds pushed through localToWorld at extract time
         AABB3D worldBounds{};
         MeshHandle mesh;
-        PrimitiveFlags flags = PrimitiveFlags::Visible;
+        PrimitiveFlags flags =
+            combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow);
     };
 
     // The renderer's copy of the world:

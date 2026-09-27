@@ -82,6 +82,14 @@ TEST(RenderScene, PrimitiveReferencesAMesh) {
     );
 }
 
+// translucent surfaces stay out by their domain, not by this flag
+TEST(RenderScene, APrimitiveCastsAShadowByDefault) {
+    const PrimitiveSnapshot primitive{};
+
+    EXPECT_TRUE(hasFlag(primitive.flags, PrimitiveFlags::Visible));
+    EXPECT_TRUE(hasFlag(primitive.flags, PrimitiveFlags::CastShadow));
+}
+
 TEST(RenderScene, ClearEmptiesEveryTable) {
     RenderScene scene;
 

@@ -371,7 +371,10 @@ namespace Crowy
             CROWY_ASSERT(passState == PassKind::None,
                 "Already inside a pass. Did you call the matching End*Pass()?"
             );
-            CROWY_ASSERT(desc.colorAttachments.size() > 0);
+            CROWY_ASSERT(
+                !desc.colorAttachments.empty() || desc.depthAttachment.has_value(),
+                "a render pass needs a color or a depth attachment"
+            );
             detail::validateAcquires(textureAcquires, bufferAcquires);
 
             CROWY_STAT(renderPassCount);
