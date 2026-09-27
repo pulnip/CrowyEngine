@@ -102,6 +102,15 @@
             },
             "generator": "Ninja Multi-Config",
             "toolchainFile": "${sourceDir}/cmake/toolchains/brew-llvm.cmake"
+        },
+        {
+            "name": "macOS-brew-llvm-Bench",
+            "displayName": "brew-llvm-bench",
+            "inherits": "macOS-brew-llvm",
+            "binaryDir": "build-bench",
+            "cacheVariables": {
+                "CROWY_BENCHMARK": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -205,6 +214,18 @@
             "name": "macOS-brew-llvm-Release",
             "displayName": "Release",
             "configurePreset": "macOS-brew-llvm",
+            "configuration": "Release"
+        },
+        {
+            "name": "macOS-brew-llvm-Bench-Debug",
+            "displayName": "Debug",
+            "configurePreset": "macOS-brew-llvm-Bench",
+            "configuration": "Debug"
+        },
+        {
+            "name": "macOS-brew-llvm-Bench-Release",
+            "displayName": "Release",
+            "configurePreset": "macOS-brew-llvm-Bench",
             "configuration": "Release"
         }
     ]

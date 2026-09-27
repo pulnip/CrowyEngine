@@ -9,10 +9,17 @@
 # usage: bench_run.ps1 [-AppA <exe>] [-AppB <exe>] [-Reps 5]
 #                      [-StageDir bench] [-OutDir bench-runs]
 #                      [-Config Tools/bench.app.json]
+#                      [-DebugA <json>] [-DebugB <json>]
 #
 # Every argument falls back to the default below. The sample must be a
 # Debug or CROWY_BENCHMARK build, run with --config; the config's report and
 # frame paths must point into -StageDir.
+#
+# -DebugA and -DebugB reach a RenderApp sample as CROWY_DEBUG, so A and B may
+# be one executable with two debug switches:
+#   -AppA build-bench\bin\Playground.exe -AppB build-bench\bin\Playground.exe
+#   -DebugB '{"depthPrepass":false}'
+# Each run is filed as <name>-<A|B>-rep<n>.
 #
 # Run from the repository root: samples load Engine/Shader and Content by
 # relative path.
@@ -26,20 +33,26 @@ param(
     [string]$OutDir = "bench-runs",
     # the app document every run is started with
     [string]$Config = "Tools/bench.app.json",
-    [int]$TimeoutSeconds = 300
+    [int]$TimeoutSeconds = 300,
+    # CROWY_DEBUG for A's and B's runs; empty sets none
+    [string]$DebugA = "",
+    [string]$DebugB = ""
 )
 
 $ErrorActionPreference = "Stop"
 
 $apps = @()
-foreach ($app in @($AppA, $AppB)) {
-    if (-not $app) { continue }
+foreach ($side in @(
+    @{ Name = "A"; App = $AppA; Debug = $DebugA },
+    @{ Name = "B"; App = $AppB; Debug = $DebugB }
+)) {
+    if (-not $side.App) { continue }
 
-    if (-not (Test-Path $app)) {
-        Write-Host "FAIL: no such executable: $app"
+    if (-not (Test-Path $side.App)) {
+        Write-Host "FAIL: no such executable: $($side.App)"
         exit 1
     }
-    $apps += $app
+    $apps += $side
 }
 
 if ($apps.Count -eq 0) {
@@ -55,9 +68,10 @@ if (-not (Test-Path $Config -PathType Leaf)) {
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 for ($rep = 1; $rep -le $Reps; $rep++) {
-    foreach ($app in $apps) {
+    foreach ($side in $apps) {
+        $app = $side.App
         $name = [IO.Path]::GetFileNameWithoutExtension($app)
-        $label = "$name-rep$rep"
+        $label = "$name-$($side.Name)-rep$rep"
 
         # start from an empty stage so the collection below cannot pick up
         # anything an earlier run left behind
@@ -65,10 +79,13 @@ for ($rep = 1; $rep -le $Reps; $rep++) {
         New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 
         Write-Host "running $label ..."
+        # the child inherits it; cleared right after, so B never sees A's
+        $env:CROWY_DEBUG = $side.Debug
         $proc = Start-Process -FilePath $app `
             -ArgumentList "--config", "`"$Config`"" `
             -WorkingDirectory (Get-Location) `
             -NoNewWindow -PassThru
+        $env:CROWY_DEBUG = $null
         $null = $proc.Handle
 
         if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {

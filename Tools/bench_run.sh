@@ -13,6 +13,12 @@
 # Debug or CROWY_BENCHMARK build, run with --config; the config's report and
 # frame paths must point into stage-dir.
 #
+# CROWY_BENCH_DEBUG_A and CROWY_BENCH_DEBUG_B reach a RenderApp sample as
+# CROWY_DEBUG, so A and B may be one executable with two debug switches:
+#   CROWY_BENCH_DEBUG_B='{"depthPrepass":false}' \
+#       Tools/bench_run.sh build-bench/bin/Playground build-bench/bin/Playground
+# Each run is filed as <name>-<A|B>-rep<n>.
+#
 # Run from the repository root: samples load Engine/Shader and Content by
 # relative path.
 set -u
@@ -27,19 +33,22 @@ OUT_DIR="${5:-bench-runs}"
 # the app document every run is started with
 CONFIG="${6:-Tools/bench.app.json}"
 TIMEOUT="${CROWY_BENCH_TIMEOUT:-300}"
+DEBUG_A="${CROWY_BENCH_DEBUG_A:-}"
+DEBUG_B="${CROWY_BENCH_DEBUG_B:-}"
 
-APPS=""
-for APP in "$APP_A" "$APP_B"; do
+SIDES=""
+for SIDE in A B; do
+    if [ "$SIDE" = A ]; then APP="$APP_A"; else APP="$APP_B"; fi
     [ -z "$APP" ] && continue
 
     if [ ! -x "$APP" ]; then
         echo "FAIL: no such executable: $APP" >&2
         exit 1
     fi
-    APPS="$APPS $APP"
+    SIDES="$SIDES $SIDE"
 done
 
-if [ -z "$APPS" ]; then
+if [ -z "$SIDES" ]; then
     echo "FAIL: give at least one executable" >&2
     exit 1
 fi
@@ -53,8 +62,15 @@ mkdir -p "$OUT_DIR"
 
 REP=1
 while [ "$REP" -le "$REPS" ]; do
-    for APP in $APPS; do
-        LABEL="$(basename "$APP")-rep$REP"
+    for SIDE in $SIDES; do
+        if [ "$SIDE" = A ]; then
+            APP="$APP_A"
+            DEBUG="$DEBUG_A"
+        else
+            APP="$APP_B"
+            DEBUG="$DEBUG_B"
+        fi
+        LABEL="$(basename "$APP")-$SIDE-rep$REP"
 
         # start from an empty stage so the collection below cannot pick up
         # anything an earlier run left behind
@@ -62,7 +78,7 @@ while [ "$REP" -le "$REPS" ]; do
         mkdir -p "$STAGE_DIR"
 
         echo "running $LABEL ..."
-        "$APP" --config "$CONFIG" &
+        CROWY_DEBUG="$DEBUG" "$APP" --config "$CONFIG" &
         PID=$!
 
         ELAPSED=0

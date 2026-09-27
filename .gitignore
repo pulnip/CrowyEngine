@@ -17,3 +17,8 @@ imgui.ini
 
 # smoke captures (CROWY_SMOKE_CAPTURE_DIR=captures)
 captures/
+
+# the benchmark tree and its runs (Tools/build-bench.ps1, Tools/bench_run.ps1)
+build-bench/
+bench/
+bench-runs/

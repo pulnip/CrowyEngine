@@ -32,6 +32,17 @@ Poll it until `running : false`:
 Tools/build.sh --status
 ```
 
+The benchmark tree has presets of its own (`CROWY_BENCHMARK` on, in
+`build-bench/`), built in Release by `Tools/build_bench.ps1` (macOS:
+`Tools/build_bench.sh`), which takes the same flags. Both scripts look for the
+cache and keep their logs and status under `build/` whatever the preset, so
+**the first bench build passes `-Fresh`** (`--fresh`), and a bench build's
+log replaces the Debug tree's.
+
+```bash
+powershell -NoProfile -File Tools/build_bench.ps1 -Target Playground -Fresh -Detach
+```
+
 - Windows PowerShell 5.1 (`powershell`) is the baseline — the same host
   `Engine/RHI/Sample/CMakeLists.txt` runs the smoke tests with, and every script
   under `Tools/` stays inside what it parses. Do not write `pwsh`; PowerShell 7

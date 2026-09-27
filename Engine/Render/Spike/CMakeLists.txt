@@ -16,3 +16,20 @@ target_include_directories(VertexPullSpike
 PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../Sample"
 )
+
+# guards position invariance between the depth prepass and the opaque pass
+# that tests Equal against it
+crowy_declare_spike(PrepassEqualSpike
+SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Sample/FlyCamera.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Sample/RenderApp.cpp"
+    PrepassEqualSpike.cpp
+DEPENDS
+    Crowy::Remote
+    Crowy::Render
+)
+
+target_include_directories(PrepassEqualSpike
+PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Sample"
+)

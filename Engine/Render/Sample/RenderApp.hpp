@@ -44,6 +44,9 @@ namespace Crowy
     struct RenderDebug {
         DebugMode mode = DebugMode::Lit;
         bool wireframe = false;
+        // off, the opaque round tests Less and writes depth itself; a view
+        // that overrides fill mode or depth draws without a prepass anyway
+        bool depthPrepass = true;
         // read by a sample that hosts the stats overlay or a panel
         bool showStats = false;
         bool showPanel = false;
@@ -199,6 +202,7 @@ namespace Crowy
     private:
         void createDepthBuffer(u32 width, u32 height);
         void openCommandPort();
+        void applyDebugFromEnvironment();
         DOM::Table controlStatus() const;
         void collectCaptures();
         // the history's entry for the frame stats.report.gpu times, if kept

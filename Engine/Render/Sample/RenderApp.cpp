@@ -9,7 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include "ClassRegistry.hpp"
 #include "FrameSelector.hpp"
+#include "JsonLoader.hpp"
 #include "Log.hpp"
 #include "Object.hpp"
 #include "RHIBuffer.hpp"
@@ -84,7 +86,8 @@ namespace Crowy
             const auto overrides = meshPassOverride(debug);
             // Overdraw tests Always, so a prepass would only cost; a wireframe
             // one stores line depths, which Equal cannot test lines against
-            const bool depthPrepass = !overrides.fillMode &&
+            const bool depthPrepass = debug.depthPrepass &&
+                                      !overrides.fillMode &&
                                       !overrides.depthFunc &&
                                       !overrides.depthWrite;
 
@@ -270,6 +273,7 @@ namespace Crowy
     CROWY_STRUCT(RenderDebug)
         .SetProperty("mode", &RenderDebug::mode)
         .SetProperty("wireframe", &RenderDebug::wireframe)
+        .SetProperty("depthPrepass", &RenderDebug::depthPrepass)
         .SetProperty("showStats", &RenderDebug::showStats)
         .SetProperty("showPanel", &RenderDebug::showPanel)
     CROWY_STRUCT_END(RenderDebug)
@@ -316,6 +320,7 @@ namespace Crowy
 
         OnInitUI(device, colorFormat, config.depthFormat);
 
+        applyDebugFromEnvironment();
     #if defined(_DEBUG) || !defined(NDEBUG)
         openCommandPort();
     #endif
@@ -337,6 +342,21 @@ namespace Crowy
 
         // after the geometry, because a snapshot carries the allocation
         ExtractScene(scene);
+    }
+
+    // CROWY_DEBUG: a JSON object applied to `debug` through its reflection,
+    // for a run that needs a debug switch and has no port (a bench build)
+    void RenderApp::applyDebugFromEnvironment() {
+        const char* env = std::getenv("CROWY_DEBUG");
+        if(env == nullptr || *env == '\0')
+            return;
+
+        ApplyProperties(&debug, parseJsonString(env));
+
+        // a misspelled key applies nothing, so the log says what took effect
+        DOM::Value applied;
+        SerializeProperties(&debug, applied);
+        LOG_INFO("RenderApp", "CROWY_DEBUG: debug is {}", emitJson(applied));
     }
 
     // CROWY_COMMAND_PORT: unset is the default port with retries,
