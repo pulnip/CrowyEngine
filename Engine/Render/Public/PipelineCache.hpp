@@ -28,16 +28,21 @@ namespace Crowy
         f32 slopeScaledDepthBias = 0.0f;
     };
 
+    // what a mesh pass's desc says about the pipelines it draws with
+    struct MeshPassState {
+        RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
+        bool depthWrite = true;
+        // replaces the material's; a pass with no color target has none
+        std::optional<RHIShaderDesc> fragmentShader;
+        std::optional<PassDepthBias> depthBias;
+    };
+
     // The half of a pipeline state a pass owns.
     struct PassPipelineDesc {
         // empty: a depth-only pass, which has no fragment stage
         std::span<const RHIPixelFormat> renderTargetFormats;
         RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
-        RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
-        bool depthWrite = true;
-        // replaces the material's
-        std::optional<RHIShaderDesc> fragmentShader;
-        std::optional<PassDepthBias> depthBias;
+        MeshPassState state;
         // a depth-only pass ignores it
         MeshPassOverride debug;
     };

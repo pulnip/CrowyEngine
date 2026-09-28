@@ -96,25 +96,34 @@ namespace Crowy
                 .prepass =
                     PassPipelineDesc{
                         .depthFormat = depthFormat,
-                        .depthFunc = RHIComparisonFunc::Less,
-                        .depthWrite = true
+                        .state =
+                            MeshPassState{
+                                .depthFunc = RHIComparisonFunc::Less,
+                                .depthWrite = true
+                            }
                     },
                 .opaque =
                     PassPipelineDesc{
                         .renderTargetFormats = renderTargetFormats,
                         .depthFormat = depthFormat,
-                        .depthFunc = depthPrepass ?
-                            RHIComparisonFunc::Equal :
-                            RHIComparisonFunc::Less,
-                        .depthWrite = !depthPrepass,
+                        .state =
+                            MeshPassState{
+                                .depthFunc = depthPrepass ?
+                                    RHIComparisonFunc::Equal :
+                                    RHIComparisonFunc::Less,
+                                .depthWrite = !depthPrepass
+                            },
                         .debug = overrides
                     },
                 .translucent =
                     PassPipelineDesc{
                         .renderTargetFormats = renderTargetFormats,
                         .depthFormat = depthFormat,
-                        .depthFunc = RHIComparisonFunc::Less,
-                        .depthWrite = false,
+                        .state =
+                            MeshPassState{
+                                .depthFunc = RHIComparisonFunc::Less,
+                                .depthWrite = false
+                            },
                         .debug = overrides
                     }
             };

@@ -10,6 +10,9 @@
 // Everything the GPU reads.
 namespace Crowy
 {
+    // the RHI slot a pass binds its ViewData row at: `view`, `b1`
+    inline constexpr u32 ViewConstantBufferSlot = 0;
+
     // One row per draw, so a mesh's submeshes duplicate `world` between them.
     // That is what lets baseInstance be the row index with nothing in between.
     struct DrawData {

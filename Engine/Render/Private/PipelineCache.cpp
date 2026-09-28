@@ -58,8 +58,9 @@ namespace Crowy
         CROWY_ASSERT(pass.renderTargetFormats.size() <= RHI_MAX_RENDER_TARGETS);
 
         const bool depthOnly = pass.renderTargetFormats.empty();
+        const auto& state = pass.state;
         CROWY_ASSERT(
-            !depthOnly || !pass.fragmentShader,
+            !depthOnly || !state.fragmentShader,
             "a depth-only pass has no fragment stage to replace"
         );
 
@@ -77,17 +78,17 @@ namespace Crowy
             .depthStencil =
                 RHIDepthStencilState{
                     .format = pass.depthFormat,
-                    .depthWriteEnable = pass.depthWrite,
-                    .depthFunc = pass.depthFunc
+                    .depthWriteEnable = state.depthWrite,
+                    .depthFunc = state.depthFunc
                 },
             .renderTargetCount = pass.renderTargetFormats.size(),
             .profile = material.profile
         };
-        if(pass.depthBias) {
-            desc.rasterizer.depthBias = pass.depthBias->depthBias;
-            desc.rasterizer.depthBiasClamp = pass.depthBias->depthBiasClamp;
+        if(state.depthBias) {
+            desc.rasterizer.depthBias = state.depthBias->depthBias;
+            desc.rasterizer.depthBiasClamp = state.depthBias->depthBiasClamp;
             desc.rasterizer.slopeScaledDepthBias =
-                pass.depthBias->slopeScaledDepthBias;
+                state.depthBias->slopeScaledDepthBias;
         }
         // no fragment stage and no blend, so every material that rasterizes
         // alike shares one depth-only pipeline
@@ -96,7 +97,7 @@ namespace Crowy
 
         const auto& debug = pass.debug;
         desc.fragmentShader =
-            pass.fragmentShader.value_or(material.fragmentShader);
+            state.fragmentShader.value_or(material.fragmentShader);
         desc.blend = debug.blend ? debug.blend : material.blend;
         if(debug.fillMode)
             desc.rasterizer.fillMode = *debug.fillMode;

@@ -207,8 +207,8 @@ TEST(PipelineKey, PassOverridesReplaceTheMaterialState) {
     };
     // the opaque pass after a prepass, which the override still beats
     auto overdraw = BasePass(formats);
-    overdraw.depthFunc = RHIComparisonFunc::Equal;
-    overdraw.depthWrite = false;
+    overdraw.state.depthFunc = RHIComparisonFunc::Equal;
+    overdraw.state.depthWrite = false;
     overdraw.debug = MeshPassOverride{
         .fillMode = RHIFillMode::Wireframe,
         .blend = additive,
@@ -241,8 +241,8 @@ TEST(PipelineKey, APassWithoutOverridesKeepsTheMaterialState) {
     material.blend = RHIBlendState{};
 
     auto pass = BasePass(formats);
-    pass.depthFunc = RHIComparisonFunc::LessEqual;
-    pass.depthWrite = false;
+    pass.state.depthFunc = RHIComparisonFunc::LessEqual;
+    pass.state.depthWrite = false;
 
     const auto desc = Compose(material, pass);
 
@@ -293,8 +293,8 @@ TEST(PipelineKey, OneMaterialKeysApartInTwoPasses) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
 
     auto opaque = BasePass(formats);
-    opaque.depthFunc = RHIComparisonFunc::Equal;
-    opaque.depthWrite = false;
+    opaque.state.depthFunc = RHIComparisonFunc::Equal;
+    opaque.state.depthWrite = false;
 
     const auto prepassDesc = Compose(OpaqueMaterial(), BasePass({}));
     const auto opaqueDesc = Compose(OpaqueMaterial(), opaque);
@@ -342,7 +342,7 @@ TEST(PipelineKey, APassFragmentShaderReplacesTheMaterials) {
     };
 
     auto pass = BasePass(formats);
-    pass.fragmentShader = normals;
+    pass.state.fragmentShader = normals;
     const auto desc = Compose(OpaqueMaterial(), pass);
 
     ASSERT_TRUE(desc.fragmentShader.has_value());
@@ -361,7 +361,7 @@ TEST(PipelineKey, PassDepthBiasReplacesTheMaterialsBias) {
     material.rasterizer.cullMode = RHICullMode::None;
 
     for(auto pass: {BasePass({}), BasePass(formats)}) {
-        pass.depthBias = PassDepthBias{.depthBias = -1};
+        pass.state.depthBias = PassDepthBias{.depthBias = -1};
         const auto desc = Compose(material, pass);
 
         EXPECT_EQ(desc.rasterizer.depthBias, -1);
