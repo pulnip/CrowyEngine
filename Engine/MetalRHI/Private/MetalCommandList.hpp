@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -13,6 +14,8 @@ namespace MTL{
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLStageInputOutputDescriptor.hpp>
 #include <Metal/MTLTypes.hpp>
+#include "MetalPipelineState.hpp"
+#include "MetalUtil.hpp"
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
 
@@ -42,6 +45,23 @@ namespace Crowy
             };
             std::array<ConstantBufferBinding, RHI_NUM_DIRECT_CBS> constantBuffers{};
             u32 cbDirtyMask = 0;
+
+            // what this encoder already holds, so a pipeline switch or a
+            // repeated binding sets only what changed; empty until first set
+            struct BufferArgument{
+                MTL::Buffer* buffer = nullptr;
+                NS::UInteger offset = 0;
+            };
+            MTL::RenderPipelineState* boundPipeline = nullptr;
+            std::optional<MetalRasterState> boundRaster;
+            MTL::DepthStencilState* boundDepthStencil = nullptr;
+            std::optional<MTL::Viewport> boundViewport;
+            std::optional<MTL::ScissorRect> boundScissor;
+            // indexed like the buffer and sampler argument tables
+            std::array<BufferArgument, MaxBufferArguments> boundVSBuffers{};
+            std::array<BufferArgument, MaxBufferArguments> boundFSBuffers{};
+            std::array<MTL::SamplerState*, MaxSamplerArguments> boundVSSamplers{};
+            std::array<MTL::SamplerState*, MaxSamplerArguments> boundFSSamplers{};
         };
 
         struct ComputePassState{
@@ -133,6 +153,24 @@ namespace Crowy
         // snapshotted used-buffer masks
         static void applyPushConstants(RenderPassState&);
         static void applyConstantBuffer(RenderPassState&, u32 slot);
+        // set on the encoder only what differs from what it holds
+        static void applyPipeline(
+            RenderPassState&,
+            const MetalGraphicsPipelineState&
+        );
+        static void applyRasterState(RenderPassState&, const MetalRasterState&);
+        static void bindVertexBuffer(
+            RenderPassState&,
+            MTL::Buffer*,
+            NS::UInteger offset,
+            NS::UInteger index
+        );
+        static void bindFragmentBuffer(
+            RenderPassState&,
+            MTL::Buffer*,
+            NS::UInteger offset,
+            NS::UInteger index
+        );
 
     public:
         MetalCommandList(

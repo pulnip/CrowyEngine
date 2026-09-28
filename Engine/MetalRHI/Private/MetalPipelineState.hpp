@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <vector>
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLComputeCommandEncoder.hpp>
@@ -19,10 +20,24 @@ namespace Crowy
         MTL::SamplerState* sampler;
     };
 
+    // the render state Metal keeps on the encoder instead of in the
+    // pipeline object; the command list sets only the fields that change
+    struct MetalRasterState{
+        MTL::CullMode cullMode = MTL::CullModeNone;
+        MTL::Winding winding = MTL::WindingClockwise;
+        MTL::TriangleFillMode fillMode = MTL::TriangleFillModeFill;
+        float depthBias = 0.0f;
+        float slopeScaledDepthBias = 0.0f;
+        float depthBiasClamp = 0.0f;
+        MTL::DepthClipMode depthClipMode = MTL::DepthClipModeClip;
+    };
+
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
     private:
         NS::SharedPtr<MTL::RenderPipelineState> pipeline;
-        RHIRasterizerState rasterizerState{};
+        MetalRasterState rasterState{};
+        // null for a pipeline with no depth attachment format, which only a
+        // pass without depth can use
         NS::SharedPtr<MTL::DepthStencilState> depthStencilState;
 
         MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
@@ -49,7 +64,21 @@ namespace Crowy
 
         ~MetalGraphicsPipelineState();
 
-        void Bind(MTL::RenderCommandEncoder&);
+        // what the command list sets on the encoder, each only when it differs
+        // from what the encoder holds
+        auto GetNative() const noexcept{ return pipeline.get(); }
+        std::span<const MetalSamplerBinding> GetVSSamplers() const noexcept{
+            return vsSamplers;
+        }
+        std::span<const MetalSamplerBinding> GetFSSamplers() const noexcept{
+            return fsSamplers;
+        }
+        const MetalRasterState& GetRasterState() const noexcept{
+            return rasterState;
+        }
+        auto GetDepthStencilState() const noexcept{
+            return depthStencilState.get();
+        }
 
         MTL::PrimitiveType GetTopology() const noexcept{
             return topology;

@@ -44,6 +44,17 @@ namespace Crowy
                 MTL::IndexTypeUInt32;
         }
 
+        bool sameViewport(const MTL::Viewport& a, const MTL::Viewport& b){
+            return a.originX == b.originX && a.originY == b.originY &&
+                a.width == b.width && a.height == b.height &&
+                a.znear == b.znear && a.zfar == b.zfar;
+        }
+
+        bool sameScissorRect(const MTL::ScissorRect& a, const MTL::ScissorRect& b){
+            return a.x == b.x && a.y == b.y &&
+                a.width == b.width && a.height == b.height;
+        }
+
         // sync → fence stage. the two directions round differently:
         // a producer signals after its latest stage,
         // a consumer waits before its earliest.
@@ -409,7 +420,7 @@ namespace Crowy
         );
 
         auto& metalPSO = static_cast<MetalGraphicsPipelineState&>(pso);
-        metalPSO.Bind(*state->encoder);
+        applyPipeline(*state, metalPSO);
 
         state->topology = metalPSO.GetTopology();
         state->vsUsedBufferMask = metalPSO.GetVSUsedBufferMask();
@@ -434,12 +445,110 @@ namespace Crowy
         );
         CROWY_ASSERT(slot < MaxVertexBufferSlots);
 
-        auto mtlBuffer = static_cast<MetalBuffer&>(buffer).Get();
-        state->encoder->setVertexBuffer(
-            mtlBuffer,
+        bindVertexBuffer(
+            *state,
+            static_cast<MetalBuffer&>(buffer).Get(),
             offset,
             toVertexBufferIndex(slot)
         );
+    }
+
+    void MetalCommandList::applyPipeline(
+        RenderPassState& state,
+        const MetalGraphicsPipelineState& pso
+    ){
+        auto& encoder = *state.encoder;
+
+        if(state.boundPipeline != pso.GetNative()){
+            encoder.setRenderPipelineState(pso.GetNative());
+            state.boundPipeline = pso.GetNative();
+        }
+
+        for(const auto& binding: pso.GetVSSamplers()){
+            auto& bound = state.boundVSSamplers[binding.slot];
+            if(bound != binding.sampler){
+                encoder.setVertexSamplerState(binding.sampler, binding.slot);
+                bound = binding.sampler;
+            }
+        }
+        for(const auto& binding: pso.GetFSSamplers()){
+            auto& bound = state.boundFSSamplers[binding.slot];
+            if(bound != binding.sampler){
+                encoder.setFragmentSamplerState(binding.sampler, binding.slot);
+                bound = binding.sampler;
+            }
+        }
+
+        applyRasterState(state, pso.GetRasterState());
+
+        // a pipeline without one runs only in a pass without depth
+        const auto depthStencil = pso.GetDepthStencilState();
+        if(depthStencil && depthStencil != state.boundDepthStencil){
+            encoder.setDepthStencilState(depthStencil);
+            state.boundDepthStencil = depthStencil;
+        }
+    }
+
+    void MetalCommandList::applyRasterState(
+        RenderPassState& state,
+        const MetalRasterState& raster
+    ){
+        auto& encoder = *state.encoder;
+        const auto bound = state.boundRaster;
+
+        if(!bound || bound->cullMode != raster.cullMode){
+            encoder.setCullMode(raster.cullMode);
+        }
+        if(!bound || bound->winding != raster.winding){
+            encoder.setFrontFacingWinding(raster.winding);
+        }
+        if(!bound || bound->fillMode != raster.fillMode){
+            encoder.setTriangleFillMode(raster.fillMode);
+        }
+        const bool sameBias = bound &&
+            bound->depthBias == raster.depthBias &&
+            bound->slopeScaledDepthBias == raster.slopeScaledDepthBias &&
+            bound->depthBiasClamp == raster.depthBiasClamp;
+        if(!sameBias){
+            encoder.setDepthBias(
+                raster.depthBias,
+                raster.slopeScaledDepthBias,
+                raster.depthBiasClamp
+            );
+        }
+        if(!bound || bound->depthClipMode != raster.depthClipMode){
+            encoder.setDepthClipMode(raster.depthClipMode);
+        }
+
+        state.boundRaster = raster;
+    }
+
+    void MetalCommandList::bindVertexBuffer(
+        RenderPassState& state,
+        MTL::Buffer* buffer,
+        NS::UInteger offset,
+        NS::UInteger index
+    ){
+        auto& bound = state.boundVSBuffers[index];
+        if(bound.buffer == buffer && bound.offset == offset){
+            return;
+        }
+        state.encoder->setVertexBuffer(buffer, offset, index);
+        bound = {.buffer = buffer, .offset = offset};
+    }
+
+    void MetalCommandList::bindFragmentBuffer(
+        RenderPassState& state,
+        MTL::Buffer* buffer,
+        NS::UInteger offset,
+        NS::UInteger index
+    ){
+        auto& bound = state.boundFSBuffers[index];
+        if(bound.buffer == buffer && bound.offset == offset){
+            return;
+        }
+        state.encoder->setFragmentBuffer(buffer, offset, index);
+        bound = {.buffer = buffer, .offset = offset};
     }
 
     inline constexpr NS::UInteger PushConstantSlot = 0;
@@ -466,12 +575,14 @@ namespace Crowy
             return;
         }
 
+        // bytes replace whatever buffer the slot held
         if((state.vsUsedBufferMask >> PushConstantSlot) & 1u){
             state.encoder->setVertexBytes(
                 state.pushConstants.data(),
                 state.pushConstantSize,
                 PushConstantSlot
             );
+            state.boundVSBuffers[PushConstantSlot] = {};
         }
         if((state.fsUsedBufferMask >> PushConstantSlot) & 1u){
             state.encoder->setFragmentBytes(
@@ -479,6 +590,7 @@ namespace Crowy
                 state.pushConstantSize,
                 PushConstantSlot
             );
+            state.boundFSBuffers[PushConstantSlot] = {};
         }
     }
 
@@ -512,18 +624,10 @@ namespace Crowy
         const auto index = ConstantBufferSlotBase + slot;
 
         if((state.vsUsedBufferMask >> index) & 1u){
-            state.encoder->setVertexBuffer(
-                binding.buffer,
-                binding.offset,
-                index
-            );
+            bindVertexBuffer(state, binding.buffer, binding.offset, index);
         }
         if((state.fsUsedBufferMask >> index) & 1u){
-            state.encoder->setFragmentBuffer(
-                binding.buffer,
-                binding.offset,
-                index
-            );
+            bindFragmentBuffer(state, binding.buffer, binding.offset, index);
         }
     }
 
@@ -553,7 +657,11 @@ namespace Crowy
             viewport.width, viewport.height,
             viewport.minDepth, viewport.maxDepth
         };
+        if(state->boundViewport && sameViewport(*state->boundViewport, vp)){
+            return;
+        }
         state->encoder->setViewport(vp);
+        state->boundViewport = vp;
     }
 
     void MetalCommandList::SetScissorRect(const RHIScissorRect& scissor){
@@ -570,7 +678,11 @@ namespace Crowy
             static_cast<NS::UInteger>(scissor.right - scissor.left),
             static_cast<NS::UInteger>(scissor.bottom - scissor.top)
         };
+        if(state->boundScissor && sameScissorRect(*state->boundScissor, rect)){
+            return;
+        }
         state->encoder->setScissorRect(rect);
+        state->boundScissor = rect;
     }
 
     void MetalCommandList::Draw(

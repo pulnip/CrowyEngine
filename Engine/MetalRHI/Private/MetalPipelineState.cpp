@@ -139,6 +139,9 @@ namespace Crowy
             bindings.reserve(uses.size());
 
             for(const auto& use: uses){
+                CROWY_ASSERT(use.slot < MaxSamplerArguments,
+                    "a sampler slot past Metal's sampler argument table"
+                );
                 bindings.push_back(MetalSamplerBinding{
                     .slot = use.slot,
                     .sampler = samplers.Get(use.samplerIndex)
@@ -298,8 +301,22 @@ namespace Crowy
             }
         }
 
-        // Store rasterizer state for command list
-        rasterizerState = desc.rasterizer;
+        const auto& rasterizer = desc.rasterizer;
+        rasterState = MetalRasterState{
+            .cullMode = convert(rasterizer.cullMode),
+            .winding = rasterizer.frontCounterClockwise ?
+                MTL::WindingCounterClockwise :
+                MTL::WindingClockwise,
+            .fillMode = rasterizer.fillMode == RHIFillMode::Wireframe ?
+                MTL::TriangleFillModeLines :
+                MTL::TriangleFillModeFill,
+            .depthBias = static_cast<float>(rasterizer.depthBias),
+            .slopeScaledDepthBias = rasterizer.slopeScaledDepthBias,
+            .depthBiasClamp = rasterizer.depthBiasClamp,
+            .depthClipMode = rasterizer.depthClipEnable ?
+                MTL::DepthClipModeClip :
+                MTL::DepthClipModeClamp
+        };
 
         // Fragment Shader
         if(desc.fragmentShader &&
@@ -438,45 +455,6 @@ namespace Crowy
     }
 
     MetalGraphicsPipelineState::~MetalGraphicsPipelineState() = default;
-
-    void MetalGraphicsPipelineState::Bind(MTL::RenderCommandEncoder& encoder){
-        encoder.setRenderPipelineState(pipeline.get());
-
-        // bind sampler to reserved slot
-        for(const auto& binding: vsSamplers){
-            encoder.setVertexSamplerState(binding.sampler, binding.slot);
-        }
-        for(const auto& binding: fsSamplers){
-            encoder.setFragmentSamplerState(binding.sampler, binding.slot);
-        }
-
-        // Rasterizer state
-        encoder.setCullMode(convert(rasterizerState.cullMode));
-        encoder.setFrontFacingWinding(
-            rasterizerState.frontCounterClockwise ?
-                MTL::WindingCounterClockwise :
-                MTL::WindingClockwise
-        );
-        encoder.setTriangleFillMode(
-            rasterizerState.fillMode == RHIFillMode::Wireframe ?
-                MTL::TriangleFillModeLines :
-                MTL::TriangleFillModeFill
-        );
-        encoder.setDepthBias(
-            rasterizerState.depthBias,
-            rasterizerState.slopeScaledDepthBias,
-            rasterizerState.depthBiasClamp
-        );
-        encoder.setDepthClipMode(
-            rasterizerState.depthClipEnable ?
-                MTL::DepthClipModeClip :
-                MTL::DepthClipModeClamp
-        );
-
-        if(depthStencilState){
-            encoder.setDepthStencilState(depthStencilState.get());
-        }
-    }
 
     void MetalGraphicsPipelineState::createDepthStencilState(
         MTL::Device& device,

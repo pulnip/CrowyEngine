@@ -11,10 +11,12 @@ namespace Crowy
     // Metal's buffer argument table has 31 entries (indices 0-30),
     // and slang assigns shader parameter buffers upward from index 0.
     // so, Vertex buffers are bound downward from the table's top
+    inline constexpr u32 MaxBufferArguments = 31;
+    inline constexpr u32 MaxSamplerArguments = 16;
     inline constexpr u32 MaxVertexBufferSlots = 8;
 
     inline constexpr NS::UInteger toVertexBufferIndex(u32 slot){
-        constexpr NS::UInteger top = 30;
+        constexpr NS::UInteger top = MaxBufferArguments - 1;
         return top - slot;
     }
 
