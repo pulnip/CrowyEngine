@@ -1,6 +1,8 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
+#include <span>
 #include <vector>
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -42,7 +44,10 @@ namespace Crowy
         RHIShader(
             const std::filesystem::path&,
             RHIBackend backend,
-            CStr profile = nullptr
+            CStr profile = nullptr,
+            // composed after this file, each exporting a link-time type the
+            // file declares extern; none may declare a shader parameter
+            std::span<const std::filesystem::path> linkedModules = {}
         );
 
         std::size_t Gethash() const noexcept{

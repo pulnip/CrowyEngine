@@ -990,6 +990,11 @@ namespace Crowy
         // HLSL shader model; Metal ignores it
         CStr profile = "sm_6_6";
 
+        // linked into every program the pipeline compiles, each exporting a
+        // link-time type the program declares extern; pipeline-wide because
+        // Metal links whole programs
+        std::vector<std::filesystem::path> linkedModules;
+
         // Only the first renderTargetCount formats participate,
         // matching what the hash mixes in.
         friend bool operator==(
@@ -1007,7 +1012,9 @@ namespace Crowy
                    lhs.rasterizer == rhs.rasterizer &&
                    lhs.fragmentShader == rhs.fragmentShader &&
                    lhs.depthStencil == rhs.depthStencil &&
-                   lhs.blend == rhs.blend && sameCStr(lhs.profile, rhs.profile);
+                   lhs.blend == rhs.blend &&
+                   sameCStr(lhs.profile, rhs.profile) &&
+                   lhs.linkedModules == rhs.linkedModules;
         }
     };
 
@@ -1043,6 +1050,9 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc> {
 
         for(usize i = 0; i < desc.renderTargetCount; ++i) {
             h = hashAll(h, desc.renderTargetFormats[i]);
+        }
+        for(const auto& module: desc.linkedModules) {
+            h = hashAll(h, module);
         }
 
         return h;

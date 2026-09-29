@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cstddef>
+#include <filesystem>
 #include <optional>
 #include <type_traits>
 
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
+#include "ShadingModel.hpp"
 
 namespace Crowy
 {
@@ -25,11 +27,20 @@ namespace Crowy
         u32 albedoMapID = 0;
         u32 normalMapID = 0;
         u32 mrMapID = 0;
-        u32 _pad0 = 0;
+        // what the translucent pass blends with; the opaque one writes 1
+        f32 opacity = 1.0f;
+
+        // two lanes the engine never reads; each shading model documents
+        // its reading
+        Vec4 custom0{};
+        Vec4 custom1{};
     };
-    static_assert(sizeof(MaterialData) == 48);
+    static_assert(sizeof(MaterialData) == 80);
     static_assert(offsetof(MaterialData, emissive) == 16);
     static_assert(offsetof(MaterialData, albedoMapID) == 32);
+    static_assert(offsetof(MaterialData, opacity) == 44);
+    static_assert(offsetof(MaterialData, custom0) == 48);
+    static_assert(offsetof(MaterialData, custom1) == 64);
     static_assert(std::is_trivially_copyable_v<MaterialData>);
 
     // which passes draw a material; a DrawFilter admits a mask of these
@@ -43,6 +54,8 @@ namespace Crowy
         RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
         // the color passes' default; a pass may replace it
         RHIShaderDesc fragmentShader{.entryPoint = "fs_main"};
+        // linked into the colour passes' programs; empty links nothing
+        std::filesystem::path shadingModule = PBRShadingModule;
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
         // every pass culls alike, or Equal fails on double-sided back faces
         RHIRasterizerState rasterizer{};

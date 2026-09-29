@@ -263,7 +263,8 @@ namespace Crowy
     RHIShader::RHIShader(
         const std::filesystem::path& filePath,
         RHIBackend backend,
-        CStr profile
+        CStr profile,
+        std::span<const std::filesystem::path> linkedModules
     )
         : path(toUTF8String(filePath)),
           hash(hashAll(filePath))
@@ -339,14 +340,63 @@ namespace Crowy
             ::logSlangDiagnostics(diagnostics.get());
         }
 
+        // the session owns every module it loads, as it owns the file's
+        std::vector<IModule*> modules;
+        std::vector<std::filesystem::path> linkedPaths;
+        Str linkedNames;
+        for(const auto& linked: linkedModules){
+            const auto linkedPath = std::filesystem::absolute(linked);
+            // composing one module twice is an error Slang reports vaguely
+            if(std::ranges::contains(linkedPaths, linkedPath)) [[unlikely]]{
+                throw std::runtime_error(std::format(
+                    "module '{}' is linked twice", toUTF8String(linked)
+                ));
+            }
+            linkedPaths.push_back(linkedPath);
+
+            ComPtr<ISlangBlob> diagnostics = nullptr;
+            IModule* linkedModule = session->loadModule(
+                toUTF8String(linkedPath).c_str(),
+                diagnostics.writeRef()
+            );
+            if(linkedModule == nullptr) [[unlikely]]{
+                throw std::runtime_error(std::format(
+                    "Failed to load slang module '{}'\n{}",
+                    toUTF8String(linked),
+                    ::slangDiagnostics(diagnostics.get())
+                ));
+            }
+            ::logSlangDiagnostics(diagnostics.get());
+
+            // one that included SceneData.slang would declare `pass` and
+            // `view` a second time
+            const auto parameterCount =
+                linkedModule->getLayout(0)->getParameterCount();
+            if(parameterCount > 0) [[unlikely]]{
+                throw std::runtime_error(std::format(
+                    "linked module '{}' declares {} shader parameters",
+                    toUTF8String(linked),
+                    parameterCount
+                ));
+            }
+
+            modules.push_back(linkedModule);
+            if(!linkedNames.empty())
+                linkedNames += ", ";
+            linkedNames += toUTF8String(linked);
+        }
+
         // entry points
         const auto entryPointCount = mod->getDefinedEntryPointCount();
         std::vector<ComPtr<IEntryPoint>> entryPoints;
         entryPoints.reserve(entryPointCount);
 
-        // compose module + entryPoint
-        std::vector<IComponentType*> components(entryPointCount + 1);
-        components[0] = mod;
+        // the file, its modules, then every entry point, which resolves the
+        // file's extern types against the modules' exports
+        std::vector<IComponentType*> components;
+        components.reserve(1 + modules.size() + entryPointCount);
+        components.push_back(mod);
+        components.insert(components.end(), modules.begin(), modules.end());
 
         for(SlangInt32 i=0; i<entryPointCount; ++i){
             ComPtr<IEntryPoint> entryPoint = nullptr;
@@ -356,15 +406,19 @@ namespace Crowy
             ), "Failed to find entry point");
 
             entryPoints.push_back(std::move(entryPoint));
-            components[i + 1] = entryPoints[i].get();
+            components.push_back(entryPoints.back().get());
         }
 
         ComPtr<IComponentType> composed = nullptr;
-        CHECK_SRESULT(session->createCompositeComponentType(
-            components.data(),
-            components.size(),
-            composed.writeRef()
-        ), "Failed to compose slang component");
+        {
+            ComPtr<ISlangBlob> diagnostics = nullptr;
+            CHECK_SRESULT_DIAG(session->createCompositeComponentType(
+                components.data(),
+                components.size(),
+                composed.writeRef(),
+                diagnostics.writeRef()
+            ), diagnostics.get(), "Failed to compose slang component");
+        }
 
         // link to single program
         {
@@ -415,7 +469,16 @@ namespace Crowy
 
         const std::chrono::duration<f64, std::milli> elapsed =
             std::chrono::steady_clock::now() - started;
-        LOG_DEBUG("compiled {} in {:.0f} ms", path, elapsed.count());
+        if(linkedNames.empty()){
+            LOG_DEBUG("compiled {} in {:.0f} ms", path, elapsed.count());
+        } else {
+            LOG_DEBUG(
+                "compiled {} with {} in {:.0f} ms",
+                path,
+                linkedNames,
+                elapsed.count()
+            );
+        }
     }
 
     Size3D RHIShader::GetThreadGroupSize(StrView entryPoint){

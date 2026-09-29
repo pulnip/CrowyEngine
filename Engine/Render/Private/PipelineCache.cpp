@@ -32,22 +32,24 @@ namespace
         }
 
         const auto& fragment = *desc.fragmentShader;
-        if(vertex.path == fragment.path) {
-            return std::format(
-                "{} ({}, {})",
-                toUTF8String(vertex.path),
-                vertex.entryPoint,
-                fragment.entryPoint
-            );
-        }
+        auto shaders = vertex.path == fragment.path
+                           ? std::format(
+                                 "{} ({}, {})",
+                                 toUTF8String(vertex.path),
+                                 vertex.entryPoint,
+                                 fragment.entryPoint
+                             )
+                           : std::format(
+                                 "{} ({}), {} ({})",
+                                 toUTF8String(vertex.path),
+                                 vertex.entryPoint,
+                                 toUTF8String(fragment.path),
+                                 fragment.entryPoint
+                             );
+        for(const auto& module: desc.linkedModules)
+            shaders += " + " + toUTF8String(module);
 
-        return std::format(
-            "{} ({}), {} ({})",
-            toUTF8String(vertex.path),
-            vertex.entryPoint,
-            toUTF8String(fragment.path),
-            fragment.entryPoint
-        );
+        return shaders;
     }
 }
 
@@ -111,6 +113,10 @@ namespace Crowy
             pass.renderTargetFormats,
             desc.renderTargetFormats.begin()
         );
+        // after the depth-only return: a program with no fragment stage calls
+        // no model, so every model shares its pipeline
+        if(state.linksShading && !material.shadingModule.empty())
+            desc.linkedModules.push_back(material.shadingModule);
 
         return desc;
     }

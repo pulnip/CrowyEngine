@@ -1,5 +1,7 @@
 #include <array>
+#include <filesystem>
 #include <optional>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -369,4 +371,71 @@ TEST(PipelineKey, PassDepthBiasReplacesTheMaterialsBias) {
         EXPECT_EQ(desc.rasterizer.slopeScaledDepthBias, 0.0f);
         EXPECT_EQ(desc.rasterizer.cullMode, RHICullMode::None);
     }
+}
+
+// The model is a path compared by value, like the shader paths: a material
+// naming the default links what one naming nothing new links, and another
+// model keys apart.
+TEST(PipelineKey, ShadingModuleKeysByValue) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
+
+    auto pbr = OpaqueMaterial();
+    pbr.shadingModule = Str{"Engine/Shader/PBR.slang"};
+    auto toon = OpaqueMaterial();
+    toon.shadingModule = "Engine/Shader/Toon.slang";
+
+    const auto defaultDesc = Compose(OpaqueMaterial(), BasePass(formats));
+    const auto pbrDesc = Compose(pbr, BasePass(formats));
+    const auto toonDesc = Compose(toon, BasePass(formats));
+
+    EXPECT_EQ(
+        defaultDesc.linkedModules,
+        std::vector<std::filesystem::path>{PBRShadingModule}
+    );
+    EXPECT_EQ(pbrDesc, defaultDesc);
+    EXPECT_EQ(hash(pbrDesc), hash(defaultDesc));
+    EXPECT_NE(toonDesc, defaultDesc);
+    EXPECT_EQ(
+        toonDesc.linkedModules,
+        std::vector<std::filesystem::path>{"Engine/Shader/Toon.slang"}
+    );
+}
+
+// A depth-only program has no fragment stage to call a model from, so a Toon
+// and a PBR material that rasterize alike share its one key.
+TEST(PipelineKey, ADepthOnlyPassDropsTheModule) {
+    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
+
+    auto toon = OpaqueMaterial();
+    toon.shadingModule = "Engine/Shader/Toon.slang";
+
+    const auto pbrDesc = Compose(OpaqueMaterial(), BasePass({}));
+    const auto toonDesc = Compose(toon, BasePass({}));
+
+    EXPECT_TRUE(pbrDesc.linkedModules.empty());
+    EXPECT_EQ(pbrDesc, toonDesc);
+    EXPECT_EQ(hash(pbrDesc), hash(toonDesc));
+}
+
+// an empty path links nothing, and neither does a colour pass whose fragment
+// override never calls the model, as a normals prepass's
+TEST(PipelineKey, AMaterialWithoutAModuleLinksNothing) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+
+    auto unlinked = OpaqueMaterial();
+    unlinked.shadingModule.clear();
+    EXPECT_TRUE(Compose(unlinked, BasePass(formats)).linkedModules.empty());
+
+    auto normals = BasePass(formats);
+    normals.state.fragmentShader = RHIShaderDesc{
+        .path = "Engine/Shader/Y.slang",
+        .entryPoint = "fs_normals"
+    };
+    normals.state.linksShading = false;
+    const auto desc = Compose(OpaqueMaterial(), normals);
+
+    EXPECT_TRUE(desc.linkedModules.empty());
+    ASSERT_TRUE(desc.fragmentShader.has_value());
+    EXPECT_EQ(desc.fragmentShader->entryPoint, "fs_normals");
 }

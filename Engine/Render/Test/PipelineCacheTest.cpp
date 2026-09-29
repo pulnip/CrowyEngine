@@ -1,4 +1,5 @@
 #include <array>
+#include <filesystem>
 #include <stdexcept>
 #include <vector>
 
@@ -87,7 +88,8 @@ TEST(PipelineCache, RebuildKeepsTheOldStatesWhenOneFails) {
     } catch(const std::runtime_error& e) {
         EXPECT_STREQ(
             e.what(),
-            "Engine/Shader/X.slang (vs_main, fs_main): fake compile error"
+            "Engine/Shader/X.slang (vs_main, fs_main) + Engine/Shader/PBR.slang: "
+            "fake compile error"
         );
     }
     const auto after = ResolveAll(cache);
@@ -177,4 +179,53 @@ TEST(PipelineCache, ARawDescIsKeyedAndRebuiltLikeAComposedOne) {
     EXPECT_EQ(device.deferred.size(), 2u);
     EXPECT_NE(&cache.Resolve(raw), &fullscreen);
     EXPECT_EQ(device.creates, 4u);
+}
+
+// the module is where a model's error lies, so a failed rebuild names it
+TEST(PipelineCache, RebuildNamesTheLinkedModule) {
+    FakeDevice device;
+    PipelineCache cache(device);
+    auto toon = OpaqueMaterial();
+    toon.shadingModule = "Engine/Shader/Toon.slang";
+    cache.Resolve(toon, BasePass());
+    // the rebuild's first create
+    device.failAt = device.creates + 1;
+
+    try {
+        cache.Rebuild();
+        FAIL() << "Rebuild did not throw";
+    } catch(const std::runtime_error& e) {
+        EXPECT_STREQ(
+            e.what(),
+            "Engine/Shader/X.slang (vs_main, fs_main) + "
+            "Engine/Shader/Toon.slang: fake compile error"
+        );
+    }
+}
+
+// Every model shares the prepass's and the shadow's pipeline, and each keys
+// its own in a colour pass.
+TEST(PipelineCache, ModelsShareTheDepthOnlyPipeline) {
+    FakeDevice device;
+    PipelineCache cache(device);
+    auto toon = OpaqueMaterial();
+    toon.shadingModule = "Engine/Shader/Toon.slang";
+
+    const PassPipelineDesc prepass{.depthFormat = RHIPixelFormat::D32_FLOAT};
+    auto& pbrDepth = cache.Resolve(OpaqueMaterial(), prepass);
+    auto& toonDepth = cache.Resolve(toon, prepass);
+
+    EXPECT_EQ(&pbrDepth, &toonDepth);
+    EXPECT_EQ(device.creates, 1u);
+    EXPECT_TRUE(device.pipelineCreates.back().linkedModules.empty());
+
+    auto& pbrColour = cache.Resolve(OpaqueMaterial(), BasePass());
+    auto& toonColour = cache.Resolve(toon, BasePass());
+
+    EXPECT_NE(&pbrColour, &toonColour);
+    EXPECT_EQ(device.creates, 3u);
+    EXPECT_EQ(
+        device.pipelineCreates.back().linkedModules,
+        std::vector<std::filesystem::path>{"Engine/Shader/Toon.slang"}
+    );
 }

@@ -29,7 +29,10 @@ struct MaterialData{
     uint albedoMapID;
     uint normalMapID;
     uint mrMapID;
-    uint _pad0;
+    float opacity;
+    // two lanes the engine never reads
+    float4 custom0;
+    float4 custom1;
 };
 
 struct LightData{

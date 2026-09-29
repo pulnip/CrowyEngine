@@ -126,6 +126,10 @@ namespace Crowy
         // of every rounding edge
         static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
 
+        // the engine's own colour passes, by path
+        static constexpr CStr StandardForward =
+            "Engine/Render/Shader/StandardForward.slang";
+
         static constexpr auto PanelToggleKey = KeyCode::P;
         static constexpr auto StatsToggleKey = KeyCode::I;
 
@@ -315,7 +319,7 @@ namespace Crowy
             );
             const auto translucent = addMaterial(
                 scene,
-                MaterialData{.albedo = {0.35f, 0.55f, 0.95f}},
+                MaterialData{.albedo = {0.35f, 0.55f, 0.95f}, .opacity = 0.45f},
                 translucentPipeline()
             );
 
@@ -839,36 +843,41 @@ namespace Crowy
             );
         }
 
-        static MaterialPipelineDesc basePipeline(CStr fragmentEntry) {
+        // both stages from one file, so the prepass and the colour pass run
+        // the same vertex shader; every material links the default PBR
+        static MaterialPipelineDesc basePipeline(
+            CStr file,
+            CStr fragmentEntry
+        ) {
             return MaterialPipelineDesc{
-                .vertexShader =
-                    {.path = "Engine/Render/Sample/Playground.slang",
-                     .entryPoint = "vs_main"},
-                .fragmentShader =
-                    {.path = "Engine/Render/Sample/Playground.slang",
-                     .entryPoint = fragmentEntry},
+                .vertexShader = {.path = file, .entryPoint = "vs_main"},
+                .fragmentShader = {.path = file, .entryPoint = fragmentEntry},
                 .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
         }
 
+        // the map's own surface: the standard loop plus the grid
         static MaterialPipelineDesc gridPipeline() {
-            return basePipeline("fs_grid");
+            return basePipeline(
+                "Engine/Render/Sample/Playground.slang",
+                "fs_grid"
+            );
         }
 
         static MaterialPipelineDesc opaquePipeline() {
-            return basePipeline("fs_opaque");
+            return basePipeline(StandardForward, "fs_opaque");
         }
 
         static MaterialPipelineDesc doubleSidedPipeline() {
-            auto pipeline = basePipeline("fs_opaque");
+            auto pipeline = opaquePipeline();
             pipeline.rasterizer.cullMode = RHICullMode::None;
 
             return pipeline;
         }
 
         static MaterialPipelineDesc translucentPipeline() {
-            auto pipeline = basePipeline("fs_translucent");
+            auto pipeline = basePipeline(StandardForward, "fs_translucent");
             pipeline.domain = MaterialDomain::Translucent;
 
             RHIBlendState blend{};

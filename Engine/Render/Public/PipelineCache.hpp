@@ -34,6 +34,9 @@ namespace Crowy
         bool depthWrite = true;
         // replaces the material's; a pass with no color target has none
         std::optional<RHIShaderDesc> fragmentShader;
+        // false for a fragment stage that never calls the shading model, so
+        // every material's model shares its pipeline
+        bool linksShading = true;
         std::optional<PassDepthBias> depthBias;
     };
 

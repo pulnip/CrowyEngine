@@ -5,6 +5,9 @@
 
 #include "ClipToTexture.slang"
 #include "SceneData.slang"
+// LightSample: a module cannot see its importer's includes, so the type a
+// shading model reads lives in the module both import
+import Shading;
 
 // mirror of LightKind and NoShadow in Engine/Render/Public/RenderLight.hpp
 static const uint LightKindDirectional = 0;
@@ -15,18 +18,6 @@ static const uint NoShadow = 0xFFFFFFFF;
 // mirror of ShadowFilter in Engine/Render/Public/RenderLight.hpp
 static const uint ShadowFilterHard = 0;
 static const uint ShadowFilterPcf2x2 = 1;
-
-// one light as a shading model sees it
-struct LightSample {
-    // unit, surface to light
-    float3 direction;
-    // colour x intensity: before attenuation, before any cosine
-    float3 radiance;
-    // falloff x shadow, >= 0, never thresholded by the engine
-    float attenuation;
-    // the shadow term alone: 0 or 1
-    float shadow;
-};
 
 uint LightCount() {
     return pass.lightCount;

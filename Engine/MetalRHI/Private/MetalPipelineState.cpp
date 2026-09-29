@@ -263,7 +263,9 @@ namespace Crowy
 
             RHIShader shaderProgram{
                 filePath,
-                RHIBackend::Metal
+                RHIBackend::Metal,
+                nullptr,
+                desc.linkedModules
             };
             library = NS::TransferPtr(makeLibrary(device, shaderProgram));
         #if defined(_DEBUG) || !defined(NDEBUG)
@@ -326,7 +328,9 @@ namespace Crowy
 
             RHIShader shaderProgram{
                 filePath,
-                RHIBackend::Metal
+                RHIBackend::Metal,
+                nullptr,
+                desc.linkedModules
             };
             library = NS::TransferPtr(makeLibrary(device, shaderProgram));
         #if defined(_DEBUG) || !defined(NDEBUG)

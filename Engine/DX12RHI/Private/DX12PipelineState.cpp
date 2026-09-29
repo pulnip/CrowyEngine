@@ -208,7 +208,8 @@ namespace Crowy
         RHIShader shaderProgram{
             frontend.vertexShader.path,
             RHIBackend::DirectX12,
-            desc.profile
+            desc.profile,
+            desc.linkedModules
         };
         auto vertexShader = shaderProgram.GetEntryPointCode(
             frontend.vertexShader.entryPoint
@@ -238,7 +239,8 @@ namespace Crowy
                 shaderProgram = RHIShader(
                     fragmentShader.path,
                     RHIBackend::DirectX12,
-                    desc.profile
+                    desc.profile,
+                    desc.linkedModules
                 );
             }
             pixelShader = shaderProgram.GetEntryPointCode(
