@@ -17,6 +17,30 @@ TEST(Overlap, Boundary){
     static_assert(overlap(0.0f, 1.0f, 1.0f, 2.0f));
 }
 
+TEST(AABB3D, SeparatedAlongZ){
+    static_assert(!OverlapAABB3D(
+        AABB3D{.center = zeros(), .halfScale = ones()},
+        AABB3D{.center = Vec3{0.0f, 0.0f, 5.0f}, .halfScale = ones()}
+    ));
+}
+
+TEST(AABB3D, Overlapped){
+    static_assert(OverlapAABB3D(
+        AABB3D{.center = zeros(), .halfScale = ones()},
+        AABB3D{.center = ones(), .halfScale = ones()}
+    ));
+}
+
+TEST(OBB3D, MakeScalesEachAxisByItsOwnScale){
+    const auto obb = makeOBB3D(
+        Transform{.scale = Vec3{2.0f, 4.0f, 6.0f}}
+    );
+
+    EXPECT_FLOAT_EQ(norm(obb.halfAxes[0]), 1.0f);
+    EXPECT_FLOAT_EQ(norm(obb.halfAxes[1]), 2.0f);
+    EXPECT_FLOAT_EQ(norm(obb.halfAxes[2]), 3.0f);
+}
+
 static constexpr Vec3 AXIS_X{2.0f, 0.0f, 0.0f};
 static constexpr Vec3 AXIS_Y{0.0f, 2.0f, 0.0f};
 static constexpr Vec3 AXIS_Z{0.0f, 0.0f, 2.0f};

@@ -45,8 +45,13 @@ namespace Crowy
             b1.center.y - b1.halfScale.y, b1.center.y + b1.halfScale.y,
             epsilon
         );
+        const auto overlap_z = overlap(
+            b0.center.z - b0.halfScale.z, b0.center.z + b0.halfScale.z,
+            b1.center.z - b1.halfScale.z, b1.center.z + b1.halfScale.z,
+            epsilon
+        );
 
-        return overlap_x && overlap_y;
+        return overlap_x && overlap_y && overlap_z;
     }
 
     struct OBB3D{
@@ -63,7 +68,7 @@ namespace Crowy
             .halfAxes = {
                 (0.5f * t.scale.x) * right(t.rotation),
                 (0.5f * t.scale.y) * up(t.rotation),
-                (0.5f * t.scale.y) * forward(t.rotation)
+                (0.5f * t.scale.z) * forward(t.rotation)
             }
         };
     }
