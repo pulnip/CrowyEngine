@@ -18,6 +18,7 @@
 #include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "RenderApp.hpp"
+#include "ShadingModel.hpp"
 #include "StatsOverlay.hpp"
 #include "UIRenderer.hpp"
 
@@ -60,6 +61,28 @@ namespace Crowy
         .SetProperty("current", &CameraBookmarks::current)
     CROWY_STRUCT_END(CameraBookmarks)
 
+    // the shading model the chart's ten materials link
+    enum class ChartShading : u32 {
+        PBR,
+        Toon,
+        Unlit,
+    };
+
+    CROWY_ENUM_BEGIN(ChartShading)
+        CROWY_ENUM_VALUE(PBR)
+        CROWY_ENUM_VALUE(Toon)
+        CROWY_ENUM_VALUE(Unlit)
+    CROWY_ENUM_END()
+
+    // exposed as `shading`; writing `chart` relinks the chart's materials
+    struct PlaygroundShading {
+        ChartShading chart = ChartShading::PBR;
+    };
+
+    CROWY_STRUCT(PlaygroundShading)
+        .SetProperty("chart", &PlaygroundShading::chart)
+    CROWY_STRUCT_END(PlaygroundShading)
+
     CROWY_STRUCT(LightSnapshot)
         .SetProperty("kind", &LightSnapshot::kind)
         .SetProperty("enabled", &LightSnapshot::enabled)
@@ -92,7 +115,12 @@ namespace Crowy
         .SetUIRange(0.0f, 1.0f)
         .SetProperty("emissive", &MaterialData::emissive)
         .SetProperty("roughness", &MaterialData::roughness)
-        .SetUIRange(0.0f, 1.0f) CROWY_STRUCT_END(MaterialData)
+        .SetUIRange(0.0f, 1.0f)
+        .SetProperty("opacity", &MaterialData::opacity)
+        .SetUIRange(0.0f, 1.0f)
+        .SetProperty("custom0", &MaterialData::custom0)
+        .SetProperty("custom1", &MaterialData::custom1)
+        CROWY_STRUCT_END(MaterialData)
 
             CROWY_STRUCT(FlyCamera)
         .SetProperty("position", &FlyCamera::position)
@@ -167,6 +195,9 @@ namespace Crowy
         // what the panel's debug section was built from
         RenderDebug shownDebug;
         CameraBookmarks bookmarks;
+        PlaygroundShading shading;
+        // front row then back row, roughness rising left to right
+        std::array<MaterialHandle, ChartRows * ChartColumns> chartMaterials{};
 
         // shown by debug.showStats, hidden by default like the panel so the
         // smoke capture matches the panel-less one
@@ -177,6 +208,7 @@ namespace Crowy
         ~Playground() override {
             if(auto* port = Port()) {
                 port->Unexpose("bookmarks");
+                port->Unexpose("shading");
                 port->Unexpose("camera");
                 port->Unexpose("environment");
                 for(const auto& light: exposedLights)
@@ -280,7 +312,9 @@ namespace Crowy
                 );
             }
 
-            std::array<MaterialHandle, ChartRows * ChartColumns> chartMaterials;
+            // the lanes carry Toon's defaults, which PBR ignores, so a switch
+            // to Toon never meets a zero threshold or a black tint
+            constexpr ToonLanes ChartLanes{};
             for(u32 row = 0; row < ChartRows; ++row) {
                 for(u32 column = 0; column < ChartColumns; ++column) {
                     constexpr auto Step = 1.0f / (ChartColumns - 1);
@@ -290,7 +324,9 @@ namespace Crowy
                         MaterialData{
                             .albedo = ChartAlbedo,
                             .metallic = static_cast<f32>(row),
-                            .roughness = static_cast<f32>(column) * Step
+                            .roughness = static_cast<f32>(column) * Step,
+                            .custom0 = toonCustom0(ChartLanes),
+                            .custom1 = toonCustom1(ChartLanes)
                         },
                         opaquePipeline()
                     );
@@ -522,6 +558,15 @@ namespace Crowy
                     [this] { snapCamera(); }
                 );
                 port->Expose(
+                    "shading",
+                    &shading,
+                    *GetDesc<PlaygroundShading>(),
+                    [this] {
+                        linkChartShading();
+                        uiContext.panelDirty = true;
+                    }
+                );
+                port->Expose(
                     "camera",
                     &camera,
                     *GetDesc<FlyCamera>(),
@@ -641,6 +686,7 @@ namespace Crowy
         Widget buildPanel() {
             std::vector<Widget> sections{
                 debugSection(),
+                shadingSection(),
                 bookmarksSection(),
                 cameraSection()
             };
@@ -705,6 +751,39 @@ namespace Crowy
                 *GetDesc<RenderDebug>(),
                 [] {}
             );
+        }
+
+        Widget shadingSection() {
+            // the draw lists resolve every material's pipeline each frame,
+            // so the next frame links the new model
+            return buildPropertyTree(
+                "shading",
+                &shading,
+                *GetDesc<PlaygroundShading>(),
+                [this] { linkChartShading(); }
+            );
+        }
+
+        void linkChartShading() {
+            for(const auto handle: chartMaterials) {
+                Scene().Materials().GetRef(handle).pipeline.shadingModule =
+                    moduleOf(shading.chart);
+            }
+        }
+
+        static CStr moduleOf(ChartShading chart) {
+            using enum ChartShading;
+
+            switch(chart) {
+            case PBR:
+                return PBRShadingModule;
+            case Toon:
+                return ToonShadingModule;
+            case Unlit:
+                return UnlitShadingModule;
+            }
+
+            return PBRShadingModule;
         }
 
         Widget bookmarksSection() {
