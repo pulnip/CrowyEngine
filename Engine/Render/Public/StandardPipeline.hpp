@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FramePipeline.hpp"
+#include "PostChain.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 

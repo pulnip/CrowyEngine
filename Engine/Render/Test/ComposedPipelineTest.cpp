@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -7,6 +8,7 @@
 #include "FakeCommandList.hpp"
 #include "FakeDevice.hpp"
 #include "FramePipeline.hpp"
+#include "PostChain.hpp"
 #include "RHICommandList.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
@@ -27,7 +29,6 @@ namespace
     constexpr FrameTargetID SceneDepth = 1;
     constexpr FrameTargetID Normals = 2;
     constexpr FrameTargetID SceneColor = 3;
-    constexpr FrameTargetID PostA = 4;
 
     const RHIShaderDesc normalsShader{
         .path = "Engine/Render/Sample/NormalsPrepass.slang",
@@ -49,8 +50,9 @@ namespace
         return blend;
     }
 
-    FullscreenPassDesc Fullscreen(CStr entry) {
-        return FullscreenPassDesc{
+    PostPassDesc Post(CStr name, CStr entry) {
+        return PostPassDesc{
+            .name = name,
             .fragmentShader =
                 {.path = "Engine/Render/Sample/Post.slang", .entryPoint = entry}
         };
@@ -59,7 +61,7 @@ namespace
     // normals beside depth, an outline between the opaque and translucent
     // passes, then two post passes, the last carrying the UI
     FramePipelineDesc ToonShaped() {
-        return FramePipelineDesc{
+        FramePipelineDesc desc{
             .targets =
                 {FrameTargetDesc{
                      .name = "SceneDepth",
@@ -73,10 +75,6 @@ namespace
                  FrameTargetDesc{
                      .name = "SceneColor",
                      .format = RHIPixelFormat::RGBA16_FLOAT
-                 },
-                 FrameTargetDesc{
-                     .name = "PostA",
-                     .format = RHIPixelFormat::RGBA8_UNORM
                  }},
             .passes =
                 {PassDesc{
@@ -145,21 +143,18 @@ namespace
                                      .depthWrite = false
                                  }
                          }
-                 },
-                 PassDesc{
-                     .name = "Post1",
-                     .colors = {ColorTargetUse{.target = PostA}},
-                     .reads = {SceneColor},
-                     .kind = Fullscreen("fs_post1")
-                 },
-                 PassDesc{
-                     .name = "Post2",
-                     .colors = {ColorTargetUse{.target = BackBufferTarget}},
-                     .reads = {PostA},
-                     .kind = Fullscreen("fs_post2")
                  }},
             .sceneColor = SceneColor
         };
+        // both in display values, so the chain adds one intermediate,
+        // target 4
+        const std::array post{
+            Post("Post1", "fs_post1"),
+            Post("Post2", "fs_post2")
+        };
+        appendPostChain(desc, SceneColor, post);
+
+        return desc;
     }
 
     void AddPrimitive(RenderScene& scene, MaterialDomain domain) {
@@ -249,7 +244,7 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
         auto& depth = *f.Pass("NormalsPrepass").depth->texture;
         auto& normals = *f.Pass("NormalsPrepass").colors[0].texture;
         auto& color = *f.Pass("Opaque").colors[0].texture;
-        auto& postA = *f.Pass("Post1").colors[0].texture;
+        auto& intermediate = *f.Pass("Post1").colors[0].texture;
         auto& back = f.backBuffer;
 
         EXPECT_EQ(
@@ -321,7 +316,7 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
             (TextureBarriers{
                 MakeBarrier(color, RenderTarget, SampledFragment),
                 MakeCrossSubmissionBarrier(
-                    postA,
+                    intermediate,
                     SampledFragment,
                     RenderTarget,
                     true
@@ -330,13 +325,15 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
         );
         EXPECT_EQ(
             f.Pass("Post1").releases,
-            TextureBarriers{MakeBarrier(postA, RenderTarget, SampledFragment)}
+            TextureBarriers{
+                MakeBarrier(intermediate, RenderTarget, SampledFragment)
+            }
         );
         EXPECT_EQ(
             f.Pass("Post2").acquires,
             (TextureBarriers{
                 MakeBarrier(back, Undefined, RenderTarget),
-                MakeBarrier(postA, RenderTarget, SampledFragment)
+                MakeBarrier(intermediate, RenderTarget, SampledFragment)
             })
         );
         EXPECT_EQ(
