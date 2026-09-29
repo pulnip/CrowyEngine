@@ -131,6 +131,7 @@ namespace Crowy
     class FakeDevice final: public RHIDevice {
     public:
         using Reclaims = std::vector<std::move_only_function<void()>>;
+        using PipelineCreates = std::vector<RHIGraphicsPipelineStateDesc>;
         using TextureCreates = std::vector<RHITextureCreateDesc>;
 
         static constexpr u32 TransientSize = 1u << 20;
@@ -141,6 +142,8 @@ namespace Crowy
         // the create that throws, counted from 1; 0 never throws
         u32 failAt = 0;
         u32 destroyed = 0;
+        // every graphics pipeline's desc, in create order
+        PipelineCreates pipelineCreates;
         TextureCreates textureCreates;
         u32 texturesDestroyed = 0;
         Reclaims deferred;
@@ -173,11 +176,12 @@ namespace Crowy
         }
 
         RHIGraphicsPipelineStateRAII CreatePipelineState(
-            const RHIGraphicsPipelineStateDesc&,
+            const RHIGraphicsPipelineStateDesc& desc,
             StrView
         ) override {
             if(++creates == failAt)
                 throw std::runtime_error("fake compile error");
+            pipelineCreates.push_back(desc);
 
             return std::make_unique<FakeGraphicsPipelineState>(destroyed);
         }

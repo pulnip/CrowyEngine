@@ -1,6 +1,7 @@
 #include "FramePipeline.hpp"
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -9,6 +10,7 @@
 #include "EnumUtil.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
+#include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
@@ -28,6 +30,9 @@ namespace Crowy
         };
 
         using TargetUses = std::vector<std::vector<TargetUse>>;
+
+        // FullscreenPush's handles: source, then input0..2
+        constexpr usize FullscreenReadCount = 4;
 
         [[noreturn]] void refuse(StrView pass, StrView rule) {
             throw std::invalid_argument(
@@ -84,10 +89,27 @@ namespace Crowy
             for(usize i = 0; i < desc.passes.size(); ++i) {
                 const auto& pass = desc.passes[i];
 
-                if(std::holds_alternative<FullscreenPassDesc>(pass.kind))
-                    refuse(pass.name, "a fullscreen pass is not supported");
-                if(!pass.reads.empty())
-                    refuse(pass.name, "a pass that reads is not supported");
+                if(std::holds_alternative<FullscreenPassDesc>(pass.kind)) {
+                    if(pass.colors.empty())
+                        refuse(
+                            pass.name,
+                            "a fullscreen pass needs a color target"
+                        );
+                    if(pass.depth)
+                        refuse(
+                            pass.name,
+                            "a fullscreen pass has no depth target"
+                        );
+                    if(pass.reads.size() > FullscreenReadCount) {
+                        refuse(
+                            pass.name,
+                            std::format(
+                                "a fullscreen pass reads at most {} targets",
+                                FullscreenReadCount
+                            )
+                        );
+                    }
+                }
 
                 std::vector<FrameTargetID> attached;
                 const auto attach = [&](FrameTargetID id, TargetUse use) {
@@ -134,6 +156,40 @@ namespace Crowy
                     );
                 }
 
+                // a pass samples what an earlier one left, never what it
+                // attaches itself
+                std::vector<FrameTargetID> read;
+                for(const auto id: pass.reads) {
+                    if(!known(id))
+                        refuse(
+                            pass.name,
+                            std::format("target {} is unknown", id)
+                        );
+                    if(std::ranges::contains(attached, id)) {
+                        refuse(
+                            pass.name,
+                            std::format(
+                                "it reads target {}, which it attaches",
+                                id
+                            )
+                        );
+                    }
+                    if(std::ranges::contains(read, id)) {
+                        refuse(
+                            pass.name,
+                            std::format("it reads target {} twice", id)
+                        );
+                    }
+                    read.push_back(id);
+                    uses[id].push_back(
+                        TargetUse{
+                            .pass = i,
+                            .usage = RHIResourceUsage::SampledFragment,
+                            .read = true
+                        }
+                    );
+                }
+
                 if(const auto* mesh = std::get_if<MeshPassDesc>(&pass.kind)) {
                     // Compose always emits a depth state
                     if(!pass.depth)
@@ -149,6 +205,32 @@ namespace Crowy
             }
 
             return uses;
+        }
+
+        // one triangle from the fragment shader's own file, which includes
+        // Fullscreen.slang and so defines vs_main
+        RHIGraphicsPipelineStateDesc fullscreenPipelineDesc(
+            const FullscreenPassDesc& fullscreen,
+            std::span<const RHIPixelFormat> formats
+        ) {
+            RHIGraphicsPipelineStateDesc desc{
+                .preRasterizer =
+                    RHILegacyFrontendDesc{
+                        .vertexShader =
+                            RHIShaderDesc{
+                                .path = fullscreen.fragmentShader.path,
+                                .entryPoint = "vs_main"
+                            }
+                    },
+                .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
+                .fragmentShader = fullscreen.fragmentShader,
+                .blend = fullscreen.blend,
+                .renderTargetCount = formats.size(),
+                .profile = "sm_6_8"
+            };
+            std::ranges::copy(formats, desc.renderTargetFormats.begin());
+
+            return desc;
         }
 
         // the rules that follow one target through the list
@@ -261,6 +343,11 @@ namespace Crowy
                     this->device,
                     mesh->drawCapacity
                 );
+            } else {
+                compiled.fullscreenDesc = fullscreenPipelineDesc(
+                    std::get<FullscreenPassDesc>(pass.kind),
+                    compiled.colorFormats
+                );
             }
 
             stats[i].name = pass.name;
@@ -360,11 +447,14 @@ namespace Crowy
         const MeshPassOverride& debug
     ) {
         for(usize i = 0; i < passes.size(); ++i) {
-            const auto* mesh = std::get_if<MeshPassDesc>(&desc.passes[i].kind);
-            if(mesh == nullptr)
-                continue;
-
             auto& compiled = passes[i];
+            const auto* mesh = std::get_if<MeshPassDesc>(&desc.passes[i].kind);
+            if(mesh == nullptr) {
+                compiled.fullscreenPipeline =
+                    &renderer.Pipelines().Resolve(*compiled.fullscreenDesc);
+                continue;
+            }
+
             auto& list = *compiled.drawList;
             const bool depthOnly = compiled.colorFormats.empty();
             list.Build(
@@ -516,6 +606,25 @@ namespace Crowy
                 else
                     cmdList.SetPushGraphicsConstants(push);
                 list.Submit(cmdList, inputs.indices);
+            } else {
+                const auto& fullscreen =
+                    std::get<FullscreenPassDesc>(pass.kind);
+                cmdList.SetPipelineState(*compiled.fullscreenPipeline);
+                renderer.BindView(cmdList, ViewConstantBufferSlot, 0);
+
+                FullscreenPush push{.params = fullscreen.params};
+                const std::array<u64*, FullscreenReadCount> handles{
+                    &push.source,
+                    &push.input0,
+                    &push.input1,
+                    &push.input2
+                };
+                for(usize r = 0; r < pass.reads.size(); ++r) {
+                    *handles[r] =
+                        texture(pass.reads[r], inputs).GetReadableID();
+                }
+                cmdList.SetPushGraphicsConstants(push);
+                cmdList.Draw(3);
             }
 
             if(overlay && inputs.recordOverlay)

@@ -86,6 +86,49 @@ namespace
         return desc;
     }
 
+    const RHIShaderDesc compositeShader{
+        .path = "Engine/Render/Test/Composite.slang",
+        .entryPoint = "fs_composite"
+    };
+    constexpr Vec4 CompositeParams{1.0f, 2.0f, 3.0f, 4.0f};
+
+    // a mesh pass into an offscreen color and depth, which one fullscreen
+    // pass reads onto the back buffer
+    FramePipelineDesc CompositeShaped() {
+        constexpr FrameTargetID SceneDepth = 1;
+        constexpr FrameTargetID SceneColor = 2;
+
+        return FramePipelineDesc{
+            .targets =
+                {FrameTargetDesc{
+                     .name = "SceneDepth",
+                     .format = RHIPixelFormat::D32_FLOAT
+                 },
+                 FrameTargetDesc{
+                     .name = "SceneColor",
+                     .format = RHIPixelFormat::RGBA16_FLOAT
+                 }},
+            .passes =
+                {PassDesc{
+                     .name = "Opaque",
+                     .colors = {ColorTargetUse{.target = SceneColor}},
+                     .depth = DepthTargetUse{.target = SceneDepth},
+                     .kind = MeshPassDesc{}
+                 },
+                 PassDesc{
+                     .name = "Composite",
+                     .colors = {ColorTargetUse{.target = BackBufferTarget}},
+                     .reads = {SceneColor, SceneDepth},
+                     .kind =
+                         FullscreenPassDesc{
+                             .fragmentShader = compositeShader,
+                             .params = CompositeParams
+                         }
+                 }},
+            .sceneColor = SceneColor
+        };
+    }
+
     // a scene whose primitives all sit inside both views' clip space
     class Fixture {
     public:
@@ -711,7 +754,6 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
     const auto standard = [] {
         return makeStandardPipeline({});
     };
-    constexpr FrameTargetID SceneDepth = 1;
 
     {
         auto desc = standard();
@@ -823,20 +865,340 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
             "target"
         );
     }
+}
+
+// a mesh pass leaves color and depth, and one fullscreen pass reads both
+TEST(FramePipeline, FullscreenPassPushesItsReadsInOrder) {
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    FramePipeline
+        pipeline(f.device, CompositeShaped(), BackBufferFormat, Width, Height);
+    auto inputs = f.Inputs();
+    inputs.sceneClear = Color{0.25f, 0.5f, 0.75f, 1.0f};
+
+    f.Frame(pipeline, inputs);
+
+    const auto& opaque = f.Pass("Opaque");
+    const auto& composite = f.Pass("Composite");
+    ASSERT_EQ(composite.pushes.size(), 1u);
+    ASSERT_EQ(composite.pushes[0].size(), sizeof(FullscreenPush));
+    FullscreenPush push;
+    std::memcpy(&push, composite.pushes[0].data(), sizeof(push));
+    EXPECT_EQ(push.source, opaque.colors[0].texture->GetReadableID());
+    EXPECT_EQ(push.input0, opaque.depth->texture->GetReadableID());
+    EXPECT_EQ(push.input1, 0u);
+    EXPECT_EQ(push.input2, 0u);
+    EXPECT_EQ(push.params, CompositeParams);
+
+    // one triangle, with the view bound as every pass binds it
+    EXPECT_EQ(composite.directDraws, 1u);
+    EXPECT_TRUE(composite.batches.empty());
+    ASSERT_EQ(composite.constantBuffers.size(), 1u);
+    EXPECT_EQ(composite.constantBuffers[0].slot, ViewConstantBufferSlot);
+    EXPECT_EQ(pipeline.Stats()[1].draws, 0u);
+
+    // sceneColor names the target a debug view clears
+    EXPECT_EQ(opaque.colors[0].clearColor, inputs.sceneClear);
+
+    // vs_main from the fragment shader's own file, cull none, no depth
+    const auto& key = f.device.pipelineCreates.back();
+    const auto& frontend = std::get<RHILegacyFrontendDesc>(key.preRasterizer);
+    EXPECT_TRUE(frontend.vertexShader.path == compositeShader.path);
+    EXPECT_EQ(frontend.vertexShader.entryPoint, "vs_main");
+    EXPECT_TRUE(key.fragmentShader == compositeShader);
+    EXPECT_EQ(key.rasterizer.cullMode, RHICullMode::None);
+    EXPECT_FALSE(key.depthStencil.has_value());
+    EXPECT_FALSE(key.blend.has_value());
+    ASSERT_EQ(key.renderTargetCount, 1u);
+    EXPECT_EQ(key.renderTargetFormats[0], BackBufferFormat);
+
+    // a read adds shader-resource usage to what the target is attached as
+    ASSERT_EQ(f.device.textureCreates.size(), 2u);
+    EXPECT_EQ(
+        f.device.textureCreates[0].usage,
+        combine(RHITextureUsage::DepthStencil, RHITextureUsage::ShaderResource)
+    );
+    EXPECT_EQ(
+        f.device.textureCreates[1].usage,
+        combine(RHITextureUsage::RenderTarget, RHITextureUsage::ShaderResource)
+    );
+    EXPECT_TRUE(f.cmdList.violations.empty());
+}
+
+// read after read is an edge too: only a chain keeps the next writer behind
+// every reader on Metal
+TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
+    using enum RHIResourceUsage;
+
+    const auto halvesOf = [](const TextureBarriers& barriers, RHITexture* t) {
+        TextureBarriers mine;
+        for(const auto& half: barriers) {
+            if(half.texture == t)
+                mine.push_back(half);
+        }
+
+        return mine;
+    };
+
     {
-        auto desc = standard();
-        desc.passes[2].reads = {SceneDepth};
+        constexpr FrameTargetID Chained = 1;
+        constexpr FrameTargetID Side = 2;
+        const auto fullscreen = [](CStr entry) {
+            return FullscreenPassDesc{
+                .fragmentShader = {
+                    .path = "Engine/Render/Test/Chain.slang",
+                    .entryPoint = entry
+                }
+            };
+        };
+
+        Fixture f;
+        FramePipeline pipeline(
+            f.device,
+            FramePipelineDesc{
+                .targets =
+                    {FrameTargetDesc{
+                         .name = "Chained",
+                         .format = RHIPixelFormat::RGBA8_UNORM
+                     },
+                     FrameTargetDesc{
+                         .name = "Side",
+                         .format = RHIPixelFormat::RGBA8_UNORM
+                     }},
+                .passes =
+                    {PassDesc{
+                         .name = "Write",
+                         .colors = {ColorTargetUse{.target = Chained}},
+                         .kind = fullscreen("fs_write")
+                     },
+                     PassDesc{
+                         .name = "ReadA",
+                         .colors = {ColorTargetUse{.target = Side}},
+                         .reads = {Chained},
+                         .kind = fullscreen("fs_read")
+                     },
+                     PassDesc{
+                         .name = "ReadB",
+                         .colors = {ColorTargetUse{.target = BackBufferTarget}},
+                         .reads = {Chained},
+                         .kind = fullscreen("fs_read")
+                     },
+                     PassDesc{
+                         .name = "Rewrite",
+                         .colors = {ColorTargetUse{
+                             .target = Chained,
+                             .load = RHILoadAction::Load
+                         }},
+                         .kind = fullscreen("fs_write")
+                     }}
+            },
+            BackBufferFormat,
+            Width,
+            Height
+        );
+        auto inputs = f.Inputs();
+
+        for(int frame = 0; frame < 2; ++frame) {
+            f.Frame(pipeline, inputs);
+
+            auto& t = *f.Pass("Write").colors[0].texture;
+            EXPECT_EQ(
+                halvesOf(f.Pass("Write").acquires, &t),
+                TextureBarriers{MakeCrossSubmissionBarrier(
+                    t,
+                    RenderTarget,
+                    RenderTarget,
+                    true
+                )}
+            );
+            EXPECT_EQ(
+                halvesOf(f.Pass("Write").releases, &t),
+                TextureBarriers{MakeBarrier(t, RenderTarget, SampledFragment)}
+            );
+            EXPECT_EQ(
+                halvesOf(f.Pass("ReadA").acquires, &t),
+                TextureBarriers{MakeBarrier(t, RenderTarget, SampledFragment)}
+            );
+            EXPECT_EQ(
+                halvesOf(f.Pass("ReadA").releases, &t),
+                TextureBarriers{
+                    MakeBarrier(t, SampledFragment, SampledFragment)
+                }
+            );
+            EXPECT_EQ(
+                halvesOf(f.Pass("ReadB").acquires, &t),
+                TextureBarriers{
+                    MakeBarrier(t, SampledFragment, SampledFragment)
+                }
+            );
+            EXPECT_EQ(
+                halvesOf(f.Pass("ReadB").releases, &t),
+                TextureBarriers{MakeBarrier(t, SampledFragment, RenderTarget)}
+            );
+            EXPECT_EQ(
+                halvesOf(f.Pass("Rewrite").acquires, &t),
+                TextureBarriers{MakeBarrier(t, SampledFragment, RenderTarget)}
+            );
+            EXPECT_TRUE(f.Pass("Rewrite").releases.empty());
+
+            EXPECT_TRUE(f.cmdList.violations.empty())
+                << f.cmdList.violations.front().what;
+            EXPECT_TRUE(f.cmdList.unconsumedAtClose.empty());
+        }
+    }
+
+    // the shadow-shaped pass's two readers: a mesh pass's reads compile into
+    // edges and usage and bind nothing
+    {
+        Fixture f;
+        f.AddPrimitive(f.AddMaterial("fs_opaque"));
+        auto desc = ShadowShaped(PassDepthBias{});
+        const auto shadowMap = static_cast<FrameTargetID>(desc.targets.size());
+        desc.passes[2].reads = {shadowMap};
+        desc.passes[3].reads = {shadowMap};
+        FramePipeline pipeline(
+            f.device,
+            std::move(desc),
+            BackBufferFormat,
+            Width,
+            Height
+        );
+        auto inputs = f.Inputs();
+
+        f.Frame(pipeline, inputs);
+
+        auto& map = *f.Pass("Shadow").depth->texture;
+        EXPECT_EQ(
+            halvesOf(f.Pass("Shadow").acquires, &map),
+            TextureBarriers{MakeCrossSubmissionBarrier(
+                map,
+                SampledFragment,
+                DepthWrite,
+                true
+            )}
+        );
+        EXPECT_EQ(
+            halvesOf(f.Pass("Shadow").releases, &map),
+            TextureBarriers{MakeBarrier(map, DepthWrite, SampledFragment)}
+        );
+        EXPECT_EQ(
+            halvesOf(f.Pass("Opaque").acquires, &map),
+            TextureBarriers{MakeBarrier(map, DepthWrite, SampledFragment)}
+        );
+        EXPECT_EQ(
+            halvesOf(f.Pass("Opaque").releases, &map),
+            TextureBarriers{MakeBarrier(map, SampledFragment, SampledFragment)}
+        );
+        EXPECT_EQ(
+            halvesOf(f.Pass("Translucent").acquires, &map),
+            TextureBarriers{MakeBarrier(map, SampledFragment, SampledFragment)}
+        );
+        EXPECT_EQ(
+            f.device.textureCreates[1].usage,
+            combine(
+                RHITextureUsage::DepthStencil,
+                RHITextureUsage::ShaderResource
+            )
+        );
+        for(const auto& pass: f.cmdList.passes) {
+            ASSERT_EQ(pass.pushes.size(), 1u) << pass.event;
+            EXPECT_EQ(pass.pushes[0].size(), sizeof(ScenePush)) << pass.event;
+        }
+        EXPECT_TRUE(f.cmdList.violations.empty())
+            << f.cmdList.violations.front().what;
+        EXPECT_TRUE(f.cmdList.unconsumedAtClose.empty());
+    }
+}
+
+TEST(FramePipeline, InvalidFullscreenDescsAreRefused) {
+    constexpr FrameTargetID SceneDepth = 1;
+    constexpr FrameTargetID SceneColor = 2;
+
+    {
+        auto desc = CompositeShaped();
+        desc.passes[1].depth = DepthTargetUse{.target = SceneDepth};
         ExpectRefused(
             std::move(desc),
-            "pass 'Translucent': a pass that reads is not supported"
+            "pass 'Composite': a fullscreen pass has no depth target"
         );
     }
     {
-        auto desc = standard();
-        desc.passes[2].kind = FullscreenPassDesc{};
+        auto desc = CompositeShaped();
+        desc.passes.insert(
+            desc.passes.begin() + 1,
+            PassDesc{
+                .name = "Blur",
+                .reads = {SceneColor},
+                .kind = FullscreenPassDesc{.fragmentShader = compositeShader}
+            }
+        );
         ExpectRefused(
             std::move(desc),
-            "pass 'Translucent': a fullscreen pass is not supported"
+            "pass 'Blur': a fullscreen pass needs a color target"
+        );
+    }
+    {
+        auto desc = CompositeShaped();
+        desc.passes[1].reads =
+            {SceneColor, SceneDepth, SceneColor, SceneDepth, SceneColor};
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Composite': a fullscreen pass reads at most 4 targets"
+        );
+    }
+    {
+        auto desc = CompositeShaped();
+        desc.passes[1].reads = {SceneColor, SceneColor};
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Composite': it reads target 2 twice"
+        );
+    }
+    {
+        auto desc = CompositeShaped();
+        desc.passes[1].reads = {9};
+        ExpectRefused(std::move(desc), "pass 'Composite': target 9 is unknown");
+    }
+    {
+        auto desc = CompositeShaped();
+        desc.passes[0].reads = {SceneColor};
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Opaque': it reads target 2, which it attaches"
+        );
+    }
+    {
+        auto desc = CompositeShaped();
+        desc.passes[0].reads = {BackBufferTarget};
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Opaque': it reads the back buffer"
+        );
+    }
+    {
+        auto desc = CompositeShaped();
+        desc.targets.push_back(
+            FrameTargetDesc{
+                .name = "Early",
+                .format = RHIPixelFormat::RGBA8_UNORM
+            }
+        );
+        desc.passes.insert(
+            desc.passes.begin(),
+            PassDesc{
+                .name = "Early",
+                .colors = {ColorTargetUse{
+                    .target = static_cast<FrameTargetID>(desc.targets.size())
+                }},
+                .reads = {SceneColor},
+                .kind = FullscreenPassDesc{.fragmentShader = compositeShader}
+            }
+        );
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Early': its first use of 'SceneColor' keeps contents "
+            "nothing "
+            "wrote"
         );
     }
 }

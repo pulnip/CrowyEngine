@@ -78,6 +78,11 @@ namespace Crowy
             const MaterialPipelineDesc& material,
             const PassPipelineDesc& pass
         );
+        // a desc no material and pass composed, as a fullscreen pass's; keyed
+        // and rebuilt like a composed one
+        RHIGraphicsPipelineState& Resolve(
+            const RHIGraphicsPipelineStateDesc& desc
+        );
 
         usize Count() const noexcept { return states.size(); }
 

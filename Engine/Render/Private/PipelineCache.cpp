@@ -16,7 +16,9 @@
 namespace
 {
     // a key's shaders, as a failed rebuild names them
-    Crowy::Str describeShaders(const Crowy::RHIGraphicsPipelineStateDesc& desc) {
+    Crowy::Str describeShaders(
+        const Crowy::RHIGraphicsPipelineStateDesc& desc
+    ) {
         using namespace Crowy;
 
         const auto& vertex =
@@ -119,15 +121,18 @@ namespace Crowy
         const MaterialPipelineDesc& material,
         const PassPipelineDesc& pass
     ) {
-        auto desc = Compose(material, pass);
+        return Resolve(Compose(material, pass));
+    }
 
+    RHIGraphicsPipelineState& PipelineCache::Resolve(
+        const RHIGraphicsPipelineStateDesc& desc
+    ) {
         const auto found = states.find(desc);
         if(found != states.end())
             return *found->second;
 
         auto state = device.CreatePipelineState(desc);
-        const auto [inserted, _] =
-            states.emplace(std::move(desc), std::move(state));
+        const auto [inserted, _] = states.emplace(desc, std::move(state));
 
         return *inserted->second;
     }

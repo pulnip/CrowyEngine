@@ -148,8 +148,12 @@ namespace Crowy
             RHIPixelFormat depthFormat = RHIPixelFormat::Unknown;
             CompiledBarriers acquires;
             CompiledBarriers releases;
-            // null for a fullscreen pass
+            // a mesh pass's; null for a fullscreen pass
             RAII<DrawList> drawList;
+            // a fullscreen pass's key, resolved in every Prepare, so a
+            // shader reload reaches it
+            std::optional<RHIGraphicsPipelineStateDesc> fullscreenDesc;
+            RHIGraphicsPipelineState* fullscreenPipeline = nullptr;
         };
 
         using CompiledPasses = std::vector<CompiledPass>;
@@ -196,7 +200,8 @@ namespace Crowy
 
         // the swapchain-sized targets anew; the old ones retire
         void Resize(u32 width, u32 height);
-        // per mesh pass: its view's cull, then its list built and uploaded
+        // per mesh pass: its view's cull, then its list built and uploaded;
+        // per fullscreen pass: its pipeline resolved
         void Prepare(
             SceneRenderer& renderer,
             const RenderScene& scene,

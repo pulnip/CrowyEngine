@@ -70,4 +70,20 @@ namespace Crowy
     static_assert(offsetof(ScenePush, materialBase) == 28);
     static_assert(sizeof(ScenePush) <= RHI_PUSH_CONSTANT_BYTES);
     static_assert(std::is_trivially_copyable_v<ScenePush>);
+
+    // Every fullscreen pass's push: its reads in order, then params.
+    // Mirrored in Engine/Shader/Fullscreen.slang.
+    struct FullscreenPush {
+        // DescriptorHandle<Texture2D> each; 0 for a read the pass lacks
+        u64 source = 0;
+        u64 input0 = 0;
+        u64 input1 = 0;
+        u64 input2 = 0;
+        Vec4 params{};
+    };
+    static_assert(sizeof(FullscreenPush) == 48);
+    static_assert(offsetof(FullscreenPush, input0) == 8);
+    static_assert(offsetof(FullscreenPush, params) == 32);
+    static_assert(sizeof(FullscreenPush) <= RHI_PUSH_CONSTANT_BYTES);
+    static_assert(std::is_trivially_copyable_v<FullscreenPush>);
 }

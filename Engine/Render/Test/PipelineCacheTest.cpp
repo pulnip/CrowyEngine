@@ -152,3 +152,29 @@ TEST(PipelineCache, ADepthOnlyPassSharesKeysAcrossFragmentShaders) {
     EXPECT_EQ(device.creates, 2u);
     EXPECT_EQ(&gridState, &opaqueState);
 }
+
+// A fullscreen pass's desc names no material: the cache keys it by value,
+// shares a key with an equal composed desc, and a reload rebuilds it too.
+TEST(PipelineCache, ARawDescIsKeyedAndRebuiltLikeAComposedOne) {
+    FakeDevice device;
+    PipelineCache cache(device);
+    auto& composed = cache.Resolve(OpaqueMaterial(), BasePass());
+
+    EXPECT_EQ(&cache.Resolve(Compose(OpaqueMaterial(), BasePass())), &composed);
+
+    auto raw = Compose(OpaqueMaterial(), BasePass());
+    raw.depthStencil = std::nullopt;
+    raw.rasterizer.cullMode = RHICullMode::None;
+    auto& fullscreen = cache.Resolve(raw);
+    EXPECT_EQ(&cache.Resolve(raw), &fullscreen);
+    EXPECT_EQ(cache.Count(), 2u);
+    EXPECT_EQ(device.creates, 2u);
+
+    const auto rebuild = cache.Rebuild();
+
+    EXPECT_EQ(rebuild.pipelines, 2u);
+    EXPECT_EQ(device.creates, 4u);
+    EXPECT_EQ(device.deferred.size(), 2u);
+    EXPECT_NE(&cache.Resolve(raw), &fullscreen);
+    EXPECT_EQ(device.creates, 4u);
+}
