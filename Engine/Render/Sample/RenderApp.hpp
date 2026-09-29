@@ -53,6 +53,8 @@ namespace Crowy
         // off, the opaque round tests Less and writes depth itself; a view
         // that overrides fill mode or depth draws without a prepass anyway
         bool depthPrepass = true;
+        // Hard is the exact 0 or 1 every golden is recorded with
+        ShadowFilter shadowFilter = ShadowFilter::Hard;
         // read by a sample that hosts the stats overlay or a panel
         bool showStats = false;
         bool showPanel = false;

@@ -31,6 +31,20 @@ namespace Crowy
         CROWY_ENUM_VALUE(Spot)
     CROWY_ENUM_END()
 
+    // how a receiver reads the shadow map; mirrored by the constants in
+    // Engine/Shader/Lighting.slang
+    enum class ShadowFilter : u32 {
+        // one texel, one compare: exactly 0 or 1
+        Hard,
+        // four compares weighted bilinearly: a soft edge a texel wide
+        Pcf2x2,
+    };
+
+    CROWY_ENUM_BEGIN(ShadowFilter)
+        CROWY_ENUM_VALUE(Hard)
+        CROWY_ENUM_VALUE(Pcf2x2)
+    CROWY_ENUM_END()
+
     // What extraction writes; packed into a LightData row each frame.
     struct LightSnapshot {
         LightKind kind = LightKind::Directional;

@@ -70,7 +70,8 @@ ConstantBuffer<ScenePush> pass : register(b0);
 cbuffer view : register(b1) {
     float4x4 viewProj;
     uint debugMode;
-    uint _pad0;
+    // a ShadowFilter
+    uint shadowFilter;
     uint _pad1;
     uint _pad2;
     // xyz = camera position, w unused

@@ -249,6 +249,7 @@ namespace Crowy
         .SetProperty("mode", &RenderDebug::mode)
         .SetProperty("wireframe", &RenderDebug::wireframe)
         .SetProperty("depthPrepass", &RenderDebug::depthPrepass)
+        .SetProperty("shadowFilter", &RenderDebug::shadowFilter)
         .SetProperty("showStats", &RenderDebug::showStats)
         .SetProperty("showPanel", &RenderDebug::showPanel)
     CROWY_STRUCT_END(RenderDebug)
@@ -713,6 +714,7 @@ namespace Crowy
         auto& view = renderer->View(ViewMain);
         view.viewProj = camera->ViewProj(aspect);
         view.debugMode = static_cast<u32>(frameDebug.mode);
+        view.shadowFilter = static_cast<u32>(frameDebug.shadowFilter);
         view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
         // the prepass is a pass in the list, so turning it over is a new

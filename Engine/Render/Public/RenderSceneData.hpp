@@ -38,7 +38,9 @@ namespace Crowy
         Mat4 viewProj = unitMat();
         // which debug view a shader that branches on it draws; 0 is none
         u32 debugMode = 0;
-        u32 _pad0[3]{};
+        // a ShadowFilter
+        u32 shadowFilter = 0;
+        u32 _pad0[2]{};
         // xyz = camera position, w unused
         Vec4 cameraPosition{};
         // xyz, w unused: the scene's hemisphere, sky facing up and ground
@@ -50,6 +52,7 @@ namespace Crowy
     };
     static_assert(sizeof(ViewData) == RHI_CB_ALIGN);
     static_assert(offsetof(ViewData, debugMode) == 64);
+    static_assert(offsetof(ViewData, shadowFilter) == 68);
     static_assert(offsetof(ViewData, cameraPosition) == 80);
     static_assert(offsetof(ViewData, skyAmbient) == 96);
     static_assert(offsetof(ViewData, groundAmbient) == 112);
