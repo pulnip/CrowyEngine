@@ -220,6 +220,19 @@ namespace Crowy
                     .direction = -normalize(Vec3{0.25f, 0.866f, -0.433f})
                 }
             );
+            // off until the port or the panel turns it on, so the golden
+            // never sees it; aimed down at the chart for when it is a spot
+            const auto lamp = scene.Lights().Add(
+                LightSnapshot{
+                    .kind = LightKind::Point,
+                    .enabled = false,
+                    .color = {1.0f, 0.8f, 0.6f},
+                    .intensity = 4.0f,
+                    .position = {0.0f, 1.5f, 2.5f},
+                    .direction = {0.0f, -0.45f, 0.9f},
+                    .range = 4.0f
+                }
+            );
             // the same preview's sky and ground colours, decoded to linear
             scene.Environment() = EnvironmentSnapshot{
                 .skyAmbient = {0.123f, 0.174f, 0.262f},
@@ -454,7 +467,7 @@ namespace Crowy
                 {2.5f, 1.5f, 1.0f}
             );
 
-            exposedLights = {NamedLight{"sun", sun}};
+            exposedLights = {NamedLight{"sun", sun}, NamedLight{"lamp", lamp}};
 
             constexpr auto Last = ChartColumns - 1;
             exposedMaterials = {
