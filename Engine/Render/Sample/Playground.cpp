@@ -464,11 +464,13 @@ namespace Crowy
 
         void OnInitUI(
             RHIDevice& device,
-            RHIPixelFormat colorFormat,
-            RHIPixelFormat depthFormat
+            const OverlayFormats& formats
         ) override {
-            uiRenderer =
-                std::make_unique<UIRenderer>(device, colorFormat, depthFormat);
+            uiRenderer = std::make_unique<UIRenderer>(
+                device,
+                formats.color,
+                formats.depth
+            );
 
             LOG_INFO(
                 "Playground",

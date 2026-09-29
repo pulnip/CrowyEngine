@@ -9,6 +9,7 @@
 #include "CommandPort.hpp"
 #include "EnumUtil.hpp"
 #include "FrameHistory.hpp"
+#include "FramePipeline.hpp"
 #include "FrameProfiler.hpp"
 #include "GeometryPool.hpp"
 #include "Primitives.hpp"
@@ -16,10 +17,11 @@
 #include "RHIFWD.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
+#include "StandardPipeline.hpp"
 
 namespace Crowy
 {
-    using DrawListPtr = RAII<DrawList>;
+    using FramePipelinePtr = RAII<FramePipeline>;
     using GeometryPoolPtr = RAII<GeometryPool>;
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
@@ -86,10 +88,11 @@ namespace Crowy
             u32 draws = 0;
             usize runs = 0;
             usize pipelines = 0;
+            // in list order; draws, runs and triangles sum these
+            std::vector<PassStats> passes;
         };
 
         static constexpr u32 ViewMain = 0;
-        static constexpr u32 ViewCBSlot = 0;
 
     private:
         // how far back read_stats can name a frame
@@ -106,17 +109,15 @@ namespace Crowy
 
         RHIDevice* device = nullptr;
         RHISwapchain* swapchain = nullptr;
-        RHITextureRAII depthBuffer;
-        // the swapchain's, which the scene pass renders to
-        RHIPixelFormat colorFormat = RHIPixelFormat::RGBA8_UNORM;
         f32 aspect = 1.0f;
 
         GeometryPoolPtr geometryPool;
         SceneRendererPtr renderer;
-        // one per mesh round of the frame
-        DrawListPtr prepassList;
-        DrawListPtr opaqueList;
-        DrawListPtr translucentList;
+        // what DescribePipeline was last asked for; a change rebuilds it
+        StandardPipelineConfig pipelineConfig;
+        FramePipelinePtr pipeline;
+        // the hooks are bound once; the rest is refilled every frame
+        FrameInputs frameInputs;
         RenderScene scene;
         CameraRAII camera;
         // declared before the port, which points at it, so it outlives it
@@ -132,7 +133,7 @@ namespace Crowy
         // captures whose dump failed, since launch
         u32 captureFailures = 0;
 
-        // this frame's counts, summed over its lists; OnFrameEnd adds the
+        // this frame's counts, summed over its passes; OnFrameEnd adds the
         // report and the totals
         FrameStats recorded;
 
@@ -164,8 +165,14 @@ namespace Crowy
         // world and what the renderer stores about it.
         virtual void ExtractScene(RenderScene& scene) = 0;
 
+        // The pass list; the default is the standard one. Called at init
+        // and again whenever the config changes, as a debug view does.
+        virtual FramePipelineDesc DescribePipeline(
+            const StandardPipelineConfig& config
+        );
+
         // Override to push a struct starting with the same members
-        // when a shader wants more root constants.
+        // when a shader wants more root constants. Runs in every mesh pass.
         virtual void OnBindPass(RHICommandList& cmdList, const ScenePush& push);
 
         // The sample's own per-frame buffers, written here
@@ -175,20 +182,17 @@ namespace Crowy
         // input a sample reads beyond the camera's
         virtual void OnProcessInput(const InputProvider&) {}
 
-        virtual void OnInitUI(
-            RHIDevice&,
-            RHIPixelFormat colorFormat,
-            RHIPixelFormat depthFormat
-        ) {
+        // the formats of the pass the UI rides, frozen for the app's life
+        virtual void OnInitUI(RHIDevice&, const OverlayFormats&) {
             // default no-op so a sample without UI is unchanged
         }
 
-        // runs before the render pass
+        // runs before the first pass; the acquires ride the overlay pass
         virtual std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList&) {
             return {};
         }
 
-        // runs inside the pass, after the scene submit
+        // runs inside the overlay pass, after its draws
         virtual void OnRecordUI(RHICommandList&) {}
 
         auto& Device() noexcept { return *device; }
@@ -205,7 +209,8 @@ namespace Crowy
         const FrameStats& LastFrameStats() const noexcept;
 
     private:
-        void createDepthBuffer(u32 width, u32 height);
+        // a new walker from DescribePipeline(pipelineConfig)
+        FramePipelinePtr describePipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();
         DOM::Table controlStatus() const;
@@ -214,15 +219,5 @@ namespace Crowy
         const FrameStats* gpuFrameStats(const FrameStats& stats) const noexcept;
         void answerWaits();
         void reportCullStatsOnce();
-        // builds and uploads a list over the main view; its counts join the
-        // frame's
-        void buildList(
-            DrawList& list,
-            const PassPipelineDesc& pass,
-            const DrawFilter& filter,
-            DrawOrder order
-        );
-        // a list's view, push and draws, in the open pass
-        void submitList(RHICommandList& cmdList, const DrawList& list);
     };
 }

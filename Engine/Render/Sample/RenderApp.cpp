@@ -1,6 +1,5 @@
 #include "RenderApp.hpp"
 
-#include <array>
 #include <charconv>
 #include <cstdlib>
 #include <format>
@@ -16,7 +15,6 @@
 #include "Object.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
-#include "RHIDebugScope.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHISwapchain.hpp"
@@ -69,64 +67,14 @@ namespace Crowy
             return overrides;
         }
 
-        // the frame's three mesh-pass halves; prepass is drawn only when
-        // depthPrepass is set
-        struct ScenePasses {
-            bool depthPrepass = true;
-            PassPipelineDesc prepass;
-            PassPipelineDesc opaque;
-            PassPipelineDesc translucent;
-        };
-
-        ScenePasses scenePasses(
+        // Overdraw tests Always, so a prepass would only cost; a wireframe
+        // one stores line depths, which Equal cannot test lines against
+        bool wantsDepthPrepass(
             const RenderDebug& debug,
-            std::span<const RHIPixelFormat> renderTargetFormats,
-            RHIPixelFormat depthFormat
+            const MeshPassOverride& overrides
         ) {
-            const auto overrides = meshPassOverride(debug);
-            // Overdraw tests Always, so a prepass would only cost; a wireframe
-            // one stores line depths, which Equal cannot test lines against
-            const bool depthPrepass = debug.depthPrepass &&
-                                      !overrides.fillMode &&
-                                      !overrides.depthFunc &&
-                                      !overrides.depthWrite;
-
-            return ScenePasses{
-                .depthPrepass = depthPrepass,
-                .prepass =
-                    PassPipelineDesc{
-                        .depthFormat = depthFormat,
-                        .state =
-                            MeshPassState{
-                                .depthFunc = RHIComparisonFunc::Less,
-                                .depthWrite = true
-                            }
-                    },
-                .opaque =
-                    PassPipelineDesc{
-                        .renderTargetFormats = renderTargetFormats,
-                        .depthFormat = depthFormat,
-                        .state =
-                            MeshPassState{
-                                .depthFunc = depthPrepass ?
-                                    RHIComparisonFunc::Equal :
-                                    RHIComparisonFunc::Less,
-                                .depthWrite = !depthPrepass
-                            },
-                        .debug = overrides
-                    },
-                .translucent =
-                    PassPipelineDesc{
-                        .renderTargetFormats = renderTargetFormats,
-                        .depthFormat = depthFormat,
-                        .state =
-                            MeshPassState{
-                                .depthFunc = RHIComparisonFunc::Less,
-                                .depthWrite = false
-                            },
-                        .debug = overrides
-                    }
-            };
+            return debug.depthPrepass && !overrides.fillMode &&
+                   !overrides.depthFunc && !overrides.depthWrite;
         }
 
         // every number describes stats.report.frame, one frame that ended,
@@ -168,6 +116,24 @@ namespace Crowy
                 DOM::Value(static_cast<i64>(stats.pipelines))
             );
             result.emplace("instrumented", DOM::Value(static_cast<bool>(CROWY_FRAME_STATS)));
+
+            DOM::Array passes;
+            for(const auto& pass: stats.passes) {
+                DOM::Table row;
+                row.emplace("name", DOM::Value(pass.name));
+                row.emplace("draws", DOM::Value(static_cast<i64>(pass.draws)));
+                row.emplace("runs", DOM::Value(static_cast<i64>(pass.runs)));
+                row.emplace(
+                    "triangles",
+                    DOM::Value(static_cast<i64>(pass.triangles))
+                );
+                row.emplace(
+                    "barrierEdges",
+                    DOM::Value(static_cast<i64>(pass.barrierEdges))
+                );
+                passes.push_back(DOM::Value(std::move(row)));
+            }
+            result.emplace("passes", DOM::Value(std::move(passes)));
 
             DOM::Table cpu;
             for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
@@ -292,15 +258,19 @@ namespace Crowy
     RenderApp::RenderApp(const Config& config, CameraRAII camera)
         : config(config), camera(std::move(camera)) {}
 
-    void RenderApp::createDepthBuffer(u32 width, u32 height) {
-        depthBuffer = device->CreateTexture(
-            RHITextureCreateDesc{
-                .width = width,
-                .height = height,
-                .format = config.depthFormat,
-                .usage = RHITextureUsage::DepthStencil,
-                .clearDepthStencil = {.depth = 1.0f}
-            }
+    FramePipelineDesc RenderApp::DescribePipeline(
+        const StandardPipelineConfig& config
+    ) {
+        return makeStandardPipeline(config);
+    }
+
+    FramePipelinePtr RenderApp::describePipeline() {
+        return std::make_unique<FramePipeline>(
+            *device,
+            DescribePipeline(pipelineConfig),
+            swapchain->GetFormat(),
+            swapchain->GetWidth(),
+            swapchain->GetHeight()
         );
     }
 
@@ -308,7 +278,6 @@ namespace Crowy
         this->device = &device;
         this->swapchain = &swapchain;
 
-        createDepthBuffer(swapchain.GetWidth(), swapchain.GetHeight());
         aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
 
         geometryPool = std::make_unique<GeometryPool>(
@@ -323,14 +292,22 @@ namespace Crowy
                 .viewCount = config.viewCount
             }
         );
-        prepassList = std::make_unique<DrawList>(device, config.drawCapacity);
-        opaqueList = std::make_unique<DrawList>(device, config.drawCapacity);
-        translucentList =
-            std::make_unique<DrawList>(device, config.drawCapacity);
+        pipelineConfig = StandardPipelineConfig{
+            .depthFormat = config.depthFormat,
+            .drawCapacity = config.drawCapacity,
+            .depthPrepass = wantsDepthPrepass(debug, meshPassOverride(debug))
+        };
+        pipeline = describePipeline();
 
-        colorFormat = swapchain.GetFormat();
+        frameInputs.bindMeshPass =
+            [this](RHICommandList& cmdList, const ScenePush& push) {
+                OnBindPass(cmdList, push);
+            };
+        frameInputs.recordOverlay = [this](RHICommandList& cmdList) {
+            OnRecordUI(cmdList);
+        };
 
-        OnInitUI(device, colorFormat, config.depthFormat);
+        OnInitUI(device, pipeline->Overlay());
 
         applyDebugFromEnvironment();
     #if defined(_DEBUG) || !defined(NDEBUG)
@@ -722,42 +699,6 @@ namespace Crowy
         );
     }
 
-    void RenderApp::buildList(
-        DrawList& list,
-        const PassPipelineDesc& pass,
-        const DrawFilter& filter,
-        DrawOrder order
-    ) {
-        list.Build(
-            scene,
-            renderer->Visible(ViewMain),
-            renderer->Pipelines(),
-            pass,
-            filter,
-            order
-        );
-        list.Upload();
-
-        recorded.triangles += list.TriangleCount();
-        recorded.draws += list.DrawCount();
-        recorded.runs += list.RunCount();
-    }
-
-    void RenderApp::submitList(RHICommandList& cmdList, const DrawList& list) {
-        // Metal starts every pass with no push and no constant buffers
-        renderer->BindView(cmdList, ViewCBSlot, ViewMain);
-        auto push = list.Push(renderer->FramePush());
-        // the pool is GPUOnly, so unlike the renderer's own buffers this one
-        // does not have to be re-resolved
-        push.vertices = geometryPool->GetVertexBufferID();
-        OnBindPass(cmdList, push);
-
-        list.Submit(
-            cmdList,
-            RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()}
-        );
-    }
-
     void RenderApp::OnRecord(
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
@@ -765,130 +706,61 @@ namespace Crowy
         // one copy for the whole frame: OnPrepareUI below may write the
         // original, and the pipelines and the clear must agree
         const auto frameDebug = debug;
+        const auto overrides = meshPassOverride(frameDebug);
 
         auto& view = renderer->View(ViewMain);
         view.viewProj = camera->ViewProj(aspect);
         view.debugMode = static_cast<u32>(frameDebug.mode);
         view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
+        // the prepass is a pass in the list, so turning it over is a new
+        // list; frames in flight keep reading the old walker's targets
+        const bool depthPrepass = wantsDepthPrepass(frameDebug, overrides);
+        if(depthPrepass != pipelineConfig.depthPrepass) {
+            pipelineConfig.depthPrepass = depthPrepass;
+            auto rebuilt = describePipeline();
+            CROWY_ASSERT(
+                rebuilt->Overlay() == pipeline->Overlay(),
+                "the UI's formats are frozen at OnInitUI"
+            );
+            pipeline = std::move(rebuilt);
+        }
+
         // every per-frame buffer settles before the first pass opens
         OnUpdateFrameData();
-        const std::array passFormats = {colorFormat};
-        const auto passes =
-            scenePasses(frameDebug, passFormats, config.depthFormat);
-        recorded = FrameStats{};
 
         renderer->BeginFrame(scene);
-        recorded.visiblePrimitives = renderer->Visible(ViewMain).primitiveCount;
-        const DrawFilter opaque{.domains = MaterialDomain::Opaque};
-        if(passes.depthPrepass) {
-            buildList(
-                *prepassList,
-                passes.prepass,
-                opaque,
-                DrawOrder::PipelineThenNearFirst
-            );
-        }
-        buildList(
-            *opaqueList,
-            passes.opaque,
-            opaque,
-            DrawOrder::PipelineThenNearFirst
-        );
-        buildList(
-            *translucentList,
-            passes.translucent,
-            DrawFilter{.domains = MaterialDomain::Translucent},
-            DrawOrder::FarFirst
-        );
+        pipeline->Prepare(*renderer, scene, overrides);
         renderer->Upload();
+
+        recorded = FrameStats{};
+        recorded.visiblePrimitives = renderer->Visible(ViewMain).primitiveCount;
+        for(const auto& pass: pipeline->Stats()) {
+            recorded.triangles += pass.triangles;
+            recorded.draws += pass.draws;
+            recorded.runs += pass.runs;
+        }
         reportCullStatsOnce();
 
-        // every pass that draws from the pool takes the releases; a repeat
-        // is free on D3D12 and a second wait on the same fence on Metal
-        const auto geometryAcquires = geometryPool->RecordUploads(cmdList);
-        const auto uiAcquires = OnPrepareUI(cmdList);
-
-        // waits for the previous frame's depth work (WAR), contents
-        // discarded - the first pass clears anyway
-        const auto depthAcquire = MakeCrossSubmissionBarrier(
-            *depthBuffer,
-            RHIResourceUsage::DepthWrite,
-            RHIResourceUsage::DepthWrite,
-            /*discardContents=*/true
-        );
-        // the prepass's depth, which the scene pass tests against
-        const auto depthEdge = MakeBarrier(
-            *depthBuffer,
-            RHIResourceUsage::DepthWrite,
-            RHIResourceUsage::DepthWrite
-        );
-
-        if(passes.depthPrepass) {
-            RHIEventScope event(cmdList, "DepthPrepass");
-
-            const std::array acquires{depthAcquire};
-            cmdList.BeginRenderPass(
-                RHIRenderPassDesc{
-                    .depthAttachment =
-                        RHIDepthAttachment{
-                            .texture = depthBuffer.get(),
-                            .loadAction = RHILoadAction::Clear,
-                            .storeAction = RHIStoreAction::Store,
-                            .clearDepthStencil = {.depth = 1.0f}
-                        }
-                },
-                acquires,
-                geometryAcquires
-            );
-            cmdList.SetViewport(FullViewport(*depthBuffer));
-            cmdList.SetScissorRect(FullScissorRect(*depthBuffer));
-
-            submitList(cmdList, *prepassList);
-
-            const std::array releases{depthEdge};
-            cmdList.EndRenderPass(releases);
-        }
-
-        RHIEventScope event(cmdList, "Scene");
-
-        auto colorAttachment = backBuffer;
+        frameInputs.backBuffer = backBuffer.texture;
         // additive counts read only against black
-        colorAttachment.clearColor = frameDebug.mode == DebugMode::Overdraw ?
-            Colors::Black :
-            config.clearColor;
-        std::array colorAttachments = {colorAttachment};
-        std::vector<RHITextureBarrier> acquires{
-            AcquireBackBuffer(backBuffer),
-            passes.depthPrepass ? depthEdge : depthAcquire
-        };
-        acquires.append_range(uiAcquires);
-        cmdList.BeginRenderPass(
-            RHIRenderPassDesc{
-                .colorAttachments = colorAttachments,
-                .depthAttachment =
-                    RHIDepthAttachment{
-                        .texture = depthBuffer.get(),
-                        .loadAction = passes.depthPrepass ?
-                            RHILoadAction::Load :
-                            RHILoadAction::Clear,
-                        .storeAction = RHIStoreAction::DontCare,
-                        .clearDepthStencil = {.depth = 1.0f}
-                    }
-            },
-            acquires,
-            geometryAcquires
-        );
-        cmdList.SetViewport(FullViewport(*backBuffer.texture));
-        cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+        frameInputs.sceneClear = frameDebug.mode == DebugMode::Overdraw
+                                     ? Colors::Black
+                                     : config.clearColor;
+        frameInputs.indices =
+            RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()};
+        // the pool is GPUOnly, so unlike the renderer's own buffers this one
+        // does not have to be re-resolved
+        frameInputs.vertices = geometryPool->GetVertexBufferID();
+        // both outside any pass: the pool's copies, then the UI's
+        frameInputs.geometryAcquires = geometryPool->RecordUploads(cmdList);
+        frameInputs.overlayAcquires = OnPrepareUI(cmdList);
 
-        submitList(cmdList, *opaqueList);
-        submitList(cmdList, *translucentList);
+        pipeline->Record(cmdList, *renderer, frameInputs);
 
-        OnRecordUI(cmdList);
-
-        const std::array releases{ReleaseBackBuffer(backBuffer)};
-        cmdList.EndRenderPass(releases);
+        // the edges are counted as they are recorded
+        const auto passStats = pipeline->Stats();
+        recorded.passes.assign(passStats.begin(), passStats.end());
     }
 
     void RenderApp::OnFrameEnd(const FrameReport& report) {
@@ -919,7 +791,7 @@ namespace Crowy
     }
 
     void RenderApp::OnResize(u32 width, u32 height) {
-        createDepthBuffer(width, height);
+        pipeline->Resize(width, height);
         aspect = static_cast<f32>(width) / height;
     }
 }

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
@@ -86,6 +87,76 @@ namespace Crowy
                     }
                 );
             }
+        }
+
+        // The fullscreen kind on a GPU: the scene goes to an offscreen target,
+        // a pass reads depth and blends an alpha of 0 onto it, and a copy
+        // brings it to the back buffer - five passes, the same bytes.
+        FramePipelineDesc DescribePipeline(
+            const StandardPipelineConfig& config
+        ) override {
+            constexpr FrameTargetID SceneDepth = 1;
+            constexpr CStr Proof = "Engine/Render/Spike/FullscreenProof.slang";
+
+            auto desc = makeStandardPipeline(config);
+            desc.targets.push_back(
+                FrameTargetDesc{
+                    .name = "SceneColor",
+                    .format = RHIPixelFormat::RGBA8_UNORM,
+                    .clearColor = SkyColor
+                }
+            );
+            const auto sceneColor =
+                static_cast<FrameTargetID>(desc.targets.size());
+            desc.sceneColor = sceneColor;
+            for(auto& pass: desc.passes) {
+                for(auto& color: pass.colors)
+                    color.target = sceneColor;
+            }
+
+            // every destination channel kept, alpha included
+            RHIBlendState keep{};
+            keep.renderTargets[0] = RHIRenderTargetBlendState{
+                .blendEnable = true,
+                .srcBlend = RHIBlend::SrcAlpha,
+                .dstBlend = RHIBlend::InvSrcAlpha,
+                .srcBlendAlpha = RHIBlend::Zero,
+                .dstBlendAlpha = RHIBlend::One
+            };
+            const auto translucent = std::ranges::find(
+                desc.passes,
+                Str{"Translucent"},
+                &PassDesc::name
+            );
+            desc.passes.insert(
+                translucent,
+                PassDesc{
+                    .name = "Blend",
+                    .colors = {ColorTargetUse{
+                        .target = sceneColor,
+                        .load = RHILoadAction::Load
+                    }},
+                    .reads = {SceneDepth},
+                    .kind = FullscreenPassDesc{
+                        .fragmentShader =
+                            {.path = Proof, .entryPoint = "fs_blend"},
+                        .blend = keep
+                    }
+                }
+            );
+            desc.passes.push_back(
+                PassDesc{
+                    .name = "Copy",
+                    .colors = {ColorTargetUse{.target = BackBufferTarget}},
+                    .reads = {sceneColor},
+                    .kind = FullscreenPassDesc{
+                        .fragmentShader =
+                            {.path = Proof, .entryPoint = "fs_copy"}
+                    }
+                }
+            );
+
+            return desc;
         }
 
     private:
