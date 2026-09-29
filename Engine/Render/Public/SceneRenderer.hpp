@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include "Assert.hpp"
@@ -7,6 +8,7 @@
 #include "PipelineCache.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
+#include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
 #include "RenderSceneData.hpp"
 #include "Semantics.hpp"
@@ -15,6 +17,7 @@ namespace Crowy
 {
     class RenderScene;
 
+    using LightRecords = std::vector<LightData>;
     using MaterialRows = std::vector<MaterialData>;
     using ViewRecords = std::vector<ViewData>;
 
@@ -40,12 +43,14 @@ namespace Crowy
 
         // this frame's transient slices, refreshed by Upload()
         RHIBufferSlice materialSlice;
+        RHIBufferSlice lightSlice;
         // one RHI_CB_ALIGN record per view, selected by offset
         RHIBufferSlice viewSlice;
 
         PipelineCache pipelines;
 
         MaterialRows materialScratch;
+        LightRecords lightScratch;
         ViewRecords views;
         ViewCulls culls;
         // what BeginFrame was given, and what Visible culls
@@ -73,14 +78,21 @@ namespace Crowy
         // the cache every draw list resolves through
         auto& Pipelines(this auto& self) noexcept { return self.pipelines; }
 
-        // every material row once for every list; forgets last frame's culls
+        // every material and enabled light row once for every list, the
+        // environment into every view; forgets last frame's culls
         void BeginFrame(const RenderScene& scene);
         // culled on the view's first request of the frame
         const VisibleSet& Visible(u32 viewIndex);
-        // the materials and the views
+        // the materials, the lights and the views
         void Upload();
-        // the materials; a list adds its rows, the caller the vertices
+        // the materials and the lights; a list adds its rows, the caller the
+        // vertices
         ScenePush FramePush() const;
+
+        // what BeginFrame packed
+        std::span<const LightData> LightRows() const noexcept {
+            return lightScratch;
+        }
 
         void BindView(RHICommandList& cmdList, u32 slot, u32 viewIndex) const;
     };

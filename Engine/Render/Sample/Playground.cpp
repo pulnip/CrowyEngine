@@ -60,6 +60,32 @@ namespace Crowy
         .SetProperty("current", &CameraBookmarks::current)
     CROWY_STRUCT_END(CameraBookmarks)
 
+    CROWY_STRUCT(LightSnapshot)
+        .SetProperty("kind", &LightSnapshot::kind)
+        .SetProperty("enabled", &LightSnapshot::enabled)
+        .SetProperty("castShadow", &LightSnapshot::castShadow)
+        .SetProperty("color", &LightSnapshot::color)
+        .SetProperty("intensity", &LightSnapshot::intensity)
+        .SetUIRange(0.0f, 16.0f)
+        .SetProperty("position", &LightSnapshot::position)
+        .SetProperty("direction", &LightSnapshot::direction)
+        .SetProperty("range", &LightSnapshot::range)
+        .SetUIRange(0.0f, 20.0f)
+        .SetProperty("innerConeAngle", &LightSnapshot::innerConeAngle)
+        .SetUIRange(0.0f, 1.57f)
+        .SetProperty("outerConeAngle", &LightSnapshot::outerConeAngle)
+        .SetUIRange(0.0f, 1.57f)
+        .SetProperty("shadowBias", &LightSnapshot::shadowBias)
+        .SetUIRange(0.0f, 0.1f)
+        .SetProperty("shadowNormalBias", &LightSnapshot::shadowNormalBias)
+        .SetUIRange(0.0f, 4.0f)
+    CROWY_STRUCT_END(LightSnapshot)
+
+    CROWY_STRUCT(EnvironmentSnapshot)
+        .SetProperty("skyAmbient", &EnvironmentSnapshot::skyAmbient)
+        .SetProperty("groundAmbient", &EnvironmentSnapshot::groundAmbient)
+    CROWY_STRUCT_END(EnvironmentSnapshot)
+
     CROWY_STRUCT(MaterialData)
         .SetProperty("albedo", &MaterialData::albedo)
         .SetProperty("metallic", &MaterialData::metallic)
@@ -106,6 +132,11 @@ namespace Crowy
             MaterialHandle handle;
         };
 
+        struct NamedLight {
+            CStr name;
+            LightHandle handle;
+        };
+
         struct CameraPose {
             Vec3 position;
             f32 yaw = 0.0f;
@@ -123,8 +154,9 @@ namespace Crowy
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
         Widget panel = Column({});
-        // the panel's material sections, and the port's targets besides
-        // `camera`
+        // the panel's light and material sections, and the port's targets
+        // besides `camera` and `environment`
+        std::vector<NamedLight> exposedLights;
         std::vector<NamedMaterial> exposedMaterials;
         // what the panel's debug section was built from
         RenderDebug shownDebug;
@@ -140,6 +172,9 @@ namespace Crowy
             if(auto* port = Port()) {
                 port->Unexpose("bookmarks");
                 port->Unexpose("camera");
+                port->Unexpose("environment");
+                for(const auto& light: exposedLights)
+                    port->Unexpose(std::format("light.{}", light.name));
                 for(const auto& material: exposedMaterials)
                     port->Unexpose(std::format("material.{}", material.name));
             }
@@ -174,6 +209,23 @@ namespace Crowy
 
             // every row before any address is taken: the table is a vector,
             // so a later Add could move the rows the panel and port point at
+
+            // Godot's editor-preview sun: 60 degrees up, 30 degrees east of
+            // north, with north behind the start camera, so it lights the
+            // map from the front
+            const auto sun = scene.Lights().Add(
+                LightSnapshot{
+                    .color = ones(),
+                    .intensity = 3.0f,
+                    .direction = -normalize(Vec3{0.25f, 0.866f, -0.433f})
+                }
+            );
+            // the same preview's sky and ground colours, decoded to linear
+            scene.Environment() = EnvironmentSnapshot{
+                .skyAmbient = {0.123f, 0.174f, 0.262f},
+                .groundAmbient = {0.033f, 0.024f, 0.016f}
+            };
+
             const auto floorMaterial = addMaterial(
                 scene,
                 MaterialData{.albedo = {0.5f, 0.5f, 0.5f}, .roughness = 0.8f},
@@ -402,6 +454,8 @@ namespace Crowy
                 {2.5f, 1.5f, 1.0f}
             );
 
+            exposedLights = {NamedLight{"sun", sun}};
+
             constexpr auto Last = ChartColumns - 1;
             exposedMaterials = {
                 NamedMaterial{"floor", floorMaterial},
@@ -440,6 +494,20 @@ namespace Crowy
                         camera.RecomputeView();
                         uiContext.panelDirty = true;
                     }
+                );
+                for(const auto& light: exposedLights) {
+                    port->Expose(
+                        std::format("light.{}", light.name),
+                        &scene.Lights().GetRef(light.handle),
+                        *GetDesc<LightSnapshot>(),
+                        [this] { uiContext.panelDirty = true; }
+                    );
+                }
+                port->Expose(
+                    "environment",
+                    &scene.Environment(),
+                    *GetDesc<EnvironmentSnapshot>(),
+                    [this] { uiContext.panelDirty = true; }
                 );
                 for(const auto& material: exposedMaterials) {
                     port->Expose(
@@ -541,6 +609,12 @@ namespace Crowy
                 bookmarksSection(),
                 cameraSection()
             };
+            for(const auto& light: exposedLights) {
+                sections.push_back(
+                    lightSection(Scene(), light.name, light.handle)
+                );
+            }
+            sections.push_back(environmentSection(Scene()));
             for(const auto& material: exposedMaterials) {
                 sections.push_back(
                     materialSection(Scene(), material.name, material.handle)
@@ -560,6 +634,30 @@ namespace Crowy
                 label,
                 &materialData(scene, handle),
                 *GetDesc<MaterialData>(),
+                [] {}
+            );
+        }
+
+        Widget lightSection(
+            RenderScene& scene,
+            CStr label,
+            LightHandle handle
+        ) {
+            // BeginFrame re-reads the table every frame; no dirty consumer
+            return buildPropertyTree(
+                label,
+                &scene.Lights().GetRef(handle),
+                *GetDesc<LightSnapshot>(),
+                [] {}
+            );
+        }
+
+        Widget environmentSection(RenderScene& scene) {
+            // BeginFrame copies it into every view each frame
+            return buildPropertyTree(
+                "environment",
+                &scene.Environment(),
+                *GetDesc<EnvironmentSnapshot>(),
                 [] {}
             );
         }

@@ -1,5 +1,7 @@
 #include "SceneRenderer.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <span>
 
 #include "Assert.hpp"
@@ -13,6 +15,42 @@
 
 namespace Crowy
 {
+    namespace
+    {
+        // A row as the shaders read it. Each guard keeps a value the port
+        // or the panel may write from reaching the shader as NaN or inf.
+        LightData packLight(const LightSnapshot& light) {
+            using enum LightKind;
+
+            constexpr f32 MinDirectionSquared = 1e-12f;
+            constexpr f32 MinRange = 0.001f;
+            constexpr f32 MinConeWidth = 0.001f;
+
+            LightData row{
+                .position = light.position,
+                .direction = normSquared(light.direction) < MinDirectionSquared
+                    ? -unitY()
+                    : normalize(light.direction),
+                .kind = light.kind,
+                .color = light.intensity * light.color
+            };
+            if(light.kind == Directional)
+                return row;
+
+            row.invRange = 1.0f / std::max(light.range, MinRange);
+            if(light.kind == Spot) {
+                const auto cosInner = std::cos(light.innerConeAngle);
+                const auto cosOuter = std::cos(light.outerConeAngle);
+
+                row.coneScale =
+                    1.0f / std::max(cosInner - cosOuter, MinConeWidth);
+                row.coneOffset = -cosOuter * row.coneScale;
+            }
+
+            return row;
+        }
+    }
+
     SceneRenderer::~SceneRenderer() = default;
 
     SceneRenderer::SceneRenderer(
@@ -30,6 +68,18 @@ namespace Crowy
         materialScratch.clear();
         for(const auto& material: scene.Materials().All())
             materialScratch.push_back(material.data);
+
+        lightScratch.clear();
+        for(const auto& light: scene.Lights().All()) {
+            if(light.enabled)
+                lightScratch.push_back(packLight(light));
+        }
+
+        const auto& environment = scene.Environment();
+        for(auto& view: views) {
+            view.skyAmbient = toVec4(environment.skyAmbient);
+            view.groundAmbient = toVec4(environment.groundAmbient);
+        }
 
         for(auto& cull: culls)
             cull.culled = false;
@@ -101,6 +151,12 @@ namespace Crowy
                 static_cast<u32>(sizeof(MaterialData))
             );
         }
+        if(!lightScratch.empty()) {
+            lightSlice = device.UploadTransient(
+                std::span<const LightData>(lightScratch),
+                static_cast<u32>(sizeof(LightData))
+            );
+        }
         viewSlice = device.UploadTransient(
             std::span<const ViewData>(views),
             RHI_CB_ALIGN
@@ -116,6 +172,7 @@ namespace Crowy
         );
 
         constexpr auto materialStride = static_cast<u32>(sizeof(MaterialData));
+        constexpr auto lightStride = static_cast<u32>(sizeof(LightData));
 
         // one descriptor spans the whole transient buffer; the base index is
         // what points the shader at this frame's rows inside it
@@ -125,7 +182,14 @@ namespace Crowy
                 materialSlice.buffer->GetReadableID(materialStride),
             .materialBase = materialScratch.empty() ?
                 0 :
-                materialSlice.offset / materialStride
+                materialSlice.offset / materialStride,
+            .lights = lightScratch.empty() ?
+                0 :
+                lightSlice.buffer->GetReadableID(lightStride),
+            .lightBase = lightScratch.empty() ?
+                0 :
+                lightSlice.offset / lightStride,
+            .lightCount = static_cast<u32>(lightScratch.size())
         };
     }
 

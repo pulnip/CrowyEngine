@@ -96,10 +96,14 @@ TEST(RenderScene, ClearEmptiesEveryTable) {
     const auto material = AddMaterial(scene, {1.0f, 1.0f, 1.0f});
     const auto mesh = AddMesh(scene, material, 1);
     scene.Primitives().Add(PrimitiveSnapshot{.mesh = mesh});
+    scene.Lights().Add(LightSnapshot{});
+    scene.Environment().skyAmbient = ones();
 
     scene.Clear();
 
     EXPECT_TRUE(scene.Primitives().IsEmpty());
     EXPECT_TRUE(scene.Meshes().IsEmpty());
     EXPECT_TRUE(scene.Materials().IsEmpty());
+    EXPECT_TRUE(scene.Lights().IsEmpty());
+    EXPECT_EQ(scene.Environment().skyAmbient, zeros());
 }

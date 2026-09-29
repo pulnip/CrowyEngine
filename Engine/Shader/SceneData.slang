@@ -2,7 +2,8 @@
 
 // What every Render shader reads, mirrored from the C++ side: DrawData,
 // ViewData and ScenePush in RenderSceneData.hpp, MaterialData in
-// RenderMaterial.hpp, Vertex in Engine/RHI/Common/Vertex.hpp.
+// RenderMaterial.hpp, LightData in RenderLight.hpp, Vertex in
+// Engine/RHI/Common/Vertex.hpp.
 
 // a structured buffer packs tightly
 struct Vertex{
@@ -31,6 +32,22 @@ struct MaterialData{
     uint _pad0;
 };
 
+struct LightData{
+    float4x4 worldToShadow;
+    float3 position;
+    float invRange;
+    // unit, the way the light travels
+    float3 direction;
+    uint kind;
+    // colour x intensity
+    float3 color;
+    uint shadowIndex;
+    float coneScale;
+    float coneOffset;
+    float shadowBias;
+    float shadowNormalBias;
+};
+
 // per-draw data rides in draws[drawID], never here
 struct ScenePush{
     DescriptorHandle<StructuredBuffer<DrawData>> draws;
@@ -39,6 +56,9 @@ struct ScenePush{
     // row 0 of this frame's slice inside the shared transient buffer
     uint drawBase;
     uint materialBase;
+    DescriptorHandle<StructuredBuffer<LightData>> lights;
+    uint lightBase;
+    uint lightCount;
 };
 
 [[vk::push_constant]]
@@ -53,6 +73,9 @@ cbuffer view : register(b1) {
     uint _pad2;
     // xyz = camera position, w unused
     float4 cameraPosition;
+    // xyz, w unused; equal colours are a flat ambient
+    float4 skyAmbient;
+    float4 groundAmbient;
 };
 
 DrawData LoadDraw(uint drawID){

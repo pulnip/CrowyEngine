@@ -1,4 +1,5 @@
 #include "DebugView.slang"
+#include "Lighting.slang"
 #include "SceneData.slang"
 #include "SRGB.slang"
 
@@ -32,14 +33,6 @@ VertexOut vs_main(
 }
 
 static const float PI = 3.14159265;
-
-// Godot's editor-preview sun: 60 degrees up, 30 degrees east of north, with
-// north behind the start camera, so it lights the map from the front
-static const float3 SunDirection = normalize(float3(0.25, 0.866, -0.433));
-static const float3 SunRadiance = float3(3.0, 3.0, 3.0);
-// the same preview's sky and ground colours, decoded to linear
-static const float3 SkyAmbient = float3(0.123, 0.174, 0.262);
-static const float3 GroundAmbient = float3(0.033, 0.024, 0.016);
 
 static const float GridMajor = 1.0;
 static const float GridMinor = 0.25;
@@ -85,10 +78,10 @@ Surface loadSurface(VertexOut input) {
     return s;
 }
 
-float3 shade(Surface s, float3 posWorld) {
+// one light's GGX; the radiance arrives un-cosined
+float3 shadeLight(Surface s, LightSample light, float3 V) {
     float3 N = s.normal;
-    float3 V = normalize(cameraPosition.xyz - posWorld);
-    float3 L = SunDirection;
+    float3 L = light.direction;
 
     float NoL = saturate(dot(N, L));
     float NoV = saturate(dot(N, V)) + 1e-5;
@@ -104,8 +97,18 @@ float3 shade(Surface s, float3 posWorld) {
     float3 specular = F * distributionGGX(NoH, a) * visibilitySmith(NoV, NoL, a);
     float3 diffuse = (1.0 - F) * (1.0 - s.metallic) * s.albedo / PI;
 
-    float3 color = (diffuse + specular) * SunRadiance * NoL;
-    color += lerp(GroundAmbient, SkyAmbient, N.y * 0.5 + 0.5) * s.albedo;
+    return (diffuse + specular) * light.radiance * NoL * light.attenuation;
+}
+
+// the lights, then the ambient, then the emission
+float3 shade(Surface s, float3 posWorld) {
+    float3 V = normalize(cameraPosition.xyz - posWorld);
+
+    float3 color = float3(0.0, 0.0, 0.0);
+    // never early-outs: a shading model may tint what the shadow darkens
+    for(uint i = 0; i < LightCount(); ++i)
+        color += shadeLight(s, SampleLight(i, posWorld, s.normal), V);
+    color += AmbientIrradiance(s.normal) * s.albedo;
     color += s.emissive;
 
     return color;

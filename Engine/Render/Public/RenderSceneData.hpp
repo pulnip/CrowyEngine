@@ -41,12 +41,18 @@ namespace Crowy
         u32 _pad0[3]{};
         // xyz = camera position, w unused
         Vec4 cameraPosition{};
+        // xyz, w unused: the scene's hemisphere, sky facing up and ground
+        // facing down; equal colours are a flat ambient
+        Vec4 skyAmbient{};
+        Vec4 groundAmbient{};
 
-        f32 _pad[40]{};
+        f32 _pad[32]{};
     };
     static_assert(sizeof(ViewData) == RHI_CB_ALIGN);
     static_assert(offsetof(ViewData, debugMode) == 64);
     static_assert(offsetof(ViewData, cameraPosition) == 80);
+    static_assert(offsetof(ViewData, skyAmbient) == 96);
+    static_assert(offsetof(ViewData, groundAmbient) == 112);
     static_assert(std::is_trivially_copyable_v<ViewData>);
 
     // A shader wanting more declares a struct beginning with these members,
@@ -62,12 +68,20 @@ namespace Crowy
         // frames share, so row 0 of this frame's slice sits at these offsets
         u32 drawBase = 0;
         u32 materialBase = 0;
+        // DescriptorHandle<StructuredBuffer<LightData>>, over the same
+        // shared storage, so lightBase is its row 0
+        u64 lights = 0;
+        u32 lightBase = 0;
+        u32 lightCount = 0;
     };
-    static_assert(sizeof(ScenePush) == 32);
+    static_assert(sizeof(ScenePush) == 48);
     static_assert(offsetof(ScenePush, materials) == 8);
     static_assert(offsetof(ScenePush, vertices) == 16);
     static_assert(offsetof(ScenePush, drawBase) == 24);
     static_assert(offsetof(ScenePush, materialBase) == 28);
+    static_assert(offsetof(ScenePush, lights) == 32);
+    static_assert(offsetof(ScenePush, lightBase) == 40);
+    static_assert(offsetof(ScenePush, lightCount) == 44);
     static_assert(sizeof(ScenePush) <= RHI_PUSH_CONSTANT_BYTES);
     static_assert(std::is_trivially_copyable_v<ScenePush>);
 

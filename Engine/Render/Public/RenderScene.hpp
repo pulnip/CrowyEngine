@@ -8,6 +8,7 @@
 #include "LinearAlgebra.hpp"
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
+#include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
 #include "Semantics.hpp"
 
@@ -63,6 +64,8 @@ namespace Crowy
         MaterialTable materials;
         MeshTable meshes;
         PrimitiveTable primitives;
+        LightTable lights;
+        EnvironmentSnapshot environment;
 
     public:
         RenderScene() = default;
@@ -72,8 +75,12 @@ namespace Crowy
         auto& Materials(this auto& self) noexcept { return self.materials; }
         auto& Meshes(this auto& self) noexcept { return self.meshes; }
         auto& Primitives(this auto& self) noexcept { return self.primitives; }
+        auto& Lights(this auto& self) noexcept { return self.lights; }
+        auto& Environment(this auto& self) noexcept { return self.environment; }
 
         void Clear() noexcept {
+            environment = EnvironmentSnapshot{};
+            lights.Clear();
             primitives.Clear();
             meshes.Clear();
             materials.Clear();
