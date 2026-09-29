@@ -53,35 +53,11 @@ namespace
         return std::get<MeshPassDesc>(pass.kind);
     }
 
-    // the standard list behind a fixed-size depth-only pass on view 1,
-    // drawing casters only: the shape a shadow pass takes
+    // the standard list with a small map, its Shadow pass biased: a
+    // fixed-size depth-only pass on view 1 drawing casters only
     FramePipelineDesc ShadowShaped(const PassDepthBias& bias) {
-        auto desc = makeStandardPipeline({});
-        desc.targets.push_back(
-            FrameTargetDesc{
-                .name = "ShadowMap",
-                .format = RHIPixelFormat::D32_FLOAT,
-                .width = 64,
-                .height = 64
-            }
-        );
-        const auto shadowMap = static_cast<FrameTargetID>(desc.targets.size());
-        desc.passes.insert(
-            desc.passes.begin(),
-            PassDesc{
-                .name = "Shadow",
-                .depth = DepthTargetUse{.target = shadowMap},
-                .kind = MeshPassDesc{
-                    .view = 1,
-                    .filter =
-                        DrawFilter{
-                            .domains = MaterialDomain::Opaque,
-                            .required = PrimitiveFlags::CastShadow
-                        },
-                    .state = MeshPassState{.depthBias = bias}
-                }
-            }
-        );
+        auto desc = makeStandardPipeline({.shadowMapSize = 64});
+        Mesh(desc.passes[0]).state.depthBias = bias;
 
         return desc;
     }
@@ -254,7 +230,7 @@ namespace
 }
 
 TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
-    const auto desc = makeStandardPipeline({});
+    const auto desc = makeStandardPipeline({.shadowMapSize = 0});
 
     ASSERT_EQ(desc.targets.size(), 1u);
     EXPECT_EQ(desc.targets[0].name, "SceneDepth");
@@ -299,7 +275,9 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
 }
 
 TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
-    const auto desc = makeStandardPipeline({.depthPrepass = false});
+    const auto desc = makeStandardPipeline(
+        {.depthPrepass = false, .shadowMapSize = 0}
+    );
 
     ASSERT_EQ(desc.passes.size(), 2u);
     const auto& opaque = desc.passes[0];
@@ -312,6 +290,71 @@ TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
     EXPECT_EQ(desc.passes[1].name, "Translucent");
 }
 
+TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
+    constexpr FrameTargetID ShadowMap = 2;
+
+    auto desc = makeStandardPipeline({});
+
+    ASSERT_EQ(desc.targets.size(), 2u);
+    EXPECT_EQ(desc.targets[0].name, "SceneDepth");
+    EXPECT_EQ(desc.targets[1].name, "ShadowMap");
+    EXPECT_EQ(desc.targets[1].format, RHIPixelFormat::D32_FLOAT);
+    EXPECT_EQ(desc.targets[1].width, 2048u);
+    EXPECT_EQ(desc.targets[1].height, 2048u);
+    EXPECT_EQ(desc.shadowMap, ShadowMap);
+    ASSERT_EQ(desc.passes.size(), 4u);
+
+    const auto& shadow = desc.passes[0];
+    EXPECT_EQ(shadow.name, "Shadow");
+    EXPECT_TRUE(shadow.colors.empty());
+    ASSERT_TRUE(shadow.depth.has_value());
+    EXPECT_EQ(shadow.depth->target, ShadowMap);
+    EXPECT_EQ(shadow.depth->load, RHILoadAction::Clear);
+    EXPECT_EQ(shadow.depth->store, RHIStoreAction::Store);
+    EXPECT_TRUE(shadow.reads.empty());
+    EXPECT_EQ(Mesh(shadow).view, SceneRenderer::ShadowView);
+    EXPECT_EQ(Mesh(shadow).filter.domains, MaterialDomain::Opaque);
+    EXPECT_EQ(Mesh(shadow).filter.required, PrimitiveFlags::CastShadow);
+    EXPECT_EQ(Mesh(shadow).order, DrawOrder::PipelineThenNearFirst);
+    EXPECT_EQ(Mesh(shadow).state.depthFunc, RHIComparisonFunc::Less);
+    EXPECT_TRUE(Mesh(shadow).state.depthWrite);
+    EXPECT_FALSE(Mesh(shadow).state.fragmentShader.has_value());
+    EXPECT_FALSE(Mesh(shadow).state.depthBias.has_value());
+
+    EXPECT_EQ(desc.passes[1].name, "DepthPrepass");
+    EXPECT_TRUE(desc.passes[1].reads.empty());
+    EXPECT_EQ(desc.passes[2].name, "Opaque");
+    EXPECT_EQ(desc.passes[2].reads, std::vector<FrameTargetID>{ShadowMap});
+    EXPECT_EQ(desc.passes[3].name, "Translucent");
+    EXPECT_EQ(desc.passes[3].reads, std::vector<FrameTargetID>{ShadowMap});
+
+    FakeDevice device;
+    FramePipeline
+        pipeline(device, std::move(desc), BackBufferFormat, Width, Height);
+    EXPECT_EQ(pipeline.ViewCount(), 2u);
+    EXPECT_EQ(pipeline.ShadowMapSize(), 2048u);
+}
+
+TEST(FramePipeline, AZeroShadowMapSizeDropsThePassAndTheTarget) {
+    auto desc = makeStandardPipeline({.shadowMapSize = 0});
+
+    ASSERT_EQ(desc.targets.size(), 1u);
+    EXPECT_EQ(desc.shadowMap, 0u);
+    ASSERT_EQ(desc.passes.size(), 3u);
+    for(const auto& pass: desc.passes) {
+        EXPECT_NE(pass.name, "Shadow");
+        EXPECT_TRUE(pass.reads.empty()) << pass.name;
+        EXPECT_EQ(Mesh(pass).view, 0u) << pass.name;
+    }
+
+    FakeDevice device;
+    FramePipeline
+        pipeline(device, std::move(desc), BackBufferFormat, Width, Height);
+    EXPECT_EQ(pipeline.ViewCount(), 1u);
+    EXPECT_EQ(pipeline.ShadowMapSize(), 0u);
+    EXPECT_EQ(device.textureCreates.size(), 1u);
+}
+
 // every half as the edge rule gives it, two frames running
 TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
     using enum RHIResourceUsage;
@@ -321,7 +364,7 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -386,7 +429,7 @@ TEST(FramePipeline, BackBufferIsAcquiredUndefinedAndReleasedToPresent) {
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -418,7 +461,7 @@ TEST(FramePipeline, FirstUseAcquiresAcrossSubmissionsAndDiscards) {
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -460,7 +503,7 @@ TEST(FramePipeline, EveryMeshPassRebindsItsViewAndPush) {
         f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -501,7 +544,7 @@ TEST(FramePipeline, GeometryAcquiresRideEveryMeshPass) {
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -552,7 +595,7 @@ TEST(FramePipeline, OverlayRidesTheLastBackBufferPass) {
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -674,7 +717,9 @@ TEST(FramePipeline, APassNotInTheListCostsNothing) {
         f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
         FramePipeline pipeline(
             f.device,
-            makeStandardPipeline({.depthPrepass = depthPrepass}),
+            makeStandardPipeline(
+                {.depthPrepass = depthPrepass, .shadowMapSize = 0}
+            ),
             BackBufferFormat,
             Width,
             Height
@@ -721,7 +766,7 @@ TEST(FramePipeline, PassStatsCountEachPass) {
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
     FramePipeline pipeline(
         f.device,
-        makeStandardPipeline({}),
+        makeStandardPipeline({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -752,7 +797,7 @@ TEST(FramePipeline, PassStatsCountEachPass) {
 
 TEST(FramePipeline, InvalidDescsAreRefused) {
     const auto standard = [] {
-        return makeStandardPipeline({});
+        return makeStandardPipeline({.shadowMapSize = 0});
     };
 
     {
@@ -863,6 +908,39 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
             std::move(desc),
             "pass 'Translucent': the overlay pass needs exactly one color "
             "target"
+        );
+    }
+    {
+        auto desc = standard();
+        desc.shadowMap = 5;
+        ExpectRefused(
+            std::move(desc),
+            "shadowMap names target 5, which is unknown"
+        );
+    }
+    {
+        // SceneDepth follows the swapchain's size
+        auto desc = standard();
+        desc.shadowMap = 1;
+        ExpectRefused(
+            std::move(desc),
+            "shadowMap names target 1, which is not a fixed-size square target"
+        );
+    }
+    {
+        auto desc = standard();
+        desc.targets.push_back(
+            FrameTargetDesc{
+                .name = "Oblong",
+                .format = RHIPixelFormat::D32_FLOAT,
+                .width = 64,
+                .height = 32
+            }
+        );
+        desc.shadowMap = static_cast<FrameTargetID>(desc.targets.size());
+        ExpectRefused(
+            std::move(desc),
+            "shadowMap names target 2, which is not a fixed-size square target"
         );
     }
 }
@@ -1047,18 +1125,14 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
         }
     }
 
-    // the shadow-shaped pass's two readers: a mesh pass's reads compile into
-    // edges and usage and bind nothing
+    // the map's two readers, which the standard desc lists: a mesh pass's
+    // reads compile into edges and usage and bind nothing
     {
         Fixture f;
         f.AddPrimitive(f.AddMaterial("fs_opaque"));
-        auto desc = ShadowShaped(PassDepthBias{});
-        const auto shadowMap = static_cast<FrameTargetID>(desc.targets.size());
-        desc.passes[2].reads = {shadowMap};
-        desc.passes[3].reads = {shadowMap};
         FramePipeline pipeline(
             f.device,
-            std::move(desc),
+            ShadowShaped(PassDepthBias{}),
             BackBufferFormat,
             Width,
             Height

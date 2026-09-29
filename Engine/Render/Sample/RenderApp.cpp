@@ -285,19 +285,21 @@ namespace Crowy
             config.vertexPoolCapacity,
             config.indexPoolCapacity
         );
+        pipelineConfig = StandardPipelineConfig{
+            .depthFormat = config.depthFormat,
+            .drawCapacity = config.drawCapacity,
+            .depthPrepass = wantsDepthPrepass(debug, meshPassOverride(debug)),
+            .shadowMapSize = config.shadowMapSize
+        };
+        pipeline = describePipeline();
+        // as many view rows as the pass list names
         renderer = std::make_unique<SceneRenderer>(
             device,
             SceneRendererDesc{
                 .materialCapacity = config.materialCapacity,
-                .viewCount = config.viewCount
+                .viewCount = pipeline->ViewCount()
             }
         );
-        pipelineConfig = StandardPipelineConfig{
-            .depthFormat = config.depthFormat,
-            .drawCapacity = config.drawCapacity,
-            .depthPrepass = wantsDepthPrepass(debug, meshPassOverride(debug))
-        };
-        pipeline = describePipeline();
 
         frameInputs.bindMeshPass =
             [this](RHICommandList& cmdList, const ScenePush& push) {
@@ -723,13 +725,17 @@ namespace Crowy
                 rebuilt->Overlay() == pipeline->Overlay(),
                 "the UI's formats are frozen at OnInitUI"
             );
+            CROWY_ASSERT(
+                rebuilt->ViewCount() == renderer->ViewCount(),
+                "the renderer's view rows are sized at OnInit"
+            );
             pipeline = std::move(rebuilt);
         }
 
         // every per-frame buffer settles before the first pass opens
         OnUpdateFrameData();
 
-        renderer->BeginFrame(scene);
+        renderer->BeginFrame(scene, pipeline->ShadowMapSize());
         pipeline->Prepare(*renderer, scene, overrides);
         renderer->Upload();
 

@@ -311,6 +311,26 @@ namespace Crowy
                 )
             );
         }
+        if(const auto map = this->desc.shadowMap; map != 0) {
+            if(map > targets.size()) {
+                throw std::invalid_argument(
+                    std::format(
+                        "shadowMap names target {}, which is unknown",
+                        map
+                    )
+                );
+            }
+            const auto& target = targets[map - 1];
+            if(target.width == 0 || target.width != target.height) {
+                throw std::invalid_argument(
+                    std::format(
+                        "shadowMap names target {}, which is not a "
+                        "fixed-size square target",
+                        map
+                    )
+                );
+            }
+        }
         refuseDuplicateNames(this->desc);
         const auto uses = collectUses(this->desc);
         refuseBrokenUses(this->desc, uses);
@@ -343,6 +363,7 @@ namespace Crowy
                     this->device,
                     mesh->drawCapacity
                 );
+                viewCount = std::max(viewCount, mesh->view + 1);
             } else {
                 compiled.fullscreenDesc = fullscreenPipelineDesc(
                     std::get<FullscreenPassDesc>(pass.kind),
@@ -642,6 +663,13 @@ namespace Crowy
                 releaseScratch.size()
             );
         }
+    }
+
+    u32 FramePipeline::ShadowMapSize() const noexcept {
+        if(desc.shadowMap == 0)
+            return 0;
+
+        return desc.targets[desc.shadowMap - 1].width;
     }
 
     OverlayFormats FramePipeline::Overlay() const noexcept {

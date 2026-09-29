@@ -165,6 +165,7 @@ namespace Crowy
                 .clearColor = SkyColor,
                 .drawCapacity = SlotCount,
                 .materialCapacity = 1,
+                .shadowMapSize = 0,
                 .vertexPoolCapacity = 1024,
                 .indexPoolCapacity = 4096
             };

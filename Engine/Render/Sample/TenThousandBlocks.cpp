@@ -108,6 +108,7 @@ namespace Crowy
             return Config{
                 .clearColor = SkyColor,
                 .drawCapacity = BlockCount,
+                .shadowMapSize = 0,
                 .vertexPoolCapacity = 1024,
                 .indexPoolCapacity = 4096
             };

@@ -8,6 +8,7 @@
 #include "RenderLight.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
+#include "ShadowFit.hpp"
 
 using namespace Crowy;
 
@@ -24,6 +25,28 @@ namespace
             return scene.Lights().Add(light);
         }
 
+        // a primitive inside clip space for an identity view
+        void AddPrimitive(
+            AABB3D bounds,
+            PrimitiveFlags flags =
+                combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow)
+        ) {
+            const auto material = scene.Materials().Add(MaterialResource{});
+            const auto mesh = scene.Meshes().Add(
+                MeshResource{
+                    .subMeshes = {SubMesh{.geometry = {.indexCount = 3}}},
+                    .materials = {material}
+                }
+            );
+            scene.Primitives().Add(
+                PrimitiveSnapshot{
+                    .worldBounds = bounds,
+                    .mesh = mesh,
+                    .flags = flags
+                }
+            );
+        }
+
         const LightData& PackOne(const LightSnapshot& light) {
             Add(light);
             renderer.BeginFrame(scene);
@@ -31,6 +54,19 @@ namespace
 
             return renderer.LightRows().front();
         }
+    };
+
+    constexpr u32 MapSize = 64;
+    // corners exact in binary, so the union BeginFrame rebuilds from them
+    // is this box bit for bit
+    constexpr AABB3D Box{
+        .center = {0.0f, 0.0f, 0.5f},
+        .halfScale = {0.25f, 0.25f, 0.25f}
+    };
+
+    const LightSnapshot CastingSun{
+        .castShadow = true,
+        .direction = {0.25f, -0.866f, 0.433f}
     };
 
     // the cone term the shader takes, before its saturate
@@ -181,4 +217,111 @@ TEST(Light, ANonPositiveRangeIsFlooredAtAMillimetre) {
         EXPECT_TRUE(std::isfinite(row.invRange)) << range;
         EXPECT_FLOAT_EQ(row.invRange, 1000.0f) << range;
     }
+}
+
+TEST(Light, OnlyTheFirstShadowCastingDirectionalGetsShadowZero) {
+    Fixture f;
+    f.AddPrimitive(Box);
+    f.Add(LightSnapshot{.kind = LightKind::Point, .castShadow = true});
+    f.Add(LightSnapshot{.castShadow = true, .intensity = 1.0f});
+    f.Add(LightSnapshot{.castShadow = true, .intensity = 2.0f});
+    f.Add(LightSnapshot{.intensity = 3.0f});
+
+    f.renderer.BeginFrame(f.scene, MapSize);
+
+    const auto rows = f.renderer.LightRows();
+    ASSERT_EQ(rows.size(), 4u);
+    EXPECT_EQ(rows[0].shadowIndex, NoShadow);
+    EXPECT_EQ(rows[1].shadowIndex, 0u);
+    EXPECT_EQ(rows[2].shadowIndex, NoShadow);
+    EXPECT_EQ(rows[3].shadowIndex, NoShadow);
+    EXPECT_EQ(rows[2].worldToShadow, unitMat());
+}
+
+TEST(Light, TheShadowedRowCarriesTheFit) {
+    Fixture f;
+    f.AddPrimitive(Box);
+    // hidden, so outside the union
+    f.AddPrimitive(
+        AABB3D{.center = {50.0f, 0.0f, 0.0f}},
+        PrimitiveFlags::CastShadow
+    );
+    auto sun = CastingSun;
+    sun.shadowBias = 0.05f;
+    sun.shadowNormalBias = 2.0f;
+    f.Add(sun);
+
+    f.renderer.BeginFrame(f.scene, MapSize);
+
+    const auto& row = f.renderer.LightRows().front();
+    const auto fit = fitDirectionalShadow(row.direction, Box, MapSize);
+    EXPECT_EQ(row.shadowIndex, 0u);
+    EXPECT_EQ(row.worldToShadow, fit.worldToShadow);
+    // casters and receivers agree bit for bit
+    EXPECT_EQ(
+        f.renderer.View(SceneRenderer::ShadowView).viewProj,
+        row.worldToShadow
+    );
+    EXPECT_EQ(row.shadowBias, 0.05f);
+    EXPECT_FLOAT_EQ(row.shadowNormalBias, 2.0f * fit.texelSize);
+    // the view culls against the fit, which holds the visible box
+    EXPECT_EQ(f.renderer.Visible(SceneRenderer::ShadowView).primitiveCount, 1u);
+}
+
+// With a map but nothing to fit, row 1 is identity and its set is empty
+// without a cull: the box sits inside identity's clip space, so a cull
+// would keep it
+TEST(Light, AnUnfittedShadowViewIsEmptyWithoutACull) {
+    {
+        // a casting sun, and nothing Visible to fit
+        Fixture f;
+        f.AddPrimitive(Box, PrimitiveFlags::CastShadow);
+        f.Add(CastingSun);
+        f.renderer.View(SceneRenderer::ShadowView).viewProj =
+            translateMat({3.0f, 0.0f, 0.0f});
+
+        f.renderer.BeginFrame(f.scene, MapSize);
+
+        EXPECT_EQ(f.renderer.LightRows().front().shadowIndex, NoShadow);
+        EXPECT_EQ(
+            f.renderer.View(SceneRenderer::ShadowView).viewProj,
+            unitMat()
+        );
+        EXPECT_EQ(
+            f.renderer.Visible(SceneRenderer::ShadowView).primitiveCount,
+            0u
+        );
+    }
+    {
+        // something Visible, and no light that casts
+        Fixture f;
+        f.AddPrimitive(Box);
+        f.Add(LightSnapshot{});
+
+        f.renderer.BeginFrame(f.scene, MapSize);
+
+        const auto& visible = f.renderer.Visible(SceneRenderer::ShadowView);
+        EXPECT_EQ(visible.primitiveCount, 0u);
+        EXPECT_TRUE(visible.draws.empty());
+        // the main view still culls
+        EXPECT_EQ(f.renderer.Visible(0).primitiveCount, 1u);
+    }
+}
+
+// row 1 stays the caller's without a map
+TEST(Light, WithoutAMapEveryRowGetsNoShadow) {
+    const auto byHand = translateMat({3.0f, 0.0f, 0.0f});
+
+    Fixture f;
+    f.AddPrimitive(Box);
+    f.Add(CastingSun);
+    f.renderer.View(SceneRenderer::ShadowView).viewProj = byHand;
+
+    f.renderer.BeginFrame(f.scene);
+
+    const auto& row = f.renderer.LightRows().front();
+    EXPECT_EQ(row.shadowIndex, NoShadow);
+    EXPECT_EQ(row.worldToShadow, unitMat());
+    EXPECT_EQ(row.shadowNormalBias, 0.0f);
+    EXPECT_EQ(f.renderer.View(SceneRenderer::ShadowView).viewProj, byHand);
 }

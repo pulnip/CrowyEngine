@@ -87,6 +87,9 @@ namespace Crowy
         PassDescs passes;
         // the target whose clear a debug view edits
         FrameTargetID sceneColor = BackBufferTarget;
+        // a fixed-size square depth target the directional shadow is
+        // rendered into; 0 for none
+        FrameTargetID shadowMap = 0;
     };
 
     // the color and depth format of the pass the UI rides
@@ -179,6 +182,8 @@ namespace Crowy
         PassStatsList stats;
         // the last pass writing the back buffer: the UI rides it
         usize overlayPass = 0;
+        // the largest mesh pass view + 1
+        u32 viewCount = 1;
 
         TextureBarriers acquireScratch;
         TextureBarriers releaseScratch;
@@ -215,6 +220,10 @@ namespace Crowy
 
         OverlayFormats Overlay() const noexcept;
         std::span<const PassStats> Stats() const noexcept { return stats; }
+        // the ViewData rows the mesh passes name, so SceneRenderer keeps them
+        u32 ViewCount() const noexcept { return viewCount; }
+        // the width of desc.shadowMap's target; 0 without one
+        u32 ShadowMapSize() const noexcept;
 
     private:
         void createTargets(bool swapchainSizedOnly);

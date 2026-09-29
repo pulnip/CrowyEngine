@@ -71,7 +71,9 @@ namespace Crowy
             // reserves: the scratch grows, and the transient ring is the limit
             u32 drawCapacity = 4096;
             u32 materialCapacity = 256;
-            u32 viewCount = 1;
+            // the standard pipeline's shadow map; 0 for a sample with no
+            // lights, which keeps one view row and no Shadow pass
+            u32 shadowMapSize = 2048;
 
             // element counts, as GeometryPool takes them
             u32 vertexPoolCapacity = 1024;

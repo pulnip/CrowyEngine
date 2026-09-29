@@ -98,6 +98,7 @@ namespace Crowy
                 .clearColor = Colors::Magenta,
                 .drawCapacity = 64,
                 .materialCapacity = 64,
+                .shadowMapSize = 0,
                 .vertexPoolCapacity = 8192,
                 .indexPoolCapacity = 40960
             };

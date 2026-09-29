@@ -130,6 +130,7 @@ namespace Crowy
             return Config{
                 .drawCapacity = 16,
                 .materialCapacity = 16,
+                .shadowMapSize = 0,
                 .vertexPoolCapacity = 8192,
                 .indexPoolCapacity = 32768
             };

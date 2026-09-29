@@ -2,16 +2,19 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <span>
 
 #include "Assert.hpp"
 #include "EnumUtil.hpp"
 #include "Geometry/Frustum3D.hpp"
 #include "LinearAlgebra.hpp"
+#include "LogLocal.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RenderScene.hpp"
+#include "ShadowFit.hpp"
 
 namespace Crowy
 {
@@ -49,6 +52,36 @@ namespace Crowy
 
             return row;
         }
+
+        // the union of every Visible primitive's bounds; none, no bounds
+        std::optional<AABB3D> visibleBounds(const PrimitiveTable& primitives) {
+            std::optional<Vec3> low;
+            std::optional<Vec3> high;
+            for(const auto& primitive: primitives.All()) {
+                if(!hasFlag(primitive.flags, PrimitiveFlags::Visible))
+                    continue;
+
+                const auto& box = primitive.worldBounds;
+                const auto boxLow = box.center - box.halfScale;
+                const auto boxHigh = box.center + box.halfScale;
+                if(!low) {
+                    low = boxLow;
+                    high = boxHigh;
+                    continue;
+                }
+                for(usize i = 0; i < 3; ++i) {
+                    (*low)[i] = std::min((*low)[i], boxLow[i]);
+                    (*high)[i] = std::max((*high)[i], boxHigh[i]);
+                }
+            }
+            if(!low)
+                return std::nullopt;
+
+            return AABB3D{
+                .center = 0.5f * (*low + *high),
+                .halfScale = 0.5f * (*high - *low)
+            };
+        }
     }
 
     SceneRenderer::~SceneRenderer() = default;
@@ -64,15 +97,41 @@ namespace Crowy
         materialScratch.reserve(desc.materialCapacity);
     }
 
-    void SceneRenderer::BeginFrame(const RenderScene& scene) {
+    void SceneRenderer::BeginFrame(
+        const RenderScene& scene,
+        u32 shadowMapSize
+    ) {
+        CROWY_ASSERT(
+            shadowMapSize == 0 || ShadowView < views.size(),
+            "a shadow map needs the shadow view's row"
+        );
+
         materialScratch.clear();
         for(const auto& material: scene.Materials().All())
             materialScratch.push_back(material.data);
 
+        // the first enabled directional light that casts, if any
+        const LightSnapshot* caster = nullptr;
+        usize casterRow = 0;
         lightScratch.clear();
         for(const auto& light: scene.Lights().All()) {
-            if(light.enabled)
-                lightScratch.push_back(packLight(light));
+            if(!light.enabled)
+                continue;
+
+            if(light.castShadow) {
+                if(caster == nullptr && light.kind == LightKind::Directional) {
+                    caster = &light;
+                    casterRow = lightScratch.size();
+                } else if(!loggedUnservedShadow) {
+                    loggedUnservedShadow = true;
+                    LOG_WARN(
+                        "only the first shadow-casting directional light "
+                        "casts; a {} light's castShadow is ignored",
+                        enumName(light.kind)
+                    );
+                }
+            }
+            lightScratch.push_back(packLight(light));
         }
 
         const auto& environment = scene.Environment();
@@ -83,8 +142,54 @@ namespace Crowy
 
         for(auto& cull: culls)
             cull.culled = false;
+        if(shadowMapSize > 0)
+            fitShadow(scene, caster, casterRow, shadowMapSize);
+
         frameScene = &scene;
         uploaded = false;
+    }
+
+    void SceneRenderer::fitShadow(
+        const RenderScene& scene,
+        const LightSnapshot* caster,
+        usize row,
+        u32 shadowMapSize
+    ) {
+        auto& view = views[ShadowView];
+        const auto bounds = visibleBounds(scene.Primitives());
+        if(caster == nullptr || !bounds) {
+            // no pass culls against a stale matrix: the view draws nothing
+            auto& cull = culls[ShadowView];
+            view.viewProj = unitMat();
+            cull.visible.draws.clear();
+            cull.visible.primitiveCount = 0;
+            cull.culled = true;
+
+            return;
+        }
+
+        auto& light = lightScratch[row];
+        const auto fit =
+            fitDirectionalShadow(light.direction, *bounds, shadowMapSize);
+        light.worldToShadow = fit.worldToShadow;
+        light.shadowIndex = 0;
+        light.shadowBias = caster->shadowBias;
+        light.shadowNormalBias = caster->shadowNormalBias * fit.texelSize;
+        // casters and receivers agree bit for bit
+        view.viewProj = fit.worldToShadow;
+
+        if(!loggedFit) {
+            loggedFit = true;
+            LOG_INFO(
+                "shadow fit: {:.2f} m square, {:.2f} cm a texel at {}, light "
+                "depth {:.2f}..{:.2f} m",
+                fit.texelSize * static_cast<f32>(shadowMapSize),
+                fit.texelSize * 100.0f,
+                shadowMapSize,
+                fit.nearZ,
+                fit.farZ
+            );
+        }
     }
 
     const VisibleSet& SceneRenderer::Visible(u32 viewIndex) {
