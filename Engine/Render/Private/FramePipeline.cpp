@@ -622,6 +622,13 @@ namespace Crowy
                 renderer.BindView(cmdList, ViewConstantBufferSlot, mesh->view);
                 auto push = list.Push(renderer.FramePush());
                 push.vertices = inputs.vertices;
+                // only a pass that reads the map has an edge that orders it
+                // after the Shadow pass
+                if(desc.shadowMap != 0 &&
+                   std::ranges::contains(pass.reads, desc.shadowMap)) {
+                    push.shadowMap =
+                        texture(desc.shadowMap, inputs).GetReadableID();
+                }
                 if(inputs.bindMeshPass)
                     inputs.bindMeshPass(cmdList, push);
                 else

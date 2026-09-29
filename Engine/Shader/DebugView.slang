@@ -9,6 +9,7 @@ static const uint DebugModeUnshaded = 1;
 static const uint DebugModeNormals = 2;
 static const uint DebugModeDepth = 3;
 static const uint DebugModeOverdraw = 4;
+static const uint DebugModeShadow = 5;
 
 // Additive saturation turns layer counts into a heat ramp: red saturates at
 // 5 layers, green at 10, blue at 20.
@@ -16,12 +17,14 @@ static const float3 OverdrawLayer = float3(0.2, 0.1, 0.05);
 
 // Called last in a fragment shader. lit and unshaded come display-ready from
 // the caller; the other views are data and skip its display transform.
+// shadow is the lights' shadow term, 1 lit and 0 shadowed.
 float3 ApplyDebugView(
     uint mode,
     float3 lit,
     float3 unshaded,
     float3 normalWS,
-    float deviceDepth
+    float deviceDepth,
+    float shadow
 ){
     switch(mode) {
     case DebugModeUnshaded:
@@ -34,6 +37,8 @@ float3 ApplyDebugView(
         return (1.0 - pow(deviceDepth, 100.0)).xxx;
     case DebugModeOverdraw:
         return OverdrawLayer;
+    case DebugModeShadow:
+        return shadow.xxx;
     default:
         return lit;
     }

@@ -215,6 +215,7 @@ namespace Crowy
             // map from the front
             const auto sun = scene.Lights().Add(
                 LightSnapshot{
+                    .castShadow = true,
                     .color = ones(),
                     .intensity = 3.0f,
                     .direction = -normalize(Vec3{0.25f, 0.866f, -0.433f})
@@ -258,17 +259,6 @@ namespace Crowy
                 },
                 gridPipeline()
             );
-            // near black, so the emissive panels read against it: there are
-            // no shadows to darken a niche with
-            const auto boardMaterial = addMaterial(
-                scene,
-                MaterialData{
-                    .albedo = {0.03f, 0.03f, 0.03f},
-                    .roughness = 0.9f
-                },
-                opaquePipeline()
-            );
-
             // 1, 4 and 16, so the tone mapper's compression shows
             std::array<MaterialHandle, 3> emissiveMaterials;
             for(u32 i = 0; i < emissiveMaterials.size(); ++i) {
@@ -383,12 +373,38 @@ namespace Crowy
                 {5.0f, 1.0f, 0.5f}
             );
 
-            // opaque. emissive: three 0.5 m panels on a board 2.5 m wide
+            // opaque. emissive: three 0.5 m panels at the back of a niche
+            // 2.5 m wide and 0.5 m deep, whose roof shades the whole band
+            // they hang in, so they read against a shadow rather than dark
+            // paint; wide enough that the start camera sees every panel whole
+            constexpr f32 NicheDepth = 0.5f;
+            constexpr f32 NicheZ = FrontZ + 0.5f * NicheDepth;
+            // the back, then the two sides, the roof and the sill
             addPrimitive(
                 scene,
-                addMesh(scene, unitBox, boardMaterial, boxHalf),
-                {-4.25f, 1.0f, FrontZ + 0.125f},
-                {2.5f, 2.0f, 0.25f}
+                blockMesh,
+                {-4.25f, 1.0f, FrontZ + NicheDepth + 0.125f},
+                {3.0f, 2.0f, 0.25f}
+            );
+            for(const auto x: {-5.625f, -2.875f}) {
+                addPrimitive(
+                    scene,
+                    blockMesh,
+                    {x, 1.0f, NicheZ},
+                    {0.25f, 2.0f, NicheDepth}
+                );
+            }
+            addPrimitive(
+                scene,
+                blockMesh,
+                {-4.25f, 1.875f, NicheZ},
+                {2.5f, 0.25f, NicheDepth}
+            );
+            addPrimitive(
+                scene,
+                blockMesh,
+                {-4.25f, 0.375f, NicheZ},
+                {2.5f, 0.75f, NicheDepth}
             );
             for(u32 i = 0; i < emissiveMaterials.size(); ++i) {
                 const auto x = -5.0f + 0.75f * static_cast<f32>(i);
@@ -401,7 +417,7 @@ namespace Crowy
                         emissiveMaterials[i],
                         QuadHalf
                     ),
-                    {x, 1.25f, FrontZ - 0.01f},
+                    {x, 1.25f, FrontZ + NicheDepth - 0.01f},
                     {0.5f, 0.5f, 1.0f}
                 );
             }

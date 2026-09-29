@@ -539,6 +539,59 @@ TEST(FramePipeline, EveryMeshPassRebindsItsViewAndPush) {
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
 
+// the pass that writes the map, and one before it, push none
+TEST(FramePipeline, APassThatReadsTheShadowMapGetsItsID) {
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
+    FramePipeline pipeline(
+        f.device,
+        ShadowShaped(PassDepthBias{}),
+        BackBufferFormat,
+        Width,
+        Height
+    );
+    auto inputs = f.Inputs();
+
+    f.Frame(pipeline, inputs);
+
+    const auto pushOf = [&f](StrView name) {
+        const auto& pass = f.Pass(name);
+        ScenePush push;
+        EXPECT_EQ(pass.pushes.size(), 1u) << name;
+        if(!pass.pushes.empty())
+            std::memcpy(&push, pass.pushes[0].data(), sizeof(push));
+
+        return push;
+    };
+    const auto map = f.Pass("Shadow").depth->texture->GetReadableID();
+    EXPECT_NE(map, 0u);
+    EXPECT_EQ(pushOf("Shadow").shadowMap, 0u);
+    EXPECT_EQ(pushOf("DepthPrepass").shadowMap, 0u);
+    EXPECT_EQ(pushOf("Opaque").shadowMap, map);
+    EXPECT_EQ(pushOf("Translucent").shadowMap, map);
+
+    // a list with no map pushes none anywhere
+    Fixture g;
+    g.AddPrimitive(g.AddMaterial("fs_opaque"));
+    FramePipeline plain(
+        g.device,
+        makeStandardPipeline({.shadowMapSize = 0}),
+        BackBufferFormat,
+        Width,
+        Height
+    );
+    auto plainInputs = g.Inputs();
+    g.Frame(plain, plainInputs);
+    for(const auto& pass: g.cmdList.passes) {
+        ScenePush push;
+        ASSERT_EQ(pass.pushes.size(), 1u) << pass.event;
+        std::memcpy(&push, pass.pushes[0].data(), sizeof(push));
+        EXPECT_EQ(push.shadowMap, 0u) << pass.event;
+    }
+    EXPECT_TRUE(f.cmdList.violations.empty());
+}
+
 TEST(FramePipeline, GeometryAcquiresRideEveryMeshPass) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
@@ -1126,7 +1179,7 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
     }
 
     // the map's two readers, which the standard desc lists: a mesh pass's
-    // reads compile into edges and usage and bind nothing
+    // reads compile into edges and usage, and the map alone reaches its push
     {
         Fixture f;
         f.AddPrimitive(f.AddMaterial("fs_opaque"));

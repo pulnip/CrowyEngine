@@ -59,6 +59,8 @@ struct ScenePush{
     DescriptorHandle<StructuredBuffer<LightData>> lights;
     uint lightBase;
     uint lightCount;
+    // the directional shadow map, in a pass that reads it
+    DescriptorHandle<Texture2D<float>> shadowMap;
 };
 
 [[vk::push_constant]]

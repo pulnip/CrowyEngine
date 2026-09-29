@@ -33,6 +33,8 @@ namespace Crowy
         Normals,
         Depth,
         Overdraw,
+        // the lights' shadow term: 1 white, 0 black
+        Shadow,
     };
 
     CROWY_ENUM_BEGIN(DebugMode)
@@ -41,6 +43,7 @@ namespace Crowy
         CROWY_ENUM_VALUE(Normals)
         CROWY_ENUM_VALUE(Depth)
         CROWY_ENUM_VALUE(Overdraw)
+        CROWY_ENUM_VALUE(Shadow)
     CROWY_ENUM_END()
 
     // what the frame shows instead of the plain lit picture, exposed as `debug`

@@ -121,12 +121,18 @@ float3 toDisplay(float3 color) {
 
 // the lit picture, or the debug view the frame asks for
 float3 present(Surface s, VertexOut input) {
+    // the view is uniform, so only the Shadow view walks the lights twice
+    float shadow = 1.0;
+    if(debugMode == DebugModeShadow)
+        shadow = ShadowTerm(input.posWorld, s.normal);
+
     return ApplyDebugView(
         debugMode,
         toDisplay(shade(s, input.posWorld)),
         toDisplay(s.albedo + s.emissive),
         s.normal,
-        input.posProj.z
+        input.posProj.z,
+        shadow
     );
 }
 
