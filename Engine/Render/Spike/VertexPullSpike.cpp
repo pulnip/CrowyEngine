@@ -89,9 +89,10 @@ namespace Crowy
             }
         }
 
-        // The fullscreen kind on a GPU: the scene goes to an offscreen target,
-        // a pass reads depth and blends an alpha of 0 onto it, and a copy
-        // brings it to the back buffer - five passes, the same bytes.
+        // A fullscreen pass that loads a target on a GPU: between the opaque
+        // and translucent passes one reads depth and blends an alpha of 0
+        // onto the scene colour, which Present then copies to the back
+        // buffer - five passes, the same bytes.
         FramePipelineDesc DescribePipeline(
             const StandardPipelineConfig& config
         ) override {
@@ -99,20 +100,6 @@ namespace Crowy
             constexpr CStr Proof = "Engine/Render/Spike/FullscreenProof.slang";
 
             auto desc = makeStandardPipeline(config);
-            desc.targets.push_back(
-                FrameTargetDesc{
-                    .name = "SceneColor",
-                    .format = RHIPixelFormat::RGBA8_UNORM,
-                    .clearColor = SkyColor
-                }
-            );
-            const auto sceneColor =
-                static_cast<FrameTargetID>(desc.targets.size());
-            desc.sceneColor = sceneColor;
-            for(auto& pass: desc.passes) {
-                for(auto& color: pass.colors)
-                    color.target = sceneColor;
-            }
 
             // every destination channel kept, alpha included
             RHIBlendState keep{};
@@ -133,7 +120,7 @@ namespace Crowy
                 PassDesc{
                     .name = "Blend",
                     .colors = {ColorTargetUse{
-                        .target = sceneColor,
+                        .target = desc.sceneColor,
                         .load = RHILoadAction::Load
                     }},
                     .reads = {SceneDepth},
@@ -144,17 +131,6 @@ namespace Crowy
                     }
                 }
             );
-            desc.passes.push_back(
-                PassDesc{
-                    .name = "Copy",
-                    .colors = {ColorTargetUse{.target = BackBufferTarget}},
-                    .reads = {sceneColor},
-                    .kind = FullscreenPassDesc{
-                        .fragmentShader =
-                            {.path = Proof, .entryPoint = "fs_copy"}
-                    }
-                }
-            );
 
             return desc;
         }
@@ -162,7 +138,10 @@ namespace Crowy
     private:
         static Config makeConfig() {
             return Config{
+                // the shader writes display values: kept as bytes, copied out
+                .sceneColorFormat = RHIPixelFormat::RGBA8_UNORM,
                 .clearColor = SkyColor,
+                .post = {presentPass()},
                 .drawCapacity = SlotCount,
                 .materialCapacity = 1,
                 .shadowMapSize = 0,

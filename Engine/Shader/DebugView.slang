@@ -15,8 +15,9 @@ static const uint DebugModeShadow = 5;
 // 5 layers, green at 10, blue at 20.
 static const float3 OverdrawLayer = float3(0.2, 0.1, 0.05);
 
-// Called last in a fragment shader. lit and unshaded come display-ready from
-// the caller; the other views are data and skip its display transform.
+// Called last in a fragment shader. lit and unshaded arrive as scene
+// radiance, which the post list tone maps; the other views are data, which
+// the frame copies to the screen untouched.
 // shadow is the lights' shadow term, 1 lit and 0 shadowed.
 float3 ApplyDebugView(
     uint mode,

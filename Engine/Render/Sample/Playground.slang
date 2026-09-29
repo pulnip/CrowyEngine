@@ -1,7 +1,6 @@
 #include "DebugView.slang"
 #include "Lighting.slang"
 #include "SceneData.slang"
-#include "SRGB.slang"
 
 struct VertexOut {
     float4 posProj : SV_Position;
@@ -114,12 +113,8 @@ float3 shade(Surface s, float3 posWorld) {
     return color;
 }
 
-// Reinhard, then encoded by hand: the swapchain is UNORM, not sRGB
-float3 toDisplay(float3 color) {
-    return linear2srgb(color / (1.0 + color));
-}
-
-// the lit picture, or the debug view the frame asks for
+// the lit picture as scene radiance, or the debug view the frame asks for;
+// the post list takes both to the screen
 float3 present(Surface s, VertexOut input) {
     // the view is uniform, so only the Shadow view walks the lights twice
     float shadow = 1.0;
@@ -128,8 +123,8 @@ float3 present(Surface s, VertexOut input) {
 
     return ApplyDebugView(
         debugMode,
-        toDisplay(shade(s, input.posWorld)),
-        toDisplay(s.albedo + s.emissive),
+        shade(s, input.posWorld),
+        s.albedo + s.emissive,
         s.normal,
         input.posProj.z,
         shadow

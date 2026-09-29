@@ -121,8 +121,10 @@ namespace Crowy
         // orange, which a metal's highlight takes
         static constexpr Vec3 ChartAlbedo{0.85f, 0.55f, 0.30f};
 
-        // Godot's editor-preview sky
-        static constexpr Color SkyColor{0.385f, 0.454f, 0.55f, 1.0f};
+        // Godot's editor-preview sky as radiance: the tone map takes it back
+        // to the bytes (98, 116, 140) it was written as, 0.4 of a step clear
+        // of every rounding edge
+        static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
 
         static constexpr auto PanelToggleKey = KeyCode::P;
         static constexpr auto StatsToggleKey = KeyCode::I;
@@ -762,7 +764,7 @@ namespace Crowy
 
         static Config makeConfig() {
             return Config{
-                .clearColor = SkyColor,
+                .clearColor = SkyRadiance,
                 .drawCapacity = 64,
                 .materialCapacity = 64,
                 .vertexPoolCapacity = 4096,

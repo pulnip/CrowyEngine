@@ -230,14 +230,17 @@ namespace
 }
 
 TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
+    constexpr FrameTargetID SceneColor = 2;
+
     const auto desc = makeStandardPipeline({.shadowMapSize = 0});
 
-    ASSERT_EQ(desc.targets.size(), 1u);
+    ASSERT_EQ(desc.targets.size(), 2u);
     EXPECT_EQ(desc.targets[0].name, "SceneDepth");
     EXPECT_EQ(desc.targets[0].format, RHIPixelFormat::D32_FLOAT);
     EXPECT_EQ(desc.targets[0].width, 0u);
-    EXPECT_EQ(desc.sceneColor, BackBufferTarget);
-    ASSERT_EQ(desc.passes.size(), 3u);
+    EXPECT_EQ(desc.sceneColor, SceneColor);
+    // the scene passes, then the post list's one entry
+    ASSERT_EQ(desc.passes.size(), 4u);
 
     const auto& prepass = desc.passes[0];
     EXPECT_EQ(prepass.name, "DepthPrepass");
@@ -252,8 +255,9 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     const auto& opaque = desc.passes[1];
     EXPECT_EQ(opaque.name, "Opaque");
     ASSERT_EQ(opaque.colors.size(), 1u);
-    EXPECT_EQ(opaque.colors[0].target, BackBufferTarget);
+    EXPECT_EQ(opaque.colors[0].target, SceneColor);
     EXPECT_EQ(opaque.colors[0].load, RHILoadAction::Clear);
+    EXPECT_EQ(opaque.colors[0].store, RHIStoreAction::Store);
     ASSERT_TRUE(opaque.depth.has_value());
     EXPECT_EQ(opaque.depth->load, RHILoadAction::Load);
     EXPECT_EQ(opaque.depth->store, RHIStoreAction::Store);
@@ -264,7 +268,9 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     const auto& translucent = desc.passes[2];
     EXPECT_EQ(translucent.name, "Translucent");
     ASSERT_EQ(translucent.colors.size(), 1u);
+    EXPECT_EQ(translucent.colors[0].target, SceneColor);
     EXPECT_EQ(translucent.colors[0].load, RHILoadAction::Load);
+    EXPECT_EQ(translucent.colors[0].store, RHIStoreAction::Store);
     ASSERT_TRUE(translucent.depth.has_value());
     EXPECT_EQ(translucent.depth->load, RHILoadAction::Load);
     EXPECT_EQ(translucent.depth->store, RHIStoreAction::DontCare);
@@ -272,6 +278,8 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     EXPECT_EQ(Mesh(translucent).order, DrawOrder::FarFirst);
     EXPECT_EQ(Mesh(translucent).state.depthFunc, RHIComparisonFunc::Less);
     EXPECT_FALSE(Mesh(translucent).state.depthWrite);
+
+    EXPECT_EQ(desc.passes[3].name, "Tonemap");
 }
 
 TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
@@ -279,7 +287,7 @@ TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
         {.depthPrepass = false, .shadowMapSize = 0}
     );
 
-    ASSERT_EQ(desc.passes.size(), 2u);
+    ASSERT_EQ(desc.passes.size(), 3u);
     const auto& opaque = desc.passes[0];
     EXPECT_EQ(opaque.name, "Opaque");
     ASSERT_TRUE(opaque.depth.has_value());
@@ -288,21 +296,24 @@ TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
     EXPECT_EQ(Mesh(opaque).state.depthFunc, RHIComparisonFunc::Less);
     EXPECT_TRUE(Mesh(opaque).state.depthWrite);
     EXPECT_EQ(desc.passes[1].name, "Translucent");
+    EXPECT_EQ(desc.passes[2].name, "Tonemap");
 }
 
 TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
     constexpr FrameTargetID ShadowMap = 2;
+    constexpr FrameTargetID SceneColor = 3;
 
     auto desc = makeStandardPipeline({});
 
-    ASSERT_EQ(desc.targets.size(), 2u);
+    ASSERT_EQ(desc.targets.size(), 3u);
     EXPECT_EQ(desc.targets[0].name, "SceneDepth");
     EXPECT_EQ(desc.targets[1].name, "ShadowMap");
+    EXPECT_EQ(desc.targets[2].name, "SceneColor");
     EXPECT_EQ(desc.targets[1].format, RHIPixelFormat::D32_FLOAT);
     EXPECT_EQ(desc.targets[1].width, 2048u);
     EXPECT_EQ(desc.targets[1].height, 2048u);
     EXPECT_EQ(desc.shadowMap, ShadowMap);
-    ASSERT_EQ(desc.passes.size(), 4u);
+    ASSERT_EQ(desc.passes.size(), 5u);
 
     const auto& shadow = desc.passes[0];
     EXPECT_EQ(shadow.name, "Shadow");
@@ -327,6 +338,8 @@ TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
     EXPECT_EQ(desc.passes[2].reads, std::vector<FrameTargetID>{ShadowMap});
     EXPECT_EQ(desc.passes[3].name, "Translucent");
     EXPECT_EQ(desc.passes[3].reads, std::vector<FrameTargetID>{ShadowMap});
+    EXPECT_EQ(desc.passes[4].name, "Tonemap");
+    EXPECT_EQ(desc.passes[4].reads, std::vector<FrameTargetID>{SceneColor});
 
     FakeDevice device;
     FramePipeline
@@ -338,13 +351,15 @@ TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
 TEST(FramePipeline, AZeroShadowMapSizeDropsThePassAndTheTarget) {
     auto desc = makeStandardPipeline({.shadowMapSize = 0});
 
-    ASSERT_EQ(desc.targets.size(), 1u);
+    ASSERT_EQ(desc.targets.size(), 2u);
     EXPECT_EQ(desc.shadowMap, 0u);
-    ASSERT_EQ(desc.passes.size(), 3u);
+    ASSERT_EQ(desc.passes.size(), 4u);
     for(const auto& pass: desc.passes) {
         EXPECT_NE(pass.name, "Shadow");
-        EXPECT_TRUE(pass.reads.empty()) << pass.name;
-        EXPECT_EQ(Mesh(pass).view, 0u) << pass.name;
+        if(const auto* mesh = std::get_if<MeshPassDesc>(&pass.kind)) {
+            EXPECT_TRUE(pass.reads.empty()) << pass.name;
+            EXPECT_EQ(mesh->view, 0u) << pass.name;
+        }
     }
 
     FakeDevice device;
@@ -352,7 +367,87 @@ TEST(FramePipeline, AZeroShadowMapSizeDropsThePassAndTheTarget) {
         pipeline(device, std::move(desc), BackBufferFormat, Width, Height);
     EXPECT_EQ(pipeline.ViewCount(), 1u);
     EXPECT_EQ(pipeline.ShadowMapSize(), 0u);
-    EXPECT_EQ(device.textureCreates.size(), 1u);
+    EXPECT_EQ(device.textureCreates.size(), 2u);
+}
+
+TEST(FramePipeline, TheStandardDescEndsInTonemapWithTheUI) {
+    constexpr FrameTargetID SceneColor = 3;
+    constexpr Color Sky{0.139f, 0.212f, 0.356f, 1.0f};
+
+    auto desc = makeStandardPipeline({.clearColor = Sky});
+
+    // swapchain-sized, after the map, cleared with the config's colour
+    ASSERT_EQ(desc.targets.size(), 3u);
+    const auto& color = desc.targets[SceneColor - 1];
+    EXPECT_EQ(color.name, "SceneColor");
+    EXPECT_EQ(color.format, RHIPixelFormat::RGBA16_FLOAT);
+    EXPECT_EQ(color.width, 0u);
+    EXPECT_EQ(color.height, 0u);
+    EXPECT_EQ(color.clearColor, Sky);
+    EXPECT_EQ(desc.sceneColor, SceneColor);
+
+    ASSERT_EQ(desc.passes.size(), 5u);
+    const auto& tonemap = desc.passes[4];
+    EXPECT_EQ(tonemap.name, "Tonemap");
+    ASSERT_EQ(tonemap.colors.size(), 1u);
+    EXPECT_EQ(tonemap.colors[0].target, BackBufferTarget);
+    EXPECT_EQ(tonemap.reads, std::vector<FrameTargetID>{SceneColor});
+    EXPECT_EQ(
+        std::get<FullscreenPassDesc>(tonemap.kind).fragmentShader,
+        tonemapPass().fragmentShader
+    );
+
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    FramePipeline
+        pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
+    // the UI rides the post pass, which has no depth
+    EXPECT_EQ(
+        pipeline.Overlay(),
+        (OverlayFormats{
+            .color = BackBufferFormat,
+            .depth = RHIPixelFormat::Unknown
+        })
+    );
+    auto inputs = f.Inputs();
+    inputs.sceneClear = Sky;
+    f.Frame(pipeline, inputs);
+
+    // the scene colour is cleared with the colour it was created with
+    ASSERT_EQ(f.device.textureCreates.size(), 3u);
+    EXPECT_EQ(f.device.textureCreates[SceneColor - 1].clearColor, Sky);
+    EXPECT_EQ(f.Pass("Opaque").colors[0].clearColor, Sky);
+    EXPECT_EQ(f.Pass("Tonemap").colors[0].texture, &f.backBuffer);
+    EXPECT_TRUE(f.cmdList.violations.empty());
+}
+
+TEST(FramePipeline, ADisplayReadyDescEndsInPresent) {
+    constexpr FrameTargetID SceneColor = 2;
+
+    const auto desc = makeStandardPipeline({
+        .sceneColorFormat = RHIPixelFormat::RGBA8_UNORM,
+        .clearColor = Colors::Magenta,
+        .shadowMapSize = 0,
+        .post = {presentPass()}
+    });
+
+    // one Display entry: no intermediate
+    ASSERT_EQ(desc.targets.size(), 2u);
+    EXPECT_EQ(
+        desc.targets[SceneColor - 1].format,
+        RHIPixelFormat::RGBA8_UNORM
+    );
+    EXPECT_EQ(desc.targets[SceneColor - 1].clearColor, Colors::Magenta);
+    ASSERT_EQ(desc.passes.size(), 4u);
+    const auto& present = desc.passes[3];
+    EXPECT_EQ(present.name, "Present");
+    ASSERT_EQ(present.colors.size(), 1u);
+    EXPECT_EQ(present.colors[0].target, BackBufferTarget);
+    EXPECT_EQ(present.reads, std::vector<FrameTargetID>{SceneColor});
+    EXPECT_EQ(
+        std::get<FullscreenPassDesc>(present.kind).fragmentShader,
+        presentPass().fragmentShader
+    );
 }
 
 // every half as the edge rule gives it, two frames running
@@ -374,8 +469,9 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
     for(int frame = 0; frame < 2; ++frame) {
         f.Frame(pipeline, inputs);
 
-        ASSERT_EQ(f.cmdList.passes.size(), 3u);
+        ASSERT_EQ(f.cmdList.passes.size(), 4u);
         auto& depth = *f.Pass("DepthPrepass").depth->texture;
+        auto& color = *f.Pass("Opaque").colors[0].texture;
         auto& back = f.backBuffer;
 
         EXPECT_EQ(
@@ -391,26 +487,42 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
         EXPECT_EQ(
             f.Pass("Opaque").acquires,
             (TextureBarriers{
-                MakeBarrier(back, Undefined, RenderTarget),
-                MakeBarrier(depth, DepthWrite, DepthWrite)
+                MakeBarrier(depth, DepthWrite, DepthWrite),
+                MakeCrossSubmissionBarrier(
+                    color,
+                    SampledFragment,
+                    RenderTarget,
+                    true
+                )
             })
         );
         EXPECT_EQ(
             f.Pass("Opaque").releases,
             (TextureBarriers{
-                MakeBarrier(back, RenderTarget, RenderTarget),
-                MakeBarrier(depth, DepthWrite, DepthWrite)
+                MakeBarrier(depth, DepthWrite, DepthWrite),
+                MakeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Translucent").acquires,
             (TextureBarriers{
-                MakeBarrier(back, RenderTarget, RenderTarget),
-                MakeBarrier(depth, DepthWrite, DepthWrite)
+                MakeBarrier(depth, DepthWrite, DepthWrite),
+                MakeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Translucent").releases,
+            TextureBarriers{MakeBarrier(color, RenderTarget, SampledFragment)}
+        );
+        EXPECT_EQ(
+            f.Pass("Tonemap").acquires,
+            (TextureBarriers{
+                MakeBarrier(back, Undefined, RenderTarget),
+                MakeBarrier(color, RenderTarget, SampledFragment)
+            })
+        );
+        EXPECT_EQ(
+            f.Pass("Tonemap").releases,
             TextureBarriers{MakeBarrier(back, RenderTarget, Present)}
         );
 
@@ -418,8 +530,8 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
             << f.cmdList.violations.front().what;
         EXPECT_TRUE(f.cmdList.unconsumedAtClose.empty());
 #if CROWY_FRAME_STATS
-        EXPECT_EQ(f.cmdList.GetStats().renderPassCount, 3u);
-        EXPECT_EQ(f.cmdList.GetStats().barrierEdgeCount, 9u);
+        EXPECT_EQ(f.cmdList.GetStats().renderPassCount, 4u);
+        EXPECT_EQ(f.cmdList.GetStats().barrierEdgeCount, 12u);
 #endif
     }
 }
@@ -439,18 +551,25 @@ TEST(FramePipeline, BackBufferIsAcquiredUndefinedAndReleasedToPresent) {
 
     f.Frame(pipeline, inputs);
 
+    // the scene clear lands on scene colour; the back buffer, which only the
+    // post pass writes, clears black
     const auto& opaque = f.Pass("Opaque");
     ASSERT_EQ(opaque.colors.size(), 1u);
-    EXPECT_EQ(opaque.colors[0].texture, &f.backBuffer);
-    EXPECT_EQ(opaque.colors[0].loadAction, RHILoadAction::Clear);
+    EXPECT_NE(opaque.colors[0].texture, &f.backBuffer);
     EXPECT_EQ(opaque.colors[0].clearColor, inputs.sceneClear);
-    ASSERT_FALSE(opaque.acquires.empty());
-    EXPECT_TRUE(opaque.acquires.front().discard);
+    EXPECT_EQ(f.Pass("Translucent").colors[0].loadAction, RHILoadAction::Load);
+
+    const auto& tonemap = f.Pass("Tonemap");
+    ASSERT_EQ(tonemap.colors.size(), 1u);
+    EXPECT_EQ(tonemap.colors[0].texture, &f.backBuffer);
+    EXPECT_EQ(tonemap.colors[0].loadAction, RHILoadAction::Clear);
+    EXPECT_EQ(tonemap.colors[0].clearColor, Colors::Black);
+    ASSERT_FALSE(tonemap.acquires.empty());
+    EXPECT_TRUE(tonemap.acquires.front().discard);
     EXPECT_EQ(
-        opaque.acquires.front().layoutBefore,
+        tonemap.acquires.front().layoutBefore,
         RHITextureLayout::Undefined
     );
-    EXPECT_EQ(f.Pass("Translucent").colors[0].loadAction, RHILoadAction::Load);
     EXPECT_EQ(f.cmdList.LayoutOf(&f.backBuffer), RHITextureLayout::Present);
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
@@ -571,7 +690,7 @@ TEST(FramePipeline, APassThatReadsTheShadowMapGetsItsID) {
     EXPECT_EQ(pushOf("Opaque").shadowMap, map);
     EXPECT_EQ(pushOf("Translucent").shadowMap, map);
 
-    // a list with no map pushes none anywhere
+    // no mesh pass of a list with no map pushes one
     Fixture g;
     g.AddPrimitive(g.AddMaterial("fs_opaque"));
     FramePipeline plain(
@@ -583,11 +702,13 @@ TEST(FramePipeline, APassThatReadsTheShadowMapGetsItsID) {
     );
     auto plainInputs = g.Inputs();
     g.Frame(plain, plainInputs);
-    for(const auto& pass: g.cmdList.passes) {
+    for(const auto* name: {"DepthPrepass", "Opaque", "Translucent"}) {
+        const auto& pass = g.Pass(name);
         ScenePush push;
-        ASSERT_EQ(pass.pushes.size(), 1u) << pass.event;
+        ASSERT_EQ(pass.pushes.size(), 1u) << name;
+        ASSERT_EQ(pass.pushes[0].size(), sizeof(push)) << name;
         std::memcpy(&push, pass.pushes[0].data(), sizeof(push));
-        EXPECT_EQ(push.shadowMap, 0u) << pass.event;
+        EXPECT_EQ(push.shadowMap, 0u) << name;
     }
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
@@ -626,20 +747,23 @@ TEST(FramePipeline, GeometryAcquiresRideEveryMeshPass) {
     pipeline.Record(f.cmdList, f.renderer, inputs);
     f.cmdList.Close();
 
+    // a fullscreen pass draws no geometry, so it carries none
     for(const auto& pass: f.cmdList.passes) {
-        EXPECT_EQ(
-            pass.bufferAcquires,
-            (std::vector<RHIBufferBarrier>{uploads.begin(), uploads.end()})
-        ) << pass.event;
+        const auto expected =
+            pass.event == "Tonemap"
+                ? std::vector<RHIBufferBarrier>{}
+                : std::vector<RHIBufferBarrier>{uploads.begin(), uploads.end()};
+        EXPECT_EQ(pass.bufferAcquires, expected) << pass.event;
     }
     EXPECT_TRUE(f.cmdList.violations.empty());
     EXPECT_TRUE(f.cmdList.unconsumedBuffersAtClose.empty());
 
     const auto stats = pipeline.Stats();
-    ASSERT_EQ(stats.size(), 3u);
+    ASSERT_EQ(stats.size(), 4u);
     EXPECT_EQ(stats[0].barrierEdges, 2u + 2u);
     EXPECT_EQ(stats[1].barrierEdges, 4u + 2u);
     EXPECT_EQ(stats[2].barrierEdges, 3u + 2u);
+    EXPECT_EQ(stats[3].barrierEdges, 3u);
 }
 
 TEST(FramePipeline, OverlayRidesTheLastBackBufferPass) {
@@ -671,19 +795,19 @@ TEST(FramePipeline, OverlayRidesTheLastBackBufferPass) {
         pipeline.Overlay(),
         (OverlayFormats{
             .color = BackBufferFormat,
-            .depth = RHIPixelFormat::D32_FLOAT
+            .depth = RHIPixelFormat::Unknown
         })
     );
     for(const auto& pass: f.cmdList.passes) {
         const bool carries =
             std::ranges::contains(pass.acquires, uiAcquires[0]);
         const bool marked = std::ranges::contains(pass.log, Str{"marker ui"});
-        EXPECT_EQ(carries, pass.event == "Translucent") << pass.event;
-        EXPECT_EQ(marked, pass.event == "Translucent") << pass.event;
+        EXPECT_EQ(carries, pass.event == "Tonemap") << pass.event;
+        EXPECT_EQ(marked, pass.event == "Tonemap") << pass.event;
     }
 
-    // after the pass's own draws
-    const auto& log = f.Pass("Translucent").log;
+    // after the pass's own draw
+    const auto& log = f.Pass("Tonemap").log;
     ASSERT_GE(log.size(), 2u);
     EXPECT_EQ(log.back(), "marker ui");
     EXPECT_EQ(log[log.size() - 2], "draw");
@@ -700,25 +824,34 @@ TEST(FramePipeline, ResizeRecreatesOnlySwapchainSizedTargets) {
         Height
     );
 
-    ASSERT_EQ(f.device.textureCreates.size(), 2u);
+    ASSERT_EQ(f.device.textureCreates.size(), 3u);
     EXPECT_EQ(f.device.textureCreates[0].width, Width);
     EXPECT_EQ(f.device.textureCreates[0].height, Height);
     EXPECT_EQ(f.device.textureCreates[0].usage, RHITextureUsage::DepthStencil);
     EXPECT_EQ(f.device.textureCreates[1].width, 64u);
     EXPECT_EQ(f.device.textureCreates[1].height, 64u);
+    EXPECT_EQ(f.device.textureCreates[2].width, Width);
+    EXPECT_EQ(f.device.textureCreates[2].height, Height);
 
     pipeline.Resize(128, 96);
 
-    ASSERT_EQ(f.device.textureCreates.size(), 3u);
-    EXPECT_EQ(f.device.textureCreates[2].width, 128u);
-    EXPECT_EQ(f.device.textureCreates[2].height, 96u);
-    EXPECT_EQ(f.device.textureCreates[2].format, RHIPixelFormat::D32_FLOAT);
-    // a frame in flight may still read the old one
-    EXPECT_EQ(f.device.deferred.size(), 1u);
+    // the depth and the scene colour, not the map
+    ASSERT_EQ(f.device.textureCreates.size(), 5u);
+    for(usize i = 3; i < 5; ++i) {
+        EXPECT_EQ(f.device.textureCreates[i].width, 128u) << i;
+        EXPECT_EQ(f.device.textureCreates[i].height, 96u) << i;
+    }
+    EXPECT_EQ(f.device.textureCreates[3].format, RHIPixelFormat::D32_FLOAT);
+    EXPECT_EQ(
+        f.device.textureCreates[4].format,
+        RHIPixelFormat::RGBA16_FLOAT
+    );
+    // a frame in flight may still read the old ones
+    EXPECT_EQ(f.device.deferred.size(), 2u);
     EXPECT_EQ(f.device.texturesDestroyed, 0u);
 
     f.device.RunDeferred();
-    EXPECT_EQ(f.device.texturesDestroyed, 1u);
+    EXPECT_EQ(f.device.texturesDestroyed, 2u);
 }
 
 TEST(FramePipeline, AShadowShapedPassDrawsCastersFromViewOne) {
@@ -781,14 +914,14 @@ TEST(FramePipeline, APassNotInTheListCostsNothing) {
         f.Frame(pipeline, inputs);
 
         EXPECT_TRUE(f.cmdList.violations.empty());
-        EXPECT_EQ(f.device.textureCreates.size(), 1u);
+        EXPECT_EQ(f.device.textureCreates.size(), 2u);
 
         return std::pair{f.cmdList.passes.size(), f.renderer.PipelineCount()};
     };
 
-    // a depth-only key beside the two colour keys
-    EXPECT_EQ(frameWith(true), (std::pair<usize, usize>{3, 3}));
-    EXPECT_EQ(frameWith(false), (std::pair<usize, usize>{2, 2}));
+    // a depth-only key beside the two colour keys and the tone map's
+    EXPECT_EQ(frameWith(true), (std::pair<usize, usize>{4, 4}));
+    EXPECT_EQ(frameWith(false), (std::pair<usize, usize>{3, 3}));
 }
 
 TEST(FramePipeline, DestroyedPipelineRetiresItsTargets) {
@@ -806,10 +939,10 @@ TEST(FramePipeline, DestroyedPipelineRetiresItsTargets) {
         f.Frame(pipeline, inputs);
     }
 
-    EXPECT_EQ(f.device.deferred.size(), 2u);
+    EXPECT_EQ(f.device.deferred.size(), 3u);
     EXPECT_EQ(f.device.texturesDestroyed, 0u);
     f.device.RunDeferred();
-    EXPECT_EQ(f.device.texturesDestroyed, 2u);
+    EXPECT_EQ(f.device.texturesDestroyed, 3u);
 }
 
 TEST(FramePipeline, PassStatsCountEachPass) {
@@ -829,7 +962,7 @@ TEST(FramePipeline, PassStatsCountEachPass) {
     f.Frame(pipeline, inputs);
 
     const auto stats = pipeline.Stats();
-    ASSERT_EQ(stats.size(), 3u);
+    ASSERT_EQ(stats.size(), 4u);
     // the two opaque materials share one depth-only pipeline
     EXPECT_EQ(stats[0].name, "DepthPrepass");
     EXPECT_EQ(stats[0].draws, 2u);
@@ -846,6 +979,12 @@ TEST(FramePipeline, PassStatsCountEachPass) {
     EXPECT_EQ(stats[2].runs, 1u);
     EXPECT_EQ(stats[2].triangles, 1u);
     EXPECT_EQ(stats[2].barrierEdges, 3u);
+    // a fullscreen pass has no list
+    EXPECT_EQ(stats[3].name, "Tonemap");
+    EXPECT_EQ(stats[3].draws, 0u);
+    EXPECT_EQ(stats[3].runs, 0u);
+    EXPECT_EQ(stats[3].triangles, 0u);
+    EXPECT_EQ(stats[3].barrierEdges, 3u);
 }
 
 TEST(FramePipeline, InvalidDescsAreRefused) {
@@ -879,11 +1018,11 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
     {
         auto desc = standard();
         desc.passes[1].colors.push_back(
-            ColorTargetUse{.target = BackBufferTarget}
+            ColorTargetUse{.target = desc.sceneColor}
         );
         ExpectRefused(
             std::move(desc),
-            "pass 'Opaque': it attaches target 0 twice"
+            "pass 'Opaque': it attaches target 2 twice"
         );
     }
     {
@@ -908,7 +1047,7 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
         desc.passes[1].colors[0].load = RHILoadAction::Load;
         ExpectRefused(
             std::move(desc),
-            "pass 'Opaque': its first use of the back buffer keeps contents"
+            "pass 'Opaque': its first use of 'SceneColor' keeps contents"
         );
     }
     {
@@ -952,15 +1091,14 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
                 .format = RHIPixelFormat::RGBA8_UNORM
             }
         );
-        desc.passes[2].colors.push_back(
+        desc.passes[3].colors.push_back(
             ColorTargetUse{
                 .target = static_cast<FrameTargetID>(desc.targets.size())
             }
         );
         ExpectRefused(
             std::move(desc),
-            "pass 'Translucent': the overlay pass needs exactly one color "
-            "target"
+            "pass 'Tonemap': the overlay pass needs exactly one color target"
         );
     }
     {
@@ -993,7 +1131,7 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
         desc.shadowMap = static_cast<FrameTargetID>(desc.targets.size());
         ExpectRefused(
             std::move(desc),
-            "shadowMap names target 2, which is not a fixed-size square target"
+            "shadowMap names target 3, which is not a fixed-size square target"
         );
     }
 }
@@ -1227,9 +1365,11 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
                 RHITextureUsage::ShaderResource
             )
         );
-        for(const auto& pass: f.cmdList.passes) {
-            ASSERT_EQ(pass.pushes.size(), 1u) << pass.event;
-            EXPECT_EQ(pass.pushes[0].size(), sizeof(ScenePush)) << pass.event;
+        for(const auto* name:
+            {"Shadow", "DepthPrepass", "Opaque", "Translucent"}) {
+            const auto& pass = f.Pass(name);
+            ASSERT_EQ(pass.pushes.size(), 1u) << name;
+            EXPECT_EQ(pass.pushes[0].size(), sizeof(ScenePush)) << name;
         }
         EXPECT_TRUE(f.cmdList.violations.empty())
             << f.cmdList.violations.front().what;

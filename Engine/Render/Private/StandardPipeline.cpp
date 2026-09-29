@@ -63,6 +63,16 @@ namespace Crowy
             );
         }
 
+        // after the map, so SceneDepth keeps ID 1 either way
+        desc.targets.push_back(
+            FrameTargetDesc{
+                .name = "SceneColor",
+                .format = config.sceneColorFormat,
+                .clearColor = config.clearColor
+            }
+        );
+        desc.sceneColor = static_cast<FrameTargetID>(desc.targets.size());
+
         if(prepass) {
             desc.passes.push_back(
                 PassDesc{
@@ -93,7 +103,7 @@ namespace Crowy
             PassDesc{
                 .name = "Opaque",
                 .colors = {ColorTargetUse{
-                    .target = BackBufferTarget,
+                    .target = desc.sceneColor,
                     .load = RHILoadAction::Clear,
                     .store = RHIStoreAction::Store
                 }},
@@ -119,12 +129,12 @@ namespace Crowy
             }
         );
 
-        // the last pass on the back buffer, so the UI rides it
+        // blended over the opaque scene in scene colour, before the post list
         desc.passes.push_back(
             PassDesc{
                 .name = "Translucent",
                 .colors = {ColorTargetUse{
-                    .target = BackBufferTarget,
+                    .target = desc.sceneColor,
                     .load = RHILoadAction::Load,
                     .store = RHIStoreAction::Store
                 }},
@@ -148,6 +158,9 @@ namespace Crowy
                 }
             }
         );
+
+        // the last entry writes the back buffer, so the UI rides it
+        appendPostChain(desc, desc.sceneColor, config.post);
 
         return desc;
     }

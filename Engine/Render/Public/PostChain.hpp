@@ -46,5 +46,10 @@ namespace Crowy
         // further named targets, bound in order after the source
         std::vector<Str> inputs;
         Vec4 params{};
+
+        friend bool operator==(
+            const PostPassDesc&,
+            const PostPassDesc&
+        ) = default;
     };
 }

@@ -71,7 +71,13 @@ namespace Crowy
         // the sample's statement of what its capture is taken against
         struct Config {
             RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
+            // what the colour passes write; RGBA8_UNORM for a scene already
+            // in display values
+            RHIPixelFormat sceneColorFormat = RHIPixelFormat::RGBA16_FLOAT;
+            // the lit views' scene colour; the data views clear black
             Color clearColor = Colors::Black;
+            // the lit views' post list; the data views copy through Present
+            std::vector<PostPassDesc> post{tonemapPass()};
 
             // reserves: the scratch grows, and the transient ring is the limit
             u32 drawCapacity = 4096;
@@ -120,7 +126,8 @@ namespace Crowy
 
         GeometryPoolPtr geometryPool;
         SceneRendererPtr renderer;
-        // what DescribePipeline was last asked for; a change rebuilds it
+        // what DescribePipeline was last asked for, from config and the debug
+        // view; a change rebuilds it
         StandardPipelineConfig pipelineConfig;
         FramePipelinePtr pipeline;
         // the hooks are bound once; the rest is refilled every frame
@@ -173,7 +180,9 @@ namespace Crowy
         virtual void ExtractScene(RenderScene& scene) = 0;
 
         // The pass list; the default is the standard one. Called at init
-        // and again whenever the config changes, as a debug view does.
+        // and again whenever the config changes, as a debug view does. An
+        // override that builds its own desc clears scene colour with
+        // config.clearColor and ends with appendPostChain(config.post).
         virtual FramePipelineDesc DescribePipeline(
             const StandardPipelineConfig& config
         );

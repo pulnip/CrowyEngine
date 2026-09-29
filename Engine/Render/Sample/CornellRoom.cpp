@@ -128,6 +128,9 @@ namespace Crowy
 
         static Config makeConfig() {
             return Config{
+                // the shader writes display values: kept as bytes, copied out
+                .sceneColorFormat = RHIPixelFormat::RGBA8_UNORM,
+                .post = {presentPass()},
                 .drawCapacity = 16,
                 .materialCapacity = 16,
                 .shadowMapSize = 0,

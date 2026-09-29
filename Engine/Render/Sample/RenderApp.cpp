@@ -77,6 +77,50 @@ namespace Crowy
                    !overrides.depthFunc && !overrides.depthWrite;
         }
 
+        // a view whose pixels are data, which no tone map or stylized entry
+        // may distort; additive Overdraw counts read only against black
+        bool showsData(DebugMode mode) {
+            using enum DebugMode;
+
+            switch(mode) {
+            case Lit:
+            case Unshaded:
+                return false;
+            case Normals:
+            case Depth:
+            case Overdraw:
+            case Shadow:
+                return true;
+            }
+
+            return false;
+        }
+
+        // the lit views take the sample's clear and post list; the data views
+        // copy through Present over a scene colour created black, so the
+        // clear always matches the one the target was created with
+        StandardPipelineConfig standardConfig(
+            const RenderApp::Config& config,
+            const RenderDebug& debug
+        ) {
+            StandardPipelineConfig standard{
+                .depthFormat = config.depthFormat,
+                .sceneColorFormat = config.sceneColorFormat,
+                .clearColor = config.clearColor,
+                .drawCapacity = config.drawCapacity,
+                .depthPrepass =
+                    wantsDepthPrepass(debug, meshPassOverride(debug)),
+                .shadowMapSize = config.shadowMapSize,
+                .post = config.post
+            };
+            if(showsData(debug.mode)) {
+                standard.clearColor = Colors::Black;
+                standard.post = {presentPass()};
+            }
+
+            return standard;
+        }
+
         // every number describes stats.report.frame, one frame that ended,
         // except gpu: the newest GPU time then, with what that frame drew
         // from gpuFrame; the time alone once gpuFrame has aged out
@@ -286,12 +330,7 @@ namespace Crowy
             config.vertexPoolCapacity,
             config.indexPoolCapacity
         );
-        pipelineConfig = StandardPipelineConfig{
-            .depthFormat = config.depthFormat,
-            .drawCapacity = config.drawCapacity,
-            .depthPrepass = wantsDepthPrepass(debug, meshPassOverride(debug)),
-            .shadowMapSize = config.shadowMapSize
-        };
+        pipelineConfig = standardConfig(config, debug);
         pipeline = describePipeline();
         // as many view rows as the pass list names
         renderer = std::make_unique<SceneRenderer>(
@@ -717,11 +756,12 @@ namespace Crowy
         view.shadowFilter = static_cast<u32>(frameDebug.shadowFilter);
         view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
-        // the prepass is a pass in the list, so turning it over is a new
-        // list; frames in flight keep reading the old walker's targets
-        const bool depthPrepass = wantsDepthPrepass(frameDebug, overrides);
-        if(depthPrepass != pipelineConfig.depthPrepass) {
-            pipelineConfig.depthPrepass = depthPrepass;
+        // the prepass and the post list are passes in the list, so turning
+        // either over is a new list; frames in flight keep reading the old
+        // walker's targets
+        auto wanted = standardConfig(config, frameDebug);
+        if(wanted != pipelineConfig) {
+            pipelineConfig = std::move(wanted);
             auto rebuilt = describePipeline();
             CROWY_ASSERT(
                 rebuilt->Overlay() == pipeline->Overlay(),
@@ -751,10 +791,7 @@ namespace Crowy
         reportCullStatsOnce();
 
         frameInputs.backBuffer = backBuffer.texture;
-        // additive counts read only against black
-        frameInputs.sceneClear = frameDebug.mode == DebugMode::Overdraw
-                                     ? Colors::Black
-                                     : config.clearColor;
+        frameInputs.sceneClear = pipelineConfig.clearColor;
         frameInputs.indices =
             RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()};
         // the pool is GPUOnly, so unlike the renderer's own buffers this one
