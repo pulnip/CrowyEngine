@@ -123,9 +123,12 @@ TEST(ShadowFit, APointSizedSceneKeepsACentimetre) {
 
     EXPECT_TRUE(Finite(fit.worldToShadow));
     EXPECT_FLOAT_EQ(fit.texelSize, 0.01f / MapSize);
+    // the orthographic scale is 200 here, so rounding reaches a float ulp
+    // near 740; the property is that the point lands in the centre texel
+    constexpr f32 HalfTexel = 1.0f / MapSize;
     const auto clip = Clip(fit, Point.center);
-    EXPECT_NEAR(clip.x, 0.0f, Slack);
-    EXPECT_NEAR(clip.y, 0.0f, Slack);
+    EXPECT_NEAR(clip.x, 0.0f, HalfTexel);
+    EXPECT_NEAR(clip.y, 0.0f, HalfTexel);
     EXPECT_GT(clip.z, 0.0f);
     EXPECT_LT(clip.z, 1.0f);
 }
