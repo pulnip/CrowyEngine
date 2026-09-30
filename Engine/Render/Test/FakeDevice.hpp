@@ -127,16 +127,24 @@ namespace Crowy
     // compiles nothing: graphics pipelines are counted fakes, and a
     // deferred retire waits in `deferred` until the test runs it; transient
     // slices come from one CPU buffer that never moves; textures are fakes
-    // that remember their descs
+    // that remember their descs, and buffers CPU memory
     class FakeDevice final: public RHIDevice {
     public:
         using Reclaims = std::vector<std::move_only_function<void()>>;
         using PipelineCreates = std::vector<RHIGraphicsPipelineStateDesc>;
         using TextureCreates = std::vector<RHITextureCreateDesc>;
+        using BufferCreates = std::vector<RHIBufferCreateDesc>;
 
         static constexpr u32 TransientSize = 1u << 20;
         // a texture's readable id is this plus its create's index
         static constexpr u64 FirstTextureID = 0x7E00;
+        // D3D12's copy footprint rules
+        static constexpr RHICapabilities Capabilities{
+            .flipTextureV = false,
+            .clipSpaceMinZ = 0.0f,
+            .textureRowPitchAlign = 256,
+            .textureOffsetAlign = 512
+        };
 
         u32 creates = 0;
         // the create that throws, counted from 1; 0 never throws
@@ -146,6 +154,9 @@ namespace Crowy
         PipelineCreates pipelineCreates;
         TextureCreates textureCreates;
         u32 texturesDestroyed = 0;
+        BufferCreates bufferCreates;
+        // what GetCompletedFrame answers
+        u64 completedFrame = 0;
         Reclaims deferred;
         FakeBuffer transient{TransientSize};
         // bytes handed out, and how many slices
@@ -154,10 +165,12 @@ namespace Crowy
 
         RHIFrameScopeRAII CreateFrameScope() override { std::terminate(); }
         RHIBufferRAII CreateBuffer(
-            const RHIBufferCreateDesc&,
+            const RHIBufferCreateDesc& desc,
             StrView
         ) override {
-            std::terminate();
+            bufferCreates.push_back(desc);
+
+            return std::make_unique<FakeBuffer>(desc.size);
         }
         RHITextureRAII CreateTexture(
             const RHITextureCreateDesc& desc,
@@ -210,7 +223,9 @@ namespace Crowy
         ) override {
             std::terminate();
         }
-        u64 GetCompletedFrame() const noexcept override { return 0; }
+        u64 GetCompletedFrame() const noexcept override {
+            return completedFrame;
+        }
         void WaitFrame(u64) override { std::terminate(); }
         void WaitIdle() override { std::terminate(); }
 
@@ -234,7 +249,7 @@ namespace Crowy
             };
         }
         RHICapabilities GetCapabilities() const noexcept override {
-            std::terminate();
+            return Capabilities;
         }
 
         void RunDeferred() {

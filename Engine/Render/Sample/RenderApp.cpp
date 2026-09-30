@@ -1,8 +1,10 @@
 #include "RenderApp.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <cstdlib>
 #include <format>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -332,6 +334,7 @@ namespace Crowy
         );
         pipelineConfig = standardConfig(config, debug);
         pipeline = describePipeline();
+        targetCaptures = std::make_unique<TargetCaptureQueue>(device);
         // as many view rows as the pass list names
         renderer = std::make_unique<SceneRenderer>(
             device,
@@ -429,7 +432,12 @@ namespace Crowy
             result.emplace("elapsed", DOM::Value(ElapsedSeconds()));
             result.emplace(
                 "capturesPending",
-                DOM::Value(static_cast<i64>(swapchain->PendingFrameDumps()))
+                DOM::Value(
+                    static_cast<i64>(
+                        swapchain->PendingFrameDumps() +
+                        targetCaptures->Pending()
+                    )
+                )
             );
             result.emplace(
                 "captureFailures",
@@ -523,6 +531,24 @@ namespace Crowy
 
                     return;
                 }
+                // a target of the running pipeline by name; none is the back
+                // buffer
+                Str target;
+                if(args.at("target") != nullptr) {
+                    const auto named = args.get<Str>("target");
+                    if(!named || named->empty()) {
+                        reply.Error("\"target\" is not a string");
+
+                        return;
+                    }
+                    if(auto refusal = refuseCaptureTarget(*named);
+                       !refusal.empty()) {
+                        reply.Error(std::move(refusal));
+
+                        return;
+                    }
+                    target = *named;
+                }
 
                 auto selector = parseFrameSelector(args);
                 if(!selector.error.empty()) {
@@ -555,7 +581,9 @@ namespace Crowy
                     paths.push_back(withFrame(*path, frame));
                 }
 
-                const auto pending = swapchain->PendingFrameDumps();
+                const usize pending = target.empty()
+                                          ? swapchain->PendingFrameDumps()
+                                          : targetCaptures->Pending();
                 if(pending + frames.size() > MaxFrameDumps) {
                     reply.Error(std::format(
                         "the capture queue is full ({} pending)",
@@ -565,21 +593,41 @@ namespace Crowy
                     return;
                 }
                 for(usize i = 0; i < frames.size(); ++i) {
-                    if(swapchain->IsFrameDumpQueued(frames[i], paths[i])) {
-                        reply.Error(std::format(
-                            "a capture for frame {} or to '{}' is already queued",
-                            frames[i],
-                            paths[i]
-                        ));
+                    if(!isCaptureQueued(frames[i], target, paths[i]))
+                        continue;
 
-                        return;
-                    }
+                    const auto what = target.empty()
+                                          ? std::format("frame {}", frames[i])
+                                          : std::format(
+                                                "'{}' at frame {}",
+                                                target,
+                                                frames[i]
+                                            );
+                    reply.Error(
+                        std::format(
+                            "a capture for {} or to '{}' is already queued",
+                            what,
+                            paths[i]
+                        )
+                    );
+
+                    return;
                 }
 
                 DOM::Array queuedFrames;
                 DOM::Array queuedPaths;
                 for(usize i = 0; i < frames.size(); ++i) {
-                    swapchain->RequestFrameDump(paths[i], frames[i]);
+                    if(target.empty()) {
+                        swapchain->RequestFrameDump(paths[i], frames[i]);
+                    } else {
+                        targetCaptures->Request(
+                            TargetCaptureRequest{
+                                .frame = frames[i],
+                                .target = target,
+                                .path = paths[i]
+                            }
+                        );
+                    }
                     queuedFrames.emplace_back(static_cast<i64>(frames[i]));
                     queuedPaths.emplace_back(paths[i]);
                 }
@@ -655,6 +703,86 @@ namespace Crowy
         );
     }
 
+    Str RenderApp::refuseCaptureTarget(StrView name) const {
+        const auto id = pipeline->FindTarget(name);
+        if(!id) {
+            Str names;
+            for(const auto& target: pipeline->Targets()) {
+                if(!pipeline->FindTarget(target.name))
+                    continue;
+                if(!names.empty())
+                    names += ", ";
+                names += target.name;
+            }
+
+            return std::format(
+                "unknown target '{}' (the pipeline has {})",
+                name,
+                names
+            );
+        }
+        if(!isCapturable(pipeline->Targets()[*id - 1].format)) {
+            return std::format(
+                "target '{}' has a format a capture cannot convert",
+                name
+            );
+        }
+
+        return {};
+    }
+
+    bool RenderApp::isCaptureQueued(
+        u64 frame,
+        StrView target,
+        StrView path
+    ) const {
+        // no request is for frame 0, so that asks the swapchain about the
+        // path alone
+        if(target.empty()) {
+            return swapchain->IsFrameDumpQueued(frame, path) ||
+                   targetCaptures->IsQueued(frame, {}, path);
+        }
+
+        return targetCaptures->IsQueued(frame, target, path) ||
+               swapchain->IsFrameDumpQueued(0, path);
+    }
+
+    // a request whose target the list lost in a rebuild fails; a second one
+    // for a target already taken this frame waits for the next
+    std::span<TargetReadback> RenderApp::takeDueCaptures() {
+        frameCaptures.clear();
+        for(auto& request: targetCaptures->TakeDue(FrameNumber())) {
+            const auto taken = std::ranges::any_of(
+                frameCaptures,
+                [&request](const TargetReadback& readback) {
+                    return readback.request.target == request.target;
+                }
+            );
+            if(taken) {
+                targetCaptures->Request(std::move(request));
+                continue;
+            }
+
+            const auto id = pipeline->FindTarget(request.target);
+            if(!id) {
+                targetCaptures->Fail(
+                    request,
+                    "the pipeline has no such target"
+                );
+                continue;
+            }
+            if(!isCapturable(pipeline->Targets()[*id - 1].format)) {
+                targetCaptures->Fail(request, "its format cannot be converted");
+                continue;
+            }
+            frameCaptures.push_back(
+                TargetReadback{.request = std::move(request), .target = *id}
+            );
+        }
+
+        return frameCaptures;
+    }
+
     // a capture's reply went out when it was queued, so a failure reaches
     // the client through ping and the log
     void RenderApp::collectCaptures() {
@@ -670,6 +798,14 @@ namespace Crowy
                 outcome.presented,
                 outcome.path
             );
+        }
+
+        // the fence is read live, so a held loop still collects; the queue
+        // logs each failure with its target
+        targetCaptures->Collect(device->GetCompletedFrame());
+        for(const auto& outcome: targetCaptures->TakeOutcomes()) {
+            if(!outcome.written)
+                ++captureFailures;
         }
     }
 
@@ -800,8 +936,16 @@ namespace Crowy
         // both outside any pass: the pool's copies, then the UI's
         frameInputs.geometryAcquires = geometryPool->RecordUploads(cmdList);
         frameInputs.overlayAcquires = OnPrepareUI(cmdList);
+        // resolved after any rebuild above, so a request keeps its name
+        frameInputs.frame = FrameNumber();
+        frameInputs.captures = takeDueCaptures();
 
         pipeline->Record(cmdList, *renderer, frameInputs);
+
+        for(auto& readback: frameCaptures)
+            targetCaptures->AddInFlight(std::move(readback));
+        frameCaptures.clear();
+        frameInputs.captures = {};
 
         // the edges are counted as they are recorded
         const auto passStats = pipeline->Stats();

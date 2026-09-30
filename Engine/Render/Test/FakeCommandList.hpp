@@ -82,7 +82,30 @@ namespace Crowy
             Log log;
         };
 
+        struct RecordedCopy {
+            RHITexture* src = nullptr;
+            RHIBuffer* dst = nullptr;
+            u64 dstOffset = 0;
+            u32 dstRowPitch = 0;
+            RHITextureRegion region;
+        };
+
+        using RecordedCopies = std::vector<RecordedCopy>;
+
+        struct RecordedBlitPass {
+            // the event opened inside it
+            Str event;
+            // how many render passes this list recorded before it
+            usize after = 0;
+            TextureBarriers acquires;
+            BufferBarriers bufferAcquires;
+            TextureBarriers releases;
+            BufferBarriers bufferReleases;
+            RecordedCopies copies;
+        };
+
         using RecordedPasses = std::vector<RecordedPass>;
+        using RecordedBlitPasses = std::vector<RecordedBlitPass>;
         using Violations = std::vector<FakeViolation>;
 
     private:
@@ -104,6 +127,7 @@ namespace Crowy
     public:
         // this list's passes since its last Begin
         RecordedPasses passes;
+        RecordedBlitPasses blitPasses;
         // every broken rule since construction
         Violations violations;
         // the releases nothing consumed, listed at the last Close
@@ -119,6 +143,7 @@ namespace Crowy
         // each texture's latest pass as an attachment, since Begin
         AttachedPasses lastAttached;
         Str openEvent;
+        bool inBlitPass = false;
         bool pushSet = false;
         bool viewSet = false;
 
@@ -147,6 +172,7 @@ namespace Crowy
             RHICommandList::Begin();
 
             passes.clear();
+            blitPasses.clear();
             parkedTextures.clear();
             parkedBuffers.clear();
             lastAttached.clear();
@@ -233,6 +259,12 @@ namespace Crowy
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
         ) override {
+            auto& pass = blitPasses.emplace_back();
+            pass.after = passes.size();
+            pass.acquires.assign_range(textureAcquires);
+            pass.bufferAcquires.assign_range(bufferAcquires);
+            inBlitPass = true;
+
             acquire(textureAcquires, bufferAcquires);
 
             RHICommandList::BeginBlitPass(textureAcquires, bufferAcquires);
@@ -242,9 +274,52 @@ namespace Crowy
             std::span<const RHITextureBarrier> textureReleases = {},
             std::span<const RHIBufferBarrier> bufferReleases = {}
         ) override {
+            auto& pass = blitPasses.back();
+            pass.releases.assign_range(textureReleases);
+            pass.bufferReleases.assign_range(bufferReleases);
+            inBlitPass = false;
+
             release(textureReleases, bufferReleases);
 
             RHICommandList::EndBlitPass(textureReleases, bufferReleases);
+        }
+
+        void Copy(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,
+            u32 dstRowPitch,
+            const RHITextureRegion& region,
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ) override {
+            if(LayoutOf(&src) != RHITextureLayout::CopySrc) {
+                violate(
+                    FakeRule::Layout,
+                    "a copy reads a texture that is not in CopySrc"
+                );
+            }
+            if(!blitPasses.empty()) {
+                blitPasses.back().copies.push_back(
+                    RecordedCopy{
+                        .src = &src,
+                        .dst = &dst,
+                        .dstOffset = dstOffset,
+                        .dstRowPitch = dstRowPitch,
+                        .region = region
+                    }
+                );
+            }
+
+            RHICommandList::Copy(
+                src,
+                dst,
+                dstOffset,
+                dstRowPitch,
+                region,
+                mipLevel,
+                arraySlice
+            );
         }
 
         void SetPushGraphicsConstants(const void* data, u32 size) override {
@@ -325,7 +400,11 @@ namespace Crowy
             RHICommandList::ExecuteIndirectIndexed(batch);
         }
 
-        void BeginEvent(CStr name) override { openEvent = name; }
+        void BeginEvent(CStr name) override {
+            openEvent = name;
+            if(inBlitPass)
+                blitPasses.back().event = name;
+        }
         void EndEvent() override { openEvent.clear(); }
         void SetMarker(CStr name) override {
             if(!passes.empty())
@@ -333,7 +412,7 @@ namespace Crowy
         }
 
     private:
-        // a blit pass records no pass of its own
+        // a blit pass counts as the render pass before it
         usize currentPass() const {
             return passes.empty() ? 0 : passes.size() - 1;
         }

@@ -111,6 +111,27 @@ namespace Crowy
         u32 barrierEdges = 0;
     };
 
+    // a named target of `frame`, to be written to `path` as a BMP
+    struct TargetCaptureRequest {
+        u64 frame = 0;
+        Str target;
+        Str path;
+    };
+
+    // one copy Record made, waiting for its frame to complete
+    struct TargetReadback {
+        TargetCaptureRequest request;
+        // resolved from the name by the caller; Record fills the rest
+        FrameTargetID target = BackBufferTarget;
+        // the frame whose submission carries the copy
+        u64 recorded = 0;
+        RHIBufferRAII buffer;
+        RHIPixelFormat format = RHIPixelFormat::Unknown;
+        u32 width = 0;
+        u32 height = 0;
+        u32 rowPitch = 0;
+    };
+
     // what one Record needs and does not own; RenderApp fills it per frame
     struct FrameInputs {
         // only the texture: the desc says how each pass loads it
@@ -127,6 +148,11 @@ namespace Crowy
         std::span<const RHITextureBarrier> overlayAcquires;
         // inside the overlay pass, after its draws
         std::move_only_function<void(RHICommandList&)> recordOverlay;
+        // the frame Record runs in, as Submit numbers it
+        u64 frame = 0;
+        // one per target, each copied out after its last use in a blit pass
+        // that ends the frame
+        std::span<TargetReadback> captures;
     };
 
     // Walks a pass list in order; every barrier between two passes is
@@ -159,7 +185,15 @@ namespace Crowy
             RHIGraphicsPipelineState* fullscreenPipeline = nullptr;
         };
 
+        // a target's last pass and what it does there, which a capture
+        // follows
+        struct LastUse {
+            usize pass = 0;
+            RHIResourceUsage usage = RHIResourceUsage::Undefined;
+        };
+
         using CompiledPasses = std::vector<CompiledPass>;
+        using LastUses = std::vector<LastUse>;
         using PassStatsList = std::vector<PassStats>;
         using TargetTextures = std::vector<RHITextureRAII>;
         using TargetUsages = std::vector<RHITextureUsage>;
@@ -178,6 +212,9 @@ namespace Crowy
         TargetTextures textures;
         // the union of each target's uses; None for one no pass uses
         TargetUsages usages;
+        // indexed by FrameTargetID; the back buffer's and an unused
+        // target's are never read
+        LastUses lastUses;
         CompiledPasses passes;
         PassStatsList stats;
         // the last pass writing the back buffer: the UI rides it
@@ -224,6 +261,12 @@ namespace Crowy
         u32 ViewCount() const noexcept { return viewCount; }
         // the width of desc.shadowMap's target; 0 without one
         u32 ShadowMapSize() const noexcept;
+        // the target of that name, if some pass uses it
+        std::optional<FrameTargetID> FindTarget(StrView name) const noexcept;
+        // targets[i] is ID i + 1
+        std::span<const FrameTargetDesc> Targets() const noexcept {
+            return desc.targets;
+        }
 
     private:
         void createTargets(bool swapchainSizedOnly);
@@ -232,5 +275,13 @@ namespace Crowy
             const CompiledBarrier& half,
             const FrameInputs& inputs
         ) const;
+        // whether pass `pass` holds the last use of a target captured this
+        // frame
+        bool capturedAfter(
+            usize pass,
+            FrameTargetID id,
+            const FrameInputs& inputs
+        ) const noexcept;
+        void recordCaptures(RHICommandList& cmdList, FrameInputs& inputs);
     };
 }

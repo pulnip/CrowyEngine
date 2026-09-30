@@ -328,6 +328,15 @@ namespace Crowy
         return ceilDiv(width, dim) * GetBytesPerBlock(format);
     }
 
+    // a row of a texture copied into a buffer, padded to the backend's rule
+    inline constexpr u32 GetReadbackRowPitch(
+        RHIPixelFormat format,
+        u32 width,
+        const RHICapabilities& caps
+    ) {
+        return nextMul(GetRowPitch(format, width), caps.textureRowPitchAlign);
+    }
+
     enum class RHITextureUsage : u8 {
         None = 0,
         // view capability

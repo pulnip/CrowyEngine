@@ -817,6 +817,70 @@ namespace Crowy
             );
         }
 
+        // the region's rows land dstRowPitch bytes apart from dstOffset on
+        virtual void Copy(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,
+            u32 dstRowPitch,
+            const RHITextureRegion& region,
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ){
+            CROWY_ASSERT(passState == PassKind::Blit,
+                "Not in a blit pass. Did you call RHICommandList::BeginBlitPass()?"
+            );
+            CROWY_ASSERT(src.GetDepth(mipLevel) == 1,
+                "RHITextureRegion cannot address a 3D texture's depth slices"
+            );
+            CROWY_ASSERT(!IsBlockCompressed(src.GetFormat()),
+                "a block-compressed texture has no rows of texels to read back"
+            );
+            CROWY_ASSERT(region.width > 0 && region.height > 0,
+                "an empty region copies nothing"
+            );
+            CROWY_ASSERT(
+                region.x + region.width <= src.GetWidth(mipLevel) &&
+                region.y + region.height <= src.GetHeight(mipLevel),
+                "copy region reaches past the mip"
+            );
+            CROWY_ASSERT(
+                dstRowPitch >= GetRowPitch(src.GetFormat(), region.width),
+                "a row is wider than its pitch"
+            );
+            CROWY_ASSERT(
+                dstOffset + u64{dstRowPitch} * (region.height - 1) +
+                    GetRowPitch(src.GetFormat(), region.width) <= dst.GetSize(),
+                "the last row reaches past the buffer"
+            );
+
+            CROWY_STAT(copyCount);
+        }
+
+        void Copy(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,
+            u32 dstRowPitch,
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ){
+            Copy(
+                src,
+                dst,
+                dstOffset,
+                dstRowPitch,
+                RHITextureRegion{
+                    .x = 0,
+                    .y = 0,
+                    .width = src.GetWidth(mipLevel),
+                    .height = src.GetHeight(mipLevel)
+                },
+                mipLevel,
+                arraySlice
+            );
+        }
+
         // virtual void WaitUntilCompleted() = 0;
 
         // Debug markers (for GPU profiling)

@@ -18,6 +18,7 @@
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
 #include "StandardPipeline.hpp"
+#include "TargetCapture.hpp"
 
 namespace Crowy
 {
@@ -25,6 +26,7 @@ namespace Crowy
     using GeometryPoolPtr = RAII<GeometryPool>;
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
+    using TargetCaptureQueuePtr = RAII<TargetCaptureQueue>;
 
     // mirrored by the constants in Engine/Shader/DebugView.slang
     enum class DebugMode : u32 {
@@ -146,6 +148,10 @@ namespace Crowy
         FrameStatsHistory frameStats;
         // captures whose dump failed, since launch
         u32 captureFailures = 0;
+        // the named targets' captures; the swapchain keeps the back buffer's
+        TargetCaptureQueuePtr targetCaptures;
+        // this frame's, filled by the walker and then handed to the queue
+        TargetReadbacks frameCaptures;
 
         // this frame's counts, summed over its passes; OnFrameEnd adds the
         // report and the totals
@@ -230,6 +236,14 @@ namespace Crowy
         void openCommandPort();
         void applyDebugFromEnvironment();
         DOM::Table controlStatus() const;
+        // why the running pipeline's target `name` cannot be captured; empty
+        // when it can
+        Str refuseCaptureTarget(StrView name) const;
+        // a path taken in either queue, or a frame taken in the one asked
+        // about: the swapchain's for no target, the target's otherwise
+        bool isCaptureQueued(u64 frame, StrView target, StrView path) const;
+        // the requests due this frame, one per target, resolved by name
+        std::span<TargetReadback> takeDueCaptures();
         void collectCaptures();
         // the history's entry for the frame stats.report.gpu times, if kept
         const FrameStats* gpuFrameStats(const FrameStats& stats) const noexcept;

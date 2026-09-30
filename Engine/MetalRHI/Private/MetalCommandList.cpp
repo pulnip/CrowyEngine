@@ -1070,6 +1070,54 @@ namespace Crowy
         );
     }
 
+    void MetalCommandList::Copy(
+        RHITexture& src,
+        RHIBuffer& dst,
+        u64 dstOffset,
+        u32 dstRowPitch,
+        const RHITextureRegion& region,
+        u32 mipLevel,
+        u32 arraySlice
+    ){
+        Super::Copy(src, dst, dstOffset, dstRowPitch, region, mipLevel, arraySlice);
+
+        auto state = std::get_if<BlitPassState>(&passState);
+        CROWY_ASSERT(state != nullptr,
+            "Did you call RHICommandList::BeginBlitPass()?"
+        );
+        [[maybe_unused]] const auto texelSize = GetBytesPerBlock(src.GetFormat());
+        CROWY_ASSERT(dstOffset % texelSize == 0 && dstRowPitch % texelSize == 0,
+            "a readback offset and row pitch are whole texels"
+        );
+        auto srcTex = static_cast<MetalTexture&>(src).Get();
+        auto dstBuf = static_cast<MetalBuffer&>(dst).Get();
+
+        // Single 2D slice, so depth is 1 and the origin's z is 0.
+        const auto sourceOrigin = MTL::Origin::Make(
+            region.x,
+            region.y,
+            0
+        );
+        const auto sourceSize = MTL::Size::Make(
+            region.width,
+            region.height,
+            1
+        );
+
+        // Depth32Float has one plane, so it needs no blit option
+        state->encoder->copyFromTexture(
+            srcTex,
+            arraySlice,
+            mipLevel,
+            sourceOrigin,
+            sourceSize,
+            dstBuf,
+            dstOffset,
+            dstRowPitch,
+            u64{dstRowPitch} * region.height
+        );
+    }
+
     void MetalCommandList::BeginEvent(CStr name){
         auto str = toNSString(name);
         std::visit([str](auto& state){

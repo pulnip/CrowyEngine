@@ -711,6 +711,94 @@ namespace Crowy
         );
     }
 
+    void DX12CommandList::Copy(
+        RHITexture& src,
+        RHIBuffer& dst,
+        u64 dstOffset,
+        u32 dstRowPitch,
+        const RHITextureRegion& region,
+        u32 mipLevel,
+        u32 arraySlice
+    ){
+        Super::Copy(src, dst, dstOffset, dstRowPitch, region, mipLevel, arraySlice);
+
+        CROWY_ASSERT(dstOffset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT == 0,
+            "a readback footprint starts on a 512-byte boundary"
+        );
+        CROWY_ASSERT(dstRowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0,
+            "a readback row pitch is a multiple of 256 bytes"
+        );
+
+        auto& dxSrc = static_cast<DX12Texture&>(src);
+        auto& dxDst = static_cast<DX12Buffer&>(dst);
+
+        const auto desc = dxSrc.Get()->GetDesc();
+        const auto subresource = D3D12CalcSubresource(
+            mipLevel,
+            arraySlice,
+            0,
+            desc.MipLevels,
+            desc.DepthOrArraySize
+        );
+
+        // the footprint takes the plane's copyable format: a sampled depth
+        // texture is R32_TYPELESS, a render-only one D32_FLOAT
+        DeviceRAII device;
+        CHECK_HRESULT(
+            dxSrc.Get()->GetDevice(IID_PPV_ARGS(&device)),
+            "Failed to query the device of a copy source"
+        );
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT copyable{};
+        device->GetCopyableFootprints(
+            &desc,
+            subresource, 1, 0,
+            &copyable,
+            nullptr,
+            nullptr,
+            nullptr
+        );
+
+        const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{
+            .Offset = dstOffset,
+            .Footprint = {
+                .Format = copyable.Footprint.Format,
+                .Width = region.width,
+                .Height = region.height,
+                .Depth = 1,
+                .RowPitch = dstRowPitch
+            }
+        };
+
+        const CD3DX12_TEXTURE_COPY_LOCATION srcLoc(dxSrc.Get(), subresource);
+        const CD3DX12_TEXTURE_COPY_LOCATION dstLoc(dxDst.Get(), footprint);
+
+        // a depth subresource copies whole, with no box
+        const bool whole = IsDepthFormat(src.GetFormat());
+        CROWY_ASSERT(
+            !whole || (
+                region.x == 0 && region.y == 0 &&
+                region.width == src.GetWidth(mipLevel) &&
+                region.height == src.GetHeight(mipLevel)
+            ),
+            "a depth texture is copied whole"
+        );
+        const D3D12_BOX box{
+            .left = region.x,
+            .top = region.y,
+            .front = 0,
+            .right = region.x + region.width,
+            .bottom = region.y + region.height,
+            .back = 1
+        };
+
+        commandList->CopyTextureRegion(
+            &dstLoc,
+            0, 0, 0,
+            &srcLoc,
+            whole ? nullptr : &box
+        );
+    }
+
     void DX12CommandList::pushFused(const RHITextureBarrier& barrier){
         textureBarrierScratch.push_back(CD3DX12_TEXTURE_BARRIER(
             convert(barrier.syncBefore),

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <stdexcept>
@@ -1468,4 +1469,221 @@ TEST(FramePipeline, InvalidFullscreenDescsAreRefused) {
             "wrote"
         );
     }
+}
+
+// after the overlay pass, the list's last; and again after a Resize
+TEST(FramePipeline, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
+    using enum RHIResourceUsage;
+    constexpr FrameTargetID SceneDepth = 1;
+    constexpr FrameTargetID SceneColor = 3;
+    constexpr u64 Frame = 7;
+
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
+    auto desc = makeStandardPipeline({.shadowMapSize = 64});
+    desc.targets.push_back(
+        FrameTargetDesc{.name = "Unused", .format = RHIPixelFormat::RGBA8_UNORM}
+    );
+    FramePipeline
+        pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
+
+    EXPECT_EQ(pipeline.FindTarget("SceneColor"), SceneColor);
+    EXPECT_EQ(pipeline.FindTarget("SceneDepth"), SceneDepth);
+    EXPECT_FALSE(pipeline.FindTarget("Unused").has_value());
+    EXPECT_FALSE(pipeline.FindTarget("Missing").has_value());
+
+    for(const auto [width, height]:
+        {std::pair{Width, Height}, std::pair{128u, 64u}}) {
+        pipeline.Resize(width, height);
+        std::array captures{
+            TargetReadback{
+                .request = {.frame = Frame, .target = "SceneColor"},
+                .target = SceneColor
+            },
+            TargetReadback{
+                .request = {.frame = Frame, .target = "SceneDepth"},
+                .target = SceneDepth
+            }
+        };
+        auto inputs = f.Inputs();
+        inputs.frame = Frame;
+        inputs.captures = captures;
+
+        f.Frame(pipeline, inputs);
+
+        auto& color = *f.Pass("Opaque").colors[0].texture;
+        auto& depth = *f.Pass("Opaque").depth->texture;
+        ASSERT_EQ(f.cmdList.blitPasses.size(), 1u);
+        const auto& blit = f.cmdList.blitPasses[0];
+        EXPECT_EQ(blit.after, f.cmdList.passes.size());
+        EXPECT_EQ(blit.event, "Capture");
+        // Tonemap samples the colour last, Translucent attaches the depth last
+        EXPECT_EQ(
+            blit.acquires,
+            (TextureBarriers{
+                MakeBarrier(color, SampledFragment, CopySrc),
+                MakeBarrier(depth, DepthWrite, CopySrc)
+            })
+        );
+        EXPECT_EQ(
+            blit.releases,
+            (TextureBarriers{
+                MakeBarrier(color, CopySrc, SampledFragment),
+                MakeBarrier(depth, CopySrc, DepthWrite)
+            })
+        );
+        EXPECT_TRUE(blit.bufferAcquires.empty());
+        // left for Close, which puts each back into its last use's state
+        ASSERT_EQ(f.cmdList.unconsumedAtClose.size(), 2u);
+        for(const auto& release: blit.releases)
+            EXPECT_TRUE(
+                std::ranges::contains(f.cmdList.unconsumedAtClose, release)
+            );
+
+        ASSERT_EQ(blit.copies.size(), 2u);
+        EXPECT_EQ(blit.copies[0].src, &color);
+        EXPECT_EQ(blit.copies[1].src, &depth);
+        EXPECT_EQ(captures[0].format, RHIPixelFormat::RGBA16_FLOAT);
+        EXPECT_EQ(captures[1].format, RHIPixelFormat::D32_FLOAT);
+        for(usize c = 0; c < captures.size(); ++c) {
+            const auto& capture = captures[c];
+            const auto& copy = blit.copies[c];
+            const auto pitch = GetReadbackRowPitch(
+                capture.format,
+                width,
+                FakeDevice::Capabilities
+            );
+
+            EXPECT_EQ(capture.recorded, Frame);
+            EXPECT_EQ(capture.width, width);
+            EXPECT_EQ(capture.height, height);
+            EXPECT_EQ(capture.rowPitch, pitch);
+            ASSERT_NE(capture.buffer, nullptr);
+            EXPECT_EQ(capture.buffer->GetSize(), pitch * height);
+            EXPECT_EQ(copy.dst, capture.buffer.get());
+            EXPECT_EQ(copy.dstOffset, 0u);
+            EXPECT_EQ(copy.dstRowPitch, pitch);
+            EXPECT_EQ(copy.region.width, width);
+            EXPECT_EQ(copy.region.height, height);
+        }
+        EXPECT_EQ(f.device.bufferCreates.back().memory, RHIMemoryType::CPURead);
+
+        EXPECT_TRUE(f.cmdList.violations.empty())
+            << f.cmdList.violations.front().what;
+    }
+}
+
+TEST(FramePipeline, ACaptureStoresTheLastWriterThatFrameOnly) {
+    using enum RHIResourceUsage;
+    constexpr FrameTargetID SceneDepth = 1;
+    constexpr usize Translucent = 2;
+
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    FramePipeline pipeline(
+        f.device,
+        makeStandardPipeline({.shadowMapSize = 0}),
+        BackBufferFormat,
+        Width,
+        Height
+    );
+    const auto translucentStore = [&f] {
+        return f.Pass("Translucent").depth->storeAction;
+    };
+    auto inputs = f.Inputs();
+
+    f.Frame(pipeline, inputs);
+    EXPECT_EQ(translucentStore(), RHIStoreAction::DontCare);
+    const auto releases = f.Pass("Translucent").releases;
+    const auto edges = pipeline.Stats()[Translucent].barrierEdges;
+
+    std::array captures{TargetReadback{
+        .request = {.target = "SceneDepth"},
+        .target = SceneDepth
+    }};
+    inputs.captures = captures;
+    f.Frame(pipeline, inputs);
+
+    EXPECT_EQ(translucentStore(), RHIStoreAction::Store);
+    auto& depth = *f.Pass("Translucent").depth->texture;
+    auto withCapture = releases;
+    withCapture.push_back(MakeBarrier(depth, DepthWrite, CopySrc));
+    EXPECT_EQ(f.Pass("Translucent").releases, withCapture);
+    EXPECT_EQ(pipeline.Stats()[Translucent].barrierEdges, edges + 1);
+    // the blit's edges belong to no pass
+    EXPECT_EQ(pipeline.Stats().size(), 4u);
+
+    inputs.captures = {};
+    f.Frame(pipeline, inputs);
+
+    EXPECT_EQ(translucentStore(), RHIStoreAction::DontCare);
+    EXPECT_EQ(f.Pass("Translucent").releases, releases);
+    EXPECT_EQ(pipeline.Stats()[Translucent].barrierEdges, edges);
+    EXPECT_TRUE(f.cmdList.blitPasses.empty());
+    EXPECT_TRUE(f.cmdList.violations.empty())
+        << f.cmdList.violations.front().what;
+}
+
+TEST(FramePipeline, TheFrameAfterACaptureRecordsTheSameEdges) {
+    using Layouts = std::vector<RHITextureLayout>;
+    constexpr FrameTargetID SceneDepth = 1;
+    constexpr FrameTargetID ShadowMap = 2;
+    constexpr FrameTargetID SceneColor = 3;
+
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
+    FramePipeline pipeline(
+        f.device,
+        makeStandardPipeline({.shadowMapSize = 64}),
+        BackBufferFormat,
+        Width,
+        Height
+    );
+    const auto layouts = [&f] {
+        return Layouts{
+            f.cmdList.LayoutOf(f.Pass("Opaque").depth->texture),
+            f.cmdList.LayoutOf(f.Pass("Shadow").depth->texture),
+            f.cmdList.LayoutOf(f.Pass("Opaque").colors[0].texture)
+        };
+    };
+    auto inputs = f.Inputs();
+
+    f.Frame(pipeline, inputs);
+    const auto before = f.cmdList.passes;
+    const auto layoutsBefore = layouts();
+
+    std::array captures{
+        TargetReadback{
+            .request = {.target = "SceneDepth"},
+            .target = SceneDepth
+        },
+        TargetReadback{.request = {.target = "ShadowMap"}, .target = ShadowMap},
+        TargetReadback{
+            .request = {.target = "SceneColor"},
+            .target = SceneColor
+        }
+    };
+    inputs.captures = captures;
+    f.Frame(pipeline, inputs);
+    // Close completed each release: every target is where its last use left
+    // it, which the next frame's first acquire names
+    EXPECT_EQ(layouts(), layoutsBefore);
+    EXPECT_EQ(f.cmdList.unconsumedAtClose.size(), captures.size());
+
+    inputs.captures = {};
+    f.Frame(pipeline, inputs);
+
+    const auto& after = f.cmdList.passes;
+    ASSERT_EQ(after.size(), before.size());
+    for(usize i = 0; i < after.size(); ++i) {
+        EXPECT_EQ(after[i].acquires, before[i].acquires) << after[i].event;
+        EXPECT_EQ(after[i].releases, before[i].releases) << after[i].event;
+    }
+    EXPECT_EQ(layouts(), layoutsBefore);
+    EXPECT_TRUE(f.cmdList.blitPasses.empty());
+    EXPECT_TRUE(f.cmdList.unconsumedAtClose.empty());
+    EXPECT_TRUE(f.cmdList.violations.empty())
+        << f.cmdList.violations.front().what;
 }

@@ -297,6 +297,16 @@ namespace Crowy
             u32 arraySlice = 0
         ) RHI_OVERRIDE;
 
+        void Copy(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,
+            u32 dstRowPitch,
+            const RHITextureRegion& region,
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ) RHI_OVERRIDE;
+
         using RHICommandList::Copy;
 
         void BeginEvent(CStr name) RHI_OVERRIDE;

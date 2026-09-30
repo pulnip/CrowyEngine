@@ -8,6 +8,7 @@
 
 #include "Assert.hpp"
 #include "EnumUtil.hpp"
+#include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
@@ -377,6 +378,7 @@ namespace Crowy
         // consecutive uses pair, read after read too, so the next writer
         // stays behind every reader; a first use acquires across submissions
         usages.assign(targets.size() + 1, RHITextureUsage::None);
+        lastUses.assign(targets.size() + 1, LastUse{});
         for(FrameTargetID id = 0; id < uses.size(); ++id) {
             const auto& targetUses = uses[id];
             if(targetUses.empty())
@@ -397,6 +399,7 @@ namespace Crowy
 
             const auto& first = targetUses.front();
             const auto& last = targetUses.back();
+            lastUses[id] = LastUse{.pass = last.pass, .usage = last.usage};
             if(id == BackBufferTarget) {
                 // Present ordering is the swapchain's, so neither half pairs
                 passes[first.pass].acquires.push_back(
@@ -534,11 +537,44 @@ namespace Crowy
         return MakeBarrier(target, half.before, half.after);
     }
 
+    bool FramePipeline::capturedAfter(
+        usize pass,
+        FrameTargetID id,
+        const FrameInputs& inputs
+    ) const noexcept {
+        if(id == BackBufferTarget || lastUses[id].pass != pass)
+            return false;
+
+        return std::ranges::contains(
+            inputs.captures,
+            id,
+            &TargetReadback::target
+        );
+    }
+
     void FramePipeline::Record(
         RHICommandList& cmdList,
         const SceneRenderer& renderer,
         FrameInputs& inputs
     ) {
+        for(usize c = 0; c < inputs.captures.size(); ++c) {
+            [[maybe_unused]] const auto id = inputs.captures[c].target;
+            CROWY_ASSERT(
+                id != BackBufferTarget && id < textures.size() &&
+                    textures[id] != nullptr,
+                "a capture names a target some pass uses"
+            );
+            // the blit's acquire and release are one edge per target
+            CROWY_ASSERT(
+                !std::ranges::contains(
+                    inputs.captures.subspan(c + 1),
+                    id,
+                    &TargetReadback::target
+                ),
+                "a target is captured once per frame"
+            );
+        }
+
         for(usize i = 0; i < passes.size(); ++i) {
             const auto& pass = desc.passes[i];
             const auto& compiled = passes[i];
@@ -565,11 +601,14 @@ namespace Crowy
                     clearColor = inputs.sceneClear;
                 else if(color.target != BackBufferTarget)
                     clearColor = desc.targets[color.target - 1].clearColor;
+                // a capture reads what the last use leaves
                 colorScratch.push_back(
                     RHIColorAttachment{
                         .texture = &texture(color.target, inputs),
                         .loadAction = color.load,
-                        .storeAction = color.store,
+                        .storeAction = capturedAfter(i, color.target, inputs)
+                                           ? RHIStoreAction::Store
+                                           : color.store,
                         .clearColor = clearColor
                     }
                 );
@@ -580,7 +619,9 @@ namespace Crowy
                 passDesc.depthAttachment = RHIDepthAttachment{
                     .texture = &texture(target, inputs),
                     .loadAction = pass.depth->load,
-                    .storeAction = pass.depth->store,
+                    .storeAction = capturedAfter(i, target, inputs)
+                                       ? RHIStoreAction::Store
+                                       : pass.depth->store,
                     .clearDepthStencil = {
                         .depth = desc.targets[target - 1].clearDepth
                     }
@@ -661,6 +702,17 @@ namespace Crowy
             releaseScratch.clear();
             for(const auto& half: compiled.releases)
                 releaseScratch.push_back(makeBarrier(half, inputs));
+            // this frame only: the capture blit acquires it after the list
+            for(const auto& capture: inputs.captures) {
+                const auto& last = lastUses[capture.target];
+                if(last.pass != i)
+                    continue;
+                releaseScratch.push_back(MakeBarrier(
+                    texture(capture.target, inputs),
+                    last.usage,
+                    RHIResourceUsage::CopySrc
+                ));
+            }
             cmdList.EndRenderPass(releaseScratch);
 
             cmdList.EndEvent();
@@ -670,6 +722,55 @@ namespace Crowy
                 releaseScratch.size()
             );
         }
+
+        if(!inputs.captures.empty())
+            recordCaptures(cmdList, inputs);
+    }
+
+    // after the overlay pass, whose back-buffer release pairs with nothing;
+    // each target's release is left unpaired, so D3D12 completes it at Close
+    // back into the layout and sync the next frame's first acquire names
+    void FramePipeline::recordCaptures(
+        RHICommandList& cmdList,
+        FrameInputs& inputs
+    ) {
+        const auto caps = device.GetCapabilities();
+
+        acquireScratch.clear();
+        releaseScratch.clear();
+        for(const auto& capture: inputs.captures) {
+            auto& source = texture(capture.target, inputs);
+            const auto usage = lastUses[capture.target].usage;
+            acquireScratch.push_back(
+                MakeBarrier(source, usage, RHIResourceUsage::CopySrc)
+            );
+            releaseScratch.push_back(
+                MakeBarrier(source, RHIResourceUsage::CopySrc, usage)
+            );
+        }
+
+        cmdList.BeginBlitPass(acquireScratch);
+        // Metal labels an open encoder only
+        cmdList.BeginEvent("Capture");
+        for(auto& capture: inputs.captures) {
+            auto& source = texture(capture.target, inputs);
+            capture.recorded = inputs.frame;
+            capture.format = source.GetFormat();
+            capture.width = source.GetWidth();
+            capture.height = source.GetHeight();
+            capture.rowPitch =
+                GetReadbackRowPitch(capture.format, capture.width, caps);
+            capture.buffer = device.CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size = capture.rowPitch * capture.height,
+                    .memory = RHIMemoryType::CPURead
+                },
+                capture.request.target
+            );
+            cmdList.Copy(source, *capture.buffer, 0, capture.rowPitch);
+        }
+        cmdList.EndEvent();
+        cmdList.EndBlitPass(releaseScratch);
     }
 
     u32 FramePipeline::ShadowMapSize() const noexcept {
@@ -677,6 +778,21 @@ namespace Crowy
             return 0;
 
         return desc.targets[desc.shadowMap - 1].width;
+    }
+
+    std::optional<FrameTargetID> FramePipeline::FindTarget(
+        StrView name
+    ) const noexcept {
+        for(FrameTargetID id = 1; id <= desc.targets.size(); ++id) {
+            if(desc.targets[id - 1].name != name)
+                continue;
+            if(usages[id] == RHITextureUsage::None)
+                return std::nullopt;
+
+            return id;
+        }
+
+        return std::nullopt;
     }
 
     OverlayFormats FramePipeline::Overlay() const noexcept {

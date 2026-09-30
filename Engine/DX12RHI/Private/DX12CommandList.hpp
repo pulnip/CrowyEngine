@@ -214,6 +214,16 @@ namespace Crowy
             u32 arraySlice = 0
         ) RHI_OVERRIDE;
 
+        void Copy(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,   // align 512 (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT)
+            u32 dstRowPitch, // align 256 (D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
+            const RHITextureRegion& region,
+            u32 mipLevel = 0,
+            u32 arraySlice = 0
+        ) RHI_OVERRIDE;
+
         using RHICommandList::Copy;
 
         void BeginEvent(CStr name) RHI_OVERRIDE;
