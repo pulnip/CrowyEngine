@@ -8,6 +8,8 @@
 #include "EffectRandom.hpp"
 #include "EffectSystem.hpp"
 #include "FieldBuffer.hpp"
+#include "Island/IslandEffects.hpp"
+#include "Island/IslandShapes.hpp"
 #include "ParticleEffects.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -62,15 +64,12 @@ namespace
                gpu.position.z == cpu.position.z;
     }
 
-    // Rain.slang's surface: the sea at 0, or the ellipsoid's crown above it
-    f32 surfaceHeight(Vec4 island, Vec3 at) {
-        const auto qx = at.x / island.x;
-        const auto qz = at.z / island.z;
-        const auto inside = 1.0f - (qx * qx + qz * qz);
-        if(inside <= 0.0f)
-            return 0.0f;
+    // Rain.slang's surface: the sea at 0, the sand's crown, or the tipi's
+    // pyramid
+    f32 surfaceHeight(Vec3 at) {
+        const Vec2 xz{at.x, at.z};
 
-        return std::max(0.0f, island.w + island.y * std::sqrt(inside));
+        return std::max(std::max(0.0f, islandCrown(xz)), tipiRoof(xz));
     }
 
     // Rain.slang's drop: anywhere in the box when first born, at its top after
@@ -198,22 +197,10 @@ namespace
     // the Island's rain: every drop fell from the box's top since it landed,
     // and that landing is where its last fall first met the surface
     bool checkRain(RHIDevice& device) {
-        constexpr u32 Count = 3000;
         constexpr f32 NoLanding = -1.0e6f;
         constexpr f32 Tolerance = 1.0e-3f;
-        const ParticleEffectDesc rain{
-            .name = "rain",
-            .shader = "Engine/Effects/Sample/Island/Rain.slang",
-            .count = Count,
-            .seed = 23,
-            .prewarmSteps = 120,
-            .emitter = Vec4{0.0f, 6.5f, 2.0f, 6.0f},
-            .params =
-                {Vec4{8.0f, 8.0f, 9.0f, 1.2f},
-                 Vec4{0.4f, 0.03f, 0.35f, 0.28f},
-                 Vec4{9.0f, 1.6f, 7.0f, -1.2f}}
-        };
-        const auto island = rain.params[2];
+        const auto rain = rainDesc();
+        const auto count = rain.count;
         const auto stepFall =
             Vec3{rain.params[0].w, -rain.params[0].z, rain.params[1].x} *
             EffectStep;
@@ -226,9 +213,9 @@ namespace
         u32 offFall = 0;
         u32 offLanding = 0;
         u32 belowSurface = 0;
-        for(u32 slot = 0; slot < Count; ++slot) {
+        for(u32 slot = 0; slot < count; ++slot) {
             const auto& drop = gpu[slot];
-            const auto under = surfaceHeight(island, drop.position);
+            const auto under = surfaceHeight(drop.position);
             belowSurface += drop.position.y > under - Tolerance ? 0 : 1;
             if(drop.generation == 0 || drop.custom.w <= NoLanding * 0.5f)
                 continue;
@@ -257,11 +244,11 @@ namespace
                 moves >= 1.0f && std::abs(last.x - landing.x) <= Tolerance &&
                 std::abs(last.z - landing.z) <= Tolerance;
             const bool onSurface =
-                std::abs(landing.y - surfaceHeight(island, landing)) <=
+                std::abs(landing.y - surfaceHeight(landing)) <=
                 Tolerance;
             const bool firstTouch =
                 last.y <= landing.y + Tolerance &&
-                before.y > surfaceHeight(island, before) - Tolerance;
+                before.y > surfaceHeight(before) - Tolerance;
             const bool inTime = landingStep >= 0.0f &&
                                 landingStep < static_cast<f32>(steps) &&
                                 landingStep == std::floor(landingStep);
@@ -269,14 +256,14 @@ namespace
                 onLastFall && onSurface && firstTouch && inTime ? 0 : 1;
         }
 
-        const bool passed = landed == Count && offFall == 0 &&
+        const bool passed = landed == count && offFall == 0 &&
                             offLanding == 0 && belowSurface == 0;
         std::println(
             "  rain: {} ({} of {} landed, {} landings off their fall or the "
             "surface, {} drops off their fall, {} below the surface)",
             passed ? "ok" : "FAIL",
             landed,
-            Count,
+            count,
             offLanding,
             offFall,
             belowSurface

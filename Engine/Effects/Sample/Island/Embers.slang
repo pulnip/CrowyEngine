@@ -1,18 +1,26 @@
-// Campfire embers: born on a disc over the fire, carried up by the heat,
-// swirling, cooling from yellow-white through orange to a dull red.
+// Campfire embers: born at the flames' top, drawn up the tipi's chimney and
+// out of its smoke hole, cooling from yellow-white through orange to red.
 
 #include "Effect.slang"
+#include "IslandShapes.slang"
 
 // what the desc's emitter and params mean here
 float3 discCenter() { return effect.emitter.xyz; }
 float discRadius() { return effect.emitter.w; }
 float riseMin() { return effect.params[0].x; }
 float riseMax() { return effect.params[0].y; }
-float buoyancy() { return effect.params[0].z; }
-float drag() { return effect.params[0].w; }
+// the lift under the canvas, where the chimney draws
+float chimneyLift() { return effect.params[0].z; }
+float riseDrag() { return effect.params[0].w; }
 float swirl() { return effect.params[1].x; }
 float halfSize() { return effect.params[1].y; }
 float brightness() { return effect.params[1].z; }
+// the lift in the open air, reached over liftFade metres past the hole
+float openLift() { return effect.params[1].w; }
+float sideDrag() { return effect.params[2].x; }
+float liftFade() { return effect.params[2].y; }
+uint lifeMin() { return uint(effect.params[2].z); }
+uint lifeSpan() { return uint(effect.params[2].w); }
 
 Particle spawn(uint slot, uint generation) {
     Particle p = (Particle)0;
@@ -24,11 +32,12 @@ Particle spawn(uint slot, uint generation) {
     float rise =
         lerp(riseMin(), riseMax(), particleRandom(slot, generation, 3u));
     p.velocity = float3(
-        (particleRandom(slot, generation, 4u) - 0.5) * 0.5,
+        (particleRandom(slot, generation, 4u) - 0.5) * 0.3,
         rise,
-        (particleRandom(slot, generation, 5u) - 0.5) * 0.5
+        (particleRandom(slot, generation, 5u) - 0.5) * 0.3
     );
-    p.lifeSteps = 70u + effectHash(effect.seed, slot, generation, 6u) % 110u;
+    p.lifeSteps =
+        lifeMin() + effectHash(effect.seed, slot, generation, 6u) % lifeSpan();
     p.generation = generation;
     p.size = halfSize() * lerp(0.6, 1.4, particleRandom(slot, generation, 7u));
     // the swirl's phase
@@ -46,9 +55,26 @@ void update(inout Particle p, uint slot) {
         0.0,
         cos(age * 2.3 + phase)
     ) * swirl();
-    float3 accel = float3(0.0, buoyancy(), 0.0) + sway - p.velocity * drag();
+    float above = max(p.position.y - ISLAND_TIPI_CANVAS_TOP_Y, 0.0);
+    float lift =
+        lerp(chimneyLift(), openLift(), smoothstep(0.0, liftFade(), above));
+    float3 drag = float3(sideDrag(), riseDrag(), sideDrag());
+    float3 accel = float3(0.0, lift, 0.0) + sway - p.velocity * drag;
     p.velocity += accel * dt;
-    p.position += p.velocity * dt;
+
+    // under the canvas an ember stays inside the pyramid
+    float3 next = p.position + p.velocity * dt;
+    if(next.y < ISLAND_TIPI_CANVAS_TOP_Y) {
+        uint facet;
+        float reach = tipiReach(next.xz, facet);
+        float limit = tipiApothem(next.y) - 0.05;
+        if(reach > limit) {
+            float2 outward = tipiFacetNormal(facet);
+            next.xz -= outward * (reach - limit);
+            p.velocity.xz -= outward * max(dot(p.velocity.xz, outward), 0.0);
+        }
+    }
+    p.position = next;
 }
 
 struct EmberVertex {
@@ -80,9 +106,9 @@ float4 fs_embers(EmberVertex v) : SV_Target {
     float3 hot = float3(1.0, 0.85, 0.45);
     float3 warm = float3(1.0, 0.38, 0.06);
     float3 cold = float3(0.5, 0.05, 0.01);
-    float3 color = v.heat > 0.6
-        ? lerp(warm, hot, (v.heat - 0.6) / 0.4)
-        : lerp(cold, warm, v.heat / 0.6);
+    float3 color = v.heat > 0.8
+        ? lerp(warm, hot, (v.heat - 0.8) / 0.2)
+        : lerp(cold, warm, v.heat / 0.8);
     float fade = saturate(v.heat * 3.0);
 
     return float4(color * brightness() * falloff * fade, 1.0);

@@ -5,6 +5,7 @@ SOURCES
     "${CMAKE_SOURCE_DIR}/Engine/Render/Sample/FlyCamera.cpp"
     "${CMAKE_SOURCE_DIR}/Engine/Render/Sample/RenderApp.cpp"
     Island.cpp
+    IslandMeshes.cpp
 DEPENDS
     Crowy::Effects
     Crowy::Remote

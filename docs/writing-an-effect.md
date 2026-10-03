@@ -3,8 +3,8 @@
 파티클 이펙트 하나는 **`.slang` 파일 하나와 `ParticleEffectDesc` 하나**다. CMake도
 C++ 클래스도 필요 없다. 엔진은 슬롯마다 파티클 하나(64바이트)를 GPU 필드에 두고,
 녹화되는 프레임마다 한 스텝씩 `cs_step`을 돌린 뒤, 파일에 적은 그리기로 그린다.
-예제는 `Engine/Effects/Sample/Island/`의 `Embers.slang`, `Rain.slang`,
-`Stars.slang`, `Meteors.slang`이다.
+예제는 `Engine/Effects/Sample/Island/`의 `Embers.slang`, `Flames.slang`,
+`Rain.slang`, `Stars.slang`, `Meteors.slang`이다.
 
 ## 1. 파일 하나
 
@@ -65,11 +65,11 @@ float4 fs_spark(SparkVertex v) : SV_Target {
 
 ## 2. 설명 한 줄
 
-`Engine/Effects/Sample/Island.cpp`의 `ExtractScene`에서:
+`Engine/Effects/Sample/Island/IslandEffects.hpp`에 desc 함수를 하나 더하고:
 
 ```cpp
-effects->Add(
-    ParticleEffectDesc{
+inline ParticleEffectDesc sparksDesc() {
+    return ParticleEffectDesc{
         .name = "sparks",
         .shader = "Engine/Effects/Sample/Island/Sparks.slang",
         .count = 512,
@@ -78,12 +78,15 @@ effects->Add(
         .emitter = Vec4{0.0f, 0.5f, 0.0f, 0.2f},
         .params = {Vec4{8.0f, 0.0f, 0.0f, 0.0f}, Vec4{}, Vec4{}},
         .draws = {{.entry = "spark", .blend = EffectBlend::Additive}}
-    }
-);
+    };
+}
 ```
 
+`Engine/Effects/Sample/Island.cpp`의 `ExtractScene`에서 `effects->Add(sparksDesc());`
+한 줄을 더한다.
+
 - `emitter`와 `params[0..2]`: 이펙트가 정하는 float4 네 개다. 뜻은 파일 머리의 접근자
-  함수가 이름으로 말한다(`Rain.slang`의 `fallSpeed()`, `islandRadii()`처럼).
+  함수가 이름으로 말한다(`Rain.slang`의 `fallSpeed()`, `ringOpacity()`처럼).
 - `count`: 슬롯 수. 슬롯 하나가 늘 같은 파티클이고, 수명이 끝나면 `generation + 1`로
   다시 태어난다.
 - `prewarmSteps`: 첫 프레임이 보여 주기 전에 미리 도는 스텝 수다. 가장 긴 수명보다
@@ -106,6 +109,11 @@ effects->Add(
   `toClip(world)`
 - `EventLife`: 나이로는 닿지 않는 수명(아래 사건으로 다시 태어나기)
 - `Particle.custom`: 이펙트가 마음대로 쓰는 float4. `Particle.size`: 보통 반지름
+- Island의 공유 파일(같은 폴더라 `#include "..."`로 바로 읽힌다):
+  - `IslandScene.h`: 섬, 달, 하늘, 불, 티피의 숫자. C++도 같은 파일을 읽는다.
+  - `IslandShapes.slang`: `islandCrown(xz)`, `tipiRoof(xz)`, `tipiReach`, `tipiApothem`.
+    비가 앉는 면, 불씨가 갇히는 티피가 여기 있다.
+  - `Weather.slang`: `fireBreath(effect.worldStep)`. 불빛과 불꽃이 같이 숨 쉰다.
 
 ## 4. 규칙
 

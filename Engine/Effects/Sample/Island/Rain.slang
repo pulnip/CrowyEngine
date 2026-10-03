@@ -1,8 +1,9 @@
 // Rain over the island: drops fall through a box, and where one meets the
-// sea or the sand it leaves a ring that spreads and fades.
+// sea or the sand it leaves a ring that spreads and fades; the tipi keeps
+// them off its floor.
 
 #include "Effect.slang"
-#include "IslandScene.h"
+#include "IslandShapes.slang"
 
 // what the desc's emitter and params mean here
 float3 boxCenter() { return effect.emitter.xyz; }
@@ -13,24 +14,16 @@ float2 wind() { return float2(effect.params[0].w, effect.params[1].x); }
 float streakSeconds() { return effect.params[1].y; }
 float streakBrightness() { return effect.params[1].z; }
 float ringOpacity() { return effect.params[1].w; }
-// the island an ellipsoid of these radii around this height
-float3 islandRadii() { return effect.params[2].xyz; }
-float islandCenterHeight() { return effect.params[2].w; }
 
 // how long a ring spreads
 static const uint RingSteps = 36u;
 // custom.w before a drop's first landing
 static const float NoLanding = -1.0e6;
 
-// the sea at 0, or the island's crown where it rises above it
+// the sea at 0, the sand's crown, or the tipi's pyramid, which stops the
+// rain over its open facets and its smoke hole too
 float surfaceHeight(float2 xz) {
-    float3 radii = islandRadii();
-    float2 q = xz / radii.xz;
-    float inside = 1.0 - dot(q, q);
-    float crown = inside > 0.0
-        ? islandCenterHeight() + radii.y * sqrt(inside)
-        : NoLanding;
-    return max(0.0, crown);
+    return max(max(0.0, islandCrown(xz)), tipiRoof(xz));
 }
 
 // a drop in the box: at any height when first born, at the top after
@@ -76,6 +69,8 @@ struct RainVertex {
     float2 corner : TEXCOORD0;
     // 1 while it shows, 0 when it is gone
     float fade : TEXCOORD1;
+    // a ring's half width, in the quad's units
+    float band : TEXCOORD2;
 };
 
 // a thin quad from the drop back along its fall, turned to the camera
@@ -98,6 +93,7 @@ RainVertex vs_streaks(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     o.corner = corner;
     // far drops fade out instead of sparkling over the stars
     o.fade = (1.0 - smoothstep(6.0, 16.0, away)) * p.size / halfWidth;
+    o.band = 0.0;
     return o;
 }
 
@@ -116,8 +112,12 @@ RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     Particle p = loadParticle(slot);
     float since = float(effect.step) - p.custom.w;
     float t = since / float(RingSteps);
-    bool showing = p.custom.w > NoLanding * 0.5 && t < 1.0;
-    float radius = showing ? lerp(0.02, 0.2, t) : 0.0;
+    // a drop the tipi stopped leaves no ring; one on the far sand a wider one
+    float crown = islandCrown(p.custom.xz);
+    bool onTipi = tipiRoof(p.custom.xz) > max(crown, 0.0);
+    bool onSand = crown > 0.0;
+    bool showing = p.custom.w > NoLanding * 0.5 && t < 1.0 && !onTipi;
+    float radius = showing ? lerp(0.02, onSand ? 0.3 : 0.2, t) : 0.0;
     float2 corner = stripCorner(vertexID);
     float3 world = p.custom.xyz +
                    float3(corner.x * radius, 0.012, corner.y * radius);
@@ -126,13 +126,14 @@ RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     o.position = toClip(world);
     o.corner = corner;
     o.fade = showing ? (1.0 - t) * (1.0 - t) : 0.0;
+    o.band = onSand ? 0.25 : 0.15;
     return o;
 }
 
 [shader("fragment")]
 float4 fs_ripples(RainVertex v) : SV_Target {
     float reach = length(v.corner);
-    float ring = saturate(1.0 - abs(reach - 0.8) / 0.15);
+    float ring = saturate(1.0 - abs(reach - 0.8) / v.band);
     float alpha = ring * v.fade * ringOpacity();
     return float4(0.75, 0.82, 0.95, alpha);
 }

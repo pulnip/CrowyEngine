@@ -14,3 +14,9 @@ SOURCES
 DEPENDS
     Crowy::Effects
 )
+
+# the Island's rain, its shapes and descs, as the sample has them
+target_include_directories(ParticleCheck
+PRIVATE
+    "${CMAKE_SOURCE_DIR}/Engine/Effects/Sample"
+)

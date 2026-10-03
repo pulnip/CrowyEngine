@@ -8,14 +8,17 @@
 #include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
 #include "Geometry/Overlap3D.hpp"
+#include "Island/IslandEffects.hpp"
 #include "Island/IslandScene.h"
+#include "Island/IslandShapes.hpp"
+#include "Island/Weather.hpp"
+#include "IslandMeshes.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "ParticleEffects.hpp"
 #include "PipelineCache.hpp"
 #include "RenderApp.hpp"
 #include "StandardPipeline.hpp"
-#include "WorldClock.hpp"
 
 namespace Crowy
 {
@@ -31,16 +34,28 @@ namespace Crowy
         };
 
         static constexpr CStr EffectsHook = "effects";
-        // where the campfire burns, on the island's crown
-        static constexpr Vec3 FirePosition{0.0f, 0.4f, 0.0f};
-        static constexpr f32 FireIntensity = 7.0f;
-        static constexpr Vec3 IslandRadii{ISLAND_RADII};
+        static constexpr Vec3 FirePosition{ISLAND_FIRE};
+        static constexpr f32 FireIntensity = 5.0f;
         static constexpr Vec3 ToMoon{ISLAND_TO_MOON};
+        // the canvas's glow from the fire behind it, before the breath
+        static constexpr Vec3 CanvasGlow{0.075f, 0.032f, 0.008f};
+        static constexpr f32 PoleRadius = 0.035f;
+        // how far the poles reach past their crossing
+        static constexpr f32 PoleOverhang = 1.0f;
+        static constexpr f32 LogRadius = 0.045f;
+        // the tripod's logs stand on this circle and cross at this height
+        static constexpr f32 LogCircle = 0.36f;
+        static constexpr f32 LogCrossing = 1.15f;
+        static constexpr f32 LogOverhang = 0.12f;
 
         GeometryAllocation sea{};
         GeometryAllocation island{};
         GeometryAllocation box{};
+        GeometryAllocation canvas{};
+        GeometryAllocation pole{};
+        GeometryAllocation log{};
         LightHandle fire{};
+        MaterialHandle canvasMaterial{};
         std::unique_ptr<EffectSystem> effects;
 
     public:
@@ -55,10 +70,17 @@ namespace Crowy
             const auto seaMesh = MakePlane(Vec2{30.0f, 30.0f});
             const auto islandMesh = makeEllipsoid(IslandRadii);
             const auto boxMesh = MakeBox(1.0f);
+            const auto canvasMesh = makeTipiCanvas();
+            const auto poleMesh =
+                makeCylinder(PoleRadius, 0.5f * poleLength(), 8);
+            const auto logMesh = makeCylinder(LogRadius, 0.5f * logLength(), 8);
 
             sea = pool.Add(seaMesh.vertices, seaMesh.indices);
             island = pool.Add(islandMesh.vertices, islandMesh.indices);
             box = pool.Add(boxMesh.vertices, boxMesh.indices);
+            canvas = pool.Add(canvasMesh.vertices, canvasMesh.indices);
+            pole = pool.Add(poleMesh.vertices, poleMesh.indices);
+            log = pool.Add(logMesh.vertices, logMesh.indices);
         }
 
         void ExtractScene(RenderScene& scene) override {
@@ -75,8 +97,8 @@ namespace Crowy
                     .kind = LightKind::Point,
                     .color = {1.0f, 0.55f, 0.2f},
                     .intensity = FireIntensity,
-                    .position = FirePosition + Vec3{0.0f, 0.4f, 0.0f},
-                    .range = 9.0f
+                    .position = {ISLAND_FIRE_LIGHT},
+                    .range = 4.0f
                 }
             );
             scene.Environment() = EnvironmentSnapshot{
@@ -100,12 +122,22 @@ namespace Crowy
                 scene,
                 {.albedo = {0.08f, 0.06f, 0.05f}, .roughness = 0.9f}
             );
-            const auto embers = addMaterial(
+            const auto coals = addMaterial(
                 scene,
                 {
                     .albedo = {0.1f, 0.05f, 0.02f},
                     .emissive = {6.0f, 2.2f, 0.5f},
                     .roughness = 0.9f
+                }
+            );
+            // both sides: moonlit outside, firelit inside
+            canvasMaterial = scene.Materials().Add(
+                MaterialResource{
+                    .data =
+                        {.albedo = {0.62f, 0.52f, 0.38f},
+                         .emissive = CanvasGlow,
+                         .roughness = 0.9f},
+                    .pipeline = opaquePipeline(RHICullMode::None)
                 }
             );
 
@@ -126,34 +158,15 @@ namespace Crowy
                 translateMat({0.0f, ISLAND_CENTER_Y, 0.0f}),
                 IslandRadii
             );
-            // the hut, behind and left of the fire
-            addBox(scene, wood, {-3.2f, 1.1f, 2.6f}, {1.3f, 1.0f, 1.1f});
-            addBox(scene, charcoal, {-3.2f, 2.15f, 2.6f}, {1.5f, 0.08f, 1.3f});
-            // two crossed logs and the glowing heart between them
-            addBox(
-                scene,
-                charcoal,
-                FirePosition + Vec3{0.0f, 0.06f, 0.0f},
-                {0.5f, 0.06f, 0.07f}
-            );
-            addBox(
-                scene,
-                charcoal,
-                FirePosition + Vec3{0.0f, 0.13f, 0.0f},
-                {0.07f, 0.06f, 0.5f}
-            );
-            addBox(
-                scene,
-                embers,
-                FirePosition + Vec3{0.0f, 0.1f, 0.0f},
-                {0.16f, 0.08f, 0.16f}
-            );
+            addTipi(scene, wood);
+            addFire(scene, charcoal, coals);
 
             // the ripples blend over what is drawn before them, so they lead
             effects = std::make_unique<EffectSystem>(Device());
             effects->Add(rainDesc());
             effects->Add(starsDesc());
             effects->Add(meteorsDesc());
+            effects->Add(flamesDesc());
             effects->Add(embersDesc());
         }
 
@@ -199,15 +212,13 @@ namespace Crowy
             return desc;
         }
 
-        // the fire breathes on the world's loop, never on the clock
+        // the fire breathes on the world's loop, and its glow through the
+        // canvas with it
         void OnUpdateScene(f64) override {
-            constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
-
-            const auto step = worldStep();
-            const auto breath =
-                1.0f + 0.12f * std::sin(TwoPi * loopPhase(step, 241)) +
-                0.06f * std::sin(TwoPi * loopPhase(step, 854));
+            const auto breath = fireBreath(worldStep());
             Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
+            Scene().Materials().GetRef(canvasMaterial).data.emissive =
+                CanvasGlow * breath;
         }
 
         // the effects' steps too, so spawn and update reload with the draws
@@ -257,8 +268,8 @@ namespace Crowy
             };
         }
 
-        // over the shallows, looking a little up: the fire ahead, the moon
-        // and its path on the water to the right
+        // over the shallows, looking a little up: the tipi's opening ahead,
+        // the moon and its path on the water to the right
         static FlyCamera::Config makeCamera() {
             return FlyCamera::Config{
                 .position = {0.3f, 1.8f, -9.5f},
@@ -269,79 +280,9 @@ namespace Crowy
             };
         }
 
-        // a few hundred sparks off the fire's heart, a second or two each
-        static ParticleEffectDesc embersDesc() {
-            return ParticleEffectDesc{
-                .name = "embers",
-                .shader = "Engine/Effects/Sample/Island/Embers.slang",
-                .count = 384,
-                .seed = 11,
-                .prewarmSteps = 240,
-                .emitter =
-                    toVec4(FirePosition + Vec3{0.0f, 0.12f, 0.0f}, 0.22f),
-                .params =
-                    {Vec4{0.35f, 0.9f, 0.55f, 1.1f},
-                     Vec4{1.6f, 0.018f, 24.0f, 0.0f},
-                     Vec4{}},
-                .draws = {{.entry = "embers", .blend = EffectBlend::Additive}}
-            };
-        }
-
-        // a dome of stars that follows the camera, a few hundred in frame
-        static ParticleEffectDesc starsDesc() {
-            return ParticleEffectDesc{
-                .name = "stars",
-                .shader = "Engine/Effects/Sample/Island/Stars.slang",
-                .count = 2560,
-                .seed = 53,
-                .emitter = Vec4{0.0f, 0.0f, 0.0f, 170.0f},
-                .params =
-                    {Vec4{0.0349f, 1.5f, 8.0f, 0.0f},
-                     Vec4{0.1f, 2.2f, 7.0f, 0.0f},
-                     Vec4{}},
-                .draws = {{.entry = "stars", .blend = EffectBlend::Additive}}
-            };
-        }
-
-        // a shower from a radiant low on the left, about one in the sky at a
-        // time; the seed puts one high on the left at frame 60
-        static ParticleEffectDesc meteorsDesc() {
-            return ParticleEffectDesc{
-                .name = "meteors",
-                .shader = "Engine/Effects/Sample/Island/Meteors.slang",
-                .count = 12,
-                .seed = 1,
-                .emitter = Vec4{-1.6581f, 0.0873f, 160.0f, 0.0f},
-                .params =
-                    {Vec4{-0.7854f, 0.6109f, 0.1745f, 0.4189f},
-                     Vec4{0.262f, 0.524f, 0.25f, 2.0f},
-                     Vec4{1.2f, 0.125f, 0.0f, 0.0f}},
-                .draws =
-                    {{.entry = "meteors", .blend = EffectBlend::Additive}}
-            };
-        }
-
-        // a shower over the fire and the shore; the island's ellipsoid is
-        // where its drops land
-        static ParticleEffectDesc rainDesc() {
-            return ParticleEffectDesc{
-                .name = "rain",
-                .shader = "Engine/Effects/Sample/Island/Rain.slang",
-                .count = 3000,
-                .seed = 23,
-                .prewarmSteps = 120,
-                .emitter = Vec4{0.0f, 6.5f, 2.0f, 6.0f},
-                .params =
-                    {Vec4{8.0f, 8.0f, 9.0f, 1.2f},
-                     Vec4{0.4f, 0.03f, 0.35f, 0.28f},
-                     Vec4{9.0f, 1.6f, 7.0f, -1.2f}},
-                .draws =
-                    {{.entry = "ripples", .blend = EffectBlend::Alpha},
-                     {.entry = "streaks", .blend = EffectBlend::Additive}}
-            };
-        }
-
-        static MaterialPipelineDesc opaquePipeline() {
+        static MaterialPipelineDesc opaquePipeline(
+            RHICullMode cull = RHICullMode::Back
+        ) {
             constexpr CStr StandardForward =
                 "Engine/Render/Shader/StandardForward.slang";
 
@@ -350,7 +291,8 @@ namespace Crowy
                     {.path = StandardForward, .entryPoint = "vs_main"},
                 .fragmentShader =
                     {.path = StandardForward, .entryPoint = "fs_opaque"},
-                .rasterizer = {.frontCounterClockwise = false},
+                .rasterizer =
+                    {.cullMode = cull, .frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
         }
@@ -364,26 +306,24 @@ namespace Crowy
             );
         }
 
-        // a unit sphere stretched to `radii` with the stretch's own normals:
-        // the vertex stage turns a normal by the world's rotation alone
-        static MeshData makeEllipsoid(Vec3 radii) {
-            auto mesh = MakeSphere(1.0f, 48, 24);
-            for(auto& vertex: mesh.vertices) {
-                const auto unit = vertex.position;
-                const auto normal = normalize(
-                    Vec3{unit.x / radii.x, unit.y / radii.y, unit.z / radii.z}
-                );
-                const auto tangent =
-                    static_cast<Vec3>(vertex.tangent) * radii;
-                vertex.position = unit * radii;
-                vertex.normal = normal;
-                vertex.tangent = toVec4(
-                    normalize(tangent - normal * dot(normal, tangent)),
-                    vertex.tangent.w
-                );
-            }
+        // the tipi's poles: from the base, through the crossing, and on
+        static f32 poleLength() {
+            const auto rise = ISLAND_TIPI_APEX_Y - ISLAND_TIPI_BASE_Y;
 
-            return mesh;
+            return std::hypot(ISLAND_TIPI_RADIUS, rise) + PoleOverhang;
+        }
+
+        static f32 logLength() {
+            const auto rise = LogCrossing - FirePosition.y;
+
+            return std::hypot(LogCircle, rise) + LogOverhang;
+        }
+
+        // the rotation that turns +y onto `direction`
+        static Vec4 turnUpTo(Vec3 direction) {
+            const auto axis = normalize(cross(unitY(), direction));
+
+            return axisAngle(axis, std::acos(dot(unitY(), direction)));
         }
 
         // a triangle over the screen at the far plane, tested against the
@@ -450,6 +390,26 @@ namespace Crowy
             );
         }
 
+        // a cylinder mesh from `from` along `direction`, `length` long
+        static void addRod(
+            RenderScene& scene,
+            MaterialHandle material,
+            const GeometryAllocation& geometry,
+            Vec3 from,
+            Vec3 direction,
+            f32 radius,
+            f32 length
+        ) {
+            const auto center = from + direction * (0.5f * length);
+            add(
+                scene,
+                material,
+                geometry,
+                modelMat(center, turnUpTo(direction), ones()),
+                {radius, 0.5f * length, radius}
+            );
+        }
+
         // the unit box at `position`, stretched along its faces by `scale`
         void addBox(
             RenderScene& scene,
@@ -464,6 +424,77 @@ namespace Crowy
                 translateMat(position) * scaleMat(scale),
                 ones()
             );
+        }
+
+        // the canvas over all but the open facets, and the poles crossing
+        // above it
+        void addTipi(RenderScene& scene, MaterialHandle wood) const {
+            constexpr auto Middle =
+                0.5f * (ISLAND_TIPI_BASE_Y + ISLAND_TIPI_CANVAS_TOP_Y);
+            constexpr auto HalfHeight =
+                0.5f * (ISLAND_TIPI_CANVAS_TOP_Y - ISLAND_TIPI_BASE_Y);
+            constexpr Vec3 Apex{0.0f, ISLAND_TIPI_APEX_Y, 0.0f};
+
+            add(
+                scene,
+                canvasMaterial,
+                canvas,
+                translateMat({0.0f, Middle, 0.0f}),
+                {ISLAND_TIPI_RADIUS, HalfHeight, ISLAND_TIPI_RADIUS}
+            );
+            for(u32 k = 0; k < ISLAND_TIPI_FACETS; ++k) {
+                const auto azimuth = ISLAND_TIPI_FIRST_POLE +
+                                     TipiFacetAngle * static_cast<f32>(k);
+                const Vec3 base{
+                    ISLAND_TIPI_RADIUS * std::sin(azimuth),
+                    ISLAND_TIPI_BASE_Y,
+                    ISLAND_TIPI_RADIUS * std::cos(azimuth)
+                };
+                addRod(
+                    scene,
+                    wood,
+                    pole,
+                    base,
+                    normalize(Apex - base),
+                    PoleRadius,
+                    poleLength()
+                );
+            }
+        }
+
+        // the glowing bed and three logs leaning into a tripod over it
+        void addFire(
+            RenderScene& scene,
+            MaterialHandle charcoal,
+            MaterialHandle coals
+        ) const {
+            constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
+            constexpr Vec3 Crossing{0.0f, LogCrossing, 0.0f};
+
+            addBox(
+                scene,
+                coals,
+                FirePosition + Vec3{0.0f, 0.03f, 0.0f},
+                {0.16f, 0.03f, 0.16f}
+            );
+            for(u32 i = 0; i < 3; ++i) {
+                const auto azimuth = TwoPi * static_cast<f32>(i) / 3.0f;
+                const Vec3 offset{
+                    LogCircle * std::sin(azimuth),
+                    0.03f,
+                    LogCircle * std::cos(azimuth)
+                };
+                const auto base = FirePosition + offset;
+                addRod(
+                    scene,
+                    charcoal,
+                    log,
+                    base,
+                    normalize(Crossing - base),
+                    LogRadius,
+                    logLength()
+                );
+            }
         }
 
         // the night sky first, where the scene left the depth clear

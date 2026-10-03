@@ -22,3 +22,23 @@
 
 // radians a pixel spans at the frame's centre: 60 deg over 720 rows
 #define ISLAND_PIXEL_ANGLE 0.00160375f
+
+// the campfire on the island's crown, and its light inside the tripod
+#define ISLAND_FIRE 0.0f, 0.4f, 0.0f
+#define ISLAND_FIRE_LIGHT 0.0f, 0.65f, 0.0f
+// the fire's breath on the world's loop: two ripples' cycles and depths
+#define ISLAND_BREATH_SLOW 241u
+#define ISLAND_BREATH_SLOW_DEPTH 0.12f
+#define ISLAND_BREATH_FAST 854u
+#define ISLAND_BREATH_FAST_DEPTH 0.06f
+
+// the tipi around the fire: facets between poles from the first pole's
+// azimuth on, the base's circumradius and height, the poles' crossing
+#define ISLAND_TIPI_FACETS 10u
+#define ISLAND_TIPI_FIRST_POLE 2.80998f
+#define ISLAND_TIPI_RADIUS 1.8f
+#define ISLAND_TIPI_BASE_Y 0.3f
+#define ISLAND_TIPI_APEX_Y 4.1f
+// the canvas stops under the smoke hole and leaves the first facets open
+#define ISLAND_TIPI_CANVAS_TOP_Y 3.57f
+#define ISLAND_TIPI_OPEN_FACETS 3u
