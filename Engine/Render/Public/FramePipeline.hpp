@@ -296,8 +296,8 @@ namespace Crowy
         );
 
         OverlayFormats Overlay() const noexcept;
-        // the formats of the pass binding `hook`; empty when no pass does,
-        // as in a data view's list
+        // the formats of the pass naming `hook`; empty when no pass does, as
+        // in a data view's list
         std::optional<HookPassFormats> FindHook(StrView hook) const noexcept;
         std::span<const PassStats> Stats() const noexcept { return stats; }
         // the ViewData rows the mesh passes name, so SceneRenderer keeps them

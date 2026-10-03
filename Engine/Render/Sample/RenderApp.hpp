@@ -133,7 +133,8 @@ namespace Crowy
         // view; a change rebuilds it
         StandardPipelineConfig pipelineConfig;
         FramePipelinePtr pipeline;
-        // the hooks are bound once; the rest is refilled every frame
+        // bindMeshPass and recordOverlay are set once; the rest, hooks
+        // included, is refilled every frame
         FrameInputs frameInputs;
         RenderScene scene;
         CameraRAII camera;
@@ -249,8 +250,8 @@ namespace Crowy
         CommandPort* Port() noexcept { return port.get(); }
         // the newest frame that ended; empty before frame 1 has
         const FrameStats& LastFrameStats() const noexcept;
-        // the running list's pass binding `hook`; empty when the list has
-        // none, as a data view's
+        // the formats of the running list's pass naming `hook`; empty when
+        // the list has none, as a data view's
         std::optional<HookPassFormats> FindHook(StrView hook) const noexcept {
             return pipeline->FindHook(hook);
         }

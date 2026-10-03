@@ -59,8 +59,7 @@ namespace Crowy
         u64 writableID = 0;
 
         explicit FakeBuffer(u32 size, u64 writableID = 0)
-            : bytes(size),
-              writableID(writableID) {}
+            : bytes(size), writableID(writableID) {}
 
         void Upload(const void* data, u32 size, u32 offset) override {
             CROWY_ASSERT(offset + size <= bytes.size());
@@ -101,6 +100,9 @@ namespace Crowy
     // a size, a format and an id, and nothing behind them; counts its own
     // destruction, so a test can tell retired from destroyed
     class FakeTexture final: public RHITexture {
+    public:
+        static constexpr u64 WritableBit = 1ull << 63;
+
     private:
         u32 width = 0;
         u32 height = 0;
@@ -108,8 +110,6 @@ namespace Crowy
         u32* destroyed = nullptr;
 
     public:
-        static constexpr u64 WritableBit = 1ull << 63;
-
         using RHITexture::GetReadableID;
         using RHITexture::GetWritableID;
 
@@ -138,7 +138,6 @@ namespace Crowy
         u64 GetReadableID(const RHITextureViewDesc&) override {
             return readableID;
         }
-        // the readable id with the top bit set
         u64 GetWritableID(const RHITextureViewDesc&) override {
             return readableID | WritableBit;
         }

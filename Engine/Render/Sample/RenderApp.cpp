@@ -917,12 +917,6 @@ namespace Crowy
 
         recorded = FrameStats{};
         recorded.visiblePrimitives = renderer->Visible(ViewMain).primitiveCount;
-        for(const auto& pass: pipeline->Stats()) {
-            recorded.triangles += pass.triangles;
-            recorded.draws += pass.draws;
-            recorded.runs += pass.runs;
-        }
-        reportCullStatsOnce();
 
         frameInputs.backBuffer = backBuffer.texture;
         frameInputs.sceneClear = pipelineConfig.clearColor;
@@ -949,9 +943,15 @@ namespace Crowy
         frameInputs.hooks = {};
         frameHooks.clear();
 
-        // the edges are counted as they are recorded
+        // the edges and a hook pass's draws are counted as they are recorded
         const auto passStats = pipeline->Stats();
         recorded.passes.assign(passStats.begin(), passStats.end());
+        for(const auto& pass: passStats) {
+            recorded.triangles += pass.triangles;
+            recorded.draws += pass.draws;
+            recorded.runs += pass.runs;
+        }
+        reportCullStatsOnce();
     }
 
     void RenderApp::OnFrameEnd(const FrameReport& report) {

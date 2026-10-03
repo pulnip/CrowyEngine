@@ -1838,10 +1838,7 @@ TEST(FramePipeline, AHookPassDrawsWhatItsBindingRecords) {
     const auto& effects = f.Pass("Effects");
     ASSERT_EQ(effects.bufferAcquires.size(), 1u);
     EXPECT_EQ(effects.bufferAcquires[0], released[0]);
-    EXPECT_EQ(
-        effects.log,
-        (FakeCommandList::Log{"cb 0", "push", "draw"})
-    );
+    EXPECT_EQ(effects.log, (FakeCommandList::Log{"cb 0", "push", "draw"}));
     for(const auto& pass: f.cmdList.passes) {
         if(pass.event != "Effects")
             EXPECT_TRUE(pass.bufferAcquires.empty()) << pass.event;
@@ -1930,7 +1927,7 @@ TEST(FramePipeline, AHookPassNeedsAColorTargetAndItsOwnHook) {
     );
     ExpectRefused(
         std::move(twice),
-        "hook 'effects' is bound by an earlier pass"
+        "hook 'effects' is named by an earlier pass"
     );
 }
 
@@ -1979,6 +1976,56 @@ TEST(FramePipeline, HookBindingsMatchTheListOrRecordNothing) {
         std::vector<PassHook> hooks;
         hooks.push_back(PassHook{.name = "effects"});
         expectThrow(std::move(hooks), "its hook's binding records nothing");
+    }
+}
+
+// a texture the sample's compute released rides the hook pass's begin, and
+// no other pass's
+TEST(FramePipeline, AHookPassCarriesItsTextureAcquires) {
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    FramePipeline pipeline(
+        f.device,
+        HookShaped(),
+        BackBufferFormat,
+        Width,
+        Height
+    );
+    FakeTexture grid{RHIPixelFormat::R32_FLOAT, 8, 8, 0x61D};
+    const std::array fresh{MakeBarrier(
+        grid,
+        RHIResourceUsage::Undefined,
+        RHIResourceUsage::StorageCompute
+    )};
+    const std::array released{MakeBarrier(
+        grid,
+        RHIResourceUsage::StorageCompute,
+        RHIResourceUsage::SampledFragment
+    )};
+    std::vector<PassHook> hooks;
+    hooks.push_back(PassHook{
+        .name = "effects",
+        .textureAcquires = released,
+        .record = DrawOnce
+    });
+    auto inputs = f.Inputs();
+    inputs.hooks = hooks;
+
+    f.Prepare(pipeline);
+    f.cmdList.Begin();
+    f.cmdList.BeginComputePass(fresh);
+    f.cmdList.EndComputePass(released);
+    pipeline.Record(f.cmdList, f.renderer, inputs);
+    f.cmdList.Close();
+
+    EXPECT_TRUE(f.cmdList.violations.empty());
+    EXPECT_TRUE(std::ranges::none_of(
+        f.cmdList.unconsumedAtClose,
+        [&](const RHITextureBarrier& half) { return half.texture == &grid; }
+    ));
+    for(const auto& pass: f.cmdList.passes) {
+        const bool carries = std::ranges::contains(pass.acquires, released[0]);
+        EXPECT_EQ(carries, pass.event == "Effects") << pass.event;
     }
 }
 

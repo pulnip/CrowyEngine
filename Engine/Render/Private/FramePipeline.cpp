@@ -77,7 +77,8 @@ namespace Crowy
                         );
                 }
             }
-            // a second acquire of a hook's buffers would pair with nothing
+            // a binding goes to one pass, so a second pass naming its hook
+            // would never be bound
             for(usize i = 0; i < desc.passes.size(); ++i) {
                 const auto* hook =
                     std::get_if<HookPassDesc>(&desc.passes[i].kind);
@@ -90,7 +91,7 @@ namespace Crowy
                         refuse(
                             desc.passes[j].name,
                             std::format(
-                                "hook '{}' is bound by an earlier pass",
+                                "hook '{}' is named by an earlier pass",
                                 hook->hook
                             )
                         );
@@ -863,8 +864,8 @@ namespace Crowy
         StrView hook
     ) const noexcept {
         for(usize i = 0; i < passes.size(); ++i) {
-            const auto* bound = std::get_if<HookPassDesc>(&desc.passes[i].kind);
-            if(bound != nullptr && bound->hook == hook) {
+            const auto* named = std::get_if<HookPassDesc>(&desc.passes[i].kind);
+            if(named != nullptr && named->hook == hook) {
                 return HookPassFormats{
                     .colors = passes[i].colorFormats,
                     .depth = passes[i].depthFormat
@@ -891,8 +892,7 @@ namespace Crowy
                     )
                 );
             }
-            const auto index =
-                static_cast<usize>(found - desc.passes.begin());
+            const auto index = static_cast<usize>(found - desc.passes.begin());
             if(hookBindings[index] != nullptr) {
                 refuse(
                     found->name,
