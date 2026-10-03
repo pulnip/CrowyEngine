@@ -7,18 +7,19 @@
 // The Island's effects as descs, shared with the check that replays its rain.
 namespace Crowy
 {
-    // a shower over the fire and the shore, landing on the island's shapes
+    // a shower over the fire and the shore, its box upwind of them by the
+    // drift of a fall, landing on the island's shapes
     inline ParticleEffectDesc rainDesc() {
         return ParticleEffectDesc{
             .name = "rain",
             .shader = "Engine/Effects/Sample/Island/Rain.slang",
-            .count = 3000,
+            .count = 4200,
             .seed = 23,
             .prewarmSteps = 120,
-            .emitter = Vec4{0.0f, 6.5f, 2.0f, 6.0f},
+            .emitter = Vec4{-1.42f, 6.5f, 1.53f, 6.0f},
             .params =
-                {Vec4{8.0f, 8.0f, 9.0f, 1.2f},
-                 Vec4{0.4f, 0.03f, 0.35f, 0.28f},
+                {Vec4{9.5f, 9.5f, 9.0f, 0.0f},
+                 Vec4{0.0f, 0.03f, 0.35f, 0.28f},
                  Vec4{}},
             .draws =
                 {{.entry = "ripples", .blend = EffectBlend::Alpha},

@@ -56,7 +56,11 @@ void update(inout Particle p, uint slot) {
     float height = p.position.y - bedCenter().y;
     float2 offset = p.position.xz - bedCenter().xz;
     float2 inward = -offset * pull() * saturate(height / crossing());
-    float3 accel = float3(inward.x, lift(), inward.y) - p.velocity * drag();
+    // the tipi shelters the fire, so the wind only leans it a little
+    float2 wind = windAt(p.position.xz, effect.worldStep) * 0.12;
+    float3 air = float3(wind.x, 0.0, wind.y);
+    float3 accel =
+        float3(inward.x, lift(), inward.y) + (air - p.velocity) * drag();
     p.velocity += accel * dt;
     p.position += p.velocity * dt;
 }

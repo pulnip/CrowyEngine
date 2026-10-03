@@ -1,8 +1,9 @@
 // Campfire embers: born at the flames' top, drawn up the tipi's chimney and
-// out of its smoke hole, cooling from yellow-white through orange to red.
+// out of its smoke hole into the wind, cooling from yellow-white to red.
 
 #include "Effect.slang"
 #include "IslandShapes.slang"
+#include "Weather.slang"
 
 // what the desc's emitter and params mean here
 float3 discCenter() { return effect.emitter.xyz; }
@@ -58,8 +59,16 @@ void update(inout Particle p, uint slot) {
     float above = max(p.position.y - ISLAND_TIPI_CANVAS_TOP_Y, 0.0);
     float lift =
         lerp(chimneyLift(), openLift(), smoothstep(0.0, liftFade(), above));
+    // the canvas shelters it from the wind until a little past the hole
+    float exposure = smoothstep(
+        ISLAND_TIPI_CANVAS_TOP_Y - 0.2,
+        ISLAND_TIPI_APEX_Y + 0.6,
+        p.position.y
+    );
+    float2 wind = windAt(p.position.xz, effect.worldStep) * exposure;
+    float3 air = float3(wind.x, 0.0, wind.y);
     float3 drag = float3(sideDrag(), riseDrag(), sideDrag());
-    float3 accel = float3(0.0, lift, 0.0) + sway - p.velocity * drag;
+    float3 accel = float3(0.0, lift, 0.0) + sway + (air - p.velocity) * drag;
     p.velocity += accel * dt;
 
     // under the canvas an ember stays inside the pyramid

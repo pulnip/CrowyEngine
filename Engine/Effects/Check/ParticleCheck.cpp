@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <exception>
 #include <print>
+#include <span>
 #include <vector>
 
 #include "EffectRandom.hpp"
@@ -10,23 +12,31 @@
 #include "FieldBuffer.hpp"
 #include "Island/IslandEffects.hpp"
 #include "Island/IslandShapes.hpp"
+#include "Island/Weather.hpp"
 #include "ParticleEffects.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
+#include "WorldClock.hpp"
 
-// Runs particle effects for hundreds of steps and holds what they left against
-// the CPU: a lifecycle replayed slot by slot, and rain's falls and landings.
+// Runs particle effects and holds what they left against the CPU: a
+// lifecycle replayed slot by slot, the rain's falls, the wind's probes.
 
 namespace
 {
     using namespace Crowy;
+
+    struct Snapshot;
+
     using Particles = std::vector<EffectParticle>;
+    using Snapshots = std::vector<Snapshot>;
 
     constexpr u32 Frames = 300;
-
     // ParticleCheck.slang's life, which the CPU replays
     constexpr u32 ReplaySeed = 7;
+    // how far a CPU fall may stray from the GPU's, across and up
+    constexpr f32 Across = 2.0e-3f;
+    constexpr f32 Up = 1.0e-3f;
 
     u32 lifeOf(u32 slot, u32 generation) {
         return 20 + effectHash(ReplaySeed, slot, generation, 1) % 40;
@@ -72,6 +82,8 @@ namespace
         return std::max(std::max(0.0f, islandCrown(xz)), tipiRoof(xz));
     }
 
+    f32 clearance(Vec3 at) { return at.y - surfaceHeight(at); }
+
     // Rain.slang's drop: anywhere in the box when first born, at its top after
     Vec3 dropStart(const ParticleEffectDesc& rain, u32 slot, u32 generation) {
         const auto spread = [&](u32 k) {
@@ -88,14 +100,34 @@ namespace
         };
     }
 
-    bool near(Vec3 lhs, Vec3 rhs, f32 tolerance) {
-        return std::abs(lhs.x - rhs.x) <= tolerance &&
-               std::abs(lhs.y - rhs.y) <= tolerance &&
-               std::abs(lhs.z - rhs.z) <= tolerance;
+    // Rain.slang's step: across with the wind at `world`, down at its speed
+    Vec3 stepped(const ParticleEffectDesc& rain, Vec3 at, u32 world) {
+        const auto wind = windAt(Vec2{at.x, at.z}, world);
+
+        return at + Vec3{wind.x, -rain.params[0].z, wind.y} * EffectStep;
     }
 
-    // `Frames` frames of one effect, its particles copied out after the last
-    Particles run(RHIDevice& device, ParticleEffectDesc desc, u32& steps) {
+    bool near(Vec3 lhs, Vec3 rhs) {
+        return std::abs(lhs.x - rhs.x) <= Across &&
+               std::abs(lhs.y - rhs.y) <= Up &&
+               std::abs(lhs.z - rhs.z) <= Across;
+    }
+
+    // what an effect left after a frame, and the steps it had run by then
+    struct Snapshot {
+        u32 frame = 0;
+        u32 steps = 0;
+        Particles particles;
+    };
+
+    // frames of one effect at world steps worldBase + frame, its particles
+    // copied out after each frame `copies` names
+    Snapshots run(
+        RHIDevice& device,
+        ParticleEffectDesc desc,
+        u32 worldBase,
+        std::span<const u32> copies
+    ) {
         auto cmdList = device.CreateCommandList();
         EffectSystem effects(device, RHIResourceUsage::CopySrc);
         const auto name = desc.name;
@@ -112,11 +144,14 @@ namespace
 
         // the device counts frames across the program
         static u64 submitted = 0;
-        for(u32 frame = 1; frame <= Frames; ++frame) {
+        Snapshots snapshots;
+        for(u32 frame = 1; frame <= copies.back(); ++frame) {
+            const bool copied =
+                std::ranges::find(copies, frame) != copies.end();
             cmdList->Begin();
             const auto releases =
-                effects.Simulate(*cmdList, EffectView{}, frame);
-            if(frame == Frames) {
+                effects.Simulate(*cmdList, EffectView{}, worldBase + frame);
+            if(copied) {
                 cmdList->BeginBlitPass({}, releases);
                 cmdList->Copy(
                     particles.Buffer(),
@@ -131,21 +166,29 @@ namespace
             RHICommandList* lists[] = {cmdList.get()};
             device.Submit(lists, ++submitted);
             device.WaitFrame(submitted);
+            if(!copied)
+                continue;
+
+            auto& snapshot = snapshots.emplace_back(
+                Snapshot{
+                    .frame = frame,
+                    .steps = effects.Steps(name),
+                    .particles = Particles(count)
+                }
+            );
+            readback->Download(snapshot.particles.data(), particles.Bytes());
         }
 
-        Particles out(count);
-        readback->Download(out.data(), particles.Bytes());
-        steps = effects.Steps(name);
-
-        return out;
+        return snapshots;
     }
 
     // every slot's age, life, generation and history equal the CPU's
     bool checkReplay(RHIDevice& device) {
         constexpr u32 Count = 2048;
         constexpr u32 ReplayPrewarm = 3;
-        u32 steps = 0;
-        const auto gpu = run(
+        constexpr std::array Copies{Frames};
+
+        const auto snapshot = run(
             device,
             ParticleEffectDesc{
                 .name = "replayed",
@@ -154,8 +197,11 @@ namespace
                 .seed = ReplaySeed,
                 .prewarmSteps = ReplayPrewarm
             },
-            steps
-        );
+            0,
+            Copies
+        ).front();
+        const auto& gpu = snapshot.particles;
+        const auto steps = snapshot.steps;
 
         u32 wrong = 0;
         u64 births = 0;
@@ -194,79 +240,137 @@ namespace
         return passed;
     }
 
-    // the Island's rain: every drop fell from the box's top since it landed,
-    // and that landing is where its last fall first met the surface
-    bool checkRain(RHIDevice& device) {
-        constexpr f32 NoLanding = -1.0e6f;
-        constexpr f32 Tolerance = 1.0e-3f;
-        const auto rain = rainDesc();
-        const auto count = rain.count;
-        const auto stepFall =
-            Vec3{rain.params[0].w, -rain.params[0].z, rain.params[1].x} *
-            EffectStep;
-        const auto stepAcross = std::hypot(stepFall.x, stepFall.z);
+    // the Island's rain at one snapshot: each drop's fall since its landing
+    // replayed from the box's top, and the landing from the fall before
+    bool checkRain(
+        const ParticleEffectDesc& rain,
+        const Snapshot& snapshot,
+        u32 worldBase
+    ) {
+        const auto last = snapshot.steps - 1;
+        // the world step an effect step ran at
+        const auto worldOf = [&](u32 step) {
+            return step + worldBase + 1 - rain.prewarmSteps;
+        };
 
-        u32 steps = 0;
-        const auto gpu = run(device, rain, steps);
-
-        u32 landed = 0;
+        u32 unlanded = 0;
         u32 offFall = 0;
         u32 offLanding = 0;
-        u32 belowSurface = 0;
-        for(u32 slot = 0; slot < count; ++slot) {
-            const auto& drop = gpu[slot];
-            const auto under = surfaceHeight(drop.position);
-            belowSurface += drop.position.y > under - Tolerance ? 0 : 1;
-            if(drop.generation == 0 || drop.custom.w <= NoLanding * 0.5f)
+        u32 below = 0;
+        // touches the CPU sees a step from the GPU's, within tolerance
+        u32 nearThreshold = 0;
+        // a step that met the surface where the GPU's did not; true if only
+        // by the tolerance, which it counts
+        const auto grazes = [&](f32 gap) {
+            const bool grazing = gap > -Up;
+            nearThreshold += grazing ? 1 : 0;
+            return grazing;
+        };
+        for(u32 slot = 0; slot < rain.count; ++slot) {
+            const auto& drop = snapshot.particles[slot];
+            below += clearance(drop.position) > -Up ? 0 : 1;
+            if(drop.generation == 0) {
+                ++unlanded;
                 continue;
+            }
 
-            ++landed;
-            const auto landingStep = drop.custom.w;
-            const auto top = dropStart(rain, slot, drop.generation);
-            const auto finalStep = static_cast<f32>(steps - 1);
-            const auto landedAt =
-                static_cast<u32>(std::clamp(landingStep, 0.0f, finalStep));
-            const auto since = steps - 1 - landedAt;
-            const auto fallen = top + stepFall * static_cast<f32>(since);
-            const bool onFall = near(drop.position, fallen, Tolerance) &&
-                                drop.ageSteps == since;
-            offFall += onFall ? 0 : 1;
+            // since its landing, from the box's top
+            const auto landing = last - drop.ageSteps;
+            auto at = dropStart(rain, slot, drop.generation);
+            bool fell = true;
+            for(u32 step = landing + 1; step <= last && fell; ++step) {
+                at = stepped(rain, at, worldOf(step));
+                const auto gap = clearance(at);
+                if(gap <= 0.0f)
+                    fell = grazes(gap);
+            }
+            offFall += fell && near(at, drop.position) ? 0 : 1;
 
-            const auto landing =
-                Vec3{drop.custom.x, drop.custom.y, drop.custom.z};
-            const auto from = dropStart(rain, slot, drop.generation - 1);
-            const auto across =
-                std::hypot(landing.x - from.x, landing.z - from.z);
-            const auto moves = std::round(across / stepAcross);
-            const auto last = from + stepFall * moves;
-            const auto before = from + stepFall * (moves - 1.0f);
-            const bool onLastFall =
-                moves >= 1.0f && std::abs(last.x - landing.x) <= Tolerance &&
-                std::abs(last.z - landing.z) <= Tolerance;
-            const bool onSurface =
-                std::abs(landing.y - surfaceHeight(landing)) <=
-                Tolerance;
-            const bool firstTouch =
-                last.y <= landing.y + Tolerance &&
-                before.y > surfaceHeight(before) - Tolerance;
-            const bool inTime = landingStep >= 0.0f &&
-                                landingStep < static_cast<f32>(steps) &&
-                                landingStep == std::floor(landingStep);
-            offLanding +=
-                onLastFall && onSurface && firstTouch && inTime ? 0 : 1;
+            // the fall before, from its birth to the step it met the surface
+            const auto birth = static_cast<u32>(drop.custom.w);
+            bool landed = drop.custom.w == static_cast<f32>(birth) &&
+                          birth < landing &&
+                          (drop.generation > 1 || birth == 0);
+            at = dropStart(rain, slot, drop.generation - 1);
+            for(u32 step = birth + 1; step < landing && landed; ++step) {
+                at = stepped(rain, at, worldOf(step));
+                const auto gap = clearance(at);
+                if(gap <= 0.0f)
+                    landed = grazes(gap);
+            }
+            if(landed) {
+                const auto touch = stepped(rain, at, worldOf(landing));
+                const auto gap = clearance(touch);
+                if(gap > 0.0f)
+                    landed = grazes(-gap);
+                const Vec3 onSurface{touch.x, surfaceHeight(touch), touch.z};
+                const Vec3 recorded{
+                    drop.custom.x,
+                    drop.custom.y,
+                    drop.custom.z
+                };
+                landed = landed && near(onSurface, recorded);
+            }
+            offLanding += landed ? 0 : 1;
         }
 
-        const bool passed = landed == count && offFall == 0 &&
-                            offLanding == 0 && belowSurface == 0;
+        const bool passed = unlanded == 0 && offFall == 0 && offLanding == 0 &&
+                            below == 0 && nearThreshold <= rain.count / 100;
         std::println(
-            "  rain: {} ({} of {} landed, {} landings off their fall or the "
-            "surface, {} drops off their fall, {} below the surface)",
+            "  rain at frame {} from world step {}: {} ({} of {} landed, {} "
+            "landings off, {} falls off, {} below the surface, {} near the "
+            "threshold)",
+            snapshot.frame,
+            worldBase,
             passed ? "ok" : "FAIL",
-            landed,
-            count,
+            rain.count - unlanded,
+            rain.count,
             offLanding,
             offFall,
-            belowSurface
+            below,
+            nearThreshold
+        );
+
+        return passed;
+    }
+
+    // WeatherProbe.slang's probes: every slot's wind at its own place and
+    // world step held against the CPU's
+    bool checkWeather(RHIDevice& device) {
+        constexpr u32 Places = 64 * 64;
+        constexpr u32 ProbedSteps = 10;
+        constexpr f32 Tolerance = 5.0e-4f;
+        constexpr std::array Copies{1u};
+
+        const ParticleEffectDesc probes{
+            .name = "probes",
+            .shader = "Engine/Effects/Sample/Island/WeatherProbe.slang",
+            .count = Places * ProbedSteps,
+            .seed = 1,
+            .emitter = Vec4{0.0f, 0.0f, 0.0f, 20.0f}
+        };
+        const auto snapshot = run(device, probes, 0, Copies).front();
+
+        f32 worst = 0.0f;
+        for(const auto& probe: snapshot.particles) {
+            const auto step = std::bit_cast<u32>(probe.custom.x);
+            const auto wind =
+                windAt(Vec2{probe.position.x, probe.position.z}, step);
+            worst = std::max(
+                {worst,
+                 std::abs(wind.x - probe.velocity.x),
+                 std::abs(wind.y - probe.velocity.z)}
+            );
+        }
+
+        const bool passed = worst <= Tolerance;
+        std::println(
+            "  weather: {} (the wind within {:.1e} m/s of the CPU's at {} "
+            "places and {} world steps)",
+            passed ? "ok" : "FAIL",
+            worst,
+            Places,
+            ProbedSteps
         );
 
         return passed;
@@ -277,7 +381,20 @@ int main() {
     try {
         auto device = CreateDevice();
         std::println("ParticleCheck");
-        const std::array results{checkReplay(*device), checkRain(*device)};
+
+        const auto rain = rainDesc();
+        constexpr std::array RainCopies{1u, 60u, Frames};
+        // a later start, so the falls cross the edge of the world's loop
+        constexpr u32 LateBase = LoopSteps - 200;
+        constexpr std::array LateCopies{Frames};
+        const auto early = run(*device, rain, 0, RainCopies);
+        const auto late = run(*device, rain, LateBase, LateCopies);
+
+        std::vector<bool> results{checkReplay(*device)};
+        for(const auto& snapshot: early)
+            results.push_back(checkRain(rain, snapshot, 0));
+        results.push_back(checkRain(rain, late.front(), LateBase));
+        results.push_back(checkWeather(*device));
         const auto passed = std::ranges::count(results, true);
         std::println("ParticleCheck: {} of {} passed", passed, results.size());
 

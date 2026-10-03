@@ -113,7 +113,10 @@ inline ParticleEffectDesc sparksDesc() {
   - `IslandScene.h`: 섬, 달, 하늘, 불, 티피의 숫자. C++도 같은 파일을 읽는다.
   - `IslandShapes.slang`: `islandCrown(xz)`, `tipiRoof(xz)`, `tipiReach`, `tipiApothem`.
     비가 앉는 면, 불씨가 갇히는 티피가 여기 있다.
-  - `Weather.slang`: `fireBreath(effect.worldStep)`. 불빛과 불꽃이 같이 숨 쉰다.
+  - `Weather.slang`: `fireBreath(effect.worldStep)`과 `windAt(xz, effect.worldStep)`.
+    불빛과 불꽃이 같이 숨 쉬고, 비와 불씨와 불꽃이 같은 바람을 받는다. 바람은 돌풍이
+    바람 방향으로 흘러가는 함수라서, 같은 자리 같은 스텝이면 C++(`Weather.hpp`)도 같은
+    값을 낸다(`ParticleCheck`가 비의 낙하를 그렇게 다시 계산한다).
 
 ## 4. 규칙
 

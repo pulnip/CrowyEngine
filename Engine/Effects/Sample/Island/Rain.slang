@@ -1,24 +1,22 @@
-// Rain over the island: drops fall through a box, and where one meets the
-// sea or the sand it leaves a ring that spreads and fades; the tipi keeps
-// them off its floor.
+// Rain over the island: drops fall through a box, carried by the wind, and
+// where one meets the sea or the sand it leaves a ring that spreads and
+// fades; the tipi keeps them off its floor.
 
 #include "Effect.slang"
 #include "IslandShapes.slang"
+#include "Weather.slang"
 
 // what the desc's emitter and params mean here
 float3 boxCenter() { return effect.emitter.xyz; }
 float boxHalfHeight() { return effect.emitter.w; }
 float2 boxHalfExtent() { return effect.params[0].xy; }
 float fallSpeed() { return effect.params[0].z; }
-float2 wind() { return float2(effect.params[0].w, effect.params[1].x); }
 float streakSeconds() { return effect.params[1].y; }
 float streakBrightness() { return effect.params[1].z; }
 float ringOpacity() { return effect.params[1].w; }
 
 // how long a ring spreads
 static const uint RingSteps = 36u;
-// custom.w before a drop's first landing
-static const float NoLanding = -1.0e6;
 
 // the sea at 0, the sand's crown, or the tipi's pyramid, which stops the
 // rain over its open facets and its smoke hole too
@@ -40,16 +38,18 @@ float3 dropPosition(uint slot, uint generation, bool anywhere) {
 Particle spawn(uint slot, uint generation) {
     Particle p = (Particle)0;
     p.position = dropPosition(slot, generation, true);
-    p.velocity = float3(wind().x, -fallSpeed(), wind().y);
+    p.velocity = float3(0.0, -fallSpeed(), 0.0);
     // a drop is reborn where it lands, never by age
     p.lifeSteps = EventLife;
     p.generation = generation;
     p.size = 0.006;
-    p.custom = float4(0.0, 0.0, 0.0, NoLanding);
     return p;
 }
 
 void update(inout Particle p, uint slot) {
+    // the wind carries it across; it falls at its own speed
+    float2 wind = windAt(p.position.xz, effect.worldStep);
+    p.velocity = float3(wind.x, -fallSpeed(), wind.y);
     float3 next = p.position + p.velocity * effect.dt;
     float ground = surfaceHeight(next.xz);
     if(next.y > ground) {
@@ -57,8 +57,9 @@ void update(inout Particle p, uint slot) {
         return;
     }
 
-    // the landing and its step, then the drop again at the box's top
-    p.custom = float4(next.x, ground, next.z, float(effect.step));
+    // the landing and the step its fall began, then the drop again at the
+    // box's top; its age from here on is its ring's
+    p.custom = float4(next.x, ground, next.z, float(effect.step - p.ageSteps));
     p.generation += 1u;
     p.position = dropPosition(slot, p.generation, false);
     p.ageSteps = 0u;
@@ -110,13 +111,12 @@ float4 fs_streaks(RainVertex v) : SV_Target {
 [shader("vertex")]
 RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     Particle p = loadParticle(slot);
-    float since = float(effect.step) - p.custom.w;
-    float t = since / float(RingSteps);
+    float t = float(p.ageSteps) / float(RingSteps);
     // a drop the tipi stopped leaves no ring; one on the far sand a wider one
     float crown = islandCrown(p.custom.xz);
     bool onTipi = tipiRoof(p.custom.xz) > max(crown, 0.0);
     bool onSand = crown > 0.0;
-    bool showing = p.custom.w > NoLanding * 0.5 && t < 1.0 && !onTipi;
+    bool showing = p.generation > 0u && t < 1.0 && !onTipi;
     float radius = showing ? lerp(0.02, onSand ? 0.3 : 0.2, t) : 0.0;
     float2 corner = stripCorner(vertexID);
     float3 world = p.custom.xyz +

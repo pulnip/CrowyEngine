@@ -42,3 +42,7 @@
 // the canvas stops under the smoke hole and leaves the first facets open
 #define ISLAND_TIPI_CANVAS_TOP_Y 3.57f
 #define ISLAND_TIPI_OPEN_FACETS 3u
+
+// the mean wind in m/s across x and z, and how hard its gusts blow
+#define ISLAND_WIND 1.15f, 0.38f
+#define ISLAND_GUST 1.8f
