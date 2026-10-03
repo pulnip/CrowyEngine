@@ -33,6 +33,16 @@ namespace Crowy
             };
         }
 
+        // cut where the atlas's alpha falls below the row's cutoff, in depth too
+        MaterialPipelineDesc maskedPipeline() {
+            auto pipeline = opaquePipeline();
+            pipeline.fragmentShader.entryPoint = "fs_masked";
+            pipeline.maskShader = {.path = pipeline.fragmentShader.path, .entryPoint = "fs_masked_depth"};
+            pipeline.domain = MaterialDomain::Masked;
+
+            return pipeline;
+        }
+
         const StageMaterial& materialNamed(const StageDocument& document, StrView id) {
             return *std::ranges::find(document.materials, id, &StageMaterial::id);
         }
@@ -128,6 +138,10 @@ namespace Crowy
             };
             if(!quad.emissiveChannel.empty())
                 material.maps.emissive = texture;
+            if(atlas.kind == StageMaterialKind::Masked) {
+                material.data.alphaCutoff = atlas.cutoff;
+                material.pipeline = maskedPipeline();
+            }
 
             return scene.Materials().Add(std::move(material));
         }

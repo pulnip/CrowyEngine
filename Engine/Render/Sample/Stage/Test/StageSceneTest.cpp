@@ -178,6 +178,31 @@ TEST(StageScene, AQuadsFrontTopLeftTakesItsFirstUV) {
     EXPECT_FLOAT_EQ(rect.w, 0.5f);
 }
 
+// a masked row draws its quads Masked at its own cutoff; the others and the
+// palette stay opaque
+TEST(StageScene, AMaskedRowCutsItsQuadsAtItsCutoff) {
+    const Fixture f;
+    const auto& opaque = f.scene.Materials().GetRef(f.bindings.quadMaterials[0]);
+    EXPECT_EQ(opaque.pipeline.domain, MaterialDomain::Opaque);
+    EXPECT_EQ(opaque.pipeline.fragmentShader.entryPoint, "fs_opaque");
+
+    auto stage = miniStage();
+    auto& signs = *std::ranges::find(stage.document.materials, "Signs", &StageMaterial::id);
+    signs.kind = StageMaterialKind::Masked;
+    signs.cutoff = 0.25f;
+    RenderScene scene;
+    const auto bindings = populateStage(scene, stage, geometryOf(stage), texturesOf(stage));
+
+    const auto& masked = scene.Materials().GetRef(bindings.quadMaterials[0]);
+    EXPECT_EQ(masked.pipeline.domain, MaterialDomain::Masked);
+    EXPECT_EQ(masked.data.alphaCutoff, 0.25f);
+    EXPECT_EQ(masked.pipeline.fragmentShader.entryPoint, "fs_masked");
+    EXPECT_EQ(masked.pipeline.maskShader.entryPoint, "fs_masked_depth");
+    EXPECT_TRUE(masked.pipeline.maskShader.path == masked.pipeline.fragmentShader.path);
+    EXPECT_EQ(masked.data.uvScaleOffset, opaque.data.uvScaleOffset);
+    EXPECT_EQ(scene.Materials().GetRef(bindings.palette).pipeline.domain, MaterialDomain::Opaque);
+}
+
 TEST(StageScene, AKeyShowsItsRowsAndScalesItsLightGroups) {
     Fixture f;
     const auto& light = f.scene.Lights().GetRef(f.bindings.lights[0]);

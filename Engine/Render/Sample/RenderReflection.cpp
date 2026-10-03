@@ -47,6 +47,8 @@ namespace Crowy
         .SetProperty("custom0", &MaterialData::custom0)
         .SetProperty("custom1", &MaterialData::custom1)
         .SetProperty("uvScaleOffset", &MaterialData::uvScaleOffset)
+        .SetProperty("alphaCutoff", &MaterialData::alphaCutoff)
+        .SetUIRange(0.0f, 1.0f)
     CROWY_STRUCT_END(MaterialData)
     // clang-format on
 }

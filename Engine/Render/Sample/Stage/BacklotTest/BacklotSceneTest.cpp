@@ -38,6 +38,19 @@ namespace
         return file;
     }
 
+    // empty handles stand in for the pool's allocations and the uploaded images
+    StageBindings populateBacklot(RenderScene& scene) {
+        const auto& stage = backlotStage();
+        StageGeometry geometry;
+        for(const auto& model: stage.models)
+            geometry.models.emplace_back(model.slots.size());
+        StageTextureHandles textures;
+        for(const auto& material: stage.document.materials)
+            textures.emplace(material.texture, TextureHandle{});
+
+        return populateStage(scene, stage, geometry, textures);
+    }
+
     // Backlot's inventory per lighting key
     struct KeyInventory {
         CStr key = "";
@@ -47,8 +60,7 @@ namespace
     };
 }
 
-// the rows each key shows, without a device: empty handles stand in for the
-// pool's allocations and the uploaded images
+// the rows each key shows, without a device
 TEST(BacklotScene, EachKeyShowsItsInventory) {
     constexpr std::array Inventory{
         KeyInventory{.key = "day", .instances = 1328, .triangles = 466462, .lights = 0},
@@ -59,14 +71,8 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
 
     const auto& stage = backlotStage();
     const auto& document = stage.document;
-    StageGeometry geometry;
-    for(const auto& model: stage.models)
-        geometry.models.emplace_back(model.slots.size());
-    StageTextureHandles textures;
-    for(const auto& material: document.materials)
-        textures.emplace(material.texture, TextureHandle{});
     RenderScene scene;
-    const auto bindings = populateStage(scene, stage, geometry, textures);
+    const auto bindings = populateBacklot(scene);
     EXPECT_EQ(scene.Materials().Count(), countStageMaterials(stage));
 
     const auto visible = [&](PrimitiveHandle primitive) {
@@ -95,6 +101,23 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
         EXPECT_EQ(quads, 161) << expected.key;
         EXPECT_EQ(static_cast<usize>(lights), expected.lights) << expected.key;
     }
+}
+
+// the sign and game atlases cut at their rows' 0.5; every other quad is opaque
+TEST(BacklotScene, TheSignAndGameAtlasesAreMasked) {
+    RenderScene scene;
+    const auto bindings = populateBacklot(scene);
+    ASSERT_EQ(bindings.quadMaterials.size(), 179u);
+
+    const auto masked = std::ranges::count_if(bindings.quadMaterials, [&](MaterialHandle handle) {
+        const auto& material = scene.Materials().GetRef(handle);
+        return material.pipeline.domain == MaterialDomain::Masked && material.data.alphaCutoff == 0.5f;
+    });
+    const auto opaque = std::ranges::count_if(bindings.quadMaterials, [&](MaterialHandle handle) {
+        return scene.Materials().GetRef(handle).pipeline.domain == MaterialDomain::Opaque;
+    });
+    EXPECT_EQ(masked, 130);
+    EXPECT_EQ(opaque, 49);
 }
 
 TEST(BacklotScene, CutsTakeTheEnginesSignsAndFittedNearPlanes) {
