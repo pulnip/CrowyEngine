@@ -268,6 +268,27 @@ TEST(Light, TheShadowedRowCarriesTheFit) {
     EXPECT_EQ(f.renderer.Visible(SceneRenderer::ShadowView).primitiveCount, 1u);
 }
 
+// a far plane that casts nothing, as a sea, leaves the fit to the casters
+TEST(Light, AVisibleNonCasterStaysOutsideTheFit) {
+    Fixture f;
+    f.AddPrimitive(Box);
+    f.AddPrimitive(
+        AABB3D{
+            .center = {50.0f, 0.0f, 0.0f},
+            .halfScale = {40.0f, 0.1f, 40.0f}
+        },
+        PrimitiveFlags::Visible
+    );
+    f.Add(CastingSun);
+
+    f.renderer.BeginFrame(f.scene, MapSize);
+
+    const auto& row = f.renderer.LightRows().front();
+    const auto fit = fitDirectionalShadow(row.direction, Box, MapSize);
+    EXPECT_EQ(row.shadowIndex, 0u);
+    EXPECT_EQ(row.worldToShadow, fit.worldToShadow);
+}
+
 // With a map but nothing to fit, row 1 is identity and its set is empty
 // without a cull: the box sits inside identity's clip space, so a cull
 // would keep it
