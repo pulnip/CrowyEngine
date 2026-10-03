@@ -4,7 +4,7 @@
 C++ 클래스도 필요 없다. 엔진은 슬롯마다 파티클 하나(64바이트)를 GPU 필드에 두고,
 녹화되는 프레임마다 한 스텝씩 `cs_step`을 돌린 뒤, 파일에 적은 그리기로 그린다.
 예제는 `Engine/Effects/Sample/Island/`의 `Embers.slang`, `Rain.slang`,
-`Meteors.slang`이다.
+`Stars.slang`, `Meteors.slang`이다.
 
 ## 1. 파일 하나
 
@@ -91,7 +91,7 @@ effects->Add(
 - `draws`: 그리기마다 `vs_<entry>`와 `fs_<entry>`를 쓴다. `Additive`는 빛을 더하고(순서
   상관없음), `Alpha`는 슬롯 순서대로 덮는다. 이펙트는 깊이를 쓰지 않으니 `Alpha`는 먼저
   그려진 이펙트를 앞뒤 없이 모두 덮는다. 그래서 `Alpha` 그리기는 `Additive`보다 앞에
-  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 불씨, 유성 순서).
+  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 별, 유성, 불씨 순서).
 - 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 유리(Translucent)보다
   먼저 그려진다.
 
@@ -129,6 +129,9 @@ effects->Add(
   `ageSteps`는 태어난 뒤나 마지막 사건 뒤의 스텝 수다.
 - 안 보이는 슬롯은 버텍스 단계에서 크기 0으로 접는다(`Rain.slang`의 물결,
   `Meteors.slang`의 쉬는 시간).
+- 하늘에 붙은 것은 방향만 저장하고, 버텍스 단계에서 `cameraPosition`으로부터 일정한
+  거리(far plane 안쪽)에 놓는다. 그러면 카메라를 따라오고 시차가 없다(`Stars.slang`,
+  `Meteors.slang`). 움직임도 나이의 함수로 계산하면 `update`가 비어도 된다.
 
 ## 5. 돌려 보기
 

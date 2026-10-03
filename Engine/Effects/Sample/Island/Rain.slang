@@ -2,6 +2,7 @@
 // sea or the sand it leaves a ring that spreads and fades.
 
 #include "Effect.slang"
+#include "IslandScene.h"
 
 // what the desc's emitter and params mean here
 float3 boxCenter() { return effect.emitter.xyz; }
@@ -83,16 +84,20 @@ RainVertex vs_streaks(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     Particle p = loadParticle(slot);
     float2 corner = stripCorner(vertexID);
     float3 axis = normalize(p.velocity);
-    float3 toCamera = normalize(cameraPosition.xyz - p.position);
+    float3 toCamera = cameraPosition.xyz - p.position;
+    float away = length(toCamera);
     float3 side = normalize(cross(axis, toCamera));
     float streak = length(p.velocity) * streakSeconds();
-    float3 world = p.position + side * (corner.x * p.size) -
+    // never under half a pixel wide, dimmed for what it was widened by
+    float halfWidth = max(p.size, 0.5 * ISLAND_PIXEL_ANGLE * away);
+    float3 world = p.position + side * (corner.x * halfWidth) -
                    axis * ((corner.y * 0.5 + 0.5) * streak);
 
     RainVertex o;
     o.position = toClip(world);
     o.corner = corner;
-    o.fade = 1.0;
+    // far drops fade out instead of sparkling over the stars
+    o.fade = (1.0 - smoothstep(6.0, 16.0, away)) * p.size / halfWidth;
     return o;
 }
 
@@ -102,7 +107,7 @@ float4 fs_streaks(RainVertex v) : SV_Target {
     // bright at the drop, faint at the tail
     float along = 0.5 - 0.5 * v.corner.y;
     float3 color = float3(0.55, 0.62, 0.8) * streakBrightness();
-    return float4(color * across * along, 1.0);
+    return float4(color * across * along * v.fade, 1.0);
 }
 
 // a flat quad on the surface where the drop last landed, its ring growing

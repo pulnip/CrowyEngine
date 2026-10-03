@@ -1,13 +1,18 @@
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <numbers>
 #include <vector>
 
 #include "EffectSystem.hpp"
+#include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
+#include "Geometry/Overlap3D.hpp"
+#include "Island/IslandScene.h"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "ParticleEffects.hpp"
+#include "PipelineCache.hpp"
 #include "RenderApp.hpp"
 #include "StandardPipeline.hpp"
 #include "WorldClock.hpp"
@@ -17,10 +22,20 @@ namespace Crowy
     // A night island whose effects draw in a hook pass before the glass, one
     // step a recorded frame, so frame 60 is the same picture in every run.
     class Island final: public RenderApp {
+        // the sky's draw: the camera's basis scaled to the frame, the moon
+        struct SkyPush {
+            Vec4 right;
+            Vec4 up;
+            Vec4 forward;
+            Vec4 toMoon;
+        };
+
         static constexpr CStr EffectsHook = "effects";
         // where the campfire burns, on the island's crown
         static constexpr Vec3 FirePosition{0.0f, 0.4f, 0.0f};
         static constexpr f32 FireIntensity = 7.0f;
+        static constexpr Vec3 IslandRadii{ISLAND_RADII};
+        static constexpr Vec3 ToMoon{ISLAND_TO_MOON};
 
         GeometryAllocation sea{};
         GeometryAllocation island{};
@@ -37,9 +52,8 @@ namespace Crowy
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
-            // the shadow map fits every visible bound, so the sea stays small
             const auto seaMesh = MakePlane(Vec2{30.0f, 30.0f});
-            const auto islandMesh = MakeSphere(1.0f, 48, 24);
+            const auto islandMesh = makeEllipsoid(IslandRadii);
             const auto boxMesh = MakeBox(1.0f);
 
             sea = pool.Add(seaMesh.vertices, seaMesh.indices);
@@ -51,9 +65,9 @@ namespace Crowy
             scene.Lights().Add(
                 LightSnapshot{
                     .castShadow = true,
-                    .color = {0.55f, 0.65f, 1.0f},
-                    .intensity = 0.35f,
-                    .direction = normalize(Vec3{0.35f, -1.0f, 0.55f})
+                    .color = {ISLAND_MOON_COLOR},
+                    .intensity = ISLAND_MOON_INTENSITY,
+                    .direction = -ToMoon
                 }
             );
             fire = scene.Lights().Add(
@@ -95,75 +109,52 @@ namespace Crowy
                 }
             );
 
-            add(scene, water, sea, zeros(), {30.0f, 0.001f, 30.0f});
-            // a flattened sphere whose crown is the fire's ground
+            // casting nothing, the sea stays out of the shadow's fit
+            add(
+                scene,
+                water,
+                sea,
+                unitMat(),
+                {30.0f, 0.001f, 30.0f},
+                PrimitiveFlags::Visible
+            );
+            // an ellipsoid whose crown is the fire's ground
             add(
                 scene,
                 sand,
                 island,
-                {0.0f, -1.2f, 0.0f},
-                ones(),
-                {9.0f, 1.6f, 7.0f}
+                translateMat({0.0f, ISLAND_CENTER_Y, 0.0f}),
+                IslandRadii
             );
             // the hut, behind and left of the fire
-            add(
-                scene,
-                wood,
-                box,
-                {-3.2f, 1.1f, 2.6f},
-                ones(),
-                {1.3f, 1.0f, 1.1f}
-            );
-            add(
-                scene,
-                charcoal,
-                box,
-                {-3.2f, 2.15f, 2.6f},
-                ones(),
-                {1.5f, 0.08f, 1.3f}
-            );
+            addBox(scene, wood, {-3.2f, 1.1f, 2.6f}, {1.3f, 1.0f, 1.1f});
+            addBox(scene, charcoal, {-3.2f, 2.15f, 2.6f}, {1.5f, 0.08f, 1.3f});
             // two crossed logs and the glowing heart between them
-            add(
+            addBox(
                 scene,
                 charcoal,
-                box,
                 FirePosition + Vec3{0.0f, 0.06f, 0.0f},
-                ones(),
                 {0.5f, 0.06f, 0.07f}
             );
-            add(
+            addBox(
                 scene,
                 charcoal,
-                box,
                 FirePosition + Vec3{0.0f, 0.13f, 0.0f},
-                ones(),
                 {0.07f, 0.06f, 0.5f}
             );
-            add(
+            addBox(
                 scene,
                 embers,
-                box,
                 FirePosition + Vec3{0.0f, 0.1f, 0.0f},
-                ones(),
                 {0.16f, 0.08f, 0.16f}
             );
 
+            // the ripples blend over what is drawn before them, so they lead
             effects = std::make_unique<EffectSystem>(Device());
             effects->Add(rainDesc());
+            effects->Add(starsDesc());
+            effects->Add(meteorsDesc());
             effects->Add(embersDesc());
-            effects->Add(
-                ParticleEffectDesc{
-                    .name = "meteors",
-                    .shader = "Engine/Effects/Sample/Island/Meteors.slang",
-                    .count = 24,
-                    .seed = 41,
-                    .prewarmSteps = 240,
-                    .emitter = Vec4{0.0f, 0.0f, 0.0f, 90.0f},
-                    .params = {Vec4{70.0f, 0.12f, 6.0f, 0.0f}, Vec4{}, Vec4{}},
-                    .draws =
-                        {{.entry = "meteors", .blend = EffectBlend::Additive}}
-                }
-            );
         }
 
         FramePipelineDesc DescribePipeline(
@@ -242,11 +233,12 @@ namespace Crowy
                         RHICommandList& cmdList,
                         const HookPassContext& context
                     ) {
-                        return effects->Draw(
-                            cmdList,
-                            context,
-                            Renderer().Pipelines()
-                        );
+                        drawSky(cmdList, context);
+                        return 1 + effects->Draw(
+                                       cmdList,
+                                       context,
+                                       Renderer().Pipelines()
+                                   );
                     }
             });
 
@@ -256,7 +248,7 @@ namespace Crowy
     private:
         static Config makeConfig() {
             return Config{
-                .clearColor = {0.015f, 0.02f, 0.045f, 1.0f},
+                .clearColor = {ISLAND_FAR_SEA, 1.0f},
                 .drawCapacity = 32,
                 .materialCapacity = 16,
                 .shadowMapSize = 2048,
@@ -265,14 +257,15 @@ namespace Crowy
             };
         }
 
-        // a few strides from the fire, a little above it
+        // over the shallows, looking a little up: the fire ahead, the moon
+        // and its path on the water to the right
         static FlyCamera::Config makeCamera() {
             return FlyCamera::Config{
-                .position = {0.6f, 1.7f, -5.5f},
-                .pitch = 0.14f,
+                .position = {0.3f, 1.8f, -9.5f},
+                .pitch = -0.04f,
                 .fovY = std::numbers::pi_v<f32> / 3,
                 .nearZ = 0.05f,
-                .farZ = 200.0f
+                .farZ = 320.0f
             };
         }
 
@@ -291,6 +284,40 @@ namespace Crowy
                      Vec4{1.6f, 0.018f, 24.0f, 0.0f},
                      Vec4{}},
                 .draws = {{.entry = "embers", .blend = EffectBlend::Additive}}
+            };
+        }
+
+        // a dome of stars that follows the camera, a few hundred in frame
+        static ParticleEffectDesc starsDesc() {
+            return ParticleEffectDesc{
+                .name = "stars",
+                .shader = "Engine/Effects/Sample/Island/Stars.slang",
+                .count = 2560,
+                .seed = 53,
+                .emitter = Vec4{0.0f, 0.0f, 0.0f, 170.0f},
+                .params =
+                    {Vec4{0.0349f, 1.5f, 8.0f, 0.0f},
+                     Vec4{0.1f, 2.2f, 7.0f, 0.0f},
+                     Vec4{}},
+                .draws = {{.entry = "stars", .blend = EffectBlend::Additive}}
+            };
+        }
+
+        // a shower from a radiant low on the left, about one in the sky at a
+        // time; the seed puts one high on the left at frame 60
+        static ParticleEffectDesc meteorsDesc() {
+            return ParticleEffectDesc{
+                .name = "meteors",
+                .shader = "Engine/Effects/Sample/Island/Meteors.slang",
+                .count = 12,
+                .seed = 1,
+                .emitter = Vec4{-1.6581f, 0.0873f, 160.0f, 0.0f},
+                .params =
+                    {Vec4{-0.7854f, 0.6109f, 0.1745f, 0.4189f},
+                     Vec4{0.262f, 0.524f, 0.25f, 2.0f},
+                     Vec4{1.2f, 0.125f, 0.0f, 0.0f}},
+                .draws =
+                    {{.entry = "meteors", .blend = EffectBlend::Additive}}
             };
         }
 
@@ -337,15 +364,72 @@ namespace Crowy
             );
         }
 
-        // a unit mesh at `position`, stretched by `scale`; `localHalf` is the
-        // unit mesh's half extent
+        // a unit sphere stretched to `radii` with the stretch's own normals:
+        // the vertex stage turns a normal by the world's rotation alone
+        static MeshData makeEllipsoid(Vec3 radii) {
+            auto mesh = MakeSphere(1.0f, 48, 24);
+            for(auto& vertex: mesh.vertices) {
+                const auto unit = vertex.position;
+                const auto normal = normalize(
+                    Vec3{unit.x / radii.x, unit.y / radii.y, unit.z / radii.z}
+                );
+                const auto tangent =
+                    static_cast<Vec3>(vertex.tangent) * radii;
+                vertex.position = unit * radii;
+                vertex.normal = normal;
+                vertex.tangent = toVec4(
+                    normalize(tangent - normal * dot(normal, tangent)),
+                    vertex.tangent.w
+                );
+            }
+
+            return mesh;
+        }
+
+        // a triangle over the screen at the far plane, tested against the
+        // scene's depth and writing none
+        static RHIGraphicsPipelineStateDesc skyPipelineDesc(
+            const HookPassFormats& formats
+        ) {
+            constexpr CStr SkyShader = "Engine/Effects/Sample/Island/Sky.slang";
+
+            RHIGraphicsPipelineStateDesc desc{
+                .preRasterizer =
+                    RHILegacyFrontendDesc{
+                        .topology = RHIPrimitiveTopology::TriangleList,
+                        .vertexShader =
+                            RHIShaderDesc{
+                                .path = SkyShader,
+                                .entryPoint = "vs_sky"
+                            }
+                    },
+                .rasterizer =
+                    RHIRasterizerState{.cullMode = RHICullMode::None},
+                .fragmentShader =
+                    RHIShaderDesc{.path = SkyShader, .entryPoint = "fs_sky"},
+                .renderTargetCount = formats.colors.size(),
+                .profile = "sm_6_8"
+            };
+            std::ranges::copy(formats.colors, desc.renderTargetFormats.begin());
+            desc.depthStencil = RHIDepthStencilState{
+                .format = formats.depth,
+                .depthWriteEnable = false,
+                .depthFunc = RHIComparisonFunc::LessEqual
+            };
+
+            return desc;
+        }
+
+        // a mesh placed by `localToWorld`; `localHalf` is its half extent
+        // around its origin
         static void add(
             RenderScene& scene,
             MaterialHandle material,
             const GeometryAllocation& geometry,
-            Vec3 position,
+            const Mat4& localToWorld,
             Vec3 localHalf,
-            Vec3 scale = ones()
+            PrimitiveFlags flags =
+                combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow)
         ) {
             const AABB3D local{.center = zeros(), .halfScale = localHalf};
             const auto mesh = scene.Meshes().Add(
@@ -358,15 +442,49 @@ namespace Crowy
             );
             scene.Primitives().Add(
                 PrimitiveSnapshot{
-                    .localToWorld = translateMat(position) * scaleMat(scale),
-                    .worldBounds =
-                        AABB3D{
-                            .center = position,
-                            .halfScale = localHalf * scale
-                        },
-                    .mesh = mesh
+                    .localToWorld = localToWorld,
+                    .worldBounds = transformAABB3D(localToWorld, local),
+                    .mesh = mesh,
+                    .flags = flags
                 }
             );
+        }
+
+        // the unit box at `position`, stretched along its faces by `scale`
+        void addBox(
+            RenderScene& scene,
+            MaterialHandle material,
+            Vec3 position,
+            Vec3 scale
+        ) const {
+            add(
+                scene,
+                material,
+                box,
+                translateMat(position) * scaleMat(scale),
+                ones()
+            );
+        }
+
+        // the night sky first, where the scene left the depth clear
+        void drawSky(RHICommandList& cmdList, const HookPassContext& context) {
+            // the window main opens
+            constexpr auto Aspect = 1280.0f / 720.0f;
+
+            const auto view = Camera().View();
+            const auto projection = Camera().Projection(Aspect);
+            const auto basis = effectViewOf(view);
+            const SkyPush push{
+                .right = toVec4(basis.right / projection[0].x, 0.0f),
+                .up = toVec4(basis.up / projection[1].y, 0.0f),
+                .forward = toVec4(Vec3{view[0].z, view[1].z, view[2].z}, 0.0f),
+                .toMoon = toVec4(ToMoon, 0.0f)
+            };
+            cmdList.SetPipelineState(
+                Renderer().Pipelines().Resolve(skyPipelineDesc(context.formats))
+            );
+            cmdList.SetPushGraphicsConstants(push);
+            cmdList.Draw(3, 1);
         }
 
         // one step a frame, the clock the effects, the light and the sea share
