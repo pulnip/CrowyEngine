@@ -934,6 +934,8 @@ namespace Crowy
         // both outside any pass: the pool's copies, then the UI's
         frameInputs.geometryAcquires = geometryPool->RecordUploads(cmdList);
         frameInputs.overlayAcquires = OnPrepareUI(cmdList);
+        frameHooks = OnRecordSimulation(cmdList);
+        frameInputs.hooks = frameHooks;
         // resolved after any rebuild above, so a request keeps its name
         frameInputs.frame = FrameNumber();
         frameInputs.captures = takeDueCaptures();
@@ -944,6 +946,8 @@ namespace Crowy
             targetCaptures->AddInFlight(std::move(readback));
         frameCaptures.clear();
         frameInputs.captures = {};
+        frameInputs.hooks = {};
+        frameHooks.clear();
 
         // the edges are counted as they are recorded
         const auto passStats = pipeline->Stats();

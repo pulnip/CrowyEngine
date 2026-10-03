@@ -71,6 +71,12 @@ namespace Crowy
         Vec4 params{};
     };
 
+    // draws a sample records: FrameInputs::hooks binds a record to the
+    // name, which the walker calls after opening the pass and binding view 0
+    struct HookPassDesc {
+        Str hook;
+    };
+
     struct PassDesc {
         // the event, the encoder label, the per-pass stats
         Str name;
@@ -79,7 +85,7 @@ namespace Crowy
         std::optional<DepthTargetUse> depth;
         // sampled in the fragment stage
         std::vector<FrameTargetID> reads;
-        std::variant<MeshPassDesc, FullscreenPassDesc> kind;
+        std::variant<MeshPassDesc, FullscreenPassDesc, HookPassDesc> kind;
     };
 
     struct FramePipelineDesc {
@@ -101,9 +107,34 @@ namespace Crowy
             default;
     };
 
+    // the formats of a hook pass's attachments
+    struct HookPassFormats {
+        std::span<const RHIPixelFormat> colors;
+        RHIPixelFormat depth = RHIPixelFormat::Unknown;
+    };
+
+    // what a hook's record sees inside its pass
+    struct HookPassContext {
+        StrView pass;
+        HookPassFormats formats;
+        // the readable IDs of the pass's reads, in order
+        std::span<const u64> reads;
+    };
+
+    // a sample's draws for one hook pass, and what its own work released
+    // for them, acquired at the pass's begin
+    struct PassHook {
+        Str name;
+        std::span<const RHIBufferBarrier> bufferAcquires;
+        std::span<const RHITextureBarrier> textureAcquires;
+        // returns the draws it recorded
+        std::move_only_function<u32(RHICommandList&, const HookPassContext&)>
+            record;
+    };
+
     struct PassStats {
         Str name;
-        // the list's; 0 for a fullscreen pass
+        // the list's, or a hook pass's record's; 0 for a fullscreen pass
         u32 draws = 0;
         u32 runs = 0;
         u64 triangles = 0;
@@ -148,6 +179,8 @@ namespace Crowy
         std::span<const RHITextureBarrier> overlayAcquires;
         // inside the overlay pass, after its draws
         std::move_only_function<void(RHICommandList&)> recordOverlay;
+        // one per hook pass in the list, and no other
+        std::span<PassHook> hooks;
         // the frame Record runs in, as Submit numbers it
         u64 frame = 0;
         // one per target, each copied out after its last use in a blit pass
@@ -177,7 +210,7 @@ namespace Crowy
             RHIPixelFormat depthFormat = RHIPixelFormat::Unknown;
             CompiledBarriers acquires;
             CompiledBarriers releases;
-            // a mesh pass's; null for a fullscreen pass
+            // a mesh pass's; null for the others
             RAII<DrawList> drawList;
             // a fullscreen pass's key, resolved in every Prepare, so a
             // shader reload reaches it
@@ -199,6 +232,8 @@ namespace Crowy
         using TargetUsages = std::vector<RHITextureUsage>;
         using TextureBarriers = std::vector<RHITextureBarrier>;
         using ColorAttachments = std::vector<RHIColorAttachment>;
+        using HookBindings = std::vector<PassHook*>;
+        using ReadIDs = std::vector<u64>;
 
     private:
         RHIDevice& device;
@@ -225,6 +260,9 @@ namespace Crowy
         TextureBarriers acquireScratch;
         TextureBarriers releaseScratch;
         ColorAttachments colorScratch;
+        // per pass, the frame's binding of a hook pass; null for the others
+        HookBindings hookBindings;
+        ReadIDs readScratch;
 
     public:
         ~FramePipeline();
@@ -249,6 +287,8 @@ namespace Crowy
             const RenderScene& scene,
             const MeshPassOverride& debug
         );
+        // throws std::invalid_argument, before any pass, when inputs.hooks
+        // does not bind each hook pass exactly once and nothing else
         void Record(
             RHICommandList& cmdList,
             const SceneRenderer& renderer,
@@ -256,6 +296,9 @@ namespace Crowy
         );
 
         OverlayFormats Overlay() const noexcept;
+        // the formats of the pass binding `hook`; empty when no pass does,
+        // as in a data view's list
+        std::optional<HookPassFormats> FindHook(StrView hook) const noexcept;
         std::span<const PassStats> Stats() const noexcept { return stats; }
         // the ViewData rows the mesh passes name, so SceneRenderer keeps them
         u32 ViewCount() const noexcept { return viewCount; }
@@ -283,5 +326,7 @@ namespace Crowy
             const FrameInputs& inputs
         ) const noexcept;
         void recordCaptures(RHICommandList& cmdList, FrameInputs& inputs);
+        // each hook pass's binding in inputs.hooks, or a refusal
+        void bindHooks(FrameInputs& inputs);
     };
 }

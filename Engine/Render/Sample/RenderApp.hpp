@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -152,6 +153,8 @@ namespace Crowy
         TargetCaptureQueuePtr targetCaptures;
         // this frame's, filled by the walker and then handed to the queue
         TargetReadbacks frameCaptures;
+        // OnRecordSimulation's, alive until the walker has recorded
+        std::vector<PassHook> frameHooks;
 
         // this frame's counts, summed over its passes; OnFrameEnd adds the
         // report and the totals
@@ -221,6 +224,12 @@ namespace Crowy
         // runs inside the overlay pass, after its draws
         virtual void OnRecordUI(RHICommandList&) {}
 
+        // runs before the first pass, after OnPrepareUI: the sample's own
+        // GPU work, and one binding per hook pass of the running list
+        virtual std::vector<PassHook> OnRecordSimulation(RHICommandList&) {
+            return {};
+        }
+
         // the lit views' clear, as a lighting key's sky; the walker is
         // rebuilt with it at the next frame
         void SetClearColor(Color color) noexcept { config.clearColor = color; }
@@ -240,6 +249,11 @@ namespace Crowy
         CommandPort* Port() noexcept { return port.get(); }
         // the newest frame that ended; empty before frame 1 has
         const FrameStats& LastFrameStats() const noexcept;
+        // the running list's pass binding `hook`; empty when the list has
+        // none, as a data view's
+        std::optional<HookPassFormats> FindHook(StrView hook) const noexcept {
+            return pipeline->FindHook(hook);
+        }
 
     private:
         // a new walker from DescribePipeline(pipelineConfig)
