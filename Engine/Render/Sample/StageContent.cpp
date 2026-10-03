@@ -6,6 +6,7 @@
 
 #include "ClassRegistry.hpp"
 #include "Geometry/Overlap3D.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -33,14 +34,14 @@ namespace Crowy
     StageContent::StageContent(
         RenderScene& scene,
         LoadedStage& stage,
-        const StageBindings& bindings
+        const StageGeometry& geometry,
+        const StageTextureHandles& textures
     )
         : scene(scene),
           stage(stage),
-          bindings(bindings),
-          cuts(editorCutsOf(stage)),
-          keys(keyNamesOf(stage.document)) {
-        addObjects();
+          geometry(geometry),
+          textures(textures) {
+        build();
     }
 
     Color StageContent::ApplyKey(StrView key) {
@@ -149,6 +150,52 @@ namespace Crowy
     void StageContent::ApplyLight(usize light) {
         scene.Lights().GetRef(bindings.lights[light]) =
             stageLightSnapshot(stage.document.lights[light], stage.document.lightingKeys[currentKey]);
+    }
+
+    Str StageContent::ReadScene(StrView file) {
+        auto path = toPath(Str(file).c_str());
+        if(path.is_relative())
+            path = stage.document.root / path;
+        try {
+            next = reloadStageDocument(stage, path);
+        }
+        catch(const std::exception& error) {
+            next.reset();
+            return error.what();
+        }
+
+        return {};
+    }
+
+    Str StageContent::SwapScene() {
+        stage.document = std::move(next->document);
+        stage.sprites = std::move(next->sprites);
+        next.reset();
+        scene.Clear();
+        build();
+        const auto& document = stage.document;
+
+        return std::format(
+            "{} instances, {} quads, {} lights, {} cuts, {} keys",
+            document.instances.size(),
+            document.quads.size(),
+            document.lights.size(),
+            cuts.size(),
+            keys.size()
+        );
+    }
+
+    void StageContent::build() {
+        bindings = populateStage(scene, stage, geometry, textures);
+        cuts = editorCutsOf(stage);
+        keys = keyNamesOf(stage.document);
+        objects.clear();
+        primitives.clear();
+        lights.clear();
+        meshes.clear();
+        objectOfSlot.clear();
+        currentKey = 0;
+        addObjects();
     }
 
     void StageContent::addObjects() {

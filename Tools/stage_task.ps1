@@ -38,6 +38,12 @@ $lampName = "instance/lamp-ne"
 $scene = Get-Content -Raw -Encoding UTF8 (Join-Path $Backlot "Data\scene.json") | ConvertFrom-Json
 $lampRow = $scene.instances | Where-Object { $_.name -eq "lamp-ne" }
 
+# the two pictures equal at tolerance 0
+function Test-SamePicture([string]$A, [string]$B) {
+    & $tool $A $B --tolerance 0 | Out-Null
+    return $LASTEXITCODE -eq 0
+}
+
 function Assert-That([bool]$Condition, [string]$What) {
     if (-not $Condition) {
         throw "FAIL: $What"
@@ -56,10 +62,26 @@ $failed = $false
 try {
     Set-PortProperty debug showPanel $false
 
+    # 0. the launch: the first revision of Backlot's own scene file
+    $sceneFile = Join-Path $Backlot "Data\scene.json"
+    $original = Get-PortProperty editor scene
+    Assert-That ((Get-PortProperty editor revision) -eq 1) "revision 1 at launch"
+    Assert-That ((Resolve-Path $original).Path -eq (Resolve-Path $sceneFile).Path) "the scene file is Backlot's ($original)"
+
     # 1. the street cut
     Set-EditorField cut street
     Assert-That $true "the street cut"
     $null = Invoke-Port run @{ frames = 3 }
+
+    # 1b. reading the same file again redraws the same picture
+    Set-EditorField key night
+    $nightBefore = Save-Capture "night-before"
+    Set-PortProperty editor reload $true
+    Assert-That ((Get-PortProperty editor reload) -eq $true) "a reload waits for the next frame"
+    $nightAgain = Save-Capture "night-reloaded-same"
+    Assert-That ((Get-PortProperty editor revision) -eq 2) "the reload read the file: $(Get-PortProperty editor status)"
+    Assert-That (Test-SamePicture $nightBefore $nightAgain) "a reload of the same file redraws the same picture at tolerance 0"
+    Set-EditorField key day
 
     # 2. a click on the lamp's pole
     Set-PortProperty editor pickAt $lampPixel
@@ -133,6 +155,45 @@ try {
     Assert-That $true "the night key"
     $night = Save-Capture "night"
     Assert-That (Test-Path $night) "captured $night"
+
+    # 6. a scratch copy of the scene file with the lamp where the gizmo put
+    #    it: reloaded, it draws the gizmo's picture exactly
+    $sceneText = [IO.File]::ReadAllText($sceneFile)
+    $lampLine = '"name": "lamp-ne", "area": "Street", "model": "StreetLamp", "x": 10.5, "y": 0.15, "z": 7.0, "yaw": 180.0,'
+    $movedLine = '"name": "lamp-ne", "area": "Street", "model": "StreetLamp", "x": 11.5, "y": 0.15, "z": 7.0, "yaw": 270.0,'
+    Assert-That ($sceneText.Contains($lampLine)) "the scene file holds lamp-ne's row"
+    $utf8 = New-Object Text.UTF8Encoding $false
+    $movedFile = Join-Path $Out "scene-moved.json"
+    [IO.File]::WriteAllText($movedFile, $sceneText.Replace($lampLine, $movedLine), $utf8)
+    Set-PortProperty editor scene $movedFile
+    Set-PortProperty editor reload $true
+    $reloaded = Save-Capture "night-reloaded-moved"
+    Assert-That ((Get-PortProperty editor revision) -eq 3) "the scratch copy loaded: $(Get-PortProperty editor status)"
+    Assert-That ((Get-PortProperty editor selected) -eq $lampName) "the selection is kept by name"
+    $position = Get-PortProperty selection position
+    Assert-That ($position[0] -eq 11.5 -and (Get-PortProperty selection yaw) -eq 270) "the file puts the lamp at x 11.5, yaw 270"
+    Assert-That (Test-SamePicture $night $reloaded) "the reloaded copy draws the gizmo's picture at tolerance 0"
+
+    # 7. a file naming geometry the launch did not load is refused whole
+    $refusedFile = Join-Path $Out "scene-refused.json"
+    $refusedText = $sceneText.Replace($lampLine, $movedLine).Replace("Models/Street/StreetLamp.fbx", "Models/Street/StreetLampMoved.fbx")
+    [IO.File]::WriteAllText($refusedFile, $refusedText, $utf8)
+    Set-PortProperty editor scene $refusedFile
+    Set-PortProperty editor reload $true
+    $refused = Save-Capture "night-refused"
+    $status = Get-PortProperty editor status
+    Assert-That ((Get-PortProperty editor revision) -eq 3 -and $status.Contains("restart")) "a model the launch did not load is refused: $status"
+    Assert-That ((Get-PortProperty editor scene) -eq $movedFile) "the scene file goes back to the one the rows came from"
+    Assert-That (Test-SamePicture $reloaded $refused) "a refused reload changes nothing on screen"
+
+    # 8. Backlot's own file again: the file wins over the gizmo
+    Set-PortProperty editor scene $original
+    Set-PortProperty editor reload $true
+    $restored = Save-Capture "night-restored"
+    Assert-That ((Get-PortProperty editor revision) -eq 4) "the original file loaded again"
+    $position = Get-PortProperty selection position
+    Assert-That ($position[0] -eq 10.5 -and (Get-PortProperty selection yaw) -eq 180) "the lamp is back at x 10.5, yaw 180"
+    Assert-That (Test-SamePicture $nightBefore $restored) "the original file redraws the launch's picture at tolerance 0"
 }
 catch {
     Write-Host $_

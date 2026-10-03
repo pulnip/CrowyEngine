@@ -1,6 +1,9 @@
 #include <algorithm>
 #include <array>
+#include <filesystem>
+#include <fstream>
 #include <numbers>
+#include <sstream>
 
 #include <gtest/gtest.h>
 
@@ -16,6 +19,23 @@ namespace
         static const auto stage = loadStage(backlotRoot());
 
         return stage;
+    }
+
+    // Backlot's scene file with `from` replaced by `to` once, in a temporary file
+    std::filesystem::path editedScene(StrView name, StrView from, StrView to) {
+        std::ifstream in(backlotRoot() / StageScenePath, std::ios::binary);
+        std::stringstream text;
+        text << in.rdbuf();
+        auto scene = text.str();
+        const auto at = scene.find(from);
+        EXPECT_NE(at, Str::npos) << from;
+        if(at != Str::npos)
+            scene.replace(at, from.size(), to);
+
+        const auto file = std::filesystem::temp_directory_path() / Str(name);
+        std::ofstream(file, std::ios::binary) << scene;
+
+        return file;
     }
 
     // Backlot's inventory per lighting key
@@ -96,4 +116,45 @@ TEST(BacklotScene, CutsTakeTheEnginesSignsAndFittedNearPlanes) {
     EXPECT_TRUE(plan.orthographic);
     EXPECT_FLOAT_EQ(plan.orthoHalfHeight, 52.0f);
     EXPECT_NEAR(plan.pitch, std::numbers::pi_v<f32> / 2, 1e-5f);
+}
+
+// the scene file read again over the launch; a scratch copy elsewhere reads
+// its models and textures under the Backlot root
+TEST(BacklotScene, TheSceneFileReloadsOverTheLaunch) {
+    const auto& launched = backlotStage();
+    const auto again = reloadStageDocument(launched, backlotRoot() / StageScenePath);
+    EXPECT_EQ(again.document.instances.size(), 1488u);
+    EXPECT_EQ(again.document.quads.size(), 179u);
+    EXPECT_EQ(again.document.lights.size(), 31u);
+    EXPECT_EQ(again.document.cameras.size(), 8u);
+    EXPECT_EQ(again.document.models.size(), launched.document.models.size());
+    EXPECT_EQ(again.sprites.size(), 1u);
+
+    const auto moved = editedScene(
+        "BacklotSceneTest_moved.json",
+        R"("name": "lamp-ne", "area": "Street", "model": "StreetLamp", "x": 10.5,)",
+        R"("name": "lamp-ne", "area": "Street", "model": "StreetLamp", "x": 11.5,)"
+    );
+    const auto scratch = reloadStageDocument(launched, moved);
+    const auto lamp = std::ranges::find(scratch.document.instances, "lamp-ne", &StageInstance::name);
+    ASSERT_NE(lamp, scratch.document.instances.end());
+    EXPECT_FLOAT_EQ(lamp->position.x, 11.5f);
+    EXPECT_EQ(scratch.document.root, launched.document.root);
+    std::filesystem::remove(moved);
+
+    const auto otherModel = editedScene(
+        "BacklotSceneTest_refused.json",
+        "Models/Street/StreetLamp.fbx",
+        "Models/Street/StreetLampMoved.fbx"
+    );
+    try {
+        reloadStageDocument(launched, otherModel);
+        ADD_FAILURE() << "a model the launch did not load was accepted";
+    }
+    catch(const std::runtime_error& error) {
+        const StrView message = error.what();
+        EXPECT_NE(message.find("StreetLamp"), StrView::npos) << message;
+        EXPECT_NE(message.find("restart"), StrView::npos) << message;
+    }
+    std::filesystem::remove(otherModel);
 }

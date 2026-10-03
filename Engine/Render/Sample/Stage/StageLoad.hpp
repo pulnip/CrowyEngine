@@ -12,9 +12,11 @@
 namespace Crowy
 {
     struct LoadedStage;
+    struct StageReload;
 
     using StageImages = std::map<Str, ImageData>;
     using StageModelData = std::vector<ModelData>;
+    using StageSamplers = std::map<Str, StageSampler>;
     using StageSprites = std::map<Str, StageSprite>;
 
     // the most the GeometryPool's one upload may stage: a slice of the
@@ -30,6 +32,16 @@ namespace Crowy
         const std::filesystem::path& root,
         const std::filesystem::path& sceneFile
     );
+
+    // every flipbook's sprite manifest, each path read once
+    StageSprites loadStageSprites(const StageDocument& document);
+    // throws std::runtime_error naming a model or a texture `document` needs
+    // that `launched` did not load, which only a restart loads
+    void checkStageReload(const LoadedStage& launched, const StageDocument& document);
+    // the scene file read again beside what `launched` holds: its paths under
+    // the launch's root, its model table the launch's, which the geometry
+    // follows; throws as loading and checkStageReload do
+    StageReload reloadStageDocument(const LoadedStage& launched, const std::filesystem::path& sceneFile);
 
     // the palette, the emissive palette per channel in use, one per quad
     u32 countStageMaterials(const LoadedStage& stage);
@@ -61,11 +73,19 @@ namespace Crowy
         StageModelData models;
         // by the material row's texture path
         StageImages images;
+        // by texture path, the sampler each image was uploaded for
+        StageSamplers samplers;
         // by the quad's sprite manifest path
         StageSprites sprites;
         // makeStageUnitQuad's, shared by every quad
         MeshData unitQuad;
         StageCapacities capacities;
         StageLoadTimings timings;
+    };
+
+    // what a reload replaces; the models, images, samplers and unit quad stay
+    struct StageReload {
+        StageDocument document;
+        StageSprites sprites;
     };
 }

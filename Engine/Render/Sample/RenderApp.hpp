@@ -204,6 +204,10 @@ namespace Crowy
         // input a sample reads beyond the camera's
         virtual void OnProcessInput(const InputProvider&) {}
 
+        // after the camera, on every frame the loop runs: the frame's time,
+        // the fixed 1/60 step on a frame a counted run lets through
+        virtual void OnUpdateScene(f64) {}
+
         // the formats of the pass the UI rides, frozen for the app's life
         virtual void OnInitUI(RHIDevice&, const OverlayFormats&) {
             // default no-op so a sample without UI is unchanged

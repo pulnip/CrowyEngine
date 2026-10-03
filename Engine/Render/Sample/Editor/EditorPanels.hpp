@@ -69,7 +69,8 @@ namespace Crowy
     private:
         std::vector<Widget> sections;
         std::optional<usize> shown;
-        bool built = false;
+        // the revision the widgets were built in; 0 is never
+        u32 revision = 0;
 
     public:
         void Draw(EditorSession& session, UIContext& context);
@@ -83,10 +84,13 @@ namespace Crowy
         std::vector<usize> filtered;
         // the row to bring into view once, after a pick or a port write
         std::optional<usize> reveal;
+        // the revision the folders index; 0 is never
+        u32 revision = 0;
 
     public:
-        // rebuilds the folders; call when the content reloads
-        void Reset(EditorObjects objects);
         void Draw(EditorSession& session);
+
+    private:
+        void reset(EditorObjects objects);
     };
 }

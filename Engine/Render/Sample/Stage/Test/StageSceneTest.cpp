@@ -1,6 +1,9 @@
+#include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <numbers>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "EnumUtil.hpp"
@@ -81,6 +84,8 @@ namespace
             for(const auto& material: model.materials)
                 data.slots.push_back(ModelSlot{.material = material, .bounds = data.bounds});
         }
+        for(const auto& material: stage.document.materials)
+            stage.samplers.emplace(material.texture, material.sampler);
         stage.unitQuad = makeStageUnitQuad();
 
         return stage;
@@ -102,6 +107,17 @@ namespace
             textures.emplace(material.texture, TextureHandle{});
 
         return textures;
+    }
+
+    // the check throws, and its message names every one of `words`
+    void expectRestart(const LoadedStage& launched, const StageDocument& document, std::vector<Str> words) {
+        words.push_back("restart");
+        for(const auto& word: words) {
+            EXPECT_THAT(
+                [&] { checkStageReload(launched, document); },
+                testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(word))
+            );
+        }
     }
 
     class Fixture {
@@ -215,4 +231,86 @@ TEST(StageScene, CutsLookDownAtPositivePitchWithAFittedNearPlane) {
     EXPECT_FLOAT_EQ(cuts[0].nearZ, 1.0f);
     EXPECT_FLOAT_EQ(cuts[1].nearZ, 0.3f);
     EXPECT_NEAR(cuts[2].nearZ, 0.5f, 1e-5f);
+}
+
+TEST(StageReload, TheSameDocumentPasses) {
+    const auto stage = miniStage();
+
+    EXPECT_NO_THROW(checkStageReload(stage, stage.document));
+}
+
+// the pool holds only the launch's geometry, the texture table its images
+TEST(StageReload, WhatLaunchDidNotLoadNeedsARestart) {
+    const auto stage = miniStage();
+
+    auto otherFile = stage.document;
+    otherFile.models[0].path = "Models/Other.fbx";
+    expectRestart(stage, otherFile, {"Lamp", "Models/Other.fbx"});
+
+    auto added = stage.document;
+    added.models.push_back(StageModel{.id = "Bench", .path = "Models/Bench.fbx", .materials = {"Palette"}});
+    expectRestart(stage, added, {"Bench"});
+
+    auto otherSlots = stage.document;
+    otherSlots.models[0].materials = {"Palette"};
+    expectRestart(stage, otherSlots, {"Lamp"});
+
+    auto newImage = stage.document;
+    newImage.materials[2].texture = "New.png";
+    expectRestart(stage, newImage, {"New.png"});
+
+    // Signs.png was uploaded for a linear sampler
+    auto otherSampler = stage.document;
+    otherSampler.materials[2].sampler = StageSampler::Point;
+    expectRestart(stage, otherSampler, {"Signs.png"});
+}
+
+TEST(StageReload, ModelsLeftOutOrReorderedPass) {
+    const auto stage = miniStage();
+    auto reordered = stage.document;
+    std::ranges::reverse(reordered.models);
+    EXPECT_NO_THROW(checkStageReload(stage, reordered));
+
+    auto fewer = stage.document;
+    fewer.models.pop_back();
+    EXPECT_NO_THROW(checkStageReload(stage, fewer));
+}
+
+// a reload clears the scene and populates it again: the same file must come
+// back in the same slots with the same rows, or no picture would match
+TEST(StageScene, AClearedSceneFillsAgainAsBefore) {
+    Fixture f;
+    f.ApplyKey(1);
+    const auto primitives = std::vector(f.scene.Primitives().All().begin(), f.scene.Primitives().All().end());
+    const auto materials = std::vector(f.scene.Materials().All().begin(), f.scene.Materials().All().end());
+    const auto lights = std::vector(f.scene.Lights().All().begin(), f.scene.Lights().All().end());
+    std::vector<usize> meshIndices;
+    for(const auto& row: primitives)
+        meshIndices.push_back(f.scene.Meshes().IndexOf(row.mesh));
+    const auto oldLamp = f.bindings.instances[0];
+
+    f.scene.Clear();
+    f.bindings = populateStage(f.scene, f.stage, geometryOf(f.stage), texturesOf(f.stage));
+    f.ApplyKey(1);
+
+    EXPECT_FALSE(f.scene.Primitives().IsValid(oldLamp));
+    ASSERT_EQ(f.scene.Primitives().Count(), primitives.size());
+    ASSERT_EQ(f.scene.Materials().Count(), materials.size());
+    ASSERT_EQ(f.scene.Lights().Count(), lights.size());
+    for(usize i = 0; i < primitives.size(); ++i) {
+        const auto& row = f.scene.Primitives().All()[i];
+        EXPECT_EQ(f.scene.Primitives().HandleAt(i).GetIndex(), i);
+        EXPECT_EQ(std::memcmp(&row.localToWorld, &primitives[i].localToWorld, sizeof(Mat4)), 0) << i;
+        EXPECT_EQ(std::memcmp(&row.worldBounds, &primitives[i].worldBounds, sizeof(AABB3D)), 0) << i;
+        EXPECT_EQ(row.flags, primitives[i].flags) << i;
+        EXPECT_EQ(f.scene.Meshes().IndexOf(row.mesh), meshIndices[i]) << i;
+    }
+    for(usize i = 0; i < materials.size(); ++i)
+        EXPECT_EQ(std::memcmp(&f.scene.Materials().All()[i].data, &materials[i].data, sizeof(MaterialData)), 0) << i;
+    for(usize i = 0; i < lights.size(); ++i) {
+        const auto& row = f.scene.Lights().All()[i];
+        EXPECT_EQ(row.enabled, lights[i].enabled) << i;
+        EXPECT_EQ(row.intensity, lights[i].intensity) << i;
+        EXPECT_EQ(row.position, lights[i].position) << i;
+    }
 }

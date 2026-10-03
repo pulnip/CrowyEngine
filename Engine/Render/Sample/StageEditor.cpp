@@ -49,7 +49,6 @@ namespace Crowy
         LoadedStage stage;
         StageGeometry geometry;
         StageTextureHandles textures;
-        StageBindings bindings;
         std::optional<StageContent> content;
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
@@ -79,8 +78,7 @@ namespace Crowy
 
         void ExtractScene(RenderScene& scene) override {
             textures = uploadStageTextures(scene, Device(), stage);
-            bindings = populateStage(scene, stage, geometry, textures);
-            content.emplace(scene, stage, bindings);
+            content.emplace(scene, stage, geometry, textures);
             session.emplace(
                 camera(),
                 *content,
@@ -89,11 +87,11 @@ namespace Crowy
                 [this](Color color) { SetClearColor(color); },
                 editorPort()
             );
-            session->Start(content->Cuts().front().name, stage.document.defaultKey);
+            const auto file = (backlotRoot() / StageScenePath).lexically_normal();
+            session->Start(content->Cuts().front().name, stage.document.defaultKey, toUTF8String(file));
             // a port pick may come before the first frame measures the window
             const auto& window = Runtime().window;
             session->SetViewport(Vec2{static_cast<f32>(window.width), static_cast<f32>(window.height)});
-            hierarchy.Reset(content->Objects());
         }
 
         void OnProcessInput(const InputProvider& input) override {
@@ -105,6 +103,8 @@ namespace Crowy
 
             if(input.IsKeyPressed(KeyCode::P))
                 Debug().showPanel = !Debug().showPanel;
+            if(input.IsKeyPressed(KeyCode::F5))
+                session->Reload();
             // Esc undoes a held drag, else lets go of the selection
             if(input.IsKeyPressed(KeyCode::Escape)) {
                 if(session->Held() != GizmoHandle::None) {
@@ -142,6 +142,10 @@ namespace Crowy
             }
         }
 
+        void OnUpdateScene(f64 seconds) override {
+            session->Advance(seconds);
+        }
+
         void OnUpdateFrameData() override {
             const auto& io = ImGui::GetIO();
             session->Update(Vec2{io.DisplaySize.x, io.DisplaySize.y});
@@ -159,7 +163,7 @@ namespace Crowy
 
         std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList& cmdList) override {
             constexpr CStr ToolbarHint =
-                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, P hides";
+                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, F5 reloads, P hides";
 
             // the chrome stays out of every capture unless asked for
             if(Debug().showPanel) {

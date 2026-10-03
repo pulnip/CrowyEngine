@@ -70,6 +70,15 @@ namespace
         // stands in for the content's rows
         std::vector<FakeRow> rows{3};
         u32 applies = 0;
+        // what the next swap puts in place, where given; rows always move
+        std::vector<EditorObject> nextObjects;
+        std::vector<FakeRow> nextRows;
+        std::vector<EditorCut> nextCuts;
+        std::vector<Str> nextKeys;
+        // why the next read refuses, empty to accept
+        Str refusal;
+        std::vector<Str> reads;
+        u32 swaps = 0;
 
         std::span<const EditorCut> Cuts() const override { return cuts; }
         std::span<const Str> Keys() const override { return keys; }
@@ -101,6 +110,21 @@ namespace
                 .apply = apply,
                 .gizmo = Parts[object]
             }};
+        }
+        Str ReadScene(StrView file) override {
+            reads.emplace_back(file);
+            return refusal;
+        }
+        Str SwapScene() override {
+            ++swaps;
+            if(!nextObjects.empty())
+                objects = std::move(nextObjects);
+            rows = nextRows.empty() ? std::vector<FakeRow>(objects.size()) : std::move(nextRows);
+            if(!nextCuts.empty())
+                cuts = std::move(nextCuts);
+            if(!nextKeys.empty())
+                keys = std::move(nextKeys);
+            return "swapped";
         }
     };
 
@@ -139,7 +163,7 @@ namespace
 
         Fixture() {
             content.lamp = scene.Lights().Add(LightSnapshot{.position = LampPosition});
-            session.Start("wide", "day");
+            session.Start("wide", "day", "launch.json");
         }
 
         // the down cut with `object` selected, its gizmo measured
@@ -366,7 +390,7 @@ TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     {
         const bool chrome = true;
         EditorSession session{camera, content, scene, chrome, [](Color) {}, port.Bind()};
-        session.Start("wide", "day");
+        session.Start("wide", "day", "launch.json");
         session.Select(0);
         EXPECT_EQ(port.exposures.size(), 4u);
     }
@@ -587,4 +611,158 @@ TEST(EditorGizmo, HidingTheChromeLetsGoAtOnce) {
     f.session.State().handle = GizmoHandle::MoveX;
     f.Write();
     EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
+}
+
+// a reload asked for over the port waits for the next frame, once
+TEST(EditorReload, WaitsForTheNextFrame) {
+    Fixture f;
+    f.session.State().reload = true;
+    f.Write();
+    EXPECT_TRUE(f.session.State().reload);
+    EXPECT_EQ(f.content.swaps, 0u);
+    EXPECT_EQ(f.session.Revision(), 1u);
+
+    f.session.State().reload = false;
+    f.Write();
+    EXPECT_TRUE(f.session.State().reload);
+
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.swaps, 1u);
+    EXPECT_FALSE(f.session.State().reload);
+    EXPECT_EQ(f.session.Revision(), 2u);
+    EXPECT_EQ(f.session.State().revision, 2u);
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.swaps, 1u);
+}
+
+TEST(EditorReload, KeepsTheSelectionByNameAtItsNewRow) {
+    Fixture f;
+    f.session.Select(0);
+    const auto* before = f.port.exposures.at("selection").target;
+    f.content.nextObjects = {f.content.objects[1], f.content.objects[0], f.content.objects[2]};
+    f.content.nextRows = {FakeRow{}, FakeRow{.position = {11.5f, 0.0f, 0.0f}}, FakeRow{}};
+
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.session.Selection(), 1u);
+    EXPECT_EQ(f.session.State().selected, "instance/lamp");
+    const auto* after = f.port.exposures.at("selection").target;
+    EXPECT_EQ(after, &f.content.rows[1]);
+    EXPECT_NE(after, before);
+    EXPECT_EQ(f.port.exposures.size(), 4u);
+    EXPECT_TRUE(f.session.TakeInspectorDirty());
+    EXPECT_TRUE(f.session.TakeSelectionChanged());
+}
+
+TEST(EditorReload, AGoneSelectionClearsWithAStatus) {
+    Fixture f;
+    f.session.Select(0);
+    f.content.nextObjects = {f.content.objects[1], f.content.objects[2]};
+
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_FALSE(f.session.Selection().has_value());
+    EXPECT_EQ(f.session.State().selected, "");
+    EXPECT_FALSE(f.port.exposures.contains("selection"));
+    EXPECT_NE(f.session.State().status.find("instance/lamp is gone"), Str::npos);
+}
+
+// a file the content refuses leaves the rows, the hold and the port as they were
+TEST(EditorReload, ARefusalChangesNothing) {
+    Fixture f;
+    f.Hold(0);
+    const auto aim = f.session.Gizmo().moveX;
+    ASSERT_TRUE(f.session.Grab(aim.grab));
+    f.session.DragTo(aim.reach, false);
+    const auto* target = f.port.exposures.at("selection").target;
+    f.content.refusal = "unknown model 'Foo'";
+
+    f.session.State().scene = "elsewhere.json";
+    f.Write();
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.swaps, 0u);
+    EXPECT_EQ(f.session.Revision(), 1u);
+    EXPECT_EQ(f.session.Held(), GizmoHandle::MoveX);
+    EXPECT_NEAR(f.content.rows[0].position.x, 1.0f, 1e-4f);
+    EXPECT_EQ(f.port.exposures.at("selection").target, target);
+    EXPECT_EQ(f.session.State().scene, "launch.json");
+    EXPECT_FALSE(f.session.State().reload);
+    EXPECT_EQ(f.session.State().status.rfind("reload refused, revision 1 stays", 0), 0u);
+    EXPECT_NE(f.session.State().status.find("unknown model"), Str::npos);
+
+    f.session.DragTo(aim.reach + Vec2{20.0f, 0.0f}, false);
+    EXPECT_GT(f.content.rows[0].position.x, 1.1f);
+}
+
+// a drag measured from a grab on the old row would overwrite the file
+TEST(EditorReload, LetsGoOfAHeldHandle) {
+    Fixture f;
+    f.Hold(0);
+    const auto aim = f.session.Gizmo().moveX;
+    ASSERT_TRUE(f.session.Grab(aim.grab));
+    f.session.DragTo(aim.reach, false);
+
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.session.Held(), GizmoHandle::None);
+    EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
+    EXPECT_EQ(f.content.rows[0].position, Vec3{});
+    EXPECT_NE(f.session.State().status.find("let go of MoveX"), Str::npos);
+
+    f.session.State().drag = aim.reach;
+    f.Write();
+    EXPECT_EQ(f.content.rows[0].position, Vec3{});
+    EXPECT_NE(f.session.State().status.find("editor.grab"), Str::npos);
+}
+
+TEST(EditorReload, KeepsTheKeyAndACutThatStillStands) {
+    Fixture f;
+    f.session.State().key = "night";
+    f.Write();
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.applied.back(), "night");
+    EXPECT_FLOAT_EQ(f.clear.z, 0.1f);
+    EXPECT_EQ(f.session.State().cut, "wide");
+
+    // the cut moved: its name goes, the camera stays
+    auto moved = f.content.cuts;
+    moved[0].position.y = 11.0f;
+    f.content.nextCuts = moved;
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.session.State().cut, "free");
+    EXPECT_FLOAT_EQ(f.camera.position.y, 10.0f);
+
+    f.content.nextKeys = {"day"};
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.applied.back(), "day");
+    EXPECT_EQ(f.session.State().key, "day");
+    EXPECT_NE(f.session.State().status.find("night is gone"), Str::npos);
+}
+
+TEST(EditorReload, ReadsTheWrittenScene) {
+    Fixture f;
+    EXPECT_EQ(f.session.State().scene, "launch.json");
+    f.session.State().scene = "scratch.json";
+    f.Write();
+    EXPECT_EQ(f.session.State().scene, "scratch.json");
+
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.reads.back(), "scratch.json");
+    EXPECT_EQ(f.session.State().scene, "scratch.json");
+
+    f.session.State().scene = "";
+    f.Write();
+    EXPECT_EQ(f.session.State().scene, "scratch.json");
+}
+
+TEST(EditorReload, TheRevisionIsReadOnly) {
+    Fixture f;
+    f.session.State().revision = 7;
+    f.Write();
+    EXPECT_EQ(f.session.State().revision, 1u);
 }

@@ -853,6 +853,7 @@ namespace Crowy
 
     void RenderApp::OnUpdate(f64 deltaTime, f64) {
         camera->Update(deltaTime);
+        OnUpdateScene(deltaTime);
     }
 
     void RenderApp::OnBindPass(RHICommandList& cmdList, const ScenePush& push) {

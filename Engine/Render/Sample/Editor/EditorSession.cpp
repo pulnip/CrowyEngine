@@ -72,9 +72,11 @@ namespace Crowy
         }
     }
 
-    void EditorSession::Start(StrView cut, StrView key) {
+    void EditorSession::Start(StrView cut, StrView key, StrView scene) {
         state.cut = Str(cut);
         state.key = Str(key);
+        state.scene = Str(scene);
+        loadedScene = state.scene;
         if(!applyCut() || !applyKey())
             throw std::runtime_error(state.status);
         applied = state;
@@ -83,6 +85,15 @@ namespace Crowy
     void EditorSession::Sync() {
         if(state.status != applied.status)
             state.status = applied.status;
+        if(state.revision != applied.revision)
+            state.revision = applied.revision;
+        // once asked for, a reload waits for the next frame
+        if(applied.reload)
+            state.reload = true;
+        if(state.scene.empty()) {
+            state.scene = applied.scene;
+            report("editor.scene names a scene file");
+        }
         if(state.cut != applied.cut && !applyCut())
             state.cut = applied.cut;
         if(state.key != applied.key && !applyKey())
@@ -116,6 +127,16 @@ namespace Crowy
     void EditorSession::SetViewport(Vec2 windowSize) {
         if(windowSize.x > 0.0f && windowSize.y > 0.0f)
             viewport = windowSize;
+    }
+
+    void EditorSession::Advance(f64) {
+        if(state.reload)
+            reloadScene();
+    }
+
+    void EditorSession::Reload() {
+        state.reload = true;
+        Sync();
     }
 
     void EditorSession::SelectCut(usize index) {
@@ -318,6 +339,69 @@ namespace Crowy
         return std::format("x{:.2f}", factor);
     }
 
+    void EditorSession::reloadScene() {
+        state.reload = false;
+        const auto refusal = content.ReadScene(state.scene);
+        if(!refusal.empty()) {
+            report(std::format("reload refused, revision {} stays: {}", applied.revision, refusal));
+            state.scene = loadedScene;
+            applied = state;
+            return;
+        }
+
+        Str notes;
+        const auto name = state.selected;
+        std::optional<EditorCut> standing;
+        if(state.cut != FreeCut) {
+            const auto cuts = content.Cuts();
+            if(const auto found = std::ranges::find(cuts, state.cut, &EditorCut::name); found != cuts.end())
+                standing = *found;
+        }
+        if(hold) {
+            notes += std::format("; let go of {}", enumName(Held()));
+            release();
+        }
+        // nothing may point into the old rows once the content swaps them
+        unexposeSelection();
+        inspected.clear();
+        gizmoRow.reset();
+        selection.reset();
+        const auto summary = content.SwapScene();
+
+        const auto keys = content.Keys();
+        if(std::ranges::find(keys, state.key) == keys.end()) {
+            notes += std::format("; key {} is gone, showing {}", state.key, keys.front());
+            state.key = keys.front();
+        }
+        clearColor(content.ApplyKey(state.key));
+
+        // the cut keeps its name only where it still stands; the camera stays
+        if(standing) {
+            const auto cuts = content.Cuts();
+            const auto found = std::ranges::find(cuts, standing->name, &EditorCut::name);
+            if(found == cuts.end() || !sameCut(*found, *standing)) {
+                notes += std::format("; cut {} changed, the camera stays", standing->name);
+                leaveCut();
+            }
+        }
+
+        if(!name.empty()) {
+            Str why;
+            const auto object = objectNamed(content.Objects(), name, why);
+            Select(object);
+            if(!object)
+                notes += std::format("; {} is gone", name);
+        }
+
+        state.revision = applied.revision + 1;
+        loadedScene = state.scene;
+        inspectorDirty = true;
+        selectionChanged = true;
+        report(std::format("reloaded {}: revision {}, {}{}", state.scene, state.revision, summary, notes));
+        refreshGizmo();
+        applied = state;
+    }
+
     void EditorSession::applyGrab() {
         const auto pixel = std::exchange(state.grab, EditorNoPick);
         release();
@@ -514,6 +598,9 @@ namespace Crowy
         .SetProperty("handle", &EditorState::handle)
         .SetProperty("snap", &EditorState::snap)
         .SetProperty("cancel", &EditorState::cancel)
+        .SetProperty("scene", &EditorState::scene)
+        .SetProperty("reload", &EditorState::reload)
+        .SetProperty("revision", &EditorState::revision)
         .SetProperty("status", &EditorState::status)
     CROWY_STRUCT_END(EditorState)
 

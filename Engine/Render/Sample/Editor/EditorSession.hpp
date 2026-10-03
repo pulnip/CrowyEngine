@@ -103,6 +103,15 @@ namespace Crowy
         bool snap = false;
         // a write of true puts the row back as the grab found it and releases
         bool cancel = false;
+        // the scene file a reload reads, absolute or under the content's
+        // root; a refused reload puts back the file the rows came from
+        Str scene;
+        // a write of true reads `scene` again on the next frame; reads true
+        // until then
+        bool reload = false;
+        // scene files read since launch, the launch's included; a write is
+        // reverted
+        u32 revision = 1;
         // the last refusal or outcome; a write is reverted
         Str status;
     };
@@ -127,6 +136,12 @@ namespace Crowy
         virtual MeshList MeshesOf(PrimitiveHandle primitive) const = 0;
         // what the inspector edits; the targets stay put until a reload
         virtual InspectSections Inspect(usize object) = 0;
+        // why `file` cannot replace the scene beside what the content holds;
+        // empty when SwapScene may put it in place. Changes nothing
+        virtual Str ReadScene(StrView file) = 0;
+        // the file ReadScene accepted replaces every row, and every target and
+        // apply Inspect gave dies; a line saying what it holds now
+        virtual Str SwapScene() = 0;
     };
 
     class EditorSession {
@@ -166,6 +181,8 @@ namespace Crowy
         const RenderScene& scene;
         // the gizmo lives only while the chrome is shown
         const bool& chromeShown;
+        // the file the rows came from, which a refused reload puts back
+        Str loadedScene;
         ClearColorSink clearColor;
         EditorPort port;
         EditorState state;
@@ -196,14 +213,19 @@ namespace Crowy
             EditorPort port = {}
         );
 
-        // applies `cut` and `key`; throws std::runtime_error when either is
-        // not the content's
-        void Start(StrView cut, StrView key);
+        // applies `cut` and `key` and remembers `scene` as the file the rows
+        // came from; throws std::runtime_error when the cut or key is not the
+        // content's
+        void Start(StrView cut, StrView key, StrView scene);
         void Sync();
         // a frame's input already reached the camera
         void Update(Vec2 windowSize);
         // the window picks are measured in; one without area is ignored
         void SetViewport(Vec2 windowSize);
+        // a frame's scene step, outside any port callback: a pending reload
+        void Advance(f64 seconds);
+        // reads editor.scene again at the next Advance
+        void Reload();
 
         void SelectCut(usize index);
         void SelectKey(usize index);
@@ -228,6 +250,8 @@ namespace Crowy
         const InspectSections& Inspected() const noexcept { return inspected; }
         GizmoHandle Held() const noexcept { return hold ? hold->drag.handle : GizmoHandle::None; }
         const GizmoView& Gizmo() const noexcept { return gizmoView; }
+        // panels built in another revision point at rows a reload freed
+        u32 Revision() const noexcept { return applied.revision; }
         // the selection's gizmo as the camera sees it now; nothing when it has
         // none, the chrome is hidden, or it would reach the near plane
         std::optional<GizmoLayout> SelectionGizmo() const;
@@ -243,6 +267,9 @@ namespace Crowy
         bool applyKey();
         bool applySelected();
         void applyPickAt();
+        // the two-phase reload: read and check, then let go of every pointer
+        // into the old rows before the content swaps them
+        void reloadScene();
         void applyGrab();
         void applyDrag();
         void applyHandle();

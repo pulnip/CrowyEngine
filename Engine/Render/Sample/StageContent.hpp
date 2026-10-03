@@ -36,7 +36,11 @@ namespace Crowy
         RenderScene& scene;
         // the document's rows are what the inspector edits
         LoadedStage& stage;
-        const StageBindings& bindings;
+        const StageGeometry& geometry;
+        const StageTextureHandles& textures;
+        StageBindings bindings;
+        // what ReadScene accepted, until SwapScene puts it in place
+        std::optional<StageReload> next;
         std::vector<EditorCut> cuts;
         std::vector<Str> keys;
         std::vector<EditorObject> objects;
@@ -50,7 +54,12 @@ namespace Crowy
         usize currentKey = 0;
 
     public:
-        StageContent(RenderScene& scene, LoadedStage& stage, const StageBindings& bindings);
+        StageContent(
+            RenderScene& scene,
+            LoadedStage& stage,
+            const StageGeometry& geometry,
+            const StageTextureHandles& textures
+        );
 
         std::span<const EditorCut> Cuts() const override { return cuts; }
         std::span<const Str> Keys() const override { return keys; }
@@ -62,6 +71,8 @@ namespace Crowy
         std::optional<LightHandle> LightOf(usize object) const override;
         MeshList MeshesOf(PrimitiveHandle primitive) const override;
         InspectSections Inspect(usize object) override;
+        Str ReadScene(StrView file) override;
+        Str SwapScene() override;
 
         // the instance row written into its primitive: matrix and bounds
         void ApplyInstance(usize instance);
@@ -71,6 +82,8 @@ namespace Crowy
         void ApplyLight(usize light);
 
     private:
+        // the rows and every table over them, from the stage as it stands
+        void build();
         void addObjects();
         void addObject(EditorObject object, std::optional<PrimitiveHandle> primitive, std::optional<LightHandle> light);
     };

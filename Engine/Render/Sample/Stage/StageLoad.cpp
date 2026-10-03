@@ -109,14 +109,7 @@ namespace Crowy
         auto start = Clock::now();
         requireContent(sceneFile);
         stage.document = loadStageDocument(root, sceneFile);
-        for(const auto& quad: stage.document.quads) {
-            if(quad.flipbook && !stage.sprites.contains(quad.flipbook->sprite)) {
-                stage.sprites.emplace(
-                    quad.flipbook->sprite,
-                    loadStageSprite(stage.document, quad.flipbook->sprite)
-                );
-            }
-        }
+        stage.sprites = loadStageSprites(stage.document);
         stage.timings.documentSeconds = secondsSince(start);
 
         start = Clock::now();
@@ -133,6 +126,7 @@ namespace Crowy
             if(stage.images.contains(material.texture))
                 continue;
 
+            stage.samplers.emplace(material.texture, material.sampler);
             const auto file = resolveStagePath(stage.document, material.texture);
             requireContent(file);
             auto image = LoadImage(file);
@@ -154,6 +148,53 @@ namespace Crowy
         }
 
         return stage;
+    }
+
+    StageSprites loadStageSprites(const StageDocument& document) {
+        StageSprites sprites;
+        for(const auto& quad: document.quads) {
+            if(quad.flipbook && !sprites.contains(quad.flipbook->sprite))
+                sprites.emplace(quad.flipbook->sprite, loadStageSprite(document, quad.flipbook->sprite));
+        }
+
+        return sprites;
+    }
+
+    void checkStageReload(const LoadedStage& launched, const StageDocument& document) {
+        const auto& models = launched.document.models;
+        for(const auto& row: document.models) {
+            const auto launch = std::ranges::find(models, row.id, &StageModel::id);
+            if(launch == models.end() || launch->path != row.path || launch->materials != row.materials) {
+                throw std::runtime_error(std::format(
+                    "stage: model '{}' reads {}, which the editor did not load at launch; a restart loads it",
+                    row.id,
+                    row.path
+                ));
+            }
+        }
+        for(const auto& material: document.materials) {
+            const auto loaded = launched.samplers.find(material.texture);
+            if(loaded == launched.samplers.end() || loaded->second != material.sampler) {
+                throw std::runtime_error(std::format(
+                    "stage: material '{}' samples {} {}, which the editor did not upload so at launch; a restart loads it",
+                    material.id,
+                    material.texture,
+                    material.sampler == StageSampler::Point ? "point" : "linear"
+                ));
+            }
+        }
+    }
+
+    StageReload reloadStageDocument(const LoadedStage& launched, const std::filesystem::path& sceneFile) {
+        requireContent(sceneFile);
+        auto document = loadStageDocument(launched.document.root, sceneFile);
+        checkStageReload(launched, document);
+        auto sprites = loadStageSprites(document);
+        // instances name models by id: the launch's table, which the pool
+        // follows, serves a file that drops or reorders rows
+        document.models = launched.document.models;
+
+        return StageReload{.document = std::move(document), .sprites = std::move(sprites)};
     }
 
     u32 countStageMaterials(const LoadedStage& stage) {

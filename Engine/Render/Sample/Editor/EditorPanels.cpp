@@ -207,13 +207,13 @@ namespace Crowy
 
     void InspectorPanel::Draw(EditorSession& session, UIContext& context) {
         // the walker seeds values when it builds: rebuild after a write it
-        // did not make
-        if(session.TakeInspectorDirty() || !built || shown != session.Selection()) {
+        // did not make, and never draw a tree over rows a reload freed
+        if(session.TakeInspectorDirty() || revision != session.Revision() || shown != session.Selection()) {
             sections.clear();
             for(const auto& section: session.Inspected())
                 sections.push_back(buildPropertyTree(section.label.c_str(), section.target, *section.desc, section.apply));
             shown = session.Selection();
-            built = true;
+            revision = session.Revision();
         }
 
         ImGui::SetNextWindowPos(ImVec2(1480.0f, 8.0f), ImGuiCond_FirstUseEver);
@@ -233,12 +233,11 @@ namespace Crowy
         ImGui::End();
     }
 
-    void HierarchyPanel::Reset(EditorObjects objects) {
-        groups = groupObjects(objects);
-        filtered = filterObjects(objects, filter);
-    }
-
     void HierarchyPanel::Draw(EditorSession& session) {
+        if(revision != session.Revision()) {
+            reset(session.Content().Objects());
+            revision = session.Revision();
+        }
         if(session.TakeSelectionChanged())
             reveal = session.Selection();
 
@@ -286,5 +285,10 @@ namespace Crowy
         }
         reveal.reset();
         ImGui::End();
+    }
+
+    void HierarchyPanel::reset(EditorObjects objects) {
+        groups = groupObjects(objects);
+        filtered = filterObjects(objects, filter);
     }
 }
