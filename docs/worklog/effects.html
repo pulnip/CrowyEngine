@@ -163,9 +163,10 @@
 
 <header>
   <h1>이펙트 라운드</h1>
-  <p>CrowyEngine · 2026-10-04 밤 · 브랜치 <code>effect</code> (기준 <code>3ac04a3</code>, editor-stage의 끝) · 자율 진행, 작업마다 커밋</p>
+  <p>CrowyEngine · 2026-10-04 밤 · 브랜치 <code>effect</code> (기준 <code>3ac04a3</code>, editor-stage의 끝) · 자율 진행, 작업마다 커밋 · 같은 날 오후 오빠와 함께 섬 v2</p>
   <div class="chips">
     <span class="tag ok">트레이서 완료</span>
+    <span class="tag ok">섬 v2 완료</span>
     <span class="tag gray">Windows-first</span>
     <span class="tag gray">밤새 자율</span>
     <span class="tag gray">물리는 옆 폴더의 다른 세션</span>
@@ -177,6 +178,7 @@
     <li><a href="#glance">한눈에</a></li>
     <li><a href="#how">이 라운드가 도는 방식</a></li>
     <li><a href="#shape">구조와 규칙</a></li>
+    <li><a href="#island-v2">섬 v2: 하늘, 티피, 바람, 바다</a></li>
     <li><a href="#reload">커널 다시 읽기 (reload)</a></li>
     <li><a href="#new-effect">새 이펙트 가이드와 유성 (new-effect)</a></li>
     <li><a href="#rain">비와 물결 (rain)</a></li>
@@ -190,16 +192,17 @@
 <h2 id="glance">한눈에</h2>
 <div class="card">
   <p>질문은 둘이었다. 하나는 <b>GPU 필드 프레임워크</b>다. 프레임 사이에 남는 GPU 버퍼와 컴퓨트 커널이 있고, 그 위에 파티클이 서고, 나중에 격자(바다, 연기)와 지형 침식, 직접 만드는 유체가 선다. 다른 하나는 오빠가 정한 실험이다. 관심 있는 분야를, 오빠 없이, AI가 설계부터 그림까지 어디까지 끌고 가는가.</p>
-  <p>결과: 밤의 작은 섬(<code>Engine/Effects/Sample</code>의 <code>Island</code>)에 모닥불 불씨 384개, 빗방울 3000개와 그 물결, 유성 24개가 돈다. 모두 프레임에 묶인 시계로 돌아서, 몇 번을 돌려도 60번째 프레임이 바이트 단위로 같다. 그래서 골든이 된다. 새 이펙트는 <code>.slang</code> 파일 하나와 설명 한 줄이면 되고, 그 길은 <code>docs/writing-an-effect.md</code>에 한국어로 적었다. 표준 파이프라인의 골든 다섯 장은 처음부터 끝까지 그대로다.</p>
+  <p>밤의 결과: 밤의 작은 섬(<code>Engine/Effects/Sample</code>의 <code>Island</code>)에 모닥불 불씨 384개, 빗방울 3000개와 그 물결, 유성 24개가 돈다. 모두 프레임에 묶인 시계로 돌아서, 몇 번을 돌려도 60번째 프레임이 바이트 단위로 같다. 그래서 골든이 된다. 새 이펙트는 <code>.slang</code> 파일 하나와 설명 한 줄이면 되고, 그 길은 <code>docs/writing-an-effect.md</code>에 한국어로 적었다. 표준 파이프라인의 골든 다섯 장은 처음부터 끝까지 그대로다.</p>
+  <p>오후의 결과(섬 v2): 오빠가 아침에 본 섬에 주문한 네 가지를 더했다. 별과 유성이 있는 밤하늘, 앞이 트인 티피 안의 삼각대 모닥불, 비와 불씨와 불꽃이 함께 받는 바람, 셰이더토이에서 기법을 배운 바다다. 모두 같은 world step 위에서 돌아서 60번째 프레임은 여전히 매번 같다.</p>
 </div>
 <div class="gallery">
-  <figure><img src="images/effects/island.jpg" alt="Island, 프레임 60"><figcaption>Island의 골든(프레임 60). 모닥불의 불씨, 빗줄기와 모래·바다 위의 물결, 하늘을 가로지르는 유성 셋. 오두막은 원시 도형이고, 모닥불 조명은 프레임에 따라 숨 쉰다</figcaption></figure>
+  <figure><img src="images/effects/island-v2.jpg" alt="Island v2, 프레임 60"><figcaption>지금의 골든(프레임 60). 티피 안의 불, 연기구멍을 나와 바람에 날리는 불씨, 기운 빗줄기와 고리, 물결치는 바다 위 달빛 길, 별과 유성 하나</figcaption></figure>
 </div>
 <div class="stat-row">
   <div class="stat"><div class="label">작업</div><div class="value num">5 / 5 <small>+ 다시 읽기, 리뷰 수정 5</small></div></div>
-  <div class="stat"><div class="label">단위 테스트</div><div class="value num">575 → 599 <small>Render 119 → 128, Effects 0 → 15</small></div></div>
+  <div class="stat"><div class="label">단위 테스트</div><div class="value num">575 → 601 <small>Render 119 → 129, Effects 0 → 16</small></div></div>
   <div class="stat"><div class="label">smoke</div><div class="value num">34 → 37 <small>Island · FieldCheck · ParticleCheck</small></div></div>
-  <div class="stat"><div class="label">파티클</div><div class="value num">3408 <small>불씨 384 · 비 3000 · 유성 24</small></div></div>
+  <div class="stat"><div class="label">파티클</div><div class="value num">7246 <small>비 4200 · 별 2560 · 불씨 384 · 불꽃 90 · 유성 12</small></div></div>
   <div class="stat"><div class="label">유성 한 개</div><div class="value num">77 + 13줄 <small>.slang(코드 59) + 설명, CMake·C++ 클래스 없음</small></div></div>
   <div class="stat"><div class="label">골든 다섯 장</div><div class="value num">0 px <small>Playground부터 StageEditor까지, 허용 오차 0</small></div></div>
 </div>
@@ -244,6 +247,69 @@
 <div class="rule"><b>E2. 결정적이다.</b> 프레임 N의 상태는 N, 시드, 설명에만 달려 있다. 시계는 녹화된 프레임당 1/60 한 스텝이고, 수명은 정수 스텝, 난수는 (시드, 슬롯, 세대, k)의 해시다. 원자 연산은 없고, 그리기 순서는 슬롯 순서다.</div>
 <div class="rule"><b>E3. 한 방향.</b> 프레임워크에 readback API는 없다. GPU 결과는 게임플레이로 돌아가지 않는다. readback은 <code>*Check</code> 실행 파일에만 있다.</div>
 <div class="rule"><b>E4. 짧은 길.</b> 새 파티클 이펙트는 <code>.slang</code> 하나와 설명 한 줄이다. CMake도 C++ 클래스도 필요 없다.</div>
+
+<h2 id="island-v2">섬 v2: 하늘, 티피, 바람, 바다 <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>오빠가 아침에 섬을 보고 네 가지를 주문했다. 유성이 너무 크고 낮아서 비처럼 보이니 고치고 별도 넣을 것. 정사면체 느낌의 움막 한가운데에 모닥불을 두고, 장작은 삼각대처럼 세워 그 안에서 탈 것. 비와 불씨가 바람에 반응할 것. 셰이더토이 같은 바다를 만들 것. 이번엔 오빠가 자리에 있어서 하나만 물었다. "움막 가운데"가 움막 안인지 앞인지였고, 답은 앞이 트인 티피 안이었다.</p>
+  <ul>
+    <li><b>하늘.</b> 밤하늘은 수평선 쪽이 더 밝고, 달 원반과 무리가 있다. 별 2560개는 카메라를 따라오는 돔 위에 있고, 지평선에 가까울수록 더 반짝인다. 유성은 왼쪽 낮은 복사점에서 나와 대원을 따라 가늘게 지나가고, 하늘에 한 번에 하나쯤 있다. 달은 앞 오른쪽 낮은 곳(방위 38°, 고도 20°)으로 옮겼다.</li>
+    <li><b>티피.</b> 장대 10개가 꼭대기 위 1 m에서 교차한다. 천은 앞 왼쪽 세 면을 빼고 덮었고, 안쪽은 불빛을, 바깥은 달빛을 받는다. 삼각대 장작 안에서 불꽃(<code>Flames.slang</code>)이 타고, 불씨는 굴뚝을 타고 올라 연기구멍으로 나간다. 비는 티피의 피라미드에서 멈춰서 안으로 들어오지 않는다.</li>
+    <li><b>바람.</b> 평균 1.2 m/s 위로 돌풍 전선이 바람을 따라 흘러가고, 세면 약 3 m/s까지 분다. 빗줄기는 바람 쪽으로 기울고, 불씨는 연기구멍을 나서며 바람에 아치를 그리고, 불꽃은 조금 기운다.</li>
+    <li><b>바다.</b> <code>Ocean.slang</code> 머티리얼이다. 섬 둘레의 극좌표 격자(정점 4.6만 개)를 긴 파도 12개로 들어 올리고, 픽셀이 감당하는 만큼(최대 36개)의 파도로 노멀을 만든다. 엔진의 빛 루프가 달빛 길과 물가의 불빛 반사를 준다. 수면에는 하늘이 비치고 물가에는 거품이 생긴다. 비는 파도 위에 떨어지고, 고리는 파도를 탄다.</li>
+  </ul>
+</div>
+<div class="gallery">
+  <figure><img src="images/effects/island-before-after.jpg" alt="섬 v1과 v2"><figcaption>왼쪽은 아침의 섬(v1), 오른쪽은 지금이다. 카메라를 얕은 물 위로 물려 하늘을 더 넣었고, 오두막 대신 티피가, 평면 대신 바다가 들어섰다</figcaption></figure>
+  <figure><img src="images/effects/tipi-and-sea.jpg" alt="티피와 바다"><figcaption>왼쪽은 티피다. 교차한 장대 위로 불씨가 바람에 날리고, 트인 앞쪽으로 불빛 받은 안쪽 천과 삼각대가 보인다. 오른쪽은 파도에 부서진 달빛 길이다</figcaption></figure>
+  <figure><img src="images/effects/flames-debug.jpg" alt="불꽃 디버깅"><figcaption>불꽃 찾기. 왼쪽 첫 판은 하얀 기둥만 보였다. 가운데는 불꽃을 초록으로 칠한 것인데, 하얀 기둥은 불 뒤의 장대였고 불꽃은 밝은 안쪽 천에 묻혀 있었다. 오른쪽은 불꽃을 키우고 불빛을 낮춘 지금이다</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>f62815c</code></td><td>그림자 맞춤을 그림자를 드리우는 물체만으로(<code>Engine/Render</code>, 표준 골든 그대로).</td></tr>
+  <tr><td><code>4cee1b5</code></td><td>이펙트 푸시에 world step, 4096스텝 루프 위상(<code>WorldClock</code>), 불빛의 숨을 루프 위에.</td></tr>
+  <tr><td><code>4586fa5</code></td><td>리뷰 수정: 그림자를 안 드리우는 수신자가 깊이 범위 밖에서도 그림자를 받게(<code>Lighting.slang</code>).</td></tr>
+  <tr><td><code>4c91560</code></td><td>하늘, 별, 유성, 달, 카메라. 섬 메시의 노멀을 구웠다.</td></tr>
+  <tr><td><code>150557e</code></td><td>리뷰 수정: 하늘 광선의 화면비, 수평선 아래 색, 주석과 철자.</td></tr>
+  <tr><td><code>28e36c1</code></td><td>티피, 삼각대, 불꽃, 굴뚝을 타는 불씨, 티피에 멈추는 비.</td></tr>
+  <tr><td><code>6767c72</code></td><td>리뷰 수정: 모래 고리의 잘림, 통나무 길이, 삼각대 숫자를 한 곳으로.</td></tr>
+  <tr><td><code>751895f</code></td><td>바람: 비, 불씨, 불꽃. 비 검사가 낙하를 바람과 함께 다시 계산하고, 날씨 프로브를 더했다.</td></tr>
+  <tr><td><code>1a853c6</code></td><td>리뷰 수정: <code>cycleSine</code>의 부호, 캔버스 안의 바람, include, 가이드.</td></tr>
+  <tr><td><code>7b43b1f</code></td><td>바다: 머티리얼, 파도 표와 트윈, 극좌표 격자, 파도 위의 비.</td></tr>
+  <tr><td><code>a587e94</code></td><td>리뷰 수정: 픽셀당 파도 수, 먼 바다 페이드, 고리의 모래·바다 구분, 불빛 범위, 출처 표기.</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>단위 테스트</td><td>599 → 601: LightTest가 그림자 맞춤을, EffectSystemTest가 world step을 고정한다. 14 스위트 모두 통과</td></tr>
+  <tr><td>smoke · 골든</td><td>37 / 37. ToonPlayground, TexturedSpike, PrepassEqualSpike, StageEditor는 허용 오차 0으로 같다. Playground의 6픽셀(최대 1) 차이는 이번 작업 전부터 있었고 따로 일감으로 올렸다</td></tr>
+  <tr><td>ParticleCheck</td><td>검사 2개 → 6개: 생명주기 리플레이, 비(프레임 1·60·300, 루프 경계 근처에서 시작하는 실행 하나), 날씨 프로브(바람은 CPU와 3.5e-6 m/s, 바다는 4.9e-7 m 안). 경계 근처 허용은 모든 실행에서 0건</td></tr>
+  <tr><td>red run</td><td>CPU 바람이 한 스텝 늦으면 착지 약 3700건이 실패한다. 돌풍 상수 하나가 틀리면 프로브와 착지 약 1300건, GPU의 바람 따르기를 끄면 4200건 전부, CPU 바다가 한 스텝 앞서면 착지 약 2050건과 프로브, CPU에서 티피를 빼면 117건이 실패한다. 그림자 맞춤 조건을 되돌리면 LightTest가 실패한다</td></tr>
+  <tr><td>깊이 프리패스</td><td>클리어를 마젠타로 바꿔 찍어 보니 바다의 Equal 구멍이 0픽셀이다(DX12)</td></tr>
+  <tr><td>성능</td><td>GPU 프레임 0.44 ms(Debug, 이 기계). Effects 패스의 그리기 7개(하늘 1, 이펙트 6), 디스패치 5개</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>물은 것.</b> 하나뿐이다(움막 위치). 나머지는 설계에서 정했다. 그중 셋은 오빠가 확인할 결정이다. 달을 앞으로 옮겨 섬이 역광이 됐다. 엔진의 그림자 맞춤을 바꿨다. 바다는 반지름 280 m이고 far plane은 320 m다.</li>
+  <li><b>조사.</b> Opus 셋(셰이더토이 바다 웹 조사, 렌더 엔진의 접점, 이펙트의 접점)과 비평가 하나를 돌렸다. Shadertoy는 403을 돌려줘서 저자의 GitHub 사본 같은 것으로 읽었다. Seascape는 CC BY-NC-SA라 코드는 가져오지 않았다.</li>
+  <li><b>설계 리뷰.</b> 세 관점(그림, 결정성과 검사, 엔진 규칙)에 검증자를 붙였다. 반대 45건 중 17건이 남았다. 블로커가 하나 있었다. 섬이 비균일 스케일인 구인데 버텍스 단계가 노멀을 역전치 없이 돌려서, 달을 앞으로 옮기면 보이는 반쪽이 새까매진다. 섬을 메시로 구워서 풀었다. 리뷰가 계산한 수치(티피 비율, 불씨의 굴뚝 값, 달의 방위)는 튜닝으로 받아들였다.</li>
+  <li><b>설계가 바뀐 곳.</b> 티피 지붕은 면을 고르는 대신 "면 평면들의 최솟값"(볼록 피라미드)으로 정의했다. 연속이라서 리뷰가 걱정한 경계 불연속이 아예 생기지 않는다. 비의 착지 기록은 "그 낙하가 시작된 스텝"으로 바꾸고, 고리의 나이는 <code>ageSteps</code>로 셌다. 그래서 CPU가 낙하를 처음부터 다시 계산할 수 있다.</li>
+  <li><b>리뷰가 잡은 것.</b> 단계 리뷰 다섯 번(에이전트 20개, 확인 44건, 반박 21건)에서 진짜 버그가 나왔다.
+    <ul>
+      <li>그림자 맞춤을 그림자를 드리우는 물체로만 줄이자, 그림자를 드리우지 않는 수신자가 깊이 범위 밖으로 나가 그 위에 떨어진 그림자가 사라졌다.</li>
+      <li>하늘의 화면비가 16:9로 고정돼 있었다.</li>
+      <li>모래 고리가 사각형으로 잘렸고, 통나무 길이가 3 cm 틀렸다.</li>
+      <li><code>cycleSine</code>이 부호가 뒤집힌 사인을 냈다. 양쪽 트윈이 같이 뒤집혀서 검사로는 잡을 수 없었다.</li>
+      <li>불씨가 캔버스 안에서도 바람을 받았다.</li>
+      <li>픽셀이 감당 못 하는 파도까지 노멀에 들어갔다.</li>
+      <li>불빛 범위가 물에 닿지 않았다.</li>
+      <li>먼 바다의 페이드가 카메라 거리를 따랐다.</li>
+      <li>고리가 모래와 바다를 예전 기준으로 갈랐다.</li>
+      <li><code>SeaWaves.h</code>의 "어떤 셰이더의 숫자도 가져오지 않았다"는 말이 사실이 아니었다. 파장 비 1.18과 12/36 나눔은 afl_ext의 값이라 그렇게 고쳐 적었다.</li>
+    </ul></li>
+  <li><b>직접 잡은 것.</b> 불꽃이 하얀 기둥으로만 보였다. 초록으로 칠해 보니 그 기둥은 불 뒤의 장대였고, 불꽃은 밝은 안쪽 천에 묻혀 있었다(위 사진). <code>Island/</code> 안의 헤더들이 MSVC의 include 검색 규칙에 기대고 있었다(Mac에서 깨진다). Playground의 골든이 6픽셀 다르다는 것도 찾았다.</li>
+  <li><b>멈춘 곳.</b> 없다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 바다는 해석적 높이장이라 비가 떨어져도 출렁이지 않는다. 진짜 상호작용은 오빠가 만들 격자 시뮬레이션의 몫이다. 불꽃은 이 거리에서 40 px 남짓이라 혀 모양이 잘 살지 않는다. 가까운 컷이나 깊이를 읽는 소프트 파티클이 필요하다. 점광원 그림자가 없어서 불빛이 천을 뚫고 밖의 모래를 비춘다.</li>
+</ul>
 
 <h2 id="reload">커널 다시 읽기 (reload) <span class="tag ok">완료</span></h2>
 <div class="card">
@@ -389,9 +455,10 @@
 <h2 id="next">다음</h2>
 <div class="card">
   <ol>
-    <li><b>바다 격자.</b> 설계만 있다. 2D 텍스처 필드, 핑퐁, 비의 충격을 넣는 길(골든이 없는 경로의 고정소수점 원자 연산, 또는 정수 분산)이다. GPU 시뮬레이션은 오빠가 직접 만들고 싶어 하는 쪽이라 일부러 남겼다. 층 A가 그 바닥이다.</li>
+    <li><b>섬 v2의 결정 확인.</b> 달을 앞으로 옮겨 섬을 역광으로 만든 것, 엔진의 그림자 맞춤과 그림자 비교를 바꾼 것(<code>Engine/Render</code>, 표준 골든 그대로), 바다의 크기(280 m, far plane 320 m).</li>
+    <li><b>바다 격자.</b> 지금 바다는 해석적 높이장이다. 출렁이는 시뮬레이션(2D 텍스처 필드, 핑퐁, 비의 충격)은 설계만 있고, 오빠가 직접 만들고 싶어 하는 쪽이라 일부러 남겼다. 층 A가 그 바닥이고, <code>seaHeight</code>는 나중에 필드를 읽는 함수로 바꿀 수 있다.</li>
     <li><b>이펙트 하나 직접 써 보기.</b> <code>docs/writing-an-effect.md</code>를 따라 <code>.slang</code> 하나와 설명 한 줄을 쓰고, 실행 중에 <code>reload_shaders</code>로 고치며 본다. 가이드에서 막히는 곳이 있으면 그것이 이 실험의 가장 좋은 측정이다.</li>
-    <li><b>Mac.</b> <code>engine-macos-tests-effects.md</code>의 FX-1–FX-6. Metal 컴퓨트 파이프라인, 한 모듈에 push 하나, 디스패치 배리어, <code>Island.metal.png</code> 첫 기록이 들어 있다.</li>
+    <li><b>Mac.</b> <code>engine-macos-tests-effects.md</code>의 FX-1–FX-11. Metal 컴퓨트 파이프라인, 한 모듈에 push 하나, 디스패치 배리어, 144 B 푸시, 바다의 프리패스 Equal, fast math에서의 바람과 바다 오차, <code>Island.metal.png</code> 기록이 들어 있다.</li>
     <li><b>병합 순서.</b> <code>effect</code>는 editor-stage의 끝(<code>3ac04a3</code>)에서 갈라졌다. editor-stage가 master에 들어간 뒤 그 위에 얹으면 된다. 이 글을 쓸 때 <code>physics</code> 브랜치에는 아직 커밋이 없었다. 그쪽도 <code>RenderApp</code>이나 <code>FramePipeline</code>을 고친다면 거기서 겹칠 수 있다.</li>
   </ol>
 </div>
