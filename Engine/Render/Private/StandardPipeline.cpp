@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "EnumUtil.hpp"
 #include "SceneRenderer.hpp"
 
 namespace Crowy
@@ -13,7 +14,9 @@ namespace Crowy
         // names
         constexpr FrameTargetID SceneDepth = 1;
 
-        const DrawFilter opaque{.domains = MaterialDomain::Opaque};
+        // what writes depth
+        const auto solid = combine(MaterialDomain::Opaque, MaterialDomain::Masked);
+        const DrawFilter opaque{.domains = solid};
         const bool prepass = config.depthPrepass;
 
         FramePipelineDesc desc{
@@ -48,7 +51,7 @@ namespace Crowy
                         .view = SceneRenderer::ShadowView,
                         .filter =
                             DrawFilter{
-                                .domains = MaterialDomain::Opaque,
+                                .domains = solid,
                                 .required = PrimitiveFlags::CastShadow
                             },
                         .order = DrawOrder::PipelineThenNearFirst,

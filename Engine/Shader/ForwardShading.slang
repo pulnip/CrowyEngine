@@ -94,6 +94,12 @@ Surface loadSurface(VertexOut v, bool frontFace) {
     return s;
 }
 
+// a Masked surface keeps a texel whose opacity reaches the row's cutoff
+void cutMasked(Surface s, uint materialIndex) {
+    if(s.opacity < LoadMaterial(materialIndex).alphaCutoff)
+        discard;
+}
+
 // the lights through the linked model, then its ambient and its
 // composition; a surface that receives no shadow sees every light unshadowed
 float3 shadeSurface(Surface s, float3 posWorld, bool receivesShadow) {

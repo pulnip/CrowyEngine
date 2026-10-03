@@ -155,6 +155,34 @@ TEST(PipelineCache, ADepthOnlyPassSharesKeysAcrossFragmentShaders) {
     EXPECT_EQ(&gridState, &opaqueState);
 }
 
+// masked materials share their cut's depth pipeline whatever they shade with
+TEST(PipelineCache, MaskedMaterialsShareOneDepthPipeline) {
+    FakeDevice device;
+    PipelineCache cache(device);
+
+    auto masked = OpaqueMaterial();
+    masked.domain = MaterialDomain::Masked;
+    masked.fragmentShader.entryPoint = "fs_masked";
+    masked.maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"};
+    auto toon = masked;
+    toon.fragmentShader.entryPoint = "fs_masked_toon";
+    toon.shadingModule = "Engine/Shader/Toon.slang";
+    auto doubleSided = masked;
+    doubleSided.rasterizer.cullMode = RHICullMode::None;
+
+    const PassPipelineDesc prepass{.depthFormat = RHIPixelFormat::D32_FLOAT};
+    auto& first = cache.Resolve(masked, prepass);
+    auto& second = cache.Resolve(toon, prepass);
+    cache.Resolve(OpaqueMaterial(), prepass);
+    EXPECT_EQ(&first, &second);
+    EXPECT_EQ(device.creates, 2u);
+    ASSERT_TRUE(device.pipelineCreates.front().fragmentShader.has_value());
+    EXPECT_EQ(device.pipelineCreates.front().fragmentShader->entryPoint, "fs_masked_depth");
+
+    cache.Resolve(doubleSided, prepass);
+    EXPECT_EQ(device.creates, 3u);
+}
+
 // A fullscreen pass's desc names no material: the cache keys it by value,
 // shares a key with an equal composed desc, and a reload rebuilds it too.
 TEST(PipelineCache, ARawDescIsKeyedAndRebuiltLikeAComposedOne) {

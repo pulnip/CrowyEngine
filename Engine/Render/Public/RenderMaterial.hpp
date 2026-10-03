@@ -79,6 +79,9 @@ namespace Crowy
     enum class MaterialDomain : u32 {
         Opaque = 1u << 0,
         Translucent = 1u << 1,
+        // opaque where opacity reaches alphaCutoff, cut elsewhere; in depth
+        // too, where the depth-only passes run its maskShader
+        Masked = 1u << 2,
     };
 
     // The slice of a pipeline state a material owns. Depth state is the pass's.
@@ -86,6 +89,8 @@ namespace Crowy
         RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
         // the color passes' default; a pass may replace it
         RHIShaderDesc fragmentShader{.entryPoint = "fs_main"};
+        // a Masked material's entry in the depth-only passes: the same cut, no color
+        RHIShaderDesc maskShader{.entryPoint = "fs_masked_depth"};
         // linked into the colour passes' programs; empty links nothing
         std::filesystem::path shadingModule = PBRShadingModule;
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;

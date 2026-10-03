@@ -439,3 +439,62 @@ TEST(PipelineKey, AMaterialWithoutAModuleLinksNothing) {
     ASSERT_TRUE(desc.fragmentShader.has_value());
     EXPECT_EQ(desc.fragmentShader->entryPoint, "fs_normals");
 }
+
+// the depth-only passes run a Masked material's cut and nothing of its color
+TEST(PipelineKey, AMaskedMaterialRunsItsMaskEntryInADepthOnlyPass) {
+    auto masked = OpaqueMaterial();
+    masked.domain = MaterialDomain::Masked;
+    masked.maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"};
+    masked.shadingModule = "Engine/Shader/Toon.slang";
+    masked.blend = RHIBlendState{};
+
+    auto prepass = BasePass({});
+    const auto desc = Compose(masked, prepass);
+    ASSERT_TRUE(desc.fragmentShader.has_value());
+    EXPECT_EQ(*desc.fragmentShader, masked.maskShader);
+    EXPECT_EQ(desc.renderTargetCount, 0u);
+    EXPECT_TRUE(desc.linkedModules.empty());
+    EXPECT_FALSE(desc.blend.has_value());
+    EXPECT_TRUE(desc.depthStencil->depthWriteEnable);
+    EXPECT_EQ(desc.depthStencil->depthFunc, RHIComparisonFunc::Less);
+    EXPECT_NE(desc, Compose(OpaqueMaterial(), prepass));
+
+    // debug overrides never reach a depth-only pass
+    prepass.debug.fillMode = RHIFillMode::Wireframe;
+    EXPECT_EQ(Compose(masked, prepass), desc);
+}
+
+// an Opaque material's mask entry reaches no key, so no existing key moves
+TEST(PipelineKey, AnOpaqueMaterialNeverRunsItsMaskEntry) {
+    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+    auto other = OpaqueMaterial();
+    other.maskShader = {.path = "Engine/Shader/Y.slang", .entryPoint = "fs_other"};
+
+    for(const auto& pass: {BasePass({}), BasePass(formats)}) {
+        EXPECT_EQ(Compose(other, pass), Compose(OpaqueMaterial(), pass));
+        EXPECT_EQ(hash(Compose(other, pass)), hash(Compose(OpaqueMaterial(), pass)));
+    }
+}
+
+// in a color pass a Masked material draws its own entry, shaded like any;
+// a pass override replaces it, cut and all
+TEST(PipelineKey, AMaskedMaterialDrawsItsOwnEntryInAColorPass) {
+    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
+    auto masked = OpaqueMaterial();
+    masked.domain = MaterialDomain::Masked;
+    masked.fragmentShader.entryPoint = "fs_masked";
+    masked.maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"};
+
+    auto pass = BasePass(formats);
+    pass.state.depthFunc = RHIComparisonFunc::Equal;
+    pass.state.depthWrite = false;
+    const auto desc = Compose(masked, pass);
+    ASSERT_TRUE(desc.fragmentShader.has_value());
+    EXPECT_EQ(desc.fragmentShader->entryPoint, "fs_masked");
+    EXPECT_EQ(desc.linkedModules, std::vector<std::filesystem::path>{PBRShadingModule});
+
+    pass.state.fragmentShader = RHIShaderDesc{.path = "Engine/Shader/Y.slang", .entryPoint = "fs_normals"};
+    pass.state.linksShading = false;
+    EXPECT_EQ(Compose(masked, pass).fragmentShader->entryPoint, "fs_normals");
+}
