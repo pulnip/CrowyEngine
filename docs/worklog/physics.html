@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>물리 라운드</title>
+<meta name="description" content="CrowyEngine 2026-10-04 물리 라운드(Jolt)의 기록: 위임 실험, 작업마다의 수치와 위임 기록">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #f1eee7;
+    --text: #22201c;
+    --muted: #6b665d;
+    --border: #e3ded3;
+    --accent: #c9552b;
+    --accent-soft: #fbe6dc;
+    --accent2: #138a9a;
+    --accent2-soft: #d9f1f3;
+    --ok: #2f8f4e;
+    --ok-soft: #dff3e5;
+    --warn: #b8860b;
+    --warn-soft: #fbf0d0;
+    --code-bg: #efece5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1916;
+      --surface: #24221e;
+      --surface-2: #2b2924;
+      --text: #ece8df;
+      --muted: #a39d91;
+      --border: #3a3731;
+      --accent: #ff8a5c;
+      --accent-soft: #3d241a;
+      --accent2: #3cc8d8;
+      --accent2-soft: #163338;
+      --ok: #5fc47e;
+      --ok-soft: #1d3426;
+      --warn: #e2b53c;
+      --warn-soft: #3a3115;
+      --code-bg: #2f2d27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1916;
+    --surface: #24221e;
+    --surface-2: #2b2924;
+    --text: #ece8df;
+    --muted: #a39d91;
+    --border: #3a3731;
+    --accent: #ff8a5c;
+    --accent-soft: #3d241a;
+    --accent2: #3cc8d8;
+    --accent2-soft: #163338;
+    --ok: #5fc47e;
+    --ok-soft: #1d3426;
+    --warn: #e2b53c;
+    --warn-soft: #3a3115;
+    --code-bg: #2f2d27;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 16px 72px; }
+  header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); }
+  header .chips { margin-top: 12px; }
+  nav.toc {
+    margin: 24px 0 0; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    font-size: 0.9rem;
+  }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  nav.toc li { break-inside: avoid; }
+  nav.toc a { color: var(--accent2); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h2 {
+    font-size: 1.25rem;
+    margin: 44px 0 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+  h3 { margin: 24px 0 8px; font-size: 1.02rem; }
+  h4 { margin: 14px 0 6px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 22px; }
+  li { margin: 2px 0; }
+  code {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "D2Coding", monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+  pre code { background: none; padding: 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 0 0 12px;
+  }
+  .card > :last-child { margin-bottom: 0; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-bottom: 12px; }
+  .grid-2 .card { margin: 0; }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin: 0; }
+  .kv dt { color: var(--muted); font-size: 0.9rem; }
+  .kv dd { margin: 0; }
+  @media (max-width: 480px) {
+    .kv { grid-template-columns: 1fr; gap: 0; }
+    .kv dd { margin-bottom: 8px; }
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip, .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    background: var(--accent2-soft); color: var(--accent2);
+    font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.gray { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .tag.hot { background: var(--accent-soft); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 6px 0 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.02em; background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  .table-scroll { overflow-x: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .stat .label { color: var(--muted); font-size: 0.8rem; }
+  .stat .value { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .value small { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px; margin: 10px 0 14px; }
+  .gallery figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .gallery img { display: block; width: 100%; height: auto; background: #000; }
+  .gallery figcaption { padding: 8px 12px; font-size: 0.85rem; color: var(--muted); }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; margin: 0 0 10px; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  details[open] > summary { margin-bottom: 8px; }
+  .caption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .rule { border-left: 3px solid var(--accent); padding: 4px 12px; margin: 8px 0; background: var(--surface); border-radius: 0 8px 8px 0; }
+  .rule b { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 12px; }
+  .flow .step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.88rem; }
+  .flow .arrow { color: var(--muted); }
+  .muted { color: var(--muted); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>물리 라운드 (Jolt)</h1>
+  <p>CrowyEngine · 2026-10-04 시작 · 브랜치 <code>physics</code> (기준 <code>3ac04a3</code>) · 워크트리 <code>CrowyEngine-physics</code> · 자율 진행, 작업마다 커밋</p>
+  <div class="chips">
+    <span class="tag hot">진행 중</span>
+    <span class="tag gray">Windows-first</span>
+    <span class="tag gray">밤샘 자율 · 위임 실험</span>
+    <span class="tag gray">효과 라운드와 병행 (포트 27600)</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#glance">한눈에</a></li>
+    <li><a href="#how">이 라운드가 도는 방식</a></li>
+    <li><a href="#design">라운드 설계에서 정한 것</a></li>
+    <li><a href="#world">물리 월드 (physics-world)</a></li>
+    <li><a href="#next">다음</a></li>
+  </ol>
+</nav>
+
+<h2 id="glance">한눈에</h2>
+<div class="card">
+  <p>목표는 <b>위임 실험</b>이다. 물리(강체, Jolt)를 AI가 혼자 어디까지 끌고 가는지 본다. 오빠가 확인할 수 있게 <b>테스트</b>, <b>보이는 샘플</b>, <b>엔진에 붙는 방식에 대한 짧은 노트</b>를 함께 낸다. 오늘 밤 범위는 설계와 트레이서 불릿이다: Jolt를 트리에 넣고, 고정 틱 위의 물리 월드, 헤드리스 시나리오, 눈으로 보는 플레이그라운드. 물리 월드는 <code>RenderScene</code> 프리미티브에 한 방향으로만 변환을 쓰고, 그 글루는 액터/컴포넌트 라운드가 그대로 옮겨 갈 수 있게 자기 파일에 둔다.</p>
+  <p>지금까지: 설계(탐색 6, 설계 관점 2 + 비평 1)를 끝내고 작업 넷으로 잘랐다. 작업 1이 끝났다 — <code>Engine/Physics</code>가 Jolt를 완전히 숨기고, 테스트 23개가 결정성(실행 간, 월드 간, 워커 0개 대 3개)까지 확인한다.</p>
+</div>
+<div class="stat-row">
+  <div class="stat"><div class="label">작업</div><div class="value num">1 / 4 <small>+ 리뷰 수정 1</small></div></div>
+  <div class="stat"><div class="label">단위 테스트 스위트</div><div class="value num">13 → 14 <small>CrowyPhysicsTest</small></div></div>
+  <div class="stat"><div class="label">물리 테스트</div><div class="value num">23 <small>death 7 포함, 0.5 s</small></div></div>
+  <div class="stat"><div class="label">Jolt 빌드</div><div class="value num">21 s <small>경고 0, clang-cl</small></div></div>
+</div>
+
+<h2 id="how">이 라운드가 도는 방식</h2>
+<div class="card">
+  <ul>
+    <li><b>자율.</b> 증분 하나가 끝나면 브랜치 <code>physics</code>에 바로 커밋한다. master, push, amend, rebase, reset은 하지 않는다. 병합은 오빠가 한다.</li>
+    <li><b>작업마다 설계 단계.</b> Opus 관점 둘을 읽기 전용 워크플로우로 돌리고, 메인 세션이 합쳐서 작업 파일에 결정을 적은 뒤에 코드를 쓴다.</li>
+    <li><b>작업마다 리뷰.</b> 정확성 · 규칙과 스타일 · 테스트 타당성 세 렌즈로 읽고, 발견마다 그것을 반박하려는 검증자 하나를 붙인다. 확인된 것만 다음 작업 전에 고친다.</li>
+    <li><b>병행.</b> 같은 시간에 다른 세션이 <code>CrowyEngine-effects</code>에서 GPU 효과를 만든다. 이 라운드의 창은 전부 <code>CROWY_COMMAND_PORT=27600</code>, <code>CROWY_WINDOW_DISPLAY=1</code>로 띄운다.</li>
+    <li><b>Mac은 멈추지 않는다.</b> Mac에서 확인할 것은 이 라운드 전용 원장 <code>engine-macos-tests-physics.md</code>(PH-n)에 모은다.</li>
+  </ul>
+</div>
+
+<h2 id="design">라운드 설계에서 정한 것</h2>
+<div class="card">
+  <p>설계 파일은 <code>engine-design-physics.md</code>(git 제외)다. 탐색 워크플로우(Opus 읽기 6: 렌더 샘플, 코어 수학, 루프·포트·테스트, Jolt, Godot의 Jolt 모듈, worklog 양식과 SmolEngine의 오버랩 이벤트 역사), 설계 워크플로우(관점 둘 "엔진 모양 먼저", "퍼즐과 테스트 먼저" + 비평 하나)를 합쳤다.</p>
+  <ul>
+    <li><b>Jolt는 모듈 안에 숨긴다.</b> <code>Crowy::Physics</code>가 Jolt를 PRIVATE으로 링크한다. Jolt의 PUBLIC 옵션(<code>-mavx2</code> 등과 <code>JPH_*</code> 정의)은 정의가 하나라도 다르면 <code>RegisterTypes</code>가 abort하므로, 정확히 한 묶음의 TU에만 닿아야 한다.</li>
+    <li><b>물리는 초가 아니라 틱을 센다.</b> <code>Step()</code> 한 번이 1/60 s 한 틱이고, 물리 쪽에는 dt를 받는 함수가 없다. 한 프레임에 틱을 몇 번 돌릴지는 루프 주인이 정한다.</li>
+    <li><b>잰 것이 설계를 바꿨다: 모니터가 120 Hz다.</b> 두 설계 관점 모두 "프레임마다 한 틱"을 제안했지만, 그러면 오빠 화면에서 플레이그라운드가 2배속이 된다. 그래서 플레이그라운드는 정수 나노초 틱 시계(<code>App::FixedStep</code>과 같은 16 666 667 ns)로 실시간으로 돌고, smoke 골든은 리드인 90프레임 동안 틱 0에 멈춘 장면을 찍어 결정적으로 만든다. 움직임은 헤드리스 핀과 포트 확인으로 고정한다.</li>
+    <li><b>접촉 이벤트는 이번엔 없다.</b> SmolEngine이 한 달을 쓴 자리(처음부터 겹친 경우, 파괴될 때의 exit, 양방향)이고, Jolt의 리스너는 잡 스레드에서 비결정적 순서로 불리며 잠든 몸체에도 Removed를 낸다. 퍼즐은 겹침 질의(<code>Overlapping</code>)로 읽는다. 이벤트 설계는 설계 파일의 "Deferred"에 액터 라운드 몫으로 적어 두었다.</li>
+    <li><b>퍼즐마다 월드 하나.</b> 플레이그라운드가 핀으로 고정된 경로를 그대로 돌게 하려고.</li>
+    <li><b>Windows와 Mac의 비트 단위 일치는 약속이 아니라 측정이다.</b> Jolt를 <code>CROSS_PLATFORM_DETERMINISTIC</code>으로 빌드했지만 clang-cl은 Jolt의 검증 목록에 없다. 핀은 Windows에서 기록하고, Mac은 맞는지 혹은 어디서 처음 갈라지는지를 적는다. 핀을 Mac에 맞춰 고치지는 않는다.</li>
+  </ul>
+</div>
+
+<h2 id="world">물리 월드 (physics-world) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>Jolt v5.6.0이 FetchContent로 들어왔고, 새 모듈 <code>Engine/Physics</code>가 그것을 완전히 감싼다. 공개 헤더 셋(<code>PhysicsTypes</code>, <code>PhysicsRuntime</code>, <code>PhysicsWorld</code>)에는 Jolt 타입이 하나도 없다. <code>PhysicsRuntime</code>은 Jolt의 프로세스 전역(할당자, Trace와 Assert 훅, 팩토리와 타입 등록), 잡 시스템, 임시 할당자를 가진다 — 프로세스에 하나, 모든 월드보다 오래 산다. <code>PhysicsWorld</code>는 그것을 빌려서 박스와 구 몸체(정적·키네마틱·동적), 월드에 거는 힌지(한계와 마찰 토크), 중심이나 한 점에 거는 임펄스, 키네마틱 목표, 겹침 질의, 상태 해시를 1/60 s 고정 틱 위에서 돌린다.</p>
+  <p>핸들에는 만든 월드의 태그가 들어 있어서, 다른 월드의 핸들은 거부된다(플레이그라운드는 월드 셋을 동시에 돈다). 키네마틱 목표는 들고 있다가 매 Step마다 다시 낸다 — Jolt의 <code>MoveKinematic</code>이 설정한 속도는 그대로 남기 때문이다. 상태 해시는 틱 수와 <code>PhysicsSystem::SaveState</code>가 쓰는 모든 바이트(몸체, 속도, 수면 상태, 워밍 람다를 포함한 접촉 캐시, 구속)에 대한 FNV-1a로, Jolt 스스로 결정성을 검사할 때 비교하는 그 상태다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>c357969</code></td><td>Jolt 블록(<code>cmake/deps.cmake</code>), <code>Engine/Physics</code> 모듈, 테스트 21개(death 7).</td></tr>
+  <tr><td><code>d1cd874</code></td><td>리뷰 수정(아래). 테스트 21 → 23.</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>Jolt 빌드</td><td><code>Jolt.lib</code> 21 s, 경고 0. 컴파일 줄에 <code>-MDd</code>, <code>/GR-</code>, <code>-mavx2 -mbmi -mpopcnt -mlzcnt -mf16c</code>, <code>/clang:-ffp-contract=off</code>, <code>JPH_CROSS_PLATFORM_DETERMINISTIC</code></td></tr>
+  <tr><td>AVX2가 닿는 곳</td><td>Jolt 소스와 <code>Engine/Physics/Private</code>의 두 파일뿐(<code>compile_commands.json</code>으로 확인). 테스트 TU에는 없다</td></tr>
+  <tr><td>단위 테스트</td><td>스위트 13 → 14. <code>CrowyPhysicsTest</code> 23개(death 7), 0.5 s</td></tr>
+  <tr><td>떨어뜨린 1 m 상자</td><td>120틱에 중심 y ∈ [0.479, 0.501], 300틱 안에 잔다. 접촉은 0.02 m 안에서 시작하고 0.02 m 슬롭 아래의 침투는 밀어내지 않아서, 약 0.486에서 쉰다</td></tr>
+  <tr><td>결정성</td><td>같은 장면 두 월드의 틱별 해시 301개가 같다. 워커 0개 대 3개(상자 51개 장면)도 같다. 시작 위치 하나를 1 ulp 바꾸면 틱 0부터 다르다</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계.</b> 라운드 설계는 위의 "라운드 설계에서 정한 것". 작업 설계는 Opus 관점 둘("Jolt에 충실한 최소 래퍼", "소비자 — 퍼즐, 글루, 액터 라운드")을 합쳤다. 상태 해시를 Jolt의 <code>SaveState</code> 위에 세운 것은 앞의 관점, 핸들의 월드 태그와 <code>ShapeOf</code>/<code>MotionOf</code>는 뒤의 관점에서 왔다.</li>
+  <li><b>설계가 바뀐 곳.</b> 작업 파일이 적은 휴식 높이 [0.49, 0.51]이 틀렸다. 두 관점이 각자 Jolt의 적분을 float로 다시 돌려 0.486을 냈고, 테스트는 [0.479, 0.501]로 갔다. 설계 파일의 "박스의 반 크기는 볼록 반경보다 커야 한다"도 5.6에서는 맞지 않는다(반경을 가장 작은 반 크기로 자른다). "다른 월드의 핸들은 못 잡는다"던 작업 파일의 한계는 월드 태그로 없어졌다.</li>
+  <li><b>스스로 잡은 것.</b> Jolt의 CMake를 빌드 전에 읽어서 함정 넷을 먼저 피했다: clang-cl은 <code>MSVC</code>로 잡혀 정적 런타임(/MTd)이 기본이 되고 트리는 /MDd라 링크가 깨진다, clang-cl의 <code>/Wall</code>은 <code>-Weverything</code>이라 <code>/WX</code>와 만나면 새 clang에서 깨진다, v5.6의 GPU 헤어 시뮬레이션이 DX12/Vulkan/Metal 셰이더 툴체인을 끌고 온다, clang-cl 경로에서는 Jolt가 <code>-ffp-contract=off</code>를 넣지 않는다. 그래서 첫 빌드가 경고 0으로 통과했다. 레드 런: 키네마틱 목표 재발행을 빼면 <code>KinematicReachesAndHolds</code>가 속도 60 m/s가 남은 채로 실패한다.</li>
+  <li><b>리뷰가 잡은 것.</b> 확인 15건, 반박 11건. 겹치는 것을 합치면 열한 가지다. 무거운 것부터: 테스트 14개 중 12개가 틱 수와 몸체 수를 단언하지 않았다(라운드 규칙 8 위반 — 몸체가 없는 두 월드도 "해시가 같다"를 통과한다). 해시가 틱에 의존한다는 것을 보이는 테스트가 없었다. 마찰·반발·각 감쇠·힌지 마찰 토크는 기본값이 Jolt의 기본값과 같아서, 그 값을 Jolt에 넘기는 줄을 지워도 모든 테스트가 통과했을 것이다. 쿼터니언 변환은 y와 w만 지나갔다. 다른 월드의 힌지를 거부하는 검사는 그 월드에 힌지가 아예 없어서 공허했다. 그리고 내가 쓴 주석 "결정성 빌드는 속도의 약 8 %"가 Jolt 문서의 "약 8 % 느리다"를 열두 배 느리다로 바꿔 적고 있었다. 나머지는 80열, 쓰이지 않는 const 오버로드, 긴 타입 별칭, 생성자에서 멤버 이름 매개변수를 쓴 것.</li>
+  <li><b>반박된 것 중 기억할 것.</b> Release에서 무효 핸들을 역참조한다는 지적은 맞지만 범위 밖이라는 판단(Debug에서는 assert, <code>PackedTable::GetRef</code>와 같은 계약)이 이겼다. 키네마틱 목표가 해시에 안 들어간다는 지적은 "입력이지 상태가 아니다"로 반박됐다.</li>
+  <li><b>막힌 곳.</b> 없다.</li>
+  <li><b>남겨 둔 것.</b> 몸체 제거, 텔레포트, 레이어·마스크, 레이캐스트, 캡슐과 메시, CCD, 디버그 렌더러, 접촉 이벤트. 하나씩 새 멤버나 variant 대안으로 들어오고 시그니처는 바뀌지 않는다. Mac에서 RTTI가 섞이는 링크 위험(Jolt는 <code>/GR-</code>, 엔진은 RTTI)은 원장 PH-1에 적었다 — 모듈은 Jolt 클래스를 상속하지 않는다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 월드 태그를 <code>GenericHandle</code>의 generation 상위 32비트에 접어 넣은 것. 동작은 하지만 핸들 타입이 모르는 약속이라, 오빠라면 핸들에 소유자 필드를 두거나 월드를 하나로 합쳤을 것 같다. <code>StateHash</code>가 부를 때마다 문자열 스트림으로 상태 전체를 직렬화하는 것도 — 틱마다 부르면 무겁다(지금은 테스트와 체크포인트만 부른다).</li>
+</ul>
+
+<h2 id="next">다음</h2>
+<div class="card">
+  <ol>
+    <li><b>작업 2 · 퍼즐(physics-puzzles)</b> — PlateGate, ToppleBridge, SwingDoor를 헤드리스로. 각자 스크립트된 풀이, 실패하는 대조군, 체크포인트 핀.</li>
+    <li><b>작업 3 · 플레이그라운드(physics-playground)</b> — 틱 시계, 글루 라이브러리, 보이는 샘플, 골든, 포트 확인.</li>
+    <li><b>작업 4 · 붙는 방식(physics-attach)</b> — 노트, 원장, 이 페이지의 마무리.</li>
+  </ol>
+  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests-physics.md</code>의 PH-1(빌드), PH-2(물리 테스트 23개)에 있다.</p>
+</div>
+
+<footer>CrowyEngine · physics 라운드 기록 · 진행 중 · 새 항목이 위로 쌓인다</footer>
+
+</main>
+</body>
+</html>
