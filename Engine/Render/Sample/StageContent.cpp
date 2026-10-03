@@ -81,11 +81,16 @@ namespace Crowy
         const auto quads = document.quads.size();
 
         if(object < instances) {
+            const auto& row = document.instances[object];
+            const auto box = std::ranges::find(document.models, row.model, &StageModel::id)->box;
+
             return {InspectSection{
                 .label = "transform",
                 .target = &stage.document.instances[object],
                 .desc = GetDesc<StageInstance>(),
-                .apply = [this, object] { ApplyInstance(object); }
+                .apply = [this, object] { ApplyInstance(object); },
+                // only the unit box is scaled per axis
+                .gizmo = combine(GizmoParts::Move, GizmoParts::Turn, box ? GizmoParts::ScaleAxes : GizmoParts::Scale)
             }};
         }
         if(object < instances + quads) {
@@ -95,7 +100,9 @@ namespace Crowy
                     .label = "transform",
                     .target = &stage.document.quads[quad],
                     .desc = GetDesc<StageQuad>(),
-                    .apply = [this, quad] { ApplyQuad(quad); }
+                    .apply = [this, quad] { ApplyQuad(quad); },
+                    // width and height stay with the inspector
+                    .gizmo = combine(GizmoParts::Move, GizmoParts::Turn)
                 },
                 InspectSection{
                     .label = "material",
@@ -112,7 +119,8 @@ namespace Crowy
             .label = "light",
             .target = &stage.document.lights[light],
             .desc = GetDesc<StageLight>(),
-            .apply = [this, light] { ApplyLight(light); }
+            .apply = [this, light] { ApplyLight(light); },
+            .gizmo = GizmoParts::Move
         }};
     }
 

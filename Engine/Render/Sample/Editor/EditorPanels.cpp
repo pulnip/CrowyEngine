@@ -144,6 +144,66 @@ namespace Crowy
             draw->AddText(toScreen(corners[0], viewport), color, session.State().selected.c_str());
     }
 
+    void drawGizmo(const EditorSession& session) {
+        const auto layout = session.SelectionGizmo();
+        if(!layout)
+            return;
+
+        using enum GizmoHandle;
+        const auto screen = projectGizmo(*layout);
+        const auto& io = ImGui::GetIO();
+        const Vec2 mouse{io.MousePos.x, io.MousePos.y};
+        const auto held = session.Held();
+        const auto lit = held != None ? held : io.WantCaptureMouse ? None : hoverGizmo(screen, mouse);
+        const auto colorOf = [&](GizmoHandle handle, ImU32 color) {
+            return handle == lit ? IM_COL32(255, 196, 40, 255) : color;
+        };
+        const auto point = [](Vec2 p) { return ImVec2{p.x, p.y}; };
+        auto* draw = ImGui::GetForegroundDrawList();
+
+        if(screen.marks[static_cast<usize>(Ring)].shown) {
+            std::array<ImVec2, GizmoRingSamples> ring;
+            for(usize i = 0; i < ring.size(); ++i)
+                ring[i] = point(screen.ring[i]);
+            draw->AddPolyline(ring.data(), static_cast<int>(ring.size()), colorOf(Ring, IM_COL32(225, 225, 225, 220)), ImDrawFlags_Closed, 2.0f);
+        }
+        for(const auto [handle, color]: {
+                std::pair{MoveX, IM_COL32(235, 70, 70, 255)},
+                std::pair{MoveY, IM_COL32(90, 205, 90, 255)},
+                std::pair{MoveZ, IM_COL32(80, 130, 245, 255)},
+            }) {
+            const auto& mark = screen.marks[static_cast<usize>(handle)];
+            if(!mark.shown)
+                continue;
+
+            const auto drawn = colorOf(handle, color);
+            const auto along = mark.to - screen.pivot;
+            const auto length = norm(along);
+            draw->AddLine(point(screen.pivot), point(mark.to), drawn, 3.0f);
+            if(length > 1.0f) {
+                const auto way = along / length;
+                const Vec2 across{-way.y, way.x};
+                const auto tip = mark.to + way * 10.0f;
+                draw->AddTriangleFilled(point(tip), point(mark.to + across * 5.0f), point(mark.to - across * 5.0f), drawn);
+            }
+        }
+        for(const auto handle: {Scale, ScaleX, ScaleY, ScaleZ}) {
+            const auto& mark = screen.marks[static_cast<usize>(handle)];
+            if(!mark.shown)
+                continue;
+
+            const auto color = handle == ScaleX ? IM_COL32(235, 70, 70, 255)
+                             : handle == ScaleY ? IM_COL32(90, 205, 90, 255)
+                             : handle == ScaleZ ? IM_COL32(80, 130, 245, 255)
+                                                : IM_COL32(240, 240, 240, 255);
+            const Vec2 half{GizmoSquarePoints, GizmoSquarePoints};
+            draw->AddRectFilled(point(mark.from - half), point(mark.from + half), colorOf(handle, color));
+        }
+
+        if(const auto change = session.HeldChange(); !change.empty())
+            draw->AddText(ImVec2{mouse.x + 16.0f, mouse.y + 12.0f}, IM_COL32(255, 196, 40, 255), change.c_str());
+    }
+
     void InspectorPanel::Draw(EditorSession& session, UIContext& context) {
         // the walker seeds values when it builds: rebuild after a write it
         // did not make

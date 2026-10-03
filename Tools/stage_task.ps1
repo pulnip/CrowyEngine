@@ -1,8 +1,8 @@
 # The owner's one task in StageEditor, performed over the command port the
 # way a person performs it by hand: go to the street cut, click the street
-# lamp, read it, move it a meter, switch to night, capture. Every step is a
-# property write the panels make too; the script asserts each outcome and
-# exits 1 on the first that fails.
+# lamp, read it, drag it a meter and turn it a quarter on the gizmo, switch
+# to night, capture. Every step is a property write the panels and the mouse
+# make too; the script asserts each outcome and exits 1 on the first that fails.
 #
 # usage: Tools/stage_task.ps1 [-Out captures/stage-task] [-Exe build/bin/StageEditor.exe]
 #        [-Backlot ../Backlot] [-Port 27520]
@@ -79,12 +79,31 @@ try {
     Assert-That $same "its position ($($file -join ', ')) and scale ($($fileScale -join ', ')) are the scene file's"
     Assert-That ([math]::Abs($yaw - $lampRow.yaw) -lt 1e-4) "its yaw is the scene file's $($lampRow.yaw)"
 
-    # 4. a meter east, and the picture moves with it
+    # 4. with the gizmo, pressed and dragged where a person sees its handles:
+    #    a meter east on the X arrow, then a quarter turn on the ring, snapped
     $before = Save-Capture "before-move"
-    # a Vec3 is one leaf: the port writes it whole
-    Set-PortProperty selection position @(($position[0] + 1.0), $position[1], $position[2])
+    Set-PortProperty debug showPanel $true
+    $null = Invoke-Port run @{ frames = 1 }
+    Set-PortProperty editor snap $true
+    $aim = Get-PortProperty gizmo moveX
+    Set-PortProperty editor grab $aim.grab
+    Assert-That ((Get-PortProperty editor handle) -eq "MoveX") "a press at the X arrow's tip ($($aim.grab -join ', ')) holds it"
+    Set-PortProperty editor drag $aim.reach
+    Set-PortProperty editor handle None
     $moved = Get-PortProperty selection position
-    Assert-That ([math]::Abs($moved[0] - ($position[0] + 1.0)) -lt 1e-4) "the lamp moved 1 m east"
+    Assert-That ([math]::Abs($moved[0] - ($position[0] + 1.0)) -lt 1e-4 -and $moved[1] -eq $position[1] -and $moved[2] -eq $position[2]) "the arrow moved the lamp 1 m east to x $($moved[0])"
+
+    $ring = Get-PortProperty gizmo ring
+    Set-PortProperty editor grab $ring.grab
+    Assert-That ((Get-PortProperty editor handle) -eq "Ring") "a press on the ring ($($ring.grab -join ', ')) holds it"
+    Set-PortProperty editor drag $ring.reach
+    Set-PortProperty editor handle None
+    $turned = Get-PortProperty selection yaw
+    $expected = ($lampRow.yaw + 90) % 360
+    Assert-That ([math]::Abs($turned - $expected) -lt 1e-3) "the ring turned it 90 degrees to yaw $turned"
+    Set-PortProperty editor snap $false
+    Set-PortProperty debug showPanel $false
+
     $after = Save-Capture "after-move"
     & $tool $before $after | Out-Null
     Assert-That ($LASTEXITCODE -eq 1) "the capture after the move differs from the one before"

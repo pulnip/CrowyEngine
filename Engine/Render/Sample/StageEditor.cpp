@@ -55,6 +55,8 @@ namespace Crowy
         UIContext uiContext;
         HierarchyPanel hierarchy;
         InspectorPanel inspector;
+        // a hold the mouse took, which only the mouse drags and lets go
+        bool mouseHolds = false;
         // last: it leaves the port first
         std::optional<EditorSession> session;
 
@@ -103,13 +105,33 @@ namespace Crowy
 
             if(input.IsKeyPressed(KeyCode::P))
                 Debug().showPanel = !Debug().showPanel;
+            // Esc undoes a held drag, else lets go of the selection
             if(input.IsKeyPressed(KeyCode::Escape)) {
-                session->State().selected.clear();
-                session->Sync();
+                if(session->Held() != GizmoHandle::None) {
+                    session->Cancel();
+                } else {
+                    session->State().selected.clear();
+                    session->Sync();
+                }
             }
-            // a press ImGui wanted never arrives here; a look is not a pick
-            if(input.IsKeyPressed(MouseButton::LButton) && !input.IsKeyDown(MouseButton::RButton))
-                session->PickAt(input.GetMousePos());
+            // a press ImGui wanted never arrives here; a look is not a press. A
+            // press on a handle takes it, elsewhere it picks
+            const auto mouse = input.GetMousePos();
+            if(input.IsKeyPressed(MouseButton::LButton) && !input.IsKeyDown(MouseButton::RButton)) {
+                mouseHolds = session->Grab(mouse);
+                if(!mouseHolds)
+                    session->PickAt(mouse);
+            } else if(mouseHolds) {
+                // the port, Esc or another selection may have let go already
+                if(session->Held() == GizmoHandle::None) {
+                    mouseHolds = false;
+                } else if(input.IsKeyDown(MouseButton::LButton)) {
+                    session->DragTo(mouse, input.IsKeyDown(KeyCode::Ctrl));
+                } else {
+                    session->Release();
+                    mouseHolds = false;
+                }
+            }
             for(usize i = 0; i < CutKeys.size(); ++i) {
                 if(input.IsKeyPressed(CutKeys[i]))
                     session->SelectCut(i);
@@ -136,7 +158,8 @@ namespace Crowy
         }
 
         std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList& cmdList) override {
-            constexpr CStr ToolbarHint = "1-8 cuts, F1-F4 keys, click to select, Esc clears, P hides";
+            constexpr CStr ToolbarHint =
+                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, P hides";
 
             // the chrome stays out of every capture unless asked for
             if(Debug().showPanel) {
@@ -147,6 +170,7 @@ namespace Crowy
                 inspector.Draw(*session, uiContext);
                 drawLightMarkers(*session, Scene());
                 drawSelectionHighlight(*session, Scene());
+                drawGizmo(*session);
             }
             uiRenderer->Prepare(cmdList);
 

@@ -294,6 +294,27 @@ namespace Crowy
         Select(hit ? content.ObjectOf(hit->primitive) : std::nullopt);
     }
 
+    Str EditorSession::HeldChange() const {
+        if(!hold || !gizmoRow)
+            return {};
+
+        const auto& drag = hold->drag;
+        if(isGizmoArrow(drag.handle))
+            return std::format("{:+.2f} m", dot(*gizmoRow->position - hold->position, drag.axis));
+        if(drag.handle == GizmoHandle::Ring) {
+            const auto turn = wrapDegrees(*gizmoRow->yaw - hold->yaw + 180.0f) - 180.0f;
+            return std::format("{:+.1f} deg", turn);
+        }
+
+        const auto& now = *gizmoRow->scale;
+        const auto& start = hold->scale;
+        const auto factor = drag.handle == GizmoHandle::ScaleY ? now.y / start.y
+                          : drag.handle == GizmoHandle::ScaleZ ? now.z / start.z
+                                                               : now.x / start.x;
+
+        return std::format("x{:.2f}", factor);
+    }
+
     void EditorSession::applyGrab() {
         const auto pixel = std::exchange(state.grab, EditorNoPick);
         release();

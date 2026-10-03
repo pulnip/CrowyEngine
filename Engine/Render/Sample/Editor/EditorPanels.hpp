@@ -41,6 +41,8 @@ namespace Crowy
     void drawEditorToolbar(EditorSession& session, StrView hint);
     void drawLightMarkers(const EditorSession& session, const RenderScene& scene);
     void drawSelectionHighlight(const EditorSession& session, const RenderScene& scene);
+    // the selection's handles, the held or hovered one lit, the change beside the cursor
+    void drawGizmo(const EditorSession& session);
 
     struct HierarchyGroup {
         Str name;

@@ -231,6 +231,9 @@ namespace Crowy
         // the selection's gizmo as the camera sees it now; nothing when it has
         // none, the chrome is hidden, or it would reach the near plane
         std::optional<GizmoLayout> SelectionGizmo() const;
+        // the held drag's change so far, "+1.00 m", "+90.0 deg" or "x2.00";
+        // empty while nothing is held
+        Str HeldChange() const;
 
     private:
         void exposeTargets();
