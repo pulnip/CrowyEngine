@@ -20,4 +20,5 @@ if(CROWY_ENABLE_TEST)
     )
 
     add_subdirectory(Check)
+    add_subdirectory(Sample)
 endif()
