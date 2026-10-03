@@ -91,9 +91,12 @@ namespace Crowy
             applyPickAt();
         else if(state.selected != applied.selected && !applySelected())
             state.selected = applied.selected;
+        // hidden chrome lets go before any gizmo write can land
+        if(hold && !chromeShown)
+            release();
         if(state.cancel)
             applyCancel();
-        if(state.handle != applied.handle)
+        if(state.handle != Held())
             applyHandle();
         if(state.grab != EditorNoPick)
             applyGrab();
@@ -228,7 +231,7 @@ namespace Crowy
         const auto cuts = content.Cuts();
         const auto found = std::ranges::find(cuts, state.cut, &EditorCut::name);
         if(found == cuts.end()) {
-            refuse(std::format(
+            report(std::format(
                 "no cut '{}'; there are {}, or {}",
                 state.cut,
                 listOf(cuts, [](const EditorCut& cut) { return cut.name; }),
@@ -248,7 +251,7 @@ namespace Crowy
     bool EditorSession::applyKey() {
         const auto keys = content.Keys();
         if(std::ranges::find(keys, state.key) == keys.end()) {
-            refuse(std::format("no key '{}'; there are {}", state.key, listOf(keys, [](const Str& key) { return key; })));
+            report(std::format("no key '{}'; there are {}", state.key, listOf(keys, [](const Str& key) { return key; })));
             return false;
         }
 
@@ -270,7 +273,7 @@ namespace Crowy
         Str why;
         const auto object = objectNamed(content.Objects(), state.selected, why);
         if(!object) {
-            refuse(why);
+            report(why);
             return false;
         }
 
@@ -320,7 +323,7 @@ namespace Crowy
         release();
         const auto layout = SelectionGizmo();
         if(!layout) {
-            refuse(chromeShown ? "nothing selected carries a gizmo in view" : "the gizmo shows with debug.showPanel");
+            report(chromeShown ? "nothing selected carries a gizmo in view" : "the gizmo shows with debug.showPanel");
             return;
         }
 
@@ -328,7 +331,7 @@ namespace Crowy
         const auto ray = rayThroughPixel(camera, pixel, viewport);
         const auto drag = handle != GizmoHandle::None && ray ? grabGizmo(*layout, handle, *ray) : std::nullopt;
         if(!drag) {
-            refuse(std::format("no handle at {}, {}", pixel.x, pixel.y));
+            report(std::format("no handle at {}, {}", pixel.x, pixel.y));
             return;
         }
 
@@ -340,13 +343,13 @@ namespace Crowy
             .scale = row.scale ? *row.scale : ones()
         };
         state.handle = handle;
-        refuse(std::format("holding {}", enumName(handle)));
+        report(std::format("holding {}", enumName(handle)));
     }
 
     void EditorSession::applyDrag() {
         const auto pixel = std::exchange(state.drag, EditorNoPick);
         if(!hold) {
-            refuse("no handle is held; write editor.grab first");
+            report("no handle is held; write editor.grab first");
             return;
         }
 
@@ -374,7 +377,7 @@ namespace Crowy
         }
         // only a press takes a handle
         state.handle = Held();
-        refuse("editor.handle names the held handle: write editor.grab to take one, None to let go");
+        report("editor.handle names the held handle: write editor.grab to take one, None to let go");
     }
 
     void EditorSession::applyCancel() {
@@ -404,7 +407,7 @@ namespace Crowy
 
         const auto& section = inspected.front();
         // the accessor a port write goes through, checked for the type it must be
-        const auto field = [&](CStr name, const TypeOps* type) -> void* {
+        const auto field = [&](CStr name, const TypeOps* type) {
             const auto resolved = ResolveProperty(section.target, *section.desc, name);
             return resolved.desc != nullptr && &resolved.desc->type == type ? resolved.member : nullptr;
         };
@@ -469,7 +472,7 @@ namespace Crowy
         return nearest ? std::optional(objects[*nearest]) : std::nullopt;
     }
 
-    void EditorSession::refuse(Str status) {
+    void EditorSession::report(Str status) {
         state.status = std::move(status);
         applied.status = state.status;
     }

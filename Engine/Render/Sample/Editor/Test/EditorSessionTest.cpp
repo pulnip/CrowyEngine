@@ -19,13 +19,6 @@ namespace
     constexpr f32 HalfPi = std::numbers::pi_v<f32> / 2;
     constexpr Vec2 Window{1920.0f, 1080.0f};
 
-    // a row the gizmo can move, turn and scale
-    struct FakeRow {
-        Vec3 position{};
-        f32 yaw = 0.0f;
-        Vec3 scale{1.0f, 1.0f, 1.0f};
-    };
-
     void expectNear(Vec3 actual, Vec3 expected, f32 tolerance) {
         EXPECT_NEAR(actual.x, expected.x, tolerance);
         EXPECT_NEAR(actual.y, expected.y, tolerance);
@@ -37,6 +30,13 @@ namespace
 
         return clip / clip.w;
     }
+
+    // a row the gizmo can move, turn and scale
+    struct FakeRow {
+        Vec3 position{};
+        f32 yaw = 0.0f;
+        Vec3 scale{1.0f, 1.0f, 1.0f};
+    };
 
     // three cuts, two keys and three objects: a row, a box scaled per axis,
     // and a light whose section has no apply; remembers what it applied
@@ -568,4 +568,23 @@ TEST(EditorGizmo, AWriteToTheGizmoViewIsPutBack) {
     exposure.onDirty();
 
     EXPECT_NEAR(f.session.Gizmo().moveX.grab.x, 1041.0f, 0.05f);
+}
+
+// the chrome hidden by the port, with no frame between, lets go before the
+// next drag can land, and the handle cannot be written back on
+TEST(EditorGizmo, HidingTheChromeLetsGoAtOnce) {
+    Fixture f;
+    f.Hold(0);
+    const auto aim = f.session.Gizmo().moveX;
+    ASSERT_TRUE(f.session.Grab(aim.grab));
+
+    f.chrome = false;
+    f.session.State().drag = aim.reach;
+    f.Write();
+    EXPECT_EQ(f.content.rows[0].position, Vec3{});
+    EXPECT_EQ(f.session.Held(), GizmoHandle::None);
+
+    f.session.State().handle = GizmoHandle::MoveX;
+    f.Write();
+    EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
 }

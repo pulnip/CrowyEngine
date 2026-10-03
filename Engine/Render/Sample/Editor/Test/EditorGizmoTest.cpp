@@ -32,6 +32,12 @@ namespace
         return EditorCamera{EditorCut{.name = "down", .position = {0.0f, 5.0f, -8.660254f}, .pitch = Pi / 6, .lens = {.fovY = Pi / 3}}};
     }
 
+    // the down camera swung half a radian around the origin, so no two
+    // world axes line up on screen
+    EditorCamera cornerCamera() {
+        return EditorCamera{EditorCut{.name = "corner", .position = {-4.1524f, 5.0f, -7.6003f}, .yaw = 0.5f, .pitch = Pi / 6, .lens = {.fovY = Pi / 3}}};
+    }
+
     EditorCamera levelCamera() {
         return EditorCamera{EditorCut{.name = "level", .lens = {.fovY = Pi / 3}}};
     }
@@ -254,6 +260,8 @@ TEST(GizmoDrag, EveryAimMakesOneUnit) {
     const std::vector<Case> cases{
         {downCamera, {0.0f, 0.0f, 0.0f}, 0.0f, AllParts},
         {downCamera, {3.0f, 0.15f, 1.0f}, 30.0f, BoxParts},
+        {downCamera, {3.0f, 0.15f, 1.0f}, 180.0f, BoxParts},
+        {downCamera, {3.0f, 0.15f, 1.0f}, 90.0f, BoxParts},
         {planCamera, {10.5f, 0.15f, 7.0f}, 180.0f, AllParts},
         {levelCamera, {0.0f, 0.0f, 10.0f}, 0.0f, AllParts},
         {streetCamera, {10.5f, 0.15f, 7.0f}, 180.0f, AllParts},
@@ -296,7 +304,7 @@ TEST(GizmoDrag, EveryAimMakesOneUnit) {
     EXPECT_FALSE(aimGizmo(light, GizmoHandle::Scale));
 }
 
-TEST(GizmoMaths, YawWrapsAndSnaps) {
+TEST(GizmoMath, YawWrapsAndSnaps) {
     EXPECT_FLOAT_EQ(wrapDegrees(370.0f), 10.0f);
     EXPECT_FLOAT_EQ(wrapDegrees(-90.0f), 270.0f);
     EXPECT_FLOAT_EQ(wrapDegrees(360.0f), 0.0f);
@@ -310,4 +318,17 @@ TEST(GizmoMaths, YawWrapsAndSnaps) {
     EXPECT_FLOAT_EQ(snapTo(-8.0f, 15.0f), -15.0f);
     EXPECT_FLOAT_EQ(snapTo(7.0f, 15.0f), 0.0f);
     EXPECT_FLOAT_EQ(snapTo(0.9f, 0.25f), 1.0f);
+}
+
+// turned a half or a quarter, a box's per-axis squares stay off the arrows
+TEST(GizmoHover, ATurnedBoxsSquaresLeaveTheShaftsFree) {
+    const auto corner = cornerCamera();
+    for(const auto yaw: {0.0f, 90.0f, 180.0f, 270.0f}) {
+        const auto layout = layoutOf(corner, {0.0f, 0.0f, 0.0f}, yaw, BoxParts);
+        const auto screen = projectGizmo(layout);
+        for(const auto arrow: {GizmoHandle::MoveX, GizmoHandle::MoveZ}) {
+            const auto& mark = screen.marks[at(arrow)];
+            EXPECT_EQ(hoverGizmo(screen, (mark.from + mark.to) * 0.5f), arrow) << yaw;
+        }
+    }
 }

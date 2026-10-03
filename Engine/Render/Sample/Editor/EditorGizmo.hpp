@@ -21,28 +21,16 @@ namespace Crowy
     struct GizmoMark;
     struct GizmoScreen;
 
+    // GizmoHandle's enumerators, None included
     inline constexpr usize GizmoHandleCount = 9;
     inline constexpr usize GizmoRingSamples = 64;
-    // an unforeshortened arrow spans this share of the viewport's half height
-    inline constexpr f32 GizmoScreenShare = 0.15f;
-    // in arrow lengths: where an arrow's grabbable stretch starts, the ring's
-    // radius, and how far out the uniform and the per-axis squares sit
-    inline constexpr f32 GizmoShaftStart = 0.2f;
+    // in arrow lengths: the ring's radius, and how far out the uniform and
+    // the per-axis squares sit
     inline constexpr f32 GizmoRingRadius = 1.25f;
     inline constexpr f32 GizmoScaleOffset = 0.7f;
     inline constexpr f32 GizmoAxisScaleOffset = 0.6f;
-    // a handle this many window points from the cursor, or nearer, is under it
-    inline constexpr f32 GizmoHoverPoints = 6.0f;
     // half a scale square's side, window points
     inline constexpr f32 GizmoSquarePoints = 5.0f;
-    // |view . axis| above it: the axis points at the eye and its arrow hides
-    inline constexpr f32 GizmoEndOn = 0.99f;
-    // |view . up| below it: the ring is seen within 10 degrees of edge-on
-    inline constexpr f32 GizmoEdgeOn = 0.17f;
-    // Ctrl's steps: meters on an arrow, degrees on the ring, a scale factor
-    inline constexpr f32 GizmoSnapMeters = 0.25f;
-    inline constexpr f32 GizmoSnapDegrees = 15.0f;
-    inline constexpr f32 GizmoSnapFactor = 0.1f;
 
     // in the order a tie under the cursor goes to: squares, arrows, the ring
     enum class GizmoHandle : u8 {
@@ -107,14 +95,14 @@ namespace Crowy
         GizmoParts parts
     );
     // an arrow's or a square's way from the pivot; zero for the ring
-    inline Vec3 gizmoAxis(const GizmoLayout& layout, GizmoHandle handle) noexcept;
+    inline constexpr Vec3 gizmoAxis(const GizmoLayout& layout, GizmoHandle handle) noexcept;
     inline GizmoScreen projectGizmo(const GizmoLayout& layout);
-    // the shown square or arrow tip nearest `pixel` within GizmoHoverPoints,
-    // else the nearest shaft or ring; None past them all
+    // the shown square or arrow tip nearest `pixel` within 6 points, else
+    // the nearest shaft or ring; None past them all
     inline GizmoHandle hoverGizmo(const GizmoScreen& screen, Vec2 pixel);
     // where a press takes the handle, and where dragging it makes one unit:
     // 1 m, +90 degrees, x2; nothing for a hidden handle
-    inline std::optional<GizmoAim> aimGizmo(const GizmoLayout& layout, GizmoHandle handle);
+    inline constexpr std::optional<GizmoAim> aimGizmo(const GizmoLayout& layout, GizmoHandle handle);
     // the handle held from a press along `press`; nothing when it misses the
     // handle's plane or lands where the handle cannot measure from
     inline std::optional<GizmoDrag> grabGizmo(const GizmoLayout& layout, GizmoHandle handle, const Ray3D& press);
@@ -128,7 +116,6 @@ namespace Crowy
         Vec3 pivot{};
         // meters an unforeshortened arrow spans; the rest are multiples of it
         f32 length = 0.0f;
-        GizmoParts parts = GizmoParts::None;
         // by GizmoHandle; an arrow seen end-on is not shown
         std::array<bool, GizmoHandleCount> shown{};
         // unit: the row's local axes turned by its yaw
@@ -192,9 +179,12 @@ namespace Crowy
         Vec3 factor{1.0f, 1.0f, 1.0f};
     };
 
-    inline Vec3 gizmoAxis(const GizmoLayout& layout, GizmoHandle handle) noexcept {
+    inline constexpr Vec3 gizmoAxis(const GizmoLayout& layout, GizmoHandle handle) noexcept {
         using enum GizmoHandle;
 
+        // a level square sits on whichever side of its axis points away from
+        // the +X and +Z arrows, so no yaw lays it on a shaft
+        const auto away = [](Vec3 axis) { return dot(axis, unitX() + unitZ()) >= 0.0f ? -axis : axis; };
         switch(handle) {
         case MoveX:
             return unitX();
@@ -202,13 +192,12 @@ namespace Crowy
             return unitY();
         case MoveZ:
             return unitZ();
-        // the per-axis squares sit on the negative axes, off the arrows
         case ScaleX:
-            return -layout.axes[0];
+            return away(layout.axes[0]);
         case ScaleY:
             return -layout.axes[1];
         case ScaleZ:
-            return -layout.axes[2];
+            return away(layout.axes[2]);
         case Scale:
             return layout.diagonal;
         default:
@@ -232,7 +221,9 @@ namespace Crowy
 
             const auto axis = gizmoAxis(layout, handle);
             if(isGizmoArrow(handle)) {
-                mark.from = at(layout.pivot + axis * (GizmoShaftStart * length));
+                // short of the pivot, so a click there still picks
+                constexpr auto ShaftStart = 0.2f;
+                mark.from = at(layout.pivot + axis * (ShaftStart * length));
                 mark.to = at(layout.pivot + axis * length);
             } else {
                 const auto offset = handle == GizmoHandle::Scale ? GizmoScaleOffset : GizmoAxisScaleOffset;
@@ -252,10 +243,13 @@ namespace Crowy
     }
 
     inline GizmoHandle hoverGizmo(const GizmoScreen& screen, Vec2 pixel) {
+        // a handle this many window points from the cursor, or nearer, is under it
+        constexpr auto HoverPoints = 6.0f;
+
         // squares and arrow tips first: overlapping arrows are told apart by their heads
         const auto nearestOf = [&](bool heads) {
             auto best = GizmoHandle::None;
-            auto nearest = GizmoHoverPoints;
+            auto nearest = HoverPoints;
             for(usize i = 1; i < GizmoHandleCount; ++i) {
                 const auto handle = static_cast<GizmoHandle>(i);
                 const auto& mark = screen.marks[i];
@@ -278,7 +272,7 @@ namespace Crowy
                     continue;
                 }
                 // a tie keeps the earlier handle
-                if(distance <= GizmoHoverPoints && (best == GizmoHandle::None || distance < nearest)) {
+                if(distance <= HoverPoints && (best == GizmoHandle::None || distance < nearest)) {
                     best = handle;
                     nearest = distance;
                 }
@@ -292,7 +286,7 @@ namespace Crowy
         return head != GizmoHandle::None ? head : nearestOf(false);
     }
 
-    inline std::optional<GizmoAim> aimGizmo(const GizmoLayout& layout, GizmoHandle handle) {
+    inline constexpr std::optional<GizmoAim> aimGizmo(const GizmoLayout& layout, GizmoHandle handle) {
         if(handle == GizmoHandle::None || !layout.shown[static_cast<usize>(handle)])
             return std::nullopt;
 
@@ -378,6 +372,11 @@ namespace Crowy
     }
 
     inline std::optional<GizmoEdit> dragGizmo(const GizmoDrag& drag, const Ray3D& ray, bool snap) {
+        // Ctrl's steps: meters on an arrow, degrees on the ring, a scale factor
+        constexpr auto SnapMeters = 0.25f;
+        constexpr auto SnapDegrees = 15.0f;
+        constexpr auto SnapFactor = 0.1f;
+
         const auto hit = meetGizmo(drag, ray);
         if(!hit)
             return std::nullopt;
@@ -386,7 +385,7 @@ namespace Crowy
         if(isGizmoArrow(drag.handle)) {
             auto meters = dot(*hit - drag.pressHit, drag.axis);
             if(snap)
-                meters = snapTo(meters, GizmoSnapMeters);
+                meters = snapTo(meters, SnapMeters);
             edit.offset = drag.axis * meters;
         } else if(drag.handle == GizmoHandle::Ring) {
             auto turn = 0.0f;
@@ -400,12 +399,12 @@ namespace Crowy
                 // clockwise seen from above: +Z to +X is +90
                 turn = static_cast<f32>(toDegree(std::atan2(from.z * to.x - from.x * to.z, from.x * to.x + from.z * to.z)));
             }
-            edit.turn = snap ? snapTo(turn, GizmoSnapDegrees) : turn;
+            edit.turn = snap ? snapTo(turn, SnapDegrees) : turn;
         } else {
             const auto pressed = dot(drag.pressHit - drag.pivot, drag.axis);
             auto factor = dot(*hit - drag.pivot, drag.axis) / pressed;
             // never through zero: a mirrored row would turn its fronts away
-            factor = snap ? std::max(snapTo(factor, GizmoSnapFactor), GizmoSnapFactor) : std::max(factor, 0.01f);
+            factor = snap ? std::max(snapTo(factor, SnapFactor), SnapFactor) : std::max(factor, 0.01f);
             using enum GizmoHandle;
             edit.factor = drag.handle == ScaleX ? Vec3{factor, 1.0f, 1.0f}
                         : drag.handle == ScaleY ? Vec3{1.0f, factor, 1.0f}

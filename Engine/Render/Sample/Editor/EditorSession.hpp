@@ -255,7 +255,8 @@ namespace Crowy
         // `selection` exposures and the gizmo both make it
         void wroteSection(usize section);
         std::optional<usize> markerAt(Vec2 pixel) const;
-        void refuse(Str status);
+        // the last refusal or outcome, which a write of `status` cannot change
+        void report(Str status);
         void reportSelection();
         void exposeSelection();
         void unexposeSelection();

@@ -180,11 +180,12 @@ namespace Crowy
             const auto along = mark.to - screen.pivot;
             const auto length = norm(along);
             draw->AddLine(point(screen.pivot), point(mark.to), drawn, 3.0f);
+            // the head straddles the tip, inside the 6 points a press takes it at
             if(length > 1.0f) {
                 const auto way = along / length;
                 const Vec2 across{-way.y, way.x};
-                const auto tip = mark.to + way * 10.0f;
-                draw->AddTriangleFilled(point(tip), point(mark.to + across * 5.0f), point(mark.to - across * 5.0f), drawn);
+                const auto base = mark.to - way * 4.0f;
+                draw->AddTriangleFilled(point(mark.to + way * 6.0f), point(base + across * 5.0f), point(base - across * 5.0f), drawn);
             }
         }
         for(const auto handle: {Scale, ScaleX, ScaleY, ScaleZ}) {
