@@ -74,3 +74,78 @@ function Save-StageCapture([string]$Bmp, [string]$Tool, [int]$Frame = 0) {
     Remove-Item $Bmp
     return $png
 }
+
+# runs ImageCompareCheck and returns its exit code; the tool reports errors
+# on stderr, which must not stop a script that runs under Stop
+function Invoke-ImageCompareCheck([string]$Tool, [string[]]$Arguments, [switch]$Quiet) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $lines = & $Tool $Arguments 2>&1
+        if (-not $Quiet) {
+            foreach ($line in $lines) {
+                Write-Host $line
+            }
+        }
+        return $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+# the content root of the scene file the editor launched with: <root>/Data/scene.json
+function Get-StageRoot([string]$SceneFile) {
+    return Split-Path -Parent (Split-Path -Parent $SceneFile)
+}
+
+# Backlot's commit and its tracked changes under what the editor reads;
+# Head is empty when git cannot read `Root`
+function Get-BacklotState([string]$Root) {
+    $state = [pscustomobject]@{ Head = ""; Changes = @() }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        return $state
+    }
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $head = & git -C $Root rev-parse HEAD 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $head) {
+            return $state
+        }
+        $state.Head = "$head".Trim()
+        $state.Changes = @(& git -C $Root status --porcelain --untracked-files=no -- Data Unity/Assets/Art 2>$null | Where-Object { $_ })
+        return $state
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+# the Backlot commit StageEditor's goldens were taken at and the keys they
+# pin; $null without a stamp
+function Read-StageStamp([string]$Path) {
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+    $stamp = [pscustomobject]@{ Backlot = ""; Keys = @() }
+    foreach ($line in (Get-Content -Encoding UTF8 $Path)) {
+        if ($line -match '^backlot (\S+)') {
+            $stamp.Backlot = $Matches[1]
+        }
+        elseif ($line -match '^keys (.+)$') {
+            $stamp.Keys = @($Matches[1] -split '\s+' | Where-Object { $_ })
+        }
+    }
+    return $stamp
+}
+
+function Write-StageStamp([string]$Path, [string]$Backlot, [string[]]$Keys) {
+    $text = @(
+        "# StageEditor's goldens: the Backlot commit they were taken at and the",
+        "# lighting keys pinned for every cut; the launch picture is StageEditor.<backend>.png",
+        "backlot $Backlot",
+        "keys $($Keys -join ' ')"
+    ) -join "`n"
+    [IO.File]::WriteAllText($Path, "$text`n")
+}

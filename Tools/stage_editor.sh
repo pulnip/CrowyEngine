@@ -72,3 +72,49 @@ stage_snap() {
         echo "$1"
     fi
 }
+
+# a JSON string on stdin, unquoted
+stage_unquote() {
+    python3 -c 'import json, sys; print(json.load(sys.stdin))'
+}
+
+# the content root of the scene file the editor launched with:
+# <root>/Data/scene.json, as a path this shell can read
+stage_root() {
+    ROOT_FILE="$1"
+    if command -v cygpath >/dev/null 2>&1; then
+        ROOT_FILE=$(cygpath -u "$ROOT_FILE")
+    fi
+    dirname "$(dirname "$ROOT_FILE")"
+}
+
+# backlot_state <root>: BACKLOT_HEAD, empty when git cannot read the root,
+# and BACKLOT_CHANGES, its tracked changes under what the editor reads
+backlot_state() {
+    BACKLOT_HEAD=$(git -C "$1" rev-parse HEAD 2>/dev/null) || BACKLOT_HEAD=""
+    BACKLOT_CHANGES=""
+    if [ -n "$BACKLOT_HEAD" ]; then
+        BACKLOT_CHANGES=$(git -C "$1" status --porcelain --untracked-files=no -- Data Unity/Assets/Art 2>/dev/null)
+    fi
+}
+
+# stage_stamp <file>: STAMP_BACKLOT and STAMP_KEYS (space-separated), the
+# Backlot commit StageEditor's goldens were taken at and the keys they pin;
+# nonzero without a stamp
+stage_stamp() {
+    STAMP_BACKLOT=""
+    STAMP_KEYS=""
+    [ -f "$1" ] || return 1
+    STAMP_BACKLOT=$(sed -n 's/^backlot \([^ ]*\).*/\1/p' "$1" | head -n 1)
+    STAMP_KEYS=$(sed -n 's/^keys //p' "$1" | head -n 1)
+}
+
+# stage_stamp_write <file> <backlot> <keys>
+stage_stamp_write() {
+    {
+        echo "# StageEditor's goldens: the Backlot commit they were taken at and the"
+        echo "# lighting keys pinned for every cut; the launch picture is StageEditor.<backend>.png"
+        echo "backlot $2"
+        echo "keys $3"
+    } >"$1"
+}
