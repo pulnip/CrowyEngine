@@ -56,6 +56,7 @@ DEPENDS
 # exits 77 (skipped) without it
 crowy_declare_example(StageEditor
 SOURCES
+    PortStatusChip.cpp
     RenderApp.cpp
     StageContent.cpp
     StageEditor.cpp
@@ -63,6 +64,7 @@ DEPENDS
     Crowy::Reflection
     Crowy::Remote
     Crowy::Render
+    Crowy::UI
     SampleEditor
     SampleStage
 )

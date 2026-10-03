@@ -12,7 +12,6 @@ namespace Crowy
 {
     namespace
     {
-        // "a, b, c"
         template<typename R, typename F>
         Str listOf(const R& items, F&& name) {
             Str list;
@@ -21,15 +20,40 @@ namespace Crowy
 
             return list;
         }
+
+        // a full name, or a bare one that only one object carries
+        std::optional<usize> objectNamed(EditorObjects objects, StrView name, Str& why) {
+            std::optional<usize> found;
+            for(usize i = 0; i < objects.size(); ++i) {
+                const auto& full = objects[i].name;
+                if(full == name)
+                    return i;
+
+                const auto slash = full.find('/');
+                if(slash != Str::npos && StrView(full).substr(slash + 1) == name) {
+                    if(found) {
+                        why = std::format("'{}' names more than one object; write it as <kind>/{}", name, name);
+                        return std::nullopt;
+                    }
+                    found = i;
+                }
+            }
+            if(!found)
+                why = std::format("no object '{}'", name);
+
+            return found;
+        }
     }
 
     EditorSession::EditorSession(
         EditorCamera& camera,
         EditorContent& content,
+        const RenderScene& scene,
         ClearColorSink clearColor
     )
         : camera(camera),
           content(content),
+          scene(scene),
           clearColor(std::move(clearColor)) {}
 
     void EditorSession::Start(StrView cut, StrView key) {
@@ -47,10 +71,15 @@ namespace Crowy
             state.cut = applied.cut;
         if(state.key != applied.key && !applyKey())
             state.key = applied.key;
+        if(state.pickAt != applied.pickAt)
+            applyPickAt();
+        else if(state.selected != applied.selected && !applySelected())
+            state.selected = applied.selected;
         applied = state;
     }
 
-    void EditorSession::Update() {
+    void EditorSession::Update(Vec2 windowSize) {
+        viewport = windowSize;
         if(camera.TakeMoved() && state.cut != FreeCut) {
             state.cut = FreeCut;
             applied.cut = FreeCut;
@@ -77,6 +106,29 @@ namespace Crowy
         Sync();
     }
 
+    void EditorSession::Select(std::optional<usize> object) {
+        const auto objects = content.Objects();
+        if(object && *object >= objects.size())
+            object.reset();
+
+        selection = object;
+        state.selected = object ? objects[*object].name : Str{};
+        applied.selected = state.selected;
+        selectionChanged = true;
+        reportSelection();
+    }
+
+    void EditorSession::PickAt(Vec2 pixel) {
+        state.pickAt = pixel;
+        // a click on the same pixel picks again: the scene may have changed
+        applied.pickAt = Vec2{-2.0f, -2.0f};
+        Sync();
+    }
+
+    bool EditorSession::TakeSelectionChanged() noexcept {
+        return std::exchange(selectionChanged, false);
+    }
+
     bool EditorSession::applyCut() {
         if(state.cut == FreeCut)
             return true;
@@ -84,13 +136,12 @@ namespace Crowy
         const auto cuts = content.Cuts();
         const auto found = std::ranges::find(cuts, state.cut, &EditorCut::name);
         if(found == cuts.end()) {
-            state.status = std::format(
+            refuse(std::format(
                 "no cut '{}'; there are {}, or {}",
                 state.cut,
                 listOf(cuts, [](const EditorCut& cut) { return cut.name; }),
                 FreeCut
-            );
-            applied.status = state.status;
+            ));
             return false;
         }
 
@@ -105,12 +156,7 @@ namespace Crowy
     bool EditorSession::applyKey() {
         const auto keys = content.Keys();
         if(std::ranges::find(keys, state.key) == keys.end()) {
-            state.status = std::format(
-                "no key '{}'; there are {}",
-                state.key,
-                listOf(keys, [](const Str& key) { return key; })
-            );
-            applied.status = state.status;
+            refuse(std::format("no key '{}'; there are {}", state.key, listOf(keys, [](const Str& key) { return key; })));
             return false;
         }
 
@@ -121,10 +167,48 @@ namespace Crowy
         return true;
     }
 
+    bool EditorSession::applySelected() {
+        if(state.selected.empty()) {
+            Select(std::nullopt);
+            return true;
+        }
+
+        Str why;
+        const auto object = objectNamed(content.Objects(), state.selected, why);
+        if(!object) {
+            refuse(why);
+            return false;
+        }
+
+        Select(object);
+        return true;
+    }
+
+    void EditorSession::applyPickAt() {
+        const auto hit = pickScene(
+            scene,
+            rayThroughPixel(camera, state.pickAt, viewport),
+            [this](PrimitiveHandle primitive) { return content.MeshesOf(primitive); }
+        );
+        Select(hit ? content.ObjectOf(hit->primitive) : std::nullopt);
+    }
+
+    void EditorSession::refuse(Str status) {
+        state.status = std::move(status);
+        applied.status = state.status;
+    }
+
+    void EditorSession::reportSelection() {
+        state.status = selection ? std::format("selected {}", state.selected) : Str("nothing selected");
+        applied.status = state.status;
+    }
+
     // clang-format off
     CROWY_STRUCT(EditorState)
         .SetProperty("cut", &EditorState::cut)
         .SetProperty("key", &EditorState::key)
+        .SetProperty("selected", &EditorState::selected)
+        .SetProperty("pickAt", &EditorState::pickAt)
         .SetProperty("status", &EditorState::status)
     CROWY_STRUCT_END(EditorState)
 

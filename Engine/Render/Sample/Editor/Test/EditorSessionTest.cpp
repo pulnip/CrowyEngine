@@ -29,19 +29,32 @@ namespace
         std::vector<Str> keys{"day", "night"};
         std::vector<Str> applied;
 
+        std::vector<EditorObject> objects{
+            EditorObject{.name = "instance/lamp", .group = "Street", .detail = "Lamp"},
+            EditorObject{.name = "instance/tower", .group = "NE", .detail = "Box"},
+            EditorObject{.name = "light/lamp", .group = "Lights", .detail = "spot", .kind = EditorObjectKind::Light},
+        };
+
         std::span<const EditorCut> Cuts() const override { return cuts; }
         std::span<const Str> Keys() const override { return keys; }
         Color ApplyKey(StrView key) override {
             applied.emplace_back(key);
             return key == "day" ? Color{0.5f, 0.6f, 0.7f, 1.0f} : Color{0.0f, 0.0f, 0.1f, 1.0f};
         }
+        EditorObjects Objects() const override { return objects; }
+        std::optional<usize> ObjectOf(PrimitiveHandle) const override { return std::nullopt; }
+        std::optional<PrimitiveHandle> PrimitiveOf(usize) const override { return std::nullopt; }
+        std::optional<LightHandle> LightOf(usize) const override { return std::nullopt; }
+        MeshList MeshesOf(PrimitiveHandle) const override { return {}; }
     };
 
-    struct Fixture {
+    class Fixture {
+    public:
         FakeContent content;
+        RenderScene scene;
         EditorCamera camera{content.cuts.front()};
         Color clear{};
-        EditorSession session{camera, content, [this](Color color) { clear = color; }};
+        EditorSession session{camera, content, scene, [this](Color color) { clear = color; }};
 
         Fixture() { session.Start("wide", "day"); }
     };
@@ -148,3 +161,50 @@ TEST(EditorSession, TheSameCutAgainSnapsBack) {
     EXPECT_FLOAT_EQ(f.camera.position.y, 10.0f);
     EXPECT_EQ(f.session.State().cut, "wide");
 }
+
+TEST(EditorSession, AFullNameSelects) {
+    Fixture f;
+    f.session.State().selected = "instance/tower";
+    f.session.Sync();
+
+    EXPECT_EQ(f.session.Selection(), 1u);
+    EXPECT_EQ(f.session.State().selected, "instance/tower");
+}
+
+// a bare name one object carries is written back qualified; one that two
+// objects carry is refused
+TEST(EditorSession, ABareNameSelectsOnlyWhenUnique) {
+    Fixture f;
+    f.session.State().selected = "tower";
+    f.session.Sync();
+    EXPECT_EQ(f.session.State().selected, "instance/tower");
+
+    f.session.State().selected = "lamp";
+    f.session.Sync();
+    EXPECT_EQ(f.session.State().selected, "instance/tower");
+    EXPECT_NE(f.session.State().status.find("more than one"), Str::npos);
+}
+
+TEST(EditorSession, AnUnknownNameIsRevertedAndEmptyClears) {
+    Fixture f;
+    f.session.Select(0);
+    f.session.State().selected = "instance/nope";
+    f.session.Sync();
+    EXPECT_EQ(f.session.State().selected, "instance/lamp");
+
+    f.session.State().selected = "";
+    f.session.Sync();
+    EXPECT_FALSE(f.session.Selection().has_value());
+}
+
+// a pick that hits nothing clears the selection, from the port as from a click
+TEST(EditorSession, APickOnEmptySpaceClears) {
+    Fixture f;
+    f.session.Select(1);
+    f.session.Update({1920.0f, 1080.0f});
+    f.session.PickAt({960.0f, 540.0f});
+
+    EXPECT_FALSE(f.session.Selection().has_value());
+    EXPECT_EQ(f.session.State().selected, "");
+}
+
