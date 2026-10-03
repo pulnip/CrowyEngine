@@ -143,7 +143,7 @@ namespace Crowy
         }
         stage.timings.imageSeconds = secondsSince(start);
 
-        stage.unitQuad = MakePlane(unitZ(), -unitX(), Vec2{0.5f, 0.5f});
+        stage.unitQuad = makeStageUnitQuad();
         stage.capacities = capacitiesOf(stage);
         if(stage.capacities.stagingBytes > StageStagingBudget) {
             throw std::runtime_error(std::format(
@@ -171,5 +171,9 @@ namespace Crowy
         }
 
         return static_cast<u32>(1 + channels.size() + document.quads.size());
+    }
+
+    MeshData makeStageUnitQuad() {
+        return MakePlane(unitZ(), -unitX(), Vec2{0.5f, 0.5f});
     }
 }

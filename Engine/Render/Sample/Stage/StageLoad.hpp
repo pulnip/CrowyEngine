@@ -33,6 +33,9 @@ namespace Crowy
 
     // the palette, the emissive palette per channel in use, one per quad
     u32 countStageMaterials(const LoadedStage& stage);
+    // a unit square facing +Z, u along -X and v down: the contract's corner
+    // for (u0, v0) is its front's top-left
+    MeshData makeStageUnitQuad();
 
     // what RenderApp::Config must reserve before the stage is built
     struct StageCapacities {
@@ -60,8 +63,7 @@ namespace Crowy
         StageImages images;
         // by the quad's sprite manifest path
         StageSprites sprites;
-        // a unit square facing +Z, u along -X and v down: the contract's
-        // corner for (u0, v0) is its front's top-left
+        // makeStageUnitQuad's, shared by every quad
         MeshData unitQuad;
         StageCapacities capacities;
         StageLoadTimings timings;

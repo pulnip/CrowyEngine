@@ -30,8 +30,7 @@ namespace Crowy
     };
 
     // A fly camera that snaps to cuts and can look through an orthographic
-    // lens. Right mouse looks, WASD moves, E and Q rise and sink, Shift
-    // quickens; held keys are ignored while keyboardGated.
+    // lens; held keys are ignored while keyboardGated.
     class EditorCamera final: public Camera {
     public:
         // public so the pose can be registered as reflected properties

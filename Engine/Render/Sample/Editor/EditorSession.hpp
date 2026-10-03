@@ -59,9 +59,8 @@ namespace Crowy
         std::function<void(StrView)> unexpose;
     };
 
-    // The editor's state as one reflected target, `editor`: the panel, the
-    // keyboard and the port all write a field and call Sync, which applies
-    // what changed and reverts what it cannot apply.
+    // The panel, the keyboard and the port all write a field and call Sync,
+    // which applies what changed and reverts what it cannot apply.
     struct EditorState {
         // a cut's name, or "free" once the camera flies
         Str cut;
@@ -101,6 +100,9 @@ namespace Crowy
     public:
         // the state the camera reports once it has flown off a cut
         static constexpr CStr FreeCut = "free";
+        // the port's names for the state and the camera
+        static constexpr CStr StateTarget = "editor";
+        static constexpr CStr CameraTarget = "camera";
         // the port's name for the selection's first section; the others are
         // "selection.<label>"
         static constexpr CStr SelectionTarget = "selection";
@@ -158,6 +160,9 @@ namespace Crowy
         const InspectSections& Inspected() const noexcept { return inspected; }
 
     private:
+        void exposeTargets();
+        // the camera left its cut, by input or a write
+        void leaveCut();
         bool applyCut();
         bool applyKey();
         bool applySelected();

@@ -1,6 +1,6 @@
 # The command port from PowerShell 5.1: dot-source it, then call the
 # functions. Debug builds only; the port listens on 127.0.0.1:27500
-# (CROWY_COMMAND_PORT overrides).
+# (CROWY_COMMAND_PORT overrides, or Set-PortNumber after dot-sourcing).
 #
 #   . Tools/port.ps1
 #   Wait-Port
@@ -14,11 +14,17 @@
 # the port does not answer .NET's Expect: 100-continue
 [System.Net.ServicePointManager]::Expect100Continue = $false
 
-$script:PortNumber = 27500
-if ($env:CROWY_COMMAND_PORT) {
-    $script:PortNumber = [int]$env:CROWY_COMMAND_PORT
+function Set-PortNumber([int]$Number) {
+    $script:PortNumber = $Number
+    $script:PortUri = "http://127.0.0.1:$Number/rpc"
 }
-$script:PortUri = "http://127.0.0.1:$($script:PortNumber)/rpc"
+
+if ($env:CROWY_COMMAND_PORT) {
+    Set-PortNumber ([int]$env:CROWY_COMMAND_PORT)
+}
+else {
+    Set-PortNumber 27500
+}
 
 # one verb; returns its result, throws its error
 function Invoke-Port([string]$Command, [hashtable]$Arguments = @{}) {
@@ -30,7 +36,7 @@ function Invoke-Port([string]$Command, [hashtable]$Arguments = @{}) {
     return $answer.result
 }
 
-# polls ping until the port answers or the timeout runs out
+# polls ping until the port answers or the timeout runs out; returns the ping
 function Wait-Port([int]$TimeoutSeconds = 60) {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
@@ -57,16 +63,30 @@ function Get-PortProperty([string]$Target, [string]$Path = "") {
     return (Invoke-Port get_property $arguments).value
 }
 
-# captures the next frame (or `Frame`) to `Path`, runs the loop up to it,
-# and returns once the file is written; works on a held loop
+# captures `Frame`, or the next frame the loop starts, to `Path` (absolute:
+# the app writes it); runs a held loop up to it and returns once the file is
+# written, or throws when the write failed
 function Save-PortFrame([string]$Path, [int]$Frame = 0) {
-    if ($Frame -le 0) {
-        $Frame = (Invoke-Port ping).frame + 1
+    $status = Invoke-Port ping
+    $failures = $status.captureFailures
+    $arguments = @{ path = $Path }
+    if ($Frame -gt 0) {
+        $arguments.frame = $Frame
     }
-    $null = Invoke-Port capture_frame @{ path = $Path; frame = $Frame }
-    $null = Invoke-Port run @{ until = $Frame }
+    $Frame = @((Invoke-Port capture_frame $arguments).frames)[0]
+    if ($status.held) {
+        $null = Invoke-Port run @{ until = $Frame }
+    }
     $null = Invoke-Port wait_frame @{ frame = $Frame }
-    while ((Invoke-Port ping).capturesPending -ne 0) {
+
+    $deadline = (Get-Date).AddSeconds(30)
+    while (($status = Invoke-Port ping).capturesPending -ne 0) {
+        if ((Get-Date) -gt $deadline) {
+            throw "port: the capture of frame $Frame is still pending after 30 s"
+        }
         Start-Sleep -Milliseconds 50
+    }
+    if ($status.captureFailures -gt $failures) {
+        throw "port: the capture of frame $Frame to $Path failed"
     }
 }

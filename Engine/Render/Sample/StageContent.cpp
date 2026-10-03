@@ -12,22 +12,22 @@ namespace Crowy
     namespace
     {
         constexpr usize NoObject = std::numeric_limits<usize>::max();
-    }
 
-    EditorCut editorCutOf(const StageCut& cut) {
-        return EditorCut{
-            .name = cut.name,
-            .position = cut.position,
-            .yaw = cut.yaw,
-            .pitch = cut.pitch,
-            .lens = {
-                .fovY = cut.fovY,
-                .nearZ = cut.nearZ,
-                .farZ = cut.farZ,
-                .orthographic = cut.orthographic,
-                .orthoHalfHeight = cut.orthoHalfHeight
-            }
-        };
+        std::vector<EditorCut> editorCutsOf(const LoadedStage& stage) {
+            std::vector<EditorCut> cuts;
+            for(const auto& cut: makeStageCuts(stage))
+                cuts.push_back(editorCutOf(cut));
+
+            return cuts;
+        }
+
+        std::vector<Str> keyNamesOf(const StageDocument& document) {
+            std::vector<Str> keys;
+            for(const auto& key: document.lightingKeys)
+                keys.push_back(key.name);
+
+            return keys;
+        }
     }
 
     StageContent::StageContent(
@@ -37,57 +37,10 @@ namespace Crowy
     )
         : scene(scene),
           stage(stage),
-          bindings(bindings) {
-        for(const auto& cut: makeStageCuts(stage))
-            cuts.push_back(editorCutOf(cut));
-        for(const auto& key: stage.document.lightingKeys)
-            keys.push_back(key.name);
-
-        const auto& document = stage.document;
-        for(usize i = 0; i < document.instances.size(); ++i) {
-            const auto& instance = document.instances[i];
-            addObject(
-                EditorObject{
-                    .name = std::format("instance/{}", instance.name),
-                    .group = instance.area,
-                    .detail = instance.model,
-                    .kind = EditorObjectKind::Instance
-                },
-                bindings.instances[i],
-                std::nullopt
-            );
-            const auto model = std::ranges::find(document.models, instance.model, &StageModel::id) - document.models.begin();
-            auto& list = meshes.back();
-            for(const auto& slot: stage.models[static_cast<usize>(model)].slots)
-                list.push_back(&slot.mesh);
-        }
-        for(usize i = 0; i < document.quads.size(); ++i) {
-            const auto& quad = document.quads[i];
-            addObject(
-                EditorObject{
-                    .name = std::format("quad/{}", quad.name),
-                    .group = quad.area,
-                    .detail = std::format("{} {}", quad.material, quad.image),
-                    .kind = EditorObjectKind::Quad
-                },
-                bindings.quads[i],
-                std::nullopt
-            );
-            meshes.back().push_back(&stage.unitQuad);
-        }
-        for(usize i = 0; i < document.lights.size(); ++i) {
-            const auto& light = document.lights[i];
-            addObject(
-                EditorObject{
-                    .name = std::format("light/{}", light.name),
-                    .group = std::format("Lights · {}", light.group),
-                    .detail = light.kind == StageLightKind::Spot ? "spot" : "point",
-                    .kind = EditorObjectKind::Light
-                },
-                std::nullopt,
-                bindings.lights[i]
-            );
-        }
+          bindings(bindings),
+          cuts(editorCutsOf(stage)),
+          keys(keyNamesOf(stage.document)) {
+        addObjects();
     }
 
     Color StageContent::ApplyKey(StrView key) {
@@ -179,6 +132,54 @@ namespace Crowy
             row.uv0.x,
             row.uv0.y
         };
+    }
+
+    void StageContent::addObjects() {
+        const auto& document = stage.document;
+        for(usize i = 0; i < document.instances.size(); ++i) {
+            const auto& instance = document.instances[i];
+            addObject(
+                EditorObject{
+                    .name = std::format("instance/{}", instance.name),
+                    .group = instance.area,
+                    .detail = instance.model,
+                    .kind = EditorObjectKind::Instance
+                },
+                bindings.instances[i],
+                std::nullopt
+            );
+            const auto model = std::ranges::find(document.models, instance.model, &StageModel::id) - document.models.begin();
+            auto& list = meshes.back();
+            for(const auto& slot: stage.models[static_cast<usize>(model)].slots)
+                list.push_back(&slot.mesh);
+        }
+        for(usize i = 0; i < document.quads.size(); ++i) {
+            const auto& quad = document.quads[i];
+            addObject(
+                EditorObject{
+                    .name = std::format("quad/{}", quad.name),
+                    .group = quad.area,
+                    .detail = std::format("{} {}", quad.material, quad.image),
+                    .kind = EditorObjectKind::Quad
+                },
+                bindings.quads[i],
+                std::nullopt
+            );
+            meshes.back().push_back(&stage.unitQuad);
+        }
+        for(usize i = 0; i < document.lights.size(); ++i) {
+            const auto& light = document.lights[i];
+            addObject(
+                EditorObject{
+                    .name = std::format("light/{}", light.name),
+                    .group = std::format("Lights · {}", light.group),
+                    .detail = light.kind == StageLightKind::Spot ? "spot" : "point",
+                    .kind = EditorObjectKind::Light
+                },
+                std::nullopt,
+                bindings.lights[i]
+            );
+        }
     }
 
     void StageContent::addObject(

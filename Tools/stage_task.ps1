@@ -5,23 +5,31 @@
 # exits 1 on the first that fails.
 #
 # usage: Tools/stage_task.ps1 [-Out captures/stage-task] [-Exe build/bin/StageEditor.exe]
-#        [-Backlot ../Backlot]
+#        [-Backlot ../Backlot] [-Port 27520]
 #
 # Debug builds only (the port). Run from the repository root.
 param(
     [string]$Out = "captures\stage-task",
     [string]$Exe = "build\bin\StageEditor.exe",
-    [string]$Backlot = ""
+    [string]$Backlot = "",
+    [int]$Port = 27520
 )
 
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "port.ps1")
+. (Join-Path $PSScriptRoot "stage_editor.ps1")
+Set-PortNumber $Port
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $Backlot) {
     $Backlot = Join-Path (Split-Path -Parent $repoRoot) "Backlot"
 }
+$Out = Resolve-LocalPath $Out
+$Exe = Resolve-LocalPath $Exe
 $tool = Join-Path (Split-Path -Parent $Exe) "ImageCompareCheck.exe"
+if (-not (Test-Path $tool)) {
+    throw "the task compares captures with $tool; build ImageCompareCheck first"
+}
 
 # lamp-ne's pole in the street cut at 1920 x 1080 (measured against Backlot a6179ef)
 $lampPixel = @(1076, 450)
@@ -37,28 +45,20 @@ function Assert-That([bool]$Condition, [string]$What) {
     Write-Host "ok: $What"
 }
 
+# a write lands on the next frame: capture the one after it
 function Save-Capture([string]$Name) {
-    $bmp = [IO.Path]::GetFullPath((Join-Path $Out "$Name.bmp"))
-    Save-PortFrame $bmp ((Invoke-Port ping).frame + 2)
-    $png = [IO.Path]::ChangeExtension($bmp, ".png")
-    & $tool --convert $bmp $png | Out-Null
-    Remove-Item $bmp
-    return $png
+    return Save-StageCapture (Join-Path $Out "$Name.bmp") $tool ((Invoke-Port ping).frame + 2)
 }
 
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
-if (Get-Process -Name StageEditor -ErrorAction SilentlyContinue) {
-    throw "a StageEditor is already running; the port would answer for it"
-}
-$process = Start-Process -FilePath $Exe -ArgumentList "--hold" -PassThru -WorkingDirectory $repoRoot
+$process = Start-StageEditor $Exe $repoRoot $Port
 $failed = $false
 try {
-    $null = Wait-Port 120
     Set-PortProperty debug showPanel $false
 
     # 1. the street cut
-    Set-PortProperty editor cut street
-    Assert-That ((Get-PortProperty editor cut) -eq "street") "the street cut"
+    Set-EditorField cut street
+    Assert-That $true "the street cut"
     $null = Invoke-Port run @{ frames = 3 }
 
     # 2. a click on the lamp's pole
@@ -83,8 +83,8 @@ try {
     Assert-That ($LASTEXITCODE -eq 1) "the capture after the move differs from the one before"
 
     # 5. night, and a capture
-    Set-PortProperty editor key night
-    Assert-That ((Get-PortProperty editor key) -eq "night") "the night key"
+    Set-EditorField key night
+    Assert-That $true "the night key"
     $night = Save-Capture "night"
     Assert-That (Test-Path $night) "captured $night"
 }
@@ -93,14 +93,7 @@ catch {
     $failed = $true
 }
 finally {
-    try {
-        $null = Invoke-Port quit
-    }
-    catch {
-    }
-    if (-not $process.WaitForExit(20000)) {
-        Stop-Process -Id $process.Id -Force
-    }
+    Stop-StageEditor $process
 }
 if ($failed) {
     exit 1

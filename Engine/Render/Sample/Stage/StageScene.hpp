@@ -10,8 +10,7 @@
 #include "StageLoad.hpp"
 
 // The loaded stage as RenderScene rows: every Backlot rule the engine draws
-// with (palette and atlas materials, keyed rows, light groups, emissive
-// channels, the cuts) lives here, never under Engine/.
+// with lives here, never under Engine/.
 namespace Crowy
 {
     struct StageBindings;
@@ -20,20 +19,29 @@ namespace Crowy
 
     using GeometryAllocations = std::vector<GeometryAllocation>;
     using StageCuts = std::vector<StageCut>;
+    using StageEmissivePalettes = std::map<Str, MaterialHandle>;
     using StageLightHandles = std::vector<LightHandle>;
     using StageMaterialHandles = std::vector<MaterialHandle>;
+    using StageModelAllocations = std::vector<GeometryAllocations>;
     using StagePrimitiveHandles = std::vector<PrimitiveHandle>;
     using StageTextureHandles = std::map<Str, TextureHandle>;
 
-    // the stage's material passes, the standard forward program's own
-    inline constexpr CStr StageForwardShader = "Engine/Render/Shader/StandardForward.slang";
     // Unity's preview draws every surface at smoothness 0.1
     inline constexpr f32 StageRoughness = 0.9f;
 
     // scale, then yaw, then translation, as the contract orders them
-    Mat4 instanceToWorld(const StageInstance& instance);
+    inline Mat4 instanceToWorld(const StageInstance& instance) {
+        return translateMat(instance.position)
+            * rotateYMat(static_cast<f32>(toRadian(instance.yaw)))
+            * scaleMat(instance.scale);
+    }
+
     // a unit quad facing +Z stretched to width x height, then yawed and moved
-    Mat4 quadToWorld(const StageQuad& quad);
+    inline Mat4 quadToWorld(const StageQuad& quad) {
+        return translateMat(quad.position)
+            * rotateYMat(static_cast<f32>(toRadian(quad.yaw)))
+            * scaleMat({quad.width, quad.height, 1.0f});
+    }
 
     // queues every model slot and the unit quad; call from OnBuildGeometry
     StageGeometry addStageGeometry(GeometryPool& pool, const LoadedStage& stage);
@@ -67,7 +75,7 @@ namespace Crowy
 
     struct StageGeometry {
         // parallel to the document's models, one per model slot
-        std::vector<GeometryAllocations> models;
+        StageModelAllocations models;
         GeometryAllocation unitQuad{};
     };
 
@@ -75,7 +83,7 @@ namespace Crowy
     struct StageBindings {
         MaterialHandle palette;
         // by emissive channel
-        std::map<Str, MaterialHandle> emissivePalettes;
+        StageEmissivePalettes emissivePalettes;
         StagePrimitiveHandles instances;
         StagePrimitiveHandles quads;
         StageMaterialHandles quadMaterials;

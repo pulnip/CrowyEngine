@@ -1,7 +1,8 @@
 #!/bin/sh
 # The command port from a POSIX shell: source it, then call the functions.
 # Debug builds only; the port listens on 127.0.0.1:27500
-# (CROWY_COMMAND_PORT overrides). JSON is read with python3.
+# (CROWY_COMMAND_PORT overrides, or port_use after sourcing). JSON is read
+# with python3.
 #
 #   . Tools/port.sh
 #   port_wait
@@ -10,13 +11,24 @@
 #   port_snap captures/street.bmp
 #   port_rpc quit '{}'
 #
-# Every function returns nonzero when the port answers with an error.
+# Every function returns nonzero when the port answers with an error or
+# stops answering.
 
-PORT_URI="http://127.0.0.1:${CROWY_COMMAND_PORT:-27500}/rpc"
+# port_use <number>
+port_use() {
+    PORT_URI="http://127.0.0.1:$1/rpc"
+}
+
+port_use "${CROWY_COMMAND_PORT:-27500}"
 
 # a JSON string from a shell string
 port_quote() {
     python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+# port_field <name>: the named field of the JSON on stdin, as JSON
+port_field() {
+    python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin)[sys.argv[1]]))' "$1"
 }
 
 # one verb with JSON arguments; prints its result as JSON
@@ -56,25 +68,53 @@ port_set() {
     port_rpc set_property "{\"target\":\"$1\",\"path\":\"$2\",\"value\":$VALUE}" >/dev/null
 }
 
-# port_get <target> [path]: the value as JSON
+# port_get <target> [path]: the value as JSON, a leaf or a whole struct
 port_get() {
-    port_rpc get_property "{\"target\":\"$1\",\"path\":\"${2:-}\"}" |
-        python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin)["value"]))'
+    if [ -n "${2:-}" ]; then
+        GET_ARGS="{\"target\":\"$1\",\"path\":\"$2\"}"
+    else
+        GET_ARGS="{\"target\":\"$1\"}"
+    fi
+    port_rpc get_property "$GET_ARGS" | port_field value
 }
 
 # the frame the loop last ended
 port_frame() {
-    port_rpc ping '{}' | python3 -c 'import json, sys; print(json.load(sys.stdin)["frame"])'
+    port_rpc ping '{}' | port_field frame
 }
 
-# port_snap <path> [frame]: captures the next frame (or `frame`), runs the
-# loop up to it, and returns once the file is written
+# port_snap <path> [frame]: captures `frame`, or the next frame the loop
+# starts, to an absolute path; runs a held loop up to it and returns once the
+# file is written, nonzero when the write failed
 port_snap() {
-    FRAME="${2:-$(( $(port_frame) + 1 ))}"
-    port_rpc capture_frame "{\"path\":$(port_quote "$1"),\"frame\":$FRAME}" >/dev/null || return 1
-    port_rpc run "{\"until\":$FRAME}" >/dev/null || return 1
+    STATUS=$(port_rpc ping '{}') || return 1
+    FAILURES=$(printf '%s' "$STATUS" | port_field captureFailures) || return 1
+    HELD=$(printf '%s' "$STATUS" | port_field held) || return 1
+    if [ -n "${2:-}" ]; then
+        SNAP_ARGS="{\"path\":$(port_quote "$1"),\"frame\":$2}"
+    else
+        SNAP_ARGS="{\"path\":$(port_quote "$1")}"
+    fi
+    FRAME=$(port_rpc capture_frame "$SNAP_ARGS" | python3 -c 'import json, sys; print(json.load(sys.stdin)["frames"][0])') || return 1
+    if [ "$HELD" = true ]; then
+        port_rpc run "{\"until\":$FRAME}" >/dev/null || return 1
+    fi
     port_rpc wait_frame "{\"frame\":$FRAME}" >/dev/null || return 1
-    while [ "$(port_rpc ping '{}' | python3 -c 'import json, sys; print(json.load(sys.stdin)["capturesPending"])')" != 0 ]; do
+
+    POLLS=0
+    while :; do
+        STATUS=$(port_rpc ping '{}') || return 1
+        PENDING=$(printf '%s' "$STATUS" | port_field capturesPending) || return 1
+        [ "$PENDING" = 0 ] && break
+        POLLS=$((POLLS + 1))
+        if [ "$POLLS" -gt 600 ]; then
+            echo "port: the capture of frame $FRAME is still pending after 30 s" >&2
+            return 1
+        fi
         sleep 0.05
     done
+    if [ "$(printf '%s' "$STATUS" | port_field captureFailures)" != "$FAILURES" ]; then
+        echo "port: the capture of frame $FRAME to $1 failed" >&2
+        return 1
+    fi
 }

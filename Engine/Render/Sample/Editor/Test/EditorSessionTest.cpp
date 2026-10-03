@@ -1,4 +1,6 @@
 #include <cmath>
+#include <functional>
+#include <map>
 #include <numbers>
 #include <vector>
 
@@ -13,6 +15,12 @@ using namespace Crowy;
 namespace
 {
     constexpr f32 HalfPi = std::numbers::pi_v<f32> / 2;
+
+    Vec4 project(const Mat4& m, Vec3 p) {
+        const auto clip = m * Vec4{p.x, p.y, p.z, 1.0f};
+
+        return clip / clip.w;
+    }
 
     // two cuts and two keys; remembers what it was asked to apply
     class FakeContent final: public EditorContent {
@@ -55,22 +63,37 @@ namespace
         u32 applies = 0;
     };
 
+    // what the session exposed, by name, with each target's callback
+    class FakePort {
+    public:
+        struct Exposure {
+            void* target = nullptr;
+            DirtyCallback onDirty;
+        };
+
+        std::map<Str, Exposure, std::less<>> exposures;
+
+        EditorPort Bind() {
+            return EditorPort{
+                .expose = [this](StrView name, void* target, const TypeDesc&, DirtyCallback onDirty) {
+                    exposures.insert_or_assign(Str(name), Exposure{.target = target, .onDirty = std::move(onDirty)});
+                },
+                .unexpose = [this](StrView name) { exposures.erase(Str(name)); }
+            };
+        }
+    };
+
     class Fixture {
     public:
         FakeContent content;
+        FakePort port;
         RenderScene scene;
         EditorCamera camera{content.cuts.front()};
         Color clear{};
-        EditorSession session{camera, content, scene, [this](Color color) { clear = color; }};
+        EditorSession session{camera, content, scene, [this](Color color) { clear = color; }, port.Bind()};
 
         Fixture() { session.Start("wide", "day"); }
     };
-
-    Vec4 project(const Mat4& m, Vec3 p) {
-        const auto clip = m * Vec4{p.x, p.y, p.z, 1.0f};
-
-        return clip / clip.w;
-    }
 }
 
 TEST(EditorCamera, PlanCutLooksStraightDownWithNorthUp) {
@@ -169,6 +192,22 @@ TEST(EditorSession, TheSameCutAgainSnapsBack) {
     EXPECT_EQ(f.session.State().cut, "wide");
 }
 
+// a camera written over the port has left its cut, so the cut written again
+// over the port snaps back, as the key for it does
+TEST(EditorSession, APortCameraWriteFreesTheCut) {
+    Fixture f;
+    ASSERT_TRUE(f.port.exposures.contains("camera"));
+    ASSERT_EQ(f.port.exposures.at("camera").target, &f.camera);
+    f.camera.position.y = 50.0f;
+    f.port.exposures.at("camera").onDirty();
+    EXPECT_EQ(f.session.State().cut, "free");
+
+    f.session.State().cut = "wide";
+    f.port.exposures.at("editor").onDirty();
+    EXPECT_FLOAT_EQ(f.camera.position.y, 10.0f);
+    EXPECT_EQ(f.session.State().cut, "wide");
+}
+
 TEST(EditorSession, AFullNameSelects) {
     Fixture f;
     f.session.State().selected = "instance/tower";
@@ -218,41 +257,37 @@ TEST(EditorSession, APickOnEmptySpaceClears) {
 // the selection's section is exposed as `selection`, re-pointed on every
 // selection; a port write applies and dirties the inspector
 TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
+    Fixture f;
+    EXPECT_FALSE(f.port.exposures.contains("selection"));
+
+    f.session.Select(0);
+    ASSERT_TRUE(f.port.exposures.contains("selection"));
+    EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[0]);
+
+    f.session.Select(2);
+    EXPECT_EQ(f.port.exposures.size(), 3u);
+    EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[2]);
+
+    f.port.exposures.at("selection").onDirty();
+    EXPECT_EQ(f.content.applies, 1u);
+    EXPECT_TRUE(f.session.TakeInspectorDirty());
+
+    f.session.Select(std::nullopt);
+    EXPECT_FALSE(f.port.exposures.contains("selection"));
+}
+
+// the session's targets leave the port with it
+TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     FakeContent content;
+    FakePort port;
     RenderScene scene;
     EditorCamera camera{content.cuts.front()};
-    std::vector<Str> exposed;
-    DirtyCallback portWrite;
-    void* target = nullptr;
-    EditorSession session{
-        camera,
-        content,
-        scene,
-        [](Color) {},
-        EditorPort{
-            .expose = [&](StrView name, void* row, const TypeDesc&, DirtyCallback onDirty) {
-                exposed.emplace_back(name);
-                target = row;
-                portWrite = std::move(onDirty);
-            },
-            .unexpose = [&](StrView name) { std::erase(exposed, Str(name)); }
-        }
-    };
-    session.Start("wide", "day");
-
-    session.Select(0);
-    ASSERT_EQ(exposed, std::vector<Str>{"selection"});
-    EXPECT_EQ(target, &content.rows[0]);
-
-    session.Select(2);
-    EXPECT_EQ(exposed, std::vector<Str>{"selection"});
-    EXPECT_EQ(target, &content.rows[2]);
-
-    portWrite();
-    EXPECT_EQ(content.applies, 1u);
-    EXPECT_TRUE(session.TakeInspectorDirty());
-
-    session.Select(std::nullopt);
-    EXPECT_TRUE(exposed.empty());
+    {
+        EditorSession session{camera, content, scene, [](Color) {}, port.Bind()};
+        session.Start("wide", "day");
+        session.Select(0);
+        EXPECT_EQ(port.exposures.size(), 3u);
+    }
+    EXPECT_TRUE(port.exposures.empty());
 }
 

@@ -46,13 +46,13 @@ namespace
 }
 
 // a footprint-centered box, not one around the origin, under a yaw, a
-// scale and an offset
+// per-axis scale that makes the matrix asymmetric, and an offset
 TEST(TransformAABB, MatchesTheCornersUnderYawScaleAndOffset) {
     const AABB3D model{.center = {0.0f, 1.0f, 0.0f}, .halfScale = {1.0f, 1.0f, 0.5f}};
     for(const auto degrees: {0.0f, 30.0f, 90.0f, 135.0f, 270.0f}) {
         const auto m = translateMat({5.0f, 0.0f, 3.0f})
             * rotateYMat(degrees * std::numbers::pi_v<f32> / 180.0f)
-            * scaleMat({2.0f, 2.0f, 2.0f});
+            * scaleMat({3.0f, 1.0f, 0.5f});
         expectNear(transformAABB3D(m, model), bruteForce(m, model));
     }
 }

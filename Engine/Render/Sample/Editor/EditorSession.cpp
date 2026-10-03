@@ -56,10 +56,16 @@ namespace Crowy
           content(content),
           scene(scene),
           clearColor(std::move(clearColor)),
-          port(std::move(port)) {}
+          port(std::move(port)) {
+        exposeTargets();
+    }
 
     EditorSession::~EditorSession() {
         unexposeSelection();
+        if(port.unexpose) {
+            port.unexpose(CameraTarget);
+            port.unexpose(StateTarget);
+        }
     }
 
     void EditorSession::Start(StrView cut, StrView key) {
@@ -86,10 +92,8 @@ namespace Crowy
 
     void EditorSession::Update(Vec2 windowSize) {
         viewport = windowSize;
-        if(camera.TakeMoved() && state.cut != FreeCut) {
-            state.cut = FreeCut;
-            applied.cut = FreeCut;
-        }
+        if(camera.TakeMoved())
+            leaveCut();
     }
 
     void EditorSession::SelectCut(usize index) {
@@ -140,6 +144,22 @@ namespace Crowy
 
     bool EditorSession::TakeInspectorDirty() noexcept {
         return std::exchange(inspectorDirty, false);
+    }
+
+    void EditorSession::exposeTargets() {
+        if(!port.expose)
+            return;
+
+        port.expose(StateTarget, &state, *GetDesc<EditorState>(), [this] { Sync(); });
+        port.expose(CameraTarget, &camera, *GetDesc<EditorCamera>(), [this] {
+            camera.RecomputeView();
+            leaveCut();
+        });
+    }
+
+    void EditorSession::leaveCut() {
+        state.cut = FreeCut;
+        applied.cut = FreeCut;
     }
 
     bool EditorSession::applyCut() {

@@ -42,20 +42,10 @@ namespace Crowy
         }
     }
 
-    // Backlot's film set in the standard pipeline, with the editor's cuts
-    // and lighting keys; loaded before RenderApp exists, since the geometry
-    // pool is sized from it.
+    // Backlot's film set under the editor; loaded before RenderApp exists,
+    // since the geometry pool is sized from it.
     class StageEditor final: public RenderApp {
     private:
-        static constexpr std::array CutKeys{
-            KeyCode::Num1, KeyCode::Num2, KeyCode::Num3, KeyCode::Num4,
-            KeyCode::Num5, KeyCode::Num6, KeyCode::Num7, KeyCode::Num8,
-        };
-        static constexpr std::array LightingKeys{KeyCode::F1, KeyCode::F2, KeyCode::F3, KeyCode::F4};
-        static constexpr auto PanelKey = KeyCode::P;
-        // its own file, so no other sample's windows leak in or out
-        static constexpr CStr ImGuiSettings = "StageEditor.imgui.ini";
-
         LoadedStage stage;
         StageGeometry geometry;
         StageTextureHandles textures;
@@ -65,28 +55,20 @@ namespace Crowy
         UIContext uiContext;
         HierarchyPanel hierarchy;
         InspectorPanel inspector;
-        // last: it is exposed to the port, so it goes first
+        // last: it leaves the port first
         std::optional<EditorSession> session;
 
     public:
-        ~StageEditor() override {
-            if(auto* port = Port()) {
-                port->Unexpose("editor");
-                port->Unexpose("camera");
-            }
-        }
-        CROWY_DECLARE_PINNED(StageEditor)
-
         StageEditor()
             : StageEditor(loadStage(backlotRoot())) {}
 
-        // the base reads `loaded` before the member takes it
-        explicit StageEditor(LoadedStage loaded)
+        // the base reads `stage` before the member takes it
+        explicit StageEditor(LoadedStage stage)
             : RenderApp(
-                  makeConfig(loaded),
-                  std::make_unique<EditorCamera>(editorCutOf(makeStageCuts(loaded).front()))
+                  makeConfig(stage),
+                  std::make_unique<EditorCamera>(editorCutOf(makeStageCuts(stage).front()))
               ),
-              stage(std::move(loaded)) {}
+              stage(std::move(stage)) {}
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
@@ -100,19 +82,16 @@ namespace Crowy
             session.emplace(camera(), *content, scene, [this](Color color) { SetClearColor(color); }, editorPort());
             session->Start(content->Cuts().front().name, stage.document.defaultKey);
             hierarchy.Reset(content->Objects());
-
-            if(auto* port = Port()) {
-                port->Expose("editor", &session->State(), *GetDesc<EditorState>(), [this] {
-                    session->Sync();
-                });
-                port->Expose("camera", &camera(), *GetDesc<EditorCamera>(), [this] {
-                    camera().RecomputeView();
-                });
-            }
         }
 
         void OnProcessInput(const InputProvider& input) override {
-            if(input.IsKeyPressed(PanelKey))
+            constexpr std::array CutKeys{
+                KeyCode::Num1, KeyCode::Num2, KeyCode::Num3, KeyCode::Num4,
+                KeyCode::Num5, KeyCode::Num6, KeyCode::Num7, KeyCode::Num8,
+            };
+            constexpr std::array LightingKeys{KeyCode::F1, KeyCode::F2, KeyCode::F3, KeyCode::F4};
+
+            if(input.IsKeyPressed(KeyCode::P))
                 Debug().showPanel = !Debug().showPanel;
             if(input.IsKeyPressed(KeyCode::Escape))
                 session->Select(std::nullopt);
@@ -135,6 +114,9 @@ namespace Crowy
         }
 
         void OnInitUI(RHIDevice& device, const OverlayFormats& formats) override {
+            // its own file, so no other sample's windows leak in or out
+            constexpr CStr ImGuiSettings = "StageEditor.imgui.ini";
+
             uiRenderer = std::make_unique<UIRenderer>(device, formats.color, formats.depth);
             ImGui::GetIO().IniFilename = ImGuiSettings;
         }

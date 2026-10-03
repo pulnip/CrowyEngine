@@ -9,7 +9,21 @@
 namespace Crowy
 {
     // the cut as the editor takes it
-    EditorCut editorCutOf(const StageCut& cut);
+    inline constexpr EditorCut editorCutOf(const StageCut& cut) {
+        return EditorCut{
+            .name = cut.name,
+            .position = cut.position,
+            .yaw = cut.yaw,
+            .pitch = cut.pitch,
+            .lens = {
+                .fovY = cut.fovY,
+                .nearZ = cut.nearZ,
+                .farZ = cut.farZ,
+                .orthographic = cut.orthographic,
+                .orthoHalfHeight = cut.orthoHalfHeight
+            }
+        };
+    }
 
     // The editor's view of the loaded stage: its cuts and lighting keys, its
     // instances, quads and lights as named objects grouped by area, and each
@@ -52,6 +66,7 @@ namespace Crowy
         void ApplyQuad(usize quad);
 
     private:
+        void addObjects();
         void addObject(EditorObject object, std::optional<PrimitiveHandle> primitive, std::optional<LightHandle> light);
     };
 }

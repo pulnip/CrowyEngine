@@ -10,7 +10,7 @@ add_library(SampleEditor STATIC
 target_include_directories(SampleEditor
 PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    # Camera.hpp, until a domain module owns the cameras
+    # Camera.hpp lives in the sample framework
     "${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 

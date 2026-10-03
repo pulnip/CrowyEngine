@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
-#include <numbers>
 #include <stdexcept>
 #include <tuple>
 
@@ -19,20 +18,16 @@ namespace Crowy
         using MeshKey = std::tuple<usize, Str>;
         using MeshCache = std::map<MeshKey, MeshHandle>;
 
-        constexpr f32 radians(f32 degrees) noexcept {
-            return degrees * (std::numbers::pi_v<f32> / 180.0f);
+        f32 radians(f32 degrees) {
+            return static_cast<f32>(toRadian(degrees));
         }
 
-        // the unit quad is a plane; a sliver of depth keeps its box whole
-        constexpr AABB3D UnitQuadBounds{
-            .center = {0.0f, 0.0f, 0.0f},
-            .halfScale = {0.5f, 0.5f, 0.001f}
-        };
-
         MaterialPipelineDesc opaquePipeline() {
+            constexpr CStr ForwardShader = "Engine/Render/Shader/StandardForward.slang";
+
             return MaterialPipelineDesc{
-                .vertexShader = {.path = StageForwardShader, .entryPoint = "vs_main"},
-                .fragmentShader = {.path = StageForwardShader, .entryPoint = "fs_opaque"},
+                .vertexShader = {.path = ForwardShader, .entryPoint = "vs_main"},
+                .fragmentShader = {.path = ForwardShader, .entryPoint = "fs_opaque"},
                 .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
@@ -40,6 +35,17 @@ namespace Crowy
 
         const StageMaterial& materialNamed(const StageDocument& document, StrView id) {
             return *std::ranges::find(document.materials, id, &StageMaterial::id);
+        }
+
+        usize modelIndex(const StageDocument& document, StrView id) {
+            return static_cast<usize>(std::ranges::find(document.models, id, &StageModel::id) - document.models.begin());
+        }
+
+        // whether a slot draws with a material that glows
+        bool glows(const LoadedStage& stage, usize model) {
+            return std::ranges::any_of(stage.models[model].slots, [&](const ModelSlot& slot) {
+                return materialNamed(stage.document, slot.material).emissive;
+            });
         }
 
         TextureSampler samplerOf(StageSampler sampler) {
@@ -79,10 +85,7 @@ namespace Crowy
             StrView channel
         ) {
             const auto& data = stage.models[model];
-            const auto emits = std::ranges::any_of(data.slots, [&](const ModelSlot& slot) {
-                return materialNamed(stage.document, slot.material).emissive;
-            });
-            const MeshKey key{model, emits ? Str(channel) : Str{}};
+            const MeshKey key{model, glows(stage, model) ? Str(channel) : Str{}};
             if(const auto found = cache.find(key); found != cache.end())
                 return found->second;
 
@@ -139,8 +142,7 @@ namespace Crowy
             auto nearest = 1e30f;
             const auto& document = stage.document;
             for(const auto& instance: document.instances) {
-                const auto model = std::ranges::find(document.models, instance.model, &StageModel::id);
-                const auto& local = stage.models[static_cast<usize>(model - document.models.begin())].bounds;
+                const auto& local = stage.models[modelIndex(document, instance.model)].bounds;
                 const auto box = transformAABB3D(instanceToWorld(instance), local);
                 const auto outside = Vec3{
                     std::max(0.0f, std::abs(point.x - box.center.x) - box.halfScale.x),
@@ -152,18 +154,6 @@ namespace Crowy
 
             return nearest;
         }
-    }
-
-    Mat4 instanceToWorld(const StageInstance& instance) {
-        return translateMat(instance.position)
-            * rotateYMat(radians(instance.yaw))
-            * scaleMat(instance.scale);
-    }
-
-    Mat4 quadToWorld(const StageQuad& quad) {
-        return translateMat(quad.position)
-            * rotateYMat(radians(quad.yaw))
-            * scaleMat({quad.width, quad.height, 1.0f});
     }
 
     StageGeometry addStageGeometry(GeometryPool& pool, const LoadedStage& stage) {
@@ -218,6 +208,12 @@ namespace Crowy
         const StageGeometry& geometry,
         const StageTextureHandles& textures
     ) {
+        // the unit quad is a plane; a sliver of depth keeps its box whole
+        constexpr AABB3D UnitQuadBounds{
+            .center = {0.0f, 0.0f, 0.0f},
+            .halfScale = {0.5f, 0.5f, 0.001f}
+        };
+
         const auto& document = stage.document;
         StageBindings bindings;
 
@@ -239,8 +235,10 @@ namespace Crowy
             .pipeline = opaquePipeline(),
             .maps = {.albedo = paletteTexture}
         });
+        // a row per channel a glowing model's instance names, as countStageMaterials counts
         for(const auto& instance: document.instances) {
-            if(bindings.emissivePalettes.contains(instance.emissiveChannel))
+            if(!glows(stage, modelIndex(document, instance.model))
+               || bindings.emissivePalettes.contains(instance.emissiveChannel))
                 continue;
             bindings.emissivePalettes.emplace(
                 instance.emissiveChannel,
@@ -256,9 +254,7 @@ namespace Crowy
 
         MeshCache meshes;
         for(const auto& instance: document.instances) {
-            const auto model = static_cast<usize>(
-                std::ranges::find(document.models, instance.model, &StageModel::id) - document.models.begin()
-            );
+            const auto model = modelIndex(document, instance.model);
             const auto mesh = meshOf(scene, stage, geometry, bindings, meshes, model, instance.emissiveChannel);
             const auto localToWorld = instanceToWorld(instance);
             bindings.instances.push_back(scene.Primitives().Add(PrimitiveSnapshot{
