@@ -1,5 +1,5 @@
 # A physics world written one way into render primitives. It knows no
-# sample, so the actor round can take it as it is.
+# sample, so it can move out of the samples as it is.
 add_library(SamplePhysicsSync STATIC
     BodyPrimitiveSync.cpp
 )

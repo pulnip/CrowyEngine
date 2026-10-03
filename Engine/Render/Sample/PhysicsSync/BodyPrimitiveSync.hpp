@@ -48,8 +48,5 @@ namespace Crowy
         void Bind(const BodyBinding& binding);
         // after the frame's ticks; localToWorld and worldBounds together
         void Sync(const PhysicsWorld& world, RenderScene& scene) const;
-
-        Vec3 GetPlacement() const noexcept { return placement; }
-        const BodyBindings& GetBindings() const noexcept { return bindings; }
     };
 }

@@ -12,7 +12,7 @@ namespace
 {
     // (1, 2, 3, 4) normalized: every component non-zero
     constexpr Vec4 Tilted{0.18257418f, 0.36514837f, 0.54772256f, 0.73029674f};
-    constexpr Vec3 Placement{-3.5f, 0.0f, 1.0f};
+    constexpr Vec3 Placement{-3.5f, 0.5f, 1.0f};
 
     BodyBinding bindingOf(
         const PhysicsWorld& world,
@@ -38,7 +38,13 @@ TEST(BodyPrimitiveSync, WritesThePoseThroughThePlacement) {
     });
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
-    sync.Bind(bindingOf(world, body, primitive));
+    // off center, so bounds that ignored the binding's would show
+    auto binding = bindingOf(world, body, primitive);
+    binding.localBounds = AABB3D{
+        .center = {0.0f, 0.5f, 0.0f},
+        .halfScale = {0.5f, 0.25f, 0.5f},
+    };
+    sync.Bind(binding);
 
     sync.Sync(world, scene);
     const auto pose = world.PoseOf(body);
@@ -47,12 +53,15 @@ TEST(BodyPrimitiveSync, WritesThePoseThroughThePlacement) {
     const auto& written = scene.Primitives().GetRef(primitive);
     for(usize column = 0; column < 4; ++column)
         EXPECT_EQ(written.localToWorld[column], expected[column]);
+    EXPECT_EQ(
+        static_cast<Vec3>(written.localToWorld[3]),
+        Placement + pose.position
+    );
 
     // the bounds come from the same matrix, so they agree to the bit
-    const auto bounds = transformAABB3D(expected, UnitMeshBounds);
+    const auto bounds = transformAABB3D(expected, binding.localBounds);
     EXPECT_EQ(written.worldBounds.center, bounds.center);
     EXPECT_EQ(written.worldBounds.halfScale, bounds.halfScale);
-    EXPECT_EQ(written.worldBounds.center, Placement + pose.position);
     EXPECT_EQ(world.BodyCount(), 1u);
     EXPECT_EQ(world.TickCount(), 0u);
 }
@@ -106,9 +115,34 @@ TEST(BodyPrimitiveSync, LeavesUnboundPrimitivesAlone) {
         EXPECT_EQ(after.localToWorld[column], sentinel.localToWorld[column]);
     EXPECT_EQ(after.worldBounds.center, sentinel.worldBounds.center);
     EXPECT_EQ(after.worldBounds.halfScale, sentinel.worldBounds.halfScale);
-    EXPECT_EQ(sync.GetBindings().size(), 1u);
     EXPECT_EQ(scene.Primitives().Count(), 2u);
     EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(world.TickCount(), 0u);
+}
+
+TEST(BodyPrimitiveSync, SphereBoundsDoNotTurn) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    RenderScene scene;
+    // an eighth of a turn about z, which would grow a box's bounds by 1.41
+    const auto ball = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.15f},
+        .pose = BodyPose{
+            .position = {1.0f, 0.15f, 2.0f},
+            .rotation = {0.0f, 0.0f, 0.38268343f, 0.92387953f},
+        },
+        .motion = BodyMotion::Static,
+    });
+    const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
+    BodyPrimitiveSync sync(Placement);
+    sync.Bind(bindingOf(world, ball, primitive));
+
+    sync.Sync(world, scene);
+    const auto& bounds = scene.Primitives().GetRef(primitive).worldBounds;
+    EXPECT_EQ(bounds.halfScale, 0.15f * ones());
+    EXPECT_EQ(bounds.center, Placement + world.PoseOf(ball).position);
+    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(world.TickCount(), 0u);
 }
 
 TEST(BodyPrimitiveSync, FollowsAFallingBody) {
@@ -153,10 +187,11 @@ TEST(BodyPrimitiveSyncDeathTest, OneWriterPerPrimitive) {
             PhysicsWorld world(runtime);
             RenderScene scene;
             const auto body = world.CreateBody(BodyDesc{});
+            const auto other = world.CreateBody(BodyDesc{});
             const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
             BodyPrimitiveSync sync(zeros());
             sync.Bind(bindingOf(world, body, primitive));
-            sync.Bind(bindingOf(world, body, primitive));
+            sync.Bind(bindingOf(world, other, primitive));
         },
         "one writer"
     );

@@ -1,6 +1,7 @@
 #include "BodyPrimitiveSync.hpp"
 
 #include <algorithm>
+#include <variant>
 
 #include "Assert.hpp"
 #include "LinearAlgebra.hpp"
@@ -31,6 +32,19 @@ namespace Crowy
             auto& primitive = scene.Primitives().GetRef(binding.primitive);
             primitive.localToWorld = offset *
                 modelMat(pose.position, pose.rotation, binding.meshScale);
+            // a sphere's bounds do not turn with it, so a rolling ball
+            // never reaches below the floor and moves the shadow fit
+            const auto shape = world.ShapeOf(binding.body);
+            if(std::holds_alternative<SphereShape>(shape)) {
+                const auto center = primitive.localToWorld *
+                    toVec4(binding.localBounds.center, 1.0f);
+                primitive.worldBounds = AABB3D{
+                    .center = static_cast<Vec3>(center),
+                    .halfScale =
+                        binding.localBounds.halfScale * binding.meshScale,
+                };
+                continue;
+            }
             primitive.worldBounds =
                 transformAABB3D(primitive.localToWorld, binding.localBounds);
         }
