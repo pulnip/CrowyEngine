@@ -176,6 +176,7 @@
   <ol>
     <li><a href="#glance">한눈에</a></li>
     <li><a href="#how">이 라운드가 도는 방식</a></li>
+    <li><a href="#cuts">컷별 골든과 Unity 비교 (stage-cuts)</a></li>
     <li><a href="#masked">Masked (masked)</a></li>
     <li><a href="#clock">다시 읽기와 장면 시계 (editor-clock-reload)</a></li>
     <li><a href="#gizmo">기즈모 (editor-gizmo)</a></li>
@@ -191,12 +192,12 @@
 <h2 id="glance">한눈에</h2>
 <div class="card">
   <p>목표는 둘이 하나로 묶인 라운드다. <b>무대</b>: <code>../Backlot</code>의 영화 세트(FBX 124개, 인스턴스 1488, 이미지 쿼드 179, 조명 31, 컷 8, 라이팅 키 4)를 엔진이 읽어 표준 파이프라인으로 그린다. <b>에디터</b>: 직접 쓰는 확인 도구 — 클릭 선택, 계층, 인스펙터, 기즈모, 일시정지·스텝, 장면 다시 읽기 — 를 모든 동작이 포트의 속성 쓰기와 같은 길로 가게 만든다. Unity와의 비교는 <b>배치만</b>, 스타일은 비교하지 않는다.</p>
-  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 완성됐다. 클릭·계층·포트로 고르고, 인스펙터와 기즈모로 고치고, 장면 파일을 다시 읽고, 장면 시간을 멈추고 돌린다. 사인과 게임 아틀라스는 투명 텍셀을 잘라내고, 잘린 모양대로 그림자를 드리운다. 남은 것은 컷별 골든이고, 그다음이 G2다.</p>
+  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 완성됐다. 클릭·계층·포트로 고르고, 인스펙터와 기즈모로 고치고, 장면 파일을 다시 읽고, 장면 시간을 멈추고 돌린다. 사인과 게임 아틀라스는 투명 텍셀을 잘라내고, 잘린 모양대로 그림자를 드리운다. 8컷의 낮과 밤이 골든으로 고정됐고, Unity와의 배치는 가장자리로 잰다. 남은 것은 G2다.</p>
 </div>
 <div class="stat-row">
-  <div class="stat"><div class="label">작업</div><div class="value num">8 / 9 <small>+ 리뷰 수정 7</small></div></div>
-  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 565 <small>스위트 10 → 13</small></div></div>
-  <div class="stat"><div class="label">smoke</div><div class="value num">31 → 33 <small>TexturedSpike · StageEditor</small></div></div>
+  <div class="stat"><div class="label">작업</div><div class="value num">9 / 9 <small>+ 리뷰 수정 8</small></div></div>
+  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 575 <small>스위트 10 → 13</small></div></div>
+  <div class="stat"><div class="label">smoke</div><div class="value num">31 → 34 <small>TexturedSpike · StageEditor · StageEditorCuts</small></div></div>
   <div class="stat"><div class="label">낮 키, 패스당</div><div class="value num">466 784 <small>삼각형 = 인벤토리 + 쿼드 161×2</small></div></div>
   <div class="stat"><div class="label">GPU / CPU 기록</div><div class="value num">3.4 / 10.7 ms <small>Debug, establishing, 낮</small></div></div>
   <div class="stat"><div class="label">Debug 로드</div><div class="value num">2.35 s <small>밉 생성 1.35 s 포함</small></div></div>
@@ -212,6 +213,43 @@
     <li><b>규칙.</b> 엔진(<code>Engine/</code>의 <code>Sample</code> 밖)에 Backlot 고유의 것은 없다. 텍스처·Masked·FBX처럼 기본 파이프라인이 가져야 할 기능은 엔진 작업이다. 모든 에디터 동작은 포트도 할 수 있는 속성 쓰기다.</li>
   </ul>
 </div>
+
+<h2 id="cuts">컷별 골든과 Unity 비교 (stage-cuts) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>무대의 8컷이 이제 회귀 그림이다. <code>Tools/stage_cuts</code>는 낮과 밤 16장을 커밋된 골든과 비교한다. establishing의 낮은 smoke 골든과 비교하므로, 포트로 멈춰 찍은 프레임과 smoke가 자유롭게 돌다 찍은 60번째 프레임이 같다는 것을 매번 확인한다. 골든에는 그것을 찍은 Backlot 커밋이 스탬프로 붙는다. 에디터가 실제로 읽은 Backlot(<code>editor.scene</code>으로 되읽는다)이 그 커밋이 아니거나, 에디터가 읽는 파일에 커밋하지 않은 변경이 있으면 찍기만 하고 비교하지 않는다(exit 77). 아무것도 비교하지 않은 실행이 통과로 읽히는 일은 없다. <code>-Record</code>는 없거나 달라진 골든만 복사하고 커밋을 찍는다. ctest <code>StageEditorCuts</code>(Debug)로 돈다.</p>
+  <p>ImageCompare에는 가장자리 비교가 생겼다. 휘도에 Sobel을 걸고, 가장자리를 가로지르는 비최대 억제로 한 픽셀 폭으로 가늘게 만들고, 개수 예산으로 가장 강한 것만 남긴다. 그래서 톤 곡선, 블러, 밝기가 달라도 가장자리 자리는 움직이지 않는다. 결과로는 두 그림의 가장자리가 반경 안에서 서로를 찾는 비율, 가장 덜 맞는 타일, 정확히 겹치는 이동량이 나온다. 정수 연산뿐이라 Windows와 Mac이 같은 답을 내야 한다. <code>-UnityRun</code>은 컷마다 Unity의 같은 이름 그림과 비교해 오버레이, <code>summary.tsv</code>, <code>report.html</code>을 쓴다. 리포트에서 엔진 그림에 마우스를 올리면 Unity 그림과 번갈아 깜빡인다. 보고만 하고 종료 코드는 바꾸지 않는다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/editor-stage/cuts-street-edges.jpg" alt="street 오버레이"><figcaption>street 컷 낮, 엔진 대 Unity의 가장자리. 회색은 양쪽 모두에, 마젠타는 엔진에만, 초록은 Unity에만 있는 가장자리다. 거의 전부 회색이고, 이동량은 (0,0)이다</figcaption></figure>
+  <figure><img src="images/editor-stage/cuts-yaw-plant.jpg" alt="카메라 실험"><figcaption>카메라를 0.005 rad 돌린 실험. 왼쪽은 그대로, 오른쪽은 돌린 뒤다. 마젠타와 초록이 나란히 겹쳐 보이고 이동량은 (6,0)으로 읽힌다</figcaption></figure>
+  <figure><img src="images/editor-stage/cuts-worst-tiles.jpg" alt="가장 나쁜 타일"><figcaption>가장 덜 맞는 타일 셋(엔진, Unity, 오버레이). 위부터 hard 그림자 대 soft 그림자(signs), 밤 톤에서 한쪽에만 보이는 가는 선(behind@night), 서로 다른 하늘 앞의 실루엣(roof@night)이다. 모두 스타일이고 배치가 아니다</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>18644c3</code></td><td>컷별 골든 15장(낮 7, 밤 8)과 스탬프 <code>StageEditor.backlot.txt</code>, 비교와 <code>-Record</code>, 멈춘 장면 검사, sh 쌍둥이의 플래그와 실행 비트.</td></tr>
+  <tr><td><code>4fd97f0</code></td><td>ctest <code>StageEditorCuts</code>. 런처가 <code>CROWY_DEBUG</code>와 프레임 덤프 변수를 자식에게 넘기지 않고, 에디터가 77로 끝나면 몇 초 안에 스킵한다.</td></tr>
+  <tr><td><code>e66fef4</code></td><td>ImageCompare의 가장자리 비교와 <code>--edges</code>, 테스트 10개.</td></tr>
+  <tr><td><code>a08bcaa</code></td><td>Unity 행: 오버레이, <code>summary.tsv</code>, <code>report.html</code>.</td></tr>
+  <tr><td><code>97e7cb1</code></td><td>리뷰 수정(아래).</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>골든</td><td>16장 비교(15장 + smoke 골든). ps1 23 s, Git Bash 94 s. 허용 오차 0으로 16/16이고, 키 순서와 컷 순서를 뒤집어도 같다</td></tr>
+  <tr><td>단위 테스트</td><td>565 → 575 (Serialization 29 → 39). smoke 라벨 33 → 34</td></tr>
+  <tr><td>Unity, 4키 32장</td><td>모든 행의 이동량이 (0,0)이다. 엔진→Unity 0.93–0.9996, Unity→엔진 0.57–0.9993(가장 낮은 roof는 Unity의 지붕 디테일 텍스처 때문)</td></tr>
+  <tr><td>시간</td><td>1080p 한 쌍 3.8 s(Debug), 32장과 행 전체 163 s</td></tr>
+  <tr><td>실험</td><td>카메라 yaw +0.005 rad는 이동량 (6,0)으로 읽힌다. lamp-ne +1 m는 오버레이에 보이지만 타일 비율은 0.008밖에 안 떨어진다(아래)</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계.</b> Opus 두 관점(회귀 우선, 배치 우선)을 합쳤다. 회귀 쪽에서는 낮과 밤 골든, 스탬프의 고정 키, 비교하지 못하면 77, <code>-Record</code>, ctest 등록과 런처 보강을 가져왔다. 배치 쪽에서는 NMS와 개수 예산, 관대함과 이동량 탐색, 오버레이 색, 깜빡이는 리포트를 가져왔다. 설계 문서의 크기 맞추기(<code>--size</code>)는 직접 정한 1920 × 1080 덕분에 양쪽 모두 필요 없다고 봤다. 블렌드는 밤에 화면 전체가 겹쳐 보여서 버렸다.</li>
+  <li><b>설계가 바뀐 곳.</b> 테스트 숫자를 같은 알고리즘의 Python 참조 구현으로 먼저 계산했다. 그 결과 설계의 추정 둘이 틀렸다. 4 px 옮긴 막대는 약 0.22가 아니라 19/96과 21/96이고, 옮긴 막대의 타일은 0.32가 아니라 22/40이다. 구현 중에 하나를 더 고쳤다. Mac에서 같은 커밋으로 metal을 기록해도 "dx12 골든이 낡았다"는 안내가 떴는데, 이제 커밋이 바뀔 때만 뜬다.</li>
+  <li><b>실험이 보여 준 한계.</b> lamp-ne를 1 m 옮기면 그 타일 비율이 0.10 이상 떨어진다는 설계의 추정은 틀렸다. street 컷에서 그 이동은 대부분 시선 방향이라 화면에서는 램프 머리가 10 px쯤만 움직인다. 게다가 복잡한 1080p 그림에서는 관대한 10 % 가장자리를 5 × 5로 넓히면 거의 모든 픽셀을 덮기 때문에 비율이 포화된다. 기본값은 그대로 뒀다. 숫자로는 이동량(카메라나 전역 어긋남)을 읽고, 작은 물체의 이동은 오버레이와 깜빡임으로 사람이 본다.</li>
+  <li><b>리뷰가 잡은 것.</b> 확인된 12건 중 겹치는 것을 합치면 9가지였다. 넷은 두 스크립트 모두의 진짜 구멍이었다. 고정되지 않은 키만 찍은 실행이 아무것도 비교하지 않고 통과했다. 키 일부만 <code>-Record</code>하면 스탬프가 그 키들로 줄어서 나머지가 말없이 고정에서 빠졌다. smoke 골든이 없을 때 그것을 쓰지 않는 <code>-Record</code>를 안내했다. dirty나 git이 아닌 Backlot에 <code>-Record</code>를 안내했지만 <code>-Record</code>는 둘 다 거부한다. 나머지 다섯은 C++ 스타일이었다.</li>
+  <li><b>멈춘 곳.</b> 없다. 이제 G2다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 타일 비율이 포화되니, 작은 이동을 숫자로 잡으려면 반경 0의 국소 일치율이나 엔진 쪽에만 있는 가장자리 수 같은 지표가 낫다. 저녁과 노을도 골든으로 고정하려면 스탬프 keys에 더하고 <code>-Record</code>하면 된다.</li>
+</ul>
 
 <h2 id="masked">Masked (masked) <span class="tag ok">완료</span></h2>
 <div class="card">
@@ -438,7 +476,6 @@
 <h2 id="next">다음</h2>
 <div class="card">
   <ol>
-    <li><b>stage-cuts</b> — 컷별 골든에 Backlot 커밋을 찍고, Unity와 가장자리를 비교한다.</li>
     <li><b>G2</b> — 직접 해 보는 그 한 가지 작업. 언제 해도 된다:
       <ol>
         <li><code>build\bin\StageEditor.exe</code>를 실행하고 P로 크롬을 켠다. 2로 street 컷에 간다.</li>
@@ -446,11 +483,11 @@
         <li>왼쪽 Ctrl을 누른 채 빨간 화살표 머리를 오른쪽으로 끌어 커서 옆이 <code>+1.00 m</code>일 때 놓는다. 링의 오른쪽 끝을 램프 발치 쪽으로 끌어 <code>+90.0 deg</code>에서 놓는다.</li>
         <li>F4로 밤, 툴바가 paused인지 보고, C로 캡처한다(<code>captures\StageEditor\street@night-f…bmp</code>, 크롬 없음).</li>
         <li><code>..\Backlot\Data\layout.json</code> 88번째 줄의 lamp-ne를 x 11.5, yaw 270.0으로 고치고 <code>python Tools\Scene\compose.py</code>를 돌린 뒤 F5. 리비전 2, 선택·밤·멈춘 시계가 유지된다.</li>
-        <li><code>git -C ..\Backlot checkout Data/layout.json Data/scene.json</code> 후 F5로 되돌린다.</li>
+        <li><code>git -C ..\Backlot checkout Data/layout.json Data/scene.json</code> 후 F5로 되돌린다. 되돌리기 전에는 <code>stage_cuts</code>와 ctest <code>StageEditorCuts</code>가 dirty로 스킵하고(77), 램프가 보이는 smoke 그림도 골든과 달라진다.</li>
       </ol>
     </li>
   </ol>
-  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests.md</code>의 P–AG에 모여 있다. 체크포인트 3(텍스처 표), 4(기즈모), 5(masked), 그리고 <code>stage_task.sh</code> 전체가 들어 있다.</p>
+  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests.md</code>의 P–AK에 모여 있다. 체크포인트 3(텍스처 표), 4(기즈모), 5(masked), 컷별 Metal 골든 15장 기록(AH), 그리고 <code>stage_task.sh</code> 전체가 들어 있다.</p>
 </div>
 
 <footer>CrowyEngine · editor-stage 라운드 기록 · 진행 중 · 새 항목이 위로 쌓인다</footer>
