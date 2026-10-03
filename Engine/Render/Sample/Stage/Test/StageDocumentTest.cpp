@@ -238,7 +238,6 @@ TEST(StageSprite, EmptyGridThrows) {
     );
 }
 
-
 TEST(StageSprite, AnAnimationMustPlayInsideItsSheet) {
     const auto sprite = [](std::string animation) {
         return std::string(R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 2, "columns": 2}, "animations": [)")

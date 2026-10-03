@@ -28,11 +28,12 @@ stage_editor_stop() {
 # stage_editor_start <exe> <port>: launches the editor held, on <port> alone,
 # and waits until it answers there; the EXIT trap quits it
 stage_editor_start() {
-    if pgrep -x StageEditor >/dev/null 2>&1; then
-        echo "a StageEditor is already running; close it first" >&2
+    port_use "$2"
+    # Git Bash has no pgrep: whatever already answers on the port is refused
+    if port_rpc ping '{}' >/dev/null 2>&1; then
+        echo "port $2 already answers; close what holds it first" >&2
         return 1
     fi
-    port_use "$2"
     # the child alone takes the port, and without retries
     CROWY_COMMAND_PORT="$2" "$1" --hold >/dev/null 2>&1 &
     STAGE_EDITOR_PID=$!

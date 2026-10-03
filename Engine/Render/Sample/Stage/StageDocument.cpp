@@ -418,8 +418,10 @@ namespace Crowy
             const RowRef where{"animations", i};
             if(animation.frameCount == 0 || animation.frameDurationMs == 0)
                 refuse(where, std::format("'{}' plays no frames or holds each for no time", animation.name));
-            const auto first = animation.startRow * sprite.columns + animation.startColumn;
-            if(animation.startColumn >= sprite.columns || first + animation.frameCount > sprite.rows * sprite.columns)
+            // u64: no row or count a file writes can wrap the sum
+            const auto first = u64{animation.startRow} * sprite.columns + animation.startColumn;
+            const auto cells = u64{sprite.rows} * sprite.columns;
+            if(animation.startColumn >= sprite.columns || first + animation.frameCount > cells)
                 refuse(where, std::format("'{}' runs past the {} x {} sheet", animation.name, sprite.rows, sprite.columns));
         }
 

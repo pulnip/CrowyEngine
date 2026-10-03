@@ -105,11 +105,13 @@ namespace Crowy
                     // width and height stay with the inspector
                     .gizmo = combine(GizmoParts::Move, GizmoParts::Turn)
                 },
+                // the rect follows the row's uv0, uv1 and the clock: a write to it
+                // is drawn over at once
                 InspectSection{
                     .label = "material",
                     .target = &scene.Materials().GetRef(bindings.quadMaterials[quad]).data,
                     .desc = GetDesc<MaterialData>(),
-                    .apply = {}
+                    .apply = [this, quad] { ApplyQuad(quad); }
                 }
             };
         }
@@ -184,7 +186,7 @@ namespace Crowy
 
     bool StageContent::ApplyTime(f64 seconds) {
         sceneSeconds = seconds;
-        auto changed = false;
+        bool changed = false;
         for(const auto quad: flipbooks) {
             const auto rect = stageQuadRect(stage.document.quads[quad], stage.sprites, seconds);
             auto& data = scene.Materials().GetRef(bindings.quadMaterials[quad]).data;

@@ -52,11 +52,37 @@ namespace Crowy
                 + alignUp(mesh.indices.size() * sizeof(u32), StagingAlign);
         }
 
-        const ModelData& modelOf(const LoadedStage& stage, StrView id) {
-            const auto& rows = stage.document.models;
-            const auto row = std::ranges::find(rows, id, &StageModel::id);
+        // the model `id` names in `table`, which `models` is parallel to
+        const ModelData& modelOf(const StageModels& table, const StageModelData& models, StrView id) {
+            const auto row = std::ranges::find(table, id, &StageModel::id);
 
-            return stage.models[static_cast<usize>(row - rows.begin())];
+            return models[static_cast<usize>(row - table.begin())];
+        }
+
+        // the palette, an emissive palette per channel a glowing model's
+        // instance names, one per quad
+        u32 materialsOf(const StageDocument& document, const StageModels& table, const StageModelData& models) {
+            const auto emissive = [&](const ModelSlot& slot) {
+                const auto material = std::ranges::find(document.materials, slot.material, &StageMaterial::id);
+                return material != document.materials.end() && material->emissive;
+            };
+
+            std::set<Str> channels;
+            for(const auto& instance: document.instances) {
+                if(std::ranges::any_of(modelOf(table, models, instance.model).slots, emissive))
+                    channels.insert(instance.emissiveChannel);
+            }
+
+            return static_cast<u32>(1 + channels.size() + document.quads.size());
+        }
+
+        // one per drawn submesh, every keyed row counted
+        u64 drawsOf(const StageDocument& document, const StageModels& table, const StageModelData& models) {
+            u64 draws = document.quads.size();
+            for(const auto& instance: document.instances)
+                draws += modelOf(table, models, instance.model).slots.size();
+
+            return draws;
         }
 
         StageCapacities capacitiesOf(const LoadedStage& stage) {
@@ -71,9 +97,7 @@ namespace Crowy
                 }
             }
 
-            u64 draws = stage.document.quads.size();
-            for(const auto& instance: stage.document.instances)
-                draws += modelOf(stage, instance.model).slots.size();
+            const auto draws = drawsOf(stage.document, stage.document.models, stage.models);
 
             return StageCapacities{
                 .vertices = withPoolSlack(vertices),
@@ -176,7 +200,9 @@ namespace Crowy
         const auto& models = launched.document.models;
         for(const auto& row: document.models) {
             const auto launch = std::ranges::find(models, row.id, &StageModel::id);
-            if(launch == models.end() || launch->path != row.path || launch->materials != row.materials) {
+            const bool same = launch != models.end() && launch->path == row.path
+                && launch->materials == row.materials && launch->box == row.box;
+            if(!same) {
                 throw std::runtime_error(std::format(
                     "stage: model '{}' reads {}, which the editor did not load at launch; a restart loads it",
                     row.id,
@@ -195,6 +221,38 @@ namespace Crowy
                 ));
             }
         }
+
+        // the swap populates the file over the launch's model table: every
+        // material that table names, a palette, and what the launch reserved
+        bool palette = false;
+        for(const auto& row: models) {
+            for(const auto& id: row.materials) {
+                const auto material = std::ranges::find(document.materials, id, &StageMaterial::id);
+                if(material == document.materials.end()) {
+                    throw std::runtime_error(std::format(
+                        "stage: model '{}' draws with material '{}', which the file no longer holds; a restart loads it",
+                        row.id,
+                        id
+                    ));
+                }
+                palette = palette || !material->emissive;
+            }
+        }
+        if(!palette)
+            throw std::runtime_error("stage: no model draws with a material that does not glow");
+
+        const auto materials = materialsOf(document, models, launched.models);
+        const auto draws = drawsOf(document, models, launched.models);
+        const auto& reserved = launched.capacities;
+        if(materials > reserved.materials || draws > reserved.draws) {
+            throw std::runtime_error(std::format(
+                "stage: the file needs {} materials and {} draws a pass, past the {} and {} the launch reserved; a restart reserves them",
+                materials,
+                draws,
+                reserved.materials,
+                reserved.draws
+            ));
+        }
     }
 
     StageReload reloadStageDocument(const LoadedStage& launched, const std::filesystem::path& sceneFile) {
@@ -210,20 +268,7 @@ namespace Crowy
     }
 
     u32 countStageMaterials(const LoadedStage& stage) {
-        const auto& document = stage.document;
-        const auto emissive = [&](const ModelSlot& slot) {
-            const auto material =
-                std::ranges::find(document.materials, slot.material, &StageMaterial::id);
-            return material != document.materials.end() && material->emissive;
-        };
-
-        std::set<Str> channels;
-        for(const auto& instance: document.instances) {
-            if(std::ranges::any_of(modelOf(stage, instance.model).slots, emissive))
-                channels.insert(instance.emissiveChannel);
-        }
-
-        return static_cast<u32>(1 + channels.size() + document.quads.size());
+        return materialsOf(stage.document, stage.document.models, stage.models);
     }
 
     MeshData makeStageUnitQuad() {

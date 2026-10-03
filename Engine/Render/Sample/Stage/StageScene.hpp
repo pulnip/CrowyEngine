@@ -58,7 +58,7 @@ namespace Crowy
                 ? static_cast<u64>(std::min(seconds, 1.0e9) * 1.0e6 + 0.5)
                 : u64{0};
             const auto frame = micros / (u64{animation.frameDurationMs} * 1000) % animation.frameCount;
-            const auto cell = animation.startRow * sprite.columns + animation.startColumn + frame;
+            const auto cell = u64{animation.startRow} * sprite.columns + animation.startColumn + frame;
             const auto columns = static_cast<f32>(sprite.columns);
             const auto rows = static_cast<f32>(sprite.rows);
             offset.x += (static_cast<f32>(cell % sprite.columns) - static_cast<f32>(animation.startColumn)) / columns;

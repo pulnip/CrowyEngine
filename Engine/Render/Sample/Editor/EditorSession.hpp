@@ -219,9 +219,8 @@ namespace Crowy
             EditorPort port = {}
         );
 
-        // applies `cut` and `key` and remembers `scene` as the file the rows
-        // came from; throws std::runtime_error when the cut or key is not the
-        // content's
+        // applies `cut` and `key`, `scene` being the file the rows came from;
+        // throws std::runtime_error when the cut or key is not the content's
         void Start(StrView cut, StrView key, StrView scene);
         void Sync();
         // a frame's input already reached the camera

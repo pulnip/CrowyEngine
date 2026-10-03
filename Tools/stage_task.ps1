@@ -215,6 +215,8 @@ try {
     Set-PortProperty editor time 0.32
     $rect = Get-PortProperty selection.material uvScaleOffset
     Assert-That (Test-Vector $rect @(0.5, 0.25, 0, 0.25)) "at 0.32 s screen-ne shows frame 2 ($($rect -join ', '))"
+    Set-PortProperty selection.material uvScaleOffset @(1, 1, 0, 0)
+    Assert-That (Test-Vector (Get-PortProperty selection.material uvScaleOffset) @(0.5, 0.25, 0, 0.25)) "a write to the rect is drawn over by the row and the clock"
     $frame = (Invoke-Port ping).frame
     Set-PortProperty editor paused $false
     $null = Invoke-Port run @{ frames = 30 }

@@ -87,6 +87,10 @@ namespace
         for(const auto& material: stage.document.materials)
             stage.samplers.emplace(material.texture, material.sampler);
         stage.unitQuad = makeStageUnitQuad();
+        // what loadStage reserves: three materials, two draws for the lamp,
+        // one for the box, one for the quad
+        stage.capacities.materials = countStageMaterials(stage);
+        stage.capacities.draws = 4;
 
         return stage;
     }
@@ -263,6 +267,36 @@ TEST(StageReload, WhatLaunchDidNotLoadNeedsARestart) {
     auto otherSampler = stage.document;
     otherSampler.materials[2].sampler = StageSampler::Point;
     expectRestart(stage, otherSampler, {"Signs.png"});
+
+    // only the unit box may be scaled per axis: the flag is the launch's
+    auto unboxed = stage.document;
+    unboxed.models[1].box = false;
+    expectRestart(stage, unboxed, {"BoxGrey"});
+}
+
+// what the swap needs: populate runs over the launch's model table, within
+// what the launch reserved
+TEST(StageReload, AFileTheSwapCannotBuildNeedsARestart) {
+    const auto stage = miniStage();
+
+    // the lamp and its glow dropped: the launch's table still names PaletteEmissive
+    auto dropped = stage.document;
+    dropped.models.erase(dropped.models.begin());
+    dropped.instances.erase(dropped.instances.begin());
+    std::erase_if(dropped.materials, [](const StageMaterial& row) { return row.id == "PaletteEmissive"; });
+    expectRestart(stage, dropped, {"PaletteEmissive"});
+
+    auto allGlow = stage.document;
+    allGlow.materials[0].emissive = true;
+    EXPECT_THAT(
+        [&] { checkStageReload(stage, allGlow); },
+        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("does not glow"))
+    );
+
+    auto moreQuads = stage.document;
+    moreQuads.quads.push_back(moreQuads.quads.front());
+    moreQuads.quads.back().name = "sign-b";
+    expectRestart(stage, moreQuads, {"reserved"});
 }
 
 TEST(StageReload, ModelsLeftOutOrReorderedPass) {

@@ -1,6 +1,7 @@
 #include "RenderApp.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cstdlib>
 #include <format>
@@ -568,66 +569,19 @@ namespace Crowy
 
                 std::vector<Str> paths;
                 paths.reserve(frames.size());
-                for(const auto frame: frames) {
-                    if(frame <= FrameNumber()) {
-                        reply.Error(std::format(
-                            "frame {} has already been submitted (the last frame is {})",
-                            frame,
-                            FrameNumber()
-                        ));
-
-                        return;
-                    }
+                for(const auto frame: frames)
                     paths.push_back(withFrame(*path, frame));
-                }
-
-                const usize pending = target.empty()
-                                          ? swapchain->PendingFrameDumps()
-                                          : targetCaptures->Pending();
-                if(pending + frames.size() > MaxFrameDumps) {
-                    reply.Error(std::format(
-                        "the capture queue is full ({} pending)",
-                        pending
-                    ));
+                // all or none: every frame is checked before any is queued
+                if(auto refusal = refuseCaptures(target, frames, paths); !refusal.empty()) {
+                    reply.Error(std::move(refusal));
 
                     return;
                 }
-                for(usize i = 0; i < frames.size(); ++i) {
-                    if(!isCaptureQueued(frames[i], target, paths[i]))
-                        continue;
-
-                    const auto what = target.empty()
-                                          ? std::format("frame {}", frames[i])
-                                          : std::format(
-                                                "'{}' at frame {}",
-                                                target,
-                                                frames[i]
-                                            );
-                    reply.Error(
-                        std::format(
-                            "a capture for {} or to '{}' is already queued",
-                            what,
-                            paths[i]
-                        )
-                    );
-
-                    return;
-                }
+                queueCaptures(target, frames, paths);
 
                 DOM::Array queuedFrames;
                 DOM::Array queuedPaths;
                 for(usize i = 0; i < frames.size(); ++i) {
-                    if(target.empty()) {
-                        swapchain->RequestFrameDump(paths[i], frames[i]);
-                    } else {
-                        targetCaptures->Request(
-                            TargetCaptureRequest{
-                                .frame = frames[i],
-                                .target = target,
-                                .path = paths[i]
-                            }
-                        );
-                    }
                     queuedFrames.emplace_back(static_cast<i64>(frames[i]));
                     queuedPaths.emplace_back(paths[i]);
                 }
@@ -732,15 +686,46 @@ namespace Crowy
     }
 
     Str RenderApp::RequestCapture(Str path, u64 frame) {
-        if(frame <= FrameNumber())
-            return std::format("frame {} has already been submitted (the last frame is {})", frame, FrameNumber());
-        if(swapchain->PendingFrameDumps() + 1 > MaxFrameDumps)
-            return std::format("the capture queue is full ({} pending)", swapchain->PendingFrameDumps());
-        if(isCaptureQueued(frame, {}, path))
-            return std::format("a capture for frame {} or to '{}' is already queued", frame, path);
-        swapchain->RequestFrameDump(std::move(path), frame);
+        const std::array frames{frame};
+        const std::array paths{std::move(path)};
+        if(auto refusal = refuseCaptures({}, frames, paths); !refusal.empty())
+            return refusal;
+        queueCaptures({}, frames, paths);
 
         return {};
+    }
+
+    Str RenderApp::refuseCaptures(StrView target, std::span<const u64> frames, std::span<const Str> paths) const {
+        for(const auto frame: frames) {
+            if(frame <= FrameNumber())
+                return std::format("frame {} has already been submitted (the last frame is {})", frame, FrameNumber());
+        }
+
+        const usize pending = target.empty() ? swapchain->PendingFrameDumps() : targetCaptures->Pending();
+        if(pending + frames.size() > MaxFrameDumps)
+            return std::format("the capture queue is full ({} pending)", pending);
+        for(usize i = 0; i < frames.size(); ++i) {
+            if(!isCaptureQueued(frames[i], target, paths[i]))
+                continue;
+
+            const auto what = target.empty()
+                ? std::format("frame {}", frames[i])
+                : std::format("'{}' at frame {}", target, frames[i]);
+
+            return std::format("a capture for {} or to '{}' is already queued", what, paths[i]);
+        }
+
+        return {};
+    }
+
+    void RenderApp::queueCaptures(StrView target, std::span<const u64> frames, std::span<const Str> paths) {
+        for(usize i = 0; i < frames.size(); ++i) {
+            if(target.empty()) {
+                swapchain->RequestFrameDump(paths[i], frames[i]);
+            } else {
+                targetCaptures->Request(TargetCaptureRequest{.frame = frames[i], .target = Str(target), .path = paths[i]});
+            }
+        }
     }
 
     bool RenderApp::isCaptureQueued(

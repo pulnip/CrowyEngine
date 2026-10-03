@@ -197,6 +197,8 @@ ok "Backlot's file restores the launch's picture at tolerance 0"
 port_set editor selected quad/screen-ne
 port_set editor time 0.32
 port_get selection.material uvScaleOffset | json_is 'v == [0.5, 0.25, 0, 0.25]' || fail "at 0.32 s screen-ne shows frame 2"
+port_set selection.material uvScaleOffset '[1, 1, 0, 0]'
+port_get selection.material uvScaleOffset | json_is 'v == [0.5, 0.25, 0, 0.25]' || fail "a write to the rect is drawn over by the row and the clock"
 FRAME=$(port_frame)
 port_set editor paused false
 port_rpc run '{"frames": 30}' >/dev/null
