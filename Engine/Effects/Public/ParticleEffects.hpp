@@ -89,11 +89,17 @@ namespace Crowy
         Vec4 cameraUp{};
         Vec4 emitter{};
         std::array<Vec4, 3> params{};
+        // the world's step this dispatch or draw shows, shared with the scene
+        u32 worldStep = 0;
+        u32 _pad0 = 0;
+        u32 _pad1 = 0;
+        u32 _pad2 = 0;
     };
-    static_assert(sizeof(EffectPush) == 128);
+    static_assert(sizeof(EffectPush) == 144);
     static_assert(offsetof(EffectPush, cameraRight) == 32);
     static_assert(offsetof(EffectPush, emitter) == 64);
     static_assert(offsetof(EffectPush, params) == 80);
+    static_assert(offsetof(EffectPush, worldStep) == 128);
 
     // the right and up a world-to-view matrix rotates onto x and y
     inline constexpr EffectView effectViewOf(const Mat4& view) {

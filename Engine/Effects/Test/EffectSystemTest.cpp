@@ -44,6 +44,8 @@ namespace
         FakeBuffer view{256};
         PipelineCache pipelines{device};
         EffectSystem effects{device};
+        // the world step the last frame showed
+        u32 worldStep = 0;
 
         // a frame: the simulation, then a pass drawing the effects the way a
         // hook pass does, after view 0; returns the draws
@@ -53,7 +55,8 @@ namespace
             };
 
             cmdList.Begin();
-            const auto releases = effects.Simulate(cmdList, EffectView{});
+            const auto releases =
+                effects.Simulate(cmdList, EffectView{}, ++worldStep);
             const std::array colors{RHIColorAttachment{.texture = &color}};
             const std::array acquires{MakeBarrier(
                 color,
@@ -190,6 +193,31 @@ TEST(EffectSystem, DrawsAStripPerParticle) {
     // a second frame resolves the same two pipelines
     f.Frame();
     EXPECT_EQ(f.device.pipelineCreates.size(), 2u);
+}
+
+// the prewarm counts back from the frame's world step, and the draws carry
+// it, paused or not
+TEST(EffectSystem, PushesCarryTheWorldStep) {
+    Fixture f;
+    f.effects.Add(desc("a", 32, 3));
+    f.effects.Add(desc("b", 32));
+
+    f.Frame();
+    const auto& first = f.cmdList.computePasses.at(0);
+    ASSERT_EQ(first.dispatches.size(), 5u);
+    const std::array worldSteps{0u - 2u, 0u - 1u, 0u, 1u, 1u};
+    for(usize i = 0; i < 5; ++i) {
+        const auto push = pushOf(first.dispatches[i].push);
+        EXPECT_EQ(push.worldStep, worldSteps[i]) << i;
+    }
+
+    f.effects.SetPaused(true);
+    f.Frame();
+    EXPECT_TRUE(f.cmdList.computePasses.empty());
+    const auto& pass = f.cmdList.passes.at(0);
+    ASSERT_EQ(pass.pushes.size(), 2u);
+    for(const auto& push: pass.pushes)
+        EXPECT_EQ(pushOf(push).worldStep, 2u);
 }
 
 // paused, a started system records no step and no acquire for the draws

@@ -53,6 +53,8 @@ namespace Crowy
         Fields fields;
         // the frame's camera, which the draws' push repeats
         EffectView view;
+        // the frame's world step, which the draws show even while paused
+        u32 worldStep = 0;
         // the frame's releases, which outlive the pass that made them
         Barriers releases;
         bool paused = false;
@@ -70,11 +72,13 @@ namespace Crowy
         // a dispatch reaches, a name taken, or a draw without an entry
         void Add(ParticleEffectDesc desc);
 
-        // a step of each effect, its first with the prewarm; paused, only the
-        // unstarted run; the releases are the hook pass's buffer acquires
+        // a step of each effect at `worldStep`, its first with the prewarm
+        // counting back from it; paused, only the unstarted run; the releases
+        // are the hook pass's buffer acquires
         std::span<const RHIBufferBarrier> Simulate(
             RHICommandList& cmdList,
-            const EffectView& view
+            const EffectView& view,
+            u32 worldStep
         );
         // each effect's draws in the order added; returns how many
         u32 Draw(

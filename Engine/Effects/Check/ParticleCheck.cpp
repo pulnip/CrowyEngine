@@ -115,7 +115,8 @@ namespace
         static u64 submitted = 0;
         for(u32 frame = 1; frame <= Frames; ++frame) {
             cmdList->Begin();
-            const auto releases = effects.Simulate(*cmdList, EffectView{});
+            const auto releases =
+                effects.Simulate(*cmdList, EffectView{}, frame);
             if(frame == Frames) {
                 cmdList->BeginBlitPass({}, releases);
                 cmdList->Copy(

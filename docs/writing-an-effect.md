@@ -97,8 +97,9 @@ effects->Add(
 
 ## 3. 셰이더에서 쓸 수 있는 것
 
-- `effect.count`, `effect.step`, `effect.dt`(1/60), `effect.seed`, `effect.emitter`,
-  `effect.params[0..2]`, `effect.cameraRight`, `effect.cameraUp`
+- `effect.count`, `effect.step`, `effect.worldStep`, `effect.dt`(1/60), `effect.seed`,
+  `effect.emitter`, `effect.params[0..2]`, `effect.cameraRight`, `effect.cameraUp`
+- `loopPhase(step, cycles)`: 4096스텝(68.3초) 루프를 `cycles`번 도는 것의 위상, [0, 1)
 - `View.slang`의 `viewProj`, `cameraPosition`
 - `particleRandom(slot, generation, k)`: [0, 1) 균등 난수. `effectHash(...)`: 32비트 해시
 - `loadParticle(slot)`, `stripCorner(vertexID)`, `billboardCorner(center, halfSize, corner)`,
@@ -108,8 +109,14 @@ effects->Add(
 
 ## 4. 규칙
 
-- **시간은 `effect.step * effect.dt`**, 또는 `p.ageSteps * effect.dt`다. 벽시계는 쓰지
-  않는다. 그래서 프레임 N은 매번 같은 그림이고, 골든이 결정적이다.
+- **시간은 스텝으로만 센다.** 벽시계는 쓰지 않는다. 그래서 프레임 N은 매번 같은 그림이고,
+  골든이 결정적이다.
+  - 장면이나 다른 이펙트와 맞아야 하는 것(바람, 바다, 불빛의 숨)은 `effect.worldStep`을
+    쓴다. 모든 이펙트와 장면이 같은 값을 본다. prewarm은 거기서 거꾸로 센다.
+  - 이펙트 자기만의 역사(탄생, 나이)는 `effect.step`과 `p.ageSteps`다. 이펙트마다
+    prewarm만큼 다르다.
+  - 주기가 있는 것은 `loopPhase(effect.worldStep, cycles)`로 위상을 만든다. 루프가
+    2^32를 나누므로 prewarm에서 0 아래로 감긴 스텝도 같은 위상이 된다.
 - **난수는 `particleRandom(slot, generation, k)`나 `effectHash(effect.seed, slot,
   generation, k)`로만** 만든다. k는 작은 수로 쓴다. `0xA6E`는 첫 스텝의 나이 분산이
   쓰는 값이다.

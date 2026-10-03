@@ -1,3 +1,5 @@
+#pragma once
+
 // Randomness keyed by what it belongs to, never by time, so an effect's
 // frame N is the same in every run.
 

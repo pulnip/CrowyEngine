@@ -10,6 +10,8 @@
 
 namespace Crowy
 {
+    static_assert(sizeof(EffectPush) <= RHI_PUSH_CONSTANT_BYTES);
+
     namespace
     {
         RHIBlendState blendOf(EffectBlend blend) {
@@ -138,9 +140,11 @@ namespace Crowy
 
     std::span<const RHIBufferBarrier> EffectSystem::Simulate(
         RHICommandList& cmdList,
-        const EffectView& view
+        const EffectView& view,
+        u32 worldStep
     ) {
         this->view = view;
+        this->worldStep = worldStep;
         const auto started = [](const auto& effect) {
             return effect->next > 0;
         };
@@ -160,6 +164,7 @@ namespace Crowy
             for(u32 s = 0; s < steps; ++s) {
                 auto push = pushOf(*effect);
                 push.step = effect->next++;
+                push.worldStep = worldStep - (steps - 1 - s);
                 pass.Dispatch(
                     *effect->step,
                     push,
@@ -239,7 +244,8 @@ namespace Crowy
             .cameraRight = toVec4(view.right, 0.0f),
             .cameraUp = toVec4(view.up, 0.0f),
             .emitter = desc.emitter,
-            .params = desc.params
+            .params = desc.params,
+            .worldStep = worldStep
         };
     }
 

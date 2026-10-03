@@ -5,6 +5,7 @@
 
 #include "Random.slang"
 #include "View.slang"
+#include "WorldClock.slang"
 
 // 64 bytes; a slot is always the same particle, reborn with generation + 1
 struct Particle {
@@ -32,6 +33,12 @@ struct EffectPush {
     float4 cameraUp;
     float4 emitter;
     float4 params[3];
+    // the world's step this dispatch or draw shows, shared with the scene;
+    // a prewarm counts back from it
+    uint worldStep;
+    uint _pad0;
+    uint _pad1;
+    uint _pad2;
 };
 
 [[vk::push_constant]]

@@ -10,6 +10,7 @@
 #include "ParticleEffects.hpp"
 #include "RenderApp.hpp"
 #include "StandardPipeline.hpp"
+#include "WorldClock.hpp"
 
 namespace Crowy
 {
@@ -207,11 +208,14 @@ namespace Crowy
             return desc;
         }
 
-        // the fire breathes as a function of the frame, never of the clock
+        // the fire breathes on the world's loop, never on the clock
         void OnUpdateScene(f64) override {
-            const auto frame = static_cast<f32>(FrameNumber());
-            const auto breath = 1.0f + 0.12f * std::sin(frame * 0.37f) +
-                                0.06f * std::sin(frame * 1.31f);
+            constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
+
+            const auto step = worldStep();
+            const auto breath =
+                1.0f + 0.12f * std::sin(TwoPi * loopPhase(step, 241)) +
+                0.06f * std::sin(TwoPi * loopPhase(step, 854));
             Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
         }
 
@@ -225,8 +229,11 @@ namespace Crowy
             if(!FindHook(EffectsHook))
                 return hooks;
 
-            const auto releases =
-                effects->Simulate(cmdList, effectViewOf(Camera().View()));
+            const auto releases = effects->Simulate(
+                cmdList,
+                effectViewOf(Camera().View()),
+                worldStep()
+            );
             hooks.push_back(PassHook{
                 .name = EffectsHook,
                 .bufferAcquires = releases,
@@ -361,6 +368,9 @@ namespace Crowy
                 }
             );
         }
+
+        // one step a frame, the clock the effects, the light and the sea share
+        u32 worldStep() const { return static_cast<u32>(FrameNumber()); }
     };
 }
 
