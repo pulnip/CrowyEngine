@@ -83,7 +83,7 @@ RainVertex vs_streaks(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     float away = length(toCamera);
     float3 side = normalize(cross(axis, toCamera));
     float streak = length(p.velocity) * streakSeconds();
-    // never under half a pixel wide, dimmed for what it was widened by
+    // never under a pixel wide, dimmed for what it was widened by
     float halfWidth = max(p.size, 0.5 * ISLAND_PIXEL_ANGLE * away);
     float3 world = p.position + side * (corner.x * halfWidth) -
                    axis * ((corner.y * 0.5 + 0.5) * streak);

@@ -8,7 +8,7 @@
 static const float3 IslandRadii = float3(ISLAND_RADII);
 static const float TipiFacetAngle = 6.2831853 / float(ISLAND_TIPI_FACETS);
 
-// the sand's height, or the ellipsoid's centre where it does not reach
+// the sand's height, or the ellipsoid's center where it does not reach
 float islandCrown(float2 xz) {
     float2 q = xz / IslandRadii.xz;
     float inside = 1.0 - dot(q, q);

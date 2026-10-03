@@ -499,11 +499,8 @@ namespace Crowy
 
         // the night sky first, where the scene left the depth clear
         void drawSky(RHICommandList& cmdList, const HookPassContext& context) {
-            // the window main opens
-            constexpr auto Aspect = 1280.0f / 720.0f;
-
             const auto view = Camera().View();
-            const auto projection = Camera().Projection(Aspect);
+            const auto projection = Camera().Projection(Aspect());
             const auto basis = effectViewOf(view);
             const SkyPush push{
                 .right = toVec4(basis.right / projection[0].x, 0.0f),

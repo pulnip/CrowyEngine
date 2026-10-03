@@ -15,7 +15,7 @@ namespace Crowy
     inline constexpr f32 TipiFacetAngle = 2.0f * std::numbers::pi_v<f32> /
                                           static_cast<f32>(ISLAND_TIPI_FACETS);
 
-    // the sand's height, or the ellipsoid's centre where it does not reach
+    // the sand's height, or the ellipsoid's center where it does not reach
     inline f32 islandCrown(Vec2 xz) {
         const auto qx = xz.x / IslandRadii.x;
         const auto qz = xz.y / IslandRadii.z;

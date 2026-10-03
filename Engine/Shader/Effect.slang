@@ -69,7 +69,7 @@ float2 stripCorner(uint vertexID) {
     );
 }
 
-// a camera-facing quad's corner around `center`, `halfSize` metres out
+// a camera-facing quad's corner around `center`, `halfSize` meters out
 float3 billboardCorner(float3 center, float halfSize, float2 corner) {
     float3 offset = effect.cameraRight.xyz * corner.x +
                     effect.cameraUp.xyz * corner.y;

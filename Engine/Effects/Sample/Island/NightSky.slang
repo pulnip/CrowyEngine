@@ -1,7 +1,7 @@
 #pragma once
 
-// The night sky by direction, for the sky's draw and the sea's reflection;
-// under the horizon it is the far sea.
+// The night sky by direction; under the horizon it is the far sea, darker
+// than the glow above it, so the horizon reads as a line.
 
 #include "IslandScene.h"
 
@@ -11,7 +11,7 @@ static const float3 FarSea = float3(ISLAND_FAR_SEA);
 static const float3 MoonColor = float3(ISLAND_MOON_COLOR);
 static const float3 MoonDisc = float3(ISLAND_MOON_DISC);
 
-// the reflection leaves the disc out: the light loop's glint is its image
+// withDisc false leaves the disc to a light whose glint already draws it
 float3 nightSky(float3 dir, float3 toMoon, bool withDisc) {
     if(dir.y <= 0.0)
         return FarSea;

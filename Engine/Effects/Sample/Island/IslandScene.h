@@ -3,7 +3,7 @@
 // The Island's numbers, read alike by C++ and Slang: literals only, each
 // macro the components of one value.
 
-// the island: an ellipsoid of these radii, its centre this far under the sea
+// the island: an ellipsoid of these radii, its center this far under the sea
 #define ISLAND_RADII 9.0f, 1.6f, 7.0f
 #define ISLAND_CENTER_Y -1.2f
 
@@ -20,7 +20,7 @@
 #define ISLAND_SKY_HORIZON 0.024f, 0.031f, 0.062f
 #define ISLAND_FAR_SEA 0.010f, 0.014f, 0.030f
 
-// radians a pixel spans at the frame's centre: 60 deg over 720 rows
+// radians a pixel spans at the frame's center: 2 tan 30 deg over 720 rows
 #define ISLAND_PIXEL_ANGLE 0.00160375f
 
 // the campfire on the island's crown, and its light inside the tripod

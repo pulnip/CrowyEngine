@@ -15,7 +15,7 @@ float riseDrag() { return effect.params[0].w; }
 float swirl() { return effect.params[1].x; }
 float halfSize() { return effect.params[1].y; }
 float brightness() { return effect.params[1].z; }
-// the lift in the open air, reached over liftFade metres past the hole
+// the lift in the open air, reached over liftFade meters past the hole
 float openLift() { return effect.params[1].w; }
 float sideDrag() { return effect.params[2].x; }
 float liftFade() { return effect.params[2].y; }

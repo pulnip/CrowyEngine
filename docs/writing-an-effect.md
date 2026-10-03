@@ -126,8 +126,9 @@ inline ParticleEffectDesc sparksDesc() {
   - 주기가 있는 것은 `loopPhase(effect.worldStep, cycles)`로 위상을 만든다. 루프가
     2^32를 나누므로 prewarm에서 0 아래로 감긴 스텝도 같은 위상이 된다.
 - **난수는 `particleRandom(slot, generation, k)`나 `effectHash(effect.seed, slot,
-  generation, k)`로만** 만든다. k는 작은 수로 쓴다. `0xA6E`는 첫 스텝의 나이 분산이
-  쓰는 값이다.
+  generation, k)`, 그 [0, 1) 판인 `effectRandom(effect.seed, slot, generation, k)`로만**
+  만든다. k는 작은 수로 쓴다. `0xA6E`는 첫 스텝의 나이 분산이 쓰는 값이다. 시간에 따라
+  바뀌는 난수는 generation 자리에 world step을 나눈 값을 넣는다(`Stars.slang`의 반짝임).
 - **원자 연산과 readback은 쓰지 않는다.** GPU 결과는 게임플레이로 돌아가지 않는다.
 - **한 파일에 push struct는 하나만 둔다.** 이펙트는 `EffectPush`만 쓴다. 다른 push가
   있는 셰이더와 한 파일에 섞지 않는다(Metal).
