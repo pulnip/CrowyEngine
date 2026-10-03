@@ -45,7 +45,9 @@ namespace
                 {.path = "Engine/Shader/X.slang", .entryPoint = "vs_main"},
             .fragmentShader =
                 {.path = "Engine/Shader/X.slang", .entryPoint = fragmentEntry},
-            .maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"},
+            .maskShader =
+                {.path = "Engine/Shader/X.slang",
+                 .entryPoint = "fs_masked_depth"},
             .domain = domain,
             .profile = "sm_6_8"
         };
@@ -214,13 +216,25 @@ TEST(DrawList, ACombinedFilterAdmitsMasked) {
     const auto wall = f.AddPrimitive(opaque);
     const auto sign = f.AddPrimitive(cutout);
     const auto pane = f.AddPrimitive(glass);
-    const VisibleSet visible{.draws = {f.Draw(wall, 1.0f), f.Draw(sign, 2.0f), f.Draw(pane, 3.0f)}};
+    const VisibleSet visible{
+        .draws = {f.Draw(wall, 1.0f), f.Draw(sign, 2.0f), f.Draw(pane, 3.0f)}
+    };
 
-    f.Build(visible, DrawFilter{.domains = combine(MaterialDomain::Opaque, MaterialDomain::Masked)}, DrawOrder::PipelineThenNearFirst);
+    f.Build(
+        visible,
+        DrawFilter{
+            .domains = combine(MaterialDomain::Opaque, MaterialDomain::Masked)
+        },
+        DrawOrder::PipelineThenNearFirst
+    );
     EXPECT_EQ(f.DrawnObjects(), (std::vector<u32>{wall, sign}));
     EXPECT_EQ(f.list.RunCount(), 2u);
 
-    f.Build(visible, DrawFilter{.domains = MaterialDomain::Opaque}, DrawOrder::PipelineThenNearFirst);
+    f.Build(
+        visible,
+        DrawFilter{.domains = MaterialDomain::Opaque},
+        DrawOrder::PipelineThenNearFirst
+    );
     EXPECT_EQ(f.DrawnObjects(), std::vector<u32>{wall});
 }
 

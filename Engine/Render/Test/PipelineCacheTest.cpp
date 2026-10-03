@@ -163,7 +163,10 @@ TEST(PipelineCache, MaskedMaterialsShareOneDepthPipeline) {
     auto masked = OpaqueMaterial();
     masked.domain = MaterialDomain::Masked;
     masked.fragmentShader.entryPoint = "fs_masked";
-    masked.maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"};
+    masked.maskShader = {
+        .path = "Engine/Shader/X.slang",
+        .entryPoint = "fs_masked_depth"
+    };
     auto toon = masked;
     toon.fragmentShader.entryPoint = "fs_masked_toon";
     toon.shadingModule = "Engine/Shader/Toon.slang";
@@ -177,7 +180,10 @@ TEST(PipelineCache, MaskedMaterialsShareOneDepthPipeline) {
     EXPECT_EQ(&first, &second);
     EXPECT_EQ(device.creates, 2u);
     ASSERT_TRUE(device.pipelineCreates.front().fragmentShader.has_value());
-    EXPECT_EQ(device.pipelineCreates.front().fragmentShader->entryPoint, "fs_masked_depth");
+    EXPECT_EQ(
+        device.pipelineCreates.front().fragmentShader->entryPoint,
+        "fs_masked_depth"
+    );
 
     cache.Resolve(doubleSided, prepass);
     EXPECT_EQ(device.creates, 3u);

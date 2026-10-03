@@ -444,7 +444,10 @@ TEST(PipelineKey, AMaterialWithoutAModuleLinksNothing) {
 TEST(PipelineKey, AMaskedMaterialRunsItsMaskEntryInADepthOnlyPass) {
     auto masked = OpaqueMaterial();
     masked.domain = MaterialDomain::Masked;
-    masked.maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"};
+    masked.maskShader = {
+        .path = "Engine/Shader/X.slang",
+        .entryPoint = "fs_masked_depth"
+    };
     masked.shadingModule = "Engine/Shader/Toon.slang";
     masked.blend = RHIBlendState{};
 
@@ -469,11 +472,17 @@ TEST(PipelineKey, AnOpaqueMaterialNeverRunsItsMaskEntry) {
     const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
     auto other = OpaqueMaterial();
-    other.maskShader = {.path = "Engine/Shader/Y.slang", .entryPoint = "fs_other"};
+    other.maskShader = {
+        .path = "Engine/Shader/Y.slang",
+        .entryPoint = "fs_other"
+    };
 
     for(const auto& pass: {BasePass({}), BasePass(formats)}) {
         EXPECT_EQ(Compose(other, pass), Compose(OpaqueMaterial(), pass));
-        EXPECT_EQ(hash(Compose(other, pass)), hash(Compose(OpaqueMaterial(), pass)));
+        EXPECT_EQ(
+            hash(Compose(other, pass)),
+            hash(Compose(OpaqueMaterial(), pass))
+        );
     }
 }
 
@@ -484,7 +493,10 @@ TEST(PipelineKey, AMaskedMaterialDrawsItsOwnEntryInAColorPass) {
     auto masked = OpaqueMaterial();
     masked.domain = MaterialDomain::Masked;
     masked.fragmentShader.entryPoint = "fs_masked";
-    masked.maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"};
+    masked.maskShader = {
+        .path = "Engine/Shader/X.slang",
+        .entryPoint = "fs_masked_depth"
+    };
 
     auto pass = BasePass(formats);
     pass.state.depthFunc = RHIComparisonFunc::Equal;
@@ -492,9 +504,15 @@ TEST(PipelineKey, AMaskedMaterialDrawsItsOwnEntryInAColorPass) {
     const auto desc = Compose(masked, pass);
     ASSERT_TRUE(desc.fragmentShader.has_value());
     EXPECT_EQ(desc.fragmentShader->entryPoint, "fs_masked");
-    EXPECT_EQ(desc.linkedModules, std::vector<std::filesystem::path>{PBRShadingModule});
+    EXPECT_EQ(
+        desc.linkedModules,
+        std::vector<std::filesystem::path>{PBRShadingModule}
+    );
 
-    pass.state.fragmentShader = RHIShaderDesc{.path = "Engine/Shader/Y.slang", .entryPoint = "fs_normals"};
+    pass.state.fragmentShader = RHIShaderDesc{
+        .path = "Engine/Shader/Y.slang",
+        .entryPoint = "fs_normals"
+    };
     pass.state.linksShading = false;
     EXPECT_EQ(Compose(masked, pass).fragmentShader->entryPoint, "fs_normals");
 }

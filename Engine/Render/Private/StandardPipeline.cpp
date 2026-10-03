@@ -15,7 +15,8 @@ namespace Crowy
         constexpr FrameTargetID SceneDepth = 1;
 
         // what writes depth
-        const auto solid = combine(MaterialDomain::Opaque, MaterialDomain::Masked);
+        const auto solid =
+            combine(MaterialDomain::Opaque, MaterialDomain::Masked);
         const DrawFilter opaque{.domains = solid};
         const bool prepass = config.depthPrepass;
 

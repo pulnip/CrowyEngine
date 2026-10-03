@@ -43,7 +43,7 @@ namespace Crowy
         Vec4 uvScaleOffset{1.0f, 1.0f, 0.0f, 0.0f};
         // the emission is `emissive` times this map's texel
         u32 emissiveMapID = 0;
-        // a Masked material cuts texel alpha below it
+        // a Masked material cuts where its opacity falls below it
         f32 alphaCutoff = 0.5f;
         // MaterialFlags
         u32 flags = 0;
@@ -89,7 +89,8 @@ namespace Crowy
         RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
         // the color passes' default; a pass may replace it
         RHIShaderDesc fragmentShader{.entryPoint = "fs_main"};
-        // a Masked material's entry in the depth-only passes: the same cut, no color
+        // a Masked material's entry in the depth-only passes: the same cut,
+        // no color
         RHIShaderDesc maskShader{.entryPoint = "fs_masked_depth"};
         // linked into the colour passes' programs; empty links nothing
         std::filesystem::path shadingModule = PBRShadingModule;

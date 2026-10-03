@@ -41,7 +41,9 @@ namespace
                 {.path = "Engine/Shader/X.slang", .entryPoint = "vs_main"},
             .fragmentShader =
                 {.path = "Engine/Shader/X.slang", .entryPoint = fragmentEntry},
-            .maskShader = {.path = "Engine/Shader/X.slang", .entryPoint = "fs_masked_depth"},
+            .maskShader =
+                {.path = "Engine/Shader/X.slang",
+                 .entryPoint = "fs_masked_depth"},
             .domain = domain,
             .profile = "sm_6_8"
         };
@@ -250,7 +252,10 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     ASSERT_TRUE(prepass.depth.has_value());
     EXPECT_EQ(prepass.depth->load, RHILoadAction::Clear);
     EXPECT_EQ(prepass.depth->store, RHIStoreAction::Store);
-    EXPECT_EQ(Mesh(prepass).filter.domains, combine(MaterialDomain::Opaque, MaterialDomain::Masked));
+    EXPECT_EQ(
+        Mesh(prepass).filter.domains,
+        combine(MaterialDomain::Opaque, MaterialDomain::Masked)
+    );
     EXPECT_EQ(Mesh(prepass).state.depthFunc, RHIComparisonFunc::Less);
     EXPECT_TRUE(Mesh(prepass).state.depthWrite);
 
@@ -263,7 +268,10 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     ASSERT_TRUE(opaque.depth.has_value());
     EXPECT_EQ(opaque.depth->load, RHILoadAction::Load);
     EXPECT_EQ(opaque.depth->store, RHIStoreAction::Store);
-    EXPECT_EQ(Mesh(opaque).filter.domains, combine(MaterialDomain::Opaque, MaterialDomain::Masked));
+    EXPECT_EQ(
+        Mesh(opaque).filter.domains,
+        combine(MaterialDomain::Opaque, MaterialDomain::Masked)
+    );
     EXPECT_EQ(Mesh(opaque).order, DrawOrder::PipelineThenNearFirst);
     EXPECT_EQ(Mesh(opaque).state.depthFunc, RHIComparisonFunc::Equal);
     EXPECT_FALSE(Mesh(opaque).state.depthWrite);
@@ -327,7 +335,10 @@ TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
     EXPECT_EQ(shadow.depth->store, RHIStoreAction::Store);
     EXPECT_TRUE(shadow.reads.empty());
     EXPECT_EQ(Mesh(shadow).view, SceneRenderer::ShadowView);
-    EXPECT_EQ(Mesh(shadow).filter.domains, combine(MaterialDomain::Opaque, MaterialDomain::Masked));
+    EXPECT_EQ(
+        Mesh(shadow).filter.domains,
+        combine(MaterialDomain::Opaque, MaterialDomain::Masked)
+    );
     EXPECT_EQ(Mesh(shadow).filter.required, PrimitiveFlags::CastShadow);
     EXPECT_EQ(Mesh(shadow).order, DrawOrder::PipelineThenNearFirst);
     EXPECT_EQ(Mesh(shadow).state.depthFunc, RHIComparisonFunc::Less);
@@ -934,16 +945,27 @@ TEST(FramePipeline, AMaskedMaterialCutsInEveryPassThatWritesDepth) {
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_masked", MaterialDomain::Masked));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(f.device, makeStandardPipeline({.shadowMapSize = 64}), BackBufferFormat, Width, Height);
+    FramePipeline pipeline(
+        f.device,
+        makeStandardPipeline({.shadowMapSize = 64}),
+        BackBufferFormat,
+        Width,
+        Height
+    );
     auto inputs = f.Inputs();
     f.Frame(pipeline, inputs);
 
     EXPECT_TRUE(f.cmdList.violations.empty());
     // depth: opaque and masked; color: opaque, masked, glass; the tone map
     EXPECT_EQ(f.renderer.PipelineCount(), 6u);
-    const auto cuts = std::ranges::count_if(f.device.pipelineCreates, [](const RHIGraphicsPipelineStateDesc& desc) {
-        return desc.fragmentShader && desc.fragmentShader->entryPoint == "fs_masked_depth" && desc.renderTargetCount == 0;
-    });
+    const auto cuts = std::ranges::count_if(
+        f.device.pipelineCreates,
+        [](const RHIGraphicsPipelineStateDesc& desc) {
+            return desc.fragmentShader &&
+                   desc.fragmentShader->entryPoint == "fs_masked_depth" &&
+                   desc.renderTargetCount == 0;
+        }
+    );
     EXPECT_EQ(cuts, 1);
 }
 
