@@ -17,8 +17,8 @@ float fireBreath(uint step) {
 // the sine of a phase in cycles, its argument kept in [-pi, pi) where GPU
 // sines are tightest
 float cycleSine(float cycles) {
-    float c = cycles - floor(cycles);
-    return sin(6.2831853 * c - 3.1415927);
+    float c = cycles - floor(cycles + 0.5);
+    return sin(6.2831853 * c);
 }
 
 // the wind at xz in m/s: the mean, gust fronts carried downwind, and a

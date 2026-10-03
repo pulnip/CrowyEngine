@@ -59,9 +59,9 @@ void update(inout Particle p, uint slot) {
     float above = max(p.position.y - ISLAND_TIPI_CANVAS_TOP_Y, 0.0);
     float lift =
         lerp(chimneyLift(), openLift(), smoothstep(0.0, liftFade(), above));
-    // the canvas shelters it from the wind until a little past the hole
+    // the canvas shelters it from the wind, which takes it past the hole
     float exposure = smoothstep(
-        ISLAND_TIPI_CANVAS_TOP_Y - 0.2,
+        ISLAND_TIPI_CANVAS_TOP_Y,
         ISLAND_TIPI_APEX_Y + 0.6,
         p.position.y
     );

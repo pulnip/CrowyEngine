@@ -110,13 +110,15 @@ inline ParticleEffectDesc sparksDesc() {
 - `EventLife`: 나이로는 닿지 않는 수명(아래 사건으로 다시 태어나기)
 - `Particle.custom`: 이펙트가 마음대로 쓰는 float4. `Particle.size`: 보통 반지름
 - Island의 공유 파일(같은 폴더라 `#include "..."`로 바로 읽힌다):
-  - `IslandScene.h`: 섬, 달, 하늘, 불, 티피의 숫자. C++도 같은 파일을 읽는다.
+  - `IslandScene.h`: 섬, 달, 하늘, 불과 삼각대, 티피, 바람의 숫자. C++도 같은 파일을
+    읽는다.
   - `IslandShapes.slang`: `islandCrown(xz)`, `tipiRoof(xz)`, `tipiReach`, `tipiApothem`.
     비가 앉는 면, 불씨가 갇히는 티피가 여기 있다.
   - `Weather.slang`: `fireBreath(effect.worldStep)`과 `windAt(xz, effect.worldStep)`.
-    불빛과 불꽃이 같이 숨 쉬고, 비와 불씨와 불꽃이 같은 바람을 받는다. 바람은 돌풍이
-    바람 방향으로 흘러가는 함수라서, 같은 자리 같은 스텝이면 C++(`Weather.hpp`)도 같은
-    값을 낸다(`ParticleCheck`가 비의 낙하를 그렇게 다시 계산한다).
+    불빛과 불꽃이 같이 숨 쉬고, 비와 불씨와 불꽃이 같은 바람을 받는다. 바람은 자리와
+    world step만의 함수라서, C++(`Weather.hpp`)도 같은 자리 같은 스텝이면 허용 오차 안의
+    같은 값을 낸다(`ParticleCheck`가 비의 낙하를 그렇게 다시 계산한다). 정확히 같지는
+    않으니 CPU 쪽 비교에는 늘 허용 오차를 둔다.
 
 ## 4. 규칙
 

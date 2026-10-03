@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -24,10 +25,10 @@ namespace Crowy
 
     // the sine of a phase in cycles, its argument kept in [-pi, pi)
     inline f32 cycleSine(f32 cycles) {
-        constexpr auto Pi = std::numbers::pi_v<f32>;
+        constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
 
-        const auto c = cycles - std::floor(cycles);
-        return std::sin(2.0f * Pi * c - Pi);
+        const auto c = cycles - std::floor(cycles + 0.5f);
+        return std::sin(TwoPi * c);
     }
 
     // the wind at xz in m/s: the mean, gust fronts carried downwind, and a

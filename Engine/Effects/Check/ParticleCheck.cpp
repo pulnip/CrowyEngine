@@ -35,9 +35,8 @@ namespace
     constexpr u32 Frames = 300;
     // ParticleCheck.slang's life, which the CPU replays
     constexpr u32 ReplaySeed = 7;
-    // how far a CPU fall may stray from the GPU's, across and up
-    constexpr f32 Across = 2.0e-3f;
-    constexpr f32 Up = 1.0e-3f;
+    // how far a CPU fall's height may stray from the GPU's
+    constexpr f32 UpTolerance = 1.0e-3f;
 
     u32 lifeOf(u32 slot, u32 generation) {
         return 20 + effectHash(ReplaySeed, slot, generation, 1) % 40;
@@ -112,9 +111,11 @@ namespace
     }
 
     bool near(Vec3 lhs, Vec3 rhs) {
-        return std::abs(lhs.x - rhs.x) <= Across &&
-               std::abs(lhs.y - rhs.y) <= Up &&
-               std::abs(lhs.z - rhs.z) <= Across;
+        constexpr auto AcrossTolerance = 2.0e-3f;
+
+        return std::abs(lhs.x - rhs.x) <= AcrossTolerance &&
+               std::abs(lhs.y - rhs.y) <= UpTolerance &&
+               std::abs(lhs.z - rhs.z) <= AcrossTolerance;
     }
 
     // what an effect left after a frame, and the steps it had run by then
@@ -261,18 +262,20 @@ namespace
         u32 offFall = 0;
         u32 offLanding = 0;
         u32 below = 0;
-        // touches the CPU sees a step from the GPU's, within tolerance
+        // steps the CPU and the GPU see on either side of the surface, by
+        // less than the tolerance
         u32 nearThreshold = 0;
-        // a step that met the surface where the GPU's did not; true if only
-        // by the tolerance, which it counts
-        const auto grazes = [&](f32 gap) {
-            const bool grazing = gap > -Up;
+        // a step on the wrong side of the surface by `depth` below it: true,
+        // and counted, if only by the tolerance
+        const auto grazes = [&](f32 depth) {
+            const bool grazing = depth > -UpTolerance;
             nearThreshold += grazing ? 1 : 0;
             return grazing;
         };
         for(u32 slot = 0; slot < rain.count; ++slot) {
             const auto& drop = snapshot.particles[slot];
-            below += clearance(drop.position, worldOf(last)) > -Up ? 0 : 1;
+            const auto clear = clearance(drop.position, worldOf(last));
+            below += clear > -UpTolerance ? 0 : 1;
             if(drop.generation == 0) {
                 ++unlanded;
                 continue;
