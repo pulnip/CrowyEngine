@@ -15,9 +15,7 @@ namespace Crowy
     using TextureHandle = GenericHandle<TextureResource>;
     using TextureTable = PackedTable<TextureResource>;
 
-    // which of the static samplers a texture is read with, in
-    // RHI_STATIC_SAMPLERS order; mirrored by SampleMap in
-    // Engine/Shader/ForwardShading.slang
+    // one of RHI_STATIC_SAMPLERS, in its order; SampleMap mirrors it
     enum class TextureSampler : u32 {
         LinearWrap,
         LinearClamp,
@@ -32,9 +30,8 @@ namespace Crowy
         static_cast<usize>(TextureSampler::NearestBorder) + 1 == RHI_STATIC_SAMPLERS.size()
     );
 
-    // An uploaded texture and how it is filtered: one decision with its mip
-    // chain, since a nearest sampler still walks mips a texture has. sRGB or
-    // linear is the texture's format.
+    // an uploaded texture and its sampler: one decision with its mips, since
+    // a nearest sampler still walks mips a texture has
     struct TextureResource {
         RHITextureRAII texture;
         TextureSampler sampler = TextureSampler::LinearClamp;

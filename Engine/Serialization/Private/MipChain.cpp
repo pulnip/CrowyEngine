@@ -45,12 +45,16 @@ namespace Crowy
             return static_cast<u8>(std::clamp(value * 255.0f + 0.5f, 0.0f, 255.0f));
         }
 
-        // the source span a destination texel covers: [first, last)
+        // the source span a destination texel covers, [first, last): two
+        // texels, and the last one also takes an odd edge's leftover
         constexpr std::pair<u32, u32> footprint(u32 index, u32 source, u32 destination) {
-            const auto first = index * source / destination;
-            const auto last = ((index + 1) * source + destination - 1) / destination;
+            if(source == 1)
+                return {0, 1};
 
-            return {first, std::max(last, first + 1)};
+            const auto first = 2 * index;
+            const auto last = index + 1 == destination ? source : first + 2;
+
+            return {first, last};
         }
 
         void downsample(

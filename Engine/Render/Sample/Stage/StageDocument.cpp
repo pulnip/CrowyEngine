@@ -281,6 +281,16 @@ namespace Crowy
         }
 
         void validate(const StageDocument& document) {
+            // an image's mips follow its sampler, so it has one
+            for(usize i = 0; i < document.materials.size(); ++i) {
+                for(usize j = 0; j < i; ++j) {
+                    const auto& a = document.materials[i];
+                    const auto& b = document.materials[j];
+                    if(a.texture == b.texture && a.sampler != b.sampler)
+                        refuse(RowRef{"materials", i}, std::format("samples '{}' unlike '{}' does", a.texture, b.id));
+                }
+            }
+
             for(usize i = 0; i < document.models.size(); ++i) {
                 for(const auto& material: document.models[i].materials) {
                     if(!contains(document.materials, material, &StageMaterial::id))

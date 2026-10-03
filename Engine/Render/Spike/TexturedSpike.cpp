@@ -23,14 +23,14 @@ namespace Crowy
     //   - two floor tiles in a floating plate's shadow: the left receives it and
     //     goes dark, the right refuses it (MaterialFlags::NoShadowReceive)
     //     and stays as lit as the floor in the sun
+    //   - a translucent card whose texel alpha steps 1/4, 1/2, 3/4, 1: four
+    //     bands of red over the floor, the last one solid
     //
     //   PASS: the picture equals the golden.
     class TexturedSpike: public RenderApp {
-        static constexpr CStr StandardForward =
-            "Engine/Render/Shader/StandardForward.slang";
         static constexpr u32 PaletteSize = 4;
         static constexpr u32 GridSize = 256;
-        static constexpr u32 GridCell = 32;
+        static constexpr u32 StripSize = 4;
 
         struct Texel {
             u8 r = 0;
@@ -90,6 +90,12 @@ namespace Crowy
                     .sampler = TextureSampler::LinearClamp
                 }
             );
+            const auto strip = scene.Textures().Add(
+                TextureResource{
+                    .texture = makeTexture(stripTexels(), StripSize, 1),
+                    .sampler = TextureSampler::NearestClamp
+                }
+            );
 
             const auto plain = addMaterial(scene, MaterialResource{
                 .data = {.albedo = {0.6f, 0.6f, 0.6f}, .roughness = 0.9f},
@@ -146,6 +152,13 @@ namespace Crowy
                 .pipeline = opaquePipeline()
             });
             add(scene, refuses, tile, {0.35f, 0.002f, 1.7f}, {0.25f, 0.001f, 0.25f});
+
+            const auto veil = addMaterial(scene, MaterialResource{
+                .data = {.roughness = 0.9f},
+                .pipeline = translucentPipeline(),
+                .maps = {.albedo = strip}
+            });
+            add(scene, veil, card, {0.7f, 0.3f, 0.4f}, {0.5f, 0.5f, 0.0f}, 0.5f);
         }
 
     private:
@@ -171,12 +184,31 @@ namespace Crowy
         }
 
         static MaterialPipelineDesc opaquePipeline() {
+            constexpr CStr StandardForward = "Engine/Render/Shader/StandardForward.slang";
+
             return MaterialPipelineDesc{
                 .vertexShader = {.path = StandardForward, .entryPoint = "vs_main"},
                 .fragmentShader = {.path = StandardForward, .entryPoint = "fs_opaque"},
                 .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
+        }
+
+        // blended over the opaque scene by the texel's alpha
+        static MaterialPipelineDesc translucentPipeline() {
+            auto pipeline = opaquePipeline();
+            pipeline.fragmentShader.entryPoint = "fs_translucent";
+            pipeline.domain = MaterialDomain::Translucent;
+
+            RHIBlendState blend{};
+            blend.renderTargets[0] = RHIRenderTargetBlendState{
+                .blendEnable = true,
+                .srcBlend = RHIBlend::SrcAlpha,
+                .dstBlend = RHIBlend::InvSrcAlpha
+            };
+            pipeline.blend = blend;
+
+            return pipeline;
         }
 
         // sixteen colors far apart, row-major from the top-left
@@ -191,8 +223,10 @@ namespace Crowy
             return {Colors.begin(), Colors.end()};
         }
 
-        // red across, green down, a darker checker of GridCell squares
+        // red across, green down, a darker checker of 32-texel squares
         static std::vector<Texel> gridTexels() {
+            constexpr u32 GridCell = 32;
+
             std::vector<Texel> texels(GridSize * GridSize);
             for(u32 y = 0; y < GridSize; ++y) {
                 for(u32 x = 0; x < GridSize; ++x) {
@@ -209,22 +243,13 @@ namespace Crowy
             return texels;
         }
 
-        RHITextureRAII makeTexture(const std::vector<Texel>& texels, u32 size) {
-            const std::array initial{RHISubresourceData{
-                .data = texels.data(),
-                .rowPitch = size * sizeof(Texel)
-            }};
+        // one red, its alpha stepping a quarter at a time
+        static std::vector<Texel> stripTexels() {
+            std::vector<Texel> texels;
+            for(u32 i = 1; i <= StripSize; ++i)
+                texels.push_back(Texel{.r = 230, .g = 25, .b = 75, .a = static_cast<u8>(i * 255 / StripSize)});
 
-            return Device().CreateTexture(
-                RHITextureCreateDesc{
-                    .width = size,
-                    .height = size,
-                    .format = RHIPixelFormat::RGBA8_UNORM_SRGB,
-                    .usage = RHITextureUsage::ShaderRead,
-                    .initialData = initial
-                },
-                "TexturedSpike"
-            );
+            return texels;
         }
 
         static MaterialHandle addMaterial(RenderScene& scene, MaterialResource material) {
@@ -257,6 +282,24 @@ namespace Crowy
                     .worldBounds = AABB3D{.center = position, .halfScale = localHalf * stretch},
                     .mesh = mesh
                 }
+            );
+        }
+
+        RHITextureRAII makeTexture(const std::vector<Texel>& texels, u32 width, u32 height = 0) {
+            const std::array initial{RHISubresourceData{
+                .data = texels.data(),
+                .rowPitch = width * sizeof(Texel)
+            }};
+
+            return Device().CreateTexture(
+                RHITextureCreateDesc{
+                    .width = width,
+                    .height = height == 0 ? width : height,
+                    .format = RHIPixelFormat::RGBA8_UNORM_SRGB,
+                    .usage = RHITextureUsage::ShaderRead,
+                    .initialData = initial
+                },
+                "TexturedSpike"
             );
         }
     };

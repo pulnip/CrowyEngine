@@ -115,10 +115,6 @@ float3 shadeSurface(Surface s, float3 posWorld, bool receivesShadow) {
     );
 }
 
-float3 shadeSurface(Surface s, float3 posWorld) {
-    return shadeSurface(s, posWorld, true);
-}
-
 // the fragment's scene radiance, or the debug view the frame asks for; the
 // post list takes both to the screen
 float3 sceneColor(Surface s, VertexOut v) {

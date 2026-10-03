@@ -8,7 +8,8 @@ using namespace Crowy;
 
 namespace
 {
-    struct Fixture {
+    class Fixture {
+    public:
         FakeDevice device;
         SceneRenderer renderer{device, SceneRendererDesc{}};
         RenderScene scene;

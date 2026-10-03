@@ -9,7 +9,7 @@ using namespace Crowy;
 
 namespace
 {
-    // a size x size image, texel (x, y) from `texel`
+    // a width x height gray image, texel (x, y) from `texel`
     template<typename F>
     ImageData makeImage(u32 width, u32 height, RHIPixelFormat format, F&& texel) {
         ImageData image{.format = format, .width = width, .height = height};
@@ -95,6 +95,51 @@ TEST(MipChain, TheFirstLevelIsUntouched) {
     generateMipChain(image);
 
     EXPECT_TRUE(std::equal(before.begin(), before.end(), image.blob.begin()));
+}
+
+// distinct channels and alpha across an odd width: level 1 of 5 x 1 is
+// 2 x 1, its first texel the mean of columns 0-1 and its last of 2-4
+TEST(MipChain, OddEdgesFoldIntoTheLastBoxPerChannel) {
+    ImageData image{.format = RHIPixelFormat::RGBA8_UNORM, .width = 5, .height = 1};
+    image.blob = {
+        10, 200, 0, 255,
+        30, 100, 50, 0,
+        0, 0, 250, 30,
+        60, 0, 100, 60,
+        90, 30, 0, 90,
+    };
+    image.subs.push_back(RHISubresourceData{.data = image.blob.data(), .rowPitch = 20});
+    generateMipChain(image);
+
+    ASSERT_EQ(image.mipLevels, 3u);
+    const auto* mip1 = level(image, 1);
+    // (10 + 30) / 2, (200 + 100) / 2, (0 + 50) / 2, (255 + 0) / 2
+    EXPECT_NEAR(mip1[0], 20, 1);
+    EXPECT_NEAR(mip1[1], 150, 1);
+    EXPECT_NEAR(mip1[2], 25, 1);
+    EXPECT_NEAR(mip1[3], 128, 1);
+    // (0 + 60 + 90) / 3, (0 + 0 + 30) / 3, (250 + 100 + 0) / 3, (30 + 60 + 90) / 3
+    EXPECT_NEAR(mip1[4], 50, 1);
+    EXPECT_NEAR(mip1[5], 10, 1);
+    EXPECT_NEAR(mip1[6], 117, 1);
+    EXPECT_NEAR(mip1[7], 60, 1);
+}
+
+// sRGB color averages in linear light; alpha does not
+TEST(MipChain, SrgbColorIsLinearAndAlphaIsNot) {
+    ImageData image{.format = RHIPixelFormat::RGBA8_UNORM_SRGB, .width = 2, .height = 1};
+    image.blob = {
+        0, 255, 128, 0,
+        255, 255, 128, 200,
+    };
+    image.subs.push_back(RHISubresourceData{.data = image.blob.data(), .rowPitch = 8});
+    generateMipChain(image);
+
+    const auto* mip1 = level(image, 1);
+    EXPECT_NEAR(mip1[0], 188, 1);
+    EXPECT_NEAR(mip1[1], 255, 1);
+    EXPECT_NEAR(mip1[2], 128, 1);
+    EXPECT_NEAR(mip1[3], 100, 1);
 }
 
 TEST(MipChain, RefusesWhatItCannotFilter) {

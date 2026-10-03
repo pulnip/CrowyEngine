@@ -87,10 +87,7 @@ namespace Crowy
             slots.Release(handle);
         }
 
-        // Expires every handle ever issued. Each living slot is released,
-        // so its generation moves on and a handle from before stays dead
-        // once the slot is reused; lowest slots are reused first, so a
-        // table rebuilt in the same order gets the same slots back.
+        // releases every slot so old handles stay dead; lowest reused first
         void Clear() {
             std::ranges::sort(slotOfRow, std::greater{}, &Slot::value);
             for(const auto slot: slotOfRow)

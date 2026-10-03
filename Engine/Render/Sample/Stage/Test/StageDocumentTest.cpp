@@ -192,6 +192,10 @@ TEST(StageDocument, UnknownDefaultKeyThrows) {
     expectRefusal(edited(R"("default_key": "day")", R"("default_key": "noon")"), "default_key 'noon'");
 }
 
+TEST(StageDocument, ATextureWithTwoSamplersThrows) {
+    expectRefusal(edited(R"("texture": "Signs.png", "sampler": "linear")", R"("texture": "Palette.png", "sampler": "linear")"), "unlike");
+}
+
 TEST(StageDocument, BadKindOrSamplerThrows) {
     expectRefusal(edited(R"("kind": "masked")", R"("kind": "cutout")"), "kind 'cutout'");
     expectRefusal(edited(R"("sampler": "linear")", R"("sampler": "cubic")"), "sampler 'cubic'");
