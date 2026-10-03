@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이펙트 라운드</title>
+<meta name="description" content="CrowyEngine 2026-10-04 밤의 이펙트 라운드 기록: GPU 필드 프레임워크와 밤의 섬 트레이서, 작업마다의 수치와 위임 기록">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #f1eee7;
+    --text: #22201c;
+    --muted: #6b665d;
+    --border: #e3ded3;
+    --accent: #c9552b;
+    --accent-soft: #fbe6dc;
+    --accent2: #138a9a;
+    --accent2-soft: #d9f1f3;
+    --ok: #2f8f4e;
+    --ok-soft: #dff3e5;
+    --warn: #b8860b;
+    --warn-soft: #fbf0d0;
+    --code-bg: #efece5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1916;
+      --surface: #24221e;
+      --surface-2: #2b2924;
+      --text: #ece8df;
+      --muted: #a39d91;
+      --border: #3a3731;
+      --accent: #ff8a5c;
+      --accent-soft: #3d241a;
+      --accent2: #3cc8d8;
+      --accent2-soft: #163338;
+      --ok: #5fc47e;
+      --ok-soft: #1d3426;
+      --warn: #e2b53c;
+      --warn-soft: #3a3115;
+      --code-bg: #2f2d27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1916;
+    --surface: #24221e;
+    --surface-2: #2b2924;
+    --text: #ece8df;
+    --muted: #a39d91;
+    --border: #3a3731;
+    --accent: #ff8a5c;
+    --accent-soft: #3d241a;
+    --accent2: #3cc8d8;
+    --accent2-soft: #163338;
+    --ok: #5fc47e;
+    --ok-soft: #1d3426;
+    --warn: #e2b53c;
+    --warn-soft: #3a3115;
+    --code-bg: #2f2d27;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 16px 72px; }
+  header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); }
+  header .chips { margin-top: 12px; }
+  nav.toc {
+    margin: 24px 0 0; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    font-size: 0.9rem;
+  }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  nav.toc li { break-inside: avoid; }
+  nav.toc a { color: var(--accent2); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h2 {
+    font-size: 1.25rem;
+    margin: 44px 0 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+  h3 { margin: 24px 0 8px; font-size: 1.02rem; }
+  h4 { margin: 14px 0 6px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 22px; }
+  li { margin: 2px 0; }
+  code {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "D2Coding", monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+  pre code { background: none; padding: 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 0 0 12px;
+  }
+  .card > :last-child { margin-bottom: 0; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-bottom: 12px; }
+  .grid-2 .card { margin: 0; }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin: 0; }
+  .kv dt { color: var(--muted); font-size: 0.9rem; }
+  .kv dd { margin: 0; }
+  @media (max-width: 480px) {
+    .kv { grid-template-columns: 1fr; gap: 0; }
+    .kv dd { margin-bottom: 8px; }
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip, .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    background: var(--accent2-soft); color: var(--accent2);
+    font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.gray { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .tag.hot { background: var(--accent-soft); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 6px 0 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.02em; background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  .table-scroll { overflow-x: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .stat .label { color: var(--muted); font-size: 0.8rem; }
+  .stat .value { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .value small { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px; margin: 10px 0 14px; }
+  .gallery figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .gallery img { display: block; width: 100%; height: auto; background: #000; }
+  .gallery figcaption { padding: 8px 12px; font-size: 0.85rem; color: var(--muted); }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; margin: 0 0 10px; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  details[open] > summary { margin-bottom: 8px; }
+  .caption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .rule { border-left: 3px solid var(--accent); padding: 4px 12px; margin: 8px 0; background: var(--surface); border-radius: 0 8px 8px 0; }
+  .rule b { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 12px; }
+  .flow .step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.88rem; }
+  .flow .arrow { color: var(--muted); }
+  .muted { color: var(--muted); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>이펙트 라운드</h1>
+  <p>CrowyEngine · 2026-10-04 밤 · 브랜치 <code>effect</code> (기준 <code>3ac04a3</code>, editor-stage의 끝) · 자율 진행, 작업마다 커밋</p>
+  <div class="chips">
+    <span class="tag ok">트레이서 완료</span>
+    <span class="tag gray">Windows-first</span>
+    <span class="tag gray">밤새 자율</span>
+    <span class="tag gray">물리는 옆 폴더의 다른 세션</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#glance">한눈에</a></li>
+    <li><a href="#how">이 라운드가 도는 방식</a></li>
+    <li><a href="#shape">구조와 규칙</a></li>
+    <li><a href="#reload">커널 다시 읽기 (reload)</a></li>
+    <li><a href="#new-effect">새 이펙트 가이드와 유성 (new-effect)</a></li>
+    <li><a href="#rain">비와 물결 (rain)</a></li>
+    <li><a href="#embers">불씨와 섬 (embers)</a></li>
+    <li><a href="#fields">필드와 커널 (fields)</a></li>
+    <li><a href="#hook">워커의 훅 패스 (walker-hook)</a></li>
+    <li><a href="#next">다음</a></li>
+  </ol>
+</nav>
+
+<h2 id="glance">한눈에</h2>
+<div class="card">
+  <p>질문은 둘이었다. 하나는 <b>GPU 필드 프레임워크</b>다. 프레임 사이에 남는 GPU 버퍼와 컴퓨트 커널이 있고, 그 위에 파티클이 서고, 나중에 격자(바다, 연기)와 지형 침식, 직접 만드는 유체가 선다. 다른 하나는 오빠가 정한 실험이다. 관심 있는 분야를, 오빠 없이, AI가 설계부터 그림까지 어디까지 끌고 가는가.</p>
+  <p>결과: 밤의 작은 섬(<code>Engine/Effects/Sample</code>의 <code>Island</code>)에 모닥불 불씨 384개, 빗방울 3000개와 그 물결, 유성 24개가 돈다. 모두 프레임에 묶인 시계로 돌아서, 몇 번을 돌려도 60번째 프레임이 바이트 단위로 같다. 그래서 골든이 된다. 새 이펙트는 <code>.slang</code> 파일 하나와 설명 한 줄이면 되고, 그 길은 <code>docs/writing-an-effect.md</code>에 한국어로 적었다. 표준 파이프라인의 골든 다섯 장은 처음부터 끝까지 그대로다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/effects/island.jpg" alt="Island, 프레임 60"><figcaption>Island의 골든(프레임 60). 모닥불의 불씨, 빗줄기와 모래·바다 위의 물결, 하늘을 가로지르는 유성 셋. 오두막은 원시 도형이고, 모닥불 조명은 프레임에 따라 숨 쉰다</figcaption></figure>
+</div>
+<div class="stat-row">
+  <div class="stat"><div class="label">작업</div><div class="value num">5 / 5 <small>+ 다시 읽기, 리뷰 수정 5</small></div></div>
+  <div class="stat"><div class="label">단위 테스트</div><div class="value num">575 → 599 <small>Render 119 → 128, Effects 0 → 15</small></div></div>
+  <div class="stat"><div class="label">smoke</div><div class="value num">34 → 37 <small>Island · FieldCheck · ParticleCheck</small></div></div>
+  <div class="stat"><div class="label">파티클</div><div class="value num">3408 <small>불씨 384 · 비 3000 · 유성 24</small></div></div>
+  <div class="stat"><div class="label">유성 한 개</div><div class="value num">77 + 13줄 <small>.slang(코드 59) + 설명, CMake·C++ 클래스 없음</small></div></div>
+  <div class="stat"><div class="label">골든 다섯 장</div><div class="value num">0 px <small>Playground부터 StageEditor까지, 허용 오차 0</small></div></div>
+</div>
+
+<h2 id="how">이 라운드가 도는 방식</h2>
+<div class="card">
+  <ul>
+    <li><b>자율.</b> editor-stage 라운드의 규칙 그대로다. 증분이 끝나면 브랜치 <code>effect</code>에 커밋하고, master와 push는 오빠 몫이다. G2는 아침에 브랜치를 바꿔서 하면 된다.</li>
+    <li><b>설계.</b> 라운드 전체를 Opus 두 관점(프레임워크 우선, 이펙트 우선)으로 설계하고, 메인 세션이 합쳐서 <code>engine-design-effects.md</code>에 적었다. 작업마다의 설계는 따로 돌리지 않았다. 다섯 작업 모두 모양이 라운드 설계에서 이미 정해졌기 때문이다.</li>
+    <li><b>작업마다 리뷰.</b> 정확성·규칙·스타일 세 렌즈의 읽기 전용 리뷰를 돌리고, 발견마다 반박하려는 검증자를 붙였다. 확인된 발견은 다음 작업 전에 고쳤다. 다섯 번 돌아서 에이전트 78개, 확인 53건, 반박 25건이었다.</li>
+    <li><b>Mac.</b> 멈추지 않는다. Metal 쪽은 눈 감고 쓰고, 확인할 것은 <code>engine-macos-tests-effects.md</code>의 FX-1–FX-6에 모았다.</li>
+    <li><b>물리.</b> Jolt 라운드는 옆 폴더 <code>CrowyEngine-physics</code>(브랜치 <code>physics</code>, 포트 27600)에서 다른 세션이 돌았다. 이 세션은 그 폴더를 건드리지 않았고, 포트는 27700을 썼다.</li>
+  </ul>
+</div>
+
+<h2 id="shape">구조와 규칙</h2>
+<div class="flow">
+  <span class="step"><b>층 0</b> 워커의 훅 패스</span><span class="arrow">→</span>
+  <span class="step"><b>층 A</b> 필드 · 커널 · 필드 패스</span><span class="arrow">→</span>
+  <span class="step"><b>층 B</b> 파티클 이펙트</span><span class="arrow">→</span>
+  <span class="step"><b>Island</b> 불씨 · 비 · 유성</span>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>층 0 · 훅 패스 (<code>Engine/Render</code>)</h3>
+    <p>패스 목록에 <code>HookPassDesc{hook}</code>가 생겼다. 워커가 패스를 열고, 뷰포트와 뷰 0을 묶고, 샘플이 넘긴 버퍼·텍스처 획득을 패스 시작에 싣는다. 그리기는 샘플의 기록 함수가 하고, 그 수는 통계에 들어간다. 바인딩과 목록의 훅이 하나씩 맞지 않으면 아무 패스도 기록하기 전에 던진다. <code>RenderApp</code>에는 <code>OnRecordSimulation</code>이 생겼다. 패스 밖에서 샘플의 GPU 작업을 기록하는 자리다.</p>
+  </div>
+  <div class="card">
+    <h3>층 A · 필드 (<code>Engine/Effects</code>)</h3>
+    <p><code>FieldBuffer</code>는 프레임 사이에 남는 GPU 전용 버퍼다. 마지막 제출이 어디에 두고 갔는지 기억해서, 첫 쓰기는 Undefined에서 한 번 획득하고 그 뒤로는 제출을 건너 획득한다. <code>FieldPass</code>는 컴퓨트 패스 하나다. 앞선 디스패치가 건드린 필드를 다시 건드리면 그 사이에 디스패치 배리어를 넣고, 끝나면 훅 패스가 받을 해제를 돌려준다. 난수는 <code>Random.slang</code>의 PCG 해시이고, C++의 <code>EffectRandom.hpp</code>가 비트 단위로 같다.</p>
+  </div>
+  <div class="card">
+    <h3>층 B · 파티클</h3>
+    <p>이펙트 하나는 <code>.slang</code> 파일 하나(<code>spawn</code>, <code>update</code>, 그리기들, 맨 끝에 <code>ParticleKernel.slang</code>)와 <code>ParticleEffectDesc</code> 하나다. <code>EffectSystem</code>은 이펙트마다 64바이트 파티클의 필드와 그 파일의 <code>cs_step</code>을 두고, 녹화되는 프레임마다 한 스텝씩 돌린다. 첫 프레임은 prewarm까지 돈다. 그리기는 파티클마다 strip 하나이고, 깊이는 검사만 하고 쓰지 않는다.</p>
+  </div>
+  <div class="card">
+    <h3>Island</h3>
+    <p>원시 도형으로 만든 밤의 섬이다. 바다, 모래 언덕, 오두막, 모닥불이 있고, 달빛 그림자와 프레임에 따라 숨 쉬는 불빛이 있다. <code>Effects</code> 훅 패스는 유리(Translucent) 앞, 조명이 있는 뷰에만 들어간다. 데이터 뷰(Normals, Depth, Shadow, Overdraw)는 표준 목록 그대로다.</p>
+  </div>
+</div>
+<div class="rule"><b>E1. 표준 목록은 움직이지 않는다.</b> Playground, ToonPlayground, TexturedSpike, PrepassEqualSpike, StageEditor 골든이 엔진을 고칠 때마다 허용 오차 0으로 같다. 뷰 상수 버퍼를 <code>View.slang</code>으로 떼어 냈을 때도 같았다.</div>
+<div class="rule"><b>E2. 결정적이다.</b> 프레임 N의 상태는 N, 시드, 설명에만 달려 있다. 시계는 녹화된 프레임당 1/60 한 스텝이고, 수명은 정수 스텝, 난수는 (시드, 슬롯, 세대, k)의 해시다. 원자 연산은 없고, 그리기 순서는 슬롯 순서다.</div>
+<div class="rule"><b>E3. 한 방향.</b> 프레임워크에 readback API는 없다. GPU 결과는 게임플레이로 돌아가지 않는다. readback은 <code>*Check</code> 실행 파일에만 있다.</div>
+<div class="rule"><b>E4. 짧은 길.</b> 새 파티클 이펙트는 <code>.slang</code> 하나와 설명 한 줄이다. CMake도 C++ 클래스도 필요 없다.</div>
+
+<h2 id="reload">커널 다시 읽기 (reload) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>설계에서는 트레이서 다음 일이었지만, 오빠가 이펙트를 직접 쓰면서 가장 자주 할 일이라 이번에 넣었다. 포트의 <code>reload_shaders</code>가 렌더러의 파이프라인을 다시 만든 뒤 <code>RenderApp::OnReloadShaders</code>를 부르고, Island는 <code>EffectSystem::ReloadKernels</code>를 부른다. 이것은 모든 이펙트의 <code>cs_step</code>을 다시 컴파일하고, <b>모두 성공했을 때만</b> 바꿔 끼운다. 옛 파이프라인은 날아가는 프레임이 끝난 뒤에 버린다. 하나라도 실패하면 전부 옛 것으로 남고 오류가 답으로 돌아온다. 그래서 그리기(<code>vs_</code>/<code>fs_</code>)와 <code>spawn</code>/<code>update</code>가 한 번에 다시 읽힌다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>cc1e8a2</code></td><td><code>ReloadKernels</code>, <code>OnReloadShaders</code>와 답의 <code>programs</code>, 테스트 하나, 가이드 한 단락.</td></tr>
+  <tr><td><code>f589de4</code></td><td>리뷰 수정(아래). 가이드의 포트와 smoke 문단, <code>EventLife</code>, 비 검사의 나이.</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>실행 중 다시 읽기</td><td>파이프라인 7, 프로그램 3. <code>read_stats</code>가 Effects 패스의 그리기 4를 프레임 합계에 센다</td></tr>
+  <tr><td>단위 테스트</td><td>CrowyEffectsTest 13 → 14</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계.</b> 바뀐 곳이 없다. "모두 성공했을 때만 바꿔 끼운다"는 처음부터 정했다. 그리기는 새것이고 스텝은 옛것인 반쯤 다시 읽힌 이펙트는 무엇이 바뀌었는지 헷갈리게 하기 때문이다.</li>
+  <li><b>리뷰가 잡은 것.</b> 변경이 작아서 렌즈를 둘로 줄이고, 렌즈마다 검증자 하나를 붙였다(에이전트 4개). 확인 8건(겹치는 것을 합치면 5가지), 반박 8건이었다. 진짜 구멍은 가이드에 둘 있었다. 다시 읽기 줄이 포트를 27500으로 고정해서, <code>CROWY_COMMAND_PORT</code>로 띄운 Island에는 닿지 않았다. smoke 문단은 "같으면 아무것도 출력하지 않는다"고 했지만 실제로는 <code>similar</code>로 끝난다. 출력되는 <code>Copy-Item</code>이 PowerShell 줄이라는 말도 없었다. 나머지 셋은 스타일이었다.</li>
+  <li><b>반박됐지만 고친 것.</b> 사건으로 다시 태어나는 파티클도 첫 스텝에서 나이를 흩었다. 흩은 나이가 2<sup>32</sup> 근처면 수명에 닿아서 계획에 없던 탄생이 일어난다. 비(3000방울, 첫 착지까지 80스텝 남짓)에서는 확률이 6×10<sup>-5</sup>라 검증자는 반박했다. 하지만 오빠가 쓸 큰 사건형 이펙트(6만 5천 개가 3만 스텝을 기다리면 약 0.5)는 여기에 걸린다. 그래서 <code>EventLife</code>라는 이름을 붙이고, 첫 스텝이 이런 파티클의 나이는 흩지 않게 했다. 비 검사는 이제 방울의 나이도 착지 이후의 스텝 수와 맞춘다. 리셋을 빼면 3000방울이 어긋난다.</li>
+  <li><b>멈춘 곳.</b> 없다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 지금은 셰이더를 고칠 때마다 포트로 부른다. 파일을 감시해서 저장하면 다시 읽는 쪽이 손에 맞을 것이다.</li>
+</ul>
+
+<h2 id="new-effect">새 이펙트 가이드와 유성 (new-effect) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p><code>docs/writing-an-effect.md</code>는 오빠가 읽을 한국어 가이드다. 파일 하나의 틀(접근자 함수로 레인의 뜻을 이름 붙이기), 설명 한 줄, 셰이더에서 쓸 수 있는 것, 매 실행 같은 프레임을 지키는 규칙, 돌려 보기와 다시 읽기, 골든 받아들이기, 그리고 격자는 어디서 만드는지를 담았다. 그다음 가이드만 보고 <code>Meteors.slang</code>을 썼다. 카메라 앞 하늘을 가로지르는 유성이 깜빡이듯 나타났다 사라지고, 사이사이 쉰다. 77줄(코드 59)과 <code>Island.cpp</code>의 13줄이 전부다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>e04d6b2</code></td><td>가이드, 유성, 골든 다시 기록.</td></tr>
+  <tr><td><code>5784c6f</code></td><td>리뷰 수정 중 가이드 몫(아래).</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>짧은 길은 지켜졌다.</b> 유성에는 CMake도 C++ 클래스도 필요 없었다. 레인 셋(<code>emitter</code>와 <code>params[0..2]</code>)이면 유성에는 충분했다.</li>
+  <li><b>실험의 한계.</b> 가이드를 쓴 세션이 유성도 썼다. 그래서 "처음 읽는 사람" 시험은 아니다. 그 빈틈은 리뷰가 메웠다. 처음 읽는 사람이 걸렸을 가이드의 결함 넷이 나왔다. smoke 명령에 <code>CROWY_SMOKE_CAPTURE_DIR</code>가 없어서 아무것도 찍지 않으니 골든과 비교도, <code>Copy-Item</code> 줄 출력도 일어나지 않았다. bash 블록 안의 경로가 백슬래시였다. 사건으로 다시 태어나는 방법에서 <code>ageSteps = 0</code>이 빠져서, 따라 하면 수명이 무작위로 끝났다. "난수는 <code>particleRandom</code>으로만"이라는 규칙은 가이드의 틀 스스로가 <code>effectHash</code>를 써서 어겼다. 넷 다 고쳤다.</li>
+  <li><b>리뷰가 잡은 것(rain과 함께).</b> 에이전트 26개, 확인 15건, 반박 8건. 가이드 몫은 위의 넷과 Alpha 순서(rain 항목)다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 레인이 이름 없는 float4 셋이라, 접근자 함수가 이름을 붙여도 C++ 쪽 설명은 여전히 숫자 나열이다. 이펙트 파라미터를 반사로 노출하면 인스펙터와 포트에서 실행 중에 만질 수 있다. 오빠가 이펙트를 여럿 쓰다 보면 가장 먼저 손대고 싶을 곳으로 본다.</li>
+</ul>
+
+<h2 id="rain">비와 물결 (rain) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p><code>Rain.slang</code>은 필드 하나를 두 번 그린다. 빗방울은 불과 해변 위의 상자를 지나 떨어진다. 바다(높이 0)나 섬의 언덕(설명이 이름 붙인 타원체)에 닿으면 그 자리와 스텝을 기록하고, 상자 꼭대기에서 다시 태어난다. 수명이 아니라 사건으로 태어나는 첫 이펙트다. 빗줄기는 낙하 방향을 따라 뒤로 늘어진 카메라 쪽 쿼드로 그리고, 빛을 더한다. 물결은 착지점의 평평한 쿼드다. 고리가 36스텝 동안 퍼지며 옅어지고, 알파 블렌드로 그린다. 표면이 해석적이라 GPU와 CPU가 같은 높이를 계산하므로 readback 없이 맞는지 확인할 수 있다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/effects/rain-tuning.jpg" alt="물결 조정 전후"><figcaption>물결 조정. 왼쪽 첫 판은 고리가 너무 크고 진해서 모래가 고리 무늬로 덮였다. 오른쪽은 불투명도 0.28, 반지름 0.02–0.2 m, 사라짐 (1−t)²이다</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>922dbff</code></td><td>비, Island에 3000방울, 골든 다시 기록, <code>ParticleCheck</code>를 둘로 나눔.</td></tr>
+  <tr><td><code>5784c6f</code></td><td>리뷰 수정: 비 검사가 낙하를 다시 계산한다. Alpha를 먼저 그린다. 골든을 다시 기록했다.</td></tr>
+  <tr><td><code>f589de4</code></td><td>사건형 수명 <code>EventLife</code>, 비 검사가 나이도 본다(reload 항목).</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>ParticleCheck rain (300프레임, 420스텝)</td><td>3000방울 중 3000이 착지했다. 낙하선이나 표면을 벗어난 착지 0, 꼭대기에서의 낙하를 벗어난 방울 0, 표면 아래 0</td></tr>
+  <tr><td>red run</td><td>착지 스텝을 하나 당기면 3000방울이 낙하를 벗어난다. 착지점을 한 스텝 앞으로 두면 2996건이 낙하선을 벗어난다</td></tr>
+  <tr><td>결정성</td><td>두 번 돌려 프레임 60이 max 0으로 같다. 순서를 바꾼 골든은 이전과 0.002 % 픽셀이 다르다</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>리뷰가 잡은 진짜 구멍 둘.</b> 첫째, 비 검사가 아무것도 검사하지 않았다. 착지점의 높이를 그 표면 함수로 계산해 넣고 같은 함수와 비교했으니 늘 참이었다. 게다가 방울의 절반만 착지해도 통과했다. 이제는 방울마다 낙하를 CPU에서 다시 계산한다. 지금 위치는 마지막 착지 이후 상자 꼭대기에서 떨어진 자리여야 한다. 착지점은 이전 세대의 낙하선 위, 그 선이 표면에 처음 닿은 스텝에 있어야 한다. 그리고 3000방울이 모두 착지해야 한다. 둘째, 그림의 순서였다. 이펙트는 깊이를 쓰지 않으므로, 불씨 뒤에 그린 물결이 앞에 있는 불씨까지 어둡게 덮었다. 이제 Alpha를 먼저 그린다(비가 먼저, 그 안에서도 물결이 먼저).</li>
+  <li><b>조정은 눈으로.</b> 첫 판의 고리는 기술적으로 맞았지만 보기 싫었다(사진 왼쪽). 숫자 셋을 고친 것은 그림을 보고 내린 판단이다.</li>
+  <li><b>멈춘 곳.</b> 없다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 물결은 지금 착지점마다 쿼드 하나라 바다가 출렁이지 않는다. 진짜 물결은 바다 격자(다음 항목)에 충격을 넣는 쪽이다.</li>
+</ul>
+
+<h2 id="embers">불씨와 섬 (embers) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>파티클 층, 셰이더 라이브러리(<code>Effect.slang</code>, <code>ParticleKernel.slang</code>, <code>View.slang</code>), Island 샘플, 첫 골든이 한 작업에 들어갔다. 모든 슬롯은 스텝 0에 한꺼번에 태어난다. 그대로 두면 한 물결로 솟으므로 해시로 나이를 흩어 놓는다. 수명이 끝나면 세대 + 1로 다시 태어나므로 (슬롯, 세대)가 난수의 열쇠가 된다. 불씨는 열기에 떠오르며 흔들리고, 노란 흰색에서 주황을 지나 검붉게 식는다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/effects/embers-tuning.jpg" alt="불씨 조정 전후"><figcaption>불씨 조정. 왼쪽 첫 판은 큰 불티가 기둥처럼 솟았다. 오른쪽은 384개, 반지름 0.018 m이고 더 느리게 오른다</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>50664cf</code></td><td>파티클 층, 셰이더 라이브러리, <code>View.slang</code> 분리, Island와 골든, <code>ParticleCheck</code>.</td></tr>
+  <tr><td><code>5d552a8</code></td><td>리뷰 수정(아래).</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>ParticleCheck replay</td><td>2048슬롯, 303스텝, 다시 태어남 15739번을 CPU가 따라 했다. 다른 슬롯 0. 나이 분산의 해시 상수를 바꾸면 1995슬롯이 다르다(red run)</td></tr>
+  <tr><td>결정성</td><td>자유롭게 도는 smoke 세 번, 프레임 60이 허용 오차 0으로 같다</td></tr>
+  <tr><td>E1</td><td><code>View.slang</code> 분리 뒤에도 표준 골든 다섯 장이 바이트 단위로 같다</td></tr>
+  <tr><td>D3D12 디버그 레이어 · GBV</td><td>조용하다</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계가 바뀐 곳.</b> 설계는 Island를 <code>Engine/Render/Sample</code>에 두었다. 그런데 Effects가 Render 위의 모듈이라 Render 쪽 샘플은 Effects를 링크할 수 없다. 그래서 Island는 <code>Engine/Effects/Sample</code>에 살고, 스파이크들처럼 <code>RenderApp.cpp</code>를 같이 컴파일한다. 잘라 낼 후보였던 <code>View.slang</code> 분리는 잘라 내지 않고 해냈다.</li>
+  <li><b>구현 중에 잡은 것.</b> Island가 첫 프레임에 "write access must be a single bit"로 죽었다. <code>Simulate</code>가 이미 소멸한 <code>FieldPass</code> 안의 span을 돌려주고 있었다. 해제 목록을 <code>EffectSystem</code>의 멤버로 옮겨 고쳤다. 그림자에 여드름이 끓은 것도 있었다. 120 m짜리 바다 평면이 그림자 맞춤을 165 m로 부풀렸기 때문이고, 바다를 반 30 m로 줄였다.</li>
+  <li><b>리뷰가 잡은 것.</b> 에이전트 17개, 확인 9건, 반박 5건. 진짜 버그 둘. 일시정지 중에 이펙트를 더하면 멈춘 이펙트들까지 한 스텝씩 움직였다(이제 처음 도는 이펙트만 돈다, 테스트 추가). 그리고 데이터 뷰에도 Effects 패스가 들어가서 Normals, Depth, Shadow, Overdraw 위에 불씨가 그려졌다. 오두막에 가려야 할 불씨까지 보였다. 나머지는 스타일이었다. 레인의 뜻을 주석 표로 적던 것을 접근자 함수로 바꿨고, 가이드도 그렇게 하라고 고쳤다.</li>
+  <li><b>멈춘 곳.</b> 없다.</li>
+</ul>
+
+<h2 id="fields">필드와 커널 (fields) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>새 모듈 <code>Engine/Effects</code>의 바닥이다. <code>FieldBuffer</code>, <code>ComputeKernel</code>, <code>FieldPass</code>, 내장 클리어 <code>FieldClear</code>, 그리고 PCG 해시 <code>Random.slang</code>과 그 C++ 쌍둥이가 들어 있다. 테스트는 장치 없이 <code>FakeCommandList</code>의 기록으로 한다. 획득과 해제의 짝, 배리어가 들어가는 자리, 클리어를 본다. <code>FieldCheck</code>는 실제 장치에서 CPU와 대조한다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>60aa362</code></td><td>필드, 커널, 필드 패스, 난수, 테스트 7개, <code>FieldCheck</code>.</td></tr>
+  <tr><td><code>32fb937</code></td><td>리뷰 수정(아래).</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>FieldCheck</td><td>3 / 3. 채운 필드를 클리어하면 0이고, 옆의 채운 필드는 그대로다. 프레임마다 두 번 더하기를 일곱 번 제출하면 14를 읽는다. 해시 4096개가 CPU와 비트 단위로 같다. 디버그 레이어와 GBV는 조용하다</td></tr>
+  <tr><td>단위 테스트</td><td>CrowyEffectsTest 7 → 8</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>리뷰가 잡은 것.</b> 에이전트 15개, 확인 10건, 반박 2건. 진짜 버그 하나를 두 렌즈가 따로 찾았다. 내장 클리어가 워드 하나에 스레드 하나로 1차원 디스패치를 해서, 16 MiB가 넘는 필드는 D3D12의 그룹 한계 65535를 넘었다. <code>FieldBuffer</code>는 4 GiB까지 받는데 말이다. 이제 <code>MaxDispatchThreads</code>까지만 띄우고 스레드마다 건너뛰며 돈다. 작은 경우와 넓은 경우를 테스트로 박았다. <code>Release</code>는 <code>[[nodiscard]]</code>가 됐다. 버린 해제는 필드를 가 본 적 없는 상태에 둔 것으로 기억시키기 때문이다.</li>
+  <li><b>멈춘 곳.</b> 없다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 지금 필드는 버퍼뿐이다. 2D·3D 텍스처 필드와 핑퐁은 설계에만 있다(다음 항목).</li>
+</ul>
+
+<h2 id="hook">워커의 훅 패스 (walker-hook) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>샘플이 그리는 패스를 프레임 워커 안에 들였다. 선택지는 둘이었다. 샘플이 워커 밖에서 자기 패스를 여는 길이 있고, 워커가 패스를 열고 그리기만 샘플에 맡기는 길이 있다. 뒤쪽을 골랐다. 그래야 획득·해제, 뷰 0 바인딩, 통계가 메시 패스와 같은 길로 간다. <code>FakeCommandList</code>와 <code>FakeDevice</code>는 컴퓨트를 기록하게 됐다. 디스패치의 파이프라인·스레드 수·push, 디스패치 배리어, 짝 맞춘 시작과 끝을 기록한다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>c16037f</code></td><td>훅 패스, <code>OnRecordSimulation</code>과 <code>FindHook</code>, 가짜 장치의 컴퓨트.</td></tr>
+  <tr><td><code>47b0199</code></td><td>리뷰 수정(아래).</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>단위 테스트</td><td>CrowyRenderTest 119 → 127 → 128</td></tr>
+  <tr><td>red run</td><td>훅의 버퍼 획득을 빼면 훅 테스트가 실패한다. 텍스처 획득을 빼면 리뷰 뒤에 더한 테스트가 실패한다</td></tr>
+  <tr><td>E1</td><td>표준 골든 다섯 장이 바이트 단위로 같다</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>리뷰가 잡은 것.</b> 에이전트 16개, 확인 11건(겹치는 것을 합치면 7가지), 반박 2건. 진짜 버그 하나. 프레임의 그리기·실행·삼각형 합계를 Record 전에 더하고 있었다. 그래서 Record만 아는 훅 패스의 그리기가 합계에서 빠지거나 한 프레임 늦게 들어갔고, 패스별 줄과 합계가 서로 달랐다. 텍스처 획득에는 테스트가 없었다. 나머지는 말이었다. 패스가 훅을 "이름 붙이고" 바인딩이 "묶는" 것을 섞어 썼다.</li>
+  <li><b>멈춘 곳.</b> 없다.</li>
+</ul>
+
+<h2 id="next">다음</h2>
+<div class="card">
+  <ol>
+    <li><b>바다 격자.</b> 설계만 있다. 2D 텍스처 필드, 핑퐁, 비의 충격을 넣는 길(골든이 없는 경로의 고정소수점 원자 연산, 또는 정수 분산)이다. GPU 시뮬레이션은 오빠가 직접 만들고 싶어 하는 쪽이라 일부러 남겼다. 층 A가 그 바닥이다.</li>
+    <li><b>이펙트 하나 직접 써 보기.</b> <code>docs/writing-an-effect.md</code>를 따라 <code>.slang</code> 하나와 설명 한 줄을 쓰고, 실행 중에 <code>reload_shaders</code>로 고치며 본다. 가이드에서 막히는 곳이 있으면 그것이 이 실험의 가장 좋은 측정이다.</li>
+    <li><b>Mac.</b> <code>engine-macos-tests-effects.md</code>의 FX-1–FX-6. Metal 컴퓨트 파이프라인, 한 모듈에 push 하나, 디스패치 배리어, <code>Island.metal.png</code> 첫 기록이 들어 있다.</li>
+    <li><b>병합 순서.</b> <code>effect</code>는 editor-stage의 끝(<code>3ac04a3</code>)에서 갈라졌다. editor-stage가 master에 들어간 뒤 그 위에 얹으면 된다. 이 글을 쓸 때 <code>physics</code> 브랜치에는 아직 커밋이 없었다. 그쪽도 <code>RenderApp</code>이나 <code>FramePipeline</code>을 고친다면 거기서 겹칠 수 있다.</li>
+  </ol>
+</div>
+
+<footer>CrowyEngine · 이펙트 라운드 기록 · 트레이서 완료 · 새 항목이 위로 쌓인다</footer>
+
+</main>
+</body>
+</html>
