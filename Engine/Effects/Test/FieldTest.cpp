@@ -20,13 +20,6 @@ namespace
 {
     using Log = FakeCommandList::Log;
 
-    // a kernel's push as the effects lay it out: the field, then parameters
-    struct StepPush {
-        u64 field = 0;
-        u32 count = 0;
-        u32 step = 0;
-    };
-
     // a render pass whose begin acquires `releases`, as a hook pass does
     void readInRenderPass(
         FakeCommandList& cmdList,
@@ -46,6 +39,13 @@ namespace
         );
         cmdList.EndRenderPass();
     }
+
+    // a kernel's push as the effects lay it out: the field, then parameters
+    struct StepPush {
+        u64 field = 0;
+        u32 count = 0;
+        u32 step = 0;
+    };
 
     class Fixture {
     public:
@@ -177,10 +177,13 @@ TEST(FieldPass, AFreshFieldIsClearedThenSteppedThenReleased) {
     ASSERT_EQ(clear.push.size(), 16u);
     u64 words = 0;
     u32 count = 0;
+    u32 stride = 0;
     std::memcpy(&words, clear.push.data(), sizeof(words));
     std::memcpy(&count, clear.push.data() + 8, sizeof(count));
+    std::memcpy(&stride, clear.push.data() + 12, sizeof(stride));
     EXPECT_EQ(words, FakeDevice::FirstWritableBufferID);
     EXPECT_EQ(count, 4096u);
+    EXPECT_EQ(stride, 4096u);
 
     const auto& stepped = recorded.dispatches[1];
     EXPECT_EQ(stepped.pipeline, &f.step.Pipeline());
@@ -264,3 +267,28 @@ TEST(EffectRandom, MatchesThePCGReference) {
         static_cast<f32>(0x01443b47u >> 8) / 16777216.0f
     );
 }
+
+// a field past one dimension's dispatch limit is cleared by fewer threads,
+// each striding over several words
+TEST(FieldPass, AClearStaysInsideTheDispatchLimit) {
+    Fixture f;
+    FieldBuffer field(f.device, 262144, 64, "wide");
+    FieldBuffer* const fields[] = {&field};
+    FieldPass pass(f.cmdList, f.kernels);
+
+    f.cmdList.Begin();
+    pass.Begin(fields);
+    pass.Clear(field);
+    readInRenderPass(f.cmdList, f.color, pass.End());
+    f.cmdList.Close();
+
+    const auto& clear = f.cmdList.computePasses.at(0).dispatches.at(0);
+    EXPECT_EQ(clear.threads, (Size3D{MaxDispatchThreads, 1, 1}));
+    u32 count = 0;
+    u32 stride = 0;
+    std::memcpy(&count, clear.push.data() + 8, sizeof(count));
+    std::memcpy(&stride, clear.push.data() + 12, sizeof(stride));
+    EXPECT_EQ(count, 262144u * 16u);
+    EXPECT_EQ(stride, MaxDispatchThreads);
+}
+

@@ -14,25 +14,17 @@
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 
-// Steps fields on the device and holds them against the CPU: the built-in
-// clear over a filled field, a field written across seven submissions, and
-// the hash every effect draws its randomness from.
+// Steps fields on the device and holds them against the CPU: the clear, a
+// field written across submissions, the hash effects draw from.
 
 namespace
 {
     using namespace Crowy;
     using Words = std::vector<u32>;
+    using Readbacks = std::span<RHIBuffer* const>;
 
     constexpr CStr CheckShader = "Engine/Effects/Check/FieldCheck.slang";
     constexpr u32 Count = 4096;
-    constexpr u32 Filler = 0xDEADBEEFu;
-
-    // FieldCheck.slang's push
-    struct CheckPush {
-        u64 words = 0;
-        u32 count = 0;
-        u32 value = 0;
-    };
 
     // the frames this program submits, each drained before the next
     void submitAndWait(RHIDevice& device, RHICommandList& cmdList) {
@@ -51,8 +43,8 @@ namespace
     void recordReadback(
         RHICommandList& cmdList,
         std::span<const RHIBufferBarrier> releases,
-        std::span<FieldBuffer* const> fields,
-        std::span<RHIBuffer* const> readbacks
+        FieldBuffers fields,
+        Readbacks readbacks
     ) {
         cmdList.BeginBlitPass({}, releases);
         for(usize i = 0; i < fields.size(); ++i)
@@ -79,6 +71,13 @@ namespace
         return passed;
     }
 
+    // FieldCheck.slang's push
+    struct CheckPush {
+        u64 words = 0;
+        u32 count = 0;
+        u32 value = 0;
+    };
+
     class Checks {
     private:
         RHIDevice& device;
@@ -99,6 +98,7 @@ namespace
 
         // one field filled then cleared, one only filled, in one pass
         bool Clear() {
+            constexpr u32 Filler = 0xDEADBEEFu;
             auto cleared = wordField(device, Count, "FieldCheck.cleared");
             auto filled = wordField(device, Count, "FieldCheck.filled");
             FieldBuffer* const fields[] = {&cleared, &filled};
@@ -132,10 +132,10 @@ namespace
             submitAndWait(device, *cmdList);
 
             const auto zeros = download(*clearedBack, Count);
-            const auto filler = download(*filledBack, Count);
+            const auto filledWords = download(*filledBack, Count);
             u32 wrong = 0;
             for(u32 i = 0; i < Count; ++i)
-                wrong += (zeros[i] != 0) + (filler[i] != Filler);
+                wrong += (zeros[i] != 0) + (filledWords[i] != Filler);
 
             return report(
                 "clear",

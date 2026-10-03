@@ -14,7 +14,8 @@ namespace Crowy
         struct ClearPush {
             u64 words = 0;
             u32 count = 0;
-            u32 value = 0;
+            // the threads dispatched, each striding over the words by it
+            u32 stride = 0;
         };
         static_assert(sizeof(ClearPush) == 16);
     }
@@ -51,16 +52,18 @@ namespace Crowy
     }
 
     void FieldPass::Clear(FieldBuffer& field) {
+        const auto words = field.Bytes() / 4;
         const ClearPush push{
             .words = field.Buffer().GetWritableID(4u),
-            .count = field.Bytes() / 4
+            .count = words,
+            .stride = std::min(words, MaxDispatchThreads)
         };
         FieldBuffer* const touches[] = {&field};
         dispatch(
             kernels.Clear(),
             &push,
             sizeof(push),
-            Size3D{push.count, 1, 1},
+            Size3D{push.stride, 1, 1},
             touches
         );
     }

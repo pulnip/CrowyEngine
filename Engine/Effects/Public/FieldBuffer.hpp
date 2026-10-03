@@ -8,9 +8,8 @@
 
 namespace Crowy
 {
-    // A GPU buffer that kernels write and draws read, kept across frames: it
-    // remembers where the last submission left it, so each frame's first
-    // write acquires across submissions from there.
+    // A GPU buffer kept across frames that kernels write and draws read; it
+    // remembers where the last submission left it, for the next acquire.
     class FieldBuffer {
     private:
         RHIBufferRAII buffer;
@@ -25,8 +24,8 @@ namespace Crowy
         ~FieldBuffer();
         CROWY_DECLARE_PINNED(FieldBuffer)
 
-        // throws std::invalid_argument for no elements or a stride that is
-        // not whole 32-bit words
+        // throws std::invalid_argument for no elements, a stride that is not
+        // whole 32-bit words, or 4 GiB or more
         FieldBuffer(
             RHIDevice& device,
             u32 count,
@@ -43,7 +42,7 @@ namespace Crowy
         // the first write of a frame
         RHIBufferBarrier AcquireForWrite() const;
         // the end of the writing pass, into the reader
-        RHIBufferBarrier Release();
+        [[nodiscard]] RHIBufferBarrier Release();
 
         u64 Writable();
         u64 Readable();

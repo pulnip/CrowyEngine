@@ -14,6 +14,10 @@ namespace Crowy
 {
     using FieldBuffers = std::span<FieldBuffer* const>;
 
+    // the most threads one dimension of a dispatch reaches on D3D12: 65535
+    // groups of FieldClear's 64
+    inline constexpr u32 MaxDispatchThreads = 65535u * 64u;
+
     // the kernels every field pass shares
     class FieldKernels {
     private:
@@ -28,9 +32,8 @@ namespace Crowy
         ComputeKernel& Clear() noexcept { return clear; }
     };
 
-    // One compute pass over a set of fields: their acquires at its begin, a
-    // dispatch barrier on each field a dispatch touches that an earlier one
-    // touched since its last barrier, their releases at its end.
+    // One compute pass over fields: their acquires, a dispatch barrier where a
+    // dispatch touches what one before it touched, and their releases.
     class FieldPass {
     private:
         using Fields = std::vector<FieldBuffer*>;

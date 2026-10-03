@@ -25,8 +25,8 @@ namespace Crowy
                 throw std::invalid_argument(
                     std::format(
                         "field '{}': {} elements of {} bytes; a field holds "
-                        "at least one element of whole 32-bit words, in at "
-                        "most 4 GiB",
+                        "at least one element of whole 32-bit words, in "
+                        "under 4 GiB",
                         name,
                         count,
                         stride

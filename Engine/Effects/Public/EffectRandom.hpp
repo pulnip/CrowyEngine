@@ -8,8 +8,8 @@ namespace Crowy
 {
     // PCG's output permutation over 32 bits (Jarzynski and Olano, 2020)
     inline constexpr u32 pcgHash(u32 value) {
-        const u32 state = value * 747796405u + 2891336453u;
-        const u32 word =
+        const auto state = value * 747796405u + 2891336453u;
+        const auto word =
             ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
 
         return (word >> 22u) ^ word;

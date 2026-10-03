@@ -1,6 +1,5 @@
 // Randomness keyed by what it belongs to, never by time, so an effect's
-// frame N is the same in every run. Engine/Effects's EffectRandom.hpp
-// mirrors it bit for bit.
+// frame N is the same in every run.
 
 // PCG's output permutation over 32 bits (Jarzynski and Olano, 2020)
 uint pcgHash(uint value) {
