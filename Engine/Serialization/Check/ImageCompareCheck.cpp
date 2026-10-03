@@ -22,17 +22,20 @@ namespace Crowy
 {
     namespace
     {
-        enum class Mode : u8 { Compare, Convert, Help };
+        enum class Mode : u8 { Compare, Convert, Edges, Help };
 
         struct Args {
             Mode mode = Mode::Compare;
             std::vector<Str> paths;
             ImageTolerance tolerance;
             Str diff;
+            EdgeOptions edges;
+            Str overlay;
         };
 
         Str usage() {
             constexpr ImageTolerance Defaults{};
+            constexpr EdgeOptions EdgeDefaults{};
 
             return std::format(
                 "usage: ImageCompareCheck                   self-test\n"
@@ -40,6 +43,9 @@ namespace Crowy
                 "                         [--max-fail F] [--max-local F]\n"
                 "                         [--alpha] [--diff <out.png|.bmp>]\n"
                 "       ImageCompareCheck --convert <in> <out.png|.bmp>\n"
+                "       ImageCompareCheck --edges <a> <b> [--radius N]\n"
+                "                         [--density F] [--lenience F]\n"
+                "                         [--overlay <out.png|.bmp>]\n"
                 "  --tolerance  largest difference a channel may have, 0-255 "
                 "(default {})\n"
                 "  --max-fail   fraction of all pixels that may fail "
@@ -47,11 +53,22 @@ namespace Crowy
                 "  --max-local  fraction of the worst tile's pixels that may "
                 "fail, the tiles a 10 x 10 grid (default {})\n"
                 "  --alpha      compare alpha too\n"
-                "exit 0 when similar or converted, 1 when different, 2 on an "
-                "error",
+                "  --edges      where the two pictures' thinned luma edges "
+                "agree, a measure of placement that ignores tone\n"
+                "  --radius     pixels within which an edge finds the "
+                "other's, 0-64 (default {})\n"
+                "  --density    fraction of the pixels each picture keeps as "
+                "edges, strongest first (default {})\n"
+                "  --lenience   how many times more edges the side searched "
+                "keeps, 1-8 (default {})\n"
+                "exit 0 when similar, converted or measured, 1 when "
+                "different, 2 on an error",
                 Defaults.channelDelta,
                 Defaults.maxGlobalFail,
-                Defaults.maxLocalFail
+                Defaults.maxLocalFail,
+                EdgeDefaults.radius,
+                EdgeDefaults.density,
+                EdgeDefaults.lenience
             );
         }
 
@@ -75,6 +92,45 @@ namespace Crowy
             }
 
             return static_cast<u8>(value);
+        }
+
+        u32 parseRadius(StrView text) {
+            u32 value = 0;
+            const auto end = text.data() + text.size();
+            const auto [ptr, ec] = std::from_chars(text.data(), end, value);
+            if(ec != std::errc{} || ptr != end || value > 64) {
+                throw std::runtime_error(
+                    std::format(
+                        "'--radius' takes a whole number from 0 to 64, not "
+                        "'{}'\n{}",
+                        text,
+                        usage()
+                    )
+                );
+            }
+
+            return value;
+        }
+
+        f64 parseNumber(StrView flag, StrView text, f64 low, f64 high) {
+            f64 value = 0.0;
+            const auto end = text.data() + text.size();
+            const auto [ptr, ec] = std::from_chars(text.data(), end, value);
+            if(ec != std::errc{} || ptr != end || !std::isfinite(value) ||
+               value < low || value > high) {
+                throw std::runtime_error(
+                    std::format(
+                        "'{}' takes a number from {} to {}, not '{}'\n{}",
+                        flag,
+                        low,
+                        high,
+                        text,
+                        usage()
+                    )
+                );
+            }
+
+            return value;
         }
 
         f64 parseFraction(StrView flag, StrView text) {
@@ -101,7 +157,9 @@ namespace Crowy
         Args parseArgs(std::span<char* const> args) {
             Args parsed;
             bool convert = false;
+            bool edges = false;
             bool compareFlags = false;
+            bool edgeFlags = false;
             for(usize i = 0; i < args.size(); ++i) {
                 const StrView arg = args[i];
                 const auto value = [&] {
@@ -119,6 +177,40 @@ namespace Crowy
                 }
                 if(arg == "--convert") {
                     convert = true;
+                    continue;
+                }
+                if(arg == "--edges") {
+                    edges = true;
+                    continue;
+                }
+                if(arg == "--radius") {
+                    parsed.edges.radius = parseRadius(value());
+                    edgeFlags = true;
+                    continue;
+                }
+                if(arg == "--density") {
+                    const auto text = value();
+                    parsed.edges.density = parseFraction(arg, text);
+                    if(parsed.edges.density == 0.0) {
+                        throw std::runtime_error(
+                            std::format(
+                                "'--density' keeps some edges, not '{}'\n{}",
+                                text,
+                                usage()
+                            )
+                        );
+                    }
+                    edgeFlags = true;
+                    continue;
+                }
+                if(arg == "--lenience") {
+                    parsed.edges.lenience = parseNumber(arg, value(), 1.0, 8.0);
+                    edgeFlags = true;
+                    continue;
+                }
+                if(arg == "--overlay") {
+                    parsed.overlay = value();
+                    edgeFlags = true;
                     continue;
                 }
                 if(arg == "--alpha") {
@@ -155,7 +247,27 @@ namespace Crowy
                 parsed.paths.emplace_back(arg);
             }
 
-            if(convert) {
+            if(edgeFlags && !edges) {
+                throw std::runtime_error(
+                    std::format(
+                        "'--radius', '--density', '--lenience' and "
+                        "'--overlay' go with '--edges'\n{}",
+                        usage()
+                    )
+                );
+            }
+            if(edges) {
+                if(convert || compareFlags || parsed.paths.size() != 2) {
+                    throw std::runtime_error(
+                        std::format(
+                            "'--edges' takes two images and only its own "
+                            "flags\n{}",
+                            usage()
+                        )
+                    );
+                }
+                parsed.mode = Mode::Edges;
+            } else if(convert) {
                 if(compareFlags || parsed.paths.size() != 2) {
                     throw std::runtime_error(
                         std::format(
@@ -176,8 +288,16 @@ namespace Crowy
                 );
             }
 
-            const auto& output =
-                parsed.mode == Mode::Convert ? parsed.paths[1] : parsed.diff;
+            const auto output = [&]() -> const Str& {
+                switch(parsed.mode) {
+                case Mode::Convert:
+                    return parsed.paths[1];
+                case Mode::Edges:
+                    return parsed.overlay;
+                default:
+                    return parsed.diff;
+                }
+            }();
             if(!output.empty() && !isImageOutput(output)) {
                 throw std::runtime_error(
                     std::format(
@@ -314,6 +434,103 @@ namespace Crowy
             return comparison.similar ? 0 : 1;
         }
 
+        // the report, then one tab-separated row a script reads: edges a and
+        // b, both fractions, the worst tile, its fraction and edges, the
+        // shift, its coincidence and the coincidence unshifted
+        int compareEdgeFiles(const Args& args) {
+            const auto& pathA = args.paths[0];
+            const auto& pathB = args.paths[1];
+            const auto a = LoadImage(toPath(pathA.c_str()));
+            const auto b = LoadImage(toPath(pathB.c_str()));
+            const auto comparison =
+                compareEdges(viewRgba8(a), viewRgba8(b), args.edges);
+            const auto& options = comparison.options;
+            const auto& tile = comparison.worstTile;
+
+            std::println(
+                "edges {} vs {}: {}x{}, radius {}, density {}, lenience {}",
+                pathA,
+                pathB,
+                comparison.width,
+                comparison.height,
+                options.radius,
+                percent(options.density),
+                options.lenience
+            );
+            std::println(
+                "  a: {} edges, {} near b",
+                comparison.edgesA,
+                percent(comparison.aNearB)
+            );
+            std::println(
+                "  b: {} edges, {} near a",
+                comparison.edgesB,
+                percent(comparison.bNearA)
+            );
+            if(comparison.worstTileEdges > 0) {
+                std::println(
+                    "  worst tile ({},{}) x {}..{} y {}..{}: {} of {} edges "
+                    "near b",
+                    comparison.tileX,
+                    comparison.tileY,
+                    tile.x0,
+                    tile.x1,
+                    tile.y0,
+                    tile.y1,
+                    percent(comparison.worstTileNear),
+                    comparison.worstTileEdges
+                );
+            } else {
+                std::println(
+                    "  worst tile: none holds {} of a's edges",
+                    options.minTileEdges
+                );
+            }
+            std::println(
+                "  shift ({},{}): {} coincide, at (0,0) {}",
+                comparison.shiftX,
+                comparison.shiftY,
+                percent(comparison.shiftCoincide),
+                percent(comparison.zeroCoincide)
+            );
+            if(!args.overlay.empty()) {
+                const auto overlay = paintEdgeOverlay(comparison, viewRgba8(a));
+                writeImage(
+                    args.overlay,
+                    Rgba8View{
+                        .pixels = overlay.data(),
+                        .width = comparison.width,
+                        .height = comparison.height,
+                        .rowPitch = static_cast<usize>(comparison.width) * 4
+                    }
+                );
+                std::println("  overlay: {}", args.overlay);
+            }
+
+            const bool ranked = comparison.worstTileEdges > 0;
+            const auto tileAt =
+                std::format("{},{}", comparison.tileX, comparison.tileY);
+            const auto tileNear =
+                std::format("{:.4f}", comparison.worstTileNear);
+            std::println(
+                "row\t{}\t{}\t{:.4f}\t{:.4f}\t{}\t{}\t{}\t{},{}\t{:.4f}"
+                "\t{:.4f}",
+                comparison.edgesA,
+                comparison.edgesB,
+                comparison.aNearB,
+                comparison.bNearA,
+                ranked ? tileAt : Str("-"),
+                ranked ? tileNear : Str("-"),
+                comparison.worstTileEdges,
+                comparison.shiftX,
+                comparison.shiftY,
+                comparison.shiftCoincide,
+                comparison.zeroCoincide
+            );
+
+            return 0;
+        }
+
         int convertFile(const Args& args) {
             const auto image = LoadImage(toPath(args.paths[0].c_str()));
             writeImage(args.paths[1], viewRgba8(image));
@@ -398,11 +615,43 @@ namespace Crowy
             return false;
         }
 
+        bool checkEdges() {
+            std::println("A bar against itself moved (4, 0)");
+
+            constexpr u32 Size = 64;
+            auto a = solid(Size, Size, 0);
+            auto b = a;
+            for(u32 y = 16; y < 40; ++y) {
+                for(u32 x = 20; x < 30; ++x) {
+                    for(u32 c = 0; c < 3; ++c) {
+                        a[(y * Size + x) * 4 + c] = 200;
+                        b[(y * Size + x + 4) * 4 + c] = 200;
+                    }
+                }
+            }
+            const auto comparison =
+                compareEdges(viewOf(a, Size, Size), viewOf(b, Size, Size));
+            std::println(
+                "  shift ({},{}), {} coincide",
+                comparison.shiftX,
+                comparison.shiftY,
+                percent(comparison.shiftCoincide)
+            );
+            if(comparison.shiftX != 4 || comparison.shiftY != 0 ||
+               comparison.shiftCoincide != 1.0) {
+                std::println("  FAIL: the shift is not (4,0) at 100%");
+                return false;
+            }
+
+            return true;
+        }
+
         int selfTest() {
             bool ok = true;
             ok = checkIdentical() && ok;
             ok = checkOnePixel() && ok;
             ok = checkSizeMismatch() && ok;
+            ok = checkEdges() && ok;
             if(!ok)
                 return 1;
 
@@ -428,6 +677,8 @@ int main(int argc, char** argv) {
             return 0;
         case Mode::Convert:
             return convertFile(parsed);
+        case Mode::Edges:
+            return compareEdgeFiles(parsed);
         case Mode::Compare:
             return compareFiles(parsed);
         }
