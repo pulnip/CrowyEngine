@@ -2,6 +2,7 @@
 # Everything that knows Backlot's contract lives here, outside the engine.
 add_library(SampleStage STATIC
     StageDocument.cpp
+    StageLoad.cpp
 )
 
 target_include_directories(SampleStage
