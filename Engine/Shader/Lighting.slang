@@ -84,15 +84,18 @@ float ShadowVisibility(LightData light, float3 posWorld, float3 geoNormal) {
     float4 clip = mul(light.worldToShadow, float4(p, 1.0));
     // ShadowSampleSpike pins ClipToTexture.slang's convention per backend
     float2 uv = ClipToTextureUV(clip.xy);
-    if(any(uv < 0.0) || any(uv >= 1.0) || clip.z > 1.0)
+    if(any(uv < 0.0) || any(uv >= 1.0))
         return 1.0;
+    // the fit holds the casters alone: a receiver deeper than all of them
+    // compares at the far plane, so a nearer caster still shadows it
+    float depth = min(clip.z, 1.0);
 
     if(pcf)
-        return ShadowPcf2x2(map, uint2(width, height), uv, clip.z);
+        return ShadowPcf2x2(map, uint2(width, height), uv, depth);
 
     float stored = map.Load(int3(TextureUVToTexel(uv, uint2(width, height)), 0));
 
-    return clip.z <= stored ? 1.0 : 0.0;
+    return depth <= stored ? 1.0 : 0.0;
 }
 
 // direction, radiance and falloff, before any shadow

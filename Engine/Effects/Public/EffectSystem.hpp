@@ -72,9 +72,8 @@ namespace Crowy
         // a dispatch reaches, a name taken, or a draw without an entry
         void Add(ParticleEffectDesc desc);
 
-        // a step of each effect at `worldStep`, its first with the prewarm
-        // counting back from it; paused, only the unstarted run; the releases
-        // are the hook pass's buffer acquires
+        // a step of each effect, a first prewarm counting back from worldStep;
+        // paused, only the unstarted run; returns the hook pass's acquires
         std::span<const RHIBufferBarrier> Simulate(
             RHICommandList& cmdList,
             const EffectView& view,

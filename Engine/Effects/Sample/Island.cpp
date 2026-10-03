@@ -487,7 +487,7 @@ namespace Crowy
             cmdList.Draw(3, 1);
         }
 
-        // one step a frame, the clock the effects, the light and the sea share
+        // one step a frame, the clock the effects and the fire's light share
         u32 worldStep() const { return static_cast<u32>(FrameNumber()); }
     };
 }

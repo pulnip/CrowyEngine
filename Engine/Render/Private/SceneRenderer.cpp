@@ -55,10 +55,8 @@ namespace Crowy
 
         // the union of every visible caster's bounds; none, no bounds
         std::optional<AABB3D> casterBounds(const PrimitiveTable& primitives) {
-            constexpr auto VisibleCaster = combine(
-                PrimitiveFlags::Visible,
-                PrimitiveFlags::CastShadow
-            );
+            constexpr auto VisibleCaster =
+                combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow);
 
             std::optional<Vec3> low;
             std::optional<Vec3> high;
