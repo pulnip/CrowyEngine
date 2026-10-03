@@ -27,4 +27,7 @@ if(CROWY_ENABLE_TEST)
     PRIVATE
         ${CROWY_FP_CONTRACT_OFF}
     )
+
+    # puzzles over the public API, run by tests and by the playground
+    add_subdirectory(Sample/Puzzle)
 endif()
