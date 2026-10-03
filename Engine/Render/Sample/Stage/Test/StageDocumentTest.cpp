@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "JsonLoader.hpp"
@@ -10,9 +11,8 @@ using namespace Crowy;
 
 namespace
 {
-    // a scene in the contract's shape, small enough to read: two models
-    // (one the box), two materials, two instances, one quad, one light,
-    // one camera, two keys
+    // the contract's shape at its smallest: two models (one the box), three
+    // materials, two instances, a quad, a light, a camera, two keys
     std::string miniScene(
         std::string_view instanceExtra = "",
         std::string_view totalsInstances = "2",
@@ -56,6 +56,24 @@ namespace
 
     StageDocument parse(const std::string& json) {
         return loadJson<StageDocument>(json);
+    }
+
+    // the mini scene with its first `from` replaced by `to`
+    std::string edited(StrView from, StrView to) {
+        auto json = miniScene();
+        const auto at = json.find(from);
+        EXPECT_NE(at, std::string::npos) << from;
+        json.replace(at, from.size(), to);
+
+        return json;
+    }
+
+    // the parse throws, and its message names `reason`
+    void expectRefusal(const std::string& json, StrView reason) {
+        EXPECT_THAT(
+            [&] { parse(json); },
+            testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(Str(reason)))
+        );
     }
 }
 
@@ -106,30 +124,84 @@ TEST(StageDocument, ReadsTheFileAsWritten) {
 }
 
 TEST(StageDocument, TotalsMismatchThrows) {
-    EXPECT_THROW(parse(miniScene("", "3")), std::runtime_error);
+    expectRefusal(miniScene("", "3"), "totals says 3");
+}
+
+TEST(StageDocument, MissingTotalsThrows) {
+    expectRefusal(edited(R"("totals")", R"("totalz")"), "totals.models");
 }
 
 TEST(StageDocument, OtherVersionThrows) {
-    EXPECT_THROW(parse(miniScene("", "2", "2")), std::runtime_error);
+    expectRefusal(miniScene("", "2", "2"), "version 2");
+}
+
+TEST(StageDocument, OtherTypeThrows) {
+    expectRefusal(edited(R"("type": "scene")", R"("type": "app")"), "\"app\"");
 }
 
 TEST(StageDocument, PerAxisScaleOnlyOnTheBox) {
-    // lamp-a is not the box; its row's sx/sy/sz are overridden by a later key
-    EXPECT_THROW(parse(miniScene(R"(, "sy": 2)")), std::runtime_error);
+    // the later sy wins over the row's own
+    expectRefusal(miniScene(R"(, "sy": 2)"), "per axis");
 }
 
 TEST(StageDocument, UnknownModelThrows) {
-    auto json = miniScene();
-    json.replace(json.find(R"("model": "Lamp")"), 15, R"("model": "Lamq")");
-    EXPECT_THROW(parse(json), std::runtime_error);
+    expectRefusal(edited(R"("model": "Lamp")", R"("model": "Lamq")"), "unknown model 'Lamq'");
 }
 
-TEST(StageDocument, ChannelMissingFromAKeyThrows) {
-    EXPECT_THROW(parse(miniScene(R"(, "emissive_channel": "neon")")), std::runtime_error);
+TEST(StageDocument, ModelWithUnknownMaterialThrows) {
+    expectRefusal(edited(R"("materials": ["Palette"], "box")", R"("materials": ["Paint"], "box")"), "unknown material 'Paint'");
+}
+
+TEST(StageDocument, ModelWithoutMaterialsThrows) {
+    expectRefusal(edited(R"("materials": ["Palette"], "box")", R"("materials": [], "box")"), "names no material");
+}
+
+TEST(StageDocument, QuadWithUnknownMaterialThrows) {
+    expectRefusal(edited(R"("material": "Signs")", R"("material": "Sings")"), "unknown material 'Sings'");
+}
+
+TEST(StageDocument, QuadShowingUnknownCutThrows) {
+    expectRefusal(edited(R"("emissive_channel": "signs"})", R"("emissive_channel": "signs", "camera": "cameraZ"})"), "unknown cut 'cameraZ'");
+}
+
+TEST(StageDocument, InstanceChannelMissingFromAKeyThrows) {
+    expectRefusal(miniScene(R"(, "emissive_channel": "neon")"), "glows on 'neon'");
+}
+
+TEST(StageDocument, QuadChannelMissingFromAKeyThrows) {
+    expectRefusal(edited(R"("emissive_channel": "signs"})", R"("emissive_channel": "game"})"), "glows on 'game'");
+}
+
+TEST(StageDocument, LightGroupMissingFromAKeyThrows) {
+    expectRefusal(edited(R"("group": "street_lamps", "kind")", R"("group": "set_lights", "kind")"), "group 'set_lights'");
 }
 
 TEST(StageDocument, UnknownKeyNameThrows) {
-    EXPECT_THROW(parse(miniScene(R"(, "keys": ["dusk"])")), std::runtime_error);
+    expectRefusal(miniScene(R"(, "keys": ["dusk"])"), "unknown key 'dusk'");
+}
+
+TEST(StageDocument, EmptyKeyListThrows) {
+    expectRefusal(miniScene(R"(, "keys": [])"), "shows in no key");
+}
+
+TEST(StageDocument, KeysThatAreNotAListThrow) {
+    expectRefusal(miniScene(R"(, "keys": "night")"), "not a list");
+}
+
+TEST(StageDocument, UnknownDefaultKeyThrows) {
+    expectRefusal(edited(R"("default_key": "day")", R"("default_key": "noon")"), "default_key 'noon'");
+}
+
+TEST(StageDocument, BadKindOrSamplerThrows) {
+    expectRefusal(edited(R"("kind": "masked")", R"("kind": "cutout")"), "kind 'cutout'");
+    expectRefusal(edited(R"("sampler": "linear")", R"("sampler": "cubic")"), "sampler 'cubic'");
+    expectRefusal(edited(R"("kind": "spot")", R"("kind": "area")"), "kind 'area'");
+}
+
+// a key that is present must read; only an absent one takes the default
+TEST(StageDocument, OptionalKeyOfTheWrongTypeThrows) {
+    expectRefusal(edited(R"("shadow": 1})", R"("shadow": 1.5})"), "'shadow'");
+    expectRefusal(edited(R"("receives_shadows": false)", R"("receives_shadows": 0)"), "'receives_shadows'");
 }
 
 TEST(StageSprite, ReadsTheSheetAndItsAnimations) {
@@ -152,3 +224,13 @@ TEST(StageSprite, WrongTypeThrows) {
         std::runtime_error
     );
 }
+
+TEST(StageSprite, EmptyGridThrows) {
+    EXPECT_THAT(
+        [] {
+            loadJson<StageSprite>(R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 0, "columns": 2}, "animations": []})");
+        },
+        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("empty grid"))
+    );
+}
+

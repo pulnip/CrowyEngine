@@ -12,18 +12,17 @@
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "ModelLoader.hpp"
+#include "StringUtil.hpp"
 
 using namespace Crowy;
 
 namespace
 {
-    constexpr f32 Tolerance = 1e-4f;
-
     struct Triangle {
         std::array<Vertex, 3> corners;
     };
 
-    const std::filesystem::path TestData{CROWY_SERIALIZATION_TEST_DATA};
+    const auto testData = toPath(CROWY_SERIALIZATION_TEST_DATA);
 
     std::vector<Triangle> trianglesOf(const MeshData& mesh) {
         std::vector<Triangle> triangles;
@@ -82,11 +81,11 @@ TEST(ModelLoader, MakeBoxDefinesTheFrontWinding) {
         EXPECT_EQ(windingSign(triangle), windingSign(trianglesOf(box).front()));
 }
 
-// The axis probe's table from the content's own contract: bounds, the
-// arms' directions and lengths, the triangle count, front faces and the
-// palette colors after the v flip.
+// the axis probe's table from the content's contract
 TEST(ModelLoader, AxisProbeMatchesItsTable) {
-    const auto model = LoadModel(TestData / "AxisProbe.fbx");
+    constexpr f32 Tolerance = 1e-4f;
+
+    const auto model = loadModel(testData / "AxisProbe.fbx");
 
     const auto low = model.bounds.center - model.bounds.halfScale;
     const auto high = model.bounds.center + model.bounds.halfScale;
@@ -108,7 +107,7 @@ TEST(ModelLoader, AxisProbeMatchesItsTable) {
     for(const auto& triangle: triangles)
         EXPECT_EQ(windingSign(triangle), front);
 
-    auto image = LoadImage(TestData / "Palette.png");
+    auto image = LoadImage(testData / "Palette.png");
     const auto palette = viewRgba8(image);
 
     std::map<u32, Extent> extents;
@@ -150,8 +149,8 @@ TEST(ModelLoader, AxisProbeMatchesItsTable) {
 // "front-facing from outside": every triangle's stored normal points away
 // from the centre of the box it belongs to
 TEST(ModelLoader, AxisProbeNormalsPointOutward) {
-    const auto model = LoadModel(TestData / "AxisProbe.fbx");
-    auto image = LoadImage(TestData / "Palette.png");
+    const auto model = loadModel(testData / "AxisProbe.fbx");
+    auto image = LoadImage(testData / "Palette.png");
     const auto palette = viewRgba8(image);
 
     std::map<u32, Extent> extents;
@@ -173,5 +172,5 @@ TEST(ModelLoader, AxisProbeNormalsPointOutward) {
 }
 
 TEST(ModelLoader, MissingFileThrows) {
-    EXPECT_THROW(LoadModel(TestData / "NoSuchModel.fbx"), std::runtime_error);
+    EXPECT_THROW(loadModel(testData / "NoSuchModel.fbx"), std::runtime_error);
 }

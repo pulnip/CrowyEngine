@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include "BacklotContent.hpp"
 #include "ModelLoader.hpp"
 #include "StageDocument.hpp"
 
@@ -17,24 +18,8 @@ using namespace Crowy;
 
 namespace
 {
-    const std::filesystem::path BacklotRoot{CROWY_BACKLOT_DIR};
-
-    // why the content cannot be read here; empty when it can
-    std::string missingContent(const std::filesystem::path& file) {
-        if(!std::filesystem::exists(file))
-            return std::format("no {} (set CROWY_BACKLOT_DIR)", file.string());
-
-        std::ifstream stream(file, std::ios::binary);
-        std::string head(24, '\0');
-        stream.read(head.data(), static_cast<std::streamsize>(head.size()));
-        if(head.starts_with("version https://git-lfs"))
-            return std::format("{} is a Git LFS pointer (git lfs pull)", file.string());
-
-        return {};
-    }
-
     const StageDocument& document() {
-        static const auto loaded = loadStageDocument(BacklotRoot);
+        static const auto loaded = loadStageDocument(backlotRoot());
 
         return loaded;
     }
@@ -50,14 +35,7 @@ namespace
     }
 }
 
-#define CROWY_REQUIRE_CONTENT(file)                       \
-    do {                                                  \
-        if(const auto why = missingContent(file); !why.empty()) \
-            GTEST_SKIP() << why;                          \
-    } while(false)
-
 TEST(BacklotDocument, SectionsMatchTheirTotals) {
-    CROWY_REQUIRE_CONTENT(BacklotRoot / StageScenePath);
 
     const auto& stage = document();
     EXPECT_EQ(stage.version, 1u);
@@ -77,7 +55,6 @@ TEST(BacklotDocument, SectionsMatchTheirTotals) {
 
 // rows the contract documents, read back as written
 TEST(BacklotDocument, KnownRowsReadAsWritten) {
-    CROWY_REQUIRE_CONTENT(BacklotRoot / StageScenePath);
     const auto& stage = document();
 
     const auto* block = named(stage.instances, "block-nw");
@@ -136,10 +113,8 @@ TEST(BacklotDocument, KnownRowsReadAsWritten) {
     EXPECT_NEAR(day.sunDirection.y, -0.788f, 1e-4f);
 }
 
-// the per-area instance counts and the per-key visibility the final
-// inventory states
+// the final inventory's per-area and per-key counts
 TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
-    CROWY_REQUIRE_CONTENT(BacklotRoot / StageScenePath);
     const auto& stage = document();
 
     std::map<Str, usize> perArea;
@@ -171,19 +146,17 @@ TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
     }
 }
 
-// the engine's loader test reads a copy of the probe; it must be this one
+// the engine's loader test reads a copy of this probe
 TEST(BacklotDocument, EngineFixtureIsBacklotsProbe) {
-    const auto probe = BacklotRoot / "Unity/Assets/Art/Models/Probe/AxisProbe.fbx";
-    CROWY_REQUIRE_CONTENT(probe);
+    const auto probe = backlotRoot() / "Unity/Assets/Art/Models/Probe/AxisProbe.fbx";
     const auto read = [](const std::filesystem::path& file) {
         std::ifstream stream(file, std::ios::binary);
         return std::string(std::istreambuf_iterator<char>(stream), {});
     };
-    EXPECT_EQ(read(probe), read(std::filesystem::path{CROWY_ENGINE_PROBE}));
+    EXPECT_EQ(read(probe), read(toPath(CROWY_ENGINE_PROBE)));
 }
 
 TEST(BacklotDocument, PaletteCarriesItsDetailBlock) {
-    CROWY_REQUIRE_CONTENT(BacklotRoot / StageScenePath);
     const auto& stage = document();
 
     const StageMaterial* palette = nullptr;
@@ -194,25 +167,19 @@ TEST(BacklotDocument, PaletteCarriesItsDetailBlock) {
     ASSERT_NE(palette, nullptr);
     EXPECT_EQ(palette->sampler, StageSampler::Point);
     ASSERT_TRUE(palette->detail.has_value());
-    EXPECT_FLOAT_EQ(palette->detail->metresPerTile, 2.0f);
+    EXPECT_FLOAT_EQ(palette->detail->metersPerTile, 2.0f);
 }
 
-// Every placed model imports grounded, near the size the scene file states
-// and with materials it names: the FBX conversion checked on all the real
-// files. A row's size is the spec card's nominal size, which the content's
-// own check allows to miss by a per-card tolerance (a pole 5 % short, a
-// seated mannequin 9 % tall), so the bar here is what the conversion
-// controls: no axis swapped, nothing mirrored onto a negative side.
+// a row's size is a card's nominal size, which a model may miss by 9 %: the
+// bar is what the conversion controls, no axis swapped and grounded
 TEST(BacklotDocument, EveryModelImportsAtItsSize) {
-    CROWY_REQUIRE_CONTENT(BacklotRoot / StageScenePath);
     const auto& stage = document();
-    CROWY_REQUIRE_CONTENT(resolveStagePath(stage, stage.models.front().path));
 
     const auto near = [](f32 imported, f32 nominal) {
         return std::abs(imported - nominal) <= std::max(0.06f, 0.1f * nominal);
     };
     for(const auto& row: stage.models) {
-        const auto model = LoadModel(resolveStagePath(stage, row.path));
+        const auto model = loadModel(resolveStagePath(stage, row.path));
         const auto size = 2.0f * model.bounds.halfScale;
         EXPECT_TRUE(near(size.x, row.size.x)) << row.id << " x " << size.x << " vs " << row.size.x;
         EXPECT_TRUE(near(size.y, row.size.y)) << row.id << " y " << size.y << " vs " << row.size.y;

@@ -9,6 +9,15 @@
 
 namespace Crowy
 {
+    struct ModelData;
+    struct ModelSlot;
+
+    using ModelSlots = std::vector<ModelSlot>;
+
+    // into MeshData's convention, metres; throws std::runtime_error when the
+    // file cannot be read
+    ModelData loadModel(const std::filesystem::path& path);
+
     // the triangles of one material, indexed on their own
     struct ModelSlot {
         // as the file names the material; empty for faces that have none
@@ -17,18 +26,10 @@ namespace Crowy
         AABB3D bounds;
     };
 
-    // A model in the space of its root, every node's geometry already moved
-    // there, so a placement is one world matrix. Slots follow the file's
-    // material order, and a material no face uses has none.
+    // every node's geometry moved into the root's space, a slot per material
+    // that has faces, in the file's material order
     struct ModelData {
-        std::vector<ModelSlot> slots;
+        ModelSlots slots;
         AABB3D bounds;
     };
-
-    // Loads an FBX into the convention MeshData documents: the file's axes
-    // and handedness become left-handed +Y up, its unit becomes metres,
-    // texCoord's origin moves to the top-left, and faces are triangulated
-    // with missing normals generated and tangents derived from the UVs.
-    // Throws std::runtime_error when the file cannot be read.
-    ModelData LoadModel(const std::filesystem::path& path);
 }

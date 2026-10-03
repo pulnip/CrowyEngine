@@ -1,18 +1,79 @@
 #pragma once
 
 #include <filesystem>
+#include <format>
 #include <optional>
+#include <stdexcept>
 #include <vector>
 
 #include "DomTraits.hpp"
 #include "Primitives.hpp"
 
+// Backlot's scene file (its docs/scene-format.md, metadata version 1), read
+// as written: metres and degrees, colors decoded to linear light.
 namespace Crowy
 {
-    // Backlot's scene file (its docs/scene-format.md, metadata version 1),
-    // read faithfully: positions in metres and angles in degrees as the
-    // file writes them, so an inspector shows the contract's numbers;
-    // colors decoded to linear light. Extraction gives the rows meaning.
+    struct StageCamera;
+    struct StageDocument;
+    struct StageInstance;
+    struct StageLight;
+    struct StageLightingKey;
+    struct StageMaterial;
+    struct StageModel;
+    struct StageQuad;
+    struct StageScale;
+    struct StageSprite;
+    struct StageSpriteAnimation;
+
+    using StageCameras = std::vector<StageCamera>;
+    using StageInstances = std::vector<StageInstance>;
+    using StageLights = std::vector<StageLight>;
+    using StageLightingKeys = std::vector<StageLightingKey>;
+    using StageMaterials = std::vector<StageMaterial>;
+    using StageModels = std::vector<StageModel>;
+    using StageQuads = std::vector<StageQuad>;
+    using StageScales = std::vector<StageScale>;
+    using StageSpriteAnimations = std::vector<StageSpriteAnimation>;
+    using StageNames = std::vector<Str>;
+
+    // the channel an instance's emissive faces glow on when it names none
+    inline constexpr CStr DefaultEmissiveChannel = "fixtures";
+    inline constexpr CStr StageScenePath = "Data/scene.json";
+
+    // "#RRGGBB", 0..1 per channel and still sRGB-encoded
+    inline constexpr Vec3 parseHexColor(StrView text) {
+        const auto malformed = [text] {
+            return std::runtime_error(std::format("'{}' is not a #RRGGBB color", text));
+        };
+        if(text.size() != 7 || text[0] != '#')
+            throw malformed();
+
+        const auto digit = [&](usize i) -> u32 {
+            const auto c = text[i];
+            if(c >= '0' && c <= '9')
+                return static_cast<u32>(c - '0');
+            if(c >= 'a' && c <= 'f')
+                return static_cast<u32>(c - 'a' + 10);
+            if(c >= 'A' && c <= 'F')
+                return static_cast<u32>(c - 'A' + 10);
+
+            throw malformed();
+        };
+        const auto channel = [&](usize i) {
+            return static_cast<f32>(digit(i) * 16 + digit(i + 1)) / 255.0f;
+        };
+
+        return Vec3{channel(1), channel(3), channel(5)};
+    }
+
+    // paths in the file resolve against `root`
+    StageDocument loadStageDocument(
+        const std::filesystem::path& root,
+        const std::filesystem::path& sceneFile
+    );
+    StageDocument loadStageDocument(const std::filesystem::path& root);
+    StageSprite loadStageSprite(const StageDocument& document, StrView relative);
+    std::filesystem::path resolveStagePath(const StageDocument& document, StrView relative);
 
     enum class StageMaterialKind : u8 {
         Opaque,
@@ -33,10 +94,9 @@ namespace Crowy
         Str id;
         // relative to the content root
         Str path;
-        // extent in metres, in the engine's frame; the asset card's nominal
-        // size, which the model may miss by the card's tolerance
+        // the asset card's nominal extent, which the model may miss a little
         Vec3 size{};
-        std::vector<Str> materials;
+        StageNames materials;
         // the unit box, the only model scaled per axis
         bool box = false;
     };
@@ -45,7 +105,7 @@ namespace Crowy
     struct StageDetail {
         Str normal;
         Str mask;
-        f32 metresPerTile = 1.0f;
+        f32 metersPerTile = 1.0f;
         f32 strength = 1.0f;
     };
 
@@ -59,7 +119,7 @@ namespace Crowy
         // alpha below it is cut, for a masked material
         f32 cutoff = 0.0f;
         bool receivesShadows = true;
-        // linear; what draws where the texture cannot be sampled
+        // linear
         Vec3 fallback{};
         std::optional<StageDetail> detail;
     };
@@ -72,10 +132,9 @@ namespace Crowy
         // degrees, clockwise from +Z seen from above
         f32 yaw = 0.0f;
         Vec3 scale{1.0f, 1.0f, 1.0f};
-        // the channel its emissive faces glow on
         Str emissiveChannel;
-        // the lighting keys it shows in; empty means every key
-        std::vector<Str> keys;
+        // empty: every lighting key
+        StageNames keys;
     };
 
     struct StageFlipbook {
@@ -88,9 +147,7 @@ namespace Crowy
         Str name;
         Str area;
         Str material;
-        // the image's name in its atlas manifest, for reference
         Str image;
-        // the rectangle's centre
         Vec3 position{};
         // degrees: the direction the image faces, clockwise from +Z
         f32 yaw = 0.0f;
@@ -102,9 +159,9 @@ namespace Crowy
         Vec3 fallback{};
         // empty: the quad is only lit
         Str emissiveChannel;
-        std::vector<Str> keys;
+        StageNames keys;
         std::optional<StageFlipbook> flipbook;
-        // the cut a monitor quad shows; empty for any other quad
+        // the cut a monitor quad shows
         Str camera;
     };
 
@@ -136,7 +193,7 @@ namespace Crowy
         // vertical, degrees
         f32 fov = 0.0f;
         bool orthographic = false;
-        // half the vertical extent in metres
+        // half the vertical extent in meters
         f32 orthoSize = 0.0f;
     };
 
@@ -161,8 +218,8 @@ namespace Crowy
         Vec3 skyHorizon{};
         Vec3 skyHaze{};
         f32 emissiveScale = 1.0f;
-        std::vector<StageScale> lightGroups;
-        std::vector<StageScale> emissiveChannels;
+        StageScales lightGroups;
+        StageScales emissiveChannels;
     };
 
     struct StageDocument {
@@ -170,13 +227,13 @@ namespace Crowy
         Str name;
         // what every path in the file is relative to
         std::filesystem::path root;
-        std::vector<StageModel> models;
-        std::vector<StageMaterial> materials;
-        std::vector<StageInstance> instances;
-        std::vector<StageQuad> quads;
-        std::vector<StageLight> lights;
-        std::vector<StageCamera> cameras;
-        std::vector<StageLightingKey> lightingKeys;
+        StageModels models;
+        StageMaterials materials;
+        StageInstances instances;
+        StageQuads quads;
+        StageLights lights;
+        StageCameras cameras;
+        StageLightingKeys lightingKeys;
         Str defaultKey;
     };
 
@@ -188,28 +245,18 @@ namespace Crowy
         u32 frameDurationMs = 0;
     };
 
-    // a sprite sheet manifest (metadata type "sprite"): a grid of equal
-    // cells, frames running along a row and on to the next
+    // equal cells, frames running along a row and on to the next
     struct StageSprite {
         // relative to the content root
         Str image;
         u32 rows = 1;
         u32 columns = 1;
-        std::vector<StageSpriteAnimation> animations;
+        StageSpriteAnimations animations;
     };
 
-    // the channel an instance's emissive faces glow on when it names none
-    inline constexpr CStr DefaultEmissiveChannel = "fixtures";
-    // the scene file under a content root
-    inline constexpr CStr StageScenePath = "Data/scene.json";
-
+    // throws std::runtime_error naming the row and what it got wrong
     template<>
     struct DomTraits<StageDocument> {
-        // Throws std::runtime_error naming the row and the key it could not
-        // read, a reference that does not resolve, a per-axis scale on a
-        // model that is not the box, a channel or group a key leaves out,
-        // or a section whose length disagrees with `totals`. Keys it does
-        // not know are ignored, as the contract allows.
         static StageDocument from(const DOM::Value& root, const DocMetadata& metadata);
     };
 
@@ -217,21 +264,4 @@ namespace Crowy
     struct DomTraits<StageSprite> {
         static StageSprite from(const DOM::Value& root, const DocMetadata& metadata);
     };
-
-    // "#RRGGBB" as written, 0..1 per channel and still sRGB-encoded;
-    // throws on any other form
-    Vec3 parseHexColor(StrView text);
-
-    // reads `sceneFile`; paths in it resolve against `root`
-    StageDocument loadStageDocument(
-        const std::filesystem::path& root,
-        const std::filesystem::path& sceneFile
-    );
-    // reads root / StageScenePath
-    StageDocument loadStageDocument(const std::filesystem::path& root);
-
-    StageSprite loadStageSprite(const StageDocument& document, StrView relative);
-
-    // what an absolute path to one of the document's files is
-    std::filesystem::path resolveStagePath(const StageDocument& document, StrView relative);
 }

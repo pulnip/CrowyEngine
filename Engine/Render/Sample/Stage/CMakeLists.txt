@@ -24,8 +24,8 @@ if(CROWY_ENABLE_TEST)
         LABELS "unit"
     )
 
-    # the real film set, read in place; every test skips when it is missing,
-    # and ctest then reports the entry as skipped rather than passed
+    # the real film set, read in place; without it the binary exits 77
+    # before any test runs, which ctest reports as skipped
     crowy_declare_test(SampleStageBacklot
         DIRECTORY BacklotTest
         DEPENDS SampleStage
@@ -38,6 +38,6 @@ if(CROWY_ENABLE_TEST)
     )
     set_tests_properties(CrowySampleStageBacklotTest
     PROPERTIES
-        SKIP_REGULAR_EXPRESSION "  SKIPPED ]"
+        SKIP_RETURN_CODE 77
     )
 endif()

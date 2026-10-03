@@ -12,80 +12,78 @@
 #include "MeshGenerator.hpp"
 #include "StringUtil.hpp"
 
-namespace
+namespace Crowy
 {
-    using namespace Crowy;
-    using Clock = std::chrono::steady_clock;
+    namespace
+    {
+        using Clock = std::chrono::steady_clock;
 
-    // the pool stages each array 16-byte aligned
-    constexpr u64 StagingAlign = 16;
-
-    constexpr u64 alignUp(u64 value, u64 alignment) noexcept {
-        return (value + alignment - 1) / alignment * alignment;
-    }
-
-    f64 secondsSince(Clock::time_point start) {
-        return std::chrono::duration<f64>(Clock::now() - start).count();
-    }
-
-    // a file the stage reads must be there and must not be an LFS pointer
-    void requireContent(const std::filesystem::path& file) {
-        if(!std::filesystem::exists(file))
-            throw std::runtime_error(std::format("stage: no file {}", file));
-        if(isLfsPointer(file)) {
-            throw std::runtime_error(std::format(
-                "stage: {} is a Git LFS pointer; run git lfs pull in the content repository",
-                file
-            ));
+        constexpr u64 alignUp(u64 value, u64 alignment) noexcept {
+            return (value + alignment - 1) / alignment * alignment;
         }
-    }
 
-    u64 stagingBytesOf(const MeshData& mesh) {
-        return alignUp(mesh.vertices.size() * sizeof(Vertex), StagingAlign)
-            + alignUp(mesh.indices.size() * sizeof(u32), StagingAlign);
-    }
+        // the OffsetAllocator rounds a request up to its bin but files a free
+        // region rounded down, so an exact capacity can still refuse
+        constexpr u32 withPoolSlack(u64 elements) noexcept {
+            return static_cast<u32>(elements + elements / 8 + 1024);
+        }
 
-    // the OffsetAllocator rounds a request up to its bin but files a free
-    // region rounded down, so a capacity that fits exactly can still refuse
-    constexpr u32 withPoolSlack(u64 elements) noexcept {
-        return static_cast<u32>(elements + elements / 8 + 1024);
-    }
+        f64 secondsSince(Clock::time_point start) {
+            return std::chrono::duration<f64>(Clock::now() - start).count();
+        }
 
-    StageCapacities capacitiesOf(const LoadedStage& stage) {
-        u64 vertices = stage.unitQuad.vertices.size();
-        u64 indices = stage.unitQuad.indices.size();
-        u64 staging = stagingBytesOf(stage.unitQuad);
-        for(const auto& model: stage.models) {
-            for(const auto& slot: model.slots) {
-                vertices += slot.mesh.vertices.size();
-                indices += slot.mesh.indices.size();
-                staging += stagingBytesOf(slot.mesh);
+        void requireContent(const std::filesystem::path& file) {
+            if(!std::filesystem::exists(file))
+                throw std::runtime_error(std::format("stage: no file {}", file));
+            if(isLfsPointer(file)) {
+                throw std::runtime_error(std::format(
+                    "stage: {} is a Git LFS pointer; run git lfs pull in the content repository",
+                    file
+                ));
             }
         }
 
-        u64 draws = stage.document.quads.size();
-        for(const auto& instance: stage.document.instances) {
-            const auto model = std::ranges::find(
-                stage.document.models,
-                instance.model,
-                &StageModel::id
-            );
-            draws += stage.models[static_cast<usize>(model - stage.document.models.begin())]
-                .slots.size();
+        u64 stagingBytesOf(const MeshData& mesh) {
+            // the pool stages each array 16-byte aligned
+            constexpr u64 StagingAlign = 16;
+
+            return alignUp(mesh.vertices.size() * sizeof(Vertex), StagingAlign)
+                + alignUp(mesh.indices.size() * sizeof(u32), StagingAlign);
         }
 
-        return StageCapacities{
-            .vertices = withPoolSlack(vertices),
-            .indices = withPoolSlack(indices),
-            .materials = countStageMaterials(stage),
-            .draws = static_cast<u32>(draws),
-            .stagingBytes = staging
-        };
-    }
-}
+        const ModelData& modelOf(const LoadedStage& stage, StrView id) {
+            const auto& rows = stage.document.models;
+            const auto row = std::ranges::find(rows, id, &StageModel::id);
 
-namespace Crowy
-{
+            return stage.models[static_cast<usize>(row - rows.begin())];
+        }
+
+        StageCapacities capacitiesOf(const LoadedStage& stage) {
+            u64 vertices = stage.unitQuad.vertices.size();
+            u64 indices = stage.unitQuad.indices.size();
+            u64 staging = stagingBytesOf(stage.unitQuad);
+            for(const auto& model: stage.models) {
+                for(const auto& slot: model.slots) {
+                    vertices += slot.mesh.vertices.size();
+                    indices += slot.mesh.indices.size();
+                    staging += stagingBytesOf(slot.mesh);
+                }
+            }
+
+            u64 draws = stage.document.quads.size();
+            for(const auto& instance: stage.document.instances)
+                draws += modelOf(stage, instance.model).slots.size();
+
+            return StageCapacities{
+                .vertices = withPoolSlack(vertices),
+                .indices = withPoolSlack(indices),
+                .materials = countStageMaterials(stage),
+                .draws = static_cast<u32>(draws),
+                .stagingBytes = staging
+            };
+        }
+    }
+
     bool isLfsPointer(const std::filesystem::path& file) {
         constexpr std::string_view Signature = "version https://git-lfs";
 
@@ -125,7 +123,7 @@ namespace Crowy
         for(const auto& row: stage.document.models) {
             const auto file = resolveStagePath(stage.document, row.path);
             requireContent(file);
-            stage.models.push_back(LoadModel(file));
+            stage.models.push_back(loadModel(file));
         }
         stage.timings.modelSeconds = secondsSince(start);
 
@@ -155,18 +153,15 @@ namespace Crowy
 
     u32 countStageMaterials(const LoadedStage& stage) {
         const auto& document = stage.document;
+        const auto emissive = [&](const ModelSlot& slot) {
+            const auto material =
+                std::ranges::find(document.materials, slot.material, &StageMaterial::id);
+            return material != document.materials.end() && material->emissive;
+        };
 
-        // the channels an instance whose model has an emissive slot glows on
         std::set<Str> channels;
         for(const auto& instance: document.instances) {
-            const auto model = std::ranges::find(document.models, instance.model, &StageModel::id);
-            const auto& data = stage.models[static_cast<usize>(model - document.models.begin())];
-            const auto emits = std::ranges::any_of(data.slots, [&](const ModelSlot& slot) {
-                const auto material =
-                    std::ranges::find(document.materials, slot.material, &StageMaterial::id);
-                return material != document.materials.end() && material->emissive;
-            });
-            if(emits)
+            if(std::ranges::any_of(modelOf(stage, instance.model).slots, emissive))
                 channels.insert(instance.emissiveChannel);
         }
 

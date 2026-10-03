@@ -4,26 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include "BacklotContent.hpp"
 #include "StageLoad.hpp"
 
 using namespace Crowy;
 
-namespace
-{
-    const std::filesystem::path BacklotRoot{CROWY_BACKLOT_DIR};
-}
-
-// The whole set on the CPU: what the editor's constructor will do before
-// RenderApp exists. Prints the numbers the smoke duration and the pool
-// capacities are set from.
+// prints the numbers the smoke window and the pool capacities come from
 TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
-    const auto scene = BacklotRoot / StageScenePath;
-    if(!std::filesystem::exists(scene))
-        GTEST_SKIP() << std::format("no {} (set CROWY_BACKLOT_DIR)", scene.string());
-    if(isLfsPointer(BacklotRoot / "Unity/Assets/Art/Textures/Palette.png"))
-        GTEST_SKIP() << "Backlot's files are Git LFS pointers (git lfs pull)";
-
-    const auto stage = loadStage(BacklotRoot);
+    const auto stage = loadStage(backlotRoot());
 
     EXPECT_EQ(stage.models.size(), 124u);
     // eight atlases and the palette, which both palette materials share
