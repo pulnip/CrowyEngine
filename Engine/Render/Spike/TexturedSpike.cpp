@@ -25,12 +25,16 @@ namespace Crowy
     //     and stays as lit as the floor in the sun
     //   - a translucent card whose texel alpha steps 1/4, 1/2, 3/4, 1: four
     //     bands of red over the floor, the last one solid
+    //   - a masked card, a green frame cut at its row's 0.6: the magenta
+    //     middle (alpha 0 and 1/2) shows the floor, in its shadow too
     //
-    //   PASS: the picture equals the golden.
+    //   PASS: the picture equals the golden, and the one drawn with
+    //   debug.depthPrepass off.
     class TexturedSpike: public RenderApp {
         static constexpr u32 PaletteSize = 4;
         static constexpr u32 GridSize = 256;
         static constexpr u32 StripSize = 4;
+        static constexpr u32 FrameSize = 4;
 
         struct Texel {
             u8 r = 0;
@@ -93,6 +97,12 @@ namespace Crowy
             const auto strip = scene.Textures().Add(
                 TextureResource{
                     .texture = makeTexture(stripTexels(), StripSize, 1),
+                    .sampler = TextureSampler::NearestClamp
+                }
+            );
+            const auto frame = scene.Textures().Add(
+                TextureResource{
+                    .texture = makeTexture(frameTexels(), FrameSize),
                     .sampler = TextureSampler::NearestClamp
                 }
             );
@@ -159,6 +169,14 @@ namespace Crowy
                 .maps = {.albedo = strip}
             });
             add(scene, veil, card, {0.7f, 0.3f, 0.4f}, {0.5f, 0.5f, 0.0f}, 0.5f);
+
+            // the middle's alpha of 1/2 is cut only because the row says 0.6
+            const auto stencil = addMaterial(scene, MaterialResource{
+                .data = {.roughness = 0.9f, .alphaCutoff = 0.6f},
+                .pipeline = maskedPipeline(),
+                .maps = {.albedo = frame}
+            });
+            add(scene, stencil, card, {0.9f, 0.55f, -0.4f}, {0.5f, 0.5f, 0.0f}, 0.4f);
         }
 
     private:
@@ -211,6 +229,17 @@ namespace Crowy
             return pipeline;
         }
 
+        // cut where the texel's alpha falls below the row's cutoff, in the
+        // depth passes as in color
+        static MaterialPipelineDesc maskedPipeline() {
+            auto pipeline = opaquePipeline();
+            pipeline.fragmentShader.entryPoint = "fs_masked";
+            pipeline.maskShader = {.path = pipeline.fragmentShader.path, .entryPoint = "fs_masked_depth"};
+            pipeline.domain = MaterialDomain::Masked;
+
+            return pipeline;
+        }
+
         // sixteen colors far apart, row-major from the top-left
         static std::vector<Texel> paletteTexels() {
             static constexpr std::array<Texel, PaletteSize * PaletteSize> Colors{{
@@ -250,6 +279,20 @@ namespace Crowy
                 texels.push_back(Texel{.r = 230, .g = 25, .b = 75, .a = static_cast<u8>(i * 255 / StripSize)});
 
             return texels;
+        }
+
+        // a green frame around a magenta middle of alpha 0 and 1/2
+        static std::vector<Texel> frameTexels() {
+            constexpr Texel Frame{.r = 40, .g = 200, .b = 90};
+            constexpr Texel Gone{.r = 255, .g = 0, .b = 255, .a = 0};
+            constexpr Texel Half{.r = 255, .g = 0, .b = 255, .a = 128};
+
+            return {
+                Frame, Frame, Frame, Frame,
+                Frame, Gone, Half, Frame,
+                Frame, Half, Gone, Frame,
+                Frame, Frame, Frame, Frame,
+            };
         }
 
         static MaterialHandle addMaterial(RenderScene& scene, MaterialResource material) {
