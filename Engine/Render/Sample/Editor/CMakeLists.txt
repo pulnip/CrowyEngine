@@ -2,6 +2,7 @@
 # content library, so the library can move to an editor executable of its own.
 add_library(SampleEditor STATIC
     EditorCamera.cpp
+    EditorPick.cpp
     EditorSession.cpp
 )
 
@@ -17,6 +18,8 @@ PUBLIC
     Crowy::Core
     Crowy::Platform
     Crowy::Reflection
+    Crowy::Render
+    Crowy::Serialization
 )
 
 if(CROWY_ENABLE_TEST)
