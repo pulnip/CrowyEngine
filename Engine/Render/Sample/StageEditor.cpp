@@ -1,6 +1,7 @@
 #include <array>
 #include <cstdio>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <optional>
 
@@ -56,6 +57,9 @@ namespace Crowy
         InspectorPanel inspector;
         // a hold the mouse took, which only the mouse drags and lets go
         bool mouseHolds = false;
+        // the frame a capture hid the chrome for, and whether it was shown
+        std::optional<u64> chromeBackAt;
+        bool chromeWasShown = false;
         // last: it leaves the port first
         std::optional<EditorSession> session;
 
@@ -101,8 +105,15 @@ namespace Crowy
             };
             constexpr std::array LightingKeys{KeyCode::F1, KeyCode::F2, KeyCode::F3, KeyCode::F4};
 
+            // past the captured frame, the chrome comes back as it was
+            if(chromeBackAt && FrameNumber() > *chromeBackAt) {
+                Debug().showPanel = chromeWasShown;
+                chromeBackAt.reset();
+            }
             if(input.IsKeyPressed(KeyCode::P))
                 Debug().showPanel = !Debug().showPanel;
+            if(input.IsKeyPressed(KeyCode::C))
+                capture();
             if(input.IsKeyPressed(KeyCode::F5))
                 session->Reload();
             if(input.IsKeyPressed(KeyCode::Space))
@@ -169,13 +180,13 @@ namespace Crowy
 
         std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList& cmdList) override {
             constexpr CStr ToolbarHint =
-                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, Space plays, arrows step, F5 reloads, P hides";
+                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, Space plays, arrows step, F5 reloads, C captures, P hides";
 
             // the chrome stays out of every capture unless asked for
             if(Debug().showPanel) {
                 if(auto* port = Port())
                     drawPortStatusChip(port->Status());
-                drawEditorToolbar(*session, ToolbarHint);
+                drawEditorToolbar(*session, ToolbarHint, [this] { capture(); });
                 hierarchy.Draw(*session);
                 inspector.Draw(*session, uiContext);
                 drawLightMarkers(*session, Scene());
@@ -219,6 +230,26 @@ namespace Crowy
                 },
                 .unexpose = [port](StrView name) { port->Unexpose(name); }
             };
+        }
+
+        // what a script does: the chrome off, the next frame captured to
+        // captures/StageEditor/<cut>@<key>-f<frame>.bmp, then the chrome back
+        void capture() {
+            const auto& state = session->State();
+            const auto frame = FrameNumber() + 1;
+            const auto folder = std::filesystem::absolute("captures/StageEditor");
+            std::filesystem::create_directories(folder);
+            const auto file = toUTF8String(folder / std::format("{}@{}-f{}.bmp", state.cut, state.key, frame));
+            if(const auto refusal = RequestCapture(file, frame); !refusal.empty()) {
+                session->Report(refusal);
+                return;
+            }
+
+            if(!chromeBackAt)
+                chromeWasShown = Debug().showPanel;
+            Debug().showPanel = false;
+            chromeBackAt = frame;
+            session->Report(std::format("capturing frame {} to {}", frame, file));
         }
 
         EditorCamera& camera() noexcept {

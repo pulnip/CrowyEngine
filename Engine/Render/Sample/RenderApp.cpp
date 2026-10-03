@@ -731,6 +731,18 @@ namespace Crowy
         return {};
     }
 
+    Str RenderApp::RequestCapture(Str path, u64 frame) {
+        if(frame <= FrameNumber())
+            return std::format("frame {} has already been submitted (the last frame is {})", frame, FrameNumber());
+        if(swapchain->PendingFrameDumps() + 1 > MaxFrameDumps)
+            return std::format("the capture queue is full ({} pending)", swapchain->PendingFrameDumps());
+        if(isCaptureQueued(frame, {}, path))
+            return std::format("a capture for frame {} or to '{}' is already queued", frame, path);
+        swapchain->RequestFrameDump(std::move(path), frame);
+
+        return {};
+    }
+
     bool RenderApp::isCaptureQueued(
         u64 frame,
         StrView target,

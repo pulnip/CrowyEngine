@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <vector>
 
 #include "EditorSession.hpp"
@@ -11,6 +12,7 @@ namespace Crowy
 {
     struct HierarchyGroup;
 
+    using CaptureRequest = std::function<void()>;
     using HierarchyGroups = std::vector<HierarchyGroup>;
 
     // ASCII letters only, which is what names and models are written in
@@ -38,7 +40,7 @@ namespace Crowy
 
     // Raw ImGui panels over a session, each in its own window; `hint` names
     // the host's keys. Markers and the highlight draw on the foreground list.
-    void drawEditorToolbar(EditorSession& session, StrView hint);
+    void drawEditorToolbar(EditorSession& session, StrView hint, const CaptureRequest& capture);
     void drawLightMarkers(const EditorSession& session, const RenderScene& scene);
     void drawSelectionHighlight(const EditorSession& session, const RenderScene& scene);
     // the selection's handles, the held or hovered one lit, the change beside the cursor

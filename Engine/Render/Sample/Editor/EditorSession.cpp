@@ -153,6 +153,10 @@ namespace Crowy
         Sync();
     }
 
+    void EditorSession::Report(Str status) {
+        report(std::move(status));
+    }
+
     void EditorSession::TogglePause() {
         state.paused = !state.paused;
         Sync();

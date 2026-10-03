@@ -224,6 +224,9 @@ namespace Crowy
         // the lit views' clear, as a lighting key's sky; the walker is
         // rebuilt with it at the next frame
         void SetClearColor(Color color) noexcept { config.clearColor = color; }
+        // the back buffer of `frame` to `path` as a BMP, with the
+        // capture_frame verb's checks; why not, empty once queued
+        Str RequestCapture(Str path, u64 frame);
 
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }

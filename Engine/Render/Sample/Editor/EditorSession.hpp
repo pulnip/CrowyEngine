@@ -234,6 +234,8 @@ namespace Crowy
         // reads editor.scene again at the next Advance
         void Reload();
         void TogglePause();
+        // an outcome the host reports in the status line
+        void Report(Str status);
         // pauses and seeks `frames` sixtieths of a second, never before 0
         void StepTime(i32 frames);
 

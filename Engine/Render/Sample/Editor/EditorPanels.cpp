@@ -46,10 +46,10 @@ namespace Crowy
         }
     }
 
-    void drawEditorToolbar(EditorSession& session, StrView hint) {
+    void drawEditorToolbar(EditorSession& session, StrView hint, const CaptureRequest& capture) {
         ImGui::SetNextWindowPos(ImVec2(8.0f, 8.0f), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if(ImGui::Begin("Editor##EditorToolbar")) {
+        ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 0.0f), ImVec2(420.0f, 1000.0f));
+        if(ImGui::Begin("Editor##EditorToolbar", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             const auto& content = session.Content();
             auto& state = session.State();
 
@@ -67,6 +67,29 @@ namespace Crowy
                 }
                 ImGui::EndCombo();
             }
+            // scene time: play or pause, a sixtieth back or on
+            if(ImGui::Button(state.paused ? "Play" : "Pause"))
+                session.TogglePause();
+            ImGui::SameLine();
+            if(ImGui::ArrowButton("##TimeBack", ImGuiDir_Left))
+                session.StepTime(-1);
+            ImGui::SameLine();
+            if(ImGui::ArrowButton("##TimeOn", ImGuiDir_Right))
+                session.StepTime(1);
+            ImGui::SameLine();
+            ImGui::Text("%s  %.3f s", state.paused ? "paused" : "playing", state.time);
+
+            if(ImGui::Button(state.reload ? "Reload (next frame)" : "Reload"))
+                session.Reload();
+            ImGui::SameLine();
+            const auto slash = state.scene.find_last_of("/\\");
+            const auto file = slash == Str::npos ? state.scene : state.scene.substr(slash + 1);
+            ImGui::Text("revision %u  %s", state.revision, file.c_str());
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", state.scene.c_str());
+            if(ImGui::Button("Capture"))
+                capture();
+
             ImGui::TextWrapped("%s", state.status.c_str());
             ImGui::TextDisabled("%.*s", static_cast<int>(hint.size()), hint.data());
         }
@@ -241,7 +264,7 @@ namespace Crowy
         if(session.TakeSelectionChanged())
             reveal = session.Selection();
 
-        ImGui::SetNextWindowPos(ImVec2(8.0f, 140.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(8.0f, 220.0f), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(420.0f, 640.0f), ImGuiCond_FirstUseEver);
         if(!ImGui::Begin("Hierarchy##EditorHierarchy")) {
             ImGui::End();
