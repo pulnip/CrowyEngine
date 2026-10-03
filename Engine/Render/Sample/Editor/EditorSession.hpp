@@ -7,6 +7,7 @@
 
 #include "ClassRegistry.hpp"
 #include "EditorCamera.hpp"
+#include "EditorGizmo.hpp"
 #include "EditorPick.hpp"
 #include "Primitives.hpp"
 #include "PropertyWrite.hpp"
@@ -51,6 +52,24 @@ namespace Crowy
         void* target = nullptr;
         const TypeDesc* desc = nullptr;
         DirtyCallback apply;
+        // what the gizmo offers on the row; only the first section's counts
+        GizmoParts gizmo = GizmoParts::None;
+    };
+
+    // the selection's handles on screen, for a script to press where a person
+    // sees them; EditorNoPick where one is not shown, and a write is restored
+    struct GizmoView {
+        Vec2 pivot = EditorNoPick;
+        // meters an unforeshortened arrow spans
+        f32 length = 0.0f;
+        GizmoAim moveX;
+        GizmoAim moveY;
+        GizmoAim moveZ;
+        GizmoAim ring;
+        GizmoAim scale;
+        GizmoAim scaleX;
+        GizmoAim scaleY;
+        GizmoAim scaleZ;
     };
 
     // the port as the session uses it, empty where there is none
@@ -71,6 +90,19 @@ namespace Crowy
         // a pixel to pick at, window points from the top-left; every write
         // picks, and the field reads back as EditorNoPick
         Vec2 pickAt = EditorNoPick;
+        // a pixel to press the gizmo at; every write takes the handle under
+        // it, or none, and reads back as EditorNoPick
+        Vec2 grab = EditorNoPick;
+        // a pixel to drag the held handle to, measured from the grab; every
+        // write moves the selection and reads back as EditorNoPick
+        Vec2 drag = EditorNoPick;
+        // the held handle; None releases where the drag stands, and any other
+        // write is reverted
+        GizmoHandle handle = GizmoHandle::None;
+        // drags snap their change: 0.25 m, 15 degrees, x0.1
+        bool snap = false;
+        // a write of true puts the row back as the grab found it and releases
+        bool cancel = false;
         // the last refusal or outcome; a write is reverted
         Str status;
     };
@@ -101,9 +133,10 @@ namespace Crowy
     public:
         // the state the camera reports once it has flown off a cut
         static constexpr CStr FreeCut = "free";
-        // the port's names for the state and the camera
+        // the port's names for the state, the camera and the gizmo's aims
         static constexpr CStr StateTarget = "editor";
         static constexpr CStr CameraTarget = "camera";
+        static constexpr CStr GizmoTarget = "gizmo";
         // the port's name for the selection's first section; the others are
         // "selection.<label>"
         static constexpr CStr SelectionTarget = "selection";
@@ -111,9 +144,28 @@ namespace Crowy
         static constexpr f32 MarkerRadius = 8.0f;
 
     private:
+        // the selection's row as the gizmo writes it, resolved as a port
+        // write resolves it
+        struct GizmoRow {
+            Vec3* position = nullptr;
+            f32* yaw = nullptr;
+            Vec3* scale = nullptr;
+            GizmoParts parts = GizmoParts::None;
+        };
+
+        // a held handle and the row as the grab found it
+        struct GizmoHold {
+            GizmoDrag drag;
+            Vec3 position{};
+            f32 yaw = 0.0f;
+            Vec3 scale{1.0f, 1.0f, 1.0f};
+        };
+
         EditorCamera& camera;
         EditorContent& content;
         const RenderScene& scene;
+        // the gizmo lives only while the chrome is shown
+        const bool& chromeShown;
         ClearColorSink clearColor;
         EditorPort port;
         EditorState state;
@@ -127,6 +179,9 @@ namespace Crowy
         bool selectionChanged = false;
         // raised when anything but the panel changed what the inspector shows
         bool inspectorDirty = false;
+        std::optional<GizmoRow> gizmoRow;
+        std::optional<GizmoHold> hold;
+        GizmoView gizmoView;
 
     public:
         ~EditorSession();
@@ -136,6 +191,7 @@ namespace Crowy
             EditorCamera& camera,
             EditorContent& content,
             const RenderScene& scene,
+            const bool& chromeShown,
             ClearColorSink clearColor,
             EditorPort port = {}
         );
@@ -154,6 +210,12 @@ namespace Crowy
         void Select(std::optional<usize> object);
         // selects what the pixel shows, or nothing
         void PickAt(Vec2 pixel);
+        // presses the gizmo at the pixel; whether a handle is held after it
+        bool Grab(Vec2 pixel);
+        // the held handle follows the pixel; `snap` is Ctrl
+        void DragTo(Vec2 pixel, bool snap);
+        void Release();
+        void Cancel();
 
         EditorState& State() noexcept { return state; }
         const EditorState& State() const noexcept { return state; }
@@ -164,6 +226,11 @@ namespace Crowy
         bool TakeSelectionChanged() noexcept;
         bool TakeInspectorDirty() noexcept;
         const InspectSections& Inspected() const noexcept { return inspected; }
+        GizmoHandle Held() const noexcept { return hold ? hold->drag.handle : GizmoHandle::None; }
+        const GizmoView& Gizmo() const noexcept { return gizmoView; }
+        // the selection's gizmo as the camera sees it now; nothing when it has
+        // none, the chrome is hidden, or it would reach the near plane
+        std::optional<GizmoLayout> SelectionGizmo() const;
 
     private:
         void exposeTargets();
@@ -173,6 +240,17 @@ namespace Crowy
         bool applyKey();
         bool applySelected();
         void applyPickAt();
+        void applyGrab();
+        void applyDrag();
+        void applyHandle();
+        void applyCancel();
+        void release();
+        // resolves the first section's position, yaw and scale
+        void bindGizmo();
+        void refreshGizmo();
+        // a write into a section's row reaches the scene and the panel; the
+        // `selection` exposures and the gizmo both make it
+        void wroteSection(usize section);
         std::optional<usize> markerAt(Vec2 pixel) const;
         void refuse(Str status);
         void reportSelection();

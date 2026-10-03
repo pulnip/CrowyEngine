@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <functional>
 #include <map>
@@ -9,12 +10,27 @@
 #include "ClassRegistry.hpp"
 #include "DOM.hpp"
 #include "EditorSession.hpp"
+#include "Object.hpp"
 
 using namespace Crowy;
 
 namespace
 {
     constexpr f32 HalfPi = std::numbers::pi_v<f32> / 2;
+    constexpr Vec2 Window{1920.0f, 1080.0f};
+
+    // a row the gizmo can move, turn and scale
+    struct FakeRow {
+        Vec3 position{};
+        f32 yaw = 0.0f;
+        Vec3 scale{1.0f, 1.0f, 1.0f};
+    };
+
+    void expectNear(Vec3 actual, Vec3 expected, f32 tolerance) {
+        EXPECT_NEAR(actual.x, expected.x, tolerance);
+        EXPECT_NEAR(actual.y, expected.y, tolerance);
+        EXPECT_NEAR(actual.z, expected.z, tolerance);
+    }
 
     Vec4 project(const Mat4& m, Vec3 p) {
         const auto clip = m * Vec4{p.x, p.y, p.z, 1.0f};
@@ -22,8 +38,8 @@ namespace
         return clip / clip.w;
     }
 
-    // two cuts, two keys and three objects, the last a light whose section
-    // has no apply; remembers what it was asked to apply
+    // three cuts, two keys and three objects: a row, a box scaled per axis,
+    // and a light whose section has no apply; remembers what it applied
     class FakeContent final: public EditorContent {
     public:
         std::vector<EditorCut> cuts{
@@ -33,6 +49,13 @@ namespace
                 .position = {0.0f, 120.0f, 0.0f},
                 .pitch = HalfPi,
                 .lens = {.orthographic = true, .orthoHalfHeight = 52.0f}
+            },
+            // 30 degrees above the origin at 10 m: an arrow there is 0.8660254 m
+            EditorCut{
+                .name = "down",
+                .position = {0.0f, 5.0f, -8.660254f},
+                .pitch = HalfPi / 3,
+                .lens = {.fovY = 2 * HalfPi / 3}
             }
         };
         std::vector<Str> keys{"day", "night"};
@@ -45,7 +68,7 @@ namespace
         };
         std::optional<LightHandle> lamp;
         // stands in for the content's rows
-        std::vector<EditorState> rows{3};
+        std::vector<FakeRow> rows{3};
         u32 applies = 0;
 
         std::span<const EditorCut> Cuts() const override { return cuts; }
@@ -65,8 +88,19 @@ namespace
             DirtyCallback apply;
             if(object != 2)
                 apply = [this] { ++applies; };
+            constexpr std::array Parts{
+                combine(GizmoParts::Move, GizmoParts::Turn, GizmoParts::Scale),
+                combine(GizmoParts::Move, GizmoParts::Turn, GizmoParts::ScaleAxes),
+                GizmoParts::Move
+            };
 
-            return {InspectSection{.label = "row", .target = &rows[object], .desc = GetDesc<EditorState>(), .apply = apply}};
+            return {InspectSection{
+                .label = "row",
+                .target = &rows[object],
+                .desc = GetDesc<FakeRow>(),
+                .apply = apply,
+                .gizmo = Parts[object]
+            }};
         }
     };
 
@@ -100,14 +134,33 @@ namespace
         RenderScene scene;
         EditorCamera camera{content.cuts.front()};
         Color clear{};
-        EditorSession session{camera, content, scene, [this](Color color) { clear = color; }, port.Bind()};
+        bool chrome = true;
+        EditorSession session{camera, content, scene, chrome, [this](Color color) { clear = color; }, port.Bind()};
 
         Fixture() {
             content.lamp = scene.Lights().Add(LightSnapshot{.position = LampPosition});
             session.Start("wide", "day");
         }
+
+        // the down cut with `object` selected, its gizmo measured
+        void Hold(usize object) {
+            session.State().cut = "down";
+            session.Sync();
+            session.SetViewport(Window);
+            session.Select(object);
+        }
+
+        void Write() {
+            port.exposures.at("editor").onDirty();
+        }
     };
 }
+
+CROWY_STRUCT(FakeRow)
+    .SetProperty("position", &FakeRow::position)
+    .SetProperty("yaw", &FakeRow::yaw)
+    .SetProperty("scale", &FakeRow::scale)
+CROWY_STRUCT_END(FakeRow)
 
 TEST(EditorCamera, PlanCutLooksStraightDownWithNorthUp) {
     FakeContent content;
@@ -292,7 +345,7 @@ TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
     EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[0]);
 
     f.session.Select(1);
-    EXPECT_EQ(f.port.exposures.size(), 3u);
+    EXPECT_EQ(f.port.exposures.size(), 4u);
     EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[1]);
 
     f.session.TakeInspectorDirty();
@@ -311,10 +364,11 @@ TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     RenderScene scene;
     EditorCamera camera{content.cuts.front()};
     {
-        EditorSession session{camera, content, scene, [](Color) {}, port.Bind()};
+        const bool chrome = true;
+        EditorSession session{camera, content, scene, chrome, [](Color) {}, port.Bind()};
         session.Start("wide", "day");
         session.Select(0);
-        EXPECT_EQ(port.exposures.size(), 3u);
+        EXPECT_EQ(port.exposures.size(), 4u);
     }
     EXPECT_TRUE(port.exposures.empty());
 }
@@ -359,4 +413,159 @@ TEST(EditorSession, ASectionWithoutApplyIsSafeToWrite) {
     EXPECT_NO_THROW(f.session.Inspected()[0].apply());
     EXPECT_NO_THROW(f.port.exposures.at("selection").onDirty());
     EXPECT_EQ(f.content.applies, 0u);
+}
+
+// a port script presses the X arrow where a person sees it and drags it to
+// its reach: one meter, through the selection's apply and the panel's rebuild
+TEST(EditorGizmo, APortGrabAndDragWriteTheRow) {
+    Fixture f;
+    f.Hold(0);
+    const auto aim = f.session.Gizmo().moveX;
+    EXPECT_NEAR(aim.grab.x, 1041.0f, 0.05f);
+    EXPECT_NEAR(aim.grab.y, 540.0f, 0.05f);
+    f.session.TakeInspectorDirty();
+
+    f.session.State().grab = aim.grab;
+    f.Write();
+    EXPECT_EQ(f.session.State().handle, GizmoHandle::MoveX);
+    EXPECT_EQ(f.session.State().grab, EditorNoPick);
+
+    f.session.State().drag = aim.reach;
+    f.Write();
+    expectNear(f.content.rows[0].position, {1.0f, 0.0f, 0.0f}, 1e-4f);
+    EXPECT_EQ(f.content.applies, 1u);
+    EXPECT_TRUE(f.session.TakeInspectorDirty());
+    EXPECT_EQ(f.session.State().drag, EditorNoPick);
+
+    // measured from the grab, the same pixel again leaves the meter
+    f.session.State().drag = aim.reach;
+    f.Write();
+    EXPECT_NEAR(f.content.rows[0].position.x, 1.0f, 1e-4f);
+    EXPECT_EQ(f.content.applies, 2u);
+}
+
+TEST(EditorGizmo, TheMouseAndThePortLeaveTheSameRow) {
+    const auto perMeter = 81.0f / 0.8660254f;
+
+    Fixture hand;
+    hand.Hold(0);
+    const auto tip = hand.session.Gizmo().moveX.grab;
+    const auto to = tip + Vec2{0.9f * perMeter, 0.0f};
+    ASSERT_TRUE(hand.session.Grab(tip));
+    hand.session.DragTo(to, true);
+    hand.session.Release();
+    EXPECT_FLOAT_EQ(hand.content.rows[0].position.x, 1.0f);
+    EXPECT_EQ(hand.session.Held(), GizmoHandle::None);
+
+    Fixture script;
+    script.Hold(0);
+    script.session.State().snap = true;
+    script.session.State().grab = tip;
+    script.Write();
+    script.session.State().drag = to;
+    script.Write();
+    script.session.State().handle = GizmoHandle::None;
+    script.Write();
+    EXPECT_EQ(script.content.rows[0].position, hand.content.rows[0].position);
+}
+
+// None lets go where the drag stands; a handle no press took is refused;
+// cancel puts the row back bit for bit
+TEST(EditorGizmo, ReleaseAndCancel) {
+    Fixture f;
+    f.Hold(0);
+    const auto aim = f.session.Gizmo().moveX;
+
+    f.session.State().handle = GizmoHandle::MoveZ;
+    f.Write();
+    EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
+    EXPECT_NE(f.session.State().status.find("editor.grab"), Str::npos);
+
+    ASSERT_TRUE(f.session.Grab(aim.grab));
+    f.session.DragTo(aim.reach, false);
+    f.session.State().handle = GizmoHandle::None;
+    f.Write();
+    f.session.State().drag = aim.reach + Vec2{100.0f, 0.0f};
+    f.Write();
+    EXPECT_NEAR(f.content.rows[0].position.x, 1.0f, 1e-4f);
+    EXPECT_NE(f.session.State().status.find("editor.grab"), Str::npos);
+
+    const auto start = f.content.rows[0].position;
+    ASSERT_TRUE(f.session.Grab(f.session.Gizmo().moveX.grab));
+    f.session.DragTo(f.session.Gizmo().moveX.reach + Vec2{50.0f, 0.0f}, false);
+    EXPECT_NE(f.content.rows[0].position, start);
+    f.session.State().cancel = true;
+    f.Write();
+    EXPECT_EQ(f.content.rows[0].position, start);
+    EXPECT_EQ(f.session.Held(), GizmoHandle::None);
+    EXPECT_FALSE(f.session.State().cancel);
+}
+
+TEST(EditorGizmo, TheGizmoLivesWithTheChrome) {
+    Fixture f;
+    f.chrome = false;
+    f.Hold(0);
+    EXPECT_EQ(f.session.Gizmo().pivot, EditorNoPick);
+    f.session.State().grab = {1041.0f, 540.0f};
+    f.Write();
+    EXPECT_EQ(f.session.Held(), GizmoHandle::None);
+    EXPECT_NE(f.session.State().status.find("debug.showPanel"), Str::npos);
+
+    f.chrome = true;
+    f.session.Update(Window);
+    ASSERT_TRUE(f.session.Grab(f.session.Gizmo().moveX.grab));
+    f.chrome = false;
+    f.session.Update(Window);
+    EXPECT_EQ(f.session.Held(), GizmoHandle::None);
+    EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
+}
+
+TEST(EditorGizmo, AnotherSelectionLetsGo) {
+    Fixture f;
+    f.Hold(0);
+    ASSERT_TRUE(f.session.Grab(f.session.Gizmo().moveX.grab));
+    f.session.Select(1);
+    EXPECT_EQ(f.session.Held(), GizmoHandle::None);
+
+    f.session.State().drag = {1200.0f, 540.0f};
+    f.Write();
+    EXPECT_EQ(f.content.rows[0].position, Vec3{});
+    EXPECT_EQ(f.content.rows[1].position, Vec3{});
+}
+
+TEST(EditorGizmo, ALightMovesOnlyAndABoxScalesPerAxis) {
+    Fixture f;
+    f.Hold(2);
+    EXPECT_NE(f.session.Gizmo().moveX.grab, EditorNoPick);
+    EXPECT_EQ(f.session.Gizmo().ring.grab, EditorNoPick);
+    EXPECT_EQ(f.session.Gizmo().scale.grab, EditorNoPick);
+
+    f.session.Select(1);
+    EXPECT_EQ(f.session.Gizmo().scale.grab, EditorNoPick);
+    const auto aim = f.session.Gizmo().scaleX;
+    ASSERT_NE(aim.grab, EditorNoPick);
+    ASSERT_TRUE(f.session.Grab(aim.grab));
+    f.session.DragTo(aim.reach, false);
+    expectNear(f.content.rows[1].scale, {2.0f, 1.0f, 1.0f}, 1e-3f);
+}
+
+TEST(EditorGizmo, TheRingWritesAWrappedYaw) {
+    Fixture f;
+    f.content.rows[0].yaw = 300.0f;
+    f.Hold(0);
+    const auto aim = f.session.Gizmo().ring;
+    ASSERT_TRUE(f.session.Grab(aim.grab));
+    EXPECT_EQ(f.session.Held(), GizmoHandle::Ring);
+    f.session.DragTo(aim.reach, false);
+    EXPECT_NEAR(f.content.rows[0].yaw, 30.0f, 1e-3f);
+}
+
+TEST(EditorGizmo, AWriteToTheGizmoViewIsPutBack) {
+    Fixture f;
+    f.Hold(0);
+    auto& exposure = f.port.exposures.at("gizmo");
+    static_cast<GizmoView*>(exposure.target)->moveX.grab = {5.0f, 5.0f};
+    exposure.onDirty();
+
+    EXPECT_NEAR(f.session.Gizmo().moveX.grab.x, 1041.0f, 0.05f);
 }

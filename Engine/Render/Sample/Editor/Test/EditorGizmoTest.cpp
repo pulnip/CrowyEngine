@@ -45,7 +45,7 @@ namespace
         }};
     }
 
-    // Backlot's street cut in the engine's signs
+    // a street-level cut: 4 degrees up, yaw 45, a 50 degree lens, near 0.71
     EditorCamera streetCamera() {
         return EditorCamera{EditorCut{
             .name = "street",

@@ -79,7 +79,14 @@ namespace Crowy
             textures = uploadStageTextures(scene, Device(), stage);
             bindings = populateStage(scene, stage, geometry, textures);
             content.emplace(scene, stage, bindings);
-            session.emplace(camera(), *content, scene, [this](Color color) { SetClearColor(color); }, editorPort());
+            session.emplace(
+                camera(),
+                *content,
+                scene,
+                Debug().showPanel,
+                [this](Color color) { SetClearColor(color); },
+                editorPort()
+            );
             session->Start(content->Cuts().front().name, stage.document.defaultKey);
             // a port pick may come before the first frame measures the window
             const auto& window = Runtime().window;
