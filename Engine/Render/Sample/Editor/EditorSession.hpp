@@ -27,6 +27,9 @@ namespace Crowy
     using EditorObjects = std::span<const EditorObject>;
     using MeshList = std::span<const MeshData* const>;
 
+    // EditorState::pickAt when no pick is pending
+    inline constexpr Vec2 EditorNoPick{-1.0f, -1.0f};
+
     // what the editor can select: one row of the content, named across kinds
     enum class EditorObjectKind : u8 {
         Instance,
@@ -68,8 +71,9 @@ namespace Crowy
         Str key;
         // an object's name, or empty; a unique bare name is accepted
         Str selected;
-        // a pixel to pick at, window points from the top-left
-        Vec2 pickAt{-1.0f, -1.0f};
+        // a pixel to pick at, window points from the top-left; every write
+        // picks, and the field reads back as EditorNoPick
+        Vec2 pickAt = EditorNoPick;
         // the last refusal or outcome; a write is reverted
         Str status;
     };

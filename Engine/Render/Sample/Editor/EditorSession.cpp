@@ -83,7 +83,7 @@ namespace Crowy
             state.cut = applied.cut;
         if(state.key != applied.key && !applyKey())
             state.key = applied.key;
-        if(state.pickAt != applied.pickAt)
+        if(state.pickAt != EditorNoPick)
             applyPickAt();
         else if(state.selected != applied.selected && !applySelected())
             state.selected = applied.selected;
@@ -133,8 +133,6 @@ namespace Crowy
 
     void EditorSession::PickAt(Vec2 pixel) {
         state.pickAt = pixel;
-        // a click on the same pixel picks again: the scene may have changed
-        applied.pickAt = Vec2{-2.0f, -2.0f};
         Sync();
     }
 
@@ -223,6 +221,8 @@ namespace Crowy
             rayThroughPixel(camera, state.pickAt, viewport),
             [this](PrimitiveHandle primitive) { return content.MeshesOf(primitive); }
         );
+        // a pulse: the same pixel written again picks again, as a click does
+        state.pickAt = EditorNoPick;
         Select(hit ? content.ObjectOf(hit->primitive) : std::nullopt);
     }
 

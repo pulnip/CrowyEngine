@@ -254,6 +254,20 @@ TEST(EditorSession, APickOnEmptySpaceClears) {
     EXPECT_EQ(f.session.State().selected, "");
 }
 
+// a write picks every time, so the same pixel written again picks again
+TEST(EditorSession, PickAtIsAPulse) {
+    Fixture f;
+    f.session.Update({1920.0f, 1080.0f});
+    for(int write = 0; write < 2; ++write) {
+        f.session.Select(1);
+        f.session.State().pickAt = Vec2{960.0f, 540.0f};
+        f.port.exposures.at("editor").onDirty();
+
+        EXPECT_FALSE(f.session.Selection().has_value()) << "write " << write;
+        EXPECT_EQ(f.session.State().pickAt, EditorNoPick);
+    }
+}
+
 // the selection's section is exposed as `selection`, re-pointed on every
 // selection; a port write applies and dirties the inspector
 TEST(EditorSession, TheSelectionIsExposedAndRepointed) {

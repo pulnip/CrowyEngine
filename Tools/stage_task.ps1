@@ -82,6 +82,26 @@ try {
     & $tool $before $after | Out-Null
     Assert-That ($LASTEXITCODE -eq 1) "the capture after the move differs from the one before"
 
+    # the pick follows the move: the old pixel misses the lamp, and a scan
+    # along its row finds the pole again
+    Set-PortProperty editor pickAt $lampPixel
+    $old = Get-PortProperty editor selected
+    Assert-That ($old -ne $lampName) "a click at the old pixel no longer selects the lamp (got '$old')"
+    $found = -1
+    for ($offset = 3; $offset -le 900 -and $found -lt 0; $offset += 3) {
+        foreach ($x in @(($lampPixel[0] + $offset), ($lampPixel[0] - $offset))) {
+            if ($x -lt 0 -or $x -ge 1920) {
+                continue
+            }
+            Set-PortProperty editor pickAt @($x, $lampPixel[1])
+            if ((Get-PortProperty editor selected) -eq $lampName) {
+                $found = $x
+                break
+            }
+        }
+    }
+    Assert-That ($found -ge 0) "a click at $found, $($lampPixel[1]) selects the moved lamp"
+
     # 5. night, and a capture
     Set-EditorField key night
     Assert-That $true "the night key"
