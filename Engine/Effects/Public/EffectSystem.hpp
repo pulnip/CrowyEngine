@@ -26,7 +26,8 @@ namespace Crowy
         public:
             ParticleEffectDesc desc;
             FieldBuffer particles;
-            ComputeKernel step;
+            // replaced whole by a reload
+            std::unique_ptr<ComputeKernel> step;
             // its next step, counted from 0
             u32 next = 0;
 
@@ -82,6 +83,11 @@ namespace Crowy
             const HookPassContext& context,
             PipelineCache& pipelines
         );
+
+        // every effect's cs_step compiled again and swapped in only when all
+        // of them built, the old ones retired after the frames in flight; a
+        // failure leaves the old ones and rethrows; returns how many
+        usize ReloadKernels();
 
         void SetPaused(bool paused) noexcept { this->paused = paused; }
         bool Paused() const noexcept { return paused; }

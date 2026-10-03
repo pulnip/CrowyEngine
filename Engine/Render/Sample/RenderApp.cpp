@@ -645,11 +645,16 @@ namespace Crowy
             "reload_shaders",
             [this](const DOM::Value&, Reply reply) {
                 const auto rebuild = renderer->ReloadPipelines();
+                const auto programs = OnReloadShaders();
 
                 DOM::Table result;
                 result.emplace(
                     "pipelines",
                     DOM::Value(static_cast<i64>(rebuild.pipelines))
+                );
+                result.emplace(
+                    "programs",
+                    DOM::Value(static_cast<i64>(programs))
                 );
                 result.emplace("ms", DOM::Value(rebuild.milliseconds));
                 reply.Ok(DOM::Value(std::move(result)));

@@ -216,6 +216,9 @@ namespace Crowy
             Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
         }
 
+        // the effects' steps too, so spawn and update reload with the draws
+        usize OnReloadShaders() override { return effects->ReloadKernels(); }
+
         std::vector<PassHook> OnRecordSimulation(
             RHICommandList& cmdList
         ) override {

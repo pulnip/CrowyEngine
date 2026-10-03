@@ -226,3 +226,32 @@ TEST(EffectView, IsTheCameraRotationsRightAndUp) {
     expectNear(turned.right, static_cast<Vec3>(basis[0]));
     expectNear(turned.up, static_cast<Vec3>(basis[1]));
 }
+
+// a reload swaps every effect's step for a fresh one, or none when one fails
+TEST(EffectSystem, AReloadSwapsEveryKernelOrNone) {
+    Fixture f;
+    f.effects.Add(desc("a", 32));
+    f.effects.Add(desc("b", 32));
+    f.Frame();
+    const auto* before =
+        f.cmdList.computePasses.at(0).dispatches.at(0).pipeline;
+
+    // the clear, two steps and the draws' pipeline were creates 1 to 4; the
+    // second rebuild, create 6, fails and the first is thrown away unused
+    f.device.failAt = 6;
+    EXPECT_THROW(f.effects.ReloadKernels(), std::runtime_error);
+    EXPECT_TRUE(f.device.deferred.empty());
+    EXPECT_EQ(f.device.computeDestroyed, 1u);
+    f.Frame();
+    EXPECT_EQ(f.cmdList.computePasses.at(0).dispatches.at(0).pipeline, before);
+
+    f.device.failAt = 0;
+    EXPECT_EQ(f.effects.ReloadKernels(), 2u);
+    EXPECT_EQ(f.device.deferred.size(), 2u);
+    EXPECT_EQ(f.device.computeDestroyed, 1u);
+    f.Frame();
+    EXPECT_NE(f.cmdList.computePasses.at(0).dispatches.at(0).pipeline, before);
+    f.device.RunDeferred();
+    EXPECT_EQ(f.device.computeDestroyed, 3u);
+}
+

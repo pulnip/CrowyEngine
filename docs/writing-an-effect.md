@@ -124,8 +124,13 @@ powershell -NoProfile -File Tools/build.ps1 -Config Debug -Target Island
 build/bin/Island.exe
 ```
 
-- 실행 중에는 포트의 `reload_shaders`가 그리기(`vs_`/`fs_`)를 다시 읽는다. `spawn`과
-  `update`(`cs_step`)는 다시 실행해야 바뀐다.
+- 실행 중에 포트의 `reload_shaders`를 부르면 그리기(`vs_`/`fs_`)와 `cs_step`(`spawn`,
+  `update`)을 모두 다시 읽는다. 하나라도 컴파일에 실패하면 전부 옛 것으로 남고, 오류가
+  답으로 돌아온다. 이미 태어난 파티클은 그대로이고, 바뀐 `spawn`은 다음 탄생부터 적용된다.
+
+```powershell
+. Tools/port.ps1; Set-PortNumber 27500; Invoke-Port reload_shaders
+```
 - 그림이 마음에 들면 smoke로 찍고, 실패가 출력한 `Copy-Item` 줄로 골든을 받아들인다.
 
 ```bash

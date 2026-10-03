@@ -69,6 +69,16 @@ namespace Crowy
             return desc;
         }
 
+        std::unique_ptr<ComputeKernel> stepKernel(
+            RHIDevice& device,
+            const ParticleEffectDesc& desc
+        ) {
+            return std::make_unique<ComputeKernel>(
+                device,
+                RHIShaderDesc{.path = desc.shader, .entryPoint = "cs_step"}
+            );
+        }
+
         [[noreturn]] void refuse(StrView effect, StrView rule) {
             throw std::invalid_argument(
                 std::format("effect '{}': {}", effect, rule)
@@ -89,10 +99,7 @@ namespace Crowy
               this->desc.name,
               reader
           ),
-          step(
-              device,
-              RHIShaderDesc{.path = this->desc.shader, .entryPoint = "cs_step"}
-          ) {}
+          step(stepKernel(device, this->desc)) {}
 
     EffectSystem::~EffectSystem() = default;
 
@@ -151,7 +158,7 @@ namespace Crowy
                 auto push = pushOf(*effect);
                 push.step = effect->next++;
                 pass.Dispatch(
-                    effect->step,
+                    *effect->step,
                     push,
                     Size3D{desc.count, 1, 1},
                     touches
@@ -192,6 +199,21 @@ namespace Crowy
         }
 
         return draws;
+    }
+
+    usize EffectSystem::ReloadKernels() {
+        std::vector<std::unique_ptr<ComputeKernel>> built;
+        for(const auto& effect: effects)
+            built.push_back(stepKernel(device, effect->desc));
+
+        for(usize i = 0; i < effects.size(); ++i) {
+            std::swap(effects[i]->step, built[i]);
+            device.DeferRetire([old = std::move(built[i])]() mutable {
+                old.reset();
+            });
+        }
+
+        return effects.size();
     }
 
     FieldBuffer& EffectSystem::Particles(StrView name) {

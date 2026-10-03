@@ -225,6 +225,10 @@ namespace Crowy
         // runs inside the overlay pass, after its draws
         virtual void OnRecordUI(RHICommandList&) {}
 
+        // after the reload_shaders verb rebuilt the renderer's pipelines: the
+        // sample's own programs; returns how many it rebuilt
+        virtual usize OnReloadShaders() { return 0; }
+
         // runs before the first pass, after OnPrepareUI: the sample's own
         // GPU work, and one binding per hook pass of the running list
         virtual std::vector<PassHook> OnRecordSimulation(RHICommandList&) {
