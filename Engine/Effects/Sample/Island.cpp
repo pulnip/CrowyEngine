@@ -156,6 +156,19 @@ namespace Crowy
             effects = std::make_unique<EffectSystem>(Device());
             effects->Add(embersDesc());
             effects->Add(rainDesc());
+            effects->Add(
+                ParticleEffectDesc{
+                    .name = "meteors",
+                    .shader = "Engine/Effects/Sample/Island/Meteors.slang",
+                    .count = 24,
+                    .seed = 41,
+                    .prewarmSteps = 240,
+                    .emitter = Vec4{0.0f, 0.0f, 0.0f, 90.0f},
+                    .params = {Vec4{70.0f, 0.12f, 6.0f, 0.0f}, Vec4{}, Vec4{}},
+                    .draws =
+                        {{.entry = "meteors", .blend = EffectBlend::Additive}}
+                }
+            );
         }
 
         FramePipelineDesc DescribePipeline(
