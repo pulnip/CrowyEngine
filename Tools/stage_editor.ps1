@@ -6,22 +6,54 @@ function Resolve-LocalPath([string]$Path) {
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
-# launches the editor held, on `Port` alone, and waits until it answers there
+# what the editor must not inherit: a debug override or a frame dump would
+# change the pictures a script compares
+$StageEditorScrubbed = @("CROWY_DEBUG", "CROWY_DUMP_FRAME", "CROWY_DUMP_FRAME_AT")
+
+# launches the editor held, on `Port` alone, and waits until it answers
+# there; an editor that exits 77 (its content missing) ends the script with 77
 function Start-StageEditor([string]$Exe, [string]$WorkingDirectory, [int]$Port) {
     if (Get-Process -Name StageEditor -ErrorAction SilentlyContinue) {
         throw "a StageEditor is already running; close it first"
     }
     # the child alone takes the port, and without retries
-    $previous = $env:CROWY_COMMAND_PORT
+    $saved = @{}
+    foreach ($name in @("CROWY_COMMAND_PORT") + $StageEditorScrubbed) {
+        $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+        [Environment]::SetEnvironmentVariable($name, $null)
+    }
     $env:CROWY_COMMAND_PORT = "$Port"
     try {
         $process = Start-Process -FilePath $Exe -ArgumentList "--hold" -PassThru -WorkingDirectory $WorkingDirectory
     }
     finally {
-        $env:CROWY_COMMAND_PORT = $previous
+        foreach ($name in $saved.Keys) {
+            [Environment]::SetEnvironmentVariable($name, $saved[$name])
+        }
     }
+    # cached now, or ExitCode reads empty once the process has gone
+    $null = $process.Handle
+    $deadline = (Get-Date).AddSeconds(120)
     try {
-        $ping = Wait-Port 120
+        while ($true) {
+            if ($process.HasExited) {
+                if ($process.ExitCode -eq 77) {
+                    Write-Host "SKIP: StageEditor exited 77: the content it draws is missing"
+                    exit 77
+                }
+                throw "StageEditor exited $($process.ExitCode) before its port answered"
+            }
+            try {
+                $ping = Invoke-Port ping
+                break
+            }
+            catch {
+                if ((Get-Date) -gt $deadline) {
+                    throw "port: no answer on $Port within 120 s"
+                }
+                Start-Sleep -Milliseconds 250
+            }
+        }
         if ($ping.app -ne "StageEditor") {
             throw "port $Port answers for '$($ping.app)', not StageEditor"
         }

@@ -26,7 +26,8 @@ stage_editor_stop() {
 }
 
 # stage_editor_start <exe> <port>: launches the editor held, on <port> alone,
-# and waits until it answers there; the EXIT trap quits it
+# and waits until it answers there; the EXIT trap quits it, and an editor
+# that exits 77 (its content missing) ends the script with 77
 stage_editor_start() {
     port_use "$2"
     # Git Bash has no pgrep: whatever already answers on the port is refused
@@ -34,11 +35,34 @@ stage_editor_start() {
         echo "port $2 already answers; close what holds it first" >&2
         return 1
     fi
-    # the child alone takes the port, and without retries
-    CROWY_COMMAND_PORT="$2" "$1" --hold >/dev/null 2>&1 &
+    # the child alone takes the port, without retries, and inherits no debug
+    # override or frame dump that would change the pictures
+    (
+        unset CROWY_DEBUG CROWY_DUMP_FRAME CROWY_DUMP_FRAME_AT
+        CROWY_COMMAND_PORT="$2" exec "$1" --hold
+    ) >/dev/null 2>&1 &
     STAGE_EDITOR_PID=$!
     trap 'stage_editor_stop' EXIT
-    port_wait 120 || return 1
+    WAITED=0
+    while ! port_rpc ping '{}' >/dev/null 2>&1; do
+        if ! kill -0 "$STAGE_EDITOR_PID" 2>/dev/null; then
+            wait "$STAGE_EDITOR_PID"
+            CODE=$?
+            trap - EXIT
+            if [ "$CODE" = 77 ]; then
+                echo "SKIP: StageEditor exited 77: the content it draws is missing"
+                exit 77
+            fi
+            echo "StageEditor exited $CODE before its port answered" >&2
+            return 1
+        fi
+        if [ "$WAITED" -ge 120 ]; then
+            echo "port: no answer on $PORT_URI within 120 s" >&2
+            return 1
+        fi
+        sleep 1
+        WAITED=$((WAITED + 1))
+    done
     if ! stage_editor_answers; then
         echo "port $2 does not answer for StageEditor" >&2
         return 1

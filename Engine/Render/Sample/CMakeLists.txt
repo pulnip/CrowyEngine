@@ -82,4 +82,37 @@ if(TARGET StageEditorSmoke OR CROWY_ENABLE_TEST)
     PROPERTIES
         ENVIRONMENT "CROWY_SMOKE_DURATION=20"
     )
+
+    # every cut against its golden through the command port, which only
+    # Debug builds open; skipped when Backlot is not the stamped commit
+    set(STAGE_CUTS_OUT "${CMAKE_SOURCE_DIR}/captures/stage/ctest")
+    if(APPLE)
+        set(STAGE_CUTS_COMMAND
+            "${CMAKE_SOURCE_DIR}/Tools/stage_cuts.sh"
+            --exe "$<TARGET_FILE:StageEditor>"
+            --out "${STAGE_CUTS_OUT}"
+        )
+    elseif(WIN32)
+        set(STAGE_CUTS_COMMAND
+            powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${CMAKE_SOURCE_DIR}/Tools/stage_cuts.ps1"
+            -Exe "$<TARGET_FILE:StageEditor>"
+            -Out "${STAGE_CUTS_OUT}"
+        )
+    endif()
+    if(DEFINED STAGE_CUTS_COMMAND)
+        add_test(
+            NAME StageEditorCuts
+            CONFIGURATIONS Debug
+            COMMAND ${STAGE_CUTS_COMMAND}
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        )
+        set_tests_properties(StageEditorCuts
+        PROPERTIES
+            LABELS "smoke;stage"
+            RUN_SERIAL TRUE
+            TIMEOUT 300
+            SKIP_RETURN_CODE 77
+        )
+    endif()
 endif()
