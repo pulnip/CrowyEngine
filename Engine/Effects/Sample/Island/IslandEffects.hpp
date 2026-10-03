@@ -62,17 +62,22 @@ namespace Crowy
 
     // tongues off the coals, up to where the tripod's logs cross
     inline ParticleEffectDesc flamesDesc() {
+        constexpr Vec3 Fire{ISLAND_FIRE};
+        constexpr auto Crossing = ISLAND_LOG_CROSSING_Y - ISLAND_COALS_TOP_Y;
+
         return ParticleEffectDesc{
             .name = "flames",
             .shader = "Engine/Effects/Sample/Island/Flames.slang",
             .count = 90,
             .seed = 13,
             .prewarmSteps = 60,
-            .emitter =
-                toVec4(Vec3{ISLAND_FIRE} + Vec3{0.0f, 0.06f, 0.0f}, 0.16f),
+            .emitter = toVec4(
+                Vec3{Fire.x, ISLAND_COALS_TOP_Y, Fire.z},
+                ISLAND_COALS_HALF
+            ),
             .params =
                 {Vec4{0.6f, 1.1f, 2.6f, 2.0f},
-                 Vec4{0.68f, 2.5f, 0.08f, 0.13f},
+                 Vec4{Crossing, 2.5f, 0.08f, 0.13f},
                  Vec4{1.0f, 2.0f, 24.0f, 30.0f}},
             .draws = {{.entry = "flames", .blend = EffectBlend::Additive}}
         };

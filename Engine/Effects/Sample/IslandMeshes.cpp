@@ -11,60 +11,63 @@
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 
-namespace
-{
-    using namespace Crowy;
-
-    u32 addVertex(MeshData& mesh, Vec3 position, Vec3 normal, Vec2 texCoord) {
-        // around y for the sides, along x for the caps
-        const auto tangent = std::abs(normal.y) > 0.9f
-                                 ? unitX()
-                                 : normalize(cross(unitY(), normal));
-        mesh.vertices.push_back(
-            Vertex{
-                .position = position,
-                .normal = normal,
-                .texCoord = texCoord,
-                .tangent = toVec4(tangent, 1.0f)
-            }
-        );
-
-        return static_cast<u32>(mesh.vertices.size() - 1);
-    }
-
-    // a triangle wound so it fronts `outward`
-    void addTriangle(MeshData& mesh, u32 a, u32 b, u32 c, Vec3 outward) {
-        const auto& pa = mesh.vertices[a].position;
-        const auto& pb = mesh.vertices[b].position;
-        const auto& pc = mesh.vertices[c].position;
-        if(dot(cross(pb - pa, pc - pa), outward) < 0.0f)
-            std::swap(b, c);
-        mesh.indices.insert(mesh.indices.end(), {a, b, c});
-    }
-
-    // a flat quad over four corners in order around it
-    void addQuad(
-        MeshData& mesh,
-        const std::array<Vec3, 4>& corners,
-        Vec3 outward
-    ) {
-        constexpr std::array<Vec2, 4> TexCoords{
-            Vec2{0.0f, 1.0f},
-            Vec2{1.0f, 1.0f},
-            Vec2{1.0f, 0.0f},
-            Vec2{0.0f, 0.0f}
-        };
-
-        std::array<u32, 4> ids{};
-        for(usize i = 0; i < 4; ++i)
-            ids[i] = addVertex(mesh, corners[i], outward, TexCoords[i]);
-        addTriangle(mesh, ids[0], ids[1], ids[2], outward);
-        addTriangle(mesh, ids[0], ids[2], ids[3], outward);
-    }
-}
-
 namespace Crowy
 {
+    namespace
+    {
+        u32 addVertex(
+            MeshData& mesh,
+            Vec3 position,
+            Vec3 normal,
+            Vec2 texCoord
+        ) {
+            // around y for the sides, along x for the caps
+            const auto tangent = std::abs(normal.y) > 0.9f
+                                     ? unitX()
+                                     : normalize(cross(unitY(), normal));
+            mesh.vertices.push_back(
+                Vertex{
+                    .position = position,
+                    .normal = normal,
+                    .texCoord = texCoord,
+                    .tangent = toVec4(tangent, 1.0f)
+                }
+            );
+
+            return static_cast<u32>(mesh.vertices.size() - 1);
+        }
+
+        // a triangle wound so it fronts `outward`
+        void addTriangle(MeshData& mesh, u32 a, u32 b, u32 c, Vec3 outward) {
+            const auto& pa = mesh.vertices[a].position;
+            const auto& pb = mesh.vertices[b].position;
+            const auto& pc = mesh.vertices[c].position;
+            if(dot(cross(pb - pa, pc - pa), outward) < 0.0f)
+                std::swap(b, c);
+            mesh.indices.insert(mesh.indices.end(), {a, b, c});
+        }
+
+        // a flat quad over four corners in order around it
+        void addQuad(
+            MeshData& mesh,
+            const std::array<Vec3, 4>& corners,
+            Vec3 outward
+        ) {
+            constexpr std::array<Vec2, 4> TexCoords{
+                Vec2{0.0f, 1.0f},
+                Vec2{1.0f, 1.0f},
+                Vec2{1.0f, 0.0f},
+                Vec2{0.0f, 0.0f}
+            };
+
+            std::array<u32, 4> ids{};
+            for(usize i = 0; i < 4; ++i)
+                ids[i] = addVertex(mesh, corners[i], outward, TexCoords[i]);
+            addTriangle(mesh, ids[0], ids[1], ids[2], outward);
+            addTriangle(mesh, ids[0], ids[2], ids[3], outward);
+        }
+    }
+
     MeshData makeEllipsoid(Vec3 radii) {
         auto mesh = MakeSphere(1.0f, 48, 24);
         for(auto& vertex: mesh.vertices) {

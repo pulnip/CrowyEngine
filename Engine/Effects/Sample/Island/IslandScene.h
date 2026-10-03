@@ -26,6 +26,13 @@
 // the campfire on the island's crown, and its light inside the tripod
 #define ISLAND_FIRE 0.0f, 0.4f, 0.0f
 #define ISLAND_FIRE_LIGHT 0.0f, 0.65f, 0.0f
+// the coal bed's top and half width; the tripod's logs stand on a circle in
+// the bed and cross above it
+#define ISLAND_COALS_TOP_Y 0.46f
+#define ISLAND_COALS_HALF 0.16f
+#define ISLAND_LOG_BASE_Y 0.43f
+#define ISLAND_LOG_CIRCLE 0.36f
+#define ISLAND_LOG_CROSSING_Y 1.15f
 // the fire's breath on the world's loop: two ripples' cycles and depths
 #define ISLAND_BREATH_SLOW 241u
 #define ISLAND_BREATH_SLOW_DEPTH 0.12f

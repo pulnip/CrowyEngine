@@ -94,7 +94,7 @@ inline ParticleEffectDesc sparksDesc() {
 - `draws`: 그리기마다 `vs_<entry>`와 `fs_<entry>`를 쓴다. `Additive`는 빛을 더하고(순서
   상관없음), `Alpha`는 슬롯 순서대로 덮는다. 이펙트는 깊이를 쓰지 않으니 `Alpha`는 먼저
   그려진 이펙트를 앞뒤 없이 모두 덮는다. 그래서 `Alpha` 그리기는 `Additive`보다 앞에
-  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 별, 유성, 불씨 순서).
+  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 별, 유성, 불꽃, 불씨 순서).
 - 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 유리(Translucent)보다
   먼저 그려진다.
 

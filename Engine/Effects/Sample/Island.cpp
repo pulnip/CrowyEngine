@@ -41,13 +41,7 @@ namespace Crowy
         // the canvas's glow from the fire behind it, before the breath
         static constexpr Vec3 CanvasGlow{0.075f, 0.032f, 0.008f};
         static constexpr f32 PoleRadius = 0.035f;
-        // how far the poles reach past their crossing
-        static constexpr f32 PoleOverhang = 1.0f;
         static constexpr f32 LogRadius = 0.045f;
-        // the tripod's logs stand on this circle and cross at this height
-        static constexpr f32 LogCircle = 0.36f;
-        static constexpr f32 LogCrossing = 1.15f;
-        static constexpr f32 LogOverhang = 0.12f;
 
         GeometryAllocation sea{};
         GeometryAllocation island{};
@@ -328,15 +322,18 @@ namespace Crowy
 
         // the tipi's poles: from the base, through the crossing, and on
         static f32 poleLength() {
-            const auto rise = ISLAND_TIPI_APEX_Y - ISLAND_TIPI_BASE_Y;
+            constexpr auto Overhang = 1.0f;
 
-            return std::hypot(ISLAND_TIPI_RADIUS, rise) + PoleOverhang;
+            const auto rise = ISLAND_TIPI_APEX_Y - ISLAND_TIPI_BASE_Y;
+            return std::hypot(ISLAND_TIPI_RADIUS, rise) + Overhang;
         }
 
+        // the tripod's logs: from the bed, through the crossing, and on
         static f32 logLength() {
-            const auto rise = LogCrossing - FirePosition.y;
+            constexpr auto Overhang = 0.12f;
 
-            return std::hypot(LogCircle, rise) + LogOverhang;
+            const auto rise = ISLAND_LOG_CROSSING_Y - ISLAND_LOG_BASE_Y;
+            return std::hypot(ISLAND_LOG_CIRCLE, rise) + Overhang;
         }
 
         // the rotation that turns +y onto `direction`
@@ -489,22 +486,28 @@ namespace Crowy
             MaterialHandle coals
         ) const {
             constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
-            constexpr Vec3 Crossing{0.0f, LogCrossing, 0.0f};
+            constexpr auto BedHalfHeight = 0.03f;
+            constexpr Vec3 Crossing{
+                FirePosition.x,
+                ISLAND_LOG_CROSSING_Y,
+                FirePosition.z
+            };
 
             addBox(
                 scene,
                 coals,
-                FirePosition + Vec3{0.0f, 0.03f, 0.0f},
-                {0.16f, 0.03f, 0.16f}
+                {FirePosition.x,
+                 ISLAND_COALS_TOP_Y - BedHalfHeight,
+                 FirePosition.z},
+                {ISLAND_COALS_HALF, BedHalfHeight, ISLAND_COALS_HALF}
             );
             for(u32 i = 0; i < 3; ++i) {
                 const auto azimuth = TwoPi * static_cast<f32>(i) / 3.0f;
-                const Vec3 offset{
-                    LogCircle * std::sin(azimuth),
-                    0.03f,
-                    LogCircle * std::cos(azimuth)
+                const Vec3 base{
+                    FirePosition.x + ISLAND_LOG_CIRCLE * std::sin(azimuth),
+                    ISLAND_LOG_BASE_Y,
+                    FirePosition.z + ISLAND_LOG_CIRCLE * std::cos(azimuth)
                 };
-                const auto base = FirePosition + offset;
                 addRod(
                     scene,
                     charcoal,

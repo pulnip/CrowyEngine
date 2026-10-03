@@ -1,6 +1,5 @@
 // Rain over the island: drops fall through a box, carried by the wind, and
-// where one meets the sea or the sand it leaves a ring that spreads and
-// fades; the tipi keeps them off its floor.
+// leave spreading rings on the sea and the sand, none under the tipi.
 
 #include "Effect.slang"
 #include "IslandShapes.slang"
@@ -133,7 +132,7 @@ RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     o.position = toClip(world);
     o.corner = corner;
     o.fade = showing ? (1.0 - t) * (1.0 - t) : 0.0;
-    o.band = onSand ? 0.25 : 0.15;
+    o.band = onSand ? 0.2 : 0.15;
     return o;
 }
 
