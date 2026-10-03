@@ -1,7 +1,5 @@
-// The step every particle effect runs. An effect's file includes it last,
-// after its own
-//     Particle spawn(uint slot, uint generation)
-//     void update(inout Particle p, uint slot)
+// The step every particle effect runs; an effect's file includes it last,
+// after its spawn(slot, generation) and update(inout p, slot).
 
 [shader("compute")]
 [numthreads(64, 1, 1)]

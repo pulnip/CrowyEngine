@@ -11,17 +11,18 @@ C++ 클래스도 필요 없다. 엔진은 슬롯마다 파티클 하나(64바이
 `Engine/Effects/Sample/Island/<Name>.slang`:
 
 ```slang
-// 무엇인지 한두 줄. 그리고 emitter와 params의 뜻:
-//
-//   emitter    xyz ..., w ...
-//   params[0]  x ...; y ...; z ...; w ...
+// 무엇인지 한두 줄
 
 #include "Effect.slang"
+
+// desc의 emitter와 params가 여기서 뜻하는 것: 이름이 설명이다
+float3 origin() { return effect.emitter.xyz; }
+float brightness() { return effect.params[0].x; }
 
 // 슬롯 slot이 generation번째로 태어날 때: 위치, 속도, 수명(스텝)
 Particle spawn(uint slot, uint generation) {
     Particle p = (Particle)0;
-    p.position = effect.emitter.xyz;
+    p.position = origin();
     p.velocity = float3(0.0, 1.0, 0.0);
     p.lifeSteps = 60u + effectHash(effect.seed, slot, generation, 1u) % 60u;
     p.generation = generation;
@@ -53,7 +54,7 @@ SparkVertex vs_spark(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
 [shader("fragment")]
 float4 fs_spark(SparkVertex v) : SV_Target {
     float glow = saturate(1.0 - dot(v.corner, v.corner));
-    return float4(float3(1.0, 0.6, 0.2) * glow * effect.params[0].x, 1.0);
+    return float4(float3(1.0, 0.6, 0.2) * glow * brightness(), 1.0);
 }
 
 #include "ParticleKernel.slang"
@@ -81,6 +82,8 @@ effects->Add(
 );
 ```
 
+- `emitter`와 `params[0..2]`: 이펙트가 정하는 float4 네 개다. 뜻은 파일 머리의 접근자
+  함수가 이름으로 말한다(`Rain.slang`의 `fallSpeed()`, `islandRadii()`처럼).
 - `count`: 슬롯 수. 슬롯 하나가 늘 같은 파티클이고, 수명이 끝나면 `generation + 1`로
   다시 태어난다.
 - `prewarmSteps`: 첫 프레임이 보여 주기 전에 미리 도는 스텝 수다. 가장 긴 수명보다

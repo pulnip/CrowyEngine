@@ -65,14 +65,12 @@ namespace Crowy
             RHIResourceUsage reader = RHIResourceUsage::SampledVertex
         );
 
-        // throws std::invalid_argument for an unnamed effect, one with no
-        // particles or more than a dispatch reaches, a name already added,
-        // or a draw without an entry
+        // throws std::invalid_argument for no name, no particles or more than
+        // a dispatch reaches, a name taken, or a draw without an entry
         void Add(ParticleEffectDesc desc);
 
-        // one step of every effect, its first frame the prewarm steps too;
-        // the releases are the hook pass's buffer acquires; nothing while
-        // paused once every effect has run
+        // a step of each effect, its first with the prewarm; paused, only the
+        // unstarted run; the releases are the hook pass's buffer acquires
         std::span<const RHIBufferBarrier> Simulate(
             RHICommandList& cmdList,
             const EffectView& view
@@ -84,9 +82,8 @@ namespace Crowy
             PipelineCache& pipelines
         );
 
-        // every effect's cs_step compiled again and swapped in only when all
-        // of them built, the old ones retired after the frames in flight; a
-        // failure leaves the old ones and rethrows; returns how many
+        // every cs_step compiled again and swapped in only when all built,
+        // the old retired after the frames in flight; returns how many
         usize ReloadKernels();
 
         void SetPaused(bool paused) noexcept { this->paused = paused; }

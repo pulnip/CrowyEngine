@@ -1,13 +1,20 @@
 // Rain over the island: drops fall through a box, and where one meets the
 // sea or the sand it leaves a ring that spreads and fades.
-//
-//   emitter    xyz the box's center, w its half height
-//   params[0]  x, y the box's half width and depth; z fall speed; w wind x
-//   params[1]  x wind z; y streak length in seconds; z streak brightness;
-//              w ring opacity
-//   params[2]  the island: xyz an ellipsoid's radii, w its center's height
 
 #include "Effect.slang"
+
+// what the desc's emitter and params mean here
+float3 boxCenter() { return effect.emitter.xyz; }
+float boxHalfHeight() { return effect.emitter.w; }
+float2 boxHalfExtent() { return effect.params[0].xy; }
+float fallSpeed() { return effect.params[0].z; }
+float2 wind() { return float2(effect.params[0].w, effect.params[1].x); }
+float streakSeconds() { return effect.params[1].y; }
+float streakBrightness() { return effect.params[1].z; }
+float ringOpacity() { return effect.params[1].w; }
+// the island an ellipsoid of these radii around this height
+float3 islandRadii() { return effect.params[2].xyz; }
+float islandCenterHeight() { return effect.params[2].w; }
 
 // how long a ring spreads
 static const uint RingSteps = 36u;
@@ -16,36 +23,30 @@ static const float NoLanding = -1.0e6;
 
 // the sea at 0, or the island's crown where it rises above it
 float surfaceHeight(float2 xz) {
-    float3 radii = effect.params[2].xyz;
+    float3 radii = islandRadii();
     float2 q = xz / radii.xz;
     float inside = 1.0 - dot(q, q);
     float crown = inside > 0.0
-        ? effect.params[2].w + radii.y * sqrt(inside)
+        ? islandCenterHeight() + radii.y * sqrt(inside)
         : NoLanding;
     return max(0.0, crown);
 }
 
 // a drop in the box: at any height when first born, at the top after
 float3 dropPosition(uint slot, uint generation, bool anywhere) {
-    float halfHeight = effect.emitter.w;
-    float x = (particleRandom(slot, generation, 1u) * 2.0 - 1.0) *
-              effect.params[0].x;
-    float z = (particleRandom(slot, generation, 2u) * 2.0 - 1.0) *
-              effect.params[0].y;
+    float2 extent = boxHalfExtent();
+    float x = (particleRandom(slot, generation, 1u) * 2.0 - 1.0) * extent.x;
+    float z = (particleRandom(slot, generation, 2u) * 2.0 - 1.0) * extent.y;
     float y = anywhere
-        ? (particleRandom(slot, generation, 3u) * 2.0 - 1.0) * halfHeight
-        : halfHeight;
-    return effect.emitter.xyz + float3(x, y, z);
+        ? (particleRandom(slot, generation, 3u) * 2.0 - 1.0) * boxHalfHeight()
+        : boxHalfHeight();
+    return boxCenter() + float3(x, y, z);
 }
 
 Particle spawn(uint slot, uint generation) {
     Particle p = (Particle)0;
     p.position = dropPosition(slot, generation, true);
-    p.velocity = float3(
-        effect.params[0].w,
-        -effect.params[0].z,
-        effect.params[1].x
-    );
+    p.velocity = float3(wind().x, -fallSpeed(), wind().y);
     // a drop is reborn where it lands, never by age
     p.lifeSteps = 0xFFFFFFFFu;
     p.generation = generation;
@@ -84,7 +85,7 @@ RainVertex vs_streaks(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     float3 axis = normalize(p.velocity);
     float3 toCamera = normalize(cameraPosition.xyz - p.position);
     float3 side = normalize(cross(axis, toCamera));
-    float streak = length(p.velocity) * effect.params[1].y;
+    float streak = length(p.velocity) * streakSeconds();
     float3 world = p.position + side * (corner.x * p.size) -
                    axis * ((corner.y * 0.5 + 0.5) * streak);
 
@@ -100,7 +101,7 @@ float4 fs_streaks(RainVertex v) : SV_Target {
     float across = 1.0 - abs(v.corner.x);
     // bright at the drop, faint at the tail
     float along = 0.5 - 0.5 * v.corner.y;
-    float3 color = float3(0.55, 0.62, 0.8) * effect.params[1].z;
+    float3 color = float3(0.55, 0.62, 0.8) * streakBrightness();
     return float4(color * across * along, 1.0);
 }
 
@@ -127,7 +128,7 @@ RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
 float4 fs_ripples(RainVertex v) : SV_Target {
     float reach = length(v.corner);
     float ring = saturate(1.0 - abs(reach - 0.8) / 0.15);
-    float alpha = ring * v.fade * effect.params[1].w;
+    float alpha = ring * v.fade * ringOpacity();
     return float4(0.75, 0.82, 0.95, alpha);
 }
 

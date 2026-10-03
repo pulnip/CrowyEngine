@@ -1,8 +1,7 @@
 #pragma once
 
-// What a particle effect's file includes first: the particle, the one push
-// its kernel and its draws share (Metal allows one push struct per module),
-// and the helpers its draws use. Mirrored by ParticleEffects.hpp.
+// What an effect's file includes first: the particle, the push its kernel
+// and draws share (one push a module, for Metal), and the draws' helpers.
 
 #include "Random.slang"
 #include "View.slang"

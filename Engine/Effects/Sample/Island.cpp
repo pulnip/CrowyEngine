@@ -13,16 +13,10 @@
 
 namespace Crowy
 {
-    // A small island at night: a hut, a campfire and the sea, with the
-    // effects drawn over them in an Effects hook pass before the glass. The
-    // effects step once per recorded frame, so frame 60 is the same picture
-    // in every run.
+    // A night island whose effects draw in a hook pass before the glass, one
+    // step a recorded frame, so frame 60 is the same picture in every run.
     class Island final: public RenderApp {
         static constexpr CStr EffectsHook = "effects";
-        static constexpr CStr EmbersShader =
-            "Engine/Effects/Sample/Island/Embers.slang";
-        static constexpr CStr RainShader =
-            "Engine/Effects/Sample/Island/Rain.slang";
         // where the campfire burns, on the island's crown
         static constexpr Vec3 FirePosition{0.0f, 0.4f, 0.0f};
         static constexpr f32 FireIntensity = 7.0f;
@@ -175,6 +169,11 @@ namespace Crowy
             const StandardPipelineConfig& config
         ) override {
             auto desc = makeStandardPipeline(config);
+            // a data view is the standard list: it shows the scene's data
+            // alone, and FindHook then records no simulation
+            if(config.post != std::vector<PostPassDesc>{tonemapPass()})
+                return desc;
+
             const auto translucent =
                 std::ranges::find(desc.passes, "Translucent", &PassDesc::name);
             const auto depth = std::ranges::find(
@@ -274,7 +273,7 @@ namespace Crowy
         static ParticleEffectDesc embersDesc() {
             return ParticleEffectDesc{
                 .name = "embers",
-                .shader = EmbersShader,
+                .shader = "Engine/Effects/Sample/Island/Embers.slang",
                 .count = 384,
                 .seed = 11,
                 .prewarmSteps = 240,
@@ -293,7 +292,7 @@ namespace Crowy
         static ParticleEffectDesc rainDesc() {
             return ParticleEffectDesc{
                 .name = "rain",
-                .shader = RainShader,
+                .shader = "Engine/Effects/Sample/Island/Rain.slang",
                 .count = 3000,
                 .seed = 23,
                 .prewarmSteps = 120,

@@ -18,8 +18,6 @@ using namespace Crowy;
 
 namespace
 {
-    constexpr std::array ColorFormats{RHIPixelFormat::RGBA16_FLOAT};
-
     ParticleEffectDesc desc(CStr name, u32 count, u32 prewarmSteps = 0) {
         return ParticleEffectDesc{
             .name = name,
@@ -50,6 +48,10 @@ namespace
         // a frame: the simulation, then a pass drawing the effects the way a
         // hook pass does, after view 0; returns the draws
         u32 Frame() {
+            static constexpr std::array ColorFormats{
+                RHIPixelFormat::RGBA16_FLOAT
+            };
+
             cmdList.Begin();
             const auto releases = effects.Simulate(cmdList, EffectView{});
             const std::array colors{RHIColorAttachment{.texture = &color}};
@@ -167,8 +169,7 @@ TEST(EffectSystem, DrawsAStripPerParticle) {
 
     ASSERT_EQ(f.device.pipelineCreates.size(), 2u);
     const auto& glow = f.device.pipelineCreates[0];
-    const auto& frontend =
-        std::get<RHILegacyFrontendDesc>(glow.preRasterizer);
+    const auto& frontend = std::get<RHILegacyFrontendDesc>(glow.preRasterizer);
     EXPECT_EQ(frontend.topology, RHIPrimitiveTopology::TriangleStrip);
     EXPECT_EQ(frontend.vertexShader.entryPoint, "vs_glow");
     EXPECT_EQ(glow.fragmentShader->entryPoint, "fs_glow");
@@ -253,5 +254,21 @@ TEST(EffectSystem, AReloadSwapsEveryKernelOrNone) {
     EXPECT_NE(f.cmdList.computePasses.at(0).dispatches.at(0).pipeline, before);
     f.device.RunDeferred();
     EXPECT_EQ(f.device.computeDestroyed, 3u);
+}
+
+// an effect added while paused runs its first frame, and the paused ones
+// stay where they are
+TEST(EffectSystem, AnEffectAddedWhilePausedStartsAlone) {
+    Fixture f;
+    f.effects.Add(desc("a", 32));
+    f.Frame();
+    f.effects.SetPaused(true);
+    f.effects.Add(desc("b", 32, 2));
+
+    f.Frame();
+    EXPECT_TRUE(f.cmdList.violations.empty());
+    EXPECT_EQ(f.cmdList.computePasses.at(0).dispatches.size(), 3u);
+    EXPECT_EQ(f.effects.Steps("a"), 1u);
+    EXPECT_EQ(f.effects.Steps("b"), 3u);
 }
 

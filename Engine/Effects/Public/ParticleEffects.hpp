@@ -13,6 +13,10 @@
 // GPU reads is mirrored from Engine/Shader/Effect.slang.
 namespace Crowy
 {
+    struct EffectDrawDesc;
+
+    using EffectDrawDescs = std::vector<EffectDrawDesc>;
+
     // the draw ParticleKernel.slang's first step staggers ages with
     inline constexpr u32 ParticleStaggerDraw = 0xA6E;
     // one step of every effect's clock: a recorded frame
@@ -32,8 +36,6 @@ namespace Crowy
         // a strip per particle
         u32 verticesPerInstance = 4;
     };
-
-    using EffectDrawDescs = std::vector<EffectDrawDesc>;
 
     struct ParticleEffectDesc {
         Str name;

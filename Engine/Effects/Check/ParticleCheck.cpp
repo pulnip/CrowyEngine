@@ -2,9 +2,7 @@
 #include <array>
 #include <cmath>
 #include <exception>
-#include <format>
 #include <print>
-#include <span>
 #include <vector>
 
 #include "EffectRandom.hpp"

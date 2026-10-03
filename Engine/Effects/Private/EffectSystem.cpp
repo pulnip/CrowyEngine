@@ -152,8 +152,11 @@ namespace Crowy
         for(auto& effect: effects) {
             const auto& desc = effect->desc;
             FieldBuffer* const touches[] = {&effect->particles};
-            // the first frame shows the steady state the prewarm reaches
-            const auto steps = effect->next == 0 ? desc.prewarmSteps + 1 : 1;
+            // the first frame shows the steady state the prewarm reaches;
+            // paused, only an effect not yet started runs
+            auto steps = paused ? 0u : 1u;
+            if(effect->next == 0)
+                steps = desc.prewarmSteps + 1;
             for(u32 s = 0; s < steps; ++s) {
                 auto push = pushOf(*effect);
                 push.step = effect->next++;

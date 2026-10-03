@@ -1,24 +1,28 @@
 // Campfire embers: born on a disc over the fire, carried up by the heat,
 // swirling, cooling from yellow-white through orange to a dull red.
-//
-//   emitter    xyz the disc's center, w its radius
-//   params[0]  x, y the rise speed's range; z buoyancy; w drag
-//   params[1]  x swirl; y half size; z brightness
 
 #include "Effect.slang"
+
+// what the desc's emitter and params mean here
+float3 discCenter() { return effect.emitter.xyz; }
+float discRadius() { return effect.emitter.w; }
+float riseMin() { return effect.params[0].x; }
+float riseMax() { return effect.params[0].y; }
+float buoyancy() { return effect.params[0].z; }
+float drag() { return effect.params[0].w; }
+float swirl() { return effect.params[1].x; }
+float halfSize() { return effect.params[1].y; }
+float brightness() { return effect.params[1].z; }
 
 Particle spawn(uint slot, uint generation) {
     Particle p = (Particle)0;
     float angle = 6.2831853 * particleRandom(slot, generation, 1u);
-    float radius = effect.emitter.w * sqrt(particleRandom(slot, generation, 2u));
-    p.position = effect.emitter.xyz +
+    float radius = discRadius() * sqrt(particleRandom(slot, generation, 2u));
+    p.position = discCenter() +
                  float3(cos(angle) * radius, 0.0, sin(angle) * radius);
 
-    float rise = lerp(
-        effect.params[0].x,
-        effect.params[0].y,
-        particleRandom(slot, generation, 3u)
-    );
+    float rise =
+        lerp(riseMin(), riseMax(), particleRandom(slot, generation, 3u));
     p.velocity = float3(
         (particleRandom(slot, generation, 4u) - 0.5) * 0.5,
         rise,
@@ -26,10 +30,10 @@ Particle spawn(uint slot, uint generation) {
     );
     p.lifeSteps = 70u + effectHash(effect.seed, slot, generation, 6u) % 110u;
     p.generation = generation;
-    p.size = effect.params[1].y *
-             lerp(0.6, 1.4, particleRandom(slot, generation, 7u));
+    p.size = halfSize() * lerp(0.6, 1.4, particleRandom(slot, generation, 7u));
     // the swirl's phase
-    p.custom = float4(6.2831853 * particleRandom(slot, generation, 8u), 0, 0, 0);
+    float phase = 6.2831853 * particleRandom(slot, generation, 8u);
+    p.custom = float4(phase, 0.0, 0.0, 0.0);
     return p;
 }
 
@@ -37,13 +41,12 @@ void update(inout Particle p, uint slot) {
     float dt = effect.dt;
     float age = float(p.ageSteps) * dt;
     float phase = p.custom.x;
-    float3 swirl = float3(
+    float3 sway = float3(
         sin(age * 3.1 + phase),
         0.0,
         cos(age * 2.3 + phase)
-    ) * effect.params[1].x;
-    float3 accel = float3(0.0, effect.params[0].z, 0.0) + swirl -
-                   p.velocity * effect.params[0].w;
+    ) * swirl();
+    float3 accel = float3(0.0, buoyancy(), 0.0) + sway - p.velocity * drag();
     p.velocity += accel * dt;
     p.position += p.velocity * dt;
 }
@@ -82,7 +85,7 @@ float4 fs_embers(EmberVertex v) : SV_Target {
         : lerp(cold, warm, v.heat / 0.6);
     float fade = saturate(v.heat * 3.0);
 
-    return float4(color * effect.params[1].z * falloff * fade, 1.0);
+    return float4(color * brightness() * falloff * fade, 1.0);
 }
 
 #include "ParticleKernel.slang"
