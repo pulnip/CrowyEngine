@@ -176,6 +176,7 @@
   <ol>
     <li><a href="#glance">한눈에</a></li>
     <li><a href="#how">이 라운드가 도는 방식</a></li>
+    <li><a href="#select">선택과 인스펙터 (editor-select)</a></li>
     <li><a href="#g1">G1 · 무대가 섰다 (stage-view)</a></li>
     <li><a href="#textures">텍스처 (textures)</a></li>
     <li><a href="#document">장면 파일 (stage-document)</a></li>
@@ -187,11 +188,11 @@
 <h2 id="glance">한눈에</h2>
 <div class="card">
   <p>목표는 둘이 하나로 묶인 라운드다. <b>무대</b>: <code>../Backlot</code>의 영화 세트(FBX 124개, 인스턴스 1488, 이미지 쿼드 179, 조명 31, 컷 8, 라이팅 키 4)를 엔진이 읽어 표준 파이프라인으로 그린다. <b>에디터</b>: 직접 쓰는 확인 도구 — 클릭 선택, 계층, 인스펙터, 기즈모, 일시정지·스텝, 장면 다시 읽기 — 를 모든 동작이 포트의 속성 쓰기와 같은 길로 가게 만든다. Unity와의 비교는 <b>배치만</b>, 스타일은 비교하지 않는다.</p>
-  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 컷·키 전환과 포트 쌍둥이까지 왔고, 선택·인스펙터·기즈모·시계·다시 읽기가 다음이다.</p>
+  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 클릭·계층·포트로 고르고 인스펙터로 고치는 데까지 왔다. 기즈모·시계·다시 읽기가 다음이다.</p>
 </div>
 <div class="stat-row">
-  <div class="stat"><div class="label">작업</div><div class="value num">4 / 9 <small>+ 리뷰 수정 2</small></div></div>
-  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 477 <small>스위트 10 → 13</small></div></div>
+  <div class="stat"><div class="label">작업</div><div class="value num">5 / 9 <small>+ 리뷰 수정 4</small></div></div>
+  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 513 <small>스위트 10 → 13</small></div></div>
   <div class="stat"><div class="label">smoke</div><div class="value num">31 → 33 <small>TexturedSpike · StageEditor</small></div></div>
   <div class="stat"><div class="label">낮 키, 패스당</div><div class="value num">466 784 <small>삼각형 = 인벤토리 + 쿼드 161×2</small></div></div>
   <div class="stat"><div class="label">GPU / CPU 기록</div><div class="value num">3.4 / 10.7 ms <small>Debug, establishing, 낮</small></div></div>
@@ -208,6 +209,41 @@
     <li><b>규칙.</b> 엔진(<code>Engine/</code>의 <code>Sample</code> 밖)에 Backlot 고유의 것은 없다. 텍스처·Masked·FBX처럼 기본 파이프라인이 가져야 할 기능은 엔진 작업이다. 모든 에디터 동작은 포트도 할 수 있는 속성 쓰기다.</li>
   </ul>
 </div>
+
+<h2 id="select">선택과 인스펙터 (editor-select) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>그림을 클릭해도, 계층의 행을 골라도, 포트로 속성을 써도 같은 이름으로 같은 물체가 선택된다. 픽은 GPU 없이 CPU 광선으로 정확하게 한다. 보이는 행의 경계 상자를 가까운 순서로 보고, 그 상자에 광선이 들어가면 삼각형을 모델 공간에서 시험한다. 조명은 화면의 마커로 먼저 고른다. 선택은 그림 위에 방향 있는 상자(조명은 원)로 그려진다. 인스펙터는 장면 파일의 행을 미터와 도 그대로 보여 주고, 패널에서 고치든 포트로 쓰든 같은 apply가 행렬·경계·조명을 다시 계산해 다음 프레임에 움직인다.</p>
+  <p><code>Tools/stage_task.ps1</code>이 직접 해 볼 그 작업을 포트로 밤 캡처까지 해낸다. 순서는 street 컷, 가로등 기둥 클릭, 장면 파일과 같은 값 확인, 동쪽 1 m, 밤, 캡처다. 옮긴 뒤 예전 픽셀이 뒤의 건물을 고르고 새 자리(x 1100)가 램프를 고르는지도 본다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/editor-stage/select-inspector.jpg" alt="인스펙터"><figcaption>포트로 lamp-ne를 동쪽 1 m(x 10.5 → 11.5) 옮긴 직후. 인스펙터가 11.500을, 하이라이트 상자가 옮긴 자리를 보인다</figcaption></figure>
+  <figure><img src="images/editor-stage/select-move.jpg" alt="이동 전후"><figcaption>같은 쓰기의 전과 후. 기둥이 오른쪽으로 약 30 px 간다</figcaption></figure>
+  <figure><img src="images/editor-stage/select-light.jpg" alt="조명 인스펙터"><figcaption>밤, 조명 선택. 조명도 장면 파일의 행(세기는 키 배율 전, 원뿔은 도)을 고친다. 세기 60 → 120이면 건널목의 웅덩이가 밝아진다. 작은 점들이 다른 조명의 마커다</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>cfb5ffc</code></td><td>GPU 없는 픽: Core에 <code>Ray3D</code>(AABB 슬랩, 뒷면을 거부하는 Möller–Trumbore), <code>SampleEditor</code>에 원근·직교 렌즈의 픽셀 광선과 <code>pickScene</code>. Core 77 → 83, 에디터 8 → 15.</td></tr>
+  <tr><td><code>488e5f2</code></td><td>클릭·이름·포트로 선택: <code>editor.selected</code>와 <code>editor.pickAt</code>도 <code>Sync</code>를 지난다. P 뒤에 숨은 ImGui 패널(툴바, 지역별 계층과 검색, 선택 상자), 자기 <code>StageEditor.imgui.ini</code>. 골든은 그대로(크롬은 꺼진 채 시작).</td></tr>
+  <tr><td><code>184d9b3</code></td><td>인스펙터: 콘텐츠가 섹션(반사된 행과 그 apply)을 넘기고, 세션이 포트의 <code>selection</code>을 선택된 행으로 다시 가리킨다. 장면 행의 등록이 <code>RenderReflection.cpp</code>로 옮겨 실행 파일 셋이 함께 쓴다.</td></tr>
+  <tr><td><code>56a2a33</code></td><td>stage-view 리뷰 수정(아래). 추출 테스트 두 파일, 포트 도구 수리, 스크립트 전용 포트 27520.</td></tr>
+  <tr><td><code>2f2b013</code></td><td><code>pickAt</code>을 펄스로: 같은 픽셀을 두 번 쓰면 두 번 픽한다. 픽이 이동을 따라가는지 보는 단계, 계층 검색·폴더 테스트.</td></tr>
+  <tr><td><code>075e585</code></td><td>이 작업의 리뷰 수정(아래). 조명 마커와 조명 우선 픽, 조명의 문서 행 편집.</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>단위 테스트</td><td>477 → 513 (Core 84, SampleEditor 30, SampleStage 33, Backlot 9)</td></tr>
+  <tr><td>lamp-ne 기둥, street 컷, y 450</td><td>이동 전 x 1070–1076, 동쪽 1 m 뒤 1100–1104. 예측(약 34 px)과 맞는다</td></tr>
+  <tr><td>stage_task</td><td>단계 1–5와 픽 따라가기, 약 7 s(Debug 로드 포함)</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계가 바뀐 곳.</b> 인스펙터는 종류마다 따로 만든 프록시 대신 문서의 행을 직접 고친다(결정 9가 이미 파일 단위로 두었다). 그래서 다시 읽기가 읽을 것과 고친 것이 같다. 하이라이트는 배경 목록의 월드 AABB 대신 전경 목록의 방향 있는 모델 상자다. <code>pickAt</code>은 "마지막 픽을 기억한다"에서 펄스로 바뀌었다(결정 10 수정). 설계가 0.3 m로 짐작한 street 컷의 near는 규칙대로 0.71 m다.</li>
+  <li><b>리뷰가 잡은 것.</b> stage-view 리뷰가 확인한 25건 중 진짜는 다섯이다. 포트로 카메라를 쓰면 컷 이름이 그대로 남아 같은 컷을 다시 써도 돌아오지 않았다(숫자 키는 됐다). 추출에 테스트가 하나도 없었다. 기본 캡처 프레임이 자유 루프에서 늘 늦었고, 쓰기 실패를 성공으로 보고했다. 스크립트가 27500을 쥔 Playground를 조종하다 종료시켰다. editor-select 리뷰가 확인한 29건 중 진짜는 더 크다. 쿼드 머티리얼이나 조명을 패널에서 고치면 에디터가 죽었다. 키를 바꿔도 패널이 옛 값을 보였다. 조명 세기 슬라이더(0–16)가 Backlot의 3–250을 담지 못했다. 검색창에 타이핑하면 카메라가 날았다. 설계의 조명 마커가 기록 없이 빠져 있었다. 모두 고쳤다.</li>
+  <li><b>스스로 잡은 것.</b> 설계가 요구한 "옮긴 뒤에도 픽이 램프를 맞힌다"를 스크립트로 옮기다가 두 번째 포트 패리티 버그를 찾았다. 같은 <code>pickAt</code>을 다시 쓰면 아무 일도 없었다. 두 버그 모두 키보드·마우스만 닿는 숨은 상태라는 같은 모양이라, 리뷰에 그 모양을 더 찾으라고 적었고 리뷰는 둘을 더 찾았다(검색창 키보드, 첫 프레임 전 뷰포트).</li>
+  <li><b>멈춘 곳.</b> 없다. 이 작업은 Opus 설계 두 관점을 돌리지 않았다. 슬라이스 설계(부록 A·C)가 이미 정해 두어서이고, 운영 규칙과 다른 점으로 태스크 파일에 적었다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 계층은 지역별로 1488개 기계 이름을 그대로 늘어놓는다. 액터 라운드에서 이름과 부모가 생기기 전까지는 검색이 대신한다. 쿼드의 <code>material</code> 섹션은 <code>MaterialData</code>를 날것으로 보이고, UV 사각형은 쿼드 행과 겹친다.</li>
+</ul>
 
 <h2 id="g1">G1 · 무대가 섰다 <span class="tag ok">검토 지점</span></h2>
 <div class="card">
@@ -300,7 +336,6 @@
 <h2 id="next">다음</h2>
 <div class="card">
   <ol>
-    <li><b>editor-select</b> — 클릭으로 선택(CPU 광선, AABB 다음 삼각형), 지역별 계층과 검색, 인스펙터(위치·yaw·스케일 편집), 선택 하이라이트, 포트 쌍둥이.</li>
     <li><b>editor-gizmo</b> — 손으로 짠 이동 축·yaw 링·스케일 손잡이, 인스펙터와 같은 쓰기 길.</li>
     <li><b>editor-clock-reload</b> — 장면 시계(일시정지·스텝), 플립북, <code>scene.json</code> 다시 읽기. → <b>G2</b>: 직접 해 보는 그 한 가지 작업.</li>
     <li>그 뒤 <b>masked</b>(사인의 투명 텍셀), <b>stage-cuts</b>(컷별 골든, 가장자리 비교).</li>
