@@ -434,9 +434,7 @@ namespace Crowy
             return comparison.similar ? 0 : 1;
         }
 
-        // the report, then one tab-separated row a script reads: edges a and
-        // b, both fractions, the worst tile, its fraction and edges, the
-        // shift, its coincidence and the coincidence unshifted
+        // the report, then its numbers in one tab-separated row for scripts
         int compareEdgeFiles(const Args& args) {
             const auto& pathA = args.paths[0];
             const auto& pathB = args.paths[1];

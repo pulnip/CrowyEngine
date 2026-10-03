@@ -9,6 +9,10 @@
 namespace
 {
     constexpr Crowy::u32 GridTiles = 10;
+    // a four-level step: 8-bit banding stays below it
+    constexpr Crowy::u32 MinEdgeMagnitude = 16;
+    // |Gx| + |Gy| of a 3 x 3 Sobel over 8-bit luma
+    constexpr Crowy::u32 MaxEdgeMagnitude = 2040;
 
     // where tile t starts along an axis of size pixels; tiles differ by at
     // most one pixel
@@ -103,11 +107,6 @@ namespace
         }
     }
 
-    // a four-level step: 8-bit banding stays below it
-    constexpr Crowy::u32 MinEdgeMagnitude = 16;
-    // |Gx| + |Gy| of a 3 x 3 Sobel over 8-bit luma
-    constexpr Crowy::u32 MaxEdgeMagnitude = 2040;
-
     // Rec. 709 weights on the stored bytes
     Crowy::u8 lumaOf(const Crowy::u8* pixel) {
         return static_cast<Crowy::u8>(
@@ -115,9 +114,8 @@ namespace
         );
     }
 
-    // per pixel, the Sobel magnitude where non-maximum suppression across the
-    // edge keeps it, else 0; a tie goes to the later pixel, whatever the
-    // polarity, so two renderers thin one boundary to the same side
+    // per pixel, the Sobel magnitude thinning across the edge keeps, else 0;
+    // a tie goes to the later pixel, so two renderers thin a boundary alike
     std::vector<Crowy::u16> thinnedEdges(Crowy::Rgba8View image) {
         using namespace Crowy;
 
@@ -309,11 +307,12 @@ namespace
         const std::vector<Crowy::u8>& lenientB
     ) {
         using namespace Crowy;
+        using EdgePoints = std::vector<std::array<i64, 2>>;
 
         const auto width = static_cast<i64>(result.width);
         const auto height = static_cast<i64>(result.height);
-        std::vector<std::array<i64, 2>> edgesA;
-        std::vector<std::array<i64, 2>> edgesB;
+        EdgePoints edgesA;
+        EdgePoints edgesB;
         for(i64 y = 0; y < height; ++y) {
             for(i64 x = 0; x < width; ++x) {
                 const auto at = static_cast<usize>(y * width + x);
@@ -328,10 +327,12 @@ namespace
             return;
 
         // how many of `edges`, moved by (dx, dy), land on `mask`
-        const auto landing = [&](const std::vector<std::array<i64, 2>>& edges,
+        const auto landing = [&](
+                                 const EdgePoints& edges,
                                  const std::vector<u8>& mask,
                                  i64 dx,
-                                 i64 dy) {
+                                 i64 dy
+                             ) {
             u64 count = 0;
             for(const auto& [x, y]: edges) {
                 const auto mx = x + dx;

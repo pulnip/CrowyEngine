@@ -158,6 +158,7 @@ if [ -n "$UNITY_RUN" ]; then
     fi
 fi
 SKIP=""
+SKIP_HINT="Once the new pictures are right: Tools/stage_cuts.sh --record"
 if [ "$RECORD" = 1 ]; then
     if [ -z "$BACKLOT_HEAD" ]; then
         echo "cannot read Backlot's commit at $ROOT, so goldens cannot be stamped" >&2
@@ -175,10 +176,12 @@ else
         SKIP="unstamped: $STAMP_FILE does not exist"
     elif [ -z "$BACKLOT_HEAD" ]; then
         SKIP="cannot read Backlot's commit at $ROOT"
+        SKIP_HINT="Goldens are stamped only from a git checkout of Backlot."
     elif [ "$BACKLOT_HEAD" != "$STAMP_BACKLOT" ]; then
         SKIP="Backlot is at $HEAD, the goldens were taken at $(short_hash "$STAMP_BACKLOT")"
     elif [ -n "$BACKLOT_CHANGES" ]; then
         SKIP="Backlot has uncommitted changes the editor reads ($(printf '%s' "$BACKLOT_CHANGES" | tr '\n' ';' | sed 's/;/; /g'))"
+        SKIP_HINT="Commit or revert them in Backlot first."
     fi
 fi
 
@@ -196,6 +199,7 @@ COMPARED=0
 SAME=0
 DIFFERENT=0
 MISSING=0
+SMOKE_MISSING=0
 RECORDED=0
 for KEY in $KEYS; do
     set_editor key "$KEY" || exit 1
@@ -237,6 +241,10 @@ for KEY in $KEYS; do
             MISSING=$((MISSING + 1))
             remember missing
             echo "FAIL: no golden for $NAME on $BACKEND ($GOLDEN)"
+            if [ "$SMOKE" = 1 ]; then
+                SMOKE_MISSING=1
+                echo "this is the smoke's golden, which --record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.sh build/bin/StageEditor and copy the capture to $GOLDEN"
+            fi
             continue
         fi
 
@@ -282,9 +290,29 @@ if ! is_zero "$TIME"; then
 fi
 
 if [ "$RECORD" = 1 ]; then
-    if [ "$HAVE_STAMP" = 0 ] || [ "$STAMP_BACKLOT" != "$BACKLOT_HEAD" ] || [ "$(echo $STAMP_KEYS)" != "$KEYS" ]; then
-        stage_stamp_write "$STAMP_FILE" "$BACKLOT_HEAD" "$KEYS"
-        echo "stamp: backlot $BACKLOT_HEAD, keys $KEYS"
+    # the stamp keeps every key it pinned; a run adds its own after them
+    STAMPED_KEYS=$(echo $STAMP_KEYS)
+    for KEY in $KEYS; do
+        case " $STAMPED_KEYS " in
+        *" $KEY "*) ;;
+        *) STAMPED_KEYS=$(echo $STAMPED_KEYS "$KEY") ;;
+        esac
+    done
+    MOVED=0
+    [ "$HAVE_STAMP" = 1 ] && [ "$STAMP_BACKLOT" != "$BACKLOT_HEAD" ] && MOVED=1
+    if [ "$HAVE_STAMP" = 0 ] || [ "$MOVED" = 1 ] || [ "$(echo $STAMP_KEYS)" != "$STAMPED_KEYS" ]; then
+        stage_stamp_write "$STAMP_FILE" "$BACKLOT_HEAD" "$STAMPED_KEYS"
+        echo "stamp: backlot $BACKLOT_HEAD, keys $STAMPED_KEYS"
+    fi
+    UNRECORDED=0
+    for KEY in $STAMPED_KEYS; do
+        case " $KEYS " in
+        *" $KEY "*) ;;
+        *) UNRECORDED=1 ;;
+        esac
+    done
+    if [ "$MOVED" = 1 ] && { [ "$UNRECORDED" = 1 ] || [ "$(echo $CUTS | wc -w)" -lt "$(echo $SCENE_CUTS | wc -w)" ]; }; then
+        echo "note: the goldens this run did not record were taken at $(short_hash "$STAMP_BACKLOT"); record them at this commit too"
     fi
     # the other backend's pictures were taken at the old commit
     if [ "$HAVE_STAMP" = 1 ] && [ "$STAMP_BACKLOT" != "$BACKLOT_HEAD" ] && ls "$GOLDEN_ROOT"/StageEditor/*."$OTHER_BACKEND".png >/dev/null 2>&1; then
@@ -298,11 +326,14 @@ RECORDED_TEXT=""
 echo "stage_cuts: $CAPTURED captured, $COMPARED compared, $SAME same, $DIFFERENT different, $MISSING missing$RECORDED_TEXT; $BACKEND, tolerance $TOLERANCE_TEXT"
 STATUS=0
 if [ -n "$SKIP" ]; then
-    echo "SKIP: $SKIP; captured into $OUT, compared nothing. Once the new pictures are right: Tools/stage_cuts.sh --record"
+    echo "SKIP: $SKIP; captured into $OUT, compared nothing. $SKIP_HINT"
     STATUS=77
 elif [ "$DIFFERENT" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
-    [ "$MISSING" -gt 0 ] && echo "to record the missing goldens: Tools/stage_cuts.sh --record"
+    [ "$MISSING" -gt "$SMOKE_MISSING" ] && echo "to record the missing goldens: Tools/stage_cuts.sh --record"
     STATUS=1
+elif [ "$RECORD" = 0 ] && [ "$COMPARED" = 0 ]; then
+    echo "SKIP: no key of this run is pinned (pinned: $(echo $PINNED)); captured into $OUT, compared nothing"
+    STATUS=77
 fi
 echo "cuts: $OUT"
 

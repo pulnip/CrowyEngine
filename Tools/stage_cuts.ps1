@@ -226,6 +226,7 @@ try {
         }
     }
     $skip = ""
+    $skipHint = "Once the new pictures are right: Tools/stage_cuts.ps1 -Record"
     if ($Record) {
         if (-not $state.Head) {
             throw "cannot read Backlot's commit at $root, so goldens cannot be stamped"
@@ -242,12 +243,14 @@ try {
         }
         elseif (-not $state.Head) {
             $skip = "cannot read Backlot's commit at $root"
+            $skipHint = "Goldens are stamped only from a git checkout of Backlot."
         }
         elseif ($state.Head -ne $stamp.Backlot) {
             $skip = "Backlot is at $head, the goldens were taken at $(Get-ShortHash $stamp.Backlot)"
         }
         elseif ($state.Changes.Count -gt 0) {
             $skip = "Backlot has uncommitted changes the editor reads ($($state.Changes -join '; '))"
+            $skipHint = "Commit or revert them in Backlot first."
         }
     }
 
@@ -257,6 +260,7 @@ try {
     $same = 0
     $different = 0
     $missing = 0
+    $smokeMissing = 0
     $recorded = 0
     foreach ($key in $Keys) {
         Set-EditorField key $key
@@ -296,6 +300,10 @@ try {
                 ++$missing
                 $capture.Golden = "missing"
                 Write-Host "FAIL: no golden for $name on $backend ($golden)"
+                if ($smoke) {
+                    ++$smokeMissing
+                    Write-Host "this is the smoke's golden, which -Record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.ps1 build\bin\StageEditor.exe and copy the capture to $golden"
+                }
                 continue
             }
 
@@ -338,10 +346,18 @@ try {
     }
 
     if ($Record) {
-        $restamped = (-not $stamp) -or ($stamp.Backlot -ne $state.Head) -or (($stamp.Keys -join " ") -ne ($Keys -join " "))
+        # the stamp keeps every key it pinned; a run adds its own after them
+        $stampKeys = if ($stamp) { @($stamp.Keys) } else { @() }
+        $stampedKeys = @($stampKeys) + @($Keys | Where-Object { $stampKeys -notcontains $_ })
+        $moved = $stamp -and $stamp.Backlot -ne $state.Head
+        $restamped = (-not $stamp) -or $moved -or (($stampKeys -join " ") -ne ($stampedKeys -join " "))
         if ($restamped) {
-            Write-StageStamp $stampFile $state.Head $Keys
-            Write-Host "stamp: backlot $($state.Head), keys $($Keys -join ' ')"
+            Write-StageStamp $stampFile $state.Head $stampedKeys
+            Write-Host "stamp: backlot $($state.Head), keys $($stampedKeys -join ' ')"
+        }
+        $unrecorded = @($stampedKeys | Where-Object { $Keys -notcontains $_ })
+        if ($moved -and ($unrecorded.Count -gt 0 -or $Cuts.Count -lt $sceneCuts.Count)) {
+            Write-Host "note: the goldens this run did not record were taken at $(Get-ShortHash $stamp.Backlot); record them at this commit too"
         }
         # the other backend's pictures were taken at the old commit
         $metal = Get-ChildItem -ErrorAction SilentlyContinue (Join-Path $goldenRoot "StageEditor\*.metal.png")
@@ -354,14 +370,18 @@ try {
     $recordedText = if ($Record) { ", $recorded recorded" } else { "" }
     Write-Host "stage_cuts: $captured captured, $compared compared, $same same, $different different, $missing missing$recordedText; $backend, tolerance $toleranceText"
     if ($skip) {
-        Write-Host "SKIP: $skip; captured into $Out, compared nothing. Once the new pictures are right: Tools/stage_cuts.ps1 -Record"
+        Write-Host "SKIP: $skip; captured into $Out, compared nothing. $skipHint"
         $exitCode = 77
     }
     elseif ($different -gt 0 -or $missing -gt 0) {
-        if ($missing -gt 0) {
+        if ($missing -gt $smokeMissing) {
             Write-Host "to record the missing goldens: Tools/stage_cuts.ps1 -Record"
         }
         $exitCode = 1
+    }
+    elseif (-not $Record -and $compared -eq 0) {
+        Write-Host "SKIP: no key of this run is pinned (pinned: $($pinned -join ' ')); captured into $Out, compared nothing"
+        $exitCode = 77
     }
 }
 finally {
