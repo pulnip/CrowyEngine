@@ -14,7 +14,7 @@ namespace Crowy
     inline constexpr std::array<u64, 6> PinTicks{0, 1, 10, 60, 240, 600};
 
     std::span<const PuzzlePin> puzzlePins();
-    // null when the puzzle and mode have no row yet
+    // null when the puzzle and mode have no row
     const PuzzlePin* findPin(PuzzleKind kind, PuzzleMode mode);
     // the spelling the table and the port use
     Str formatHash(u64 hash);
@@ -23,8 +23,7 @@ namespace Crowy
     // the first difference in words, empty when the two agree
     Str firstDivergence(const PuzzlePin& pinned, const PuzzlePin& actual);
 
-    // A run's numbers at the pinned ticks, recorded on Windows; a Mac that
-    // disagrees records where, and never edits the table.
+    // a run's numbers at the pinned ticks
     struct PuzzlePin {
         PuzzleKind kind = PuzzleKind::PlateGate;
         PuzzleMode mode = PuzzleMode::Solution;

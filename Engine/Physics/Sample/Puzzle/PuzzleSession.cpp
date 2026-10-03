@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <ranges>
+#include <utility>
 
 #include "Assert.hpp"
 
@@ -108,11 +109,10 @@ namespace Crowy
             }
 
             auto& level = plateLevels[i];
-            const auto previous = level;
-            if(mass >= rule.minMass)
-                level = std::min(level + 1, rule.levels);
-            else if(level > 0)
-                --level;
+            const auto previous = std::exchange(
+                level,
+                nextPlateLevel(level, mass, rule)
+            );
             if(level == previous)
                 continue;
 

@@ -2,9 +2,8 @@
 
 namespace Crowy
 {
-    // A crate pushed onto a pressure plate raises a gate, and the ball
-    // rolls through to the goal against the end wall. The crate slides
-    // 1.04 m; it touches the plate after 0.45 m and the stop bounds it.
+    // the crate slides about 1 m: onto the plate after 0.45 m, short of the
+    // stop; the raised gate lets the ball roll to the end wall
     Puzzle makePlateGate() {
         using enum PieceRole;
 

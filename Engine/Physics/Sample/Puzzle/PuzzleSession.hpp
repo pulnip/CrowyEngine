@@ -29,9 +29,8 @@ namespace Crowy
             default;
     };
 
-    // One run of one puzzle in one mode, in a world of its own. Only Tick
-    // moves the world, so the tests and the playground run the same path;
-    // a restart is a new session.
+    // only Tick moves the world, so the tests and the playground run one
+    // path; a restart is a new session
     class PuzzleSession {
     private:
         std::unique_ptr<PhysicsWorld> world;

@@ -14,12 +14,7 @@ using namespace Crowy;
 
 namespace
 {
-    constexpr std::array<usize, 3> BodyCounts{6, 7, 6};
     constexpr std::array<usize, 3> HingeCounts{0, 0, 1};
-
-    usize indexOf(PuzzleKind kind) {
-        return static_cast<usize>(kind);
-    }
 
     bool isInside(const AABB3D& bounds, f32 lowestY) {
         constexpr f32 Slack = 1.0e-4f;
@@ -47,7 +42,7 @@ TEST(PuzzleBuild, SessionMirrorsItsPuzzle) {
             const auto& puzzle = session.GetPuzzle();
             const auto& world = session.GetWorld();
 
-            EXPECT_EQ(puzzle.bodies.size(), BodyCounts[indexOf(kind)]);
+            EXPECT_EQ(puzzle.bodies.size(), PuzzleBodyCounts[indexOf(kind)]);
             EXPECT_EQ(world.BodyCount(), puzzle.bodies.size());
             EXPECT_EQ(puzzle.hinges.size(), HingeCounts[indexOf(kind)]);
             for(u32 i = 0; i < puzzle.bodies.size(); ++i) {
@@ -77,10 +72,11 @@ TEST(PuzzleBuild, ModesShareTheBuild) {
         const PuzzleSession solution(runtime, kind, PuzzleMode::Solution);
         const PuzzleSession control(runtime, kind, PuzzleMode::Control);
         EXPECT_EQ(solution.GetStatus().hash, control.GetStatus().hash);
-        EXPECT_EQ(
-            solution.GetWorld().BodyCount(),
-            control.GetWorld().BodyCount()
-        );
+        const auto bodies = PuzzleBodyCounts[indexOf(kind)];
+        EXPECT_EQ(solution.GetWorld().BodyCount(), bodies);
+        EXPECT_EQ(control.GetWorld().BodyCount(), bodies);
+        EXPECT_EQ(solution.GetStatus().tick, 0u);
+        EXPECT_EQ(control.GetStatus().tick, 0u);
 
         const auto& puzzle = solution.GetPuzzle();
         ASSERT_EQ(puzzle.solution.size(), 2u);
@@ -89,6 +85,7 @@ TEST(PuzzleBuild, ModesShareTheBuild) {
         EXPECT_EQ(puzzle.control[0].tick, puzzle.solution[1].tick);
         EXPECT_EQ(puzzle.control[0].body, puzzle.solution[1].body);
         EXPECT_EQ(puzzle.control[0].impulse, puzzle.solution[1].impulse);
+        EXPECT_EQ(puzzle.control[0].point, puzzle.solution[1].point);
     }
 }
 
@@ -273,12 +270,14 @@ TEST(PuzzleRun, StaysInFootprint) {
             SCOPED_TRACE(std::format("{} {}", enumName(kind), enumName(mode)));
             PuzzleSession session(runtime, kind, mode);
             const auto& puzzle = session.GetPuzzle();
+            u64 checked = 0;
             while(session.GetStatus().tick < PuzzleHorizon) {
                 session.Tick();
                 ++ticks;
                 for(u32 i = 0; i < puzzle.bodies.size(); ++i) {
                     if(puzzle.bodies[i].desc.motion == BodyMotion::Static)
                         continue;
+                    ++checked;
                     // resting contacts sink up to the 0.02 m slop
                     ASSERT_TRUE(isInside(
                         worldBoundsOf(session.GetWorld(), session.HandleOf(i)),
@@ -287,6 +286,12 @@ TEST(PuzzleRun, StaysInFootprint) {
                        << session.GetStatus().tick;
                 }
             }
+            const auto moving = PuzzleMovingCounts[indexOf(kind)];
+            EXPECT_EQ(checked, moving * PuzzleHorizon);
+            EXPECT_EQ(
+                session.GetWorld().BodyCount(),
+                PuzzleBodyCounts[indexOf(kind)]
+            );
         }
     }
     EXPECT_EQ(ticks, 6u * PuzzleHorizon);
@@ -309,6 +314,10 @@ TEST(PuzzleDeterminism, RunsRepeatPerTick) {
             }
             EXPECT_EQ(compared, PuzzleHorizon);
             EXPECT_EQ(first.GetStatus(), second.GetStatus());
+            EXPECT_EQ(
+                first.GetWorld().BodyCount(),
+                PuzzleBodyCounts[indexOf(kind)]
+            );
         }
     }
 }
@@ -321,6 +330,10 @@ TEST(PuzzleDeterminism, WorkerCountsAgree) {
             for(const auto mode: AllPuzzleModes) {
                 PuzzleSession session(runtime, kind, mode);
                 runs.push_back(hashesToHorizon(session));
+                EXPECT_EQ(
+                    session.GetWorld().BodyCount(),
+                    PuzzleBodyCounts[indexOf(kind)]
+                );
             }
         }
         return runs;
@@ -332,6 +345,15 @@ TEST(PuzzleDeterminism, WorkerCountsAgree) {
     for(const auto& run: alone)
         EXPECT_EQ(run.size(), PuzzleHorizon + 1);
     EXPECT_EQ(alone, shared);
+}
+
+TEST(PuzzlePlate, LevelClimbsAtThresholdAndSinks) {
+    const auto rule = PlateRule{.minMass = 5.0f, .levels = 3};
+    EXPECT_EQ(nextPlateLevel(0, 5.0f, rule), 1u);
+    EXPECT_EQ(nextPlateLevel(0, 4.99f, rule), 0u);
+    EXPECT_EQ(nextPlateLevel(3, 10.0f, rule), 3u);
+    EXPECT_EQ(nextPlateLevel(2, 0.0f, rule), 1u);
+    EXPECT_EQ(nextPlateLevel(1, 4.99f, rule), 0u);
 }
 
 // prints where the moving bodies are every 30 ticks, for tuning by hand

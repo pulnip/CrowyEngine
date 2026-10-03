@@ -2,10 +2,8 @@
 
 namespace Crowy
 {
-    // A slab standing beyond a gap is pushed over to lie across it, and the
-    // ball rolls from the pad over it into the goal against the backstop.
-    // The push lands at the slab's center of percussion, 0.95 m above its
-    // pivot edge, so the edge needs no friction to stay put.
+    // pushed at its center of percussion, 0.95 m above the pivot edge, the
+    // slab tips over without the edge needing friction and bridges the gap
     Puzzle makeToppleBridge() {
         using enum PieceRole;
 

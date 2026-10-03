@@ -2,10 +2,8 @@
 
 namespace Crowy
 {
-    // A door hinged on a vertical axis blocks the corridor; a push at its
-    // free edge swings it open against its friction to the limit, and the
-    // ball rolls through. The ball alone pushes ten times under that
-    // friction, so without the push the door holds.
+    // the ball alone pushes ten times under the hinge friction; only the push
+    // at the free edge opens the door
     Puzzle makeSwingDoor() {
         using enum PieceRole;
 

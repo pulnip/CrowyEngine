@@ -9,7 +9,7 @@ namespace
     using Crowy::PuzzleMode;
     using Crowy::PuzzlePin;
 
-    // pasted from PuzzlePins.MatchTheTable's output on Windows, never by hand
+    // pasted from PuzzlePins.MatchTheTable's output, never edited by hand
     // clang-format off
     constexpr std::array<PuzzlePin, 6> PinTable{{
     PuzzlePin{PuzzleKind::PlateGate, PuzzleMode::Solution, 187, {

@@ -24,8 +24,8 @@ namespace Crowy
     using PlateRules = std::vector<PlateRule>;
 
     inline constexpr u64 PuzzleHorizon = 600;
-    // every body of a puzzle stays within |x|, |z| <= half width and
-    // y in [0, height] of its own origin
+    // every body but the floor, whose top is y = 0, stays within
+    // |x|, |z| <= half width and y in [0, height] of its own origin
     inline constexpr f32 PuzzleHalfWidth = 1.5f;
     inline constexpr f32 PuzzleHeight = 3.5f;
 
@@ -35,23 +35,12 @@ namespace Crowy
         SwingDoor,
     };
 
-    CROWY_ENUM_BEGIN(PuzzleKind)
-    CROWY_ENUM_VALUE(PlateGate)
-    CROWY_ENUM_VALUE(ToppleBridge)
-    CROWY_ENUM_VALUE(SwingDoor)
-    CROWY_ENUM_END()
-
     enum class PuzzleMode : u8 {
         // the scripted solution
         Solution,
         // the solution without the move that works the mechanism
         Control,
     };
-
-    CROWY_ENUM_BEGIN(PuzzleMode)
-    CROWY_ENUM_VALUE(Solution)
-    CROWY_ENUM_VALUE(Control)
-    CROWY_ENUM_END()
 
     // what a body is for, so a viewer can pick its look
     enum class PieceRole : u8 {
@@ -71,6 +60,12 @@ namespace Crowy
 
     // both modes build the same bodies in the same order; inputs differ
     Puzzle makePuzzle(PuzzleKind kind);
+    // the level a plate rule moves to from `level` with `mass` on it
+    inline constexpr u32 nextPlateLevel(
+        u32 level,
+        f32 mass,
+        const PlateRule& rule
+    );
     const PuzzleInputs& inputsOf(const Puzzle& puzzle, PuzzleMode mode);
 
     struct PuzzleBody {
@@ -128,4 +123,26 @@ namespace Crowy
         PuzzleInputs control;
         PuzzleGoal goal;
     };
+
+    inline constexpr u32 nextPlateLevel(
+        u32 level,
+        f32 mass,
+        const PlateRule& rule
+    ) {
+        if(mass >= rule.minMass)
+            return level < rule.levels ? level + 1 : rule.levels;
+
+        return level > 0 ? level - 1 : 0;
+    }
+
+    CROWY_ENUM_BEGIN(PuzzleKind)
+    CROWY_ENUM_VALUE(PlateGate)
+    CROWY_ENUM_VALUE(ToppleBridge)
+    CROWY_ENUM_VALUE(SwingDoor)
+    CROWY_ENUM_END()
+
+    CROWY_ENUM_BEGIN(PuzzleMode)
+    CROWY_ENUM_VALUE(Solution)
+    CROWY_ENUM_VALUE(Control)
+    CROWY_ENUM_END()
 }

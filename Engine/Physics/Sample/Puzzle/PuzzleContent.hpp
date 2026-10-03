@@ -13,7 +13,7 @@ namespace Crowy
     // pushed along +x into every puzzle's lane
     inline constexpr Vec3 PuzzleBallPush{2.5f, 0.0f, 0.0f};
 
-    constexpr PuzzleBody staticBox(
+    inline constexpr PuzzleBody staticBox(
         std::string_view name,
         PieceRole role,
         Vec3 halfExtent,
@@ -33,7 +33,7 @@ namespace Crowy
     }
 
     // angular damping, because a rolling ball has no rolling resistance
-    constexpr PuzzleBody puzzleBall(Vec3 position) {
+    inline constexpr PuzzleBody puzzleBall(Vec3 position) {
         return PuzzleBody{
             .name = "ball",
             .role = PieceRole::Ball,

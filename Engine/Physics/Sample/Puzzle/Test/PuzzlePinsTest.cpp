@@ -43,7 +43,6 @@ TEST(PuzzlePins, TableCoversEveryRunOnce) {
     }
 }
 
-// Windows records the table; elsewhere a mismatch is drift to report
 TEST(PuzzlePins, MatchTheTable) {
     PhysicsRuntime runtime;
     std::vector<PuzzlePin> actual;
@@ -53,6 +52,11 @@ TEST(PuzzlePins, MatchTheTable) {
             PuzzleSession session(runtime, kind, mode);
             runTo(session, PuzzleHorizon);
             actual.push_back(session.GetActualPin());
+            EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+            EXPECT_EQ(
+                session.GetWorld().BodyCount(),
+                PuzzleBodyCounts[indexOf(kind)]
+            );
 
             const auto* pinned = session.GetPin();
             if(pinned == nullptr) {
