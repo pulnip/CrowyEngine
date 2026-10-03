@@ -22,7 +22,13 @@
 # exists, a capture of the default frame 60 is compared against it with
 # ImageCompareCheck's defaults, and a difference fails the run with a heat
 # map beside the capture. To accept a new picture, copy the capture over
-# the golden; the failure prints the command.
+# the golden; the failure prints the command. With such a golden the run
+# waits past the duration until frame 60's capture is complete, up to
+# $CROWY_SMOKE_CAPTURE_TIMEOUT seconds (60), and fails when none lands: a
+# golden never gates on a frame it did not compare.
+#
+# An exit status of 77 is a skip (the sample's content is missing) and
+# passes through for ctest's SKIP_RETURN_CODE.
 #
 # Run from the repository root: samples load Engine/Shader and Content
 # by relative path.
@@ -40,6 +46,29 @@ CAPTURE="${3:-}"
 if [ -z "$CAPTURE" ] && [ -n "${CROWY_SMOKE_CAPTURE_DIR:-}" ]; then
     CAPTURE="$CROWY_SMOKE_CAPTURE_DIR/$NAME.bmp"
 fi
+
+# the golden a frame-60 capture is compared with, found before the launch
+# so the watch can wait for that capture
+EXPECTED_GOLDEN=""
+if [ -n "$CAPTURE" ] && [ "${CROWY_SMOKE_CAPTURE_AT:-60}" = 60 ]; then
+    for CANDIDATE in \
+        "$REPO_ROOT"/Engine/*/Sample/Golden/"$NAME.$BACKEND.png" \
+        "$REPO_ROOT"/Engine/*/Spike/Golden/"$NAME.$BACKEND.png"; do
+        if [ -f "$CANDIDATE" ]; then
+            EXPECTED_GOLDEN="$CANDIDATE"
+            break
+        fi
+    done
+fi
+CAPTURE_TIMEOUT="${CROWY_SMOKE_CAPTURE_TIMEOUT:-60}"
+
+# a dump is written on a thread: complete once the BMP header's file size
+# (bytes 2-5, little-endian) matches the bytes on disk
+capture_complete() {
+    [ -f "$1" ] || return 1
+    HEADER_SIZE=$(od -An -t u4 -j 2 -N 4 "$1" 2>/dev/null | tr -d ' ')
+    [ -n "$HEADER_SIZE" ] && [ "$HEADER_SIZE" -eq "$(wc -c <"$1" | tr -d ' ')" ]
+}
 
 LOG="${TMPDIR:-/tmp}/crowy-smoke-$$.log"
 trap 'rm -f "$LOG"' EXIT
@@ -79,9 +108,34 @@ while [ "$ELAPSED" -lt "$DURATION" ]; do
     ELAPSED=$((ELAPSED + 1))
 done
 
+if [ "$EXITED" -eq 0 ] && [ -n "$EXPECTED_GOLDEN" ]; then
+    case "$CAPTURE" in
+    *.bmp)
+        # a slow start has not reached frame 60 yet: wait for its capture
+        WAITED=0
+        while ! capture_complete "$CAPTURE" && [ "$WAITED" -lt "$CAPTURE_TIMEOUT" ]; do
+            if ! kill -0 "$PID" 2>/dev/null; then
+                EXITED=1
+                break
+            fi
+            sleep 1
+            WAITED=$((WAITED + 1))
+        done
+        if [ "$WAITED" -gt 0 ]; then
+            echo "waited $WAITED s past the duration for frame 60"
+        fi
+        ;;
+    esac
+fi
+
 if [ "$EXITED" -eq 1 ]; then
     wait "$PID"
     STATUS=$?
+    if [ "$STATUS" -eq 77 ]; then
+        echo "SKIP: the sample reported its content missing" >&2
+        tail -n 5 "$LOG" >&2
+        exit 77
+    fi
     if [ "$STATUS" -ne 0 ]; then
         echo "FAIL: exited early with status $STATUS" >&2
     fi
@@ -106,6 +160,10 @@ if [ -z "$CAPTURE" ]; then
     exit 0
 fi
 if [ ! -f "$CAPTURE" ]; then
+    if [ -n "$EXPECTED_GOLDEN" ]; then
+        echo "FAIL: $EXPECTED_GOLDEN exists, but frame 60 was not captured within $((DURATION + CAPTURE_TIMEOUT)) s" >&2
+        exit 1
+    fi
     # headless samples have no swapchain, so nothing to dump
     echo "note: no frame captured (sample presented no frame?)" >&2
     exit 0
