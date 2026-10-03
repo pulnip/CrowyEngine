@@ -15,6 +15,10 @@ namespace Crowy
     // or the box is behind it
     inline constexpr std::optional<f32> intersectRayAABB3D(const Ray3D& ray, const AABB3D& box) noexcept;
 
+    // t where the ray meets the plane through `point` facing `normal`;
+    // nullopt when it runs along the plane or meets it behind
+    inline constexpr std::optional<f32> intersectRayPlane(const Ray3D& ray, Vec3 point, Vec3 normal) noexcept;
+
     // t of the hit, nullopt for a miss; `frontOnly` refuses a triangle the
     // ray meets from behind, a front being clockwise as MeshData's are
     inline constexpr std::optional<f32> intersectRayTriangle(
@@ -59,6 +63,21 @@ namespace Crowy
         }
 
         return enter;
+    }
+
+    inline constexpr std::optional<f32> intersectRayPlane(const Ray3D& ray, Vec3 point, Vec3 normal) noexcept {
+        constexpr auto Epsilon = 1e-6f;
+
+        // written so that a NaN fails every rejection
+        const auto facing = dot(ray.direction, normal);
+        if(!(facing <= -Epsilon || facing >= Epsilon))
+            return std::nullopt;
+
+        const auto t = dot(point - ray.origin, normal) / facing;
+        if(!(t >= 0.0f))
+            return std::nullopt;
+
+        return t;
     }
 
     // Moller-Trumbore

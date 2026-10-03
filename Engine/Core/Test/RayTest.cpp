@@ -70,3 +70,19 @@ TEST(Ray, ANaNRayHitsNothing) {
     EXPECT_FALSE(intersectRayTriangle(direction, A, B, C));
     EXPECT_FALSE(intersectRayTriangle(origin, A, B, C));
 }
+
+// either facing of the plane meets the ray, so a drag plane needs no sign
+TEST(Ray, MeetsAPlaneAhead) {
+    const Ray3D down{.origin = {0.0f, 10.0f, 0.0f}, .direction = {0.0f, -1.0f, 0.0f}};
+
+    EXPECT_FLOAT_EQ(intersectRayPlane(down, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}).value_or(-1.0f), 10.0f);
+    EXPECT_FLOAT_EQ(intersectRayPlane(down, {0.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}).value_or(-1.0f), 10.0f);
+}
+
+TEST(Ray, MissesAPlaneAlongOrBehind) {
+    const Vec3 point{0.0f, 0.0f, 0.0f};
+    const Vec3 normal{0.0f, 1.0f, 0.0f};
+
+    EXPECT_FALSE(intersectRayPlane(Ray3D{.origin = {0.0f, 10.0f, 0.0f}, .direction = {1.0f, 0.0f, 0.0f}}, point, normal));
+    EXPECT_FALSE(intersectRayPlane(Ray3D{.origin = {0.0f, 10.0f, 0.0f}, .direction = {0.0f, 1.0f, 0.0f}}, point, normal));
+}

@@ -2,6 +2,7 @@
 # content library, so the library can move to an editor executable of its own.
 add_library(SampleEditor STATIC
     EditorCamera.cpp
+    EditorGizmo.cpp
     EditorPanels.cpp
     EditorPick.cpp
     EditorSession.cpp

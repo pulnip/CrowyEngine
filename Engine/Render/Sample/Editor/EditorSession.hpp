@@ -27,9 +27,6 @@ namespace Crowy
     using PortExpose = std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)>;
     using PortUnexpose = std::function<void(StrView)>;
 
-    // EditorState::pickAt when no pick is pending
-    inline constexpr Vec2 EditorNoPick{-1.0f, -1.0f};
-
     // what the editor can select: one row of the content, named across kinds
     enum class EditorObjectKind : u8 {
         Instance,

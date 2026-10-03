@@ -18,6 +18,9 @@ namespace Crowy
     // content does not let the editor pick
     using PickMeshes = std::function<MeshList(PrimitiveHandle)>;
 
+    // a pixel field that holds none: no pick pending, a handle not shown
+    inline constexpr Vec2 EditorNoPick{-1.0f, -1.0f};
+
     // a world point in window points from the top-left, or nothing behind
     // the near plane
     inline constexpr std::optional<Vec2> projectToWindow(const Mat4& viewProj, Vec3 point, Vec2 viewport) {
