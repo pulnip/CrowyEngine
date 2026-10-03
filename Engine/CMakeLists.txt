@@ -22,3 +22,5 @@ add_subdirectory(Resource)
 # 3-0) Subsystem Layer
 add_subdirectory(Scene)
 add_subdirectory(Render)
+# 3-1) on top of Render
+add_subdirectory(Effects)
