@@ -177,6 +177,7 @@
     <li><a href="#glance">한눈에</a></li>
     <li><a href="#how">이 라운드가 도는 방식</a></li>
     <li><a href="#design">라운드 설계에서 정한 것</a></li>
+    <li><a href="#puzzles">퍼즐 (physics-puzzles)</a></li>
     <li><a href="#world">물리 월드 (physics-world)</a></li>
     <li><a href="#next">다음</a></li>
   </ol>
@@ -185,12 +186,13 @@
 <h2 id="glance">한눈에</h2>
 <div class="card">
   <p>목표는 <b>위임 실험</b>이다. 물리(강체, Jolt)를 AI가 혼자 어디까지 끌고 가는지 본다. 오빠가 확인할 수 있게 <b>테스트</b>, <b>보이는 샘플</b>, <b>엔진에 붙는 방식에 대한 짧은 노트</b>를 함께 낸다. 오늘 밤 범위는 설계와 트레이서 불릿이다: Jolt를 트리에 넣고, 고정 틱 위의 물리 월드, 헤드리스 시나리오, 눈으로 보는 플레이그라운드. 물리 월드는 <code>RenderScene</code> 프리미티브에 한 방향으로만 변환을 쓰고, 그 글루는 액터/컴포넌트 라운드가 그대로 옮겨 갈 수 있게 자기 파일에 둔다.</p>
-  <p>지금까지: 설계(탐색 6, 설계 관점 2 + 비평 1)를 끝내고 작업 넷으로 잘랐다. 작업 1이 끝났다 — <code>Engine/Physics</code>가 Jolt를 완전히 숨기고, 테스트 23개가 결정성(실행 간, 월드 간, 워커 0개 대 3개)까지 확인한다.</p>
+  <p>지금까지: 설계(탐색 6, 설계 관점 2 + 비평 1)를 끝내고 작업 넷으로 잘랐다. 작업 1 — <code>Engine/Physics</code>가 Jolt를 완전히 숨기고, 테스트 23개가 결정성(실행 간, 월드 간, 워커 0개 대 3개)까지 확인한다. 작업 2 — 퍼즐 셋(PlateGate, ToppleBridge, SwingDoor)이 헤드리스로 풀리고, 각자의 대조군은 이유를 남기며 실패하고, 여섯 실행의 해시가 체크포인트마다 핀으로 고정됐다. Mac이 이 핀을 그대로 재현하는지가 이 라운드의 열린 질문이다.</p>
 </div>
 <div class="stat-row">
-  <div class="stat"><div class="label">작업</div><div class="value num">1 / 4 <small>+ 리뷰 수정 1</small></div></div>
-  <div class="stat"><div class="label">단위 테스트 스위트</div><div class="value num">13 → 14 <small>CrowyPhysicsTest</small></div></div>
-  <div class="stat"><div class="label">물리 테스트</div><div class="value num">23 <small>death 7 포함, 0.5 s</small></div></div>
+  <div class="stat"><div class="label">작업</div><div class="value num">2 / 4 <small>+ 리뷰 수정 2</small></div></div>
+  <div class="stat"><div class="label">단위 테스트 스위트</div><div class="value num">13 → 15 <small>Physics · SamplePuzzle</small></div></div>
+  <div class="stat"><div class="label">물리 · 퍼즐 테스트</div><div class="value num">23 + 16 <small>death 7 포함</small></div></div>
+  <div class="stat"><div class="label">퍼즐이 풀리는 틱</div><div class="value num">187 · 218 · 197 <small>대조군은 600틱 내내 안 풀림</small></div></div>
   <div class="stat"><div class="label">Jolt 빌드</div><div class="value num">21 s <small>경고 0, clang-cl</small></div></div>
 </div>
 
@@ -217,6 +219,42 @@
     <li><b>Windows와 Mac의 비트 단위 일치는 약속이 아니라 측정이다.</b> Jolt를 <code>CROSS_PLATFORM_DETERMINISTIC</code>으로 빌드했지만 clang-cl은 Jolt의 검증 목록에 없다. 핀은 Windows에서 기록하고, Mac은 맞는지 혹은 어디서 처음 갈라지는지를 적는다. 핀을 Mac에 맞춰 고치지는 않는다.</li>
   </ul>
 </div>
+
+<h2 id="puzzles">퍼즐 (physics-puzzles) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>BotW 느낌의 퍼즐 셋이 물리 모듈의 공개 API 위의 <b>데이터 표</b>로 들어왔다(<code>Engine/Physics/Sample/Puzzle</code>, 라이브러리 <code>SamplePuzzle</code>). 퍼즐 하나는 몸체(역할 포함), 힌지, 구역, 압력판 규칙, 풀이와 대조군의 입력, 목표(어떤 몸체가 어떤 구역 안에)로 이루어지고, 두 모드는 같은 몸체를 같은 순서로 만든다 — 다른 것은 입력뿐이다. <code>PuzzleSession</code>은 퍼즐 하나를 자기 월드 하나에서 돌린다: 그 틱에 걸린 입력 → 압력판 규칙(직전 틱이 남긴 상태를 읽는다) → <code>Step</code> 한 번 → 목표 래치 → 상태 해시 → 핀과 대조. 월드는 <code>const</code>로만 내보내서 <code>Tick</code>만 월드를 움직이고, 테스트와 플레이그라운드가 같은 길을 돈다.</p>
+  <ul>
+    <li><b>PlateGate.</b> 상자를 밀어 압력판에 올리면 키네마틱 문이 한 틱에 1 cm씩 올라가고, 공이 그 밑으로 굴러 끝벽 앞의 목표에 들어간다. 187틱에 풀린다. 대조군(공만 민다)의 공은 닫힌 문 앞 x = 0.05에서 멈춘다.</li>
+    <li><b>ToppleBridge.</b> 틈 너머에 선 판을 타격 중심(피벗 모서리에서 0.95 m)에서 밀면 판이 넘어져 틈을 덮고, 공이 그 위를 지나 목표에 든다. 218틱. 대조군의 공은 틈에 빠져 바닥(y 0.15)에서 멈춘다.</li>
+    <li><b>SwingDoor.</b> 세로축 힌지에 달린 문의 자유단을 밀면 마찰 토크(20 N·m)를 이기고 한계 1.5 rad까지 열리고, 공이 지나간다. 197틱. 공만으로는 문이 0.005 rad 열리고 만다.</li>
+  </ul>
+  <p>핀은 실행 여섯(퍼즐 셋 × 모드 둘)마다 틱 0, 1, 10, 60, 240, 600의 해시와 <code>solvedAt</code>이다. 테스트가 표를 표 그대로의 문법으로 출력하고, Windows에서 한 번 붙여 넣었다. 틱 0은 빌드 자체를, 나머지는 실행을 고정한다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>c4e7d44</code></td><td><code>SamplePuzzle</code>, 퍼즐 셋, <code>PuzzleSession</code>, 핀 표, 테스트 15개.</td></tr>
+  <tr><td><code>317c7dd</code></td><td>리뷰 수정(아래). 테스트 15 → 16.</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>풀리는 틱</td><td>PlateGate 187, ToppleBridge 218, SwingDoor 197. 대조군 셋은 600틱 동안 풀리지 않고, 각자의 입력은 공을 0.05 m 넘게 움직였다</td></tr>
+  <tr><td>메커니즘의 증거</td><td>상자는 x −0.204에서 판 위에 멈추고 문은 0.81 m(레벨 50). 판은 중심 x −0.053, y 0.599, q.z 0.708로 눕는다(90° ± 1°). 문은 1.501 rad</td></tr>
+  <tr><td>단위 테스트</td><td>스위트 14 → 15. <code>CrowySamplePuzzleTest</code> 16개, 1.7 s</td></tr>
+  <tr><td>결정성</td><td>여섯 실행 모두 두 세션이 틱마다 같은 해시를 낸다(600틱). 워커 0개 대 3개도 여섯 실행 × 601개 해시가 같다</td></tr>
+  <tr><td>레드 런</td><td>PlateGate의 상자 임펄스를 32 → 16으로 반 줄이면 상자가 판에 못 닿고, 문은 0에 머물고, 풀이 테스트와 그 핀(6개 중 6개)이 실패한다. 되돌린 뒤 빌드 로그에서 <code>PlateGate.cpp</code> 재컴파일을 확인했다</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계.</b> Opus 관점 둘("견고하고 허용치가 넉넉한 기하", "소비자가 보는 드라이버")을 합쳤다. 퍼즐은 표, 세션은 한 번의 실행, 재시작은 새 세션이라는 모양과 세 퍼즐의 기하는 뒤의 관점(모두 +x로 공이 굴러가서 축이 통일되고 몸체가 적다), 각 퍼즐의 여유 계산과 발자국(월드 AABB) 테스트는 앞의 관점에서 왔다.</li>
+  <li><b>실험이 보여 준 것.</b> 세 퍼즐 모두 설계 단계가 계산한 대로 <b>첫 실행에 동작했다</b>. 튜닝이 필요할 거라고 위험 목록 맨 위에 올렸던 ToppleBridge도 그대로 풀렸다(판은 피벗에서 4.7 cm 미끄러진 자리에 눕는다). 계산이 맞힌 수치와 틀린 수치가 함께 있었다: PlateGate 상자의 미끄럼은 1.04 m로 계산했지만 실측은 0.996 m다(선형 감쇠와 틱 단위 적분 때문).</li>
+  <li><b>스스로 잡은 것.</b> 첫 실행에서 발자국 테스트가 굴러가는 공을 밖으로 나갔다고 판정했다. 내 테스트 도우미가 구의 경계를 회전한 상자처럼 계산해서 √2배로 부풀렸기 때문이다 — 구의 경계는 회전에 불변으로 고쳤다.</li>
+  <li><b>리뷰가 잡은 것.</b> 확인 10건, 반박 14건. 가장 무거운 것: 압력판 규칙의 임계 질량, 동적 몸체만 세는 필터, 내려가는 분기가 어떤 퍼즐에서도 실행되지 않았다(판에 닿는 것은 10 kg 상자뿐이고, 한 번 올라가면 안 내려온다). 그래서 규칙을 "판 위에 아무거나 있으면"으로 바꿔도 테스트도 핀도 안 깨졌다. 레벨 계산을 <code>nextPlateLevel</code>이라는 constexpr 함수로 빼서 따로 시험하게 했고, 핀이 그대로인 것으로 리팩터링이 동작을 바꾸지 않았음을 확인했다. 나머지: 규칙 8(틱 수·몸체 수 단언)을 이번에도 여러 테스트가 빠뜨렸다 — 작업 1의 리뷰가 같은 것을 잡은 직후였는데도. 주석이 실측이 아닌 설계 추정치(1.04 m)를 적고 있었다. 대조군 입력이 풀이의 공 밀기와 같다는 검사가 작용점을 비교하지 않았다. 주석 길이와 과정 언급, 선언 순서, 헤더 인라인 규칙.</li>
+  <li><b>반박된 것 중 기억할 것.</b> "틱 0 핀이 빌드를 고정한다"는 말이 과하다는 지적(Jolt의 <code>SaveState</code>는 모양·질량·재질·힌지 한계를 쓰지 않는다)은 반박됐지만 사실 자체는 맞다 — 틱 0 핀이 잡는 것은 위치·회전·속도·수면 상태다. 대조군 테스트가 공이 장애물까지 갔는지를 확인하지 않는다는 지적도 반박됐다(추적 출력에서 공은 문 바로 앞에서 멈춘다).</li>
+  <li><b>막힌 곳.</b> 없다.</li>
+  <li><b>남겨 둔 것.</b> 퍼즐을 파일(JSON)로 읽는 것 — 지금은 C++ 리터럴이다. 규칙 4(Jolt에 들어가는 것은 리터럴과 사칙연산)를 지키려고 회전은 모두 단위 쿼터니언이다. 세 번째 이상의 메커니즘(도르래, 미닫이, 부력)과 접촉 이벤트로 도는 규칙.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 퍼즐을 C++ 표로 쓴 것. 오빠가 퍼즐을 직접 만든다면 데이터 파일과 에디터 쪽이 먼저일 것 같다. 그리고 핀이 Mac에서 어긋나면 <code>ctest -L unit</code>이 Mac에서 늘 빨갛게 남는다 — 그게 "발견"이라는 규칙은 내가 정했지만, 플랫폼별 핀 표나 결정성을 포기하는 쪽을 오빠가 고를 수도 있다.</li>
+</ul>
 
 <h2 id="world">물리 월드 (physics-world) <span class="tag ok">완료</span></h2>
 <div class="card">
@@ -252,11 +290,10 @@
 <h2 id="next">다음</h2>
 <div class="card">
   <ol>
-    <li><b>작업 2 · 퍼즐(physics-puzzles)</b> — PlateGate, ToppleBridge, SwingDoor를 헤드리스로. 각자 스크립트된 풀이, 실패하는 대조군, 체크포인트 핀.</li>
     <li><b>작업 3 · 플레이그라운드(physics-playground)</b> — 틱 시계, 글루 라이브러리, 보이는 샘플, 골든, 포트 확인.</li>
     <li><b>작업 4 · 붙는 방식(physics-attach)</b> — 노트, 원장, 이 페이지의 마무리.</li>
   </ol>
-  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests-physics.md</code>의 PH-1(빌드), PH-2(물리 테스트 23개)에 있다.</p>
+  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests-physics.md</code>의 PH-1(빌드), PH-2(물리 테스트 23개), PH-3(퍼즐 테스트와 핀 — Windows와 비트 단위로 같은지)에 있다.</p>
 </div>
 
 <footer>CrowyEngine · physics 라운드 기록 · 진행 중 · 새 항목이 위로 쌓인다</footer>
