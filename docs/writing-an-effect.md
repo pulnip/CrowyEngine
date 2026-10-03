@@ -89,7 +89,9 @@ effects->Add(
 - `prewarmSteps`: 첫 프레임이 보여 주기 전에 미리 도는 스텝 수다. 가장 긴 수명보다
   길게 잡으면 첫 프레임부터 정상 상태다.
 - `draws`: 그리기마다 `vs_<entry>`와 `fs_<entry>`를 쓴다. `Additive`는 빛을 더하고(순서
-  상관없음), `Alpha`는 뒤에 있는 것 위에 슬롯 순서대로 덮는다.
+  상관없음), `Alpha`는 슬롯 순서대로 덮는다. 이펙트는 깊이를 쓰지 않으니 `Alpha`는 먼저
+  그려진 이펙트를 앞뒤 없이 모두 덮는다. 그래서 `Alpha` 그리기는 `Additive`보다 앞에
+  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 불씨, 유성 순서).
 - 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 유리(Translucent)보다
   먼저 그려진다.
 
@@ -107,13 +109,16 @@ effects->Add(
 
 - **시간은 `effect.step * effect.dt`**, 또는 `p.ageSteps * effect.dt`다. 벽시계는 쓰지
   않는다. 그래서 프레임 N은 매번 같은 그림이고, 골든이 결정적이다.
-- **난수는 `particleRandom(slot, generation, k)`로만** 만든다. k는 작은 수로 쓴다.
-  `0xA6E`는 첫 스텝의 나이 분산이 쓰는 값이다.
+- **난수는 `particleRandom(slot, generation, k)`나 `effectHash(effect.seed, slot,
+  generation, k)`로만** 만든다. k는 작은 수로 쓴다. `0xA6E`는 첫 스텝의 나이 분산이
+  쓰는 값이다.
 - **원자 연산과 readback은 쓰지 않는다.** GPU 결과는 게임플레이로 돌아가지 않는다.
 - **한 파일에 push struct는 하나만 둔다.** 이펙트는 `EffectPush`만 쓴다. 다른 push가
   있는 셰이더와 한 파일에 섞지 않는다(Metal).
 - 수명 대신 사건으로 다시 태어나게 하려면 `Rain.slang`처럼 한다. `lifeSteps`를
-  `0xFFFFFFFFu`로 두고, `update`에서 `p.generation`을 올리고 새 자리로 옮긴다.
+  `0xFFFFFFFFu`로 두고, `update`에서 `p.generation`을 올리고 `p.ageSteps = 0u`로
+  되돌린 뒤 새 자리로 옮긴다. 첫 사건 전의 `ageSteps`는 첫 스텝이 흩어 놓은 값이라
+  뜻이 없다.
 - 안 보이는 슬롯은 버텍스 단계에서 크기 0으로 접는다(`Rain.slang`의 물결,
   `Meteors.slang`의 쉬는 시간).
 
@@ -134,10 +139,12 @@ build/bin/Island.exe
 ```powershell
 . Tools/port.ps1; Set-PortNumber 27500; Invoke-Port reload_shaders
 ```
-- 그림이 마음에 들면 smoke로 찍고, 실패가 출력한 `Copy-Item` 줄로 골든을 받아들인다.
+- 그림이 마음에 들면 smoke로 프레임 60을 `captures/Island.png`에 찍는다. 골든과
+  다르면 smoke가 실패하면서 `Copy-Item` 줄을 출력하고, 그 줄을 실행하면 새 그림이
+  골든이 된다. 같으면 아무것도 출력하지 않는다.
 
 ```bash
-powershell -NoProfile -File Tools/smoke_run.ps1 build\bin\Island.exe
+CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1 build/bin/Island.exe
 ```
 
 ## 6. 파티클이 아닌 것

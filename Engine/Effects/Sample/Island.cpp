@@ -148,8 +148,8 @@ namespace Crowy
             );
 
             effects = std::make_unique<EffectSystem>(Device());
-            effects->Add(embersDesc());
             effects->Add(rainDesc());
+            effects->Add(embersDesc());
             effects->Add(
                 ParticleEffectDesc{
                     .name = "meteors",
@@ -302,8 +302,8 @@ namespace Crowy
                      Vec4{0.4f, 0.03f, 0.35f, 0.28f},
                      Vec4{9.0f, 1.6f, 7.0f, -1.2f}},
                 .draws =
-                    {{.entry = "streaks", .blend = EffectBlend::Additive},
-                     {.entry = "ripples", .blend = EffectBlend::Alpha}}
+                    {{.entry = "ripples", .blend = EffectBlend::Alpha},
+                     {.entry = "streaks", .blend = EffectBlend::Additive}}
             };
         }
 

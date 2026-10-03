@@ -25,7 +25,7 @@ namespace Crowy
     enum class EffectBlend : u8 {
         // light added, order-free
         Additive,
-        // over what is behind it, in slot order
+        // over every effect drawn before it, near or far: list it first
         Alpha,
     };
 
