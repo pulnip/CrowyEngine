@@ -12,9 +12,15 @@
 # but not compared (exit 77). -Record copies the pictures that are missing
 # or differ and stamps Backlot's commit.
 #
+# -UnityRun <run> sets each picture against Unity's of the same name in
+# <Backlot>/Captures/<run> (or a folder given as a path) by their edges,
+# report only: <Out>/unity holds an overlay per picture, summary.tsv and
+# report.html. Style differs by design; the rows point at placement and
+# never change the exit status.
+#
 # usage: Tools/stage_cuts.ps1 [-Keys day,night] [-Cuts street,roof]
 #        [-Out captures/stage/<stamp>] [-Exe build/bin/StageEditor.exe]
-#        [-Port 27520] [-Tolerance N] [-Record]
+#        [-Port 27520] [-Tolerance N] [-Record] [-UnityRun <run>]
 #
 # Debug builds only (the port). Run from the repository root. The editor
 # listens on its own port, so a sample already running is never driven.
@@ -25,7 +31,8 @@ param(
     [string]$Exe = "build\bin\StageEditor.exe",
     [int]$Port = 27520,
     [int]$Tolerance = -1,
-    [switch]$Record
+    [switch]$Record,
+    [string]$UnityRun = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -69,6 +76,110 @@ function Get-ShortHash([string]$Hash) {
     return $Hash.Substring(0, [math]::Min(7, $Hash.Length))
 }
 
+# one row per picture against Unity's of the same name: the fields of
+# ImageCompareCheck --edges's row, or why there are none
+function Measure-UnityRows($Captures, [string]$UnityDir, [string]$UnityOut) {
+    $fields = @("edges_engine", "edges_unity", "engine_near_unity", "unity_near_engine", "worst_tile", "worst_tile_near", "worst_tile_edges", "shift", "shift_coincide", "zero_coincide")
+    foreach ($capture in $Captures) {
+        $row = [ordered]@{ name = $capture.Name; cut = $capture.Cut; key = $capture.Key; golden = $capture.Golden; unity = "missing" }
+        foreach ($field in $fields) {
+            $row[$field] = "-"
+        }
+        $reference = Join-Path $UnityDir "$($capture.Name).png"
+        if (Test-Path $reference) {
+            $overlay = Join-Path $UnityOut "$($capture.Name).edges.png"
+            Remove-Item -Force -ErrorAction SilentlyContinue $overlay
+            $previous = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+            try {
+                $lines = @(& $tool --edges $capture.Png $reference --overlay $overlay 2>&1 | ForEach-Object { "$_" })
+                $code = $LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $previous
+            }
+            $values = $lines | Where-Object { $_ -like "row`t*" } | Select-Object -First 1
+            if ($code -eq 0 -and $values) {
+                $row.unity = "ok"
+                $parts = $values -split "`t"
+                for ($i = 0; $i -lt $fields.Count; ++$i) {
+                    $row[$fields[$i]] = $parts[$i + 1]
+                }
+            }
+            else {
+                $message = $lines | Where-Object { $_ -like "error:*" } | Select-Object -First 1
+                $row.unity = if ($message) { ($message -replace '^error:\s*', '' -replace '\s+', ' ') } else { "failed ($code)" }
+            }
+        }
+        [pscustomobject]$row
+    }
+}
+
+function ConvertTo-HtmlText([string]$Text) {
+    return [System.Net.WebUtility]::HtmlEncode($Text)
+}
+
+# per cut in scene order and key in run order: the numbers, the engine's
+# picture blinking against Unity's on hover, Unity's, and the overlay
+function Write-UnityReport($Rows, [string]$Path, [string]$UnityDir, [string]$Header) {
+    $html = New-Object System.Text.StringBuilder
+    $null = $html.Append(@"
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StageEditor against Unity</title>
+<style>
+body { font: 14px system-ui, sans-serif; margin: 16px; background: #111; color: #ddd; }
+code { color: #fff; }
+a { color: #8cf; }
+table { border-collapse: collapse; margin: 8px 0 24px; }
+th, td { padding: 2px 8px; border-bottom: 1px solid #333; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+.pictures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 20px; }
+.pictures img { width: 100%; display: block; }
+.blink { position: relative; display: block; }
+.blink img.unity { position: absolute; inset: 0; opacity: 0; }
+.blink:hover img.unity { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 1; } }
+.legend span { padding: 0 6px; }
+</style>
+</head>
+<body>
+<h1>StageEditor against Unity</h1>
+$Header
+<p>Report only: the style differs by design (sky gradient, bloom, tone mapping, SMAA), so these numbers point at placement and gate nothing. A Unity run must postdate the scene file.</p>
+<p class="legend">Overlay: <span style="color:#a0a0a0">grey, edges both pictures have</span><span style="color:#f0f">magenta, the engine's alone</span><span style="color:#0f0">green, Unity's alone</span><span style="color:#ffd200">yellow, the worst tile</span>. Hover the engine's picture to blink it against Unity's.</p>
+<table>
+<tr><th>picture</th><th>golden</th><th>unity</th><th>engine near unity</th><th>unity near engine</th><th>worst tile</th><th>its share</th><th>shift</th><th>coincide</th><th>at (0,0)</th></tr>
+
+"@)
+    foreach ($row in $Rows) {
+        $null = $html.Append("<tr><td><a href=`"#$(ConvertTo-HtmlText $row.name)`">$(ConvertTo-HtmlText $row.name)</a></td><td>$($row.golden)</td><td>$(ConvertTo-HtmlText $row.unity)</td><td>$($row.engine_near_unity)</td><td>$($row.unity_near_engine)</td><td>$($row.worst_tile)</td><td>$($row.worst_tile_near)</td><td>$($row.shift)</td><td>$($row.shift_coincide)</td><td>$($row.zero_coincide)</td></tr>`n")
+    }
+    $null = $html.Append("</table>`n")
+    foreach ($cut in @($Rows | ForEach-Object { $_.cut } | Select-Object -Unique)) {
+        $null = $html.Append("<h2>$(ConvertTo-HtmlText $cut)</h2>`n")
+        foreach ($row in @($Rows | Where-Object { $_.cut -eq $cut })) {
+            $escaped = [Uri]::EscapeDataString($row.name)
+            $engine = "../$escaped.png"
+            $unity = ([Uri](Join-Path $UnityDir "$($row.name).png")).AbsoluteUri
+            $overlay = "$escaped.edges.png"
+            $null = $html.Append("<h3 id=`"$(ConvertTo-HtmlText $row.name)`">$(ConvertTo-HtmlText $row.name): $(ConvertTo-HtmlText $row.unity), engine near unity $($row.engine_near_unity), unity near engine $($row.unity_near_engine), shift $($row.shift)</h3>`n")
+            $null = $html.Append("<div class=`"pictures`">")
+            $null = $html.Append("<a class=`"blink`" href=`"$engine`"><img src=`"$engine`" alt=`"engine`" loading=`"lazy`"><img class=`"unity`" src=`"$unity`" alt=`"`" loading=`"lazy`"></a>")
+            $null = $html.Append("<a href=`"$unity`"><img src=`"$unity`" alt=`"Unity`" loading=`"lazy`"></a>")
+            if ($row.unity -eq "ok") {
+                $null = $html.Append("<a href=`"$overlay`"><img src=`"$overlay`" alt=`"overlay`" loading=`"lazy`"></a>")
+            }
+            $null = $html.Append("</div>`n")
+        }
+    }
+    $null = $html.Append("</body>`n</html>`n")
+    [IO.File]::WriteAllText($Path, $html.ToString())
+}
+
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $exitCode = 0
 $process = Start-StageEditor $Exe $repoRoot $Port
@@ -106,6 +217,14 @@ try {
     $head = if ($state.Head) { Get-ShortHash $state.Head } else { "an unknown commit" }
     $clean = if ($state.Changes.Count -gt 0) { "with changes" } else { "clean" }
     Write-Host "backlot: $root at $head, $clean"
+    $unityDir = ""
+    if ($UnityRun) {
+        $unityDir = if (Test-Path -PathType Container $UnityRun) { (Resolve-Path $UnityRun).Path } else { Join-Path $root "Captures\$UnityRun" }
+        if (-not (Test-Path -PathType Container $unityDir)) {
+            Write-Host "unity: no run at $unityDir; the rows are skipped"
+            $unityDir = ""
+        }
+    }
     $skip = ""
     if ($Record) {
         if (-not $state.Head) {
@@ -132,6 +251,7 @@ try {
         }
     }
 
+    $captures = New-Object System.Collections.Generic.List[object]
     $captured = 0
     $compared = 0
     $same = 0
@@ -150,11 +270,14 @@ try {
             # one after it
             $png = Save-StageCapture (Join-Path $Out "$name.bmp") $tool ((Invoke-Port ping).frame + 2)
             ++$captured
+            $capture = [pscustomobject]@{ Name = $name; Cut = $cut; Key = $key; Png = $png; Golden = "skipped" }
+            $captures.Add($capture)
             if ($skip) {
                 Write-Host "captured  $name"
                 continue
             }
             if ($pinned -notcontains $key) {
+                $capture.Golden = "not pinned"
                 Write-Host "captured  $name (capture only: $key is not pinned)"
                 continue
             }
@@ -166,10 +289,12 @@ try {
                     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $golden) | Out-Null
                     Copy-Item -Force $png $golden
                     ++$recorded
+                    $capture.Golden = "recorded"
                     Write-Host "recorded  $name"
                     continue
                 }
                 ++$missing
+                $capture.Golden = "missing"
                 Write-Host "FAIL: no golden for $name on $backend ($golden)"
                 continue
             }
@@ -178,16 +303,19 @@ try {
             $result = Invoke-ImageCompareCheck $tool (@($png, $golden) + $compareArguments) -Quiet
             if ($result -eq 0) {
                 ++$same
+                $capture.Golden = "same"
                 Write-Host "same      $name"
                 continue
             }
             if ($result -eq 1 -and $Record -and -not $smoke) {
                 Copy-Item -Force $png $golden
                 ++$recorded
+                $capture.Golden = "recorded"
                 Write-Host "recorded  $name (it differed)"
                 continue
             }
             ++$different
+            $capture.Golden = "differs"
             if ($result -ne 1) {
                 Write-Host "FAIL: could not compare $name against $golden"
                 continue
@@ -240,4 +368,25 @@ finally {
     Stop-StageEditor $process
 }
 Write-Host "cuts: $Out"
+
+if ($unityDir) {
+    $unityOut = Join-Path $Out "unity"
+    New-Item -ItemType Directory -Force -Path $unityOut | Out-Null
+    $rows = @(Measure-UnityRows $captures $unityDir $unityOut)
+    $columns = @("name", "cut", "key", "golden", "unity", "edges_engine", "edges_unity", "engine_near_unity", "unity_near_engine", "worst_tile", "worst_tile_near", "worst_tile_edges", "shift", "shift_coincide", "zero_coincide")
+    $tsv = @($columns -join "`t") + @($rows | ForEach-Object { $row = $_; ($columns | ForEach-Object { $row.$_ }) -join "`t" })
+    [IO.File]::WriteAllText((Join-Path $unityOut "summary.tsv"), ($tsv -join "`n") + "`n")
+
+    $engineHead = (& git -C $repoRoot rev-parse --short HEAD 2>$null)
+    $header = "<p>Engine <code>$engineHead</code>; Backlot <code>$(ConvertTo-HtmlText $root)</code> at <code>$head</code>, $clean; Unity run <code>$(ConvertTo-HtmlText $unityDir)</code>; the tool's edge defaults (radius 2, density 5%, lenience 2).</p>"
+    Write-UnityReport $rows (Join-Path $unityOut "report.html") $unityDir $header
+
+    Write-Host ""
+    Write-Host "unity: $unityDir (report only)"
+    Write-Host ("{0,-22} {1,-10} {2,-8} {3,7} {4,7}  {5,-6} {6,7}  {7,-6} {8,7} {9,7}" -f "picture", "golden", "unity", "e->u", "u->e", "tile", "share", "shift", "coin", "at 0")
+    foreach ($row in $rows) {
+        Write-Host ("{0,-22} {1,-10} {2,-8} {3,7} {4,7}  {5,-6} {6,7}  {7,-6} {8,7} {9,7}" -f $row.name, $row.golden, $row.unity, $row.engine_near_unity, $row.unity_near_engine, $row.worst_tile, $row.worst_tile_near, $row.shift, $row.shift_coincide, $row.zero_coincide)
+    }
+    Write-Host "unity report: $(Join-Path $unityOut 'report.html')"
+}
 exit $exitCode

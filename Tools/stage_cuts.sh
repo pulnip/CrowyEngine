@@ -14,9 +14,15 @@
 # (exit 77). --record copies the pictures that are missing or differ and
 # stamps Backlot's commit.
 #
+# --unity-run <run> sets each picture against Unity's of the same name in
+# <Backlot>/Captures/<run> (or a folder given as a path) by their edges,
+# report only: <out>/unity holds an overlay per picture, summary.tsv and
+# report.html. Style differs by design; the rows point at placement and
+# never change the exit status.
+#
 # usage: Tools/stage_cuts.sh [--keys day,night] [--cuts street,roof]
 #        [--out captures/stage/<stamp>] [--exe build/bin/StageEditor]
-#        [--port 27520] [--tolerance N] [--record]
+#        [--port 27520] [--tolerance N] [--record] [--unity-run <run>]
 #
 # Debug builds only (the port). Run from the repository root. The editor
 # listens on its own port, so a sample already running is never driven.
@@ -38,13 +44,14 @@ EXE="build/bin/StageEditor"
 PORT=27520
 TOLERANCE=""
 RECORD=0
+UNITY_RUN=""
 while [ $# -gt 0 ]; do
     case "$1" in
     --record)
         RECORD=1
         shift
         ;;
-    --keys | --cuts | --out | --exe | --port | --tolerance)
+    --keys | --cuts | --out | --exe | --port | --tolerance | --unity-run)
         [ $# -ge 2 ] || usage
         case "$1" in
         --keys) KEYS="$2" ;;
@@ -53,6 +60,7 @@ while [ $# -gt 0 ]; do
         --exe) EXE="$2" ;;
         --port) PORT="$2" ;;
         --tolerance) TOLERANCE="$2" ;;
+        --unity-run) UNITY_RUN="$2" ;;
         esac
         shift 2
         ;;
@@ -89,6 +97,14 @@ is_zero() {
 
 short_hash() {
     printf '%s' "$1" | cut -c1-7
+}
+
+# remember <golden status>: the capture just taken, for the Unity rows
+CAPTURES=""
+TAB=$(printf '\t')
+remember() {
+    CAPTURES="$CAPTURES$NAME$TAB$CUT$TAB$KEY$TAB$PNG$TAB$1
+"
 }
 
 mkdir -p "$OUT"
@@ -133,6 +149,14 @@ KEYS=$(echo $KEYS)
 if [ -n "$BACKLOT_HEAD" ]; then HEAD=$(short_hash "$BACKLOT_HEAD"); else HEAD="an unknown commit"; fi
 if [ -n "$BACKLOT_CHANGES" ]; then CLEAN="with changes"; else CLEAN="clean"; fi
 echo "backlot: $ROOT at $HEAD, $CLEAN"
+UNITY_DIR=""
+if [ -n "$UNITY_RUN" ]; then
+    if [ -d "$UNITY_RUN" ]; then UNITY_DIR="$(cd "$UNITY_RUN" && pwd)"; else UNITY_DIR="$ROOT/Captures/$UNITY_RUN"; fi
+    if [ ! -d "$UNITY_DIR" ]; then
+        echo "unity: no run at $UNITY_DIR; the rows are skipped"
+        UNITY_DIR=""
+    fi
+fi
 SKIP=""
 if [ "$RECORD" = 1 ]; then
     if [ -z "$BACKLOT_HEAD" ]; then
@@ -185,12 +209,14 @@ for KEY in $KEYS; do
         PNG=$(stage_snap "$OUT/$NAME.bmp" "$TOOL" "$((FRAME + 2))") || exit 1
         CAPTURED=$((CAPTURED + 1))
         if [ -n "$SKIP" ]; then
+            remember skipped
             echo "captured  $NAME"
             continue
         fi
         case " $PINNED " in
         *" $KEY "*) ;;
         *)
+            remember "not pinned"
             echo "captured  $NAME (capture only: $KEY is not pinned)"
             continue
             ;;
@@ -204,10 +230,12 @@ for KEY in $KEYS; do
                 mkdir -p "$(dirname "$GOLDEN")"
                 cp "$PNG" "$GOLDEN"
                 RECORDED=$((RECORDED + 1))
+                remember recorded
                 echo "recorded  $NAME"
                 continue
             fi
             MISSING=$((MISSING + 1))
+            remember missing
             echo "FAIL: no golden for $NAME on $BACKEND ($GOLDEN)"
             continue
         fi
@@ -218,16 +246,19 @@ for KEY in $KEYS; do
         RESULT=$?
         if [ "$RESULT" = 0 ]; then
             SAME=$((SAME + 1))
+            remember same
             echo "same      $NAME"
             continue
         fi
         if [ "$RESULT" = 1 ] && [ "$RECORD" = 1 ] && [ "$SMOKE" = 0 ]; then
             cp "$PNG" "$GOLDEN"
             RECORDED=$((RECORDED + 1))
+            remember recorded
             echo "recorded  $NAME (it differed)"
             continue
         fi
         DIFFERENT=$((DIFFERENT + 1))
+        remember differs
         if [ "$RESULT" != 1 ]; then
             echo "FAIL: could not compare $NAME against $GOLDEN"
             continue
@@ -274,4 +305,110 @@ elif [ "$DIFFERENT" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
     STATUS=1
 fi
 echo "cuts: $OUT"
+
+if [ -n "$UNITY_DIR" ]; then
+    # the editor is done; the rows need only the pictures
+    stage_editor_stop
+    trap - EXIT
+    UNITY_OUT="$OUT/unity"
+    mkdir -p "$UNITY_OUT"
+    SUMMARY="$UNITY_OUT/summary.tsv"
+    printf 'name\tcut\tkey\tgolden\tunity\tedges_engine\tedges_unity\tengine_near_unity\tunity_near_engine\tworst_tile\tworst_tile_near\tworst_tile_edges\tshift\tshift_coincide\tzero_coincide\n' >"$SUMMARY"
+    printf '%s' "$CAPTURES" | while IFS="$TAB" read -r NAME CUT KEY PNG GOLDEN_STATUS; do
+        [ -n "$NAME" ] || continue
+        REFERENCE="$UNITY_DIR/$NAME.png"
+        VALUES="-$TAB-$TAB-$TAB-$TAB-$TAB-$TAB-$TAB-$TAB-$TAB-"
+        if [ ! -f "$REFERENCE" ]; then
+            UNITY=missing
+        else
+            OVERLAY="$UNITY_OUT/$NAME.edges.png"
+            rm -f "$OVERLAY"
+            REPORT=$("$TOOL" --edges "$PNG" "$REFERENCE" --overlay "$OVERLAY" 2>&1)
+            CODE=$?
+            ROW=$(printf '%s\n' "$REPORT" | grep "^row$TAB" | head -n 1)
+            if [ "$CODE" = 0 ] && [ -n "$ROW" ]; then
+                UNITY=ok
+                VALUES=$(printf '%s' "$ROW" | cut -f2-)
+            else
+                UNITY=$(printf '%s\n' "$REPORT" | sed -n 's/^error: *//p' | head -n 1 | tr -s ' \r' ' ')
+                [ -n "$UNITY" ] || UNITY="failed ($CODE)"
+            fi
+        fi
+        printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$NAME" "$CUT" "$KEY" "$GOLDEN_STATUS" "$UNITY" "$VALUES" >>"$SUMMARY"
+    done
+
+    ENGINE_HEAD=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null)
+    python3 - "$SUMMARY" "$UNITY_DIR" "$ENGINE_HEAD" "$ROOT" "$HEAD" "$CLEAN" <<'PYEOF'
+import csv, html, pathlib, sys, urllib.parse
+
+summary, unity_dir, engine_head, root, head, clean = sys.argv[1:7]
+rows = list(csv.DictReader(open(summary, encoding='utf-8', newline=''), delimiter='\t'))
+out = pathlib.Path(summary).parent
+e = html.escape
+parts = ["""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StageEditor against Unity</title>
+<style>
+body { font: 14px system-ui, sans-serif; margin: 16px; background: #111; color: #ddd; }
+code { color: #fff; }
+a { color: #8cf; }
+table { border-collapse: collapse; margin: 8px 0 24px; }
+th, td { padding: 2px 8px; border-bottom: 1px solid #333; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+.pictures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 20px; }
+.pictures img { width: 100%; display: block; }
+.blink { position: relative; display: block; }
+.blink img.unity { position: absolute; inset: 0; opacity: 0; }
+.blink:hover img.unity { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 1; } }
+.legend span { padding: 0 6px; }
+</style>
+</head>
+<body>
+<h1>StageEditor against Unity</h1>
+"""]
+parts.append('<p>Engine <code>%s</code>; Backlot <code>%s</code> at <code>%s</code>, %s; Unity run <code>%s</code>; the tool\'s edge defaults (radius 2, density 5%%, lenience 2).</p>\n'
+             % (e(engine_head), e(root), e(head), e(clean), e(unity_dir)))
+parts.append("""<p>Report only: the style differs by design (sky gradient, bloom, tone mapping, SMAA), so these numbers point at placement and gate nothing. A Unity run must postdate the scene file.</p>
+<p class="legend">Overlay: <span style="color:#a0a0a0">grey, edges both pictures have</span><span style="color:#f0f">magenta, the engine's alone</span><span style="color:#0f0">green, Unity's alone</span><span style="color:#ffd200">yellow, the worst tile</span>. Hover the engine's picture to blink it against Unity's.</p>
+<table>
+<tr><th>picture</th><th>golden</th><th>unity</th><th>engine near unity</th><th>unity near engine</th><th>worst tile</th><th>its share</th><th>shift</th><th>coincide</th><th>at (0,0)</th></tr>
+""")
+for r in rows:
+    parts.append('<tr><td><a href="#%s">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n'
+                 % (e(r['name']), e(r['name']), r['golden'], e(r['unity']), r['engine_near_unity'], r['unity_near_engine'],
+                    r['worst_tile'], r['worst_tile_near'], r['shift'], r['shift_coincide'], r['zero_coincide']))
+parts.append('</table>\n')
+for cut in dict.fromkeys(r['cut'] for r in rows):
+    parts.append('<h2>%s</h2>\n' % e(cut))
+    for r in (r for r in rows if r['cut'] == cut):
+        name = r['name']
+        quoted = urllib.parse.quote(name)
+        engine = '../%s.png' % quoted
+        unity = pathlib.Path(unity_dir, name + '.png').resolve().as_uri()
+        overlay = '%s.edges.png' % quoted
+        parts.append('<h3 id="%s">%s: %s, engine near unity %s, unity near engine %s, shift %s</h3>\n'
+                     % (e(name), e(name), e(r['unity']), r['engine_near_unity'], r['unity_near_engine'], r['shift']))
+        parts.append('<div class="pictures">')
+        parts.append('<a class="blink" href="%s"><img src="%s" alt="engine" loading="lazy"><img class="unity" src="%s" alt="" loading="lazy"></a>' % (engine, engine, unity))
+        parts.append('<a href="%s"><img src="%s" alt="Unity" loading="lazy"></a>' % (unity, unity))
+        if r['unity'] == 'ok':
+            parts.append('<a href="%s"><img src="%s" alt="overlay" loading="lazy"></a>' % (overlay, overlay))
+        parts.append('</div>\n')
+parts.append('</body>\n</html>\n')
+(out / 'report.html').write_text(''.join(parts), encoding='utf-8')
+
+print()
+print('unity: %s (report only)' % unity_dir)
+line = '%-22s %-10s %-8s %7s %7s  %-6s %7s  %-6s %7s %7s'
+print(line % ('picture', 'golden', 'unity', 'e->u', 'u->e', 'tile', 'share', 'shift', 'coin', 'at 0'))
+for r in rows:
+    print(line % (r['name'], r['golden'], r['unity'], r['engine_near_unity'], r['unity_near_engine'],
+                  r['worst_tile'], r['worst_tile_near'], r['shift'], r['shift_coincide'], r['zero_coincide']))
+print('unity report: %s' % (out / 'report.html'))
+PYEOF
+fi
 exit "$STATUS"
