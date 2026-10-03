@@ -48,7 +48,7 @@ Particle spawn(uint slot, uint generation) {
     p.position = dropPosition(slot, generation, true);
     p.velocity = float3(wind().x, -fallSpeed(), wind().y);
     // a drop is reborn where it lands, never by age
-    p.lifeSteps = 0xFFFFFFFFu;
+    p.lifeSteps = EventLife;
     p.generation = generation;
     p.size = 0.006;
     p.custom = float4(0.0, 0.0, 0.0, NoLanding);

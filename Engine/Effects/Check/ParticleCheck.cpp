@@ -194,9 +194,8 @@ namespace
         return passed;
     }
 
-    // the Island sample's rain: each drop fell straight from the box's top
-    // since its landing, which lies on its last fall where that first met
-    // the surface
+    // the Island's rain: every drop fell from the box's top since it landed,
+    // and that landing is where its last fall first met the surface
     bool checkRain(RHIDevice& device) {
         constexpr u32 Count = 3000;
         constexpr f32 NoLanding = -1.0e6f;
@@ -236,9 +235,14 @@ namespace
             ++landed;
             const auto landingStep = drop.custom.w;
             const auto top = dropStart(rain, slot, drop.generation);
-            const auto since = static_cast<f32>(steps - 1) - landingStep;
-            const auto fallen = top + stepFall * since;
-            offFall += near(drop.position, fallen, Tolerance) ? 0 : 1;
+            const auto finalStep = static_cast<f32>(steps - 1);
+            const auto landedAt =
+                static_cast<u32>(std::clamp(landingStep, 0.0f, finalStep));
+            const auto since = steps - 1 - landedAt;
+            const auto fallen = top + stepFall * static_cast<f32>(since);
+            const bool onFall = near(drop.position, fallen, Tolerance) &&
+                                drop.ageSteps == since;
+            offFall += onFall ? 0 : 1;
 
             const auto landing =
                 Vec3{drop.custom.x, drop.custom.y, drop.custom.z};
@@ -248,9 +252,9 @@ namespace
             const auto moves = std::round(across / stepAcross);
             const auto last = from + stepFall * moves;
             const auto before = from + stepFall * (moves - 1.0f);
-            const bool onFall = moves >= 1.0f &&
-                                std::abs(last.x - landing.x) <= Tolerance &&
-                                std::abs(last.z - landing.z) <= Tolerance;
+            const bool onLastFall =
+                moves >= 1.0f && std::abs(last.x - landing.x) <= Tolerance &&
+                std::abs(last.z - landing.z) <= Tolerance;
             const bool onSurface =
                 std::abs(landing.y - surfaceHeight(island, landing)) <=
                 Tolerance;
@@ -260,7 +264,8 @@ namespace
             const bool inTime = landingStep >= 0.0f &&
                                 landingStep < static_cast<f32>(steps) &&
                                 landingStep == std::floor(landingStep);
-            offLanding += onFall && onSurface && firstTouch && inTime ? 0 : 1;
+            offLanding +=
+                onLastFall && onSurface && firstTouch && inTime ? 0 : 1;
         }
 
         const bool passed = landed == Count && offFall == 0 &&

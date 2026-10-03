@@ -42,6 +42,7 @@ namespace Crowy
         using Effects = std::vector<std::unique_ptr<Effect>>;
         using Fields = std::vector<FieldBuffer*>;
         using Barriers = std::vector<RHIBufferBarrier>;
+        using Kernels = std::vector<std::unique_ptr<ComputeKernel>>;
 
     private:
         RHIDevice& device;

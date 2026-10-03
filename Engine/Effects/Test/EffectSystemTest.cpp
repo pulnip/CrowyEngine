@@ -271,4 +271,3 @@ TEST(EffectSystem, AnEffectAddedWhilePausedStartsAlone) {
     EXPECT_EQ(f.effects.Steps("a"), 1u);
     EXPECT_EQ(f.effects.Steps("b"), 3u);
 }
-

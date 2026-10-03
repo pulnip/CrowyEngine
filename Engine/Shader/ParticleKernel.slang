@@ -11,9 +11,11 @@ void cs_step(uint slot: SV_DispatchThreadID) {
     if(effect.step == 0u) {
         // born at once they would rise as one wave: each starts at its own age
         Particle born = spawn(slot, 0u);
-        born.ageSteps =
-            effectHash(effect.seed, slot, 0u, ParticleStaggerDraw) %
-            max(born.lifeSteps, 1u);
+        if(born.lifeSteps != EventLife) {
+            born.ageSteps =
+                effectHash(effect.seed, slot, 0u, ParticleStaggerDraw) %
+                max(born.lifeSteps, 1u);
+        }
         particles[slot] = born;
         return;
     }

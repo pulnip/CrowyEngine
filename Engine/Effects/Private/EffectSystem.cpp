@@ -205,7 +205,7 @@ namespace Crowy
     }
 
     usize EffectSystem::ReloadKernels() {
-        std::vector<std::unique_ptr<ComputeKernel>> built;
+        Kernels built;
         for(const auto& effect: effects)
             built.push_back(stepKernel(device, effect->desc));
 

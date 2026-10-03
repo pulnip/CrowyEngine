@@ -103,6 +103,7 @@ effects->Add(
 - `particleRandom(slot, generation, k)`: [0, 1) 균등 난수. `effectHash(...)`: 32비트 해시
 - `loadParticle(slot)`, `stripCorner(vertexID)`, `billboardCorner(center, halfSize, corner)`,
   `toClip(world)`
+- `EventLife`: 나이로는 닿지 않는 수명(아래 사건으로 다시 태어나기)
 - `Particle.custom`: 이펙트가 마음대로 쓰는 float4. `Particle.size`: 보통 반지름
 
 ## 4. 규칙
@@ -116,9 +117,9 @@ effects->Add(
 - **한 파일에 push struct는 하나만 둔다.** 이펙트는 `EffectPush`만 쓴다. 다른 push가
   있는 셰이더와 한 파일에 섞지 않는다(Metal).
 - 수명 대신 사건으로 다시 태어나게 하려면 `Rain.slang`처럼 한다. `lifeSteps`를
-  `0xFFFFFFFFu`로 두고, `update`에서 `p.generation`을 올리고 `p.ageSteps = 0u`로
-  되돌린 뒤 새 자리로 옮긴다. 첫 사건 전의 `ageSteps`는 첫 스텝이 흩어 놓은 값이라
-  뜻이 없다.
+  `EventLife`로 두고, `update`에서 `p.generation`을 올리고 `p.ageSteps = 0u`로
+  되돌린 뒤 새 자리로 옮긴다. 첫 스텝은 이런 파티클의 나이를 흩지 않으므로,
+  `ageSteps`는 태어난 뒤나 마지막 사건 뒤의 스텝 수다.
 - 안 보이는 슬롯은 버텍스 단계에서 크기 0으로 접는다(`Rain.slang`의 물결,
   `Meteors.slang`의 쉬는 시간).
 
@@ -137,11 +138,12 @@ build/bin/Island.exe
   답으로 돌아온다. 이미 태어난 파티클은 그대로이고, 바뀐 `spawn`은 다음 탄생부터 적용된다.
 
 ```powershell
-. Tools/port.ps1; Set-PortNumber 27500; Invoke-Port reload_shaders
+. Tools/port.ps1; Invoke-Port reload_shaders
 ```
-- 그림이 마음에 들면 smoke로 프레임 60을 `captures/Island.png`에 찍는다. 골든과
-  다르면 smoke가 실패하면서 `Copy-Item` 줄을 출력하고, 그 줄을 실행하면 새 그림이
-  골든이 된다. 같으면 아무것도 출력하지 않는다.
+- 포트는 `CROWY_COMMAND_PORT`(없으면 27500)다. Island를 띄울 때와 같은 값이어야 한다.
+- 그림이 마음에 들면 smoke로 프레임 60을 `captures/Island.png`에 찍는다. 골든과 같으면
+  `similar`로 끝난다. 다르면 `FAIL`과 함께 `to accept: Copy-Item ...` 줄을 출력한다.
+  그 줄은 PowerShell 명령이라 PowerShell에서 실행하면 새 그림이 골든이 된다.
 
 ```bash
 CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1 build/bin/Island.exe
