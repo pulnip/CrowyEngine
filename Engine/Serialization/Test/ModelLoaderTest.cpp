@@ -84,7 +84,7 @@ TEST(ModelLoader, MakeBoxDefinesTheFrontWinding) {
 
 // The axis probe's table from the content's own contract: bounds, the
 // arms' directions and lengths, the triangle count, front faces and the
-// palette colours after the v flip.
+// palette colors after the v flip.
 TEST(ModelLoader, AxisProbeMatchesItsTable) {
     const auto model = LoadModel(TestData / "AxisProbe.fbx");
 

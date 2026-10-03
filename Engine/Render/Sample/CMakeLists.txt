@@ -1,3 +1,5 @@
+add_subdirectory(Stage)
+
 crowy_declare_example(TenThousandBlocks
 SOURCES
     FlyCamera.cpp

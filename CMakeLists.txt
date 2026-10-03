@@ -13,6 +13,11 @@ option(CROWY_ENABLE_TEST "Enable Tests" ON)
 # orthogonal to the build type: a benchmark build is a Debug or a Release
 # build that also measures. off means not one counter survives the compile.
 option(CROWY_BENCHMARK "Enable frame instrumentation" OFF)
+# the film set the stage samples and their tests read, a sibling checkout
+# with Git LFS; tests skip when it is missing
+cmake_path(ABSOLUTE_PATH CMAKE_SOURCE_DIR NORMALIZE OUTPUT_VARIABLE CROWY_SOURCE_PARENT)
+cmake_path(GET CROWY_SOURCE_PARENT PARENT_PATH CROWY_SOURCE_PARENT)
+set(CROWY_BACKLOT_DIR "${CROWY_SOURCE_PARENT}/Backlot" CACHE PATH "Backlot's checkout")
 
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
