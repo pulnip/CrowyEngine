@@ -13,10 +13,6 @@ namespace Crowy
     {
         using Candidate = std::pair<f32, usize>;
 
-        Vec3 toVec3(const Vec4& v) noexcept {
-            return Vec3{v.x, v.y, v.z};
-        }
-
         // the ray in the primitive's model space; t keeps its world meaning
         Ray3D intoModel(const Ray3D& ray, const Mat4& localToWorld) {
             const auto toModel = inverseAffine(localToWorld);
@@ -24,8 +20,8 @@ namespace Crowy
             const auto& d = ray.direction;
 
             return Ray3D{
-                .origin = toVec3(toModel * Vec4{o.x, o.y, o.z, 1.0f}),
-                .direction = toVec3(toModel * Vec4{d.x, d.y, d.z, 0.0f})
+                .origin = static_cast<Vec3>(toModel * Vec4{o.x, o.y, o.z, 1.0f}),
+                .direction = static_cast<Vec3>(toModel * Vec4{d.x, d.y, d.z, 0.0f})
             };
         }
 
@@ -47,22 +43,26 @@ namespace Crowy
         }
     }
 
-    Ray3D rayThroughPixel(const EditorCamera& camera, Vec2 pixel, Vec2 viewport) {
+    std::optional<Ray3D> rayThroughPixel(const EditorCamera& camera, Vec2 pixel, Vec2 viewport) {
+        // a minimized window reports no area
+        if(!(viewport.x > 0.0f && viewport.y > 0.0f))
+            return std::nullopt;
+
         const auto ndcX = 2.0f * pixel.x / viewport.x - 1.0f;
         const auto ndcY = 1.0f - 2.0f * pixel.y / viewport.y;
         const auto aspect = viewport.x / viewport.y;
 
-        const auto rotation = rotateMat(camera.Rotation());
-        const auto right = toVec3(rotation[0]);
-        const auto up = toVec3(rotation[1]);
-        const auto forward = toVec3(rotation[2]);
+        const auto rotation = camera.Rotation();
+        const auto across = right(rotation);
+        const auto above = up(rotation);
+        const auto ahead = forward(rotation);
 
         if(camera.lens.orthographic) {
             const auto half = camera.lens.orthoHalfHeight;
 
             return Ray3D{
-                .origin = camera.position + right * (ndcX * half * aspect) + up * (ndcY * half),
-                .direction = forward
+                .origin = camera.position + across * (ndcX * half * aspect) + above * (ndcY * half),
+                .direction = ahead
             };
         }
 
@@ -70,7 +70,7 @@ namespace Crowy
 
         return Ray3D{
             .origin = camera.position,
-            .direction = normalize(right * (ndcX * tanHalf * aspect) + up * (ndcY * tanHalf) + forward)
+            .direction = normalize(across * (ndcX * tanHalf * aspect) + above * (ndcY * tanHalf) + ahead)
         };
     }
 

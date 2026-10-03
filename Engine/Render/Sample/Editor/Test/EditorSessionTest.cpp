@@ -22,7 +22,8 @@ namespace
         return clip / clip.w;
     }
 
-    // two cuts and two keys; remembers what it was asked to apply
+    // two cuts, two keys and three objects, the last a light whose section
+    // has no apply; remembers what it was asked to apply
     class FakeContent final: public EditorContent {
     public:
         std::vector<EditorCut> cuts{
@@ -42,6 +43,10 @@ namespace
             EditorObject{.name = "instance/tower", .group = "NE", .detail = "Box"},
             EditorObject{.name = "light/lamp", .group = "Lights", .detail = "spot", .kind = EditorObjectKind::Light},
         };
+        std::optional<LightHandle> lamp;
+        // stands in for the content's rows
+        std::vector<EditorState> rows{3};
+        u32 applies = 0;
 
         std::span<const EditorCut> Cuts() const override { return cuts; }
         std::span<const Str> Keys() const override { return keys; }
@@ -52,15 +57,17 @@ namespace
         EditorObjects Objects() const override { return objects; }
         std::optional<usize> ObjectOf(PrimitiveHandle) const override { return std::nullopt; }
         std::optional<PrimitiveHandle> PrimitiveOf(usize) const override { return std::nullopt; }
-        std::optional<LightHandle> LightOf(usize) const override { return std::nullopt; }
+        std::optional<LightHandle> LightOf(usize object) const override {
+            return object == 2 ? lamp : std::nullopt;
+        }
         MeshList MeshesOf(PrimitiveHandle) const override { return {}; }
         InspectSections Inspect(usize object) override {
-            return {InspectSection{.label = "row", .target = &rows[object], .desc = GetDesc<EditorState>(), .apply = [this] { ++applies; }}};
-        }
+            DirtyCallback apply;
+            if(object != 2)
+                apply = [this] { ++applies; };
 
-        // stands in for the content's rows
-        std::vector<EditorState> rows{3};
-        u32 applies = 0;
+            return {InspectSection{.label = "row", .target = &rows[object], .desc = GetDesc<EditorState>(), .apply = apply}};
+        }
     };
 
     // what the session exposed, by name, with each target's callback
@@ -85,6 +92,9 @@ namespace
 
     class Fixture {
     public:
+        // right of the wide cut's view, so a pick at the center misses it
+        static constexpr Vec3 LampPosition{8.0f, 10.0f, 0.0f};
+
         FakeContent content;
         FakePort port;
         RenderScene scene;
@@ -92,7 +102,10 @@ namespace
         Color clear{};
         EditorSession session{camera, content, scene, [this](Color color) { clear = color; }, port.Bind()};
 
-        Fixture() { session.Start("wide", "day"); }
+        Fixture() {
+            content.lamp = scene.Lights().Add(LightSnapshot{.position = LampPosition});
+            session.Start("wide", "day");
+        }
     };
 }
 
@@ -278,10 +291,11 @@ TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
     ASSERT_TRUE(f.port.exposures.contains("selection"));
     EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[0]);
 
-    f.session.Select(2);
+    f.session.Select(1);
     EXPECT_EQ(f.port.exposures.size(), 3u);
-    EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[2]);
+    EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[1]);
 
+    f.session.TakeInspectorDirty();
     f.port.exposures.at("selection").onDirty();
     EXPECT_EQ(f.content.applies, 1u);
     EXPECT_TRUE(f.session.TakeInspectorDirty());
@@ -290,7 +304,7 @@ TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
     EXPECT_FALSE(f.port.exposures.contains("selection"));
 }
 
-// the session's targets leave the port with it
+// the destructor takes `editor`, `camera` and the selection off the port
 TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     FakeContent content;
     FakePort port;
@@ -305,3 +319,44 @@ TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     EXPECT_TRUE(port.exposures.empty());
 }
 
+
+// a click near a light's marker selects the light ahead of geometry; the
+// viewport set before any frame is the one picks are measured in
+TEST(EditorSession, AMarkerNearTheClickSelectsItsLight) {
+    Fixture f;
+    const Vec2 viewport{1920.0f, 1080.0f};
+    f.session.SetViewport(viewport);
+    const auto marker = projectToWindow(f.camera.ViewProj(viewport.x / viewport.y), Fixture::LampPosition, viewport);
+    ASSERT_TRUE(marker.has_value());
+
+    f.session.PickAt(*marker + Vec2{5.0f, 3.0f});
+    EXPECT_EQ(f.session.Selection(), 2u);
+    EXPECT_EQ(f.session.State().selected, "light/lamp");
+
+    f.session.PickAt(*marker + Vec2{20.0f, 0.0f});
+    EXPECT_FALSE(f.session.Selection().has_value());
+}
+
+// a key rewrites rows the inspector may show, so the panel rebuilds
+TEST(EditorSession, AKeyChangeDirtiesTheInspector) {
+    Fixture f;
+    f.session.Select(0);
+    f.session.TakeInspectorDirty();
+
+    f.session.State().key = "night";
+    f.session.Sync();
+    EXPECT_TRUE(f.session.TakeInspectorDirty());
+}
+
+// a section the content gives no apply gets one that does nothing, so the
+// panel's widgets and the port can always call it
+TEST(EditorSession, ASectionWithoutApplyIsSafeToWrite) {
+    Fixture f;
+    f.session.Select(2);
+    ASSERT_EQ(f.session.Inspected().size(), 1u);
+    ASSERT_TRUE(static_cast<bool>(f.session.Inspected()[0].apply));
+
+    EXPECT_NO_THROW(f.session.Inspected()[0].apply());
+    EXPECT_NO_THROW(f.port.exposures.at("selection").onDirty());
+    EXPECT_EQ(f.content.applies, 0u);
+}

@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <gtest/gtest.h>
 
 #include "Geometry/Ray3D.hpp"
@@ -55,4 +57,16 @@ TEST(Ray, TriangleMissedJustOutside) {
     // the triangle A B C covers the half above the diagonal from A to C
     EXPECT_FALSE(intersectRayTriangle(Ray3D{.origin = {-0.5f, -0.6f, -2.0f}}, A, B, C));
     EXPECT_FALSE(intersectRayTriangle(Ray3D{.origin = {1.01f, 0.0f, -2.0f}}, A, B, C));
+}
+
+// a ray from a zero-size viewport or a zero-scale row hits nothing
+TEST(Ray, ANaNRayHitsNothing) {
+    constexpr auto NaN = std::numeric_limits<f32>::quiet_NaN();
+    const Ray3D direction{.origin = {0.0f, 0.0f, 0.0f}, .direction = {NaN, NaN, NaN}};
+    const Ray3D origin{.origin = {NaN, 0.0f, NaN}, .direction = {0.0f, 0.0f, 1.0f}};
+
+    EXPECT_FALSE(intersectRayAABB3D(direction, UnitBox));
+    EXPECT_FALSE(intersectRayAABB3D(origin, UnitBox));
+    EXPECT_FALSE(intersectRayTriangle(direction, A, B, C));
+    EXPECT_FALSE(intersectRayTriangle(origin, A, B, C));
 }

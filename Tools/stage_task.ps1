@@ -69,7 +69,14 @@ try {
     # 3. its name and transform, as the scene file has them
     $position = Get-PortProperty selection position
     $yaw = Get-PortProperty selection yaw
-    Assert-That ([math]::Abs($position[0] - $lampRow.x) -lt 1e-4 -and [math]::Abs($position[2] - $lampRow.z) -lt 1e-4) "its position is the scene file's ($($lampRow.x), $($lampRow.y), $($lampRow.z))"
+    $scale = Get-PortProperty selection scale
+    $file = @($lampRow.x, $lampRow.y, $lampRow.z)
+    $fileScale = @($lampRow.sx, $lampRow.sy, $lampRow.sz)
+    $same = $true
+    for ($axis = 0; $axis -lt 3; ++$axis) {
+        $same = $same -and [math]::Abs($position[$axis] - $file[$axis]) -lt 1e-4 -and [math]::Abs($scale[$axis] - $fileScale[$axis]) -lt 1e-4
+    }
+    Assert-That $same "its position ($($file -join ', ')) and scale ($($fileScale -join ', ')) are the scene file's"
     Assert-That ([math]::Abs($yaw - $lampRow.yaw) -lt 1e-4) "its yaw is the scene file's $($lampRow.yaw)"
 
     # 4. a meter east, and the picture moves with it

@@ -91,9 +91,14 @@ namespace Crowy
     }
 
     void EditorSession::Update(Vec2 windowSize) {
-        viewport = windowSize;
+        SetViewport(windowSize);
         if(camera.TakeMoved())
             leaveCut();
+    }
+
+    void EditorSession::SetViewport(Vec2 windowSize) {
+        if(windowSize.x > 0.0f && windowSize.y > 0.0f)
+            viewport = windowSize;
     }
 
     void EditorSession::SelectCut(usize index) {
@@ -126,6 +131,10 @@ namespace Crowy
         state.selected = object ? objects[*object].name : Str{};
         applied.selected = state.selected;
         inspected = object ? content.Inspect(*object) : InspectSections{};
+        for(auto& section: inspected) {
+            if(!section.apply)
+                section.apply = [] {};
+        }
         exposeSelection();
         selectionChanged = true;
         reportSelection();
@@ -192,6 +201,8 @@ namespace Crowy
         }
 
         clearColor(content.ApplyKey(state.key));
+        // a key rewrites rows the inspector may show
+        inspectorDirty = true;
         state.status = std::format("key {}", state.key);
         applied.status = state.status;
 
@@ -216,14 +227,35 @@ namespace Crowy
     }
 
     void EditorSession::applyPickAt() {
-        const auto hit = pickScene(
-            scene,
-            rayThroughPixel(camera, state.pickAt, viewport),
-            [this](PrimitiveHandle primitive) { return content.MeshesOf(primitive); }
-        );
-        // a pulse: the same pixel written again picks again, as a click does
-        state.pickAt = EditorNoPick;
+        const auto pixel = std::exchange(state.pickAt, EditorNoPick);
+        if(const auto light = markerAt(pixel)) {
+            Select(light);
+            return;
+        }
+
+        std::optional<PickHit> hit;
+        if(const auto ray = rayThroughPixel(camera, pixel, viewport)) {
+            hit = pickScene(scene, *ray, [this](PrimitiveHandle primitive) {
+                return content.MeshesOf(primitive);
+            });
+        }
         Select(hit ? content.ObjectOf(hit->primitive) : std::nullopt);
+    }
+
+    // the light whose marker is drawn nearest the pixel
+    std::optional<usize> EditorSession::markerAt(Vec2 pixel) const {
+        std::vector<usize> objects;
+        std::vector<Vec3> markers;
+        for(usize i = 0; i < content.Objects().size(); ++i) {
+            if(const auto light = content.LightOf(i); light && scene.Lights().IsValid(*light)) {
+                objects.push_back(i);
+                markers.push_back(scene.Lights().GetRef(*light).position);
+            }
+        }
+        const auto viewProj = camera.ViewProj(viewport.x / viewport.y);
+        const auto nearest = nearestOnScreen(viewProj, viewport, pixel, markers, MarkerRadius);
+
+        return nearest ? std::optional(objects[*nearest]) : std::nullopt;
     }
 
     void EditorSession::refuse(Str status) {
@@ -240,8 +272,7 @@ namespace Crowy
             const auto& section = inspected[i];
             auto name = i == 0 ? Str(SelectionTarget) : std::format("{}.{}", SelectionTarget, section.label);
             port.expose(name, section.target, *section.desc, [this, apply = section.apply] {
-                if(apply)
-                    apply();
+                apply();
                 inspectorDirty = true;
             });
             exposed.push_back(std::move(name));

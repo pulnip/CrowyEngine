@@ -25,12 +25,13 @@ namespace Crowy
         };
     }
 
-    // The editor's view of the loaded stage: its cuts and lighting keys, its
-    // instances, quads and lights as named objects grouped by area, and each
-    // primitive's meshes for picking. Owns nothing the scene owns.
+    // The loaded stage as the editor sees it: cuts, keys, named objects by
+    // area and each primitive's meshes to pick. Owns nothing the scene owns.
     class StageContent final: public EditorContent {
     private:
         using MeshLists = std::vector<std::vector<const MeshData*>>;
+        using ObjectPrimitives = std::vector<std::optional<PrimitiveHandle>>;
+        using ObjectLights = std::vector<std::optional<LightHandle>>;
 
         RenderScene& scene;
         // the document's rows are what the inspector edits
@@ -40,11 +41,13 @@ namespace Crowy
         std::vector<Str> keys;
         std::vector<EditorObject> objects;
         // parallel to objects
-        std::vector<std::optional<PrimitiveHandle>> primitives;
-        std::vector<std::optional<LightHandle>> lights;
+        ObjectPrimitives primitives;
+        ObjectLights lights;
         MeshLists meshes;
         // by a primitive handle's slot
         std::vector<usize> objectOfSlot;
+        // the lighting key applied last, which a light's row is drawn under
+        usize currentKey = 0;
 
     public:
         StageContent(RenderScene& scene, LoadedStage& stage, const StageBindings& bindings);
@@ -64,6 +67,8 @@ namespace Crowy
         void ApplyInstance(usize instance);
         // the quad row written into its primitive and its material's rect
         void ApplyQuad(usize quad);
+        // the light row written into its snapshot under the current key
+        void ApplyLight(usize light);
 
     private:
         void addObjects();

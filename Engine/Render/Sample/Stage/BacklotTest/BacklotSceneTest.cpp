@@ -12,6 +12,12 @@ using namespace Crowy;
 
 namespace
 {
+    const LoadedStage& backlotStage() {
+        static const auto stage = loadStage(backlotRoot());
+
+        return stage;
+    }
+
     // Backlot's inventory per lighting key
     struct KeyInventory {
         CStr key = "";
@@ -19,12 +25,6 @@ namespace
         u64 triangles = 0;
         usize lights = 0;
     };
-
-    const LoadedStage& backlotStage() {
-        static const auto stage = loadStage(backlotRoot());
-
-        return stage;
-    }
 }
 
 // the rows each key shows, without a device: empty handles stand in for the

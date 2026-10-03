@@ -278,19 +278,8 @@ namespace Crowy
             }));
         }
 
-        for(const auto& light: document.lights) {
-            bindings.lights.push_back(scene.Lights().Add(LightSnapshot{
-                .kind = light.kind == StageLightKind::Spot ? LightKind::Spot : LightKind::Point,
-                .enabled = false,
-                .color = light.color,
-                .intensity = 0.0f,
-                .position = light.position,
-                .direction = normSquared(light.direction) > 0.0f ? normalize(light.direction) : -unitY(),
-                .range = light.range,
-                .innerConeAngle = radians(light.innerAngle),
-                .outerConeAngle = radians(light.outerAngle)
-            }));
-        }
+        for(const auto& light: document.lights)
+            bindings.lights.push_back(scene.Lights().Add(stageLightSnapshot(light, StageLightingKey{})));
         bindings.sun = scene.Lights().Add(LightSnapshot{.enabled = false});
 
         return bindings;
@@ -316,13 +305,8 @@ namespace Crowy
             .groundAmbient = lighting.ambientGround * lighting.ambientIntensity
         };
 
-        for(usize i = 0; i < document.lights.size(); ++i) {
-            const auto& row = document.lights[i];
-            const auto scale = scaleNamed(lighting.lightGroups, row.group);
-            auto& light = scene.Lights().GetRef(bindings.lights[i]);
-            light.enabled = scale > 0.0f;
-            light.intensity = row.intensity * scale;
-        }
+        for(usize i = 0; i < document.lights.size(); ++i)
+            scene.Lights().GetRef(bindings.lights[i]) = stageLightSnapshot(document.lights[i], lighting);
 
         const auto glow = [&](StrView channel) {
             return lighting.emissiveScale * scaleNamed(lighting.emissiveChannels, channel) * ones();

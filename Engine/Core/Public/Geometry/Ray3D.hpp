@@ -41,17 +41,20 @@ namespace Crowy
             const auto direction = ray.direction[axis];
             const auto low = box.center[axis] - box.halfScale[axis];
             const auto high = box.center[axis] + box.halfScale[axis];
+            // every rejection is written so that a NaN fails it
             if(direction == 0.0f) {
-                if(origin < low || origin > high)
+                if(!(origin >= low && origin <= high))
                     return std::nullopt;
                 continue;
             }
 
             const auto t0 = (low - origin) / direction;
             const auto t1 = (high - origin) / direction;
+            if(!(t0 == t0 && t1 == t1))
+                return std::nullopt;
             enter = std::max(enter, std::min(t0, t1));
             leave = std::min(leave, std::max(t0, t1));
-            if(enter > leave)
+            if(!(enter <= leave))
                 return std::nullopt;
         }
 
@@ -70,28 +73,29 @@ namespace Crowy
 
         const auto edge1 = b - a;
         const auto edge2 = c - a;
-        // a front's winding normal, cross(edge1, edge2), faces the viewer
-        if(frontOnly && dot(ray.direction, cross(edge1, edge2)) >= 0.0f)
+        // a front's winding normal, cross(edge1, edge2), faces the viewer;
+        // every rejection is written so that a NaN fails it
+        if(frontOnly && !(dot(ray.direction, cross(edge1, edge2)) < 0.0f))
             return std::nullopt;
 
         const auto p = cross(ray.direction, edge2);
         const auto det = dot(edge1, p);
-        if(det > -Epsilon && det < Epsilon)
+        if(!(det <= -Epsilon || det >= Epsilon))
             return std::nullopt;
 
         const auto inverse = 1.0f / det;
         const auto s = ray.origin - a;
         const auto u = dot(s, p) * inverse;
-        if(u < 0.0f || u > 1.0f)
+        if(!(u >= 0.0f && u <= 1.0f))
             return std::nullopt;
 
         const auto q = cross(s, edge1);
         const auto v = dot(ray.direction, q) * inverse;
-        if(v < 0.0f || u + v > 1.0f)
+        if(!(v >= 0.0f && u + v <= 1.0f))
             return std::nullopt;
 
         const auto t = dot(edge2, q) * inverse;
-        if(t < 0.0f)
+        if(!(t >= 0.0f))
             return std::nullopt;
 
         return t;

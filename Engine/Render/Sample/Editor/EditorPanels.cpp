@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <format>
 
 #include <imgui.h>
@@ -14,14 +13,6 @@ namespace Crowy
 {
     namespace
     {
-        bool containsIgnoringCase(StrView text, StrView part) {
-            const auto it = std::ranges::search(text, part, [](char a, char b) {
-                return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
-            });
-
-            return !it.empty() || part.empty();
-        }
-
         // window points of a world point already in clip space
         ImVec2 toScreen(const Vec4& clip, Vec2 viewport) {
             return ImVec2{
@@ -55,34 +46,10 @@ namespace Crowy
         }
     }
 
-    HierarchyGroups groupObjects(EditorObjects objects) {
-        HierarchyGroups groups;
-        for(usize i = 0; i < objects.size(); ++i) {
-            auto group = std::ranges::find(groups, objects[i].group, &HierarchyGroup::name);
-            if(group == groups.end()) {
-                groups.push_back(HierarchyGroup{.name = objects[i].group});
-                group = groups.end() - 1;
-            }
-            group->objects.push_back(i);
-        }
-
-        return groups;
-    }
-
-    std::vector<usize> filterObjects(EditorObjects objects, StrView filter) {
-        std::vector<usize> rows;
-        for(usize i = 0; i < objects.size(); ++i) {
-            if(containsIgnoringCase(objects[i].name, filter) || containsIgnoringCase(objects[i].detail, filter))
-                rows.push_back(i);
-        }
-
-        return rows;
-    }
-
-    void drawEditorToolbar(EditorSession& session) {
+    void drawEditorToolbar(EditorSession& session, StrView hint) {
         ImGui::SetNextWindowPos(ImVec2(8.0f, 8.0f), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if(ImGui::Begin("Stage##EditorToolbar")) {
+        if(ImGui::Begin("Editor##EditorToolbar")) {
             const auto& content = session.Content();
             auto& state = session.State();
 
@@ -101,9 +68,30 @@ namespace Crowy
                 ImGui::EndCombo();
             }
             ImGui::TextWrapped("%s", state.status.c_str());
-            ImGui::TextDisabled("1-8 cuts, F1-F4 keys, click to select, Esc clears, P hides");
+            ImGui::TextDisabled("%.*s", static_cast<int>(hint.size()), hint.data());
         }
         ImGui::End();
+    }
+
+    void drawLightMarkers(const EditorSession& session, const RenderScene& scene) {
+        const auto viewport = session.Viewport();
+        const auto viewProj = session.Camera().ViewProj(viewport.x / viewport.y);
+        auto* draw = ImGui::GetForegroundDrawList();
+        const auto& content = session.Content();
+        for(usize i = 0; i < content.Objects().size(); ++i) {
+            const auto light = content.LightOf(i);
+            if(!light || !scene.Lights().IsValid(*light))
+                continue;
+
+            const auto& row = scene.Lights().GetRef(*light);
+            if(const auto at = projectToWindow(viewProj, row.position, viewport)) {
+                const ImVec2 center{at->x, at->y};
+                if(row.enabled)
+                    draw->AddCircleFilled(center, 4.0f, IM_COL32(255, 236, 160, 230));
+                else
+                    draw->AddCircle(center, 4.0f, IM_COL32(170, 170, 170, 200), 0, 1.5f);
+            }
+        }
     }
 
     void drawSelectionHighlight(const EditorSession& session, const RenderScene& scene) {
@@ -119,9 +107,8 @@ namespace Crowy
 
         if(const auto light = session.Content().LightOf(*selection)) {
             const auto& row = scene.Lights().GetRef(*light);
-            const auto clip = viewProj * Vec4{row.position.x, row.position.y, row.position.z, 1.0f};
-            if(clip.z >= 0.0f) {
-                const auto center = toScreen(clip, viewport);
+            if(const auto at = projectToWindow(viewProj, row.position, viewport)) {
+                const ImVec2 center{at->x, at->y};
                 draw->AddCircle(center, 10.0f, color, 0, 2.0f);
                 draw->AddText(ImVec2(center.x + 12.0f, center.y - 8.0f), color, session.State().selected.c_str());
             }

@@ -3,7 +3,6 @@
 #include <functional>
 #include <optional>
 #include <span>
-
 #include <vector>
 
 #include "ClassRegistry.hpp"
@@ -25,7 +24,8 @@ namespace Crowy
     using ClearColorSink = std::function<void(Color)>;
     using InspectSections = std::vector<InspectSection>;
     using EditorObjects = std::span<const EditorObject>;
-    using MeshList = std::span<const MeshData* const>;
+    using PortExpose = std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)>;
+    using PortUnexpose = std::function<void(StrView)>;
 
     // EditorState::pickAt when no pick is pending
     inline constexpr Vec2 EditorNoPick{-1.0f, -1.0f};
@@ -48,7 +48,7 @@ namespace Crowy
     };
 
     // one editable part of an object: a reflected row and what turns a write
-    // into it into scene rows
+    // into it into scene rows; an empty apply means the row is the scene's
     struct InspectSection {
         Str label;
         void* target = nullptr;
@@ -58,8 +58,8 @@ namespace Crowy
 
     // the port as the session uses it, empty where there is none
     struct EditorPort {
-        std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)> expose;
-        std::function<void(StrView)> unexpose;
+        PortExpose expose;
+        PortUnexpose unexpose;
     };
 
     // The panel, the keyboard and the port all write a field and call Sync,
@@ -110,6 +110,8 @@ namespace Crowy
         // the port's name for the selection's first section; the others are
         // "selection.<label>"
         static constexpr CStr SelectionTarget = "selection";
+        // a click this near a light's marker picks the light, ahead of geometry
+        static constexpr f32 MarkerRadius = 8.0f;
 
     private:
         EditorCamera& camera;
@@ -126,10 +128,13 @@ namespace Crowy
         std::vector<Str> exposed;
         // raised when the selection changed, for panels to follow
         bool selectionChanged = false;
-        // raised when a port write changed what the inspector shows
+        // raised when anything but the panel changed what the inspector shows
         bool inspectorDirty = false;
 
     public:
+        ~EditorSession();
+        CROWY_DECLARE_PINNED(EditorSession)
+
         EditorSession(
             EditorCamera& camera,
             EditorContent& content,
@@ -137,8 +142,6 @@ namespace Crowy
             ClearColorSink clearColor,
             EditorPort port = {}
         );
-        ~EditorSession();
-        CROWY_DECLARE_PINNED(EditorSession)
 
         // applies `cut` and `key`; throws std::runtime_error when either is
         // not the content's
@@ -146,6 +149,8 @@ namespace Crowy
         void Sync();
         // a frame's input already reached the camera
         void Update(Vec2 windowSize);
+        // the window picks are measured in; one without area is ignored
+        void SetViewport(Vec2 windowSize);
 
         void SelectCut(usize index);
         void SelectKey(usize index);
@@ -171,6 +176,7 @@ namespace Crowy
         bool applyKey();
         bool applySelected();
         void applyPickAt();
+        std::optional<usize> markerAt(Vec2 pixel) const;
         void refuse(Str status);
         void reportSelection();
         void exposeSelection();

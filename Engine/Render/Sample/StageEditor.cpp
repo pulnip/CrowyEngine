@@ -81,6 +81,9 @@ namespace Crowy
             content.emplace(scene, stage, bindings);
             session.emplace(camera(), *content, scene, [this](Color color) { SetClearColor(color); }, editorPort());
             session->Start(content->Cuts().front().name, stage.document.defaultKey);
+            // a port pick may come before the first frame measures the window
+            const auto& window = Runtime().window;
+            session->SetViewport(Vec2{static_cast<f32>(window.width), static_cast<f32>(window.height)});
             hierarchy.Reset(content->Objects());
         }
 
@@ -93,8 +96,10 @@ namespace Crowy
 
             if(input.IsKeyPressed(KeyCode::P))
                 Debug().showPanel = !Debug().showPanel;
-            if(input.IsKeyPressed(KeyCode::Escape))
-                session->Select(std::nullopt);
+            if(input.IsKeyPressed(KeyCode::Escape)) {
+                session->State().selected.clear();
+                session->Sync();
+            }
             // a press ImGui wanted never arrives here; a look is not a pick
             if(input.IsKeyPressed(MouseButton::LButton) && !input.IsKeyDown(MouseButton::RButton))
                 session->PickAt(input.GetMousePos());
@@ -111,6 +116,8 @@ namespace Crowy
         void OnUpdateFrameData() override {
             const auto& io = ImGui::GetIO();
             session->Update(Vec2{io.DisplaySize.x, io.DisplaySize.y});
+            // a text field has the keyboard: typing must not fly the camera
+            camera().keyboardGated = io.WantCaptureKeyboard;
         }
 
         void OnInitUI(RHIDevice& device, const OverlayFormats& formats) override {
@@ -122,13 +129,16 @@ namespace Crowy
         }
 
         std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList& cmdList) override {
+            constexpr CStr ToolbarHint = "1-8 cuts, F1-F4 keys, click to select, Esc clears, P hides";
+
             // the chrome stays out of every capture unless asked for
             if(Debug().showPanel) {
                 if(auto* port = Port())
                     drawPortStatusChip(port->Status());
-                drawEditorToolbar(*session);
+                drawEditorToolbar(*session, ToolbarHint);
                 hierarchy.Draw(*session);
                 inspector.Draw(*session, uiContext);
+                drawLightMarkers(*session, Scene());
                 drawSelectionHighlight(*session, Scene());
             }
             uiRenderer->Prepare(cmdList);

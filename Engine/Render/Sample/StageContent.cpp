@@ -44,7 +44,9 @@ namespace Crowy
     }
 
     Color StageContent::ApplyKey(StrView key) {
-        return applyStageKey(scene, bindings, stage.document, stageKeyIndex(stage.document, key));
+        currentKey = stageKeyIndex(stage.document, key);
+
+        return applyStageKey(scene, bindings, stage.document, currentKey);
     }
 
     std::optional<usize> StageContent::ObjectOf(PrimitiveHandle primitive) const {
@@ -104,11 +106,13 @@ namespace Crowy
             };
         }
 
+        const auto light = object - instances - quads;
+
         return {InspectSection{
             .label = "light",
-            .target = &scene.Lights().GetRef(*lights[object]),
-            .desc = GetDesc<LightSnapshot>(),
-            .apply = {}
+            .target = &stage.document.lights[light],
+            .desc = GetDesc<StageLight>(),
+            .apply = [this, light] { ApplyLight(light); }
         }};
     }
 
@@ -132,6 +136,11 @@ namespace Crowy
             row.uv0.x,
             row.uv0.y
         };
+    }
+
+    void StageContent::ApplyLight(usize light) {
+        scene.Lights().GetRef(bindings.lights[light]) =
+            stageLightSnapshot(stage.document.lights[light], stage.document.lightingKeys[currentKey]);
     }
 
     void StageContent::addObjects() {

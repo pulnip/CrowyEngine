@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -41,6 +42,25 @@ namespace Crowy
         return translateMat(quad.position)
             * rotateYMat(static_cast<f32>(toRadian(quad.yaw)))
             * scaleMat({quad.width, quad.height, 1.0f});
+    }
+
+    // a light row as the scene draws it under `key`: off where its group's
+    // scale is 0
+    inline LightSnapshot stageLightSnapshot(const StageLight& light, const StageLightingKey& key) {
+        const auto group = std::ranges::find(key.lightGroups, light.group, &StageScale::name);
+        const auto scale = group == key.lightGroups.end() ? 0.0f : group->scale;
+
+        return LightSnapshot{
+            .kind = light.kind == StageLightKind::Spot ? LightKind::Spot : LightKind::Point,
+            .enabled = scale > 0.0f,
+            .color = light.color,
+            .intensity = light.intensity * scale,
+            .position = light.position,
+            .direction = normSquared(light.direction) > 0.0f ? normalize(light.direction) : -unitY(),
+            .range = light.range,
+            .innerConeAngle = static_cast<f32>(toRadian(light.innerAngle)),
+            .outerConeAngle = static_cast<f32>(toRadian(light.outerAngle))
+        };
     }
 
     // queues every model slot and the unit quad; call from OnBuildGeometry
