@@ -176,6 +176,7 @@
   <ol>
     <li><a href="#glance">한눈에</a></li>
     <li><a href="#how">이 라운드가 도는 방식</a></li>
+    <li><a href="#gizmo">기즈모 (editor-gizmo)</a></li>
     <li><a href="#select">선택과 인스펙터 (editor-select)</a></li>
     <li><a href="#g1">G1 · 무대가 섰다 (stage-view)</a></li>
     <li><a href="#textures">텍스처 (textures)</a></li>
@@ -188,11 +189,11 @@
 <h2 id="glance">한눈에</h2>
 <div class="card">
   <p>목표는 둘이 하나로 묶인 라운드다. <b>무대</b>: <code>../Backlot</code>의 영화 세트(FBX 124개, 인스턴스 1488, 이미지 쿼드 179, 조명 31, 컷 8, 라이팅 키 4)를 엔진이 읽어 표준 파이프라인으로 그린다. <b>에디터</b>: 직접 쓰는 확인 도구 — 클릭 선택, 계층, 인스펙터, 기즈모, 일시정지·스텝, 장면 다시 읽기 — 를 모든 동작이 포트의 속성 쓰기와 같은 길로 가게 만든다. Unity와의 비교는 <b>배치만</b>, 스타일은 비교하지 않는다.</p>
-  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 클릭·계층·포트로 고르고 인스펙터로 고치는 데까지 왔다. 기즈모·시계·다시 읽기가 다음이다.</p>
+  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 클릭·계층·포트로 고르고, 인스펙터와 기즈모로 고치는 데까지 왔다. 시계와 다시 읽기가 남았고, 그다음이 G2다.</p>
 </div>
 <div class="stat-row">
-  <div class="stat"><div class="label">작업</div><div class="value num">5 / 9 <small>+ 리뷰 수정 4</small></div></div>
-  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 513 <small>스위트 10 → 13</small></div></div>
+  <div class="stat"><div class="label">작업</div><div class="value num">6 / 9 <small>+ 리뷰 수정 5</small></div></div>
+  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 537 <small>스위트 10 → 13</small></div></div>
   <div class="stat"><div class="label">smoke</div><div class="value num">31 → 33 <small>TexturedSpike · StageEditor</small></div></div>
   <div class="stat"><div class="label">낮 키, 패스당</div><div class="value num">466 784 <small>삼각형 = 인벤토리 + 쿼드 161×2</small></div></div>
   <div class="stat"><div class="label">GPU / CPU 기록</div><div class="value num">3.4 / 10.7 ms <small>Debug, establishing, 낮</small></div></div>
@@ -209,6 +210,37 @@
     <li><b>규칙.</b> 엔진(<code>Engine/</code>의 <code>Sample</code> 밖)에 Backlot 고유의 것은 없다. 텍스처·Masked·FBX처럼 기본 파이프라인이 가져야 할 기능은 엔진 작업이다. 모든 에디터 동작은 포트도 할 수 있는 속성 쓰기다.</li>
   </ul>
 </div>
+
+<h2 id="gizmo">기즈모 (editor-gizmo) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>크롬(P)을 켜면 선택된 물체에 손으로 짠 기즈모가 붙는다. 월드 X·Y·Z 화살표, 수평 yaw 링, 균일 스케일 사각형이 있고, 단위 상자는 로컬 축마다 사각형을 하나씩 갖는다. 쿼드는 이동과 회전만, 조명은 이동만 한다. 마우스로 잡아 끌고, 왼쪽 Ctrl로 0.25 m·15°·×0.1씩 스냅하고, Esc로 드래그를 되돌린다. 포트 스크립트도 같은 코드로 같은 드래그를 한다. 드래그는 프레임마다 인스펙터와 <code>selection</code> 노출이 이미 쓰는 apply를 통해 행을 쓴다.</p>
+  <p><code>stage_task.ps1</code>은 이제 직접 해 볼 작업의 4단계를 기즈모로 한다. <code>gizmo</code> 타깃에서 X 화살표 끝(1124, 685)을 읽어 누르고 "한 단위" 지점까지 끌면 lamp-ne가 정확히 x 11.5로 간다. 링 끝(1178, 689)에서 같은 식으로 끌면 yaw 270이 된다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/editor-stage/gizmo-street.jpg" alt="street 컷의 기즈모"><figcaption>street 컷, lamp-ne 발치의 기즈모. 왼쪽이 잡기 전, 오른쪽이 X 화살표를 잡고 1 m 끈 상태다(잡은 손잡이는 노랗다). 링이 이 높이에서 3.3°로 납작하게 보여서, 각도 대신 끈 길이로 돈다</figcaption></figure>
+  <figure><img src="images/editor-stage/gizmo-box.jpg" alt="establishing 컷의 상자"><figcaption>establishing 컷, 랜드마크 상자. 축별 스케일 사각형은 화살표에서 먼 쪽에 있다</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>c8f1835</code></td><td>장치 없는 기즈모 수학. 화살표는 깊이 기준으로 크기를 잡아 렌즈와 상관없이 1080 pt 창에서 81 pt다. 링은 10° 안쪽에서 비스듬히 보이면 끈 길이로 돈다. 드래그는 누른 순간 고정된 평면 위에서 잡은 곳부터 잰다. 손잡이마다 "누를 곳"과 "한 단위가 되는 곳"을 낸다. Core에 <code>intersectRayPlane</code>을 더했다.</td></tr>
+  <tr><td><code>087b34e</code></td><td>에디터 상태로서의 기즈모. <code>editor.grab</code>·<code>drag</code>(펄스), <code>handle</code>, <code>snap</code>, <code>cancel</code>, 읽기 전용 <code>gizmo</code> 타깃을 더했다. 행을 <code>ResolveProperty</code>로 찾고, 쓰기는 <code>wroteSection</code> 하나로 모았다.</td></tr>
+  <tr><td><code>0528d3e</code></td><td>무대 위에 올렸다. 그리기, 마우스 경로, Esc 되돌리기, 드래그 중 커서 옆 변화량("+1.00 m"), stage_task 4단계.</td></tr>
+  <tr><td><code>421f5e9</code></td><td>리뷰 수정(아래).</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>단위 테스트</td><td>513 → 537 (Core 86, SampleEditor 52: 기즈모 수학 13, 세션 9)</td></tr>
+  <tr><td>street 컷, lamp-ne</td><td>화살표 1.744 m, 동쪽 1 m가 화면 약 26 pt. 링은 3.3°로 보여 선형 규칙이다. 정확한 수평 평면이었다면 1 픽셀에 약 0.4 m가 움직였을 것이다</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계.</b> Opus 두 관점(수학 우선, 상호작용 우선)을 메인 세션이 합쳤다. 수학 쪽에서는 링의 납작한 시점 규칙, 깊이 기준 크기, 한 단위 조준점을 가져왔다. 상호작용 쪽에서는 Esc 되돌리기, Core의 평면 교차, 손잡이 종류를 가져왔다. 마우스와 스크립트가 같은 포인터를 두고 다툴 수 있는 공유 <code>pointer/pressed</code> 모델은 버렸다.</li>
+  <li><b>설계가 바뀐 곳.</b> 카메라 yaw가 90°의 배수면 Y와 Z 화살표가 화면에서 겹친다. 그래서 마우스 위치 판정은 화살표 끝을 막대보다 먼저 본다(수학 테스트가 잡았다). 첫 마우스 경로는 버튼이 떼어져 있으면 무엇이든 놓아서, 포트가 잡은 손잡이를 다음 프레임에 놓아 버렸다. 이제 마우스는 자기가 잡은 것만 끌고 놓는다(캡처를 찍다가 잡았다).</li>
+  <li><b>리뷰가 잡은 것.</b> 확인 16건 중 진짜 결함은 셋이다. 상자를 반 바퀴나 4분의 1 돌리면 축별 사각형이 이동 화살표 한가운데로 온다. 크롬을 숨긴 직후 포트 드래그가 한 번 더 들어가고, <code>editor.handle</code>이 이미 놓인 손잡이를 가리킬 수 있다. 그려진 화살표 머리 끝 4 pt가 판정 밖이다. 모두 고쳤고, 첫째는 고치기 전에 실패하는 테스트로 지켰다.</li>
+  <li><b>멈춘 곳.</b> 없다. 손으로 끄는 감은 G2에서 직접 판단할 일이다. 조정할 수 있는 값은 화살표 비율 0.15와 링의 10° 기준이다.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> street 컷처럼 낮은 시점에서는 X와 Z 화살표가 화면에서 거의 반대 방향으로 한 줄이 된다. 손잡이 크기와 링의 감도는 써 봐야 안다. 쿼드의 너비와 높이는 인스펙터에만 있다.</li>
+</ul>
 
 <h2 id="select">선택과 인스펙터 (editor-select) <span class="tag ok">완료</span></h2>
 <div class="card">
@@ -336,7 +368,6 @@
 <h2 id="next">다음</h2>
 <div class="card">
   <ol>
-    <li><b>editor-gizmo</b> — 손으로 짠 이동 축·yaw 링·스케일 손잡이, 인스펙터와 같은 쓰기 길.</li>
     <li><b>editor-clock-reload</b> — 장면 시계(일시정지·스텝), 플립북, <code>scene.json</code> 다시 읽기. → <b>G2</b>: 직접 해 보는 그 한 가지 작업.</li>
     <li>그 뒤 <b>masked</b>(사인의 투명 텍셀), <b>stage-cuts</b>(컷별 골든, 가장자리 비교).</li>
   </ol>
