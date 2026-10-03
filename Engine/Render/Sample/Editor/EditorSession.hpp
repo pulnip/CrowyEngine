@@ -103,6 +103,10 @@ namespace Crowy
         bool snap = false;
         // a write of true puts the row back as the grab found it and releases
         bool cancel = false;
+        // scene time stands still; the camera, the panels and the gizmo do not
+        bool paused = true;
+        // the scene's seconds; a write seeks, 0 or more
+        f64 time = 0.0;
         // the scene file a reload reads, absolute or under the content's
         // root; a refused reload puts back the file the rows came from
         Str scene;
@@ -142,6 +146,8 @@ namespace Crowy
         // the file ReadScene accepted replaces every row, and every target and
         // apply Inspect gave dies; a line saying what it holds now
         virtual Str SwapScene() = 0;
+        // what the scene shows at `seconds`; whether a row changed
+        virtual bool ApplyTime(f64 seconds) = 0;
     };
 
     class EditorSession {
@@ -222,10 +228,14 @@ namespace Crowy
         void Update(Vec2 windowSize);
         // the window picks are measured in; one without area is ignored
         void SetViewport(Vec2 windowSize);
-        // a frame's scene step, outside any port callback: a pending reload
+        // a frame's scene step, outside any port callback: a pending reload,
+        // then `seconds` of scene time unless paused
         void Advance(f64 seconds);
         // reads editor.scene again at the next Advance
         void Reload();
+        void TogglePause();
+        // pauses and seeks `frames` sixtieths of a second, never before 0
+        void StepTime(i32 frames);
 
         void SelectCut(usize index);
         void SelectKey(usize index);
@@ -270,6 +280,8 @@ namespace Crowy
         // the two-phase reload: read and check, then let go of every pointer
         // into the old rows before the content swaps them
         void reloadScene();
+        // the content shows state.time; the inspector follows a row it changed
+        void showTime();
         void applyGrab();
         void applyDrag();
         void applyHandle();

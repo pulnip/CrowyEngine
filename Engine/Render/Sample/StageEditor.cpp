@@ -105,6 +105,12 @@ namespace Crowy
                 Debug().showPanel = !Debug().showPanel;
             if(input.IsKeyPressed(KeyCode::F5))
                 session->Reload();
+            if(input.IsKeyPressed(KeyCode::Space))
+                session->TogglePause();
+            if(input.IsKeyPressed(KeyCode::Left))
+                session->StepTime(-1);
+            if(input.IsKeyPressed(KeyCode::Right))
+                session->StepTime(1);
             // Esc undoes a held drag, else lets go of the selection
             if(input.IsKeyPressed(KeyCode::Escape)) {
                 if(session->Held() != GizmoHandle::None) {
@@ -163,7 +169,7 @@ namespace Crowy
 
         std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList& cmdList) override {
             constexpr CStr ToolbarHint =
-                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, F5 reloads, P hides";
+                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, Space plays, arrows step, F5 reloads, P hides";
 
             // the chrome stays out of every capture unless asked for
             if(Debug().showPanel) {

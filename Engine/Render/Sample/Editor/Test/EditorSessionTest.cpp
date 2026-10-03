@@ -3,6 +3,7 @@
 #include <functional>
 #include <map>
 #include <numbers>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -79,6 +80,9 @@ namespace
         Str refusal;
         std::vector<Str> reads;
         u32 swaps = 0;
+        // every time shown, and the 0.16 s frame shown last
+        std::vector<f64> times;
+        i64 frame = 0;
 
         std::span<const EditorCut> Cuts() const override { return cuts; }
         std::span<const Str> Keys() const override { return keys; }
@@ -110,6 +114,12 @@ namespace
                 .apply = apply,
                 .gizmo = Parts[object]
             }};
+        }
+        bool ApplyTime(f64 seconds) override {
+            times.push_back(seconds);
+            const auto now = static_cast<i64>(std::floor(seconds / 0.16));
+
+            return std::exchange(frame, now) != now;
         }
         Str ReadScene(StrView file) override {
             reads.emplace_back(file);
@@ -765,4 +775,65 @@ TEST(EditorReload, TheRevisionIsReadOnly) {
     f.session.State().revision = 7;
     f.Write();
     EXPECT_EQ(f.session.State().revision, 1u);
+}
+
+TEST(EditorClock, PausedHoldsAndAWriteSeeks) {
+    Fixture f;
+    EXPECT_TRUE(f.session.State().paused);
+    for(int i = 0; i < 10; ++i)
+        f.session.Advance(1.0 / 60.0);
+    EXPECT_EQ(f.session.State().time, 0.0);
+    EXPECT_EQ(f.content.times.back(), 0.0);
+
+    f.session.State().time = 0.32;
+    f.Write();
+    EXPECT_EQ(f.content.times.back(), 0.32);
+
+    f.session.State().time = -1.0;
+    f.Write();
+    EXPECT_EQ(f.session.State().time, 0.32);
+    EXPECT_NE(f.session.State().status.find("0 or more"), Str::npos);
+    f.session.State().time = std::nan("");
+    f.Write();
+    EXPECT_EQ(f.session.State().time, 0.32);
+}
+
+// a counted run feeds the loop's fixed step; the arrows pause and seek
+TEST(EditorClock, PlayingAddsTheLoopsStep) {
+    Fixture f;
+    f.session.TogglePause();
+    EXPECT_FALSE(f.session.State().paused);
+    for(int i = 0; i < 60; ++i)
+        f.session.Advance(0.016666667);
+    EXPECT_NEAR(f.session.State().time, 1.0, 1e-6);
+
+    const auto before = f.session.State().time;
+    f.session.StepTime(1);
+    EXPECT_TRUE(f.session.State().paused);
+    EXPECT_DOUBLE_EQ(f.session.State().time, before + 1.0 / 60.0);
+
+    f.session.State().time = 0.0;
+    f.Write();
+    f.session.StepTime(-1);
+    EXPECT_EQ(f.session.State().time, 0.0);
+}
+
+TEST(EditorClock, AFrameChangeDirtiesTheInspector) {
+    Fixture f;
+    f.session.TakeInspectorDirty();
+    f.session.TogglePause();
+    f.session.Advance(0.1);
+    EXPECT_FALSE(f.session.TakeInspectorDirty());
+    f.session.Advance(0.1);
+    EXPECT_TRUE(f.session.TakeInspectorDirty());
+}
+
+TEST(EditorClock, AReloadShowsTheCurrentTime) {
+    Fixture f;
+    f.session.State().time = 0.32;
+    f.Write();
+    f.session.Reload();
+    f.session.Advance(0.0);
+    EXPECT_EQ(f.content.swaps, 1u);
+    EXPECT_EQ(f.content.times.back(), 0.32);
 }

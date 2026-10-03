@@ -107,23 +107,18 @@ namespace Crowy
 
         MaterialHandle addQuadMaterial(
             RenderScene& scene,
-            const StageDocument& document,
+            const LoadedStage& stage,
             const StageQuad& quad,
             const StageTextureHandles& textures
         ) {
-            const auto& atlas = materialNamed(document, quad.material);
+            const auto& atlas = materialNamed(stage.document, quad.material);
             const auto texture = textures.at(atlas.texture);
 
             MaterialResource material{
                 .data = {
                     .albedo = ones(),
                     .roughness = StageRoughness,
-                    .uvScaleOffset = {
-                        quad.uv1.x - quad.uv0.x,
-                        quad.uv1.y - quad.uv0.y,
-                        quad.uv0.x,
-                        quad.uv0.y
-                    },
+                    .uvScaleOffset = stageQuadRect(quad, stage.sprites, 0.0),
                     .flags = atlas.receivesShadows
                         ? 0u
                         : static_cast<u32>(MaterialFlags::NoShadowReceive)
@@ -250,7 +245,7 @@ namespace Crowy
             );
         }
         for(const auto& quad: document.quads)
-            bindings.quadMaterials.push_back(addQuadMaterial(scene, document, quad, textures));
+            bindings.quadMaterials.push_back(addQuadMaterial(scene, stage, quad, textures));
 
         MeshCache meshes;
         for(const auto& instance: document.instances) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <vector>
 
@@ -42,6 +43,29 @@ namespace Crowy
         return translateMat(quad.position)
             * rotateYMat(static_cast<f32>(toRadian(quad.yaw)))
             * scaleMat({quad.width, quad.height, 1.0f});
+    }
+
+    // the atlas rect a quad's material samples at `seconds`, as uvScaleOffset:
+    // the row's rect, moved by whole cells to its flipbook's frame
+    inline Vec4 stageQuadRect(const StageQuad& quad, const StageSprites& sprites, f64 seconds) {
+        auto offset = quad.uv0;
+        if(quad.flipbook) {
+            const auto& sprite = sprites.at(quad.flipbook->sprite);
+            const auto& animation =
+                *std::ranges::find(sprite.animations, quad.flipbook->animation, &StageSpriteAnimation::name);
+            // whole microseconds, rounded: a seek to n frame lengths lands on frame n
+            const auto micros = std::isfinite(seconds) && seconds > 0.0
+                ? static_cast<u64>(std::min(seconds, 1.0e9) * 1.0e6 + 0.5)
+                : u64{0};
+            const auto frame = micros / (u64{animation.frameDurationMs} * 1000) % animation.frameCount;
+            const auto cell = animation.startRow * sprite.columns + animation.startColumn + frame;
+            const auto columns = static_cast<f32>(sprite.columns);
+            const auto rows = static_cast<f32>(sprite.rows);
+            offset.x += (static_cast<f32>(cell % sprite.columns) - static_cast<f32>(animation.startColumn)) / columns;
+            offset.y += (static_cast<f32>(cell / sprite.columns) - static_cast<f32>(animation.startRow)) / rows;
+        }
+
+        return Vec4{quad.uv1.x - quad.uv0.x, quad.uv1.y - quad.uv0.y, offset.x, offset.y};
     }
 
     // a light row as the scene draws it under `key`: off where its group's

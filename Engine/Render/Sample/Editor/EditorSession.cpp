@@ -1,6 +1,7 @@
 #include "EditorSession.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -94,6 +95,14 @@ namespace Crowy
             state.scene = applied.scene;
             report("editor.scene names a scene file");
         }
+        if(state.time != applied.time) {
+            if(std::isfinite(state.time) && state.time >= 0.0) {
+                showTime();
+            } else {
+                state.time = applied.time;
+                report("editor.time is scene seconds, 0 or more");
+            }
+        }
         if(state.cut != applied.cut && !applyCut())
             state.cut = applied.cut;
         if(state.key != applied.key && !applyKey())
@@ -129,14 +138,35 @@ namespace Crowy
             viewport = windowSize;
     }
 
-    void EditorSession::Advance(f64) {
+    void EditorSession::Advance(f64 seconds) {
         if(state.reload)
             reloadScene();
+        if(!state.paused) {
+            state.time += seconds;
+            applied.time = state.time;
+        }
+        showTime();
     }
 
     void EditorSession::Reload() {
         state.reload = true;
         Sync();
+    }
+
+    void EditorSession::TogglePause() {
+        state.paused = !state.paused;
+        Sync();
+    }
+
+    void EditorSession::StepTime(i32 frames) {
+        state.paused = true;
+        state.time = std::max(0.0, applied.time + static_cast<f64>(frames) / 60.0);
+        Sync();
+    }
+
+    void EditorSession::showTime() {
+        if(content.ApplyTime(state.time))
+            inspectorDirty = true;
     }
 
     void EditorSession::SelectCut(usize index) {
@@ -374,6 +404,8 @@ namespace Crowy
             state.key = keys.front();
         }
         clearColor(content.ApplyKey(state.key));
+        // the rows come back at frame 0; the scene shows its current time
+        showTime();
 
         // the cut keeps its name only where it still stands; the camera stays
         if(standing) {
@@ -598,6 +630,8 @@ namespace Crowy
         .SetProperty("handle", &EditorState::handle)
         .SetProperty("snap", &EditorState::snap)
         .SetProperty("cancel", &EditorState::cancel)
+        .SetProperty("paused", &EditorState::paused)
+        .SetProperty("time", &EditorState::time)
         .SetProperty("scene", &EditorState::scene)
         .SetProperty("reload", &EditorState::reload)
         .SetProperty("revision", &EditorState::revision)

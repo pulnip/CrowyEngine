@@ -413,6 +413,15 @@ namespace Crowy
         };
         if(sprite.rows == 0 || sprite.columns == 0)
             refuse(sheet, "has an empty grid");
+        for(usize i = 0; i < sprite.animations.size(); ++i) {
+            const auto& animation = sprite.animations[i];
+            const RowRef where{"animations", i};
+            if(animation.frameCount == 0 || animation.frameDurationMs == 0)
+                refuse(where, std::format("'{}' plays no frames or holds each for no time", animation.name));
+            const auto first = animation.startRow * sprite.columns + animation.startColumn;
+            if(animation.startColumn >= sprite.columns || first + animation.frameCount > sprite.rows * sprite.columns)
+                refuse(where, std::format("'{}' runs past the {} x {} sheet", animation.name, sprite.rows, sprite.columns));
+        }
 
         return sprite;
     }

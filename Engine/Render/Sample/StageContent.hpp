@@ -52,6 +52,9 @@ namespace Crowy
         std::vector<usize> objectOfSlot;
         // the lighting key applied last, which a light's row is drawn under
         usize currentKey = 0;
+        // the quads that play a flipbook, and the scene time they show
+        std::vector<usize> flipbooks;
+        f64 sceneSeconds = 0.0;
 
     public:
         StageContent(
@@ -73,6 +76,7 @@ namespace Crowy
         InspectSections Inspect(usize object) override;
         Str ReadScene(StrView file) override;
         Str SwapScene() override;
+        bool ApplyTime(f64 seconds) override;
 
         // the instance row written into its primitive: matrix and bounds
         void ApplyInstance(usize instance);

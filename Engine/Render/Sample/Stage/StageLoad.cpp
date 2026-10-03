@@ -153,8 +153,20 @@ namespace Crowy
     StageSprites loadStageSprites(const StageDocument& document) {
         StageSprites sprites;
         for(const auto& quad: document.quads) {
-            if(quad.flipbook && !sprites.contains(quad.flipbook->sprite))
+            if(!quad.flipbook)
+                continue;
+            if(!sprites.contains(quad.flipbook->sprite))
                 sprites.emplace(quad.flipbook->sprite, loadStageSprite(document, quad.flipbook->sprite));
+
+            const auto& animations = sprites.at(quad.flipbook->sprite).animations;
+            if(std::ranges::find(animations, quad.flipbook->animation, &StageSpriteAnimation::name) == animations.end()) {
+                throw std::runtime_error(std::format(
+                    "stage: quad '{}' plays '{}', which {} does not hold",
+                    quad.name,
+                    quad.flipbook->animation,
+                    quad.flipbook->sprite
+                ));
+            }
         }
 
         return sprites;

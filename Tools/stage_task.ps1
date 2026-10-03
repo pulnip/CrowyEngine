@@ -38,6 +38,19 @@ $lampName = "instance/lamp-ne"
 $scene = Get-Content -Raw -Encoding UTF8 (Join-Path $Backlot "Data\scene.json") | ConvertFrom-Json
 $lampRow = $scene.instances | Where-Object { $_.name -eq "lamp-ne" }
 
+# the read vector equal to the wanted one, component by component
+function Test-Vector($Read, [double[]]$Want) {
+    if (@($Read).Count -ne $Want.Count) {
+        return $false
+    }
+    for ($i = 0; $i -lt $Want.Count; ++$i) {
+        if ([math]::Abs([double]$Read[$i] - $Want[$i]) -gt 1e-6) {
+            return $false
+        }
+    }
+    return $true
+}
+
 # the two pictures equal at tolerance 0
 function Test-SamePicture([string]$A, [string]$B) {
     & $tool $A $B --tolerance 0 | Out-Null
@@ -67,6 +80,7 @@ try {
     $original = Get-PortProperty editor scene
     Assert-That ((Get-PortProperty editor revision) -eq 1) "revision 1 at launch"
     Assert-That ((Resolve-Path $original).Path -eq (Resolve-Path $sceneFile).Path) "the scene file is Backlot's ($original)"
+    Assert-That ((Get-PortProperty editor paused) -eq $true -and (Get-PortProperty editor time) -eq 0) "scene time is paused at 0"
 
     # 1. the street cut
     Set-EditorField cut street
@@ -194,6 +208,35 @@ try {
     $position = Get-PortProperty selection position
     Assert-That ($position[0] -eq 10.5 -and (Get-PortProperty selection yaw) -eq 180) "the lamp is back at x 10.5, yaw 180"
     Assert-That (Test-SamePicture $nightBefore $restored) "the original file redraws the launch's picture at tolerance 0"
+
+    # 9. scene time: a seek shows its frame, a counted run plays the loop's
+    #    step, and the same play twice draws the same picture
+    Set-PortProperty editor selected quad/screen-ne
+    Set-PortProperty editor time 0.32
+    $rect = Get-PortProperty selection.material uvScaleOffset
+    Assert-That (Test-Vector $rect @(0.5, 0.25, 0, 0.25)) "at 0.32 s screen-ne shows frame 2 ($($rect -join ', '))"
+    $frame = (Invoke-Port ping).frame
+    Set-PortProperty editor paused $false
+    $null = Invoke-Port run @{ frames = 30 }
+    $null = Invoke-Port wait_frame @{ frame = $frame + 30 }
+    Set-PortProperty editor paused $true
+    $time = Get-PortProperty editor time
+    $rect = Get-PortProperty selection.material uvScaleOffset
+    Assert-That ([math]::Abs($time - 0.82) -lt 1e-4 -and (Test-Vector $rect @(0.5, 0.25, 0.5, 0.5))) "30 counted frames play to $time s, frame 5"
+
+    $plays = @()
+    foreach ($take in 1, 2) {
+        Set-PortProperty editor time 0.32
+        Set-PortProperty editor paused $false
+        $plays += Save-StageCapture (Join-Path $Out "play-$take.bmp") $tool ((Invoke-Port ping).frame + 30)
+        Set-PortProperty editor paused $true
+    }
+    Assert-That (Test-SamePicture $plays[0] $plays[1]) "the same play twice draws the same picture at tolerance 0"
+    Set-PortProperty editor time 0
+    $still = Save-Capture "time-zero"
+    Assert-That (-not (Test-SamePicture $still $plays[0])) "the played picture shows another frame than time 0"
+    $rect = Get-PortProperty selection.material uvScaleOffset
+    Assert-That (Test-Vector $rect @(0.5, 0.25, 0, 0)) "time 0 shows the first frame again"
 }
 catch {
     Write-Host $_

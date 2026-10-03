@@ -212,7 +212,7 @@ TEST(StageSprite, ReadsTheSheetAndItsAnimations) {
     const auto sprite = loadJson<StageSprite>(R"({
         "metadata": {"version": 1, "name": "screen", "type": "sprite"},
         "sheet": {"image": "Screens/Sheet.png", "rows": 4, "columns": 2, "frame_size": [768, 432]},
-        "animations": [{"name": "loop", "start_row": 0, "start_col": 1, "frame_count": 8, "frame_duration_ms": 160}]
+        "animations": [{"name": "loop", "start_row": 0, "start_col": 1, "frame_count": 7, "frame_duration_ms": 160}]
     })");
     EXPECT_EQ(sprite.image, "Screens/Sheet.png");
     EXPECT_EQ(sprite.rows, 4u);
@@ -238,3 +238,22 @@ TEST(StageSprite, EmptyGridThrows) {
     );
 }
 
+
+TEST(StageSprite, AnAnimationMustPlayInsideItsSheet) {
+    const auto sprite = [](std::string animation) {
+        return std::string(R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 2, "columns": 2}, "animations": [)")
+            + animation + "]}";
+    };
+    const auto refused = [&](std::string animation, StrView reason) {
+        EXPECT_THAT(
+            [&] { loadJson<StageSprite>(sprite(animation)); },
+            testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(Str(reason)))
+        );
+    };
+
+    refused(R"({"name": "still", "frame_count": 0, "frame_duration_ms": 100})", "plays no frames");
+    refused(R"({"name": "frozen", "frame_count": 2, "frame_duration_ms": 0})", "plays no frames");
+    refused(R"({"name": "long", "start_row": 1, "frame_count": 3, "frame_duration_ms": 100})", "runs past");
+    refused(R"({"name": "wide", "start_col": 2, "frame_count": 1, "frame_duration_ms": 100})", "runs past");
+    EXPECT_NO_THROW(loadJson<StageSprite>(sprite(R"({"name": "all", "frame_count": 4, "frame_duration_ms": 100})")));
+}

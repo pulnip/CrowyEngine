@@ -314,3 +314,40 @@ TEST(StageScene, AClearedSceneFillsAgainAsBefore) {
         EXPECT_EQ(row.position, lights[i].position) << i;
     }
 }
+
+// a 4 x 2 sheet of 8 frames, 160 ms each, from the top-left cell
+TEST(StageScene, AFlipbookMovesItsRectByWholeCells) {
+    const StageSprites sprites{{
+        "screen.json",
+        StageSprite{
+            .image = "Screen.png",
+            .rows = 4,
+            .columns = 2,
+            .animations = {
+                StageSpriteAnimation{.name = "loop", .frameCount = 8, .frameDurationMs = 160},
+                StageSpriteAnimation{.name = "late", .startRow = 1, .startColumn = 1, .frameCount = 3, .frameDurationMs = 100},
+            }
+        }
+    }};
+    StageQuad quad{.uv0 = {0.0f, 0.0f}, .uv1 = {0.5f, 0.25f}, .flipbook = StageFlipbook{.sprite = "screen.json", .animation = "loop"}};
+    const auto at = [&](f64 seconds) { return stageQuadRect(quad, sprites, seconds); };
+
+    EXPECT_EQ(at(0.0), (Vec4{0.5f, 0.25f, 0.0f, 0.0f}));
+    EXPECT_EQ(at(0.159), (Vec4{0.5f, 0.25f, 0.0f, 0.0f}));
+    EXPECT_EQ(at(0.16), (Vec4{0.5f, 0.25f, 0.5f, 0.0f}));
+    EXPECT_EQ(at(0.32), (Vec4{0.5f, 0.25f, 0.0f, 0.25f}));
+    // 0.48 s is a hair under 480 ms in binary; it still lands on frame 3
+    EXPECT_EQ(at(0.48), (Vec4{0.5f, 0.25f, 0.5f, 0.25f}));
+    EXPECT_EQ(at(1.12), (Vec4{0.5f, 0.25f, 0.5f, 0.75f}));
+    EXPECT_EQ(at(1.28), (Vec4{0.5f, 0.25f, 0.0f, 0.0f}));
+    EXPECT_EQ(at(-1.0), at(0.0));
+
+    // from row 1, column 1: the second frame wraps to row 2, column 0
+    quad.uv0 = {0.5f, 0.25f};
+    quad.uv1 = {1.0f, 0.5f};
+    quad.flipbook->animation = "late";
+    EXPECT_EQ(at(0.1), (Vec4{0.5f, 0.25f, 0.0f, 0.5f}));
+
+    quad.flipbook.reset();
+    EXPECT_EQ(at(0.5), (Vec4{0.5f, 0.25f, 0.5f, 0.25f}));
+}

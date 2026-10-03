@@ -139,12 +139,9 @@ namespace Crowy
         primitive.localToWorld = quadToWorld(row);
         primitive.worldBounds =
             transformAABB3D(primitive.localToWorld, scene.Meshes().GetRef(primitive.mesh).localBounds);
-        scene.Materials().GetRef(bindings.quadMaterials[quad]).data.uvScaleOffset = Vec4{
-            row.uv1.x - row.uv0.x,
-            row.uv1.y - row.uv0.y,
-            row.uv0.x,
-            row.uv0.y
-        };
+        // at the time the scene shows, so an edit never resets a flipbook
+        scene.Materials().GetRef(bindings.quadMaterials[quad]).data.uvScaleOffset =
+            stageQuadRect(row, stage.sprites, sceneSeconds);
     }
 
     void StageContent::ApplyLight(usize light) {
@@ -185,6 +182,21 @@ namespace Crowy
         );
     }
 
+    bool StageContent::ApplyTime(f64 seconds) {
+        sceneSeconds = seconds;
+        auto changed = false;
+        for(const auto quad: flipbooks) {
+            const auto rect = stageQuadRect(stage.document.quads[quad], stage.sprites, seconds);
+            auto& data = scene.Materials().GetRef(bindings.quadMaterials[quad]).data;
+            if(data.uvScaleOffset != rect) {
+                data.uvScaleOffset = rect;
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
     void StageContent::build() {
         bindings = populateStage(scene, stage, geometry, textures);
         cuts = editorCutsOf(stage);
@@ -195,6 +207,13 @@ namespace Crowy
         meshes.clear();
         objectOfSlot.clear();
         currentKey = 0;
+        // populate drew every flipbook's first frame
+        sceneSeconds = 0.0;
+        flipbooks.clear();
+        for(usize i = 0; i < stage.document.quads.size(); ++i) {
+            if(stage.document.quads[i].flipbook)
+                flipbooks.push_back(i);
+        }
         addObjects();
     }
 
