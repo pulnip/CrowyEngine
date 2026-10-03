@@ -50,3 +50,27 @@ DEPENDS
     Crowy::Reflection
     Crowy::UI
 )
+
+# Backlot's film set, read from the sibling checkout CROWY_BACKLOT_DIR names;
+# exits 77 (skipped) without it
+crowy_declare_example(StageEditor
+SOURCES
+    FlyCamera.cpp
+    RenderApp.cpp
+    StageEditor.cpp
+DEPENDS
+    Crowy::Remote
+    Crowy::Render
+    SampleStage
+)
+target_compile_definitions(StageEditor
+PRIVATE
+    CROWY_BACKLOT_DIR="${CROWY_BACKLOT_DIR}"
+)
+if(TARGET StageEditorSmoke OR CROWY_ENABLE_TEST)
+    # the set loads for about 2.4 s in Debug before frame 1
+    set_tests_properties(StageEditorSmoke
+    PROPERTIES
+        ENVIRONMENT "CROWY_SMOKE_DURATION=20"
+    )
+endif()

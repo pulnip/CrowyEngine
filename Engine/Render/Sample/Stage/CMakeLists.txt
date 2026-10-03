@@ -3,6 +3,7 @@
 add_library(SampleStage STATIC
     StageDocument.cpp
     StageLoad.cpp
+    StageScene.cpp
 )
 
 target_include_directories(SampleStage
