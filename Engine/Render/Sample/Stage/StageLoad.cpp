@@ -10,6 +10,7 @@
 
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
+#include "MipChain.hpp"
 #include "StringUtil.hpp"
 
 namespace Crowy
@@ -134,7 +135,11 @@ namespace Crowy
 
             const auto file = resolveStagePath(stage.document, material.texture);
             requireContent(file);
-            stage.images.emplace(material.texture, LoadImage(file));
+            auto image = LoadImage(file);
+            // a nearest sampler still walks mips a texture has
+            if(material.sampler == StageSampler::Linear)
+                generateMipChain(image);
+            stage.images.emplace(material.texture, std::move(image));
         }
         stage.timings.imageSeconds = secondsSince(start);
 

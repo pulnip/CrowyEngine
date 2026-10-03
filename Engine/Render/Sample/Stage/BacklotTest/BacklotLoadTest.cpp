@@ -18,6 +18,10 @@ TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
     EXPECT_EQ(stage.images.size(), 9u);
     EXPECT_EQ(stage.sprites.size(), 1u);
     EXPECT_EQ(stage.unitQuad.indices.size(), 6u);
+    // linear-sampled atlases carry mips, the point-sampled ones one level
+    EXPECT_EQ(stage.images.at("Unity/Assets/Art/Textures/Posters/PosterAtlas.png").mipLevels, 12u);
+    EXPECT_EQ(stage.images.at("Unity/Assets/Art/Textures/Signs/SignAtlas.png").mipLevels, 1u);
+    EXPECT_EQ(stage.images.at("Unity/Assets/Art/Textures/Palette.png").mipLevels, 1u);
 
     u64 vertices = 0;
     u64 indices = 0;
