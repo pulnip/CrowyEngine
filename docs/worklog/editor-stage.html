@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>에디터와 무대 라운드</title>
+<meta name="description" content="CrowyEngine 2026-10-03부터 에디터와 무대 라운드의 기록: Backlot을 엔진으로, 직접 쓰는 확인 도구, 작업마다의 수치와 위임 기록">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #f1eee7;
+    --text: #22201c;
+    --muted: #6b665d;
+    --border: #e3ded3;
+    --accent: #c9552b;
+    --accent-soft: #fbe6dc;
+    --accent2: #138a9a;
+    --accent2-soft: #d9f1f3;
+    --ok: #2f8f4e;
+    --ok-soft: #dff3e5;
+    --warn: #b8860b;
+    --warn-soft: #fbf0d0;
+    --code-bg: #efece5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1916;
+      --surface: #24221e;
+      --surface-2: #2b2924;
+      --text: #ece8df;
+      --muted: #a39d91;
+      --border: #3a3731;
+      --accent: #ff8a5c;
+      --accent-soft: #3d241a;
+      --accent2: #3cc8d8;
+      --accent2-soft: #163338;
+      --ok: #5fc47e;
+      --ok-soft: #1d3426;
+      --warn: #e2b53c;
+      --warn-soft: #3a3115;
+      --code-bg: #2f2d27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1916;
+    --surface: #24221e;
+    --surface-2: #2b2924;
+    --text: #ece8df;
+    --muted: #a39d91;
+    --border: #3a3731;
+    --accent: #ff8a5c;
+    --accent-soft: #3d241a;
+    --accent2: #3cc8d8;
+    --accent2-soft: #163338;
+    --ok: #5fc47e;
+    --ok-soft: #1d3426;
+    --warn: #e2b53c;
+    --warn-soft: #3a3115;
+    --code-bg: #2f2d27;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 16px 72px; }
+  header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); }
+  header .chips { margin-top: 12px; }
+  nav.toc {
+    margin: 24px 0 0; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    font-size: 0.9rem;
+  }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  nav.toc li { break-inside: avoid; }
+  nav.toc a { color: var(--accent2); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h2 {
+    font-size: 1.25rem;
+    margin: 44px 0 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+  h3 { margin: 24px 0 8px; font-size: 1.02rem; }
+  h4 { margin: 14px 0 6px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 22px; }
+  li { margin: 2px 0; }
+  code {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "D2Coding", monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+  pre code { background: none; padding: 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 0 0 12px;
+  }
+  .card > :last-child { margin-bottom: 0; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-bottom: 12px; }
+  .grid-2 .card { margin: 0; }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin: 0; }
+  .kv dt { color: var(--muted); font-size: 0.9rem; }
+  .kv dd { margin: 0; }
+  @media (max-width: 480px) {
+    .kv { grid-template-columns: 1fr; gap: 0; }
+    .kv dd { margin-bottom: 8px; }
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip, .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    background: var(--accent2-soft); color: var(--accent2);
+    font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.gray { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .tag.hot { background: var(--accent-soft); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 6px 0 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.02em; background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  .table-scroll { overflow-x: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .stat .label { color: var(--muted); font-size: 0.8rem; }
+  .stat .value { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .value small { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px; margin: 10px 0 14px; }
+  .gallery figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .gallery img { display: block; width: 100%; height: auto; background: #000; }
+  .gallery figcaption { padding: 8px 12px; font-size: 0.85rem; color: var(--muted); }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; margin: 0 0 10px; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  details[open] > summary { margin-bottom: 8px; }
+  .caption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .rule { border-left: 3px solid var(--accent); padding: 4px 12px; margin: 8px 0; background: var(--surface); border-radius: 0 8px 8px 0; }
+  .rule b { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 12px; }
+  .flow .step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.88rem; }
+  .flow .arrow { color: var(--muted); }
+  .muted { color: var(--muted); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>에디터와 무대 라운드</h1>
+  <p>CrowyEngine · 2026-10-03 시작 · 브랜치 <code>editor-stage</code> (기준 <code>4e2938a</code>) · 자율 진행, 작업마다 커밋</p>
+  <div class="chips">
+    <span class="tag hot">진행 중</span>
+    <span class="tag ok">G1 검토 지점 도착</span>
+    <span class="tag gray">Windows-first</span>
+    <span class="tag gray">Backlot 때처럼 자율</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#glance">한눈에</a></li>
+    <li><a href="#how">이 라운드가 도는 방식</a></li>
+    <li><a href="#g1">G1 · 무대가 섰다 (stage-view)</a></li>
+    <li><a href="#textures">텍스처 (textures)</a></li>
+    <li><a href="#document">장면 파일 (stage-document)</a></li>
+    <li><a href="#fbx">FBX 로더 (fbx-import)</a></li>
+    <li><a href="#next">다음</a></li>
+  </ol>
+</nav>
+
+<h2 id="glance">한눈에</h2>
+<div class="card">
+  <p>목표는 둘이 하나로 묶인 라운드다. <b>무대</b>: <code>../Backlot</code>의 영화 세트(FBX 124개, 인스턴스 1488, 이미지 쿼드 179, 조명 31, 컷 8, 라이팅 키 4)를 엔진이 읽어 표준 파이프라인으로 그린다. <b>에디터</b>: 직접 쓰는 확인 도구 — 클릭 선택, 계층, 인스펙터, 기즈모, 일시정지·스텝, 장면 다시 읽기 — 를 모든 동작이 포트의 속성 쓰기와 같은 길로 가게 만든다. Unity와의 비교는 <b>배치만</b>, 스타일은 비교하지 않는다.</p>
+  <p>지금까지: 무대가 엔진 안에 섰고, 8컷 × 4키가 Unity와 같은 자리에 놓인다. 에디터는 컷·키 전환과 포트 쌍둥이까지 왔고, 선택·인스펙터·기즈모·시계·다시 읽기가 다음이다.</p>
+</div>
+<div class="stat-row">
+  <div class="stat"><div class="label">작업</div><div class="value num">4 / 9 <small>+ 리뷰 수정 2</small></div></div>
+  <div class="stat"><div class="label">단위 테스트</div><div class="value num">412 → 477 <small>스위트 10 → 13</small></div></div>
+  <div class="stat"><div class="label">smoke</div><div class="value num">31 → 33 <small>TexturedSpike · StageEditor</small></div></div>
+  <div class="stat"><div class="label">낮 키, 패스당</div><div class="value num">466 784 <small>삼각형 = 인벤토리 + 쿼드 161×2</small></div></div>
+  <div class="stat"><div class="label">GPU / CPU 기록</div><div class="value num">3.4 / 10.7 ms <small>Debug, establishing, 낮</small></div></div>
+  <div class="stat"><div class="label">Debug 로드</div><div class="value num">2.35 s <small>밉 생성 1.35 s 포함</small></div></div>
+</div>
+
+<h2 id="how">이 라운드가 도는 방식</h2>
+<div class="card">
+  <ul>
+    <li><b>자율.</b> 증분 하나가 끝나면 브랜치 <code>editor-stage</code>에 바로 커밋한다. master는 직접 확인한 뒤에만 가져간다.</li>
+    <li><b>작업마다 설계 단계.</b> Opus 관점 둘(이번엔 슬라이스 설계 셋)을 메인 세션이 합쳐 결정하고, 코드 전에 기록한다.</li>
+    <li><b>작업마다 리뷰.</b> 정확성·규칙·스타일 세 렌즈의 읽기 전용 리뷰, 발견마다 반박하려는 검증자 하나. 확인된 발견은 다음 작업 전에 고친다.</li>
+    <li><b>멈추는 곳은 둘.</b> G1(무대가 섰다) — 이번 라운드에서는 멈추지 않고 보여만 주는 검토 지점으로 두었다 — 과 G2(직접 그 한 가지 작업을 해 보는 곳, 라운드의 끝). Mac은 멈추지 않는다: Metal 쪽은 눈 감고 쓰고, 확인할 것을 모아 둔다.</li>
+    <li><b>규칙.</b> 엔진(<code>Engine/</code>의 <code>Sample</code> 밖)에 Backlot 고유의 것은 없다. 텍스처·Masked·FBX처럼 기본 파이프라인이 가져야 할 기능은 엔진 작업이다. 모든 에디터 동작은 포트도 할 수 있는 속성 쓰기다.</li>
+  </ul>
+</div>
+
+<h2 id="g1">G1 · 무대가 섰다 <span class="tag ok">검토 지점</span></h2>
+<div class="card">
+  <p><code>StageEditor</code>가 Backlot을 1920 × 1080으로 그린다. 8컷 모두, 낮·저녁·노을·밤 네 키 모두에서 모든 물체가 Unity 캡처(<code>Captures/20261003-002425</code>)와 같은 자리에 선다. 아래 시트의 세 번째 열은 50 % 블렌드로, 가장자리가 겹쳐 두 줄로 보이면 어긋난 것이다 — 어느 컷에도 없다.</p>
+  <p>다른 것은 스타일뿐이다: 하늘 그라데이션 대신 지평선 색 단색, URP 톤 매핑 대신 Reinhard, 블룸 없음. 그래서 엔진 쪽이 더 차갑고 어둡고, 밤의 발광이 덜 번진다. 이번 라운드의 범위 밖(키 보간·블룸·하늘·노출은 기록만)이다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/editor-stage/establishing-day.jpg" alt="establishing, 낮"><figcaption>establishing, 낮 — 스모크 골든과 같은 그림</figcaption></figure>
+  <figure><img src="images/editor-stage/street-night.jpg" alt="street, 밤"><figcaption>street, 밤 — 가로등 웅덩이, 네온, 큰 화면, 밤 배경판</figcaption></figure>
+</div>
+<details open><summary>8컷 시트: 엔진 · Unity · 블렌드 — 낮</summary><img src="images/editor-stage/g1-day.jpg" alt="낮 시트" style="width:100%"></details>
+<details><summary>8컷 시트 — 저녁</summary><img src="images/editor-stage/g1-evening.jpg" alt="저녁 시트" style="width:100%"></details>
+<details><summary>8컷 시트 — 밤</summary><img src="images/editor-stage/g1-night.jpg" alt="밤 시트" style="width:100%"></details>
+
+<h3>무엇을 했나</h3>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>58a36f7</code></td><td>세트를 표준 파이프라인으로: <code>RenderApp</code>이 생기기 전에 무대를 읽어 지오메트리 풀을 그 크기로 만들고, 텍스처를 한 번 올리고, 행을 만든다 — 팔레트와 채널별 발광 팔레트, 쿼드마다 아틀라스 사각형을 UV 변환으로 갖는 머티리얼, 모델(발광하면 모델 × 채널)마다 메시, <code>transformAABB3D</code>(Core, 새로) 경계의 인스턴스와 쿼드, 조명 31개와 태양. 라이팅 키는 행 쓰기로 적용. 골든 <code>StageEditor.dx12.png</code>.</td></tr>
+  <tr><td><code>2b01dbd</code></td><td>컷과 키를 두 프런트엔드로: 콘텐츠를 모르는 라이브러리 <code>SampleEditor</code>의 시작 — 반사된 <code>editor</code> 타깃(cut, key, status)과 그 <code>Sync</code>(쓴 것을 적용, 적용할 수 없으면 되돌리고 status에 선택지를 적음), 원근·직교 렌즈의 <code>EditorCamera</code>. 1–8이 컷, F1–F4가 키. <code>RenderApp</code>은 <code>SetClearColor</code>만 늘었다(샘플 프레임워크). <code>Tools/port.ps1</code>/<code>.sh</code>는 트리의 첫 포트 클라이언트, <code>Tools/stage_cuts</code>는 멈춘 루프에서 모든 컷 × 원하는 키를 찍는다: 32장에 31초.</td></tr>
+</table></div>
+
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>낮 키, establishing, 프레임 280</td><td>패스(Shadow, DepthPrepass, Opaque)당 1535 draw, <b>466 784 삼각형</b> — Backlot 인벤토리의 466 462 + 쿼드 161 × 2와 정확히 같다. 파이프라인 3개(패스당 run 하나), 보이는 프리미티브 1489 / 1667</td></tr>
+  <tr><td>시간 (Debug, D3D12)</td><td>GPU 3.4 ms, CPU 기록 10.7 ms, submit 5.7 ms, 프레임 16.3 ms(vsync); 로드 2.35 s, 프레임 60은 약 6 s</td></tr>
+  <tr><td>그림자 맞춤</td><td>178.27 m 정사각형, 4096에서 텍셀 4.35 cm — 설계가 예측한 값 그대로. 128 m 격자 바닥이 맞춤을 키운다</td></tr>
+  <tr><td>반복성</td><td>같은 백엔드에서 두 번 찍으면 바이트 단위로 같다; PowerShell과 POSIX 스크립트의 캡처도 같다</td></tr>
+</table></div>
+
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계가 바뀐 곳.</b> 슬라이스 설계 셋 중 통합 설계가 1280 × 720을 권했지만 직접 정한 1920 × 1080을 지켰다. 키 보간·블룸은 설계대로 빼고, 밉은 메인 세션이 넣었다(먼 컷의 포스터·배경판이 Unity의 밉과 비교되므로).</li>
+  <li><b>막힌 곳.</b> <code>powershell -File</code>이 <code>-Keys day,evening</code>을 문자열 하나로 넘겨 에디터가 "그런 키 없음"으로 되돌렸다 — 되돌림이 정확히 동작한 셈. 스크립트가 쓴 값을 다시 읽어 확인하도록 고쳤다.</li>
+  <li><b>남겨 둔 것.</b> 사인과 게임 아틀라스의 투명 텍셀이 아직 사각형으로 그려진다(Masked는 에디터 다음). 바다처럼 넓은 격자 바닥이 그림자 맞춤을 키운다 — 캐스터만 맞추는 편집은 기록만.</li>
+</ul>
+
+<h2 id="textures">텍스처 <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>표준 파이프라인이 텍스처 모델을 그린다. <code>RenderScene</code>에 텍스처 표(텍스처와 정적 샘플러 하나), <code>MaterialData</code> 80 → 112 B(UV scale·offset, 발광 맵 ID, 알파 컷오프, 플래그를 뒤에 덧붙임), 맵 ID는 렌더러가 매 프레임 머티리얼의 핸들에서 쓴다(없거나 지워진 텍스처는 0). Forward 프로그램이 UV 변환을 거쳐 알베도·불투명도, 그다음 발광을 샘플하고, <code>NoShadowReceive</code> 머티리얼은 모든 라이트를 그림자 없이 받는다. 선형 샘플 텍스처는 CPU 밉 체인을 갖는다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/editor-stage/texturedspike.jpg" alt="TexturedSpike"><figcaption>TexturedSpike — 점 샘플 팔레트(경계가 딱딱한 16칸), 격자의 가운데 1/4, 발광 칸, 그림자를 받는 타일(어둠)과 거부하는 타일(밝음), 알파 1/4 단계의 반투명 카드</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>9939acc</code></td><td>스모크 게이트 수리: 골든이 있으면 프레임 60 캡처가 완성될 때까지(최대 60 s) 기다리고, 끝내 없으면 실패한다 — 예전엔 "no frame captured"로 통과했다. exit 77은 skip.</td></tr>
+  <tr><td><code>ce417e0</code></td><td><code>VertexOut.texCoord</code>만 단독으로: Playground·ToonPlayground가 분기점과 tolerance 0에서 바이트 동일.</td></tr>
+  <tr><td><code>550ac1b</code></td><td>텍스처 표, 112 B 행, 샘플링, <code>NoShadowReceive</code>, <code>TexturedSpike</code>. <code>PackedTable</code>이 이동 전용 행을 받고, <code>Clear</code>가 슬롯마다 세대를 넘겨 옛 핸들이 되살아나지 않는다.</td></tr>
+  <tr><td><code>feae39b</code></td><td>CPU 밉 체인(sRGB는 선형광에서 평균). Debug 로드 1.0 → 2.35 s.</td></tr>
+  <tr><td><code>56f102e</code></td><td>리뷰 수정: 알파의 유일한 가드인 반투명 카드, 홀수 가장자리를 마지막 상자에 접기, 채널·알파가 다른 밉 테스트, 한 이미지를 두 샘플러로 쓰는 장면 파일 거부, <code>NoShadowReceive</code>를 무시하던 쓰이지 않는 오버로드 제거.</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>리뷰가 잡은 것.</b> 확인 13건. 진짜 결함 성격은 셋 — 알파 → 불투명도를 지키는 테스트가 없었고, 밉 테스트의 대칭 체커는 채널·발자국 실수를 못 봤고, 한 PNG를 점과 선형 두 샘플러로 쓰면 먼저 나온 쪽이 밉 여부를 정했다(Backlot엔 그런 경우가 없어 잠복). 나머지는 스타일.</li>
+  <li><b>Metal의 가장 큰 미지수.</b> 구조화 버퍼 행 안의 <code>DescriptorHandle&lt;Texture2D&gt;</code>. Slang이 Metal로 내보내면 device 구조체 안의 <code>texture2d</code>(8 B, 엔진이 쓰는 <code>MTLResourceID</code>)가 된다 — 컴파일은 되지만 실행은 Mac에서 확인할 일. 안 되면 푸시 블록의 핸들 배열로 내려간다.</li>
+  <li><b>바이트 동일.</b> 112 B 미러가 맞는지는 Playground·ToonPlayground가 분기점 캡처와 tolerance 0에서 같은 것으로 증명됐다.</li>
+</ul>
+
+<h2 id="document">장면 파일 <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p><code>SampleStage</code>(샘플 라이브러리, 엔진 밖)가 Backlot의 <code>scene.json</code>을 타입 있는 행으로 읽는다: 미터와 도는 쓰인 그대로(인스펙터가 계약의 숫자를 보이도록), 색은 선형으로. 참조·축별 스케일·키가 빠뜨린 채널과 그룹·totals가 맞지 않으면 행을 짚어 거부한다. 스프라이트 매니페스트도 읽는다. <code>loadStage</code>가 모든 모델·텍스처·스프라이트를 CPU에 올리고 <code>RenderApp</code>이 잡아 둘 용량을 계산한다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>3743499</code></td><td>문서와 검증, 스프라이트, Core <code>srgbToLinear</code>, 테스트 바이너리 둘(인라인 JSON / 실제 Backlot, 라벨 <code>stage</code>). 124개 모델 전부를 크기 행과 대조.</td></tr>
+  <tr><td><code>b966087</code></td><td><code>loadStage</code>: 삼각형 110 070(고유), 스테이징 7.6 MiB(예산 24 MiB), 머티리얼 183, 패스당 draw 1713.</td></tr>
+  <tr><td><code>6d47da2</code></td><td>리뷰 수정(작업 1·2 함께): Backlot 테스트는 전부 아니면 전무로 skip(exit 77), 타입이 틀린 키는 기본값이 아니라 거부, 모든 거부에 메시지를 맞추는 테스트(인라인 13 → 27), 스타일.</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>설계가 바뀐 곳.</b> 모든 모델의 크기를 1 cm 안에서 맞추려던 테스트가 32곳에서 실패했다. 크기 행은 에셋 카드의 명목값이고 Backlot 자체 검사가 카드마다 허용 오차(최대 15 %)를 준다 — 앉은 마네킹 9 % 큼, 와이어프레임 건물 18 cm. 그래서 변환이 책임지는 것만 묻도록 바꿨다: 축마다 10 % 또는 6 cm, x·z를 바꾼 것보다 더 잘 맞을 것, 바닥이 y = 0.</li>
+  <li><b>리뷰가 잡은 것.</b> 확인 18건. 진짜 결함 둘 — 출력 정규식 skip이 테스트 하나의 skip으로 바이너리 전체를 skip으로 만들어 옆의 실패를 가렸고, 선택 키의 타입이 틀리면 조용히 기본값이 됐다(<code>"shadow": 1.0</code>이 그림자 없음으로). 둘 다 고쳤다.</li>
+</ul>
+
+<h2 id="fbx">FBX 로더 <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p><code>loadModel</code>(<code>Engine/Serialization</code>, ufbx)이 FBX를 엔진 규약(왼손, +Y 위, 미터, 시계 방향 앞면, UV 원점 왼쪽 위)의 <code>MeshData</code>로, 머티리얼마다 슬롯 하나로 읽는다. 축 프로브의 표 — 경계, 삼각형 36개, 모두 앞면, 팔의 방향과 길이, 팔레트 색 — 를 엔진 저장소에 복사해 둔 픽스처로 검사하므로 Backlot 없이도 돈다.</p>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>9770151</code></td><td><code>LoadModel</code>과 축 프로브. Serialization 18 → 22.</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>측정이 결정한 것.</b> 슬라이스 설계와 계약 모두 <code>reverse_winding = true</code>를 권했지만, 측정에서 36개 삼각형이 전부 뒷면이 됐다. ufbx는 미러링된 메시의 인덱스를 스스로 뒤집고, 그 뒤집기가 FBX의 반시계 앞면을 시계로 만든다 — 옵션이 그걸 되돌리고 있었다. 이 실패가 그대로 앞면 판정 테스트의 red run이다.</li>
+  <li><b>리뷰가 잡은 것.</b> 그 사실을 거꾸로 적은 주석(고침), 함수 이름의 대소문자(<code>loadModel</code>).</li>
+</ul>
+
+<h2 id="next">다음</h2>
+<div class="card">
+  <ol>
+    <li><b>editor-select</b> — 클릭으로 선택(CPU 광선, AABB 다음 삼각형), 지역별 계층과 검색, 인스펙터(위치·yaw·스케일 편집), 선택 하이라이트, 포트 쌍둥이.</li>
+    <li><b>editor-gizmo</b> — 손으로 짠 이동 축·yaw 링·스케일 손잡이, 인스펙터와 같은 쓰기 길.</li>
+    <li><b>editor-clock-reload</b> — 장면 시계(일시정지·스텝), 플립북, <code>scene.json</code> 다시 읽기. → <b>G2</b>: 직접 해 보는 그 한 가지 작업.</li>
+    <li>그 뒤 <b>masked</b>(사인의 투명 텍셀), <b>stage-cuts</b>(컷별 골든, 가장자리 비교).</li>
+  </ol>
+  <p class="muted">Mac에서 확인할 것(텍스처 표가 Metal에서 실행되는지가 가장 크다)은 따로 모여 있고, 이 진행을 막지 않는다.</p>
+</div>
+
+<footer>CrowyEngine · editor-stage 라운드 기록 · 진행 중 · 새 항목이 위로 쌓인다</footer>
+
+</main>
+</body>
+</html>
