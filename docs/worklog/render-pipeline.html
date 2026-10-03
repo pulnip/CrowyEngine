@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>렌더 파이프라인 라운드</title>
+<meta name="description" content="CrowyEngine 2026-09-27 → 10-03 렌더 파이프라인 라운드의 기록: 결정, 설계, 여섯 작업의 증분과 수치, macOS 테스트, 남은 것">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #f1eee7;
+    --text: #22201c;
+    --muted: #6b665d;
+    --border: #e3ded3;
+    --accent: #c9552b;
+    --accent-soft: #fbe6dc;
+    --accent2: #138a9a;
+    --accent2-soft: #d9f1f3;
+    --ok: #2f8f4e;
+    --ok-soft: #dff3e5;
+    --warn: #b8860b;
+    --warn-soft: #fbf0d0;
+    --code-bg: #efece5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1916;
+      --surface: #24221e;
+      --surface-2: #2b2924;
+      --text: #ece8df;
+      --muted: #a39d91;
+      --border: #3a3731;
+      --accent: #ff8a5c;
+      --accent-soft: #3d241a;
+      --accent2: #3cc8d8;
+      --accent2-soft: #163338;
+      --ok: #5fc47e;
+      --ok-soft: #1d3426;
+      --warn: #e2b53c;
+      --warn-soft: #3a3115;
+      --code-bg: #2f2d27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1916;
+    --surface: #24221e;
+    --surface-2: #2b2924;
+    --text: #ece8df;
+    --muted: #a39d91;
+    --border: #3a3731;
+    --accent: #ff8a5c;
+    --accent-soft: #3d241a;
+    --accent2: #3cc8d8;
+    --accent2-soft: #163338;
+    --ok: #5fc47e;
+    --ok-soft: #1d3426;
+    --warn: #e2b53c;
+    --warn-soft: #3a3115;
+    --code-bg: #2f2d27;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 16px 72px; }
+  header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); }
+  header .chips { margin-top: 12px; }
+  nav.toc {
+    margin: 24px 0 0; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    font-size: 0.9rem;
+  }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  nav.toc li { break-inside: avoid; }
+  nav.toc a { color: var(--accent2); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h2 {
+    font-size: 1.25rem;
+    margin: 44px 0 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+  h3 { margin: 24px 0 8px; font-size: 1.02rem; }
+  h4 { margin: 14px 0 6px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 22px; }
+  li { margin: 2px 0; }
+  code {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "D2Coding", monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; }
+  pre code { background: none; padding: 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 0 0 12px;
+  }
+  .card > :last-child { margin-bottom: 0; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-bottom: 12px; }
+  .grid-2 .card { margin: 0; }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin: 0; }
+  .kv dt { color: var(--muted); font-size: 0.9rem; }
+  .kv dd { margin: 0; }
+  @media (max-width: 480px) {
+    .kv { grid-template-columns: 1fr; gap: 0; }
+    .kv dd { margin-bottom: 8px; }
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip, .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    background: var(--accent2-soft); color: var(--accent2);
+    font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.gray { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .tag.hot { background: var(--accent-soft); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 6px 0 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.02em; background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  .table-scroll { overflow-x: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .stat .label { color: var(--muted); font-size: 0.8rem; }
+  .stat .value { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .value small { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px; margin: 10px 0 14px; }
+  .gallery figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .gallery img { display: block; width: 100%; height: auto; background: #000; }
+  .gallery figcaption { padding: 8px 12px; font-size: 0.85rem; color: var(--muted); }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; margin: 0 0 10px; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  details[open] > summary { margin-bottom: 8px; }
+  .caption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .rule { border-left: 3px solid var(--accent); padding: 4px 12px; margin: 8px 0; background: var(--surface); border-radius: 0 8px 8px 0; }
+  .rule b { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 12px; }
+  .flow .step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.88rem; }
+  .flow .arrow { color: var(--muted); }
+  .muted { color: var(--muted); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>렌더 파이프라인 라운드</h1>
+  <p>CrowyEngine · 2026-09-27 설계 수락 → 2026-09-30 <code>ToonPlayground</code> 커밋 → 2026-10-03 macOS 테스트 · 기준 <code>185097e</code> → <code>e552617</code>, Metal 골든 <code>8f098b3</code></p>
+  <div class="chips">
+    <span class="tag ok">D3D12 완료</span>
+    <span class="tag ok">macOS 테스트 완료</span>
+    <span class="tag gray">Windows-first</span>
+    <span class="tag gray">설계를 먼저 고정한 라운드</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#glance">한눈에</a></li>
+    <li><a href="#pictures">그림</a></li>
+    <li><a href="#why">왜 이 라운드였나</a></li>
+    <li><a href="#decisions">결정과 규칙</a></li>
+    <li><a href="#design">설계 14절</a></li>
+    <li><a href="#tasks">여섯 작업, 이 순서로</a></li>
+    <li><a href="#numbers">수치</a></li>
+    <li><a href="#macos">macOS 테스트</a></li>
+    <li><a href="#open">남은 것과 다음</a></li>
+    <li><a href="#loop">회고</a></li>
+    <li><a href="#appendix">부록: 커밋과 코드 위치</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="glance">한눈에</h2>
+
+<div class="card">
+  <p><b>무엇을 만들었나.</b> 프레임이 데이터가 되었다. <code>FramePipelineDesc</code>가 패스 리스트를 선언하고 <code>FramePipeline</code>이 그 선언에서 모든 배리어를 컴파일해 순서대로 기록한다. 라이트는 씬 데이터이고, 태양은 하드 섀도 맵 하나를 드리운다. 씬 컬러는 선형 <code>RGBA16F</code> 오프스크린이며 톤맵은 post 리스트의 첫 항목이다. 셰이딩 모델은 머티리얼별 Slang 모듈로 파이프라인 생성 시 링크된다. 임의 프레임 타깃을 캡처할 수 있다. 그리고 그 전부가 스타일 중립임을 <code>ToonPlayground</code>가 증명했다 — <code>Engine/Render</code>, <code>Engine/Shader</code>, RHI를 한 줄도 건드리지 않고 다른 패스 리스트, Toon·Unlit 모듈, 스크린 공간 아웃라인, posterize를 샘플 코드만으로 조합했다.</p>
+  <p><b>왜.</b> 직접의 관심사는 NPR이고 다른 사람은 PBR을 지을 수 있어야 하므로, 표준 파이프라인은 스타일 중립이어야 하고 교체는 싸야 한다. 기계적으로 중립인 G-buffer는 두 스타일의 대역폭을 모두 지불하는 함정이라 forward 전용으로 갔다.</p>
+</div>
+
+<div class="stat-row">
+  <div class="stat"><div class="label">커밋</div><div class="value num">28 <small>증분 21 · 골든 4 · macOS 수정 2 · 라운드 밖 1</small></div></div>
+  <div class="stat"><div class="label">작업 / 증분</div><div class="value num">6 / 21</div></div>
+  <div class="stat"><div class="label"><code>CrowyRenderTest</code></div><div class="value num">19 → 108</div></div>
+  <div class="stat"><div class="label"><code>CrowyRHITest</code> · <code>CrowyCoreTest</code></div><div class="value num">20 → 26 · 67 → 71</div></div>
+  <div class="stat"><div class="label">smoke</div><div class="value num">28 → 31 <small>예제 21 · 스파이크 5 · 체크 5</small></div></div>
+  <div class="stat"><div class="label">Playground 패스 / 파이프라인</div><div class="value num">1 → 5 / 4 → 8</div></div>
+  <div class="stat"><div class="label">ToonPlayground 패스 / 파이프라인</div><div class="value num">7 / 14</div></div>
+  <div class="stat"><div class="label">Metal 대 D3D12, tolerance 0</div><div class="value num">Playground 5.98 % <small>· ToonPlayground 438 px</small></div></div>
+</div>
+
+<h3>라운드 합격 기준</h3>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>기준</th><th>D3D12</th><th>Metal</th></tr>
+  <tr><td>1</td><td>표준 파이프라인의 Playground: 태양 아래 하드 섀도의 PBR, 캐스터가 계단·바닥·뒷벽 모서리에 그림자, 유리는 선형 블렌드, 백엔드별 골든, <code>read_stats</code>가 패스별 카운트</td><td><span class="tag ok">성립</span></td><td><span class="tag ok">성립</span> 골든 <code>bec81ff</code></td></tr>
+  <tr><td>2</td><td><code>ToonPlayground</code>: 다른 패스 리스트, Toon·Unlit, 아웃라인, 스타일라이즈드 post, 자체 골든 — 그 증분의 diff가 엔진 디렉터리 아래 비어 있음</td><td><span class="tag ok">성립</span> <code>git show --stat e552617</code>: 6 파일 390줄, 전부 <code>Engine/Render/Sample</code></td><td><span class="tag ok">성립</span> 골든 <code>8f098b3</code>, D3D12와 438 px</td></tr>
+  <tr><td>3</td><td>seam의 순수 리팩터(tolerance 0)와 분리의 골든 불변</td><td><span class="tag ok">성립</span> 둘 다 <code>failing 0 of 921600</code></td><td><span class="tag ok">성립</span> 둘 다 <code>failing 0</code></td></tr>
+  <tr><td>4</td><td>모든 RHI 완화에 스파이크나 테스트, 모든 <code>RenderApp</code> 실행 파일에서 두 검증 레이어 청결</td><td><span class="tag ok">성립</span> 디버그 레이어·GBV 무출력</td><td><span class="tag ok">성립</span> Metal validation 무출력</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="pictures">그림</h2>
+<p class="muted">저장소의 골든(Git LFS). 상대 경로라 저장소 안에서 열어야 보인다.</p>
+<div class="gallery">
+  <figure><img src="../../Engine/Render/Sample/Golden/Playground.dx12.png" alt="Playground, D3D12 골든"><figcaption><b>Playground · D3D12</b> — 표준 파이프라인. 태양의 하드 섀도, 니치 안의 발광 패널, 선형에서 블렌드된 유리, 톤맵 후 sRGB. 라운드 중 한 번 재기록(<code>baabc14</code>).</figcaption></figure>
+  <figure><img src="../../Engine/Render/Sample/Golden/Playground.metal.png" alt="Playground, Metal 골든"><figcaption><b>Playground · Metal</b> — <code>bec81ff</code>. D3D12와 기본 tolerance에서 5픽셀, 0에서 55 113픽셀(5.98 %) 차이.</figcaption></figure>
+  <figure><img src="../../Engine/Render/Sample/Golden/ToonPlayground.dx12.png" alt="ToonPlayground, D3D12 골든"><figcaption><b>ToonPlayground · D3D12</b> — 같은 맵, 다른 파이프라인: normals prepass → Toon/Unlit → 아웃라인(곱하기 블렌드) → posterize. 라벤더로 뜨는 음영은 Toon의 shade tint가 밝은 면에도 더해지기 때문(기록된 발견).</figcaption></figure>
+  <figure><img src="../../Engine/Render/Sample/Golden/ToonPlayground.metal.png" alt="ToonPlayground, Metal 골든"><figcaption><b>ToonPlayground · Metal</b> — <code>8f098b3</code>, 2026-10-03. D3D12와 438픽셀(0.0475 %) 차이, 각각 posterize 한 단계(채널 max 51). 캡처에 15 s 창이 필요했다: 기본 5 s smoke는 Metal에서 프레임 60에 못 미친다.</figcaption></figure>
+  <figure><img src="../../Engine/Render/Sample/Golden/ShadowSampleSpike.dx12.png" alt="ShadowSampleSpike"><figcaption><b>ShadowSampleSpike</b> — 256×128 D32 맵을 <code>Texture2D&lt;float&gt;</code>(왼쪽)와 <code>DepthTexture2D</code>(오른쪽)로 읽는 스파이크. 노랑이 보이면 프레임 간 읽기가 겹친 것. Metal과 픽셀 단위 일치.</figcaption></figure>
+  <figure><img src="../../Engine/Render/Spike/Golden/PrepassEqualSpike.dx12.png" alt="PrepassEqualSpike"><figcaption><b>PrepassEqualSpike</b> — prepass <code>Less</code> + write 뒤 <code>Equal</code>의 위치 불변성 스트레스 씬. 마젠타는 <code>Equal</code> 누락. 두 백엔드 모두 불변.</figcaption></figure>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="why">왜 이 라운드였나</h2>
+<div class="card">
+  <p>앞 라운드(렌더 반복 도구 상자, 2026-09-24~26)가 계측, 셰이더 리로드, 프로토타이핑 맵 <code>Playground</code>와 디버그 뷰, 이미지 비교를 만들었다. 그 도구가 없으면 파이프라인 설계는 실험마다 빌드하고 판정마다 눈대중이 된다는 것이 그때의 논거였고, 표준 렌더링 파이프라인은 그 다음 라운드로 미뤄졌다.</p>
+  <p>그 라운드의 Windows 패스가 닫힌 2026-09-27, 직접 요구를 하나 더했다: 레퍼런스 스타일(A Short Hike의 셀 룩, 스타일라이즈드 메탈, 세피아 2단 하드 섀도, 종이 위 하프톤, 라인아트 수채)과 PBR을 <em>모두</em> 그릴 수 있어야 하고, 손대지 않은 기본값은 "모델을 놓으면 그려지는" 진짜 파이프라인이되 교체가 싸야 한다. 이 요구가 설계 질문 전부(material/pass 분리, <code>BuildFrame</code>의 형태, args 버퍼 공유, light row의 내용)를 재편했고, 그래서 작업을 자르기 전에 설계를 한 번에 고정하는 단계를 먼저 두었다 — 이 라운드가 처음이다.</p>
+  <p>처음 추정은 작업 두셋이었고, 설계 뒤에는 여섯 작업 약 16증분으로 올라갔으며, 실제로는 21증분이 됐다.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="decisions">결정과 규칙</h2>
+
+<h3>소유자 결정 (2026-09-27)</h3>
+<div class="grid-2">
+  <div class="card"><h4>Shape C</h4><p>표준 파이프라인은 스타일 중립, 셰이딩 모델은 머티리얼별 선택. 기본 PBR(glTF metallic-roughness, <code>Playground.slang</code>의 GGX), Toon을 첫 대안으로 이번 라운드에. 기각 A(PBR 표준 + NPR 별도 파이프라인): 직접의 관심사가 증명용 부록이 되고 셰이더 실험마다 파이프라인 전체가 필요. 기각 B(toon 표준 + PBR 두 번째): metallic × roughness 차트가 의미를 잃음.</p></div>
+  <div class="card"><h4>Seam은 Slang 모듈 링킹</h4><p>link-time type. 새 모델은 파일 하나, 패스 셰이더는 그대로. 기각: 패스 셰이더 안의 enum switch(모델마다 <code>Engine/Render</code> 편집), 머티리얼이 fragment shader 전체를 지명하는 현행 방식(라이트 루프·섀도·톤맵이 셰이더마다 복사됨).</p></div>
+  <div class="card"><h4>Forward 전용</h4><p>depth prepass + forward 셰이딩, G-buffer 없음. deferred가 필요해지면 자체 레이아웃의 별도 파이프라인. 직접 지목한 함정: 기계적으로 중립을 유지한 G-buffer가 두 스타일의 대역폭을 모두 지불한다.</p></div>
+  <div class="card"><h4>교체를 이번 라운드에서 증명</h4><p>다른 패스 리스트의 두 번째 파이프라인을 <code>Engine/Render</code> 바깥에서 조립해 자체 골든으로 Playground를 렌더. 스타일은 무엇이든 무방.</p></div>
+</div>
+
+<h3>시작 시점의 결정</h3>
+<div class="card">
+  <ul>
+    <li><b>Windows 우선.</b> D3D12(디버그 레이어, GBV)에서 구현·검증하고 Metal 절반은 블라인드로 쓰며, 증분마다 macOS에서 확인할 항목을 적어 두고 나중에 macOS에서 테스트한다. Metal만 답할 수 있는 세 질문(<code>Depth32Float</code>를 <code>texture2d&lt;float&gt;</code>로 읽는가, link-time type이 whole-program 경로에서 링크되는가, position invariance)을 위해 체크포인트 둘을 일찍 둔다 — 깊이 읽기 작업 뒤, seam 작업의 두 번째 증분 뒤. 폴백은 desc나 셰이더 편집 수준으로 유지.</li>
+    <li><b>순서는 라이트가 seam보다 먼저</b>: 깊이 읽기 → 패스 분리 → 프레임 파이프라인 → 라이트·섀도 → 씬 컬러·seam → toon 증명. 어디에도 <code>static const</code> 태양을 임시로 두지 않음.</li>
+    <li><b>줄여야 할 때 자를 순서</b>: point/spot 행 → 중간 결과 캡처 → prepass 벤치 → <code>Posterize</code>. 실제로는 하나도 자르지 않았다.</li>
+    <li><b>시작하며 바로잡은 넷</b>: prepass는 처음부터 별도의 depth-only RHI 패스(색 패스 안에서 write mask 0은 RHI 규칙과 Metal의 포맷 매칭을 깸); <code>Compose</code>는 포맷으로 fragment stage를 정함; <code>LightSample</code>은 <code>Shading.slang</code>에(임포트된 모듈은 임포터의 include를 못 봄); 섀도맵은 클래스가 아닌 frame target.</li>
+  </ul>
+</div>
+
+<h3>네 가지 규칙</h3>
+<p class="muted">"중립"은 기계적일 때 함정이다. 모든 작업이 자기 설계를 이 넷에 비춰 판단했다.</p>
+<div class="rule"><b>1. Forward, G-buffer 없음.</b> 중립성은 인터페이스(<code>Surface</code>, <code>LightSample</code>, 패스 종류)에 두고 버퍼 레이아웃에 두지 않는다. 닫는 함정: G-buffer 비트 예산 때문에 셰이딩 모델 집합이 16개로 닫히는 UE의 형태.</div>
+<div class="rule"><b>2. 셰이딩 훅은 Godot <code>light()</code> 형태, UE의 switch가 아님.</b> 엔진이 라이트 루프와 섀도 샘플링을 소유하고 모듈은 라이트 하나씩만 본다. NPR 파라미터는 엔진이 해석하지 않는 레인 둘. 닫는 함정: 모델마다의 엔진 편집.</div>
+<div class="rule"><b>3. 패스는 opt-in, 최대 집합이 아님.</b> 리스트에 없는 패스는 타깃·draw list·파이프라인 비용이 0. 닫는 함정: 두 스타일 몫을 늘 지불하는 "PBR도 NPR도 아닌 프레임".</div>
+<div class="rule"><b>4. 중립성은 가정이 아닌 검증.</b> 두 번째 파이프라인이 합격 테스트. 조립에 <code>Engine/Render</code> 수정이 필요하면 그것이 라운드의 발견. 결과: 두 백엔드 모두 발견 없음.</div>
+
+<h3>세 개의 교체 층</h3>
+<div class="flow">
+  <span class="step">층 1 · 머티리얼별 셰이딩 모듈 <code>.slang</code></span><span class="arrow">·</span>
+  <span class="step">층 2 · post 리스트 <code>{Tonemap, Posterize}</code></span><span class="arrow">·</span>
+  <span class="step">층 3 · 패스 리스트 <code>FramePipelineDesc</code></span>
+</div>
+<p>셋 다 데이터. <code>Engine/Render</code>는 패스 종류, walker, 씬 데이터, 표준 desc 하나를 제공하고 스타일은 desc에 넣는 것이다.</p>
+
+<!-- ============================================================ -->
+<h2 id="design">설계 14절</h2>
+<p class="muted">2026-09-27에 고정한 설계의 14절을 각각 두세 문장으로. 이름은 모두 제안이었고 각 작업의 설계 단계에서 확정됐다. "pipeline"이 이미 파이프라인 <em>상태</em>를 뜻해서 프레임 쪽은 <code>FramePipeline</code>이라 불렀다.</p>
+
+<div class="grid-2">
+  <div class="card"><h4>1. 패스는 값, 파이프라인은 그 리스트</h4><p><code>PassDesc</code>(mesh / fullscreen의 <code>std::variant</code>)와 <code>FramePipelineDesc</code>. 데이터인 이유: walker가 기록 전에 모든 사용을 봐야 release와 acquire를 같은 값으로 짝지을 수 있고, 값이면 디바이스 없이 테스트·diff가 된다. edge는 타깃의 연속 사용 쌍마다 하나(read → read 포함 — Metal에서 두 번째 release가 첫 번째를 stale로 만듦), 첫 사용은 cross-submission acquire.</p></div>
+  <div class="card"><h4>2. walker와 프레임 순서</h4><p><code>FramePipeline</code>(<code>Resize</code>, <code>Prepare</code>, <code>Record</code>, <code>Overlay</code>, <code>Stats</code>)이 desc, 타깃 텍스처, 패스별 <code>DrawList</code>, edge, fullscreen 파이프라인, 패스별 통계를 소유. <code>RenderApp</code>의 봉인된 프레임 순서는 유지되고 선택은 가상 함수 하나 <code>DescribePipeline</code>. Metal이 패스마다 바인딩을 새로 시작하므로 push와 CB는 패스마다 재설정.</p></div>
+  <div class="card"><h4>3. Draw list, 뷰당 컬링 1회, 정렬 키</h4><p><code>BuildFrame</code>을 Frame(<code>BeginFrame</code>) / View(<code>Visible</code>) / Pass(<code>DrawList::Build</code>) 세 층으로. 각 리스트가 자기 transient slice를 소유해 "args 버퍼 공유" 질문이 닫힘. 정렬 키는 <code>u64</code> 하나: 불투명 <code>run:16 | depth:32 | identity:16</code>, 반투명 <code>~depth:32 | identity:32</code>.</p></div>
+  <div class="card"><h4>4. material/pass 분리</h4><p>머티리얼은 VS, 기본 FS, topology, cull, blend, <code>domain</code>, <code>shadingModule</code>. 패스는 포맷, depth 상태, fragment override, <code>PassDepthBias</code>, <code>linksShading</code>, 디버그 override. 유리의 <code>depthWrite = false</code>는 <code>domain = Translucent</code>로. 위치 불변성은 <code>PrepassEqualSpike</code>로 측정, 폴백 사다리 <code>LessEqual</code> → 바이어스 → <code>[[invariant]]</code> → 백엔드별 prepass off.</p></div>
+  <div class="card"><h4>5. 씬 데이터로서의 라이트</h4><p><code>LightKind {Directional, Point, Spot}</code>, <code>LightSnapshot</code>, <code>EnvironmentSnapshot</code>; GPU 행 <code>LightData</code> 128 B; <code>ScenePush</code> 32 → 56 B(<code>lights</code>, <code>lightBase</code>, <code>lightCount</code>, <code>shadowMap</code>); ambient 쌍은 <code>ViewData</code>. 의도적 부재: specular/diffuse scale, IES, mask, bake, volumetrics.</p></div>
+  <div class="card"><h4>6. 섀도맵</h4><p>직교 뷰를 매 프레임 <code>Visible</code> 바운드 합집합에 fit(카메라 독립, 흔들림 없음). 고정 2048² D32 frame target <code>ShadowMap</code>, view 1의 depth-only 패스. 수신측 바이어스(L 방향 상수 + <code>1 − N·L</code> 노멀 오프셋, Godot omni/spot 형태). <code>Load</code> + 비교 1회로 정확히 0 또는 1; 라이트·섀도 작업의 다섯째 증분이 선택적 2×2 PCF를 기본 off로 추가.</p></div>
+  <div class="card"><h4>7. 씬 컬러, post 리스트, UI</h4><p>오프스크린 <code>RGBA16F</code>, 클리어 색이 씬 radiance. <code>Tonemap.slang</code> = 기존 <code>toDisplay</code>, 선형 → display 경계. 반투명은 톤맵 전 선형 HDR에서 블렌드(골든 재기록 1회). <code>appendPostChain</code>이 항목 리스트를 ping-pong 패스로, UI는 마지막 패스에. 디스플레이용 샘플 넷은 <code>{Present}</code>로 바이트 동일 유지.</p></div>
+  <div class="card"><h4>8. 셰이딩 seam</h4><p><code>extern struct MaterialShading : IShadingModel</code> / <code>export struct … = ToonShading;</code>. <code>RHIShader</code>가 모듈을 composite에 로드, <code>linkedModules</code>가 파이프라인 키. <code>Shading</code>·<code>Lighting</code>·<code>ForwardShading.slang</code>과 모듈 <code>PBR</code>·<code>Toon</code>·<code>Unlit</code>; 기본값 <code>UnlinkedShading</code>(마젠타)이 depth-only의 <code>E45001</code>을 막음. <code>MaterialData</code> 80 B, 레인 <code>custom0/1</code>.</p></div>
+  <div class="card"><h4>9. 디버그 뷰</h4><p>5개 모드는 <code>ForwardShading.slang</code>을 거쳐 남고 wireframe·overdraw는 패스 override. 데이터 뷰(normals, depth, overdraw, shadow)는 post 리스트를 <code>{Present}</code>로 바꾸고 검정으로 클리어. 새 모드 <code>Shadow</code>.</p></div>
+  <div class="card"><h4>10. 중간 결과 캡처</h4><p><code>Copy(texture → buffer)</code>와 <code>GetReadbackRowPitch</code>. <code>capture_frame {target}</code>: 타깃이 없으면 기존 스왑체인 경로, 있으면 <code>TargetCaptureQueue</code>. 프레임 끝 blit 패스 하나가 모든 캡처를 운반, 다운로드는 <code>GetCompletedFrame()</code> 폴링(held 루프는 submit하지 않음). <code>smoke_run</code>은 백버퍼만 계속 게이트.</p></div>
+  <div class="card"><h4>11. 표준 파이프라인</h4><p><code>makeStandardPipeline(StandardPipelineConfig)</code>: <code>Shadow</code> → <code>DepthPrepass</code> → <code>Opaque</code>(Equal) → <code>Translucent</code> → <code>{Tonemap}</code>. <code>depthPrepass = false</code>면 prepass가 빠지고 Opaque가 Less + write; <code>debug.depthPrepass</code>로 런타임 전환(재빌드). 라이트 없는 샘플은 <code>shadowMapSize = 0</code>으로 opt-out.</p></div>
+  <div class="card"><h4>12. 증명: ToonPlayground</h4><p>플래그가 아닌 두 번째 실행 파일(<code>smoke_run</code>이 골든을 실행 파일 이름으로 짓고 cmake가 실행 파일마다 smoke 테스트 등록). <code>PlaygroundScene</code> 위의 두 main. shadow → normals prepass → opaque(Toon, 패널은 Unlit) → outline → translucent → <code>{Tonemap, Posterize}</code>. 합격은 명령 하나: 엔진 디렉터리의 <code>git status</code>가 비어 있을 것.</p></div>
+  <div class="card"><h4>13. RHI 작업</h4><p>작고 스타일 무관, 각각 검사가 있음: (a) 색 첨부 0개 허용, (b) <code>std::optional</code> fragment stage(19개 사이트), (c) typed optimized clear value, (d) 깊이 읽기 규칙, (e) <code>linkedModules</code>, (f) texture → buffer 복사, (g) <code>CastShadow</code> 기본값. 스파이크 둘: <code>ShadowSampleSpike</code>, <code>PrepassEqualSpike</code>.</p></div>
+  <div class="card"><h4>14. 디바이스 없는 테스트</h4><p><code>FakeCommandList</code>가 두 백엔드의 배리어 짝짓기 규칙을 모방해 누락된 Metal edge를 어느 머신에서나 테스트 실패로 만든다. <code>FakeDevice</code>는 CPU <code>AllocateTransient</code>와 <code>FakeTexture</code>. <code>ComposedPipelineTest</code>는 공개 헤더만으로 toon 모양 desc를 지어 스타일 이전에 규칙 4를 검사.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="tasks">여섯 작업, 이 순서로</h2>
+<p class="muted">의존 순서. 모든 증분은 D3D12에서 검증하고 직접 커밋했다. 각 작업은 코드 전에 설계부터 정해 열린 항목을 전부 직접 결정으로 닫았고, Metal 쪽은 나중에 macOS에서 테스트했다.</p>
+
+<!-- ---------- 1 ---------- -->
+<h3>1. 깊이 읽기 (rhi-depth-read) — 깊이만 쓰는 패스와 그 깊이를 다시 읽는 셰이더</h3>
+<div class="card">
+  <dl class="kv">
+    <dt>설계 확정</dt><dd>2026-09-27, <code>185097e</code></dd>
+    <dt>커밋</dt><dd><code>9ca37f9</code> → <code>a871088</code> → <code>09df988</code> (+ Metal 골든 <code>86042e2</code>)</dd>
+    <dt>macOS</dt><dd>2026-09-28 테스트 통과, 세 번째 증분이 체크포인트 1</dd>
+  </dl>
+  <p>표준 파이프라인은 G-buffer 없는 forward라서 prepass와 섀도 패스는 깊이만 만들고, 섀도 맵이 셰이더가 처음 읽는 깊이 텍스처가 된다. 그 RHI 절반을 디바이스 없는 테스트와 스파이크로 하나씩 고정했다. 라운드의 가장 큰 미지수(Metal이 <code>Depth32Float</code>를 <code>texture2d&lt;float&gt;</code>로 읽는가)를 Windows에서 답할 수 없어 맨 앞에 놓였다.</p>
+</div>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>증분</th><th>커밋</th><th>검증</th></tr>
+  <tr><td>1</td><td>깊이 전용 패스 허용, <code>CastShadow</code> 기본값, <code>RenderPassRulesTest</code></td><td><code>9ca37f9</code></td><td>RHI 22 · Render 20, 레드 런 둘, smoke 28/28, Playground 게이트 <code>failing 0</code></td></tr>
+  <tr><td>2</td><td><code>std::optional&lt;RHIShaderDesc&gt; fragmentShader</code>, <code>ValidateGraphicsPipelineDesc</code>, 19개 사이트, <code>PipelineRulesTest</code></td><td><code>a871088</code></td><td>RHI 25 · Render 23, 레드 런 둘, 시계 구동 아닌 샘플 전부 편집 전후 <code>failing 0</code>, <code>BaseInstanceSpike</code>에 <code>std::nullopt</code> → 규칙 메시지 exit 1</td></tr>
+  <tr><td>3</td><td>typed clear value, 깊이 읽기 규칙, <code>ClipToTexture.slang</code>, <code>ShadowSampleSpike</code>와 골든</td><td><code>09df988</code></td><td>3단계 레드(clear 에러 → SRV 에러 → PASS), smoke 29/29, 디버그 레이어·GBV 조용, 체크포인트 1 통과</td></tr>
+</table>
+</div>
+<details>
+  <summary>설계에서 정한 것 · 발견 · 남은 것</summary>
+  <h4>정한 것</h4>
+  <ul>
+    <li>규칙 (b)는 엄격 유지: 렌더 타깃이 있으면 fragment stage 필수, 없으면 있어도 합법(마스크 깊이 패스용). 두 백엔드가 한 함수 <code>ValidateGraphicsPipelineDesc</code>를 생성자 첫 문장으로 호출.</li>
+    <li>19개 사이트는 <code>.fragmentShader = RHIShaderDesc{…}</code>로 타입을 적음 — 지정 초기화 리스트는 aggregate만 초기화(C++20), MSVC 탓이 아님을 clang-cl로 확인.</li>
+    <li>깊이 읽기 규칙 (d): <code>ShaderResource</code>로 만든 깊이 텍스처는 <code>GetReadableID()</code>로 <code>Texture2D&lt;float&gt;</code>, <code>.r</code> = depth. D3D12는 D16/D24S8/D32/D32S8을 R 포맷으로 매핑.</li>
+    <li>스파이크는 2패널 1024×512, 같은 256×128 맵을 왼쪽은 <code>Texture2D&lt;float&gt;</code>, 오른쪽은 <code>DepthTexture2D</code>로 읽어 한 번의 실행에서 폴백 1까지 답함. 첫 캡처 뒤 직접 요청으로 세 틈을 막음: float32 가수 전체가 필요한 깊이, 비정사각 맵, 프레임 패리티로 번갈아 바뀌는 깊이(stale 읽기는 노랑).</li>
+    <li>삼각형을 반 텍셀 이동: 원래 빗변이 텍셀 중심 약 100개를 지나 fill rule이 결정(D3D12는 top-left, Metal은 문서 없음) → tolerance 0 일치용 그림은 엣지를 텍셀 중심에서 뗀다.</li>
+  </ul>
+  <h4>발견과 함정</h4>
+  <ul>
+    <li>실측 D3D12 에러가 설계의 "실패할 것"을 확인: typeless clear value는 <code>CREATERESOURCE_INVALIDCLEARVALUEFORMAT</code>, <code>D32_FLOAT</code>는 SRV 뷰 불가. 샘플된 깊이 리소스 레이아웃 <code>SHADER_RESOURCE</code>에 디버그 레이어·GBV 모두 이의 없음.</li>
+    <li>잊은 fragment 경로는 OS마다 다르게 실패했었다: Windows는 <code>std::filesystem::absolute("")</code>가 throw, macOS는 Slang의 "Failed to load slang module ''". optional 뒤로는 둘 다 규칙 메시지.</li>
+    <li>gtest의 Windows simple regex는 <code>()[]{}|</code>를 거부(<code>gtest-port.cc:858</code>). Debug와 Release가 <code>build\bin</code>을 공유해 테스트 수는 Debug 빌드 뒤에 읽어야 함.</li>
+    <li>골든이 없으면 <code>smoke_run</code>이 exit 0으로 끝나고 accept 줄도 찍지 않음: 첫 골든은 손으로 복사.</li>
+    <li>레드 런 복원 함정: 백업에서 <code>Copy-Item</code>하면 옛 타임스탬프가 남아 ninja가 건너뜀.</li>
+    <li>체크포인트 1: Metal은 두 읽기 방식 모두 똑같이 읽고 D3D12와 tolerance 0에서 픽셀 단위 일치 → 폴백 불필요.</li>
+  </ul>
+  <h4>남은 것</h4>
+  <ul>
+    <li>D16, D24S8, D32S8 행은 작성됐으나 미실행(이 라운드는 <code>D32_FLOAT</code>만).</li>
+    <li>읽기 전용 DSV 없음(붙은 깊이 타깃은 항상 <code>DepthWrite</code>); 색 첨부 개수 상한 없음; 래스터라이저 해시가 <code>depthClipEnable</code>을 빠뜨림(버그 아닌 충돌, 기록만).</li>
+  </ul>
+</details>
+
+<!-- ---------- 2 ---------- -->
+<h3>2. 패스 분리 (pass-split) — depth-only prepass, 패스가 소유하는 깊이 상태, 정렬 키 하나의 draw list</h3>
+<div class="card">
+  <dl class="kv">
+    <dt>설계 확정</dt><dd>2026-09-28, <code>86042e2</code></dd>
+    <dt>커밋</dt><dd><code>e8d1281</code> → <code>1596371</code> (+ Metal 골든 <code>6b3e1f4</code>) → <code>4400dda</code></dd>
+    <dt>macOS</dt><dd>2026-09-28 테스트 통과, Metal도 position-invariant; prepass 벤치는 미실행</dd>
+  </dl>
+  <p>머티리얼이 <code>depthFunc</code>·<code>depthWrite</code>를 소유해 한 머티리얼을 깊이 상태가 다른 두 패스에서 그릴 수 없었고, 정렬 키도 없었다(반투명이 마지막인 것은 Playground가 마지막에 등록해서). 손으로 순서를 잡은 두 RHI 패스에서 분리를 검증하고, 두 파이프라인이 비트 동일 깊이를 내는지 스트레스 씬으로 측정하고, <code>BuildFrame</code>을 세 층과 <code>DrawList</code>로 대체했다.</p>
+</div>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>증분</th><th>커밋</th><th>검증</th></tr>
+  <tr><td>1</td><td><code>MaterialDomain</code>, <code>PassPipelineDesc</code>/<code>MeshPassOverride</code>/<code>PassDepthBias</code>, <code>Compose</code> 규칙, pass A <code>DepthPrepass</code> + pass B</td><td><code>e8d1281</code></td><td>Playground 골든 불변(Metal <code>failing 0 of 921600</code>), Cubes 대 Blocks <code>failing 0</code>; <code>draws</code> 75, <code>triangles</code> 44690, <code>runs</code> 6, <code>pipelines</code> 6, <code>renderPasses</code> 2. Playground가 뒷벽을 마지막에 등록해 모서리 타이가 골든을 지킴</td></tr>
+  <tr><td>2</td><td><code>PrepassEqualSpike</code>, <code>debug.depthPrepass</code>, <code>CROWY_DEBUG</code>와 벤치 도구(<code>-DebugA/-DebugB</code>, <code>build_bench</code>)</td><td><code>1596371</code></td><td>smoke 30, prepass on/off <code>failing 0</code>(두 백엔드), Metal 대 D3D12 골든 37.49 %(R/B max 1 — 색 반올림), Playground off vs on <code>failing 3</code>(모서리 타이)</td></tr>
+  <tr><td>3</td><td><code>DrawList</code>, <code>SceneRenderer::BeginFrame</code>/<code>Visible</code>/<code>FramePush</code>, <code>PackedTable::HandleAt</code>, <code>FakeDevice</code>의 CPU <code>AllocateTransient</code>, <code>buckets</code> → <code>runs</code></td><td><code>4400dda</code></td><td>Render 38 · Core 68, 게이트 둘 <code>similar</code>, 22개 중 17개 캡처가 증분 2와 <code>failing 0</code>(나머지는 시계 구동과 <code>imgui.ini</code>)</td></tr>
+</table>
+</div>
+<details>
+  <summary>설계에서 정한 것 · 발견 · 남은 것</summary>
+  <h4>정한 것</h4>
+  <ul>
+    <li>깊이 상태: prepass <code>Less</code> + write, opaque <code>Equal</code> + no write, translucent <code>Less</code> + no write(오늘과 바이트 동일). <code>Compose</code>: 포맷 없는 패스는 depth-only(fragment 없음, 블렌드 <code>nullopt</code>, debug 무시) — 안 비우면 Playground의 prepass 키가 셋이 됨.</li>
+    <li>디버그 override가 fill mode나 depth를 건드리면 prepass를 돌리지 않음: Overdraw는 <code>Always</code>라 비용만 들고, 와이어프레임 prepass는 선 대 선 <code>Equal</code>이 됨.</li>
+    <li>Pass B도 지오메트리 acquire를 다시 받음: D3D12는 반복을 무시하지만 Metal은 업로드 펜스를 한 번 더 기다려야 함 → walker가 물려받은 규칙 "지오메트리 풀을 읽는 모든 메시 패스가 acquire".</li>
+    <li>정렬 키 불투명 <code>run:16 | ordered(depth):32 | identity:16</code>, 반투명 <code>~ordered(depth):32 | identity:32</code>. <code>identity</code>는 <code>PackedTable::HandleAt(row).GetIndex()</code>.</li>
+    <li>스파이크 색은 <code>objectID</code>가 아닌 그룹별(한 desc에 그룹마다 재료 행 하나 → prepass 파이프라인 하나, 불투명 하나); 쌍의 두 멤버는 같은 그룹이라 타이가 보일 수 없고 drift만 마젠타.</li>
+    <li>벤치는 <code>CROWY_DEBUG</code>(JSON을 <code>debug</code>에 적용, 모든 빌드): 커맨드 포트는 Debug 전용이라 포트 기반 벤치는 디버그 레이어 아래에서 측정되기 때문.</li>
+  </ul>
+  <h4>발견과 함정</h4>
+  <ul>
+    <li>Metal은 매 패스 push와 CB 없이 시작하고 D3D12는 루트 상수를 유지 → 재바인딩 누락은 Metal에서만 보임.</li>
+    <li>D3D12는 모든 빌드에서 리스트에 <code>PIXBeginEvent</code>, Metal은 열린 인코더에만 디버그 그룹 → 패스 바깥 스코프는 Metal에서 라벨이 없음.</li>
+    <li>셰이더 프로그램 캐시 없음: 파이프라인마다 파일 전체를 컴파일하므로 depth-only 파이프라인도 <code>fs_*</code>를 컴파일.</li>
+    <li>Metal은 <code>[[invariant]]</code> 아래에서만 불변성을 약속하는데 Slang의 metallib 바이트를 로드하므로 <code>preserveInvariance</code>를 넣을 곳이 없음 — 사다리 3단계는 Slang 쪽 조사가 필요.</li>
+    <li><code>FakeDevice</code>의 CPU <code>AllocateTransient</code>: align이 2의 거듭제곱이 아닌 stride(80, 20, 48)라 배수로 올림.</li>
+  </ul>
+  <h4>남은 것</h4>
+  <ul>
+    <li>반투명은 바운드 중심으로 정렬: 크거나 교차하는 유리에서 틀림.</li>
+    <li><code>PackedTable::Clear</code>가 세대까지 교체해 이전 핸들을 되살림(주석과 반대, 기록만).</li>
+    <li><code>i32</code> → <code>float</code> depth bias가 Metal에서 같은 뜻인지 미검증; Apple GPU에서 prepass가 본전을 하는지는 벤치 미실행.</li>
+    <li>Masked 도메인이 생기면 fragment stage 규칙을 넓혀야 함.</li>
+  </ul>
+</details>
+
+<!-- ---------- 3 ---------- -->
+<h3>3. 프레임 파이프라인 (frame-pipeline) — 선언된 사용에서 배리어를 컴파일하는 패스 리스트 walker</h3>
+<div class="card">
+  <dl class="kv">
+    <dt>설계 확정</dt><dd>2026-09-28, <code>4400dda</code></dd>
+    <dt>커밋</dt><dd><code>035f829</code> → <code>d15d258</code> → <code>7c10020</code></dd>
+    <dt>macOS</dt><dd>2026-09-30 테스트 통과 — 라운드에서 가장 넓은 Metal 확인</dd>
+  </dl>
+  <p>프레임은 <code>RenderApp::OnRecord</code> 본문에만 있었고 배리어는 모두 수작업이었다. 순서를 값으로 만들었다: <code>FramePipelineDesc</code>가 각 패스의 쓰기·읽기를 선언하고 <code>FramePipeline</code>이 그로부터 배리어를 한 번 컴파일해 리스트 순서로 기록한다. Metal은 힙이 untracked라 빠진 쌍이 경고 없이 경쟁 상태가 되기 때문에, 뒤에 올 섀도 맵·씬 컬러·아웃라인이 수작업 쌍 없이 데이터로 붙어야 했다.</p>
+</div>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>증분</th><th>커밋</th><th>검증</th></tr>
+  <tr><td>1</td><td>메시 패스용 walker, device-less: <code>FramePipeline</code>, <code>makeStandardPipeline</code>, <code>FakeCommandList</code>, <code>MeshPassState</code> 이동</td><td><code>035f829</code></td><td>Render 58(<code>FramePipelineTest</code> 14, <code>FakeCommandListTest</code> 6), smoke 30, 게이트 <code>failing 0</code>, 레드 3회 모두 실패</td></tr>
+  <tr><td>2</td><td>fullscreen kind(48 B push, 이름 붙은 타깃 읽기, 읽지 않는 타깃에 블렌드), <code>ComposedPipelineTest</code></td><td><code>d15d258</code></td><td>Render 64, <code>reload_shaders</code> → <code>pipelines 6</code>(657 ms), <code>slangc Fullscreen.slang</code> hlsl·metal 진단 없음</td></tr>
+  <tr><td>3</td><td><code>RenderApp</code> 위임: <code>DescribePipeline</code> 기본값 <code>makeStandardPipeline</code>, 깊이 버퍼가 파이프라인으로, opaque·translucent 각자 패스, <code>read_stats.passes</code></td><td><code>7c10020</code></td><td>after 캡처 9개가 before와 tolerance 0 동일, 5개 실행 파일 디버그 레이어·GBV 조용, 리사이즈 40회 + 최대화 + prepass flip 10회 exit 0, fullscreen proof PNG 해시 동일</td></tr>
+</table>
+</div>
+<details>
+  <summary>설계에서 정한 것 · 발견 · 남은 것</summary>
+  <h4>정한 것</h4>
+  <ul>
+    <li>패스는 opt-in, 어느 패스도 쓰지 않는 타깃은 만들지 않되 ID 자리는 유지(패스를 빼도 번호가 안 바뀜).</li>
+    <li>표준 파이프라인은 데이터를 돌려주는 자유 함수, <code>RenderApp</code>은 protected virtual 하나로 받음. 콜백 kind는 데이터로 표현 못 하는 사용자가 생길 때까지 만들지 않음.</li>
+    <li>첫 사용은 load 금지, 마지막 사용에서 cross-submission discard acquire: 새 D3D12 텍스처는 <code>UNDEFINED</code>로 시작해 생성·<code>Resize</code>·rebuild 뒤 acquire가 가진 적 없는 layout을 지명하기 때문.</li>
+    <li>잘못된 desc는 생성자에서 <code>std::invalid_argument</code>(패스·규칙 명시). 설계 단계에서 규칙 4개 추가: 깊이 타깃 없는 메시 패스, fragment override가 있는 depth-only 패스, <code>DontCare</code> store 뒤 load/read, 이름 중복.</li>
+    <li>walker가 놓는 텍스처는 모두 <code>RHIDevice::Retire</code>로(제안은 idle wait 뒤 제자리 교체였음): 호출자의 idle wait에 기대지 않는 수명 규칙 하나.</li>
+    <li>fullscreen의 <code>vs_main</code>은 fragment 셰이더 파일이 <code>#include "Fullscreen.slang"</code>로 가져옴: 한 파일 한 컴파일, 한 번도 실행된 적 없던 2-파일 경로 회피(그 경로는 toon 증명의 <code>NormalsPrepass</code>가 첫 사용자가 됨).</li>
+    <li>표준 desc는 설계 11절보다 작게 시작(<code>DepthPrepass</code> → <code>Opaque</code> → <code>Translucent</code>): 필드는 첫 독자와 함께 도착 — <code>shadowMapSize</code>는 라이트 작업, <code>clearColor</code>는 씬 컬러 작업에서.</li>
+  </ul>
+  <h4>발견과 함정</h4>
+  <ul>
+    <li><b>red 2</b>: <code>SceneDepth</code>의 두 엣지가 같은 값 <code>DepthWrite → DepthWrite</code>라 release만 빼도 <code>Translucent</code>의 acquire가 <code>Opaque</code>가 이미 소비한 release와 짝지어졌다 — Metal이면 <code>Translucent</code>가 <code>Opaque</code>를 건너뛰고 prepass 펜스만 기다림. 페이크 규칙 1을 "텍스처의 마지막 attachment보다 오래된 release와의 짝을 거부"로 고침.</li>
+    <li>증분 2의 red는 반만 맞음: reads를 fan-out으로 컴파일하면 stale release가 아니라 <code>UnmatchedAcquire</code>가 먼저 남 — 첫 reader의 release가 writer release를 대체해 두 번째 reader가 짝을 못 찾음. 그래서 read → read도 edge(체인).</li>
+    <li><code>DontCare</code> store 뒤 사용을 막는 것이 없었음: Metal은 미정의, D3D12는 대개 옛 내용, 어느 쪽도 validation 메시지 없음.</li>
+    <li><code>FullViewport</code>·<code>FullScissorRect</code>는 샘플 프레임워크라 <code>Engine/Render</code>가 못 씀 → walker가 뷰포트를 직접 만듦.</li>
+  </ul>
+  <h4>남은 것</h4>
+  <ul>
+    <li>메시의 파이프라인 몫이 비어 있음(정점은 pull, 토폴로지는 머티리얼); 은퇴된 타깃은 다음 submit까지 대기; read → read 엣지가 두 reader를 약간 과동기화; <code>Translucent</code>는 반투명 머티리얼이 없어도 기록됨.</li>
+    <li>Non-goals: 콜백·컴퓨트 kind, 패스별 GPU 시간, 멀티스레드 기록, 히스토리 타깃, 읽기 전용 깊이 attachment.</li>
+  </ul>
+</details>
+
+<!-- ---------- 4 ---------- -->
+<h3>4. 라이트와 섀도 (lights-shadow) — 태양과 하늘이 씬 행이 되고 태양이 하드 섀도 하나를 드리움</h3>
+<div class="card">
+  <dl class="kv">
+    <dt>설계 확정</dt><dd>2026-09-29, <code>7c10020</code> (Godot 4.7.2, UE 5.8.2를 읽고)</dd>
+    <dt>커밋</dt><dd><code>6818bb5</code> → <code>5f15a66</code> → <code>2a5e07c</code> → <code>baabc14</code> → <code>c4b23d5</code>, 모두 2026-09-29</dd>
+    <dt>macOS</dt><dd>2026-09-30 테스트 통과; GPU 중앙값·벤치·클로즈업은 미실행</dd>
+  </dl>
+  <p>씬에 데이터로서의 라이트가 없었다 — CornellRoom은 라이트 버퍼를 손으로 만들고 Playground는 셰이더에 태양을 하드코딩했다. 라이트를 씬 데이터로 만들어 <code>Lighting.slang</code>의 루프가 돌게 하고, 요청하는 첫 방향광에 하드 섀도 맵 하나를 줬다. 라운드의 "태양 아래 PBR과 하드 섀도"가 증분 4이고, 직접이 근접 텍셀 계단을 보고 증분 5(선택적 PCF)를 더했다.</p>
+</div>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>증분</th><th>커밋</th><th>검증</th></tr>
+  <tr><td>1</td><td>라이트를 데이터로, 섀도 없음: <code>LightSnapshot</code>·<code>EnvironmentSnapshot</code>, structured buffer 패킹, <code>light.sun</code>·<code>environment</code></td><td><code>6818bb5</code></td><td>Render 71; Playground tolerance 0에서 <code>failing 1</code>(B max 1 — 태양 방향이 C++에서 정규화됨); 포트 스윕(intensity 0 → 68.42 %, ambient 0 → 73.06 %, direction → 39.08 %, 복원 0)</td></tr>
+  <tr><td>2</td><td>비활성 <code>light.lamp</code>(point·spot)로 <code>SampleLight</code>의 두 분기를 GPU에서 실행</td><td><code>5f15a66</code></td><td>골든 불변, 램프 on 11.48 %, range·spot·cone·hard rim 확인(NaN 없음), 두 백엔드 3 % 이내</td></tr>
+  <tr><td>3</td><td>Shadow 패스가 맵을 씀: view row 1 직교 fit, 2048 D32 <code>Shadow</code> 패스(아직 읽는 셰이더 없음)</td><td><code>2a5e07c</code></td><td>Render 82; <code>Shadow</code> 37 draws in 2 runs; fit 로그 27.87 m, 1.36 cm, −10.44..6.98 m(손계산과 일치); GPU 중앙값 0.432 → 0.510 ms</td></tr>
+  <tr><td>4</td><td>리시버가 맵을 읽음: <code>ShadowVisibility</code>, <code>debug.mode Shadow</code>, 발광 패널을 니치로, 골든 재기록</td><td><code>baabc14</code></td><td>Render 83; 최소 clean 바이어스 (0.005 m, 1 texel); <code>castShadow false</code>는 증분 3과 byte-identical; 옛 골든 대비 4.42 % 변화; Metal 골든은 삭제 후 재기록 대기</td></tr>
+  <tr><td>5</td><td>선택적 2×2 PCF, 기본 off: <code>debug.shadowFilter</code>, 노멀 오프셋 +1 텍셀</td><td><code>c4b23d5</code></td><td>기본값에서 골든 <code>failing 0</code>; <code>Pcf2x2</code>는 섀도 가장자리 1173 px만; <code>CROWY_DEBUG</code>로 켠 smoke는 게이트 실패(의도대로)</td></tr>
+</table>
+</div>
+<details>
+  <summary>설계에서 정한 것 · 발견 · 남은 것</summary>
+  <h4>정한 것</h4>
+  <ul>
+    <li>모든 라이트에 한 행 종류(<code>LightData</code> 128 B), 라이트는 push가 이름 붙이는 structured buffer(<code>ViewData</code> 아님), ambient 쌍은 <code>ViewData</code>로 복사.</li>
+    <li>엔진이 루프와 섀도 샘플링 소유, 셰이더는 한 번에 한 라이트(<code>LightSample{direction, radiance, attenuation, shadow}</code>), early-out 없음 — 셰이딩 모델이 그림자 자리를 틴트할 수 있어야 하므로.</li>
+    <li>수신측 바이어스는 L 방향 상수 + <code>1 − N·L</code> 노멀 오프셋(Godot omni/spot 형태). Godot 방향성 형태 <code>b·(N − (N·L)L)</code>과 비교한 뒤 직접 이 형태 유지(나중의 spot 섀도와 공유).</li>
+    <li>섀도맵은 frame target: 설계 6절의 <code>ShadowMap</code> 클래스가 "파이프라인이 모든 타깃 소유"(1절)와 모순이었음.</li>
+    <li>라이트 없는 실행 파일 넷은 <code>shadowMapSize = 0</code>으로 opt-out; <code>Shadow</code>를 코드 순서로 맨 앞에(<code>SceneDepth</code>가 ID 1로 남아야 <code>VertexPullSpike</code>의 하드코딩 값이 유지).</li>
+    <li>감쇠는 제곱 윈도 <code>saturate(1 − (d/r)⁴)² / max(d², 1e-4)</code>(UE·Godot과 같고 d = 0 가드만 다름).</li>
+    <li>증분 5: <code>ShadowFilter{Hard, Pcf2x2}</code>, 기본 <code>Hard</code> — "0 또는 1"에 기대는 뒤 작업과 골든을 지킴. PCF의 바이어스는 필터 안에서 +1 텍셀 보정.</li>
+  </ul>
+  <h4>발견과 함정</h4>
+  <ul>
+    <li>깊이 전용 키는 합쳐짐(fragment·블렌드 없음) → 바이어스 없는 Shadow 패스는 prepass의 파이프라인을 공유. prepass off에서 <code>pipelines</code>가 2가 아니라 3 증가(불투명 색 키 3개가 재키).</li>
+    <li><code>lookAt</code>은 <code>up</code>이 전방과 평행하면 NaN → fit은 <code>|forward.y| &gt; 0.99</code>에서 <code>unitZ()</code>를 up으로.</li>
+    <li>증분 4: 각 패널이 1 cm 뒤의 옛 보드에 약 2 cm 띠의 그림자를 드리워, 직접 결정으로 보드를 니치(블록 박스 5개)로 바꿈 — 42 프리미티브.</li>
+    <li>PCF는 <code>SampleCmp</code> 대신 손으로 바이리니어 비교(Metal의 border-color 미지수 회피), 텍셀 좌표 클램프(Metal에서 범위 밖 <code>Load</code>는 미정의).</li>
+    <li>양면 유리판은 두께가 없어 뒷면이 앞면이 쓴 깊이에 놓임 → 상수 바이어스로 lit로 읽힐 수 있음(acne 아님, 예상).</li>
+    <li>패널에 <code>u32</code> 위젯 없음, <code>SetUIRange</code>는 <code>f32</code>만; 셰이더 상수는 <code>static const</code>(일반 전역은 uniform이 되어 리플렉션이 throw).</li>
+    <li>macOS에서 <code>ShadowFit.APointSizedSceneKeepsACentimetre</code>가 float ulp 하나로 실패 → <code>1cb91e5</code>가 허용 오차를 반 텍셀로.</li>
+  </ul>
+  <h4>남은 것</h4>
+  <ul>
+    <li><b>카메라 핏과 캐스케이드</b> — 다음 단계로 측정됨(아래 "남은 것과 다음").</li>
+    <li>point·spot 섀도, 라이트 컬링·클러스터링; 두 번째 섀도 요청은 <code>NoShadow</code> + 실행당 1회 로그.</li>
+    <li>CornellRoom의 자체 라이트 버퍼는 slot 1 유지(행으로 옮기면 골든 없는 그림이 바뀜).</li>
+  </ul>
+</details>
+
+<!-- ---------- 5 ---------- -->
+<h3>5. 씬 컬러와 seam (scene-color-seam) — 선형 scene colour, post 리스트, 머티리얼별 shading model</h3>
+<div class="card">
+  <dl class="kv">
+    <dt>설계 확정</dt><dd>2026-09-29, <code>c4b23d5</code></dd>
+    <dt>커밋</dt><dd>1a <code>7431010</code> → 1b <code>69e9738</code> → 2 <code>2d7c343</code> → 3 <code>e5a3798</code></dd>
+    <dt>macOS</dt><dd>증분 2가 체크포인트 2, 2026-09-30 통과; Playground Metal 골든 <code>bec81ff</code></dd>
+  </dl>
+  <p>머티리얼 fragment shader 안에서 하던 조명·톤맵·sRGB 인코딩을 떼어 내 색을 오프스크린 선형 radiance로 옮기고, 톤맵을 post 리스트의 첫 항목으로 만들고, 조명 모델을 파이프라인 생성 시 링크되는 머티리얼별 Slang 모듈로 바꿨다. 뒤의 toon 증명이 여기서 넘겨받는 샘플 측 모듈 경로·post 항목·<code>linksShading = false</code>에 기댄다.</p>
+</div>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>증분</th><th>커밋</th><th>검증</th></tr>
+  <tr><td>1a</td><td>데이터로서의 post chain: <code>PostChain.hpp/.cpp</code>, <code>appendPostChain</code>, <code>Tonemap.slang</code>·<code>Present.slang</code> — 아직 그리는 실행 파일 없음</td><td><code>7431010</code></td><td>Render 83 → 88, 두 셰이더 offline Metal·DXIL 경고 없음</td></tr>
+  <tr><td>1b</td><td>씬 컬러 오프스크린 <code>RGBA16F</code>, <code>{Tonemap}</code>, 데이터 뷰는 <code>{Present}</code> + 검정, UI는 마지막 패스, Playground 골든 재기록</td><td><code>69e9738</code></td><td>Render 90; 옛 골든 대비 <code>failing 16724</code>(전부 유리 안 — 선형 블렌드); 하늘 픽셀 (98, 116, 140) 유지; <code>pipelines</code> 7, <code>renderPasses</code> 5; GPU p50 0.101–0.106 → 0.110–0.115 ms</td></tr>
+  <tr><td>2</td><td>seam, <code>PBR.slang</code>만: <code>RHIShader</code>가 모듈 링크, <code>ForwardShading.slang</code>이 루프, <code>MaterialData</code> 80 B</td><td><code>2d7c343</code></td><td>Render 95; <b>순수 리팩터 <code>failing 0 of 921600</code></b>(tolerance 0, 두 백엔드); 모듈 포함 컴파일 101–148 ms(라운드 전 235–331); 리로드 5회 GBV 조용</td></tr>
+  <tr><td>3</td><td><code>Toon.slang</code>, <code>Unlit.slang</code>, <code>ToonLanes</code>, Playground의 <code>shading.chart</code> 토글</td><td><code>e5a3798</code></td><td>Render 96; 골든 <code>failing 0</code>(PBR은 레인 무시); Toon → <code>pipelines</code> 9, Unlit → 10; Toon 공식은 레퍼런스 그림 기준으로 직접 튜닝</td></tr>
+</table>
+</div>
+<details>
+  <summary>설계에서 정한 것 · 발견 · 남은 것</summary>
+  <h4>정한 것</h4>
+  <ul>
+    <li>Seam은 link-time type. 기각: enum switch(모델마다 <code>Engine/Render</code> 편집), 머티리얼별 fragment shader(루프 복제), <code>specialize</code>(API만 늘고 컴파일은 같음), type-conformance(dynamic dispatch).</li>
+    <li><code>Shading.slang</code>은 legacy visibility(트리의 43개 <code>.slang</code> 전부가 legacy). modern module 이전은 크기만 세어 다음 후보로.</li>
+    <li>모든 데이터 뷰는 검정 클리어, 재빌드된 desc가 운반: optimized clear 불일치 경고 제거. 대가로 Normals·Depth·Shadow는 하늘 배경을 잃음.</li>
+    <li>extern 기본값 <code>= UnlinkedShading</code>: depth-only 프로그램이 모듈 없이 컴파일되고, 기본값이 없으면 <code>E45001</code>.</li>
+    <li><code>linksShading</code>은 <code>PassPipelineDesc</code>가 아닌 <code>MeshPassState</code>에: walker가 <code>MeshPassDesc::state</code>로 만들고 depth-only 패스는 <code>Compose</code>가 먼저 반환.</li>
+    <li>하늘 <code>SkyRadiance{0.139, 0.212, 0.356}</code>: 옛 바이트 (98, 116, 140)의 역변환이고 half 저장 후 톤맵이 97.97, 116.09, 140.06이라 byte identical 기대 — 실측도 그대로.</li>
+    <li>Toon 튜닝: rim은 shadow gate 없이 어두운 면까지, band 안에서는 shadow 무시(터미네이터의 섀도맵 텍셀 계단을 숨김), <code>metallic</code> 무시.</li>
+  </ul>
+  <h4>발견과 함정</h4>
+  <ul>
+    <li>Slang 업스트림이 <code>extern struct</code>·<code>export struct</code>를 미검증으로 표시(<code>tests/conformance/types-struct/README.md</code>) → 체크포인트 2가 Metal에서의 첫 증명이었고 통과했다.</li>
+    <li>slangc: <code>-entry</code>는 왼쪽 가장 가까운 입력에 묶임, 모듈이 마지막이면 <code>E38000</code>; <code>import</code> 대신 <code>#include</code>도 <code>E45001</code>; <code>module Shading;</code>은 5개 타입과 14개 필드가 <code>public</code>이어야 링크(<code>E30600</code>).</li>
+    <li><code>MaterialData</code> mirror 크기가 다르면 stride가 어긋나 모든 머티리얼이 섞임 — 증분 2의 tolerance 0 확인이 이를 커버.</li>
+    <li><code>RHIShader</code>: 같은 모듈 두 번 compose는 오류, C++26 전에는 braced list로 <code>std::span</code> 생성 불가, <code>hashAll</code>에 vector overload 없음.</li>
+    <li>D3D12는 색 타깃에 생성 시 optimized clear를 주므로 다른 색으로 클리어하면 성능 경고.</li>
+    <li><code>ImageCompareCheckSmoke</code>가 스크립트의 빈 exit status로 플레이크(작업 이전부터, 미해결).</li>
+  </ul>
+  <h4>남은 것</h4>
+  <ul>
+    <li><b>modern Slang module 이전 후보</b>: 1단계 <code>Shading.slang</code> 단독(<code>public</code> 19), 2단계 모든 파일에 <code>module</code> 줄(약 35줄), 3단계 헤더 12개(약 200 <code>public</code>, 1–2일, macOS 테스트). 장벽은 entry point를 가진 헤더와 파라미터 선언 헤더.</li>
+    <li>레인 밖의 레퍼런스 요소: 두 번째 shadow threshold(<code>custom1.w</code> 비어 있음), ramp texture, halftone(머티리얼 자체 fragment entry나 post), paper(post 입력 없음).</li>
+    <li>Non-goals: IBL, bloom, TAA, MSAA, LUT, exposure, 머티리얼 asset format, 머티리얼 텍스처.</li>
+  </ul>
+</details>
+
+<!-- ---------- 6 ---------- -->
+<h3>6. toon 증명 (toon-proof) — 임의 프레임 타깃 캡처, 그리고 <code>Engine/Render</code> 밖에서 만든 두 번째 파이프라인</h3>
+<div class="card">
+  <dl class="kv">
+    <dt>설계 확정</dt><dd>2026-09-30, <code>1cb91e5</code></dd>
+    <dt>커밋</dt><dd><code>0068cf3</code> → <code>ae6fcbe</code> → <code>e552617</code> (+ Metal 골든 <code>8f098b3</code>)</dd>
+    <dt>macOS</dt><dd>2026-10-03 테스트 통과, <code>ToonPlayground.metal.png</code> 기록 — D3D12와 438 px(각각 posterize 한 단계)</dd>
+  </dl>
+  <p>규칙 4에 따라 앞의 세 작업이 만든 파이프라인이 스타일 중립인지를, 다른 pass list·shading module·추가 패스·post list를 샘플 코드만으로 조합해 증명하는 라운드의 합격 조각. 세 교체 층을 모두 건드리는 가장 싼 스타일(toon band, outline 패스, posterize)을 택했고, 아웃라인·posterize의 입력은 화면에 그대로 나오지 않으므로 먼저 임의 타깃 캡처를 계측 도구로 추가했다.</p>
+</div>
+<div class="table-scroll">
+<table>
+  <tr><th>#</th><th>증분</th><th>커밋</th><th>검증</th></tr>
+  <tr><td>1</td><td>중간 결과 캡처: <code>Copy(texture → buffer)</code>, <code>GetReadbackRowPitch</code>, <code>TargetCaptureQueue</code>, <code>FindTarget</code>, <code>capture_frame</code>의 <code>target</code>, 프레임 끝 blit 패스 하나</td><td><code>0068cf3</code></td><td>RHI 26 · Render 108, smoke 30; <code>SceneColor</code> 캡처 = 백버퍼 <code>failing 0</code>; 캡처 다음 프레임 byte identical; 변환 시간 RGBA16F 1280×720 33–41 ms, D32 2048² 114 ms</td></tr>
+  <tr><td>2</td><td><code>PlaygroundScene</code> 분리, <code>OnRestyleMaterials</code> hook, <code>Playground.cpp</code>는 <code>main</code>만</td><td><code>ae6fcbe</code></td><td>골든 <code>failing 0</code>, 포트 이름 15개 같은 순서, frame 3 통계 동일(<code>pipelines</code> 8, <code>renderPasses</code> 5, <code>barrierEdges</code> 17)</td></tr>
+  <tr><td>3</td><td><code>ToonPlayground.cpp</code>, <code>NormalsPrepass.slang</code>, <code>Outline.slang</code>, <code>Posterize.slang</code>, 골든</td><td><code>e552617</code></td><td><code>pipelines</code> 14, <code>renderPasses</code> 7, <code>barrierEdges</code> 27; <code>LessEqual</code> A/B 다섯 타깃 <code>failing 0</code>(불변); 폴백 순환 assert 없음; smoke 31/31 byte identical; <b>합격 명령 출력 없음</b></td></tr>
+</table>
+</div>
+<details>
+  <summary>설계에서 정한 것 · 발견 · 남은 것 · 합격 판정</summary>
+  <h4>정한 것</h4>
+  <ul>
+    <li>inverted hull이 아닌 스크린 공간 아웃라인: vertex shader는 머티리얼 소유라 패스가 교체할 수 없어 hull은 메시별 새 머티리얼이나 엔진 기능이 필요.</li>
+    <li>캡처는 기존 verb <code>capture_frame</code>에 선택적 <code>target</code>, 새 환경 변수 없음, 백버퍼 경로는 그대로.</li>
+    <li>prepass 강제 켜기 철회: config에 prepass가 없거나 post list가 자기 것이 아니면(데이터 뷰, wireframe, Overdraw) 표준 리스트로 fallback.</li>
+    <li>다운로드는 polling: 처음 안의 <code>DeferRetire</code>는 다음 <code>Submit</code>을 기다리는데 hold 루프는 submit하지 않음.</li>
+    <li>아웃라인은 곱하기(<code>Zero / SrcColor</code>)로 어둠을 아래 색에 곱해 선이 그 자리 hue를 유지.</li>
+    <li>파이프라인 수는 처음 추정 "약 12"가 아닌 HEAD 키 기준 14(Shadow 3, NormalsPrepass 3, Opaque 4, Translucent 1, fullscreen 3).</li>
+  </ul>
+  <h4>발견과 함정</h4>
+  <ul>
+    <li>Playground HEAD에는 <code>PostDisplay0</code>이 없음: 항목 하나짜리 post list는 중간 타깃을 만들지 않음.</li>
+    <li><code>TargetCaptureRequest</code>·<code>TargetReadback</code>은 include cycle 때문에 <code>FramePipeline.hpp</code>에(설계와 다름).</li>
+    <li>샘플링 가능한 depth는 <code>R32_TYPELESS</code>라 footprint <code>Format</code>은 <code>GetCopyableFootprints</code>에서.</li>
+    <li>범위 밖 <code>Load</code>는 D3D12에서 0, Metal에서 undefined라 <code>GetDimensions() − 1</code>로 clamp; vector <code>fwidth</code>가 Metal 미지원이라 <code>Load</code> 4개의 Roberts cross.</li>
+    <li>그림이 파스텔: Toon의 shade tint가 lit 면에도 더해지는 ambient(<code>albedo × (tint + diffuse)</code>)라 바닥이 라벤더 쪽으로 뜸.</li>
+    <li><code>CROWY_STRUCT</code>가 <code>namespace {</code>를 열고 <code>;</code> 없이 닫아 clang-format이 뒤를 들여씀: <code>PlaygroundScene.cpp</code> 끝에 트리 최초의 <code>// clang-format off/on</code>.</li>
+    <li>끝난 빌드가 재사용된 PID의 <code>build\build.pid</code>를 남기면 <code>-Status</code>가 <code>running : True</code>.</li>
+    <li>루트 <code>CMakeLists.txt</code>는 C++23; C++ 트리는 CRLF라 Git Bash <code>sed -i</code>가 LF로 바꿈.</li>
+    <li>macOS: 기본 5 s smoke 창으로는 <code>ToonPlayground</code>가 프레임 60에 못 미쳐 캡처가 없고(그래도 게이트는 통과함), 15 s 창으로 골든을 기록했다.</li>
+  </ul>
+  <h4>남은 것</h4>
+  <ul>
+    <li>Wish: 패스 <code>params</code>의 런타임 경로(샘플이 <code>RenderApp</code>에 재빌드 요청), "after pass X" 캡처(UE <code>@N</code>), 캡처가 없을 때 크게 실패하는 smoke 스크립트.</li>
+  </ul>
+  <h4>합격 판정</h4>
+  <ul>
+    <li>규칙 4 체크리스트는 설계 단계에서 public header만으로 전 행 성립; 증분 3 결과 "Rule 4 holds on D3D12: no finding". macOS 테스트도 엔진 디렉터리 수정 없이 통과.</li>
+    <li>합격 명령: 엔진 디렉터리 대상 <code>git status --short --untracked-files=all</code>이 아무것도 출력하지 않음. <code>git show --stat e552617</code>: 6 files, 390 insertions, 전부 <code>Engine/Render/Sample</code>(<code>CMakeLists.txt</code> 15, 골든 3, <code>NormalsPrepass.slang</code> 10, <code>Outline.slang</code> 52, <code>Posterize.slang</code> 11, <code>ToonPlayground.cpp</code> 299). <code>PlaygroundScene.*</code>도 손대지 않음.</li>
+  </ul>
+</details>
+
+<!-- ============================================================ -->
+<h2 id="numbers">수치</h2>
+
+<h3>라운드 전과 후</h3>
+<div class="table-scroll">
+<table>
+  <tr><th>항목</th><th>전 (<code>185097e</code>)</th><th>후 (<code>8f098b3</code>)</th><th>비고</th></tr>
+  <tr><td>단위 테스트</td><td class="num">Core 67 · RHI 20 · Render 19</td><td class="num">Core 71 · RHI 26 · Render 108</td><td>나머지 7개 스위트 불변(Platform 15, Reflection 24, Remote 32, SampleOrbit 16, Scene 97, Serialization 18, UI 5)</td></tr>
+  <tr><td>smoke</td><td class="num">28 (20 / 3 / 5)</td><td class="num">31 (21 / 5 / 5)</td><td>+<code>ShadowSampleSpike</code>, <code>PrepassEqualSpike</code>, <code>ToonPlayground</code></td></tr>
+  <tr><td>Playground frame 3</td><td class="num"><code>pipelines</code> 4 · <code>buckets</code> 4 · <code>draws</code> 38 · <code>renderPasses</code> 1</td><td class="num"><code>pipelines</code> 8 · <code>runs</code> 10 · <code>draws</code> 124 · <code>renderPasses</code> 5 · <code>visiblePrimitives</code> 42</td><td>prepass와 Shadow가 불투명 지오메트리를 다시 셈; 니치 박스 5개 추가</td></tr>
+  <tr><td>ToonPlayground frame 3</td><td>—</td><td class="num"><code>pipelines</code> 14 · <code>renderPasses</code> 7 · <code>barrierEdges</code> 27</td><td>첫 프레임 컴파일 17회 1437 ms, frame 1 <code>cpu.recordMs</code> 1444, frame 3 0.94, GPU 0.18 ms (D3D12)</td></tr>
+  <tr><td>파이프라인 컴파일(D3D12)</td><td class="num">Playground 235–331 ms</td><td class="num">모듈 포함 색 101–148 ms · depth-only 91–128 · <code>Tonemap</code> 29 · <code>Present</code> 16</td><td>Metal: 218–301 → <code>Playground.slang</code> 220–414, <code>StandardForward.slang</code> 328–836</td></tr>
+  <tr><td>GPU p50, Playground Debug 벤치</td><td class="num">0.090 ms</td><td class="num">0.110–0.115 ms</td><td>섀도 패스 +0.08(0.432 → 0.510 중앙값, <code>read_stats</code>), 1b +0.01</td></tr>
+  <tr><td>Metal 대 D3D12, Playground, tolerance 0</td><td class="num">244 120 px (26.49 %)</td><td class="num">55 113 px (5.98 %) · 기본 tolerance 5 px</td><td>골든은 백엔드별</td></tr>
+  <tr><td>섀도 fit</td><td>—</td><td class="num">27.87 m · 1.36 cm/texel · z −10.44..6.98 m</td><td>손계산과 로그가 끝자리까지 일치</td></tr>
+  <tr><td>최소 clean 바이어스</td><td>—</td><td class="num">(0.005 m, 1 texel) · 기본 (0.02, 1)</td><td>두 백엔드 같음; PCF는 +1 텍셀 보정 시 0.005–0.03 모두 clean</td></tr>
+</table>
+</div>
+
+<h3>교차 백엔드</h3>
+<div class="table-scroll">
+<table>
+  <tr><th>대상</th><th>tolerance</th><th>결과</th></tr>
+  <tr><td><code>ShadowSampleSpike</code></td><td>0</td><td>픽셀 단위 일치(프레임 60, 61, 121)</td></tr>
+  <tr><td><code>PrepassEqualSpike</code></td><td>0 / 기본</td><td><code>failing 345538 of 921600</code>(37.49 %, R·B max 1, G 0 — 색 반올림) / <code>similar</code></td></tr>
+  <tr><td><code>Playground</code></td><td>기본 / 0</td><td><code>failing 5</code>(최악 타일 (1,2)) / <code>failing 55113</code>(5.98 %)</td></tr>
+  <tr><td><code>ToonPlayground</code></td><td>0 과 기본 모두</td><td><code>failing 438 of 921600</code>(0.0475 %), 최악 타일 (0,3), 채널 max 51 — ±1이 posterize 한 단계(255/5)로 커진 것이라 tolerance 2로도 걸러지지 않음</td></tr>
+</table>
+</div>
+<p class="muted">병행 측정(각 백엔드가 자기 기준 대비, 변화량의 픽셀 수): 라이트 스윕·바이어스 스윕·PCF 모두 두 백엔드가 3 % 이내로 같았다.</p>
+
+<!-- ============================================================ -->
+<h2 id="macos">macOS 테스트</h2>
+<div class="grid-2">
+  <div class="card">
+    <h4>통과</h4>
+    <ul>
+      <li><b>체크포인트 1</b> (2026-09-28): Metal이 <code>Depth32Float</code>를 <code>Texture2D&lt;float&gt;</code>와 <code>DepthTexture2D</code>로 똑같이 읽음, D3D12와 픽셀 단위 일치, 폴백 불필요.</li>
+      <li><b>체크포인트 2</b> (2026-09-30): link-time type이 Metal whole-program 경로에서 링크되고 그림이 움직이지 않음(<code>failing 0 of 921600</code>).</li>
+      <li><b>position invariance</b>: Metal도 invariant(Playground와 스파이크 모두 <code>failing 0</code>).</li>
+      <li>깊이 읽기·패스 분리 (09-28), 프레임 파이프라인·라이트·섀도·씬 컬러·seam (09-30), toon 증명 (10-03). 모두 <code>MTL_DEBUG_LAYER=1 MTL_SHADER_VALIDATION=1</code> 아래 무출력, <code>quit</code> exit 0.</li>
+      <li>라이트·바이어스·PCF 스윕의 변화량이 D3D12와 3 % 이내로 같음; Playground frame 3 통계(<code>pipelines</code> 8, <code>draws</code> 124, <code>runs</code> 10, <code>renderPasses</code> 5)가 D3D12와 같음.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>macOS가 찾은 것</h4>
+    <ul>
+      <li><b>Metal redundant-state 경고</b> 매 프레임 32개(라운드 이전부터): <code>MetalCommandList</code>가 인코더 상태를 기억하지 않아 파이프라인 전환마다 동적 상태 6종과 CB를 다시 설정했음. <code>074dfc0</code>으로 수정(Metal 파일만): 렌더 패스 상태가 인코더가 가진 것을 기록하고 다른 것만 설정. 이후 경고 0, <code>MetalDevice</code>의 <code>FastPimpl</code> 1560 → 2968.</li>
+      <li><b><code>ShadowFit</code> 테스트</b>가 float ulp 하나로 실패(1 cm extent에서 직교 스케일 200, clang arm64 FMA contraction): <code>1cb91e5</code>가 허용 오차를 반 텍셀(1/2048 clip)로.</li>
+      <li><b><code>ToonPlayground</code>는 Metal에서 15 s 창이 필요</b>: 기본 5 s smoke는 프레임 60에 못 미쳐 캡처가 없는데도 게이트가 통과한다(<code>MarchingTerrain</code>의 10 s와 같은 종류).</li>
+      <li>미수정: ImGui 샘플(<code>SpanTerrain</code>, <code>ImGuiDemoWithWidget</code>) 캡처의 <code>imgui.ini</code> 의존(최대 52 % 타일 차이), 캡처가 없으면 통과하는 골든 게이트.</li>
+    </ul>
+  </div>
+</div>
+<div class="card">
+  <h4>macOS에서 돌리지 않은 선택 항목</h4>
+  <ul>
+    <li>벤치 셋 — 특히 prepass A/B(<code>CROWY_BENCH_DEBUG_B='{"depthPrepass":false}'</code>, Playground와 TenThousandBlocks 5회 교대): Apple의 hidden-surface removal 아래에서 prepass가 본전을 하는가는 라운드의 유일한 미답 질문.</li>
+    <li><code>castShadow</code> on/off의 GPU 중앙값(D3D12 0.432 → 0.510 ms), <code>castShadow false</code> 캡처를 섀도 읽기 전 커밋과 비교, PCF 클로즈업 육안 확인, 리사이즈, <code>CROWY_WINDOW_DISPLAY</code>.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="open">남은 것과 다음</h2>
+
+<div class="card">
+  <h4>카메라 핏과 캐스케이드 — 다음 단계로 측정됨 (2026-09-29)</h4>
+  <p>Playground 방은 27.87 m 정사각, 2048² 맵 하나에 텍셀 1.36 cm, 1.5 m 거리에서 5–6픽셀. 태양이 스치는 수신면에서 텍셀이 1/(N·L)로 늘어남 — 니치 뒤판 2.3×, x 방향 벽 4×. 맵 격자가 월드 격자에서 30° 틀어져 월드 축 직선 엣지가 규칙적인 계단이 되고, 2×2 PCF는 계단을 텍셀 하나 폭의 띠로 부드럽게 할 뿐 없애지 못함(샘플을 더하지 않음). 엣지를 주름에서 옮겨도 변화 없음 → 원인은 지오메트리가 아닌 샘플링.</p>
+  <p><b>형태:</b> Godot 방향광 기본 4 분할. 뷰 프러스텀을 거리로 나눠 분할마다 직교 fit — bounding sphere(카메라 회전 시 fit이 숨쉬지 않게), 정수 텍셀 스냅(이동 시 엣지가 기지 않게), pancaking. 근거리 분할 약 3 m면 텍셀 약 0.15 cm, 9배 정밀. <b>구조 변화:</b> <code>ShadowFit</code>이 카메라 프러스텀을 받아 분할별 fit; <code>LightData</code>의 <code>shadowIndex</code>가 섀도 블록(두 번째 structured buffer, spot 그림자가 재사용)을 가리킴; atlas면 패스별 viewport, texture array면 슬라이스별 부착 — 어느 쪽을 RHI가 받을지가 두 백엔드의 첫 질문; N 섀도 뷰가 <code>FramePipeline</code>을 특수 케이스 없이 통과하는지 시험. <b>크기</b> 작업 약 3개. <b>임시방편</b>은 4096² 또는 8192² 맵(64 또는 256 MiB).</p>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>크기를 센 후보</h4>
+    <ul>
+      <li><b>modern Slang module 이전</b>: <code>Shading.slang</code> 단독 19 <code>public</code>; 전체 헤더 12개 약 200 <code>public</code>, 1–2일, macOS 테스트. entry point·파라미터 선언 헤더가 장벽.</li>
+      <li><b>룩 seam 재방문</b>: 머티리얼별 lit/shade 색 쌍, 색 있는 bounce, 탈채도하지 않는 톤맵 — 레인 둘에 두 번째 색 쌍이 들어가지 않음.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>기록만 하고 고치지 않은 것</h4>
+    <ul>
+      <li>반투명은 바운드 중심 정렬; 패스 <code>params</code>는 실행당 고정; 메시의 파이프라인 몫 비어 있음.</li>
+      <li>Metal은 <code>independentBlendEnable</code> 없이 모든 attachment를 블렌드; 셰이더 프로그램 캐시 없음; Metal에서 패스 밖 이벤트 스코프는 라벨 없음.</li>
+      <li><code>PackedTable::Clear</code>가 이전 핸들을 되살림; <code>smoke_run</code>이 캡처 없이 exit 0; <code>ImageCompareCheckSmoke</code> 플레이크.</li>
+      <li>D16/D24S8/D32S8 깊이 읽기 행 미실행; <code>i32</code> → <code>float</code> depth bias의 Metal 의미 미검증.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <h4>다음에 올 수 있는 것</h4>
+  <ul>
+    <li>별도로 준비하는 테스트 씬(도시 교차로의 영화 세트)이 엔진에 요구할 것: 텍스처 → 머티리얼(샘플러는 머티리얼별), masked 컷아웃(depth-only 패스에 fragment stage), spot 섀도(섀도 타깃 여럿, 원근 fit), 노출·글로우·하늘(상대 크기 post 타깃, view를 아는 fullscreen 패스), 낮 → 일몰 → 밤 트랙(등록 값 위의 키프레임, 재빌드 없는 패스 파라미터). 그 씬은 콘텐츠가 요구자 역할을 하는 것이지 목표가 아니다.</li>
+    <li>위의 캐스케이드와 모듈 이전.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="loop">회고</h2>
+<div class="card">
+  <ul>
+    <li><b>설계를 먼저 고정한 것이 맞았다.</b> 한 후보가 설계 질문 묶음일 때 설계를 한 번에 고정하지 않으면 작업 셋이 같은 결정을 다시 끌어낸다. 이 방식을 앞으로의 라운드에도 쓴다(2026-10-03 직접 결정).</li>
+    <li><b>Windows-first가 통했다.</b> 두 체크포인트가 폴백 없이 통과했고, macOS가 찾은 둘(redundant-state 경고, ulp 하나)은 모두 Windows가 볼 수 없는 종류였다. <code>FakeCommandList</code>가 Metal의 짝짓기 규칙을 모방한 것이 디바이스 없이 edge 누락을 잡는 첫 방어선으로 작동했다(red 2).</li>
+    <li><b>기록 규율의 구멍</b>, 다음 라운드가 고칠 것:
+      <ul>
+        <li>커밋한 뒤에도 "아직 커밋 안 됨"이 네 작업의 기록에 남았다 — 커밋한 세션이 해시를 써 넣는다.</li>
+        <li>한 작업은 증분별 실측(불변성 수치, 스파이크 on/off, 벤치)을 기록에 옮기지 않았다 — 실측은 macOS 테스트 쪽에만 남았다.</li>
+        <li>macOS 확인 항목의 번호 체계를 작업마다 따로 매겨 충돌했고, 뒤 작업이 바꾼 수치(<code>renderPasses</code> 3·4 → 4·5)가 앞 항목에 그대로 남았다.</li>
+        <li>같은 날 두 작업이 clang-format에 대해 반대로 적었다(바뀐 파일마다 돌림, 승인됨 / 묻기 전엔 금지).</li>
+      </ul>
+    </li>
+    <li><b>크기 추정</b>: 작업 두셋 → 설계 뒤 약 16 증분, 약 3주 → 실제 21 증분, 커밋 기준 4일(09-27 → 09-30) + macOS 테스트 3회.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="appendix">부록: 커밋과 코드 위치</h2>
+
+<h3>라운드의 커밋 28개</h3>
+<div class="table-scroll">
+<table>
+  <tr><th>커밋</th><th>작업</th><th>내용</th></tr>
+  <tr><td><code>9ca37f9</code></td><td>깊이 읽기 1</td><td>깊이 전용 패스 허용, <code>CastShadow</code> 기본값, <code>RenderPassRulesTest</code></td></tr>
+  <tr><td><code>a871088</code></td><td>깊이 읽기 2</td><td>선택적 fragment stage, <code>ValidateGraphicsPipelineDesc</code></td></tr>
+  <tr><td><code>09df988</code></td><td>깊이 읽기 3</td><td>샘플된 깊이, <code>ClipToTexture.slang</code>, <code>ShadowSampleSpike</code></td></tr>
+  <tr><td><code>86042e2</code></td><td>골든</td><td><code>ShadowSampleSpike.metal.png</code> (체크포인트 1)</td></tr>
+  <tr><td><code>e8d1281</code></td><td>패스 분리 1</td><td>material/pass 분리, 두 RHI 패스</td></tr>
+  <tr><td><code>1596371</code></td><td>패스 분리 2</td><td><code>PrepassEqualSpike</code>, <code>debug.depthPrepass</code>, <code>CROWY_DEBUG</code>, 벤치 도구</td></tr>
+  <tr><td><code>6b3e1f4</code></td><td>골든</td><td><code>PrepassEqualSpike.metal.png</code></td></tr>
+  <tr><td><code>4400dda</code></td><td>패스 분리 3</td><td><code>DrawList</code>, 뷰당 컬링 1회, <code>runs</code></td></tr>
+  <tr><td><code>074dfc0</code></td><td>macOS 수정</td><td>Metal 렌더 패스가 인코더 상태를 기록, redundant-state 경고 0</td></tr>
+  <tr><td><code>035f829</code></td><td>프레임 파이프라인 1</td><td><code>FramePipeline</code>, <code>makeStandardPipeline</code>, <code>FakeCommandList</code></td></tr>
+  <tr><td><code>d15d258</code></td><td>프레임 파이프라인 2</td><td>fullscreen kind, <code>ComposedPipelineTest</code></td></tr>
+  <tr><td><code>7c10020</code></td><td>프레임 파이프라인 3</td><td><code>RenderApp</code>이 <code>FramePipeline</code>으로 프레임을 걸음</td></tr>
+  <tr><td><code>789a5b5</code></td><td>라운드 밖</td><td><code>OverlapAABB3D</code>가 세 축 모두 검사, <code>makeOBB3D</code>의 z 스케일</td></tr>
+  <tr><td><code>6818bb5</code></td><td>라이트·섀도 1</td><td>씬 데이터로서의 라이트</td></tr>
+  <tr><td><code>5f15a66</code></td><td>라이트·섀도 2</td><td>비활성 <code>light.lamp</code></td></tr>
+  <tr><td><code>2a5e07c</code></td><td>라이트·섀도 3</td><td>Shadow 패스가 맵을 씀</td></tr>
+  <tr><td><code>baabc14</code></td><td>라이트·섀도 4</td><td>리시버가 맵을 읽음, Playground 재기록</td></tr>
+  <tr><td><code>c4b23d5</code></td><td>라이트·섀도 5</td><td>선택적 2×2 PCF</td></tr>
+  <tr><td><code>7431010</code></td><td>씬 컬러·seam 1a</td><td>데이터로서의 post chain</td></tr>
+  <tr><td><code>69e9738</code></td><td>씬 컬러·seam 1b</td><td>선형 씬 컬러, 톤맵 post 패스</td></tr>
+  <tr><td><code>2d7c343</code></td><td>씬 컬러·seam 2</td><td>셰이딩 모델을 Slang 모듈로 링크</td></tr>
+  <tr><td><code>e5a3798</code></td><td>씬 컬러·seam 3</td><td>Toon·Unlit 모듈, <code>shading.chart</code></td></tr>
+  <tr><td><code>bec81ff</code></td><td>골든</td><td><code>Playground.metal.png</code> (체크포인트 2)</td></tr>
+  <tr><td><code>1cb91e5</code></td><td>macOS 수정</td><td><code>ShadowFit</code> 테스트 허용 오차를 반 텍셀로</td></tr>
+  <tr><td><code>0068cf3</code></td><td>toon 증명 1</td><td>명명된 프레임 타깃 캡처</td></tr>
+  <tr><td><code>ae6fcbe</code></td><td>toon 증명 2</td><td><code>PlaygroundScene</code> 분리</td></tr>
+  <tr><td><code>e552617</code></td><td>toon 증명 3</td><td><code>ToonPlayground</code> — 라운드의 합격</td></tr>
+  <tr><td><code>8f098b3</code></td><td>골든</td><td><code>ToonPlayground.metal.png</code> — Metal에서의 합격 그림, 2026-10-03</td></tr>
+</table>
+</div>
+
+<h3>코드 위치</h3>
+<div class="table-scroll">
+<table>
+  <tr><th>영역</th><th>파일</th><th>타입·함수</th></tr>
+  <tr><td>프레임</td><td><code>Engine/Render/Public/FramePipeline.hpp</code>, <code>Private/FramePipeline.cpp</code></td><td><code>FramePipeline</code>, <code>FramePipelineDesc</code>, <code>PassDesc</code>, <code>MeshPassDesc</code>, <code>FullscreenPassDesc</code>, <code>FrameTargetDesc</code>, <code>FrameInputs</code>, <code>PassStats</code>, <code>TargetCaptureRequest</code>, <code>FindTarget</code></td></tr>
+  <tr><td>표준 파이프라인</td><td><code>StandardPipeline.hpp/.cpp</code>, <code>PostChain.hpp/.cpp</code></td><td><code>makeStandardPipeline</code>, <code>StandardPipelineConfig</code>, <code>appendPostChain</code>, <code>tonemapPass</code>, <code>presentPass</code></td></tr>
+  <tr><td>렌더러</td><td><code>SceneRenderer.hpp/.cpp</code>, <code>DrawList.hpp/.cpp</code>, <code>PipelineCache.hpp/.cpp</code></td><td><code>BeginFrame</code>, <code>Visible</code>, <code>FramePush</code>, <code>DrawList</code>, <code>DrawFilter</code>, <code>opaqueSortKey</code>, <code>MeshPassState</code>, <code>PassPipelineDesc</code>, <code>Compose</code></td></tr>
+  <tr><td>라이트·섀도</td><td><code>RenderLight.hpp</code>, <code>ShadowFit.hpp</code></td><td><code>LightSnapshot</code>, <code>EnvironmentSnapshot</code>, <code>LightData</code>, <code>ShadowFilter</code>, <code>fitDirectionalShadow</code></td></tr>
+  <tr><td>머티리얼</td><td><code>RenderMaterial.hpp</code>, <code>ShadingModel.hpp</code></td><td><code>MaterialDomain</code>, <code>MaterialData</code>(80 B), <code>PBRShadingModule</code>, <code>ToonShadingModule</code>, <code>UnlitShadingModule</code>, <code>ToonLanes</code></td></tr>
+  <tr><td>캡처</td><td><code>TargetCapture.hpp/.cpp</code></td><td><code>TargetCaptureQueue</code>, <code>isCapturable</code>, <code>convertCapture</code></td></tr>
+  <tr><td>셰이더 라이브러리</td><td><code>Engine/Shader/</code></td><td><code>Shading.slang</code>, <code>Lighting.slang</code>, <code>ForwardShading.slang</code>, <code>PBR.slang</code>, <code>Toon.slang</code>, <code>Unlit.slang</code>, <code>Fullscreen.slang</code>, <code>ClipToTexture.slang</code></td></tr>
+  <tr><td>표준 프로그램</td><td><code>Engine/Render/Shader/</code></td><td><code>StandardForward.slang</code>, <code>Tonemap.slang</code>, <code>Present.slang</code></td></tr>
+  <tr><td>RHI</td><td><code>RHIPipelineState.hpp/.cpp</code>, <code>RHIDefinitions.hpp</code>, <code>RHIShader.cpp</code>, <code>DX12/Metal CommandList·Texture·PipelineState</code></td><td><code>ValidateGraphicsPipelineDesc</code>, <code>fragmentShader</code>(optional), <code>linkedModules</code>, <code>GetReadbackRowPitch</code>, <code>Copy(texture → buffer)</code>, <code>toShaderReadFormat</code></td></tr>
+  <tr><td>샘플</td><td><code>Engine/Render/Sample/</code></td><td><code>RenderApp</code>(<code>DescribePipeline</code>), <code>PlaygroundScene</code>, <code>Playground.cpp</code>, <code>ToonPlayground.cpp</code>, <code>NormalsPrepass/Outline/Posterize.slang</code></td></tr>
+  <tr><td>스파이크</td><td><code>Engine/RHI/Spike/</code>, <code>Engine/Render/Spike/</code></td><td><code>ShadowSampleSpike</code>, <code>PrepassEqualSpike</code>, <code>FullscreenProof.slang</code></td></tr>
+  <tr><td>테스트</td><td><code>Engine/Render/Test/</code>, <code>Engine/RHI/Test/</code></td><td><code>FakeCommandList</code>, <code>FakeDevice</code>, <code>FramePipelineTest</code>, <code>ComposedPipelineTest</code>, <code>DrawListTest</code>, <code>LightTest</code>, <code>ShadowFitTest</code>, <code>TargetCaptureTest</code>, <code>RenderPassRulesTest</code>, <code>PipelineRulesTest</code>, <code>ReadbackPitchTest</code></td></tr>
+</table>
+</div>
+
+<footer>
+  <p>2026-10-03 작성, 같은 날의 macOS 테스트 결과까지 반영. 수치와 해시는 각 작업의 기록과 커밋에서 그대로 옮겼다. 이후의 변경은 이 문서에 반영되지 않는다.</p>
+</footer>
+
+</main>
+</body>
+</html>
