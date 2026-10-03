@@ -8,8 +8,10 @@
 #include "LinearAlgebra.hpp"
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
+#include "RHIFWD.hpp"
 #include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
+#include "RenderTexture.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
@@ -61,6 +63,8 @@ namespace Crowy
     // persistent, written only by extraction.
     class RenderScene {
     private:
+        // uploaded resources rather than extracted state: Clear keeps them
+        TextureTable textures;
         MaterialTable materials;
         MeshTable meshes;
         PrimitiveTable primitives;
@@ -72,18 +76,25 @@ namespace Crowy
         ~RenderScene() = default;
         CROWY_DECLARE_TRANSFERABLE(RenderScene)
 
+        auto& Textures(this auto& self) noexcept { return self.textures; }
         auto& Materials(this auto& self) noexcept { return self.materials; }
         auto& Meshes(this auto& self) noexcept { return self.meshes; }
         auto& Primitives(this auto& self) noexcept { return self.primitives; }
         auto& Lights(this auto& self) noexcept { return self.lights; }
         auto& Environment(this auto& self) noexcept { return self.environment; }
 
-        void Clear() noexcept {
+        // every extracted row; the textures stay, since frames in flight
+        // may still read them
+        void Clear() {
             environment = EnvironmentSnapshot{};
             lights.Clear();
             primitives.Clear();
             meshes.Clear();
             materials.Clear();
         }
+
+        // hands every texture to the device, which frees each once no frame
+        // in flight reads it
+        void RetireTextures(RHIDevice& device);
     };
 }

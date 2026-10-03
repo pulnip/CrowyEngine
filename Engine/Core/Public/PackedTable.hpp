@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "Assert.hpp"
@@ -35,13 +37,16 @@ namespace Crowy
         CROWY_DECLARE_TRANSFERABLE(PackedTable)
 
         Handle Add(const T& row) {
-            const auto index = Index{rows.size()};
-
             rows.push_back(row);
-            const auto handle = slots.Acquire(index);
-            slotOfRow.push_back(Slots::SlotOf(handle));
 
-            return handle;
+            return bindLastRow();
+        }
+
+        // for a row that cannot be copied, such as one owning a GPU resource
+        Handle Add(T&& row) {
+            rows.push_back(std::move(row));
+
+            return bindLastRow();
         }
 
         // the row's current position, valid until the next Remove
@@ -71,7 +76,7 @@ namespace Crowy
             const auto last = rows.size() - 1;
 
             if(index != last) {
-                rows[index] = rows[last];
+                rows[index] = std::move(rows[last]);
                 slotOfRow[index] = slotOfRow[last];
                 // the moved row's handle has to follow it
                 slots.Bind(slotOfRow[index], Index{index});
@@ -82,11 +87,16 @@ namespace Crowy
             slots.Release(handle);
         }
 
-        // expires every handle ever issued
-        void Clear() noexcept {
+        // Expires every handle ever issued. Each living slot is released,
+        // so its generation moves on and a handle from before stays dead
+        // once the slot is reused; lowest slots are reused first, so a
+        // table rebuilt in the same order gets the same slots back.
+        void Clear() {
+            std::ranges::sort(slotOfRow, std::greater{}, &Slot::value);
+            for(const auto slot: slotOfRow)
+                slots.Release(slots.HandleOf(slot));
             rows.clear();
             slotOfRow.clear();
-            slots = Slots{};
         }
 
         bool IsValid(Handle handle) const noexcept {
@@ -103,5 +113,13 @@ namespace Crowy
         }
 
         std::span<const T> All() const noexcept { return rows; }
+
+    private:
+        Handle bindLastRow() {
+            const auto handle = slots.Acquire(Index{rows.size() - 1});
+            slotOfRow.push_back(Slots::SlotOf(handle));
+
+            return handle;
+        }
     };
 }

@@ -33,3 +33,21 @@ target_include_directories(PrepassEqualSpike
 PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../Sample"
 )
+
+# guards the standard pipeline's textures: a point-sampled palette, an atlas
+# rect through the material's UV transform, an emissive map, and a surface
+# that refuses the shadow it stands in
+crowy_declare_spike(TexturedSpike
+SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Sample/FlyCamera.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Sample/RenderApp.cpp"
+    TexturedSpike.cpp
+DEPENDS
+    Crowy::Remote
+    Crowy::Render
+)
+
+target_include_directories(TexturedSpike
+PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Sample"
+)

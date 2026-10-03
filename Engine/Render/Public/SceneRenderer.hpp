@@ -11,6 +11,7 @@
 #include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
 #include "RenderSceneData.hpp"
+#include "RenderTexture.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
@@ -19,6 +20,7 @@ namespace Crowy
 
     using LightRecords = std::vector<LightData>;
     using MaterialRows = std::vector<MaterialData>;
+    using TextureRows = std::vector<TextureData>;
     using ViewRecords = std::vector<ViewData>;
 
     struct SceneRendererDesc {
@@ -48,6 +50,7 @@ namespace Crowy
         // this frame's transient slices, refreshed by Upload()
         RHIBufferSlice materialSlice;
         RHIBufferSlice lightSlice;
+        RHIBufferSlice textureSlice;
         // one RHI_CB_ALIGN record per view, selected by offset
         RHIBufferSlice viewSlice;
 
@@ -55,6 +58,7 @@ namespace Crowy
 
         MaterialRows materialScratch;
         LightRecords lightScratch;
+        TextureRows textureScratch;
         ViewRecords views;
         ViewCulls culls;
         // what BeginFrame was given, and what Visible culls
@@ -85,17 +89,18 @@ namespace Crowy
         // the cache every draw list resolves through
         auto& Pipelines(this auto& self) noexcept { return self.pipelines; }
 
-        // every material and enabled light row once for every list, the
+        // every material, texture and enabled light row once for every
+        // list, each material's map IDs resolved from its handles, the
         // environment into every view; given a map size, the first
         // shadow-casting directional light fitted into row ShadowView, which
         // is otherwise left empty and unculled; forgets last frame's culls
         void BeginFrame(const RenderScene& scene, u32 shadowMapSize = 0);
         // culled on the view's first request of the frame
         const VisibleSet& Visible(u32 viewIndex);
-        // the materials, the lights and the views
+        // the materials, the textures, the lights and the views
         void Upload();
-        // the materials and the lights; a list adds its rows, the caller the
-        // vertices
+        // the materials, the textures and the lights; a list adds its rows,
+        // the caller the vertices
         ScenePush FramePush() const;
 
         // what BeginFrame packed

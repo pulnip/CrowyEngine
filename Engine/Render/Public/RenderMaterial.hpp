@@ -8,6 +8,7 @@
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
+#include "RenderTexture.hpp"
 #include "ShadingModel.hpp"
 
 namespace Crowy
@@ -24,24 +25,55 @@ namespace Crowy
         Vec3 emissive = zeros();
         f32 roughness = 0.5f;
 
+        // 1 + a row of the frame's texture table, 0 for none; the renderer
+        // writes the albedo and emissive ones from MaterialResource::maps
         u32 albedoMapID = 0;
         u32 normalMapID = 0;
         u32 mrMapID = 0;
-        // what the translucent pass blends with; the opaque one writes 1
+        // what the translucent pass blends with, times the albedo texel's
+        // alpha; the opaque one writes 1
         f32 opacity = 1.0f;
 
         // two lanes the engine never reads; each shading model documents
         // its reading
         Vec4 custom0{};
         Vec4 custom1{};
+
+        // uv' = uv * xy + zw before any map is read
+        Vec4 uvScaleOffset{1.0f, 1.0f, 0.0f, 0.0f};
+        // the emission is `emissive` times this map's texel
+        u32 emissiveMapID = 0;
+        // a Masked material cuts texel alpha below it
+        f32 alphaCutoff = 0.5f;
+        // MaterialFlags
+        u32 flags = 0;
+        u32 _pad = 0;
     };
-    static_assert(sizeof(MaterialData) == 80);
+    static_assert(sizeof(MaterialData) == 112);
     static_assert(offsetof(MaterialData, emissive) == 16);
     static_assert(offsetof(MaterialData, albedoMapID) == 32);
     static_assert(offsetof(MaterialData, opacity) == 44);
     static_assert(offsetof(MaterialData, custom0) == 48);
     static_assert(offsetof(MaterialData, custom1) == 64);
+    static_assert(offsetof(MaterialData, uvScaleOffset) == 80);
+    static_assert(offsetof(MaterialData, emissiveMapID) == 96);
+    static_assert(offsetof(MaterialData, alphaCutoff) == 100);
+    static_assert(offsetof(MaterialData, flags) == 104);
     static_assert(std::is_trivially_copyable_v<MaterialData>);
+
+    // MaterialData::flags, mirrored in Engine/Shader/SceneData.slang
+    enum class MaterialFlags : u32 {
+        None = 0,
+        // lights reach the surface unshadowed, as on a painted backdrop
+        NoShadowReceive = 1u << 0,
+    };
+
+    // the textures a material samples; the renderer turns them into the
+    // row's map IDs each frame, so a removed texture reads as none
+    struct MaterialMaps {
+        TextureHandle albedo;
+        TextureHandle emissive;
+    };
 
     // which passes draw a material; a DrawFilter admits a mask of these
     enum class MaterialDomain : u32 {
@@ -67,5 +99,6 @@ namespace Crowy
     struct MaterialResource {
         MaterialData data{};
         MaterialPipelineDesc pipeline{};
+        MaterialMaps maps{};
     };
 }

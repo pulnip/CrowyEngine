@@ -1,3 +1,4 @@
+#include <memory>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -145,3 +146,41 @@ TEST(PackedTable, ClearExpiresEveryHandle) {
     EXPECT_TRUE(table.IsEmpty());
     EXPECT_FALSE(table.IsValid(handle));
 }
+
+// a handle from before Clear must not come back to life when its slot is
+// reused, and a rebuild in the same order reuses the same slots
+TEST(PackedTable, ClearThenAddKeepsOldHandlesDead) {
+    Table table;
+
+    std::vector<Table::Handle> before;
+    for(int i = 0; i < 3; ++i)
+        before.push_back(table.Add(Row{i}));
+    table.Clear();
+
+    std::vector<Table::Handle> after;
+    for(int i = 0; i < 3; ++i)
+        after.push_back(table.Add(Row{10 + i}));
+
+    for(usize i = 0; i < before.size(); ++i) {
+        EXPECT_FALSE(table.IsValid(before[i]));
+        EXPECT_TRUE(table.IsValid(after[i]));
+        EXPECT_EQ(after[i].GetIndex(), before[i].GetIndex());
+        EXPECT_EQ(table.GetRef(after[i]).value, 10 + static_cast<int>(i));
+    }
+}
+
+TEST(PackedTable, HoldsMoveOnlyRows) {
+    PackedTable<std::unique_ptr<int>> table;
+
+    const auto a = table.Add(std::make_unique<int>(1));
+    const auto b = table.Add(std::make_unique<int>(2));
+    const auto c = table.Add(std::make_unique<int>(3));
+    table.Remove(a);
+
+    EXPECT_EQ(table.Count(), 2u);
+    EXPECT_EQ(*table.GetRef(b), 2);
+    EXPECT_EQ(*table.GetRef(c), 3);
+    table.Clear();
+    EXPECT_TRUE(table.IsEmpty());
+}
+

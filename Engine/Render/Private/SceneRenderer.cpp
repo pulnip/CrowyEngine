@@ -106,9 +106,28 @@ namespace Crowy
             "a shadow map needs the shadow view's row"
         );
 
+        const auto& textures = scene.Textures();
+        // 1 + the texture's row this frame, 0 for none or a removed one
+        const auto mapID = [&](TextureHandle handle) {
+            return textures.IsValid(handle)
+                ? static_cast<u32>(textures.IndexOf(handle) + 1)
+                : 0u;
+        };
+
         materialScratch.clear();
-        for(const auto& material: scene.Materials().All())
-            materialScratch.push_back(material.data);
+        for(const auto& material: scene.Materials().All()) {
+            auto& row = materialScratch.emplace_back(material.data);
+            row.albedoMapID = mapID(material.maps.albedo);
+            row.emissiveMapID = mapID(material.maps.emissive);
+        }
+
+        textureScratch.clear();
+        for(const auto& texture: textures.All()) {
+            textureScratch.push_back(TextureData{
+                .texture = texture.texture->GetReadableID(),
+                .sampler = static_cast<u32>(texture.sampler)
+            });
+        }
 
         // the first enabled directional light that casts, if any
         const LightSnapshot* caster = nullptr;
@@ -256,6 +275,12 @@ namespace Crowy
                 static_cast<u32>(sizeof(MaterialData))
             );
         }
+        if(!textureScratch.empty()) {
+            textureSlice = device.UploadTransient(
+                std::span<const TextureData>(textureScratch),
+                static_cast<u32>(sizeof(TextureData))
+            );
+        }
         if(!lightScratch.empty()) {
             lightSlice = device.UploadTransient(
                 std::span<const LightData>(lightScratch),
@@ -278,6 +303,7 @@ namespace Crowy
 
         constexpr auto materialStride = static_cast<u32>(sizeof(MaterialData));
         constexpr auto lightStride = static_cast<u32>(sizeof(LightData));
+        constexpr auto textureStride = static_cast<u32>(sizeof(TextureData));
 
         // one descriptor spans the whole transient buffer; the base index is
         // what points the shader at this frame's rows inside it
@@ -294,7 +320,13 @@ namespace Crowy
             .lightBase = lightScratch.empty() ?
                 0 :
                 lightSlice.offset / lightStride,
-            .lightCount = static_cast<u32>(lightScratch.size())
+            .lightCount = static_cast<u32>(lightScratch.size()),
+            .textures = textureScratch.empty() ?
+                0 :
+                textureSlice.buffer->GetReadableID(textureStride),
+            .textureBase = textureScratch.empty() ?
+                0 :
+                textureSlice.offset / textureStride
         };
     }
 
