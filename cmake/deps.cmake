@@ -256,7 +256,7 @@ FetchContent_Declare(JoltPhysics
 set(JPH_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 # the rest of the tree links the DLL runtime
 set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
-# the same results on Windows and the Mac, at about 8 % of its speed
+# the same results on Windows and the Mac, about 8 % slower
 set(CROSS_PLATFORM_DETERMINISTIC ON CACHE BOOL "" FORCE)
 set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
 # /Wall under clang-cl is -Weverything, and a newer clang than Jolt's CI

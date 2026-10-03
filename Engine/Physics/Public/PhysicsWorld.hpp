@@ -34,7 +34,7 @@ namespace Crowy
             const PhysicsWorldDesc& desc = {}
         );
 
-        // invalid, with an error logged, when the world is full
+        // a full world asserts; without asserts it logs and returns invalid
         BodyHandle CreateBody(const BodyDesc& desc);
         HingeHandle CreateHinge(const HingeDesc& desc);
 

@@ -64,10 +64,7 @@ namespace
             .pose = BodyPose{.position = {-3.0f, 0.1f, 0.0f}},
             .motion = BodyMotion::Kinematic,
         });
-        world.MoveKinematic(
-            mover,
-            BodyPose{.position = {-3.0f, 1.1f, 0.0f}}
-        );
+        world.MoveKinematic(mover, BodyPose{.position = {-3.0f, 1.1f, 0.0f}});
 
         const auto ball = world.CreateBody(BodyDesc{
             .shape = SphereShape{0.25f},
@@ -144,7 +141,8 @@ TEST(Body, StaticPoseReadsBackBitForBit) {
     PhysicsWorld world(runtime);
     const auto pose = BodyPose{
         .position = {1.25f, -0.5f, 3.0f},
-        .rotation = {0.0f, 0.38268343f, 0.0f, 0.92387953f},
+        // every component non-zero, so a swapped or negated slot shows
+        .rotation = {0.1f, 0.2f, 0.3f, 0.92736185f},
     };
     const auto body = world.CreateBody(BodyDesc{
         .shape = BoxShape{{0.5f, 0.25f, 1.0f}},
@@ -161,6 +159,7 @@ TEST(Body, StaticPoseReadsBackBitForBit) {
         EXPECT_FALSE(world.IsAwake(body));
     }
     EXPECT_EQ(world.TickCount(), 10u);
+    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(Body, FreeFallFollowsGravity) {
@@ -179,6 +178,7 @@ TEST(Body, FreeFallFollowsGravity) {
     EXPECT_EQ(velocity.x, 0.0f);
     EXPECT_EQ(velocity.z, 0.0f);
     EXPECT_EQ(world.TickCount(), 60u);
+    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(Body, MassFromShapeOrDesc) {
@@ -194,6 +194,7 @@ TEST(Body, MassFromShapeOrDesc) {
     EXPECT_EQ(world.MassOf(cube), 1000.0f);
     EXPECT_EQ(world.MassOf(heavy), 2.0f);
     EXPECT_NEAR(world.MassOf(ball), 523.599f, 0.01f);
+    EXPECT_EQ(world.TickCount(), 0u);
     EXPECT_EQ(world.BodyCount(), 3u);
 }
 
@@ -203,14 +204,15 @@ TEST(Body, ImpulseWakesSleeper) {
     addFloor(world);
     const auto box = addBox(world, {0.0f, 0.5f, 0.0f}, 2.0f);
 
-    while(world.IsAwake(box) && world.TickCount() < 300)
-        world.Step();
+    stepTimes(world, 300);
     ASSERT_FALSE(world.IsAwake(box));
 
     // sleeping zeroed the velocity, and 10 * 1/2 is exact
     world.AddImpulse(box, {0.0f, 0.0f, 10.0f});
     EXPECT_TRUE(world.IsAwake(box));
     EXPECT_EQ(world.LinearVelocityOf(box), (Vec3{0.0f, 0.0f, 5.0f}));
+    EXPECT_EQ(world.TickCount(), 300u);
+    EXPECT_EQ(world.BodyCount(), 2u);
 }
 
 TEST(Body, ImpulseAtAddsSpin) {
@@ -233,6 +235,66 @@ TEST(Body, ImpulseAtAddsSpin) {
     EXPECT_LE(rotation.y, -0.23f);
     EXPECT_LE(std::abs(rotation.x), 1.0e-5f);
     EXPECT_LE(std::abs(rotation.z), 1.0e-5f);
+    EXPECT_EQ(world.TickCount(), 10u);
+    EXPECT_EQ(world.BodyCount(), 2u);
+}
+
+TEST(Body, MaterialReachesJolt) {
+    PhysicsRuntime runtime;
+    auto highestRise = [&](f32 restitution) {
+        PhysicsWorld world(runtime);
+        addFloor(world);
+        const auto ball = world.CreateBody(BodyDesc{
+            .shape = SphereShape{0.25f},
+            .pose = BodyPose{.position = {0.0f, 2.0f, 0.0f}},
+            .restitution = restitution,
+        });
+        f32 rise = 0.0f;
+        for(u32 tick = 0; tick < 120; ++tick) {
+            world.Step();
+            rise = std::max(rise, world.LinearVelocityOf(ball).y);
+        }
+        EXPECT_EQ(world.TickCount(), 120u);
+        EXPECT_EQ(world.BodyCount(), 2u);
+        return rise;
+    };
+    // restitution combines by max, so the ball's alone decides the bounce
+    EXPECT_GT(highestRise(1.0f), 4.0f);
+    EXPECT_LT(highestRise(0.0f), 0.5f);
+
+    auto speedAfterSliding = [&](f32 friction) {
+        PhysicsWorld world(runtime);
+        addFloor(world);
+        const auto box = world.CreateBody(BodyDesc{
+            .shape = BoxShape{},
+            .pose = BodyPose{.position = {-5.0f, 0.5f, 0.0f}},
+            .mass = 1.0f,
+            .friction = friction,
+            .linearDamping = 0.0f,
+        });
+        world.AddImpulse(box, {2.0f, 0.0f, 0.0f});
+        stepTimes(world, 60);
+        EXPECT_EQ(world.BodyCount(), 2u);
+        return world.LinearVelocityOf(box).x;
+    };
+    // friction combines by geometric mean: 0 with anything is frictionless
+    EXPECT_GT(speedAfterSliding(0.0f), 1.95f);
+    // 0.2 decelerates at about 1.96 m/s^2, so 2 m/s is gone within a second
+    EXPECT_LT(speedAfterSliding(0.2f), 0.1f);
+
+    auto turnedAngle = [&](f32 angularDamping) {
+        PhysicsWorld world(runtime, PhysicsWorldDesc{.gravity = zeros()});
+        const auto ball = world.CreateBody(BodyDesc{
+            .shape = SphereShape{0.5f},
+            .angularDamping = angularDamping,
+        });
+        world.AddImpulseAt(ball, {0.0f, 0.0f, 100.0f}, {0.5f, 0.0f, 0.0f});
+        stepTimes(world, 60);
+        EXPECT_EQ(world.TickCount(), 60u);
+        // w = cos(angle / 2), so a smaller turn leaves a larger w
+        return world.PoseOf(ball).rotation.w;
+    };
+    EXPECT_GT(turnedAngle(2.0f), turnedAngle(0.0f) + 0.05f);
 }
 
 TEST(Body, KinematicReachesAndHolds) {
@@ -261,6 +323,7 @@ TEST(Body, KinematicReachesAndHolds) {
     EXPECT_EQ(world.PoseOf(idle).position, idleDesc.pose.position);
     EXPECT_EQ(world.LinearVelocityOf(idle), zeros());
     EXPECT_EQ(world.TickCount(), 10u);
+    EXPECT_EQ(world.BodyCount(), 2u);
 }
 
 TEST(Hinge, StopsAtLimit) {
@@ -269,7 +332,7 @@ TEST(Hinge, StopsAtLimit) {
         .shape = BoxShape{{0.5f, 0.05f, 0.05f}},
         .pose = BodyPose{.position = {0.5f, 1.0f, 0.0f}},
     };
-    auto hingeAt = [&](PhysicsWorld& world, f32 limit) {
+    auto hingeAt = [&](PhysicsWorld& world, f32 limit, f32 friction) {
         return world.CreateHinge(HingeDesc{
             .body = world.CreateBody(plank),
             .pivot = {0.0f, 1.0f, 0.0f},
@@ -277,25 +340,40 @@ TEST(Hinge, StopsAtLimit) {
             .normal = unitX(),
             .minAngle = -limit,
             .maxAngle = limit,
+            .maxFrictionTorque = friction,
         });
     };
 
     PhysicsWorld limited(runtime);
-    const auto hinge = hingeAt(limited, 0.5f);
+    const auto hinge = hingeAt(limited, 0.5f, 0.0f);
     EXPECT_NEAR(limited.HingeAngleOf(hinge), 0.0f, 1.0e-6f);
     stepTimes(limited, 300);
     // gravity swings +x toward -y: negative about +z, held at the limit
     EXPECT_GE(limited.HingeAngleOf(hinge), -0.52f);
     EXPECT_LE(limited.HingeAngleOf(hinge), -0.48f);
+    EXPECT_EQ(limited.TickCount(), 300u);
+    EXPECT_EQ(limited.BodyCount(), 1u);
+
+    auto lowestOver60 = [](PhysicsWorld& world, HingeHandle swinging) {
+        f32 lowest = 0.0f;
+        for(u32 tick = 0; tick < 60; ++tick) {
+            world.Step();
+            lowest = std::min(lowest, world.HingeAngleOf(swinging));
+        }
+        return lowest;
+    };
 
     PhysicsWorld free(runtime);
-    const auto freeHinge = hingeAt(free, 3.14159f);
-    f32 lowest = 0.0f;
-    for(u32 tick = 0; tick < 60; ++tick) {
-        free.Step();
-        lowest = std::min(lowest, free.HingeAngleOf(freeHinge));
-    }
-    EXPECT_LT(lowest, -1.0f);
+    const auto freeHinge = hingeAt(free, 3.14159f, 0.0f);
+    EXPECT_LT(lowestOver60(free, freeHinge), -1.0f);
+    EXPECT_EQ(free.TickCount(), 60u);
+
+    // the 10 kg plank pulls with about 49 N m; friction outweighs it
+    PhysicsWorld stiff(runtime);
+    const auto stiffHinge = hingeAt(stiff, 3.14159f, 200.0f);
+    EXPECT_GT(lowestOver60(stiff, stiffHinge), -0.05f);
+    EXPECT_EQ(stiff.TickCount(), 60u);
+    EXPECT_EQ(stiff.BodyCount(), 1u);
 }
 
 TEST(Query, OverlapSeesSleepersSkipsStatics) {
@@ -316,11 +394,16 @@ TEST(Query, OverlapSeesSleepersSkipsStatics) {
     for(const auto body: {right, left, middle})
         ASSERT_FALSE(world.IsAwake(body));
 
-    const auto found = world.Overlapping({0.0f, 0.25f, 0.0f}, {5.0f, 0.5f, 1.0f});
+    const auto found =
+        world.Overlapping({0.0f, 0.25f, 0.0f}, {5.0f, 0.5f, 1.0f});
     EXPECT_EQ(found, (BodyHandles{right, left, middle, mover}));
-    EXPECT_TRUE(world.Overlapping({0.0f, 5.0f, 0.0f}, {1.0f, 1.0f, 1.0f}).empty());
+    EXPECT_TRUE(
+        world.Overlapping({0.0f, 5.0f, 0.0f}, {1.0f, 1.0f, 1.0f}).empty()
+    );
     for(const auto body: {right, left, middle})
         EXPECT_FALSE(world.IsAwake(body));
+    EXPECT_EQ(world.TickCount(), 120u);
+    EXPECT_EQ(world.BodyCount(), 5u);
 }
 
 TEST(Hash, RepeatsPerTick) {
@@ -330,9 +413,13 @@ TEST(Hash, RepeatsPerTick) {
     buildMixedScene(first);
     buildMixedScene(second);
 
+    EXPECT_EQ(first.BodyCount(), 7u);
+    EXPECT_EQ(second.BodyCount(), 7u);
+
     const auto firstHashes = hashEveryTick(first, 300);
     const auto secondHashes = hashEveryTick(second, 300);
-    EXPECT_EQ(firstHashes.size(), 301u);
+    EXPECT_EQ(first.TickCount(), 300u);
+    EXPECT_EQ(second.TickCount(), 300u);
     EXPECT_EQ(firstHashes, secondHashes);
 }
 
@@ -343,10 +430,28 @@ TEST(Hash, SeesOneUlp) {
     buildMixedScene(reference);
     buildMixedScene(nudged, std::nextafter(2.7f, 3.0f));
 
+    EXPECT_EQ(reference.BodyCount(), 7u);
+    EXPECT_EQ(nudged.BodyCount(), 7u);
+
     EXPECT_NE(reference.StateHash(), nudged.StateHash());
     reference.Step();
     nudged.Step();
     EXPECT_NE(reference.StateHash(), nudged.StateHash());
+    EXPECT_EQ(reference.TickCount(), 1u);
+    EXPECT_EQ(nudged.TickCount(), 1u);
+}
+
+TEST(Hash, SeesTheTick) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    addFloor(world);
+
+    // nothing is active, so Jolt's state stays put and only the tick moves
+    const auto hashes = hashEveryTick(world, 2);
+    EXPECT_NE(hashes[0], hashes[1]);
+    EXPECT_NE(hashes[1], hashes[2]);
+    EXPECT_EQ(world.TickCount(), 2u);
+    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(Hash, IgnoresWorkerCount) {
@@ -361,7 +466,10 @@ TEST(Runtime, TwiceInOneProcess) {
         PhysicsRuntime runtime;
         PhysicsWorld world(runtime);
         buildMixedScene(world);
-        return hashEveryTick(world, 60);
+        EXPECT_EQ(world.BodyCount(), 7u);
+        auto hashes = hashEveryTick(world, 60);
+        EXPECT_EQ(world.TickCount(), 60u);
+        return hashes;
     };
 
     const auto first = runScene();
@@ -380,8 +488,9 @@ TEST(Handle, ScopedToItsWorld) {
     };
     const auto mine = one.CreateBody(desc);
     const auto theirs = other.CreateBody(desc);
-    const auto hinged = one.CreateBody(BodyDesc{});
-    const auto hinge = one.CreateHinge(HingeDesc{.body = hinged});
+    const auto hinge = one.CreateHinge(HingeDesc{.body = one.CreateBody({})});
+    const auto theirHinge =
+        other.CreateHinge(HingeDesc{.body = other.CreateBody({})});
 
     EXPECT_FALSE(one.IsValid(BodyHandle{}));
     EXPECT_FALSE(one.IsValid(HingeHandle{}));
@@ -389,8 +498,11 @@ TEST(Handle, ScopedToItsWorld) {
     EXPECT_FALSE(one.IsValid(theirs));
     EXPECT_TRUE(other.IsValid(theirs));
     EXPECT_FALSE(other.IsValid(mine));
+    // both hinge tables hold slot 0, so only the world tag tells them apart
     EXPECT_TRUE(one.IsValid(hinge));
     EXPECT_FALSE(other.IsValid(hinge));
+    EXPECT_TRUE(other.IsValid(theirHinge));
+    EXPECT_FALSE(one.IsValid(theirHinge));
     EXPECT_FALSE(one.IsValid(
         BodyHandle{mine.GetIndex(), mine.GetGeneration() + 1}
     ));
@@ -399,7 +511,9 @@ TEST(Handle, ScopedToItsWorld) {
     ASSERT_TRUE(std::holds_alternative<SphereShape>(one.ShapeOf(mine)));
     EXPECT_EQ(std::get<SphereShape>(one.ShapeOf(mine)).radius, 0.25f);
     EXPECT_EQ(one.BodyCount(), 2u);
-    EXPECT_EQ(other.BodyCount(), 1u);
+    EXPECT_EQ(other.BodyCount(), 2u);
+    EXPECT_EQ(one.TickCount(), 0u);
+    EXPECT_EQ(other.TickCount(), 0u);
 }
 
 #if defined(_DEBUG) || !defined(NDEBUG)

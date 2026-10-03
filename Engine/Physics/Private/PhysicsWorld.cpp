@@ -44,6 +44,7 @@ namespace
     using Crowy::f32;
     using Crowy::u32;
     using Crowy::u64;
+    using HingeConstraintRef = JPH::Ref<JPH::HingeConstraint>;
 
     inline constexpr JPH::ObjectLayer StaticLayer = 0;
     inline constexpr JPH::ObjectLayer MovingLayer = 1;
@@ -124,7 +125,7 @@ namespace
     };
 
     struct HingeRow {
-        JPH::Ref<JPH::HingeConstraint> constraint;
+        HingeConstraintRef constraint;
     };
 }
 
@@ -166,9 +167,6 @@ namespace Crowy
         JPH::BodyInterface& Bodies() noexcept {
             return system.GetBodyInterfaceNoLock();
         }
-        const JPH::BodyInterface& Bodies() const noexcept {
-            return system.GetBodyInterfaceNoLock();
-        }
 
         BodyHandle PublicHandle(BodyRows::Handle handle) const noexcept;
         HingeHandle PublicHandle(HingeRows::Handle handle) const noexcept;
@@ -176,7 +174,6 @@ namespace Crowy
         std::optional<HingeRows::Handle> RowHandle(HingeHandle hinge) const;
 
         BodyRow& Row(BodyHandle body);
-        const BodyRow& Row(BodyHandle body) const;
         const HingeRow& Row(HingeHandle hinge) const;
     };
 
@@ -213,7 +210,7 @@ namespace Crowy
             layerPairs
         );
         system.SetGravity(toJolt(desc.gravity));
-        ++runtime.worldCount;
+        ++this->runtime.worldCount;
     }
 
     PhysicsWorld::Impl::~Impl() {
@@ -298,18 +295,6 @@ namespace Crowy
         return bodies.GetRef(*handle);
     }
 
-    const BodyRow& PhysicsWorld::Impl::Row(BodyHandle body) const {
-        const auto handle = RowHandle(body);
-        CROWY_ASSERT(
-            handle.has_value(),
-            "body ({}, {:#x}) is not a body of this world",
-            body.GetIndex(),
-            body.GetGeneration()
-        );
-
-        return bodies.GetRef(*handle);
-    }
-
     const HingeRow& PhysicsWorld::Impl::Row(HingeHandle hinge) const {
         const auto handle = RowHandle(hinge);
         CROWY_ASSERT(
@@ -333,7 +318,10 @@ namespace Crowy
     BodyHandle PhysicsWorld::CreateBody(const BodyDesc& desc) {
         using enum BodyMotion;
 
-        CROWY_ASSERT(isUnit(desc.pose.rotation), "a pose needs a unit rotation");
+        CROWY_ASSERT(
+            isUnit(desc.pose.rotation),
+            "a pose needs a unit rotation"
+        );
         CROWY_ASSERT(desc.mass >= 0.0f, "a mass is never negative");
 
         JPH::BodyCreationSettings settings(
@@ -422,7 +410,7 @@ namespace Crowy
         );
         CROWY_ASSERT(lock.Succeeded());
         // Jolt is built without RTTI, and a hinge's settings make a hinge
-        JPH::Ref<JPH::HingeConstraint> constraint =
+        HingeConstraintRef constraint =
             static_cast<JPH::HingeConstraint*>(
                 settings.Create(JPH::Body::sFixedToWorld, lock.GetBody())
             );
@@ -564,6 +552,9 @@ namespace Crowy
     }
 
     BodyHandles PhysicsWorld::Overlapping(Vec3 center, Vec3 halfExtent) const {
+        using ShapeHits =
+            JPH::AllHitCollisionCollector<JPH::CollideShapeCollector>;
+
         CROWY_ASSERT(
             halfExtent.x > 0.0f && halfExtent.y > 0.0f && halfExtent.z > 0.0f,
             "a query box needs a positive half extent"
@@ -574,7 +565,7 @@ namespace Crowy
         box.SetEmbedded();
         const auto shape = box.Create().Get();
 
-        JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> hits;
+        ShapeHits hits;
         impl->system.GetNarrowPhaseQueryNoLock().CollideShape(
             shape,
             JPH::Vec3::sOne(),

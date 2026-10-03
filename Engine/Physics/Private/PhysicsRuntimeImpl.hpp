@@ -21,10 +21,9 @@ namespace Crowy
         std::unique_ptr<JPH::Factory> factory;
 
     public:
+        JoltGlobals();
         ~JoltGlobals();
         CROWY_DECLARE_PINNED(JoltGlobals)
-
-        JoltGlobals();
     };
 
     class PhysicsRuntime::Impl {
