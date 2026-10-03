@@ -217,6 +217,10 @@ namespace Crowy
         // runs inside the overlay pass, after its draws
         virtual void OnRecordUI(RHICommandList&) {}
 
+        // the lit views' clear, as a lighting key's sky; the walker is
+        // rebuilt with it at the next frame
+        void SetClearColor(Color color) noexcept { config.clearColor = color; }
+
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
         auto& Scene() noexcept { return scene; }

@@ -1,9 +1,15 @@
+#include <array>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
+#include <optional>
 
-#include "FlyCamera.hpp"
+#include "ClassRegistry.hpp"
+#include "EditorCamera.hpp"
+#include "EditorSession.hpp"
+#include "InputProvider.hpp"
 #include "RenderApp.hpp"
+#include "StageContent.hpp"
 #include "StageScene.hpp"
 #include "StringUtil.hpp"
 
@@ -27,25 +33,44 @@ namespace Crowy
         }
     }
 
-    // Backlot's film set in the standard pipeline: loaded before RenderApp
-    // exists, since the geometry pool is sized from it.
+    // Backlot's film set in the standard pipeline, with the editor's cuts
+    // and lighting keys; loaded before RenderApp exists, since the geometry
+    // pool is sized from it.
     class StageEditor final: public RenderApp {
     private:
+        static constexpr std::array CutKeys{
+            KeyCode::Num1, KeyCode::Num2, KeyCode::Num3, KeyCode::Num4,
+            KeyCode::Num5, KeyCode::Num6, KeyCode::Num7, KeyCode::Num8,
+        };
+        static constexpr std::array LightingKeys{KeyCode::F1, KeyCode::F2, KeyCode::F3, KeyCode::F4};
+
         LoadedStage stage;
-        StageCuts cuts;
         StageGeometry geometry;
         StageTextureHandles textures;
         StageBindings bindings;
+        std::optional<StageContent> content;
+        // last: it is exposed to the port, so it goes first
+        std::optional<EditorSession> session;
 
     public:
+        ~StageEditor() override {
+            if(auto* port = Port()) {
+                port->Unexpose("editor");
+                port->Unexpose("camera");
+            }
+        }
+        CROWY_DECLARE_PINNED(StageEditor)
+
         StageEditor()
             : StageEditor(loadStage(backlotRoot())) {}
 
         // the base reads `loaded` before the member takes it
         explicit StageEditor(LoadedStage loaded)
-            : RenderApp(makeConfig(loaded), std::make_unique<FlyCamera>(makeCamera(loaded))),
-              stage(std::move(loaded)),
-              cuts(makeStageCuts(stage)) {}
+            : RenderApp(
+                  makeConfig(loaded),
+                  std::make_unique<EditorCamera>(editorCutOf(makeStageCuts(loaded).front()))
+              ),
+              stage(std::move(loaded)) {}
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
@@ -55,12 +80,33 @@ namespace Crowy
         void ExtractScene(RenderScene& scene) override {
             textures = uploadStageTextures(scene, Device(), stage);
             bindings = populateStage(scene, stage, geometry, textures);
-            applyStageKey(
-                scene,
-                bindings,
-                stage.document,
-                stageKeyIndex(stage.document, stage.document.defaultKey)
-            );
+            content.emplace(scene, stage, bindings);
+            session.emplace(camera(), *content, [this](Color color) { SetClearColor(color); });
+            session->Start(content->Cuts().front().name, stage.document.defaultKey);
+
+            if(auto* port = Port()) {
+                port->Expose("editor", &session->State(), *GetDesc<EditorState>(), [this] {
+                    session->Sync();
+                });
+                port->Expose("camera", &camera(), *GetDesc<EditorCamera>(), [this] {
+                    camera().RecomputeView();
+                });
+            }
+        }
+
+        void OnProcessInput(const InputProvider& input) override {
+            for(usize i = 0; i < CutKeys.size(); ++i) {
+                if(input.IsKeyPressed(CutKeys[i]))
+                    session->SelectCut(i);
+            }
+            for(usize i = 0; i < LightingKeys.size(); ++i) {
+                if(input.IsKeyPressed(LightingKeys[i]))
+                    session->SelectKey(i);
+            }
+        }
+
+        void OnUpdateFrameData() override {
+            session->Update();
         }
 
     private:
@@ -80,19 +126,8 @@ namespace Crowy
             };
         }
 
-        // the scene file's first cut
-        static FlyCamera::Config makeCamera(const LoadedStage& loaded) {
-            const auto cut = makeStageCuts(loaded).front();
-
-            return FlyCamera::Config{
-                .position = cut.position,
-                .yaw = cut.yaw,
-                .pitch = cut.pitch,
-                .fovY = cut.fovY,
-                .nearZ = cut.nearZ,
-                .farZ = cut.farZ,
-                .moveSpeed = 15.0f
-            };
+        EditorCamera& camera() noexcept {
+            return static_cast<EditorCamera&>(Camera());
         }
     };
 }

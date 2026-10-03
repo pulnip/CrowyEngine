@@ -1,3 +1,4 @@
+add_subdirectory(Editor)
 add_subdirectory(Stage)
 
 crowy_declare_example(TenThousandBlocks
@@ -55,12 +56,14 @@ DEPENDS
 # exits 77 (skipped) without it
 crowy_declare_example(StageEditor
 SOURCES
-    FlyCamera.cpp
     RenderApp.cpp
+    StageContent.cpp
     StageEditor.cpp
 DEPENDS
+    Crowy::Reflection
     Crowy::Remote
     Crowy::Render
+    SampleEditor
     SampleStage
 )
 target_compile_definitions(StageEditor
