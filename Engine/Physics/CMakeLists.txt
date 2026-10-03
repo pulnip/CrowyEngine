@@ -15,6 +15,8 @@ target_compile_options(CrowyPhysics
 PRIVATE
     ${CROWY_FP_CONTRACT_OFF}
 )
+# for the glue under Render, whose arithmetic its tests repeat bit for bit
+set(CROWY_FP_CONTRACT_OFF "${CROWY_FP_CONTRACT_OFF}" PARENT_SCOPE)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(Physics

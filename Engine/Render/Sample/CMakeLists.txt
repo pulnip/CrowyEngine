@@ -1,4 +1,5 @@
 add_subdirectory(Editor)
+add_subdirectory(PhysicsSync)
 add_subdirectory(Stage)
 
 crowy_declare_example(TenThousandBlocks
@@ -52,6 +53,26 @@ DEPENDS
     Crowy::Render
     Crowy::Reflection
     Crowy::UI
+)
+
+# the physics puzzles running in Playground's arena, drawn one way through
+# the PhysicsSync glue
+crowy_declare_example(PhysicsPlayground
+SOURCES
+    FlyCamera.cpp
+    RenderApp.cpp
+    PortStatusChip.cpp
+    StatsOverlay.cpp
+    PlaygroundScene.cpp
+    RenderReflection.cpp
+    PhysicsPlayground.cpp
+DEPENDS
+    Crowy::Remote
+    Crowy::Render
+    Crowy::Reflection
+    Crowy::UI
+    SamplePhysicsSync
+    SamplePuzzle
 )
 
 # Backlot's film set, read from the sibling checkout CROWY_BACKLOT_DIR names;
