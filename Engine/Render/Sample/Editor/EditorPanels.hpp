@@ -4,6 +4,7 @@
 
 #include "EditorSession.hpp"
 #include "RenderScene.hpp"
+#include "Widget.hpp"
 
 namespace Crowy
 {
@@ -24,6 +25,18 @@ namespace Crowy
     struct HierarchyGroup {
         Str name;
         std::vector<usize> objects;
+    };
+
+    // the selection's sections as the reflection walker draws them, rebuilt
+    // when the selection changes or the port writes behind its widgets
+    class InspectorPanel {
+    private:
+        std::vector<Widget> sections;
+        std::optional<usize> shown;
+        bool built = false;
+
+    public:
+        void Draw(EditorSession& session, UIContext& context);
     };
 
     // what the hierarchy remembers between frames

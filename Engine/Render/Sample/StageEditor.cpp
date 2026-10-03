@@ -62,7 +62,9 @@ namespace Crowy
         StageBindings bindings;
         std::optional<StageContent> content;
         RAII<UIRenderer> uiRenderer;
+        UIContext uiContext;
         HierarchyPanel hierarchy;
+        InspectorPanel inspector;
         // last: it is exposed to the port, so it goes first
         std::optional<EditorSession> session;
 
@@ -95,7 +97,7 @@ namespace Crowy
             textures = uploadStageTextures(scene, Device(), stage);
             bindings = populateStage(scene, stage, geometry, textures);
             content.emplace(scene, stage, bindings);
-            session.emplace(camera(), *content, scene, [this](Color color) { SetClearColor(color); });
+            session.emplace(camera(), *content, scene, [this](Color color) { SetClearColor(color); }, editorPort());
             session->Start(content->Cuts().front().name, stage.document.defaultKey);
             hierarchy.Reset(content->Objects());
 
@@ -144,6 +146,7 @@ namespace Crowy
                     drawPortStatusChip(port->Status());
                 drawEditorToolbar(*session);
                 hierarchy.Draw(*session);
+                inspector.Draw(*session, uiContext);
                 drawSelectionHighlight(*session, Scene());
             }
             uiRenderer->Prepare(cmdList);
@@ -169,6 +172,19 @@ namespace Crowy
                 .shadowMapSize = 4096,
                 .vertexPoolCapacity = capacities.vertices,
                 .indexPoolCapacity = capacities.indices
+            };
+        }
+
+        EditorPort editorPort() {
+            auto* port = Port();
+            if(port == nullptr)
+                return {};
+
+            return EditorPort{
+                .expose = [port](StrView name, void* target, const TypeDesc& desc, DirtyCallback onDirty) {
+                    port->Expose(Str(name), target, desc, std::move(onDirty));
+                },
+                .unexpose = [port](StrView name) { port->Unexpose(name); }
             };
         }
 

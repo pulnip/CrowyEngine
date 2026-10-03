@@ -8,6 +8,8 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "PropertyWalker.hpp"
+
 namespace Crowy
 {
     namespace
@@ -153,6 +155,34 @@ namespace Crowy
         }
         if(corners[0].z >= 0.0f)
             draw->AddText(toScreen(corners[0], viewport), color, session.State().selected.c_str());
+    }
+
+    void InspectorPanel::Draw(EditorSession& session, UIContext& context) {
+        // the walker seeds values when it builds: rebuild after a write it
+        // did not make
+        if(session.TakeInspectorDirty() || !built || shown != session.Selection()) {
+            sections.clear();
+            for(const auto& section: session.Inspected())
+                sections.push_back(buildPropertyTree(section.label.c_str(), section.target, *section.desc, section.apply));
+            shown = session.Selection();
+            built = true;
+        }
+
+        ImGui::SetNextWindowPos(ImVec2(1480.0f, 8.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(432.0f, 420.0f), ImGuiCond_FirstUseEver);
+        if(ImGui::Begin("Inspector##EditorInspector")) {
+            if(const auto selection = session.Selection()) {
+                const auto& object = session.Content().Objects()[*selection];
+                ImGui::TextUnformatted(object.name.c_str());
+                ImGui::TextDisabled("%s  ·  %s", object.group.c_str(), object.detail.c_str());
+                ImGui::Separator();
+                for(auto& section: sections)
+                    std::visit([&](auto& widget) { widget.submit(context); }, section);
+            } else {
+                ImGui::TextDisabled("click something, or pick it in the hierarchy");
+            }
+        }
+        ImGui::End();
     }
 
     void HierarchyPanel::Reset(EditorObjects objects) {

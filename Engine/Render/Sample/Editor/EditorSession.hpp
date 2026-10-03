@@ -4,9 +4,13 @@
 #include <optional>
 #include <span>
 
+#include <vector>
+
+#include "ClassRegistry.hpp"
 #include "EditorCamera.hpp"
 #include "EditorPick.hpp"
 #include "Primitives.hpp"
+#include "PropertyWrite.hpp"
 #include "RenderScene.hpp"
 #include "Semantics.hpp"
 
@@ -15,8 +19,11 @@ namespace Crowy
     class EditorContent;
     class EditorSession;
     struct EditorObject;
+    struct EditorPort;
+    struct InspectSection;
 
     using ClearColorSink = std::function<void(Color)>;
+    using InspectSections = std::vector<InspectSection>;
     using EditorObjects = std::span<const EditorObject>;
     using MeshList = std::span<const MeshData* const>;
 
@@ -35,6 +42,21 @@ namespace Crowy
         // what the row draws or belongs to, for the hierarchy and its search
         Str detail;
         EditorObjectKind kind = EditorObjectKind::Instance;
+    };
+
+    // one editable part of an object: a reflected row and what turns a write
+    // into it into scene rows
+    struct InspectSection {
+        Str label;
+        void* target = nullptr;
+        const TypeDesc* desc = nullptr;
+        DirtyCallback apply;
+    };
+
+    // the port as the session uses it, empty where there is none
+    struct EditorPort {
+        std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)> expose;
+        std::function<void(StrView)> unexpose;
     };
 
     // The editor's state as one reflected target, `editor`: the panel, the
@@ -71,33 +93,46 @@ namespace Crowy
         virtual std::optional<LightHandle> LightOf(usize object) const = 0;
         // the primitive's meshes in its model space, for picking
         virtual MeshList MeshesOf(PrimitiveHandle primitive) const = 0;
+        // what the inspector edits; the targets stay put until a reload
+        virtual InspectSections Inspect(usize object) = 0;
     };
 
     class EditorSession {
     public:
         // the state the camera reports once it has flown off a cut
         static constexpr CStr FreeCut = "free";
+        // the port's name for the selection's first section; the others are
+        // "selection.<label>"
+        static constexpr CStr SelectionTarget = "selection";
 
     private:
         EditorCamera& camera;
         EditorContent& content;
         const RenderScene& scene;
         ClearColorSink clearColor;
+        EditorPort port;
         EditorState state;
         // what was last applied, which a write is compared against
         EditorState applied;
         std::optional<usize> selection;
         Vec2 viewport{1.0f, 1.0f};
+        InspectSections inspected;
+        std::vector<Str> exposed;
         // raised when the selection changed, for panels to follow
         bool selectionChanged = false;
+        // raised when a port write changed what the inspector shows
+        bool inspectorDirty = false;
 
     public:
         EditorSession(
             EditorCamera& camera,
             EditorContent& content,
             const RenderScene& scene,
-            ClearColorSink clearColor
+            ClearColorSink clearColor,
+            EditorPort port = {}
         );
+        ~EditorSession();
+        CROWY_DECLARE_PINNED(EditorSession)
 
         // applies `cut` and `key`; throws std::runtime_error when either is
         // not the content's
@@ -119,6 +154,8 @@ namespace Crowy
         const EditorCamera& Camera() const noexcept { return camera; }
         Vec2 Viewport() const noexcept { return viewport; }
         bool TakeSelectionChanged() noexcept;
+        bool TakeInspectorDirty() noexcept;
+        const InspectSections& Inspected() const noexcept { return inspected; }
 
     private:
         bool applyCut();
@@ -127,5 +164,7 @@ namespace Crowy
         void applyPickAt();
         void refuse(Str status);
         void reportSelection();
+        void exposeSelection();
+        void unexposeSelection();
     };
 }

@@ -46,6 +46,13 @@ namespace
         std::optional<PrimitiveHandle> PrimitiveOf(usize) const override { return std::nullopt; }
         std::optional<LightHandle> LightOf(usize) const override { return std::nullopt; }
         MeshList MeshesOf(PrimitiveHandle) const override { return {}; }
+        InspectSections Inspect(usize object) override {
+            return {InspectSection{.label = "row", .target = &rows[object], .desc = GetDesc<EditorState>(), .apply = [this] { ++applies; }}};
+        }
+
+        // stands in for the content's rows
+        std::vector<EditorState> rows{3};
+        u32 applies = 0;
     };
 
     class Fixture {
@@ -206,5 +213,46 @@ TEST(EditorSession, APickOnEmptySpaceClears) {
 
     EXPECT_FALSE(f.session.Selection().has_value());
     EXPECT_EQ(f.session.State().selected, "");
+}
+
+// the selection's section is exposed as `selection`, re-pointed on every
+// selection; a port write applies and dirties the inspector
+TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
+    FakeContent content;
+    RenderScene scene;
+    EditorCamera camera{content.cuts.front()};
+    std::vector<Str> exposed;
+    DirtyCallback portWrite;
+    void* target = nullptr;
+    EditorSession session{
+        camera,
+        content,
+        scene,
+        [](Color) {},
+        EditorPort{
+            .expose = [&](StrView name, void* row, const TypeDesc&, DirtyCallback onDirty) {
+                exposed.emplace_back(name);
+                target = row;
+                portWrite = std::move(onDirty);
+            },
+            .unexpose = [&](StrView name) { std::erase(exposed, Str(name)); }
+        }
+    };
+    session.Start("wide", "day");
+
+    session.Select(0);
+    ASSERT_EQ(exposed, std::vector<Str>{"selection"});
+    EXPECT_EQ(target, &content.rows[0]);
+
+    session.Select(2);
+    EXPECT_EQ(exposed, std::vector<Str>{"selection"});
+    EXPECT_EQ(target, &content.rows[2]);
+
+    portWrite();
+    EXPECT_EQ(content.applies, 1u);
+    EXPECT_TRUE(session.TakeInspectorDirty());
+
+    session.Select(std::nullopt);
+    EXPECT_TRUE(exposed.empty());
 }
 

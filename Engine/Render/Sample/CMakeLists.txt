@@ -30,6 +30,7 @@ SOURCES
     StatsOverlay.cpp
     PlaygroundScene.cpp
     Playground.cpp
+    RenderReflection.cpp
 DEPENDS
     Crowy::Remote
     Crowy::Render
@@ -44,6 +45,7 @@ SOURCES
     PortStatusChip.cpp
     StatsOverlay.cpp
     PlaygroundScene.cpp
+    RenderReflection.cpp
     ToonPlayground.cpp
 DEPENDS
     Crowy::Remote
@@ -58,8 +60,10 @@ crowy_declare_example(StageEditor
 SOURCES
     PortStatusChip.cpp
     RenderApp.cpp
+    RenderReflection.cpp
     StageContent.cpp
     StageEditor.cpp
+    StageInspect.cpp
 DEPENDS
     Crowy::Reflection
     Crowy::Remote

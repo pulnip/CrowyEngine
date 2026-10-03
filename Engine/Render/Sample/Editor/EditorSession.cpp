@@ -49,12 +49,18 @@ namespace Crowy
         EditorCamera& camera,
         EditorContent& content,
         const RenderScene& scene,
-        ClearColorSink clearColor
+        ClearColorSink clearColor,
+        EditorPort port
     )
         : camera(camera),
           content(content),
           scene(scene),
-          clearColor(std::move(clearColor)) {}
+          clearColor(std::move(clearColor)),
+          port(std::move(port)) {}
+
+    EditorSession::~EditorSession() {
+        unexposeSelection();
+    }
 
     void EditorSession::Start(StrView cut, StrView key) {
         state.cut = Str(cut);
@@ -111,9 +117,12 @@ namespace Crowy
         if(object && *object >= objects.size())
             object.reset();
 
+        unexposeSelection();
         selection = object;
         state.selected = object ? objects[*object].name : Str{};
         applied.selected = state.selected;
+        inspected = object ? content.Inspect(*object) : InspectSections{};
+        exposeSelection();
         selectionChanged = true;
         reportSelection();
     }
@@ -127,6 +136,10 @@ namespace Crowy
 
     bool EditorSession::TakeSelectionChanged() noexcept {
         return std::exchange(selectionChanged, false);
+    }
+
+    bool EditorSession::TakeInspectorDirty() noexcept {
+        return std::exchange(inspectorDirty, false);
     }
 
     bool EditorSession::applyCut() {
@@ -196,6 +209,31 @@ namespace Crowy
     void EditorSession::refuse(Str status) {
         state.status = std::move(status);
         applied.status = state.status;
+    }
+
+    // a port write applies like a panel edit, and the panel rebuilds
+    void EditorSession::exposeSelection() {
+        if(!port.expose)
+            return;
+
+        for(usize i = 0; i < inspected.size(); ++i) {
+            const auto& section = inspected[i];
+            auto name = i == 0 ? Str(SelectionTarget) : std::format("{}.{}", SelectionTarget, section.label);
+            port.expose(name, section.target, *section.desc, [this, apply = section.apply] {
+                if(apply)
+                    apply();
+                inspectorDirty = true;
+            });
+            exposed.push_back(std::move(name));
+        }
+    }
+
+    void EditorSession::unexposeSelection() {
+        if(port.unexpose) {
+            for(const auto& name: exposed)
+                port.unexpose(name);
+        }
+        exposed.clear();
     }
 
     void EditorSession::reportSelection() {

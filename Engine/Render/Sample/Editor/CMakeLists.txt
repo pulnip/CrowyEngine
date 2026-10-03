@@ -21,6 +21,7 @@ PUBLIC
     Crowy::Reflection
     Crowy::Render
     Crowy::Serialization
+    Crowy::UI
     imgui
 )
 

@@ -4,6 +4,9 @@
 #include <format>
 #include <limits>
 
+#include "ClassRegistry.hpp"
+#include "Geometry/Overlap3D.hpp"
+
 namespace Crowy
 {
     namespace
@@ -29,7 +32,7 @@ namespace Crowy
 
     StageContent::StageContent(
         RenderScene& scene,
-        const LoadedStage& stage,
+        LoadedStage& stage,
         const StageBindings& bindings
     )
         : scene(scene),
@@ -115,6 +118,67 @@ namespace Crowy
         const auto object = ObjectOf(primitive);
 
         return object ? MeshList(meshes[*object]) : MeshList{};
+    }
+
+    InspectSections StageContent::Inspect(usize object) {
+        const auto& document = stage.document;
+        const auto instances = document.instances.size();
+        const auto quads = document.quads.size();
+
+        if(object < instances) {
+            return {InspectSection{
+                .label = "transform",
+                .target = &stage.document.instances[object],
+                .desc = GetDesc<StageInstance>(),
+                .apply = [this, object] { ApplyInstance(object); }
+            }};
+        }
+        if(object < instances + quads) {
+            const auto quad = object - instances;
+            return {
+                InspectSection{
+                    .label = "transform",
+                    .target = &stage.document.quads[quad],
+                    .desc = GetDesc<StageQuad>(),
+                    .apply = [this, quad] { ApplyQuad(quad); }
+                },
+                InspectSection{
+                    .label = "material",
+                    .target = &scene.Materials().GetRef(bindings.quadMaterials[quad]).data,
+                    .desc = GetDesc<MaterialData>(),
+                    .apply = {}
+                }
+            };
+        }
+
+        return {InspectSection{
+            .label = "light",
+            .target = &scene.Lights().GetRef(*lights[object]),
+            .desc = GetDesc<LightSnapshot>(),
+            .apply = {}
+        }};
+    }
+
+    void StageContent::ApplyInstance(usize instance) {
+        const auto& row = stage.document.instances[instance];
+        const auto model = std::ranges::find(stage.document.models, row.model, &StageModel::id) - stage.document.models.begin();
+        auto& primitive = scene.Primitives().GetRef(bindings.instances[instance]);
+        primitive.localToWorld = instanceToWorld(row);
+        primitive.worldBounds = transformAABB3D(primitive.localToWorld, stage.models[static_cast<usize>(model)].bounds);
+    }
+
+    void StageContent::ApplyQuad(usize quad) {
+        const auto& row = stage.document.quads[quad];
+        auto& primitive = scene.Primitives().GetRef(bindings.quads[quad]);
+        primitive.localToWorld = quadToWorld(row);
+        primitive.worldBounds =
+            transformAABB3D(primitive.localToWorld, scene.Meshes().GetRef(primitive.mesh).localBounds);
+        scene.Materials().GetRef(bindings.quadMaterials[quad]).data.uvScaleOffset = Vec4{
+            row.uv1.x - row.uv0.x,
+            row.uv1.y - row.uv0.y,
+            row.uv0.x,
+            row.uv0.y
+        };
     }
 
     void StageContent::addObject(

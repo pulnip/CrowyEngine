@@ -19,7 +19,8 @@ namespace Crowy
         using MeshLists = std::vector<std::vector<const MeshData*>>;
 
         RenderScene& scene;
-        const LoadedStage& stage;
+        // the document's rows are what the inspector edits
+        LoadedStage& stage;
         const StageBindings& bindings;
         std::vector<EditorCut> cuts;
         std::vector<Str> keys;
@@ -32,7 +33,7 @@ namespace Crowy
         std::vector<usize> objectOfSlot;
 
     public:
-        StageContent(RenderScene& scene, const LoadedStage& stage, const StageBindings& bindings);
+        StageContent(RenderScene& scene, LoadedStage& stage, const StageBindings& bindings);
 
         std::span<const EditorCut> Cuts() const override { return cuts; }
         std::span<const Str> Keys() const override { return keys; }
@@ -43,6 +44,12 @@ namespace Crowy
         std::optional<PrimitiveHandle> PrimitiveOf(usize object) const override;
         std::optional<LightHandle> LightOf(usize object) const override;
         MeshList MeshesOf(PrimitiveHandle primitive) const override;
+        InspectSections Inspect(usize object) override;
+
+        // the instance row written into its primitive: matrix and bounds
+        void ApplyInstance(usize instance);
+        // the quad row written into its primitive and its material's rect
+        void ApplyQuad(usize quad);
 
     private:
         void addObject(EditorObject object, std::optional<PrimitiveHandle> primitive, std::optional<LightHandle> light);
