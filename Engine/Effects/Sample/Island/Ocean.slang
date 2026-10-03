@@ -1,6 +1,5 @@
-// The sea's material: a polar grid lifted by the sea's longer waves, shaded
-// with the finer ones, the night sky in its mirror and foam at the shore.
-// Lanes: custom0.x the world's step within the loop, custom1.xyz the moon.
+// The sea's material: a grid lifted by the longer waves, shaded by as many as
+// a pixel resolves; lanes: custom0.x the loop's step, custom1.xyz the moon.
 
 #include "ForwardShading.slang"
 #include "NightSky.slang"
@@ -62,7 +61,7 @@ float4 fs_ocean(VertexOut v, bool frontFace : SV_IsFrontFace) : SV_Target {
     // a pixel's width on the water here, and the waves still wider than four
     float footprint = away * ISLAND_PIXEL_ANGLE / max(V.y, 0.1);
     uint count = SEA_WAVE_COUNT;
-    for(uint i = SEA_VERTEX_WAVES; i < SEA_WAVE_COUNT; ++i) {
+    for(uint i = 0u; i < SEA_WAVE_COUNT; ++i) {
         if(1.0 / SeaInvLength[i] < 4.0 * footprint) {
             count = i;
             break;
@@ -78,8 +77,7 @@ float4 fs_ocean(VertexOut v, bool frontFace : SV_IsFrontFace) : SV_Target {
     );
 
     // the waves too fine to draw here roughen the surface instead
-    float dropped = float(SEA_WAVE_COUNT - count) /
-                    float(SEA_WAVE_COUNT - SEA_VERTEX_WAVES);
+    float dropped = float(SEA_WAVE_COUNT - count) / float(SEA_WAVE_COUNT);
     s.normal = N;
     s.metallic = 0.0;
     s.roughness = lerp(0.06, 0.3, dropped);
@@ -101,11 +99,12 @@ float4 fs_ocean(VertexOut v, bool frontFace : SV_IsFrontFace) : SV_Target {
     s.emissive *= 1.0 - foam;
 
     float3 color = sceneColor(s, v);
-    // far off, the sea meets the far sea the sky draws under the horizon
+    // near the horizon and toward the grid's rim, the sea meets the far sea
+    // the sky draws under the horizon
     if(debugMode == DebugModeLit) {
         float nearHorizon = 1.0 - smoothstep(0.004, 0.012, V.y);
-        float fade = max(nearHorizon, smoothstep(200.0, 280.0, away));
-        color = lerp(color, FarSea, fade);
+        float rim = smoothstep(200.0, 280.0, length(xz));
+        color = lerp(color, FarSea, max(nearHorizon, rim));
     }
     return float4(color, 1.0);
 }

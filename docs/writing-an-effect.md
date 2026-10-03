@@ -114,6 +114,7 @@ inline ParticleEffectDesc sparksDesc() {
     읽는다.
   - `IslandShapes.slang`: `islandCrown(xz)`, `tipiRoof(xz)`, `tipiReach`, `tipiApothem`.
     비가 앉는 면, 불씨가 갇히는 티피가 여기 있다.
+  - `Sea.slang`: `seaHeight(xz, step, count, onGrid)`. 비가 앉는 파도가 여기 있다.
   - `Weather.slang`: `fireBreath(effect.worldStep)`과 `windAt(xz, effect.worldStep)`.
     불빛과 불꽃이 같이 숨 쉬고, 비와 불씨와 불꽃이 같은 바람을 받는다. 바람은 자리와
     world step만의 함수라서, C++(`Weather.hpp`)도 같은 자리 같은 스텝이면 허용 오차 안의
@@ -176,14 +177,18 @@ CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1
 ## 6. 파티클이 아닌 것
 
 Island의 바다는 파티클도 필드도 아니고 머티리얼이다. `Ocean.slang`의 `vs_ocean`이
-섬을 둘러싼 극좌표 격자(반지름 3.5~280 m)를 파도로 들어 올리고, `fs_ocean`이 픽셀마다
-더 잔 파도로 노멀을 만든 뒤 엔진의 빛 루프(`sceneColor`)로 달과 불빛의 반사를 얻는다.
-밤하늘의 반사와 물가의 거품은 그 위에 더한다.
+섬을 둘러싼 극좌표 격자(반지름 3.5~280 m)를 긴 파도 12개로 들어 올린다. `fs_ocean`은
+그 픽셀이 감당하는 만큼의 파도로 노멀을 만들고, 밤하늘의 반사(emissive)와 물가의
+거품(albedo, roughness)을 `Surface`에 넣은 뒤 엔진의 빛 루프(`sceneColor`)로 달과
+물가의 불빛 반사를 얻는다. 그래서 Normals 같은 데이터 뷰도 그대로 맞다.
 - 파도는 `Sea.slang`의 `seaHeight(xz, step, count, onGrid)`다. 날카로운 마루의 파도
   36개(`SeaWaves.h`, C++도 같은 표를 읽는다)를 바람 방향으로 흘린다. 셰이더토이의
-  Seascape나 afl_ext의 바다에서 기법만 배웠고, 코드와 숫자는 가져오지 않았다(라이선스).
+  Seascape(CC BY-NC-SA)와 afl_ext의 바다(2023판 MIT)에서 기법을 배웠고 코드는 가져오지
+  않았다. 파장 비 1.18과 12/36 나눔은 afl_ext의 값이고, 높이와 방향과 속도는 물리에서
+  새로 정했다.
 - 머티리얼의 레인 두 개로 시간과 달을 받는다: `custom0.x`가 루프 안의 world step,
-  `custom1.xyz`가 달 쪽 방향이다. `Island.cpp`가 프레임마다 쓴다.
+  `custom1.xyz`가 달 쪽 방향이다. `Island.cpp`가 step은 프레임마다, 달은 만들 때 한 번
+  쓴다.
 - 비는 같은 `seaHeight`(격자 파도 12개)에 떨어지고, 물결 고리는 파도를 타고,
   `ParticleCheck`의 CPU 트윈(`Sea.hpp`)이 같은 높이를 계산한다.
 

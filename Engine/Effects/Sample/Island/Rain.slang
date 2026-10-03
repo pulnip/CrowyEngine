@@ -113,10 +113,11 @@ float4 fs_streaks(RainVertex v) : SV_Target {
 RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     Particle p = loadParticle(slot);
     float t = float(p.ageSteps) / float(RingSteps);
-    // a drop the tipi stopped leaves no ring; one on the far sand a wider one
+    // by what the drop met: none on the tipi, a wider one on the sand
     float crown = islandCrown(p.custom.xz);
-    bool onTipi = tipiRoof(p.custom.xz) > max(crown, 0.0);
-    bool onSand = crown > 0.0;
+    float roof = tipiRoof(p.custom.xz);
+    bool onTipi = roof > crown && abs(p.custom.y - roof) < 1e-3;
+    bool onSand = !onTipi && abs(p.custom.y - crown) < 1e-3;
     bool showing = p.generation > 0u && t < 1.0 && !onTipi;
     float radius = showing ? lerp(0.02, onSand ? 0.3 : 0.2, t) : 0.0;
     float2 corner = stripCorner(vertexID);

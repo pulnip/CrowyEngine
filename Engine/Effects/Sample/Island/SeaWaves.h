@@ -1,8 +1,7 @@
 #pragma once
 
-// The sea's waves, longest first, read alike by C++ and Slang: 16 m down by
-// 1.18 each, within 55 deg of the wind, deep-water speeds in whole cycles a
-// loop. Written from the physics, not from any shader's numbers.
+// The sea's waves for C++ and Slang: the 1.18 ratio and the 12/36 split are
+// afl_ext's (MIT); heights, directions and deep-water speeds are physics.
 
 #define SEA_WAVE_COUNT 36u
 // the waves the grid lifts the surface by; the rain lands on them too

@@ -16,16 +16,17 @@
 namespace Crowy
 {
     using SeaLane = std::array<f32, SEA_WAVE_COUNT>;
+    using SeaCycleLane = std::array<u32, SEA_WAVE_COUNT>;
 
     inline constexpr SeaLane SeaInvLength{SEA_INV_LENGTHS};
     inline constexpr SeaLane SeaAmplitude{SEA_AMPLITUDES};
     inline constexpr SeaLane SeaDirectionX{SEA_DIRECTIONS_X};
     inline constexpr SeaLane SeaDirectionZ{SEA_DIRECTIONS_Z};
-    inline constexpr std::array<u32, SEA_WAVE_COUNT> SeaCycles{SEA_CYCLES};
+    inline constexpr SeaCycleLane SeaCycles{SEA_CYCLES};
     inline constexpr SeaLane SeaPhase{SEA_PHASES};
 
     // how much of a wave the polar grid can carry at radius r
-    inline f32 seaCellFade(f32 r, f32 invLength) {
+    inline constexpr f32 seaCellFade(f32 r, f32 invLength) {
         constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
 
         const auto cell = std::max(r, 3.5f) * TwoPi / 256.0f;

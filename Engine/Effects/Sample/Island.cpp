@@ -63,7 +63,7 @@ namespace Crowy
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
-            // from under the sand out past the far plane's reach
+            // from under the sand out to where it has faded into the far sea
             const auto seaMesh = makeSeaGrid(3.5f, 280.0f, 256);
             const auto islandMesh = makeEllipsoid(IslandRadii);
             const auto boxMesh = MakeBox(1.0f);
@@ -95,7 +95,7 @@ namespace Crowy
                     .color = {1.0f, 0.55f, 0.2f},
                     .intensity = FireIntensity,
                     .position = {ISLAND_FIRE_LIGHT},
-                    .range = 4.0f
+                    .range = 5.5f
                 }
             );
             scene.Environment() = EnvironmentSnapshot{
