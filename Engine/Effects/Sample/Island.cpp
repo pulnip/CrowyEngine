@@ -21,6 +21,8 @@ namespace Crowy
         static constexpr CStr EffectsHook = "effects";
         static constexpr CStr EmbersShader =
             "Engine/Effects/Sample/Island/Embers.slang";
+        static constexpr CStr RainShader =
+            "Engine/Effects/Sample/Island/Rain.slang";
         // where the campfire burns, on the island's crown
         static constexpr Vec3 FirePosition{0.0f, 0.4f, 0.0f};
         static constexpr f32 FireIntensity = 7.0f;
@@ -33,7 +35,10 @@ namespace Crowy
 
     public:
         Island()
-            : RenderApp(makeConfig(), std::make_unique<FlyCamera>(makeCamera())) {}
+            : RenderApp(
+                  makeConfig(),
+                  std::make_unique<FlyCamera>(makeCamera())
+              ) {}
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
@@ -97,17 +102,60 @@ namespace Crowy
 
             add(scene, water, sea, zeros(), {30.0f, 0.001f, 30.0f});
             // a flattened sphere whose crown is the fire's ground
-            add(scene, sand, island, {0.0f, -1.2f, 0.0f}, ones(), {9.0f, 1.6f, 7.0f});
+            add(
+                scene,
+                sand,
+                island,
+                {0.0f, -1.2f, 0.0f},
+                ones(),
+                {9.0f, 1.6f, 7.0f}
+            );
             // the hut, behind and left of the fire
-            add(scene, wood, box, {-3.2f, 1.1f, 2.6f}, ones(), {1.3f, 1.0f, 1.1f});
-            add(scene, charcoal, box, {-3.2f, 2.15f, 2.6f}, ones(), {1.5f, 0.08f, 1.3f});
+            add(
+                scene,
+                wood,
+                box,
+                {-3.2f, 1.1f, 2.6f},
+                ones(),
+                {1.3f, 1.0f, 1.1f}
+            );
+            add(
+                scene,
+                charcoal,
+                box,
+                {-3.2f, 2.15f, 2.6f},
+                ones(),
+                {1.5f, 0.08f, 1.3f}
+            );
             // two crossed logs and the glowing heart between them
-            add(scene, charcoal, box, FirePosition + Vec3{0.0f, 0.06f, 0.0f}, ones(), {0.5f, 0.06f, 0.07f});
-            add(scene, charcoal, box, FirePosition + Vec3{0.0f, 0.13f, 0.0f}, ones(), {0.07f, 0.06f, 0.5f});
-            add(scene, embers, box, FirePosition + Vec3{0.0f, 0.1f, 0.0f}, ones(), {0.16f, 0.08f, 0.16f});
+            add(
+                scene,
+                charcoal,
+                box,
+                FirePosition + Vec3{0.0f, 0.06f, 0.0f},
+                ones(),
+                {0.5f, 0.06f, 0.07f}
+            );
+            add(
+                scene,
+                charcoal,
+                box,
+                FirePosition + Vec3{0.0f, 0.13f, 0.0f},
+                ones(),
+                {0.07f, 0.06f, 0.5f}
+            );
+            add(
+                scene,
+                embers,
+                box,
+                FirePosition + Vec3{0.0f, 0.1f, 0.0f},
+                ones(),
+                {0.16f, 0.08f, 0.16f}
+            );
 
             effects = std::make_unique<EffectSystem>(Device());
             effects->Add(embersDesc());
+            effects->Add(rainDesc());
         }
 
         FramePipelineDesc DescribePipeline(
@@ -116,8 +164,11 @@ namespace Crowy
             auto desc = makeStandardPipeline(config);
             const auto translucent =
                 std::ranges::find(desc.passes, "Translucent", &PassDesc::name);
-            const auto depth =
-                std::ranges::find(desc.targets, "SceneDepth", &FrameTargetDesc::name);
+            const auto depth = std::ranges::find(
+                desc.targets,
+                "SceneDepth",
+                &FrameTargetDesc::name
+            );
             if(translucent == desc.passes.end() || depth == desc.targets.end())
                 return desc;
 
@@ -165,10 +216,13 @@ namespace Crowy
                 .name = EffectsHook,
                 .bufferAcquires = releases,
                 .record =
-                    [this](RHICommandList& cmdList, const HookPassContext& ctx) {
+                    [this](
+                        RHICommandList& cmdList,
+                        const HookPassContext& context
+                    ) {
                         return effects->Draw(
                             cmdList,
-                            ctx,
+                            context,
                             Renderer().Pipelines()
                         );
                     }
@@ -208,7 +262,8 @@ namespace Crowy
                 .count = 384,
                 .seed = 11,
                 .prewarmSteps = 240,
-                .emitter = toVec4(FirePosition + Vec3{0.0f, 0.12f, 0.0f}, 0.22f),
+                .emitter =
+                    toVec4(FirePosition + Vec3{0.0f, 0.12f, 0.0f}, 0.22f),
                 .params =
                     {Vec4{0.35f, 0.9f, 0.55f, 1.1f},
                      Vec4{1.6f, 0.018f, 24.0f, 0.0f},
@@ -217,12 +272,33 @@ namespace Crowy
             };
         }
 
+        // a shower over the fire and the shore; the island's ellipsoid is
+        // where its drops land
+        static ParticleEffectDesc rainDesc() {
+            return ParticleEffectDesc{
+                .name = "rain",
+                .shader = RainShader,
+                .count = 3000,
+                .seed = 23,
+                .prewarmSteps = 120,
+                .emitter = Vec4{0.0f, 6.5f, 2.0f, 6.0f},
+                .params =
+                    {Vec4{8.0f, 8.0f, 9.0f, 1.2f},
+                     Vec4{0.4f, 0.03f, 0.35f, 0.28f},
+                     Vec4{9.0f, 1.6f, 7.0f, -1.2f}},
+                .draws =
+                    {{.entry = "streaks", .blend = EffectBlend::Additive},
+                     {.entry = "ripples", .blend = EffectBlend::Alpha}}
+            };
+        }
+
         static MaterialPipelineDesc opaquePipeline() {
             constexpr CStr StandardForward =
                 "Engine/Render/Shader/StandardForward.slang";
 
             return MaterialPipelineDesc{
-                .vertexShader = {.path = StandardForward, .entryPoint = "vs_main"},
+                .vertexShader =
+                    {.path = StandardForward, .entryPoint = "vs_main"},
                 .fragmentShader =
                     {.path = StandardForward, .entryPoint = "fs_opaque"},
                 .rasterizer = {.frontCounterClockwise = false},
@@ -230,7 +306,10 @@ namespace Crowy
             };
         }
 
-        static MaterialHandle addMaterial(RenderScene& scene, MaterialData data) {
+        static MaterialHandle addMaterial(
+            RenderScene& scene,
+            MaterialData data
+        ) {
             return scene.Materials().Add(
                 MaterialResource{.data = data, .pipeline = opaquePipeline()}
             );
