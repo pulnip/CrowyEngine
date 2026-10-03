@@ -15,6 +15,7 @@ struct VertexOut {
     float4 posProj : SV_Position;
     float3 posWorld : POSITION;
     float3 normal : NORMAL;
+    float2 texCoord : TEXCOORD;
     // flat, because one draw is one material
     nointerpolation uint materialIndex : MATERIALINDEX;
 };
@@ -37,6 +38,7 @@ VertexOut vs_main(
     // every scale in the map is uniform or stretches a box along its face
     // normals, so the scaled normal keeps its direction and the FS normalizes
     output.normal = mul((float3x3)d.world, input.normal);
+    output.texCoord = input.texCoord;
     output.materialIndex = d.materialIndex;
 
     return output;
