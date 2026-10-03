@@ -173,7 +173,19 @@ CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1
 
 ## 6. 파티클이 아닌 것
 
-바다 물결이나 연기 같은 격자는 한 층 아래에서 만든다.
+Island의 바다는 파티클도 필드도 아니고 머티리얼이다. `Ocean.slang`의 `vs_ocean`이
+섬을 둘러싼 극좌표 격자(반지름 3.5~280 m)를 파도로 들어 올리고, `fs_ocean`이 픽셀마다
+더 잔 파도로 노멀을 만든 뒤 엔진의 빛 루프(`sceneColor`)로 달과 불빛의 반사를 얻는다.
+밤하늘의 반사와 물가의 거품은 그 위에 더한다.
+- 파도는 `Sea.slang`의 `seaHeight(xz, step, count, onGrid)`다. 날카로운 마루의 파도
+  36개(`SeaWaves.h`, C++도 같은 표를 읽는다)를 바람 방향으로 흘린다. 셰이더토이의
+  Seascape나 afl_ext의 바다에서 기법만 배웠고, 코드와 숫자는 가져오지 않았다(라이선스).
+- 머티리얼의 레인 두 개로 시간과 달을 받는다: `custom0.x`가 루프 안의 world step,
+  `custom1.xyz`가 달 쪽 방향이다. `Island.cpp`가 프레임마다 쓴다.
+- 비는 같은 `seaHeight`(격자 파도 12개)에 떨어지고, 물결 고리는 파도를 타고,
+  `ParticleCheck`의 CPU 트윈(`Sea.hpp`)이 같은 높이를 계산한다.
+
+바다 물결의 시뮬레이션이나 연기 같은 격자는 한 층 아래에서 만든다.
 - `FieldBuffer`: 프레임 사이에 남는 GPU 버퍼
 - `ComputeKernel`: 컴퓨트 진입점 하나
 - `FieldPass`: 획득과 해제, 디스패치 사이 배리어, 처음 쓰는 필드의 클리어

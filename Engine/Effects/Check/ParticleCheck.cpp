@@ -12,6 +12,7 @@
 #include "FieldBuffer.hpp"
 #include "Island/IslandEffects.hpp"
 #include "Island/IslandShapes.hpp"
+#include "Island/Sea.hpp"
 #include "Island/Weather.hpp"
 #include "ParticleEffects.hpp"
 #include "RHIBuffer.hpp"
@@ -74,15 +75,18 @@ namespace
                gpu.position.z == cpu.position.z;
     }
 
-    // Rain.slang's surface: the sea at 0, the sand's crown, or the tipi's
-    // pyramid
-    f32 surfaceHeight(Vec3 at) {
+    // Rain.slang's surface at a world step: the sea's grid waves, the sand's
+    // crown, or the tipi's pyramid
+    f32 surfaceHeight(Vec3 at, u32 world) {
         const Vec2 xz{at.x, at.z};
+        const auto sea = seaHeight(xz, world, SEA_VERTEX_WAVES, true);
 
-        return std::max(std::max(0.0f, islandCrown(xz)), tipiRoof(xz));
+        return std::max(std::max(sea, islandCrown(xz)), tipiRoof(xz));
     }
 
-    f32 clearance(Vec3 at) { return at.y - surfaceHeight(at); }
+    f32 clearance(Vec3 at, u32 world) {
+        return at.y - surfaceHeight(at, world);
+    }
 
     // Rain.slang's drop: anywhere in the box when first born, at its top after
     Vec3 dropStart(const ParticleEffectDesc& rain, u32 slot, u32 generation) {
@@ -268,7 +272,7 @@ namespace
         };
         for(u32 slot = 0; slot < rain.count; ++slot) {
             const auto& drop = snapshot.particles[slot];
-            below += clearance(drop.position) > -Up ? 0 : 1;
+            below += clearance(drop.position, worldOf(last)) > -Up ? 0 : 1;
             if(drop.generation == 0) {
                 ++unlanded;
                 continue;
@@ -280,7 +284,7 @@ namespace
             bool fell = true;
             for(u32 step = landing + 1; step <= last && fell; ++step) {
                 at = stepped(rain, at, worldOf(step));
-                const auto gap = clearance(at);
+                const auto gap = clearance(at, worldOf(step));
                 if(gap <= 0.0f)
                     fell = grazes(gap);
             }
@@ -294,16 +298,20 @@ namespace
             at = dropStart(rain, slot, drop.generation - 1);
             for(u32 step = birth + 1; step < landing && landed; ++step) {
                 at = stepped(rain, at, worldOf(step));
-                const auto gap = clearance(at);
+                const auto gap = clearance(at, worldOf(step));
                 if(gap <= 0.0f)
                     landed = grazes(gap);
             }
             if(landed) {
                 const auto touch = stepped(rain, at, worldOf(landing));
-                const auto gap = clearance(touch);
+                const auto gap = clearance(touch, worldOf(landing));
                 if(gap > 0.0f)
                     landed = grazes(-gap);
-                const Vec3 onSurface{touch.x, surfaceHeight(touch), touch.z};
+                const Vec3 onSurface{
+                    touch.x,
+                    surfaceHeight(touch, worldOf(landing)),
+                    touch.z
+                };
                 const Vec3 recorded{
                     drop.custom.x,
                     drop.custom.y,
@@ -334,8 +342,8 @@ namespace
         return passed;
     }
 
-    // WeatherProbe.slang's probes: every slot's wind at its own place and
-    // world step held against the CPU's
+    // WeatherProbe.slang's probes: every slot's wind and sea at its own place
+    // and world step held against the CPU's
     bool checkWeather(RHIDevice& device) {
         constexpr u32 Places = 64 * 64;
         constexpr u32 ProbedSteps = 10;
@@ -351,24 +359,28 @@ namespace
         };
         const auto snapshot = run(device, probes, 0, Copies).front();
 
-        f32 worst = 0.0f;
+        f32 windError = 0.0f;
+        f32 seaError = 0.0f;
         for(const auto& probe: snapshot.particles) {
             const auto step = std::bit_cast<u32>(probe.custom.x);
-            const auto wind =
-                windAt(Vec2{probe.position.x, probe.position.z}, step);
-            worst = std::max(
-                {worst,
+            const Vec2 xz{probe.position.x, probe.position.z};
+            const auto wind = windAt(xz, step);
+            const auto sea = seaHeight(xz, step, SEA_VERTEX_WAVES, true);
+            windError = std::max(
+                {windError,
                  std::abs(wind.x - probe.velocity.x),
                  std::abs(wind.y - probe.velocity.z)}
             );
+            seaError = std::max(seaError, std::abs(sea - probe.custom.y));
         }
 
-        const bool passed = worst <= Tolerance;
+        const bool passed = windError <= Tolerance && seaError <= Tolerance;
         std::println(
-            "  weather: {} (the wind within {:.1e} m/s of the CPU's at {} "
-            "places and {} world steps)",
+            "  weather: {} (the wind within {:.1e} m/s and the sea within "
+            "{:.1e} m of the CPU's at {} places and {} world steps)",
             passed ? "ok" : "FAIL",
-            worst,
+            windError,
+            seaError,
             Places,
             ProbedSteps
         );

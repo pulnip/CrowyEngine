@@ -19,6 +19,7 @@
 #include "PipelineCache.hpp"
 #include "RenderApp.hpp"
 #include "StandardPipeline.hpp"
+#include "WorldClock.hpp"
 
 namespace Crowy
 {
@@ -56,6 +57,7 @@ namespace Crowy
         GeometryAllocation log{};
         LightHandle fire{};
         MaterialHandle canvasMaterial{};
+        MaterialHandle seaMaterial{};
         std::unique_ptr<EffectSystem> effects;
 
     public:
@@ -67,7 +69,8 @@ namespace Crowy
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
-            const auto seaMesh = MakePlane(Vec2{30.0f, 30.0f});
+            // from under the sand out past the far plane's reach
+            const auto seaMesh = makeSeaGrid(3.5f, 280.0f, 256);
             const auto islandMesh = makeEllipsoid(IslandRadii);
             const auto boxMesh = MakeBox(1.0f);
             const auto canvasMesh = makeTipiCanvas();
@@ -106,10 +109,6 @@ namespace Crowy
                 .groundAmbient = {0.01f, 0.01f, 0.012f}
             };
 
-            const auto water = addMaterial(
-                scene,
-                {.albedo = {0.02f, 0.05f, 0.1f}, .roughness = 0.25f}
-            );
             const auto sand = addMaterial(
                 scene,
                 {.albedo = {0.55f, 0.48f, 0.36f}, .roughness = 0.95f}
@@ -141,13 +140,20 @@ namespace Crowy
                 }
             );
 
-            // casting nothing, the sea stays out of the shadow's fit
+            // the sea's material reads the world's step and the moon from its
+            // lanes; casting nothing, it stays out of the shadow's fit
+            seaMaterial = scene.Materials().Add(
+                MaterialResource{
+                    .data = {.custom1 = toVec4(ToMoon, 0.0f)},
+                    .pipeline = oceanPipeline()
+                }
+            );
             add(
                 scene,
-                water,
+                seaMaterial,
                 sea,
                 unitMat(),
-                {30.0f, 0.001f, 30.0f},
+                {282.0f, 0.4f, 282.0f},
                 PrimitiveFlags::Visible
             );
             // an ellipsoid whose crown is the fire's ground
@@ -213,12 +219,15 @@ namespace Crowy
         }
 
         // the fire breathes on the world's loop, and its glow through the
-        // canvas with it
+        // canvas with it; the sea moves on the same loop
         void OnUpdateScene(f64) override {
-            const auto breath = fireBreath(worldStep());
+            const auto step = worldStep();
+            const auto breath = fireBreath(step);
             Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
             Scene().Materials().GetRef(canvasMaterial).data.emissive =
                 CanvasGlow * breath;
+            Scene().Materials().GetRef(seaMaterial).data.custom0.x =
+                static_cast<f32>(step % LoopSteps);
         }
 
         // the effects' steps too, so spawn and update reload with the draws
@@ -263,8 +272,8 @@ namespace Crowy
                 .drawCapacity = 32,
                 .materialCapacity = 16,
                 .shadowMapSize = 2048,
-                .vertexPoolCapacity = 4096,
-                .indexPoolCapacity = 16384
+                .vertexPoolCapacity = 65536,
+                .indexPoolCapacity = 393216
             };
         }
 
@@ -295,6 +304,17 @@ namespace Crowy
                     {.cullMode = cull, .frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
+        }
+
+        // the sea's own stages: the grid lifted by its waves, shaded per pixel
+        static MaterialPipelineDesc oceanPipeline() {
+            constexpr CStr Ocean = "Engine/Effects/Sample/Island/Ocean.slang";
+
+            auto desc = opaquePipeline();
+            desc.vertexShader = {.path = Ocean, .entryPoint = "vs_ocean"};
+            desc.fragmentShader = {.path = Ocean, .entryPoint = "fs_ocean"};
+
+            return desc;
         }
 
         static MaterialHandle addMaterial(

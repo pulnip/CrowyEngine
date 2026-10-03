@@ -4,6 +4,7 @@
 
 #include "Effect.slang"
 #include "IslandShapes.slang"
+#include "Sea.slang"
 #include "Weather.slang"
 
 // what the desc's emitter and params mean here
@@ -18,10 +19,11 @@ float ringOpacity() { return effect.params[1].w; }
 // how long a ring spreads
 static const uint RingSteps = 36u;
 
-// the sea at 0, the sand's crown, or the tipi's pyramid, which stops the
-// rain over its open facets and its smoke hole too
-float surfaceHeight(float2 xz) {
-    return max(max(0.0, islandCrown(xz)), tipiRoof(xz));
+// the sea's waves as the grid draws them, the sand's crown, or the tipi's
+// pyramid, which stops the rain over its open facets and smoke hole too
+float surfaceHeight(float2 xz, uint step) {
+    float sea = seaHeight(xz, step, SEA_VERTEX_WAVES, true);
+    return max(max(sea, islandCrown(xz)), tipiRoof(xz));
 }
 
 // a drop in the box: at any height when first born, at the top after
@@ -51,7 +53,7 @@ void update(inout Particle p, uint slot) {
     float2 wind = windAt(p.position.xz, effect.worldStep);
     p.velocity = float3(wind.x, -fallSpeed(), wind.y);
     float3 next = p.position + p.velocity * effect.dt;
-    float ground = surfaceHeight(next.xz);
+    float ground = surfaceHeight(next.xz, effect.worldStep);
     if(next.y > ground) {
         p.position = next;
         return;
@@ -121,6 +123,11 @@ RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     float2 corner = stripCorner(vertexID);
     float3 world = p.custom.xyz +
                    float3(corner.x * radius, 0.012, corner.y * radius);
+    // a ring on the sea rides its waves
+    if(!onSand) {
+        uint step = effect.worldStep;
+        world.y = seaHeight(world.xz, step, SEA_VERTEX_WAVES, true) + 0.02;
+    }
 
     RainVertex o;
     o.position = toClip(world);

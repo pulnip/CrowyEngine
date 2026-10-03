@@ -1,5 +1,6 @@
 #include "IslandMeshes.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <numbers>
@@ -161,6 +162,52 @@ namespace Crowy
             if(dot(outward, Vec3{from.x + to.x, 0.0f, from.z + to.z}) < 0.0f)
                 outward = -outward;
             addQuad(mesh, {from, to, toTop, fromTop}, outward);
+        }
+
+        return mesh;
+    }
+
+    MeshData makeSeaGrid(f32 inner, f32 outer, u32 segments) {
+        constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
+
+        const auto growth = 1.0f + TwoPi / static_cast<f32>(segments);
+        std::vector<f32> radii{inner};
+        while(radii.back() < outer)
+            radii.push_back(std::min(radii.back() * growth, outer));
+
+        MeshData mesh;
+        const auto rings = static_cast<u32>(radii.size());
+        for(u32 ring = 0; ring < rings; ++ring) {
+            for(u32 i = 0; i < segments; ++i) {
+                const auto angle =
+                    TwoPi * static_cast<f32>(i) / static_cast<f32>(segments);
+                addVertex(
+                    mesh,
+                    Vec3{
+                        radii[ring] * std::sin(angle),
+                        0.0f,
+                        radii[ring] * std::cos(angle)
+                    },
+                    unitY(),
+                    Vec2{
+                        static_cast<f32>(i) / static_cast<f32>(segments),
+                        static_cast<f32>(ring) / static_cast<f32>(rings - 1)
+                    }
+                );
+            }
+        }
+        const auto at = [&](u32 ring, u32 i) {
+            return ring * segments + i % segments;
+        };
+        for(u32 ring = 0; ring + 1 < rings; ++ring) {
+            for(u32 i = 0; i < segments; ++i) {
+                const auto a = at(ring, i);
+                const auto b = at(ring, i + 1);
+                const auto c = at(ring + 1, i + 1);
+                const auto d = at(ring + 1, i);
+                addTriangle(mesh, a, b, c, unitY());
+                addTriangle(mesh, a, c, d, unitY());
+            }
         }
 
         return mesh;
