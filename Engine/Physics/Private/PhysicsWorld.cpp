@@ -24,6 +24,7 @@
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/ObjectLayerPairFilterTable.h>
+#include <Jolt/Physics/Collision/PhysicsMaterial.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
@@ -81,12 +82,47 @@ namespace
         return Crowy::toJoltQuat(rotation).IsNormalized();
     }
 
-    JPH::ShapeSettings::ShapeResult makeBox(Crowy::Vec3 halfExtent) {
+    // A compound part's own friction; every other surface keeps sDefault.
+    class PartMaterial final: public JPH::PhysicsMaterial {
+    public:
+        f32 friction = 0.0f;
+
+    public:
+        explicit PartMaterial(f32 friction)
+            : friction(friction) {}
+    };
+
+    f32 frictionOf(const JPH::Body& body, const JPH::SubShapeID& part) {
+        const auto* material = body.GetShape()->GetMaterial(part);
+        if(material == JPH::PhysicsMaterial::sDefault.GetPtr())
+            return body.GetFriction();
+
+        return static_cast<const PartMaterial*>(material)->friction;
+    }
+
+    // Jolt's own rule, with a part's friction in place of its body's
+    float combineFriction(
+        const JPH::Body& body1,
+        const JPH::SubShapeID& part1,
+        const JPH::Body& body2,
+        const JPH::SubShapeID& part2
+    ) {
+        return std::sqrt(frictionOf(body1, part1) * frictionOf(body2, part2));
+    }
+
+    JPH::ShapeSettings::ShapeResult makeBox(
+        Crowy::Vec3 halfExtent,
+        const JPH::PhysicsMaterial* material = nullptr
+    ) {
         CROWY_ASSERT(
             halfExtent.x > 0.0f && halfExtent.y > 0.0f && halfExtent.z > 0.0f,
             "a box needs a positive half extent"
         );
-        JPH::BoxShapeSettings settings(Crowy::toJolt(halfExtent));
+        JPH::BoxShapeSettings settings(
+            Crowy::toJolt(halfExtent),
+            JPH::cDefaultConvexRadius,
+            material
+        );
         settings.SetEmbedded();
 
         return settings.Create();
@@ -121,7 +157,18 @@ namespace
                             isUnit(part.pose.rotation),
                             "a part needs a unit rotation"
                         );
-                        const auto box = makeBox(part.halfExtent);
+                        CROWY_ASSERT(
+                            part.friction.value_or(0.0f) >= 0.0f,
+                            "a part's friction is not negative"
+                        );
+                        // the shape holds its material by reference count
+                        const auto material = part.friction
+                            ? JPH::RefConst<JPH::PhysicsMaterial>(
+                                  new PartMaterial(*part.friction)
+                              )
+                            : nullptr;
+                        const auto box =
+                            makeBox(part.halfExtent, material.GetPtr());
                         CROWY_ASSERT(
                             !box.HasError(),
                             "{}",
@@ -240,6 +287,7 @@ namespace Crowy
             layerPairs
         );
         system.SetGravity(toJolt(desc.gravity));
+        system.SetCombineFriction(combineFriction);
         ++this->runtime.worldCount;
     }
 

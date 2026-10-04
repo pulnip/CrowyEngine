@@ -1,6 +1,7 @@
 #pragma once
 
 #include <numbers>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -48,6 +49,8 @@ namespace Crowy
     struct CompoundPart {
         Vec3 halfExtent{0.5f, 0.5f, 0.5f};
         BodyPose pose;
+        // empty: the body's
+        std::optional<f32> friction;
     };
 
     // boxes fused into one rigid body, such as a tray or a cup; its origin is

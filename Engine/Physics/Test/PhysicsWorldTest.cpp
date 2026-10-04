@@ -594,6 +594,58 @@ TEST(Compound, TurnsAboutItsOrigin) {
     EXPECT_EQ(world.BodyCount(), 1u);
 }
 
+// one ramp, half frictionless: a block on that half slides, the other holds
+TEST(Compound, PartsKeepTheirFriction) {
+    // a 20 degree slope down toward -x
+    constexpr Vec4 Slope{0.0f, 0.0f, 0.17364818f, 0.98480775f};
+    constexpr f32 Sin = 0.34202014f;
+    constexpr f32 Cos = 0.93969262f;
+
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    world.CreateBody(BodyDesc{
+        .shape = CompoundShape{{
+            CompoundPart{
+                .halfExtent = {1.0f, 0.05f, 0.25f},
+                .pose = BodyPose{.position = {0.0f, 0.0f, -0.3f}},
+            },
+            CompoundPart{
+                .halfExtent = {1.0f, 0.05f, 0.25f},
+                .pose = BodyPose{.position = {0.0f, 0.0f, 0.3f}},
+                .friction = 0.0f,
+            },
+        }},
+        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}, .rotation = Slope},
+        .motion = BodyMotion::Static,
+        .friction = 1.0f,
+    });
+    // resting on the slope, 0.15 m along its normal
+    auto blockOn = [&](f32 z) {
+        return world.CreateBody(BodyDesc{
+            .shape = BoxShape{{0.1f, 0.1f, 0.1f}},
+            .pose = BodyPose{
+                .position = {-0.15f * Sin, 1.0f + 0.15f * Cos, z},
+                .rotation = Slope,
+            },
+            .friction = 1.0f,
+        });
+    };
+    const auto held = blockOn(-0.3f);
+    const auto slid = blockOn(0.3f);
+    const auto heldStart = world.PoseOf(held).position;
+    const auto slidStart = world.PoseOf(slid).position;
+
+    stepTimes(world, 30);
+    // tan 20 degrees is 0.36, under the held half's friction of 1
+    EXPECT_LT(norm(world.PoseOf(held).position - heldStart), 0.01f);
+    // g sin 20 degrees for half a second: 0.42 m
+    const auto slide = slidStart - world.PoseOf(slid).position;
+    EXPECT_GT(slide.x, 0.3f);
+    EXPECT_GT(slide.y, 0.1f);
+    EXPECT_EQ(world.TickCount(), 30u);
+    EXPECT_EQ(world.BodyCount(), 3u);
+}
+
 TEST(Water, LightFloatsHeavySinks) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
@@ -914,6 +966,19 @@ TEST(PhysicsDeathTest, EmptyCompound) {
             world.CreateBody(BodyDesc{.shape = CompoundShape{}});
         },
         "a compound needs a part"
+    );
+}
+
+TEST(PhysicsDeathTest, NegativePartFriction) {
+    EXPECT_DEATH(
+        {
+            PhysicsRuntime runtime;
+            PhysicsWorld world(runtime);
+            world.CreateBody(BodyDesc{
+                .shape = CompoundShape{{CompoundPart{.friction = -0.1f}}},
+            });
+        },
+        "a part's friction is not negative"
     );
 }
 
