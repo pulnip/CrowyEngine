@@ -1,5 +1,5 @@
-// A meteor shower from a radiant off the upper left: each meteor flashes
-// where it ignites, shoots off slowing, may pop; some fly in volleys.
+// A meteor shower: every meteor runs straight away from one radiant off the
+// upper left, flashing where it ignites, may pop; some fly in volleys.
 
 #include "Effect.slang"
 #include "IslandScene.h"
@@ -10,7 +10,6 @@ static const uint VolleySlots = 4u;
 static const float LaunchStep = 6.0;
 static const float FlashSteps = 18.0;
 static const float PopChance = 0.5;
-static const float SporadicChance = 0.1;
 // a trail's hue at the head and at the tail: ice, green, gold
 static const float3 HeadTints[3] = {
     float3(0.70, 0.90, 1.00),
@@ -82,11 +81,6 @@ Particle spawn(uint slot, uint generation) {
         start = normalize(start + shift * ISLAND_PIXEL_ANGLE);
         heading = awayFromRadiant(start);
     }
-    bool sporadic = slot < leader &&
-                    particleRandom(slot, generation, 5u) < SporadicChance;
-    float turn = (particleRandom(slot, generation, 6u) - 0.5) *
-                 (sporadic ? 2.1 : 0.17);
-    heading = heading * cos(turn) + cross(start, heading) * sin(turn);
 
     // near the radiant a meteor runs shorter and slower
     float spread = 0.6 + 0.4 * length(cross(start, radiant()));
@@ -119,9 +113,7 @@ Particle spawn(uint slot, uint generation) {
     // its sweep, its travel's steps, its scale, its palette and whether it pops
     p.custom = float4(sweep, travel, scale, float(palette + (pops ? 4u : 0u)));
     // its brightness: none for a member the volley leaves out
-    p.size = member < volley
-        ? (sporadic ? 0.6 : 1.0 - 0.15 * float(member))
-        : 0.0;
+    p.size = member < volley ? 1.0 - 0.15 * float(member) : 0.0;
     p.lifeSteps = member > 0u
         ? EventLife
         : uint(LaunchStep + travel + trailLag() * scale) + resting;

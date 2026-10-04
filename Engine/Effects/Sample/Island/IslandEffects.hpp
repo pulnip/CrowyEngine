@@ -43,15 +43,15 @@ namespace Crowy
         };
     }
 
-    // a shower fanning down from off the upper left, over the whole sky; the
-    // seed shows a flash on the right and two meteors on the left at frame 60
+    // a shower from one radiant far off the upper left, over the whole sky;
+    // the seed shows two flashes and two meteors in flight at frame 60
     inline ParticleEffectDesc meteorsDesc() {
         return ParticleEffectDesc{
             .name = "meteors",
             .shader = "Engine/Effects/Sample/Island/Meteors.slang",
             .count = 12,
             .seed = 277,
-            .emitter = Vec4{-1.1345f, 0.6981f, 160.0f, 0.0872f},
+            .emitter = Vec4{-1.3963f, 0.6981f, 160.0f, 0.0872f},
             .params =
                 {Vec4{-1.12f, 0.72f, 0.2f, 0.66f},
                  Vec4{0.349f, 0.593f, 0.524f, 0.768f},
