@@ -165,7 +165,7 @@
   <h1>물리 라운드 (Jolt)</h1>
   <p>CrowyEngine · 2026-10-04 시작 · 브랜치 <code>physics</code> (기준 <code>3ac04a3</code>) · 워크트리 <code>CrowyEngine-physics</code> · 자율 진행, 작업마다 커밋</p>
   <div class="chips">
-    <span class="tag ok">트레이서 끝 · 검토 대기</span>
+    <span class="tag ok">트레이서 + 물리 퍼즐 여섯 · 검토 대기</span>
     <span class="tag gray">Windows-first</span>
     <span class="tag gray">밤샘 자율 · 위임 실험</span>
     <span class="tag gray">효과 라운드와 병행 (포트 27600)</span>
@@ -178,6 +178,7 @@
     <li><a href="#attach">엔진에 붙는 방식</a></li>
     <li><a href="#how">이 라운드가 도는 방식</a></li>
     <li><a href="#design">라운드 설계에서 정한 것</a></li>
+    <li><a href="#shrines">물리 퍼즐 여섯 (physics-shrines)</a></li>
     <li><a href="#playground">플레이그라운드 (physics-playground)</a></li>
     <li><a href="#puzzles">퍼즐 (physics-puzzles)</a></li>
     <li><a href="#world">물리 월드 (physics-world)</a></li>
@@ -189,14 +190,15 @@
 <div class="card">
   <p>목표는 <b>위임 실험</b>이다. 물리(강체, Jolt)를 AI가 혼자 어디까지 끌고 가는지 본다. 오빠가 확인할 수 있게 <b>테스트</b>, <b>보이는 샘플</b>, <b>엔진에 붙는 방식에 대한 짧은 노트</b>를 함께 낸다. 오늘 밤 범위는 설계와 트레이서 불릿이다: Jolt를 트리에 넣고, 고정 틱 위의 물리 월드, 헤드리스 시나리오, 눈으로 보는 플레이그라운드. 물리 월드는 <code>RenderScene</code> 프리미티브에 한 방향으로만 변환을 쓰고, 그 글루는 액터/컴포넌트 라운드가 그대로 옮겨 갈 수 있게 자기 파일에 둔다.</p>
   <p>트레이서 불릿이 끝까지 돈다: <b>테스트</b>(물리 23, 퍼즐 16, 시계 6, 글루 7), <b>보이는 샘플</b> <code>PhysicsPlayground</code>(120 Hz 화면에서 실시간, 골든과 포트 확인), <b>붙는 방식 노트</b>(바로 아래). 작업 넷 중 셋은 코드, 넷째는 이 노트와 원장이다.</p>
+  <p><b>오후의 작업 5.</b> 트레이서를 본 오빠가 두 가지를 바꿨다: 장면은 물리만, 퍼즐은 물리를 써야 풀리는 것으로. BotW·TotK 사당을 조사해 원리가 다른 여섯(낙차와 발사각, 기울기, 관성, 접선, 지렛대, 부력)을 골라 옛 셋을 대신했다. 여섯 모두 설계 모델대로 첫 실행에 동작했고, 대조군은 각자 바꾼 하나 때문에 실패하고, 창은 포트로 읽어도 열두 실행 모두 핀 그대로다. 컴파운드의 파트별 마찰은 어느 설계도 못 본 것이라 모듈에 새로 들어갔다. 리뷰가 그 마찰이 Jolt의 manifold reduction으로 새는 것과, 키 사이 "유지"가 비트 단위로 유지가 아니던 것을 잡았다.</p>
   <p>작업별로: 설계(탐색 6, 설계 관점 2 + 비평 1) 뒤 작업 1 — <code>Engine/Physics</code>가 Jolt를 완전히 숨기고, 테스트 23개가 결정성(실행 간, 월드 간, 워커 0개 대 3개)까지 확인한다. 작업 2 — 퍼즐 셋(PlateGate, ToppleBridge, SwingDoor)이 헤드리스로 풀리고, 각자의 대조군은 이유를 남기며 실패하고, 여섯 실행의 해시가 체크포인트마다 핀으로 고정됐다. Mac이 이 핀을 그대로 재현하는지가 이 라운드의 열린 질문이다. 작업 3 — 퍼즐 셋이 Playground의 무대 위에서 실시간으로 돌고, 창은 테스트가 돈 바로 그 경로를 돈다(포트로 읽은 해시가 핀과 같다).</p>
 </div>
 <div class="stat-row">
-  <div class="stat"><div class="label">작업</div><div class="value num">4 / 4 <small>+ 리뷰 수정 3</small></div></div>
+  <div class="stat"><div class="label">작업</div><div class="value num">5 / 5 <small>+ 리뷰 수정 4</small></div></div>
   <div class="stat"><div class="label">단위 테스트 스위트</div><div class="value num">13 → 16 <small>Physics · SamplePuzzle · SamplePhysicsSync</small></div></div>
   <div class="stat"><div class="label">smoke</div><div class="value num">+1 <small>PhysicsPlayground, 골든 허용 오차 0</small></div></div>
-  <div class="stat"><div class="label">물리 · 퍼즐 테스트</div><div class="value num">23 + 16 <small>death 7 포함</small></div></div>
-  <div class="stat"><div class="label">퍼즐이 풀리는 틱</div><div class="value num">187 · 218 · 197 <small>대조군은 600틱 내내 안 풀림</small></div></div>
+  <div class="stat"><div class="label">물리 · 퍼즐 · 글루 테스트</div><div class="value num">41 + 35 + 11 <small>death 11 · 1 · 2 포함</small></div></div>
+  <div class="stat"><div class="label">퍼즐이 풀리는 틱</div><div class="value num">146 · 423 · 309 · 77 · 202 · 117 <small>대조군 여섯은 600틱 내내 안 풀림</small></div></div>
   <div class="stat"><div class="label">Jolt 빌드</div><div class="value num">21 s <small>경고 0, clang-cl</small></div></div>
 </div>
 
@@ -251,6 +253,65 @@
     <li><b>Windows와 Mac의 비트 단위 일치는 약속이 아니라 측정이다.</b> Jolt를 <code>CROSS_PLATFORM_DETERMINISTIC</code>으로 빌드했지만 clang-cl은 Jolt의 검증 목록에 없다. 핀은 Windows에서 기록하고, Mac은 맞는지 혹은 어디서 처음 갈라지는지를 적는다. 핀을 Mac에 맞춰 고치지는 않는다.</li>
   </ul>
 </div>
+
+<h2 id="shrines">물리 퍼즐 여섯 (physics-shrines) <span class="tag ok">완료</span></h2>
+<div class="card">
+  <p>트레이서를 본 오빠의 요청 두 가지(2026-10-04 오후): <b>렌더 확인용 물체를 빼고 물리만 보는 장면</b>, 그리고 <b>물리를 써야 풀리는 퍼즐</b> — 레일 위 구슬이 중력으로 속도를 얻어 날아가거나, 구슬이 아니라 상자를 옮기면 구슬이 따라오는 것처럼. 상자를 판에 올리고 문을 미는 옛 셋은 물리가 아니라 스위치였다. BotW·TotK 사당을 세 방향(룬별 메커니즘, 사당 목록, 물리 원리)으로 검색해 원리가 서로 다른 여섯을 골랐고, 옛 셋은 첫 새 퍼즐과 함께 뺐다.</p>
+  <div class="table-scroll"><table>
+    <tr><th>퍼즐</th><th>원리</th><th>풀이</th><th>대조군(바꾼 것은 하나)</th><th>풀림</th></tr>
+    <tr><td><b>KickerJump</b><br><small>TotK Ren-iz</small></td><td>낙차 → 속도, 발사각 → 사거리</td><td>킥커를 30° 올리고 게이트를 연다: 40° 경사를 굴러 3.1 m/s, 킥커 끝에서 떠서 벽(0.77 m) 너머 컵으로</td><td>게이트만: 평평한 킥커로는 못 뜨고 마찰 없는 벽면에 막힌다</td><td>146</td></tr>
+    <tr><td><b>TiltTray</b><br><small>BotW Myahm Agana</small></td><td>기울기가 바닥면 위의 중력 방향을 정한다</td><td>먼 쪽 8° → 오른쪽도 8° → 가까운 쪽 10°: 칸막이 끝을 돌아 틈으로 빠져 컵으로</td><td>먼 쪽을 안 기울인다: 칸막이 왼쪽에서 못 나온다</td><td>423</td></tr>
+    <tr><td><b>CarriedScoop</b><br><small>BotW Daka Tuss</small></td><td>관성</td><td>뒤가 트인 국자를 0.8 m/s²로 천천히 출발(경사가 버티는 g·tan 8° = 1.38 미만), 바구니 위에서 뒤로 기울여 붓는다</td><td>같은 운반을 한 틱에 0 → 1.2 m/s로: 바닥이 공 밑에서 빠지고 공이 뒤로 쏟아진다</td><td>309</td></tr>
+    <tr><td><b>SwingCut</b><br><small>TotK Gasas, BotW Shae Mo'sah</small></td><td>원운동, 끊으면 접선 방향</td><td>올라가는 중(틱 50, 2.63 m/s)에 끊는다: 앞벽 위 28 cm로 넘어 바구니로</td><td>맨 아래(틱 37)에서: 수평으로 나가 벽면에 맞는다</td><td>77</td></tr>
+    <tr><td><b>LeverCatapult</b><br><small>BotW Shai Utoh, TotK Rotsumamu</small></td><td>낙하하는 추의 운동량이 지렛대 팔을 지나 짐을 던진다</td><td>선반으로 추를 1.2 m 올렸다가 밑에서 빼낸다: 5.4 m/s로 떨어진 추가 판자를 40° 멈춤까지 돌리고, 큐브가 4 m/s로 떠서 선반 위로</td><td>선반을 제자리에서 빼낸다(0.28 m 낙하): 같은 멈춤까지 돌지만 큐브는 1.62까지만</td><td>202</td></tr>
+    <tr><td><b>BuoyPop</b><br><small>TotK Jonsau</small></td><td>부력, 깊이가 에너지를 저장</td><td>플런저로 0.6 m 눌러 잡았다가 옆으로 빼낸다: 완전히 잠긴 부표가 순 2.35 g로 떠올라 고리 위 0.5 m까지</td><td>0.15 m만 누른다: 부표 꼭대기가 물 밖에 남아 고리 높이까지만</td><td>117</td></tr>
+  </table></div>
+  <p>퍼즐 층은 이제 모드별 <b>스크립트</b>다: 키네마틱 몸체의 포즈 트랙(키마다 Linear / Smooth / EaseIn / EaseOut — 국자의 부드러운 출발과 멈춤에 마지막 둘이 필요했다)과 힌지 풀기. 임펄스는 옛 셋과 함께 빠졌다. 쟁반·국자·킥커는 원점이 회전축인 <b>컴파운드 몸체</b> 하나라서 트랙 하나가 몸체 하나를 움직인다. 모듈에는 컴파운드, 한 방향 <code>ReleaseHinge</code>, 물(<code>AddWater</code>, Jolt의 부력 임펄스), 그리고 설계에 없던 <b>파트별 마찰</b>이 들어왔다(아래). 장면은 <code>RenderApp</code>을 바로 상속해 바닥·해·하늘과 레인 여섯(3 × 2, 낮은 것 앞줄)만 그린다. 목표 쪽 몸체(컵, 바구니, 고리, 선반)가 풀리면 빛나고, 스윙의 줄은 힌지가 잡고 있는 동안만 그려지는 렌더 전용 막대다.</p>
+</div>
+<div class="gallery">
+  <figure><img src="images/physics/shrines-tick0.jpg" alt="틱 0 골든"><figcaption>골든(smoke, 틱 0). 앞줄 KickerJump, TiltTray, CarriedScoop, 뒷줄 SwingCut, LeverCatapult, BuoyPop</figcaption></figure>
+  <figure><img src="images/physics/shrines-tick125.jpg" alt="틱 125"><figcaption>틱 125(포트로 센 프레임 215). 스윙은 풀려 바구니가 빛나고, 부표가 고리 위로 솟았고, 킥커 위의 구슬이 막 떠오르려 한다</figcaption></figure>
+  <figure><img src="images/physics/shrines-tick185.jpg" alt="틱 185"><figcaption>틱 185. 판자가 멈춤까지 돌았고 큐브가 날아가는 중, 킥커의 구슬은 컵 안(146에 풀림), 국자는 운반 중</figcaption></figure>
+  <figure><img src="images/physics/shrines-tick300.jpg" alt="틱 300"><figcaption>틱 300. 큐브가 선반에 올라 선반이 빛나고(202), 국자가 바구니 위에서 붓는 중, 쟁반은 오른쪽으로 기울었다</figcaption></figure>
+  <figure><img src="images/physics/shrines-tick415.jpg" alt="틱 415"><figcaption>틱 415. 쟁반의 구슬이 틈으로 빠져 컵으로 떨어지는 중(423에 풀림), 국자의 공은 바구니 안(309)</figcaption></figure>
+</div>
+<div class="table-scroll"><table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr><td><code>7d8f0ad</code></td><td>모듈: <code>CompoundShape</code>, 한 방향 <code>ReleaseHinge</code>/<code>IsHingeHeld</code>, <code>AddWater</code>. 물리 테스트 23 → 36, 글루 7 → 8. 옛 핀과 골든 그대로(쓰지 않으면 아무것도 안 바뀐다).</td></tr>
+  <tr><td><code>1f60edc</code></td><td>퍼즐 층: 모드별 <code>PuzzleScript</code>(포즈 트랙, 힌지 풀기, 그때는 임펄스도), 물, <code>poseAt</code>(자기 TU, 명시적 산술). 옛 셋을 옮겨 핀 여섯이 그대로인 것으로 리팩터링을 확인. 퍼즐 테스트 16 → 24.</td></tr>
+  <tr><td><code>de64039</code></td><td>글루: 힌지가 잡는 동안만 그리는 줄(<code>TetherBinding</code>). 글루 8 → 11.</td></tr>
+  <tr><td><code>124ae5c</code></td><td>물리 전용 장면(<code>RenderApp</code> 직접 상속), <code>PieceRole</code>을 새 퍼즐의 역할로, 퍼즐마다 할 일 문구.</td></tr>
+  <tr><td><code>b8ee025</code></td><td>SwingCut, 그리고 옛 셋과 그것들만 쓰던 것(압력판 규칙, 임펄스 입력, <code>ZoneRole</code>)의 은퇴.</td></tr>
+  <tr><td><code>1689b88</code> · <code>04b844a</code></td><td>BuoyPop, KickerJump.</td></tr>
+  <tr><td><code>38165b1</code></td><td>모듈: 컴파운드 파트별 마찰. 물리 테스트 36 → 38.</td></tr>
+  <tr><td><code>6716abe</code> · <code>f903f97</code> · <code>fdde646</code></td><td>TiltTray, CarriedScoop, LeverCatapult.</td></tr>
+  <tr><td><code>4381104</code></td><td>리뷰 수정(아래). 물리 테스트 38 → 41, 퍼즐 34 → 35. 핀 넷과 골든을 다시 기록.</td></tr>
+</table></div>
+<h3>수치</h3>
+<div class="table-scroll"><table>
+  <tr><th>무엇</th><th>값</th></tr>
+  <tr><td>설계 모델 대 실측</td><td>설계 관점이 Jolt의 적분 순서대로 틱 단위로 돌린 모델과 비교. SwingCut: 맨 아래 틱 37(모델 37), 설계한 컷 틱 47의 각도 1.225 rad(1.234). BuoyPop: 잡았을 때 중심 0.600 / 1.050, 정점 2.17 / 1.50, 117에 풀림 — 모델과 같다. KickerJump: 활주로 3.1 m/s, 정점 0.96, 146(모델 146). TiltTray: 먼 테두리 125, 오른쪽 테두리 265, 423(모델 125 / 265 / ~420). CarriedScoop: 쏟는 틱 ~105(모델 ~98), 붓기 뒤 309(~313). LeverCatapult(비평의 두 수정 뒤): 추 5.40 m/s(5.42), 큐브 정점 2.11(2.16), 202(~205)</td></tr>
+  <tr><td>창(window)</td><td>SwingCut의 컷은 틱 43–70에서 풀린다(이르면 벽에 맞고, 늦으면 돌아서는 자리에서 벽 앞에 떨어진다) — 컷은 벽 쪽 경계에서 7틱 안. LeverCatapult는 올리는 높이 약 0.8 m부터 풀리고 높을수록 정점이 단조롭게 오른다 — 1.2 m는 양쪽에 여유. 둘 다 테스트로 고정했다</td></tr>
+  <tr><td>단위 테스트</td><td>물리 23 → 41(death 7 → 11), 퍼즐 16 → 35(death 1), 글루 7 → 11(death 2). 스위트 수는 그대로 16</td></tr>
+  <tr><td>핀</td><td>12줄(여섯 퍼즐 × 두 모드), 퍼즐을 하나 더할 때마다 앞의 줄이 바뀌지 않았는지 기계적으로 확인하며 붙였다</td></tr>
+  <tr><td>골든</td><td>퍼즐이 바뀔 때마다 다시 기록(장면 1 + 퍼즐 6 + 리뷰 1), 매번 허용 오차 0으로 3/3</td></tr>
+  <tr><td>포트 확인</td><td><code>--hold</code>로 프레임 690까지: 풀이 여섯 모두 tick 600, 해결 틱이 핀과 같고 체크포인트 7/7. <code>control.*.mode = Control</code>을 쓰고 1290까지: 대조군 여섯 모두 7/7. 종료 코드 0</td></tr>
+  <tr><td>레드 런</td><td>파트별 마찰을 위해 끈 manifold reduction을 다시 켜면 이음매 테스트가 두 순서 중 하나에서 실패한다(held 1/2). 되돌린 뒤 빌드 로그에서 재컴파일을 확인</td></tr>
+</table></div>
+<h3>위임 기록</h3>
+<ul>
+  <li><b>조사와 설계.</b> 조사 워크플로우(웹 검색 세 방향 + 종합)가 사당 후보를 모았고, 설계 워크플로우(Opus 관점 둘 "래퍼와 장면", "여섯 퍼즐의 물리" + 비평 하나)가 리터럴과 여유까지 냈다. 뒤의 관점은 각 퍼즐을 Jolt의 적분 순서로 틱 단위 모델을 돌려 리터럴을 정했는데, 옛 PlateGate의 실측과 3 % 안에서 맞는 것으로 모델을 먼저 검증했다.</li>
+  <li><b>실험이 보여 준 것.</b> 여섯 모두 <b>첫 실행에 설계한 메커니즘대로 동작했다</b>. 위험 목록 맨 위였던 LeverCatapult도 비평의 두 수정(판자 두께 8 → 12 cm, 큐브 1.65 → 1.5 m)을 넣은 첫 실행에 풀렸다. 튜닝이 멈추면 넷에서 멈추라던 비평의 관문은 쓸 일이 없었다.</li>
+  <li><b>설계가 바뀐 곳.</b> 설계는 쟁반과 국자를 "트랙 하나에 키네마틱 상자 여럿"으로 냈고, 결정 기록은 원점이 회전축인 컴파운드 하나로 바꿨다. 그런데 컴파운드는 마찰이 몸체에 하나라 바닥(0.5)과 테두리(0)를 나눌 수 없었다 — 어느 설계도 이걸 못 봤다. 테두리에 마찰이 있으면 구슬이 테두리를 따라 구를 때 접점이 미끄러져 크게 느려진다. 그래서 모듈에 파트별 마찰을 더했다(Jolt의 마찰 결합 함수를 같은 규칙으로 바꾸고 파트의 재질을 읽는다). SwingCut의 컷은 설계의 47 대신 창을 쓸어 보고 50으로 정했다. 레인 반폭 1.75는 비평이 맞았다(추의 끝은 1.47) — 1.5로 되돌렸다.</li>
+  <li><b>돌려 보고 더한 것.</b> 설계에 없던 정적 몸체 다섯 가지. SwingCut의 연석(대조군의 추가 벽에 맞고 굴러 레인 밖으로 떨어졌다)과 그네 틀(피벗이 허공에 있어 진자로 안 읽혔다), TiltTray 컵의 양 끝 벽(착지한 구슬이 남은 회전으로 지평선 뒤에 컵을 굴러 나갈 참이었다), LeverCatapult 선반의 받침벽(선반이 떠 있었다)과 장치 전체의 5 cm 이동(충격 때 힌지가 몇 cm 늘어나며 긴 팔 끝이 레인 경계 −1.5를 넘었다). 장면은 바닥을 레인 둘레로 줄였다 — 그림자 맞춤이 보이는 경계의 합집합이라 32 m 바닥이면 그림자 텍셀이 두 배 거칠다.</li>
+  <li><b>스스로 잡은 것.</b> 퍼즐을 받는 <code>PuzzleSession</code> 생성자에서 매개변수가 멤버 이름을 가려 본문이 옮겨진 빈 퍼즐을 읽었다(첫 트레이스가 "body 4가 없다"로 죽었다). 컴파운드의 원점은 질량 중심에서 거꾸로 계산되어 리터럴과 1 ulp 다르다(세션 확인을 컴파운드만 1e-6로). 스윕의 측정을 두 번 고쳤다(벽 위 높이, 꺾임 전 경사 속도까지 잰 활주로 속도).</li>
+  <li><b>리뷰가 잡은 것.</b> 확인 13건, 반박 12건. 무거운 것부터: <b>파트별 마찰이 Jolt의 manifold reduction에서 새어 나갔다</b> — 같은 평면에 붙은 두 파트의 이음매 위에서는 한 manifold로 합쳐지고 먼저 잡힌 파트의 마찰만 쓴다. 지금 퍼즐은 그런 이음매가 없어 잠재 버그였지만, 이음매 테스트를 새로 쓰고 레드 런으로 잡히는 것까지 봤다(자기 마찰을 가진 컴파운드는 reduction을 끈다). <b>같은 회전 키 사이의 유지가 유지가 아니었다</b> — nlerp가 매 틱 다시 반올림해서 CarriedScoop의 두 모드가 출발 전인데 틱 10에서 이미 갈라져 있었다(핀이 그걸 보여 주고 있었다). 이제 두 모드가 틱 10까지 같은 해시를 낸다. 물에 잠긴 몸체는 영원히 잠들지 못했다(Jolt 인터페이스의 부력 호출이 매 틱 깨운다 — Jolt 샘플처럼 깨어 있는 몸체에만 몸체 쪽 호출로 바꿨다). 바닥 경계가 y = 0에서 멈춰서 바닥에 가라앉은 공이 그림자 맞춤을 움직였다 — <b>지난 작업의 리뷰가 잡은 것과 같은 종류를 또 만들었다</b>. 나머지: 잠든 몸체를 풀 때 깨우는지 아무 테스트도 보지 않았다, 대조군과 스윕 테스트가 규칙 8의 몸체 수를 빠뜨렸다(옛 대조군은 했다), 주석 넷이 틀렸다(킥커의 회전축, 추가 지렛대와 균형을 이룬다는 말).</li>
+  <li><b>오빠가 정할 것.</b> 규칙 9: <code>AddImpulse</code>, <code>AddImpulseAt</code>, <code>MassOf</code>는 옛 셋이 은퇴하며 퍼즐 호출자를 잃었다. 모듈의 결정성·해시 테스트가 <code>AddImpulse</code>로 움직임을 만들고 <code>MassOf</code>가 부력이 나누는 컴파운드 질량을 확인해서 지우지 않고 설계 파일에 예외로 적었다. 지울지는 오빠 몫이다.</li>
+  <li><b>반박된 것 중 기억할 것.</b> 물 상자에 1 mm만 걸친 몸체도 전체 부력을 받는다(상자는 고르기만 하고 잠긴 부피는 무한한 수면으로 잰다) — 사실이지만 결정 기록이 고른 모델이고 Jolt 샘플과 같다고 반박됐다. 대조군이 "풀이에서 하나만 뺀 것"이라는 구조 검사가 사라졌다 — 새 대조군은 하나를 빼는 게 아니라 하나를 바꾸는 것이라(누르는 깊이, 출발 방식) 남길 구조가 없고, 대신 모든 키가 제 틱에 닿는 것을 시험한다고 반박됐다.</li>
+  <li><b>막힌 곳.</b> 없다.</li>
+  <li><b>남겨 둔 것.</b> 카메라가 높아서 키 큰 것(그네 틀, 판자)이 원근으로 많이 기울어 보인다 — 레인별 카메라(1–6키)는 비평의 "잘라도 되는 것" 셋째라 넣지 않았다. 120 Hz 보간, 마우스로 집기. 퍼즐을 데이터 파일로.</li>
+  <li><b>직접 다시 설계할 것 같은 곳.</b> 퍼즐의 "목표"가 겹침 상자 하나라서 컵 바닥 위 2 cm에 상자를 띄우는 식의 관례가 콘텐츠마다 반복된다. 그리고 골든이 틱 0이라 퍼즐 하나를 더할 때마다 다시 기록했다(여덟 번) — 장면을 먼저 짓기로 한 결정 기록의 대가다. 퍼즐을 먼저 다 짓고 장면을 마지막에 했다면 골든은 한 번이었을 것이다.</li>
+</ul>
 
 <h2 id="playground">플레이그라운드 (physics-playground) <span class="tag ok">완료</span></h2>
 <div class="card">
@@ -358,15 +419,16 @@
 <h2 id="next">다음</h2>
 <div class="card">
   <ol>
-    <li><b>직접 보기</b> — 저장소 루트에서 <code>build\bin\PhysicsPlayground.exe</code>(Debug). 리드인 90프레임(120 Hz에서 0.75초) 뒤 셋이 움직이고, 3.1 / 3.3 / 3.6초쯤 차례로 풀리고(PlateGate, SwingDoor, ToppleBridge), 600틱(10초)에서 1초 쉰 뒤 대조군으로 바뀐다. R/C로 바로 바꿀 수 있고, P는 인스펙터, I는 프레임 통계다.</li>
-    <li><b>포트로 확인</b> — <code>$env:CROWY_COMMAND_PORT = "27600"</code>로 <code>--hold</code> 실행, <code>. Tools\port.ps1</code>, <code>Invoke-Port run @{ until = 690 }</code>, <code>ping</code>이 <code>held</code>가 될 때까지 기다린 뒤 <code>Get-PortProperty status.PlateGate</code>(나머지 둘도). tick 600, solvedAt 187 / 218 / 197, checkpointsMatched 7이 나와야 한다.</li>
+    <li><b>직접 보기</b> — 저장소 루트에서 <code>build\bin\PhysicsPlayground.exe</code>(Debug). 리드인 90프레임(120 Hz에서 0.75초) 뒤 여섯이 움직이고, 1.3초(SwingCut)부터 7초(TiltTray)까지 차례로 풀리고, 600틱(10초)에서 1초 쉰 뒤 대조군으로 바뀐다. R/C로 바로 바꿀 수 있고, F는 카메라를 처음 자리로, L은 라벨, I는 프레임 통계다.</li>
+    <li><b>포트로 확인</b> — <code>$env:CROWY_COMMAND_PORT = "27600"</code>로 <code>--hold</code> 실행, <code>. Tools\port.ps1</code>, <code>Invoke-Port run @{ until = 690 }</code>, <code>ping</code>이 <code>held</code>가 될 때까지 기다린 뒤 <code>Get-PortProperty status.KickerJump</code>(나머지 다섯도). tick 600, solvedAt 146 / 423 / 309 / 77 / 202 / 117, checkpointsMatched 7이 나와야 한다.</li>
+    <li><b>정할 것</b> — 규칙 9의 예외(<code>AddImpulse</code>, <code>AddImpulseAt</code>, <code>MassOf</code>를 둘지), 그리고 카메라 — 지금은 여섯이 다 보이게 높이 있어서 그네 틀과 판자가 원근으로 많이 기운다. 레인별 카메라가 필요하면 다음에 넣는다.</li>
     <li><b>병합 결정</b> — <code>physics</code>는 <code>3ac04a3</code>(editor-stage 끝, 아직 master 아님)에서 갈라졌다. 효과 라운드의 브랜치(<code>effect</code>, <code>1a0b3ff</code> 기준)와 둘 다 바꾸는 파일은 <code>Engine/CMakeLists.txt</code> 하나다(서로 붙은 두 줄). 다만 <code>effect</code>가 <code>RenderApp</code>에 가상 함수를 더하므로, 병합 뒤에는 <code>PhysicsPlayground</code>를 다시 빌드하고 골든을 다시 확인해야 한다.</li>
     <li><b>라운드 끝</b> — 오빠가 보고 나면 맵 흡수(<code>engine-map.md</code>의 "Physics, audio, scripting" 절과 tracer·Diagnostics 언급), 설계·작업 파일 보관, 원장 정리.</li>
   </ol>
-  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests-physics.md</code>의 PH-1(빌드), PH-2(물리 테스트 23개), PH-3(퍼즐 테스트와 핀 — Windows와 비트 단위로 같은지), PH-4(Metal smoke와 첫 <code>.metal.png</code>), PH-5(Mac의 창이 핀 경로를 도는지, PH-3과 같은 답이어야 한다)에 있다.</p>
+  <p class="muted">Mac에서 확인할 것은 <code>engine-macos-tests-physics.md</code>에 있다. PH-1(빌드)은 그대로이고, PH-2–5(옛 퍼즐 셋 기준)는 작업 5가 PH-6(물리 테스트 41개), PH-7(퍼즐 여섯의 의미 테스트와 핀 — Windows와 비트 단위로 같은지), PH-8(Metal smoke와 첫 <code>.metal.png</code>), PH-9(Mac의 창이 핀 경로를 도는지)로 대신한다.</p>
 </div>
 
-<footer>CrowyEngine · physics 라운드 기록 · 트레이서 끝, 검토 대기 · 새 항목이 위로 쌓인다</footer>
+<footer>CrowyEngine · physics 라운드 기록 · 트레이서와 물리 퍼즐 여섯 끝, 검토 대기 · 새 항목이 위로 쌓인다</footer>
 
 </main>
 </body>
