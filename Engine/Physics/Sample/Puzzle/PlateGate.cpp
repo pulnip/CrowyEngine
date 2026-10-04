@@ -9,6 +9,7 @@ namespace Crowy
 
         return Puzzle{
             .kind = PuzzleKind::PlateGate,
+            .task = "push the crate onto the plate",
             .bodies = {
                 staticBox(
                     "floor",
@@ -30,7 +31,7 @@ namespace Crowy
                 ),
                 PuzzleBody{
                     .name = "gate",
-                    .role = Gate,
+                    .role = Mover,
                     .desc = BodyDesc{
                         .shape = BoxShape{{0.1f, 0.3f, 0.4f}},
                         .pose = BodyPose{.position = {0.3f, 0.31f, -0.6f}},
@@ -39,7 +40,7 @@ namespace Crowy
                 },
                 PuzzleBody{
                     .name = "crate",
-                    .role = Crate,
+                    .role = Payload,
                     .desc = BodyDesc{
                         .shape = BoxShape{{0.2f, 0.2f, 0.2f}},
                         .pose = BodyPose{.position = {-1.2f, 0.2f, 0.6f}},

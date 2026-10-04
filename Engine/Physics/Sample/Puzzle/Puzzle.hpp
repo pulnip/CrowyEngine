@@ -54,11 +54,15 @@ namespace Crowy
     enum class PieceRole : u8 {
         Ground,
         Wall,
-        Gate,
-        Crate,
-        Slab,
-        Door,
-        Ball,
+        // kinematic, moved by the script or a rule
+        Mover,
+        // turns or topples to pass the motion on
+        Lever,
+        Weight,
+        // what the goal asks for
+        Payload,
+        // where the payload ends up; lit once solved
+        Goal,
     };
 
     enum class ZoneRole : u8 {
@@ -101,6 +105,8 @@ namespace Crowy
     struct PuzzleHinge {
         u32 body = 0;
         HingeDesc desc;
+        // drawn as a rod from the pivot to the body while it holds
+        bool tethered = false;
     };
 
     // a box the puzzle reads with Overlapping; not a body
@@ -165,6 +171,8 @@ namespace Crowy
 
     struct Puzzle {
         PuzzleKind kind = PuzzleKind::PlateGate;
+        // what the solution does, in a few words
+        std::string_view task;
         PuzzleBodies bodies;
         PuzzleHinges hinges;
         PuzzleZones zones;
@@ -199,6 +207,16 @@ namespace Crowy
     CROWY_ENUM_BEGIN(PuzzleMode)
     CROWY_ENUM_VALUE(Solution)
     CROWY_ENUM_VALUE(Control)
+    CROWY_ENUM_END()
+
+    CROWY_ENUM_BEGIN(PieceRole)
+    CROWY_ENUM_VALUE(Ground)
+    CROWY_ENUM_VALUE(Wall)
+    CROWY_ENUM_VALUE(Mover)
+    CROWY_ENUM_VALUE(Lever)
+    CROWY_ENUM_VALUE(Weight)
+    CROWY_ENUM_VALUE(Payload)
+    CROWY_ENUM_VALUE(Goal)
     CROWY_ENUM_END()
 
     CROWY_ENUM_BEGIN(Easing)

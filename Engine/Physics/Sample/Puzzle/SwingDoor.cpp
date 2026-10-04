@@ -9,6 +9,7 @@ namespace Crowy
 
         return Puzzle{
             .kind = PuzzleKind::SwingDoor,
+            .task = "swing the door open",
             .bodies = {
                 staticBox(
                     "floor",
@@ -36,7 +37,7 @@ namespace Crowy
                 ),
                 PuzzleBody{
                     .name = "door",
-                    .role = Door,
+                    .role = Lever,
                     .desc = BodyDesc{
                         .shape = BoxShape{{0.06f, 0.35f, 0.4f}},
                         .pose = BodyPose{.position = {0.0f, 0.4f, 0.0f}},

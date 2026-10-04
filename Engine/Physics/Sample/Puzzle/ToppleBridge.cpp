@@ -9,6 +9,7 @@ namespace Crowy
 
         return Puzzle{
             .kind = PuzzleKind::ToppleBridge,
+            .task = "topple the slab across the gap",
             .bodies = {
                 staticBox(
                     "floor",
@@ -46,7 +47,7 @@ namespace Crowy
                 ),
                 PuzzleBody{
                     .name = "slab",
-                    .role = Slab,
+                    .role = Lever,
                     .desc = BodyDesc{
                         .shape = BoxShape{{0.1f, 0.7f, 0.3f}},
                         .pose = BodyPose{.position = {0.8f, 1.2f, 0.0f}},

@@ -36,7 +36,7 @@ namespace Crowy
     inline constexpr PuzzleBody puzzleBall(Vec3 position) {
         return PuzzleBody{
             .name = "ball",
-            .role = PieceRole::Ball,
+            .role = PieceRole::Payload,
             .desc = BodyDesc{
                 .shape = SphereShape{PuzzleBallRadius},
                 .pose = BodyPose{.position = position},

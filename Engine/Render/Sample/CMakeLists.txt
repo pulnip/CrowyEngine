@@ -63,8 +63,6 @@ SOURCES
     RenderApp.cpp
     PortStatusChip.cpp
     StatsOverlay.cpp
-    PlaygroundScene.cpp
-    RenderReflection.cpp
     PhysicsPlayground.cpp
 DEPENDS
     Crowy::Remote
