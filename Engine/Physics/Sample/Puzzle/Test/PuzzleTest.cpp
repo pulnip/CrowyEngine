@@ -78,14 +78,15 @@ TEST(PuzzleBuild, ModesShareTheBuild) {
         EXPECT_EQ(solution.GetStatus().tick, 0u);
         EXPECT_EQ(control.GetStatus().tick, 0u);
 
-        const auto& puzzle = solution.GetPuzzle();
-        ASSERT_EQ(puzzle.solution.size(), 2u);
-        ASSERT_EQ(puzzle.control.size(), 1u);
+        const auto& solutionInputs = solution.GetPuzzle().solution.impulses;
+        const auto& controlInputs = solution.GetPuzzle().control.impulses;
+        ASSERT_EQ(solutionInputs.size(), 2u);
+        ASSERT_EQ(controlInputs.size(), 1u);
         // the control is the solution without the mechanism's move
-        EXPECT_EQ(puzzle.control[0].tick, puzzle.solution[1].tick);
-        EXPECT_EQ(puzzle.control[0].body, puzzle.solution[1].body);
-        EXPECT_EQ(puzzle.control[0].impulse, puzzle.solution[1].impulse);
-        EXPECT_EQ(puzzle.control[0].point, puzzle.solution[1].point);
+        EXPECT_EQ(controlInputs[0].tick, solutionInputs[1].tick);
+        EXPECT_EQ(controlInputs[0].body, solutionInputs[1].body);
+        EXPECT_EQ(controlInputs[0].impulse, solutionInputs[1].impulse);
+        EXPECT_EQ(controlInputs[0].point, solutionInputs[1].point);
     }
 }
 
@@ -95,19 +96,13 @@ TEST(PuzzleBuild, InsideFootprint) {
         const auto puzzle = makePuzzle(kind);
         for(const auto& body: puzzle.bodies) {
             SCOPED_TRACE(body.name);
-            const auto halfExtent =
-                std::holds_alternative<BoxShape>(body.desc.shape)
-                    ? std::get<BoxShape>(body.desc.shape).halfExtent
-                    : ones() *
-                          std::get<SphereShape>(body.desc.shape).radius;
             // a floor reaches below the origin; everything else stands on it
             const auto lowestY =
                 body.role == PieceRole::Ground ? -0.5f : -1.0e-4f;
-            const auto bounds = AABB3D{
-                .center = body.desc.pose.position,
-                .halfScale = halfExtent,
-            };
-            EXPECT_TRUE(isInside(bounds, lowestY));
+            EXPECT_TRUE(isInside(
+                boundsOf(body.desc.shape, body.desc.pose),
+                lowestY
+            ));
         }
         for(const auto& zone: puzzle.zones) {
             SCOPED_TRACE(zone.name);
@@ -117,7 +112,7 @@ TEST(PuzzleBuild, InsideFootprint) {
             ));
         }
         for(const auto mode: AllPuzzleModes) {
-            for(const auto& input: inputsOf(puzzle, mode)) {
+            for(const auto& input: scriptOf(puzzle, mode).impulses) {
                 EXPECT_LT(input.tick, PuzzleHorizon);
                 EXPECT_EQ(
                     puzzle.bodies[input.body].desc.motion,
@@ -137,7 +132,7 @@ TEST(PuzzleRun, PlateGateSolutionOpensTheGate) {
     runTo(session, PuzzleHorizon);
     const auto& status = session.GetStatus();
     EXPECT_TRUE(status.solved);
-    EXPECT_GT(status.solvedAt, puzzle.solution[1].tick);
+    EXPECT_GT(status.solvedAt, puzzle.solution.impulses[1].tick);
     EXPECT_LE(status.solvedAt, PuzzleHorizon);
     EXPECT_EQ(status.tick, PuzzleHorizon);
     EXPECT_EQ(session.GetWorld().BodyCount(), 6u);
@@ -187,7 +182,7 @@ TEST(PuzzleRun, ToppleBridgeSolutionLaysTheBridge) {
     runTo(session, PuzzleHorizon);
     const auto& status = session.GetStatus();
     EXPECT_TRUE(status.solved);
-    EXPECT_GT(status.solvedAt, puzzle.solution[1].tick);
+    EXPECT_GT(status.solvedAt, puzzle.solution.impulses[1].tick);
     EXPECT_EQ(status.tick, PuzzleHorizon);
     EXPECT_EQ(session.GetWorld().BodyCount(), 7u);
 
@@ -233,7 +228,7 @@ TEST(PuzzleRun, SwingDoorSolutionOpensTheDoor) {
     runTo(session, PuzzleHorizon);
     const auto& status = session.GetStatus();
     EXPECT_TRUE(status.solved);
-    EXPECT_GT(status.solvedAt, puzzle.solution[1].tick);
+    EXPECT_GT(status.solvedAt, puzzle.solution.impulses[1].tick);
     EXPECT_EQ(status.tick, PuzzleHorizon);
     EXPECT_EQ(session.GetWorld().BodyCount(), 6u);
     EXPECT_GE(session.GetWorld().HingeAngleOf(session.HingeHandleOf(0)), 1.4f);
@@ -295,6 +290,24 @@ TEST(PuzzleRun, StaysInFootprint) {
         }
     }
     EXPECT_EQ(ticks, 6u * PuzzleHorizon);
+}
+
+TEST(PuzzleRun, AppliesEveryEventInBothModes) {
+    PhysicsRuntime runtime;
+    usize events = 0;
+    for(const auto kind: AllPuzzleKinds) {
+        for(const auto mode: AllPuzzleModes) {
+            SCOPED_TRACE(std::format("{} {}", enumName(kind), enumName(mode)));
+            PuzzleSession session(runtime, kind, mode);
+            const auto expected =
+                eventCountOf(scriptOf(session.GetPuzzle(), mode));
+            runTo(session, PuzzleHorizon);
+            EXPECT_EQ(session.GetStatus().eventsApplied, expected);
+            events += session.GetStatus().eventsApplied;
+        }
+    }
+    // two impulses in each solution, one in each control
+    EXPECT_EQ(events, 9u);
 }
 
 TEST(PuzzleDeterminism, RunsRepeatPerTick) {

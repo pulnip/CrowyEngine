@@ -19,11 +19,21 @@ namespace Crowy
           plateLevels(puzzle.plates.size(), 0),
           pin(findPin(kind, mode)),
           actual{.kind = kind, .mode = mode} {
-        const auto& inputs = inputsOf(puzzle, this->mode);
+        const auto& script = scriptOf(puzzle, this->mode);
         CROWY_ASSERT(
-            std::ranges::is_sorted(inputs, {}, &PuzzleInput::tick),
-            "a puzzle's inputs run in tick order"
+            std::ranges::is_sorted(script.impulses, {}, &PuzzleInput::tick),
+            "a puzzle's impulses run in tick order"
         );
+        CROWY_ASSERT(
+            std::ranges::is_sorted(script.releases, {}, &HingeRelease::tick),
+            "a puzzle's releases run in tick order"
+        );
+        for(const auto& track: script.tracks) {
+            CROWY_ASSERT(
+                puzzle.bodies[track.body].desc.motion == BodyMotion::Kinematic,
+                "a track moves a Kinematic body"
+            );
+        }
 
         bodies.reserve(puzzle.bodies.size());
         for(const auto& body: puzzle.bodies)
@@ -33,6 +43,8 @@ namespace Crowy
             desc.body = HandleOf(hinge.body);
             hinges.push_back(world->CreateHinge(desc));
         }
+        for(const auto& water: puzzle.waters)
+            world->AddWater(water);
 
         status.hash = world->StateHash();
         checkpoint();
@@ -41,6 +53,8 @@ namespace Crowy
     PuzzleSession::~PuzzleSession() = default;
 
     void PuzzleSession::Tick() {
+        applyReleases();
+        driveTracks();
         applyDueInputs();
         applyPlateRules();
         world->Step();
@@ -76,8 +90,30 @@ namespace Crowy
         return plateLevels[plate];
     }
 
+    void PuzzleSession::applyReleases() {
+        const auto& releases = scriptOf(puzzle, mode).releases;
+        const auto tick = world->TickCount();
+        for(; nextRelease < releases.size() &&
+              releases[nextRelease].tick == tick;
+            ++nextRelease) {
+            world->ReleaseHinge(HingeHandleOf(releases[nextRelease].hinge));
+            ++status.eventsApplied;
+        }
+    }
+
+    // every track every tick, toward where its key puts it after this Step
+    void PuzzleSession::driveTracks() {
+        const auto next = world->TickCount() + 1;
+        for(const auto& track: scriptOf(puzzle, mode).tracks) {
+            world->MoveKinematic(
+                HandleOf(track.body),
+                poseAt(track, puzzle.bodies[track.body].desc.pose, next)
+            );
+        }
+    }
+
     void PuzzleSession::applyDueInputs() {
-        const auto& inputs = inputsOf(puzzle, mode);
+        const auto& inputs = scriptOf(puzzle, mode).impulses;
         const auto tick = world->TickCount();
         for(; nextInput < inputs.size() && inputs[nextInput].tick == tick;
             ++nextInput) {
@@ -90,6 +126,7 @@ namespace Crowy
                 );
             else
                 world->AddImpulse(HandleOf(input.body), input.impulse);
+            ++status.eventsApplied;
         }
     }
 

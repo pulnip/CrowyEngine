@@ -37,5 +37,7 @@ namespace Crowy
     void runTo(PuzzleSession& session, u64 tick);
     // the hash at tick 0 and after every tick up to the horizon
     TickHashes hashesToHorizon(PuzzleSession& session);
+    // a sphere's bounds do not turn with it; a compound's unite its parts
+    AABB3D boundsOf(const BodyShape& shape, const BodyPose& pose);
     AABB3D worldBoundsOf(const PhysicsWorld& world, BodyHandle body);
 }

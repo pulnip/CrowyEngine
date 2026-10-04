@@ -20,7 +20,7 @@ namespace Crowy
         return makePlateGate();
     }
 
-    const PuzzleInputs& inputsOf(const Puzzle& puzzle, PuzzleMode mode) {
+    const PuzzleScript& scriptOf(const Puzzle& puzzle, PuzzleMode mode) {
         return mode == PuzzleMode::Solution ? puzzle.solution : puzzle.control;
     }
 }

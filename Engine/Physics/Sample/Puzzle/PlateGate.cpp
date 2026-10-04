@@ -73,17 +73,17 @@ namespace Crowy
                     .levels = 50,
                 },
             },
-            .solution = {
+            .solution = PuzzleScript{.impulses = {
                 PuzzleInput{
                     .tick = 0,
                     .body = 4,
                     .impulse = {32.0f, 0.0f, 0.0f},
                 },
                 PuzzleInput{.tick = 120, .body = 5, .impulse = PuzzleBallPush},
-            },
-            .control = {
+            }},
+            .control = PuzzleScript{.impulses = {
                 PuzzleInput{.tick = 120, .body = 5, .impulse = PuzzleBallPush},
-            },
+            }},
             .goal = PuzzleGoal{.body = 5, .zone = 1},
         };
     }

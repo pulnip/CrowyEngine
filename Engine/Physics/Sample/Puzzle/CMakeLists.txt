@@ -3,6 +3,7 @@ add_library(SamplePuzzle STATIC
     Puzzle.cpp
     PuzzlePins.cpp
     PuzzleSession.cpp
+    PuzzleTrack.cpp
     SwingDoor.cpp
     ToppleBridge.cpp
 )

@@ -68,7 +68,7 @@ namespace Crowy
                     .halfExtent = {0.2f, 0.15f, 0.25f},
                 },
             },
-            .solution = {
+            .solution = PuzzleScript{.impulses = {
                 PuzzleInput{
                     .tick = 0,
                     .body = 4,
@@ -76,10 +76,10 @@ namespace Crowy
                     .point = Vec3{0.0f, 0.4f, 0.38f},
                 },
                 PuzzleInput{.tick = 120, .body = 5, .impulse = PuzzleBallPush},
-            },
-            .control = {
+            }},
+            .control = PuzzleScript{.impulses = {
                 PuzzleInput{.tick = 120, .body = 5, .impulse = PuzzleBallPush},
-            },
+            }},
             .goal = PuzzleGoal{.body = 5, .zone = 0},
         };
     }
