@@ -1,5 +1,6 @@
 add_library(SamplePuzzle STATIC
     BuoyPop.cpp
+    CarriedScoop.cpp
     KickerJump.cpp
     Puzzle.cpp
     PuzzlePins.cpp

@@ -16,6 +16,7 @@ namespace Crowy
     inline constexpr std::array AllPuzzleKinds{
         PuzzleKind::KickerJump,
         PuzzleKind::TiltTray,
+        PuzzleKind::CarriedScoop,
         PuzzleKind::SwingCut,
         PuzzleKind::BuoyPop,
     };
@@ -27,9 +28,9 @@ namespace Crowy
         AllPuzzleKinds.size() == EnumTraits<PuzzleKind>::entries.size()
     );
     // by PuzzleKind: every body, those that move, and the hinges
-    inline constexpr std::array<usize, 4> PuzzleBodyCounts{9, 8, 9, 12};
-    inline constexpr std::array<usize, 4> PuzzleMovingCounts{3, 2, 1, 2};
-    inline constexpr std::array<usize, 4> PuzzleHingeCounts{0, 0, 1, 0};
+    inline constexpr std::array<usize, 5> PuzzleBodyCounts{9, 8, 6, 9, 12};
+    inline constexpr std::array<usize, 5> PuzzleMovingCounts{3, 2, 2, 1, 2};
+    inline constexpr std::array<usize, 5> PuzzleHingeCounts{0, 0, 0, 1, 0};
 
     inline constexpr usize indexOf(PuzzleKind kind) {
         return static_cast<usize>(kind);

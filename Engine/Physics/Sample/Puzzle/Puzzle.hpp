@@ -36,6 +36,7 @@ namespace Crowy
     enum class PuzzleKind : u8 {
         KickerJump,
         TiltTray,
+        CarriedScoop,
         SwingCut,
         BuoyPop,
     };
@@ -154,6 +155,7 @@ namespace Crowy
     CROWY_ENUM_BEGIN(PuzzleKind)
     CROWY_ENUM_VALUE(KickerJump)
     CROWY_ENUM_VALUE(TiltTray)
+    CROWY_ENUM_VALUE(CarriedScoop)
     CROWY_ENUM_VALUE(SwingCut)
     CROWY_ENUM_VALUE(BuoyPop)
     CROWY_ENUM_END()

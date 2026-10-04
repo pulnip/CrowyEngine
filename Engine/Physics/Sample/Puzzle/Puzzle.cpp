@@ -13,6 +13,8 @@ namespace Crowy
             return makeKickerJump();
         case TiltTray:
             return makeTiltTray();
+        case CarriedScoop:
+            return makeCarriedScoop();
         case SwingCut:
             return makeSwingCut();
         case BuoyPop:
