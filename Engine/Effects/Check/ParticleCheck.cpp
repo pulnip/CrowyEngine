@@ -155,7 +155,7 @@ namespace
                 std::ranges::find(copies, frame) != copies.end();
             cmdList->Begin();
             const auto releases =
-                effects.Simulate(*cmdList, EffectView{}, worldBase + frame);
+                effects.Simulate(*cmdList, EffectView{}, worldBase + frame, 1);
             if(copied) {
                 cmdList->BeginBlitPass({}, releases);
                 cmdList->Copy(

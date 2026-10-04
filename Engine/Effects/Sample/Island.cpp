@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <memory>
 #include <numbers>
 #include <vector>
@@ -53,6 +54,14 @@ namespace Crowy
         MaterialHandle canvasMaterial{};
         MaterialHandle seaMaterial{};
         std::unique_ptr<EffectSystem> effects;
+        // the world's clock: its step, the steps this frame took, and the
+        // part of a step the frames' time has run up
+        u32 worldStep = 0;
+        u32 frameSteps = 0;
+        f64 stepDebt = 0.0;
+        // a frame dump wants frame N to be one picture: it counts a step a
+        // frame instead of the time
+        bool countsFrames = std::getenv("CROWY_DUMP_FRAME") != nullptr;
 
     public:
         Island()
@@ -214,8 +223,10 @@ namespace Crowy
 
         // the fire breathes on the world's loop, and its glow through the
         // canvas with it; the sea moves on the same loop
-        void OnUpdateScene(f64) override {
-            const auto step = worldStep();
+        void OnUpdateScene(f64 deltaTime) override {
+            frameSteps = countsFrames ? 1 : stepsOwed(deltaTime);
+            worldStep += frameSteps;
+            const auto step = worldStep;
             const auto breath = fireBreath(step);
             Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
             Scene().Materials().GetRef(canvasMaterial).data.emissive =
@@ -237,7 +248,8 @@ namespace Crowy
             const auto releases = effects->Simulate(
                 cmdList,
                 effectViewOf(Camera().View()),
-                worldStep()
+                worldStep,
+                frameSteps
             );
             hooks.push_back(PassHook{
                 .name = EffectsHook,
@@ -538,8 +550,17 @@ namespace Crowy
             cmdList.Draw(3, 1);
         }
 
-        // one step a frame, the clock the effects and the fire's light share
-        u32 worldStep() const { return static_cast<u32>(FrameNumber()); }
+        // the steps of 1/60 s this frame's time owes, at 60 a second whatever
+        // the display draws; at most four after a hitch
+        u32 stepsOwed(f64 deltaTime) {
+            constexpr auto MostSteps = 4.0;
+
+            stepDebt += deltaTime * 60.0;
+            const auto owed = std::min(std::floor(stepDebt), MostSteps);
+            stepDebt = std::min(stepDebt - owed, 1.0);
+
+            return static_cast<u32>(owed);
+        }
     };
 }
 

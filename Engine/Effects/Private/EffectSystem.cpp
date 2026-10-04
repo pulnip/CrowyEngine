@@ -141,14 +141,17 @@ namespace Crowy
     std::span<const RHIBufferBarrier> EffectSystem::Simulate(
         RHICommandList& cmdList,
         const EffectView& view,
-        u32 worldStep
+        u32 worldStep,
+        u32 steps
     ) {
         this->view = view;
         this->worldStep = worldStep;
+        const auto taken = paused ? 0u : steps;
         const auto started = [](const auto& effect) {
             return effect->next > 0;
         };
-        if(effects.empty() || (paused && std::ranges::all_of(effects, started)))
+        const bool idle = taken == 0 && std::ranges::all_of(effects, started);
+        if(effects.empty() || idle)
             return {};
 
         FieldPass pass(cmdList, kernels);
@@ -158,13 +161,13 @@ namespace Crowy
             FieldBuffer* const touches[] = {&effect->particles};
             // the first frame shows the steady state the prewarm reaches;
             // paused, only an effect not yet started runs
-            auto steps = paused ? 0u : 1u;
+            auto count = taken;
             if(effect->next == 0)
-                steps = desc.prewarmSteps + 1;
-            for(u32 s = 0; s < steps; ++s) {
+                count = desc.prewarmSteps + 1;
+            for(u32 s = 0; s < count; ++s) {
                 auto push = pushOf(*effect);
                 push.step = effect->next++;
-                push.worldStep = worldStep - (steps - 1 - s);
+                push.worldStep = worldStep - (count - 1 - s);
                 pass.Dispatch(
                     *effect->step,
                     push,

@@ -47,16 +47,17 @@ namespace
         // the world step the last frame showed
         u32 worldStep = 0;
 
-        // a frame: the simulation, then a pass drawing the effects the way a
-        // hook pass does, after view 0; returns the draws
-        u32 Frame() {
+        // a frame of `steps` steps: the simulation, then a pass drawing the
+        // effects the way a hook pass does, after view 0; returns the draws
+        u32 Frame(u32 steps = 1) {
             static constexpr std::array ColorFormats{
                 RHIPixelFormat::RGBA16_FLOAT
             };
 
             cmdList.Begin();
+            worldStep += steps;
             const auto releases =
-                effects.Simulate(cmdList, EffectView{}, ++worldStep);
+                effects.Simulate(cmdList, EffectView{}, worldStep, steps);
             const std::array colors{RHIColorAttachment{.texture = &color}};
             const std::array acquires{MakeBarrier(
                 color,
@@ -218,6 +219,27 @@ TEST(EffectSystem, PushesCarryTheWorldStep) {
     ASSERT_EQ(pass.pushes.size(), 2u);
     for(const auto& push: pass.pushes)
         EXPECT_EQ(pushOf(push).worldStep, 2u);
+}
+
+// a frame takes the steps its clock owes: two up to the world step, or none
+// while the draws still show it
+TEST(EffectSystem, AFrameTakesTheStepsItsClockOwes) {
+    Fixture f;
+    f.effects.Add(desc("a", 32));
+    f.Frame();
+
+    f.Frame(2);
+    const auto& pass = f.cmdList.computePasses.at(0);
+    ASSERT_EQ(pass.dispatches.size(), 2u);
+    EXPECT_EQ(pushOf(pass.dispatches[0].push).worldStep, 2u);
+    EXPECT_EQ(pushOf(pass.dispatches[1].push).worldStep, 3u);
+    EXPECT_EQ(f.effects.Steps("a"), 3u);
+
+    f.Frame(0);
+    EXPECT_TRUE(f.cmdList.computePasses.empty());
+    EXPECT_TRUE(f.cmdList.violations.empty());
+    EXPECT_EQ(pushOf(f.cmdList.passes.at(0).pushes.at(0)).worldStep, 3u);
+    EXPECT_EQ(f.effects.Steps("a"), 3u);
 }
 
 // paused, a started system records no step and no acquire for the draws
