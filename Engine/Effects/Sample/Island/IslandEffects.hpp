@@ -43,20 +43,24 @@ namespace Crowy
         };
     }
 
-    // a shower from a radiant low on the left, about one in the sky at a
-    // time; the seed puts one high on the left at frame 60
+    // a shower fanning down from a radiant off the upper left, ignitions
+    // spread over the sky, a volley now and then; the seed puts a flash on
+    // the right and two meteors on the left at frame 60
     inline ParticleEffectDesc meteorsDesc() {
         return ParticleEffectDesc{
             .name = "meteors",
             .shader = "Engine/Effects/Sample/Island/Meteors.slang",
             .count = 12,
-            .seed = 1,
-            .emitter = Vec4{-1.6581f, 0.0873f, 160.0f, 0.0f},
+            .seed = 277,
+            .emitter = Vec4{-1.1345f, 0.6981f, 160.0f, 0.0872f},
             .params =
-                {Vec4{-0.7854f, 0.6109f, 0.1745f, 0.4189f},
-                 Vec4{0.262f, 0.524f, 0.25f, 2.0f},
-                 Vec4{1.2f, 0.125f, 0.0f, 0.0f}},
-            .draws = {{.entry = "meteors", .blend = EffectBlend::Additive}}
+                {Vec4{-1.12f, 0.72f, 0.2f, 0.66f},
+                 Vec4{0.349f, 0.593f, 0.524f, 0.768f},
+                 Vec4{5.0f, 2.0f, 12.0f, 0.1f}},
+            .draws =
+                {{.entry = "trails", .blend = EffectBlend::Additive},
+                 {.entry = "heads", .blend = EffectBlend::Additive},
+                 {.entry = "flashes", .blend = EffectBlend::Additive}}
         };
     }
 
