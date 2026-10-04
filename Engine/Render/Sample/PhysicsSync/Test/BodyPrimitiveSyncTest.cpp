@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include <gtest/gtest.h>
 
 #include "BodyPrimitiveSync.hpp"
@@ -24,6 +26,29 @@ namespace
             .primitive = primitive,
             .meshScale = unitMeshScaleOf(world.ShapeOf(body)),
         };
+    }
+
+    struct Pendulum {
+        BodyHandle bob;
+        HingeHandle hinge;
+    };
+
+    // a bob hung off center from a pivot, turning about z
+    Pendulum hangPendulum(PhysicsWorld& world, Vec3 pivot) {
+        const auto bob = world.CreateBody(BodyDesc{
+            .shape = SphereShape{0.1f},
+            .pose = BodyPose{.position = pivot + Vec3{0.6f, -0.8f, 0.0f}},
+            .motion = BodyMotion::Dynamic,
+            .mass = 1.0f,
+        });
+        const auto hinge = world.CreateHinge(HingeDesc{
+            .body = bob,
+            .pivot = pivot,
+            .axis = unitZ(),
+            .normal = unitX(),
+        });
+
+        return Pendulum{.bob = bob, .hinge = hinge};
     }
 }
 
@@ -214,6 +239,83 @@ TEST(BodyPrimitiveSync, CompoundPartsFollowTheirBody) {
     EXPECT_EQ(world.TickCount(), 0u);
 }
 
+TEST(BodyPrimitiveSync, TetherSpansAnchorToBody) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    RenderScene scene;
+    constexpr Vec3 Pivot{0.25f, 2.0f, 0.5f};
+    const auto [bob, hinge] = hangPendulum(world, Pivot);
+    const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
+    BodyPrimitiveSync sync(Placement);
+    sync.Bind(TetherBinding{
+        .hinge = hinge,
+        .body = bob,
+        .primitive = primitive,
+        .anchor = Pivot,
+        .axis = unitZ(),
+        .thickness = 0.03f,
+    });
+
+    for(int i = 0; i < 20; ++i)
+        world.Step();
+    sync.Sync(world, scene);
+    const auto end = world.PoseOf(bob).position;
+    const auto& written = scene.Primitives().GetRef(primitive);
+    // the unit box's height runs from the pivot to the bob
+    EXPECT_EQ(static_cast<Vec3>(written.localToWorld[1]), end - Pivot);
+    EXPECT_EQ(
+        static_cast<Vec3>(written.localToWorld[3]),
+        Placement + (Pivot + end) * 0.5f
+    );
+    // three centimeters across and along the axis, whatever the rod's length
+    const auto across = static_cast<Vec3>(written.localToWorld[0]);
+    EXPECT_NEAR(norm(across), 0.03f, 1.0e-6f);
+    EXPECT_NEAR(dot(across, end - Pivot), 0.0f, 1.0e-6f);
+    EXPECT_EQ(across.z, 0.0f);
+    EXPECT_EQ(
+        static_cast<Vec3>(written.localToWorld[2]),
+        (Vec3{0.0f, 0.0f, 0.03f})
+    );
+    const auto bounds = transformAABB3D(written.localToWorld, UnitMeshBounds);
+    EXPECT_EQ(written.worldBounds.center, bounds.center);
+    EXPECT_EQ(written.worldBounds.halfScale, bounds.halfScale);
+    EXPECT_EQ(
+        written.flags,
+        combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow)
+    );
+    // still on its circle, so the rod has the hinge's length
+    EXPECT_NEAR(norm(end - Pivot), 1.0f, 1.0e-3f);
+    EXPECT_EQ(world.TickCount(), 20u);
+}
+
+TEST(BodyPrimitiveSync, TetherHidesOnRelease) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    RenderScene scene;
+    const auto [bob, hinge] = hangPendulum(world, Vec3{0.0f, 2.0f, 0.0f});
+    const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
+    BodyPrimitiveSync sync(Placement);
+    sync.Bind(TetherBinding{
+        .hinge = hinge,
+        .body = bob,
+        .primitive = primitive,
+        .anchor = {0.0f, 2.0f, 0.0f},
+    });
+    world.Step();
+    sync.Sync(world, scene);
+    const auto held = scene.Primitives().GetRef(primitive).localToWorld;
+
+    world.ReleaseHinge(hinge);
+    for(int i = 0; i < 10; ++i)
+        world.Step();
+    sync.Sync(world, scene);
+    const auto& written = scene.Primitives().GetRef(primitive);
+    EXPECT_EQ(written.flags, PrimitiveFlags::None);
+    for(usize column = 0; column < 4; ++column)
+        EXPECT_EQ(written.localToWorld[column], held[column]);
+    EXPECT_EQ(world.TickCount(), 11u);
+}
+
 TEST(BodyPrimitiveSync, UnitMeshScaleFitsTheShape) {
     EXPECT_EQ(
         unitMeshScaleOf(BoxShape{{0.2f, 0.3f, 0.4f}}),
@@ -235,6 +337,26 @@ TEST(BodyPrimitiveSyncDeathTest, OneWriterPerPrimitive) {
             BodyPrimitiveSync sync(zeros());
             sync.Bind(bindingOf(world, body, primitive));
             sync.Bind(bindingOf(world, other, primitive));
+        },
+        "one writer"
+    );
+}
+
+TEST(BodyPrimitiveSyncDeathTest, OneWriterAcrossTethers) {
+    EXPECT_DEATH(
+        {
+            PhysicsRuntime runtime;
+            PhysicsWorld world(runtime);
+            RenderScene scene;
+            const auto pendulum = hangPendulum(world, zeros());
+            const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
+            BodyPrimitiveSync sync(zeros());
+            sync.Bind(bindingOf(world, pendulum.bob, primitive));
+            sync.Bind(TetherBinding{
+                .hinge = pendulum.hinge,
+                .body = pendulum.bob,
+                .primitive = primitive,
+            });
         },
         "one writer"
     );
