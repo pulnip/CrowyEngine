@@ -29,4 +29,5 @@ namespace Crowy
     }
 
     Puzzle makeSwingCut();
+    Puzzle makeBuoyPop();
 }

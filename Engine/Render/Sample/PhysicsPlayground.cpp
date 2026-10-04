@@ -554,16 +554,6 @@ namespace Crowy
                     lane.origin + Vec3{0.0f, 0.004f, 0.0f},
                     {PuzzleHalfWidth, PuzzleHalfWidth}
                 );
-                for(const auto& zone: puzzle.zones) {
-                    const auto bottom = zone.center.y - zone.halfExtent.y;
-                    addMark(
-                        scene,
-                        lane.goalMaterial,
-                        lane.origin +
-                            Vec3{zone.center.x, bottom + 0.008f, zone.center.z},
-                        {zone.halfExtent.x, zone.halfExtent.z}
-                    );
-                }
                 // translucent and shadowless, a hair inside its tank
                 for(const auto& water: puzzle.waters) {
                     addStatic(

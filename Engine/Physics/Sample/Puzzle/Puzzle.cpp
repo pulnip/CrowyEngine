@@ -11,6 +11,8 @@ namespace Crowy
         switch(kind) {
         case SwingCut:
             return makeSwingCut();
+        case BuoyPop:
+            return makeBuoyPop();
         }
         CROWY_ASSERT(false, "no such puzzle");
         return makeSwingCut();

@@ -1,4 +1,5 @@
 add_library(SamplePuzzle STATIC
+    BuoyPop.cpp
     Puzzle.cpp
     PuzzlePins.cpp
     PuzzleSession.cpp

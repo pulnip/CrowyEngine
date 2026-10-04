@@ -180,8 +180,37 @@ TEST(PuzzleRun, AppliesEveryEventInBothModes) {
             events += session.GetStatus().eventsApplied;
         }
     }
-    // SwingCut cuts once in each mode
+    // SwingCut cuts once in each mode; BuoyPop only moves its plunger
     EXPECT_EQ(events, 2u);
+}
+
+TEST(PuzzleRun, TracksLandOnTheirKeys) {
+    PhysicsRuntime runtime;
+    usize keys = 0;
+    for(const auto kind: AllPuzzleKinds) {
+        for(const auto mode: AllPuzzleModes) {
+            SCOPED_TRACE(std::format("{} {}", enumName(kind), enumName(mode)));
+            PuzzleSession session(runtime, kind, mode);
+            const auto& puzzle = session.GetPuzzle();
+            for(const auto& track: scriptOf(puzzle, mode).tracks) {
+                const auto& start = puzzle.bodies[track.body].desc.pose;
+                for(const auto& key: track.keys) {
+                    runTo(session, key.tick);
+                    const auto pose = poseOfBody(session, track.body);
+                    const auto aim = poseAt(track, start, key.tick);
+                    EXPECT_EQ(aim.position, key.pose.position);
+                    EXPECT_EQ(aim.rotation, key.pose.rotation);
+                    EXPECT_LT(distance(pose.position, aim.position), 1.0e-4f)
+                        << "key at tick " << key.tick;
+                    for(usize i = 0; i < 4; ++i)
+                        EXPECT_NEAR(pose.rotation[i], aim.rotation[i], 1.0e-5f);
+                    ++keys;
+                }
+            }
+        }
+    }
+    // BuoyPop's plunger: three keys in each mode
+    EXPECT_EQ(keys, 6u);
 }
 
 TEST(PuzzleDeterminism, RunsRepeatPerTick) {

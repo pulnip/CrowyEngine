@@ -11,7 +11,7 @@ namespace
 
     // pasted from PuzzlePins.MatchTheTable's output, never edited by hand
     // clang-format off
-    constexpr std::array<PuzzlePin, 2> PinTable{{
+    constexpr std::array<PuzzlePin, 4> PinTable{{
     PuzzlePin{PuzzleKind::SwingCut, PuzzleMode::Solution, 77, {
         0x2bf0a4375d246b1c, 0x02a28a66c96b6f10, 0x08e941ba9cee7761,
         0x2ce13cd8fcce2414, 0x942d9115cb21a837, 0x40de5201cca89c59,
@@ -19,6 +19,14 @@ namespace
     PuzzlePin{PuzzleKind::SwingCut, PuzzleMode::Control, 0, {
         0x2bf0a4375d246b1c, 0x02a28a66c96b6f10, 0x08e941ba9cee7761,
         0xd8630d2b951f901b, 0x92e38a51e11a569d, 0x8a1ad0e78f35ae90,
+    }},
+    PuzzlePin{PuzzleKind::BuoyPop, PuzzleMode::Solution, 117, {
+        0xa0d73d7fc46af87e, 0xb0222a2896d776e2, 0xd102322e2785613c,
+        0xb65c85207ffa75bc, 0xa47e3324f23c99fb, 0x1ebb0fc1d306e409,
+    }},
+    PuzzlePin{PuzzleKind::BuoyPop, PuzzleMode::Control, 0, {
+        0xa0d73d7fc46af87e, 0xbdaf490eab4df7e1, 0xb41208a13022d059,
+        0xe32fd37b35fa6f14, 0x8fd5182c54da7d5c, 0x5f6db3bd7dae85cd,
     }},
     }};
     // clang-format on

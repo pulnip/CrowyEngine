@@ -32,8 +32,10 @@ namespace Crowy
     inline constexpr f32 PuzzleHalfWidth = 1.5f;
     inline constexpr f32 PuzzleHeight = 3.5f;
 
+    // tall ones last: a viewer lays them out in rows of three
     enum class PuzzleKind : u8 {
         SwingCut,
+        BuoyPop,
     };
 
     enum class PuzzleMode : u8 {
@@ -149,6 +151,7 @@ namespace Crowy
 
     CROWY_ENUM_BEGIN(PuzzleKind)
     CROWY_ENUM_VALUE(SwingCut)
+    CROWY_ENUM_VALUE(BuoyPop)
     CROWY_ENUM_END()
 
     CROWY_ENUM_BEGIN(PuzzleMode)
