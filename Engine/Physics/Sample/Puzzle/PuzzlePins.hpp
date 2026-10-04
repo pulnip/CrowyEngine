@@ -25,7 +25,7 @@ namespace Crowy
 
     // a run's numbers at the pinned ticks
     struct PuzzlePin {
-        PuzzleKind kind = PuzzleKind::PlateGate;
+        PuzzleKind kind = PuzzleKind::SwingCut;
         PuzzleMode mode = PuzzleMode::Solution;
         // 0: never solved within the horizon
         u64 solvedAt = 0;

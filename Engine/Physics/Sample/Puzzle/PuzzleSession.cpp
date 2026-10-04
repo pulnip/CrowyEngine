@@ -13,37 +13,40 @@ namespace Crowy
         PuzzleKind kind,
         PuzzleMode mode
     )
+        : PuzzleSession(runtime, makePuzzle(kind), mode) {}
+
+    PuzzleSession::PuzzleSession(
+        PhysicsRuntime& runtime,
+        Puzzle puzzle,
+        PuzzleMode mode
+    )
         : world(std::make_unique<PhysicsWorld>(runtime)),
-          puzzle(makePuzzle(kind)),
+          puzzle(std::move(puzzle)),
           mode(mode),
-          plateLevels(puzzle.plates.size(), 0),
-          pin(findPin(kind, mode)),
-          actual{.kind = kind, .mode = mode} {
-        const auto& script = scriptOf(puzzle, this->mode);
-        CROWY_ASSERT(
-            std::ranges::is_sorted(script.impulses, {}, &PuzzleInput::tick),
-            "a puzzle's impulses run in tick order"
-        );
+          pin(findPin(this->puzzle.kind, mode)),
+          actual{.kind = this->puzzle.kind, .mode = mode} {
+        const auto& content = this->puzzle;
+        const auto& script = scriptOf(content, this->mode);
         CROWY_ASSERT(
             std::ranges::is_sorted(script.releases, {}, &HingeRelease::tick),
             "a puzzle's releases run in tick order"
         );
         for(const auto& track: script.tracks) {
             CROWY_ASSERT(
-                puzzle.bodies[track.body].desc.motion == BodyMotion::Kinematic,
+                content.bodies[track.body].desc.motion == BodyMotion::Kinematic,
                 "a track moves a Kinematic body"
             );
         }
 
-        bodies.reserve(puzzle.bodies.size());
-        for(const auto& body: puzzle.bodies)
+        bodies.reserve(content.bodies.size());
+        for(const auto& body: content.bodies)
             bodies.push_back(world->CreateBody(body.desc));
-        for(const auto& hinge: puzzle.hinges) {
+        for(const auto& hinge: content.hinges) {
             auto desc = hinge.desc;
             desc.body = HandleOf(hinge.body);
             hinges.push_back(world->CreateHinge(desc));
         }
-        for(const auto& water: puzzle.waters)
+        for(const auto& water: content.waters)
             world->AddWater(water);
 
         status.hash = world->StateHash();
@@ -55,8 +58,6 @@ namespace Crowy
     void PuzzleSession::Tick() {
         applyReleases();
         driveTracks();
-        applyDueInputs();
-        applyPlateRules();
         world->Step();
         status.tick = world->TickCount();
         latchGoal();
@@ -80,16 +81,6 @@ namespace Crowy
         return hinges[hinge];
     }
 
-    u32 PuzzleSession::PlateLevelOf(u32 plate) const {
-        CROWY_ASSERT(
-            plate < plateLevels.size(),
-            "the puzzle has no plate {}",
-            plate
-        );
-
-        return plateLevels[plate];
-    }
-
     void PuzzleSession::applyReleases() {
         const auto& releases = scriptOf(puzzle, mode).releases;
         const auto tick = world->TickCount();
@@ -108,59 +99,6 @@ namespace Crowy
             world->MoveKinematic(
                 HandleOf(track.body),
                 poseAt(track, puzzle.bodies[track.body].desc.pose, next)
-            );
-        }
-    }
-
-    void PuzzleSession::applyDueInputs() {
-        const auto& inputs = scriptOf(puzzle, mode).impulses;
-        const auto tick = world->TickCount();
-        for(; nextInput < inputs.size() && inputs[nextInput].tick == tick;
-            ++nextInput) {
-            const auto& input = inputs[nextInput];
-            if(input.point)
-                world->AddImpulseAt(
-                    HandleOf(input.body),
-                    input.impulse,
-                    *input.point
-                );
-            else
-                world->AddImpulse(HandleOf(input.body), input.impulse);
-            ++status.eventsApplied;
-        }
-    }
-
-    // reads the state the last Step left, so a tick's rule never sees
-    // its own Step
-    void PuzzleSession::applyPlateRules() {
-        for(usize i = 0; i < puzzle.plates.size(); ++i) {
-            const auto& rule = puzzle.plates[i];
-            const auto& zone = puzzle.zones[rule.zone];
-
-            const auto onPlate =
-                world->Overlapping(zone.center, zone.halfExtent);
-            f32 mass = 0.0f;
-            for(const auto body: onPlate) {
-                if(world->MotionOf(body) == BodyMotion::Dynamic)
-                    mass += world->MassOf(body);
-            }
-
-            auto& level = plateLevels[i];
-            const auto previous = std::exchange(
-                level,
-                nextPlateLevel(level, mass, rule)
-            );
-            if(level == previous)
-                continue;
-
-            const auto& gate = puzzle.bodies[rule.gate].desc.pose;
-            world->MoveKinematic(
-                HandleOf(rule.gate),
-                BodyPose{
-                    .position = gate.position +
-                        rule.rise * static_cast<f32>(level),
-                    .rotation = gate.rotation,
-                }
             );
         }
     }

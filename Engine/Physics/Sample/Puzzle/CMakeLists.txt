@@ -1,11 +1,9 @@
 add_library(SamplePuzzle STATIC
-    PlateGate.cpp
     Puzzle.cpp
     PuzzlePins.cpp
     PuzzleSession.cpp
     PuzzleTrack.cpp
-    SwingDoor.cpp
-    ToppleBridge.cpp
+    SwingCut.cpp
 )
 
 target_include_directories(SamplePuzzle
@@ -18,7 +16,7 @@ PUBLIC
     Crowy::Physics
 )
 
-# the literals and the gate's rise enter the simulation
+# the literals and the tracks' poses enter the simulation
 target_compile_options(SamplePuzzle
 PRIVATE
     ${CROWY_FP_CONTRACT_OFF}

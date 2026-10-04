@@ -168,7 +168,7 @@ namespace Crowy
         // One puzzle on the floor: its session, the glue that draws it, and
         // what the port sees of it.
         struct PuzzleLane {
-            PuzzleKind kind = PuzzleKind::PlateGate;
+            PuzzleKind kind = PuzzleKind::SwingCut;
             Vec3 origin = zeros();
             std::unique_ptr<PuzzleSession> session;
             BodyPrimitiveSync sync{zeros()};
@@ -185,7 +185,6 @@ namespace Crowy
         struct PuzzleMaterials {
             MaterialHandle floor;
             MaterialHandle tile;
-            MaterialHandle plate;
             MaterialHandle tether;
             MaterialHandle water;
             // a Goal body takes its lane's goal material instead
@@ -452,8 +451,6 @@ namespace Crowy
                 );
                 materials.tile =
                     add({.albedo = {0.16f, 0.18f, 0.22f}, .roughness = 0.9f});
-                materials.plate =
-                    add({.albedo = {0.22f, 0.38f, 0.85f}, .roughness = 0.5f});
                 materials.tether =
                     add({.albedo = {0.20f, 0.20f, 0.22f}, .roughness = 0.6f});
                 materials.water = scene.Materials().Add(
@@ -561,8 +558,7 @@ namespace Crowy
                     const auto bottom = zone.center.y - zone.halfExtent.y;
                     addMark(
                         scene,
-                        zone.role == ZoneRole::Plate ? materials.plate
-                                                     : lane.goalMaterial,
+                        lane.goalMaterial,
                         lane.origin +
                             Vec3{zone.center.x, bottom + 0.008f, zone.center.z},
                         {zone.halfExtent.x, zone.halfExtent.z}

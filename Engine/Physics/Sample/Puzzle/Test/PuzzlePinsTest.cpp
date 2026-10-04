@@ -74,7 +74,8 @@ TEST(PuzzlePins, MatchTheTable) {
         }
     }
     // six hashes and solvedAt per run
-    EXPECT_EQ(matched, 6u * (PinTicks.size() + 1));
+    EXPECT_EQ(actual.size(), AllPuzzleKinds.size() * AllPuzzleModes.size());
+    EXPECT_EQ(matched, actual.size() * (PinTicks.size() + 1));
     if(HasFailure())
         std::println("this binary's table:\n{}", formatTable(actual));
 }
@@ -83,14 +84,14 @@ TEST(PuzzlePins, PrintsTableSyntax) {
     EXPECT_EQ(formatHash(0xabc), "0x0000000000000abc");
 
     const auto pin = PuzzlePin{
-        .kind = PuzzleKind::ToppleBridge,
+        .kind = PuzzleKind::SwingCut,
         .mode = PuzzleMode::Control,
         .solvedAt = 0,
         .hashes = {1, 2, 3, 4, 5, 0xffff'ffff'ffff'ffff},
     };
     EXPECT_EQ(
         formatPin(pin),
-        "    PuzzlePin{PuzzleKind::ToppleBridge, PuzzleMode::Control, 0, {\n"
+        "    PuzzlePin{PuzzleKind::SwingCut, PuzzleMode::Control, 0, {\n"
         "        0x0000000000000001, 0x0000000000000002, 0x0000000000000003,\n"
         "        0x0000000000000004, 0x0000000000000005, 0xffffffffffffffff,\n"
         "    }},\n"

@@ -24,7 +24,7 @@ namespace Crowy
         // the pinned ticks reached so far, solvedAt counted at the horizon
         u32 checkpointsMatched = 0;
         u32 checkpointsMissed = 0;
-        // the script's impulses and releases applied so far
+        // the script's releases applied so far
         u32 eventsApplied = 0;
 
         friend bool operator==(const PuzzleStatus&, const PuzzleStatus&) =
@@ -40,8 +40,6 @@ namespace Crowy
         PuzzleMode mode = PuzzleMode::Solution;
         BodyHandles bodies;
         HingeHandles hinges;
-        std::vector<u32> plateLevels;
-        usize nextInput = 0;
         usize nextRelease = 0;
         // null when the table has no row for this run
         const PuzzlePin* pin = nullptr;
@@ -57,9 +55,11 @@ namespace Crowy
             PuzzleKind kind,
             PuzzleMode mode
         );
+        // a variant of a table puzzle, as a sweep tries; the pins stay its
+        // kind's
+        PuzzleSession(PhysicsRuntime& runtime, Puzzle puzzle, PuzzleMode mode);
 
-        // releases, tracks, impulses and plates, one Step, the goal, the
-        // checkpoint
+        // the due releases, the tracks, one Step, the goal, the checkpoint
         void Tick();
 
         const Puzzle& GetPuzzle() const noexcept { return puzzle; }
@@ -71,13 +71,10 @@ namespace Crowy
         const PuzzlePin& GetActualPin() const noexcept { return actual; }
         BodyHandle HandleOf(u32 body) const;
         HingeHandle HingeHandleOf(u32 hinge) const;
-        u32 PlateLevelOf(u32 plate) const;
 
     private:
         void applyReleases();
         void driveTracks();
-        void applyDueInputs();
-        void applyPlateRules();
         void latchGoal();
         void checkpoint();
     };

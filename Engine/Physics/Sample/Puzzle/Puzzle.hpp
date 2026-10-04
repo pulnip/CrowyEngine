@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -14,8 +13,6 @@ namespace Crowy
     struct PuzzleBody;
     struct PuzzleHinge;
     struct PuzzleZone;
-    struct PuzzleInput;
-    struct PlateRule;
     struct PoseKey;
     struct PoseTrack;
     struct HingeRelease;
@@ -24,8 +21,6 @@ namespace Crowy
     using PuzzleBodies = std::vector<PuzzleBody>;
     using PuzzleHinges = std::vector<PuzzleHinge>;
     using PuzzleZones = std::vector<PuzzleZone>;
-    using PuzzleInputs = std::vector<PuzzleInput>;
-    using PlateRules = std::vector<PlateRule>;
     using PoseKeys = std::vector<PoseKey>;
     using PoseTracks = std::vector<PoseTrack>;
     using HingeReleases = std::vector<HingeRelease>;
@@ -38,9 +33,7 @@ namespace Crowy
     inline constexpr f32 PuzzleHeight = 3.5f;
 
     enum class PuzzleKind : u8 {
-        PlateGate,
-        ToppleBridge,
-        SwingDoor,
+        SwingCut,
     };
 
     enum class PuzzleMode : u8 {
@@ -54,19 +47,14 @@ namespace Crowy
     enum class PieceRole : u8 {
         Ground,
         Wall,
-        // kinematic, moved by the script or a rule
+        // kinematic, moved by a track
         Mover,
-        // turns or topples to pass the motion on
+        // turns to pass the motion on
         Lever,
         Weight,
         // what the goal asks for
         Payload,
         // where the payload ends up; lit once solved
-        Goal,
-    };
-
-    enum class ZoneRole : u8 {
-        Plate,
         Goal,
     };
 
@@ -81,18 +69,12 @@ namespace Crowy
         EaseOut,
     };
 
-    // both modes build the same bodies in the same order; inputs differ
+    // both modes build the same bodies in the same order; scripts differ
     Puzzle makePuzzle(PuzzleKind kind);
-    // the level a plate rule moves to from `level` with `mass` on it
-    inline constexpr u32 nextPlateLevel(
-        u32 level,
-        f32 mass,
-        const PlateRule& rule
-    );
     const PuzzleScript& scriptOf(const Puzzle& puzzle, PuzzleMode mode);
     // where a track has a body after the Step that ends at `tick`
     BodyPose poseAt(const PoseTrack& track, const BodyPose& start, u64 tick);
-    // the impulses and releases a script applies by its last tick
+    // the releases a script applies by its last tick
     inline constexpr usize eventCountOf(const PuzzleScript& script);
 
     struct PuzzleBody {
@@ -112,28 +94,8 @@ namespace Crowy
     // a box the puzzle reads with Overlapping; not a body
     struct PuzzleZone {
         std::string_view name;
-        ZoneRole role = ZoneRole::Goal;
         Vec3 center = zeros();
         Vec3 halfExtent{0.5f, 0.5f, 0.5f};
-    };
-
-    // applied when the world's tick is `tick`, before it steps; no point
-    // means the center of mass
-    struct PuzzleInput {
-        u64 tick = 0;
-        u32 body = 0;
-        Vec3 impulse = zeros();
-        std::optional<Vec3> point;
-    };
-
-    // while the dynamic mass in `zone` reaches minMass the gate climbs one
-    // level a tick, else sinks one, within [0, levels]
-    struct PlateRule {
-        u32 zone = 0;
-        f32 minMass = 0.0f;
-        u32 gate = 0;
-        Vec3 rise = zeros();
-        u32 levels = 0;
     };
 
     // the pose reached after the Step that ends at `tick`
@@ -158,7 +120,6 @@ namespace Crowy
 
     // what the player does in one mode
     struct PuzzleScript {
-        PuzzleInputs impulses;
         PoseTracks tracks;
         HingeReleases releases;
     };
@@ -170,38 +131,24 @@ namespace Crowy
     };
 
     struct Puzzle {
-        PuzzleKind kind = PuzzleKind::PlateGate;
+        PuzzleKind kind = PuzzleKind::SwingCut;
         // what the solution does, in a few words
         std::string_view task;
         PuzzleBodies bodies;
         PuzzleHinges hinges;
         PuzzleZones zones;
         Waters waters;
-        PlateRules plates;
         PuzzleScript solution;
         PuzzleScript control;
         PuzzleGoal goal;
     };
 
     inline constexpr usize eventCountOf(const PuzzleScript& script) {
-        return script.impulses.size() + script.releases.size();
-    }
-
-    inline constexpr u32 nextPlateLevel(
-        u32 level,
-        f32 mass,
-        const PlateRule& rule
-    ) {
-        if(mass >= rule.minMass)
-            return level < rule.levels ? level + 1 : rule.levels;
-
-        return level > 0 ? level - 1 : 0;
+        return script.releases.size();
     }
 
     CROWY_ENUM_BEGIN(PuzzleKind)
-    CROWY_ENUM_VALUE(PlateGate)
-    CROWY_ENUM_VALUE(ToppleBridge)
-    CROWY_ENUM_VALUE(SwingDoor)
+    CROWY_ENUM_VALUE(SwingCut)
     CROWY_ENUM_END()
 
     CROWY_ENUM_BEGIN(PuzzleMode)

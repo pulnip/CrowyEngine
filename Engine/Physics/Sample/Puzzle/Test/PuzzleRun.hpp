@@ -14,17 +14,19 @@ namespace Crowy
     using TickHashes = std::vector<u64>;
 
     inline constexpr std::array AllPuzzleKinds{
-        PuzzleKind::PlateGate,
-        PuzzleKind::ToppleBridge,
-        PuzzleKind::SwingDoor,
+        PuzzleKind::SwingCut,
     };
     inline constexpr std::array AllPuzzleModes{
         PuzzleMode::Solution,
         PuzzleMode::Control,
     };
-    // by PuzzleKind: every body, and those that move
-    inline constexpr std::array<usize, 3> PuzzleBodyCounts{6, 7, 6};
-    inline constexpr std::array<usize, 3> PuzzleMovingCounts{3, 2, 2};
+    static_assert(
+        AllPuzzleKinds.size() == EnumTraits<PuzzleKind>::entries.size()
+    );
+    // by PuzzleKind: every body, those that move, and the hinges
+    inline constexpr std::array<usize, 1> PuzzleBodyCounts{9};
+    inline constexpr std::array<usize, 1> PuzzleMovingCounts{1};
+    inline constexpr std::array<usize, 1> PuzzleHingeCounts{1};
 
     inline constexpr usize indexOf(PuzzleKind kind) {
         return static_cast<usize>(kind);
