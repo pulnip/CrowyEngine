@@ -107,7 +107,10 @@ TEST(SwingCut, SolutionThrowsTheBobOverTheWall) {
     EXPECT_GE(rest.x, 0.95f + BobRadius - 0.02f);
     EXPECT_LE(rest.x, 1.4f - BobRadius + 0.02f);
     EXPECT_EQ(status.tick, PuzzleHorizon);
-    EXPECT_EQ(world.BodyCount(), PuzzleBodyCounts[0]);
+    EXPECT_EQ(
+        world.BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::SwingCut)]
+    );
 }
 
 TEST(SwingCut, ControlLeavesLevelIntoTheWall) {

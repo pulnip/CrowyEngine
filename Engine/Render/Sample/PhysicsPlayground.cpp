@@ -168,7 +168,7 @@ namespace Crowy
         // One puzzle on the floor: its session, the glue that draws it, and
         // what the port sees of it.
         struct PuzzleLane {
-            PuzzleKind kind = PuzzleKind::SwingCut;
+            PuzzleKind kind = PuzzleKind::KickerJump;
             Vec3 origin = zeros();
             std::unique_ptr<PuzzleSession> session;
             BodyPrimitiveSync sync{zeros()};

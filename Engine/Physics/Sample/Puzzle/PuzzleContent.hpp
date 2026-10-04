@@ -28,6 +28,7 @@ namespace Crowy
         };
     }
 
+    Puzzle makeKickerJump();
     Puzzle makeSwingCut();
     Puzzle makeBuoyPop();
 }

@@ -9,13 +9,15 @@ namespace Crowy
         using enum PuzzleKind;
 
         switch(kind) {
+        case KickerJump:
+            return makeKickerJump();
         case SwingCut:
             return makeSwingCut();
         case BuoyPop:
             return makeBuoyPop();
         }
         CROWY_ASSERT(false, "no such puzzle");
-        return makeSwingCut();
+        return makeKickerJump();
     }
 
     const PuzzleScript& scriptOf(const Puzzle& puzzle, PuzzleMode mode) {

@@ -49,8 +49,14 @@ TEST(PuzzleBuild, SessionMirrorsItsPuzzle) {
                 ASSERT_TRUE(world.IsValid(body));
                 EXPECT_EQ(world.MotionOf(body), desc.motion);
                 EXPECT_EQ(world.ShapeOf(body).index(), desc.shape.index());
-                EXPECT_EQ(world.PoseOf(body).position, desc.pose.position);
                 EXPECT_EQ(world.PoseOf(body).rotation, desc.pose.rotation);
+                // a compound's origin comes back from its center of mass
+                const auto position = world.PoseOf(body).position;
+                if(std::holds_alternative<CompoundShape>(desc.shape)) {
+                    EXPECT_LT(distance(position, desc.pose.position), 1.0e-6f);
+                    continue;
+                }
+                EXPECT_EQ(position, desc.pose.position);
             }
             for(u32 i = 0; i < puzzle.hinges.size(); ++i) {
                 EXPECT_TRUE(world.IsValid(session.HingeHandleOf(i)));
@@ -209,8 +215,9 @@ TEST(PuzzleRun, TracksLandOnTheirKeys) {
             }
         }
     }
-    // BuoyPop's plunger: three keys in each mode
-    EXPECT_EQ(keys, 6u);
+    // KickerJump: the kicker's two and the gate's two, the gate's alone in
+    // the control; BuoyPop's plunger: three in each mode
+    EXPECT_EQ(keys, 12u);
 }
 
 TEST(PuzzleDeterminism, RunsRepeatPerTick) {

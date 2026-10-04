@@ -34,6 +34,7 @@ namespace Crowy
 
     // tall ones last: a viewer lays them out in rows of three
     enum class PuzzleKind : u8 {
+        KickerJump,
         SwingCut,
         BuoyPop,
     };
@@ -133,7 +134,7 @@ namespace Crowy
     };
 
     struct Puzzle {
-        PuzzleKind kind = PuzzleKind::SwingCut;
+        PuzzleKind kind = PuzzleKind::KickerJump;
         // what the solution does, in a few words
         std::string_view task;
         PuzzleBodies bodies;
@@ -150,6 +151,7 @@ namespace Crowy
     }
 
     CROWY_ENUM_BEGIN(PuzzleKind)
+    CROWY_ENUM_VALUE(KickerJump)
     CROWY_ENUM_VALUE(SwingCut)
     CROWY_ENUM_VALUE(BuoyPop)
     CROWY_ENUM_END()

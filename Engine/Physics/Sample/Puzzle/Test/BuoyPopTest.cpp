@@ -95,7 +95,10 @@ TEST(BuoyPop, SolutionPopsThroughTheHoop) {
     const auto plunger = session.GetWorld().PoseOf(session.HandleOf(Plunger));
     EXPECT_NEAR(plunger.position.x, 0.4f, 1.0e-4f);
     EXPECT_EQ(status.tick, PuzzleHorizon);
-    EXPECT_EQ(session.GetWorld().BodyCount(), PuzzleBodyCounts[1]);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::BuoyPop)]
+    );
 }
 
 TEST(BuoyPop, ControlStopsShortOfTheHoop) {
