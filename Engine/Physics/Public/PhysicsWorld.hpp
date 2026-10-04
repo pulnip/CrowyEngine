@@ -43,6 +43,10 @@ namespace Crowy
         void AddImpulseAt(BodyHandle body, Vec3 impulse, Vec3 worldPoint);
         // kinematic bodies only; held, and reissued before every Step
         void MoveKinematic(BodyHandle body, const BodyPose& target);
+        // one way: the body swings free from the next Step, and wakes
+        void ReleaseHinge(HingeHandle hinge);
+        // applied before every Step from then on
+        void AddWater(const WaterDesc& water);
 
         // one tick of PhysicsTickSeconds
         void Step();
@@ -60,6 +64,7 @@ namespace Crowy
         f32 MassOf(BodyHandle body) const;
         bool IsAwake(BodyHandle body) const;
         f32 HingeAngleOf(HingeHandle hinge) const;
+        bool IsHingeHeld(HingeHandle hinge) const;
 
         // non-static bodies overlapping the box, sleepers included, in
         // creation order

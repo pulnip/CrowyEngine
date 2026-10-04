@@ -30,8 +30,15 @@ namespace Crowy
         for(const auto& binding: bindings) {
             const auto pose = world.PoseOf(binding.body);
             auto& primitive = scene.Primitives().GetRef(binding.primitive);
-            primitive.localToWorld = offset *
-                modelMat(pose.position, pose.rotation, binding.meshScale);
+            primitive.localToWorld = binding.part
+                ? offset * modelMat(pose.position, pose.rotation, ones()) *
+                    modelMat(
+                        binding.part->position,
+                        binding.part->rotation,
+                        binding.meshScale
+                    )
+                : offset *
+                    modelMat(pose.position, pose.rotation, binding.meshScale);
             // a sphere's bounds do not turn with it, so a rolling ball
             // never reaches below the floor and moves the shadow fit
             const auto shape = world.ShapeOf(binding.body);

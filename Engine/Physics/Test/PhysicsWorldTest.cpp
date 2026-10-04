@@ -376,6 +376,325 @@ TEST(Hinge, StopsAtLimit) {
     EXPECT_EQ(stiff.BodyCount(), 1u);
 }
 
+namespace
+{
+    // an open-top box: a floor and four walls around its origin
+    CompoundShape openBox(f32 halfWidth, f32 wallHeight) {
+        constexpr f32 Thickness = 0.05f;
+        const auto wallY = Thickness + 0.5f * wallHeight;
+        const auto wallHalfY = 0.5f * wallHeight;
+        const auto side = halfWidth - Thickness;
+
+        return CompoundShape{{
+            CompoundPart{
+                .halfExtent = {halfWidth, Thickness, halfWidth},
+                .pose = BodyPose{.position = {0.0f, 0.0f, 0.0f}},
+            },
+            CompoundPart{
+                .halfExtent = {Thickness, wallHalfY, halfWidth},
+                .pose = BodyPose{.position = {-side, wallY, 0.0f}},
+            },
+            CompoundPart{
+                .halfExtent = {Thickness, wallHalfY, halfWidth},
+                .pose = BodyPose{.position = {side, wallY, 0.0f}},
+            },
+            CompoundPart{
+                .halfExtent = {halfWidth, wallHalfY, Thickness},
+                .pose = BodyPose{.position = {0.0f, wallY, -side}},
+            },
+            CompoundPart{
+                .halfExtent = {halfWidth, wallHalfY, Thickness},
+                .pose = BodyPose{.position = {0.0f, wallY, side}},
+            },
+        }};
+    }
+}
+
+TEST(Compound, CupHoldsABallAndWeighsItsBoxes) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    const auto cup = world.CreateBody(BodyDesc{
+        .shape = openBox(0.5f, 0.3f),
+        .motion = BodyMotion::Static,
+    });
+    const auto ball = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.1f},
+        .pose = BodyPose{.position = {0.2f, 1.0f, -0.1f}},
+    });
+    // the same boxes, dynamic: 1000 kg/m^3 over their summed volume
+    const auto heavy = world.CreateBody(BodyDesc{
+        .shape = openBox(0.5f, 0.3f),
+        .pose = BodyPose{.position = {5.0f, 0.0f, 0.0f}},
+        .motion = BodyMotion::Dynamic,
+    });
+
+    stepTimes(world, 120);
+    const auto rest = world.PoseOf(ball).position;
+    // on the cup's floor, whose top is at 0.05, sunk at most the 0.02 slop,
+    // and inside its walls
+    EXPECT_GE(rest.y, 0.125f);
+    EXPECT_LE(rest.y, 0.151f);
+    EXPECT_LT(std::abs(rest.x), 0.4f);
+    EXPECT_LT(std::abs(rest.z), 0.4f);
+    ASSERT_TRUE(std::holds_alternative<CompoundShape>(world.ShapeOf(cup)));
+    EXPECT_EQ(std::get<CompoundShape>(world.ShapeOf(cup)).parts.size(), 5u);
+    const auto volume = 2.0f * 0.05f * 1.0f * 1.0f +
+        2.0f * (0.1f * 0.3f * 1.0f) + 2.0f * (1.0f * 0.3f * 0.1f);
+    EXPECT_NEAR(world.MassOf(heavy), 1000.0f * volume, 0.5f);
+    EXPECT_EQ(world.TickCount(), 120u);
+    EXPECT_EQ(world.BodyCount(), 3u);
+}
+
+// the ball is never pushed; moving its container carries it along
+TEST(Compound, MovedTrayCarriesTheBall) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    const auto tray = world.CreateBody(BodyDesc{
+        .shape = openBox(0.4f, 0.2f),
+        .motion = BodyMotion::Kinematic,
+    });
+    const auto ball = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.08f},
+        .pose = BodyPose{.position = {0.0f, 0.15f, 0.0f}},
+        .friction = 0.5f,
+    });
+
+    stepTimes(world, 30);
+    // 0.5 m along x over 2 s, in literal steps of 1/240 m a tick
+    Vec3 target = zeros();
+    for(u32 tick = 0; tick < 120; ++tick) {
+        target.x += 0.5f / 120.0f;
+        world.MoveKinematic(tray, BodyPose{.position = target});
+        world.Step();
+    }
+    stepTimes(world, 60);
+    const auto trayX = world.PoseOf(tray).position.x;
+    const auto ballX = world.PoseOf(ball).position.x;
+    EXPECT_NEAR(trayX, 0.5f, 1.0e-4f);
+    EXPECT_GT(ballX, 0.2f);
+    EXPECT_LT(std::abs(ballX - trayX), 0.32f);
+    EXPECT_EQ(world.TickCount(), 210u);
+    EXPECT_EQ(world.BodyCount(), 2u);
+}
+
+TEST(Hinge, ReleaseFreesTheBody) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    const auto bob = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.1f},
+        .pose = BodyPose{.position = {1.0f, 2.0f, 0.0f}},
+        .linearDamping = 0.0f,
+    });
+    const auto hinge = world.CreateHinge(HingeDesc{
+        .body = bob,
+        .pivot = {0.0f, 2.0f, 0.0f},
+        .axis = unitZ(),
+        .normal = unitX(),
+    });
+
+    // held, the bob stays one arm's length from the pivot
+    stepTimes(world, 30);
+    const auto held = world.PoseOf(bob).position;
+    EXPECT_NEAR(norm(held - Vec3{0.0f, 2.0f, 0.0f}), 1.0f, 0.01f);
+
+    EXPECT_TRUE(world.IsHingeHeld(hinge));
+    world.ReleaseHinge(hinge);
+    EXPECT_FALSE(world.IsHingeHeld(hinge));
+    stepTimes(world, 60);
+    // released, it flies off the circle
+    const auto free = world.PoseOf(bob).position;
+    EXPECT_GT(norm(free - Vec3{0.0f, 2.0f, 0.0f}), 2.0f);
+    EXPECT_TRUE(world.IsValid(hinge));
+    EXPECT_EQ(world.TickCount(), 90u);
+    EXPECT_EQ(world.BodyCount(), 1u);
+}
+
+TEST(Hinge, ReleaseShowsInTheHash) {
+    PhysicsRuntime runtime;
+    auto pendulum = [](PhysicsWorld& world) {
+        return world.CreateHinge(HingeDesc{
+            .body = world.CreateBody(BodyDesc{
+                .shape = SphereShape{0.1f},
+                .pose = BodyPose{.position = {1.0f, 2.0f, 0.0f}},
+            }),
+            .pivot = {0.0f, 2.0f, 0.0f},
+            .axis = unitZ(),
+            .normal = unitX(),
+        });
+    };
+    PhysicsWorld held(runtime);
+    PhysicsWorld released(runtime);
+    pendulum(held);
+    const auto hinge = pendulum(released);
+
+    for(u32 tick = 0; tick < 30; ++tick) {
+        held.Step();
+        released.Step();
+        ASSERT_EQ(held.StateHash(), released.StateHash());
+    }
+    released.ReleaseHinge(hinge);
+    held.Step();
+    released.Step();
+    EXPECT_NE(held.StateHash(), released.StateHash());
+    EXPECT_EQ(released.TickCount(), 31u);
+    EXPECT_EQ(released.BodyCount(), 1u);
+}
+
+TEST(Compound, OnePartKeepsItsOffset) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    addFloor(world);
+    // one part becomes a rotated-translated shape in Jolt
+    world.CreateBody(BodyDesc{
+        .shape = CompoundShape{{CompoundPart{
+            .halfExtent = {0.3f, 0.1f, 0.3f},
+            .pose = BodyPose{.position = {0.5f, 1.0f, 0.0f}},
+        }}},
+        .motion = BodyMotion::Static,
+    });
+    const auto onPart = addBox(world, {0.5f, 2.0f, 0.0f});
+    const auto offPart = addBox(world, {-0.5f, 2.0f, 0.0f});
+
+    stepTimes(world, 120);
+    // the part's top is at 1.1; the floor's at 0
+    EXPECT_GT(world.PoseOf(onPart).position.y, 1.5f);
+    EXPECT_LT(world.PoseOf(offPart).position.y, 0.6f);
+    EXPECT_EQ(world.TickCount(), 120u);
+    EXPECT_EQ(world.BodyCount(), 4u);
+}
+
+TEST(Compound, TurnsAboutItsOrigin) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime, PhysicsWorldDesc{.gravity = zeros()});
+    const auto arm = world.CreateBody(BodyDesc{
+        .shape = CompoundShape{{CompoundPart{
+            .halfExtent = {0.2f, 0.05f, 0.05f},
+            .pose = BodyPose{.position = {1.0f, 0.0f, 0.0f}},
+        }}},
+        .pose = BodyPose{.position = {2.0f, 1.0f, 3.0f}},
+        .motion = BodyMotion::Kinematic,
+    });
+
+    // a quarter turn about y
+    world.MoveKinematic(
+        arm,
+        BodyPose{
+            .position = {2.0f, 1.0f, 3.0f},
+            .rotation = {0.0f, 0.70710677f, 0.0f, 0.70710677f},
+        }
+    );
+    stepTimes(world, 30);
+    const auto pose = world.PoseOf(arm);
+    EXPECT_NEAR(pose.position.x, 2.0f, 1.0e-5f);
+    EXPECT_NEAR(pose.position.y, 1.0f, 1.0e-5f);
+    EXPECT_NEAR(pose.position.z, 3.0f, 1.0e-5f);
+    EXPECT_NEAR(pose.rotation.y, 0.70710677f, 1.0e-5f);
+    EXPECT_NEAR(pose.rotation.w, 0.70710677f, 1.0e-5f);
+    EXPECT_EQ(world.TickCount(), 30u);
+    EXPECT_EQ(world.BodyCount(), 1u);
+}
+
+TEST(Water, LightFloatsHeavySinks) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    addFloor(world);
+    // surface at y = 2
+    world.AddWater(WaterDesc{
+        .center = {0.0f, 1.0f, 0.0f},
+        .halfExtent = {3.0f, 1.0f, 3.0f},
+    });
+    // 0.2 m spheres at 300 and 3000 kg/m^3 (the volume is 0.0335 m^3)
+    const auto ballAt = [&](f32 x, f32 mass) {
+        return world.CreateBody(BodyDesc{
+            .shape = SphereShape{0.2f},
+            .pose = BodyPose{.position = {x, 1.0f, 0.0f}},
+            .mass = mass,
+        });
+    };
+    const auto light = ballAt(-1.0f, 10.053f);
+    const auto heavy = ballAt(1.0f, 100.53f);
+
+    stepTimes(world, 300);
+    // floating with about 30 % of it under the surface
+    EXPECT_GT(world.PoseOf(light).position.y, 1.9f);
+    EXPECT_LT(world.PoseOf(light).position.y, 2.2f);
+    // on the floor, top at y = 0
+    EXPECT_NEAR(world.PoseOf(heavy).position.y, 0.2f, 0.03f);
+    EXPECT_EQ(world.TickCount(), 300u);
+    EXPECT_EQ(world.BodyCount(), 3u);
+}
+
+// pushed deeper, a float accelerates for longer and rises higher
+TEST(Water, DeeperRisesHigher) {
+    PhysicsRuntime runtime;
+    auto peakFrom = [&](f32 depth) {
+        PhysicsWorld world(runtime);
+        addFloor(world);
+        world.AddWater(WaterDesc{
+            .center = {0.0f, 1.0f, 0.0f},
+            .halfExtent = {3.0f, 1.0f, 3.0f},
+        });
+        const auto buoy = world.CreateBody(BodyDesc{
+            .shape = SphereShape{0.2f},
+            .pose = BodyPose{.position = {0.0f, 2.0f - depth, 0.0f}},
+            .mass = 10.053f,
+        });
+        f32 peak = 0.0f;
+        for(u32 tick = 0; tick < 120; ++tick) {
+            world.Step();
+            peak = std::max(peak, world.PoseOf(buoy).position.y);
+        }
+        EXPECT_EQ(world.TickCount(), 120u);
+        EXPECT_EQ(world.BodyCount(), 2u);
+        return peak;
+    };
+    EXPECT_GT(peakFrom(0.6f), peakFrom(0.15f) + 0.2f);
+}
+
+TEST(Water, OnlyInsideTheBox) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    addFloor(world);
+    world.AddWater(WaterDesc{
+        .center = {0.0f, 1.0f, 0.0f},
+        .halfExtent = {1.0f, 1.0f, 1.0f},
+    });
+    // below the surface's height, beside the water
+    const auto outside = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.2f},
+        .pose = BodyPose{.position = {3.0f, 1.0f, 0.0f}},
+        .mass = 10.053f,
+    });
+
+    stepTimes(world, 120);
+    EXPECT_NEAR(world.PoseOf(outside).position.y, 0.2f, 0.03f);
+    EXPECT_EQ(world.TickCount(), 120u);
+    EXPECT_EQ(world.BodyCount(), 2u);
+}
+
+TEST(Water, InertWithoutBodies) {
+    PhysicsRuntime runtime;
+    PhysicsWorld dry(runtime);
+    PhysicsWorld wet(runtime);
+    for(auto* world: {&dry, &wet}) {
+        addFloor(*world);
+        addBox(*world, {0.0f, 2.0f, 0.0f});
+    }
+    // nothing ever enters it
+    wet.AddWater(WaterDesc{
+        .center = {5.0f, 1.0f, 0.0f},
+        .halfExtent = {1.0f, 1.0f, 1.0f},
+    });
+
+    for(u32 tick = 0; tick < 60; ++tick) {
+        dry.Step();
+        wet.Step();
+        ASSERT_EQ(dry.StateHash(), wet.StateHash());
+    }
+    EXPECT_EQ(wet.TickCount(), 60u);
+    EXPECT_EQ(wet.BodyCount(), 2u);
+}
+
 TEST(Query, OverlapSeesSleepersSkipsStatics) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
@@ -584,6 +903,42 @@ TEST(PhysicsDeathTest, HingeLimitOutsideRange) {
             });
         },
         "minAngle"
+    );
+}
+
+TEST(PhysicsDeathTest, EmptyCompound) {
+    EXPECT_DEATH(
+        {
+            PhysicsRuntime runtime;
+            PhysicsWorld world(runtime);
+            world.CreateBody(BodyDesc{.shape = CompoundShape{}});
+        },
+        "a compound needs a part"
+    );
+}
+
+TEST(PhysicsDeathTest, WaterWithoutVolume) {
+    EXPECT_DEATH(
+        {
+            PhysicsRuntime runtime;
+            PhysicsWorld world(runtime);
+            world.AddWater(WaterDesc{.halfExtent = {1.0f, 0.0f, 1.0f}});
+        },
+        "positive half extent"
+    );
+}
+
+TEST(PhysicsDeathTest, ReleaseForeignHinge) {
+    EXPECT_DEATH(
+        {
+            PhysicsRuntime runtime;
+            PhysicsWorld one(runtime);
+            PhysicsWorld other(runtime);
+            const auto hinge =
+                other.CreateHinge(HingeDesc{.body = other.CreateBody({})});
+            one.ReleaseHinge(hinge);
+        },
+        "not a hinge of this world"
     );
 }
 

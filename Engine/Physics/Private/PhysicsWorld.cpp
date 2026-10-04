@@ -26,6 +26,7 @@
 #include <Jolt/Physics/Collision/ObjectLayerPairFilterTable.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Constraints/HingeConstraint.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/StateRecorderImpl.h>
@@ -76,22 +77,28 @@ namespace
         return motion == BodyMotion::Static ? StaticLayer : MovingLayer;
     }
 
+    bool isUnit(Crowy::Vec4 rotation) {
+        return Crowy::toJoltQuat(rotation).IsNormalized();
+    }
+
+    JPH::ShapeSettings::ShapeResult makeBox(Crowy::Vec3 halfExtent) {
+        CROWY_ASSERT(
+            halfExtent.x > 0.0f && halfExtent.y > 0.0f && halfExtent.z > 0.0f,
+            "a box needs a positive half extent"
+        );
+        JPH::BoxShapeSettings settings(Crowy::toJolt(halfExtent));
+        settings.SetEmbedded();
+
+        return settings.Create();
+    }
+
     JPH::ShapeRefC makeShape(const BodyShape& shape) {
         using ShapeResult = JPH::ShapeSettings::ShapeResult;
 
         const auto result = std::visit(
             Crowy::overload{
                 [](const Crowy::BoxShape& box) -> ShapeResult {
-                    CROWY_ASSERT(
-                        box.halfExtent.x > 0.0f && box.halfExtent.y > 0.0f &&
-                            box.halfExtent.z > 0.0f,
-                        "a box needs a positive half extent"
-                    );
-                    JPH::BoxShapeSettings settings(
-                        Crowy::toJolt(box.halfExtent)
-                    );
-                    settings.SetEmbedded();
-                    return settings.Create();
+                    return makeBox(box.halfExtent);
                 },
                 [](const Crowy::SphereShape& sphere) -> ShapeResult {
                     CROWY_ASSERT(
@@ -102,16 +109,38 @@ namespace
                     settings.SetEmbedded();
                     return settings.Create();
                 },
+                [](const Crowy::CompoundShape& compound) -> ShapeResult {
+                    CROWY_ASSERT(
+                        !compound.parts.empty(),
+                        "a compound needs a part"
+                    );
+                    JPH::StaticCompoundShapeSettings settings;
+                    settings.SetEmbedded();
+                    for(const auto& part: compound.parts) {
+                        CROWY_ASSERT(
+                            isUnit(part.pose.rotation),
+                            "a part needs a unit rotation"
+                        );
+                        const auto box = makeBox(part.halfExtent);
+                        CROWY_ASSERT(
+                            !box.HasError(),
+                            "{}",
+                            box.GetError().c_str()
+                        );
+                        settings.AddShape(
+                            Crowy::toJolt(part.pose.position),
+                            Crowy::toJoltQuat(part.pose.rotation),
+                            box.Get()
+                        );
+                    }
+                    return settings.Create();
+                },
             },
             shape
         );
         CROWY_ASSERT(!result.HasError(), "{}", result.GetError().c_str());
 
         return result.Get();
-    }
-
-    bool isUnit(Crowy::Vec4 rotation) {
-        return Crowy::toJoltQuat(rotation).IsNormalized();
     }
 
     struct BodyRow {
@@ -155,6 +184,7 @@ namespace Crowy
         HingeRows hinges;
         // indexed by serial, which a body's user data holds
         BodyRowHandles rowBySerial;
+        std::vector<WaterDesc> waters;
         u64 tickCount = 0;
         bool broadPhaseOptimized = false;
 
@@ -455,9 +485,52 @@ namespace Crowy
         row.kinematicTarget = target;
     }
 
+    void PhysicsWorld::ReleaseHinge(HingeHandle hinge) {
+        const auto& row = impl->Row(hinge);
+        row.constraint->SetEnabled(false);
+        impl->Bodies().ActivateBody(row.constraint->GetBody2()->GetID());
+    }
+
+    void PhysicsWorld::AddWater(const WaterDesc& water) {
+        CROWY_ASSERT(
+            water.halfExtent.x > 0.0f && water.halfExtent.y > 0.0f &&
+                water.halfExtent.z > 0.0f,
+            "water needs a positive half extent"
+        );
+        CROWY_ASSERT(water.density > 0.0f, "water needs a density");
+
+        impl->waters.push_back(water);
+    }
+
     void PhysicsWorld::Step() {
         if(!std::exchange(impl->broadPhaseOptimized, true))
             impl->system.OptimizeBroadPhase();
+
+        // Jolt measures how much of each body is under the surface; the
+        // buoyancy it takes is the water's density over the body's
+        const auto gravity = impl->system.GetGravity();
+        for(const auto& water: impl->waters) {
+            const auto surface =
+                water.center + Vec3{0.0f, water.halfExtent.y, 0.0f};
+            for(const auto body: Overlapping(water.center, water.halfExtent)) {
+                const auto& row = impl->Row(body);
+                if(row.motion != BodyMotion::Dynamic)
+                    continue;
+                const auto volume =
+                    impl->Bodies().GetShape(row.id)->GetVolume();
+                impl->Bodies().ApplyBuoyancyImpulse(
+                    row.id,
+                    toJolt(surface),
+                    JPH::Vec3::sAxisY(),
+                    water.density * volume / row.mass,
+                    water.linearDrag,
+                    water.angularDrag,
+                    JPH::Vec3::sZero(),
+                    gravity,
+                    PhysicsTickSeconds
+                );
+            }
+        }
 
         // the velocity MoveKinematic sets persists, so a reached target is
         // asked for again and the velocity drops to zero
@@ -549,6 +622,10 @@ namespace Crowy
 
     f32 PhysicsWorld::HingeAngleOf(HingeHandle hinge) const {
         return impl->Row(hinge).constraint->GetCurrentAngle();
+    }
+
+    bool PhysicsWorld::IsHingeHeld(HingeHandle hinge) const {
+        return impl->Row(hinge).constraint->GetEnabled();
     }
 
     BodyHandles PhysicsWorld::Overlapping(Vec3 center, Vec3 halfExtent) const {

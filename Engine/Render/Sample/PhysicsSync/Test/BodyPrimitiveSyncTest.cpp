@@ -171,6 +171,49 @@ TEST(BodyPrimitiveSync, FollowsAFallingBody) {
     EXPECT_EQ(world.BodyCount(), 1u);
 }
 
+TEST(BodyPrimitiveSync, CompoundPartsFollowTheirBody) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    RenderScene scene;
+    const auto part = CompoundPart{
+        .halfExtent = {0.4f, 0.05f, 0.2f},
+        .pose = BodyPose{.position = {0.5f, 0.25f, 0.0f}},
+    };
+    const auto body = world.CreateBody(BodyDesc{
+        .shape = CompoundShape{{part}},
+        .pose = BodyPose{.position = {1.0f, 2.0f, 3.0f}, .rotation = Tilted},
+        .motion = BodyMotion::Static,
+    });
+    const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
+    BodyPrimitiveSync sync(Placement);
+    sync.Bind(BodyBinding{
+        .body = body,
+        .primitive = primitive,
+        .part = part.pose,
+        .meshScale = 2.0f * part.halfExtent,
+    });
+
+    sync.Sync(world, scene);
+    const auto pose = world.PoseOf(body);
+    const auto expected = translateMat(Placement) *
+        modelMat(pose.position, pose.rotation, ones()) *
+        modelMat(
+            part.pose.position,
+            part.pose.rotation,
+            2.0f * part.halfExtent
+        );
+    const auto& written = scene.Primitives().GetRef(primitive);
+    for(usize column = 0; column < 4; ++column)
+        EXPECT_EQ(written.localToWorld[column], expected[column]);
+    // the part's center, carried by the body's turn
+    EXPECT_EQ(
+        written.worldBounds.center,
+        static_cast<Vec3>(expected * Vec4{0.0f, 0.0f, 0.0f, 1.0f})
+    );
+    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(world.TickCount(), 0u);
+}
+
 TEST(BodyPrimitiveSync, UnitMeshScaleFitsTheShape) {
     EXPECT_EQ(
         unitMeshScaleOf(BoxShape{{0.2f, 0.3f, 0.4f}}),

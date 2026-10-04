@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -18,16 +19,21 @@ namespace Crowy
     // MakeBox(0.5f) and MakeSphere(0.5f): a shape's scale stretches them
     inline constexpr AABB3D UnitMeshBounds{.halfScale = {0.5f, 0.5f, 0.5f}};
 
+    // a compound's parts carry their own scale
     inline constexpr Vec3 unitMeshScaleOf(const BodyShape& shape) noexcept {
         if(const auto* box = std::get_if<BoxShape>(&shape))
             return 2.0f * box->halfExtent;
+        if(const auto* sphere = std::get_if<SphereShape>(&shape))
+            return 2.0f * sphere->radius * ones();
 
-        return 2.0f * std::get<SphereShape>(shape).radius * ones();
+        return ones();
     }
 
     struct BodyBinding {
         BodyHandle body;
         PrimitiveHandle primitive;
+        // where a compound's part sits in its body; empty for a plain body
+        std::optional<BodyPose> part;
         // the mesh's bounds before meshScale
         AABB3D localBounds = UnitMeshBounds;
         Vec3 meshScale = ones();
