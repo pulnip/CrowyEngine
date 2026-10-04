@@ -217,8 +217,8 @@ TEST(PuzzleRun, TracksLandOnTheirKeys) {
     }
     // KickerJump: the kicker's two and the gate's two, the gate's alone in
     // the control; TiltTray: five and four; CarriedScoop: six in each mode;
-    // BuoyPop: three in each mode
-    EXPECT_EQ(keys, 33u);
+    // LeverCatapult: four and three; BuoyPop: three in each mode
+    EXPECT_EQ(keys, 40u);
 }
 
 TEST(PuzzleDeterminism, RunsRepeatPerTick) {

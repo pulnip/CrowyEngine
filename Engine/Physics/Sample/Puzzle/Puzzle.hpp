@@ -38,6 +38,7 @@ namespace Crowy
         TiltTray,
         CarriedScoop,
         SwingCut,
+        LeverCatapult,
         BuoyPop,
     };
 
@@ -157,6 +158,7 @@ namespace Crowy
     CROWY_ENUM_VALUE(TiltTray)
     CROWY_ENUM_VALUE(CarriedScoop)
     CROWY_ENUM_VALUE(SwingCut)
+    CROWY_ENUM_VALUE(LeverCatapult)
     CROWY_ENUM_VALUE(BuoyPop)
     CROWY_ENUM_END()
 

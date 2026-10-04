@@ -11,7 +11,7 @@ namespace
 
     // pasted from PuzzlePins.MatchTheTable's output, never edited by hand
     // clang-format off
-    constexpr std::array<PuzzlePin, 10> PinTable{{
+    constexpr std::array<PuzzlePin, 12> PinTable{{
     PuzzlePin{PuzzleKind::KickerJump, PuzzleMode::Solution, 146, {
         0xa27c2c571e71a67e, 0xf718204c9d2a5e31, 0x751d26d3cf464827,
         0x05ba0e444db97a33, 0x49165b3ceda88174, 0x9637320b43e2dbc2,
@@ -43,6 +43,14 @@ namespace
     PuzzlePin{PuzzleKind::SwingCut, PuzzleMode::Control, 0, {
         0x2bf0a4375d246b1c, 0x02a28a66c96b6f10, 0x08e941ba9cee7761,
         0xd8630d2b951f901b, 0x92e38a51e11a569d, 0x8a1ad0e78f35ae90,
+    }},
+    PuzzlePin{PuzzleKind::LeverCatapult, PuzzleMode::Solution, 202, {
+        0xc1dfad1a22383d9a, 0xf3fa5505f9ea8d62, 0xf4860fb9ec995a45,
+        0x8a4ce280f51bce35, 0x3cd1b7349bf0493d, 0x0b32a3dd2add842f,
+    }},
+    PuzzlePin{PuzzleKind::LeverCatapult, PuzzleMode::Control, 0, {
+        0xc1dfad1a22383d9a, 0xd1461bc940ac708e, 0xde1f8dd731442343,
+        0x4257cbeba22dbe12, 0xa60788db344661a1, 0xf93d7f33b9b39b85,
     }},
     PuzzlePin{PuzzleKind::BuoyPop, PuzzleMode::Solution, 117, {
         0xa0d73d7fc46af87e, 0xb0222a2896d776e2, 0xd102322e2785613c,

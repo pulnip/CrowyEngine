@@ -17,6 +17,8 @@ namespace Crowy
             return makeCarriedScoop();
         case SwingCut:
             return makeSwingCut();
+        case LeverCatapult:
+            return makeLeverCatapult();
         case BuoyPop:
             return makeBuoyPop();
         }
