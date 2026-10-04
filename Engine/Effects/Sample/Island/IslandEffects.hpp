@@ -43,9 +43,8 @@ namespace Crowy
         };
     }
 
-    // a shower fanning down from a radiant off the upper left, ignitions
-    // spread over the sky, a volley now and then; the seed puts a flash on
-    // the right and two meteors on the left at frame 60
+    // a shower fanning down from off the upper left, over the whole sky; the
+    // seed shows a flash on the right and two meteors on the left at frame 60
     inline ParticleEffectDesc meteorsDesc() {
         return ParticleEffectDesc{
             .name = "meteors",

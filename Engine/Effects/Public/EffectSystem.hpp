@@ -17,8 +17,8 @@
 
 namespace Crowy
 {
-    // Particle effects stepped on a frame-locked clock and drawn in a hook
-    // pass: frame N of an effect depends only on N, its seed and its desc.
+    // Particle effects stepped in steps of 1/60 s and drawn in a hook pass:
+    // step N of an effect depends only on N, its seed and its desc.
     class EffectSystem {
     private:
         // one effect's description, its particles and its kernel
@@ -72,8 +72,8 @@ namespace Crowy
         // a dispatch reaches, a name taken, or a draw without an entry
         void Add(ParticleEffectDesc desc);
 
-        // `steps` steps of each effect up to worldStep, a new one's prewarm
-        // too; paused, only the new run; returns the hook pass's acquires
+        // `steps` steps of each effect up to worldStep, a new one its prewarm
+        // and one; paused, only the new run; returns the hook pass's acquires
         std::span<const RHIBufferBarrier> Simulate(
             RHICommandList& cmdList,
             const EffectView& view,

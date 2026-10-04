@@ -123,8 +123,10 @@ RainVertex vs_ripples(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
     float2 corner = stripCorner(vertexID);
     float3 world = p.custom.xyz +
                    float3(corner.x * radius, 0.012, corner.y * radius);
-    // a ring on the sea rides its waves
-    if(!onSand) {
+    // a ring on the sea rides its waves, one on the sand follows its slope
+    if(onSand) {
+        world.y = islandCrown(world.xz) + 0.012;
+    } else {
         uint step = effect.worldStep;
         world.y = seaHeight(world.xz, step, SEA_VERTEX_WAVES, true) + 0.02;
     }

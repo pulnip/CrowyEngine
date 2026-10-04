@@ -24,8 +24,8 @@
 
 namespace Crowy
 {
-    // A night island whose effects draw in a hook pass before the glass, one
-    // step a recorded frame, so frame 60 is the same picture in every run.
+    // A night island whose effects draw in a hook pass before the glass,
+    // stepped by time; a frame dump counts a step a frame, so frame 60 repeats.
     class Island final: public RenderApp {
         // the sky's draw: the camera's basis scaled to the frame, the moon
         struct SkyPush {
@@ -104,7 +104,7 @@ namespace Crowy
                     .color = {1.0f, 0.55f, 0.2f},
                     .intensity = FireIntensity,
                     .position = {ISLAND_FIRE_LIGHT},
-                    .range = 5.5f
+                    .range = 6.5f
                 }
             );
             scene.Environment() = EnvironmentSnapshot{
@@ -555,7 +555,7 @@ namespace Crowy
         u32 stepsOwed(f64 deltaTime) {
             constexpr auto MostSteps = 4.0;
 
-            stepDebt += deltaTime * 60.0;
+            stepDebt += deltaTime / EffectStep;
             const auto owed = std::min(std::floor(stepDebt), MostSteps);
             stepDebt = std::min(stepDebt - owed, 1.0);
 
