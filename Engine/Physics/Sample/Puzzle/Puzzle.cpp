@@ -11,6 +11,8 @@ namespace Crowy
         switch(kind) {
         case KickerJump:
             return makeKickerJump();
+        case TiltTray:
+            return makeTiltTray();
         case SwingCut:
             return makeSwingCut();
         case BuoyPop:

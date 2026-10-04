@@ -35,6 +35,7 @@ namespace Crowy
     // tall ones last: a viewer lays them out in rows of three
     enum class PuzzleKind : u8 {
         KickerJump,
+        TiltTray,
         SwingCut,
         BuoyPop,
     };
@@ -152,6 +153,7 @@ namespace Crowy
 
     CROWY_ENUM_BEGIN(PuzzleKind)
     CROWY_ENUM_VALUE(KickerJump)
+    CROWY_ENUM_VALUE(TiltTray)
     CROWY_ENUM_VALUE(SwingCut)
     CROWY_ENUM_VALUE(BuoyPop)
     CROWY_ENUM_END()

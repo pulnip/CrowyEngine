@@ -216,8 +216,8 @@ TEST(PuzzleRun, TracksLandOnTheirKeys) {
         }
     }
     // KickerJump: the kicker's two and the gate's two, the gate's alone in
-    // the control; BuoyPop's plunger: three in each mode
-    EXPECT_EQ(keys, 12u);
+    // the control; TiltTray: five and four; BuoyPop: three in each mode
+    EXPECT_EQ(keys, 21u);
 }
 
 TEST(PuzzleDeterminism, RunsRepeatPerTick) {

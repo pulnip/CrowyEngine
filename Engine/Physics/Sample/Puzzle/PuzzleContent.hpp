@@ -29,6 +29,7 @@ namespace Crowy
     }
 
     Puzzle makeKickerJump();
+    Puzzle makeTiltTray();
     Puzzle makeSwingCut();
     Puzzle makeBuoyPop();
 }

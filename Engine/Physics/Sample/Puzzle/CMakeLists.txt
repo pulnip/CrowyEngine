@@ -6,6 +6,7 @@ add_library(SamplePuzzle STATIC
     PuzzleSession.cpp
     PuzzleTrack.cpp
     SwingCut.cpp
+    TiltTray.cpp
 )
 
 target_include_directories(SamplePuzzle
