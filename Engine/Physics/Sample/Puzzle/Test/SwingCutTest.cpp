@@ -68,6 +68,11 @@ namespace
         puzzle.solution.releases[0].tick = tick;
         PuzzleSession session(runtime, puzzle, PuzzleMode::Solution);
         runTo(session, PuzzleHorizon);
+        EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+        EXPECT_EQ(
+            session.GetWorld().BodyCount(),
+            PuzzleBodyCounts[indexOf(PuzzleKind::SwingCut)]
+        );
 
         return session.GetStatus().solved;
     }
@@ -143,6 +148,10 @@ TEST(SwingCut, ControlLeavesLevelIntoTheWall) {
     EXPECT_NEAR(rest.x, -1.4f + BobRadius, 0.02f);
     EXPECT_NEAR(rest.y, BobRadius, 0.025f);
     EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::SwingCut)]
+    );
 }
 
 TEST(SwingCut, ScoresAnywhereBetweenTheWallAndTheTurn) {

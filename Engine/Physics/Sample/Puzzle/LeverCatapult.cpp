@@ -64,7 +64,8 @@ namespace Crowy
                         .friction = 0.8f,
                     },
                 },
-                // over the short arm where its weight balances the rest
+                // landed, it balances the long arm and the cube at rest and
+                // outweighs them as the lever turns
                 PuzzleBody{
                     .name = "weight",
                     .role = Weight,

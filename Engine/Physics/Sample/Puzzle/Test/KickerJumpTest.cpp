@@ -12,7 +12,7 @@ namespace
 {
     constexpr u32 Marble = 8;
     constexpr f32 MarbleRadius = 0.1f;
-    // the front wall's near face, and the kicker's far end
+    // the front wall's near face; the kicker ends 3 cm short of it
     constexpr f32 WallX = 0.65f;
 
     struct MarbleRun {
@@ -97,4 +97,8 @@ TEST(KickerJump, ControlStopsAtTheWallsFace) {
     EXPECT_GT(run.rest.x, WallX - MarbleRadius - 0.01f);
     EXPECT_LT(run.rest.x, WallX - MarbleRadius + 0.025f);
     EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::KickerJump)]
+    );
 }

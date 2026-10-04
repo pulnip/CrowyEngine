@@ -102,4 +102,8 @@ TEST(TiltTray, ControlStaysLeftOfTheDivider) {
     }
     EXPECT_EQ(checked, PuzzleHorizon);
     EXPECT_FALSE(session.GetStatus().solved);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::TiltTray)]
+    );
 }

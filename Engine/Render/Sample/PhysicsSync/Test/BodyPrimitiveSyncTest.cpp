@@ -286,6 +286,7 @@ TEST(BodyPrimitiveSync, TetherSpansAnchorToBody) {
     // still on its circle, so the rod has the hinge's length
     EXPECT_NEAR(norm(end - Pivot), 1.0f, 1.0e-3f);
     EXPECT_EQ(world.TickCount(), 20u);
+    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(BodyPrimitiveSync, TetherHidesOnRelease) {
@@ -314,6 +315,7 @@ TEST(BodyPrimitiveSync, TetherHidesOnRelease) {
     for(usize column = 0; column < 4; ++column)
         EXPECT_EQ(written.localToWorld[column], held[column]);
     EXPECT_EQ(world.TickCount(), 11u);
+    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(BodyPrimitiveSync, UnitMeshScaleFitsTheShape) {

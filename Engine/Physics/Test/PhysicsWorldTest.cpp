@@ -477,6 +477,37 @@ TEST(Compound, MovedTrayCarriesTheBall) {
     EXPECT_EQ(world.BodyCount(), 2u);
 }
 
+// a hinge disabled wakes nothing by itself; the release must
+TEST(Hinge, ReleaseWakesASleeper) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    const auto bob = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.1f},
+        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
+    });
+    const auto hinge = world.CreateHinge(HingeDesc{
+        .body = bob,
+        .pivot = {0.0f, 2.0f, 0.0f},
+        .axis = unitZ(),
+        .normal = unitX(),
+    });
+
+    // hanging straight down, it falls asleep
+    u32 ticks = 0;
+    while(world.IsAwake(bob) && ticks < 120) {
+        world.Step();
+        ++ticks;
+    }
+    ASSERT_FALSE(world.IsAwake(bob));
+
+    world.ReleaseHinge(hinge);
+    EXPECT_TRUE(world.IsAwake(bob));
+    stepTimes(world, 30);
+    EXPECT_LT(world.PoseOf(bob).position.y, 0.9f);
+    EXPECT_EQ(world.TickCount(), ticks + 30u);
+    EXPECT_EQ(world.BodyCount(), 1u);
+}
+
 TEST(Hinge, ReleaseFreesTheBody) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
@@ -644,6 +675,55 @@ TEST(Compound, PartsKeepTheirFriction) {
     EXPECT_GT(slide.y, 0.1f);
     EXPECT_EQ(world.TickCount(), 30u);
     EXPECT_EQ(world.BodyCount(), 3u);
+}
+
+// a block across the seam of two touching parts feels both, whichever part
+// is listed first
+TEST(Compound, ASeamFeelsBothParts) {
+    constexpr Vec4 Slope{0.0f, 0.0f, 0.17364818f, 0.98480775f};
+    constexpr f32 Sin = 0.34202014f;
+    constexpr f32 Cos = 0.93969262f;
+
+    u32 held = 0;
+    for(const bool frictionlessFirst: {true, false}) {
+        SCOPED_TRACE(frictionlessFirst);
+        PhysicsRuntime runtime;
+        PhysicsWorld world(runtime);
+        auto slick = CompoundPart{
+            .halfExtent = {1.0f, 0.05f, 0.25f},
+            .pose = BodyPose{.position = {0.0f, 0.0f, -0.25f}},
+            .friction = 0.0f,
+        };
+        auto rough = CompoundPart{
+            .halfExtent = {1.0f, 0.05f, 0.25f},
+            .pose = BodyPose{.position = {0.0f, 0.0f, 0.25f}},
+        };
+        world.CreateBody(BodyDesc{
+            .shape = frictionlessFirst ? CompoundShape{{slick, rough}}
+                                       : CompoundShape{{rough, slick}},
+            .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}, .rotation = Slope},
+            .motion = BodyMotion::Static,
+            .friction = 1.0f,
+        });
+        const auto block = world.CreateBody(BodyDesc{
+            .shape = BoxShape{{0.1f, 0.1f, 0.1f}},
+            .pose = BodyPose{
+                .position = {-0.15f * Sin, 1.0f + 0.15f * Cos, 0.0f},
+                .rotation = Slope,
+            },
+            .friction = 1.0f,
+        });
+        const auto start = world.PoseOf(block).position;
+
+        stepTimes(world, 30);
+        // the rough half alone holds half the weight at friction 1, more
+        // than the 0.34 tan 20 degrees asks for
+        if(norm(world.PoseOf(block).position - start) < 0.01f)
+            ++held;
+        EXPECT_EQ(world.TickCount(), 30u);
+        EXPECT_EQ(world.BodyCount(), 2u);
+    }
+    EXPECT_EQ(held, 2u);
 }
 
 TEST(Water, LightFloatsHeavySinks) {
@@ -967,6 +1047,28 @@ TEST(PhysicsDeathTest, EmptyCompound) {
         },
         "a compound needs a part"
     );
+}
+
+TEST(Water, RestingBodiesSleep) {
+    PhysicsRuntime runtime;
+    PhysicsWorld world(runtime);
+    addFloor(world);
+    world.AddWater(WaterDesc{
+        .center = {0.0f, 1.0f, 0.0f},
+        .halfExtent = {1.0f, 1.0f, 1.0f},
+    });
+    // three times the water's density: it sinks to the floor and rests
+    const auto stone = world.CreateBody(BodyDesc{
+        .shape = SphereShape{0.2f},
+        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
+        .mass = 3000.0f * 4.0f / 3.0f * 3.1415927f * 0.008f,
+    });
+
+    stepTimes(world, 300);
+    EXPECT_NEAR(world.PoseOf(stone).position.y, 0.2f, 0.025f);
+    EXPECT_FALSE(world.IsAwake(stone));
+    EXPECT_EQ(world.TickCount(), 300u);
+    EXPECT_EQ(world.BodyCount(), 2u);
 }
 
 TEST(PhysicsDeathTest, NegativePartFriction) {

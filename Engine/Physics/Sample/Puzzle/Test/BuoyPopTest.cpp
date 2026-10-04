@@ -71,6 +71,10 @@ TEST(BuoyPop, FloatsWhereItStarts) {
         EXPECT_LT(std::abs(world.LinearVelocityOf(buoy).y), 0.05f);
     }
     EXPECT_EQ(session.GetStatus().tick, 4u);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::BuoyPop)]
+    );
 }
 
 TEST(BuoyPop, SolutionPopsThroughTheHoop) {
@@ -117,4 +121,8 @@ TEST(BuoyPop, ControlStopsShortOfTheHoop) {
 
     EXPECT_FALSE(session.GetStatus().solved);
     EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::BuoyPop)]
+    );
 }

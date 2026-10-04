@@ -70,7 +70,8 @@ namespace Crowy
             return Vec3{LaneSpacing * (column - 1.0f), 0.0f, LaneSpacing * row};
         }
 
-        // a floor level with the arena's is the arena's to draw
+        // a floor level with the playground's own is the playground's to
+        // draw
         bool isDrawn(const PuzzleBody& body) {
             const auto* box = std::get_if<BoxShape>(&body.desc.shape);
             return body.role != PieceRole::Ground || box == nullptr ||
@@ -485,10 +486,12 @@ namespace Crowy
                 }
             }
 
-            // its bounds reach the lanes' ceiling, so the shadow fit, the
-            // union of every visible bound, holds still while bodies move
+            // its bounds reach the lanes' ceiling and below the sink, so the
+            // shadow fit, the union of every visible bound, holds still
             void addFloor(RenderScene& scene) {
                 constexpr Vec3 FloorCenter{0.0f, 0.0f, 3.0f};
+                // resting contacts sink up to the 0.02 m slop, landings more
+                constexpr f32 Sink = 0.05f;
 
                 const auto mesh = addMeshResource(
                     scene,
@@ -501,9 +504,9 @@ namespace Crowy
                         .localToWorld = translateMat(FloorCenter),
                         .worldBounds = AABB3D{
                             .center = FloorCenter +
-                                Vec3{0.0f, 0.5f * PuzzleHeight, 0.0f},
+                                Vec3{0.0f, 0.5f * (PuzzleHeight - Sink), 0.0f},
                             .halfScale = FloorHalf +
-                                Vec3{0.0f, 0.5f * PuzzleHeight, 0.0f}
+                                Vec3{0.0f, 0.5f * (PuzzleHeight + Sink), 0.0f}
                         },
                         .mesh = mesh
                     }

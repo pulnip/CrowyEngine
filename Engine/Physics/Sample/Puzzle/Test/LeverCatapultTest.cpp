@@ -47,6 +47,11 @@ namespace
         }
         run.rest = world.PoseOf(cube).position;
         run.solved = session.GetStatus().solved;
+        EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+        EXPECT_EQ(
+            session.GetWorld().BodyCount(),
+            PuzzleBodyCounts[indexOf(PuzzleKind::LeverCatapult)]
+        );
 
         return run;
     }
@@ -117,6 +122,10 @@ TEST(LeverCatapult, ControlTossesTheCubeBack) {
     EXPECT_LT(run.rest.y, 1.5f);
     EXPECT_LT(run.rest.x, -0.15f);
     EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::LeverCatapult)]
+    );
 }
 
 TEST(LeverCatapult, HigherDropsThrowHigher) {

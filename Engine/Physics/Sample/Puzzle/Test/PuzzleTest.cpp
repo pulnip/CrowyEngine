@@ -177,6 +177,11 @@ TEST(PuzzleRun, AppliesEveryEventInBothModes) {
             PuzzleSession session(runtime, kind, mode);
             const auto& script = scriptOf(session.GetPuzzle(), mode);
             runTo(session, PuzzleHorizon);
+            EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+            EXPECT_EQ(
+                session.GetWorld().BodyCount(),
+                PuzzleBodyCounts[indexOf(kind)]
+            );
             EXPECT_EQ(session.GetStatus().eventsApplied, eventCountOf(script));
             for(const auto& release: script.releases) {
                 EXPECT_FALSE(session.GetWorld().IsHingeHeld(
@@ -202,6 +207,7 @@ TEST(PuzzleRun, TracksLandOnTheirKeys) {
                 const auto& start = puzzle.bodies[track.body].desc.pose;
                 for(const auto& key: track.keys) {
                     runTo(session, key.tick);
+                    ASSERT_EQ(session.GetStatus().tick, key.tick);
                     const auto pose = poseOfBody(session, track.body);
                     const auto aim = poseAt(track, start, key.tick);
                     EXPECT_EQ(aim.position, key.pose.position);
@@ -213,6 +219,10 @@ TEST(PuzzleRun, TracksLandOnTheirKeys) {
                     ++keys;
                 }
             }
+            EXPECT_EQ(
+                session.GetWorld().BodyCount(),
+                PuzzleBodyCounts[indexOf(kind)]
+            );
         }
     }
     // KickerJump: the kicker's two and the gate's two, the gate's alone in

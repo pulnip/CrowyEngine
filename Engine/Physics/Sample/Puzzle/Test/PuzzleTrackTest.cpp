@@ -110,6 +110,25 @@ TEST(PuzzleTrack, TurnsHalfwayAtHalfTime) {
     EXPECT_NEAR(rotation.w, expected.w, 1.0e-6f);
 }
 
+TEST(PuzzleTrack, HoldsATurnedPoseExactly) {
+    const auto turned = BodyPose{
+        .position = {0.3f, 1.2f, -0.4f},
+        .rotation = turnAboutY(0.7f),
+    };
+    const auto track = PoseTrack{
+        .keys = {
+            PoseKey{.tick = 10, .pose = turned},
+            PoseKey{.tick = 40, .pose = turned},
+        },
+    };
+    for(u64 tick = 10; tick <= 40; ++tick) {
+        SCOPED_TRACE(tick);
+        const auto pose = poseAt(track, Start, tick);
+        EXPECT_EQ(pose.position, turned.position);
+        EXPECT_EQ(pose.rotation, turned.rotation);
+    }
+}
+
 TEST(PuzzleTrack, TakesTheShorterWay) {
     // the negated identity is the same orientation: nothing turns
     const auto track = PoseTrack{

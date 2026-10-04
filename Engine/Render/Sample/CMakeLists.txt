@@ -55,8 +55,8 @@ DEPENDS
     Crowy::UI
 )
 
-# the physics puzzles running in Playground's arena, drawn one way through
-# the PhysicsSync glue
+# the physics puzzles on a floor of their own, drawn one way through the
+# PhysicsSync glue
 crowy_declare_example(PhysicsPlayground
 SOURCES
     FlyCamera.cpp

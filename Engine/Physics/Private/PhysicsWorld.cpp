@@ -413,6 +413,15 @@ namespace Crowy
         settings.mRestitution = desc.restitution;
         settings.mLinearDamping = desc.linearDamping;
         settings.mAngularDamping = desc.angularDamping;
+        // reduction merges coplanar hits into one manifold that keeps a single
+        // part's ID, so a part's own friction would leak across a seam
+        if(const auto* compound = std::get_if<CompoundShape>(&desc.shape)) {
+            auto ownsFriction = [](const CompoundPart& part) {
+                return part.friction.has_value();
+            };
+            settings.mUseManifoldReduction =
+                std::ranges::none_of(compound->parts, ownsFriction);
+        }
         if(desc.motion == Dynamic && desc.mass > 0.0f) {
             settings.mOverrideMassProperties =
                 JPH::EOverrideMassProperties::CalculateInertia;
@@ -564,13 +573,19 @@ namespace Crowy
                 const auto& row = impl->Row(body);
                 if(row.motion != BodyMotion::Dynamic)
                     continue;
-                const auto volume =
-                    impl->Bodies().GetShape(row.id)->GetVolume();
-                impl->Bodies().ApplyBuoyancyImpulse(
-                    row.id,
+                // the Body call, unlike the interface's, wakes nothing, so a
+                // body at rest in the water can sleep
+                JPH::BodyLockWrite lock(
+                    impl->system.GetBodyLockInterfaceNoLock(),
+                    row.id
+                );
+                if(!lock.Succeeded() || !lock.GetBody().IsActive())
+                    continue;
+                auto& jolt = lock.GetBody();
+                jolt.ApplyBuoyancyImpulse(
                     toJolt(surface),
                     JPH::Vec3::sAxisY(),
-                    water.density * volume / row.mass,
+                    water.density * jolt.GetShape()->GetVolume() / row.mass,
                     water.linearDrag,
                     water.angularDrag,
                     JPH::Vec3::sZero(),

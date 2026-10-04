@@ -53,7 +53,8 @@ namespace Crowy
                         .friction = 0.0f,
                     },
                 },
-                // turns about its back end, which sinks under the runway
+                // turns about a pivot 10 cm in from its back end, which
+                // sinks under the runway
                 PuzzleBody{
                     .name = "kicker",
                     .role = Mover,

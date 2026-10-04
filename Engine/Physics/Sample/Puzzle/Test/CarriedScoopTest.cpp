@@ -118,6 +118,10 @@ TEST(CarriedScoop, ControlJoltsTheBallOut) {
     EXPECT_NEAR(rest.y, BallRadius, 0.02f);
     EXPECT_LT(rest.x, 0.35f - BallRadius + 0.02f);
     EXPECT_EQ(session.GetStatus().tick, PuzzleHorizon);
+    EXPECT_EQ(
+        session.GetWorld().BodyCount(),
+        PuzzleBodyCounts[indexOf(PuzzleKind::CarriedScoop)]
+    );
 }
 
 TEST(CarriedScoop, BothCarriesAgreeAfterTheStart) {
@@ -145,4 +149,11 @@ TEST(CarriedScoop, BothCarriesAgreeAfterTheStart) {
         ++compared;
     }
     EXPECT_EQ(compared, PuzzleHorizon - SameFrom);
+    for(const auto* session: {&solution, &control}) {
+        EXPECT_EQ(session->GetStatus().tick, PuzzleHorizon);
+        EXPECT_EQ(
+            session->GetWorld().BodyCount(),
+            PuzzleBodyCounts[indexOf(PuzzleKind::CarriedScoop)]
+        );
+    }
 }

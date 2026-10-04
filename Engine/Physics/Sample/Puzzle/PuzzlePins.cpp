@@ -22,19 +22,19 @@ namespace
     }},
     PuzzlePin{PuzzleKind::TiltTray, PuzzleMode::Solution, 423, {
         0xeb46ab15accd4790, 0xe564072a33281be5, 0x226877fd42e93166,
-        0xead776851d73a58d, 0x8b2178ee1f6e3935, 0xaeb2aa21122dceb7,
+        0x6ef137df2d453469, 0x8b83a524c43335a8, 0x087dd04b40947c32,
     }},
     PuzzlePin{PuzzleKind::TiltTray, PuzzleMode::Control, 0, {
         0xeb46ab15accd4790, 0xf83609b6769c49bf, 0x355e38cd62cc215e,
-        0x8291f705374cc8d3, 0x6dd2d383698c0fd6, 0xe0d308cd11c11a59,
+        0x8291f705374cc8d3, 0xbf99189149babd38, 0x8df87bdd368936e2,
     }},
     PuzzlePin{PuzzleKind::CarriedScoop, PuzzleMode::Solution, 309, {
-        0x21108206bb49950c, 0xb15f6747f1a22fcc, 0x806068e53576aaff,
-        0x2cd682d0bb8ba55b, 0xcb67ade9330abaf4, 0x9741e685a33f8b3f,
+        0x21108206bb49950c, 0x9c0efd11d1db6e6f, 0x28cc75c6812f6b61,
+        0xac5d898a4c3c2854, 0xe0b833d2d45649e5, 0x7c6974ecce58458b,
     }},
     PuzzlePin{PuzzleKind::CarriedScoop, PuzzleMode::Control, 0, {
-        0x21108206bb49950c, 0xb15f6747f1a22fcc, 0x4f7da524166713c6,
-        0x4aa2816557771b2b, 0xa7abc7d7f12d038b, 0x291337b3c243c629,
+        0x21108206bb49950c, 0x9c0efd11d1db6e6f, 0x28cc75c6812f6b61,
+        0x2c07e8cd026ecb5e, 0x4f04e97a0df3a12d, 0xf244c4aeda3f85da,
     }},
     PuzzlePin{PuzzleKind::SwingCut, PuzzleMode::Solution, 77, {
         0x2bf0a4375d246b1c, 0x02a28a66c96b6f10, 0x08e941ba9cee7761,
@@ -45,20 +45,20 @@ namespace
         0xd8630d2b951f901b, 0x92e38a51e11a569d, 0x8a1ad0e78f35ae90,
     }},
     PuzzlePin{PuzzleKind::LeverCatapult, PuzzleMode::Solution, 202, {
-        0xc1dfad1a22383d9a, 0xf3fa5505f9ea8d62, 0xf4860fb9ec995a45,
-        0x8a4ce280f51bce35, 0x3cd1b7349bf0493d, 0x0b32a3dd2add842f,
+        0xc1dfad1a22383d9a, 0xf3fa5505f9ea8d62, 0xec2ffed79ecfa784,
+        0xc063e5bfd3ea236b, 0x4f340ac9b745c140, 0x85d4fcba3dd94692,
     }},
     PuzzlePin{PuzzleKind::LeverCatapult, PuzzleMode::Control, 0, {
-        0xc1dfad1a22383d9a, 0xd1461bc940ac708e, 0xde1f8dd731442343,
-        0x4257cbeba22dbe12, 0xa60788db344661a1, 0xf93d7f33b9b39b85,
+        0xc1dfad1a22383d9a, 0xd1461bc940ac708e, 0x3d99f0b191f9dacd,
+        0x1743834c2cd8209b, 0x79a70cecbb428a7b, 0xaea23972fdac721b,
     }},
     PuzzlePin{PuzzleKind::BuoyPop, PuzzleMode::Solution, 117, {
         0xa0d73d7fc46af87e, 0xb0222a2896d776e2, 0xd102322e2785613c,
-        0xb65c85207ffa75bc, 0xa47e3324f23c99fb, 0x1ebb0fc1d306e409,
+        0xd8ad5d9f21f53e86, 0xa47e3324f23c99fb, 0x0ea53eb8c01899e5,
     }},
     PuzzlePin{PuzzleKind::BuoyPop, PuzzleMode::Control, 0, {
-        0xa0d73d7fc46af87e, 0xbdaf490eab4df7e1, 0xb41208a13022d059,
-        0xe32fd37b35fa6f14, 0x8fd5182c54da7d5c, 0x5f6db3bd7dae85cd,
+        0xa0d73d7fc46af87e, 0xbdaf490eab4df7e1, 0x7cd104b4efd54034,
+        0xd5d8077b7d75e227, 0xe8792eca01f00c32, 0x10648676d27eb51b,
     }},
     }};
     // clang-format on

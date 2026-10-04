@@ -69,9 +69,14 @@ namespace Crowy
                 static_cast<f32>(key.tick - from.tick);
             const auto s = eased(key.easing, u);
 
+            // a hold keeps its rotation exactly: nlerp would round it anew
+            // each tick
+            const auto& rotation = from.pose.rotation;
             return BodyPose{
                 .position = lerp(from.pose.position, key.pose.position, s),
-                .rotation = nlerp(from.pose.rotation, key.pose.rotation, s),
+                .rotation = rotation == key.pose.rotation
+                    ? rotation
+                    : nlerp(rotation, key.pose.rotation, s),
             };
         }
 
