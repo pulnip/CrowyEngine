@@ -2,11 +2,12 @@
 
 #include <chrono>
 #include <print>
-#include <ratio>
 #include <span>
 #include <utility>
+
 #include "Assert.hpp"
 #include "CommandListPool.hpp"
+#include "FixedTickClock.hpp"
 #include "FrameControl.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
@@ -22,11 +23,10 @@ namespace Crowy
     class App: public MainLoop{
     private:
         // what a frame let through by a counted run takes, whatever the
-        // clock says, so two runs of the same steps agree. 1/60 s rounds
-        // once, to the clock's tick
-        static constexpr auto FixedStep = std::chrono::round<Timer::Duration>(
-            std::chrono::duration<i64, std::ratio<1, 60>>(1)
-        );
+        // clock says, so two runs of the same steps agree: Core's tick
+        static constexpr Timer::Duration FixedStep{
+            std::chrono::nanoseconds(TickNanoseconds)
+        };
 
         Timer timer;
         FrameControl control;

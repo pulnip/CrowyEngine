@@ -8,7 +8,7 @@
 
 namespace Crowy
 {
-    // 1/60 s rounded once to whole nanoseconds, as App::FixedStep rounds it
+    // 1/60 s rounded once to whole nanoseconds
     inline constexpr i64 TickNanoseconds =
         std::chrono::round<std::chrono::nanoseconds>(
             std::chrono::duration<i64, std::ratio<1, 60>>(1)
