@@ -13,6 +13,8 @@ option(CROWY_ENABLE_TEST "Enable Tests" ON)
 # orthogonal to the build type: a benchmark build is a Debug or a Release
 # build that also measures. off means not one counter survives the compile.
 option(CROWY_BENCHMARK "Enable frame instrumentation" OFF)
+# Engine/Physics, its samples and the Jolt they build on
+option(CROWY_ENABLE_PHYSICS "Build Physics over Jolt" ON)
 
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
