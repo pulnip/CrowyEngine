@@ -32,15 +32,9 @@ set(SDL_TEST_LIBRARY  OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL       OFF CACHE BOOL "" FORCE)
 set(SDL_DISABLE_INSTALL_DOCS ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(SDL3)
-if(TARGET SDL3-shared)
-    target_compile_options(SDL3-shared PRIVATE
-        $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-    )
-elseif(TARGET SDL3-static)
-    target_compile_options(SDL3-static PRIVATE
-        $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
-    )
-endif()
+target_compile_options(SDL3-shared PRIVATE
+    $<$<C_COMPILER_ID:Clang,AppleClang,GNU>:-Wno-deprecated-declarations>
+)
 
 # stb - header-only image loading library
 FetchContent_Declare(
