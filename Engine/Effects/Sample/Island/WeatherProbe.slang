@@ -1,4 +1,4 @@
-// Probes of the weather for ParticleCheck: each slot evaluates the wind and
+// Probes of the weather for IslandCheck: each slot evaluates the wind and
 // the sea at its own place and world step, for the CPU to hold against.
 
 #include "Effect.slang"

@@ -86,7 +86,7 @@ Run what the change can break, not everything:
 | Effects | + the `check` label and `IslandSmoke` |
 | Physics | + `PhysicsPlaygroundSmoke` |
 | A `Tools/` script | that script, by hand |
-| Before a merge to master | the whole `smoke` label (38 tests, ~4 min) |
+| Before a merge to master | the whole `smoke` label (39 tests, ~4 min) |
 
 ```bash
 ctest --test-dir build -C Debug -L unit

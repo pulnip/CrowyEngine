@@ -121,7 +121,7 @@ inline ParticleEffectDesc sparksDesc() {
   - `Weather.slang`: `fireBreath(effect.worldStep)`과 `windAt(xz, effect.worldStep)`.
     불빛과 불꽃이 같이 숨 쉬고, 비와 불씨와 불꽃이 같은 바람을 받는다. 바람은 자리와
     world step만의 함수라서, C++(`Weather.hpp`)도 같은 자리 같은 스텝이면 허용 오차 안의
-    같은 값을 낸다(`ParticleCheck`가 비의 낙하를 그렇게 다시 계산한다). 정확히 같지는
+    같은 값을 낸다(`IslandCheck`가 비의 낙하를 그렇게 다시 계산한다). 정확히 같지는
     않으니 CPU 쪽 비교에는 늘 허용 오차를 둔다.
 
 ## 4. 규칙
@@ -196,7 +196,7 @@ Island의 바다는 파티클도 필드도 아니고 머티리얼이다. `Ocean.
   `custom1.xyz`가 달 쪽 방향이다. `Island.cpp`가 step은 프레임마다, 달은 만들 때 한 번
   쓴다.
 - 비는 같은 `seaHeight`(격자 파도 12개)에 떨어지고, 물결 고리는 파도를 타고,
-  `ParticleCheck`의 CPU 트윈(`Sea.hpp`)이 같은 높이를 계산한다.
+  `IslandCheck`의 CPU 트윈(`Sea.hpp`)이 같은 높이를 계산한다.
 
 바다 물결의 시뮬레이션이나 연기 같은 격자는 한 층 아래에서 만든다.
 - `FieldBuffer`: 프레임 사이에 남는 GPU 버퍼
