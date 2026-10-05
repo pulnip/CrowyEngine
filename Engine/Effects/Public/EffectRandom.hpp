@@ -2,7 +2,7 @@
 
 #include "Primitives.hpp"
 
-// The CPU twin of Engine/Shader/Random.slang, bit for bit, so a check can
+// The CPU twin of Engine/Effects/Shader/Random.slang, bit for bit, so a check can
 // hold the GPU's draws against it.
 namespace Crowy
 {

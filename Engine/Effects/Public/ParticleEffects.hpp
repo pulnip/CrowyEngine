@@ -10,7 +10,7 @@
 #include "Primitives.hpp"
 
 // A particle effect is one .slang file and one ParticleEffectDesc; what the
-// GPU reads is mirrored from Engine/Shader/Effect.slang.
+// GPU reads is mirrored from Engine/Effects/Shader/Effect.slang.
 namespace Crowy
 {
     struct EffectDrawDesc;

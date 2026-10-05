@@ -1,15 +1,20 @@
+#include "RHIShader.hpp"
+
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <format>
 #include <memory>
 #include <stdexcept>
-#include <slang.h>
+#include <string>
+#include <vector>
+
 #include <slang-com-ptr.h>
+#include <slang.h>
+
 #include "Assert.hpp"
 #include "HashUtil.hpp"
 #include "LogLocal.hpp"
-#include "RHIShader.hpp"
 #include "StringUtil.hpp"
 
 namespace{
@@ -92,6 +97,32 @@ namespace{
 namespace Crowy
 {
     namespace{
+        // Engine/Shader first, then each module's own Shader folder by name
+        const std::vector<std::string>& libraryRoots() {
+            static const auto roots = [] {
+                std::vector<std::string> found{
+                    toUTF8String(std::filesystem::absolute("Engine/Shader"))
+                };
+                std::vector<std::filesystem::path> modules;
+                for(const auto& entry:
+                    std::filesystem::directory_iterator("Engine")) {
+                    const auto shaders = entry.path() / "Shader";
+                    if(entry.is_directory() &&
+                       std::filesystem::is_directory(shaders))
+                        modules.push_back(shaders);
+                }
+                std::ranges::sort(modules);
+                for(const auto& shaders: modules)
+                    found.push_back(
+                        toUTF8String(std::filesystem::absolute(shaders))
+                    );
+
+                return found;
+            }();
+
+            return roots;
+        }
+
         SlangCompileTarget convert(RHIBackend backend){
             using enum RHIBackend;
 
@@ -288,16 +319,11 @@ namespace Crowy
         const auto modulePath = toUTF8String(absPath);
 
         const auto searchDir = toUTF8String(absPath.parent_path());
-        // a shader lives beside whatever owns it and includes its neighbours
-        // from there; Engine/Shader is the engine's own library, so it is an
-        // include root for every shader in the tree
-        const auto libraryDir = toUTF8String(
-            std::filesystem::absolute("Engine/Shader")
-        );
-        const std::array searchPaths{
-            searchDir.c_str(),
-            libraryDir.c_str()
-        };
+        // a shader includes its neighbors, then the libraries every shader
+        // in the tree may use
+        std::vector<const char*> searchPaths{searchDir.c_str()};
+        for(const auto& root: libraryRoots())
+            searchPaths.push_back(root.c_str());
         const std::array compilerOptions{
             CompilerOptionEntry{
                 .name = CompilerOptionName::GenerateWholeProgram,
@@ -312,10 +338,12 @@ namespace Crowy
             .targetCount = targetDescs.size(),
             .defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
             .searchPaths = searchPaths.data(),
-            .searchPathCount = searchPaths.size(),
+            .searchPathCount = static_cast<SlangInt>(searchPaths.size()),
             .compilerOptionEntries = compilerOptions.data(),
-            .compilerOptionEntryCount = backend == RHIBackend::Metal ?
-                static_cast<u32>(compilerOptions.size()) : 0
+            .compilerOptionEntryCount =
+                backend == RHIBackend::Metal
+                    ? static_cast<u32>(compilerOptions.size())
+                    : 0
         };
         CHECK_SRESULT(globalSession->createSession(
             sessionDesc,
