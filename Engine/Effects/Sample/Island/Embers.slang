@@ -1,0 +1,126 @@
+// Campfire embers: born at the flames' top, drawn up the tipi's chimney and
+// out of its smoke hole into the wind, cooling from yellow-white to red.
+
+#include "Effect.slang"
+#include "IslandShapes.slang"
+#include "Weather.slang"
+
+// what the desc's emitter and params mean here
+float3 discCenter() { return effect.emitter.xyz; }
+float discRadius() { return effect.emitter.w; }
+float riseMin() { return effect.params[0].x; }
+float riseMax() { return effect.params[0].y; }
+// the lift under the canvas, where the chimney draws
+float chimneyLift() { return effect.params[0].z; }
+float riseDrag() { return effect.params[0].w; }
+float swirl() { return effect.params[1].x; }
+float halfSize() { return effect.params[1].y; }
+float brightness() { return effect.params[1].z; }
+// the lift in the open air, reached over liftFade meters past the hole
+float openLift() { return effect.params[1].w; }
+float sideDrag() { return effect.params[2].x; }
+float liftFade() { return effect.params[2].y; }
+uint lifeMin() { return uint(effect.params[2].z); }
+uint lifeSpan() { return uint(effect.params[2].w); }
+
+Particle spawn(uint slot, uint generation) {
+    Particle p = (Particle)0;
+    float angle = 6.2831853 * particleRandom(slot, generation, 1u);
+    float radius = discRadius() * sqrt(particleRandom(slot, generation, 2u));
+    p.position = discCenter() +
+                 float3(cos(angle) * radius, 0.0, sin(angle) * radius);
+
+    float rise =
+        lerp(riseMin(), riseMax(), particleRandom(slot, generation, 3u));
+    p.velocity = float3(
+        (particleRandom(slot, generation, 4u) - 0.5) * 0.3,
+        rise,
+        (particleRandom(slot, generation, 5u) - 0.5) * 0.3
+    );
+    p.lifeSteps =
+        lifeMin() + effectHash(effect.seed, slot, generation, 6u) % lifeSpan();
+    p.generation = generation;
+    p.size = halfSize() * lerp(0.6, 1.4, particleRandom(slot, generation, 7u));
+    // the swirl's phase
+    float phase = 6.2831853 * particleRandom(slot, generation, 8u);
+    p.custom = float4(phase, 0.0, 0.0, 0.0);
+    return p;
+}
+
+void update(inout Particle p, uint slot) {
+    float dt = effect.dt;
+    float age = float(p.ageSteps) * dt;
+    float phase = p.custom.x;
+    float3 sway = float3(
+        sin(age * 3.1 + phase),
+        0.0,
+        cos(age * 2.3 + phase)
+    ) * swirl();
+    float above = max(p.position.y - ISLAND_TIPI_CANVAS_TOP_Y, 0.0);
+    float lift =
+        lerp(chimneyLift(), openLift(), smoothstep(0.0, liftFade(), above));
+    // the canvas shelters it from the wind, which takes it past the hole
+    float exposure = smoothstep(
+        ISLAND_TIPI_CANVAS_TOP_Y,
+        ISLAND_TIPI_APEX_Y + 0.6,
+        p.position.y
+    );
+    float2 wind = windAt(p.position.xz, effect.worldStep) * exposure;
+    float3 air = float3(wind.x, 0.0, wind.y);
+    float3 drag = float3(sideDrag(), riseDrag(), sideDrag());
+    float3 accel = float3(0.0, lift, 0.0) + sway + (air - p.velocity) * drag;
+    p.velocity += accel * dt;
+
+    // under the canvas an ember stays inside the pyramid
+    float3 next = p.position + p.velocity * dt;
+    if(next.y < ISLAND_TIPI_CANVAS_TOP_Y) {
+        uint facet;
+        float reach = tipiReach(next.xz, facet);
+        float limit = tipiApothem(next.y) - 0.05;
+        if(reach > limit) {
+            float2 outward = tipiFacetNormal(facet);
+            next.xz -= outward * (reach - limit);
+            p.velocity.xz -= outward * max(dot(p.velocity.xz, outward), 0.0);
+        }
+    }
+    p.position = next;
+}
+
+struct EmberVertex {
+    float4 position : SV_Position;
+    float2 corner : TEXCOORD0;
+    // 1 at birth, 0 at death
+    float heat : TEXCOORD1;
+};
+
+[shader("vertex")]
+EmberVertex vs_embers(uint vertexID: SV_VertexID, uint slot: SV_InstanceID) {
+    Particle p = loadParticle(slot);
+    float life = float(p.ageSteps) / float(max(p.lifeSteps, 1u));
+    float2 corner = stripCorner(vertexID);
+
+    EmberVertex o;
+    o.position = toClip(billboardCorner(p.position, p.size, corner));
+    o.corner = corner;
+    o.heat = 1.0 - life;
+    return o;
+}
+
+[shader("fragment")]
+float4 fs_embers(EmberVertex v) : SV_Target {
+    float r2 = dot(v.corner, v.corner);
+    float falloff = saturate(1.0 - r2);
+    falloff *= falloff;
+
+    float3 hot = float3(1.0, 0.85, 0.45);
+    float3 warm = float3(1.0, 0.38, 0.06);
+    float3 cold = float3(0.5, 0.05, 0.01);
+    float3 color = v.heat > 0.8
+        ? lerp(warm, hot, (v.heat - 0.8) / 0.2)
+        : lerp(cold, warm, v.heat / 0.8);
+    float fade = saturate(v.heat * 3.0);
+
+    return float4(color * brightness() * falloff * fade, 1.0);
+}
+
+#include "ParticleKernel.slang"

@@ -30,6 +30,19 @@ namespace Crowy
             : destroyed(destroyed) {}
     };
 
+    // counts its own destruction, so a test can tell retired from destroyed
+    class FakeComputePipelineState final: public RHIComputePipelineState {
+    private:
+        u32& destroyed;
+
+    public:
+        ~FakeComputePipelineState() override { ++destroyed; }
+        CROWY_DECLARE_PINNED(FakeComputePipelineState)
+
+        explicit FakeComputePipelineState(u32& destroyed)
+            : destroyed(destroyed) {}
+    };
+
     // CPU memory standing in for a buffer, so a test can read back what was
     // uploaded into it
     class FakeBuffer final: public RHIBuffer {
@@ -42,9 +55,11 @@ namespace Crowy
         static constexpr u64 ReadableID = 0xB0FF;
 
         Bytes bytes;
+        // what every writable view answers; 0 for a buffer that has none
+        u64 writableID = 0;
 
-        explicit FakeBuffer(u32 size)
-            : bytes(size) {}
+        explicit FakeBuffer(u32 size, u64 writableID = 0)
+            : bytes(size), writableID(writableID) {}
 
         void Upload(const void* data, u32 size, u32 offset) override {
             CROWY_ASSERT(offset + size <= bytes.size());
@@ -64,7 +79,9 @@ namespace Crowy
             return ReadableID;
         }
         u64 GetWritableID(const RHIBufferViewDesc&) override {
-            std::terminate();
+            CROWY_ASSERT(writableID != 0, "a buffer made without shaderWrite");
+
+            return writableID;
         }
 
         // the element at this byte offset
@@ -83,6 +100,9 @@ namespace Crowy
     // a size, a format and an id, and nothing behind them; counts its own
     // destruction, so a test can tell retired from destroyed
     class FakeTexture final: public RHITexture {
+    public:
+        static constexpr u64 WritableBit = 1ull << 63;
+
     private:
         u32 width = 0;
         u32 height = 0;
@@ -119,7 +139,7 @@ namespace Crowy
             return readableID;
         }
         u64 GetWritableID(const RHITextureViewDesc&) override {
-            std::terminate();
+            return readableID | WritableBit;
         }
         void* GetNative() noexcept override { return nullptr; }
     };
@@ -132,12 +152,16 @@ namespace Crowy
     public:
         using Reclaims = std::vector<std::move_only_function<void()>>;
         using PipelineCreates = std::vector<RHIGraphicsPipelineStateDesc>;
+        using ComputeCreates = std::vector<RHIComputePipelineStateDesc>;
         using TextureCreates = std::vector<RHITextureCreateDesc>;
         using BufferCreates = std::vector<RHIBufferCreateDesc>;
 
         static constexpr u32 TransientSize = 1u << 20;
         // a texture's readable id is this plus its create's index
         static constexpr u64 FirstTextureID = 0x7E00;
+        // a shader-writable buffer's writable id is this plus its create's
+        // index
+        static constexpr u64 FirstWritableBufferID = 0xB100;
         // D3D12's copy footprint rules
         static constexpr RHICapabilities Capabilities{
             .flipTextureV = false,
@@ -152,6 +176,10 @@ namespace Crowy
         u32 destroyed = 0;
         // every graphics pipeline's desc, in create order
         PipelineCreates pipelineCreates;
+        // every compute pipeline's desc, in create order; `creates` and
+        // `failAt` count both kinds
+        ComputeCreates computeCreates;
+        u32 computeDestroyed = 0;
         TextureCreates textureCreates;
         u32 texturesDestroyed = 0;
         BufferCreates bufferCreates;
@@ -168,9 +196,12 @@ namespace Crowy
             const RHIBufferCreateDesc& desc,
             StrView
         ) override {
+            const auto writableID =
+                desc.shaderWrite ? FirstWritableBufferID + bufferCreates.size()
+                                 : 0;
             bufferCreates.push_back(desc);
 
-            return std::make_unique<FakeBuffer>(desc.size);
+            return std::make_unique<FakeBuffer>(desc.size, writableID);
         }
         RHITextureRAII CreateTexture(
             const RHITextureCreateDesc& desc,
@@ -199,10 +230,14 @@ namespace Crowy
             return std::make_unique<FakeGraphicsPipelineState>(destroyed);
         }
         RHIComputePipelineStateRAII CreatePipelineState(
-            const RHIComputePipelineStateDesc&,
+            const RHIComputePipelineStateDesc& desc,
             StrView
         ) override {
-            std::terminate();
+            if(++creates == failAt)
+                throw std::runtime_error("fake compile error");
+            computeCreates.push_back(desc);
+
+            return std::make_unique<FakeComputePipelineState>(computeDestroyed);
         }
 
         RHISwapchainRAII CreateSwapchain(

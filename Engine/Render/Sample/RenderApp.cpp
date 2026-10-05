@@ -645,11 +645,16 @@ namespace Crowy
             "reload_shaders",
             [this](const DOM::Value&, Reply reply) {
                 const auto rebuild = renderer->ReloadPipelines();
+                const auto programs = OnReloadShaders();
 
                 DOM::Table result;
                 result.emplace(
                     "pipelines",
                     DOM::Value(static_cast<i64>(rebuild.pipelines))
+                );
+                result.emplace(
+                    "programs",
+                    DOM::Value(static_cast<i64>(programs))
                 );
                 result.emplace("ms", DOM::Value(rebuild.milliseconds));
                 reply.Ok(DOM::Value(std::move(result)));
@@ -917,12 +922,6 @@ namespace Crowy
 
         recorded = FrameStats{};
         recorded.visiblePrimitives = renderer->Visible(ViewMain).primitiveCount;
-        for(const auto& pass: pipeline->Stats()) {
-            recorded.triangles += pass.triangles;
-            recorded.draws += pass.draws;
-            recorded.runs += pass.runs;
-        }
-        reportCullStatsOnce();
 
         frameInputs.backBuffer = backBuffer.texture;
         frameInputs.sceneClear = pipelineConfig.clearColor;
@@ -934,6 +933,8 @@ namespace Crowy
         // both outside any pass: the pool's copies, then the UI's
         frameInputs.geometryAcquires = geometryPool->RecordUploads(cmdList);
         frameInputs.overlayAcquires = OnPrepareUI(cmdList);
+        frameHooks = OnRecordSimulation(cmdList);
+        frameInputs.hooks = frameHooks;
         // resolved after any rebuild above, so a request keeps its name
         frameInputs.frame = FrameNumber();
         frameInputs.captures = takeDueCaptures();
@@ -944,10 +945,18 @@ namespace Crowy
             targetCaptures->AddInFlight(std::move(readback));
         frameCaptures.clear();
         frameInputs.captures = {};
+        frameInputs.hooks = {};
+        frameHooks.clear();
 
-        // the edges are counted as they are recorded
+        // the edges and a hook pass's draws are counted as they are recorded
         const auto passStats = pipeline->Stats();
         recorded.passes.assign(passStats.begin(), passStats.end());
+        for(const auto& pass: passStats) {
+            recorded.triangles += pass.triangles;
+            recorded.draws += pass.draws;
+            recorded.runs += pass.runs;
+        }
+        reportCullStatsOnce();
     }
 
     void RenderApp::OnFrameEnd(const FrameReport& report) {

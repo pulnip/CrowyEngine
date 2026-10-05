@@ -77,6 +77,27 @@ namespace Crowy
                         );
                 }
             }
+            // a binding goes to one pass, so a second pass naming its hook
+            // would never be bound
+            for(usize i = 0; i < desc.passes.size(); ++i) {
+                const auto* hook =
+                    std::get_if<HookPassDesc>(&desc.passes[i].kind);
+                if(hook == nullptr)
+                    continue;
+                for(usize j = i + 1; j < desc.passes.size(); ++j) {
+                    const auto* other =
+                        std::get_if<HookPassDesc>(&desc.passes[j].kind);
+                    if(other != nullptr && other->hook == hook->hook) {
+                        refuse(
+                            desc.passes[j].name,
+                            std::format(
+                                "hook '{}' is named by an earlier pass",
+                                hook->hook
+                            )
+                        );
+                    }
+                }
+            }
         }
 
         // every pass's uses, per target, after the rules a single pass keeps
@@ -189,6 +210,13 @@ namespace Crowy
                             .read = true
                         }
                     );
+                }
+
+                if(const auto* hook = std::get_if<HookPassDesc>(&pass.kind)) {
+                    if(hook->hook.empty())
+                        refuse(pass.name, "a hook pass names its hook");
+                    if(pass.colors.empty())
+                        refuse(pass.name, "a hook pass needs a color target");
                 }
 
                 if(const auto* mesh = std::get_if<MeshPassDesc>(&pass.kind)) {
@@ -365,15 +393,17 @@ namespace Crowy
                     mesh->drawCapacity
                 );
                 viewCount = std::max(viewCount, mesh->view + 1);
-            } else {
+            } else if(const auto* fullscreen =
+                          std::get_if<FullscreenPassDesc>(&pass.kind)) {
                 compiled.fullscreenDesc = fullscreenPipelineDesc(
-                    std::get<FullscreenPassDesc>(pass.kind),
+                    *fullscreen,
                     compiled.colorFormats
                 );
             }
 
             stats[i].name = pass.name;
         }
+        hookBindings.assign(passDescs.size(), nullptr);
 
         // consecutive uses pair, read after read too, so the next writer
         // stays behind every reader; a first use acquires across submissions
@@ -474,8 +504,10 @@ namespace Crowy
             auto& compiled = passes[i];
             const auto* mesh = std::get_if<MeshPassDesc>(&desc.passes[i].kind);
             if(mesh == nullptr) {
-                compiled.fullscreenPipeline =
-                    &renderer.Pipelines().Resolve(*compiled.fullscreenDesc);
+                if(compiled.fullscreenDesc) {
+                    compiled.fullscreenPipeline =
+                        &renderer.Pipelines().Resolve(*compiled.fullscreenDesc);
+                }
                 continue;
             }
 
@@ -574,11 +606,13 @@ namespace Crowy
                 "a target is captured once per frame"
             );
         }
+        bindHooks(inputs);
 
         for(usize i = 0; i < passes.size(); ++i) {
             const auto& pass = desc.passes[i];
             const auto& compiled = passes[i];
             const auto* mesh = std::get_if<MeshPassDesc>(&pass.kind);
+            auto* hook = hookBindings[i];
             const bool overlay = i == overlayPass;
 
             cmdList.BeginEvent(pass.name.c_str());
@@ -588,10 +622,14 @@ namespace Crowy
                 acquireScratch.push_back(makeBarrier(half, inputs));
             if(overlay)
                 acquireScratch.append_range(inputs.overlayAcquires);
+            if(hook != nullptr)
+                acquireScratch.append_range(hook->textureAcquires);
             // a repeat is free on D3D12 and a second wait on one fence on Metal
-            const auto bufferAcquires =
-                mesh != nullptr ? inputs.geometryAcquires
-                                : std::span<const RHIBufferBarrier>{};
+            auto bufferAcquires = std::span<const RHIBufferBarrier>{};
+            if(mesh != nullptr)
+                bufferAcquires = inputs.geometryAcquires;
+            else if(hook != nullptr)
+                bufferAcquires = hook->bufferAcquires;
 
             colorScratch.clear();
             for(const auto& color: pass.colors) {
@@ -675,6 +713,26 @@ namespace Crowy
                 else
                     cmdList.SetPushGraphicsConstants(push);
                 list.Submit(cmdList, inputs.indices);
+            } else if(hook != nullptr) {
+                renderer.BindView(cmdList, ViewConstantBufferSlot, 0);
+                readScratch.clear();
+                for(const auto read: pass.reads) {
+                    readScratch.push_back(
+                        texture(read, inputs).GetReadableID()
+                    );
+                }
+                stats[i].draws = hook->record(
+                    cmdList,
+                    HookPassContext{
+                        .pass = pass.name,
+                        .formats =
+                            HookPassFormats{
+                                .colors = compiled.colorFormats,
+                                .depth = compiled.depthFormat
+                            },
+                        .reads = readScratch
+                    }
+                );
             } else {
                 const auto& fullscreen =
                     std::get<FullscreenPassDesc>(pass.kind);
@@ -800,5 +858,60 @@ namespace Crowy
             .color = backBufferFormat,
             .depth = passes[overlayPass].depthFormat
         };
+    }
+
+    std::optional<HookPassFormats> FramePipeline::FindHook(
+        StrView hook
+    ) const noexcept {
+        for(usize i = 0; i < passes.size(); ++i) {
+            const auto* named = std::get_if<HookPassDesc>(&desc.passes[i].kind);
+            if(named != nullptr && named->hook == hook) {
+                return HookPassFormats{
+                    .colors = passes[i].colorFormats,
+                    .depth = passes[i].depthFormat
+                };
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    void FramePipeline::bindHooks(FrameInputs& inputs) {
+        std::ranges::fill(hookBindings, nullptr);
+        for(auto& binding: inputs.hooks) {
+            const auto found =
+                std::ranges::find_if(desc.passes, [&](const PassDesc& pass) {
+                    const auto* hook = std::get_if<HookPassDesc>(&pass.kind);
+                    return hook != nullptr && hook->hook == binding.name;
+                });
+            if(found == desc.passes.end()) {
+                throw std::invalid_argument(
+                    std::format(
+                        "hook '{}' is bound, but no pass in the list names it",
+                        binding.name
+                    )
+                );
+            }
+            const auto index = static_cast<usize>(found - desc.passes.begin());
+            if(hookBindings[index] != nullptr) {
+                refuse(
+                    found->name,
+                    std::format("hook '{}' is bound twice", binding.name)
+                );
+            }
+            if(!binding.record)
+                refuse(found->name, "its hook's binding records nothing");
+            hookBindings[index] = &binding;
+        }
+
+        for(usize i = 0; i < desc.passes.size(); ++i) {
+            const auto* hook = std::get_if<HookPassDesc>(&desc.passes[i].kind);
+            if(hook != nullptr && hookBindings[i] == nullptr) {
+                refuse(
+                    desc.passes[i].name,
+                    std::format("hook '{}' has no binding", hook->hook)
+                );
+            }
+        }
     }
 }

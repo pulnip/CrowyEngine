@@ -89,20 +89,7 @@ struct ScenePush{
 [[vk::push_constant]]
 ConstantBuffer<ScenePush> pass : register(b0);
 
-// scalars and float4 only, so HLSL and Metal lay it out alike
-cbuffer view : register(b1) {
-    float4x4 viewProj;
-    uint debugMode;
-    // a ShadowFilter
-    uint shadowFilter;
-    uint _pad1;
-    uint _pad2;
-    // xyz = camera position, w unused
-    float4 cameraPosition;
-    // xyz, w unused; equal colours are a flat ambient
-    float4 skyAmbient;
-    float4 groundAmbient;
-};
+#include "View.slang"
 
 DrawData LoadDraw(uint drawID){
     StructuredBuffer<DrawData> draws = pass.draws;

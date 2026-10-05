@@ -53,12 +53,15 @@ namespace Crowy
             return row;
         }
 
-        // the union of every Visible primitive's bounds; none, no bounds
-        std::optional<AABB3D> visibleBounds(const PrimitiveTable& primitives) {
+        // the union of every visible caster's bounds; none, no bounds
+        std::optional<AABB3D> casterBounds(const PrimitiveTable& primitives) {
+            constexpr auto VisibleCaster =
+                combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow);
+
             std::optional<Vec3> low;
             std::optional<Vec3> high;
             for(const auto& primitive: primitives.All()) {
-                if(!hasFlag(primitive.flags, PrimitiveFlags::Visible))
+                if(!hasAll(primitive.flags, VisibleCaster))
                     continue;
 
                 const auto& box = primitive.worldBounds;
@@ -175,7 +178,7 @@ namespace Crowy
         u32 shadowMapSize
     ) {
         auto& view = views[ShadowView];
-        const auto bounds = visibleBounds(scene.Primitives());
+        const auto bounds = casterBounds(scene.Primitives());
         if(caster == nullptr || !bounds) {
             // no pass culls against a stale matrix: the view draws nothing
             auto& cull = culls[ShadowView];

@@ -11,6 +11,7 @@
 #include "Primitives.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
@@ -104,8 +105,37 @@ namespace Crowy
             RecordedCopies copies;
         };
 
+        struct RecordedDispatch {
+            RHIComputePipelineState* pipeline = nullptr;
+            // threads, not groups
+            Size3D threads;
+            // the push set last before it
+            Bytes push;
+        };
+
+        using RecordedDispatches = std::vector<RecordedDispatch>;
+        using DispatchBarriers = std::vector<BufferBarriers>;
+
+        struct RecordedComputePass {
+            // the event open when it began
+            Str event;
+            // how many render passes this list recorded before it
+            usize after = 0;
+            TextureBarriers acquires;
+            BufferBarriers bufferAcquires;
+            TextureBarriers releases;
+            BufferBarriers bufferReleases;
+            RecordedDispatches dispatches;
+            // per DispatchBarrier, its buffer halves
+            DispatchBarriers dispatchBarriers;
+            // "pipeline", "push", "cb <slot>", "dispatch", "barrier", in call
+            // order
+            Log log;
+        };
+
         using RecordedPasses = std::vector<RecordedPass>;
         using RecordedBlitPasses = std::vector<RecordedBlitPass>;
+        using RecordedComputePasses = std::vector<RecordedComputePass>;
         using Violations = std::vector<FakeViolation>;
 
     private:
@@ -128,6 +158,7 @@ namespace Crowy
         // this list's passes since its last Begin
         RecordedPasses passes;
         RecordedBlitPasses blitPasses;
+        RecordedComputePasses computePasses;
         // every broken rule since construction
         Violations violations;
         // the releases nothing consumed, listed at the last Close
@@ -143,13 +174,18 @@ namespace Crowy
         // each texture's latest pass as an attachment, since Begin
         AttachedPasses lastAttached;
         Str openEvent;
+        RHIComputePipelineState* computePipeline = nullptr;
+        Bytes computePush;
         bool inBlitPass = false;
         bool pushSet = false;
         bool viewSet = false;
 
     public:
         using RHICommandList::Copy;
+        using RHICommandList::SetComputeConstantBuffer;
         using RHICommandList::SetGraphicsConstantBuffer;
+        using RHICommandList::SetPipelineState;
+        using RHICommandList::SetPushComputeConstants;
         using RHICommandList::SetPushGraphicsConstants;
 
         RHITextureLayout LayoutOf(RHITexture* texture) const {
@@ -173,6 +209,7 @@ namespace Crowy
 
             passes.clear();
             blitPasses.clear();
+            computePasses.clear();
             parkedTextures.clear();
             parkedBuffers.clear();
             lastAttached.clear();
@@ -282,6 +319,95 @@ namespace Crowy
             release(textureReleases, bufferReleases);
 
             RHICommandList::EndBlitPass(textureReleases, bufferReleases);
+        }
+
+        void BeginComputePass(
+            std::span<const RHITextureBarrier> textureAcquires = {},
+            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        ) override {
+            auto& pass = computePasses.emplace_back();
+            pass.event = openEvent;
+            pass.after = passes.size();
+            pass.acquires.assign_range(textureAcquires);
+            pass.bufferAcquires.assign_range(bufferAcquires);
+            computePipeline = nullptr;
+            computePush.clear();
+
+            acquire(textureAcquires, bufferAcquires);
+
+            RHICommandList::BeginComputePass(textureAcquires, bufferAcquires);
+        }
+
+        void EndComputePass(
+            std::span<const RHITextureBarrier> textureReleases = {},
+            std::span<const RHIBufferBarrier> bufferReleases = {}
+        ) override {
+            auto& pass = computePasses.back();
+            pass.releases.assign_range(textureReleases);
+            pass.bufferReleases.assign_range(bufferReleases);
+
+            release(textureReleases, bufferReleases);
+
+            RHICommandList::EndComputePass(textureReleases, bufferReleases);
+        }
+
+        void SetPipelineState(RHIComputePipelineState& pipeline) override {
+            computePipeline = &pipeline;
+            if(!computePasses.empty())
+                computePasses.back().log.push_back("pipeline");
+
+            RHICommandList::SetPipelineState(pipeline);
+        }
+
+        void SetPushComputeConstants(const void* data, u32 size) override {
+            computePush.resize(size);
+            std::memcpy(computePush.data(), data, size);
+            if(!computePasses.empty())
+                computePasses.back().log.push_back("push");
+
+            RHICommandList::SetPushComputeConstants(data, size);
+        }
+
+        void SetComputeConstantBuffer(
+            RHIBuffer& buffer,
+            u32 slot,
+            u32 offset = 0
+        ) override {
+            if(!computePasses.empty())
+                computePasses.back().log.push_back(std::format("cb {}", slot));
+
+            RHICommandList::SetComputeConstantBuffer(buffer, slot, offset);
+        }
+
+        void Dispatch(Size3D threads) override {
+            if(!computePasses.empty()) {
+                auto& pass = computePasses.back();
+                pass.dispatches.push_back(
+                    RecordedDispatch{
+                        .pipeline = computePipeline,
+                        .threads = threads,
+                        .push = computePush
+                    }
+                );
+                pass.log.push_back("dispatch");
+            }
+
+            RHICommandList::Dispatch(threads);
+        }
+
+        void DispatchBarrier(
+            std::span<const RHITextureBarrier> textureBarriers = {},
+            std::span<const RHIBufferBarrier> bufferBarriers = {}
+        ) override {
+            if(!computePasses.empty()) {
+                auto& pass = computePasses.back();
+                pass.dispatchBarriers.emplace_back().assign_range(
+                    bufferBarriers
+                );
+                pass.log.push_back("barrier");
+            }
+
+            RHICommandList::DispatchBarrier(textureBarriers, bufferBarriers);
         }
 
         void Copy(
