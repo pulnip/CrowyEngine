@@ -246,6 +246,38 @@ SYSTEM PUBLIC
     "${offsetallocator_SOURCE_DIR}"
 )
 
+# Jolt Physics - rigid body simulation
+FetchContent_Declare(JoltPhysics
+    GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics.git"
+    GIT_TAG "v5.6.0"
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR "Build"
+)
+set(JPH_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+# the rest of the tree links the DLL runtime
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
+# the same results on Windows and the Mac, about 8 % slower
+set(CROSS_PLATFORM_DETERMINISTIC ON CACHE BOOL "" FORCE)
+set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+# /Wall under clang-cl is -Weverything, and a newer clang than Jolt's CI
+# would fail its -Werror
+set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(ENABLE_OBJECT_STREAM OFF CACHE BOOL "" FORCE)
+set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+# the GPU hair simulation and its shader toolchains
+set(JPH_USE_DX12 OFF CACHE BOOL "" FORCE)
+set(JPH_USE_VK OFF CACHE BOOL "" FORCE)
+set(JPH_USE_MTL OFF CACHE BOOL "" FORCE)
+set(JPH_USE_CPU_COMPUTE OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(JoltPhysics)
+# Jolt sets -ffp-contract=off itself only outside clang-cl
+target_compile_options(Jolt
+PRIVATE
+    $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:${MSVC}>>:/clang:-ffp-contract=off>
+)
+
 if(CROWY_ENABLE_TEST)
     FetchContent_Declare(
         GTest
