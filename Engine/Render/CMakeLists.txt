@@ -12,7 +12,9 @@ PRIVATE
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(Render
         DIRECTORY Test
-        DEPENDS Crowy::Render
+        DEPENDS
+            Crowy::Render
+            Crowy::RHITestSupport
         LABELS "unit"
     )
 

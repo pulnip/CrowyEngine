@@ -10,13 +10,10 @@ PUBLIC
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(Effects
         DIRECTORY Test
-        DEPENDS Crowy::Effects
+        DEPENDS
+            Crowy::Effects
+            Crowy::RHITestSupport
         LABELS "unit"
-    )
-    # Render's FakeDevice and FakeCommandList
-    target_include_directories(CrowyEffectsTest
-    PRIVATE
-        "${CMAKE_SOURCE_DIR}/Engine/Render/Test"
     )
 
     add_subdirectory(Check)
