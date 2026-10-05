@@ -2,93 +2,97 @@ add_subdirectory(Editor)
 add_subdirectory(PhysicsSync)
 add_subdirectory(Stage)
 
-crowy_declare_example(TenThousandBlocks
-SOURCES
+# the render framework every windowed render sample, spike and the Island
+# build on; App itself comes from each executable's FRAMEWORK
+add_library(SampleRenderApp STATIC
     FlyCamera.cpp
+    OrbitCamera.cpp
     RenderApp.cpp
-    TenThousandBlocks.cpp
-DEPENDS
+)
+target_include_directories(SampleRenderApp
+PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CROWY_APP_FRAMEWORK_DIR}"
+)
+target_link_libraries(SampleRenderApp
+PUBLIC
+    Crowy::Platform
     Crowy::Remote
     Crowy::Render
+PRIVATE
+    Crowy::Log
+)
+
+# the ImGui overlays, apart so samples without a UI skip ImGui
+add_library(SampleRenderOverlay STATIC
+    PortStatusChip.cpp
+    StatsOverlay.cpp
+)
+target_link_libraries(SampleRenderOverlay
+PUBLIC
+    SampleRenderApp
+    Crowy::UI
+)
+
+crowy_declare_example(TenThousandBlocks
+SOURCES
+    TenThousandBlocks.cpp
+DEPENDS
+    SampleRenderApp
 )
 
 crowy_declare_example(CornellRoom
 SOURCES
-    OrbitCamera.cpp
-    RenderApp.cpp
     CornellRoom.cpp
 DEPENDS
-    Crowy::Remote
-    Crowy::Render
     Crowy::SampleScene
+    SampleRenderApp
 )
 
 crowy_declare_example(Playground
 SOURCES
-    FlyCamera.cpp
-    RenderApp.cpp
-    PortStatusChip.cpp
-    StatsOverlay.cpp
     PlaygroundScene.cpp
     Playground.cpp
     RenderReflection.cpp
 DEPENDS
-    Crowy::Remote
-    Crowy::Render
     Crowy::Reflection
-    Crowy::UI
+    SampleRenderOverlay
 )
 
 crowy_declare_example(ToonPlayground
 SOURCES
-    FlyCamera.cpp
-    RenderApp.cpp
-    PortStatusChip.cpp
-    StatsOverlay.cpp
     PlaygroundScene.cpp
     RenderReflection.cpp
     ToonPlayground.cpp
 DEPENDS
-    Crowy::Remote
-    Crowy::Render
     Crowy::Reflection
-    Crowy::UI
+    SampleRenderOverlay
 )
 
 # the physics puzzles on a floor of their own, drawn one way through the
 # PhysicsSync glue
 crowy_declare_example(PhysicsPlayground
 SOURCES
-    FlyCamera.cpp
-    RenderApp.cpp
-    PortStatusChip.cpp
-    StatsOverlay.cpp
     PhysicsPlayground.cpp
 DEPENDS
-    Crowy::Remote
-    Crowy::Render
     Crowy::Reflection
-    Crowy::UI
     SamplePhysicsSync
     SamplePuzzle
+    SampleRenderOverlay
 )
 
 # Backlot's film set, read from the sibling checkout CROWY_BACKLOT_DIR names;
 # exits 77 (skipped) without it
 crowy_declare_example(StageEditor
 SOURCES
-    PortStatusChip.cpp
-    RenderApp.cpp
     RenderReflection.cpp
     StageContent.cpp
     StageEditor.cpp
     StageInspect.cpp
 DEPENDS
     Crowy::Reflection
-    Crowy::Remote
-    Crowy::Render
-    Crowy::UI
     SampleEditor
+    SampleRenderOverlay
     SampleStage
 )
 target_compile_definitions(StageEditor
