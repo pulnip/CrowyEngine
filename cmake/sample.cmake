@@ -77,6 +77,9 @@ function(crowy_declare_executable NAME)
             RUN_SERIAL TRUE
             # generous: the watch window is env-configurable
             TIMEOUT 300
+            # a sample whose content is missing exits 77, and the smoke
+            # scripts pass it through
+            SKIP_RETURN_CODE 77
         )
     endif()
 endfunction()

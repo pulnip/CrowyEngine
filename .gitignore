@@ -14,6 +14,7 @@ x64/
 
 # Dear ImGui
 imgui.ini
+*.imgui.ini
 
 # smoke captures (CROWY_SMOKE_CAPTURE_DIR=captures)
 captures/

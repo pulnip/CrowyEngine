@@ -1,0 +1,317 @@
+#include "EditorPanels.hpp"
+
+#include <algorithm>
+#include <array>
+#include <format>
+
+#include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
+
+#include "PropertyWalker.hpp"
+
+namespace Crowy
+{
+    namespace
+    {
+        // window points of a world point already in clip space
+        ImVec2 toScreen(const Vec4& clip, Vec2 viewport) {
+            return ImVec2{
+                (clip.x / clip.w + 1.0f) * 0.5f * viewport.x,
+                (1.0f - clip.y / clip.w) * 0.5f * viewport.y
+            };
+        }
+
+        // the part of a clip-space segment in front of the near plane (z >= 0)
+        bool clipToNear(Vec4& a, Vec4& b) {
+            if(a.z < 0.0f && b.z < 0.0f)
+                return false;
+            if(a.z < 0.0f)
+                a = a + (b - a) * (a.z / (a.z - b.z));
+            else if(b.z < 0.0f)
+                b = b + (a - b) * (b.z / (b.z - a.z));
+
+            return true;
+        }
+
+        void drawRow(EditorSession& session, usize index, bool reveal) {
+            const auto& object = session.Content().Objects()[index];
+            const bool selected = session.Selection() == index;
+            const auto label = std::format("{}  ·  {}##{}", object.name, object.detail, index);
+            if(ImGui::Selectable(label.c_str(), selected)) {
+                session.State().selected = object.name;
+                session.Sync();
+            }
+            if(reveal)
+                ImGui::SetScrollHereY(0.5f);
+        }
+    }
+
+    void drawEditorToolbar(EditorSession& session, StrView hint, const CaptureRequest& capture) {
+        ImGui::SetNextWindowPos(ImVec2(8.0f, 8.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 0.0f), ImVec2(420.0f, 1000.0f));
+        if(ImGui::Begin("Editor##EditorToolbar", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            const auto& content = session.Content();
+            auto& state = session.State();
+
+            if(ImGui::BeginCombo("cut", state.cut.c_str())) {
+                for(usize i = 0; i < content.Cuts().size(); ++i) {
+                    if(ImGui::Selectable(content.Cuts()[i].name.c_str(), content.Cuts()[i].name == state.cut))
+                        session.SelectCut(i);
+                }
+                ImGui::EndCombo();
+            }
+            if(ImGui::BeginCombo("key", state.key.c_str())) {
+                for(usize i = 0; i < content.Keys().size(); ++i) {
+                    if(ImGui::Selectable(content.Keys()[i].c_str(), content.Keys()[i] == state.key))
+                        session.SelectKey(i);
+                }
+                ImGui::EndCombo();
+            }
+            // scene time: play or pause, a sixtieth back or on
+            if(ImGui::Button(state.paused ? "Play" : "Pause"))
+                session.TogglePause();
+            ImGui::SameLine();
+            if(ImGui::ArrowButton("##TimeBack", ImGuiDir_Left))
+                session.StepTime(-1);
+            ImGui::SameLine();
+            if(ImGui::ArrowButton("##TimeOn", ImGuiDir_Right))
+                session.StepTime(1);
+            ImGui::SameLine();
+            ImGui::Text("%s  %.3f s", state.paused ? "paused" : "playing", state.time);
+
+            if(ImGui::Button(state.reload ? "Reload (next frame)" : "Reload"))
+                session.Reload();
+            ImGui::SameLine();
+            const auto slash = state.scene.find_last_of("/\\");
+            const auto file = slash == Str::npos ? state.scene : state.scene.substr(slash + 1);
+            ImGui::Text("revision %u  %s", state.revision, file.c_str());
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", state.scene.c_str());
+            if(ImGui::Button("Capture"))
+                capture();
+
+            ImGui::TextWrapped("%s", state.status.c_str());
+            ImGui::TextDisabled("%.*s", static_cast<int>(hint.size()), hint.data());
+        }
+        ImGui::End();
+    }
+
+    void drawLightMarkers(const EditorSession& session, const RenderScene& scene) {
+        const auto viewport = session.Viewport();
+        const auto viewProj = session.Camera().ViewProj(viewport.x / viewport.y);
+        auto* draw = ImGui::GetForegroundDrawList();
+        const auto& content = session.Content();
+        for(usize i = 0; i < content.Objects().size(); ++i) {
+            const auto light = content.LightOf(i);
+            if(!light || !scene.Lights().IsValid(*light))
+                continue;
+
+            const auto& row = scene.Lights().GetRef(*light);
+            if(const auto at = projectToWindow(viewProj, row.position, viewport)) {
+                const ImVec2 center{at->x, at->y};
+                if(row.enabled)
+                    draw->AddCircleFilled(center, 4.0f, IM_COL32(255, 236, 160, 230));
+                else
+                    draw->AddCircle(center, 4.0f, IM_COL32(170, 170, 170, 200), 0, 1.5f);
+            }
+        }
+    }
+
+    void drawSelectionHighlight(const EditorSession& session, const RenderScene& scene) {
+        const auto selection = session.Selection();
+        if(!selection)
+            return;
+
+        const auto& camera = session.Camera();
+        const auto viewport = session.Viewport();
+        const auto viewProj = camera.ViewProj(viewport.x / viewport.y);
+        auto* draw = ImGui::GetForegroundDrawList();
+        const auto color = IM_COL32(255, 196, 40, 255);
+
+        if(const auto light = session.Content().LightOf(*selection)) {
+            const auto& row = scene.Lights().GetRef(*light);
+            if(const auto at = projectToWindow(viewProj, row.position, viewport)) {
+                const ImVec2 center{at->x, at->y};
+                draw->AddCircle(center, 10.0f, color, 0, 2.0f);
+                draw->AddText(ImVec2(center.x + 12.0f, center.y - 8.0f), color, session.State().selected.c_str());
+            }
+            return;
+        }
+
+        const auto primitive = session.Content().PrimitiveOf(*selection);
+        if(!primitive || !scene.Primitives().IsValid(*primitive))
+            return;
+
+        const auto& row = scene.Primitives().GetRef(*primitive);
+        const auto& local = scene.Meshes().GetRef(row.mesh).localBounds;
+        std::array<Vec4, 8> corners;
+        for(u32 i = 0; i < corners.size(); ++i) {
+            const Vec3 sign{i & 1 ? 1.0f : -1.0f, i & 2 ? 1.0f : -1.0f, i & 4 ? 1.0f : -1.0f};
+            const auto p = local.center + sign * local.halfScale;
+            corners[i] = viewProj * (row.localToWorld * Vec4{p.x, p.y, p.z, 1.0f});
+        }
+
+        // the twelve edges join corners one bit apart
+        for(u32 a = 0; a < corners.size(); ++a) {
+            for(const u32 bit: {1u, 2u, 4u}) {
+                const auto b = a | bit;
+                if(b == a)
+                    continue;
+                auto from = corners[a];
+                auto to = corners[b];
+                if(clipToNear(from, to))
+                    draw->AddLine(toScreen(from, viewport), toScreen(to, viewport), color, 2.0f);
+            }
+        }
+        if(corners[0].z >= 0.0f)
+            draw->AddText(toScreen(corners[0], viewport), color, session.State().selected.c_str());
+    }
+
+    void drawGizmo(const EditorSession& session) {
+        const auto layout = session.SelectionGizmo();
+        if(!layout)
+            return;
+
+        using enum GizmoHandle;
+        const auto screen = projectGizmo(*layout);
+        const auto& io = ImGui::GetIO();
+        const Vec2 mouse{io.MousePos.x, io.MousePos.y};
+        const auto held = session.Held();
+        const auto lit = held != None ? held : io.WantCaptureMouse ? None : hoverGizmo(screen, mouse);
+        const auto colorOf = [&](GizmoHandle handle, ImU32 color) {
+            return handle == lit ? IM_COL32(255, 196, 40, 255) : color;
+        };
+        const auto point = [](Vec2 p) { return ImVec2{p.x, p.y}; };
+        auto* draw = ImGui::GetForegroundDrawList();
+
+        if(screen.marks[static_cast<usize>(Ring)].shown) {
+            std::array<ImVec2, GizmoRingSamples> ring;
+            for(usize i = 0; i < ring.size(); ++i)
+                ring[i] = point(screen.ring[i]);
+            draw->AddPolyline(ring.data(), static_cast<int>(ring.size()), colorOf(Ring, IM_COL32(225, 225, 225, 220)), ImDrawFlags_Closed, 2.0f);
+        }
+        for(const auto [handle, color]: {
+                std::pair{MoveX, IM_COL32(235, 70, 70, 255)},
+                std::pair{MoveY, IM_COL32(90, 205, 90, 255)},
+                std::pair{MoveZ, IM_COL32(80, 130, 245, 255)},
+            }) {
+            const auto& mark = screen.marks[static_cast<usize>(handle)];
+            if(!mark.shown)
+                continue;
+
+            const auto drawn = colorOf(handle, color);
+            const auto along = mark.to - screen.pivot;
+            const auto length = norm(along);
+            draw->AddLine(point(screen.pivot), point(mark.to), drawn, 3.0f);
+            // the head straddles the tip, inside the 6 points a press takes it at
+            if(length > 1.0f) {
+                const auto way = along / length;
+                const Vec2 across{-way.y, way.x};
+                const auto base = mark.to - way * 4.0f;
+                draw->AddTriangleFilled(point(mark.to + way * 6.0f), point(base + across * 5.0f), point(base - across * 5.0f), drawn);
+            }
+        }
+        for(const auto handle: {Scale, ScaleX, ScaleY, ScaleZ}) {
+            const auto& mark = screen.marks[static_cast<usize>(handle)];
+            if(!mark.shown)
+                continue;
+
+            const auto color = handle == ScaleX ? IM_COL32(235, 70, 70, 255)
+                             : handle == ScaleY ? IM_COL32(90, 205, 90, 255)
+                             : handle == ScaleZ ? IM_COL32(80, 130, 245, 255)
+                                                : IM_COL32(240, 240, 240, 255);
+            const Vec2 half{GizmoSquarePoints, GizmoSquarePoints};
+            draw->AddRectFilled(point(mark.from - half), point(mark.from + half), colorOf(handle, color));
+        }
+
+        if(const auto change = session.HeldChange(); !change.empty())
+            draw->AddText(ImVec2{mouse.x + 16.0f, mouse.y + 12.0f}, IM_COL32(255, 196, 40, 255), change.c_str());
+    }
+
+    void InspectorPanel::Draw(EditorSession& session, UIContext& context) {
+        // the walker seeds values when it builds: rebuild after a write it
+        // did not make, and never draw a tree over rows a reload freed
+        if(session.TakeInspectorDirty() || revision != session.Revision() || shown != session.Selection()) {
+            sections.clear();
+            for(const auto& section: session.Inspected())
+                sections.push_back(buildPropertyTree(section.label.c_str(), section.target, *section.desc, section.apply));
+            shown = session.Selection();
+            revision = session.Revision();
+        }
+
+        ImGui::SetNextWindowPos(ImVec2(1480.0f, 8.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(432.0f, 420.0f), ImGuiCond_FirstUseEver);
+        if(ImGui::Begin("Inspector##EditorInspector")) {
+            if(const auto selection = session.Selection()) {
+                const auto& object = session.Content().Objects()[*selection];
+                ImGui::TextUnformatted(object.name.c_str());
+                ImGui::TextDisabled("%s  ·  %s", object.group.c_str(), object.detail.c_str());
+                ImGui::Separator();
+                for(auto& section: sections)
+                    std::visit([&](auto& widget) { widget.submit(context); }, section);
+            } else {
+                ImGui::TextDisabled("click something, or pick it in the hierarchy");
+            }
+        }
+        ImGui::End();
+    }
+
+    void HierarchyPanel::Draw(EditorSession& session) {
+        if(revision != session.Revision()) {
+            reset(session.Content().Objects());
+            revision = session.Revision();
+        }
+        if(session.TakeSelectionChanged())
+            reveal = session.Selection();
+
+        ImGui::SetNextWindowPos(ImVec2(8.0f, 220.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(420.0f, 640.0f), ImGuiCond_FirstUseEver);
+        if(!ImGui::Begin("Hierarchy##EditorHierarchy")) {
+            ImGui::End();
+            return;
+        }
+
+        const auto objects = session.Content().Objects();
+        if(ImGui::InputTextWithHint("##search", "search names and models", &filter))
+            filtered = filterObjects(objects, filter);
+
+        if(!filter.empty()) {
+            ImGui::TextDisabled("%zu of %zu", filtered.size(), objects.size());
+            ImGuiListClipper clipper;
+            clipper.Begin(static_cast<int>(filtered.size()));
+            const auto at = reveal ? std::ranges::find(filtered, *reveal) : filtered.end();
+            if(at != filtered.end())
+                clipper.IncludeItemByIndex(static_cast<int>(at - filtered.begin()));
+            while(clipper.Step()) {
+                for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+                    drawRow(session, filtered[i], reveal == filtered[i]);
+            }
+        } else {
+            for(const auto& group: groups) {
+                const auto at = reveal ? std::ranges::find(group.objects, *reveal) : group.objects.end();
+                if(at != group.objects.end())
+                    ImGui::SetNextItemOpen(true);
+                const auto header = std::format("{} ({})", group.name, group.objects.size());
+                if(!ImGui::TreeNode(header.c_str()))
+                    continue;
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(group.objects.size()));
+                if(at != group.objects.end())
+                    clipper.IncludeItemByIndex(static_cast<int>(at - group.objects.begin()));
+                while(clipper.Step()) {
+                    for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+                        drawRow(session, group.objects[i], reveal == group.objects[i]);
+                }
+                ImGui::TreePop();
+            }
+        }
+        reveal.reset();
+        ImGui::End();
+    }
+
+    void HierarchyPanel::reset(EditorObjects objects) {
+        groups = groupObjects(objects);
+        filtered = filterObjects(objects, filter);
+    }
+}

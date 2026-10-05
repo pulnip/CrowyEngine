@@ -15,6 +15,12 @@
 #   a capture of the default frame 60 is compared against it, and a
 #   difference fails the run with a heat map beside the capture; the
 #   failure prints the Copy-Item that accepts the new picture.
+#   with such a golden the run waits past the duration until frame 60's
+#   capture is complete, up to $env:CROWY_SMOKE_CAPTURE_TIMEOUT seconds
+#   (60), and fails when none lands: a golden never gates on a frame it
+#   did not compare.
+#   an exit status of 77 is a skip (the sample's content is missing), and
+#   passes through for ctest's SKIP_RETURN_CODE.
 #
 # Validation errors: the script sets CROWY_D3D_DEBUG_BREAK=1, which makes
 # the engine break on debug-layer errors — without a debugger that aborts
@@ -68,6 +74,44 @@ if (-not $Capture -and $env:CROWY_SMOKE_CAPTURE_DIR) {
     $Capture = Join-Path $env:CROWY_SMOKE_CAPTURE_DIR "$sampleName.bmp"
 }
 
+# the golden a frame-60 capture is compared with, found before the launch so
+# the watch can wait for that capture
+$expectedGolden = $null
+if ($Capture -and (-not $env:CROWY_SMOKE_CAPTURE_AT -or $env:CROWY_SMOKE_CAPTURE_AT -eq "60")) {
+    $expectedGolden = Get-ChildItem -ErrorAction SilentlyContinue -Path @(
+        (Join-Path $repoRoot "Engine\*\Sample\Golden\$sampleName.$backend.png"),
+        (Join-Path $repoRoot "Engine\*\Spike\Golden\$sampleName.$backend.png")
+    ) | Select-Object -First 1
+}
+$captureTimeout = 60
+if ($env:CROWY_SMOKE_CAPTURE_TIMEOUT) {
+    $captureTimeout = [int]$env:CROWY_SMOKE_CAPTURE_TIMEOUT
+}
+
+# a dump is written on a thread: complete once the BMP header's file size
+# matches the bytes on disk
+function Test-CaptureComplete([string]$Path) {
+    if (-not $Path -or -not (Test-Path $Path)) {
+        return $false
+    }
+    try {
+        $stream = [IO.File]::Open($Path, "Open", "Read", "ReadWrite")
+        try {
+            $header = New-Object byte[] 6
+            if ($stream.Read($header, 0, 6) -lt 6) {
+                return $false
+            }
+            return [BitConverter]::ToUInt32($header, 2) -eq $stream.Length
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    catch {
+        return $false
+    }
+}
+
 $outLog = Join-Path $env:TEMP "crowy-smoke-$PID-out.log"
 $errLog = Join-Path $env:TEMP "crowy-smoke-$PID-err.log"
 
@@ -103,8 +147,29 @@ $proc = Start-Process -FilePath $App `
 $null = $proc.Handle
 
 $status = 0
-if ($proc.WaitForExit($Duration * 1000)) {
+$exited = $proc.WaitForExit($Duration * 1000)
+if (-not $exited -and $expectedGolden -and $Capture.EndsWith(".bmp")) {
+    # a slow start has not reached frame 60 yet: wait for its capture
+    $waited = 0
+    while (-not (Test-CaptureComplete $Capture) -and $waited -lt $captureTimeout) {
+        if ($proc.WaitForExit(1000)) {
+            $exited = $true
+            break
+        }
+        $waited += 1
+    }
+    if ($waited -gt 0) {
+        Write-Host "waited $waited s past the duration for frame 60"
+    }
+}
+if ($exited) {
     $status = $proc.ExitCode
+    if ($status -eq 77) {
+        Write-Host "SKIP: the sample reported its content missing"
+        Get-Content -ErrorAction SilentlyContinue $outLog, $errLog | Select-Object -Last 5 | ForEach-Object { Write-Host $_ }
+        Remove-Item -Force -ErrorAction SilentlyContinue $outLog, $errLog
+        exit 77
+    }
     if ($status -ne 0) {
         Write-Host "FAIL: exited early with status $status"
     }
@@ -141,6 +206,10 @@ if (-not $Capture) {
     exit 0
 }
 if (-not (Test-Path $Capture)) {
+    if ($expectedGolden) {
+        Write-Host "FAIL: $($expectedGolden.FullName) exists, but frame 60 was not captured within $($Duration + $captureTimeout) s"
+        exit 1
+    }
     # headless samples have no swapchain, so nothing to dump
     Write-Host "note: no frame captured (sample presented no frame?)"
     exit 0

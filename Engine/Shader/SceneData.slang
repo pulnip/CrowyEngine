@@ -33,6 +33,23 @@ struct MaterialData{
     // two lanes the engine never reads
     float4 custom0;
     float4 custom1;
+    // uv' = uv * xy + zw
+    float4 uvScaleOffset;
+    uint emissiveMapID;
+    float alphaCutoff;
+    uint flags;
+    uint _pad;
+};
+
+// MaterialData.flags
+static const uint MaterialFlagNoShadowReceive = 1;
+
+// a row of the frame's texture table; map ID n reads row n - 1
+struct TextureData{
+    DescriptorHandle<Texture2D> texture;
+    // a TextureSampler: RHI_STATIC_SAMPLERS order
+    uint sampler;
+    uint _pad;
 };
 
 struct LightData{
@@ -64,6 +81,9 @@ struct ScenePush{
     uint lightCount;
     // the directional shadow map, in a pass that reads it
     DescriptorHandle<Texture2D<float>> shadowMap;
+    DescriptorHandle<StructuredBuffer<TextureData>> textures;
+    uint textureBase;
+    uint _pad;
 };
 
 [[vk::push_constant]]
@@ -103,4 +123,11 @@ MaterialData LoadMaterial(uint materialIndex){
     StructuredBuffer<MaterialData> materials = pass.materials;
 
     return materials[pass.materialBase + materialIndex];
+}
+
+// a map ID's row; 0 names no texture and is never loaded
+TextureData LoadTexture(uint mapID){
+    StructuredBuffer<TextureData> textures = pass.textures;
+
+    return textures[pass.textureBase + mapID - 1];
 }

@@ -18,6 +18,11 @@ if(CROWY_ENABLE_TEST)
         DEPENDS Crowy::Serialization::Private
         LABELS "unit"
     )
+    # fixtures the tests read in place, whatever the working directory
+    target_compile_definitions(CrowySerializationTest
+    PRIVATE
+        CROWY_SERIALIZATION_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/Test/Data"
+    )
 
     add_subdirectory(Sample)
     add_subdirectory(Check)

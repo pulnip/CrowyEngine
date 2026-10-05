@@ -204,6 +204,10 @@ namespace Crowy
         // input a sample reads beyond the camera's
         virtual void OnProcessInput(const InputProvider&) {}
 
+        // after the camera, on every frame the loop runs: the frame's time,
+        // the fixed 1/60 step on a frame a counted run lets through
+        virtual void OnUpdateScene(f64) {}
+
         // the formats of the pass the UI rides, frozen for the app's life
         virtual void OnInitUI(RHIDevice&, const OverlayFormats&) {
             // default no-op so a sample without UI is unchanged
@@ -216,6 +220,13 @@ namespace Crowy
 
         // runs inside the overlay pass, after its draws
         virtual void OnRecordUI(RHICommandList&) {}
+
+        // the lit views' clear, as a lighting key's sky; the walker is
+        // rebuilt with it at the next frame
+        void SetClearColor(Color color) noexcept { config.clearColor = color; }
+        // the back buffer of `frame` to `path` as a BMP, with the
+        // capture_frame verb's checks; why not, empty once queued
+        Str RequestCapture(Str path, u64 frame);
 
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
@@ -242,6 +253,10 @@ namespace Crowy
         // a path taken in either queue, or a frame taken in the one asked
         // about: the swapchain's for no target, the target's otherwise
         bool isCaptureQueued(u64 frame, StrView target, StrView path) const;
+        // why `frames` cannot be captured to `paths`, the back buffer for an
+        // empty target; empty when every one can
+        Str refuseCaptures(StrView target, std::span<const u64> frames, std::span<const Str> paths) const;
+        void queueCaptures(StrView target, std::span<const u64> frames, std::span<const Str> paths);
         // the requests due this frame, one per target, resolved by name
         std::span<TargetReadback> takeDueCaptures();
         void collectCaptures();

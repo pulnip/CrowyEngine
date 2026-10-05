@@ -32,7 +32,8 @@ namespace Crowy
     struct MeshPassState {
         RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
         bool depthWrite = true;
-        // replaces the material's; a pass with no color target has none
+        // replaces the material's, a Masked one's cut included; a pass with
+        // no color target has none
         std::optional<RHIShaderDesc> fragmentShader;
         // false for a fragment stage that never calls the shading model, so
         // every material's model shares its pipeline
@@ -42,7 +43,8 @@ namespace Crowy
 
     // The half of a pipeline state a pass owns.
     struct PassPipelineDesc {
-        // empty: a depth-only pass, which has no fragment stage
+        // empty: a depth-only pass, whose only fragment stage is a Masked
+        // material's cut
         std::span<const RHIPixelFormat> renderTargetFormats;
         RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
         MeshPassState state;

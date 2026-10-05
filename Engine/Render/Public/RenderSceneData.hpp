@@ -79,8 +79,13 @@ namespace Crowy
         // DescriptorHandle<Texture2D<float>>: the directional shadow map, for
         // a pass that reads it; 0 otherwise
         u64 shadowMap = 0;
+        // DescriptorHandle<StructuredBuffer<TextureData>>: the frame's texture
+        // table, whose row 0 sits at textureBase; 0 with no texture
+        u64 textures = 0;
+        u32 textureBase = 0;
+        u32 _pad = 0;
     };
-    static_assert(sizeof(ScenePush) == 56);
+    static_assert(sizeof(ScenePush) == 72);
     static_assert(offsetof(ScenePush, materials) == 8);
     static_assert(offsetof(ScenePush, vertices) == 16);
     static_assert(offsetof(ScenePush, drawBase) == 24);
@@ -89,6 +94,8 @@ namespace Crowy
     static_assert(offsetof(ScenePush, lightBase) == 40);
     static_assert(offsetof(ScenePush, lightCount) == 44);
     static_assert(offsetof(ScenePush, shadowMap) == 48);
+    static_assert(offsetof(ScenePush, textures) == 56);
+    static_assert(offsetof(ScenePush, textureBase) == 64);
     static_assert(sizeof(ScenePush) <= RHI_PUSH_CONSTANT_BYTES);
     static_assert(std::is_trivially_copyable_v<ScenePush>);
 

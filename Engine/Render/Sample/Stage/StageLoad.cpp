@@ -1,0 +1,277 @@
+#include "StageLoad.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <format>
+#include <fstream>
+#include <set>
+#include <stdexcept>
+#include <string>
+
+#include "LinearAlgebra.hpp"
+#include "MeshGenerator.hpp"
+#include "MipChain.hpp"
+#include "StringUtil.hpp"
+
+namespace Crowy
+{
+    namespace
+    {
+        using Clock = std::chrono::steady_clock;
+
+        constexpr u64 alignUp(u64 value, u64 alignment) noexcept {
+            return (value + alignment - 1) / alignment * alignment;
+        }
+
+        // the OffsetAllocator rounds a request up to its bin but files a free
+        // region rounded down, so an exact capacity can still refuse
+        constexpr u32 withPoolSlack(u64 elements) noexcept {
+            return static_cast<u32>(elements + elements / 8 + 1024);
+        }
+
+        f64 secondsSince(Clock::time_point start) {
+            return std::chrono::duration<f64>(Clock::now() - start).count();
+        }
+
+        void requireContent(const std::filesystem::path& file) {
+            if(!std::filesystem::exists(file))
+                throw std::runtime_error(std::format("stage: no file {}", file));
+            if(isLfsPointer(file)) {
+                throw std::runtime_error(std::format(
+                    "stage: {} is a Git LFS pointer; run git lfs pull in the content repository",
+                    file
+                ));
+            }
+        }
+
+        u64 stagingBytesOf(const MeshData& mesh) {
+            // the pool stages each array 16-byte aligned
+            constexpr u64 StagingAlign = 16;
+
+            return alignUp(mesh.vertices.size() * sizeof(Vertex), StagingAlign)
+                + alignUp(mesh.indices.size() * sizeof(u32), StagingAlign);
+        }
+
+        // the model `id` names in `table`, which `models` is parallel to
+        const ModelData& modelOf(const StageModels& table, const StageModelData& models, StrView id) {
+            const auto row = std::ranges::find(table, id, &StageModel::id);
+
+            return models[static_cast<usize>(row - table.begin())];
+        }
+
+        // the palette, an emissive palette per channel a glowing model's
+        // instance names, one per quad
+        u32 materialsOf(const StageDocument& document, const StageModels& table, const StageModelData& models) {
+            const auto emissive = [&](const ModelSlot& slot) {
+                const auto material = std::ranges::find(document.materials, slot.material, &StageMaterial::id);
+                return material != document.materials.end() && material->emissive;
+            };
+
+            std::set<Str> channels;
+            for(const auto& instance: document.instances) {
+                if(std::ranges::any_of(modelOf(table, models, instance.model).slots, emissive))
+                    channels.insert(instance.emissiveChannel);
+            }
+
+            return static_cast<u32>(1 + channels.size() + document.quads.size());
+        }
+
+        // one per drawn submesh, every keyed row counted
+        u64 drawsOf(const StageDocument& document, const StageModels& table, const StageModelData& models) {
+            u64 draws = document.quads.size();
+            for(const auto& instance: document.instances)
+                draws += modelOf(table, models, instance.model).slots.size();
+
+            return draws;
+        }
+
+        StageCapacities capacitiesOf(const LoadedStage& stage) {
+            u64 vertices = stage.unitQuad.vertices.size();
+            u64 indices = stage.unitQuad.indices.size();
+            u64 staging = stagingBytesOf(stage.unitQuad);
+            for(const auto& model: stage.models) {
+                for(const auto& slot: model.slots) {
+                    vertices += slot.mesh.vertices.size();
+                    indices += slot.mesh.indices.size();
+                    staging += stagingBytesOf(slot.mesh);
+                }
+            }
+
+            const auto draws = drawsOf(stage.document, stage.document.models, stage.models);
+
+            return StageCapacities{
+                .vertices = withPoolSlack(vertices),
+                .indices = withPoolSlack(indices),
+                .materials = countStageMaterials(stage),
+                .draws = static_cast<u32>(draws),
+                .stagingBytes = staging
+            };
+        }
+    }
+
+    bool isLfsPointer(const std::filesystem::path& file) {
+        constexpr std::string_view Signature = "version https://git-lfs";
+
+        std::ifstream stream(file, std::ios::binary);
+        std::string head(Signature.size(), '\0');
+        stream.read(head.data(), static_cast<std::streamsize>(head.size()));
+
+        return stream.gcount() == static_cast<std::streamsize>(Signature.size())
+            && head == Signature;
+    }
+
+    LoadedStage loadStage(const std::filesystem::path& root) {
+        return loadStage(root, root / StageScenePath);
+    }
+
+    LoadedStage loadStage(
+        const std::filesystem::path& root,
+        const std::filesystem::path& sceneFile
+    ) {
+        LoadedStage stage;
+
+        auto start = Clock::now();
+        requireContent(sceneFile);
+        stage.document = loadStageDocument(root, sceneFile);
+        stage.sprites = loadStageSprites(stage.document);
+        stage.timings.documentSeconds = secondsSince(start);
+
+        start = Clock::now();
+        stage.models.reserve(stage.document.models.size());
+        for(const auto& row: stage.document.models) {
+            const auto file = resolveStagePath(stage.document, row.path);
+            requireContent(file);
+            stage.models.push_back(loadModel(file));
+        }
+        stage.timings.modelSeconds = secondsSince(start);
+
+        start = Clock::now();
+        for(const auto& material: stage.document.materials) {
+            if(stage.images.contains(material.texture))
+                continue;
+
+            stage.samplers.emplace(material.texture, material.sampler);
+            const auto file = resolveStagePath(stage.document, material.texture);
+            requireContent(file);
+            auto image = LoadImage(file);
+            // a nearest sampler still walks mips a texture has
+            if(material.sampler == StageSampler::Linear)
+                generateMipChain(image);
+            stage.images.emplace(material.texture, std::move(image));
+        }
+        stage.timings.imageSeconds = secondsSince(start);
+
+        stage.unitQuad = makeStageUnitQuad();
+        stage.capacities = capacitiesOf(stage);
+        if(stage.capacities.stagingBytes > StageStagingBudget) {
+            throw std::runtime_error(std::format(
+                "stage: geometry stages {} bytes, past the {} the pool's one upload may use",
+                stage.capacities.stagingBytes,
+                StageStagingBudget
+            ));
+        }
+
+        return stage;
+    }
+
+    StageSprites loadStageSprites(const StageDocument& document) {
+        StageSprites sprites;
+        for(const auto& quad: document.quads) {
+            if(!quad.flipbook)
+                continue;
+            if(!sprites.contains(quad.flipbook->sprite))
+                sprites.emplace(quad.flipbook->sprite, loadStageSprite(document, quad.flipbook->sprite));
+
+            const auto& animations = sprites.at(quad.flipbook->sprite).animations;
+            if(std::ranges::find(animations, quad.flipbook->animation, &StageSpriteAnimation::name) == animations.end()) {
+                throw std::runtime_error(std::format(
+                    "stage: quad '{}' plays '{}', which {} does not hold",
+                    quad.name,
+                    quad.flipbook->animation,
+                    quad.flipbook->sprite
+                ));
+            }
+        }
+
+        return sprites;
+    }
+
+    void checkStageReload(const LoadedStage& launched, const StageDocument& document) {
+        const auto& models = launched.document.models;
+        for(const auto& row: document.models) {
+            const auto launch = std::ranges::find(models, row.id, &StageModel::id);
+            const bool same = launch != models.end() && launch->path == row.path
+                && launch->materials == row.materials && launch->box == row.box;
+            if(!same) {
+                throw std::runtime_error(std::format(
+                    "stage: model '{}' reads {}, which the editor did not load at launch; a restart loads it",
+                    row.id,
+                    row.path
+                ));
+            }
+        }
+        for(const auto& material: document.materials) {
+            const auto loaded = launched.samplers.find(material.texture);
+            if(loaded == launched.samplers.end() || loaded->second != material.sampler) {
+                throw std::runtime_error(std::format(
+                    "stage: material '{}' samples {} {}, which the editor did not upload so at launch; a restart loads it",
+                    material.id,
+                    material.texture,
+                    material.sampler == StageSampler::Point ? "point" : "linear"
+                ));
+            }
+        }
+
+        // the swap populates the file over the launch's model table: every
+        // material that table names, a palette, and what the launch reserved
+        bool palette = false;
+        for(const auto& row: models) {
+            for(const auto& id: row.materials) {
+                const auto material = std::ranges::find(document.materials, id, &StageMaterial::id);
+                if(material == document.materials.end()) {
+                    throw std::runtime_error(std::format(
+                        "stage: model '{}' draws with material '{}', which the file no longer holds; a restart loads it",
+                        row.id,
+                        id
+                    ));
+                }
+                palette = palette || !material->emissive;
+            }
+        }
+        if(!palette)
+            throw std::runtime_error("stage: no model draws with a material that does not glow");
+
+        const auto materials = materialsOf(document, models, launched.models);
+        const auto draws = drawsOf(document, models, launched.models);
+        const auto& reserved = launched.capacities;
+        if(materials > reserved.materials || draws > reserved.draws) {
+            throw std::runtime_error(std::format(
+                "stage: the file needs {} materials and {} draws a pass, past the {} and {} the launch reserved; a restart reserves them",
+                materials,
+                draws,
+                reserved.materials,
+                reserved.draws
+            ));
+        }
+    }
+
+    StageReload reloadStageDocument(const LoadedStage& launched, const std::filesystem::path& sceneFile) {
+        requireContent(sceneFile);
+        auto document = loadStageDocument(launched.document.root, sceneFile);
+        checkStageReload(launched, document);
+        auto sprites = loadStageSprites(document);
+        // instances name models by id: the launch's table, which the pool
+        // follows, serves a file that drops or reorders rows
+        document.models = launched.document.models;
+
+        return StageReload{.document = std::move(document), .sprites = std::move(sprites)};
+    }
+
+    u32 countStageMaterials(const LoadedStage& stage) {
+        return materialsOf(stage.document, stage.document.models, stage.models);
+    }
+
+    MeshData makeStageUnitQuad() {
+        return MakePlane(unitZ(), -unitX(), Vec2{0.5f, 0.5f});
+    }
+}
