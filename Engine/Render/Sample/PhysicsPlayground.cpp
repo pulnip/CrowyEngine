@@ -445,7 +445,7 @@ namespace Crowy
                         .data =
                             {.albedo = {0.5f, 0.5f, 0.5f}, .roughness = 0.8f},
                         .pipeline = basePipeline(
-                            "Engine/Render/Sample/Playground.slang",
+                            "Engine/Render/Sample/PhysicsPlayground.slang",
                             "fs_grid"
                         )
                     }

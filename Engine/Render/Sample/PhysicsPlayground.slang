@@ -1,5 +1,5 @@
-// The prototyping map's own surface: the engine's forward loop, with a
-// world-aligned grid darkening the albedo of the floor, walls and blocks.
+// The physics playground's floor: the engine's forward loop with the
+// sample grid darkening its albedo.
 #include "ForwardShading.slang"
 #include "Grid.slang"
 
