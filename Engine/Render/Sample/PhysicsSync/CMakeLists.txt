@@ -17,10 +17,7 @@ PUBLIC
 )
 
 # its tests repeat the library's arithmetic and compare bit for bit
-target_compile_options(SamplePhysicsSync
-PRIVATE
-    ${CROWY_FP_CONTRACT_OFF}
-)
+crowy_fp_contract_off(SamplePhysicsSync)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(SamplePhysicsSync
@@ -28,8 +25,5 @@ if(CROWY_ENABLE_TEST)
         DEPENDS SamplePhysicsSync
         LABELS "unit"
     )
-    target_compile_options(CrowySamplePhysicsSyncTest
-    PRIVATE
-        ${CROWY_FP_CONTRACT_OFF}
-    )
+    crowy_fp_contract_off(CrowySamplePhysicsSyncTest)
 endif()

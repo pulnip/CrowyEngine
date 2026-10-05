@@ -12,7 +12,8 @@ backends D3D12 and Metal. Modules under `Engine/`:
   `loadModel`), `Remote` (the command port), `UI` (ImGui panels).
 - `RHI` with `DX12RHI` / `MetalRHI`; `Render` (scene, pipeline, passes);
   `Shader` (the shared Slang root); `Effects` (GPU particles and fields);
-  `Physics` (Jolt; added before `Render` on purpose, see its CMake).
+  `Physics` (Jolt; its targets and glue compile with
+  `crowy_fp_contract_off`).
 - `Resource` and `Scene` have no consumers yet.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or

@@ -22,10 +22,7 @@ PUBLIC
 )
 
 # the literals and the tracks' poses enter the simulation
-target_compile_options(SamplePuzzle
-PRIVATE
-    ${CROWY_FP_CONTRACT_OFF}
-)
+crowy_fp_contract_off(SamplePuzzle)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(SamplePuzzle
@@ -33,8 +30,5 @@ if(CROWY_ENABLE_TEST)
         DEPENDS SamplePuzzle
         LABELS "unit"
     )
-    target_compile_options(CrowySamplePuzzleTest
-    PRIVATE
-        ${CROWY_FP_CONTRACT_OFF}
-    )
+    crowy_fp_contract_off(CrowySamplePuzzleTest)
 endif()

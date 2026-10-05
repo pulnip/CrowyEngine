@@ -112,6 +112,15 @@ function(crowy_declare_interface NAME)
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
 
+# no fused multiply-add, so Windows and the Mac round alike
+function(crowy_fp_contract_off TARGET)
+    target_compile_options(${TARGET}
+    PRIVATE
+        $<$<AND:$<CXX_COMPILER_ID:Clang>,$<BOOL:${MSVC}>>:/clang:-ffp-contract=off>
+        $<$<AND:$<CXX_COMPILER_ID:Clang,AppleClang>,$<NOT:$<BOOL:${MSVC}>>>:-ffp-contract=off>
+    )
+endfunction()
+
 function(crowy_declare_test NAME)
     cmake_parse_arguments(ARG "" "DIRECTORY" "LABELS;DEPENDS" ${ARGN})
 
