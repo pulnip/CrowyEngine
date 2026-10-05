@@ -28,8 +28,6 @@
 
 namespace Crowy
 {
-    struct UIContext {};
-
     // exposed as `control.<Kind>`; writing `mode` restarts that puzzle,
     // even in the mode it already runs
     struct PuzzleControl {
@@ -215,7 +213,6 @@ namespace Crowy
             GeometryAllocation quad{};
             GeometryAllocation floorPlane{};
             RAII<UIRenderer> uiRenderer;
-            UIContext uiContext;
             StatsOverlay statsOverlay;
             bool showLabels = true;
 
