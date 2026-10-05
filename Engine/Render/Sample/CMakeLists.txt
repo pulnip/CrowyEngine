@@ -1,3 +1,9 @@
+# the film set the stage samples and their tests read, a sibling checkout
+# with Git LFS; tests skip when it is missing
+cmake_path(ABSOLUTE_PATH CMAKE_SOURCE_DIR NORMALIZE OUTPUT_VARIABLE CROWY_SOURCE_PARENT)
+cmake_path(GET CROWY_SOURCE_PARENT PARENT_PATH CROWY_SOURCE_PARENT)
+set(CROWY_BACKLOT_DIR "${CROWY_SOURCE_PARENT}/Backlot" CACHE PATH "Backlot's checkout")
+
 add_subdirectory(Editor)
 add_subdirectory(PhysicsSync)
 add_subdirectory(Stage)
@@ -95,9 +101,9 @@ DEPENDS
     SampleRenderOverlay
     SampleStage
 )
-target_compile_definitions(StageEditor
-PRIVATE
-    CROWY_BACKLOT_DIR="${CROWY_BACKLOT_DIR}"
+set_source_files_properties(StageEditor.cpp
+PROPERTIES
+    COMPILE_DEFINITIONS "CROWY_BACKLOT_DIR=\"${CROWY_BACKLOT_DIR}\""
 )
 if(TARGET StageEditorSmoke OR CROWY_ENABLE_TEST)
     # the set loads for about 2.4 s in Debug before frame 1
