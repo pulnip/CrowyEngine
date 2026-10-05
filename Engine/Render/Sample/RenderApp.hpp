@@ -8,6 +8,7 @@
 #include "AppFramework.hpp"
 #include "Camera.hpp"
 #include "CommandPort.hpp"
+#include "DebugMode.hpp"
 #include "EnumUtil.hpp"
 #include "FrameHistory.hpp"
 #include "FramePipeline.hpp"
@@ -28,26 +29,6 @@ namespace Crowy
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
     using TargetCaptureQueuePtr = RAII<TargetCaptureQueue>;
-
-    // mirrored by the constants in Engine/Shader/DebugView.slang
-    enum class DebugMode : u32 {
-        Lit,
-        Unshaded,
-        Normals,
-        Depth,
-        Overdraw,
-        // the lights' shadow term: 1 white, 0 black
-        Shadow,
-    };
-
-    CROWY_ENUM_BEGIN(DebugMode)
-        CROWY_ENUM_VALUE(Lit)
-        CROWY_ENUM_VALUE(Unshaded)
-        CROWY_ENUM_VALUE(Normals)
-        CROWY_ENUM_VALUE(Depth)
-        CROWY_ENUM_VALUE(Overdraw)
-        CROWY_ENUM_VALUE(Shadow)
-    CROWY_ENUM_END()
 
     // what the frame shows instead of the plain lit picture, exposed as `debug`
     struct RenderDebug {

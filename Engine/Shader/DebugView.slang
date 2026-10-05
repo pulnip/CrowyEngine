@@ -3,7 +3,7 @@
 // A view uniform branch rather than a material swap, as UE's
 // UnlitViewmodeMask does: a swap would split VS and FS across files.
 
-// mirror of DebugMode in Engine/Render/Sample/RenderApp.hpp
+// mirror of DebugMode in Engine/Render/Public/DebugMode.hpp
 static const uint DebugModeLit = 0;
 static const uint DebugModeUnshaded = 1;
 static const uint DebugModeNormals = 2;
