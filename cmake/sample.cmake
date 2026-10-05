@@ -131,4 +131,11 @@ function(crowy_declare_check NAME)
     DEPENDS
         ${ARG_DEPENDS}
     )
+    if(TEST ${NAME}Smoke)
+        # a check that outlives the watch window is hung, not healthy
+        set_tests_properties(${NAME}Smoke
+        PROPERTIES
+            ENVIRONMENT "CROWY_SMOKE_MUST_EXIT=1"
+        )
+    endif()
 endfunction()

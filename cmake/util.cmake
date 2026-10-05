@@ -142,7 +142,7 @@ function(crowy_declare_test NAME)
 
     add_test(
         NAME Crowy${NAME}Test
-        COMMAND $<TARGET_FILE:Crowy${NAME}Test>
+        COMMAND $<TARGET_FILE:Crowy${NAME}Test> --gtest_fail_if_no_test_linked
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
     set_tests_properties(Crowy${NAME}Test

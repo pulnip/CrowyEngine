@@ -19,7 +19,8 @@
 # executable (the BMP stays when that tool is not built).
 #
 # golden: when Engine/*/Sample/Golden/<sample>.metal.png (or Spike/Golden)
-# exists, a capture of the default frame 60 is compared against it with
+# exists, frame 60 is captured (to $TMPDIR/crowy-smoke without a capture
+# directory) and compared against it on every run with
 # ImageCompareCheck's defaults, and a difference fails the run with a heat
 # map beside the capture. To accept a new picture, copy the capture over
 # the golden; the failure prints the command. With such a golden the run
@@ -29,6 +30,9 @@
 #
 # An exit status of 77 is a skip (the sample's content is missing) and
 # passes through for ctest's SKIP_RETURN_CODE.
+#
+# With CROWY_SMOKE_MUST_EXIT=1 (checks) the program must exit by itself
+# within 60 s or the duration, whichever is longer.
 #
 # Run from the repository root: samples load Engine/Shader and Content
 # by relative path.
@@ -50,7 +54,7 @@ fi
 # the golden a frame-60 capture is compared with, found before the launch
 # so the watch can wait for that capture
 EXPECTED_GOLDEN=""
-if [ -n "$CAPTURE" ] && [ "${CROWY_SMOKE_CAPTURE_AT:-60}" = 60 ]; then
+if [ "${CROWY_SMOKE_CAPTURE_AT:-60}" = 60 ]; then
     for CANDIDATE in \
         "$REPO_ROOT"/Engine/*/Sample/Golden/"$NAME.$BACKEND.png" \
         "$REPO_ROOT"/Engine/*/Spike/Golden/"$NAME.$BACKEND.png"; do
@@ -60,7 +64,15 @@ if [ -n "$CAPTURE" ] && [ "${CROWY_SMOKE_CAPTURE_AT:-60}" = 60 ]; then
         fi
     done
 fi
+# a golden gates every run, not only runs that collect captures
+if [ -z "$CAPTURE" ] && [ -n "$EXPECTED_GOLDEN" ]; then
+    CAPTURE="${TMPDIR:-/tmp}/crowy-smoke/$NAME.bmp"
+fi
 CAPTURE_TIMEOUT="${CROWY_SMOKE_CAPTURE_TIMEOUT:-60}"
+WATCH="$DURATION"
+if [ "${CROWY_SMOKE_MUST_EXIT:-}" = 1 ] && [ "$WATCH" -lt 60 ]; then
+    WATCH=60
+fi
 
 # a dump is written on a thread: complete once the BMP header's file size
 # (bytes 2-5, little-endian) matches the bytes on disk
@@ -99,7 +111,7 @@ PID=$!
 STATUS=0
 EXITED=0
 ELAPSED=0
-while [ "$ELAPSED" -lt "$DURATION" ]; do
+while [ "$ELAPSED" -lt "$WATCH" ]; do
     if ! kill -0 "$PID" 2>/dev/null; then
         EXITED=1
         break
@@ -140,9 +152,13 @@ if [ "$EXITED" -eq 1 ]; then
         echo "FAIL: exited early with status $STATUS" >&2
     fi
 else
-    # still alive after the watch window: healthy. shut it down.
+    # still alive after the watch window: healthy, unless it had to exit
     kill "$PID" 2>/dev/null
     wait "$PID" 2>/dev/null
+    if [ "${CROWY_SMOKE_MUST_EXIT:-}" = 1 ]; then
+        echo "FAIL: did not exit within $WATCH s" >&2
+        STATUS=1
+    fi
 fi
 
 if grep -q "failed assertion\|Draw Errors\|terminating\|Assertion failed" "$LOG"; then

@@ -12,7 +12,8 @@
 #   a .bmp capture becomes a PNG through ImageCompareCheck.exe beside the
 #   executable (the BMP stays when that tool is not built).
 #   when Engine\*\Sample\Golden\<sample>.dx12.png (or Spike\Golden) exists,
-#   a capture of the default frame 60 is compared against it, and a
+#   frame 60 is captured (to %TEMP%\crowy-smoke without a capture
+#   directory) and compared against it on every run, and a
 #   difference fails the run with a heat map beside the capture; the
 #   failure prints the Copy-Item that accepts the new picture.
 #   with such a golden the run waits past the duration until frame 60's
@@ -21,6 +22,8 @@
 #   did not compare.
 #   an exit status of 77 is a skip (the sample's content is missing), and
 #   passes through for ctest's SKIP_RETURN_CODE.
+#   with CROWY_SMOKE_MUST_EXIT=1 (checks) the program must exit by itself
+#   within 60 s or the duration, whichever is longer.
 #
 # Validation errors: the script sets CROWY_D3D_DEBUG_BREAK=1, which makes
 # the engine break on debug-layer errors — without a debugger that aborts
@@ -77,12 +80,17 @@ if (-not $Capture -and $env:CROWY_SMOKE_CAPTURE_DIR) {
 # the golden a frame-60 capture is compared with, found before the launch so
 # the watch can wait for that capture
 $expectedGolden = $null
-if ($Capture -and (-not $env:CROWY_SMOKE_CAPTURE_AT -or $env:CROWY_SMOKE_CAPTURE_AT -eq "60")) {
+if (-not $env:CROWY_SMOKE_CAPTURE_AT -or $env:CROWY_SMOKE_CAPTURE_AT -eq "60") {
     $expectedGolden = Get-ChildItem -ErrorAction SilentlyContinue -Path @(
         (Join-Path $repoRoot "Engine\*\Sample\Golden\$sampleName.$backend.png"),
         (Join-Path $repoRoot "Engine\*\Spike\Golden\$sampleName.$backend.png")
     ) | Select-Object -First 1
 }
+# a golden gates every run, not only runs that collect captures
+if (-not $Capture -and $expectedGolden) {
+    $Capture = Join-Path $env:TEMP "crowy-smoke\$sampleName.bmp"
+}
+$mustExit = $env:CROWY_SMOKE_MUST_EXIT -eq "1"
 $captureTimeout = 60
 if ($env:CROWY_SMOKE_CAPTURE_TIMEOUT) {
     $captureTimeout = [int]$env:CROWY_SMOKE_CAPTURE_TIMEOUT
@@ -147,7 +155,11 @@ $proc = Start-Process -FilePath $App `
 $null = $proc.Handle
 
 $status = 0
-$exited = $proc.WaitForExit($Duration * 1000)
+$watch = $Duration
+if ($mustExit) {
+    $watch = [Math]::Max($Duration, 60)
+}
+$exited = $proc.WaitForExit($watch * 1000)
 if (-not $exited -and $expectedGolden -and $Capture.EndsWith(".bmp")) {
     # a slow start has not reached frame 60 yet: wait for its capture
     $waited = 0
@@ -175,9 +187,13 @@ if ($exited) {
     }
 }
 else {
-    # still alive after the watch window: healthy. shut it down.
+    # still alive after the watch window: healthy, unless it had to exit
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
     $proc.WaitForExit() | Out-Null
+    if ($mustExit) {
+        Write-Host "FAIL: did not exit within $watch s"
+        $status = 1
+    }
 }
 
 $log = @()

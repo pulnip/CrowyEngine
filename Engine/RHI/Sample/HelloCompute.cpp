@@ -136,9 +136,10 @@ int main(void){
             }
         }
 
-        if(i == N){
-            std::println("Succeed!");
+        if(i != N){
+            return 1;
         }
+        std::println("Succeed!");
     }
     catch(const std::exception& e){
         std::println("Exception: {}", e.what());
