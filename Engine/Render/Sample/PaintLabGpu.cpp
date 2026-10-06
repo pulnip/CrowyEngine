@@ -111,11 +111,10 @@ namespace Crowy
             return std::nullopt;
         }
 
-        // the first use this command list: against the frame that last used it
+        // the first use this command list waits on the submission that last
+        // used it, even in the same use
         const auto before = std::exchange(state, use);
         touched = true;
-        if(before == use && !discard)
-            return std::nullopt;
 
         return MakeCrossSubmissionBarrier(*texture, before, use, discard);
     }
