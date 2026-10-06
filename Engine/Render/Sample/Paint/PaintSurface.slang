@@ -159,8 +159,8 @@ SurfacePoint readSurface(SurfaceOut input, bool needsHeight) {
     return p;
 }
 
-// the lit paint: look, style, slab, every light, the sky
-float3 shadeLit(SurfaceOut input, SurfacePoint p, out PaintSlabInputs slab) {
+// the look laid over the bare one, styled, as the slab the lights read
+PaintSlabInputs buildSlab(SurfacePoint p) {
     PaintLook base = PlainLook(p.vertexNormal);
     // MF_PaintOverlay's thin-paint opacity; with the shipped minimum of 1
     // paint never turns see-through
@@ -171,10 +171,13 @@ float3 shadeLit(SurfaceOut input, SurfacePoint p, out PaintSlabInputs slab) {
         : base;
     look.normal = normalize(look.normal);
     PaintStyled style = ApplyStyle(look, lookStyle.x, lookStyle.y, lookStyle.z);
-    slab = ToSlab(look, style, lookStyle2.y);
-    if(lookModes2.z != 0u)
-        slab = Collapse(slab);
+    PaintSlabInputs slab = ToSlab(look, style, lookStyle2.y);
+    return lookModes2.z != 0u ? Collapse(slab) : slab;
+}
 
+// the lit paint: every light and the sky on the slab
+float3 shadeLit(SurfaceOut input, SurfacePoint p) {
+    PaintSlabInputs slab = buildSlab(p);
     float3 V = normalize(cameraPosition.xyz - input.posWorld);
     uint lobes = lookModes.x;
     float3 color = 0.0.xxx;
@@ -282,35 +285,23 @@ float4 fs_surface(SurfaceOut input) : SV_Target {
     case PAINT_VIEW_HEIGHT_FIELD:
         display = RampColor(p.height.height);
         break;
-    case PAINT_VIEW_NORMAL: {
-        PaintSlabInputs slab;
-        shadeLit(input, p, slab);
-        display = slab.normal * 0.5 + 0.5;
+    case PAINT_VIEW_NORMAL:
+        display = buildSlab(p).normal * 0.5 + 0.5;
         break;
-    }
-    case PAINT_VIEW_BASE_COLOR: {
-        PaintSlabInputs slab;
-        shadeLit(input, p, slab);
-        display = linear2srgb(saturate(slab.diffuseAlbedo));
+    case PAINT_VIEW_BASE_COLOR:
+        display = linear2srgb(saturate(buildSlab(p).diffuseAlbedo));
         break;
-    }
-    case PAINT_VIEW_ROUGHNESS: {
-        PaintSlabInputs slab;
-        shadeLit(input, p, slab);
-        display = slab.roughness.xxx;
+    case PAINT_VIEW_ROUGHNESS:
+        display = buildSlab(p).roughness.xxx;
         break;
-    }
     case PAINT_VIEW_SHADING_MODEL: {
-        PaintSlabInputs slab;
-        shadeLit(input, p, slab);
+        PaintSlabInputs slab = buildSlab(p);
         // the model the Blendable GBuffer would export, collapsed or not
         display = ExportModelColor(Collapse(slab).exportModel);
         break;
     }
-    default: {
-        PaintSlabInputs slab;
-        return float4(shadeLit(input, p, slab), 1.0);
-    }
+    default:
+        return float4(shadeLit(input, p), 1.0);
     }
 
     return float4(DisplayToRadiance(display), 1.0);
