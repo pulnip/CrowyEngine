@@ -42,8 +42,7 @@ def esc(text):
 
 
 class Svg:
-    def __init__(self, title, w=W, h=H):
-        self.w, self.h = w, h
+    def __init__(self, title):
         self.items = []
         self.title = title
 
@@ -55,11 +54,10 @@ class Svg:
         self.add(f'<rect x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{rx}" '
                  f'fill="{fill}" stroke="{stroke}" stroke-width="{sw}" opacity="{opacity}"{d}/>')
 
-    def line(self, x1, y1, x2, y2, stroke=INK, sw=2, dash=None, arrow=False, opacity=1.0):
+    def line(self, x1, y1, x2, y2, stroke=INK, sw=2, dash=None, opacity=1.0):
         d = f' stroke-dasharray="{dash}"' if dash else ""
-        m = ' marker-end="url(#arrow)"' if arrow else ""
         self.add(f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="{stroke}" '
-                 f'stroke-width="{sw}" opacity="{opacity}"{d}{m}/>')
+                 f'stroke-width="{sw}" opacity="{opacity}"{d}/>')
 
     def arrow(self, x1, y1, x2, y2, stroke=INK, sw=3, dash=None):
         # the head is drawn here so it takes the stroke's color
@@ -118,11 +116,11 @@ class Svg:
 
     def save(self, path):
         body = "\n".join(self.items)
-        h = self.h - TOP
+        h = H - TOP
         Path(path).write_text(
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {TOP} {self.w} {h}" '
-            f'width="{self.w}" height="{h}">\n<title>{esc(self.title)}</title>\n'
-            f'<rect y="{TOP}" width="{self.w}" height="{h}" fill="#FFFFFF"/>\n{body}\n</svg>\n',
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {TOP} {W} {h}" '
+            f'width="{W}" height="{h}">\n<title>{esc(self.title)}</title>\n'
+            f'<rect y="{TOP}" width="{W}" height="{h}" fill="#FFFFFF"/>\n{body}\n</svg>\n',
             encoding="utf-8",
         )
 
