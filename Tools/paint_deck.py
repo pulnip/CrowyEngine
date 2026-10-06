@@ -19,6 +19,7 @@ from lxml import etree
 from PIL import Image
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.opc.package import Part
@@ -82,7 +83,6 @@ def text_box(slide, x, y, w, h, lines, size=13, color=BODY, bold=False, align=PP
 
 
 def fill_rect(slide, x, y, w, h, color, line=None):
-    from pptx.enum.shapes import MSO_SHAPE
     shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(x), Emu(y), Emu(w), Emu(h))
     shape.fill.solid()
     shape.fill.fore_color.rgb = color
@@ -95,7 +95,6 @@ def fill_rect(slide, x, y, w, h, color, line=None):
 
 
 def round_rect(slide, x, y, w, h, color):
-    from pptx.enum.shapes import MSO_SHAPE
     shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Emu(x), Emu(y), Emu(w), Emu(h))
     shape.adjustments[0] = 0.12
     shape.fill.solid()
