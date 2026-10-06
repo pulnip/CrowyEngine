@@ -132,10 +132,11 @@ def t1_shots():
         {
             "name": "t1_edge_splat",
             "seconds": 5.0,
-            "setup": camera((150.0, -700.0, 650.0), (-380.0, -300.0, 260.0), 35)
+            "setup": camera((-150.0, -560.0, 520.0), (-380.0, -300.0, 280.0), 42)
             + [stage("crate", "front", True), lab("view", "Lit")],
             "events": {
-                20: [fire(incident(edge, 45.0, 900.0, 180.0), edge, speed=3000.0, team=0, seed=31, lead=0.3)],
+                20: [fire(incident(edge, 45.0, 900.0, 180.0), edge, speed=3000.0, team=0, seed=31, lead=0.3,
+                          brush="MopT", volume=1.0)],
                 150: [lab("compareView", "Islands"), lab("split", 0.5)],
             },
             "captions": [(0, "모서리를 넘는 스플랫"), (150, "Lit | Islands")],
@@ -357,13 +358,14 @@ def t7_shots():
         {
             "name": "t7_gate",
             "seconds": 5.0,
-            "setup": camera((SPOT[0] + 40.0, SPOT[1] - 420.0, 300.0), (SPOT[0] + 40.0, SPOT[1], 0.0), 55)
+            "setup": camera((SPOT[0], SPOT[1] - 330.0, 230.0), (SPOT[0] + 30.0, SPOT[1], 0.0), 60)
             + [lab("slowMotion", 2), lab("splashDebug", True), lab("labels", False)],
             "events": {0: [
                 fire(add(SPOT, (-150.0 - 200.0, 0.0, 150.0)), add(SPOT, (-150.0, 0.0, 0.0)), speed=500.0, team=0, seed=1, splash=True, lead=0.3),
                 fire(add(SPOT, (150.0 - 200.0, 0.0, 600.0)), add(SPOT, (150.0, 0.0, 0.0)), speed=math.hypot(400.0, 1200.0), team=1, seed=2, splash=True, lead=0.3),
             ]},
-            "captions": [(0, "왼쪽: 법선 속도 300 cm/s < 400, splash 없음   오른쪽: 1200 cm/s, splash")],
+            # +X runs to the left in this view: the fast contact is the left one
+            "captions": [(0, "왼쪽: 법선 속도 1200 cm/s, splash   오른쪽: 300 cm/s < 400, splash 없음")],
         },
     ]
 
@@ -449,7 +451,7 @@ def grid_shots():
                 "name": f"grid_{si}{ti}",
                 "seconds": 5.0,
                 "fps": 60,
-                "setup": [lab("stage", "Grid")] + camera((c[0] - 60.0, c[1] - 560.0, 420.0), (c[0] + 40.0, c[1], 0.0), 46),
+                "setup": [lab("stage", "Grid")] + camera((c[0], c[1] - 290.0, 330.0), (c[0], c[1] + 10.0, 0.0), 50),
                 "settle": 3,
                 "events": {0: grid_volley()},
             })
