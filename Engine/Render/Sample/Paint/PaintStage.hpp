@@ -24,12 +24,9 @@ namespace Crowy
         Grid,
     };
 
-    // the grid's axes: incidence across, impact speed down
+    // the grid's axes, incidence across and impact speed down; the shots in
+    // Tools/paint_shots.py own the per-tile values
     inline constexpr usize PaintGridSide = 4;
-    inline constexpr f32
-        PaintGridThetaDeg[PaintGridSide]{0.0f, 50.0f, 60.0f, 70.0f};
-    inline constexpr f32
-        PaintGridSpeed[PaintGridSide]{500.0f, 1500.0f, 3000.0f, 4800.0f};
     inline constexpr f64 PaintGridTileSize = 400.0;
     inline constexpr f64 PaintGridPitch = 600.0;
 
