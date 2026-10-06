@@ -1,0 +1,770 @@
+{
+  "slides": [
+    {
+      "kind": "cover",
+      "title": "MintChoco Paint",
+      "subtitle": "스플래툰식 페인트를 CrowyEngine에서 한 단계씩 다시 만들기",
+      "tag": "RenderTarget2D  ·  Island Atlas  ·  CPU Score  ·  Substrate  ·  Splash  ·  Replication",
+      "notes": "MintChoco의 페인트가 실제로 어떻게 동작하는지 설명하는 자료입니다. UE 5.8 프로젝트의 소스와 머티리얼을 읽고, 같은 계산을 CrowyEngine의 PaintLab 샘플에서 단계별로 다시 만들었습니다. 영상은 모두 PaintLab에서 녹화했고, 수식이 들어가는 부분은 수식에서 직접 계산한 그림으로 설명합니다. 앞부분은 페인트 자체, 뒷부분은 네트워크 동기화 설계입니다."
+    },
+    {
+      "kind": "points",
+      "kicker": "Scope",
+      "title": "이 자료가 다루는 범위",
+      "rows": [
+        {
+          "chip": "대상",
+          "head": "점수에 반영되고 화면에 보이는 페인트 경로",
+          "text": "UPaintableComponent + 방향별 island 아틀라스 RenderTarget2D, 스플랫 하나가 그림과 점수로 갈라지는 길"
+        },
+        {
+          "chip": "재현",
+          "head": "CrowyEngine PaintLab: C++ 1:1 포트 + Slang 셰이더",
+          "text": "MintChoco 상수(0.5 cm/texel, pad 13, 25 cm 셀, 9 cm 높이)를 그대로 쓰고 결과를 단계별 뷰로 보여 줌"
+        },
+        {
+          "chip": "UE",
+          "head": "UE 쪽은 결과 화면 한 장으로만 소개",
+          "text": "Blendable GBuffer 관련 내용은 UE 소스를 읽고 한 추정으로 표시"
+        },
+        {
+          "chip": "구성",
+          "head": "A. Paint (T1~T7)  ·  B. Paint 네트워크 동기화",
+          "text": "B는 CrowyEngine에 구현하지 않고 MintChoco의 설계 결정만 그림으로 정리"
+        }
+      ],
+      "notes": "범위는 점수에 반영되고 화면에 보이는 페인트 경로입니다. MintChoco에서는 UPaintableComponent가 표면마다 RenderTarget 한 장을 들고, 스플랫 하나가 GPU 그림과 CPU 점수로 갈라집니다. CrowyEngine에서는 CPU 코드를 1대1로 옮기고 셰이더는 Custom 노드 HLSL을 문법만 바꿔 옮겼습니다. 네트워크 부분은 구현하지 않고 설계 결정만 소개합니다."
+    },
+    {
+      "kind": "tiles",
+      "kicker": "Pipeline",
+      "title": "스플랫 하나의 일생: 일곱 단계",
+      "per_row": 4,
+      "tiles": [
+        {
+          "head": "1 RT 생성",
+          "text": "켜진 방향마다 island, 표면당 RGBA8 아틀라스 한 장"
+        },
+        {
+          "head": "2 그림 | 점수",
+          "text": "같은 스플랫을 GPU는 RT에, CPU는 25 cm 셀에"
+        },
+        {
+          "head": "3 블렌딩",
+          "text": "팀 경계 signed distance, 팀 룩, Substrate slab"
+        },
+        {
+          "head": "4 모양",
+          "text": "원 SDF에서 wobble · 위성 · crinkle까지"
+        },
+        {
+          "head": "5 높이",
+          "text": "G 채널에 팀과 무관하게 누적, 1에서 포화"
+        },
+        {
+          "head": "6 노멀 · 최종",
+          "text": "B-spline 높이와 해석적 기울기로 노멀"
+        },
+        {
+          "head": "7 스플래시",
+          "text": "물방울 16개: 점수는 계산, 그림은 비행"
+        },
+        {
+          "head": "B 동기화",
+          "text": "스플랫 이벤트만 복제, 점수는 권한자 그리드"
+        }
+      ],
+      "notes": "전체 흐름을 먼저 보겠습니다. 표면마다 방향별 island를 담은 RenderTarget이 있고, 서버가 확정한 스플랫 하나가 모든 머신에서 같은 스탬프로 RT에 그려지고 CPU 셀 그리드에도 따로 기록됩니다. 그 위에 팀 블렌딩과 높이, 노멀이 얹혀 최종 모습이 나옵니다. 스플래시는 점수용 계산과 그림용 비행이 일부러 나뉘어 있습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Unreal Engine",
+      "title": "UE에서의 결과: 와플 바닥 위 민트와 초코",
+      "media": [
+        {
+          "ref": "file:Temp/MintChocoPaintSplat.jpg",
+          "caption": "MintChoco (UE 5.8) 실제 화면"
+        }
+      ],
+      "notes": "UE 쪽 결과는 이 한 장으로 소개합니다. 와플 무늬 바닥 위에 민트와 초코 스플랫이 겹쳐 있고, 페인트가 두께를 가지고 솟아 있습니다. 이후 영상은 모두 CrowyEngine PaintLab에서 같은 계산을 다시 만든 결과이고, 조명과 바닥 재질은 단순화했습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "End to End",
+      "title": "한 발의 일생: 1 → 6",
+      "media": [
+        {
+          "ref": "clip:e2e_1to6"
+        }
+      ],
+      "notes": "공 한 발이 표면에 닿아 최종 모습이 될 때까지를 6초로 보여 줍니다. 처음은 방향별 island 뷰와 아틀라스, 다음은 착탄 직후의 그림과 같은 순간의 점수 셀입니다. 초코 한 발로 팀 블렌딩을, 셰이프 랩으로 스플랫 모양을, 높이 뷰와 프로필로 누적 높이를, 마지막으로 노멀과 최종 조명을 봅니다."
+    },
+    {
+      "kind": "section",
+      "kicker": "Section A",
+      "title": "Paint",
+      "subtitle": "RenderTarget, 그림과 점수의 분리, 블렌딩, 모양, 높이, 노멀, 스플래시",
+      "notes": "첫 번째 섹션은 페인트 자체입니다. 일곱 단계를 순서대로 보겠습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T1 RenderTarget",
+      "title": "방향 6개: 노멀의 지배축으로 고른다",
+      "media": [
+        {
+          "ref": "figure:A1"
+        }
+      ],
+      "notes": "페인트는 메시 UV를 쓰지 않습니다. 메시 로컬 공간의 여섯 방향, 즉 앞뒤 좌우 위아래로 면을 나누고, 노멀의 절댓값이 가장 큰 축으로 방향을 고릅니다. 동률이면 X, Y, Z 순서로 이깁니다. 기본 설정은 위 방향만 칠하는 것이고 바닥은 월드 위쪽을 따라갑니다. 면마다 자기 축으로 평면 투영한 것이 island가 됩니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T1 RenderTarget",
+      "title": "켜진 방향마다 island, 아틀라스 한 장",
+      "media": [
+        {
+          "ref": "figure:A2"
+        }
+      ],
+      "notes": "컴포넌트 하나에 RenderTarget이 한 장입니다. 켜진 방향의 island를 shelf packing으로 정사각 아틀라스에 넣고, 0.5 cm/texel에 pad 13, 크기는 256에서 2048 사이입니다. 2048에 안 들어가면 texel을 키웁니다. 그래서 2000 cm 바닥은 약 1 cm/texel이 됩니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T1 RenderTarget",
+      "title": "방향을 켜면 아틀라스가 다시 짜인다",
+      "media": [
+        {
+          "ref": "clip:t1_crate_relayout"
+        }
+      ],
+      "notes": "영상은 상자에 Front와 Right를 차례로 켠 모습입니다. island가 늘어날 때마다 shelf packing을 다시 해서, 1024였던 아틀라스가 2048로 커지고 세 island가 한 줄에 놓입니다. 방향을 바꾸면 이전 페인트는 비우고 셀 점수도 다시 만듭니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T1 RenderTarget",
+      "title": "RGBA8 텍셀 하나에 담는 것",
+      "media": [
+        {
+          "ref": "figure:A3"
+        }
+      ],
+      "notes": "페인트 버퍼는 RGBA8 UNORM이고 nearest 샘플링, sRGB 끔, mip 없음입니다. R에는 팀 id 3비트와 세대 5비트, G에는 누적 높이, B에는 자기 영역 경계까지의 texel 거리가 들어갑니다. clear 값은 id 7, 즉 아무 팀도 없는 상태입니다. 위치 맵과 가장자리 감쇠 맵은 CPU 워커가 따로 구워 둡니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T1 RenderTarget",
+      "title": "곡면과 모서리: island가 바뀌는 곳",
+      "media": [
+        {
+          "ref": "clip:t1_sphere_orbit"
+        },
+        {
+          "ref": "clip:t1_edge_splat"
+        }
+      ],
+      "notes": "구는 여섯 방향을 모두 켜 두어서, 돌아가며 보면 지배축이 바뀌는 곳에서 island가 바뀝니다. 오른쪽은 상자 모서리에 걸친 스플랫입니다. 스탬프는 표면마다 따로 계산되므로 윗면과 앞면에 각각 그려지고, 켜지지 않은 면에는 그려지지 않습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Why RenderTarget2D",
+      "title": "왜 데칼이 아니라 RenderTarget2D인가",
+      "media": [
+        {
+          "ref": "figure:A17"
+        }
+      ],
+      "notes": "데칼로도 스플랫을 붙일 수는 있지만 이 게임에는 맞지 않습니다. 데칼은 스플랫마다 투영 볼륨이 하나씩 늘어서 매 프레임 비용이 쌓인 개수에 비례하고, 이전 값을 읽어 높이를 더하거나 팀 경계를 텍셀 단위로 판단할 수 없습니다. RenderTarget은 텍셀마다 id, 높이, 경계 거리를 들고 있어서 덮어쓰기, 누적, 지우개가 모두 같은 브러시로 되고, 화면 비용은 스플랫 수와 무관하게 샘플 한 번입니다. 방향별 island 덕분에 모서리와 곡면에서도 늘어지지 않습니다. 그리고 점수는 CPU 셀 그리드가 따로 맡기 때문에 RT는 그림에만 쓰입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T2 GPU | CPU",
+      "title": "스플랫 하나, 소비자 둘: GPU 브러시",
+      "media": [
+        {
+          "ref": "figure:A7"
+        }
+      ],
+      "notes": "서버가 확정한 FPaintSplat 하나를 모든 머신이 같은 로컬 스탬프로 바꿉니다. GPU 쪽 브러시는 불투명 머티리얼이고 이전 페인트 값을 직접 읽습니다. 같은 RT를 읽으면서 쓸 수 없어서 스탬프가 닿는 사각형만 scratch RT에 그리고, 같은 사각형만 다시 복사합니다. 비용이 아틀라스 크기가 아니라 스탬프 넓이에 비례합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T2 GPU | CPU",
+      "title": "CPU 셀 그리드: 점수는 RT를 읽지 않는다",
+      "media": [
+        {
+          "ref": "figure:A8"
+        }
+      ],
+      "notes": "점수는 CPU가 따로 계산합니다. 메시를 25 cm 복셀과 방향으로 나누고, 삼각형 면적은 Sutherland-Hodgman으로 셀에 잘라 정확히 구합니다. 스플랫이 오면 복셀 중심이 코어 타원체 안에 있는 셀을 그 팀이 점령합니다. GPU 결과인 RT는 한 번도 읽지 않습니다. 그래서 GPU와 CPU 사이를 오가는 동기화가 없고, 서버에는 그림이 없어도 됩니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T2 GPU | CPU",
+      "title": "같은 순간의 그림과 점수",
+      "media": [
+        {
+          "ref": "clip:t2_score_wipe"
+        },
+        {
+          "ref": "clip:t2_overlap"
+        }
+      ],
+      "notes": "왼쪽은 착탄 직후 Lit 뷰에서 Score 뷰로 넘어가는 영상입니다. 셀 그리드가 점수의 단위이고, 아래쪽 숫자가 실제 점수입니다. 오른쪽은 초코가 민트 위를 덮을 때 셀 주인이 바뀌는 모습입니다."
+    },
+    {
+      "kind": "points",
+      "kicker": "T2 GPU | CPU",
+      "title": "그림과 점수가 다른 것은 의도",
+      "rows": [
+        {
+          "chip": "같음",
+          "head": "같은 FPaintLocalStamp에서 출발",
+          "text": "중심, 축, 반지름, 늘림이 같고, 셀 그리드의 코어 0.5는 셰이더의 MainRadius 0.5와 같다"
+        },
+        {
+          "chip": "다름",
+          "head": "위성, wobble, crinkle, 셀 해상도",
+          "text": "그림의 장식은 점수에 넣지 않는다. 25 cm 셀은 그림보다 거칠다"
+        },
+        {
+          "chip": "이유",
+          "head": "점수는 결정적이고 가벼워야 한다",
+          "text": "모든 머신이 같은 숫자를 내야 하고, 서버는 그림을 그리지 않는다"
+        }
+      ],
+      "notes": "그림과 점수가 완전히 같지는 않습니다. 둘 다 같은 로컬 스탬프에서 출발하지만, 그림에만 있는 위성과 가장자리 장식은 점수에 넣지 않았고 셀 해상도도 25 cm로 거칩니다. 점수는 모든 머신에서 같은 숫자가 나와야 하고 가벼워야 하므로 이 차이는 의도한 것입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Blending",
+      "title": "팀 경계: RT를 어떻게 읽느냐",
+      "media": [
+        {
+          "ref": "figure:A9"
+        }
+      ],
+      "notes": "id를 nearest로 읽으면 텍셀 계단이 보이고, bilinear로 읽으면 id 숫자가 섞여 경계에 없는 팀이 생깁니다. MintChoco는 팀마다 코너 네 텍셀의 부호 있는 거리를 bilinear로 보간해서, 0을 지나는 곳을 경계로 씁니다. 그 위에 한 픽셀 폭의 smoothstep을 걸어 경계를 부드럽게 합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Blending",
+      "title": "경계 읽기 세 가지",
+      "media": [
+        {
+          "ref": "clip:t3_edge_modes"
+        }
+      ],
+      "notes": "같은 스플랫 가장자리를 가까이에서 본 영상입니다. nearest는 텍셀 계단, bilinear는 경계를 따라 다른 팀 색의 테두리, signed distance는 매끈한 서브텍셀 경계가 됩니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Blending",
+      "title": "팀 블렌드: 앞 팀이 쓴 몫을 빼고 칠한다",
+      "media": [
+        {
+          "ref": "figure:A10"
+        }
+      ],
+      "notes": "배경 룩 위에 팀 룩 네 개를 순서대로 lerp합니다. 각 팀의 coverage를 그대로 쓰면 두 팀이 만나는 이음매에서 바닥 색이 비쳐 보입니다. MintChoco는 앞 팀이 이미 쓴 몫 S를 빼고 alpha = cov / (1 - S)로 칠합니다. 대신 이음매는 뒤 팀 쪽으로 단단해집니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Blending",
+      "title": "이음매 확대: 순진한 lerp vs consumed coverage",
+      "media": [
+        {
+          "ref": "clip:t3_team_blend"
+        }
+      ],
+      "notes": "민트와 초코가 만나는 이음매를 열두 배로 키운 영상입니다. 경계 띠가 한 픽셀 폭이라 확대해야 보입니다. 앞쪽 순진한 lerp에서는 이음매를 따라 회색 바닥이 비치고, 뒤쪽 consumed coverage에서는 사라집니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Substrate",
+      "title": "BSDF와 클리어 코트: body slab 위에 coat slab",
+      "media": [
+        {
+          "ref": "figure:A14"
+        }
+      ],
+      "notes": "BSDF는 빛이 들어온 방향과 보는 방향에 따라 얼마나 반사되는지를 정하는 함수이고, 여러 로브를 더해서 만듭니다. 페인트 본체는 diffuse, GGX 스페큘러, 더 거친 두 번째 로브인 haze, 천 같은 fuzz, 그리고 SSS 평균 자유 경로를 가집니다. 그 위에 F0 0.04, 거칠기 0.12인 얇은 코트 slab을 Vertical Layer로 얹습니다. 코트가 반사한 만큼 본체에 닿는 빛이 줄어드는 것이 오른쪽 그래프입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Substrate",
+      "title": "로브를 하나씩 끄면",
+      "media": [
+        {
+          "ref": "clip:t3_lobes"
+        }
+      ],
+      "notes": "구 전체를 민트로 칠하고 로브를 하나씩 끈 영상입니다. 하늘 반사, 클리어 코트, fuzz, SSS 근사, haze, 스페큘러 순서로 빠지고 마지막에는 diffuse만 남습니다. PaintLab은 포워드 렌더러라 IBL과 확산 SSS가 없어서 SSS는 wrap 조명으로 근사했습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Substrate",
+      "title": "실제 출력: Blendable GBuffer로 접힌다 (UE 소스 기준 추정)",
+      "media": [
+        {
+          "ref": "figure:A15"
+        }
+      ],
+      "notes": "MintChoco 프로젝트는 Substrate를 Blendable GBuffer 모드로 씁니다. UE 소스를 따라가면 이 모드는 픽셀당 closure 하나만 남기므로, 코트와 haze는 파라미터로 섞여 한 slab이 되고 확산 SSS는 빠지며, fuzz가 있으면 Cloth, 없으면 DefaultLit 셰이딩 모델로 내보내는 것으로 보입니다. 캡처로 확인한 것이 아니라 소스를 읽은 추정입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T3 Substrate",
+      "title": "접기 전과 후 (추정 재현)",
+      "media": [
+        {
+          "ref": "clip:t3_collapse"
+        }
+      ],
+      "notes": "같은 구를 Substrate 두 slab으로 그린 것과, UE 소스를 읽고 추정한 대로 closure 하나로 접은 것을 이어 붙인 영상입니다. 접으면 코트와 haze가 한 roughness로 섞이고 SSS 근사가 빠집니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T4 Shape",
+      "title": "원 하나에서 진짜 스플랫까지",
+      "media": [
+        {
+          "ref": "figure:A6"
+        }
+      ],
+      "notes": "스플랫 모양은 MF_SplatStampMask의 SDF입니다. SDF로 도형을 그릴 때 처음 그려 보는 원에서 출발해서, 타원과 타원체 절단, 저주파 wobble, 위성, spike와 tear, smooth-min 결합, 가장자리 crinkle, 마지막으로 얼룩진 deposit까지 쌓으면 MintChoco의 스탬프가 됩니다. 오른쪽 아래 그래프는 두 원을 그냥 min으로 합칠 때와 smooth-min으로 합칠 때의 단면입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T4 Shape",
+      "title": "해바라기: 위성을 잘못 붙이면",
+      "media": [
+        {
+          "ref": "file:Temp/sunflower.png",
+          "caption": "작업 중 실제 스크린샷"
+        },
+        {
+          "ref": "still:stage3",
+          "caption": "PaintLab 단계 3 재현"
+        }
+      ],
+      "notes": "처음 스플랫 모양을 잡을 때 AI가 자꾸 헤매서, 그때 화면을 스크린샷으로 찍어 보여 줬더니 웃으면서 무엇이 잘못됐는지 바로 알아챘습니다. 위성을 같은 간격으로 고르게 돌리고 hard min으로 붙이니 해바라기가 된 것입니다. SDF를 배울 때 처음 그리는 도형이 원이어서 그 스크린샷이 떠올랐고, PaintLab 모양 슬라이더의 3단계에 그대로 재현해 두었습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T4 Shape",
+      "title": "월드에서 스탬프 공간으로",
+      "media": [
+        {
+          "ref": "figure:A4"
+        }
+      ],
+      "notes": "스탬프는 충돌점 기준의 U, V, N 기저로 정의됩니다. uv는 U를 R 곱하기 S로, V를 R로 나눈 값이고, 표면에서 떨어진 거리 n은 N을 R로 나눈 값입니다. 타원체로 잘라서 n이 커질수록 원판이 줄어들기 때문에, 모서리를 넘어가는 스탬프가 옆면을 자연스럽게 감쌉니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T4 Shape",
+      "title": "BuildSplat: 입사각과 속도가 모양을 정한다",
+      "media": [
+        {
+          "ref": "figure:A5"
+        }
+      ],
+      "notes": "반지름은 25 곱하기 부피의 제곱근에 속도 0.005배를 더하고 120에서 자릅니다. 입사각이 크면 1/cosθ만큼 늘어나고 최대 3배입니다. 늘어난 만큼 중심을 R(S-1)/2 앞으로 옮기고, 충돌점은 ImpactU로 기억해서 spike 방향을 고정합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T4 Shape",
+      "title": "슬라이더 0 → 8, 입사각 0 → 70",
+      "media": [
+        {
+          "ref": "clip:t4_shape_morph"
+        },
+        {
+          "ref": "clip:t4_theta_sweep"
+        }
+      ],
+      "notes": "왼쪽은 모양 단계를 0부터 8까지 연속으로 바꾼 영상입니다. 오른쪽은 최종 모양에서 입사각만 0도에서 70도로 바꾼 것으로, 늘어나는 방향과 ImpactU가 함께 움직입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T4 Shape",
+      "title": "4×4: 입사각 × 충돌 속도, 같은 시드",
+      "media": [
+        {
+          "ref": "clip:grid_4x4"
+        }
+      ],
+      "notes": "열은 입사각 0, 50, 60, 70도, 행은 충돌 속도 500, 1500, 3000, 4800 cm/s입니다. 16칸 모두 같은 시드라서 모양의 차이는 입사각과 속도만으로 생깁니다. 속도가 빠를수록 반지름이 커지고, 입사각이 클수록 길게 늘어나며, 법선 속도가 400 cm/s를 넘는 칸에서만 물방울이 튑니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T5 Height",
+      "title": "높이는 G 채널에 누적된다",
+      "media": [
+        {
+          "ref": "figure:A11"
+        }
+      ],
+      "notes": "브러시는 G에 커널 곱하기 HeightAdd를 더하고 1에서 포화시킵니다. 기본 HeightAdd는 0.35라서 같은 자리에 세 발이면 9 cm에 닿습니다. 커널은 가장자리 0.25 구간에서 0에서 1로 오르고 20퍼센트 정도 얼룩이 있습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T5 Height",
+      "title": "같은 자리 네 발",
+      "media": [
+        {
+          "ref": "clip:t5_stack"
+        }
+      ],
+      "notes": "같은 자리에 1초 간격으로 네 발을 쏜 영상입니다. 높이 뷰와 오른쪽 프로필 그래프에서 0.35, 0.70, 1.0으로 오른 뒤 네 번째에는 그대로 1.0에 머뭅니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T5 Height",
+      "title": "팀과 무관하게 쌓이고, 지우개만 깎는다",
+      "media": [
+        {
+          "ref": "clip:t5_cross_team"
+        }
+      ],
+      "bullets": [
+        "팀 id와 높이를 분리 | id는 R, 높이는 G: 덮어써도 두께는 남는다",
+        "포화 1.0 = 9 cm | 반복 사격이 무한히 솟지 않는다",
+        "지우개 id 7 | 높이를 깎는 유일한 경로"
+      ],
+      "notes": "높이는 팀과 상관없이 쌓입니다. 민트 위에 초코가 오면 색은 초코로 바뀌지만 두께는 그대로 더해집니다. id와 높이를 다른 채널에 둔 덕분입니다. 높이를 줄이는 것은 id 7로 칠하는 지우개뿐입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T6 Normal",
+      "title": "높이 읽기: 12×12 cubic B-spline",
+      "media": [
+        {
+          "ref": "figure:A12"
+        }
+      ],
+      "notes": "높이를 nearest나 bilinear로 읽고 차분으로 기울기를 구하면 텍셀 무늬가 노멀에 그대로 보입니다. MintChoco는 12×12 탭을 펼쳐 둔 cubic B-spline으로 높이를 읽고, 같은 탭에서 기울기를 해석적으로 구합니다. flow 값으로 커널 폭을 넓히며, island 경계에서는 EdgeFade로 높이와 기울기를 0으로 줄입니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T6 Normal",
+      "title": "높이 → 노멀",
+      "media": [
+        {
+          "ref": "figure:A13"
+        }
+      ],
+      "notes": "위치 맵을 중앙 차분해서 표면의 접선 Pu, Pv를 얻고, 높이 기울기에 9 cm를 곱한 만큼 노멀 방향으로 올린 뒤 외적합니다. 이웃 텍셀이 다른 면이면 정점 노멀을 씁니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T6 Normal",
+      "title": "높이 읽기에 따라 달라지는 노멀",
+      "media": [
+        {
+          "ref": "clip:t6_filters"
+        }
+      ],
+      "notes": "같은 스플랫의 노멀을 nearest, bilinear, B-spline 순서로 읽은 영상입니다. 앞의 둘은 텍셀 무늬가 노멀에 남고, B-spline은 매끈합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T6 Final",
+      "title": "노멀에서 최종 모습까지",
+      "media": [
+        {
+          "ref": "clip:t6_normal_to_lit"
+        },
+        {
+          "ref": "clip:t6_final_orbit"
+        }
+      ],
+      "notes": "왼쪽은 노멀 뷰에서 최종 조명으로 넘어간 뒤 태양을 낮추는 영상입니다. 낮은 빛에서 두께가 잘 보입니다. 오른쪽은 두 팀이 섞인 최종 모습입니다. MintChoco는 여기에 Nanite displacement로 9 cm까지 실제 두께를 주지만 이번 재현에서는 생략했습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T7 Splash",
+      "title": "스플랫과 스플래시: 접촉 하나, 물방울 16개",
+      "media": [
+        {
+          "ref": "figure:A16"
+        }
+      ],
+      "notes": "스플랫은 표면에 찍히는 도장이고, 스플래시는 그 충돌이 튀긴 물방울입니다. 법선 속도가 400 cm/s를 넘으면 시드가 정해진 난수열로 물방울 16개를 앞, 옆, 뒤 그룹으로 나눠 던집니다. 점수는 큰 4개가 drag 없이 포물선으로 떨어질 자리를 계산해서 셀만 점령하고, 그림은 큰 8개를 실제로 날려 착지한 자리에 자국을 남깁니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T7 Splash",
+      "title": "물방울의 비행과 착지",
+      "media": [
+        {
+          "ref": "clip:t7_splash"
+        }
+      ],
+      "notes": "MopT 브러시로 속도 (1500, 0, -2500)인 접촉을 절반 속도로 본 영상입니다. 그룹은 앞 9, 옆 5, 뒤 2입니다. PaintLab에서는 Niagara 대신 CPU가 선형 drag를 정확히 적분하고, 물방울은 처음 만난 표면에서 착지로 끝납니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "T7 Splash",
+      "title": "점수의 착지와 그림의 자국은 다르다",
+      "media": [
+        {
+          "ref": "clip:t7_score_vs_picture"
+        },
+        {
+          "ref": "clip:t7_gate"
+        }
+      ],
+      "notes": "노란 링은 점수 쪽 phantom 착지, 흰 원은 그림 쪽 자국입니다. 점수는 스플랫 필드만으로 모든 머신이 똑같이 계산하고, 자국은 머신마다 로컬이라 복제하지 않습니다. 오른쪽은 법선 속도 300과 1200 cm/s를 나란히 둔 것으로, 400 미만은 스플래시가 없습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "End to End",
+      "title": "한 발의 일생: 1 → 7",
+      "media": [
+        {
+          "ref": "clip:e2e_1to7"
+        }
+      ],
+      "notes": "앞의 여섯 단계에 스플래시를 더한 버전입니다. 마지막 장면에서 물방울의 발사 벡터와 착지 링이 함께 보입니다."
+    },
+    {
+      "kind": "points",
+      "kicker": "Section A",
+      "title": "정리: Paint",
+      "rows": [
+        {
+          "chip": "RT",
+          "head": "표면당 RenderTarget2D 한 장, 방향별 island",
+          "text": "메시 UV 없이 로컬 위치와 지배축으로 아틀라스 좌표를 계산"
+        },
+        {
+          "chip": "분리",
+          "head": "그림은 GPU, 점수는 CPU",
+          "text": "같은 스플랫에서 출발하고 점수는 RT를 읽지 않는다"
+        },
+        {
+          "chip": "룩",
+          "head": "signed distance 경계, alpha = cov / (1 - S), Substrate",
+          "text": "실제 출력은 Blendable GBuffer로 접힌다 (추정)"
+        },
+        {
+          "chip": "두께",
+          "head": "G 누적 → B-spline → 노멀",
+          "text": "팀과 무관하게 쌓이고 9 cm에서 포화"
+        }
+      ],
+      "notes": "페인트 섹션을 정리합니다. 핵심은 표면당 RenderTarget 한 장과, 그림과 점수의 분리입니다. 그림은 GPU가 자유롭게 꾸미고, 점수는 CPU가 결정적으로 계산하며 RT를 읽지 않습니다."
+    },
+    {
+      "kind": "section",
+      "kicker": "Section B",
+      "title": "Paint 네트워크 동기화",
+      "subtitle": "CrowyEngine에는 구현하지 않고, MintChoco의 주요 설계 결정만 정리합니다",
+      "notes": "두 번째 섹션은 네트워크 동기화입니다. 이 부분은 CrowyEngine에 만들지 않았고, MintChoco에서 내린 설계 결정을 그림으로 정리합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "무엇을 복제하나: 스플랫 이벤트만",
+      "media": [
+        {
+          "ref": "figure:B1"
+        }
+      ],
+      "notes": "복제하는 것은 스플랫 이벤트뿐입니다. 커버리지 그리드는 복제하지 않고 각 머신이 이벤트로 다시 계산합니다. 서버는 0.2초마다 그리드 합계인 WorldCoverage만 복제하고, KO 판정도 그 순간에 합니다. 물방울 자국은 머신마다 로컬이고, phantom 착지는 보내지 않아도 스플랫 필드에서 모든 머신이 똑같이 유도합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "권한 흐름: 쏜 사람이 시드, 서버가 확정",
+      "media": [
+        {
+          "ref": "figure:B2"
+        }
+      ],
+      "notes": "시드는 쏜 사람이 골라 ServerFire로 보내고, 서버가 라인트레이스와 BuildSplat으로 스플랫을 완성합니다. SubmitSplat은 권한자만 실행하고 그때 잠금 세대를 기록합니다. 클라이언트는 히트를 받지 않고 완성된 스플랫을 받기 때문에 모든 머신이 같은 로컬 스탬프를 만듭니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "스플랫 로그와 늦은 입장",
+      "media": [
+        {
+          "ref": "figure:B3"
+        }
+      ],
+      "notes": "스플랫은 FastArray 로그에 쌓이고, 순서는 서버 순서 그대로입니다. 줄어드는 경우는 ClearPaint뿐입니다. 기존 클라이언트는 새로 들어온 항목만 적용하고, 늦게 들어온 클라이언트는 로그 전체를 표면별 큐로 틱마다 16개씩 나눠 재생합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "점수는 권한자 그리드만, 클라이언트 그리드는 디버그",
+      "media": [
+        {
+          "ref": "figure:B4"
+        }
+      ],
+      "notes": "클라이언트도 같은 이벤트로 자기 그리드를 만들지만 점수로는 쓰지 않습니다. 디버그 표시용으로 남겨 두었고, 실제 점수와 KO 판정은 서버 그리드에서만 나옵니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "양자화: 서버는 원본, 클라이언트는 1 cm",
+      "media": [
+        {
+          "ref": "figure:B5"
+        }
+      ],
+      "notes": "서버는 양자화 전 스플랫을 적용하고, 클라이언트는 위치 1 cm, 노멀 16비트로 양자화된 값을 받습니다. 그래서 클라이언트 그리드가 서버와 조금 어긋날 수 있는데, 클라이언트 그리드는 점수에 쓰지 않으므로 허용합니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "비주얼 불일치는 허용, 점수 불일치는 없음",
+      "media": [
+        {
+          "ref": "figure:B6"
+        }
+      ],
+      "notes": "물방울 자국, 양자화 차이, 늦은 입장 중의 재생 순간처럼 그림은 머신마다 조금 달라도 됩니다. 반면 점수에 들어가는 것은 서버 그리드, 결정적인 phantom 착지, 복제되는 WorldCoverage뿐이라 불일치가 없습니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "잠금 세대를 스플랫에 담아 보낸다",
+      "media": [
+        {
+          "ref": "figure:B7"
+        }
+      ],
+      "notes": "스타 같은 잠금 상태는 시간에 따라 바뀝니다. 그래서 서버가 확정하는 순간의 LockGens를 스플랫에 넣어 보냅니다. 나중에 재생하는 클라이언트도 그 순간의 잠금으로 같은 텍셀을 건너뜁니다."
+    },
+    {
+      "kind": "media",
+      "kicker": "Replication",
+      "title": "멀티캐스트에서 로그로",
+      "media": [
+        {
+          "ref": "figure:B8"
+        }
+      ],
+      "notes": "초기 설계는 신뢰성 없는 멀티캐스트였습니다. 패킷이 빠지면 머신마다 그림과 점수가 달라지고, 순서가 바뀌면 덮어쓰기 결과가 달라지며, 늦게 들어온 사람은 이전 스플랫을 몰랐습니다. 복제 상태인 로그로 바꾸면서 세 문제가 함께 풀렸습니다. 점수가 없는 사이드 스플랫만 지금도 멀티캐스트입니다."
+    },
+    {
+      "kind": "points",
+      "kicker": "Section B",
+      "title": "정리: Paint 네트워크 동기화",
+      "rows": [
+        {
+          "chip": "이벤트",
+          "head": "스플랫 이벤트만 복제, 그리드는 복제하지 않음",
+          "text": "FastArray 로그: 유실 없음, 서버 순서, 늦은 입장은 재생"
+        },
+        {
+          "chip": "권한",
+          "head": "점수는 권한자 그리드만 유효",
+          "text": "클라이언트 그리드는 디버그용, 요약값 WorldCoverage만 0.2 s마다"
+        },
+        {
+          "chip": "허용",
+          "head": "그림은 머신마다 조금 달라도 된다",
+          "text": "물방울 자국과 양자화 차이, 점수는 결정적"
+        }
+      ],
+      "notes": "동기화 섹션을 정리합니다. 이벤트만 복제하고, 점수는 권한자 그리드에서만 나오며, 그림의 작은 차이는 허용합니다. 앞 섹션의 그림과 점수 분리가 네트워크에서도 같은 원칙으로 이어집니다."
+    },
+    {
+      "kind": "table",
+      "kicker": "Appendix",
+      "title": "수치표",
+      "mono_first": true,
+      "widths": [
+        0.34,
+        0.2,
+        0.46
+      ],
+      "rows": [
+        [
+          "상수",
+          "값",
+          "쓰임"
+        ],
+        [
+          "PaintTexelCm",
+          "0.5 cm",
+          "기본 texel, 2048에 안 들어가면 커짐"
+        ],
+        [
+          "Pad / Atlas",
+          "13 / 256~2048",
+          "island 여백, 아틀라스 크기 범위"
+        ],
+        [
+          "PaintMaxHeight",
+          "9 cm",
+          "G = 1.0"
+        ],
+        [
+          "HeightAdd",
+          "0.35 / 0.2",
+          "스플랫 / 물방울 자국"
+        ],
+        [
+          "Cell",
+          "25 cm",
+          "점수 복셀"
+        ],
+        [
+          "Radius",
+          "min(25√V + 0.005v, 120)",
+          "BuildSplat"
+        ],
+        [
+          "Stretch",
+          "clamp(1/cosθ, 1, 3)",
+          "입사각 늘림"
+        ],
+        [
+          "MinNormalSpeed",
+          "400 cm/s",
+          "스플래시 게이트"
+        ],
+        [
+          "Droplets",
+          "16 / 8 / 4",
+          "던짐 / 자국 / 점수"
+        ],
+        [
+          "Coverage",
+          "0.2 s",
+          "WorldCoverage 복제 주기"
+        ]
+      ],
+      "notes": "본문에 나온 수치를 모았습니다."
+    },
+    {
+      "kind": "points",
+      "kicker": "Appendix",
+      "title": "녹화 방법",
+      "rows": [
+        {
+          "chip": "샘플",
+          "head": "CrowyEngine PaintLab (Debug, D3D12)",
+          "text": "SamplePaint 라이브러리 + Slang 셰이더, 단위 테스트 45개"
+        },
+        {
+          "chip": "구동",
+          "head": "커맨드 포트로 한 프레임씩",
+          "text": "프레임 수 기준 1/60 s 틱, 같은 입력이면 같은 그림"
+        },
+        {
+          "chip": "인코딩",
+          "head": "BMP → 무손실 구간 → mp4",
+          "text": "Tools/paint_record.py, Tools/paint_shots.py, 그림은 Tools/paint_figures.py"
+        }
+      ],
+      "notes": "모든 영상은 PaintLab을 커맨드 포트로 한 프레임씩 진행시키며 녹화했습니다. 시간 대신 프레임 수로 진행해서 같은 입력이면 같은 그림이 나옵니다."
+    }
+  ]
+}
