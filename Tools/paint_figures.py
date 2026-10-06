@@ -165,7 +165,6 @@ class Plot:
 PAD = 13
 MIN_ATLAS, MAX_ATLAS = 256, 2048
 TEXEL_CM = 0.5
-PAINT_MAX_HEIGHT = 9.0
 
 
 def dominant(n):
@@ -244,6 +243,9 @@ def hash_combine(a, b):
     return (a ^ ((b + 0x9E3779B9 + ((a << 6) & 0xFFFFFFFF) + (a >> 2)) & 0xFFFFFFFF)) & 0xFFFFFFFF
 
 
+# the deck's reference contact, v = (1500, 0, -2500)
+CONTACT_THETA = math.degrees(math.atan2(1500.0, 2500.0))
+CONTACT_SPEED = math.hypot(1500.0, 2500.0)
 MAX_TRAVEL = 400.0
 MAX_LIFETIME = 1.8
 GROUPS = {"Forward": (50, 35, 70, 0.10, 0.20, 0.15, 0.0),
@@ -537,7 +539,9 @@ def a8_cells(path):
     s = Svg("A8 셀 점령")
     s.heading("점수: 25 cm 셀 중심이 코어 타원체 (0.5R·S, 0.5R, R) 안이면 점령")
     cell = 25.0
-    R, S = 93.0, 1.166
+    # the MopT contact the clips use: volume 2.4 at the shots' incidence
+    R = build_radius(2.4, CONTACT_SPEED, base=60.0, rps=0.0, max_r=1200.0)
+    S = stretch_of(CONTACT_THETA, max_s=2.6667)
     cx, cy = 10.0, 5.0
     k = 3.0
     ox, oy = 150, 120
