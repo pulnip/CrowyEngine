@@ -140,9 +140,9 @@ namespace Crowy
 
     // how the edge between paint and bare is read
     enum class PaintEdgeMode : u32 {
-        Nearest,
-        Bilinear,
-        SignedDistance,
+        Nearest = PAINT_EDGE_NEAREST,
+        Bilinear = PAINT_EDGE_BILINEAR,
+        SignedDistance = PAINT_EDGE_SIGNED_DISTANCE,
     };
 
     CROWY_ENUM_BEGIN(PaintEdgeMode)
@@ -154,8 +154,8 @@ namespace Crowy
     // how teams lay over each other: by their own coverage, or by what the
     // earlier teams left over
     enum class PaintTeamBlend : u32 {
-        Naive,
-        ConsumedCoverage,
+        Naive = PAINT_BLEND_NAIVE,
+        ConsumedCoverage = PAINT_BLEND_CONSUMED,
     };
 
     CROWY_ENUM_BEGIN(PaintTeamBlend)
@@ -165,9 +165,9 @@ namespace Crowy
 
     // how G is read back, and its slope with it
     enum class PaintHeightFilter : u32 {
-        Nearest,
-        Bilinear,
-        BSpline,
+        Nearest = PAINT_HEIGHT_NEAREST,
+        Bilinear = PAINT_HEIGHT_BILINEAR,
+        BSpline = PAINT_HEIGHT_BSPLINE,
     };
 
     CROWY_ENUM_BEGIN(PaintHeightFilter)

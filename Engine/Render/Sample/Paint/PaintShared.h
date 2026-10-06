@@ -35,5 +35,28 @@
 // one full G in world cm: the shipped masters' displacement magnitude
 #define PAINT_MAX_HEIGHT 9.0f
 
+// how the edge between paint and not is read
+#define PAINT_EDGE_NEAREST 0u
+#define PAINT_EDGE_BILINEAR 1u
+#define PAINT_EDGE_SIGNED_DISTANCE 2u
+
+// how teams are laid over each other
+#define PAINT_BLEND_NAIVE 0u
+#define PAINT_BLEND_CONSUMED 1u
+
+// how G is read back
+#define PAINT_HEIGHT_NEAREST 0u
+#define PAINT_HEIGHT_BILINEAR 1u
+#define PAINT_HEIGHT_BSPLINE 2u
+
+// the lobes a debug toggle can take out
+#define PAINT_LOBE_DIFFUSE 1u
+#define PAINT_LOBE_SPECULAR 2u
+#define PAINT_LOBE_HAZE 4u
+#define PAINT_LOBE_FUZZ 8u
+#define PAINT_LOBE_SSS 16u
+#define PAINT_LOBE_COAT 32u
+#define PAINT_LOBE_SKY 64u
+
 // a whole StampCustom rather than one stage of its build-up
 #define PAINT_SHAPE_STAGE_FULL 8.0f

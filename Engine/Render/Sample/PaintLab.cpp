@@ -659,22 +659,13 @@ namespace Crowy
         }
 
         u32 lobeMask() const noexcept {
-            u32 mask = 0;
-            const std::array<bool, 7> on{
-                look.diffuse,
-                look.specular,
-                look.haze,
-                look.fuzz,
-                look.sss,
-                look.coat,
-                look.sky
-            };
-            for(u32 i = 0; i < on.size(); ++i) {
-                if(on[i])
-                    mask |= 1u << i;
-            }
-
-            return mask;
+            return (look.diffuse ? PAINT_LOBE_DIFFUSE : 0u) |
+                   (look.specular ? PAINT_LOBE_SPECULAR : 0u) |
+                   (look.haze ? PAINT_LOBE_HAZE : 0u) |
+                   (look.fuzz ? PAINT_LOBE_FUZZ : 0u) |
+                   (look.sss ? PAINT_LOBE_SSS : 0u) |
+                   (look.coat ? PAINT_LOBE_COAT : 0u) |
+                   (look.sky ? PAINT_LOBE_SKY : 0u);
         }
 
         bool showsCells() const noexcept {

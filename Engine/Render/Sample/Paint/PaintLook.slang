@@ -6,14 +6,6 @@
 #include "PaintCommon.slang"
 #include "Sampler.slang"
 
-// how the edge between paint and not is read
-#define PAINT_EDGE_NEAREST 0u
-#define PAINT_EDGE_BILINEAR 1u
-#define PAINT_EDGE_SIGNED_DISTANCE 2u
-
-// how teams are laid over each other
-#define PAINT_BLEND_NAIVE 0u
-#define PAINT_BLEND_CONSUMED 1u
 
 // what a material layer carries through the stack: a look's attributes
 struct PaintLook {

@@ -5,14 +5,6 @@
 
 #include "PaintLook.slang"
 
-// the lobes a debug toggle can take out
-#define PAINT_LOBE_DIFFUSE (1u << 0)
-#define PAINT_LOBE_SPECULAR (1u << 1)
-#define PAINT_LOBE_HAZE (1u << 2)
-#define PAINT_LOBE_FUZZ (1u << 3)
-#define PAINT_LOBE_SSS (1u << 4)
-#define PAINT_LOBE_COAT (1u << 5)
-#define PAINT_LOBE_SKY (1u << 6)
 
 // what the legacy GBuffer would export, as Unreal's buffer view colors it
 #define PAINT_EXPORT_DEFAULT_LIT 0u

@@ -6,10 +6,6 @@
 #include "PaintCommon.slang"
 #include "Sampler.slang"
 
-// how G is read back
-#define PAINT_HEIGHT_NEAREST 0u
-#define PAINT_HEIGHT_BILINEAR 1u
-#define PAINT_HEIGHT_BSPLINE 2u
 
 
 struct PaintHeightSample {
