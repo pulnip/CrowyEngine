@@ -128,7 +128,7 @@ struct SurfacePoint {
 SurfacePoint readSurface(SurfaceOut input, bool needsHeight) {
     SurfacePoint p;
     float3 n = (input.localPos - boundsMin.xyz) / max(boundsSize.xyz, 1e-4);
-    p.direction = IslandDirection(input.localNormal / scale3D.xyz);
+    p.direction = IslandDirection(input.localNormal);
     float4 island = islands[p.direction];
     p.kept = island.z > 0.0;
     p.uv = IslandUV(n, island, p.direction, atlas.y);
