@@ -85,6 +85,27 @@ def count_frames(path):
     return int(out.strip())
 
 
+def crop_vf(rect):
+    return "crop={2}:{3}:{0}:{1}".format(*rect)
+
+
+def frame_filters(shot):
+    """the crop, then the zoom: one order for clips, posters and stills"""
+    filters = [crop_vf(shot["crop"])] if "crop" in shot else []
+    if "zoom" in shot:
+        # a few pixels blown up whole, for a detail one pixel wide
+        filters.append(crop_vf(shot["zoom"]) + ",scale=1920:1080:flags=neighbor")
+    return filters
+
+
+def filter_png(png, filters):
+    if not filters:
+        return
+    tmp = png.with_suffix(".tmp.png")
+    run(["ffmpeg", "-y", "-v", "error", "-i", str(png), "-vf", ",".join(filters), str(tmp)])
+    tmp.replace(png)
+
+
 def bmp_to_png(bmp, png):
     run([str(CONVERT), "--convert", str(bmp), str(png)])
 
@@ -224,15 +245,7 @@ class Recorder:
             "".join(f"file '{s.name}'\n" for s in segments), encoding="utf-8"
         )
 
-        filters = []
-        crop = shot.get("crop")
-        if crop:
-            filters.append("crop={2}:{3}:{0}:{1}".format(*crop))
-        zoom = shot.get("zoom")
-        if zoom:
-            # a few pixels blown up whole, for a detail one pixel wide
-            filters.append("crop={2}:{3}:{0}:{1},scale=1920:1080:flags=neighbor".format(*zoom))
-        filters += self.captions(shot, work)
+        filters = frame_filters(shot) + self.captions(shot, work)
         out = clips / f"{shot['name']}.mp4"
         command = [
             "ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
@@ -249,19 +262,7 @@ class Recorder:
 
         poster = clips / f"{shot['name']}.png"
         shutil.copyfile(work / "poster.png", poster)
-        if zoom:
-            run([
-                "ffmpeg", "-y", "-v", "error", "-i", str(poster), "-vf",
-                "crop={2}:{3}:{0}:{1},scale=1920:1080:flags=neighbor".format(*zoom),
-                str(poster.with_suffix(".tmp.png")),
-            ])
-            poster.with_suffix(".tmp.png").replace(poster)
-        if crop:
-            run([
-                "ffmpeg", "-y", "-v", "error", "-i", str(poster), "-vf",
-                "crop={2}:{3}:{0}:{1}".format(*crop), str(poster.with_suffix(".tmp.png")),
-            ])
-            poster.with_suffix(".tmp.png").replace(poster)
+        filter_png(poster, frame_filters(shot))
         return out
 
     def captions(self, shot, work):
@@ -305,13 +306,7 @@ class Recorder:
                 png = bmp.with_suffix(".png")
                 bmp_to_png(bmp, png)
                 bmp.unlink()
-                crop = shot.get("crop")
-                if crop:
-                    run([
-                        "ffmpeg", "-y", "-v", "error", "-i", str(png), "-vf",
-                        "crop={2}:{3}:{0}:{1}".format(*crop), str(png.with_suffix(".c.png")),
-                    ])
-                    png.with_suffix(".c.png").replace(png)
+                filter_png(png, frame_filters(shot))
         finally:
             self.close()
         montage(stills_dir, shot)
