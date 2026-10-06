@@ -134,6 +134,8 @@ namespace Crowy
         // the shape slider: 0 a circle, 8 MintChoco's stamp
         f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
         bool splash = false;
+        // cm; what the splash scales its droplets by
+        f32 ballRadius = 6.0f;
     };
 
     // how the edge between paint and bare is read
@@ -226,6 +228,15 @@ namespace Crowy
         i32 selected = 1;
         // the island rectangles and names over the panel
         bool labels = true;
+        // the droplets fly this many times slower
+        i32 slowMotion = 1;
+        bool paused = false;
+        // a tick a frame instead of the frame's time, so a capture is the
+        // same picture on any display
+        bool countFrames = false;
+        // launch vectors, the clearance and travel rings, the phantom
+        // landings the score took and the marks the picture drew
+        bool splashDebug = false;
     };
 
     // a paintable's direction flags, exposed as `stage.<name>`

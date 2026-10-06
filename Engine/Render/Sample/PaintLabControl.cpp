@@ -18,6 +18,11 @@ namespace Crowy
         .SetProperty("panelChannel", &PaintLabSettings::panelChannel)
         .SetProperty("selected", &PaintLabSettings::selected)
         .SetProperty("labels", &PaintLabSettings::labels)
+        .SetProperty("slowMotion", &PaintLabSettings::slowMotion)
+        .SetUIRange(1, 8)
+        .SetProperty("paused", &PaintLabSettings::paused)
+        .SetProperty("countFrames", &PaintLabSettings::countFrames)
+        .SetProperty("splashDebug", &PaintLabSettings::splashDebug)
     CROWY_STRUCT_END(PaintLabSettings)
 
     CROWY_STRUCT(PaintShotSettings)
@@ -36,6 +41,8 @@ namespace Crowy
         .SetProperty("shapeStage", &PaintShotSettings::shapeStage)
         .SetUIRange(0.0f, 8.0f)
         .SetProperty("splash", &PaintShotSettings::splash)
+        .SetProperty("ballRadius", &PaintShotSettings::ballRadius)
+        .SetUIRange(1.0f, 20.0f)
     CROWY_STRUCT_END(PaintShotSettings)
 
     CROWY_STRUCT(PaintLookSettings)

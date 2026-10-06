@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <format>
 #include <memory>
 #include <numbers>
@@ -12,6 +13,7 @@
 
 #include "CommandPort.hpp"
 #include "DOM.hpp"
+#include "FixedTickClock.hpp"
 #include "FlyCamera.hpp"
 #include "Geometry/Overlap3D.hpp"
 #include "InputProvider.hpp"
@@ -48,12 +50,27 @@ namespace Crowy
         static constexpr f32 PanelMargin = 24.0f;
         static constexpr std::array<CStr, PaintFaceDirectionCount>
             DirectionNames{"Front", "Back", "Right", "Left", "Up", "Down"};
+        // a splash on every grid tile at once
+        static constexpr usize MaxDropletSpheres = 16 * PaintMaxDroplets;
+        // MPC_TeamLook's base colors, Mint and Choco
+        static constexpr std::array<Vec3, 2> TeamColors{
+            Vec3{0.0f, 0.8f, 0.505794f},
+            Vec3{0.158f, 0.04661f, 0.01738f}
+        };
 
         RAII<PaintWorld> world = std::make_unique<PaintWorld>();
         // one per surface, in the same order: its flags as the port sees them
         std::vector<PaintObjectFlags> flags;
         std::array<GeometryAllocation, PaintMeshKindCount> geometry{};
         std::vector<PrimitiveHandle> proxies;
+        // a sphere per droplet in the air, hidden when there is none
+        std::vector<PrimitiveHandle> dropletSpheres;
+        std::array<MeshHandle, 2> dropletMeshes{};
+        AABB3D sphereBounds{};
+        FixedTickClock clock;
+        // flight substeps run up but not yet owed under slow motion
+        i32 substepCredit = 0;
+        bool dumpsFrames = std::getenv("CROWY_DUMP_FRAME") != nullptr;
         RAII<PaintGpu> gpu;
         PaintLabSettings settings;
         PaintShotSettings shot;
@@ -149,6 +166,38 @@ namespace Crowy
                 ));
             }
 
+            sphereBounds = localBounds(PaintMeshKind::Sphere);
+            for(usize team = 0; team < dropletMeshes.size(); ++team) {
+                const auto material = scene.Materials().Add(
+                    MaterialResource{
+                        .data =
+                            {.albedo = TeamColors[team], .roughness = 0.35f},
+                        .pipeline = dropletPipeline()
+                    }
+                );
+                dropletMeshes[team] = scene.Meshes().Add(
+                    MeshResource{
+                        .subMeshes = {SubMesh{
+                            .geometry = geometry
+                                [static_cast<usize>(PaintMeshKind::Sphere)],
+                            .localBounds = sphereBounds
+                        }},
+                        .materials = {material},
+                        .localBounds = sphereBounds
+                    }
+                );
+            }
+            for(usize i = 0; i < MaxDropletSpheres; ++i) {
+                dropletSpheres.push_back(scene.Primitives().Add(
+                    PrimitiveSnapshot{
+                        .localToWorld = unitMat(),
+                        .worldBounds = sphereBounds,
+                        .mesh = dropletMeshes[0],
+                        .flags = PrimitiveFlags::None
+                    }
+                ));
+            }
+
             gpu = std::make_unique<PaintGpu>(Device());
             shownDebug = Debug();
             panel = buildPanel();
@@ -229,7 +278,22 @@ namespace Crowy
                 fireThroughCursor(input.GetMousePos());
         }
 
-        void OnUpdateScene(f64) override {
+        void OnUpdateScene(f64 seconds) override {
+            // the droplets fly in fixed substeps: the frame's time on screen,
+            // one tick a frame when a capture counts them
+            const auto ticks = settings.countFrames || dumpsFrames
+                                   ? 1u
+                                   : clock.Advance(toNanoseconds(seconds));
+            if(!settings.paused) {
+                substepCredit +=
+                    static_cast<i32>(ticks) * PaintFlightSubstepsPerTick;
+                const auto slow = std::max(settings.slowMotion, 1);
+                const auto steps = substepCredit / slow;
+                substepCredit -= steps * slow;
+                world->Step(steps);
+            }
+            placeDropletSpheres();
+
             if(settings.stage != shownStage) {
                 shownStage = settings.stage;
                 world->SetStage(stageKind());
@@ -309,6 +373,7 @@ namespace Crowy
 
             drawPanelLabels();
             drawScoreReadout();
+            drawSplashDebug();
 
             // the chrome stays out of every capture unless asked for
             if(debug.showPanel) {
@@ -340,7 +405,7 @@ namespace Crowy
         static Config makeConfig() {
             return Config{
                 .clearColor = SkyRadiance,
-                .drawCapacity = 64,
+                .drawCapacity = 512,
                 .materialCapacity = 64,
                 .shadowMapSize = 2048,
                 .vertexPoolCapacity = 16384,
@@ -376,6 +441,17 @@ namespace Crowy
                     {.path = StandardForward, .entryPoint = "fs_masked_depth"},
                 .rasterizer = {.frontCounterClockwise = false},
                 .domain = MaterialDomain::Masked,
+                .profile = "sm_6_8"
+            };
+        }
+
+        static MaterialPipelineDesc dropletPipeline() {
+            return MaterialPipelineDesc{
+                .vertexShader =
+                    {.path = StandardForward, .entryPoint = "vs_main"},
+                .fragmentShader =
+                    {.path = StandardForward, .entryPoint = "fs_opaque"},
+                .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
         }
@@ -593,6 +669,165 @@ namespace Crowy
             };
             return score(settings.view) ||
                    (settings.split < 1.0f && score(settings.compareView));
+        }
+
+        void placeDropletSpheres() {
+            const auto sphereRadius = sphereBounds.halfScale.x;
+            usize next = 0;
+            for(const auto& flight: world->Flights()) {
+                const auto mesh = dropletMeshes[flight.paintId & 1u];
+                for(const auto& droplet: flight.droplets) {
+                    if(!droplet.alive || next == dropletSpheres.size())
+                        continue;
+                    const auto scale = droplet.radius / sphereRadius;
+                    const auto localToWorld =
+                        mintToCrowy() * translateMat(toVec3(droplet.position)) *
+                        scaleMat(Vec3{scale, scale, scale});
+                    auto& sphere =
+                        Scene().Primitives().GetRef(dropletSpheres[next++]);
+                    sphere.localToWorld = localToWorld;
+                    sphere.worldBounds =
+                        transformAABB3D(localToWorld, sphereBounds);
+                    sphere.mesh = mesh;
+                    sphere.flags = combine(
+                        PrimitiveFlags::Visible,
+                        PrimitiveFlags::CastShadow
+                    );
+                }
+            }
+            for(; next < dropletSpheres.size(); ++next)
+                Scene().Primitives().GetRef(dropletSpheres[next]).flags =
+                    PrimitiveFlags::None;
+        }
+
+        // a Mint point to the 1920x1080 screen, or none behind the eye
+        std::optional<ImVec2> toScreen(DVec3 point) {
+            const auto& camera = Camera();
+            const auto p = toCrowyPoint(point);
+            const auto clip = camera.Projection(Aspect()) *
+                              (camera.View() * Vec4{p.x, p.y, p.z, 1.0f});
+            if(clip.w <= 1e-4f)
+                return std::nullopt;
+
+            return ImVec2(
+                (clip.x / clip.w * 0.5f + 0.5f) * 1920.0f,
+                (0.5f - clip.y / clip.w * 0.5f) * 1080.0f
+            );
+        }
+
+        // a circle lying in the plane of `normal`, as a screen polyline
+        void drawGroundCircle(
+            ImDrawList& draw,
+            DVec3 center,
+            DVec3 normal,
+            f64 radius,
+            ImU32 color,
+            bool filled
+        ) {
+            constexpr i32 Segments = 48;
+            const auto reference = std::abs(normal.z) < 0.9
+                                       ? DVec3{0.0, 0.0, 1.0}
+                                       : DVec3{1.0, 0.0, 0.0};
+            const auto u = getSafeNormal(cross(normal, reference));
+            const auto v = cross(normal, u);
+            std::vector<ImVec2> points;
+            for(i32 i = 0; i < Segments; ++i) {
+                const auto a = 2.0 * std::numbers::pi * i / Segments;
+                const auto screen = toScreen(
+                    center + (u * std::cos(a) + v * std::sin(a)) * radius +
+                    normal * 0.5
+                );
+                if(!screen)
+                    return;
+                points.push_back(*screen);
+            }
+            if(filled)
+                draw.AddConvexPolyFilled(points.data(), Segments, color);
+            else
+                draw.AddPolyline(
+                    points.data(),
+                    Segments,
+                    color,
+                    ImDrawFlags_Closed,
+                    2.0f
+                );
+        }
+
+        // the splash's two halves side by side: rings where the score's
+        // phantoms landed, filled marks where the picture's droplets did
+        void drawSplashDebug() {
+            if(!settings.splashDebug)
+                return;
+            constexpr std::array<ImU32, 3> GroupColors{
+                IM_COL32(64, 230, 170, 255),
+                IM_COL32(230, 150, 90, 255),
+                IM_COL32(190, 190, 190, 255)
+            };
+            const auto white = IM_COL32(255, 255, 255, 220);
+            const auto yellow = IM_COL32(250, 210, 60, 255);
+            auto* draw = ImGui::GetForegroundDrawList();
+            const auto& splash = world->Splash();
+
+            for(const auto& mark: world->Marks())
+                drawGroundCircle(
+                    *draw,
+                    mark.point,
+                    mark.normal,
+                    mark.radius,
+                    IM_COL32(255, 255, 255, 70),
+                    true
+                );
+            for(const auto& phantom: world->Phantoms())
+                drawGroundCircle(
+                    *draw,
+                    phantom.point,
+                    phantom.normal,
+                    phantom.radius,
+                    yellow,
+                    false
+                );
+            for(const auto& flight: world->Flights()) {
+                drawGroundCircle(
+                    *draw,
+                    flight.contact,
+                    flight.normal,
+                    flight.markClearance,
+                    white,
+                    false
+                );
+                drawGroundCircle(
+                    *draw,
+                    flight.contact,
+                    flight.normal,
+                    splash.maxTravel,
+                    IM_COL32(255, 255, 255, 90),
+                    false
+                );
+                for(const auto& droplet: flight.droplets) {
+                    if(!droplet.alive)
+                        continue;
+                    const auto from = toScreen(droplet.position);
+                    const auto to =
+                        toScreen(droplet.position + droplet.velocity * 0.05);
+                    if(!from || !to)
+                        continue;
+                    const auto color =
+                        GroupColors[static_cast<usize>(droplet.group)];
+                    draw->AddLine(*from, *to, color, 2.0f);
+                    draw->AddCircle(*from, droplet.marks ? 5.0f : 3.0f, color);
+                }
+            }
+            if(settings.labels) {
+                draw->AddText(
+                    ImGui::GetFont(),
+                    ImGui::GetFontSize() * 1.25f,
+                    ImVec2(PanelMargin, PanelMargin),
+                    white,
+                    "yellow ring: a phantom landing the score took\n"
+                    "white fill: a droplet's mark, the picture only\n"
+                    "forward / side / back"
+                );
+            }
         }
 
         // what the CPU grid says each team owns: the only number a match is
@@ -888,6 +1123,7 @@ namespace Crowy
                 .volume = shot.volume,
                 .heightAdd = shot.heightAdd,
                 .brush = brushOf(shot.brush),
+                .ballRadius = shot.ballRadius,
                 .splash = shot.splash
             };
         }
@@ -955,6 +1191,9 @@ namespace Crowy
                     );
                     request.splash =
                         args.get<bool>("splash").value_or(shot.splash);
+                    request.ballRadius = static_cast<f32>(
+                        args.get<f64>("ballRadius").value_or(shot.ballRadius)
+                    );
                     request.onlySurface =
                         args.get<i64>("onlySurface").value_or(-1);
                     if(const auto brush = args.get<Str>("brush")) {
@@ -997,6 +1236,12 @@ namespace Crowy
                             "seed",
                             DOM::Value(static_cast<i64>(splat.seed))
                         );
+                        result.emplace(
+                            "phantoms",
+                            DOM::Value(
+                                static_cast<i64>(world->Phantoms().size())
+                            )
+                        );
                     }
                     reply.Ok(DOM::Value(std::move(result)));
                 }
@@ -1007,6 +1252,69 @@ namespace Crowy
                     world->Reset();
                     gpu->ClearAll();
                     reply.Ok();
+                }
+            );
+            // the splashes in the air and what they left: droplets, the
+            // score's phantom landings and the picture's marks
+            port.RegisterVerb(
+                "paint_droplets",
+                [this](const DOM::Value&, Reply reply) {
+                    const auto marks =
+                        [](std::span<const PaintSplashMark> all) {
+                            DOM::Array array;
+                            for(const auto& mark: all) {
+                                DOM::Table entry;
+                                entry.emplace("point", toValue(mark.point));
+                                entry.emplace(
+                                    "radius",
+                                    DOM::Value(static_cast<f64>(mark.radius))
+                                );
+                                array.emplace_back(std::move(entry));
+                            }
+                            return DOM::Value(std::move(array));
+                        };
+                    DOM::Array flights;
+                    for(const auto& flight: world->Flights()) {
+                        DOM::Array droplets;
+                        for(const auto& droplet: flight.droplets) {
+                            DOM::Table entry;
+                            entry.emplace(
+                                "position",
+                                toValue(droplet.position)
+                            );
+                            entry.emplace(
+                                "velocity",
+                                toValue(droplet.velocity)
+                            );
+                            entry.emplace(
+                                "radius",
+                                DOM::Value(static_cast<f64>(droplet.radius))
+                            );
+                            entry.emplace(
+                                "group",
+                                DOM::Value(static_cast<i64>(droplet.group))
+                            );
+                            entry.emplace("alive", DOM::Value(droplet.alive));
+                            entry.emplace("marks", DOM::Value(droplet.marks));
+                            droplets.emplace_back(std::move(entry));
+                        }
+                        DOM::Table entry;
+                        entry.emplace("contact", toValue(flight.contact));
+                        entry.emplace(
+                            "markClearance",
+                            DOM::Value(static_cast<f64>(flight.markClearance))
+                        );
+                        entry.emplace(
+                            "droplets",
+                            DOM::Value(std::move(droplets))
+                        );
+                        flights.emplace_back(std::move(entry));
+                    }
+                    DOM::Table result;
+                    result.emplace("flights", DOM::Value(std::move(flights)));
+                    result.emplace("phantoms", marks(world->Phantoms()));
+                    result.emplace("marks", marks(world->Marks()));
+                    reply.Ok(DOM::Value(std::move(result)));
                 }
             );
             // a surface's atlas, as MintChoco logs it
