@@ -4,6 +4,8 @@
 #include <cmath>
 #include <utility>
 
+#include "MintRandom.hpp"
+
 namespace Crowy
 {
     namespace
@@ -42,6 +44,7 @@ namespace Crowy
             shot.seed
         );
         if(shot.splash) {
+            splat.splash = &splash;
             const auto speed = size(shot.velocity);
             splat.incidentDir =
                 speed > 1e-4 ? shot.velocity / speed : -hit->impactNormal;
@@ -57,6 +60,30 @@ namespace Crowy
         const auto& surface = surfaces[static_cast<usize>(hit->surface)];
         splat.transient = !surface.IsWorldNormalPersistent(hit->impactNormal);
         SubmitSplat(splat);
+
+        // the picture's splash starts from the true contact and the full
+        // seed; the score's from the splat
+        if(shot.splash) {
+            auto flight = launchSplash(
+                splash,
+                PaintSplashInput{
+                    .impactPoint = hit->impactPoint,
+                    .impactNormal = hit->impactNormal,
+                    .incidentVelocity = shot.velocity,
+                    .ballRadius = shot.ballRadius,
+                    .seed = shot.seed
+                },
+                shot.brush.ComputeRadius(
+                    shot.volume,
+                    static_cast<f32>(size(shot.velocity))
+                ),
+                shot.paintId,
+                splat.lockGens,
+                shot.onlySurface
+            );
+            if(!flight.droplets.empty())
+                flights.push_back(std::move(flight));
+        }
 
         return hit;
     }
@@ -78,6 +105,80 @@ namespace Crowy
             return;
         }
         stampSurfaces(splat);
+        if(splat.splash)
+            applyPhantomLandings(splat);
+    }
+
+    void PaintWorld::Step(i32 substeps) {
+        std::vector<PaintDropletLanding> landings;
+        for(i32 step = 0; step < substeps; ++step) {
+            for(auto& flight: flights) {
+                landings.clear();
+                stepFlight(flight, splash, scene, landings);
+                for(const auto& landing: landings) {
+                    const auto mark = landingMark(flight, splash, landing);
+                    if(!mark)
+                        continue;
+                    ApplySplat(*mark);
+                    marks.push_back(
+                        PaintSplashMark{
+                            .point = mark->location,
+                            .normal = mark->normal,
+                            .radius = mark->radius
+                        }
+                    );
+                }
+            }
+            std::erase_if(flights, [](const PaintSplashFlight& flight) {
+                return !flight.IsAlive();
+            });
+        }
+    }
+
+    void PaintWorld::applyPhantomLandings(const PaintSplat& splat) {
+        std::vector<PaintPhantomLanding> landings;
+        phantomLandings(
+            *splat.splash,
+            PaintSplashInput{
+                .impactPoint = splat.location,
+                .impactNormal = splat.normal,
+                .incidentVelocity =
+                    splat.incidentDir * static_cast<f64>(splat.incidentSpeed),
+                .ballRadius = splat.ballRadius > 0
+                                  ? static_cast<f32>(splat.ballRadius)
+                                  : 6.0f,
+                .seed = splat.seed
+            },
+            PaintGravityZ,
+            landings
+        );
+        for(usize i = 0; i < landings.size(); ++i) {
+            const auto radius =
+                splat.splash->ComputeMarkRadius(landings[i].speed) *
+                splat.splash->phantomCellRadiusScale;
+            if(radius <= 0.0f)
+                continue;
+
+            // round, on the contact's own plane, and never splashing again
+            auto phantom = splat;
+            phantom.splash = nullptr;
+            phantom.scoreOnly = true;
+            phantom.location = landings[i].point;
+            phantom.radius = radius;
+            phantom.stretch = 1.0f;
+            phantom.impactU = 0.0f;
+            phantom.seed = static_cast<u16>(
+                hashCombineFast(splat.seed, static_cast<u32>(i + 1)) & 0xFFFFu
+            );
+            stampSurfaces(phantom);
+            phantoms.push_back(
+                PaintSplashMark{
+                    .point = phantom.location,
+                    .normal = phantom.normal,
+                    .radius = radius
+                }
+            );
+        }
     }
 
     void PaintWorld::stampSurfaces(const PaintSplat& splat) {
@@ -131,6 +232,9 @@ namespace Crowy
         log.clear();
         draws.clear();
         transients.clear();
+        flights.clear();
+        phantoms.clear();
+        marks.clear();
     }
 
     PaintCoverage PaintWorld::Coverage() const {

@@ -4,9 +4,11 @@ add_library(SamplePaint STATIC
     PaintAtlasBaker.cpp
     PaintBrushProfile.cpp
     PaintCellGrid.cpp
+    PaintDropletFlight.cpp
     PaintIslandLayout.cpp
     PaintMeshes.cpp
     PaintSceneQuery.cpp
+    PaintSplash.cpp
     PaintStage.cpp
     PaintSurface.cpp
     PaintWorld.cpp

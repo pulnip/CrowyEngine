@@ -7,8 +7,10 @@
 
 #include "MintFrame.hpp"
 #include "PaintBrushProfile.hpp"
+#include "PaintDropletFlight.hpp"
 #include "PaintSceneQuery.hpp"
 #include "PaintShared.h"
+#include "PaintSplash.hpp"
 #include "PaintStage.hpp"
 #include "PaintSurface.hpp"
 #include "PaintTypes.hpp"
@@ -51,6 +53,14 @@ namespace Crowy
         f32 radius = 0.0f;
     };
 
+    // a splash's footprint for the overlays: a phantom landing the score
+    // claimed, or a droplet's mark the picture drew
+    struct PaintSplashMark {
+        DVec3 point;
+        DVec3 normal{0.0, 0.0, 1.0};
+        f32 radius = 0.0f;
+    };
+
     // UPaintSubsystem, FPaintDeposit and the splat log: every surface, the
     // trace a shot takes, and the one splat that both the brush and the
     // score are fed from
@@ -68,6 +78,10 @@ namespace Crowy
         std::vector<PaintStampDraw> draws;
         std::vector<PaintTransientMark> transients;
         f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
+        PaintSplashProfile splash = PaintSplashProfile::Paintball();
+        std::vector<PaintSplashFlight> flights;
+        std::vector<PaintSplashMark> phantoms;
+        std::vector<PaintSplashMark> marks;
 
     public:
         PaintWorld();
@@ -75,8 +89,11 @@ namespace Crowy
         CROWY_DECLARE_PINNED(PaintWorld)
 
         // traces the shot and, on a surface that receives paint, builds
-        // the splat, marks it transient or not and submits it
+        // the splat, marks it transient or not and submits it; a splashing
+        // shot also throws this machine's droplets
         std::optional<PaintHit> Fire(const PaintShot& shot);
+        // the droplets in the air, PaintFlightSubstep at a time
+        void Step(i32 substeps);
         // the authority's acceptance: logged, then applied
         void SubmitSplat(const PaintSplat& splat);
         // every machine's: a transient one is an effect, a kept one stamps
@@ -104,10 +121,25 @@ namespace Crowy
         std::span<const PaintTransientMark> Transients() const noexcept {
             return transients;
         }
+        const PaintSplashProfile& Splash() const noexcept { return splash; }
+        // the splats already logged keep pointing at it
+        void SetSplash(const PaintSplashProfile& profile) { splash = profile; }
+        std::span<const PaintSplashFlight> Flights() const noexcept {
+            return flights;
+        }
+        std::span<const PaintSplashMark> Phantoms() const noexcept {
+            return phantoms;
+        }
+        std::span<const PaintSplashMark> Marks() const noexcept {
+            return marks;
+        }
         const PaintSceneQuery& Scene() const noexcept { return scene; }
 
     private:
         void stampSurfaces(const PaintSplat& splat);
+        // UPaintSubsystem::ApplyPhantomLandings: every machine derives the
+        // same score-only landings from the splat alone
+        void applyPhantomLandings(const PaintSplat& splat);
         void refreshActive();
     };
 }
