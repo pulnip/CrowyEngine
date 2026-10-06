@@ -1051,6 +1051,10 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     stills = Path(args.stills) if args.stills else out.parent / "stills" / "stills_shape_stages"
+    missing = [p for p in (stills / f"stage{k}.png" for k in range(9)) if not p.exists()]
+    if missing:
+        print("record stills_shape_stages first; missing:", *missing, sep="\n  ")
+        return 1
     made = []
     for name, make in FIGURES.items():
         path = out / f"{name}.svg"
