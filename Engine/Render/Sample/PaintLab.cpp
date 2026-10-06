@@ -1260,11 +1260,15 @@ namespace Crowy
                     request.onlySurface =
                         args.get<i64>("onlySurface").value_or(-1);
                     if(const auto brush = args.get<Str>("brush")) {
-                        for(const auto& entry:
-                            EnumTraits<PaintBrushChoice>::entries) {
-                            if(*brush == entry.name)
-                                request.brush = brushOf(entry.value);
+                        const auto choice =
+                            enumFromName<PaintBrushChoice>(*brush);
+                        if(!choice) {
+                            reply.Error(
+                                std::format("unknown brush {}", *brush)
+                            );
+                            return;
                         }
+                        request.brush = brushOf(*choice);
                     }
 
                     // seconds of flight shown before the contact
