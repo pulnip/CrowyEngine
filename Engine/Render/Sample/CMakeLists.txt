@@ -96,6 +96,8 @@ endif()
 crowy_declare_example(PaintLab
 SOURCES
     PaintLab.cpp
+    PaintLabControl.cpp
+    PaintLabGpu.cpp
 DEPENDS
     Crowy::Reflection
     SamplePaint

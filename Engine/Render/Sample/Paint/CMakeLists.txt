@@ -1,8 +1,11 @@
 # MintChoco's paint as PaintLab runs it: the CPU half, ported from the game's
 # C++ in its centimetre frame, and knowing nothing of the RHI
 add_library(SamplePaint STATIC
+    PaintAtlasBaker.cpp
+    PaintIslandLayout.cpp
     PaintMeshes.cpp
     PaintStage.cpp
+    PaintSurface.cpp
 )
 
 target_include_directories(SamplePaint

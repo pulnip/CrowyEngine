@@ -89,4 +89,73 @@ namespace Crowy
     inline constexpr u8 decodePaintStarGen(u8 texel) {
         return static_cast<u8>(texel >> PaintIdBits);
     }
+
+    // which generation each team has locked: a texel of that team carrying
+    // exactly that generation cannot be painted over by any other id
+    struct PaintLockGens {
+        u8 gen[PaintTeamIdCount]{};
+
+        constexpr u8 For(u8 paintId) const noexcept {
+            return paintId < PaintTeamIdCount ? gen[paintId] : 0;
+        }
+        constexpr bool Locks(u8 paintId, u8 starGen) const noexcept {
+            return starGen != 0 && starGen == For(paintId);
+        }
+    };
+
+    struct PaintSplashProfile;
+
+    // FPaintSplat: one paint contact, fully resolved, everything a surface
+    // needs to draw and score it; the server builds it once and every machine
+    // draws the identical stamp
+    struct PaintSplat {
+        // stamp centre in world space, the incidence shift applied
+        DVec3 location;
+        DVec3 normal{0.0, 0.0, 1.0};
+        // unit stamp U axis: the stretch direction, or a seeded rotation
+        DVec3 axisU{1.0, 0.0, 0.0};
+        // half-extent along V in cm; along U the stamp spans radius * stretch
+        f32 radius = 25.0f;
+        // 1 / cos(incidence), clamped; 1 is a head-on hit
+        f32 stretch = 1.0f;
+        // the contact along U, normalized by the long half-axis
+        f32 impactU = 0.0f;
+        u8 paintId = 0;
+        u8 starGen = 0;
+        PaintLockGens lockGens;
+        // the fraction of the max paint height this contact adds
+        f32 heightAdd = 0.35f;
+        // 16 bits, all the stamp shader's sin hash keeps
+        u16 seed = 0;
+        // BrushShapeNoise of the brush material that stamps it
+        f32 shapeNoise = 1.0f;
+        // a contact on a direction the surface does not keep: an effect only
+        bool transient = false;
+        // what the contact scatters beyond this splat, or null
+        const PaintSplashProfile* splash = nullptr;
+        DVec3 incidentDir{1.0, 0.0, 0.0};
+        // cm/s
+        u16 incidentSpeed = 0;
+        // cm
+        u8 ballRadius = 0;
+        // marks the score and draws nothing; made where a splash expands
+        bool scoreOnly = false;
+        // draws and marks no cell; a droplet's mark on the machine it landed
+        bool drawOnly = false;
+
+        f64 WorldExtent() const noexcept { return radius * stretch; }
+    };
+
+    // the splat in the painted mesh's scaled-local frame: rotation and
+    // translation removed, scale kept, so every length is still a world one.
+    // The brush and the cell grid both consume it, which keeps them agreeing.
+    struct PaintLocalStamp {
+        DVec3 center;
+        // unit axes of the stamp plane; U is the stretched one
+        DVec3 axisU{1.0, 0.0, 0.0};
+        DVec3 axisV{0.0, 1.0, 0.0};
+        DVec3 normal{0.0, 0.0, 1.0};
+        f32 radius = 0.0f;
+        f32 stretch = 1.0f;
+    };
 }
