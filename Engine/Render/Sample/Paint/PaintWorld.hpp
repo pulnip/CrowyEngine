@@ -46,13 +46,6 @@ namespace Crowy
         f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
     };
 
-    // a contact on a direction its surface does not keep: an effect only
-    struct PaintTransientMark {
-        DVec3 location;
-        DVec3 normal;
-        f32 radius = 0.0f;
-    };
-
     // a shot still on its way: the ball shown along its trace until it
     // reaches the contact and fires
     struct PaintBall {
@@ -90,7 +83,6 @@ namespace Crowy
         std::vector<PaintSplat> log;
         // the brush's work since the last take
         std::vector<PaintStampDraw> draws;
-        std::vector<PaintTransientMark> transients;
         f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
         PaintSplashProfile splash = PaintSplashProfile::Paintball();
         std::vector<PaintSplashFlight> flights;
@@ -114,8 +106,8 @@ namespace Crowy
         void Step(i32 substeps);
         // the authority's acceptance: logged, then applied
         void SubmitSplat(const PaintSplat& splat);
-        // every machine's: a transient one is an effect, a kept one stamps
-        // every surface it reaches
+        // every machine's: a transient one draws and scores nothing, a kept
+        // one stamps every surface it reaches
         void ApplySplat(const PaintSplat& splat);
 
         void SetStage(PaintStageKind kind);
@@ -134,11 +126,7 @@ namespace Crowy
             return surfaces;
         }
         std::span<const u8> Active() const noexcept { return active; }
-        PaintStageKind Stage() const noexcept { return stage; }
         std::span<const PaintSplat> Log() const noexcept { return log; }
-        std::span<const PaintTransientMark> Transients() const noexcept {
-            return transients;
-        }
         const PaintSplashProfile& Splash() const noexcept { return splash; }
         // the splats already logged keep pointing at it
         void SetSplash(const PaintSplashProfile& profile) { splash = profile; }

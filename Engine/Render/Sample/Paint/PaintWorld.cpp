@@ -95,16 +95,8 @@ namespace Crowy
     }
 
     void PaintWorld::ApplySplat(const PaintSplat& splat) {
-        if(splat.transient) {
-            transients.push_back(
-                PaintTransientMark{
-                    .location = splat.location,
-                    .normal = splat.normal,
-                    .radius = splat.radius
-                }
-            );
+        if(splat.transient)
             return;
-        }
         stampSurfaces(splat);
         if(splat.splash)
             applyPhantomLandings(splat);
@@ -271,7 +263,6 @@ namespace Crowy
             surface.ClearScore();
         log.clear();
         draws.clear();
-        transients.clear();
         flights.clear();
         balls.clear();
         phantoms.clear();

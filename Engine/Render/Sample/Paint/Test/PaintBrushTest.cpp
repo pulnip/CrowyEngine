@@ -315,7 +315,6 @@ TEST(PaintWorld, KeptAndTransientShots) {
     );
     EXPECT_TRUE(world.Log().back().transient);
     EXPECT_TRUE(world.TakeDraws().empty());
-    EXPECT_EQ(world.Transients().size(), 1u);
 
     world.Reset();
     EXPECT_TRUE(world.Log().empty());
