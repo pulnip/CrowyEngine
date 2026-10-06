@@ -334,7 +334,7 @@ def compose_grid(out):
     inputs, chains, cells = [], [], []
     for si, speed in enumerate(paint_shots.GRID_SPEED):
         for ti, theta in enumerate(paint_shots.GRID_THETA):
-            k = si * 4 + ti
+            k = si * paint_shots.GRID_SIDE + ti
             inputs += ["-i", str(clips / f"grid_{si}{ti}.mp4")]
             (work / f"label{k}.txt").write_text(f"θ {theta:.0f}°  ·  {speed:.0f} cm/s", encoding="utf-8")
             chains.append(
@@ -343,7 +343,13 @@ def compose_grid(out):
                 f"[v{k}]"
             )
             cells.append(f"{ti * 960}_{si * 540}")
-    graph = ";".join(chains) + ";" + "".join(f"[v{k}]" for k in range(16)) +         f"xstack=inputs=16:layout={'|'.join(cells)}[grid];[grid]split[big][small];"         "[small]scale=1920:1080[deck]"
+    n = len(cells)
+    graph = (
+        ";".join(chains) + ";"
+        + "".join(f"[v{k}]" for k in range(n))
+        + f"xstack=inputs={n}:layout={'|'.join(cells)}[grid];"
+        + "[grid]split[big][small];[small]scale=1920:1080[deck]"
+    )
     run(["ffmpeg", "-y", "-v", "error", *inputs, "-filter_complex", graph,
          "-map", "[big]", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
          "-movflags", "+faststart", str(clips / "grid_4x4_2160p.mp4"),

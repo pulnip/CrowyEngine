@@ -18,6 +18,8 @@ SPHERE = (500.0, 350.0, 120.0)
 PANEL_CROP = (1240, 8, 672, 732)
 GRID_THETA = (0.0, 50.0, 60.0, 70.0)
 GRID_SPEED = (500.0, 1500.0, 3000.0, 4800.0)
+GRID_SIDE = len(GRID_THETA)
+assert len(GRID_SPEED) == GRID_SIDE
 GRID_PITCH = 600.0
 # paintGridTileIndex's block count in PaintStage.cpp
 FIRST_TILE = 6
@@ -431,8 +433,8 @@ def e2e_shots():
 
 def grid_tile(speed_index, theta_index):
     return (
-        (1.5 - speed_index) * GRID_PITCH,
-        (theta_index - 1.5) * GRID_PITCH,
+        (0.5 * (GRID_SIDE - 1) - speed_index) * GRID_PITCH,
+        (theta_index - 0.5 * (GRID_SIDE - 1)) * GRID_PITCH,
         0.0,
     )
 
@@ -443,14 +445,14 @@ def grid_volley():
         for ti, th in enumerate(GRID_THETA):
             c = list(grid_tile(si, ti))
             calls.append(fire(incident(c, th, 900.0), c, speed=v, team=0, seed=2024, splash=True,
-                              onlySurface=FIRST_TILE + si * 4 + ti, lead=0.5))
+                              onlySurface=FIRST_TILE + si * GRID_SIDE + ti, lead=0.5))
     return calls
 
 
 def grid_shots():
     shots = []
-    for si in range(4):
-        for ti in range(4):
+    for si in range(GRID_SIDE):
+        for ti in range(GRID_SIDE):
             c = grid_tile(si, ti)
             shots.append({
                 "name": f"grid_{si}{ti}",
