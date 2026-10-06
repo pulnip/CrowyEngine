@@ -52,9 +52,30 @@ namespace Crowy
         f32 forwardShareGrazing = 0.75f;
         // of the droplets not thrown forward, the share thrown back
         f32 backShareOfRest = 0.3f;
-        PaintSplashGroup forward{50.0f, 35.0f, 70.0f, 0.10f, 0.20f, 0.15f};
-        PaintSplashGroup side{35.0f, 25.0f, 60.0f, 0.06f, 0.14f, 0.05f};
-        PaintSplashGroup back{40.0f, 15.0f, 45.0f, 0.04f, 0.10f, 0.0f};
+        PaintSplashGroup forward{
+            .spreadDeg = 50.0f,
+            .elevationMinDeg = 35.0f,
+            .elevationMaxDeg = 70.0f,
+            .speedScaleMin = 0.10f,
+            .speedScaleMax = 0.20f,
+            .slideScale = 0.15f
+        };
+        PaintSplashGroup side{
+            .spreadDeg = 35.0f,
+            .elevationMinDeg = 25.0f,
+            .elevationMaxDeg = 60.0f,
+            .speedScaleMin = 0.06f,
+            .speedScaleMax = 0.14f,
+            .slideScale = 0.05f
+        };
+        PaintSplashGroup back{
+            .spreadDeg = 40.0f,
+            .elevationMinDeg = 15.0f,
+            .elevationMaxDeg = 45.0f,
+            .speedScaleMin = 0.04f,
+            .speedScaleMax = 0.10f,
+            .slideScale = 0.0f
+        };
         f32 gravityScale = 1.0f;
         // per second; the picture's flight has it, the score's does not
         f32 drag = 0.4f;
