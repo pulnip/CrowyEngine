@@ -129,7 +129,38 @@ namespace Crowy
     }
 
     PaintGpu::PaintGpu(RHIDevice& device)
-        : device(device) {}
+        : device(device) {
+        const auto texel =
+            [&](RHIPixelFormat format, const void* data, u32 bytes, CStr name) {
+                const std::array initial{
+                    RHISubresourceData{.data = data, .rowPitch = bytes}
+                };
+                return device.CreateTexture(
+                    RHITextureCreateDesc{
+                        .width = 1,
+                        .height = 1,
+                        .format = format,
+                        .usage = RHITextureUsage::ShaderResource,
+                        .initialData = initial
+                    },
+                    name
+                );
+            };
+        constexpr std::array<u8, 4> NoPaint{7, 0, 0, 255};
+        constexpr auto Empty = toHalf(PaintAtlasBaker::EmptyPosition);
+        constexpr std::array<u16, 4> NoPosition{Empty, Empty, Empty, 0};
+        constexpr u8 NoFade = 0;
+        bareAtlas = {
+            texel(RHIPixelFormat::RGBA8_UNORM, NoPaint.data(), 4, "paint.bare"),
+            texel(
+                RHIPixelFormat::RGBA16_FLOAT,
+                NoPosition.data(),
+                8,
+                "position.bare"
+            ),
+            texel(RHIPixelFormat::R8_UNORM, &NoFade, 1, "edgeFade.bare")
+        };
+    }
 
     void PaintGpu::Sync(std::span<const PaintSurface> all) {
         surfaces.resize(all.size());
@@ -512,25 +543,29 @@ namespace Crowy
         textureRows.clear();
         std::vector<u32> firstRow(all.size(), 0);
         for(usize i = 0; i < all.size(); ++i) {
-            if(active[i] == 0 || i >= surfaces.size() || !surfaces[i].paint)
+            if(active[i] == 0 || i >= surfaces.size())
                 continue;
             firstRow[i] = static_cast<u32>(textureRows.size()) + 1;
             auto& gpu = surfaces[i];
+            const bool bare = !gpu.paint;
             textureRows.push_back(
                 TextureData{
-                    .texture = gpu.paint.Get().GetReadableID(),
+                    .texture = bare ? bareAtlas[0]->GetReadableID()
+                                    : gpu.paint.Get().GetReadableID(),
                     .sampler = static_cast<u32>(TextureSampler::NearestClamp)
                 }
             );
             textureRows.push_back(
                 TextureData{
-                    .texture = gpu.position.Get().GetReadableID(),
+                    .texture = bare ? bareAtlas[1]->GetReadableID()
+                                    : gpu.position.Get().GetReadableID(),
                     .sampler = static_cast<u32>(TextureSampler::NearestClamp)
                 }
             );
             textureRows.push_back(
                 TextureData{
-                    .texture = gpu.edgeFade->GetReadableID(),
+                    .texture = bare ? bareAtlas[2]->GetReadableID()
+                                    : gpu.edgeFade->GetReadableID(),
                     .sampler = static_cast<u32>(TextureSampler::LinearClamp)
                 }
             );

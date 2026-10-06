@@ -164,6 +164,9 @@ namespace Crowy
 
         RHIDevice& device;
         std::vector<SurfaceGpu> surfaces;
+        // paint, position and fade of one empty texel: a surface that keeps
+        // no direction still draws, bare, as its mesh does in MintChoco
+        std::array<RHITextureRAII, 3> bareAtlas;
         // one per atlas size, as MintChoco's GetScratchTarget
         std::map<u32, PaintTexture> scratch;
         // this frame's releases the hooks acquire; alive until Record ends
