@@ -42,7 +42,7 @@ namespace Crowy
 
         f32 ComputeRadius(f32 volume, f32 speed) const noexcept;
         f32 CenterShiftScale() const noexcept {
-            return centerShiftPercent / 100.0f;
+            return centerShiftPercent * 0.01f;
         }
 
         PaintSplat BuildSplat(
