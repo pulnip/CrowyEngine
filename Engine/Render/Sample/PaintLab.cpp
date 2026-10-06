@@ -52,6 +52,13 @@ namespace Crowy
             DirectionNames{"Front", "Back", "Right", "Left", "Up", "Down"};
         // a splash on every grid tile at once
         static constexpr usize MaxDropletSpheres = 16 * PaintMaxDroplets;
+        // flight substeps in one clock tick
+        static constexpr i32 FlightSubstepsPerTick = 4;
+        static_assert(
+            static_cast<i64>(
+                FlightSubstepsPerTick * PaintFlightSubstep * 1e9 + 0.5
+            ) == TickNanoseconds
+        );
         // MPC_TeamLook's base colors, Mint and Choco
         static constexpr std::array<Vec3, 2> TeamColors{
             Vec3{0.0f, 0.8f, 0.505794f},
@@ -292,7 +299,7 @@ namespace Crowy
                                    : clock.Advance(toNanoseconds(seconds));
             if(!settings.paused) {
                 substepCredit +=
-                    static_cast<i32>(ticks) * PaintFlightSubstepsPerTick;
+                    static_cast<i32>(ticks) * FlightSubstepsPerTick;
                 const auto slow = std::max(settings.slowMotion, 1);
                 const auto steps = substepCredit / slow;
                 substepCredit -= steps * slow;

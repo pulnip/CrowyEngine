@@ -15,7 +15,6 @@ namespace Crowy
 {
     // the flight's fixed step, so any frame rate lands the same droplets
     inline constexpr f64 PaintFlightSubstep = 1.0 / 240.0;
-    inline constexpr i32 PaintFlightSubstepsPerTick = 4;
     // the emitter kills a droplet whose path outgrows maxTravel by this much
     inline constexpr f64 PaintFlightPathScale = 1.5;
     // the world's gravity, cm/s^2
