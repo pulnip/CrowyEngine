@@ -80,13 +80,12 @@ namespace Crowy
 
             const auto path = position - droplet.position;
             const auto length = size(path);
-            const auto hit = length > 0.0 ? scene.Raycast(
-                                                droplet.position,
-                                                path,
-                                                length,
-                                                flight.onlySurface
-                                            )
-                                          : std::nullopt;
+            const auto hit = scene.Raycast(
+                droplet.position,
+                path,
+                length,
+                flight.onlySurface
+            );
             if(hit) {
                 droplet.position = hit->impactPoint;
                 droplet.alive = false;
@@ -136,7 +135,7 @@ namespace Crowy
                 .impactNormal = landing.normal,
                 .surface = landing.surface
             },
-            -landing.normal * std::max(landing.launchSpeed, 0.0f),
+            -landing.normal * landing.launchSpeed,
             flight.paintId,
             profile.dropletSplatVolume,
             profile.dropletHeightAdd,
