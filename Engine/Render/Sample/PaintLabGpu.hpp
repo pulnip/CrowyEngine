@@ -10,6 +10,7 @@
 #include "MintFrame.hpp"
 #include "PaintShared.h"
 #include "PaintSurface.hpp"
+#include "PaintWorld.hpp"
 #include "PipelineCache.hpp"
 #include "Primitives.hpp"
 #include "RHICommandList.hpp"
@@ -101,16 +102,6 @@ namespace Crowy
     };
     static_assert(sizeof(PaintPanelPush) <= RHI_PUSH_CONSTANT_BYTES);
 
-    // one splat on one surface, as the brush draws it
-    struct PaintGpuStamp {
-        usize surface = 0;
-        PaintSplat splat;
-        PaintLocalStamp stamp;
-        std::vector<IntRect> rects;
-        // the shape slider's stop; PAINT_SHAPE_STAGE_FULL is StampCustom
-        f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
-    };
-
     // what the surface pass needs besides the surfaces
     struct PaintDrawSettings {
         u32 view = PAINT_VIEW_LIT;
@@ -161,7 +152,7 @@ namespace Crowy
             RHICommandList& cmdList,
             PipelineCache& pipelines,
             std::span<const PaintSurface> surfaces,
-            std::span<const PaintGpuStamp> stamps
+            std::span<const PaintStampDraw> stamps
         );
 
         // inside the paint hook: every active surface
@@ -197,7 +188,7 @@ namespace Crowy
         void recordStamp(
             RHICommandList& cmdList,
             PipelineCache& pipelines,
-            const PaintGpuStamp& stamp,
+            const PaintStampDraw& stamp,
             const PaintSurface& surface,
             bool scratchUsedAgain
         );

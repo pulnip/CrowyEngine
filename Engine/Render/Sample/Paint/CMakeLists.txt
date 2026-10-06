@@ -2,10 +2,13 @@
 # C++ in its centimetre frame, and knowing nothing of the RHI
 add_library(SamplePaint STATIC
     PaintAtlasBaker.cpp
+    PaintBrushProfile.cpp
     PaintIslandLayout.cpp
     PaintMeshes.cpp
+    PaintSceneQuery.cpp
     PaintStage.cpp
     PaintSurface.cpp
+    PaintWorld.cpp
 )
 
 target_include_directories(SamplePaint

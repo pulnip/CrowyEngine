@@ -264,7 +264,7 @@ namespace Crowy
         RHICommandList& cmdList,
         PipelineCache& pipelines,
         std::span<const PaintSurface> all,
-        std::span<const PaintGpuStamp> stamps
+        std::span<const PaintStampDraw> stamps
     ) {
         for(auto& surface: surfaces) {
             if(surface.paint)
@@ -286,7 +286,7 @@ namespace Crowy
             const bool usedAgain = std::any_of(
                 stamps.begin() + static_cast<isize>(i) + 1,
                 stamps.end(),
-                [&](const PaintGpuStamp& later) {
+                [&](const PaintStampDraw& later) {
                     return later.surface < surfaces.size() &&
                            surfaces[later.surface].atlasSize == size &&
                            static_cast<bool>(surfaces[later.surface].paint);
@@ -376,7 +376,7 @@ namespace Crowy
     void PaintGpu::recordStamp(
         RHICommandList& cmdList,
         PipelineCache& pipelines,
-        const PaintGpuStamp& stamp,
+        const PaintStampDraw& stamp,
         const PaintSurface& surface,
         bool scratchUsedAgain
     ) {

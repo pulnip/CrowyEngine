@@ -4,11 +4,14 @@
 #include <format>
 #include <memory>
 #include <numbers>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <imgui.h>
 
+#include "CommandPort.hpp"
+#include "DOM.hpp"
 #include "FlyCamera.hpp"
 #include "Geometry/Overlap3D.hpp"
 #include "InputProvider.hpp"
@@ -21,6 +24,7 @@
 #include "PaintLabGpu.hpp"
 #include "PaintStage.hpp"
 #include "PaintSurface.hpp"
+#include "PaintWorld.hpp"
 #include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "RenderApp.hpp"
@@ -45,17 +49,14 @@ namespace Crowy
         static constexpr std::array<CStr, PaintFaceDirectionCount>
             DirectionNames{"Front", "Back", "Right", "Left", "Up", "Down"};
 
-        PaintStageMeshes meshes = makePaintStageMeshes();
-        std::vector<PaintSurface> surfaces;
+        RAII<PaintWorld> world = std::make_unique<PaintWorld>();
         // one per surface, in the same order: its flags as the port sees them
         std::vector<PaintObjectFlags> flags;
-        // 1 where the surface is on the stage being shown
-        std::vector<u8> active;
         std::array<GeometryAllocation, PaintMeshKindCount> geometry{};
         std::vector<PrimitiveHandle> proxies;
         RAII<PaintGpu> gpu;
-        std::vector<PaintGpuStamp> frameStamps;
         PaintLabSettings settings;
+        PaintShotSettings shot;
         PaintStageChoice shownStage = PaintStageChoice::Block;
         u64 recordedFrames = 0;
 
@@ -69,7 +70,8 @@ namespace Crowy
             if(auto* port = Port()) {
                 port->Unexpose("camera");
                 port->Unexpose("lab");
-                for(const auto& surface: surfaces)
+                port->Unexpose("splat");
+                for(const auto& surface: world->Surfaces())
                     port->Unexpose(
                         std::format("stage.{}", surface.Object().name)
                     );
@@ -82,19 +84,16 @@ namespace Crowy
                   makeConfig(),
                   std::make_unique<FlyCamera>(makeCamera())
               ) {
-            for(auto& object: makePaintStageObjects()) {
-                flags.push_back(flagsOf(object));
-                const auto& mesh = meshes.Get(object.mesh);
-                surfaces.emplace_back(std::move(object), mesh);
-            }
-            refreshActive();
+            for(const auto& surface: world->Surfaces())
+                flags.push_back(flagsOf(surface.Object()));
         }
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
             for(usize kind = 0; kind < PaintMeshKindCount; ++kind) {
-                const auto data =
-                    toMeshData(meshes.Get(static_cast<PaintMeshKind>(kind)));
+                const auto data = toMeshData(
+                    world->Meshes().Get(static_cast<PaintMeshKind>(kind))
+                );
                 geometry[kind] = pool.Add(data.vertices, data.indices);
             }
         }
@@ -122,8 +121,8 @@ namespace Crowy
                     .pipeline = proxyPipeline()
                 }
             );
-            for(usize i = 0; i < surfaces.size(); ++i) {
-                const auto& object = surfaces[i].Object();
+            for(usize i = 0; i < world->Surfaces().size(); ++i) {
+                const auto& object = world->Surfaces()[i].Object();
                 const auto local = localBounds(object.mesh);
                 const auto mesh = scene.Meshes().Add(
                     MeshResource{
@@ -220,30 +219,38 @@ namespace Crowy
         void OnProcessInput(const InputProvider& input) override {
             if(input.IsKeyPressed(PanelToggleKey))
                 Debug().showPanel = !Debug().showPanel;
+            // the ball leaves the eye through the cursor, as the sample
+            // map's click does; Space is the camera's
+            const bool clicked = input.IsKeyPressed(MouseButton::LButton) ||
+                                 input.IsKeyPressed(KeyCode::F);
+            if(clicked && !ImGui::GetIO().WantCaptureMouse)
+                fireThroughCursor(input.GetMousePos());
         }
 
         void OnUpdateScene(f64) override {
             if(settings.stage != shownStage) {
                 shownStage = settings.stage;
-                refreshActive();
+                world->SetStage(stageKind());
                 for(usize i = 0; i < proxies.size(); ++i)
                     Scene().Primitives().GetRef(proxies[i]).flags =
                         proxyFlags(i);
+                uiContext.panelDirty = true;
             }
+            world->SetShapeStage(shot.shapeStage);
         }
 
         std::vector<PassHook> OnRecordSimulation(
             RHICommandList& cmdList
         ) override {
             ++recordedFrames;
-            gpu->Sync(surfaces);
+            gpu->Sync(world->Surfaces());
+            const auto draws = world->TakeDraws();
             const auto acquires = gpu->Record(
                 cmdList,
                 Renderer().Pipelines(),
-                surfaces,
-                frameStamps
+                world->Surfaces(),
+                draws
             );
-            frameStamps.clear();
 
             std::vector<PassHook> hooks;
             if(FindHook(PaintHook)) {
@@ -430,22 +437,16 @@ namespace Crowy
                        : PaintStageKind::Grid;
         }
 
-        void refreshActive() {
-            active.assign(surfaces.size(), 0);
-            for(usize i = 0; i < surfaces.size(); ++i)
-                active[i] = surfaces[i].Object().stage == stageKind() ? 1 : 0;
-        }
-
         PrimitiveFlags proxyFlags(usize i) const {
-            return active[i] != 0 ? combine(
-                                        PrimitiveFlags::Visible,
-                                        PrimitiveFlags::CastShadow
-                                    )
-                                  : PrimitiveFlags::None;
+            return world->Active()[i] != 0 ? combine(
+                                                 PrimitiveFlags::Visible,
+                                                 PrimitiveFlags::CastShadow
+                                             )
+                                           : PrimitiveFlags::None;
         }
 
         AABB3D localBounds(PaintMeshKind kind) const {
-            const auto bounds = boundsOf(meshes.Get(kind));
+            const auto bounds = boundsOf(world->Meshes().Get(kind));
 
             return AABB3D{
                 .center = toVec3(bounds.Center()),
@@ -468,7 +469,7 @@ namespace Crowy
             return static_cast<usize>(std::clamp<i32>(
                 settings.selected,
                 0,
-                static_cast<i32>(surfaces.size()) - 1
+                static_cast<i32>(world->Surfaces().size()) - 1
             ));
         }
 
@@ -492,8 +493,8 @@ namespace Crowy
                 Renderer().Pipelines(),
                 push,
                 RHIIndexBufferView{.buffer = &Geometry().GetIndexBuffer()},
-                surfaces,
-                active,
+                world->Surfaces(),
+                world->Active(),
                 geometry,
                 PaintDrawSettings{
                     .view = static_cast<u32>(settings.view),
@@ -515,7 +516,7 @@ namespace Crowy
                 cmdList,
                 context,
                 Renderer().Pipelines(),
-                surfaces[index],
+                world->Surfaces()[index],
                 index,
                 static_cast<u32>(settings.panelChannel),
                 panelRect()
@@ -526,7 +527,7 @@ namespace Crowy
         void drawPanelLabels() {
             if(settings.panel == PaintPanel::None || !settings.labels)
                 return;
-            const auto& surface = surfaces[selectedSurface()];
+            const auto& surface = world->Surfaces()[selectedSurface()];
             const auto& layout = surface.Layout();
             if(layout.atlasSize == 0)
                 return;
@@ -577,8 +578,213 @@ namespace Crowy
 
         void onFlagsChanged(usize index) {
             const auto& f = flags[index];
-            surfaces[index].SetDirections(maskOf(f), f.floorFollowsWorldUp);
+            world->SetDirections(index, maskOf(f), f.floorFollowsWorldUp);
             uiContext.panelDirty = true;
+        }
+
+        static PaintBrushProfile brushOf(PaintBrushChoice choice) {
+            using enum PaintBrushChoice;
+
+            switch(choice) {
+            case Default:
+                return PaintBrushProfile::Default();
+            case Paintball:
+                return PaintBrushProfile::Paintball();
+            case MopT:
+                return PaintBrushProfile::MopT();
+            case Smooth:
+                return PaintBrushProfile::Smooth();
+            }
+
+            return PaintBrushProfile::Default();
+        }
+
+        static std::optional<DVec3> readVec3(const DOM::Value* value) {
+            const auto* array = value ? value->asArray() : nullptr;
+            if(!array || array->size() != 3)
+                return std::nullopt;
+            DVec3 v;
+            for(usize a = 0; a < 3; ++a) {
+                const auto component = (*array)[a].get<f64>();
+                if(!component)
+                    return std::nullopt;
+                v[a] = *component;
+            }
+
+            return v;
+        }
+
+        static DOM::Value toValue(DVec3 v) {
+            DOM::Array array;
+            array.emplace_back(v.x);
+            array.emplace_back(v.y);
+            array.emplace_back(v.z);
+
+            return DOM::Value(std::move(array));
+        }
+
+        // the shot settings as a shot from `origin` along `direction`
+        PaintShot shotFrom(DVec3 origin, DVec3 direction) const {
+            return PaintShot{
+                .origin = origin,
+                .velocity = getSafeNormal(direction) * shot.speed,
+                .paintId = static_cast<u8>(std::clamp(shot.team, 0, 7)),
+                .seed = shot.seed,
+                .volume = shot.volume,
+                .heightAdd = shot.heightAdd,
+                .brush = brushOf(shot.brush),
+                .splash = shot.splash
+            };
+        }
+
+        void fireThroughCursor(Vec2 mouse) {
+            const auto& camera = static_cast<FlyCamera&>(Camera());
+            const auto projection = camera.Projection(Aspect());
+            const auto ndcX = 2.0f * mouse.x / 1920.0f - 1.0f;
+            const auto ndcY = 1.0f - 2.0f * mouse.y / 1080.0f;
+            const Vec3 viewDirection{
+                ndcX / projection[0].x,
+                ndcY / projection[1].y,
+                1.0f
+            };
+            const auto rotation = rotateMat(camera.Rotation());
+            const auto direction = static_cast<Vec3>(
+                rotation *
+                Vec4{viewDirection.x, viewDirection.y, viewDirection.z, 0.0f}
+            );
+            world->Fire(shotFrom(
+                fromCrowyPoint(camera.Position()),
+                fromCrowyVector(direction)
+            ));
+            if(shot.autoSeed)
+                shot.seed = (shot.seed + 1) & 0xFFFF;
+            uiContext.panelDirty = true;
+        }
+
+        void registerVerbs(CommandPort& port) {
+            // a shot in Mint cm: origin, then a target or a direction
+            port.RegisterVerb(
+                "paint_fire",
+                [this](const DOM::Value& args, Reply reply) {
+                    const auto origin = readVec3(args.at("origin"));
+                    const auto target = readVec3(args.at("target"));
+                    const auto direction = readVec3(args.at("direction"));
+                    if(!origin || (!target && !direction)) {
+                        reply.Error(
+                            "paint_fire takes origin and a target or a "
+                            "direction, each [x, y, z] in cm"
+                        );
+                        return;
+                    }
+
+                    auto request = shotFrom(
+                        *origin,
+                        target ? *target - *origin : *direction
+                    );
+                    const auto speed =
+                        args.get<f64>("speed").value_or(shot.speed);
+                    request.velocity = getSafeNormal(request.velocity) * speed;
+                    request.paintId = static_cast<u8>(std::clamp<i64>(
+                        args.get<i64>("team").value_or(shot.team),
+                        0,
+                        7
+                    ));
+                    request.seed = static_cast<i32>(
+                        args.get<i64>("seed").value_or(shot.seed)
+                    );
+                    request.volume = static_cast<f32>(
+                        args.get<f64>("volume").value_or(shot.volume)
+                    );
+                    request.heightAdd = static_cast<f32>(
+                        args.get<f64>("heightAdd").value_or(shot.heightAdd)
+                    );
+                    request.splash =
+                        args.get<bool>("splash").value_or(shot.splash);
+                    request.onlySurface =
+                        args.get<i64>("onlySurface").value_or(-1);
+                    if(const auto brush = args.get<Str>("brush")) {
+                        for(const auto& entry:
+                            EnumTraits<PaintBrushChoice>::entries) {
+                            if(*brush == entry.name)
+                                request.brush = brushOf(entry.value);
+                        }
+                    }
+
+                    const auto before = world->Log().size();
+                    const auto hit = world->Fire(request);
+                    DOM::Table result;
+                    result.emplace("hit", DOM::Value(hit.has_value()));
+                    if(hit && world->Log().size() > before) {
+                        const auto& splat = world->Log().back();
+                        const auto& name =
+                            world->Surfaces()[static_cast<usize>(hit->surface)]
+                                .Object()
+                                .name;
+                        result.emplace("surface", DOM::Value(name));
+                        result.emplace(
+                            "transient",
+                            DOM::Value(splat.transient)
+                        );
+                        result.emplace("location", toValue(splat.location));
+                        result.emplace(
+                            "radius",
+                            DOM::Value(static_cast<f64>(splat.radius))
+                        );
+                        result.emplace(
+                            "stretch",
+                            DOM::Value(static_cast<f64>(splat.stretch))
+                        );
+                        result.emplace(
+                            "impactU",
+                            DOM::Value(static_cast<f64>(splat.impactU))
+                        );
+                        result.emplace(
+                            "seed",
+                            DOM::Value(static_cast<i64>(splat.seed))
+                        );
+                    }
+                    reply.Ok(DOM::Value(std::move(result)));
+                }
+            );
+            port.RegisterVerb(
+                "paint_reset",
+                [this](const DOM::Value&, Reply reply) {
+                    world->Reset();
+                    gpu->ClearAll();
+                    reply.Ok();
+                }
+            );
+            // a surface's atlas, as MintChoco logs it
+            port.RegisterVerb(
+                "paint_layout",
+                [this](const DOM::Value& args, Reply reply) {
+                    const auto index =
+                        args.get<i64>("surface").value_or(settings.selected);
+                    const auto count =
+                        static_cast<i64>(world->Surfaces().size());
+                    if(index < 0 || index >= count) {
+                        reply.Error(
+                            "surface is an index into the stage's objects"
+                        );
+                        return;
+                    }
+                    const auto& surface =
+                        world->Surfaces()[static_cast<usize>(index)];
+                    const auto& layout = surface.Layout();
+                    DOM::Table result;
+                    result.emplace("name", DOM::Value(surface.Object().name));
+                    result.emplace("atlas", DOM::Value(layout.ToString()));
+                    result.emplace(
+                        "texelCm",
+                        DOM::Value(static_cast<f64>(layout.texelCm))
+                    );
+                    result.emplace(
+                        "atlasSize",
+                        DOM::Value(static_cast<i64>(layout.atlasSize))
+                    );
+                    reply.Ok(DOM::Value(std::move(result)));
+                }
+            );
         }
 
         void exposeToPort() {
@@ -602,9 +808,13 @@ namespace Crowy
                 *GetDesc<PaintLabSettings>(),
                 [this] { uiContext.panelDirty = true; }
             );
-            for(usize i = 0; i < surfaces.size(); ++i) {
+            port->Expose("splat", &shot, *GetDesc<PaintShotSettings>(), [this] {
+                uiContext.panelDirty = true;
+            });
+            registerVerbs(*port);
+            for(usize i = 0; i < world->Surfaces().size(); ++i) {
                 port->Expose(
-                    std::format("stage.{}", surfaces[i].Object().name),
+                    std::format("stage.{}", world->Surfaces()[i].Object().name),
                     &flags[i],
                     *GetDesc<PaintObjectFlags>(),
                     [this, i] { onFlagsChanged(i); }
@@ -622,6 +832,12 @@ namespace Crowy
                     [] {}
                 ),
                 buildPropertyTree(
+                    "splat",
+                    &shot,
+                    *GetDesc<PaintShotSettings>(),
+                    [] {}
+                ),
+                buildPropertyTree(
                     "debug",
                     &Debug(),
                     *GetDesc<RenderDebug>(),
@@ -634,11 +850,12 @@ namespace Crowy
                     [&camera] { camera.RecomputeView(); }
                 )
             };
-            for(usize i = 0; i < surfaces.size(); ++i) {
-                if(active[i] == 0)
+            for(usize i = 0; i < world->Surfaces().size(); ++i) {
+                if(world->Active()[i] == 0)
                     continue;
                 sections.push_back(buildPropertyTree(
-                    std::format("stage.{}", surfaces[i].Object().name).c_str(),
+                    std::format("stage.{}", world->Surfaces()[i].Object().name)
+                        .c_str(),
                     &flags[i],
                     *GetDesc<PaintObjectFlags>(),
                     [this, i] { onFlagsChanged(i); }

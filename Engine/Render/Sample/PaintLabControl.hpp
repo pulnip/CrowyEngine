@@ -95,6 +95,38 @@ namespace Crowy
     CROWY_ENUM_VALUE(Grid)
     CROWY_ENUM_END()
 
+    // MintChoco's brush profiles a shot can carry
+    enum class PaintBrushChoice : u32 {
+        Default,
+        Paintball,
+        MopT,
+        Smooth,
+    };
+
+    CROWY_ENUM_BEGIN(PaintBrushChoice)
+    CROWY_ENUM_VALUE(Default)
+    CROWY_ENUM_VALUE(Paintball)
+    CROWY_ENUM_VALUE(MopT)
+    CROWY_ENUM_VALUE(Smooth)
+    CROWY_ENUM_END()
+
+    // the next shot's contact, exposed as `splat`
+    struct PaintShotSettings {
+        PaintBrushChoice brush = PaintBrushChoice::Default;
+        i32 team = 0;
+        // 0..65535; advanced after every interactive shot while autoSeed
+        i32 seed = 1;
+        bool autoSeed = true;
+        // the deposit's volume: radius grows with its square root
+        f32 volume = 1.0f;
+        f32 heightAdd = 0.35f;
+        // cm/s
+        f32 speed = 3000.0f;
+        // the shape slider: 0 a circle, 8 MintChoco's stamp
+        f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
+        bool splash = false;
+    };
+
     // exposed as `lab`
     struct PaintLabSettings {
         PaintView view = PaintView::Lit;
