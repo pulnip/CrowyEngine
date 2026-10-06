@@ -855,12 +855,17 @@ def a16_splash(path):
 def a17_decal(path):
     s = Svg("A17 데칼 대신 RenderTarget2D")
     s.heading("왜 데칼이 아니라 RenderTarget2D인가")
-    p = Plot(s, 130, 160, 520, 440, (0, 2000), (0, 1.1))
-    p.axes("쌓인 스플랫 수", "매 프레임 비용 (상대)", xticks=(0, 500, 1000, 1500, 2000), yticks=(0, 0.5, 1))
-    p.curve(lambda n: n / 2000, 0, 2000, stroke=RED, sw=4)
-    p.curve(lambda n: 0.12, 0, 2000, stroke=MINT, sw=4)
-    s.text(390, 700, "빨강: 데칼 (스플랫마다 투영 볼륨)", size=22, anchor="middle")
-    s.text(390, 740, "민트: RT 샘플 한 번", size=22, anchor="middle")
+    # a shape, not a measurement: no numbers on either axis
+    p = Plot(s, 130, 160, 520, 440, (0, 1.0), (0, 1.1))
+    p.axes("쌓인 스플랫 수", "매 프레임 비용")
+    p.curve(lambda n: n, 0, 1.0, stroke=RED, sw=4)
+    p.curve(lambda n: 0.3, 0, 1.0, stroke=MINT, sw=4)
+    ex, ey = p.px(0.62, 0.62)
+    s.text(ex - 14, ey - 14, "O(n)", size=28, anchor="end", weight="bold", fill=RED)
+    rx, ry = p.px(0.95, 0.3)
+    s.text(rx, ry - 16, "O(1)", size=28, anchor="end", weight="bold", fill=MINT)
+    s.text(390, 700, "빨강: 데칼, 스플랫마다 투영 볼륨 하나", size=22, anchor="middle")
+    s.text(390, 740, "민트: 픽셀당 고정 비용 (스플랫 수와 무관)", size=22, anchor="middle")
     rows = [
         ("누적 높이", "이전 값을 읽고 더해야 함 → 텍셀에 G로 저장"),
         ("팀 경계", "텍셀마다 id + 거리 → signed distance"),
