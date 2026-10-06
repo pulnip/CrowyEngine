@@ -464,7 +464,8 @@ def still_sheets():
     return [
         {"name": "stills_shape_stages", "setup": panel, "frames": stages + sunflower, "crop": PANEL_CROP},
         {"name": "stills_seed_sheet", "setup": panel[:1] + [splat("theta", 0.0), splat("shapeStage", 8.0)],
-         "frames": seeds, "crop": (1256, 24, 640, 640)},
+         "frames": seeds, "crop": (1256, 24, 640, 640),
+         "montage": {"pattern": "seed%02d.png", "cell": 240, "tile": "8x8", "out": "seed_sheet.png"}},
     ]
 
 

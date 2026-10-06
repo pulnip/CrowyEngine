@@ -311,7 +311,20 @@ class Recorder:
                     png.with_suffix(".c.png").replace(png)
         finally:
             self.close()
+        montage(stills_dir, shot)
         print(f"{name}: {len(shot['frames'])} stills")
+
+
+def montage(stills_dir, shot):
+    """a still sheet's frames tiled into one picture, when the shot asks for it"""
+    tile = shot.get("montage")
+    if not tile:
+        return
+    run([
+        "ffmpeg", "-y", "-v", "error", "-framerate", "1", "-i", tile["pattern"],
+        "-vf", f"scale={tile['cell']}:{tile['cell']},tile={tile['tile']}:padding=6:color=white",
+        "-frames:v", "1", str(stills_dir.parent / tile["out"]),
+    ], cwd=stills_dir)
 
 
 def compose_grid(out):
@@ -350,6 +363,7 @@ def main():
     parser.add_argument("--port", type=int, default=27540)
     parser.add_argument("--list", action="store_true", help="print the shots and exit")
     parser.add_argument("--compose-grid", action="store_true", help="the 4x4 clip from the grid tiles")
+    parser.add_argument("--montage", action="store_true", help="only re-tile the still sheets already captured")
     parser.add_argument("--reencode", action="store_true",
                         help="only rebuild the mp4s from the kept segments (captions, crops)")
     args = parser.parse_args()
@@ -365,6 +379,11 @@ def main():
     ]
     if args.compose_grid:
         compose_grid(args.out)
+        return 0
+    if args.montage:
+        for shot in chosen:
+            if "frames" in shot:
+                montage(Path(args.out).resolve() / "stills" / shot["name"], shot)
         return 0
     recorder = Recorder(args.out, args.port)
     if args.reencode:
