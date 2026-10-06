@@ -116,7 +116,7 @@ namespace Crowy
     }
 
     void PaintCellGrid::depositClipped(
-        const ClipPolygon& polygon,
+        const std::vector<DVec3>& polygon,
         i32 axis,
         i32 direction
     ) {
@@ -173,8 +173,8 @@ namespace Crowy
             last
         );
 
-        ClipPolygon above;
-        ClipPolygon slab;
+        std::vector<DVec3> above;
+        std::vector<DVec3> slab;
         for(auto voxel = firstVoxel; voxel <= lastVoxel; ++voxel) {
             // int times float, as Unreal's Voxel * CellSize rounds it
             const auto low =

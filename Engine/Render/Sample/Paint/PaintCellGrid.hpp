@@ -43,9 +43,6 @@ namespace Crowy
     // render target.
     class PaintCellGrid {
     private:
-        // a triangle clipped by up to six voxel planes keeps at most nine
-        using ClipPolygon = std::vector<DVec3>;
-
         DVec3 origin;
         f32 cellSize = PaintScoreCellSize;
         std::array<i32, 3> dims{};
@@ -116,7 +113,7 @@ namespace Crowy
         std::array<i32, 3> voxelOf(DVec3 position) const noexcept;
         DVec3 voxelCenter(std::array<i32, 3> voxel) const noexcept;
         void depositClipped(
-            const ClipPolygon& polygon,
+            const std::vector<DVec3>& polygon,
             i32 axis,
             i32 direction
         );
