@@ -451,7 +451,7 @@ namespace Crowy
             );
             cmdList.SetViewport(fullViewport(gpu.atlasSize));
             cmdList.SetPipelineState(pipelines.Resolve(
-                atlasPipeline(BrushShader, "vs_brush", "fs_brush")
+                atlasPipeline(BrushShader, "vs_triangle", "fs_brush")
             ));
             const PaintBrushPush push{
                 .previous = gpu.paint.Get().GetReadableID(),
@@ -510,7 +510,7 @@ namespace Crowy
             );
             cmdList.SetViewport(fullViewport(gpu.atlasSize));
             cmdList.SetPipelineState(pipelines.Resolve(
-                atlasPipeline(CopyShader, "vs_copy", "fs_copy")
+                atlasPipeline(CopyShader, "vs_main", "fs_copy")
             ));
             cmdList.SetPushGraphicsConstants(work.Get().GetReadableID());
             for(const auto& rect: rects) {
@@ -712,7 +712,7 @@ namespace Crowy
                     .vertexShader =
                         RHIShaderDesc{
                             .path = ShapeLabShader,
-                            .entryPoint = "vs_shapelab"
+                            .entryPoint = "vs_triangle"
                         }
                 },
             .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
@@ -769,7 +769,7 @@ namespace Crowy
                     .vertexShader =
                         RHIShaderDesc{
                             .path = PanelShader,
-                            .entryPoint = "vs_panel"
+                            .entryPoint = "vs_triangle"
                         }
                 },
             .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},

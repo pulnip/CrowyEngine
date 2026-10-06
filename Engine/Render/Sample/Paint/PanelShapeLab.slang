@@ -2,6 +2,7 @@
 // up) at any stop of the shape slider, written as display values
 
 #include "PaintCommon.slang"
+#include "PaintTriangle.slang"
 #include "SplatStamp.slang"
 
 // mirrored from PaintShapeLabPush in PaintLabGpu.hpp
@@ -17,26 +18,8 @@ struct ShapeLabPush {
 [[vk::push_constant]]
 ConstantBuffer<ShapeLabPush> lab : register(b0);
 
-struct ShapeLabOut {
-    float4 position : SV_Position;
-};
-
-[shader("vertex")]
-ShapeLabOut vs_shapelab(uint vertexID : SV_VertexID) {
-    static const float2 corners[3] = {
-        float2(-1.0, -1.0),
-        float2(3.0, -1.0),
-        float2(-1.0, 3.0)
-    };
-
-    ShapeLabOut output;
-    output.position = float4(corners[vertexID], 0.0, 1.0);
-
-    return output;
-}
-
 [shader("fragment")]
-float4 fs_shapelab(ShapeLabOut input) : SV_Target {
+float4 fs_shapelab(PaintTriangleOut input) : SV_Target {
     float2 t = (input.position.xy - lab.rect.xy) / lab.rect.zw;
     float extent = lab.look.y;
     // U / R to the right, V / R up

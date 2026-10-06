@@ -2,6 +2,7 @@
 // an id is replaced, never blended; PaintCopy takes the rectangles back
 
 #include "PaintShared.h"
+#include "PaintTriangle.slang"
 #include "SplatStamp.slang"
 
 // mirrored from PaintBrushPush in PaintLabGpu.hpp
@@ -27,27 +28,8 @@ struct BrushPush {
 [[vk::push_constant]]
 ConstantBuffer<BrushPush> brush : register(b0);
 
-struct BrushOut {
-    float4 position : SV_Position;
-};
-
-// one triangle over the atlas; the scissor keeps it to one rectangle
-[shader("vertex")]
-BrushOut vs_brush(uint vertexID : SV_VertexID) {
-    static const float2 corners[3] = {
-        float2(-1.0, -1.0),
-        float2(3.0, -1.0),
-        float2(-1.0, 3.0)
-    };
-
-    BrushOut output;
-    output.position = float4(corners[vertexID], 0.0, 1.0);
-
-    return output;
-}
-
 [shader("fragment")]
-float4 fs_brush(BrushOut input) : SV_Target {
+float4 fs_brush(PaintTriangleOut input) : SV_Target {
     // the pixel over an atlas texel reads exactly that texel
     int3 texel = int3(int2(input.position.xy), 0);
     Texture2D previous = brush.previous;

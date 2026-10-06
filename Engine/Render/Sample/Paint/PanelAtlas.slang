@@ -2,6 +2,7 @@
 // display values, so the channels are written as is
 
 #include "PaintCommon.slang"
+#include "PaintTriangle.slang"
 
 // mirrored from PaintPanelPush in PaintLabGpu.hpp
 struct PanelPush {
@@ -21,26 +22,8 @@ struct PanelPush {
 [[vk::push_constant]]
 ConstantBuffer<PanelPush> panel : register(b0);
 
-struct PanelOut {
-    float4 position : SV_Position;
-};
-
-[shader("vertex")]
-PanelOut vs_panel(uint vertexID : SV_VertexID) {
-    static const float2 corners[3] = {
-        float2(-1.0, -1.0),
-        float2(3.0, -1.0),
-        float2(-1.0, 3.0)
-    };
-
-    PanelOut output;
-    output.position = float4(corners[vertexID], 0.0, 1.0);
-
-    return output;
-}
-
 [shader("fragment")]
-float4 fs_panel(PanelOut input) : SV_Target {
+float4 fs_panel(PaintTriangleOut input) : SV_Target {
     float2 uv = (input.position.xy - panel.rect.xy) / panel.rect.zw;
     int last = int(panel.atlasSize) - 1;
     int2 t = clamp(int2(floor(uv * float(panel.atlasSize))), int2(0, 0), int2(last, last));
