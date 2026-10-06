@@ -169,9 +169,8 @@ namespace Crowy
         std::map<u32, PaintTexture> scratch;
         // this frame's releases the hooks acquire; alive until Record ends
         std::vector<RHITextureBarrier> hookAcquires;
-        // this frame's texture table and the rows each surface's maps name
+        // this frame's texture table, kept to reuse its allocation
         std::vector<TextureData> textureRows;
-        RHIBufferSlice textureSlice;
         std::vector<u32> cellRows;
 
     public:
@@ -182,7 +181,6 @@ namespace Crowy
         void Sync(std::span<const PaintSurface> surfaces);
         // clears every buffer at the next Record
         void ClearAll();
-        void Clear(usize surface);
 
         // uploads, clears and the frame's stamps in order, then the edges
         // the hooks acquire
@@ -225,8 +223,6 @@ namespace Crowy
             PipelineCache& pipelines,
             const PaintShapeLabPush& push
         );
-
-        bool IsReady(usize surface) const noexcept;
 
     private:
         void rebuild(usize index, const PaintSurface& surface);

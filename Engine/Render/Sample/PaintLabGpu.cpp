@@ -175,16 +175,6 @@ namespace Crowy
             surface.clearPending = static_cast<bool>(surface.paint);
     }
 
-    void PaintGpu::Clear(usize surface) {
-        if(surface < surfaces.size())
-            surfaces[surface].clearPending =
-                static_cast<bool>(surfaces[surface].paint);
-    }
-
-    bool PaintGpu::IsReady(usize surface) const noexcept {
-        return surface < surfaces.size() && surfaces[surface].atlasSize > 0;
-    }
-
     void PaintGpu::rebuild(usize index, const PaintSurface& surface) {
         auto& gpu = surfaces[index];
         if(gpu.paint)
@@ -574,7 +564,7 @@ namespace Crowy
             return 0;
 
         constexpr auto Stride = static_cast<u32>(sizeof(TextureData));
-        textureSlice = device.UploadTransient(
+        const auto textureSlice = device.UploadTransient(
             std::span<const TextureData>(textureRows),
             Stride
         );
