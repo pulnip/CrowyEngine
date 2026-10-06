@@ -54,7 +54,8 @@ PaintHeightSample PaintHeightField(
     float DistRange,
     float Flow,
     uint filter,
-    bool fromIds
+    bool fromIds,
+    bool edgeFade
 ) {
     const float FlowMaxTexels = 1.5;
     float invTexel = 1.0 / TexelSize;
@@ -133,9 +134,14 @@ PaintHeightSample PaintHeightField(
 
     // the fade enters the slope by the product rule, so the height dies out
     // at island edges, where faces rise along different normals
-    float fade = Fade.SampleLevel(linearClamp, UV, 0).r;
-    float fu = (Fade.SampleLevel(linearClamp, UV + du, 0).r - Fade.SampleLevel(linearClamp, UV - du, 0).r) * 0.5;
-    float fv = (Fade.SampleLevel(linearClamp, UV + dv, 0).r - Fade.SampleLevel(linearClamp, UV - dv, 0).r) * 0.5;
+    float fade = 1.0;
+    float fu = 0.0;
+    float fv = 0.0;
+    if(edgeFade) {
+        fade = Fade.SampleLevel(linearClamp, UV, 0).r;
+        fu = (Fade.SampleLevel(linearClamp, UV + du, 0).r - Fade.SampleLevel(linearClamp, UV - du, 0).r) * 0.5;
+        fv = (Fade.SampleLevel(linearClamp, UV + dv, 0).r - Fade.SampleLevel(linearClamp, UV - dv, 0).r) * 0.5;
+    }
 
     PaintHeightSample o;
     o.height = height * mask * fade;
@@ -159,7 +165,8 @@ float3 PaintNormal(
     float HeightDU,
     float HeightDV,
     float MaxHeight,
-    float Strength
+    float Strength,
+    bool edgeFade
 ) {
     float invTexel = 1.0 / TexelSize;
     float2 du = float2(TexelSize, 0.0);
@@ -171,7 +178,7 @@ float3 PaintNormal(
 
     // the outer fade is the second damping that keeps the edge slope from
     // sparkling
-    float fadeC = Fade.SampleLevel(linearClamp, UV, 0).r;
+    float fadeC = edgeFade ? Fade.SampleLevel(linearClamp, UV, 0).r : 1.0;
     float hScale = MaxHeight * Strength * fadeC * localPerWorld;
     float hu = HeightDU * hScale;
     float hv = HeightDV * hScale;

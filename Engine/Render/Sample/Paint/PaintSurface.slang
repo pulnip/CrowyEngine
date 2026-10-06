@@ -149,18 +149,12 @@ SurfacePoint readSurface(SurfaceOut input, bool needsHeight) {
     p.height.du = 0.0;
     p.height.dv = 0.0;
     if(needsHeight && p.kept) {
+        bool edgeFade = lookModes2.y != 0u;
         p.height = PaintHeightField(paintTex, fadeTex, p.uv, atlas.y, atlas.w, lookStyle.w,
-                                    lookModes.w, lookModes2.x != 0u);
-        if(lookModes2.y == 0u) {
-            // the island-edge fade off: the height runs straight to the edge
-            float fade = fadeTex.SampleLevel(linearClamp, p.uv, 0).r;
-            p.height.height = p.height.thickness;
-            p.height.du = p.height.du / max(fade, 1e-3);
-            p.height.dv = p.height.dv / max(fade, 1e-3);
-        }
+                                    lookModes.w, lookModes2.x != 0u, edgeFade);
         float3 relief = PaintNormal(positionTex, fadeTex, p.uv, atlas.y, boundsSize.xyz,
                                     meshNormal, scale3D.xyz, p.height.du, p.height.dv,
-                                    PAINT_MAX_HEIGHT, lookStyle2.x);
+                                    PAINT_MAX_HEIGHT, lookStyle2.x, edgeFade);
         p.paintNormal = meshToWorldNormal(relief);
     }
     return p;
