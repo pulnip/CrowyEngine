@@ -90,12 +90,12 @@ class Svg:
                  f'transform="rotate({rot:.2f} {x:.2f} {y:.2f})" fill="{fill}" stroke="{stroke}" '
                  f'stroke-width="{sw}" opacity="{opacity}"{d}/>')
 
-    def text(self, x, y, s, size=28, fill=TEXT, anchor="start", weight="normal", font=FONT, italic=False):
-        # the figure lands about 8 inches wide: nothing smaller than 24 reads
-        size = max(size, 24)
-        style = ' font-style="italic"' if italic else ""
+    def text(self, x, y, s, size=28, fill=TEXT, anchor="start", weight="normal", font=FONT, rotate=None):
+        # the figure lands about 8 inches wide: nothing below 24 reads
+        assert size >= 24, s
+        turn = f' transform="rotate({rotate} {x:.2f} {y:.2f})"' if rotate else ""
         self.add(f'<text x="{x:.2f}" y="{y:.2f}" font-family="{font}" font-size="{size}" '
-                 f'fill="{fill}" text-anchor="{anchor}" font-weight="{weight}"{style}>{esc(s)}</text>')
+                 f'fill="{fill}" text-anchor="{anchor}" font-weight="{weight}"{turn}>{esc(s)}</text>')
 
     def image(self, x, y, w, h, png):
         # embedded, so the figure travels into the deck whole
@@ -108,7 +108,7 @@ class Svg:
         cy = y + h / 2 + (size * 0.35 if not sub else -4)
         self.text(x + w / 2, cy, label, size=size, anchor="middle", weight=weight, fill=INK)
         if sub:
-            self.text(x + w / 2, cy + size + 4, sub, size=size * 0.72, anchor="middle", fill=TEXT)
+            self.text(x + w / 2, cy + size + 4, sub, size=24, anchor="middle", fill=TEXT)
 
     def heading(self, s):
         # the slide's title says it; the figure keeps it only as its <title>
@@ -140,17 +140,15 @@ class Plot:
         for t in xticks:
             px, _ = self.px(t, self.yr[0])
             s.line(px, self.y, px, self.y + self.h, stroke=GRID, sw=1)
-            s.text(px, self.y + self.h + 30, fmt.format(t), size=20, anchor="middle", fill=MUTED)
+            s.text(px, self.y + self.h + 30, fmt.format(t), size=24, anchor="middle", fill=MUTED)
         for t in yticks:
             _, py = self.px(self.xr[0], t)
             s.line(self.x, py, self.x + self.w, py, stroke=GRID, sw=1)
-            s.text(self.x - 10, py + 7, fmt.format(t), size=20, anchor="end", fill=MUTED)
+            s.text(self.x - 10, py + 7, fmt.format(t), size=24, anchor="end", fill=MUTED)
         s.line(self.x, self.y + self.h, self.x + self.w, self.y + self.h, sw=2)
         s.line(self.x, self.y, self.x, self.y + self.h, sw=2)
-        s.text(self.x + self.w / 2, self.y + self.h + 62, xlabel, size=22, anchor="middle")
-        s.add(f'<text x="{self.x - 64:.1f}" y="{self.y + self.h / 2:.1f}" font-family="{FONT}" '
-              f'font-size="22" fill="{TEXT}" text-anchor="middle" '
-              f'transform="rotate(-90 {self.x - 64:.1f} {self.y + self.h / 2:.1f})">{esc(ylabel)}</text>')
+        s.text(self.x + self.w / 2, self.y + self.h + 62, xlabel, size=24, anchor="middle")
+        s.text(self.x - 64, self.y + self.h / 2, ylabel, size=24, anchor="middle", rotate=-90)
 
     def curve(self, f, x0, x1, n=240, **kw):
         pts = [self.px(x0 + (x1 - x0) * i / n, f(x0 + (x1 - x0) * i / n)) for i in range(n + 1)]
@@ -385,10 +383,10 @@ def a2_atlas(path):
     knee = (MAX_ATLAS - 2 * PAD) * TEXEL_CM
     kx, ky = p.px(knee, TEXEL_CM)
     s.circle(kx, ky, 8, fill=GOLD, stroke="none")
-    s.text(kx + 12, ky + 40, f"{knee:.0f} cm에서 2048 가득", size=22)
+    s.text(kx + 12, ky + 40, f"{knee:.0f} cm에서 2048 가득", size=24)
     fx, fy = p.px(2000, texel_for(2000))
     s.circle(fx, fy, 8, fill=CHOCO, stroke="none")
-    s.text(fx - 12, fy - 18, f"floor 2000 cm → {texel_for(2000):.3f} cm", size=22, anchor="end")
+    s.text(fx - 12, fy - 18, f"floor 2000 cm → {texel_for(2000):.3f} cm", size=24, anchor="end")
     s.save(path)
 
 
@@ -430,7 +428,7 @@ def a4_stamp_space(path):
     s.arrow(cx, cy, cx, cy - R - 60, stroke=INK)
     s.text(cx + R * S + 70, cy + 8, "U (AxisU)", size=26)
     s.text(cx + 10, cy - R - 70, "V", size=26)
-    s.text(cx + R * S * 0.5 + 10, cy - R * 0.5 - 10, "|uv| = 0.5: 본체", size=22, fill=MINT)
+    s.text(cx + R * S * 0.5 + 10, cy - R * 0.5 - 10, "|uv| = 0.5: 본체", size=24, fill=MINT)
     s.text(cx, cy + R + 50, "R·S", size=24, anchor="middle")
     # the ellipsoid cut: a slice at depth n keeps sqrt(1 - n^2) of the disc
     p = Plot(s, 1080, 170, 440, 420, (0, 1), (0, 1.05))
@@ -439,7 +437,7 @@ def a4_stamp_space(path):
     for n in (0.5, 0.8):
         px, py = p.px(n, math.sqrt(1 - n * n))
         s.circle(px, py, 7, fill=GOLD, stroke="none")
-        s.text(px + 12, py - 10, f"n {n}: {math.sqrt(1 - n * n):.2f}", size=22)
+        s.text(px + 12, py - 10, f"n {n}: {math.sqrt(1 - n * n):.2f}", size=24)
     s.text(1240, 720, "타원체로 잘라서 모서리를 감싸며 줄어듦", size=24, anchor="middle")
     s.text(1240, 760, "|n| ≥ 1 이면 스탬프 밖", size=24, anchor="middle", fill=MUTED)
     s.save(path)
@@ -463,15 +461,15 @@ def a5_build_splat(path):
     s.circle(gx, gy + 70, 8, fill=GOLD, stroke="none")
     s.circle(gx + shift, gy + 70, 8, fill=MINT, stroke="none")
     s.arrow(gx, gy + 150, gx + shift, gy + 150, stroke=INK, sw=2)
-    s.text(gx + shift / 2, gy + 185, f"R(S−1)/2 = {shift / R:.2f}R", size=22, anchor="middle")
-    s.text(gx - 10, gy + 115, "충돌점", size=20, anchor="end")
+    s.text(gx + shift / 2, gy + 185, f"R(S−1)/2 = {shift / R:.2f}R", size=24, anchor="middle")
+    s.text(gx - 10, gy + 115, "충돌점", size=24, anchor="end")
     s.text(80, 840, f"S = 1/cosθ = {S:.2f}   ImpactU = −(S−1)/(2S) = {-(S - 1) / (2 * S):.3f}", size=24, font=MONO)
     p = Plot(s, 1000, 170, 500, 420, (0, 80), (1, 3.2))
     p.axes("입사각 θ (°)", "Stretch S", xticks=(0, 20, 40, 60, 80), yticks=(1, 2, 3))
     p.curve(lambda d: stretch_of(d), 0, 80, stroke=CHOCO, sw=4)
     p.curve(lambda d: min(1 / max(math.cos(math.radians(d)), 1e-4), 3.2), 0, 72, stroke=MUTED, sw=2, dash="6 6")
     cx, cy = p.px(math.degrees(math.acos(1 / 3)), 3)
-    s.text(cx - 6, cy - 14, "MaxStretch 3에서 고정", size=20, anchor="end")
+    s.text(cx - 6, cy - 14, "MaxStretch 3에서 고정", size=24, anchor="end")
     s.save(path)
 
 
@@ -488,7 +486,7 @@ def a6_sdf(path, stills):
             s.image(x, y, 280, 280, href)
         else:
             s.rect(x, y, 280, 280, fill="#222222")
-        s.text(x + 140, y + 310, f"{k}  {names[k]}", size=21, anchor="middle")
+        s.text(x + 140, y + 310, f"{k}  {names[k]}", size=24, anchor="middle")
     # min against smooth-min across two discs
     p = Plot(s, 1240, 450, 320, 270, (-1.0, 1.0), (-0.35, 0.6))
     d1 = lambda x: abs(x + 0.35) - 0.3
@@ -503,8 +501,8 @@ def a6_sdf(path, stills):
     p.curve(lambda x: smin(d1(x), d2(x)), -1, 1, stroke=MINT, sw=3)
     zx, zy = p.px(-1, 0)
     s.line(zx, zy, zx + 320, zy, stroke=INK, sw=1)
-    s.text(1570, 790, "회색 min · 민트 smooth-min", size=20, anchor="end")
-    s.text(1570, 826, "(k 과장)", size=20, anchor="end", fill=MUTED)
+    s.text(1570, 790, "회색 min · 민트 smooth-min", size=24, anchor="end")
+    s.text(1570, 826, "(k 과장)", size=24, anchor="end", fill=MUTED)
     s.save(path)
 
 
@@ -519,7 +517,7 @@ def a7_brush(path):
     stamp = [(0.30, 0.12, 0.17, 0.26), (0.5, 0.12, 0.12, 0.26)]
     for x, y, w, h in stamp:
         s.rect(ax + x * size, ay + y * size, w * size, h * size, fill="none", stroke=GOLD, sw=4)
-    s.text(ax + size / 2, ay + size + 40, "paint RT: island 3개, 사각형 2개", size=22, anchor="middle")
+    s.text(ax + size / 2, ay + size + 40, "paint RT: island 3개, 사각형 2개", size=24, anchor="middle")
     steps = [("① fs_brush", "이전 paint를 읽어\nscratch에 씀", 600), ("② fs_copy", "같은 사각형만\npaint로 복사", 1060)]
     for title, sub, x in steps:
         s.rect(x, 230, 360, 240, fill=CHOCO_LIGHT, stroke=CHOCO, sw=2.5, rx=16)
@@ -557,11 +555,11 @@ def a8_cells(path):
     ex, ey = ox + (cx + ext / 2) * k, oy + (cy + ext / 2) * k
     s.ellipse(ex, ey, R * S * k, R * k, stroke=MINT, sw=2, dash="8 6")
     s.ellipse(ex, ey, 0.5 * R * S * k, 0.5 * R * k, stroke=INK, sw=3)
-    s.text(ox + ext * k / 2, oy + ext * k + 50, "표면 단면 · 실선: 코어 타원체 · 점선: 그림 스탬프 R", size=22, anchor="middle")
+    s.text(ox + ext * k / 2, oy + ext * k + 50, "표면 단면 · 실선: 코어 타원체 · 점선: 그림 스탬프 R", size=24, anchor="middle")
     # Sutherland-Hodgman: a triangle clipped to one voxel column gives the exact area
     bx, by = 1130, 230
-    s.text(1110, 170, "셀 면적: 삼각형을 셀로 자르기", size=22)
-    s.text(1110, 200, "(Sutherland-Hodgman)", size=20, fill=MUTED)
+    s.text(1110, 170, "셀 면적: 삼각형을 셀로 자르기", size=24)
+    s.text(1110, 200, "(Sutherland-Hodgman)", size=24, fill=MUTED)
     tri = [(0.1, 0.9), (1.3, 0.2), (0.8, 1.4)]
     q = 300
 
@@ -585,7 +583,7 @@ def a8_cells(path):
     s.polygon([(bx + x * q, by + y * q) for x, y in tri], fill="none", stroke=CHOCO, sw=2)
     s.polygon([(bx + x * q, by + y * q) for x, y in poly], fill=MINT, stroke=INK, sw=2.5, opacity=0.8)
     area = 0.5 * abs(sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1] for i in range(len(poly))))
-    s.text(bx + q / 2, by + 1.4 * q + 46, f"셀 안 넓이 {area:.3f} (셀 = 1)", size=22, anchor="middle")
+    s.text(bx + q / 2, by + 1.4 * q + 46, f"셀 안 넓이 {area:.3f} (셀 = 1)", size=24, anchor="middle")
     s.text(1110, 830, "RT를 읽지 않는다:", size=24, weight="bold", fill=CHOCO)
     s.text(1110, 866, "같은 스플랫을 CPU가 따로 계산", size=24, weight="bold", fill=CHOCO)
     s.save(path)
@@ -603,7 +601,7 @@ def a9_edge(path):
         t = min(max((x - e0) / (e1 - e0), 0), 1)
         return t * t * (3 - 2 * t)
     p.curve(lambda x: sstep(-w, w, x - 0.18), -2, 2, n=400, stroke=MINT, sw=4)
-    s.text(460, 740, "점선: nearest (계단) · 민트: smoothstep(−w, w, sd), w ≤ ½ texel", size=22, anchor="middle")
+    s.text(460, 740, "점선: nearest (계단) · 민트: smoothstep(−w, w, sd), w ≤ ½ texel", size=24, anchor="middle")
     # four corners and their signed distances
     gx, gy, q = 1000, 200, 220
     vals = [(+0.9, -0.3), (+0.5, -0.8)]
@@ -612,7 +610,7 @@ def a9_edge(path):
             v = vals[j][i]
             x, y = gx + i * q, gy + j * q
             s.circle(x, y, 26, fill=MINT if v > 0 else CHOCO_LIGHT, stroke=INK, sw=2)
-            s.text(x, y + 9, f"{v:+.1f}", size=22, anchor="middle", weight="bold")
+            s.text(x, y + 9, f"{v:+.1f}", size=24, anchor="middle", weight="bold")
     s.rect(gx, gy, q, q, stroke=INK, sw=2, dash="6 6")
     # the bilinear zero set inside the quad
     pts = []
@@ -624,7 +622,7 @@ def a9_edge(path):
             fx = a / (a - b)
             pts.append((gx + fx * q, gy + fy * q))
     s.polyline(pts, stroke=RED, sw=4)
-    s.text(gx + q / 2, gy + q + 70, "빨강: bilinear sd = 0 (서브텍셀 경계)", size=22, anchor="middle")
+    s.text(gx + q / 2, gy + q + 70, "빨강: bilinear sd = 0 (서브텍셀 경계)", size=24, anchor="middle")
     s.save(path)
 
 
@@ -652,8 +650,8 @@ def a10_blend(path):
             for share, color in parts:
                 s.rect(bx, top - share * h, 50, share * h, fill=color, stroke="none")
                 top -= share * h
-            s.text(bx + 25, y + 30, f"{t:.2f}", size=18, anchor="middle", fill=MUTED)
-        s.text(x0 + 280, 680, "이음매를 가로지름 (초코 coverage)", size=22, anchor="middle")
+            s.text(bx + 25, y + 30, f"{t:.2f}", size=24, anchor="middle", fill=MUTED)
+        s.text(x0 + 280, 680, "이음매를 가로지름 (초코 coverage)", size=24, anchor="middle")
     s.text(800, 760, "회색 = 바닥이 비쳐 보이는 몫", size=24, anchor="middle", fill=MUTED)
     s.text(800, 806, "대신 뒤 팀이 이음매를 다 가져가 경계가 단단해진다", size=24, anchor="middle", fill=MUTED)
     s.save(path)
@@ -670,7 +668,7 @@ def a11_height(path):
         x, y = p.px(shot, g)
         pts.append((x, y))
         s.circle(x, y, 8, fill=MINT, stroke="none")
-        s.text(x + 10, y - 14, f"{g:.2f}", size=20)
+        s.text(x + 10, y - 14, f"{g:.2f}", size=24)
         g = min(g + 0.35, 1.0)
     s.polyline(pts, stroke=MINT, sw=3)
     q = Plot(s, 940, 170, 560, 440, (-1.2, 1.2), (0, 1.1))
@@ -682,7 +680,7 @@ def a11_height(path):
         return t * t * (3 - 2 * t)
     q.curve(kernel, -1.2, 1.2, stroke=CHOCO, sw=4)
     q.curve(lambda x: kernel(x) * (1 + 0.2 * math.sin(9 * x)), -1.2, 1.2, stroke=GOLD, sw=2, dash="6 5")
-    s.text(1220, 740, "가장자리 0.25 구간에서 0 → 1, 얼룩 ±20%", size=22, anchor="middle")
+    s.text(1220, 740, "가장자리 0.25 구간에서 0 → 1, 얼룩 ±20%", size=24, anchor="middle")
     s.save(path)
 
 
@@ -693,7 +691,7 @@ def a12_bspline(path):
     p.axes("texel 오프셋 / s", "가중치", xticks=(-2, -1, 0, 1, 2), yticks=(-0.5, 0, 0.5))
     p.curve(bspline, -2.6, 2.6, stroke=MINT, sw=4)
     p.curve(bspline_slope, -2.6, 2.6, stroke=CHOCO, sw=3, dash="8 6")
-    s.text(460, 760, "민트: B(x) · 점선: B′(x)", size=22, anchor="middle")
+    s.text(460, 760, "민트: B(x) · 점선: B′(x)", size=24, anchor="middle")
     # the window: 12 taps per axis, the kernel widened by s = clamp(1 + 1.5·flow, 1, 2.5)
     gx, gy, cs = 960, 170, 36
     flow = 1.0
@@ -705,7 +703,7 @@ def a12_bspline(path):
             wgt = bspline(ox) * bspline(oy)
             shade = min(wgt / 0.44, 1)
             s.rect(gx + i * cs, gy + j * cs, cs - 2, cs - 2, fill=MINT, stroke="none", opacity=0.08 + 0.92 * shade)
-    s.text(gx + 6 * cs, gy + 12 * cs + 46, f"flow 1 → s = {width:.1f}: 12×12 탭 고정 (unroll)", size=22, anchor="middle")
+    s.text(gx + 6 * cs, gy + 12 * cs + 46, f"flow 1 → s = {width:.1f}: 12×12 탭 고정 (unroll)", size=24, anchor="middle")
     s.save(path)
 
 
@@ -782,7 +780,7 @@ def a14_lobes(path):
             f = 0.04 + 0.96 * (1 - math.cos(math.radians(deg))) ** 5
             return 1 - cw * f
         p.curve(through, 0, 89.5, stroke=color, sw=3)
-    s.text(1290, 640, "(1 − cw·F(NoV))(1 − cw·F(NoL)), cw = coat × 0.4", size=20, anchor="middle")
+    s.text(1290, 640, "(1 − cw·F(NoV))(1 − cw·F(NoL)), cw = coat × 0.4", size=24, anchor="middle")
     s.save(path)
 
 
@@ -800,7 +798,7 @@ def a15_collapse(path):
     rows = ["coat → roughness·F0에 lerp로 섞임", "haze → 한 roughness로 lerp", "diffusion SSS → 사라짐", "레거시 셰이딩 모델로 export"]
     for i, r in enumerate(rows):
         s.text(120, 620 + i * 46, "· " + r, size=26)
-    s.text(1500, 860, "캡처 검증은 범위 밖", size=22, anchor="end", fill=MUTED)
+    s.text(1500, 860, "캡처 검증은 범위 밖", size=24, anchor="end", fill=MUTED)
     s.save(path)
 
 
@@ -821,7 +819,7 @@ def a16_splash(path):
     for i, g in enumerate(("Forward", "Side", "Back")):
         s.rect(80, 680 + i * 44, 26, 16, fill=colors[g], stroke="none")
         s.text(116, 696 + i * 44, f"{g} {counts[g]}", size=24)
-    s.text(cx, 870, "위에서 본 발사 방향 (굵기 = 크기)", size=22, anchor="middle")
+    s.text(cx, 870, "위에서 본 발사 방향 (굵기 = 크기)", size=24, anchor="middle")
     # side view along the travel: the four largest from their launch offset,
     # drag-free as the score lands them, against the picture's drag 0.4
     p = Plot(s, 940, 150, 580, 420, (-120, 420), (0, 170))
@@ -852,9 +850,9 @@ def a16_splash(path):
             pts.append(p.px(x, z))
             tau += 1 / 240
         s.polyline(pts, stroke=MINT, sw=3, dash="8 6")
-    s.text(1230, 660, "노랑: 점수 (포물선, drag 없음, 큰 4개)", size=22, anchor="middle")
-    s.text(1230, 700, "민트 점선: 그림 (drag 0.4, 큰 8개가 자국)", size=22, anchor="middle")
-    s.text(1230, 740, "법선 속도 < 400 cm/s 이면 스플래시 없음", size=22, anchor="middle", fill=MUTED)
+    s.text(1230, 660, "노랑: 점수 (포물선, drag 없음, 큰 4개)", size=24, anchor="middle")
+    s.text(1230, 700, "민트 점선: 그림 (drag 0.4, 큰 8개가 자국)", size=24, anchor="middle")
+    s.text(1230, 740, "법선 속도 < 400 cm/s 이면 스플래시 없음", size=24, anchor="middle", fill=MUTED)
     s.save(path)
 
 
@@ -870,8 +868,8 @@ def a17_decal(path):
     s.text(ex - 14, ey - 14, "O(n)", size=28, anchor="end", weight="bold", fill=RED)
     rx, ry = p.px(0.95, 0.3)
     s.text(rx, ry - 16, "O(1)", size=28, anchor="end", weight="bold", fill=MINT)
-    s.text(390, 700, "빨강: 데칼, 스플랫마다 투영 볼륨 하나", size=22, anchor="middle")
-    s.text(390, 740, "민트: 픽셀당 고정 비용 (스플랫 수와 무관)", size=22, anchor="middle")
+    s.text(390, 700, "빨강: 데칼, 스플랫마다 투영 볼륨 하나", size=24, anchor="middle")
+    s.text(390, 740, "민트: 픽셀당 고정 비용 (스플랫 수와 무관)", size=24, anchor="middle")
     rows = [
         ("누적 높이", "이전 값을 읽고 더해야 함 → 텍셀에 G로 저장"),
         ("팀 경계", "텍셀마다 id + 거리 → signed distance"),
@@ -884,7 +882,7 @@ def a17_decal(path):
         y = 190 + i * 100
         s.rect(760, y - 46, 820, 84, fill=MINT_LIGHT if i % 2 == 0 else CHOCO_LIGHT, stroke="none", rx=10)
         s.text(780, y + 6, k, size=26, weight="bold")
-        s.text(965, y + 6, v, size=23)
+        s.text(965, y + 6, v, size=24)
     s.save(path)
 
 
@@ -972,8 +970,8 @@ def b5_quantize(path):
     s.circle(rx, ry, 12, fill=MINT, stroke="none")
     s.circle(qx, qy, 12, fill=CHOCO, stroke="none")
     s.arrow(rx, ry, qx, qy, stroke=INK, sw=2)
-    s.text(rx + 20, ry + 34, "서버: 원본 (2.37, 3.62)", size=22)
-    s.text(qx + 20, qy - 20, "클라이언트: 1 cm 격자 (2, 4)", size=22)
+    s.text(rx + 20, ry + 34, "서버: 원본 (2.37, 3.62)", size=24)
+    s.text(qx + 20, qy - 20, "클라이언트: 1 cm 격자 (2, 4)", size=24)
     rows = ["Location: FVector_NetQuantize (1 cm)", "Normal · AxisU: NetQuantizeNormal (16 bit)",
             "IncidentSpeed u16, BallRadius u8, Seed u16", "→ 클라이언트 그리드가 조금 어긋나도 허용"]
     for i, r in enumerate(rows):
