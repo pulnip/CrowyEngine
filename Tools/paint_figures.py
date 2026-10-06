@@ -748,7 +748,7 @@ def a14_lobes(path):
     s.arrow(cx - r * 0.8 * math.sin(light), cy - r * 0.8 * math.cos(light), cx, cy, stroke=GOLD, sw=3)
     s.text(cx - r * 0.8 * math.sin(light) - 10, cy - r * 0.8 * math.cos(light) - 10, "빛", size=24, anchor="end")
 
-    def lobe(f, color, label, scale, dash=None):
+    def lobe(f, color, scale, dash):
         # each lobe over its own peak: the shapes compare, not the energies
         samples = []
         for i in range(181):
@@ -759,15 +759,19 @@ def a14_lobes(path):
         peak = max(val for _, val in samples) or 1.0
         pts = [(cx + val / peak * scale * r * math.sin(v), cy - val / peak * scale * r * math.cos(v)) for v, val in samples]
         s.polyline(pts, stroke=color, sw=3.5, dash=dash)
-        return pts
-    lobe(lambda noh, nov: max(nov, 0.0), "#BDB6B0", "diffuse", 0.45)
-    lobe(lambda noh, nov: ggx(0.62, noh), MINT, "GGX", 0.8)
-    lobe(lambda noh, nov: ggx(0.9, noh), BLUE, "haze", 0.65, dash="8 6")
-    lobe(lambda noh, nov: charlie(0.7, noh), CHOCO, "fuzz", 0.6)
-    lobe(lambda noh, nov: ggx(0.12, noh), RED, "coat", 0.95)
-    for i, (label, color) in enumerate((("diffuse", "#BDB6B0"), ("GGX rough 0.62", MINT), ("haze 2nd lobe 0.9", BLUE), ("fuzz (Charlie)", CHOCO), ("coat rough 0.12", RED))):
+
+    # the mint paint's own numbers: roughness 0.62 after the style, haze 0.8
+    lobes = [
+        ("diffuse", "#BDB6B0", 0.45, lambda noh, nov: max(nov, 0.0), None),
+        ("GGX rough 0.62", MINT, 0.8, lambda noh, nov: ggx(0.62, noh), None),
+        ("haze 2nd lobe 0.8", BLUE, 0.65, lambda noh, nov: ggx(0.8, noh), "8 6"),
+        ("fuzz (Charlie)", CHOCO, 0.6, lambda noh, nov: charlie(0.7, noh), None),
+        ("coat rough 0.12", RED, 0.95, lambda noh, nov: ggx(0.12, noh), None),
+    ]
+    for i, (label, color, scale, f, dash) in enumerate(lobes):
+        lobe(f, color, scale, dash)
         s.rect(80, 120 + i * 40, 26, 14, fill=color, stroke="none")
-        s.text(116, 134 + i * 40, label, size=22)
+        s.text(116, 134 + i * 40, label, size=24)
     # the vertical layer: what the coat lets through
     p = Plot(s, 1080, 170, 420, 360, (0, 90), (0, 1.0))
     p.axes("시선 각도 (°)", "본체에 닿는 몫", xticks=(0, 45, 90), yticks=(0, 0.5, 1))
