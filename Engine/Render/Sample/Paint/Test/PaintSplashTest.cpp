@@ -110,24 +110,61 @@ TEST(PaintSplash, GrazingThrowsMoreForwardAndSlowDoesNotSplash) {
     EXPECT_TRUE(none.empty());
 }
 
+TEST(PaintSplash, WallFrameFollowsTheSurface) {
+    const auto profile = PaintSplashProfile::Paintball();
+    const DVec3 normal{1.0, 0.0, 0.0};
+    const DVec3 velocity{-2000.0, 300.0, -400.0};
+    const auto travel = getSafeNormal(DVec3{0.0, 300.0, -400.0});
+    i32 forward = 0;
+    i32 side = 0;
+    i32 back = 0;
+    splitGroups(
+        profile,
+        profile.dropletCount,
+        tangentialShare(2000.0f, 500.0f),
+        forward,
+        side,
+        back
+    );
+    ASSERT_GT(back, 0);
+    for(i32 seed = 1; seed <= 16; ++seed) {
+        auto input = floorContact(seed);
+        input.impactNormal = normal;
+        input.incidentVelocity = velocity;
+        std::vector<PaintDroplet> droplets;
+        generateDroplets(profile, input, droplets);
+        for(const auto& d: droplets) {
+            EXPECT_GT(dot(d.velocity, normal), 0.0);
+            if(d.group == PaintDropletGroup::Forward)
+                EXPECT_GT(dot(d.velocity, travel), 0.0);
+            if(d.group == PaintDropletGroup::Back)
+                EXPECT_LT(dot(d.velocity, travel), 0.0);
+        }
+        EXPECT_EQ(countGroup(droplets, PaintDropletGroup::Forward), forward);
+        EXPECT_EQ(countGroup(droplets, PaintDropletGroup::Back), back);
+    }
+}
+
 TEST(PaintSplash, GroupsSumAndGrowForward) {
     const auto profile = PaintSplashProfile::Paintball();
-    i32 lastForward = 0;
-    for(i32 step = 0; step <= 20; ++step) {
-        i32 forward = 0;
-        i32 side = 0;
-        i32 back = 0;
-        splitGroups(
-            profile,
-            16,
-            static_cast<f32>(step) / 20.0f,
-            forward,
-            side,
-            back
-        );
-        EXPECT_EQ(forward + side + back, 16);
-        EXPECT_GE(forward, lastForward);
-        lastForward = forward;
+    for(i32 count = 1; count <= PaintMaxDroplets; ++count) {
+        i32 lastForward = 0;
+        for(i32 step = 0; step <= 20; ++step) {
+            i32 forward = 0;
+            i32 side = 0;
+            i32 back = 0;
+            splitGroups(
+                profile,
+                count,
+                static_cast<f32>(step) / 20.0f,
+                forward,
+                side,
+                back
+            );
+            EXPECT_EQ(forward + side + back, count);
+            EXPECT_GE(forward, lastForward);
+            lastForward = forward;
+        }
     }
     EXPECT_EQ(tangentialShare(2500.0f, 0.0f), 0.0f);
     EXPECT_NEAR(tangentialShare(1000.0f, 1000.0f), 0.5f, 1e-4f);
