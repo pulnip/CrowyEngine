@@ -294,12 +294,10 @@ float4 fs_surface(SurfaceOut input) : SV_Target {
     case PAINT_VIEW_ROUGHNESS:
         display = buildSlab(p).roughness.xxx;
         break;
-    case PAINT_VIEW_SHADING_MODEL: {
-        PaintSlabInputs slab = buildSlab(p);
-        // the model the Blendable GBuffer would export, collapsed or not
-        display = ExportModelColor(Collapse(slab).exportModel);
+    case PAINT_VIEW_SHADING_MODEL:
+        // the legacy export always goes through the collapse
+        display = ExportModelColor(ExportModel(buildSlab(p)));
         break;
-    }
     default:
         return float4(shadeLit(input, p), 1.0);
     }

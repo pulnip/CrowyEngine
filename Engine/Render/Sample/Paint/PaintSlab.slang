@@ -18,8 +18,6 @@
 // what the legacy GBuffer would export, as Unreal's buffer view colors it
 #define PAINT_EXPORT_DEFAULT_LIT 0u
 #define PAINT_EXPORT_CLOTH 1u
-#define PAINT_EXPORT_SUBSURFACE 2u
-#define PAINT_EXPORT_CLEAR_COAT 3u
 
 static const float PaintPi = 3.14159265;
 
@@ -37,7 +35,6 @@ struct PaintSlabInputs {
     float coat;
     float coatRoughness;
     float3 normal;
-    uint exportModel;
 };
 
 // the slab Unreal builds from a look: metalness to diffuse albedo and F0
@@ -59,7 +56,6 @@ PaintSlabInputs ToSlab(PaintLook look, PaintStyled style, float coatRoughness) {
     s.coat = style.coat;
     s.coatRoughness = coatRoughness;
     s.normal = look.normal;
-    s.exportModel = PAINT_EXPORT_SUBSURFACE;
     return s;
 }
 
@@ -73,18 +69,18 @@ PaintSlabInputs Collapse(PaintSlabInputs s) {
     o.f0 = lerp(s.f0, 0.04.xxx, saturate(s.coat));
     o.coat = 0.0;
     o.sssScale = 0.0;
-    o.exportModel = s.fuzz > 0.0 ? PAINT_EXPORT_CLOTH : PAINT_EXPORT_DEFAULT_LIT;
     return o;
+}
+
+// the legacy model the collapsed slab exports: Cloth where there is fuzz
+uint ExportModel(PaintSlabInputs s) {
+    return s.fuzz > 0.0 ? PAINT_EXPORT_CLOTH : PAINT_EXPORT_DEFAULT_LIT;
 }
 
 float3 ExportModelColor(uint model) {
     switch(model) {
     case PAINT_EXPORT_CLOTH:
         return float3(0.7, 1.0, 1.0);
-    case PAINT_EXPORT_SUBSURFACE:
-        return float3(0.2, 0.6, 0.5);
-    case PAINT_EXPORT_CLEAR_COAT:
-        return float3(0.1, 0.4, 0.4);
     }
     return float3(0.1, 1.0, 0.1);
 }
