@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <utility>
 
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"

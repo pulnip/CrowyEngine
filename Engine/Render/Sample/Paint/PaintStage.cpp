@@ -1,6 +1,7 @@
 #include "PaintStage.hpp"
 
 #include <format>
+#include <utility>
 
 namespace Crowy
 {
