@@ -32,11 +32,8 @@
 
 // the paint buffer's encoding: R = id + 8 gen, G height, B 1 - d / range
 #define PAINT_ID_NONE 7
-#define PAINT_DIST_RANGE 4.0f
 // one full G in world cm: the shipped masters' displacement magnitude
 #define PAINT_MAX_HEIGHT 9.0f
-// a texel the bake found no surface for
-#define PAINT_EMPTY_POSITION -64.0f
 
 // a whole StampCustom rather than one stage of its build-up
 #define PAINT_SHAPE_STAGE_FULL 8.0f

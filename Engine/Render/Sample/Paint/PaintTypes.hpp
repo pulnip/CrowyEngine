@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MintFrame.hpp"
+#include "PaintShared.h"
 #include "Primitives.hpp"
 
 // MintChoco's PaintCellGrid.h directions and PaintSplat.h texel encoding
@@ -24,6 +25,7 @@ namespace Crowy
     // meaning "nothing painted here", so painting it erases
     inline constexpr u8 PaintIdCount = 8;
     inline constexpr u8 PaintIdNone = PaintIdCount - 1;
+    static_assert(PaintIdNone == PAINT_ID_NONE);
     inline constexpr u8 PaintTeamIdCount = 4;
     // a texel's R byte: the id in the low three bits, a star generation above
     inline constexpr u8 PaintIdBits = 3;
