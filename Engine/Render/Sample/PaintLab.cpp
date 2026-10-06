@@ -705,7 +705,7 @@ namespace Crowy
             RHICommandList& cmdList,
             const HookPassContext& context
         ) {
-            if(settings.panel == PaintPanel::None || recordedFrames < 2)
+            if(settings.panel == PaintPanel::None)
                 return 0;
             if(settings.panel == PaintPanel::ShapeLab) {
                 const auto lab = shapeLab();
