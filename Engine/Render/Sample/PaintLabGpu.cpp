@@ -28,7 +28,7 @@ namespace Crowy
             "Engine/Render/Sample/Paint/PanelShapeLab.slang";
 
         // PaintIdNoneColor: no id, no height, "far" in B
-        constexpr Color PaintClearColor{7.0f / 255.0f, 0.0f, 0.0f, 1.0f};
+        constexpr Color PaintClearColor{PaintIdNone / 255.0f, 0.0f, 0.0f, 1.0f};
 
         Vec4 toVec4(DVec3 v, f32 w = 0.0f) {
             return {
@@ -146,7 +146,7 @@ namespace Crowy
                     name
                 );
             };
-        constexpr std::array<u8, 4> NoPaint{7, 0, 0, 255};
+        constexpr std::array<u8, 4> NoPaint{PaintIdNone, 0, 0, 255};
         constexpr auto Empty = toHalf(PaintAtlasBaker::EmptyPosition);
         constexpr std::array<u16, 4> NoPosition{Empty, Empty, Empty, 0};
         constexpr u8 NoFade = 0;

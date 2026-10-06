@@ -505,6 +505,11 @@ namespace Crowy
             };
         }
 
+        // a team, a reserved id or the eraser
+        static u8 clampPaintId(i64 id) {
+            return static_cast<u8>(std::clamp<i64>(id, 0, PaintIdCount - 1));
+        }
+
         static u8 maskOf(const PaintObjectFlags& f) {
             using enum PaintFaceDirection;
             u8 mask = 0;
@@ -639,7 +644,7 @@ namespace Crowy
                         .look = {
                             brushOf(shot.brush).shapeNoise,
                             lab.extent,
-                            static_cast<f32>(std::clamp(shot.team, 0, 7))
+                            static_cast<f32>(clampPaintId(shot.team))
                         }
                     }
                 );
@@ -1164,7 +1169,7 @@ namespace Crowy
             return PaintShot{
                 .origin = origin,
                 .velocity = getSafeNormal(direction) * shot.speed,
-                .paintId = static_cast<u8>(std::clamp(shot.team, 0, 7)),
+                .paintId = clampPaintId(shot.team),
                 .seed = shot.seed,
                 .volume = shot.volume,
                 .heightAdd = shot.heightAdd,
@@ -1221,11 +1226,8 @@ namespace Crowy
                     const auto speed =
                         args.get<f64>("speed").value_or(shot.speed);
                     request.velocity = getSafeNormal(request.velocity) * speed;
-                    request.paintId = static_cast<u8>(std::clamp<i64>(
-                        args.get<i64>("team").value_or(shot.team),
-                        0,
-                        7
-                    ));
+                    request.paintId =
+                        clampPaintId(args.get<i64>("team").value_or(shot.team));
                     request.seed = static_cast<i32>(
                         args.get<i64>("seed").value_or(shot.seed)
                     );
