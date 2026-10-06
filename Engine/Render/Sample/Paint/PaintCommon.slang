@@ -1,7 +1,7 @@
 #pragma once
 
 // What the surface and panel passes share: the paint buffer's decoding, the
-// atlas lookup MF_PaintOverlay does, and colours for the data views.
+// atlas lookup MF_PaintOverlay does, and colors for the data views.
 
 #include "PaintShared.h"
 #include "SRGB.slang"
@@ -38,7 +38,7 @@ float2 IslandUV(float3 n, float4 R, uint direction, float TexelSize) {
     return R.xy + P * R.zw;
 }
 
-// The scene colour a hook writes is tone mapped after it: this radiance
+// The scene color a hook writes is tone mapped after it: this radiance
 // lands on `display` once Reinhard and the sRGB encode have run. Capped
 // below 1, where L / (1 - L) would be infinite.
 float3 DisplayToRadiance(float3 display) {
@@ -47,7 +47,7 @@ float3 DisplayToRadiance(float3 display) {
     return L / (1.0 - L);
 }
 
-// the six directions' colours, in enum order
+// the six directions' colors, in enum order
 float3 DirectionColor(uint direction) {
     static const float3 colors[6] = {
         float3(0.93, 0.42, 0.36),
@@ -61,7 +61,7 @@ float3 DirectionColor(uint direction) {
     return colors[min(direction, 5u)];
 }
 
-// MPC_TeamLook's colours as display values: 0 and 2 Mint, 1 and 3 Choco
+// MPC_TeamLook's colors as display values: 0 and 2 Mint, 1 and 3 Choco
 float3 TeamDisplayColor(uint id) {
     if(id == PAINT_ID_NONE)
         return float3(0.86, 0.84, 0.82);

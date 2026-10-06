@@ -252,7 +252,7 @@ float4 fs_surface(SurfaceOut input) : SV_Target {
         break;
     }
     case PAINT_VIEW_DIVERGENCE: {
-        // where the picture and the score agree the team colour; where only
+        // where the picture and the score agree the team color; where only
         // the picture has paint amber, only the score violet
         float3 cellCoord;
         uint owner = scoreCellId(input.localPos, input.localNormal, cellCoord);

@@ -260,7 +260,7 @@ namespace Crowy
                 }
             );
             // after the post chain, on the back buffer's display values; the
-            // UI rides this pass, so it keeps one colour target and no depth
+            // UI rides this pass, so it keeps one color target and no depth
             desc.passes.push_back(
                 PassDesc{
                     .name = "PaintPanels",

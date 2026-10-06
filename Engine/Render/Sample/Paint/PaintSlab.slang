@@ -19,7 +19,7 @@
 #define PAINT_LOBE_SKY (1u << 6)
 #define PAINT_LOBE_ALL 0x7Fu
 
-// what the legacy GBuffer would export, as Unreal's buffer view colours it
+// what the legacy GBuffer would export, as Unreal's buffer view colors it
 #define PAINT_EXPORT_DEFAULT_LIT 0u
 #define PAINT_EXPORT_CLOTH 1u
 #define PAINT_EXPORT_SUBSURFACE 2u
@@ -55,7 +55,7 @@ PaintSlabInputs ToSlab(PaintLook look, PaintStyled style, float coatRoughness) {
     s.secondRoughness = look.secondRoughness;
     s.secondWeight = look.secondWeight;
     s.fuzz = style.fuzz;
-    // the floor's fuzz takes the blended base colour
+    // the floor's fuzz takes the blended base color
     s.fuzzColor = look.baseColor;
     s.fuzzRoughness = look.fuzzRoughness;
     s.sssMfp = look.sssMfp;
