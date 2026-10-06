@@ -115,12 +115,12 @@ FLOOR_EYE = (SPOT[0] - 170.0, SPOT[1] - 240.0, 230.0)
 
 def t1_shots():
     crate_eye = (200.0, 400.0, 650.0)
-    edge = (-380.0, -300.0, 300.0)
+    edge = add(CRATE, (120.0, 0.0, 150.0))
     return [
         {
             "name": "t1_crate_relayout",
             "seconds": 5.0,
-            "setup": camera(crate_eye, (-500.0, -300.0, 120.0), 40)
+            "setup": camera(crate_eye, add(CRATE, (0.0, 0.0, -30.0)), 40)
             + [lab("view", "Islands"), lab("panel", "Atlas"), lab("panelChannel", "Islands"), lab("selected", 1)],
             "events": {90: [stage("crate", "front", True)], 180: [stage("crate", "right", True)]},
             "captions": [(0, "Up만: island 1개"), (90, "+Front: 재포장"), (180, "+Right: 아틀라스 하나에 3개")],
