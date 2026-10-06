@@ -1,7 +1,5 @@
-// M_PaintBrush: one splat stamped over its atlas rectangles. Opaque and
-// unblended, it reads the previous paint itself and writes the whole texel,
-// so an id is replaced, never blended; the result lands in a scratch target
-// and PaintCopy.slang takes the rectangles back.
+// M_PaintBrush: opaque and unblended, it reads the previous paint itself so
+// an id is replaced, never blended; PaintCopy takes the rectangles back
 
 #include "PaintShared.h"
 #include "SplatStamp.slang"
@@ -86,12 +84,8 @@ float4 fs_brush(BrushOut input) : SV_Target {
     float StarGen = brush.splat.w;
     float4 LockGens = brush.lockGens;
 
-    // M_PaintBrush's Custom node from here, verbatim but for syntax.
-    // B holds 1 - d / DistRange, d being the distance in texels from a texel
-    // to the nearest edge of its own region, so 0 reads as far. The stamp
-    // distance comes in stamp units; one screen derivative in this pass is
-    // one texel, so dividing by the gradient converts it to texels. R holds
-    // the paint id in its low three bits and a star generation above.
+    // M_PaintBrush's Custom node verbatim; one screen derivative here is one
+    // texel, so the stamp distance over its gradient is texels
     float prevByte = round(PrevR * 255.0);
     float prevGen = floor(prevByte / 8.0);
     float prevId = prevByte - 8.0 * prevGen;

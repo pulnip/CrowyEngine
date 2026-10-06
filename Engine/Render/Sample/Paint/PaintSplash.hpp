@@ -7,9 +7,8 @@
 #include "PaintBrushProfile.hpp"
 #include "Primitives.hpp"
 
-// MintChoco's splash as arithmetic (PaintSplash.h): how a contact turns into
-// droplets and where they come down. The score and the picture both start
-// from these droplets; they part ways only after.
+// PaintSplash.h as arithmetic: a contact's droplets, where both the score
+// and the picture start
 namespace Crowy
 {
     inline constexpr i32 PaintMaxDroplets = 16;

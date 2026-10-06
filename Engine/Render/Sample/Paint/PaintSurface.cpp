@@ -127,9 +127,8 @@ namespace Crowy
         const PaintSplat& splat,
         const PaintLocalStamp& stamp
     ) {
-        // a score-only splat stands for a mark a few cells wide at most; at
-        // half its radius it would fall between cell centres, so it claims
-        // all of it
+        // a score-only splat stands for a mark a few cells wide; at half its
+        // radius it would fall between cell centers, so it claims all of it
         const auto coreFraction =
             splat.scoreOnly ? 1.0f : PaintCellStampFraction;
         cells.Mark(
@@ -164,9 +163,8 @@ namespace Crowy
         if(!object.floorFollowsWorldUp)
             return mask;
 
-        // the local direction facing the sky most is the floor players stand
-        // on, however the actor was rolled; a sliver of a footprint, as a
-        // wall's top edge, is not worth a buffer
+        // the direction facing the sky most is the floor however the actor was
+        // rolled; a sliver of footprint, as a wall's top, is worth no buffer
         u8 best = 0;
         auto bestDot = -2.0;
         for(u8 d = 0; d < PaintFaceDirectionCount; ++d) {

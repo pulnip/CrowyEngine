@@ -11,11 +11,8 @@
 // island sits in a surface's one square atlas
 namespace Crowy
 {
-    // One planar island: the mesh seen along one local axis, packed into a
-    // rectangle. The bake, the brush and the surface shader all go through
-    // this mapping, so a surface point lands on the same texel for all three.
-    // X sees (Y, Z), Y sees (X, Z), Z sees (X, Y); a negative direction uses
-    // its axis's plane with the opposite depth sign.
+    // the one mapping the bake, the brush and the shader share, so a point
+    // lands on one texel in all three; X sees (Y, Z), Y (X, Z), Z (X, Y)
     struct PaintIsland {
         PaintFaceDirection direction = PaintFaceDirection::Up;
         // the projection axis and the two plane axes, as component indices
@@ -54,10 +51,8 @@ namespace Crowy
         f32 texelCm = 0.0f;
         u8 enabledDirections = 0;
 
-        // One island per enabled direction, spanning the mesh's world
-        // footprint at requestedTexelCm plus padTexels on every side,
-        // shelf-packed into the smallest power-of-two square in
-        // [minSize, maxSize]; the texel grows until maxSize holds them.
+        // one island per enabled direction, shelf-packed into the smallest
+        // power-of-two square; the texel coarsens until maxSize holds them
         static PaintIslandLayout Build(
             const Box3d& localBounds,
             DVec3 scale3D,

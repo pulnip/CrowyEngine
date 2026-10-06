@@ -105,9 +105,8 @@ namespace Crowy
 
     struct PaintSplashProfile;
 
-    // FPaintSplat: one paint contact, fully resolved, everything a surface
-    // needs to draw and score it; the server builds it once and every machine
-    // draws the identical stamp
+    // FPaintSplat: one contact, fully resolved; the server builds it once and
+    // every machine draws the identical stamp from it
     struct PaintSplat {
         // stamp centre in world space, the incidence shift applied
         DVec3 location;
@@ -146,9 +145,8 @@ namespace Crowy
         f64 WorldExtent() const noexcept { return radius * stretch; }
     };
 
-    // the splat in the painted mesh's scaled-local frame: rotation and
-    // translation removed, scale kept, so every length is still a world one.
-    // The brush and the cell grid both consume it, which keeps them agreeing.
+    // the splat in the mesh's scaled-local frame, so every length is still a
+    // world one; the brush and the cell grid both read it
     struct PaintLocalStamp {
         DVec3 center;
         // unit axes of the stamp plane; U is the stretched one

@@ -1,7 +1,5 @@
-// The painted surfaces, drawn in the paint hook pass with the engine's lights
-// and shadow map: MF_PaintOverlay's atlas lookup, the team looks laid over
-// the bare one, the relief normal, the slab's lobes; or one of the data views
-// the topics are shown with.
+// the painted surfaces in the paint hook pass: the atlas lookup, the team
+// looks, the relief normal and the slab's lobes, or a data view
 
 #include "Lighting.slang"
 #include "PaintCommon.slang"

@@ -8,9 +8,8 @@
 #include "PaintSplash.hpp"
 #include "PaintTypes.hpp"
 
-// The picture's half of a splash: what NS_PaintSplash flies and what its
-// landing handler stamps. Every machine flies its own, nothing is sent, and
-// the score never looks at it.
+// NS_PaintSplash and its landing handler: the picture's droplets, flown on
+// every machine and never scored
 namespace Crowy
 {
     // the flight's fixed step, so any frame rate lands the same droplets

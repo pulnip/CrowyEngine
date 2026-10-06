@@ -71,9 +71,8 @@ namespace Crowy
                     if(dot(faceNormal, vertexNormal) < 0.0)
                         faceNormal = -faceNormal;
                 }
-                // a face turned away from the island's viewpoint is never a
-                // closed mesh's outermost surface, nor does the reader ever
-                // assign such a pixel to this island
+                // a face turned from the island's viewpoint is never outermost,
+                // and the reader never assigns it this island
                 if(island.sign * faceNormal[island.axis] < -1e-4)
                     continue;
 

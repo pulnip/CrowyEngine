@@ -7,9 +7,8 @@
 
 namespace Crowy
 {
-    // FPaintMeshTriangles: one paintable slot's triangles in mesh-local cm,
-    // the input of both the coverage grid and the atlas bake. A triangle
-    // faces out when cross(b - a, c - a) does, as MeshData's winding wants.
+    // FPaintMeshTriangles: one slot's triangles in mesh-local cm; a triangle
+    // faces out when cross(b - a, c - a) does, as MeshData's winding wants
     struct PaintMeshTriangles {
         std::vector<Vec3> positions;
         // one per position; they only settle which way a triangle faces

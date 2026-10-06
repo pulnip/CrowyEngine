@@ -74,14 +74,12 @@ namespace Crowy
         // outside the mesh, so no stamp ever reaches a gutter texel
         inline constexpr f32 EmptyPosition = -64.0f;
 
-        // For every island the triangles are projected along its axis and
-        // rasterized at texel centres, the outermost surface winning.
-        // Texels no triangle reaches keep EmptyPosition and w 0.
+        // triangles projected along each island's axis at texel centers, the
+        // outermost winning; texels no triangle reaches keep EmptyPosition, w 0
         void rasterize(const PaintAtlasBakeInput& in, std::vector<Vec4>& out);
 
-        // Chebyshev distance to the nearest edge as a 0..255 ramp over
-        // fadeTexels. An edge is an uncovered texel, the atlas border, or a
-        // neighbour whose position jumps by more than seamFraction.
+        // Chebyshev distance to an edge as a 0..255 ramp: an empty texel, the
+        // border, or a neighbor whose position jumps past seamFraction
         void computeEdgeFade(
             std::span<const Vec4> positions,
             i32 atlasSize,

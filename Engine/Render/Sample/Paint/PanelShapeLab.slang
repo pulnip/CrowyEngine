@@ -1,6 +1,5 @@
-// The stamp alone, in a corner of the back buffer: one splat's signed
-// distance laid flat in world proportion (U / R across, V / R up), at any
-// stop of the shape slider. Display values, written as is.
+// the stamp alone, laid flat in world proportion (U / R across, V / R
+// up) at any stop of the shape slider, written as display values
 
 #include "PaintCommon.slang"
 #include "SplatStamp.slang"

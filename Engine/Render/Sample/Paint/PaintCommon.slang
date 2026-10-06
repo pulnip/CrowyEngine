@@ -27,9 +27,8 @@ uint IslandDirection(float3 N) {
     return N.z >= 0.0 ? 4u : 5u;
 }
 
-// MF_PaintOverlay's Custom_0: the atlas UV of a mesh-space point. `n` is the
-// position normalized to the mesh bounds; a direction the surface does not
-// keep reads the atlas's first gutter texel, which never holds paint.
+// MF_PaintOverlay's Custom_0: `n` is the position over the mesh bounds; a
+// direction not kept reads the first gutter texel, which never holds paint
 float2 IslandUV(float3 n, float4 R, uint direction, float TexelSize) {
     float2 P = direction < 2u ? n.yz : (direction < 4u ? n.xz : n.xy);
     if(R.z <= 0.0)
@@ -38,9 +37,8 @@ float2 IslandUV(float3 n, float4 R, uint direction, float TexelSize) {
     return R.xy + P * R.zw;
 }
 
-// The scene color a hook writes is tone mapped after it: this radiance
-// lands on `display` once Reinhard and the sRGB encode have run. Capped
-// below 1, where L / (1 - L) would be infinite.
+// the radiance a hook writes so Reinhard and sRGB land it on `display`;
+// capped below 1, where L / (1 - L) is infinite
 float3 DisplayToRadiance(float3 display) {
     float3 L = min(srgb2linear(saturate(display)), 0.99998);
 

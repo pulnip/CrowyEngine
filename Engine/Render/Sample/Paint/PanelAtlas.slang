@@ -1,6 +1,5 @@
-// The selected surface's atlas laid flat in a corner of the back buffer:
-// its islands, or one channel of the paint buffer or the bake, texel for
-// texel. The back buffer holds display values, so these are written as is.
+// the selected surface's atlas laid flat over the back buffer; it holds
+// display values, so the channels are written as is
 
 #include "PaintCommon.slang"
 

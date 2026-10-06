@@ -13,9 +13,8 @@
 
 namespace Crowy
 {
-    // UPaintableComponent's CPU half: which directions keep paint, the atlas
-    // layout one buffer is cut into, and every frame change a splat goes
-    // through on its way to the brush and the score
+    // UPaintableComponent's CPU half: the kept directions, the atlas layout,
+    // and every frame change a splat makes on its way to brush and score
     class PaintSurface {
     private:
         PaintStageObject object;
@@ -46,9 +45,8 @@ namespace Crowy
             std::vector<IntRect>& rects
         ) const;
         PaintAtlasBakeInput BakeInput() const;
-        // the score half of a splat, which needs only the grid: the same
-        // local stamp the brush draws, so the two differ only by the stamp's
-        // satellites and the cell size
+        // the score half of a splat: the same local stamp the brush draws, so
+        // the two differ only by the stamp's satellites and the cell size
         void MarkScore(const PaintSplat& splat, const PaintLocalStamp& stamp);
         void ClearScore() { cells.ClearPaint(); }
 

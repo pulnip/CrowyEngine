@@ -36,11 +36,8 @@ namespace Crowy
     // blob spans half the radius, its satellites almost all of it
     inline constexpr f32 PaintCellStampFraction = 0.5f;
 
-    // FPaintCellGrid: who owns the surface, as the gameplay layer counts it.
-    // A coarse voxel grid over the scaled-local bounds where every voxel keeps
-    // one cell per face direction, its true triangle area deposited once.
-    // A splat marks the cells its stamp covers; nothing here ever reads the
-    // render target.
+    // FPaintCellGrid: the score's owner per (voxel, direction) cell by true
+    // area; it never reads the render target
     class PaintCellGrid {
     private:
         DVec3 origin;
@@ -59,9 +56,8 @@ namespace Crowy
         i32 surfaceCellCount = 0;
 
     public:
-        // `positions` are scaled-local; a triangle's direction is classified
-        // from its geometric normal times normalClassifyScale, which undoes the
-        // squash the scale puts on it
+        // `positions` are scaled-local; normalClassifyScale undoes the squash
+        // the scale puts on a triangle's normal before it is classified
         void Build(
             const Box3d& bounds,
             f32 cellSize,
@@ -72,10 +68,8 @@ namespace Crowy
             DVec3 normalClassifyScale = {1.0, 1.0, 1.0}
         );
 
-        // Paints every cell whose voxel centre lies inside the stamp body
-        // (semi-axes f R S, f R, R) and whose direction does not face away
-        // from the splat; returns how many changed id. A cell locked by a
-        // running star keeps its owner against any other id.
+        // cells whose voxel center is inside the stamp body (f R S, f R, R); a
+        // star-locked cell keeps its owner against any other id
         i32 Mark(
             const PaintLocalStamp& stamp,
             u8 paintId,

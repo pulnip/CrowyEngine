@@ -67,9 +67,8 @@ namespace Crowy
         f32 radius = 0.0f;
     };
 
-    // UPaintSubsystem, FPaintDeposit and the splat log: every surface, the
-    // trace a shot takes, and the one splat that both the brush and the
-    // score are fed from
+    // UPaintSubsystem and FPaintDeposit: the surfaces, a shot's trace, and
+    // the splat log both the brush and the score read
     class PaintWorld {
     private:
         const PaintStageMeshes meshes = makePaintStageMeshes();
@@ -94,8 +93,7 @@ namespace Crowy
         ~PaintWorld() = default;
         CROWY_DECLARE_PINNED(PaintWorld)
 
-        // traces the shot and, on a surface that receives paint, builds
-        // the splat, marks it transient or not and submits it; a splashing
+        // traces the shot and submits its splat, kept or transient; a splashing
         // shot also throws this machine's droplets
         std::optional<PaintHit> Fire(const PaintShot& shot);
         // the same shot, seen arriving: it fires `lead` seconds of flight

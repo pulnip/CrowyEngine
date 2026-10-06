@@ -1,10 +1,7 @@
 #pragma once
 
-// MintChoco's splat stamp: MF_SplatStampMask's Custom node, verbatim but for
-// syntax, and the shape slider's build-up from a circle to it.
-// uv = (U / (R S), V / R) and n = N / R, from the stamp's basis; every
-// function returns (mask, kernel, d), d the stamp-space signed distance to the
-// splat edge, negative inside.
+// MF_SplatStampMask's Custom node verbatim, and the slider building up to
+// it; uv = (U / RS, V / R), n = N / R, d negative inside
 
 float3 StampCustom(float2 uv, float n, float Seed, float ImpactU, float Shape) {
     const float MainRadius = 0.5;
@@ -111,9 +108,8 @@ float3 StampCustom(float2 uv, float n, float Seed, float ImpactU, float Shape) {
     d += shape * ((cr1 - 0.5) * CrinkleAmp + (cr2 - 0.5) * CrinkleAmp * 0.45);
 
     float mask = (d < 0.0) ? 1.0 : 0.0;
-    // Soft deposit kernel: full over the blob's core, feathering across the
-    // outer quarter-radius, mottled by the same seeded noise so strokes pile
-    // up unevenly.
+    // full over the core, feathered across the outer quarter radius and
+    // mottled by the seeded noise, so strokes pile up unevenly
     float k = smoothstep(0.0, 1.0, saturate(-d / 0.25));
     k *= lerp(1.0, 0.8 + 0.4 * cr1, shape);
 
@@ -138,9 +134,8 @@ float stampValueNoise(float2 q) {
     return lerp(lerp(a, b, f.x), lerp(c, e, f.x), f.y);
 }
 
-// One whole stop of the build-up, stage 0 to 7; stage 8 is StampCustom with
-// Shape 1, whose d stage 7 already equals. `roundUV` is (U / R, V / R): the
-// circle at stage 0 is round in the world, before the stretch exists.
+// one whole stop, 0 to 7 (stage 7's d already equals stage 8's);
+// `roundUV` is (U / R, V / R): the stage 0 circle is round before any stretch
 float stampStageDistance(float2 uv, float2 roundUV, float n, float Seed, float ImpactU, int stage) {
     const float MainRadius = 0.5;
 

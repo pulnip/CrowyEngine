@@ -7,9 +7,8 @@
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 
-// The slice of Unreal's math MintChoco's paint code runs on, in its frame:
-// centimetres, X forward, Y right, Z up, left-handed, angles in degrees.
-// Paint math stays in this frame; mintToCrowy() is the one way out.
+// Unreal's math in MintChoco's frame (cm, X forward, Y right, Z up, degrees);
+// mintToCrowy() is the one way out
 namespace Crowy
 {
     inline constexpr f64 MintCmToCrowyM = 0.01;

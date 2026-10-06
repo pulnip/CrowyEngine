@@ -1,9 +1,7 @@
 #pragma once
 
-// MintChoco's surface look before any light: the per-team signed distance at
-// the paint edge (MF_PaintCorners), the team looks (MPC_TeamLook) laid over
-// the bare one by coverage (MF_PaintTeamBlend), and the shared style
-// (MF_PaintStyle).
+// MintChoco's look before light: per-team signed distance at the edge, the
+// team looks laid over the bare one by coverage, and the shared style
 
 #include "PaintCommon.slang"
 #include "Sampler.slang"
@@ -90,10 +88,8 @@ PaintLook TeamLook(uint team, float3 paintNormal) {
     return o;
 }
 
-// MF_PaintCorners: teams 0..3 in xyzw, positive inside that team's paint, in
-// texels. The four corner texels around uv give +d or -d by membership, so
-// the bilinear zero crossing lands on the sub-texel edge the brush drew;
-// quads whose corners agree are pinned to +-DistRange.
+// MF_PaintCorners: teams in xyzw, positive inside, in texels; the bilinear
+// zero lands on the sub-texel edge the brush drew
 float4 PaintCorners(Texture2D Tex, float2 UV, float TexelSize, float DistRange) {
     const float4 Teams = float4(0.0, 1.0, 2.0, 3.0);
     float2 tc = UV / TexelSize - 0.5;
@@ -146,9 +142,8 @@ float4 TeamCoverage(Texture2D Tex, float2 UV, float TexelSize, float DistRange, 
     return cov;
 }
 
-// MF_PaintTeamBlend over the stack: base, then teams 0..3. Naive lerps every
-// team by its own coverage, which lets the base leak through where two teams
-// meet; MintChoco divides by what earlier teams left over.
+// MF_PaintTeamBlend: dividing by what earlier teams left over keeps the
+// base from showing through where two teams meet
 PaintLook BlendTeams(PaintLook base, float4 cov, float3 paintNormal, uint blend, float thin, out float consumed) {
     PaintLook o = base;
     float S = 0.0;

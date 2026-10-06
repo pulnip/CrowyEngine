@@ -21,9 +21,8 @@
 
 namespace Crowy
 {
-    // A texture the sample owns across frames: the usage it rests in, and
-    // the release this command list still owes an acquire. Pipeline targets
-    // cannot persist from frame to frame, so the paint buffers live here.
+    // a texture kept across frames, which pipeline targets cannot be: the
+    // usage it rests in and the release still owed an acquire
     class PaintTexture {
     private:
         RHITextureRAII texture;
@@ -146,9 +145,8 @@ namespace Crowy
         f32 splitPixels = 1e9f;
     };
 
-    // The surfaces' GPU half: one paint buffer, position atlas and edge fade
-    // per surface, the brush that stamps splats into them, and the draws of
-    // the paint and panel hooks.
+    // per surface, the paint, position and edge fade textures, the brush that
+    // stamps them, and the hook passes' draws
     class PaintGpu {
     private:
         struct SurfaceGpu {

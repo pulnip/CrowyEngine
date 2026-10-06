@@ -1,11 +1,7 @@
 #pragma once
 
-// The light side of MintChoco's paint: Substrate's slab, as far as a forward
-// renderer without IBL or diffusion SSS can follow it. A body slab (diffuse,
-// GGX specular with a hazy second lobe, fuzz, an SSS stand-in) under a thin
-// coat slab, vertically layered: the coat's specular on top and the body seen
-// through what the coat lets past. `Collapse` folds it the way the project's
-// Blendable GBuffer is expected to, from Unreal's source.
+// Substrate's slab as far as a forward renderer without IBL or diffusion
+// SSS follows it: a body slab under a coat slab, layered vertically
 
 #include "PaintLook.slang"
 
@@ -67,10 +63,8 @@ PaintSlabInputs ToSlab(PaintLook look, PaintStyled style, float coatRoughness) {
     return s;
 }
 
-// Expected from Unreal's source, not a capture: one closure a pixel, so the
-// coat is parameter-blended into the body, the haze lerped into one
-// roughness, the diffusion SSS dropped, and the legacy export picks Cloth
-// where there is fuzz and DefaultLit elsewhere.
+// the Blendable GBuffer's single closure as Unreal's source reads, not a
+// capture: coat and haze blended in, diffusion SSS dropped
 PaintSlabInputs Collapse(PaintSlabInputs s) {
     PaintSlabInputs o = s;
     o.roughness = lerp(s.roughness, s.secondRoughness, s.secondWeight);

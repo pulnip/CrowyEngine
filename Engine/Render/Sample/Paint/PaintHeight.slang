@@ -1,8 +1,7 @@
 #pragma once
 
-// MintChoco's relief: the accumulated height read through a cubic B-spline
-// that also hands back its own slope (MF_PaintHeightField), and the shading
-// normal built from that slope and the position atlas (MF_PaintNormal).
+// MF_PaintHeightField and MF_PaintNormal: the height read through a
+// B-spline that hands back its own slope, and the normal built from it
 
 #include "PaintCommon.slang"
 #include "Sampler.slang"
@@ -83,9 +82,8 @@ PaintHeightSample PaintHeightField(
     float hu;
     float hv;
     if(filter == PAINT_HEIGHT_BSPLINE) {
-        // height and slope from one cubic B-spline over the same taps, so
-        // the shading normal never disagrees with the silhouette; a fixed
-        // 12x12 window, unrolled: a dynamic bound came back striped
+        // height and slope from one B-spline, so the normal matches the
+        // silhouette; a fixed 12x12 window keeps the weights in registers
         float s = clamp(1.0 + Flow * FlowMaxTexels, 1.0, 2.5);
         float wx[12], gx[12], wy[12], gy[12];
         [unroll]
@@ -133,9 +131,8 @@ PaintHeightSample PaintHeightField(
         }
     }
 
-    // faces meeting at a hard edge rise along different normals, so the
-    // height dies out toward island edges; the fade enters the slope by the
-    // product rule
+    // the fade enters the slope by the product rule, so the height dies out
+    // at island edges, where faces rise along different normals
     float fade = Fade.SampleLevel(linearClamp, UV, 0).r;
     float fu = (Fade.SampleLevel(linearClamp, UV + du, 0).r - Fade.SampleLevel(linearClamp, UV - du, 0).r) * 0.5;
     float fv = (Fade.SampleLevel(linearClamp, UV + dv, 0).r - Fade.SampleLevel(linearClamp, UV - dv, 0).r) * 0.5;
@@ -149,10 +146,8 @@ PaintHeightSample PaintHeightField(
     return o;
 }
 
-// MF_PaintNormal's Custom node: the relief normal in mesh space, built from
-// the position atlas's tangents and the height field's own slope; still to
-// be divided by the scale once more on its way to the world (normalFix).
-// `n` is the unit mesh-space vertex normal, S the mesh scale.
+// MF_PaintNormal's Custom node: `n` the unit mesh-space normal, S the
+// scale; the result is divided by S once more on its way out (normalFix)
 float3 PaintNormal(
     Texture2D Pos,
     Texture2D Fade,
