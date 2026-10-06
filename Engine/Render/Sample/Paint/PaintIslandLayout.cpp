@@ -192,17 +192,6 @@ namespace Crowy
         return it == islands.end() ? nullptr : &*it;
     }
 
-    u32 PaintIslandLayout::ComputeHash() const {
-        // FNV-1a over the description, which names everything that matters
-        u32 hash = 2166136261u;
-        for(const auto c: ToString()) {
-            hash ^= static_cast<u8>(c);
-            hash *= 16777619u;
-        }
-
-        return hash;
-    }
-
     Str PaintIslandLayout::ToString() const {
         auto result = std::format(
             "mask {:02x}, {} texels, {:.3f} cm",

@@ -70,8 +70,6 @@ namespace Crowy
 
         const PaintIsland* Find(PaintFaceDirection direction) const noexcept;
         bool IsEmpty() const noexcept { return islands.empty(); }
-        // equal layouts hash alike, which is what atlas sharing keys on
-        u32 ComputeHash() const;
         Str ToString() const;
     };
 

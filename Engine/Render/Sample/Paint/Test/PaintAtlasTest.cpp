@@ -168,7 +168,7 @@ TEST(PaintAtlas, LayoutAllSixFallsBack) {
             EXPECT_FALSE(overlap);
         }
     }
-    EXPECT_EQ(layout.ComputeHash(), build().ComputeHash());
+    EXPECT_EQ(layout.ToString(), build().ToString());
 }
 
 TEST(PaintAtlas, FloorTexelGrows) {
