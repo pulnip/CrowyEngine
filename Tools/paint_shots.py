@@ -105,7 +105,7 @@ def animate_ramps(total, ramps):
 
 
 MOP = {"brush": "MopT", "volume": 2.4, "ballRadius": 12.0}
-FLOOR_EYE = (SPOT[0] - 300.0, SPOT[1] - 420.0, 380.0)
+FLOOR_EYE = (SPOT[0] - 170.0, SPOT[1] - 240.0, 230.0)
 
 
 def t1_shots():
@@ -132,7 +132,7 @@ def t1_shots():
         {
             "name": "t1_edge_splat",
             "seconds": 5.0,
-            "setup": camera((-100.0, -650.0, 520.0), (-370.0, -300.0, 250.0), 35)
+            "setup": camera((150.0, -700.0, 650.0), (-380.0, -300.0, 260.0), 35)
             + [stage("crate", "front", True), lab("view", "Lit")],
             "events": {
                 20: [fire(incident(edge, 45.0, 900.0, 180.0), edge, speed=3000.0, team=0, seed=31, lead=0.3)],
@@ -178,7 +178,7 @@ def t3_shots():
         shot_at(add(SPOT, (0.0, 35.0, 0.0)), seed=99, team=1),
     ]
     sphere_shots = []
-    count = 26
+    count = 44
     for i in range(count):
         # a Fibonacci sphere of directions, the ones under the floor left out
         z = 1.0 - 2.0 * (i + 0.5) / count
@@ -188,7 +188,7 @@ def t3_shots():
         a = i * math.pi * (3.0 - math.sqrt(5.0))
         d = (r * math.cos(a), r * math.sin(a), z)
         origin = [SPHERE[k] + d[k] * 700.0 for k in range(3)]
-        sphere_shots.append(fire(origin, list(SPHERE), team=0, seed=300 + i, brush="MopT", volume=1.0))
+        sphere_shots.append(fire(origin, list(SPHERE), team=0, seed=300 + i, brush="MopT", volume=2.0))
     lobe_steps = [
         (0, [], "모든 lobe: Substrate slab"),
         (43, [look("sky", False)], "− sky reflection"),
@@ -198,7 +198,9 @@ def t3_shots():
         (215, [look("haze", False)], "− haze (2nd lobe)"),
         (258, [look("specular", False)], "diffuse만"),
     ]
-    sphere_eye = (SPHERE[0] - 260.0, SPHERE[1] - 300.0, 280.0)
+    sphere_eye = (SPHERE[0] - 190.0, SPHERE[1] - 220.0, 230.0)
+    # the sun near the eye, a little aside, so the highlights face the camera
+    sun = [look("sunAzimuth", 250.0), look("sunElevation", 30.0)]
     return [
         {
             "name": "t3_edge_modes",
@@ -217,11 +219,13 @@ def t3_shots():
             "events": {150: [look("teamBlend", "ConsumedCoverage")]},
             "captions": [(0, "Naive lerp: 이음매로 바닥색이 샘"), (150, "Consumed coverage: α = cov / (1 − S)")],
             "stills": {"t3_blend_naive": 75, "t3_blend_consumed": 225},
+            # the seam band is one pixel wide by design: twelve times larger
+            "zoom": (374, 752, 160, 90),
         },
         {
             "name": "t3_lobes",
             "seconds": 5.0,
-            "setup": camera(sphere_eye, SPHERE, 32) + sphere_shots + [look("sunElevation", 38.0)],
+            "setup": camera(sphere_eye, SPHERE, 34) + sphere_shots + sun,
             "settle": 4,
             "events": {f: calls for f, calls, _ in lobe_steps},
             "captions": [(f, text) for f, _, text in lobe_steps],
@@ -230,7 +234,7 @@ def t3_shots():
         {
             "name": "t3_collapse",
             "seconds": 5.0,
-            "setup": camera(sphere_eye, SPHERE, 32) + sphere_shots + [look("sunElevation", 38.0)],
+            "setup": camera(sphere_eye, SPHERE, 34) + sphere_shots + sun,
             "settle": 4,
             "events": {150: [look("blendableGBuffer", True)]},
             "captions": [(0, "Substrate: coat slab over body slab"), (150, "Blendable GBuffer (UE 소스 기준 추정): closure 1개")],
@@ -260,7 +264,7 @@ def t4_shots():
 
 
 def t5_shots():
-    eye = (SPOT[0], SPOT[1] - 180.0, 220.0)
+    eye = (SPOT[0], SPOT[1] - 110.0, 120.0)
     base = camera(eye, SPOT, 50) + [lab("view", "Height"), lab("panel", "Atlas"), lab("panelChannel", "Profile"), lab("selected", 0)]
     one = lambda **kw: shot_at(list(SPOT), seed=2024, team=0, **kw)
     return [
@@ -286,7 +290,7 @@ def t5_shots():
 
 
 def t6_shots():
-    eye = (SPOT[0] - 90.0, SPOT[1] - 90.0, 90.0)
+    eye = (SPOT[0] - 50.0, SPOT[1] - 50.0, 50.0)
     stack = [shot_at(list(SPOT), seed=2024, team=0), shot_at(list(SPOT), seed=2025, team=0)]
     painted = stack + [
         shot_at(add(SPOT, (70.0, 40.0, 0.0)), seed=99, team=1),
@@ -353,13 +357,13 @@ def t7_shots():
         {
             "name": "t7_gate",
             "seconds": 5.0,
-            "setup": camera((SPOT[0] + 100.0, SPOT[1] - 700.0, 350.0), (SPOT[0] + 100.0, SPOT[1], 0.0), 50)
+            "setup": camera((SPOT[0] + 40.0, SPOT[1] - 420.0, 300.0), (SPOT[0] + 40.0, SPOT[1], 0.0), 55)
             + [lab("slowMotion", 2), lab("splashDebug", True), lab("labels", False)],
             "events": {0: [
-                fire(add(SPOT, (-400.0 * 0.5, -120.0, 300.0 * 0.5)), add(SPOT, (0.0, -120.0, 0.0)), speed=500.0, team=0, seed=1, splash=True, lead=0.3),
-                fire(add(SPOT, (-400.0 * 0.5, 120.0, 1200.0 * 0.5)), add(SPOT, (0.0, 120.0, 0.0)), speed=math.hypot(400.0, 1200.0), team=1, seed=2, splash=True, lead=0.3),
+                fire(add(SPOT, (-150.0 - 200.0, 0.0, 150.0)), add(SPOT, (-150.0, 0.0, 0.0)), speed=500.0, team=0, seed=1, splash=True, lead=0.3),
+                fire(add(SPOT, (150.0 - 200.0, 0.0, 600.0)), add(SPOT, (150.0, 0.0, 0.0)), speed=math.hypot(400.0, 1200.0), team=1, seed=2, splash=True, lead=0.3),
             ]},
-            "captions": [(0, "법선 속도 300 cm/s < 400: splash 없음  |  1200 cm/s: splash")],
+            "captions": [(0, "왼쪽: 법선 속도 300 cm/s < 400, splash 없음   오른쪽: 1200 cm/s, splash")],
         },
     ]
 

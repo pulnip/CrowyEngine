@@ -225,6 +225,10 @@ class Recorder:
         crop = shot.get("crop")
         if crop:
             filters.append("crop={2}:{3}:{0}:{1}".format(*crop))
+        zoom = shot.get("zoom")
+        if zoom:
+            # a few pixels blown up whole, for a detail one pixel wide
+            filters.append("crop={2}:{3}:{0}:{1},scale=1920:1080:flags=neighbor".format(*zoom))
         filters += self.captions(shot, work)
         out = clips / f"{shot['name']}.mp4"
         command = [
@@ -242,6 +246,13 @@ class Recorder:
 
         poster = clips / f"{shot['name']}.png"
         shutil.copyfile(work / "poster.png", poster)
+        if zoom:
+            run([
+                "ffmpeg", "-y", "-v", "error", "-i", str(poster), "-vf",
+                "crop={2}:{3}:{0}:{1},scale=1920:1080:flags=neighbor".format(*zoom),
+                str(poster.with_suffix(".tmp.png")),
+            ])
+            poster.with_suffix(".tmp.png").replace(poster)
         if crop:
             run([
                 "ffmpeg", "-y", "-v", "error", "-i", str(poster), "-vf",
@@ -260,8 +271,10 @@ class Recorder:
         total = shot["seconds"]
         for index, (start_frame, text) in enumerate(captions):
             begin = start_frame / SIM_FPS
-            end = captions[index + 1][0] / SIM_FPS if index + 1 < len(captions) else total
-            (work / f"caption{index}.txt").write_text(text, encoding="utf-8")
+            # ends a frame early, so two captions never share one
+            end = (captions[index + 1][0] - 1) / SIM_FPS if index + 1 < len(captions) else total
+            # Malgun Gothic has no U+2212
+            (work / f"caption{index}.txt").write_text(text.replace("−", "-"), encoding="utf-8")
             filters.append(
                 f"drawtext=fontfile=caption.ttf:textfile=caption{index}.txt"
                 f":x=36:y=h-th-36:fontsize={shot.get('caption_size', 40)}"
@@ -301,12 +314,44 @@ class Recorder:
         print(f"{name}: {len(shot['frames'])} stills")
 
 
+def compose_grid(out):
+    """the 16 grid tiles into one 4x4 clip: rows by speed, columns by angle"""
+    clips = Path(out).resolve() / "clips"
+    work = Path(out).resolve() / "work" / "grid_4x4"
+    work.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(FONT, work / "caption.ttf")
+    inputs, chains, cells = [], [], []
+    for si, speed in enumerate(paint_shots.GRID_SPEED):
+        for ti, theta in enumerate(paint_shots.GRID_THETA):
+            k = si * 4 + ti
+            inputs += ["-i", str(clips / f"grid_{si}{ti}.mp4")]
+            (work / f"label{k}.txt").write_text(f"θ {theta:.0f}°  ·  {speed:.0f} cm/s", encoding="utf-8")
+            chains.append(
+                f"[{k}:v]scale=960:540,drawtext=fontfile=caption.ttf:textfile=label{k}.txt"
+                ":x=20:y=20:fontsize=34:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=10"
+                f"[v{k}]"
+            )
+            cells.append(f"{ti * 960}_{si * 540}")
+    graph = ";".join(chains) + ";" + "".join(f"[v{k}]" for k in range(16)) +         f"xstack=inputs=16:layout={'|'.join(cells)}[grid];[grid]split[big][small];"         "[small]scale=1920:1080[deck]"
+    run(["ffmpeg", "-y", "-v", "error", *inputs, "-filter_complex", graph,
+         "-map", "[big]", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
+         "-movflags", "+faststart", str(clips / "grid_4x4_2160p.mp4"),
+         "-map", "[deck]", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
+         "-movflags", "+faststart", str(clips / "grid_4x4.mp4")], cwd=work)
+    run(["ffmpeg", "-y", "-v", "error", "-sseof", "-0.1", "-i", str(clips / "grid_4x4.mp4"),
+         "-frames:v", "1", "-update", "1", str(clips / "grid_4x4.png")])
+    print(clips / "grid_4x4.mp4")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("out", help="output directory, e.g. captures/paintlab/run1")
     parser.add_argument("--only", nargs="*", default=[], help="shot name prefixes")
     parser.add_argument("--port", type=int, default=27540)
     parser.add_argument("--list", action="store_true", help="print the shots and exit")
+    parser.add_argument("--compose-grid", action="store_true", help="the 4x4 clip from the grid tiles")
+    parser.add_argument("--reencode", action="store_true",
+                        help="only rebuild the mp4s from the kept segments (captions, crops)")
     args = parser.parse_args()
 
     shots = paint_shots.all_shots()
@@ -318,7 +363,19 @@ def main():
         s for s in shots
         if not args.only or any(s["name"].startswith(p) for p in args.only)
     ]
+    if args.compose_grid:
+        compose_grid(args.out)
+        return 0
     recorder = Recorder(args.out, args.port)
+    if args.reencode:
+        for shot in chosen:
+            work = recorder.out / "work" / shot["name"]
+            if "frames" in shot or not (work / "segments.txt").exists():
+                continue
+            segments = [work / line.split("'")[1] for line in
+                        (work / "segments.txt").read_text(encoding="utf-8").splitlines()]
+            print(recorder.finish(shot, work, segments, shot.get("fps", 30)))
+        return 0
     for shot in chosen:
         if "frames" in shot:
             recorder.record_stills(shot)
