@@ -27,6 +27,15 @@ namespace Crowy
         std::vector<Triangle> triangles;
 
     public:
+        // the shown surfaces whose box the sphere reaches
+        static void OverlapSphere(
+            DVec3 center,
+            f64 radius,
+            std::span<const PaintSurface> surfaces,
+            std::span<const u8> active,
+            std::vector<usize>& out
+        );
+
         void Rebuild(
             std::span<const PaintSurface> surfaces,
             std::span<const u8> active
@@ -40,14 +49,5 @@ namespace Crowy
             f64 maxDistance,
             i64 onlySurface = -1
         ) const;
-
-        // the shown surfaces whose box the sphere reaches
-        static void OverlapSphere(
-            DVec3 center,
-            f64 radius,
-            std::span<const PaintSurface> surfaces,
-            std::span<const u8> active,
-            std::vector<usize>& out
-        );
     };
 }
