@@ -244,6 +244,8 @@ def hash_combine(a, b):
     return (a ^ ((b + 0x9E3779B9 + ((a << 6) & 0xFFFFFFFF) + (a >> 2)) & 0xFFFFFFFF)) & 0xFFFFFFFF
 
 
+MAX_TRAVEL = 400.0
+MAX_LIFETIME = 1.8
 GROUPS = {"Forward": (50, 35, 70, 0.10, 0.20, 0.15, 0.0),
           "Side": (35, 25, 60, 0.06, 0.14, 0.05, 90.0),
           "Back": (40, 15, 45, 0.04, 0.10, 0.0, 180.0)}
@@ -814,28 +816,35 @@ def a16_splash(path):
         s.rect(80, 680 + i * 44, 26, 16, fill=colors[g], stroke="none")
         s.text(116, 696 + i * 44, f"{g} {counts[g]}", size=24)
     s.text(cx, 870, "위에서 본 발사 방향 (굵기 = 크기)", size=22, anchor="middle")
-    # side view: the four largest, drag-free (score) against drag 0.4 (picture)
-    p = Plot(s, 940, 150, 580, 420, (0, 520), (0, 170))
-    p.axes("앞으로 (cm)", "높이 (cm)", xticks=(0, 200, 400), yticks=(0, 50, 100, 150))
+    # side view along the travel: the four largest from their launch offset,
+    # drag-free as the score lands them, against the picture's drag 0.4
+    p = Plot(s, 940, 150, 580, 420, (-120, 420), (0, 170))
+    p.axes("앞으로 (cm)", "높이 (cm)", xticks=(-100, 0, 200, 400), yticks=(0, 50, 100, 150))
     g = 980.0
     for d in drops[:4]:
-        vx = math.hypot(d["v"][0], d["v"][1]) * (1 if d["v"][0] >= 0 else -1)
-        vz = d["v"][2]
-        if vx < 0:
+        vx, vy, vz = d["v"]
+        flat = math.hypot(vx, vy)
+        x0 = 0.5 * 12.0 * vx / flat if flat > 1e-3 else 0.0
+        y0 = 0.5 * 12.0 * vy / flat if flat > 1e-3 else 0.0
+        z0 = d["r"] + 1.0
+        t = (vz + math.sqrt(vz * vz + 2 * g * z0)) / g
+        landing = (x0 + vx * t, y0 + vy * t)
+        if t > MAX_LIFETIME or math.hypot(*landing) > MAX_TRAVEL:
             continue
-        tland = 2 * vz / g
-        p.curve(lambda x, vx=vx, vz=vz: max(vz * (x / vx) - 0.5 * g * (x / vx) ** 2, 0), 0, vx * tland, stroke=GOLD, sw=3)
+        steps = 120
+        s.polyline([p.px(x0 + vx * t * i / steps, z0 + vz * t * i / steps - 0.5 * g * (t * i / steps) ** 2)
+                    for i in range(steps + 1)], stroke=GOLD, sw=3)
         k = 0.4
         pts = []
-        t = 0.0
-        while t < 2.0:
-            e = math.exp(-k * t)
-            x = vx * (1 - e) / k
-            z = (vz + g / k) * (1 - e) / k - g / k * t
-            if z < 0 and t > 0.05:
+        tau = 0.0
+        while tau < MAX_LIFETIME:
+            e = math.exp(-k * tau)
+            x = x0 + vx * (1 - e) / k
+            z = z0 + (vz + g / k) * (1 - e) / k - g / k * tau
+            if z < 0:
                 break
-            pts.append(p.px(x, max(z, 0)))
-            t += 1 / 240
+            pts.append(p.px(x, z))
+            tau += 1 / 240
         s.polyline(pts, stroke=MINT, sw=3, dash="8 6")
     s.text(1230, 660, "노랑: 점수 (포물선, drag 없음, 큰 4개)", size=22, anchor="middle")
     s.text(1230, 700, "민트 점선: 그림 (drag 0.4, 큰 8개가 자국)", size=22, anchor="middle")
