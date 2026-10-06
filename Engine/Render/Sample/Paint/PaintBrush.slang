@@ -72,9 +72,7 @@ float4 fs_brush(BrushOut input) : SV_Target {
 
     float Seed = brush.splat.x;
     float ImpactU = brush.axisVImpact.w;
-    float3 stamp = brush.shape.y >= PAINT_SHAPE_STAGE_FULL
-        ? StampCustom(uv, n, Seed, ImpactU, brush.shape.x)
-        : StampStaged(uv, stretch, n, Seed, ImpactU, brush.shape.y);
+    float3 stamp = StampStaged(uv, stretch, n, Seed, ImpactU, brush.shape.x, brush.shape.y);
     float Mask = stamp.x;
     float Kernel = stamp.y;
     float Dist = stamp.z;

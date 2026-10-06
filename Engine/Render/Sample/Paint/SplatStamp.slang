@@ -241,25 +241,32 @@ float stampStageDistance(float2 uv, float2 roundUV, float n, float Seed, float I
     return d;
 }
 
+// one stop of the slider; Shape fades each irregularity back to stage 1's
+// clean ellipse, as BrushShapeNoise does to StampCustom
+float stampStagedStop(float2 uv, float2 roundUV, float n, float Seed, float ImpactU, float Shape, int stage) {
+    if(stage >= 8)
+        return StampCustom(uv, n, Seed, ImpactU, Shape).z;
+    float d = stampStageDistance(uv, roundUV, n, Seed, ImpactU, stage);
+    if(stage < 2)
+        return d;
+    return lerp(stampStageDistance(uv, roundUV, n, Seed, ImpactU, 1), d, saturate(Shape));
+}
+
 // the shape slider: stage 0 a circle, 8 the real stamp; between two stops
 // the distance blends linearly. Below 8 the kernel carries no mottling.
-float3 StampStaged(float2 uv, float stretch, float n, float Seed, float ImpactU, float stage) {
+float3 StampStaged(float2 uv, float stretch, float n, float Seed, float ImpactU, float Shape, float stage) {
     if(abs(n) >= 1.0)
         return float3(0.0, 0.0, 1e3);
     if(stage >= PAINT_SHAPE_STAGE_FULL)
-        return StampCustom(uv, n, Seed, ImpactU, 1.0);
+        return StampCustom(uv, n, Seed, ImpactU, Shape);
 
     float s = clamp(stage, 0.0, PAINT_SHAPE_STAGE_FULL);
     int lo = (int)floor(s);
     float blend = s - (float)lo;
     float2 roundUV = float2(uv.x * stretch, uv.y);
-    float d = stampStageDistance(uv, roundUV, n, Seed, ImpactU, lo);
-    if(blend > 0.0) {
-        float d1 = lo + 1 >= 8
-            ? StampCustom(uv, n, Seed, ImpactU, 1.0).z
-            : stampStageDistance(uv, roundUV, n, Seed, ImpactU, lo + 1);
-        d = lerp(d, d1, blend);
-    }
+    float d = stampStagedStop(uv, roundUV, n, Seed, ImpactU, Shape, lo);
+    if(blend > 0.0)
+        d = lerp(d, stampStagedStop(uv, roundUV, n, Seed, ImpactU, Shape, lo + 1), blend);
 
     float mask = (d < 0.0) ? 1.0 : 0.0;
     float k = smoothstep(0.0, 1.0, saturate(-d / 0.25));

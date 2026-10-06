@@ -45,9 +45,7 @@ float4 fs_shapelab(ShapeLabOut input) : SV_Target {
     float stretch = lab.stamp.z;
     float2 uv = float2(world.x / stretch, world.y);
 
-    float3 stamp = lab.stamp.w >= PAINT_SHAPE_STAGE_FULL
-        ? StampCustom(uv, 0.0, lab.stamp.x, lab.stamp.y, lab.look.x)
-        : StampStaged(uv, stretch, 0.0, lab.stamp.x, lab.stamp.y, lab.stamp.w);
+    float3 stamp = StampStaged(uv, stretch, 0.0, lab.stamp.x, lab.stamp.y, lab.look.x, lab.stamp.w);
     float d = stamp.z;
     float pixel = 2.0 * extent / lab.rect.z;
 
