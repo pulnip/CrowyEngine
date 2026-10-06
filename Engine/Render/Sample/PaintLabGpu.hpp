@@ -37,17 +37,19 @@ namespace Crowy
 
         RHITexture& Get() noexcept { return *texture; }
         explicit operator bool() const noexcept { return texture != nullptr; }
-        RHITextureRAII Take() noexcept { return std::move(texture); }
+        [[nodiscard]] RHITextureRAII Take() noexcept {
+            return std::move(texture);
+        }
 
         // a new command list: what it did not pair completes at its close
         void NewFrame() noexcept;
         // the acquire a pass using it as `use` begins with; none when it
         // already is in that use in this command list
-        std::optional<RHITextureBarrier> Acquire(
+        [[nodiscard]] std::optional<RHITextureBarrier> Acquire(
             RHIResourceUsage use,
             bool discard = false
         );
-        RHITextureBarrier Release(RHIResourceUsage next);
+        [[nodiscard]] RHITextureBarrier Release(RHIResourceUsage next);
         // the release no pass of the sample's acquired, for a hook to
         const std::optional<RHITextureBarrier>& Pending() const noexcept {
             return pending;
