@@ -193,3 +193,16 @@ TEST(PaintCellGrid, FacesTurnedAwayStayAsTheyWere) {
     );
     EXPECT_GT(grid.Coverage(PaintFaceDirection::Up).Fraction(0), 0.9f);
 }
+
+TEST(PaintTexel, IdAndGenerationRoundTrip) {
+    for(u8 id = 0; id < PaintIdCount; ++id) {
+        for(u8 gen = 0; gen <= PaintStarGenMax + 1; ++gen) {
+            const auto texel = encodePaintTexel(id, gen);
+            EXPECT_EQ(decodePaintId(texel), id);
+            // no id carries no generation; a generation past the top clamps
+            const u8 expected =
+                id == PaintIdNone ? 0 : std::min<u8>(gen, PaintStarGenMax);
+            EXPECT_EQ(decodePaintStarGen(texel), expected);
+        }
+    }
+}

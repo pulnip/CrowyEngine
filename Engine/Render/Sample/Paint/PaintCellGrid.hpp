@@ -99,11 +99,7 @@ namespace Crowy
         f32 CellSize() const noexcept { return cellSize; }
         const std::array<i32, 3>& Dims() const noexcept { return dims; }
         DVec3 Origin() const noexcept { return origin; }
-        // the paint id of one (voxel, direction) cell, PaintIdNone when bare
-        // or no surface
-        u8 IdAt(usize cell) const noexcept { return ids[cell]; }
         std::span<const u8> Ids() const noexcept { return ids; }
-        std::span<const f32> Areas() const noexcept { return areas; }
 
         void ForEachSurfaceCell(
             const std::function<void(
