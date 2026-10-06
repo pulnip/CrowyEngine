@@ -18,7 +18,6 @@
 struct PaintHeightSample {
     // filtered height x paint mask x edge fade, the displacement's 0..1
     float height;
-    float mask;
     // without the island fade, for the thin-paint see-through
     float thickness;
     // the slope per texel along the atlas axes, the fade carried through
@@ -145,7 +144,6 @@ PaintHeightSample PaintHeightField(
 
     PaintHeightSample o;
     o.height = height * mask * fade;
-    o.mask = mask;
     o.thickness = height * mask;
     o.du = fade * hu + height * fu;
     o.dv = fade * hv + height * fv;

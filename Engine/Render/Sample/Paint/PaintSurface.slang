@@ -142,11 +142,7 @@ SurfacePoint readSurface(SurfaceOut input, bool needsHeight) {
     float3 meshNormal = normalize(input.localNormal);
     p.vertexNormal = meshToWorldNormal(meshNormal / (scale3D.xyz * scale3D.xyz));
     p.paintNormal = p.vertexNormal;
-    p.height.height = 0.0;
-    p.height.mask = 0.0;
-    p.height.thickness = 0.0;
-    p.height.du = 0.0;
-    p.height.dv = 0.0;
+    p.height = (PaintHeightSample)0;
     if(needsHeight && p.kept) {
         bool edgeFade = lookModes2.y != 0u;
         p.height = PaintHeightField(paintTex, fadeTex, p.uv, atlas.y, atlas.w, lookStyle.w,
@@ -165,9 +161,8 @@ PaintSlabInputs buildSlab(SurfacePoint p) {
     // MF_PaintOverlay's thin-paint opacity; with the shipped minimum of 1
     // paint never turns see-through
     float thin = lerp(lookStyle2.w, 1.0, smoothstep(0.0, lookStyle2.z, p.height.thickness));
-    float consumed;
     PaintLook look = p.kept
-        ? BlendTeams(base, p.coverage, p.paintNormal, lookModes.z, thin, consumed)
+        ? BlendTeams(base, p.coverage, p.paintNormal, lookModes.z, thin)
         : base;
     look.normal = normalize(look.normal);
     PaintStyled style = ApplyStyle(look, lookStyle.x, lookStyle.y, lookStyle.z);

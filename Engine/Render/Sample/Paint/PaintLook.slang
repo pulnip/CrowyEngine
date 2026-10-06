@@ -144,7 +144,7 @@ float4 TeamCoverage(Texture2D Tex, float2 UV, float TexelSize, float DistRange, 
 
 // MF_PaintTeamBlend: dividing by what earlier teams left over keeps the
 // base from showing through where two teams meet
-PaintLook BlendTeams(PaintLook base, float4 cov, float3 paintNormal, uint blend, float thin, out float consumed) {
+PaintLook BlendTeams(PaintLook base, float4 cov, float3 paintNormal, uint blend, float thin) {
     PaintLook o = base;
     float S = 0.0;
     for(uint t = 0u; t < 4u; ++t) {
@@ -155,7 +155,6 @@ PaintLook BlendTeams(PaintLook base, float4 cov, float3 paintNormal, uint blend,
         o = lerpLook(o, TeamLook(t, paintNormal), alpha);
         S = saturate(S + c);
     }
-    consumed = S;
     return o;
 }
 
