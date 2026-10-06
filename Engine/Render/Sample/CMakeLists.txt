@@ -5,6 +5,7 @@ cmake_path(GET CROWY_SOURCE_PARENT PARENT_PATH CROWY_SOURCE_PARENT)
 set(CROWY_BACKLOT_DIR "${CROWY_SOURCE_PARENT}/Backlot" CACHE PATH "Backlot's checkout")
 
 add_subdirectory(Editor)
+add_subdirectory(Paint)
 if(CROWY_ENABLE_PHYSICS)
     add_subdirectory(PhysicsSync)
 endif()
@@ -90,6 +91,16 @@ if(CROWY_ENABLE_PHYSICS)
         SampleRenderOverlay
     )
 endif()
+
+# MintChoco's scored, visible paint rebuilt one step at a time
+crowy_declare_example(PaintLab
+SOURCES
+    PaintLab.cpp
+DEPENDS
+    Crowy::Reflection
+    SamplePaint
+    SampleRenderOverlay
+)
 
 # Backlot's film set, read from the sibling checkout CROWY_BACKLOT_DIR names;
 # exits 77 (skipped) without it
