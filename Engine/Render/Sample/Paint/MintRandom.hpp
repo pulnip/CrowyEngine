@@ -8,6 +8,10 @@
 // rotation and the splash's droplets come out as they do in MintChoco
 namespace Crowy
 {
+    inline constexpr u32 hashCombineFast(u32 a, u32 b) noexcept {
+        return a ^ (b + 0x9e3779b9u + (a << 6) + (a >> 2));
+    }
+
     // FRandomStream: the seed mutates before every draw
     class RandomStream {
     private:
@@ -31,8 +35,4 @@ namespace Crowy
 
         u32 Seed() const noexcept { return seed; }
     };
-
-    inline constexpr u32 hashCombineFast(u32 a, u32 b) noexcept {
-        return a ^ (b + 0x9e3779b9u + (a << 6) + (a >> 2));
-    }
 }

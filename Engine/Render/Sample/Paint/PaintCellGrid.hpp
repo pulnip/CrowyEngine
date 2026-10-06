@@ -11,6 +11,12 @@
 
 namespace Crowy
 {
+    // MintChoco's score cell edge, in world cm
+    inline constexpr f32 PaintScoreCellSize = 25.0f;
+    // the share of the stamp radius that claims a cell: the stamp's main
+    // blob spans half the radius, its satellites almost all of it
+    inline constexpr f32 PaintCellStampFraction = 0.5f;
+
     // how much surface each paint id owns, in world cm^2; the PaintIdNone
     // entry is the unpainted area
     struct PaintCoverage {
@@ -29,12 +35,6 @@ namespace Crowy
             totalArea += other.totalArea;
         }
     };
-
-    // MintChoco's score cell edge, in world cm
-    inline constexpr f32 PaintScoreCellSize = 25.0f;
-    // the share of the stamp radius that claims a cell: the stamp's main
-    // blob spans half the radius, its satellites almost all of it
-    inline constexpr f32 PaintCellStampFraction = 0.5f;
 
     // FPaintCellGrid: the score's owner per (voxel, direction) cell by true
     // area; it never reads the render target

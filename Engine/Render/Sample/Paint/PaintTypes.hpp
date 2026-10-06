@@ -20,6 +20,15 @@ namespace Crowy
     // one bit per PaintFaceDirection, in enum order
     inline constexpr u8 PaintAllDirectionsMask = 0x3F;
 
+    // the size of the paint-id space: 0-3 teams, 4-6 reserved, the last
+    // meaning "nothing painted here", so painting it erases
+    inline constexpr u8 PaintIdCount = 8;
+    inline constexpr u8 PaintIdNone = PaintIdCount - 1;
+    inline constexpr u8 PaintTeamIdCount = 4;
+    // a texel's R byte: the id in the low three bits, a star generation above
+    inline constexpr u8 PaintIdBits = 3;
+    inline constexpr u8 PaintStarGenMax = 31;
+
     inline constexpr u8 paintDirectionBit(PaintFaceDirection direction) {
         return static_cast<u8>(1u << static_cast<u8>(direction));
     }
@@ -63,15 +72,6 @@ namespace Crowy
 
         return n.z >= 0.0 ? Up : Down;
     }
-
-    // the size of the paint-id space: 0-3 teams, 4-6 reserved, the last
-    // meaning "nothing painted here", so painting it erases
-    inline constexpr u8 PaintIdCount = 8;
-    inline constexpr u8 PaintIdNone = PaintIdCount - 1;
-    inline constexpr u8 PaintTeamIdCount = 4;
-    // a texel's R byte: the id in the low three bits, a star generation above
-    inline constexpr u8 PaintIdBits = 3;
-    inline constexpr u8 PaintStarGenMax = 31;
 
     inline constexpr u8 encodePaintTexel(u8 paintId, u8 starGen) {
         // unpainted carries no generation, so the clear value stays bare

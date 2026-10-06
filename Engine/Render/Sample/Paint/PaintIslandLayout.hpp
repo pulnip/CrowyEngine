@@ -11,6 +11,23 @@
 // island sits in a surface's one square atlas
 namespace Crowy
 {
+    // MintChoco's UPaintSettings defaults
+    inline constexpr f32 PaintTexelSizeCm = 0.5f;
+    inline constexpr i32 PaintIslandPaddingTexels = 8;
+    inline constexpr i32 PaintMinRenderTargetSize = 256;
+    inline constexpr i32 PaintMaxRenderTargetSize = 2048;
+    inline constexpr f32 PaintEdgeFadeTexels = 8.0f;
+    inline constexpr f32 PaintEdgeFadeSeamFraction = 0.05f;
+    inline constexpr f32 PaintDistanceRange = 4.0f;
+    // what a wall's top edge would claim without it
+    inline constexpr f64 PaintAutoUpMinIslandArea = 2500.0;
+    // the gutter: the edge fade and the distance channel both fit in it
+    inline constexpr i32 PaintIslandPad = std::max(
+        PaintIslandPaddingTexels,
+        static_cast<i32>(PaintEdgeFadeTexels) +
+            static_cast<i32>(PaintDistanceRange) + 1
+    );
+
     // the one mapping the bake, the brush and the shader share, so a point
     // lands on one texel in all three; X sees (Y, Z), Y (X, Z), Z (X, Y)
     struct PaintIsland {
@@ -67,21 +84,4 @@ namespace Crowy
         bool IsEmpty() const noexcept { return islands.empty(); }
         Str ToString() const;
     };
-
-    // MintChoco's UPaintSettings defaults
-    inline constexpr f32 PaintTexelSizeCm = 0.5f;
-    inline constexpr i32 PaintIslandPaddingTexels = 8;
-    inline constexpr i32 PaintMinRenderTargetSize = 256;
-    inline constexpr i32 PaintMaxRenderTargetSize = 2048;
-    inline constexpr f32 PaintEdgeFadeTexels = 8.0f;
-    inline constexpr f32 PaintEdgeFadeSeamFraction = 0.05f;
-    inline constexpr f32 PaintDistanceRange = 4.0f;
-    // what a wall's top edge would claim without it
-    inline constexpr f64 PaintAutoUpMinIslandArea = 2500.0;
-    // the gutter: the edge fade and the distance channel both fit in it
-    inline constexpr i32 PaintIslandPad = std::max(
-        PaintIslandPaddingTexels,
-        static_cast<i32>(PaintEdgeFadeTexels) +
-            static_cast<i32>(PaintDistanceRange) + 1
-    );
 }
