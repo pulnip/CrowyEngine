@@ -81,6 +81,14 @@ namespace Crowy
         Vec4 cellOrigin{};
         // xyz the voxel counts
         u32 cellDims[4]{};
+        // x lobes, y edge mode, z team blend, w height filter
+        u32 lookModes[4]{};
+        // x height from ids, y edge fade on, z collapsed
+        u32 lookModes2[4]{};
+        // MPC_PaintStyle: coat scale, fuzz scale, roughness bias, flow
+        Vec4 lookStyle{};
+        // normal strength, coat roughness, thin height, thin min opacity
+        Vec4 lookStyle2{};
     };
     static_assert(sizeof(PaintSurfaceConstants) % 16 == 0);
 
@@ -128,6 +136,10 @@ namespace Crowy
         u32 compareView = PAINT_VIEW_LIT;
         // the cell grids go up only for the views that show them
         bool showsCells = false;
+        u32 lookModes[4]{};
+        u32 lookModes2[4]{};
+        Vec4 lookStyle{};
+        Vec4 lookStyle2{};
         // the split's pixel column; past the right edge shows `view` alone
         f32 splitPixels = 1e9f;
     };

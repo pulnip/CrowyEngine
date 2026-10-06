@@ -57,6 +57,7 @@ namespace Crowy
         RAII<PaintGpu> gpu;
         PaintLabSettings settings;
         PaintShotSettings shot;
+        PaintLookSettings look;
         PaintStageChoice shownStage = PaintStageChoice::Block;
         u64 recordedFrames = 0;
 
@@ -71,6 +72,7 @@ namespace Crowy
                 port->Unexpose("camera");
                 port->Unexpose("lab");
                 port->Unexpose("splat");
+                port->Unexpose("look");
                 for(const auto& surface: world->Surfaces())
                     port->Unexpose(
                         std::format("stage.{}", surface.Object().name)
@@ -501,6 +503,25 @@ namespace Crowy
                     .view = static_cast<u32>(settings.view),
                     .compareView = static_cast<u32>(settings.compareView),
                     .showsCells = showsCells(),
+                    .lookModes =
+                        {lobeMask(),
+                         static_cast<u32>(look.edgeMode),
+                         static_cast<u32>(look.teamBlend),
+                         static_cast<u32>(look.heightFilter)},
+                    .lookModes2 =
+                        {look.heightSource == PaintHeightSource::PaintedArea
+                             ? 1u
+                             : 0u,
+                         look.edgeFade ? 1u : 0u,
+                         look.blendableGBuffer ? 1u : 0u,
+                         0u},
+                    .lookStyle =
+                        {look.coatScale,
+                         look.fuzzScale,
+                         look.roughnessBias,
+                         look.flow},
+                    .lookStyle2 =
+                        {look.normalStrength, look.coatRoughness, 0.1f, 1.0f},
                     .splitPixels = split >= 1.0f ? 1e9f : split * 1920.0f
                 }
             );
@@ -545,6 +566,25 @@ namespace Crowy
                 panelRect(),
                 profileLine(index).value_or(Vec4{})
             );
+        }
+
+        u32 lobeMask() const noexcept {
+            u32 mask = 0;
+            const std::array<bool, 7> on{
+                look.diffuse,
+                look.specular,
+                look.haze,
+                look.fuzz,
+                look.sss,
+                look.coat,
+                look.sky
+            };
+            for(u32 i = 0; i < on.size(); ++i) {
+                if(on[i])
+                    mask |= 1u << i;
+            }
+
+            return mask;
         }
 
         bool showsCells() const noexcept {
@@ -1026,6 +1066,9 @@ namespace Crowy
             port->Expose("splat", &shot, *GetDesc<PaintShotSettings>(), [this] {
                 uiContext.panelDirty = true;
             });
+            port->Expose("look", &look, *GetDesc<PaintLookSettings>(), [this] {
+                uiContext.panelDirty = true;
+            });
             registerVerbs(*port);
             for(usize i = 0; i < world->Surfaces().size(); ++i) {
                 port->Expose(
@@ -1050,6 +1093,12 @@ namespace Crowy
                     "splat",
                     &shot,
                     *GetDesc<PaintShotSettings>(),
+                    [] {}
+                ),
+                buildPropertyTree(
+                    "look",
+                    &look,
+                    *GetDesc<PaintLookSettings>(),
                     [] {}
                 ),
                 buildPropertyTree(

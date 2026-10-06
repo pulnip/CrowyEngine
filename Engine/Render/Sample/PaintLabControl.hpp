@@ -136,6 +136,82 @@ namespace Crowy
         bool splash = false;
     };
 
+    // how the edge between paint and bare is read
+    enum class PaintEdgeMode : u32 {
+        Nearest,
+        Bilinear,
+        SignedDistance,
+    };
+
+    CROWY_ENUM_BEGIN(PaintEdgeMode)
+    CROWY_ENUM_VALUE(Nearest)
+    CROWY_ENUM_VALUE(Bilinear)
+    CROWY_ENUM_VALUE(SignedDistance)
+    CROWY_ENUM_END()
+
+    // how teams lay over each other: by their own coverage, or by what the
+    // earlier teams left over
+    enum class PaintTeamBlend : u32 {
+        Naive,
+        ConsumedCoverage,
+    };
+
+    CROWY_ENUM_BEGIN(PaintTeamBlend)
+    CROWY_ENUM_VALUE(Naive)
+    CROWY_ENUM_VALUE(ConsumedCoverage)
+    CROWY_ENUM_END()
+
+    // how G is read back, and its slope with it
+    enum class PaintHeightFilter : u32 {
+        Nearest,
+        Bilinear,
+        BSpline,
+    };
+
+    CROWY_ENUM_BEGIN(PaintHeightFilter)
+    CROWY_ENUM_VALUE(Nearest)
+    CROWY_ENUM_VALUE(Bilinear)
+    CROWY_ENUM_VALUE(BSpline)
+    CROWY_ENUM_END()
+
+    // what the relief is built from: the accumulated G, or the painted area
+    // alone, as before G existed
+    enum class PaintHeightSource : u32 {
+        Accumulated,
+        PaintedArea,
+    };
+
+    CROWY_ENUM_BEGIN(PaintHeightSource)
+    CROWY_ENUM_VALUE(Accumulated)
+    CROWY_ENUM_VALUE(PaintedArea)
+    CROWY_ENUM_END()
+
+    // the surface's look, exposed as `look`; the defaults are MintChoco's
+    struct PaintLookSettings {
+        PaintEdgeMode edgeMode = PaintEdgeMode::SignedDistance;
+        PaintTeamBlend teamBlend = PaintTeamBlend::ConsumedCoverage;
+        PaintHeightFilter heightFilter = PaintHeightFilter::BSpline;
+        PaintHeightSource heightSource = PaintHeightSource::Accumulated;
+        bool edgeFade = true;
+        // the slab's lobes
+        bool diffuse = true;
+        bool specular = true;
+        bool haze = true;
+        bool fuzz = true;
+        bool sss = true;
+        bool coat = true;
+        bool sky = true;
+        // Unreal's Blendable GBuffer as its source says it folds the slab
+        bool blendableGBuffer = false;
+        // MPC_PaintStyle
+        f32 flow = 1.0f;
+        f32 normalStrength = 1.0f;
+        f32 coatScale = 0.4f;
+        f32 fuzzScale = 1.5f;
+        f32 roughnessBias = 0.12f;
+        f32 coatRoughness = 0.12f;
+    };
+
     // exposed as `lab`
     struct PaintLabSettings {
         PaintView view = PaintView::Lit;

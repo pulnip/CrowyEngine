@@ -613,8 +613,12 @@ namespace Crowy
                 .view = settings.view,
                 .compareView = settings.compareView,
                 .selected = static_cast<u32>(i),
-                .screen = {settings.splitPixels, 0.0f, 0.0f, 0.0f}
+                .screen = {settings.splitPixels, 0.0f, 0.0f, 0.0f},
+                .lookStyle = settings.lookStyle,
+                .lookStyle2 = settings.lookStyle2
             };
+            std::ranges::copy(settings.lookModes, constants.lookModes);
+            std::ranges::copy(settings.lookModes2, constants.lookModes2);
             // rotation rows: the columns above are the rotated axes
             const auto c0 = constants.rotation[0];
             const auto c1 = constants.rotation[1];
