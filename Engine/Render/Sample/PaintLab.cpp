@@ -72,6 +72,13 @@ namespace Crowy
             Vec3{0.158f, 0.04661f, 0.01738f}
         };
 
+        struct ShapeLabView {
+            f32 stretch = 1.0f;
+            f32 impactU = 0.0f;
+            // half the panel's width in U / R
+            f32 extent = 1.2f;
+        };
+
         RAII<PaintWorld> world = std::make_unique<PaintWorld>();
         // one per surface, in the same order: its flags as the port sees them
         std::vector<PaintObjectFlags> flags;
@@ -536,6 +543,69 @@ namespace Crowy
             return mask;
         }
 
+        // a one-pixel frame just outside the panel and its caption below
+        static void drawPanelFrame(
+            ImDrawList& draw,
+            Vec4 rect,
+            CStr caption,
+            f32 fontScale = 1.25f
+        ) {
+            const auto white = IM_COL32(255, 255, 255, 235);
+            draw.AddRect(
+                ImVec2(rect.x - 1.0f, rect.y - 1.0f),
+                ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
+                white
+            );
+            draw.AddText(
+                ImGui::GetFont(),
+                ImGui::GetFontSize() * fontScale,
+                ImVec2(rect.x, rect.y + rect.w + 8.0f),
+                white,
+                caption
+            );
+        }
+
+        static PaintBrushProfile brushOf(PaintBrushChoice choice) {
+            using enum PaintBrushChoice;
+
+            switch(choice) {
+            case Default:
+                return PaintBrushProfile::Default();
+            case Paintball:
+                return PaintBrushProfile::Paintball();
+            case MopT:
+                return PaintBrushProfile::MopT();
+            case Smooth:
+                return PaintBrushProfile::Smooth();
+            }
+
+            return PaintBrushProfile::Default();
+        }
+
+        static std::optional<DVec3> readVec3(const DOM::Value* value) {
+            const auto* array = value ? value->asArray() : nullptr;
+            if(!array || array->size() != 3)
+                return std::nullopt;
+            DVec3 v;
+            for(usize a = 0; a < 3; ++a) {
+                const auto component = (*array)[a].get<f64>();
+                if(!component)
+                    return std::nullopt;
+                v[a] = *component;
+            }
+
+            return v;
+        }
+
+        static DOM::Value toValue(DVec3 v) {
+            DOM::Array array;
+            array.emplace_back(v.x);
+            array.emplace_back(v.y);
+            array.emplace_back(v.z);
+
+            return DOM::Value(std::move(array));
+        }
+
         PaintStageKind stageKind() const noexcept {
             return settings.stage == PaintStageChoice::Block
                        ? PaintStageKind::Block
@@ -964,13 +1034,6 @@ namespace Crowy
             return std::nullopt;
         }
 
-        struct ShapeLabView {
-            f32 stretch = 1.0f;
-            f32 impactU = 0.0f;
-            // half the panel's width in U / R
-            f32 extent = 1.2f;
-        };
-
         // BuildSplat's stretch and ImpactU for the shot settings' incidence
         ShapeLabView shapeLab() const {
             // a unit velocity: at zero speed BuildSplat falls back to head-on
@@ -1101,73 +1164,10 @@ namespace Crowy
             drawPanelFrame(*draw, rect, caption.c_str(), 1.0f);
         }
 
-        // a one-pixel frame just outside the panel and its caption below
-        static void drawPanelFrame(
-            ImDrawList& draw,
-            Vec4 rect,
-            CStr caption,
-            f32 fontScale = 1.25f
-        ) {
-            const auto white = IM_COL32(255, 255, 255, 235);
-            draw.AddRect(
-                ImVec2(rect.x - 1.0f, rect.y - 1.0f),
-                ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
-                white
-            );
-            draw.AddText(
-                ImGui::GetFont(),
-                ImGui::GetFontSize() * fontScale,
-                ImVec2(rect.x, rect.y + rect.w + 8.0f),
-                white,
-                caption
-            );
-        }
-
         void onFlagsChanged(usize index) {
             const auto& f = flags[index];
             world->SetDirections(index, maskOf(f), f.floorFollowsWorldUp);
             uiContext.panelDirty = true;
-        }
-
-        static PaintBrushProfile brushOf(PaintBrushChoice choice) {
-            using enum PaintBrushChoice;
-
-            switch(choice) {
-            case Default:
-                return PaintBrushProfile::Default();
-            case Paintball:
-                return PaintBrushProfile::Paintball();
-            case MopT:
-                return PaintBrushProfile::MopT();
-            case Smooth:
-                return PaintBrushProfile::Smooth();
-            }
-
-            return PaintBrushProfile::Default();
-        }
-
-        static std::optional<DVec3> readVec3(const DOM::Value* value) {
-            const auto* array = value ? value->asArray() : nullptr;
-            if(!array || array->size() != 3)
-                return std::nullopt;
-            DVec3 v;
-            for(usize a = 0; a < 3; ++a) {
-                const auto component = (*array)[a].get<f64>();
-                if(!component)
-                    return std::nullopt;
-                v[a] = *component;
-            }
-
-            return v;
-        }
-
-        static DOM::Value toValue(DVec3 v) {
-            DOM::Array array;
-            array.emplace_back(v.x);
-            array.emplace_back(v.y);
-            array.emplace_back(v.z);
-
-            return DOM::Value(std::move(array));
         }
 
         // the shot settings as a shot from `origin` along `direction`
