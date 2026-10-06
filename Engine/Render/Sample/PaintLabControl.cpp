@@ -31,6 +31,8 @@ namespace Crowy
         .SetUIRange(0.0f, 1.0f)
         .SetProperty("speed", &PaintShotSettings::speed)
         .SetUIRange(100.0f, 6000.0f)
+        .SetProperty("theta", &PaintShotSettings::theta)
+        .SetUIRange(0.0f, 80.0f)
         .SetProperty("shapeStage", &PaintShotSettings::shapeStage)
         .SetUIRange(0.0f, 8.0f)
         .SetProperty("splash", &PaintShotSettings::splash)

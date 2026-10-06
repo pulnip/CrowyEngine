@@ -78,11 +78,13 @@ namespace Crowy
     enum class PaintPanel : u32 {
         None,
         Atlas,
+        ShapeLab,
     };
 
     CROWY_ENUM_BEGIN(PaintPanel)
     CROWY_ENUM_VALUE(None)
     CROWY_ENUM_VALUE(Atlas)
+    CROWY_ENUM_VALUE(ShapeLab)
     CROWY_ENUM_END()
 
     enum class PaintStageChoice : u32 {
@@ -122,6 +124,8 @@ namespace Crowy
         f32 heightAdd = 0.35f;
         // cm/s
         f32 speed = 3000.0f;
+        // degrees from the normal the shape lab and scripted shots arrive at
+        f32 theta = 0.0f;
         // the shape slider: 0 a circle, 8 MintChoco's stamp
         f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
         bool splash = false;

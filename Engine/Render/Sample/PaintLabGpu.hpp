@@ -111,6 +111,15 @@ namespace Crowy
     };
     static_assert(sizeof(PaintPanelPush) <= RHI_PUSH_CONSTANT_BYTES);
 
+    // mirrored from PanelShapeLab.slang's ShapeLabPush
+    struct PaintShapeLabPush {
+        Vec4 rect{};
+        // x seed, y ImpactU, z stretch, w shape stage
+        Vec4 stamp{};
+        // x BrushShapeNoise, y half the extent in U / R, z the team
+        Vec4 look{};
+    };
+
     // what the surface pass needs besides the surfaces
     struct PaintDrawSettings {
         u32 view = PAINT_VIEW_LIT;
@@ -189,6 +198,14 @@ namespace Crowy
             usize index,
             u32 channel,
             Vec4 rect
+        );
+
+        // inside the panel hook: one stamp's signed distance, flat
+        u32 DrawShapeLab(
+            RHICommandList& cmdList,
+            const HookPassContext& context,
+            PipelineCache& pipelines,
+            const PaintShapeLabPush& push
         );
 
         bool IsReady(usize surface) const noexcept;

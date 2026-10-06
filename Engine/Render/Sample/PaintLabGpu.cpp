@@ -24,6 +24,8 @@ namespace Crowy
             "Engine/Render/Sample/Paint/PaintSurface.slang";
         constexpr CStr PanelShader =
             "Engine/Render/Sample/Paint/PanelAtlas.slang";
+        constexpr CStr ShapeLabShader =
+            "Engine/Render/Sample/Paint/PanelShapeLab.slang";
 
         // PaintIdNoneColor: no id, no height, "far" in B
         constexpr Color PaintClearColor{7.0f / 255.0f, 0.0f, 0.0f, 1.0f};
@@ -651,6 +653,54 @@ namespace Crowy
         }
 
         return draws;
+    }
+
+    u32 PaintGpu::DrawShapeLab(
+        RHICommandList& cmdList,
+        const HookPassContext& context,
+        PipelineCache& pipelines,
+        const PaintShapeLabPush& push
+    ) {
+        RHIGraphicsPipelineStateDesc desc{
+            .preRasterizer =
+                RHILegacyFrontendDesc{
+                    .vertexShader =
+                        RHIShaderDesc{
+                            .path = ShapeLabShader,
+                            .entryPoint = "vs_shapelab"
+                        }
+                },
+            .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
+            .fragmentShader =
+                RHIShaderDesc{
+                    .path = ShapeLabShader,
+                    .entryPoint = "fs_shapelab"
+                },
+            .renderTargetCount = context.formats.colors.size(),
+            .profile = "sm_6_8"
+        };
+        std::ranges::copy(
+            context.formats.colors,
+            desc.renderTargetFormats.begin()
+        );
+        const auto& rect = push.rect;
+
+        cmdList.SetPipelineState(pipelines.Resolve(desc));
+        cmdList.SetViewport(
+            RHIViewport{rect.x, rect.y, rect.z, rect.w, 0.0f, 1.0f}
+        );
+        cmdList.SetScissorRect(
+            RHIScissorRect{
+                static_cast<i32>(rect.x),
+                static_cast<i32>(rect.y),
+                static_cast<i32>(rect.x + rect.z),
+                static_cast<i32>(rect.y + rect.w)
+            }
+        );
+        cmdList.SetPushGraphicsConstants(push);
+        cmdList.Draw(3);
+
+        return 1;
     }
 
     u32 PaintGpu::DrawPanel(

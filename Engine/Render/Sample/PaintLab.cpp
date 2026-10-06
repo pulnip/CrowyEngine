@@ -512,6 +512,27 @@ namespace Crowy
         ) {
             if(settings.panel == PaintPanel::None || recordedFrames < 2)
                 return 0;
+            if(settings.panel == PaintPanel::ShapeLab) {
+                const auto lab = shapeLab();
+                return gpu->DrawShapeLab(
+                    cmdList,
+                    context,
+                    Renderer().Pipelines(),
+                    PaintShapeLabPush{
+                        .rect = panelRect(),
+                        .stamp =
+                            {static_cast<f32>(shot.seed & 0xFFFF),
+                             lab.impactU,
+                             lab.stretch,
+                             shot.shapeStage},
+                        .look = {
+                            brushOf(shot.brush).shapeNoise,
+                            lab.extent,
+                            static_cast<f32>(std::clamp(shot.team, 0, 7))
+                        }
+                    }
+                );
+            }
             const auto index = selectedSurface();
 
             return gpu->DrawPanel(
@@ -561,8 +582,99 @@ namespace Crowy
             );
         }
 
+        struct ShapeLabView {
+            f32 stretch = 1.0f;
+            f32 impactU = 0.0f;
+            // half the panel's width in U / R
+            f32 extent = 1.2f;
+        };
+
+        // BuildSplat's stretch and ImpactU for the shot settings' incidence
+        ShapeLabView shapeLab() const {
+            const auto brush = brushOf(shot.brush);
+            const auto theta = std::clamp(shot.theta, 0.0f, 89.0f) *
+                               std::numbers::pi_v<f32> / 180.0f;
+            const auto stretch = std::clamp(
+                1.0f / std::max(std::cos(theta), 1e-4f),
+                1.0f,
+                brush.maxStretch
+            );
+            const auto shift = (stretch - 1.0f) * brush.CenterShiftScale();
+
+            return ShapeLabView{
+                .stretch = stretch,
+                .impactU = -shift / stretch,
+                .extent = 1.15f * stretch
+            };
+        }
+
+        void drawShapeLabLabels() {
+            constexpr std::array<CStr, 9> Stages{
+                "0  circle: |p| - 0.5",
+                "1  ellipse: stretch, cut by the ellipsoid",
+                "2  wobble: 2nd, 3rd, 5th harmonics",
+                "3  even petals, hard union: the sunflower",
+                "4  seeded satellites",
+                "5  spike field and tear",
+                "6  smooth-min union",
+                "7  edge crinkle",
+                "8  MintChoco's stamp"
+            };
+            const auto lab = shapeLab();
+            const auto rect = panelRect();
+            auto* draw = ImGui::GetForegroundDrawList();
+            const auto white = IM_COL32(255, 255, 255, 235);
+            const auto stage = std::clamp(shot.shapeStage, 0.0f, 8.0f);
+            const auto text = std::format(
+                "{}\nstage {:.2f}  seed {}  theta {:.0f} deg  S {:.2f}  "
+                "ImpactU {:.3f}",
+                Stages[static_cast<usize>(std::floor(stage))],
+                stage,
+                shot.seed & 0xFFFF,
+                shot.theta,
+                lab.stretch,
+                lab.impactU
+            );
+            draw->AddRect(
+                ImVec2(rect.x - 1.0f, rect.y - 1.0f),
+                ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
+                white
+            );
+            draw->AddText(
+                ImGui::GetFont(),
+                ImGui::GetFontSize() * 1.25f,
+                ImVec2(rect.x, rect.y + rect.w + 8.0f),
+                white,
+                text.c_str()
+            );
+            // the contact, behind the centre on a grazing hit, and the travel
+            const auto toPanel = [&](f32 u, f32 v) {
+                return ImVec2(
+                    rect.x + (u / lab.extent * 0.5f + 0.5f) * rect.z,
+                    rect.y + (0.5f - v / lab.extent * 0.5f) * rect.w
+                );
+            };
+            const auto impact = toPanel(lab.impactU * lab.stretch, 0.0f);
+            draw->AddCircleFilled(impact, 6.0f, IM_COL32(245, 184, 51, 255));
+            draw->AddLine(
+                toPanel(-0.95f * lab.extent, -0.9f * lab.extent),
+                toPanel(-0.55f * lab.extent, -0.9f * lab.extent),
+                white,
+                2.0f
+            );
+            draw->AddText(
+                toPanel(-0.95f * lab.extent, -0.82f * lab.extent),
+                white,
+                "AxisU"
+            );
+        }
+
         // the panel's island rectangles and names, and what the layout is
         void drawPanelLabels() {
+            if(settings.panel == PaintPanel::ShapeLab && settings.labels) {
+                drawShapeLabLabels();
+                return;
+            }
             if(settings.panel == PaintPanel::None || !settings.labels)
                 return;
             const auto& surface = world->Surfaces()[selectedSurface()];
