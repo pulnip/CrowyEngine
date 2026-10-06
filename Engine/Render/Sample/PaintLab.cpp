@@ -59,6 +59,10 @@ namespace Crowy
             DirectionNames{"Front", "Back", "Right", "Left", "Up", "Down"};
         // a splash on every grid tile at once
         static constexpr usize MaxDropletSpheres = 16 * PaintMaxDroplets;
+        // MF_PaintOverlay's shipped thin paint; a minimum of 1 never shows
+        // through
+        static constexpr f32 ThinHeight = 0.1f;
+        static constexpr f32 ThinMinOpacity = 1.0f;
         // flight substeps in one clock tick
         static constexpr i32 FlightSubstepsPerTick = 4;
         static_assert(
@@ -693,7 +697,10 @@ namespace Crowy
                          look.roughnessBias,
                          look.flow},
                     .lookStyle2 =
-                        {look.normalStrength, look.coatRoughness, 0.1f, 1.0f},
+                        {look.normalStrength,
+                         look.coatRoughness,
+                         ThinHeight,
+                         ThinMinOpacity},
                     .splitPixels = split >= 1.0f
                                        ? 1e9f
                                        : split * static_cast<f32>(ScreenWidth)
