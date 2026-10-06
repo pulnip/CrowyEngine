@@ -23,12 +23,12 @@ cbuffer surface : register(b2) {
     float4 boundsSize;
     // PaintIsland_*: uv offset in xy, uv scale in zw, zero when off
     float4 islands[6];
-    // x size, y 1 / size, z cm per texel, w distance range
+    // x size, y 1 / size, z unused, w distance range
     float4 atlas;
     // x paint, y position, z edge fade: rows of the frame's texture table;
     // w the pool row of the mesh's first vertex
     uint4 maps;
-    // x the view left of the split, y right of it
+    // x the view left of the split, y right of it, z and w unused
     uint4 modes;
     // x the split's pixel column
     float4 screen;

@@ -646,7 +646,7 @@ namespace Crowy
                 .atlas =
                     {static_cast<f32>(layout.atlasSize),
                      1.0f / static_cast<f32>(std::max(layout.atlasSize, 1)),
-                     layout.texelCm,
+                     0.0f,
                      PaintDistanceRange},
                 .paintMap = firstRow[i],
                 .positionMap = firstRow[i] + 1,
@@ -654,7 +654,6 @@ namespace Crowy
                 .vbIndex = static_cast<u32>(g.baseVertex),
                 .view = settings.view,
                 .compareView = settings.compareView,
-                .selected = static_cast<u32>(i),
                 .screen = {settings.splitPixels, 0.0f, 0.0f, 0.0f},
                 .lookStyle = settings.lookStyle,
                 .lookStyle2 = settings.lookStyle2

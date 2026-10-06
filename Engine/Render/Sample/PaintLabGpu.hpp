@@ -70,8 +70,8 @@ namespace Crowy
         u32 vbIndex = 0;
         u32 view = 0;
         u32 compareView = 0;
-        u32 flags = 0;
-        u32 selected = 0;
+        // modes.zw, unread
+        u32 modesPad[2]{};
         Vec4 screen{};
         // DescriptorHandle<StructuredBuffer<uint>>: this surface's cell ids,
         // one per (voxel, direction), when a score view is shown
