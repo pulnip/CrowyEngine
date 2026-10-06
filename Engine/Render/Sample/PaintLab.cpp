@@ -973,20 +973,24 @@ namespace Crowy
 
         // BuildSplat's stretch and ImpactU for the shot settings' incidence
         ShapeLabView shapeLab() const {
-            const auto brush = brushOf(shot.brush);
+            // a unit velocity: at zero speed BuildSplat falls back to head-on
             const auto theta = std::clamp(shot.theta, 0.0f, 89.0f) *
                                std::numbers::pi_v<f32> / 180.0f;
-            const auto stretch = std::clamp(
-                1.0f / std::max(std::cos(theta), 1e-4f),
-                1.0f,
-                brush.maxStretch
-            );
-            const auto shift = (stretch - 1.0f) * brush.CenterShiftScale();
+            const auto splat =
+                brushOf(shot.brush)
+                    .BuildSplat(
+                        PaintHit{},
+                        DVec3{std::sin(theta), 0.0, -std::cos(theta)},
+                        0,
+                        1.0f,
+                        0.0f,
+                        shot.seed
+                    );
 
             return ShapeLabView{
-                .stretch = stretch,
-                .impactU = -shift / stretch,
-                .extent = 1.15f * stretch
+                .stretch = splat.stretch,
+                .impactU = splat.impactU,
+                .extent = 1.15f * splat.stretch
             };
         }
 
