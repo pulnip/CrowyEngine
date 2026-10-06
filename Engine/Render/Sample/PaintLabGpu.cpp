@@ -624,6 +624,23 @@ namespace Crowy
                 constants.islands[static_cast<usize>(island.direction)] =
                     island.ToShaderParam(layout.atlasSize);
             }
+            if(settings.showsCells && surface.Cells().IsBuilt()) {
+                const auto& cells = surface.Cells();
+                cellRows.assign(cells.Ids().begin(), cells.Ids().end());
+                const auto slice = device.UploadTransient(
+                    std::span<const u32>(cellRows),
+                    static_cast<u32>(sizeof(u32))
+                );
+                const auto& dims = cells.Dims();
+                constants.cellIds = slice.buffer->GetReadableID(sizeof(u32));
+                constants.cellBase =
+                    slice.offset / static_cast<u32>(sizeof(u32));
+                constants.cellOrigin = toVec4(cells.Origin(), cells.CellSize());
+                constants.cellDims[0] = static_cast<u32>(dims[0]);
+                constants.cellDims[1] = static_cast<u32>(dims[1]);
+                constants.cellDims[2] = static_cast<u32>(dims[2]);
+                constants.cellDims[3] = 1;
+            }
 
             cmdList.SetGraphicsConstantBuffer(
                 device.UploadTransient(constants),

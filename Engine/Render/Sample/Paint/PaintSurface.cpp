@@ -18,6 +18,24 @@ namespace Crowy
         scale3D = absolute(object.transform.scale);
         enabledDirections = resolveEnabledDirections();
 
+        // the grid lives in the scaled-local frame: positions carry the
+        // scale, so a cell stays a world-sized cube on every axis
+        std::vector<Vec3> scaled;
+        scaled.reserve(mesh->positions.size());
+        const auto s = toVec3(scale3D);
+        for(const auto& p: mesh->positions)
+            scaled.push_back(p * s);
+        cells.Build(
+            ScaledBounds(),
+            PaintScoreCellSize,
+            1.0f,
+            scaled,
+            mesh->normals,
+            mesh->indices,
+            enabledDirections,
+            scale3D
+        );
+
         const auto texelCm = object.texelCmOverride > 0.0f
                                  ? object.texelCmOverride
                                  : PaintTexelSizeCm;
@@ -103,6 +121,24 @@ namespace Crowy
             if(rect.Area() > 0)
                 rects.push_back(rect);
         }
+    }
+
+    void PaintSurface::MarkScore(
+        const PaintSplat& splat,
+        const PaintLocalStamp& stamp
+    ) {
+        // a score-only splat stands for a mark a few cells wide at most; at
+        // half its radius it would fall between cell centres, so it claims
+        // all of it
+        const auto coreFraction =
+            splat.scoreOnly ? 1.0f : PaintCellStampFraction;
+        cells.Mark(
+            stamp,
+            splat.paintId,
+            splat.starGen,
+            splat.lockGens,
+            coreFraction
+        );
     }
 
     PaintAtlasBakeInput PaintSurface::BakeInput() const {

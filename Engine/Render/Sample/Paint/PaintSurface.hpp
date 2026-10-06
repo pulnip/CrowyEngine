@@ -4,6 +4,7 @@
 
 #include "MintFrame.hpp"
 #include "PaintAtlasBaker.hpp"
+#include "PaintCellGrid.hpp"
 #include "PaintIslandLayout.hpp"
 #include "PaintMeshes.hpp"
 #include "PaintStage.hpp"
@@ -27,6 +28,7 @@ namespace Crowy
         PaintIslandLayout layout;
         // bumped by every re-layout, so the GPU half knows to rebuild
         u64 layoutVersion = 0;
+        PaintCellGrid cells;
 
     public:
         PaintSurface(PaintStageObject object, const PaintMeshTriangles& mesh);
@@ -46,6 +48,11 @@ namespace Crowy
             std::vector<IntRect>& rects
         ) const;
         PaintAtlasBakeInput BakeInput() const;
+        // the score half of a splat, which needs only the grid: the same
+        // local stamp the brush draws, so the two differ only by the stamp's
+        // satellites and the cell size
+        void MarkScore(const PaintSplat& splat, const PaintLocalStamp& stamp);
+        void ClearScore() { cells.ClearPaint(); }
 
         const PaintStageObject& Object() const noexcept { return object; }
         const PaintMeshTriangles& Mesh() const noexcept { return *mesh; }
@@ -55,6 +62,7 @@ namespace Crowy
         u8 EnabledDirections() const noexcept { return enabledDirections; }
         const PaintIslandLayout& Layout() const noexcept { return layout; }
         u64 LayoutVersion() const noexcept { return layoutVersion; }
+        const PaintCellGrid& Cells() const noexcept { return cells; }
 
     private:
         u8 resolveEnabledDirections() const;

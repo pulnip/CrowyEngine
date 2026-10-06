@@ -30,6 +30,14 @@ cbuffer surface : register(b2) {
     uint4 modes;
     // x the split's pixel column
     float4 screen;
+    // the score's cell ids, one per (voxel, direction), in a score view
+    DescriptorHandle<StructuredBuffer<uint>> cellIds;
+    uint cellBase;
+    uint cellPad;
+    // xyz the grid's scaled-local origin, w its cell size
+    float4 cellOrigin;
+    // xyz voxel counts, w 1 when the ids are bound
+    uint4 cellDims;
 };
 
 struct SurfaceOut {
@@ -53,6 +61,32 @@ SurfaceOut vs_surface(uint vertexID : SV_VertexID) {
     output.localNormal = input.normal;
 
     return output;
+}
+
+// the paint id the CPU score gave the cell under this point: its voxel in
+// the scaled-local frame, its direction from the mesh normal
+uint scoreCellId(float3 localPos, float3 localNormal, out float3 cellCoord) {
+    float3 p = localPos * scale3D.xyz;
+    cellCoord = (p - cellOrigin.xyz) / cellOrigin.w;
+    if(cellDims.w == 0u)
+        return PAINT_ID_NONE;
+    int3 last = int3(cellDims.xyz) - 1;
+    int3 v = clamp(int3(floor(cellCoord)), int3(0, 0, 0), last);
+    uint direction = IslandDirection(localNormal);
+    uint index = ((uint(v.z) * cellDims.y + uint(v.y)) * cellDims.x + uint(v.x)) * 6u + direction;
+    StructuredBuffer<uint> ids = cellIds;
+
+    return ids[cellBase + index];
+}
+
+// a thin dark line on every cell border, in the surface's own plane
+float cellBorder(float3 cellCoord, uint direction) {
+    float2 c = direction < 2u ? cellCoord.yz : (direction < 4u ? cellCoord.xz : cellCoord.xy);
+    float2 f = abs(frac(c) - 0.5);
+    float2 w = fwidth(c);
+    float line = max(step(0.5 - w.x * 1.2, f.x), step(0.5 - w.y * 1.2, f.y));
+
+    return line;
 }
 
 Texture2D tableTexture(uint mapID) {
@@ -137,6 +171,32 @@ float4 fs_surface(SurfaceOut input) : SV_Target {
     case PAINT_VIEW_POSITION:
         display = saturate(tableTexture(maps.y).Load(texel).xyz);
         break;
+    case PAINT_VIEW_SCORE: {
+        float3 cellCoord;
+        uint owner = scoreCellId(input.localPos, input.localNormal, cellCoord);
+        display = owner < 4u ? TeamDisplayColor(owner) : float3(0.78, 0.77, 0.75);
+        display *= 1.0 - 0.35 * cellBorder(cellCoord, direction);
+        break;
+    }
+    case PAINT_VIEW_DIVERGENCE: {
+        // the picture and the score side by side: where they agree the team
+        // colour, where only the picture has paint amber, only the score violet
+        float3 cellCoord;
+        uint owner = scoreCellId(input.localPos, input.localNormal, cellCoord);
+        bool pictured = id < 4u;
+        bool scored = owner < 4u;
+        float stripe = frac((input.posProj.x - input.posProj.y) / 10.0) < 0.5 ? 1.0 : 0.8;
+        if(pictured && scored && owner == id)
+            display = TeamDisplayColor(id);
+        else if(pictured)
+            display = float3(0.96, 0.72, 0.20) * stripe;
+        else if(scored)
+            display = float3(0.56, 0.38, 0.92) * stripe;
+        else
+            display = float3(0.80, 0.79, 0.77);
+        display *= 1.0 - 0.25 * cellBorder(cellCoord, direction);
+        break;
+    }
     case PAINT_VIEW_EDGE_FADE:
         display = RampColor(tableTexture(maps.z).SampleLevel(linearClamp, uv, 0.0).r);
         break;

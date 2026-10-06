@@ -306,6 +306,7 @@ namespace Crowy
                 panel = buildPanel();
 
             drawPanelLabels();
+            drawScoreReadout();
 
             // the chrome stays out of every capture unless asked for
             if(debug.showPanel) {
@@ -499,6 +500,7 @@ namespace Crowy
                 PaintDrawSettings{
                     .view = static_cast<u32>(settings.view),
                     .compareView = static_cast<u32>(settings.compareView),
+                    .showsCells = showsCells(),
                     .splitPixels = split >= 1.0f ? 1e9f : split * 1920.0f
                 }
             );
@@ -520,6 +522,42 @@ namespace Crowy
                 index,
                 static_cast<u32>(settings.panelChannel),
                 panelRect()
+            );
+        }
+
+        bool showsCells() const noexcept {
+            const auto score = [](PaintView v) {
+                return v == PaintView::Score || v == PaintView::Divergence;
+            };
+            return score(settings.view) ||
+                   (settings.split < 1.0f && score(settings.compareView));
+        }
+
+        // what the CPU grid says each team owns: the only number a match is
+        // decided by
+        void drawScoreReadout() {
+            if(!settings.labels || !showsCells())
+                return;
+            const auto coverage = world->Coverage();
+            constexpr std::array<CStr, 2> Teams{"Mint", "Choco"};
+            auto text = std::format(
+                "score from the cell grid, {:.2f} m2 paintable",
+                coverage.totalArea / 10000.0f
+            );
+            for(u8 team = 0; team < 2; ++team) {
+                text += std::format(
+                    "\n{}  {:.2f}%",
+                    Teams[team],
+                    100.0f * coverage.Fraction(team)
+                );
+            }
+            auto* draw = ImGui::GetForegroundDrawList();
+            draw->AddText(
+                ImGui::GetFont(),
+                ImGui::GetFontSize() * 1.4f,
+                ImVec2(PanelMargin, 1080.0f - 130.0f),
+                IM_COL32(255, 255, 255, 235),
+                text.c_str()
             );
         }
 

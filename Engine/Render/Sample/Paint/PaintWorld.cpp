@@ -91,14 +91,19 @@ namespace Crowy
             reached
         );
         for(const auto index: reached) {
-            const auto& surface = surfaces[index];
+            auto& surface = surfaces[index];
+            const auto stamp = surface.ComputeLocalStamp(splat);
+            // marked first: the score exists even where there is no picture;
+            // a draw-only splat is a droplet's mark, its score already claimed
+            if(!splat.drawOnly)
+                surface.MarkScore(splat, stamp);
             if(splat.scoreOnly || surface.Layout().IsEmpty())
                 continue;
 
             PaintStampDraw draw{
                 .surface = index,
                 .splat = splat,
-                .stamp = surface.ComputeLocalStamp(splat),
+                .stamp = stamp,
                 .shapeStage = shapeStage
             };
             surface.BuildStampRects(draw.stamp, draw.rects);
@@ -121,9 +126,21 @@ namespace Crowy
     }
 
     void PaintWorld::Reset() {
+        for(auto& surface: surfaces)
+            surface.ClearScore();
         log.clear();
         draws.clear();
         transients.clear();
+    }
+
+    PaintCoverage PaintWorld::Coverage() const {
+        PaintCoverage coverage;
+        for(usize i = 0; i < surfaces.size(); ++i) {
+            if(active[i] != 0)
+                coverage.Add(surfaces[i].Cells().Coverage());
+        }
+
+        return coverage;
     }
 
     std::vector<PaintStampDraw> PaintWorld::TakeDraws() {

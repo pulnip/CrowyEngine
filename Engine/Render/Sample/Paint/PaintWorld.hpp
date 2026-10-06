@@ -91,6 +91,8 @@ namespace Crowy
         void Reset();
 
         std::vector<PaintStampDraw> TakeDraws();
+        // UPaintSubsystem::GetWorldCoverage: every shown surface's grid
+        PaintCoverage Coverage() const;
 
         const PaintStageMeshes& Meshes() const noexcept { return *meshes; }
         std::span<const PaintSurface> Surfaces() const noexcept {

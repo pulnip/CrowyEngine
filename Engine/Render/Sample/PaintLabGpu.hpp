@@ -72,6 +72,15 @@ namespace Crowy
         u32 flags = 0;
         u32 selected = 0;
         Vec4 screen{};
+        // DescriptorHandle<StructuredBuffer<uint>>: this surface's cell ids,
+        // one per (voxel, direction), when a score view is shown
+        u64 cellIds = 0;
+        u32 cellBase = 0;
+        u32 cellPad = 0;
+        // xyz the grid's scaled-local origin, w its cell size
+        Vec4 cellOrigin{};
+        // xyz the voxel counts
+        u32 cellDims[4]{};
     };
     static_assert(sizeof(PaintSurfaceConstants) % 16 == 0);
 
@@ -106,6 +115,8 @@ namespace Crowy
     struct PaintDrawSettings {
         u32 view = PAINT_VIEW_LIT;
         u32 compareView = PAINT_VIEW_LIT;
+        // the cell grids go up only for the views that show them
+        bool showsCells = false;
         // the split's pixel column; past the right edge shows `view` alone
         f32 splitPixels = 1e9f;
     };
@@ -135,6 +146,7 @@ namespace Crowy
         // this frame's texture table and the rows each surface's maps name
         std::vector<TextureData> textureRows;
         RHIBufferSlice textureSlice;
+        std::vector<u32> cellRows;
 
     public:
         explicit PaintGpu(RHIDevice& device);
