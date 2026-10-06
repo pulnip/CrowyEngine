@@ -11,10 +11,6 @@ uint DecodePaintId(float r) {
     return uint(round(r * 255.0)) & 7u;
 }
 
-uint DecodePaintStarGen(float r) {
-    return uint(round(r * 255.0)) >> 3u;
-}
-
 // the dominant axis of a mesh-space normal, ties X over Y over Z, as
 // MF_PaintOverlay picks it: 0 Front, 1 Back, 2 Right, 3 Left, 4 Up, 5 Down
 uint IslandDirection(float3 N) {

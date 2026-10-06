@@ -11,9 +11,6 @@
 #define PAINT_HEIGHT_BILINEAR 1u
 #define PAINT_HEIGHT_BSPLINE 2u
 
-// where the slope comes from
-#define PAINT_NORMAL_FINITE_DIFFERENCE 0u
-#define PAINT_NORMAL_ANALYTIC 1u
 
 struct PaintHeightSample {
     // filtered height x paint mask x edge fade, the displacement's 0..1

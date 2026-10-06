@@ -13,7 +13,6 @@
 #define PAINT_LOBE_SSS (1u << 4)
 #define PAINT_LOBE_COAT (1u << 5)
 #define PAINT_LOBE_SKY (1u << 6)
-#define PAINT_LOBE_ALL 0x7Fu
 
 // what the legacy GBuffer would export, as Unreal's buffer view colors it
 #define PAINT_EXPORT_DEFAULT_LIT 0u
