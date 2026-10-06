@@ -257,9 +257,26 @@ TEST(PaintWorld, LaunchedBallFiresAfterItsLead) {
     EXPECT_TRUE(world.Log().empty());
     ASSERT_EQ(world.Balls().size(), 1u);
     EXPECT_NEAR(world.Balls()[0].Position().z, 3000.0 / 240.0, 1e-6);
-    world.Step(2);
+    world.Step(1);
     EXPECT_EQ(world.Log().size(), 1u);
     EXPECT_TRUE(world.Balls().empty());
+}
+
+TEST(PaintWorld, AShorterLeadFiresFirst) {
+    PaintWorld world;
+    const auto shot = [](i32 seed) {
+        return PaintShot{
+            .origin = {0.0, 0.0, 1000.0},
+            .velocity = {0.0, 0.0, -3000.0},
+            .seed = seed
+        };
+    };
+    ASSERT_TRUE(world.Launch(shot(1), 0.5));
+    ASSERT_TRUE(world.Launch(shot(2), 0.1));
+    world.Step(24);
+    ASSERT_EQ(world.Log().size(), 1u);
+    EXPECT_EQ(world.Log()[0].seed, 2);
+    EXPECT_EQ(world.Balls().size(), 1u);
 }
 
 TEST(PaintWorld, KeptAndTransientShots) {

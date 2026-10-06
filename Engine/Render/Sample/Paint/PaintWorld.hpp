@@ -58,11 +58,12 @@ namespace Crowy
     struct PaintBall {
         PaintShot shot;
         DVec3 contact;
-        // seconds of flight left
-        f64 remaining = 0.0;
+        // flight substeps left, counted whole so a lead never drifts a step
+        i32 substepsLeft = 0;
 
         DVec3 Position() const noexcept {
-            return contact - shot.velocity * remaining;
+            return contact -
+                   shot.velocity * (substepsLeft * PaintFlightSubstep);
         }
     };
 

@@ -123,7 +123,9 @@ namespace Crowy
             PaintBall{
                 .shot = shot,
                 .contact = hit->impactPoint,
-                .remaining = std::max(lead, 0.0)
+                .substepsLeft = static_cast<i32>(
+                    std::llround(std::max(lead, 0.0) / PaintFlightSubstep)
+                )
             }
         );
 
@@ -134,11 +136,16 @@ namespace Crowy
         std::vector<PaintDropletLanding> landings;
         for(i32 step = 0; step < substeps; ++step) {
             for(auto& ball: balls)
-                ball.remaining -= PaintFlightSubstep;
-            // in launch order, so the log is the same however the frames fall
-            while(!balls.empty() && balls.front().remaining <= 0.0) {
-                const auto shot = balls.front().shot;
-                balls.erase(balls.begin());
+                --ball.substepsLeft;
+            // every ball due, in launch order, so the log is the same however
+            // the frames fall; Fire never touches the queue
+            for(usize i = 0; i < balls.size();) {
+                if(balls[i].substepsLeft > 0) {
+                    ++i;
+                    continue;
+                }
+                const auto shot = balls[i].shot;
+                balls.erase(balls.begin() + static_cast<std::ptrdiff_t>(i));
                 Fire(shot);
             }
             for(auto& flight: flights) {
