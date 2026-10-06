@@ -105,6 +105,11 @@ def animate_ramps(ramps):
 
 
 MOP = {"brush": "MopT", "volume": 2.4, "ballRadius": 12.0}
+# the deck's reference contact: v = (1500, 0, -2500), MopT
+CONTACT_V = (1500.0, 0.0, -2500.0)
+CONTACT_THETA = math.degrees(math.atan2(CONTACT_V[0], -CONTACT_V[2]))
+CONTACT_SPEED = math.hypot(CONTACT_V[0], CONTACT_V[2])
+MOP_CONTACT = dict(speed=CONTACT_SPEED, **MOP)
 FLOOR_EYE = (SPOT[0] - 170.0, SPOT[1] - 240.0, 230.0)
 
 
@@ -146,14 +151,14 @@ def t1_shots():
 
 def t2_shots():
     target = list(SPOT)
-    theta = math.degrees(math.atan2(1500.0, 2500.0))
+    theta = CONTACT_THETA
     return [
         {
             "name": "t2_score_wipe",
             "seconds": 5.0,
             "setup": camera(FLOOR_EYE, SPOT, 45)
             + [lab("view", "Lit"), lab("compareView", "Score"), lab("split", 1.0)],
-            "events": {10: [fire(incident(target, theta, 1200.0), target, speed=2915.5, team=0, seed=11035, lead=0.4, **MOP)]},
+            "events": {10: [fire(incident(target, theta, 1200.0), target, team=0, seed=11035, lead=0.4, **MOP_CONTACT)]},
             "animate": animate_ramps([ramp("split", 1.0, 0.0, 90, 210)]),
             "captions": [(0, "GPU: RenderTarget에 스탬프"), (90, "CPU: 25 cm 셀 그리드가 점수")],
             "stills": {"t2_lit_score": 150},
@@ -162,10 +167,10 @@ def t2_shots():
             "name": "t2_overlap",
             "seconds": 5.0,
             "setup": camera(FLOOR_EYE, SPOT, 45)
-            + [shot_at(target, theta, speed=2915.5, team=0, seed=11035, **MOP), lab("view", "Score")],
+            + [shot_at(target, theta, speed=CONTACT_SPEED, team=0, seed=11035, **MOP), lab("view", "Score")],
             "events": {
-                60: [shot_at(add(target, (80.0, 60.0, 0.0)), theta, speed=2915.5, team=1, seed=7, lead=0.3, **MOP)],
-                180: [shot_at(add(target, (-40.0, -70.0, 0.0)), theta, speed=2915.5, team=1, seed=8, lead=0.3, **MOP)],
+                60: [shot_at(add(target, (80.0, 60.0, 0.0)), theta, speed=CONTACT_SPEED, team=1, seed=7, lead=0.3, **MOP)],
+                180: [shot_at(add(target, (-40.0, -70.0, 0.0)), theta, speed=CONTACT_SPEED, team=1, seed=8, lead=0.3, **MOP)],
             },
             "captions": [(0, "민트 셀"), (60, "초코가 덮으면 셀 주인이 바뀜")],
         },
@@ -330,8 +335,8 @@ def t6_shots():
 
 def t7_shots():
     target = list(SPOT)
-    theta = math.degrees(math.atan2(1500.0, 2500.0))
-    contact = dict(speed=2915.5, team=0, seed=11035, splash=True, **MOP)
+    theta = CONTACT_THETA
+    contact = dict(speed=CONTACT_SPEED, team=0, seed=11035, splash=True, **MOP)
     return [
         {
             "name": "t7_splash",
@@ -372,9 +377,9 @@ def t7_shots():
 
 def e2e_shots():
     target = list(SPOT)
-    theta = math.degrees(math.atan2(1500.0, 2500.0))
+    theta = CONTACT_THETA
     eye = (SPOT[0] - 200.0, SPOT[1] - 330.0, 300.0)
-    first = dict(speed=2915.5, team=0, seed=11035, **MOP)
+    first = dict(speed=CONTACT_SPEED, team=0, seed=11035, **MOP)
 
     def steps(length, splash):
         frame = lambda k: k * length
@@ -384,7 +389,7 @@ def e2e_shots():
                        fire(incident(target, theta, 1500.0), target, lead=0.2, splash=splash, **first)],
             frame(1) + length // 2: [lab("view", "Score")],
             frame(2): [lab("view", "Lit"),
-                       shot_at(add(SPOT, (70.0, 50.0, 0.0)), theta, lead=0.15, speed=2915.5, team=1, seed=7, **MOP)],
+                       shot_at(add(SPOT, (70.0, 50.0, 0.0)), theta, lead=0.15, speed=CONTACT_SPEED, team=1, seed=7, **MOP)],
             frame(3): [lab("panel", "ShapeLab"), splat("seed", 11035), splat("theta", theta), splat("shapeStage", 8.0)],
             frame(4): [lab("panel", "Atlas"), lab("panelChannel", "Profile"), lab("view", "Height")],
             frame(5): [lab("panel", "None"), lab("view", "Normal")],
@@ -400,7 +405,7 @@ def e2e_shots():
         ]
         if splash:
             events[frame(6)] = [lab("splashDebug", True),
-                                shot_at(add(SPOT, (-80.0, -60.0, 0.0)), theta, lead=0.1, speed=2915.5, team=0, seed=12, splash=True, **MOP)]
+                                shot_at(add(SPOT, (-80.0, -60.0, 0.0)), theta, lead=0.1, speed=CONTACT_SPEED, team=0, seed=12, splash=True, **MOP)]
             captions.append((frame(6), "7 스플래시"))
         return events, captions
 
