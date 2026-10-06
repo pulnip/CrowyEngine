@@ -28,7 +28,6 @@ namespace Crowy
         cells.Build(
             ScaledBounds(),
             PaintScoreCellSize,
-            1.0f,
             scaled,
             mesh->normals,
             mesh->indices,

@@ -68,7 +68,6 @@ namespace Crowy
         void Build(
             const Box3d& bounds,
             f32 cellSize,
-            f32 areaScale,
             std::span<const Vec3> positions,
             std::span<const Vec3> normals,
             std::span<const u32> indices,
@@ -123,8 +122,7 @@ namespace Crowy
         void depositClipped(
             const ClipPolygon& polygon,
             i32 axis,
-            i32 direction,
-            f32 areaScale
+            i32 direction
         );
     };
 }

@@ -42,7 +42,7 @@ namespace
         }
 
         void Build(PaintCellGrid& grid, f32 cell) const {
-            grid.Build(bounds, cell, 1.0f, positions, normals, indices);
+            grid.Build(bounds, cell, positions, normals, indices);
         }
     };
 
@@ -114,7 +114,6 @@ TEST(PaintCellGrid, MaskAndScale) {
     grid.Build(
         bounds,
         25.0f,
-        1.0f,
         cube.positions,
         cube.normals,
         cube.indices,

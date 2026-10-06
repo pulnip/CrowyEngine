@@ -38,7 +38,6 @@ namespace Crowy
     void PaintCellGrid::Build(
         const Box3d& bounds,
         f32 cell,
-        f32 areaScale,
         std::span<const Vec3> positions,
         std::span<const Vec3> normals,
         std::span<const u32> indices,
@@ -107,7 +106,7 @@ namespace Crowy
 
             // exact rather than sampled: every voxel the triangle crosses gets
             // its piece's true area
-            depositClipped({a, b, c}, 0, static_cast<i32>(face), areaScale);
+            depositClipped({a, b, c}, 0, static_cast<i32>(face));
         }
 
         for(usize i = 0; i < cellCount; ++i) {
@@ -119,8 +118,7 @@ namespace Crowy
     void PaintCellGrid::depositClipped(
         const ClipPolygon& polygon,
         i32 axis,
-        i32 direction,
-        f32 areaScale
+        i32 direction
     ) {
         if(polygon.size() < 3)
             return;
@@ -140,7 +138,7 @@ namespace Crowy
             const auto doubleArea = Crowy::size(crossSum);
             if(doubleArea <= SmallNumber)
                 return;
-            const auto area = static_cast<f32>(0.5 * doubleArea) * areaScale;
+            const auto area = static_cast<f32>(0.5 * doubleArea);
             const auto centroid = centroidSum / doubleArea;
 
             const auto cell = static_cast<usize>(
@@ -192,7 +190,7 @@ namespace Crowy
                 voxel == last ? hi : low + cellSize,
                 false
             );
-            depositClipped(slab, axis + 1, direction, areaScale);
+            depositClipped(slab, axis + 1, direction);
         }
     }
 
