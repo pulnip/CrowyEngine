@@ -33,8 +33,6 @@ namespace Crowy
     public:
         PaintSurface(PaintStageObject object, const PaintMeshTriangles& mesh);
 
-        // PrepareSurface and the layout BeginPlay builds
-        void Prepare();
         // the component's direction flags, changed at run time
         void SetDirections(u8 flags, bool floorFollowsWorldUp);
 
@@ -65,6 +63,8 @@ namespace Crowy
         const PaintCellGrid& Cells() const noexcept { return cells; }
 
     private:
+        // PrepareSurface and the layout BeginPlay builds
+        void prepare();
         u8 resolveEnabledDirections() const;
     };
 }

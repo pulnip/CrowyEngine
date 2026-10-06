@@ -10,10 +10,10 @@ namespace Crowy
         const PaintMeshTriangles& mesh
     )
         : object(std::move(object)), mesh(&mesh) {
-        Prepare();
+        prepare();
     }
 
-    void PaintSurface::Prepare() {
+    void PaintSurface::prepare() {
         meshLocalBounds = boundsOf(*mesh);
         scale3D = absolute(object.transform.scale);
         enabledDirections = resolveEnabledDirections();
@@ -53,7 +53,7 @@ namespace Crowy
     void PaintSurface::SetDirections(u8 flags, bool floorFollowsWorldUp) {
         object.directions = flags;
         object.floorFollowsWorldUp = floorFollowsWorldUp;
-        Prepare();
+        prepare();
     }
 
     bool PaintSurface::IsWorldNormalPersistent(DVec3 worldNormal) const {
