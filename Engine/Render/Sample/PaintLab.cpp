@@ -58,7 +58,9 @@ namespace Crowy
         static constexpr std::array<CStr, PaintFaceDirectionCount>
             DirectionNames{"Front", "Back", "Right", "Left", "Up", "Down"};
         // a splash on every grid tile at once
-        static constexpr usize MaxDropletSpheres = 16 * PaintMaxDroplets;
+        static constexpr usize MaxDropletSpheres =
+            PaintGridSide * PaintGridSide *
+            static_cast<usize>(PaintMaxDroplets);
         // MF_PaintOverlay's shipped thin paint; a minimum of 1 never shows
         // through
         static constexpr f32 ThinHeight = 0.1f;
