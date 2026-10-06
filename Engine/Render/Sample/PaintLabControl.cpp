@@ -71,6 +71,10 @@ namespace Crowy
         .SetUIRange(0.0f, 1.0f)
         .SetProperty("coatRoughness", &PaintLookSettings::coatRoughness)
         .SetUIRange(0.02f, 1.0f)
+        .SetProperty("sunAzimuth", &PaintLookSettings::sunAzimuth)
+        .SetUIRange(0.0f, 360.0f)
+        .SetProperty("sunElevation", &PaintLookSettings::sunElevation)
+        .SetUIRange(2.0f, 89.0f)
     CROWY_STRUCT_END(PaintLookSettings)
 
     CROWY_STRUCT(PaintObjectFlags)

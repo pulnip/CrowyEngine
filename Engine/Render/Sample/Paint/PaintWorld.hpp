@@ -53,6 +53,19 @@ namespace Crowy
         f32 radius = 0.0f;
     };
 
+    // a shot still on its way: the ball shown along its trace until it
+    // reaches the contact and fires
+    struct PaintBall {
+        PaintShot shot;
+        DVec3 contact;
+        // seconds of flight left
+        f64 remaining = 0.0;
+
+        DVec3 Position() const noexcept {
+            return contact - shot.velocity * remaining;
+        }
+    };
+
     // a splash's footprint for the overlays: a phantom landing the score
     // claimed, or a droplet's mark the picture drew
     struct PaintSplashMark {
@@ -80,6 +93,7 @@ namespace Crowy
         f32 shapeStage = PAINT_SHAPE_STAGE_FULL;
         PaintSplashProfile splash = PaintSplashProfile::Paintball();
         std::vector<PaintSplashFlight> flights;
+        std::vector<PaintBall> balls;
         std::vector<PaintSplashMark> phantoms;
         std::vector<PaintSplashMark> marks;
 
@@ -92,7 +106,10 @@ namespace Crowy
         // the splat, marks it transient or not and submits it; a splashing
         // shot also throws this machine's droplets
         std::optional<PaintHit> Fire(const PaintShot& shot);
-        // the droplets in the air, PaintFlightSubstep at a time
+        // the same shot, seen arriving: it fires `lead` seconds of flight
+        // later, as Step runs them; false when the trace finds nothing
+        bool Launch(const PaintShot& shot, f64 lead);
+        // balls and droplets in the air, PaintFlightSubstep at a time
         void Step(i32 substeps);
         // the authority's acceptance: logged, then applied
         void SubmitSplat(const PaintSplat& splat);
@@ -127,6 +144,7 @@ namespace Crowy
         std::span<const PaintSplashFlight> Flights() const noexcept {
             return flights;
         }
+        std::span<const PaintBall> Balls() const noexcept { return balls; }
         std::span<const PaintSplashMark> Phantoms() const noexcept {
             return phantoms;
         }

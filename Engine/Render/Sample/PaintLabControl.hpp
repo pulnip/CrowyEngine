@@ -212,6 +212,9 @@ namespace Crowy
         f32 fuzzScale = 1.5f;
         f32 roughnessBias = 0.12f;
         f32 coatRoughness = 0.12f;
+        // the sun, in degrees: round from +z toward +x, and up from level
+        f32 sunAzimuth = 150.0f;
+        f32 sunElevation = 60.0f;
     };
 
     // exposed as `lab`

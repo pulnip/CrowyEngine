@@ -63,6 +63,7 @@ namespace Crowy
         std::vector<PaintObjectFlags> flags;
         std::array<GeometryAllocation, PaintMeshKindCount> geometry{};
         std::vector<PrimitiveHandle> proxies;
+        LightHandle sun{};
         // a sphere per droplet in the air, hidden when there is none
         std::vector<PrimitiveHandle> dropletSpheres;
         std::array<MeshHandle, 2> dropletMeshes{};
@@ -118,12 +119,12 @@ namespace Crowy
         }
 
         void ExtractScene(RenderScene& scene) override {
-            scene.Lights().Add(
+            sun = scene.Lights().Add(
                 LightSnapshot{
                     .castShadow = true,
                     .color = ones(),
                     .intensity = 3.0f,
-                    .direction = -normalize(Vec3{0.25f, 0.866f, -0.433f})
+                    .direction = sunDirection()
                 }
             );
             scene.Environment() = EnvironmentSnapshot{
@@ -298,6 +299,7 @@ namespace Crowy
                 world->Step(steps);
             }
             placeDropletSpheres();
+            Scene().Lights().GetRef(sun).direction = sunDirection();
 
             if(settings.stage != shownStage) {
                 shownStage = settings.stage;
@@ -695,28 +697,46 @@ namespace Crowy
             fire({-420.0, -420.0, 0.0}, {1500.0, 0.0, -2500.0}, 1, 14);
         }
 
+        // the way the sunlight travels, in the Crowy frame
+        Vec3 sunDirection() const {
+            constexpr auto Degree = std::numbers::pi_v<f32> / 180.0f;
+            const auto azimuth = look.sunAzimuth * Degree;
+            const auto elevation = look.sunElevation * Degree;
+
+            return -Vec3{
+                std::cos(elevation) * std::sin(azimuth),
+                std::sin(elevation),
+                std::cos(elevation) * std::cos(azimuth)
+            };
+        }
+
         void placeDropletSpheres() {
             const auto sphereRadius = sphereBounds.halfScale.x;
             usize next = 0;
+            const auto place = [&](DVec3 center, f32 radius, u8 paintId) {
+                if(next == dropletSpheres.size())
+                    return;
+                const auto scale = radius / sphereRadius;
+                const auto localToWorld = mintToCrowy() *
+                                          translateMat(toVec3(center)) *
+                                          scaleMat(Vec3{scale, scale, scale});
+                auto& sphere =
+                    Scene().Primitives().GetRef(dropletSpheres[next++]);
+                sphere.localToWorld = localToWorld;
+                sphere.worldBounds =
+                    transformAABB3D(localToWorld, sphereBounds);
+                sphere.mesh = dropletMeshes[paintId & 1u];
+                sphere.flags = combine(
+                    PrimitiveFlags::Visible,
+                    PrimitiveFlags::CastShadow
+                );
+            };
+            for(const auto& ball: world->Balls())
+                place(ball.Position(), ball.shot.ballRadius, ball.shot.paintId);
             for(const auto& flight: world->Flights()) {
-                const auto mesh = dropletMeshes[flight.paintId & 1u];
                 for(const auto& droplet: flight.droplets) {
-                    if(!droplet.alive || next == dropletSpheres.size())
-                        continue;
-                    const auto scale = droplet.radius / sphereRadius;
-                    const auto localToWorld =
-                        mintToCrowy() * translateMat(toVec3(droplet.position)) *
-                        scaleMat(Vec3{scale, scale, scale});
-                    auto& sphere =
-                        Scene().Primitives().GetRef(dropletSpheres[next++]);
-                    sphere.localToWorld = localToWorld;
-                    sphere.worldBounds =
-                        transformAABB3D(localToWorld, sphereBounds);
-                    sphere.mesh = mesh;
-                    sphere.flags = combine(
-                        PrimitiveFlags::Visible,
-                        PrimitiveFlags::CastShadow
-                    );
+                    if(droplet.alive)
+                        place(droplet.position, droplet.radius, flight.paintId);
                 }
             }
             for(; next < dropletSpheres.size(); ++next)
@@ -1228,6 +1248,16 @@ namespace Crowy
                         }
                     }
 
+                    // seconds of flight shown before the contact
+                    if(const auto lead = args.get<f64>("lead")) {
+                        DOM::Table result;
+                        result.emplace(
+                            "launched",
+                            DOM::Value(world->Launch(request, *lead))
+                        );
+                        reply.Ok(DOM::Value(std::move(result)));
+                        return;
+                    }
                     const auto before = world->Log().size();
                     const auto hit = world->Fire(request);
                     DOM::Table result;

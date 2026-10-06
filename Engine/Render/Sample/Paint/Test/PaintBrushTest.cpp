@@ -242,6 +242,26 @@ TEST(PaintWorld, ReLayoutDropsTheSurfacesQueuedDraws) {
         EXPECT_NE(draw.surface, floor);
 }
 
+TEST(PaintWorld, LaunchedBallFiresAfterItsLead) {
+    PaintWorld world;
+    ASSERT_TRUE(world.Launch(
+        PaintShot{
+            .origin = {0.0, 0.0, 1000.0},
+            .velocity = {0.0, 0.0, -3000.0},
+            .seed = 5
+        },
+        0.25
+    ));
+    // 0.25 s is 60 substeps
+    world.Step(59);
+    EXPECT_TRUE(world.Log().empty());
+    ASSERT_EQ(world.Balls().size(), 1u);
+    EXPECT_NEAR(world.Balls()[0].Position().z, 3000.0 / 240.0, 1e-6);
+    world.Step(2);
+    EXPECT_EQ(world.Log().size(), 1u);
+    EXPECT_TRUE(world.Balls().empty());
+}
+
 TEST(PaintWorld, KeptAndTransientShots) {
     PaintWorld world;
     // straight down onto the floor's middle: kept, drawn

@@ -109,9 +109,37 @@ namespace Crowy
             applyPhantomLandings(splat);
     }
 
+    bool PaintWorld::Launch(const PaintShot& shot, f64 lead) {
+        const auto hit = scene.Raycast(
+            shot.origin,
+            shot.velocity,
+            TraceDistance,
+            shot.onlySurface
+        );
+        if(!hit)
+            return false;
+        balls.push_back(
+            PaintBall{
+                .shot = shot,
+                .contact = hit->impactPoint,
+                .remaining = std::max(lead, 0.0)
+            }
+        );
+
+        return true;
+    }
+
     void PaintWorld::Step(i32 substeps) {
         std::vector<PaintDropletLanding> landings;
         for(i32 step = 0; step < substeps; ++step) {
+            for(auto& ball: balls)
+                ball.remaining -= PaintFlightSubstep;
+            // in launch order, so the log is the same however the frames fall
+            while(!balls.empty() && balls.front().remaining <= 0.0) {
+                const auto shot = balls.front().shot;
+                balls.erase(balls.begin());
+                Fire(shot);
+            }
             for(auto& flight: flights) {
                 landings.clear();
                 stepFlight(flight, splash, scene, landings);
@@ -237,6 +265,7 @@ namespace Crowy
         draws.clear();
         transients.clear();
         flights.clear();
+        balls.clear();
         phantoms.clear();
         marks.clear();
     }
