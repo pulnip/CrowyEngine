@@ -26,6 +26,8 @@ from pptx.opc.packuri import PackURI
 from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
 
+import paint_shots
+
 ROOT = Path(__file__).resolve().parent.parent
 FONT = "Malgun Gothic"
 MONO = "Consolas"
@@ -39,7 +41,8 @@ CHOCO = RGBColor(0x6B, 0x44, 0x30)
 CHOCO_LIGHT = RGBColor(0xF3, 0xEC, 0xE6)
 COVER_TAG = RGBColor(0x9F, 0xE3, 0xD3)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-BANNED = ["read-back", "readback", "read back", "리드백", "튕기", "튕겨", "bounce"]
+# stems, so every inflection is caught
+BANNED = ["read-back", "readback", "read back", "read_back", "리드백", "튕", "bounc", "바운스"]
 SVG_EXT = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"
 SVG_NS = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
 
@@ -154,7 +157,8 @@ class Deck:
             if not 4.0 <= seconds <= 6.0:
                 self.errors.append(f"{ref} runs {seconds:.2f} s, outside 4-6 s")
         if ref.startswith("figure:"):
-            self.texts.append((ref, " ".join(re.findall(r">([^<]+)</text>", path.read_text(encoding="utf-8")))))
+            svg = path.read_text(encoding="utf-8")
+            self.texts.append((ref, " ".join(re.findall(r">([^<]+)</(?:text|title)>", svg))))
         return True
 
     def aspect(self, ref):
@@ -341,6 +345,10 @@ class Deck:
     def build(self, out, draft=False):
         for s in self.spec["slides"]:
             getattr(self, s["kind"])(s)
+        # the captions paint_record burns into the clips are deck text too
+        for shot in paint_shots.all_shots():
+            for _, caption in shot.get("captions", []):
+                self.texts.append(("clip caption", caption))
         for where, text in self.texts:
             low = text.lower()
             for word in BANNED:
