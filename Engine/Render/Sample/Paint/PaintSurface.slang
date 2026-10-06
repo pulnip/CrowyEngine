@@ -101,8 +101,8 @@ float cellBorder(float3 cellCoord, uint direction) {
     return max(step(0.5 - w.x * 1.2, f.x), step(0.5 - w.y * 1.2, f.y));
 }
 
-// mesh space to the Crowy world for a vector the scale already divided once:
-// rotate, multiply the scale back, then the boundary's (y, z, x)
+// a mesh-space vector already divided by the scale squared to the Crowy
+// world: rotate, multiply one scale back, then the boundary's (y, z, x)
 float3 meshToWorldNormal(float3 v) {
     float3 s = v * scale3D.xyz;
     float3 mint = float3(dot(rotation0.xyz, s), dot(rotation1.xyz, s), dot(rotation2.xyz, s));
@@ -138,10 +138,9 @@ SurfacePoint readSurface(SurfaceOut input, bool needsHeight) {
     p.id = DecodePaintId(p.paint.r);
     p.coverage = TeamCoverage(paintTex, p.uv, atlas.y, atlas.w, lookModes.y, p.sd);
 
-    // the vertex normal undone of the scale once, as UE's normal reaches
-    // the shader; the relief normal is in the same mesh space
-    float3 meshNormal = normalize(input.localNormal / scale3D.xyz);
-    p.vertexNormal = meshToWorldNormal(meshNormal / scale3D.xyz);
+    // UE hands the shader the normal rotated, never scaled
+    float3 meshNormal = normalize(input.localNormal);
+    p.vertexNormal = meshToWorldNormal(meshNormal / (scale3D.xyz * scale3D.xyz));
     p.paintNormal = p.vertexNormal;
     p.height.height = 0.0;
     p.height.mask = 0.0;
