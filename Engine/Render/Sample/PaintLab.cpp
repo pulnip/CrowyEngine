@@ -34,6 +34,13 @@
 
 namespace Crowy
 {
+    namespace
+    {
+        // the window is fixed; every overlay and the cursor work in it
+        constexpr u32 ScreenWidth = 1920;
+        constexpr u32 ScreenHeight = 1080;
+    }
+
     struct UIContext {
         bool panelDirty = false;
     };
@@ -553,7 +560,7 @@ namespace Crowy
         }
 
         Vec4 panelRect() const {
-            const auto width = static_cast<f32>(1920);
+            const auto width = static_cast<f32>(ScreenWidth);
 
             return Vec4{
                 width - PanelSize - PanelMargin,
@@ -617,7 +624,9 @@ namespace Crowy
                          look.flow},
                     .lookStyle2 =
                         {look.normalStrength, look.coatRoughness, 0.1f, 1.0f},
-                    .splitPixels = split >= 1.0f ? 1e9f : split * 1920.0f
+                    .splitPixels = split >= 1.0f
+                                       ? 1e9f
+                                       : split * static_cast<f32>(ScreenWidth)
                 }
             );
         }
@@ -747,7 +756,7 @@ namespace Crowy
                     PrimitiveFlags::None;
         }
 
-        // a Mint point to the 1920x1080 screen, or none behind the eye
+        // a Mint point to the screen, or none behind the eye
         std::optional<ImVec2> toScreen(DVec3 point) {
             const auto& camera = Camera();
             const auto p = toCrowyPoint(point);
@@ -757,8 +766,8 @@ namespace Crowy
                 return std::nullopt;
 
             return ImVec2(
-                (clip.x / clip.w * 0.5f + 0.5f) * 1920.0f,
-                (0.5f - clip.y / clip.w * 0.5f) * 1080.0f
+                (clip.x / clip.w * 0.5f + 0.5f) * static_cast<f32>(ScreenWidth),
+                (0.5f - clip.y / clip.w * 0.5f) * static_cast<f32>(ScreenHeight)
             );
         }
 
@@ -903,7 +912,7 @@ namespace Crowy
             draw->AddText(
                 ImGui::GetFont(),
                 ImGui::GetFontSize() * 1.4f,
-                ImVec2(PanelMargin, 1080.0f - 130.0f),
+                ImVec2(PanelMargin, static_cast<f32>(ScreenHeight) - 130.0f),
                 IM_COL32(255, 255, 255, 235),
                 text.c_str()
             );
@@ -1182,8 +1191,10 @@ namespace Crowy
         void fireThroughCursor(Vec2 mouse) {
             const auto& camera = static_cast<FlyCamera&>(Camera());
             const auto projection = camera.Projection(Aspect());
-            const auto ndcX = 2.0f * mouse.x / 1920.0f - 1.0f;
-            const auto ndcY = 1.0f - 2.0f * mouse.y / 1080.0f;
+            const auto ndcX =
+                2.0f * mouse.x / static_cast<f32>(ScreenWidth) - 1.0f;
+            const auto ndcY =
+                1.0f - 2.0f * mouse.y / static_cast<f32>(ScreenHeight);
             const Vec3 viewDirection{
                 ndcX / projection[0].x,
                 ndcY / projection[1].y,
@@ -1505,8 +1516,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "PaintLab",
-        .width = 1920,
-        .height = 1080,
+        .width = ScreenWidth,
+        .height = ScreenHeight,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = false,
