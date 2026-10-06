@@ -1021,18 +1021,7 @@ namespace Crowy
                 lab.stretch,
                 lab.impactU
             );
-            draw->AddRect(
-                ImVec2(rect.x - 1.0f, rect.y - 1.0f),
-                ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
-                white
-            );
-            draw->AddText(
-                ImGui::GetFont(),
-                ImGui::GetFontSize() * 1.25f,
-                ImVec2(rect.x, rect.y + rect.w + 8.0f),
-                white,
-                text.c_str()
-            );
+            drawPanelFrame(*draw, rect, text.c_str());
             // the contact, behind the centre on a grazing hit, and the travel
             const auto toPanel = [&](f32 u, f32 v) {
                 return ImVec2(
@@ -1064,18 +1053,9 @@ namespace Crowy
             if(settings.panel == PaintPanel::None || !settings.labels)
                 return;
             if(settings.panelChannel == PaintPanelChannel::Profile) {
-                const auto rect = panelRect();
-                auto* draw = ImGui::GetForegroundDrawList();
-                draw->AddRect(
-                    ImVec2(rect.x - 1.0f, rect.y - 1.0f),
-                    ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
-                    IM_COL32(255, 255, 255, 230)
-                );
-                draw->AddText(
-                    ImGui::GetFont(),
-                    ImGui::GetFontSize() * 1.25f,
-                    ImVec2(rect.x, rect.y + rect.w + 8.0f),
-                    IM_COL32(255, 255, 255, 235),
+                drawPanelFrame(
+                    *ImGui::GetForegroundDrawList(),
+                    panelRect(),
                     "G across the last splat, along AxisU\n"
                     "a line every 0.35, the top line 1.0 = 9 cm"
                 );
@@ -1090,11 +1070,6 @@ namespace Crowy
             const auto rect = panelRect();
             const auto scale = rect.z / static_cast<f32>(layout.atlasSize);
             const auto white = IM_COL32(255, 255, 255, 230);
-            draw->AddRect(
-                ImVec2(rect.x - 1.0f, rect.y - 1.0f),
-                ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
-                white
-            );
             for(const auto& island: layout.islands) {
                 const ImVec2 from{
                     rect.x + island.rect.min.x * scale,
@@ -1123,10 +1098,28 @@ namespace Crowy
                 layout.atlasSize,
                 layout.texelCm
             );
-            draw->AddText(
+            drawPanelFrame(*draw, rect, caption.c_str(), 1.0f);
+        }
+
+        // a one-pixel frame just outside the panel and its caption below
+        static void drawPanelFrame(
+            ImDrawList& draw,
+            Vec4 rect,
+            CStr caption,
+            f32 fontScale = 1.25f
+        ) {
+            const auto white = IM_COL32(255, 255, 255, 235);
+            draw.AddRect(
+                ImVec2(rect.x - 1.0f, rect.y - 1.0f),
+                ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
+                white
+            );
+            draw.AddText(
+                ImGui::GetFont(),
+                ImGui::GetFontSize() * fontScale,
                 ImVec2(rect.x, rect.y + rect.w + 8.0f),
                 white,
-                caption.c_str()
+                caption
             );
         }
 
