@@ -25,8 +25,9 @@ namespace Crowy
             return std::bit_cast<f32>(0x3F800000u | (seed >> 9)) - 1.0f;
         }
 
-        f32 FRandRange(f32 low, f32 high) noexcept {
-            return low + (high - low) * FRand();
+        // in double, as FVector::FReal; callers narrow as MintChoco's do
+        f64 FRandRange(f64 low, f64 high) noexcept {
+            return low + (high - low) * static_cast<f64>(FRand());
         }
 
         u32 Seed() const noexcept { return seed; }

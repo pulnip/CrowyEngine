@@ -41,9 +41,9 @@ TEST(MintRandom, StreamMutatesBeforeEachDraw) {
         EXPECT_LT(x, 1.0f);
     }
     RandomStream ranged(42);
-    const auto y = ranged.FRandRange(10.0f, 20.0f);
-    EXPECT_GE(y, 10.0f);
-    EXPECT_LT(y, 20.0f);
+    const auto y = ranged.FRandRange(10.0, 20.0);
+    EXPECT_GE(y, 10.0);
+    EXPECT_LT(y, 20.0);
 }
 
 TEST(MintRandom, HashCombineAndRound) {
