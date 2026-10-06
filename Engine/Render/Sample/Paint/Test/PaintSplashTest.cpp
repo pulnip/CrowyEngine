@@ -207,7 +207,7 @@ TEST(PaintDropletFlight, DragStepMatchesTheClosedForm) {
         PaintFlyingDroplet{
             .position = {0.0, 0.0, 1.0},
             .velocity = {300.0, 0.0, 500.0},
-            .marks = true
+            .mayMark = true
         }
     );
     std::vector<PaintDropletLanding> landings;
@@ -237,7 +237,7 @@ TEST(PaintDropletFlight, KilledByLifetimeAndPath) {
     profile.drag = 0.0f;
     PaintSplashFlight slow;
     slow.droplets.push_back(
-        PaintFlyingDroplet{.velocity = {100.0, 0.0, 0.0}, .marks = true}
+        PaintFlyingDroplet{.velocity = {100.0, 0.0, 0.0}, .mayMark = true}
     );
     i32 steps = 0;
     while(slow.IsAlive()) {
@@ -249,7 +249,7 @@ TEST(PaintDropletFlight, KilledByLifetimeAndPath) {
     // 900 cm/s outruns 1.5 x 400 cm of path in 2/3 s
     PaintSplashFlight flat;
     flat.droplets.push_back(
-        PaintFlyingDroplet{.velocity = {900.0, 0.0, 0.0}, .marks = true}
+        PaintFlyingDroplet{.velocity = {900.0, 0.0, 0.0}, .mayMark = true}
     );
     steps = 0;
     while(flat.IsAlive()) {
@@ -271,7 +271,7 @@ TEST(PaintDropletFlight, ClearanceAndMarkCap) {
         };
     };
     EXPECT_FALSE(landingMark(flight, profile, at(30.0)).has_value());
-    EXPECT_EQ(flight.marks, 0);
+    EXPECT_EQ(flight.marksDrawn, 0);
 
     for(i32 i = 0; i < profile.maxMarkDroplets; ++i) {
         const auto mark = landingMark(flight, profile, at(100.0 + i));
@@ -285,7 +285,7 @@ TEST(PaintDropletFlight, ClearanceAndMarkCap) {
         );
     }
     EXPECT_FALSE(landingMark(flight, profile, at(300.0)).has_value());
-    EXPECT_EQ(flight.marks, profile.maxMarkDroplets);
+    EXPECT_EQ(flight.marksDrawn, profile.maxMarkDroplets);
 }
 
 TEST(PaintWorld, SplashScoresPhantomsAndDrawsMarks) {

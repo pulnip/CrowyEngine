@@ -40,7 +40,7 @@ namespace Crowy
                     .radius = droplets[i].radius,
                     .launchSpeed = static_cast<f32>(size(droplets[i].velocity)),
                     .group = droplets[i].group,
-                    .marks = static_cast<i32>(i) < profile.maxMarkDroplets
+                    .mayMark = static_cast<i32>(i) < profile.maxMarkDroplets
                 }
             );
         }
@@ -90,7 +90,7 @@ namespace Crowy
             if(hit) {
                 droplet.position = hit->impactPoint;
                 droplet.alive = false;
-                if(droplet.marks) {
+                if(droplet.mayMark) {
                     landings.push_back(
                         PaintDropletLanding{
                             .point = hit->impactPoint,
@@ -120,15 +120,15 @@ namespace Crowy
         const auto clearance = static_cast<f64>(flight.markClearance);
         if(sizeSquared(landing.point - flight.contact) < clearance * clearance)
             return std::nullopt;
-        if(flight.marks >= profile.maxMarkDroplets)
+        if(flight.marksDrawn >= profile.maxMarkDroplets)
             return std::nullopt;
 
         // head-on at the launch speed: round, sized like the phantom the
         // score claimed for it
-        ++flight.marks;
+        ++flight.marksDrawn;
         const auto seed = static_cast<i32>(hashCombineFast(
             static_cast<u32>(flight.splashSeed),
-            static_cast<u32>(flight.marks)
+            static_cast<u32>(flight.marksDrawn)
         ));
         auto splat = profile.dropletBrush.BuildSplat(
             PaintHit{

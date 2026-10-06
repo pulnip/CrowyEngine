@@ -858,7 +858,11 @@ namespace Crowy
                     const auto color =
                         GroupColors[static_cast<usize>(droplet.group)];
                     draw->AddLine(*from, *to, color, 2.0f);
-                    draw->AddCircle(*from, droplet.marks ? 5.0f : 3.0f, color);
+                    draw->AddCircle(
+                        *from,
+                        droplet.mayMark ? 5.0f : 3.0f,
+                        color
+                    );
                 }
             }
             if(settings.labels) {
@@ -1349,7 +1353,10 @@ namespace Crowy
                                 DOM::Value(static_cast<i64>(droplet.group))
                             );
                             entry.emplace("alive", DOM::Value(droplet.alive));
-                            entry.emplace("marks", DOM::Value(droplet.marks));
+                            entry.emplace(
+                                "mayMark",
+                                DOM::Value(droplet.mayMark)
+                            );
                             droplets.emplace_back(std::move(entry));
                         }
                         DOM::Table entry;

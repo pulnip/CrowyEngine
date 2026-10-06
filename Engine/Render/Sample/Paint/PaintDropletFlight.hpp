@@ -33,7 +33,7 @@ namespace Crowy
         PaintDropletGroup group = PaintDropletGroup::Forward;
         // the largest maxMarkDroplets fly in the effect and may mark; the
         // rest exist only in the blob's picture
-        bool marks = false;
+        bool mayMark = false;
         bool alive = true;
     };
 
@@ -50,7 +50,7 @@ namespace Crowy
         DVec3 normal{0.0, 0.0, 1.0};
         // landings nearer the contact leave no mark: the splat covers them
         f32 markClearance = 0.0f;
-        i32 marks = 0;
+        i32 marksDrawn = 0;
         i32 splashSeed = 0;
         u8 paintId = 0;
         PaintLockGens lockGens;
