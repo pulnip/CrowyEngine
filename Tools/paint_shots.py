@@ -274,7 +274,8 @@ def t4_shots():
 def t5_shots():
     eye = (SPOT[0], SPOT[1] - 110.0, 120.0)
     base = camera(eye, SPOT, 50) + [lab("view", "Height"), lab("panel", "Atlas"), lab("panelChannel", "Profile"), lab("selected", 0)]
-    one = lambda **kw: shot_at(list(SPOT), seed=2024, team=0, **kw)
+    def one(**kw):
+        return shot_at(list(SPOT), seed=2024, team=0, **kw)
     return [
         {
             "name": "t5_stack",
@@ -384,7 +385,8 @@ def e2e_shots():
     first = dict(speed=CONTACT_SPEED, team=0, seed=11035, **MOP)
 
     def steps(length, splash):
-        frame = lambda k: k * length
+        def frame(k):
+            return k * length
         events = {
             0: [lab("view", "Islands"), lab("panel", "Atlas"), lab("panelChannel", "Islands"), lab("selected", 0)],
             frame(1): [lab("panel", "None"), lab("view", "Lit"),
