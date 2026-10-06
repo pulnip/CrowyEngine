@@ -414,9 +414,17 @@ namespace Crowy
     ) {
         using enum RHIResourceUsage;
 
-        if(stamp.rects.empty())
-            return;
         auto& gpu = surfaces[stamp.surface];
+        // a scissor must stay inside the target
+        const auto size = static_cast<i32>(gpu.atlasSize);
+        std::vector<IntRect> rects;
+        for(auto rect: stamp.rects) {
+            rect.Clip(IntRect{.min = {0, 0}, .max = {size, size}});
+            if(!rect.IsEmpty())
+                rects.push_back(rect);
+        }
+        if(rects.empty())
+            return;
         auto& work = scratchFor(gpu.atlasSize);
         const auto bounds = surface.ScaledBounds();
         const auto& splat = stamp.splat;
@@ -471,7 +479,7 @@ namespace Crowy
                 }
             };
             cmdList.SetPushGraphicsConstants(push);
-            for(const auto& rect: stamp.rects) {
+            for(const auto& rect: rects) {
                 cmdList.SetScissorRect(scissorOf(rect));
                 cmdList.Draw(3);
             }
@@ -505,7 +513,7 @@ namespace Crowy
                 atlasPipeline(CopyShader, "vs_copy", "fs_copy")
             ));
             cmdList.SetPushGraphicsConstants(work.Get().GetReadableID());
-            for(const auto& rect: stamp.rects) {
+            for(const auto& rect: rects) {
                 cmdList.SetScissorRect(scissorOf(rect));
                 cmdList.Draw(3);
             }

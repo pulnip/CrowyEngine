@@ -219,6 +219,29 @@ TEST(PaintSceneQuery, RaysDownADiagonalHitTheTop) {
     EXPECT_EQ(missed, 0);
 }
 
+TEST(PaintWorld, ReLayoutDropsTheSurfacesQueuedDraws) {
+    PaintWorld world;
+    const auto hit = world.Fire(
+        PaintShot{
+            .origin = {0.0, 0.0, 1000.0},
+            .velocity = {0.0, 0.0, -3000.0},
+            .seed = 5
+        }
+    );
+    ASSERT_TRUE(hit.has_value());
+    const auto floor = static_cast<usize>(hit->surface);
+    world.SetDirections(
+        floor,
+        static_cast<u8>(
+            paintDirectionBit(PaintFaceDirection::Up) |
+            paintDirectionBit(PaintFaceDirection::Front)
+        ),
+        true
+    );
+    for(const auto& draw: world.TakeDraws())
+        EXPECT_NE(draw.surface, floor);
+}
+
 TEST(PaintWorld, KeptAndTransientShots) {
     PaintWorld world;
     // straight down onto the floor's middle: kept, drawn

@@ -224,6 +224,10 @@ namespace Crowy
         bool floorFollowsWorldUp
     ) {
         surfaces[surface].SetDirections(mask, floorFollowsWorldUp);
+        // the queued stamps were cut for the atlas this replaces
+        std::erase_if(draws, [surface](const PaintStampDraw& draw) {
+            return draw.surface == surface;
+        });
     }
 
     void PaintWorld::Reset() {
