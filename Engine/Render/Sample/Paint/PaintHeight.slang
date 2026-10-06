@@ -26,7 +26,7 @@ struct PaintHeightSample {
 // came from the painted area alone
 float heightTap(Texture2D Tex, float2 uv, bool fromIds) {
     float4 s = Tex.SampleLevel(nearestClamp, uv, 0);
-    return fromIds ? (DecodePaintId(s.r) < 7u ? 1.0 : 0.0) : s.g;
+    return fromIds ? (DecodePaintId(s.r) != PAINT_ID_NONE ? 1.0 : 0.0) : s.g;
 }
 
 float bilinearHeight(Texture2D Tex, float2 UV, float TexelSize, bool fromIds) {

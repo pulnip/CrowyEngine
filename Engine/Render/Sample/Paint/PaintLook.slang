@@ -118,18 +118,13 @@ float4 PaintCorners(Texture2D Tex, float2 UV, float TexelSize, float DistRange) 
 // each team's coverage at this pixel, by the edge mode the data views compare
 float4 TeamCoverage(Texture2D Tex, float2 UV, float TexelSize, float DistRange, uint edgeMode, out float4 sd) {
     sd = PaintCorners(Tex, UV, TexelSize, DistRange);
-    if(edgeMode == PAINT_EDGE_NEAREST) {
-        uint id = DecodePaintId(Tex.SampleLevel(nearestClamp, UV, 0).r);
-        return float4(id == 0u ? 1.0 : 0.0, id == 1u ? 1.0 : 0.0,
-                      id == 2u ? 1.0 : 0.0, id == 3u ? 1.0 : 0.0);
-    }
-    if(edgeMode == PAINT_EDGE_BILINEAR) {
-        // what a bilinear read of an id map would do: it blends the bytes,
-        // so between team 1 and none it invents the ids in between
-        float r = Tex.SampleLevel(linearClamp, UV, 0).r;
-        uint id = uint(round(r * 255.0)) & 7u;
-        return float4(id == 0u ? 1.0 : 0.0, id == 1u ? 1.0 : 0.0,
-                      id == 2u ? 1.0 : 0.0, id == 3u ? 1.0 : 0.0);
+    if(edgeMode != PAINT_EDGE_SIGNED_DISTANCE) {
+        // a bilinear read of an id map blends the bytes, so between team 1
+        // and none it invents the ids in between
+        float r = edgeMode == PAINT_EDGE_NEAREST
+            ? Tex.SampleLevel(nearestClamp, UV, 0).r
+            : Tex.SampleLevel(linearClamp, UV, 0).r;
+        return float4(uint4(0u, 1u, 2u, 3u) == DecodePaintId(r));
     }
 
     // MF_PaintTeamBlend's band: one pixel wide, capped at one texel, so
