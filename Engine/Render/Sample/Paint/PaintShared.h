@@ -27,6 +27,8 @@
 #define PAINT_PANEL_DISTANCE 3
 #define PAINT_PANEL_POSITION 4
 #define PAINT_PANEL_EDGE_FADE 5
+// G along one atlas line, as a graph
+#define PAINT_PANEL_PROFILE 6
 
 // the paint buffer's encoding: R = id + 8 gen, G height, B 1 - d / range
 #define PAINT_ID_NONE 7

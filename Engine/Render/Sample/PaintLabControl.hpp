@@ -61,9 +61,13 @@ namespace Crowy
         Distance,
         Position,
         EdgeFade,
+        Profile,
     };
     static_assert(
         static_cast<u32>(PaintPanelChannel::EdgeFade) == PAINT_PANEL_EDGE_FADE
+    );
+    static_assert(
+        static_cast<u32>(PaintPanelChannel::Profile) == PAINT_PANEL_PROFILE
     );
 
     CROWY_ENUM_BEGIN(PaintPanelChannel)
@@ -73,6 +77,7 @@ namespace Crowy
     CROWY_ENUM_VALUE(Distance)
     CROWY_ENUM_VALUE(Position)
     CROWY_ENUM_VALUE(EdgeFade)
+    CROWY_ENUM_VALUE(Profile)
     CROWY_ENUM_END()
 
     enum class PaintPanel : u32 {

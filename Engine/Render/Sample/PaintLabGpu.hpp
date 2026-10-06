@@ -108,6 +108,8 @@ namespace Crowy
         u32 atlasSize = 0;
         Vec4 rect{};
         Vec4 islandRects[PaintFaceDirectionCount]{};
+        // the profile's line in atlas texels: from in xy, to in zw
+        Vec4 profile{};
     };
     static_assert(sizeof(PaintPanelPush) <= RHI_PUSH_CONSTANT_BYTES);
 
@@ -197,7 +199,8 @@ namespace Crowy
             const PaintSurface& surface,
             usize index,
             u32 channel,
-            Vec4 rect
+            Vec4 rect,
+            Vec4 profile = {}
         );
 
         // inside the panel hook: one stamp's signed distance, flat

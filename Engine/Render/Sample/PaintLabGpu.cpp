@@ -710,7 +710,8 @@ namespace Crowy
         const PaintSurface& surface,
         usize index,
         u32 channel,
-        Vec4 rect
+        Vec4 rect,
+        Vec4 profile
     ) {
         if(index >= surfaces.size() || !surfaces[index].paint)
             return 0;
@@ -743,7 +744,8 @@ namespace Crowy
             .edgeFade = gpu.edgeFade->GetReadableID(),
             .channel = channel,
             .atlasSize = gpu.atlasSize,
-            .rect = rect
+            .rect = rect,
+            .profile = profile
         };
         for(const auto& island: layout.islands) {
             push.islandRects[static_cast<usize>(island.direction)] = Vec4{

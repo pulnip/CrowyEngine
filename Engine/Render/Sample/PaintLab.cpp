@@ -542,7 +542,8 @@ namespace Crowy
                 world->Surfaces()[index],
                 index,
                 static_cast<u32>(settings.panelChannel),
-                panelRect()
+                panelRect(),
+                profileLine(index).value_or(Vec4{})
             );
         }
 
@@ -580,6 +581,52 @@ namespace Crowy
                 IM_COL32(255, 255, 255, 235),
                 text.c_str()
             );
+        }
+
+        // the line the height profile reads: through the last splat that
+        // reached the surface, along its AxisU, in atlas texels
+        std::optional<Vec4> profileLine(usize index) const {
+            const auto& surface = world->Surfaces()[index];
+            const auto& layout = surface.Layout();
+            for(auto it = world->Log().rbegin(); it != world->Log().rend();
+                ++it) {
+                if(it->transient)
+                    continue;
+                std::vector<usize> reached;
+                PaintSceneQuery::OverlapSphere(
+                    it->location,
+                    it->WorldExtent(),
+                    world->Surfaces(),
+                    world->Active(),
+                    reached
+                );
+                if(std::ranges::find(reached, index) == reached.end())
+                    continue;
+
+                const auto stamp = surface.ComputeLocalStamp(*it);
+                const auto* island =
+                    layout.Find(classifyPaintFaceDirection(stamp.normal));
+                if(!island)
+                    return std::nullopt;
+                const auto bounds = surface.ScaledBounds();
+                const auto reach = 1.4 * stamp.radius * stamp.stretch;
+                const auto toTexel = [&](DVec3 local) {
+                    return island->ProjectNormalized(
+                        (local - bounds.min) / bounds.Size()
+                    );
+                };
+                const auto from = toTexel(stamp.center - stamp.axisU * reach);
+                const auto to = toTexel(stamp.center + stamp.axisU * reach);
+
+                return Vec4{
+                    static_cast<f32>(from.x),
+                    static_cast<f32>(from.y),
+                    static_cast<f32>(to.x),
+                    static_cast<f32>(to.y)
+                };
+            }
+
+            return std::nullopt;
         }
 
         struct ShapeLabView {
@@ -677,6 +724,24 @@ namespace Crowy
             }
             if(settings.panel == PaintPanel::None || !settings.labels)
                 return;
+            if(settings.panelChannel == PaintPanelChannel::Profile) {
+                const auto rect = panelRect();
+                auto* draw = ImGui::GetForegroundDrawList();
+                draw->AddRect(
+                    ImVec2(rect.x - 1.0f, rect.y - 1.0f),
+                    ImVec2(rect.x + rect.z + 1.0f, rect.y + rect.w + 1.0f),
+                    IM_COL32(255, 255, 255, 230)
+                );
+                draw->AddText(
+                    ImGui::GetFont(),
+                    ImGui::GetFontSize() * 1.25f,
+                    ImVec2(rect.x, rect.y + rect.w + 8.0f),
+                    IM_COL32(255, 255, 255, 235),
+                    "G across the last splat, along AxisU\n"
+                    "a line every 0.35, the top line 1.0 = 9 cm"
+                );
+                return;
+            }
             const auto& surface = world->Surfaces()[selectedSurface()];
             const auto& layout = surface.Layout();
             if(layout.atlasSize == 0)

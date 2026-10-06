@@ -15,6 +15,8 @@ struct PanelPush {
     float4 rect;
     // each island's texel rectangle: min x, min y, max x, max y; zero when off
     float4 islandRects[6];
+    // the profile's line in atlas texels: from in xy, to in zw
+    float4 profile;
 };
 
 [[vk::push_constant]]
@@ -81,6 +83,25 @@ float4 fs_panel(PanelOut input) : SV_Target {
     case PAINT_PANEL_EDGE_FADE:
         display = position.w > 0.5 ? RampColor(fadeTex.Load(texel).r) : empty;
         break;
+    case PAINT_PANEL_PROFILE: {
+        // G along the line, 0 at the bottom and full (9 cm) near the top
+        float2 at = lerp(panel.profile.xy, panel.profile.zw, uv.x);
+        int2 st = clamp(int2(floor(at)), int2(0, 0), int2(last, last));
+        float g = paintTex.Load(int3(st, 0)).g;
+        float y = (1.0 - uv.y - 0.08) / 0.84;
+        float pixel = 1.0 / (panel.rect.w * 0.84);
+        display = float3(0.10, 0.10, 0.11);
+        // a line per 0.35, the default deposit, and the ceiling at 1
+        if(abs(frac(y / 0.35 + 0.5) - 0.5) * 0.35 < pixel * 0.8)
+            display = float3(0.24, 0.24, 0.26);
+        if(abs(y - 1.0) < pixel * 1.5)
+            display = float3(0.62, 0.89, 0.83);
+        if(y >= 0.0 && y <= g)
+            display = lerp(display, float3(0.12, 0.66, 0.56), 0.55);
+        if(abs(y - g) < pixel * 2.0)
+            display = float3(0.97, 0.97, 0.95);
+        break;
+    }
     }
 
     return float4(display, 1.0);
