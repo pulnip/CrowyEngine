@@ -179,11 +179,11 @@ def dominant(n):
 
 
 def texel_for(side_cm):
-    """the texel a square Up island needs to fit the largest atlas"""
-    need = side_cm / TEXEL_CM + 2 * PAD
-    if need <= MAX_ATLAS:
-        return TEXEL_CM
-    return side_cm / (MAX_ATLAS - 2 * PAD)
+    """PaintIslandLayout's coarsening for one square Up island"""
+    texel = TEXEL_CM
+    while (width := math.ceil(side_cm / texel) + 2 * PAD) > MAX_ATLAS:
+        texel *= max(1.05, math.sqrt(width * width / (0.85 * MAX_ATLAS ** 2)))
+    return texel
 
 
 def build_radius(volume, speed, base=25.0, rps=0.005, max_r=120.0):
@@ -385,7 +385,7 @@ def a2_atlas(path):
     knee = (MAX_ATLAS - 2 * PAD) * TEXEL_CM
     kx, ky = p.px(knee, TEXEL_CM)
     s.circle(kx, ky, 8, fill=GOLD, stroke="none")
-    s.text(kx - 10, ky - 20, f"{knee:.0f} cm에서 2048 가득", size=22, anchor="end")
+    s.text(kx + 12, ky + 40, f"{knee:.0f} cm에서 2048 가득", size=22)
     fx, fy = p.px(2000, texel_for(2000))
     s.circle(fx, fy, 8, fill=CHOCO, stroke="none")
     s.text(fx - 12, fy - 18, f"floor 2000 cm → {texel_for(2000):.3f} cm", size=22, anchor="end")
