@@ -281,6 +281,49 @@ TEST(PaintAtlas, EdgeFadeRampsFromEveryEdge) {
             at(up.contentOrigin.x + d - 1, cy)
         );
     EXPECT_EQ(at(up.contentOrigin.x + 8, cy), 255);
+
+    // a step inside one island: the left half at z = 0, the right at z = 50
+    PaintAtlasBakeInput step;
+    const f32 z[2]{0.0f, 50.0f};
+    for(u32 half = 0; half < 2; ++half) {
+        const auto x0 = half == 0 ? -50.0f : 0.0f;
+        const auto x1 = half == 0 ? 0.0f : 50.0f;
+        for(i32 corner = 0; corner < 4; ++corner) {
+            step.positions.push_back(
+                {(corner & 1) ? x1 : x0, (corner & 2) ? 50.0f : -50.0f, z[half]}
+            );
+            step.normals.push_back({0.0f, 0.0f, 1.0f});
+        }
+        const auto base = half * 4;
+        for(const auto i: {base, base + 1, base + 3, base, base + 3, base + 2})
+            step.indices.push_back(i);
+    }
+    step.localBounds.Add({-50.0, -50.0, 0.0});
+    step.localBounds.Add({50.0, 50.0, 50.0});
+    step.layout = PaintIslandLayout::Build(
+        step.localBounds,
+        {1.0, 1.0, 1.0},
+        paintDirectionBit(PaintFaceDirection::Up),
+        TexelCm,
+        Pad,
+        MinSize,
+        MaxSize
+    );
+    step.edgeFadeTexels = 8.0f;
+    step.edgeFadeSeamFraction = 0.05f;
+
+    PaintAtlasBakeOutput stepOutput;
+    PaintAtlasBaker::bake(step, stepOutput);
+    const auto& stepUp = step.layout.islands[0];
+    const auto stepN = step.layout.atlasSize;
+    const auto stepAt = [&](i32 x, i32 y) {
+        return stepOutput.edgeFade[static_cast<usize>(y * stepN + x)];
+    };
+    const auto row = stepUp.contentOrigin.y + 100;
+    const auto seamX = stepUp.contentOrigin.x + 100;
+    EXPECT_EQ(stepAt(seamX - 1, row), 0);
+    EXPECT_EQ(stepAt(seamX, row), 0);
+    EXPECT_EQ(stepAt(seamX + 40, row), 255);
 }
 
 TEST(PaintAtlas, HalfRoundsToNearestEven) {
