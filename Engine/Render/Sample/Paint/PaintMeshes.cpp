@@ -1,5 +1,6 @@
 #include "PaintMeshes.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <numbers>
@@ -9,10 +10,11 @@ namespace Crowy
 {
     namespace
     {
-        // a flat quad wound so it faces `normal`: corners a, b, c, d in order
-        void addQuad(
+        // a flat convex polygon as a triangle fan, wound to face `normal`
+        template<usize N>
+        void addFan(
             PaintMeshTriangles& mesh,
-            std::array<DVec3, 4> corners,
+            std::array<DVec3, N> corners,
             DVec3 normal
         ) {
             const auto base = static_cast<u32>(mesh.positions.size());
@@ -20,35 +22,17 @@ namespace Crowy
                 dot(cross(corners[1] - corners[0], corners[2] - corners[0]),
                     normal);
             if(facing < 0.0)
-                std::swap(corners[1], corners[3]);
+                std::reverse(corners.begin() + 1, corners.end());
 
             for(const auto& corner: corners) {
                 mesh.positions.push_back(toVec3(corner));
                 mesh.normals.push_back(toVec3(normal));
             }
-            mesh.indices.insert(
-                mesh.indices.end(),
-                {base + 0, base + 1, base + 2, base + 0, base + 2, base + 3}
-            );
-        }
-
-        void addTriangle(
-            PaintMeshTriangles& mesh,
-            std::array<DVec3, 3> corners,
-            DVec3 normal
-        ) {
-            const auto base = static_cast<u32>(mesh.positions.size());
-            const auto facing =
-                dot(cross(corners[1] - corners[0], corners[2] - corners[0]),
-                    normal);
-            if(facing < 0.0)
-                std::swap(corners[1], corners[2]);
-
-            for(const auto& corner: corners) {
-                mesh.positions.push_back(toVec3(corner));
-                mesh.normals.push_back(toVec3(normal));
-            }
-            mesh.indices.insert(mesh.indices.end(), {base, base + 1, base + 2});
+            for(u32 i = 1; i + 1 < N; ++i)
+                mesh.indices.insert(
+                    mesh.indices.end(),
+                    {base, base + i, base + i + 1}
+                );
         }
     }
 
@@ -80,7 +64,7 @@ namespace Crowy
                     corners[i][b] = Steps[i].first * h;
                     corners[i][c] = Steps[i].second * h;
                 }
-                addQuad(mesh, corners, normal);
+                addFan(mesh, corners, normal);
             }
         }
 
@@ -97,38 +81,52 @@ namespace Crowy
 
         // the slope, the floor, the high end and the two sides
         const auto slope = getSafeNormal(DVec3{-top, 0.0, size.x});
-        addQuad(
+        addFan(
             mesh,
-            {DVec3{x0, y0, 0.0},
-             DVec3{x1, y0, top},
-             DVec3{x1, y1, top},
-             DVec3{x0, y1, 0.0}},
+            std::array{
+                DVec3{x0, y0, 0.0},
+                DVec3{x1, y0, top},
+                DVec3{x1, y1, top},
+                DVec3{x0, y1, 0.0}
+            },
             slope
         );
-        addQuad(
+        addFan(
             mesh,
-            {DVec3{x0, y0, 0.0},
-             DVec3{x1, y0, 0.0},
-             DVec3{x1, y1, 0.0},
-             DVec3{x0, y1, 0.0}},
+            std::array{
+                DVec3{x0, y0, 0.0},
+                DVec3{x1, y0, 0.0},
+                DVec3{x1, y1, 0.0},
+                DVec3{x0, y1, 0.0}
+            },
             {0.0, 0.0, -1.0}
         );
-        addQuad(
+        addFan(
             mesh,
-            {DVec3{x1, y0, 0.0},
-             DVec3{x1, y1, 0.0},
-             DVec3{x1, y1, top},
-             DVec3{x1, y0, top}},
+            std::array{
+                DVec3{x1, y0, 0.0},
+                DVec3{x1, y1, 0.0},
+                DVec3{x1, y1, top},
+                DVec3{x1, y0, top}
+            },
             {1.0, 0.0, 0.0}
         );
-        addTriangle(
+        addFan(
             mesh,
-            {DVec3{x0, y0, 0.0}, DVec3{x1, y0, 0.0}, DVec3{x1, y0, top}},
+            std::array{
+                DVec3{x0, y0, 0.0},
+                DVec3{x1, y0, 0.0},
+                DVec3{x1, y0, top}
+            },
             {0.0, -1.0, 0.0}
         );
-        addTriangle(
+        addFan(
             mesh,
-            {DVec3{x0, y1, 0.0}, DVec3{x1, y1, 0.0}, DVec3{x1, y1, top}},
+            std::array{
+                DVec3{x0, y1, 0.0},
+                DVec3{x1, y1, 0.0},
+                DVec3{x1, y1, top}
+            },
             {0.0, 1.0, 0.0}
         );
 
