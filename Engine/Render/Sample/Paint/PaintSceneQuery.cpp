@@ -49,6 +49,8 @@ namespace Crowy
         f64 maxDistance,
         i64 onlySurface
     ) const {
+        // a ray down a shared edge must hit one of its two triangles
+        constexpr f64 EdgeSlack = 1e-9;
         const auto dir = getSafeNormal(direction);
         auto best = maxDistance;
         std::optional<PaintHit> hit;
@@ -66,11 +68,11 @@ namespace Crowy
             const auto inv = 1.0 / det;
             const auto s = origin - tri.a;
             const auto u = dot(s, p) * inv;
-            if(u < 0.0 || u > 1.0)
+            if(u < -EdgeSlack || u > 1.0 + EdgeSlack)
                 continue;
             const auto q = cross(s, e1);
             const auto v = dot(dir, q) * inv;
-            if(v < 0.0 || u + v > 1.0)
+            if(v < -EdgeSlack || u + v > 1.0 + EdgeSlack)
                 continue;
             const auto distance = dot(e2, q) * inv;
             if(distance <= 1e-6 || distance >= best)

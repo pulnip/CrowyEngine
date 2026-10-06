@@ -195,6 +195,30 @@ TEST(PaintSurface, StampRectsStayInTheirIslands) {
     }
 }
 
+TEST(PaintSceneQuery, RaysDownADiagonalHitTheTop) {
+    PaintWorld world;
+    world.SetStage(PaintStageKind::Grid);
+    // a tile's top is two triangles sharing a diagonal; a ray down that
+    // edge must not slip between them to the bottom face
+    const auto tile = static_cast<i64>(paintGridTileIndex(2, 0));
+    i32 missed = 0;
+    for(i32 i = 0; i < 400; ++i) {
+        const auto t = -150.0 + 0.75 * i;
+        for(const auto sign: {1.0, -1.0}) {
+            const DVec3 target{900.0 + t, 300.0 + sign * t, 0.0};
+            const auto theta = 0.1 + 0.003 * i;
+            const auto origin =
+                target -
+                DVec3{std::sin(theta), 0.0, -std::cos(theta)} * (400.0 + i);
+            const auto hit =
+                world.Scene().Raycast(origin, target - origin, 2000.0, tile);
+            if(!hit || hit->impactNormal.z != 1.0)
+                ++missed;
+        }
+    }
+    EXPECT_EQ(missed, 0);
+}
+
 TEST(PaintWorld, KeptAndTransientShots) {
     PaintWorld world;
     // straight down onto the floor's middle: kept, drawn
