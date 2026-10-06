@@ -142,12 +142,15 @@ namespace Crowy
         for(u32 stack = 0; stack <= stacks; ++stack) {
             const auto polar =
                 std::numbers::pi * static_cast<f64>(stack) / stacks;
+            // sin(pi) is not 0: both pole rows are snapped to their point
+            const auto ring =
+                stack == 0 || stack == stacks ? 0.0 : std::sin(polar);
             for(u32 slice = 0; slice <= slices; ++slice) {
                 const auto azimuth =
                     2.0 * std::numbers::pi * static_cast<f64>(slice) / slices;
                 const DVec3 normal{
-                    std::sin(polar) * std::cos(azimuth),
-                    std::sin(polar) * std::sin(azimuth),
+                    ring * std::cos(azimuth),
+                    ring * std::sin(azimuth),
                     std::cos(polar)
                 };
                 mesh.positions.push_back(toVec3(normal * radius));
@@ -172,7 +175,7 @@ namespace Crowy
                     const auto p1 = toDVec3(mesh.positions[tri[1]]);
                     const auto p2 = toDVec3(mesh.positions[tri[2]]);
                     const auto n = cross(p1 - p0, p2 - p0);
-                    // a pole's degenerate triangle has no facing to fix
+                    // a pole's triangles collapse to its point
                     if(sizeSquared(n) == 0.0)
                         continue;
                     if(dot(n, p0 + p1 + p2) < 0.0)

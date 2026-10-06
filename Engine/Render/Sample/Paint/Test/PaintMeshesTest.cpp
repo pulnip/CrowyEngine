@@ -49,4 +49,6 @@ TEST(PaintMeshes, SphereFacesOut) {
     const auto bounds = boundsOf(sphere);
     EXPECT_NEAR(bounds.max.z, 120.0, 1e-4);
     EXPECT_NEAR(bounds.min.z, -120.0, 1e-4);
+    // a pole row keeps one triangle per slice, the others two
+    EXPECT_EQ(sphere.indices.size(), 3u * 32u * (2u * (16u - 2u) + 2u));
 }
