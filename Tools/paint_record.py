@@ -128,7 +128,10 @@ class Recorder:
 
     def apply(self, calls):
         for call in calls:
-            self.port.call(call["cmd"], call.get("args", {}))
+            result = self.port.call(call["cmd"], call.get("args", {}))
+            # a shot that misses leaves a clean clip, not an error, unless caught
+            if call["cmd"] == "paint_fire" and not (result.get("launched") or result.get("hit")):
+                raise RuntimeError(f"paint_fire missed: {call['args']}")
 
     def advance(self, frames):
         target = self.frame() + frames

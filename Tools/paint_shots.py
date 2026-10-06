@@ -19,6 +19,7 @@ PANEL_CROP = (1240, 8, 672, 732)
 GRID_THETA = (0.0, 50.0, 60.0, 70.0)
 GRID_SPEED = (500.0, 1500.0, 3000.0, 4800.0)
 GRID_PITCH = 600.0
+# paintGridTileIndex's block count in PaintStage.cpp
 FIRST_TILE = 6
 
 
