@@ -311,17 +311,17 @@ namespace Crowy
         recordClears(cmdList);
         for(usize i = 0; i < stamps.size(); ++i) {
             const auto& stamp = stamps[i];
-            if(stamp.surface >= surfaces.size() ||
-               !surfaces[stamp.surface].paint)
-                continue;
+            CROWY_ASSERT(
+                stamp.surface < surfaces.size() &&
+                    static_cast<bool>(surfaces[stamp.surface].paint),
+                "a queued stamp names a laid-out surface"
+            );
             const auto size = surfaces[stamp.surface].atlasSize;
             const bool usedAgain = std::any_of(
                 stamps.begin() + static_cast<isize>(i) + 1,
                 stamps.end(),
                 [&](const PaintStampDraw& later) {
-                    return later.surface < surfaces.size() &&
-                           surfaces[later.surface].atlasSize == size &&
-                           static_cast<bool>(surfaces[later.surface].paint);
+                    return surfaces[later.surface].atlasSize == size;
                 }
             );
             recordStamp(
@@ -415,16 +415,8 @@ namespace Crowy
         using enum RHIResourceUsage;
 
         auto& gpu = surfaces[stamp.surface];
-        // a scissor must stay inside the target
-        const auto size = static_cast<i32>(gpu.atlasSize);
-        std::vector<IntRect> rects;
-        for(auto rect: stamp.rects) {
-            rect.Clip(IntRect{.min = {0, 0}, .max = {size, size}});
-            if(!rect.IsEmpty())
-                rects.push_back(rect);
-        }
-        if(rects.empty())
-            return;
+        // BuildStampRects clipped every rect to its island
+        CROWY_ASSERT(!stamp.rects.empty(), "a queued stamp has rectangles");
         auto& work = scratchFor(gpu.atlasSize);
         const auto bounds = surface.ScaledBounds();
         const auto& splat = stamp.splat;
@@ -479,7 +471,7 @@ namespace Crowy
                 }
             };
             cmdList.SetPushGraphicsConstants(push);
-            for(const auto& rect: rects) {
+            for(const auto& rect: stamp.rects) {
                 cmdList.SetScissorRect(scissorOf(rect));
                 cmdList.Draw(3);
             }
@@ -513,7 +505,7 @@ namespace Crowy
                 atlasPipeline(CopyShader, "vs_main", "fs_copy")
             ));
             cmdList.SetPushGraphicsConstants(work.Get().GetReadableID());
-            for(const auto& rect: rects) {
+            for(const auto& rect: stamp.rects) {
                 cmdList.SetScissorRect(scissorOf(rect));
                 cmdList.Draw(3);
             }
