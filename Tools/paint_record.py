@@ -188,7 +188,7 @@ class Recorder:
             for i in range(total):
                 self.apply(events.get(i, []))
                 if animate:
-                    self.apply(animate(i / max(total - 1, 1)) or [])
+                    self.apply(animate(i, total) or [])
                 upcoming = self.frame() + 1
                 if i % stride == 0:
                     path = work / f"{captured:05d}.bmp"

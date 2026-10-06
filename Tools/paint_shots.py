@@ -2,7 +2,7 @@
 
 A clip is about 5 s of counted 60 Hz frames. `setup` runs before frame 0,
 `events` maps a frame index to port calls made before that frame, `animate`
-takes t in [0, 1] and returns calls for each frame, `captions` are
+takes (frame, frame count) and returns calls for each frame, `captions` are
 (frame, text) pairs burnt in by ffmpeg, `stills` name frames to keep as PNG.
 A shot with `frames` instead is a still sheet: each entry's calls, then one
 picture. Positions are MintChoco centimetres (X forward, Y right, Z up).
@@ -82,8 +82,8 @@ def shot_at(point, theta=0.0, azimuth=0.0, **kw):
 
 
 def orbit(center, radius, height, start_deg, sweep_deg, fov):
-    def animate(t):
-        a = math.radians(start_deg + sweep_deg * t)
+    def animate(frame, total):
+        a = math.radians(start_deg + sweep_deg * frame / max(total - 1, 1))
         eye = [center[0] + radius * math.cos(a), center[1] + radius * math.sin(a), center[2] + height]
         return camera(eye, center, fov)
     return animate
@@ -98,9 +98,8 @@ def ramp(path, start, end, first, last, target="lab"):
     return path, value, target
 
 
-def animate_ramps(total, ramps):
-    def animate(t):
-        frame = t * (total - 1)
+def animate_ramps(ramps):
+    def animate(frame, total):
         return [lab(path, value(frame), target) for path, value, target in ramps]
     return animate
 
@@ -155,7 +154,7 @@ def t2_shots():
             "setup": camera(FLOOR_EYE, SPOT, 45)
             + [lab("view", "Lit"), lab("compareView", "Score"), lab("split", 1.0)],
             "events": {10: [fire(incident(target, theta, 1200.0), target, speed=2915.5, team=0, seed=11035, lead=0.4, **MOP)]},
-            "animate": animate_ramps(300, [ramp("split", 1.0, 0.0, 90, 210)]),
+            "animate": animate_ramps([ramp("split", 1.0, 0.0, 90, 210)]),
             "captions": [(0, "GPU: RenderTarget에 스탬프"), (90, "CPU: 25 cm 셀 그리드가 점수")],
             "stills": {"t2_lit_score": 150},
         },
@@ -252,14 +251,14 @@ def t4_shots():
             "name": "t4_shape_morph",
             "seconds": 5.0,
             "setup": panel,
-            "animate": animate_ramps(300, [ramp("shapeStage", 0.0, 8.0, 0, 264, "splat")]),
+            "animate": animate_ramps([ramp("shapeStage", 0.0, 8.0, 0, 264, "splat")]),
             "crop": PANEL_CROP,
         },
         {
             "name": "t4_theta_sweep",
             "seconds": 5.0,
             "setup": panel[:2] + [splat("theta", 0.0), splat("shapeStage", 8.0)],
-            "animate": animate_ramps(300, [ramp("theta", 0.0, 70.0, 20, 280, "splat")]),
+            "animate": animate_ramps([ramp("theta", 0.0, 70.0, 20, 280, "splat")]),
             "crop": PANEL_CROP,
         },
     ]
@@ -313,7 +312,7 @@ def t6_shots():
             "name": "t6_normal_to_lit",
             "seconds": 5.0,
             "setup": camera(eye, SPOT, 40) + stack + [lab("view", "Normal"), lab("compareView", "Lit"), lab("split", 1.0)],
-            "animate": animate_ramps(300, [
+            "animate": animate_ramps([
                 ramp("split", 1.0, 0.0, 10, 120),
                 ramp("sunElevation", 60.0, 10.0, 130, 290, "look"),
             ]),
