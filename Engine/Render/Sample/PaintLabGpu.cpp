@@ -61,6 +61,37 @@ namespace Crowy
             return desc;
         }
 
+        // the same, drawn over the back buffer in the hook pass's formats
+        RHIGraphicsPipelineStateDesc overlayPipeline(
+            CStr shader,
+            CStr fs,
+            const HookPassContext& context
+        ) {
+            auto desc = atlasPipeline(shader, "vs_triangle", fs);
+            desc.renderTargetCount = context.formats.colors.size();
+            std::ranges::copy(
+                context.formats.colors,
+                desc.renderTargetFormats.begin()
+            );
+
+            return desc;
+        }
+
+        // a panel's rectangle as both the viewport and the scissor
+        void setPanelRect(RHICommandList& cmdList, Vec4 rect) {
+            cmdList.SetViewport(
+                RHIViewport{rect.x, rect.y, rect.z, rect.w, 0.0f, 1.0f}
+            );
+            cmdList.SetScissorRect(
+                RHIScissorRect{
+                    static_cast<i32>(rect.x),
+                    static_cast<i32>(rect.y),
+                    static_cast<i32>(rect.x + rect.z),
+                    static_cast<i32>(rect.y + rect.w)
+                }
+            );
+        }
+
         RHIViewport fullViewport(u32 size) {
             const auto s = static_cast<f32>(size);
 
@@ -688,42 +719,10 @@ namespace Crowy
         PipelineCache& pipelines,
         const PaintShapeLabPush& push
     ) {
-        RHIGraphicsPipelineStateDesc desc{
-            .preRasterizer =
-                RHILegacyFrontendDesc{
-                    .vertexShader =
-                        RHIShaderDesc{
-                            .path = ShapeLabShader,
-                            .entryPoint = "vs_triangle"
-                        }
-                },
-            .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
-            .fragmentShader =
-                RHIShaderDesc{
-                    .path = ShapeLabShader,
-                    .entryPoint = "fs_shapelab"
-                },
-            .renderTargetCount = context.formats.colors.size(),
-            .profile = "sm_6_8"
-        };
-        std::ranges::copy(
-            context.formats.colors,
-            desc.renderTargetFormats.begin()
-        );
-        const auto& rect = push.rect;
-
-        cmdList.SetPipelineState(pipelines.Resolve(desc));
-        cmdList.SetViewport(
-            RHIViewport{rect.x, rect.y, rect.z, rect.w, 0.0f, 1.0f}
-        );
-        cmdList.SetScissorRect(
-            RHIScissorRect{
-                static_cast<i32>(rect.x),
-                static_cast<i32>(rect.y),
-                static_cast<i32>(rect.x + rect.z),
-                static_cast<i32>(rect.y + rect.w)
-            }
-        );
+        cmdList.SetPipelineState(pipelines.Resolve(
+            overlayPipeline(ShapeLabShader, "fs_shapelab", context)
+        ));
+        setPanelRect(cmdList, push.rect);
         cmdList.SetPushGraphicsConstants(push);
         cmdList.Draw(3);
 
@@ -745,26 +744,6 @@ namespace Crowy
         auto& gpu = surfaces[index];
         const auto& layout = surface.Layout();
 
-        RHIGraphicsPipelineStateDesc desc{
-            .preRasterizer =
-                RHILegacyFrontendDesc{
-                    .vertexShader =
-                        RHIShaderDesc{
-                            .path = PanelShader,
-                            .entryPoint = "vs_triangle"
-                        }
-                },
-            .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
-            .fragmentShader =
-                RHIShaderDesc{.path = PanelShader, .entryPoint = "fs_panel"},
-            .renderTargetCount = context.formats.colors.size(),
-            .profile = "sm_6_8"
-        };
-        std::ranges::copy(
-            context.formats.colors,
-            desc.renderTargetFormats.begin()
-        );
-
         PaintPanelPush push{
             .paint = gpu.paint.Get().GetReadableID(),
             .position = gpu.position.Get().GetReadableID(),
@@ -783,18 +762,10 @@ namespace Crowy
             };
         }
 
-        cmdList.SetPipelineState(pipelines.Resolve(desc));
-        cmdList.SetViewport(
-            RHIViewport{rect.x, rect.y, rect.z, rect.w, 0.0f, 1.0f}
+        cmdList.SetPipelineState(
+            pipelines.Resolve(overlayPipeline(PanelShader, "fs_panel", context))
         );
-        cmdList.SetScissorRect(
-            RHIScissorRect{
-                static_cast<i32>(rect.x),
-                static_cast<i32>(rect.y),
-                static_cast<i32>(rect.x + rect.z),
-                static_cast<i32>(rect.y + rect.w)
-            }
-        );
+        setPanelRect(cmdList, rect);
         cmdList.SetPushGraphicsConstants(push);
         cmdList.Draw(3);
 
