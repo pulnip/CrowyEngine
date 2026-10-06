@@ -121,7 +121,6 @@ class Deck:
         self.prs.slide_width = Emu(9144000)
         self.prs.slide_height = Emu(5143500)
         self.blank = self.prs.slide_layouts[6]
-        self.page = 0
         self.errors = []
         self.texts = []
         self.svg_count = 0
@@ -221,8 +220,7 @@ class Deck:
         text_box(slide, 457200, 475488, 8229600, 548640, title, size=24, color=INK, bold=True)
 
     def footer(self, slide):
-        self.page += 1
-        text_box(slide, 8229600, 4754880, 457200, 182880, str(len(self.prs.slides._sldIdLst)), size=9,
+        text_box(slide, 8229600, 4754880, 457200, 182880, str(len(self.prs.slides)), size=9,
                  color=MUTED, align=PP_ALIGN.RIGHT)
 
     def notes(self, slide, text):
@@ -362,7 +360,7 @@ class Deck:
         out.parent.mkdir(parents=True, exist_ok=True)
         self.prs.save(out)
         sections = [s for s in self.spec["slides"] if s["kind"] == "section"]
-        print(f"{out}: {len(self.prs.slides._sldIdLst)} slides, {self.video_count} videos, "
+        print(f"{out}: {len(self.prs.slides)} slides, {self.video_count} videos, "
               f"{self.svg_count} SVG figures, {len(sections)} sections")
         return True
 
