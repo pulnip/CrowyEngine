@@ -279,6 +279,11 @@ namespace Crowy
         }
 
         void OnUpdateScene(f64 seconds) override {
+            // a smoke run's picture: both teams and a splash, from frame 2,
+            // when the surfaces first draw
+            if(dumpsFrames && FrameNumber() == 2)
+                fireSmokeVolley();
+
             // the droplets fly in fixed substeps: the frame's time on screen,
             // one tick a frame when a capture counts them
             const auto ticks = settings.countFrames || dumpsFrames
@@ -669,6 +674,25 @@ namespace Crowy
             };
             return score(settings.view) ||
                    (settings.split < 1.0f && score(settings.compareView));
+        }
+
+        void fireSmokeVolley() {
+            const auto fire =
+                [&](DVec3 target, DVec3 velocity, u8 team, i32 seed) {
+                    world->Fire(
+                        PaintShot{
+                            .origin = target - velocity * 0.3,
+                            .velocity = velocity,
+                            .paintId = team,
+                            .seed = seed,
+                            .splash = true
+                        }
+                    );
+                };
+            fire({-300.0, -600.0, 0.0}, {0.0, 0.0, -3000.0}, 0, 11);
+            fire({-220.0, -560.0, 0.0}, {1200.0, 0.0, -2600.0}, 1, 12);
+            fire({-150.0, -150.0, 300.0}, {0.0, 0.0, -2500.0}, 0, 13);
+            fire({-420.0, -420.0, 0.0}, {1500.0, 0.0, -2500.0}, 1, 14);
         }
 
         void placeDropletSpheres() {
