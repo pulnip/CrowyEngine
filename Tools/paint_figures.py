@@ -489,8 +489,11 @@ def a6_sdf(path, stills):
         s.text(x + 140, y + 310, f"{k}  {names[k]}", size=24, anchor="middle")
     # min against smooth-min across two discs
     p = Plot(s, 1240, 450, 320, 270, (-1.0, 1.0), (-0.35, 0.6))
-    d1 = lambda x: abs(x + 0.35) - 0.3
-    d2 = lambda x: abs(x - 0.35) - 0.3
+    def d1(x):
+        return abs(x + 0.35) - 0.3
+
+    def d2(x):
+        return abs(x - 0.35) - 0.3
     # k exaggerated from the stamp's 0.07 so the rounding shows at this size
     k = 0.3
 
