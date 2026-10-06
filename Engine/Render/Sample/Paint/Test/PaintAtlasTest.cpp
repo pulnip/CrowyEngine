@@ -8,7 +8,8 @@
 
 using namespace Crowy;
 
-// MintChoco's Tests/PaintAtlasTest.cpp, case for case
+// MintChoco's Tests/PaintAtlasTest.cpp cases, plus the shipped pad, the
+// floor's coarsened texel and the half conversion
 namespace
 {
     constexpr f32 TexelCm = 0.5f;
@@ -115,7 +116,9 @@ TEST(PaintAtlas, LayoutSingleIsland) {
     EXPECT_EQ(layout.Find(PaintFaceDirection::Down), nullptr);
 }
 
-TEST(PaintAtlas, GamePadIsThirteen) {
+TEST(PaintAtlas, ShippedPadFitsFadeAndRamp) {
+    static_assert(PaintIslandPad == 13);
+
     Box3d bounds;
     bounds.Add({-50.0, -50.0, -50.0});
     bounds.Add({50.0, 50.0, 50.0});
@@ -128,7 +131,6 @@ TEST(PaintAtlas, GamePadIsThirteen) {
         PaintMinRenderTargetSize,
         PaintMaxRenderTargetSize
     );
-    EXPECT_EQ(PaintIslandPad, 13);
     EXPECT_EQ(layout.atlasSize, 256);
     EXPECT_EQ(layout.islands[0].rect, (IntRect{{0, 0}, {226, 226}}));
 }
