@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <numbers>
 
+#include "ClassRegistry.hpp"
 #include "InputProvider.hpp"
+#include "Object.hpp"
 
 namespace Crowy
 {
@@ -60,4 +62,16 @@ namespace Crowy
     void FlyCamera::RecomputeView() noexcept {
         view = viewMat(position, Rotation());
     }
+
+    // the pose every sample exposes to its panel and the port
+    // clang-format off
+    CROWY_STRUCT(FlyCamera)
+        .SetProperty("position", &FlyCamera::position)
+        .SetProperty("yaw", &FlyCamera::yaw)
+        .SetProperty("pitch", &FlyCamera::pitch)
+        .SetUIRange(-1.55f, 1.55f)
+        .SetProperty("fovY", &FlyCamera::config, &FlyCamera::Config::fovY)
+        .SetUIRange(0.35f, 2.4f)
+    CROWY_STRUCT_END(FlyCamera)
+    // clang-format on
 }

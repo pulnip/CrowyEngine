@@ -20,7 +20,7 @@ namespace Crowy
             f32 lookSensitivity = 0.003f;
         };
 
-        // public so a sample can register the pose as reflected properties
+        // public for the reflected pose FlyCamera.cpp registers
     public:
         Config config;
         Vec3 position{};

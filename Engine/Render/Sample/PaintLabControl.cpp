@@ -1,7 +1,6 @@
 #include "PaintLabControl.hpp"
 
 #include "ClassRegistry.hpp"
-#include "FlyCamera.hpp"
 #include "Object.hpp"
 
 namespace Crowy
@@ -87,13 +86,5 @@ namespace Crowy
         .SetProperty("floorFollowsWorldUp", &PaintObjectFlags::floorFollowsWorldUp)
     CROWY_STRUCT_END(PaintObjectFlags)
 
-    CROWY_STRUCT(FlyCamera)
-        .SetProperty("position", &FlyCamera::position)
-        .SetProperty("yaw", &FlyCamera::yaw)
-        .SetProperty("pitch", &FlyCamera::pitch)
-        .SetUIRange(-1.55f, 1.55f)
-        .SetProperty("fovY", &FlyCamera::config, &FlyCamera::Config::fovY)
-        .SetUIRange(0.35f, 2.4f)
-    CROWY_STRUCT_END(FlyCamera)
     // clang-format on
 }
