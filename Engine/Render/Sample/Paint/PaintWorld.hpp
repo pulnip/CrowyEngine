@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <optional>
 #include <span>
 #include <vector>
@@ -73,7 +72,7 @@ namespace Crowy
     // score are fed from
     class PaintWorld {
     private:
-        RAII<PaintStageMeshes> meshes;
+        const PaintStageMeshes meshes = makePaintStageMeshes();
         std::vector<PaintSurface> surfaces;
         // 1 where the surface is on the shown stage
         std::vector<u8> active;
@@ -92,7 +91,7 @@ namespace Crowy
 
     public:
         PaintWorld();
-        ~PaintWorld();
+        ~PaintWorld() = default;
         CROWY_DECLARE_PINNED(PaintWorld)
 
         // traces the shot and, on a surface that receives paint, builds
@@ -121,7 +120,7 @@ namespace Crowy
         // UPaintSubsystem::GetWorldCoverage: every shown surface's grid
         PaintCoverage Coverage() const;
 
-        const PaintStageMeshes& Meshes() const noexcept { return *meshes; }
+        const PaintStageMeshes& Meshes() const noexcept { return meshes; }
         std::span<const PaintSurface> Surfaces() const noexcept {
             return surfaces;
         }

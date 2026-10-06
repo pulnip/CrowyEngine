@@ -14,16 +14,13 @@ namespace Crowy
         constexpr f64 TraceDistance = 10000.0;
     }
 
-    PaintWorld::PaintWorld()
-        : meshes(std::make_unique<PaintStageMeshes>(makePaintStageMeshes())) {
+    PaintWorld::PaintWorld() {
         for(auto& object: makePaintStageObjects()) {
-            const auto& mesh = meshes->Get(object.mesh);
+            const auto& mesh = meshes.Get(object.mesh);
             surfaces.emplace_back(std::move(object), mesh);
         }
         refreshActive();
     }
-
-    PaintWorld::~PaintWorld() = default;
 
     std::optional<PaintHit> PaintWorld::Fire(const PaintShot& shot) {
         const auto hit = scene.Raycast(
