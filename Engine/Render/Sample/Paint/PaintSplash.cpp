@@ -12,12 +12,6 @@ namespace Crowy
 {
     namespace
     {
-        // UE_KINDA_SMALL_NUMBER, UE_DOUBLE_KINDA_SMALL_NUMBER and
-        // UE_DOUBLE_SMALL_NUMBER
-        constexpr f32 KindaSmall = 1e-4f;
-        constexpr f64 DoubleKindaSmall = 1e-4;
-        constexpr f64 DoubleSmall = 1e-8;
-
         // FMath::DegreesToRadians on a float
         f32 radians(f32 degrees) noexcept {
             return degrees * (std::numbers::pi_v<f32> / 180.0f);
@@ -46,7 +40,7 @@ namespace Crowy
         DVec3 clampSpeed(DVec3 velocity, f32 maxSpeed) noexcept {
             const auto speed = size(velocity);
 
-            return speed > maxSpeed && speed > DoubleKindaSmall
+            return speed > maxSpeed && speed > DoubleKindaSmallNumber
                        ? velocity * (maxSpeed / speed)
                        : velocity;
         }
@@ -79,8 +73,10 @@ namespace Crowy
     f32 tangentialShare(f32 normalSpeed, f32 tangentialSpeed) noexcept {
         const auto tangential = std::max(tangentialSpeed, 0.0f);
 
-        return tangential /
-               std::max(tangential + std::max(normalSpeed, 0.0f), KindaSmall);
+        return tangential / std::max(
+                                tangential + std::max(normalSpeed, 0.0f),
+                                KindaSmallNumber
+                            );
     }
 
     void splitGroups(
@@ -271,7 +267,7 @@ namespace Crowy
         const auto allowed =
             cube(static_cast<f64>(std::max(ballRadius, 0.0f))) *
             std::max(volumeFraction, 0.0f);
-        if(total <= allowed || total <= DoubleSmall)
+        if(total <= allowed || total <= SmallNumber)
             return 1.0f;
 
         const auto scale =
@@ -300,7 +296,7 @@ namespace Crowy
         // gravity's pull back toward the plane; none means the droplet never
         // returns to this surface, and the score does not guess where it falls
         const auto gravityAlong = dot(gravity, normal);
-        if(gravityAlong >= -DoubleKindaSmall)
+        if(gravityAlong >= -DoubleKindaSmallNumber)
             return;
 
         const auto count = std::min(

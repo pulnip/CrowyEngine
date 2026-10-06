@@ -103,7 +103,8 @@ namespace Crowy
                     (stamp.stretch * std::abs(stamp.axisU[a]) +
                      std::abs(stamp.axisV[a]) + std::abs(stamp.normal[a])) +
                 margin;
-            const auto inv = boundsSize[a] > 1e-8 ? 1.0 / boundsSize[a] : 0.0;
+            const auto inv =
+                boundsSize[a] > SmallNumber ? 1.0 / boundsSize[a] : 0.0;
             low[a] = (stamp.center[a] - extent - bounds.min[a]) * inv;
             high[a] = (stamp.center[a] + extent - bounds.min[a]) * inv;
         }

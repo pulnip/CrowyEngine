@@ -46,8 +46,9 @@ namespace Crowy
         if(shot.splash) {
             splat.splash = &splash;
             const auto speed = size(shot.velocity);
-            splat.incidentDir =
-                speed > 1e-4 ? shot.velocity / speed : -hit->impactNormal;
+            splat.incidentDir = speed > DoubleKindaSmallNumber
+                                    ? shot.velocity / speed
+                                    : -hit->impactNormal;
             splat.incidentSpeed = static_cast<u16>(
                 std::clamp(std::floor(speed + 0.5), 0.0, 65535.0)
             );

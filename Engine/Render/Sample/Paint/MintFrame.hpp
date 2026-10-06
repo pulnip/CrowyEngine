@@ -14,6 +14,15 @@
 namespace Crowy
 {
     inline constexpr f64 MintCmToCrowyM = 0.01;
+    // UE_SMALL_NUMBER and UE_KINDA_SMALL_NUMBER, in the types Unreal uses them
+    inline constexpr f64 SmallNumber = 1e-8;
+    inline constexpr f32 KindaSmallNumber = 1e-4f;
+    inline constexpr f64 DoubleKindaSmallNumber = 1e-4;
+
+    // FMath::RoundToInt
+    inline i32 roundToInt(f32 x) noexcept {
+        return static_cast<i32>(std::floor(x + 0.5f));
+    }
 
     // FVector
     struct DVec3 {
@@ -98,7 +107,7 @@ namespace Crowy
     }
 
     // FVector::GetSafeNormal: zero below the tolerance, untouched when unit
-    inline DVec3 getSafeNormal(DVec3 v, f64 tolerance = 1e-8) noexcept {
+    inline DVec3 getSafeNormal(DVec3 v, f64 tolerance = SmallNumber) noexcept {
         const auto squareSum = sizeSquared(v);
         if(squareSum == 1.0)
             return v;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <bit>
-#include <cmath>
 
 #include "Primitives.hpp"
 
@@ -35,10 +34,5 @@ namespace Crowy
 
     inline constexpr u32 hashCombineFast(u32 a, u32 b) noexcept {
         return a ^ (b + 0x9e3779b9u + (a << 6) + (a >> 2));
-    }
-
-    // FMath::RoundToInt
-    inline i32 roundToInt(f32 x) noexcept {
-        return static_cast<i32>(std::floor(x + 0.5f));
     }
 }

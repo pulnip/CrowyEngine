@@ -9,12 +9,11 @@ namespace Crowy
 {
     namespace
     {
-        // UE_KINDA_SMALL_NUMBER
-        constexpr f32 KindaSmall = 1e-4f;
-
+        // FVector::IsNearlyZero
         bool isNearlyZero(DVec3 v) {
-            return std::abs(v.x) <= KindaSmall && std::abs(v.y) <= KindaSmall &&
-                   std::abs(v.z) <= KindaSmall;
+            return std::abs(v.x) <= KindaSmallNumber &&
+                   std::abs(v.y) <= KindaSmallNumber &&
+                   std::abs(v.z) <= KindaSmallNumber;
         }
     }
 
@@ -66,13 +65,16 @@ namespace Crowy
         const auto normal = getSafeNormal(hit.impactNormal);
         const auto speed = static_cast<f32>(size(incidentVelocity));
         const auto incident =
-            speed > KindaSmall ? incidentVelocity / speed : -normal;
+            speed > KindaSmallNumber ? incidentVelocity / speed : -normal;
 
         const auto cosTheta = static_cast<f32>(std::abs(dot(incident, normal)));
 
         const auto radius = ComputeRadius(volume, speed);
-        const auto stretch =
-            std::clamp(1.0f / std::max(cosTheta, KindaSmall), 1.0f, maxStretch);
+        const auto stretch = std::clamp(
+            1.0f / std::max(cosTheta, KindaSmallNumber),
+            1.0f,
+            maxStretch
+        );
         const auto tangent =
             getSafeNormal(incident - dot(incident, normal) * normal);
         // a grazing hit lands "ahead" of the contact along the tangent
@@ -106,7 +108,8 @@ namespace Crowy
         splat.stretch = stretch;
         // the centre slid ahead, so in stamp space the impact sits behind the
         // origin: its u, by the long axis, anchors the spike field
-        splat.impactU = -centerShift / std::max(radius * stretch, KindaSmall);
+        splat.impactU =
+            -centerShift / std::max(radius * stretch, KindaSmallNumber);
         splat.paintId = paintId;
         splat.heightAdd = heightAdd;
         splat.shapeNoise = shapeNoise;

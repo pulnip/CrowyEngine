@@ -9,9 +9,6 @@ namespace Crowy
 {
     namespace
     {
-        constexpr f64 SmallNumber = 1e-8;
-        constexpr f32 KindaSmall = 1e-4f;
-
         // Sutherland-Hodgman against one axis-aligned plane; the polygons
         // stay convex, so this is exact
         void clipToHalfSpace(
@@ -52,7 +49,7 @@ namespace Crowy
         constexpr i64 MaxVoxels = i64{1} << 20;
 
         origin = bounds.min;
-        cellSize = std::max(cell, KindaSmall);
+        cellSize = std::max(cell, KindaSmallNumber);
         const auto size = bounds.Size();
         const auto computeDims = [&size](f32 c) {
             return std::array<i32, 3>{
@@ -215,10 +212,10 @@ namespace Crowy
         // f of the radius across the surface, but the full radius along the
         // normal, as the stamp shader shrinks its disc with sqrt(1 - n^2)
         const auto surfaceRadius =
-            std::max(stamp.radius * coreFraction, KindaSmall);
+            std::max(stamp.radius * coreFraction, KindaSmallNumber);
         const auto stretchedRadius =
             surfaceRadius * std::max(stamp.stretch, 1.0f);
-        const auto depthRadius = std::max(stamp.radius, KindaSmall);
+        const auto depthRadius = std::max(stamp.radius, KindaSmallNumber);
         const auto reach =
             std::max({surfaceRadius, stretchedRadius, depthRadius});
 
@@ -249,7 +246,7 @@ namespace Crowy
                         const auto faceNormal = paintFaceDirectionVector(
                             paintFaceDirectionAt(direction)
                         );
-                        if(dot(faceNormal, stamp.normal) < -KindaSmall)
+                        if(dot(faceNormal, stamp.normal) < -KindaSmallNumber)
                             continue;
 
                         // a running star's trail: no other id takes it, and

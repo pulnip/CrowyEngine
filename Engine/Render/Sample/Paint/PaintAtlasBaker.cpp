@@ -9,9 +9,6 @@ namespace Crowy
 {
     namespace
     {
-        // UE_DOUBLE_SMALL_NUMBER
-        constexpr f64 SmallNumber = 1e-8;
-
         f64 cross2(Vec2d a, Vec2d b) {
             return a.x * b.y - a.y * b.x;
         }
@@ -255,7 +252,7 @@ namespace Crowy
                     ? 1.0f
                     : std::clamp(static_cast<f32>(d) / fadeTexels, 0.0f, 1.0f);
             out[static_cast<usize>(index)] =
-                static_cast<u8>(std::floor(255.0f * fade + 0.5f));
+                static_cast<u8>(roundToInt(255.0f * fade));
         }
     }
 
