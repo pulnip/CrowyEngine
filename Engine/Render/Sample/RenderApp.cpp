@@ -104,7 +104,8 @@ namespace Crowy
         // clear always matches the one the target was created with
         StandardPipelineConfig standardConfig(
             const RenderApp::Config& config,
-            const RenderDebug& debug
+            const RenderDebug& debug,
+            RHIPixelFormat backBufferFormat
         ) {
             StandardPipelineConfig standard{
                 .depthFormat = config.depthFormat,
@@ -114,7 +115,9 @@ namespace Crowy
                 .depthPrepass =
                     wantsDepthPrepass(debug, meshPassOverride(debug)),
                 .shadowMapSize = config.shadowMapSize,
-                .post = config.post
+                .post = config.post,
+                .sceneView = debug.sceneView,
+                .sceneViewFormat = backBufferFormat
             };
             if(showsData(debug.mode)) {
                 standard.clearColor = Colors::Black;
@@ -299,6 +302,7 @@ namespace Crowy
         .SetProperty("shadowFilter", &RenderDebug::shadowFilter)
         .SetProperty("showStats", &RenderDebug::showStats)
         .SetProperty("showPanel", &RenderDebug::showPanel)
+        .SetProperty("sceneView", &RenderDebug::sceneView)
     CROWY_STRUCT_END(RenderDebug)
 
     RenderApp::~RenderApp() = default;
@@ -333,7 +337,7 @@ namespace Crowy
             config.vertexPoolCapacity,
             config.indexPoolCapacity
         );
-        pipelineConfig = standardConfig(config, debug);
+        pipelineConfig = standardConfig(config, debug, swapchain.GetFormat());
         pipeline = describePipeline();
         targetCaptures = std::make_unique<TargetCaptureQueue>(device);
         // as many view rows as the pass list names
@@ -889,16 +893,11 @@ namespace Crowy
         const auto frameDebug = debug;
         const auto overrides = meshPassOverride(frameDebug);
 
-        auto& view = renderer->View(ViewMain);
-        view.viewProj = camera->ViewProj(aspect);
-        view.debugMode = static_cast<u32>(frameDebug.mode);
-        view.shadowFilter = static_cast<u32>(frameDebug.shadowFilter);
-        view.cameraPosition = toVec4(camera->Position(), 1.0f);
-
         // the prepass and the post list are passes in the list, so turning
         // either over is a new list; frames in flight keep reading the old
         // walker's targets
-        auto wanted = standardConfig(config, frameDebug);
+        auto wanted =
+            standardConfig(config, frameDebug, swapchain->GetFormat());
         if(wanted != pipelineConfig) {
             pipelineConfig = std::move(wanted);
             auto rebuilt = describePipeline();
@@ -912,6 +911,21 @@ namespace Crowy
             );
             pipeline = std::move(rebuilt);
         }
+
+        // a rebuilt list starts at the back buffer's size, so this follows
+        // every rebuild too
+        if(const auto extent = pipeline->FindExtent(SceneViewName);
+           extent && sceneViewSize.x != 0) {
+            pipeline->ResizeExtent(*extent, sceneViewSize.x, sceneViewSize.y);
+        }
+        const auto sceneSize = pipeline->TargetSize(pipeline->SceneColor());
+        aspect = static_cast<f32>(sceneSize.x) / sceneSize.y;
+
+        auto& view = renderer->View(ViewMain);
+        view.viewProj = camera->ViewProj(aspect);
+        view.debugMode = static_cast<u32>(frameDebug.mode);
+        view.shadowFilter = static_cast<u32>(frameDebug.shadowFilter);
+        view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
         // every per-frame buffer settles before the first pass opens
         OnUpdateFrameData();
@@ -988,6 +1002,18 @@ namespace Crowy
 
     void RenderApp::OnResize(u32 width, u32 height) {
         pipeline->Resize(width, height);
-        aspect = static_cast<f32>(width) / height;
+    }
+
+    void RenderApp::SetSceneViewSize(u32 width, u32 height) noexcept {
+        if(width == 0 || height == 0)
+            return;
+
+        sceneViewSize = Size2D{width, height};
+    }
+
+    u64 RenderApp::SceneViewID() const {
+        const auto id = pipeline->FindTarget(SceneViewName);
+
+        return id ? pipeline->OverlayReadableID(*id) : 0;
     }
 }

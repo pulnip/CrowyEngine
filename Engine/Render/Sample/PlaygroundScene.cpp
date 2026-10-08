@@ -1,5 +1,6 @@
 #include "PlaygroundScene.hpp"
 
+#include <algorithm>
 #include <format>
 #include <memory>
 #include <numbers>
@@ -450,6 +451,24 @@ namespace Crowy
         // and may only raise the flag
         if(std::exchange(uiContext.panelDirty, false))
             panel = buildPanel();
+
+        // the running list's, not debug's, which the panel may flip mid-frame
+        if(const auto sceneView = SceneViewID(); sceneView != 0) {
+            // the image fills the window, so the window cannot size itself
+            ImGui::SetNextWindowSize(
+                ImVec2(640.0f, 400.0f),
+                ImGuiCond_FirstUseEver
+            );
+            if(ImGui::Begin("Scene View")) {
+                const auto size = ImGui::GetContentRegionAvail();
+                SetSceneViewSize(
+                    static_cast<u32>(std::max(size.x, 0.0f)),
+                    static_cast<u32>(std::max(size.y, 0.0f))
+                );
+                ImGui::Image(static_cast<ImTextureID>(sceneView), size);
+            }
+            ImGui::End();
+        }
 
         if(debug.showPanel) {
             // Prepare opens the shared "Crowy" window, whose saved rect

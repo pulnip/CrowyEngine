@@ -42,6 +42,9 @@ namespace Crowy
         // read by a sample that hosts the stats overlay or a panel
         bool showStats = false;
         bool showPanel = false;
+        // the scene drawn into a target the sample's UI shows, sized by
+        // SetSceneViewSize
+        bool sceneView = false;
 
         friend bool operator==(
             const RenderDebug&,
@@ -106,7 +109,11 @@ namespace Crowy
 
         RHIDevice* device = nullptr;
         RHISwapchain* swapchain = nullptr;
+        // the scene's, from its color target
         f32 aspect = 1.0f;
+        // the scene view's, applied at the next frame; 0 keeps the back
+        // buffer's
+        Size2D sceneViewSize;
 
         GeometryPoolPtr geometryPool;
         SceneRendererPtr renderer;
@@ -219,6 +226,12 @@ namespace Crowy
         // the lit views' clear, as a lighting key's sky; the walker is
         // rebuilt with it at the next frame
         void SetClearColor(Color color) noexcept { config.clearColor = color; }
+        // the scene view's size from the next frame on; a zero side is
+        // ignored, as a collapsed window's
+        void SetSceneViewSize(u32 width, u32 height) noexcept;
+        // the scene view target for the UI to sample this frame; 0 without
+        // debug.sceneView
+        u64 SceneViewID() const;
         // the back buffer of `frame` to `path` as a BMP, with the
         // capture_frame verb's checks; why not, empty once queued
         Str RequestCapture(Str path, u64 frame);
