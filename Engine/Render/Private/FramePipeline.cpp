@@ -35,6 +35,16 @@ namespace Crowy
         // FullscreenPush's handles: source, then input0..2
         constexpr usize FullscreenReadCount = 4;
 
+        FrameTargetSize sizeOf(
+            const FramePipelineDesc& desc,
+            FrameTargetID id
+        ) {
+            if(id == BackBufferTarget)
+                return BackBufferExtent;
+
+            return desc.targets[id - 1].size;
+        }
+
         [[noreturn]] void refuse(StrView pass, StrView rule) {
             throw std::invalid_argument(
                 std::format("pass '{}': {}", pass, rule)
@@ -56,6 +66,18 @@ namespace Crowy
         }
 
         void refuseDuplicateNames(const FramePipelineDesc& desc) {
+            for(usize i = 0; i < desc.extents.size(); ++i) {
+                for(usize j = i + 1; j < desc.extents.size(); ++j) {
+                    if(desc.extents[i].name == desc.extents[j].name) {
+                        throw std::invalid_argument(
+                            std::format(
+                                "two extents are named '{}'",
+                                desc.extents[i].name
+                            )
+                        );
+                    }
+                }
+            }
             for(usize i = 0; i < desc.targets.size(); ++i) {
                 for(usize j = i + 1; j < desc.targets.size(); ++j) {
                     if(desc.targets[i].name == desc.targets[j].name) {
@@ -178,6 +200,14 @@ namespace Crowy
                     );
                 }
 
+                std::optional<FrameTargetSize> size;
+                for(const auto id: attached) {
+                    const auto own = sizeOf(desc, id);
+                    if(size && *size != own)
+                        refuse(pass.name, "its attachments differ in size");
+                    size = own;
+                }
+
                 // a pass samples what an earlier one left, never what it
                 // attaches itself
                 std::vector<FrameTargetID> read;
@@ -187,6 +217,17 @@ namespace Crowy
                             pass.name,
                             std::format("target {} is unknown", id)
                         );
+                    // a fullscreen pass loads the texel under its pixel
+                    if(std::holds_alternative<FullscreenPassDesc>(pass.kind) &&
+                       id != BackBufferTarget && sizeOf(desc, id) != *size) {
+                        refuse(
+                            pass.name,
+                            std::format(
+                                "it reads '{}', whose size is not its own",
+                                desc.targets[id - 1].name
+                            )
+                        );
+                    }
                     if(std::ranges::contains(attached, id)) {
                         refuse(
                             pass.name,
@@ -327,10 +368,33 @@ namespace Crowy
         : device(device),
           desc(std::move(desc)),
           backBufferFormat(backBufferFormat),
-          width(width),
-          height(height) {
+          extentSizes(this->desc.extents.size() + 1, Size2D{width, height}) {
         const auto& targets = this->desc.targets;
         const auto& passDescs = this->desc.passes;
+
+        for(const auto& target: targets) {
+            const auto* extent = std::get_if<FrameExtentID>(&target.size);
+            if(extent != nullptr && *extent > this->desc.extents.size()) {
+                throw std::invalid_argument(
+                    std::format(
+                        "target '{}' names extent {}, which is unknown",
+                        target.name,
+                        *extent
+                    )
+                );
+            }
+            const auto* fixed = std::get_if<FixedSize>(&target.size);
+            if(fixed != nullptr && (fixed->width == 0 || fixed->height == 0)) {
+                throw std::invalid_argument(
+                    std::format(
+                        "target '{}' has an empty fixed size, {}x{}",
+                        target.name,
+                        fixed->width,
+                        fixed->height
+                    )
+                );
+            }
+        }
 
         if(this->desc.sceneColor > targets.size()) {
             throw std::invalid_argument(
@@ -349,8 +413,8 @@ namespace Crowy
                     )
                 );
             }
-            const auto& target = targets[map - 1];
-            if(target.width == 0 || target.width != target.height) {
+            const auto* fixed = std::get_if<FixedSize>(&targets[map - 1].size);
+            if(fixed == nullptr || fixed->width != fixed->height) {
                 throw std::invalid_argument(
                     std::format(
                         "shadowMap names target {}, which is not a "
@@ -459,23 +523,24 @@ namespace Crowy
         }
 
         textures.resize(targets.size() + 1);
-        createTargets(false);
+        createTargets(std::nullopt);
     }
 
-    void FramePipeline::createTargets(bool swapchainSizedOnly) {
+    void FramePipeline::createTargets(std::optional<FrameExtentID> only) {
         const auto& targets = desc.targets;
         for(FrameTargetID id = 1; id <= targets.size(); ++id) {
             const auto& target = targets[id - 1];
-            const bool swapchainSized = target.width == 0;
             if(usages[id] == RHITextureUsage::None)
                 continue;
-            if(swapchainSizedOnly && !swapchainSized)
+            // a fixed size never equals an extent
+            if(only && target.size != FrameTargetSize{*only})
                 continue;
 
+            const auto size = TargetSize(id);
             auto created = device.CreateTexture(
                 RHITextureCreateDesc{
-                    .width = swapchainSized ? width : target.width,
-                    .height = swapchainSized ? height : target.height,
+                    .width = size.x,
+                    .height = size.y,
                     .format = target.format,
                     .usage = usages[id],
                     .clearColor = target.clearColor,
@@ -490,9 +555,21 @@ namespace Crowy
     }
 
     void FramePipeline::Resize(u32 width, u32 height) {
-        this->width = width;
-        this->height = height;
-        createTargets(true);
+        ResizeExtent(BackBufferExtent, width, height);
+    }
+
+    void FramePipeline::ResizeExtent(
+        FrameExtentID extent,
+        u32 width,
+        u32 height
+    ) {
+        CROWY_ASSERT(extent < extentSizes.size(), "the extent is known");
+        auto& size = extentSizes[extent];
+        if(size.x == width && size.y == height)
+            return;
+
+        size = Size2D{width, height};
+        createTargets(extent);
     }
 
     void FramePipeline::Prepare(
@@ -835,7 +912,7 @@ namespace Crowy
         if(desc.shadowMap == 0)
             return 0;
 
-        return desc.targets[desc.shadowMap - 1].width;
+        return TargetSize(desc.shadowMap).x;
     }
 
     std::optional<FrameTargetID> FramePipeline::FindTarget(
@@ -851,6 +928,25 @@ namespace Crowy
         }
 
         return std::nullopt;
+    }
+
+    std::optional<FrameExtentID> FramePipeline::FindExtent(
+        StrView name
+    ) const noexcept {
+        for(FrameExtentID id = 1; id <= desc.extents.size(); ++id) {
+            if(desc.extents[id - 1].name == name)
+                return id;
+        }
+
+        return std::nullopt;
+    }
+
+    Size2D FramePipeline::TargetSize(FrameTargetID id) const noexcept {
+        const auto size = sizeOf(desc, id);
+        if(const auto* fixed = std::get_if<FixedSize>(&size))
+            return Size2D{fixed->width, fixed->height};
+
+        return extentSizes[std::get<FrameExtentID>(size)];
     }
 
     OverlayFormats FramePipeline::Overlay() const noexcept {

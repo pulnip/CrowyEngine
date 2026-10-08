@@ -172,8 +172,7 @@ TEST(PostChain, TonemapThenADisplayEntryShareOneRgba8Intermediate) {
     EXPECT_EQ(intermediate.name, "PostDisplay0");
     EXPECT_EQ(intermediate.format, RHIPixelFormat::RGBA8_UNORM);
     // swapchain-sized, so a Resize recreates it
-    EXPECT_EQ(intermediate.width, 0u);
-    EXPECT_EQ(intermediate.height, 0u);
+    EXPECT_EQ(intermediate.size, FrameTargetSize{BackBufferExtent});
 
     ASSERT_EQ(desc.passes.size(), 3u);
     EXPECT_EQ(desc.passes[1].name, "Tonemap");

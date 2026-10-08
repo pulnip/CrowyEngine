@@ -20,22 +20,42 @@ namespace Crowy
     class RenderScene;
     class SceneRenderer;
     struct PassDesc;
+    struct FixedSize;
+    struct FrameExtentDesc;
     struct FrameTargetDesc;
 
     using FrameTargetID = u32;
+    using FrameExtentID = u32;
+    // the extent a target follows, or a size of its own that only a new desc
+    // changes
+    using FrameTargetSize = std::variant<FrameExtentID, FixedSize>;
+    using FrameExtentDescs = std::vector<FrameExtentDesc>;
     using FrameTargetDescs = std::vector<FrameTargetDesc>;
     using PassDescs = std::vector<PassDesc>;
 
     // imported each frame: the swapchain image App::Render hands OnRecord
     inline constexpr FrameTargetID BackBufferTarget = 0;
+    // the swapchain's size, following Resize
+    inline constexpr FrameExtentID BackBufferExtent = 0;
+
+    struct FixedSize {
+        u32 width = 0;
+        u32 height = 0;
+
+        friend bool operator==(const FixedSize&, const FixedSize&) = default;
+    };
+
+    // extents[i] is ID i + 1: a size the host sets with ResizeExtent, which
+    // starts at the back buffer's
+    struct FrameExtentDesc {
+        Str name;
+    };
 
     // targets[i] is ID i + 1; usage bits come from the uses
     struct FrameTargetDesc {
         Str name;
         RHIPixelFormat format = RHIPixelFormat::Unknown;
-        // 0: the swapchain's, following Resize
-        u32 width = 0;
-        u32 height = 0;
+        FrameTargetSize size = BackBufferExtent;
         Color clearColor = Colors::Black;
         f32 clearDepth = 1.0f;
     };
@@ -96,6 +116,7 @@ namespace Crowy
         // a fixed-size square depth target the directional shadow is
         // rendered into; 0 for none
         FrameTargetID shadowMap = 0;
+        FrameExtentDescs extents;
     };
 
     // the color and depth format of the pass the UI rides
@@ -226,6 +247,7 @@ namespace Crowy
         };
 
         using CompiledPasses = std::vector<CompiledPass>;
+        using ExtentSizes = std::vector<Size2D>;
         using LastUses = std::vector<LastUse>;
         using PassStatsList = std::vector<PassStats>;
         using TargetTextures = std::vector<RHITextureRAII>;
@@ -239,8 +261,8 @@ namespace Crowy
         RHIDevice& device;
         FramePipelineDesc desc;
         RHIPixelFormat backBufferFormat = RHIPixelFormat::Unknown;
-        u32 width = 0;
-        u32 height = 0;
+        // indexed by FrameExtentID
+        ExtentSizes extentSizes;
 
         // indexed by FrameTargetID; the back buffer's and an unused
         // target's stay null
@@ -280,6 +302,9 @@ namespace Crowy
 
         // the swapchain-sized targets anew; the old ones retire
         void Resize(u32 width, u32 height);
+        // the targets of `extent` anew at that size, when it changed; the old
+        // ones retire
+        void ResizeExtent(FrameExtentID extent, u32 width, u32 height);
         // per mesh pass: its view's cull, then its list built and uploaded;
         // per fullscreen pass: its pipeline resolved
         void Prepare(
@@ -310,9 +335,13 @@ namespace Crowy
         std::span<const FrameTargetDesc> Targets() const noexcept {
             return desc.targets;
         }
+        std::optional<FrameExtentID> FindExtent(StrView name) const noexcept;
+        Size2D TargetSize(FrameTargetID id) const noexcept;
+        FrameTargetID SceneColor() const noexcept { return desc.sceneColor; }
 
     private:
-        void createTargets(bool swapchainSizedOnly);
+        // every target when `only` is empty, else the targets that follow it
+        void createTargets(std::optional<FrameExtentID> only);
         RHITexture& texture(FrameTargetID id, const FrameInputs& inputs) const;
         RHITextureBarrier makeBarrier(
             const CompiledBarrier& half,

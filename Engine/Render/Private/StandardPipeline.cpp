@@ -35,8 +35,10 @@ namespace Crowy
                 FrameTargetDesc{
                     .name = "ShadowMap",
                     .format = RHIPixelFormat::D32_FLOAT,
-                    .width = config.shadowMapSize,
-                    .height = config.shadowMapSize
+                    .size = FixedSize{
+                        .width = config.shadowMapSize,
+                        .height = config.shadowMapSize
+                    }
                 }
             );
             desc.shadowMap = static_cast<FrameTargetID>(desc.targets.size());

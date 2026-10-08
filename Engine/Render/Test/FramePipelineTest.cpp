@@ -241,7 +241,7 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     ASSERT_EQ(desc.targets.size(), 2u);
     EXPECT_EQ(desc.targets[0].name, "SceneDepth");
     EXPECT_EQ(desc.targets[0].format, RHIPixelFormat::D32_FLOAT);
-    EXPECT_EQ(desc.targets[0].width, 0u);
+    EXPECT_EQ(desc.targets[0].size, FrameTargetSize{BackBufferExtent});
     EXPECT_EQ(desc.sceneColor, SceneColor);
     // the scene passes, then the post list's one entry
     ASSERT_EQ(desc.passes.size(), 4u);
@@ -321,8 +321,10 @@ TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
     EXPECT_EQ(desc.targets[1].name, "ShadowMap");
     EXPECT_EQ(desc.targets[2].name, "SceneColor");
     EXPECT_EQ(desc.targets[1].format, RHIPixelFormat::D32_FLOAT);
-    EXPECT_EQ(desc.targets[1].width, 2048u);
-    EXPECT_EQ(desc.targets[1].height, 2048u);
+    EXPECT_EQ(
+        desc.targets[1].size,
+        (FrameTargetSize{FixedSize{.width = 2048, .height = 2048}})
+    );
     EXPECT_EQ(desc.shadowMap, ShadowMap);
     ASSERT_EQ(desc.passes.size(), 5u);
 
@@ -395,8 +397,7 @@ TEST(FramePipeline, TheStandardDescEndsInTonemapWithTheUI) {
     const auto& color = desc.targets[SceneColor - 1];
     EXPECT_EQ(color.name, "SceneColor");
     EXPECT_EQ(color.format, RHIPixelFormat::RGBA16_FLOAT);
-    EXPECT_EQ(color.width, 0u);
-    EXPECT_EQ(color.height, 0u);
+    EXPECT_EQ(color.size, FrameTargetSize{BackBufferExtent});
     EXPECT_EQ(color.clearColor, Sky);
     EXPECT_EQ(desc.sceneColor, SceneColor);
 
@@ -1169,8 +1170,7 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
             FrameTargetDesc{
                 .name = "Oblong",
                 .format = RHIPixelFormat::D32_FLOAT,
-                .width = 64,
-                .height = 32
+                .size = FixedSize{.width = 64, .height = 32}
             }
         );
         desc.shadowMap = static_cast<FrameTargetID>(desc.targets.size());
