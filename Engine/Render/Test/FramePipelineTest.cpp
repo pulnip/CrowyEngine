@@ -869,6 +869,257 @@ TEST(FramePipeline, ResizeRecreatesOnlySwapchainSizedTargets) {
     EXPECT_EQ(f.device.texturesDestroyed, 2u);
 }
 
+TEST(FramePipeline, ResizeExtentRecreatesOnlyItsTargets) {
+    constexpr FrameTargetID ShadowMap = 2;
+    constexpr FrameTargetID SceneView = 4;
+
+    Fixture f;
+    FramePipeline pipeline(
+        f.device,
+        makeStandardPipeline({.shadowMapSize = 64, .sceneView = true}),
+        BackBufferFormat,
+        Width,
+        Height
+    );
+    const auto extent = pipeline.FindExtent("SceneView");
+    ASSERT_TRUE(extent.has_value());
+    EXPECT_FALSE(pipeline.FindExtent("Missing").has_value());
+
+    // the depth, the map, the scene colour and the view; an extent starts at
+    // the back buffer's size
+    ASSERT_EQ(f.device.textureCreates.size(), 4u);
+    EXPECT_EQ(f.device.textureCreates[SceneView - 1].width, Width);
+    EXPECT_EQ(f.device.textureCreates[SceneView - 1].height, Height);
+
+    // no target follows the back buffer
+    pipeline.Resize(128, 96);
+    EXPECT_EQ(f.device.textureCreates.size(), 4u);
+    EXPECT_EQ(pipeline.TargetSize(BackBufferTarget).x, 128u);
+    EXPECT_EQ(pipeline.TargetSize(BackBufferTarget).y, 96u);
+
+    pipeline.ResizeExtent(*extent, 40, 20);
+    // all but the map
+    ASSERT_EQ(f.device.textureCreates.size(), 7u);
+    for(usize i = 4; i < 7; ++i) {
+        EXPECT_EQ(f.device.textureCreates[i].width, 40u) << i;
+        EXPECT_EQ(f.device.textureCreates[i].height, 20u) << i;
+    }
+    EXPECT_EQ(f.device.deferred.size(), 3u);
+    EXPECT_EQ(pipeline.TargetSize(SceneView).x, 40u);
+    EXPECT_EQ(pipeline.TargetSize(SceneView).y, 20u);
+    EXPECT_EQ(pipeline.TargetSize(pipeline.SceneColor()).x, 40u);
+    EXPECT_EQ(pipeline.TargetSize(ShadowMap).x, 64u);
+    EXPECT_EQ(pipeline.TargetSize(ShadowMap).y, 64u);
+
+    // the same size again makes nothing
+    pipeline.ResizeExtent(*extent, 40, 20);
+    EXPECT_EQ(f.device.textureCreates.size(), 7u);
+}
+
+TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
+    using enum RHIResourceUsage;
+    constexpr FrameTargetID SceneDepth = 1;
+    constexpr FrameTargetID SceneColor = 2;
+    constexpr FrameTargetID SceneView = 3;
+
+    auto desc = makeStandardPipeline(
+        {.shadowMapSize = 0,
+         .sceneView = true,
+         .sceneViewFormat = RHIPixelFormat::BGRA8_UNORM}
+    );
+
+    ASSERT_EQ(desc.extents.size(), 1u);
+    EXPECT_EQ(desc.extents[0].name, "SceneView");
+    ASSERT_EQ(desc.targets.size(), 3u);
+    EXPECT_EQ(desc.targets[SceneDepth - 1].size, FrameTargetSize{1u});
+    EXPECT_EQ(desc.targets[SceneColor - 1].size, FrameTargetSize{1u});
+    EXPECT_EQ(desc.targets[SceneView - 1].name, "SceneView");
+    EXPECT_EQ(desc.targets[SceneView - 1].size, FrameTargetSize{1u});
+    EXPECT_EQ(desc.targets[SceneView - 1].format, RHIPixelFormat::BGRA8_UNORM);
+    ASSERT_EQ(desc.passes.size(), 5u);
+    EXPECT_EQ(desc.passes[3].name, "Tonemap");
+    EXPECT_EQ(desc.passes[3].colors[0].target, SceneView);
+    // the view's alpha stays the clear's 1, so the UI draws it opaque
+    EXPECT_EQ(desc.targets[SceneView - 1].clearColor.w, 1.0f);
+    const auto& blend = std::get<FullscreenPassDesc>(desc.passes[3].kind).blend;
+    ASSERT_TRUE(blend.has_value());
+    EXPECT_FALSE(blend->renderTargets[0].blendEnable);
+    EXPECT_EQ(
+        blend->renderTargets[0].writeMask,
+        RHIColorWriteMask::EnableColor
+    );
+    const auto& ui = desc.passes[4];
+    EXPECT_EQ(ui.name, "UI");
+    EXPECT_TRUE(std::holds_alternative<OverlayPassDesc>(ui.kind));
+    EXPECT_EQ(ui.reads, std::vector<FrameTargetID>{SceneView});
+
+    Fixture f;
+    f.AddPrimitive(f.AddMaterial("fs_opaque"));
+    FramePipeline
+        pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
+    // the same as the standard list's, so a host's UI keeps its formats
+    EXPECT_EQ(
+        pipeline.Overlay(),
+        (OverlayFormats{
+            .color = BackBufferFormat,
+            .depth = RHIPixelFormat::Unknown
+        })
+    );
+
+    FakeTexture atlas{RHIPixelFormat::RGBA8_UNORM, 8, 8, 0xA7};
+    const std::array uiAcquires{MakeBarrier(atlas, Undefined, SampledFragment)};
+    auto inputs = f.Inputs();
+    inputs.overlayAcquires = uiAcquires;
+    inputs.recordOverlay = [](RHICommandList& cmdList) {
+        cmdList.SetMarker("ui");
+    };
+
+    for(int frame = 0; frame < 2; ++frame) {
+        f.Frame(pipeline, inputs);
+
+        auto& view = *f.Pass("Tonemap").colors[0].texture;
+        EXPECT_NE(&view, &f.backBuffer);
+        EXPECT_EQ(view.GetFormat(), RHIPixelFormat::BGRA8_UNORM);
+        EXPECT_EQ(pipeline.OverlayReadableID(SceneView), view.GetReadableID());
+        // the view's first use waits on the UI's sampling a frame before
+        EXPECT_TRUE(
+            std::ranges::contains(
+                f.Pass("Tonemap").acquires,
+                MakeCrossSubmissionBarrier(
+                    view,
+                    SampledFragment,
+                    RenderTarget,
+                    true
+                )
+            )
+        );
+
+        const auto& pass = f.Pass("UI");
+        ASSERT_EQ(pass.colors.size(), 1u);
+        EXPECT_EQ(pass.colors[0].texture, &f.backBuffer);
+        EXPECT_EQ(pass.colors[0].loadAction, RHILoadAction::Clear);
+        EXPECT_TRUE(
+            std::ranges::contains(
+                pass.acquires,
+                MakeBarrier(view, RenderTarget, SampledFragment)
+            )
+        );
+        EXPECT_TRUE(std::ranges::contains(pass.acquires, uiAcquires[0]));
+        EXPECT_EQ(
+            pass.releases,
+            TextureBarriers{MakeBarrier(f.backBuffer, RenderTarget, Present)}
+        );
+        // nothing of its own before the UI
+        EXPECT_FALSE(std::ranges::contains(pass.log, Str{"draw"}));
+        ASSERT_FALSE(pass.log.empty());
+        EXPECT_EQ(pass.log.back(), "marker ui");
+        for(const auto& other: f.cmdList.passes) {
+            EXPECT_EQ(
+                std::ranges::contains(other.log, Str{"marker ui"}),
+                other.event == "UI"
+            ) << other.event;
+        }
+
+        EXPECT_TRUE(f.cmdList.violations.empty())
+            << f.cmdList.violations.front().what;
+        EXPECT_TRUE(f.cmdList.unconsumedAtClose.empty());
+    }
+}
+
+TEST(FramePipeline, InvalidExtentDescsAreRefused) {
+    const auto sceneView = [] {
+        return makeStandardPipeline({.shadowMapSize = 64, .sceneView = true});
+    };
+    constexpr FrameTargetID ShadowMap = 2;
+    constexpr FrameTargetID SceneColor = 3;
+    constexpr FrameTargetID SceneView = 4;
+
+    {
+        auto desc = sceneView();
+        desc.targets[0].size = 3u;
+        ExpectRefused(
+            std::move(desc),
+            "target 'SceneDepth' names extent 3, which is unknown"
+        );
+    }
+    {
+        auto desc = sceneView();
+        desc.targets[ShadowMap - 1].size = FixedSize{.width = 64};
+        ExpectRefused(
+            std::move(desc),
+            "target 'ShadowMap' has an empty fixed size, 64x0"
+        );
+    }
+    {
+        auto desc = sceneView();
+        desc.extents.push_back(FrameExtentDesc{.name = "SceneView"});
+        ExpectRefused(std::move(desc), "two extents are named 'SceneView'");
+    }
+    {
+        auto desc = sceneView();
+        desc.targets[SceneColor - 1].size = BackBufferExtent;
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Opaque': its attachments differ in size"
+        );
+    }
+    {
+        // a texel load would miss the source's pixels
+        auto desc = sceneView();
+        desc.targets[SceneView - 1].size = BackBufferExtent;
+        ExpectRefused(
+            std::move(desc),
+            "pass 'Tonemap': it reads 'SceneColor', whose size is not its own"
+        );
+    }
+}
+
+TEST(FramePipeline, InvalidOverlayPassDescsAreRefused) {
+    constexpr FrameTargetID SceneDepth = 1;
+    constexpr FrameTargetID SceneColor = 3;
+
+    {
+        auto desc =
+            makeStandardPipeline({.shadowMapSize = 64, .sceneView = true});
+        desc.passes.back().colors[0].target = SceneColor;
+        ExpectRefused(
+            std::move(desc),
+            "pass 'UI': an overlay pass writes the back buffer alone"
+        );
+    }
+    {
+        auto desc = makeStandardPipeline({.shadowMapSize = 0});
+        desc.passes.push_back(
+            PassDesc{
+                .name = "UI",
+                .colors = {ColorTargetUse{.target = BackBufferTarget}},
+                .depth = DepthTargetUse{.target = SceneDepth},
+                .kind = OverlayPassDesc{}
+            }
+        );
+        ExpectRefused(
+            std::move(desc),
+            "pass 'UI': an overlay pass has no depth target"
+        );
+    }
+    {
+        auto desc = makeStandardPipeline({.shadowMapSize = 0});
+        desc.passes.insert(
+            desc.passes.end() - 1,
+            PassDesc{
+                .name = "UI",
+                .colors = {ColorTargetUse{.target = BackBufferTarget}},
+                .kind = OverlayPassDesc{}
+            }
+        );
+        ExpectRefused(
+            std::move(desc),
+            "pass 'UI': an overlay pass is the last to write the back buffer, "
+            "and pass 'Tonemap' writes it after"
+        );
+    }
+}
+
 TEST(FramePipeline, AShadowShapedPassDrawsCastersFromViewOne) {
     Fixture f;
     const auto material = f.AddMaterial("fs_opaque");

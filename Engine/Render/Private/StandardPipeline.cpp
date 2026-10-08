@@ -19,14 +19,19 @@ namespace Crowy
             combine(MaterialDomain::Opaque, MaterialDomain::Masked);
         const DrawFilter opaque{.domains = solid};
         const bool prepass = config.depthPrepass;
+        const auto sceneExtent =
+            config.sceneView ? FrameExtentID{1} : BackBufferExtent;
 
         FramePipelineDesc desc{
             .targets = {FrameTargetDesc{
                 .name = "SceneDepth",
                 .format = config.depthFormat,
+                .size = sceneExtent,
                 .clearDepth = 1.0f
             }}
         };
+        if(config.sceneView)
+            desc.extents.push_back(FrameExtentDesc{.name = Str{SceneViewName}});
 
         // what the color passes sample: the map, when there is one
         std::vector<FrameTargetID> shadowReads;
@@ -74,6 +79,7 @@ namespace Crowy
             FrameTargetDesc{
                 .name = "SceneColor",
                 .format = config.sceneColorFormat,
+                .size = sceneExtent,
                 .clearColor = config.clearColor
             }
         );
@@ -165,8 +171,38 @@ namespace Crowy
             }
         );
 
-        // the last entry writes the back buffer, so the UI rides it
-        appendPostChain(desc, desc.sceneColor, config.post);
+        if(!config.sceneView) {
+            // the last entry writes the back buffer, so the UI rides it
+            appendPostChain(desc, desc.sceneColor, config.post);
+
+            return desc;
+        }
+
+        desc.targets.push_back(
+            FrameTargetDesc{
+                .name = Str{SceneViewName},
+                .format = config.sceneViewFormat,
+                .size = sceneExtent
+            }
+        );
+        const auto sceneView = static_cast<FrameTargetID>(desc.targets.size());
+        appendPostChain(desc, desc.sceneColor, config.post, sceneView);
+        // the UI blends an image by its alpha, which translucency lowered;
+        // left unwritten, it keeps the clear's 1
+        std::get<FullscreenPassDesc>(desc.passes.back().kind).blend =
+            RHIBlendState{
+                .renderTargets = {RHIRenderTargetBlendState{
+                    .writeMask = RHIColorWriteMask::EnableColor
+                }}
+        };
+        desc.passes.push_back(
+            PassDesc{
+                .name = "UI",
+                .colors = {ColorTargetUse{.target = BackBufferTarget}},
+                .reads = {sceneView},
+                .kind = OverlayPassDesc{}
+            }
+        );
 
         return desc;
     }

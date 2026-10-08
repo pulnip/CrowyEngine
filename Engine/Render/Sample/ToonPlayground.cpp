@@ -146,6 +146,7 @@ namespace Crowy
                 FrameTargetDesc{
                     .name = "Normals",
                     .format = RHIPixelFormat::RGBA8_UNORM,
+                    .size = desc.targets[sceneDepth - 1].size,
                     .clearColor = {0.5f, 0.5f, 0.5f, 0.0f}
                 }
             );
