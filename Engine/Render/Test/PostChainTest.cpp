@@ -97,14 +97,10 @@ namespace
         }
     }
 
-    void ExpectRefused(
-        const Posts& post,
-        StrView expected,
-        FrameTargetID sceneColor = SceneColor
-    ) {
+    void ExpectRefused(const Posts& post, StrView expected) {
         auto desc = SceneShaped();
         try {
-            appendPostChain(desc, sceneColor, post);
+            appendPostChain(desc, SceneColor, post);
             ADD_FAILURE() << "accepted a list that should say: " << expected;
         } catch(const std::invalid_argument& e) {
             EXPECT_TRUE(StrView{e.what()}.contains(expected))
@@ -113,6 +109,23 @@ namespace
         // a refused list adds nothing
         EXPECT_EQ(desc.targets.size(), 3u) << expected;
         EXPECT_EQ(desc.passes.size(), 1u) << expected;
+    }
+
+    // the scene's targets at extent 1, and a display target there or not
+    FramePipelineDesc ViewShaped(FrameExtentID viewExtent) {
+        auto desc = SceneShaped();
+        desc.extents.push_back(FrameExtentDesc{.name = "View"});
+        for(auto& target: desc.targets)
+            target.size = FrameExtentID{1};
+        desc.targets.push_back(
+            FrameTargetDesc{
+                .name = "View",
+                .format = RHIPixelFormat::RGBA8_UNORM,
+                .size = viewExtent
+            }
+        );
+
+        return desc;
     }
 }
 
@@ -249,6 +262,55 @@ TEST(PostChain, InputsBindAfterTheSource) {
     ExpectWalkable(std::move(desc));
 }
 
+TEST(PostChain, ALastEntryWritesTheOutputAndIntermediatesFollowSceneColor) {
+    constexpr FrameTargetID View = 4;
+    constexpr FrameTargetID PostScene0 = 5;
+
+    auto desc = ViewShaped(1);
+    const std::array post{Entry("Bloom", PostOutput::Scene), tonemapPass()};
+
+    appendPostChain(desc, SceneColor, post, View);
+
+    // scene colour's extent, so a texel load lands on its pixel
+    ASSERT_EQ(desc.targets.size(), 5u);
+    EXPECT_EQ(desc.targets[PostScene0 - 1].name, "PostScene0");
+    EXPECT_EQ(desc.targets[PostScene0 - 1].size, FrameTargetSize{1u});
+    ASSERT_EQ(desc.passes.size(), 3u);
+    EXPECT_EQ(desc.passes[1].colors[0].target, PostScene0);
+    EXPECT_EQ(desc.passes[2].colors[0].target, View);
+    EXPECT_EQ(desc.passes[2].reads, Reads{PostScene0});
+
+    // the walker wants a back buffer writer: the UI's own pass
+    desc.passes.push_back(
+        PassDesc{
+            .name = "UI",
+            .colors = {ColorTargetUse{.target = BackBufferTarget}},
+            .reads = {View},
+            .kind = OverlayPassDesc{}
+        }
+    );
+    ExpectWalkable(std::move(desc));
+}
+
+TEST(PostChain, AnOutputSizedApartFromSceneColorIsRefused) {
+    constexpr FrameTargetID View = 4;
+    constexpr StrView Expected =
+        "the post chain writes 'View', whose size is not scene color's";
+
+    auto desc = ViewShaped(BackBufferExtent);
+    const std::array post{tonemapPass()};
+    try {
+        appendPostChain(desc, SceneColor, post, View);
+        ADD_FAILURE() << "accepted an output that should say: " << Expected;
+    } catch(const std::invalid_argument& e) {
+        EXPECT_TRUE(StrView{e.what()}.contains(Expected))
+            << e.what() << "\nexpected: " << Expected;
+    }
+    // a refused output adds nothing
+    EXPECT_EQ(desc.targets.size(), 4u);
+    EXPECT_EQ(desc.passes.size(), 1u);
+}
+
 TEST(PostChain, InvalidListsAreRefused) {
     ExpectRefused({}, "the post list is empty");
     ExpectRefused(
@@ -272,15 +334,39 @@ TEST(PostChain, InvalidListsAreRefused) {
         )},
         "post entry 'Wide': it names 4 inputs; a post entry reads at most 3"
     );
-    ExpectRefused(
-        {tonemapPass()},
-        "the post chain reads scene colour from target 0, which is not a "
-        "target",
-        BackBufferTarget
+}
+
+#if defined(_DEBUG) || !defined(NDEBUG)
+TEST(PostChainDeathTest, SceneColorAndOutputAreTargetsOfTheDesc) {
+    const std::array post{tonemapPass()};
+
+    EXPECT_DEATH(
+        {
+            auto desc = SceneShaped();
+            appendPostChain(desc, BackBufferTarget, post);
+        },
+        "scene color from target 0"
     );
-    ExpectRefused(
-        {tonemapPass()},
-        "the post chain reads scene colour from target 9",
-        9
+    EXPECT_DEATH(
+        {
+            auto desc = SceneShaped();
+            appendPostChain(desc, 9, post);
+        },
+        "scene color from target 9"
+    );
+    EXPECT_DEATH(
+        {
+            auto desc = SceneShaped();
+            appendPostChain(desc, SceneColor, post, 9);
+        },
+        "writes target 9"
+    );
+    EXPECT_DEATH(
+        {
+            auto desc = SceneShaped();
+            appendPostChain(desc, SceneColor, post, SceneColor);
+        },
+        "not scene color"
     );
 }
+#endif

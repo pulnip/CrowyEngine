@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Assert.hpp"
+
 namespace Crowy
 {
     namespace
@@ -112,27 +114,51 @@ namespace Crowy
     void appendPostChain(
         FramePipelineDesc& desc,
         FrameTargetID sceneColor,
-        std::span<const PostPassDesc> post
+        std::span<const PostPassDesc> post,
+        FrameTargetID output
     ) {
         if(post.empty()) {
             throw std::invalid_argument(
                 "the post list is empty; its last entry writes the back buffer"
             );
         }
-        if(sceneColor == BackBufferTarget || sceneColor > desc.targets.size()) {
-            throw std::invalid_argument(
-                std::format(
-                    "the post chain reads scene colour from target {}, which "
-                    "is not a target; the targets are {}",
-                    sceneColor,
-                    targetNames(desc)
-                )
-            );
+        CROWY_ASSERT(
+            sceneColor != BackBufferTarget && sceneColor <= desc.targets.size(),
+            "the post chain reads scene color from target {}, one of the "
+            "desc's",
+            sceneColor
+        );
+        CROWY_ASSERT(
+            output <= desc.targets.size(),
+            "the post chain writes target {}, the back buffer or one of the "
+            "desc's",
+            output
+        );
+        CROWY_ASSERT(
+            output != sceneColor,
+            "the post chain writes target {}, not scene color, its source",
+            output
+        );
+        // the entries load the texel under their pixel
+        const auto& sceneTarget = desc.targets[sceneColor - 1];
+        if(output != BackBufferTarget) {
+            const auto& written = desc.targets[output - 1];
+            if(written.size != sceneTarget.size) {
+                throw std::invalid_argument(
+                    std::format(
+                        "the post chain writes '{}', whose size is not scene "
+                        "color's",
+                        written.name
+                    )
+                );
+            }
         }
         // every rule before the first append, so a refused list adds nothing
         const auto inputs = resolveInputs(desc, post);
 
-        const auto sceneFormat = desc.targets[sceneColor - 1].format;
+        // copies: the appends below move desc.targets
+        const auto sceneFormat = sceneTarget.format;
+        const auto sceneSize = sceneTarget.size;
         // per class, the intermediates added so far; 0 for one not yet added
         std::array<
             std::array<FrameTargetID, IntermediatesPerClass>,
@@ -143,7 +169,7 @@ namespace Crowy
         for(usize i = 0; i < post.size(); ++i) {
             const auto& entry = post[i];
 
-            auto output = BackBufferTarget;
+            auto written = output;
             if(i + 1 < post.size()) {
                 const bool scene = entry.output == PostOutput::Scene;
                 auto& slots = intermediates[static_cast<usize>(entry.output)];
@@ -158,13 +184,14 @@ namespace Crowy
                                 slot
                             ),
                             .format = scene ? sceneFormat
-                                            : RHIPixelFormat::RGBA8_UNORM
+                                            : RHIPixelFormat::RGBA8_UNORM,
+                            .size = sceneSize
                         }
                     );
                     slots[slot] =
                         static_cast<FrameTargetID>(desc.targets.size());
                 }
-                output = slots[slot];
+                written = slots[slot];
             }
 
             Reads reads{source};
@@ -172,7 +199,7 @@ namespace Crowy
             desc.passes.push_back(
                 PassDesc{
                     .name = entry.name,
-                    .colors = {ColorTargetUse{.target = output}},
+                    .colors = {ColorTargetUse{.target = written}},
                     .reads = std::move(reads),
                     .kind = FullscreenPassDesc{
                         .fragmentShader = entry.fragmentShader,
@@ -180,7 +207,7 @@ namespace Crowy
                     }
                 }
             );
-            source = output;
+            source = written;
         }
     }
 

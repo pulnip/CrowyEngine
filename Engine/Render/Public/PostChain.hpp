@@ -8,7 +8,7 @@
 #include "RHIDefinitions.hpp"
 
 // The fullscreen entries after the scene passes, as data: each reads the
-// colour the chain has so far, and the last one writes the back buffer.
+// colour the chain has so far, and the last one writes the output.
 namespace Crowy
 {
     struct PostPassDesc;
@@ -22,14 +22,16 @@ namespace Crowy
     };
 
     // One fullscreen pass per entry: entry i reads the previous output
-    // (scene colour for the first) and its inputs, and writes the back
-    // buffer if last, else a lazily added intermediate of its class that is
-    // not its source. Throws std::invalid_argument naming the entry and the
-    // rule a list breaks, leaving desc as it was.
+    // (scene colour for the first) and its inputs, and writes `output` if
+    // last, else a lazily added intermediate of its class, sized as scene
+    // colour, that is not its source. sceneColor names a target of desc and
+    // output the back buffer or another one. Throws std::invalid_argument
+    // naming the entry and the rule a list breaks, leaving desc as it was.
     void appendPostChain(
         FramePipelineDesc& desc,
         FrameTargetID sceneColor,
-        std::span<const PostPassDesc> post
+        std::span<const PostPassDesc> post,
+        FrameTargetID output = BackBufferTarget
     );
 
     // Engine/Render/Shader/Tonemap.slang: linear radiance in, display out
