@@ -97,6 +97,10 @@ namespace Crowy
         Str hook;
     };
 
+    // no draws of its own: the UI is its content, sampling its reads by
+    // OverlayReadableID
+    struct OverlayPassDesc {};
+
     struct PassDesc {
         // the event, the encoder label, the per-pass stats
         Str name;
@@ -105,7 +109,12 @@ namespace Crowy
         std::optional<DepthTargetUse> depth;
         // sampled in the fragment stage
         std::vector<FrameTargetID> reads;
-        std::variant<MeshPassDesc, FullscreenPassDesc, HookPassDesc> kind;
+        std::variant<
+            MeshPassDesc,
+            FullscreenPassDesc,
+            HookPassDesc,
+            OverlayPassDesc>
+            kind;
     };
 
     struct FramePipelineDesc {
@@ -338,6 +347,9 @@ namespace Crowy
         std::optional<FrameExtentID> FindExtent(StrView name) const noexcept;
         Size2D TargetSize(FrameTargetID id) const noexcept;
         FrameTargetID SceneColor() const noexcept { return desc.sceneColor; }
+        // a target the overlay pass reads, for the UI to sample; it changes
+        // when its extent resizes
+        u64 OverlayReadableID(FrameTargetID id) const;
 
     private:
         // every target when `only` is empty, else the targets that follow it

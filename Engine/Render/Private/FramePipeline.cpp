@@ -260,6 +260,21 @@ namespace Crowy
                         refuse(pass.name, "a hook pass needs a color target");
                 }
 
+                if(std::holds_alternative<OverlayPassDesc>(pass.kind)) {
+                    if(pass.colors.size() != 1 ||
+                       pass.colors.front().target != BackBufferTarget) {
+                        refuse(
+                            pass.name,
+                            "an overlay pass writes the back buffer alone"
+                        );
+                    }
+                    if(pass.depth)
+                        refuse(
+                            pass.name,
+                            "an overlay pass has no depth target"
+                        );
+                }
+
                 if(const auto* mesh = std::get_if<MeshPassDesc>(&pass.kind)) {
                     // Compose always emits a depth state
                     if(!pass.depth)
@@ -434,6 +449,18 @@ namespace Crowy
                 passDescs[overlayPass].name,
                 "the overlay pass needs exactly one color target"
             );
+        }
+        for(usize i = 0; i < overlayPass; ++i) {
+            if(std::holds_alternative<OverlayPassDesc>(passDescs[i].kind)) {
+                refuse(
+                    passDescs[i].name,
+                    std::format(
+                        "an overlay pass is the last to write the back "
+                        "buffer, and pass '{}' writes it after",
+                        passDescs[overlayPass].name
+                    )
+                );
+            }
         }
 
         passes.resize(passDescs.size());
@@ -810,13 +837,14 @@ namespace Crowy
                         .reads = readScratch
                     }
                 );
-            } else {
-                const auto& fullscreen =
-                    std::get<FullscreenPassDesc>(pass.kind);
+            } else if(
+                const auto* fullscreen =
+                    std::get_if<FullscreenPassDesc>(&pass.kind)
+            ) {
                 cmdList.SetPipelineState(*compiled.fullscreenPipeline);
                 renderer.BindView(cmdList, ViewConstantBufferSlot, 0);
 
-                FullscreenPush push{.params = fullscreen.params};
+                FullscreenPush push{.params = fullscreen->params};
                 const std::array<u64*, FullscreenReadCount> handles{
                     &push.source,
                     &push.input0,
@@ -947,6 +975,16 @@ namespace Crowy
             return Size2D{fixed->width, fixed->height};
 
         return extentSizes[std::get<FrameExtentID>(size)];
+    }
+
+    u64 FramePipeline::OverlayReadableID(FrameTargetID id) const {
+        // the overlay pass's read is the edge that orders the UI's sampling
+        CROWY_ASSERT(
+            std::ranges::contains(desc.passes[overlayPass].reads, id),
+            "the overlay pass reads the target the UI samples"
+        );
+
+        return textures[id]->GetReadableID();
     }
 
     OverlayFormats FramePipeline::Overlay() const noexcept {
