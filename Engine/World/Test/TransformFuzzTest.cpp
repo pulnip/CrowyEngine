@@ -219,7 +219,7 @@ INSTANTIATE_TEST_SUITE_P(
 );
 
 // Minutes per seed, so it is opt in:
-//   CrowySceneTest --gtest_also_run_disabled_tests --gtest_filter=*FuzzLong*
+//   CrowyWorldTest --gtest_also_run_disabled_tests --gtest_filter=*FuzzLong*
 class TransformFuzzLongTest: public ::testing::TestWithParam<u32>{};
 
 TEST_P(TransformFuzzLongTest, DISABLED_SeededRun){

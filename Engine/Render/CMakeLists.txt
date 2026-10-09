@@ -1,4 +1,4 @@
-# No Crowy::Scene and no gameplay module, deliberately:
+# No Crowy::World, deliberately:
 # a transform arrives here as a Mat4 and a bounding box.
 # Extraction lives with its caller.
 crowy_declare_module(Render

@@ -20,7 +20,7 @@ add_subdirectory(UI)
 
 add_subdirectory(Resource)
 # 3-0) Subsystem Layer
-add_subdirectory(Scene)
+add_subdirectory(World)
 if(CROWY_ENABLE_PHYSICS)
     add_subdirectory(Physics)
 endif()
