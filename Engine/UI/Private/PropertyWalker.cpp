@@ -142,6 +142,9 @@ namespace Crowy
         const TypeDesc& desc,
         DirtyCallback onDirty
     ){
+        // GetDesc made an empty desc: the registration was never linked
+        CROWY_ASSERT(!desc.name.empty(), "a type that was never registered");
+
         std::vector<Widget> children;
         appendProperties(children, target, desc, onDirty);
 

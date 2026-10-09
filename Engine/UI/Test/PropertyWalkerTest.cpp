@@ -251,3 +251,20 @@ TEST(PropertyWalker, TwoTargetsBindIndependently){
     EXPECT_EQ(dirtyA, 1);
     EXPECT_EQ(dirtyB, 0);
 }
+
+TEST(PropertyWalker, ATypeNeverRegisteredStops) {
+    struct NeverRegistered {
+        f32 value = 0.0f;
+    };
+    NeverRegistered target;
+
+    EXPECT_DEATH(
+        buildPropertyTree(
+            "Unregistered",
+            &target,
+            *GetDesc<NeverRegistered>(),
+            {}
+        ),
+        "a type that was never registered"
+    );
+}

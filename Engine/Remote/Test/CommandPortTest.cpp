@@ -657,3 +657,15 @@ TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
     EXPECT_EQ(probe.blend, PortBlend::Masked);
     EXPECT_EQ(probe.nested.amount, 0.25f);
 }
+
+TEST_F(CommandPortTest, ExposingATypeNeverRegisteredStops) {
+    struct NeverRegistered {
+        f32 value = 0.0f;
+    };
+    NeverRegistered target;
+
+    EXPECT_DEATH(
+        port.Expose("unregistered", &target, *GetDesc<NeverRegistered>()),
+        "a type that was never registered"
+    );
+}

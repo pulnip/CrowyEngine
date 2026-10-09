@@ -330,6 +330,8 @@ namespace Crowy
         DirtyCallback onDirty
     ){
         CROWY_ASSERT(!exposures.contains(name), "target exposed twice");
+        // GetDesc made an empty desc: the registration was never linked
+        CROWY_ASSERT(!desc.name.empty(), "a type that was never registered");
         exposures.emplace(std::move(name), Exposure{
             .target = target,
             .desc = &desc,
