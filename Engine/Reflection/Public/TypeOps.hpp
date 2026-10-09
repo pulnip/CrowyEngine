@@ -78,6 +78,12 @@ namespace Crowy
     struct TypeOps{
         CStr name = nullptr;
         usize size = 0;
+        usize align = 0;
+        // a lifetime in memory the caller owns, sized and aligned as above;
+        // null where the type has no such constructor
+        void (*construct)(void*) = nullptr;
+        void (*moveConstruct)(void* to, void* from) = nullptr;
+        void (*destroy)(void*) = nullptr;
         // leaf type: parses the whole value at once.
         // false when the value does not bind, and the member is untouched
         bool (*deserialize)(void*, const DOM::Value&) = nullptr;

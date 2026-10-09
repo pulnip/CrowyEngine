@@ -1,8 +1,11 @@
+#include <cstddef>
+
 #include <gtest/gtest.h>
+
 #include "ClassRegistry.hpp"
+#include "JsonLoader.hpp"
 #include "Object.hpp"
 #include "Semantics.hpp"
-#include "JsonLoader.hpp"
 
 using namespace Crowy;
 
@@ -566,4 +569,52 @@ TEST(Reflection, ANameRegisteredTwiceStopsTheProcess) {
         },
         "two types are registered as 'Health'"
     );
+}
+
+TEST(Reflection, ATypeFoundByNameLivesInCallerMemory) {
+    const auto* desc = ClassRegistry::FindType("Stats");
+    ASSERT_TRUE(desc != nullptr);
+    ASSERT_TRUE(desc->ops != nullptr);
+
+    const auto& ops = *desc->ops;
+    ASSERT_TRUE(ops.construct != nullptr);
+    ASSERT_TRUE(ops.moveConstruct != nullptr);
+    ASSERT_TRUE(ops.destroy != nullptr);
+    ASSERT_LE(ops.align, alignof(std::max_align_t));
+
+    alignas(std::max_align_t) std::byte first[64];
+    alignas(std::max_align_t) std::byte second[64];
+    ASSERT_LE(ops.size, sizeof(first));
+
+    ops.construct(first);
+    // the desc found by name, not a static type, decides what applies
+    EXPECT_TRUE(ApplyProperties(*desc, first, parseJsonString(R"({
+"speed": 2.5, "health": {"current": 9}
+})"))
+                    .empty());
+
+    ops.moveConstruct(second, first);
+    ops.destroy(first);
+
+    DOM::Value out;
+    SerializeProperties(*desc, second, out);
+    EXPECT_EQ(out.get<f32>("speed"), 2.5f);
+    EXPECT_EQ(out.get<i32>("health.current"), 9);
+    EXPECT_EQ(out.get<i32>("health.maximum"), 100);
+
+    ops.destroy(second);
+}
+
+TEST(Reflection, ALifetimeTheTypeLacksStaysNull) {
+    struct NeedsAnArgument {
+        explicit NeedsAnArgument(i32 value)
+            : value(value) {}
+
+        i32 value;
+    };
+
+    const auto& ops = *GetTypeOps<NeedsAnArgument>();
+    EXPECT_TRUE(ops.construct == nullptr);
+    EXPECT_TRUE(ops.moveConstruct != nullptr);
+    EXPECT_TRUE(ops.destroy != nullptr);
 }

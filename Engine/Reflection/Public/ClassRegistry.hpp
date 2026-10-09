@@ -2,10 +2,12 @@
 
 #include <array>
 #include <functional>
+#include <memory>
 #include <ranges>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
+
 #include "Assert.hpp"
 #include "Primitives.hpp"
 #include "PropertyDesc.hpp"
@@ -26,6 +28,8 @@ namespace Crowy
     struct TypeDesc{
         Str name;
         const TypeDesc* parent = nullptr;
+        // what creating the type by name goes through
+        const TypeOps* ops = nullptr;
         // registration order, which consumers treat as declaration order
         std::vector<PropertyDesc> properties;
         StringHashMap<usize> indexByName;
@@ -114,6 +118,7 @@ namespace Crowy
 
             if(slot == nullptr){
                 slot = std::make_unique<DescOf<T>>();
+                slot->ops = GetTypeOps<T>();
             }
 
             return static_cast<DescOf<T>&>(*slot);
@@ -159,8 +164,28 @@ namespace Crowy
 
             TypeOps ops{
                 .name = typeid(T).name(),
-                .size = sizeof(T)
+                .size = sizeof(T),
+                .align = alignof(T)
             };
+
+            if constexpr(std::is_default_constructible_v<T>) {
+                ops.construct = [](void* at) {
+                    std::construct_at(static_cast<T*>(at));
+                };
+            }
+            if constexpr(std::is_move_constructible_v<T>) {
+                ops.moveConstruct = [](void* to, void* from) {
+                    std::construct_at(
+                        static_cast<T*>(to),
+                        std::move(*static_cast<T*>(from))
+                    );
+                };
+            }
+            if constexpr(std::is_destructible_v<T>) {
+                ops.destroy = [](void* at) {
+                    std::destroy_at(static_cast<T*>(at));
+                };
+            }
 
             if constexpr(HasTypeTraits<T>){
                 ops.name = TypeTraits<T>::name;
