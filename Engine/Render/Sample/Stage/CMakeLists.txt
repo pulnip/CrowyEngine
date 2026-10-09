@@ -1,22 +1,27 @@
 # Backlot's film set, read from its scene file and placed into a RenderScene.
 # Everything that knows Backlot's contract lives here, outside the engine.
-add_library(SampleStage STATIC
+add_library(SampleStageArchive STATIC
     StageDocument.cpp
+    StageInspect.cpp
     StageLoad.cpp
     StageScene.cpp
 )
 
-target_include_directories(SampleStage
+target_include_directories(SampleStageArchive
 PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-target_link_libraries(SampleStage
+target_link_libraries(SampleStageArchive
 PUBLIC
     Crowy::Core
+    Crowy::Reflection
     Crowy::Render
     Crowy::Serialization
 )
+
+# StageInspect only registers the rows
+crowy_whole_archive(SampleStage SampleStageArchive)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(SampleStage

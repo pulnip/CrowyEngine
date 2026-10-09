@@ -68,6 +68,16 @@ function(crowy_declare_module NAME)
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
 
+# NAME links the static ARCHIVE whole, so an object that only registers
+# itself, which nothing references, still reaches the executable
+function(crowy_whole_archive NAME ARCHIVE)
+    add_library(${NAME} INTERFACE)
+    target_link_libraries(${NAME}
+    INTERFACE
+        "$<LINK_LIBRARY:WHOLE_ARCHIVE,${ARCHIVE}>"
+    )
+endfunction()
+
 function(crowy_declare_private_interface NAME)
     add_library(Crowy${NAME}Private INTERFACE)
 

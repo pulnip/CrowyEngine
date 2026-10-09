@@ -4,7 +4,7 @@
 #include "RenderMaterial.hpp"
 
 // The render scene's rows as reflected types, for every sample that shows
-// them in a panel or to the port; one registration per executable.
+// them in a panel or to the port.
 namespace Crowy
 {
     // clang-format off: each registration opens a namespace the formatter

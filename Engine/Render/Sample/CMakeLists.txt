@@ -31,6 +31,17 @@ PRIVATE
     Crowy::Log
 )
 
+# the render scene's rows as reflected types; registrations only
+add_library(SampleRenderReflectionArchive STATIC
+    RenderReflection.cpp
+)
+target_link_libraries(SampleRenderReflectionArchive
+PUBLIC
+    Crowy::Reflection
+    Crowy::Render
+)
+crowy_whole_archive(SampleRenderReflection SampleRenderReflectionArchive)
+
 # the ImGui overlays, apart so samples without a UI skip ImGui
 add_library(SampleRenderOverlay STATIC
     PortStatusChip.cpp
@@ -61,20 +72,20 @@ crowy_declare_example(Playground
 SOURCES
     PlaygroundScene.cpp
     Playground.cpp
-    RenderReflection.cpp
 DEPENDS
     Crowy::Reflection
     SampleRenderOverlay
+    SampleRenderReflection
 )
 
 crowy_declare_example(ToonPlayground
 SOURCES
     PlaygroundScene.cpp
-    RenderReflection.cpp
     ToonPlayground.cpp
 DEPENDS
     Crowy::Reflection
     SampleRenderOverlay
+    SampleRenderReflection
 )
 
 if(CROWY_ENABLE_PHYSICS)
@@ -95,14 +106,13 @@ endif()
 # exits 77 (skipped) without it
 crowy_declare_example(StageEditor
 SOURCES
-    RenderReflection.cpp
     StageContent.cpp
     StageEditor.cpp
-    StageInspect.cpp
 DEPENDS
     Crowy::Reflection
     SampleEditor
     SampleRenderOverlay
+    SampleRenderReflection
     SampleStage
 )
 set_source_files_properties(StageEditor.cpp

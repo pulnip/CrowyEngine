@@ -35,6 +35,9 @@ These override the global CLAUDE.md where they differ.
   lines you change in an older file, never the whole file.
 - Anything that advances per frame is paced by time (the owner's display is
   120 Hz); goldens stay deterministic by counted frames.
+- A file that only registers (`CROWY_STRUCT`, `CROWY_OBJECT`) goes in a
+  static library wrapped by `crowy_whole_archive` (`cmake/util.cmake`); a
+  plain one drops the object and the type silently goes missing.
 - Read `Engine/RHI/Sample` and its `.slang` for RHI usage, and
   `Engine/Render/Sample` (`RenderApp`, `Playground`) for renderer work,
   before reading wider.
