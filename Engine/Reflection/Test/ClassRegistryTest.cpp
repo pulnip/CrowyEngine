@@ -539,3 +539,31 @@ TEST(Reflection, ApplyLeavesAbsentKeysAlone) {
     EXPECT_EQ(object.stats.speed, 1.0f);
     EXPECT_EQ(object.stats.health.maximum, 100);
 }
+
+TEST(Reflection, FindTypeSeesStructsAndClasses) {
+    EXPECT_EQ(ClassRegistry::FindType("Health"), GetDesc<Health>());
+    EXPECT_EQ(
+        ClassRegistry::FindType("InheritanceChildObject"),
+        GetDesc<InheritanceChildObject>()
+    );
+    EXPECT_TRUE(ClassRegistry::FindType("Nope") == nullptr);
+
+    // a Struct has a name but no factory
+    EXPECT_TRUE(ClassRegistry::Create("Health") == nullptr);
+}
+
+TEST(Reflection, ANameRegisteredTwiceStopsTheProcess) {
+    EXPECT_DEATH(
+        ClassRegistry::Get().Register(ClassRegistry::Get().DescFor<Health>()),
+        "'Health' is registered twice"
+    );
+
+    EXPECT_DEATH(
+        {
+            StructDesc impostor;
+            impostor.name = "Health";
+            ClassRegistry::Get().Register(impostor);
+        },
+        "two types are registered as 'Health'"
+    );
+}

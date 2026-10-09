@@ -9,16 +9,9 @@
 namespace Crowy
 {
     ObjectRAII ClassRegistry::Create(StrView type){
-        static auto& registry = ClassRegistry::Get();
-        static const auto& classByName = registry.classByName;
+        const auto* desc = dynamic_cast<const ClassDesc*>(FindType(type));
 
-        auto it = classByName.find(type);
-        if(it == classByName.end()){
-            return nullptr;
-        }
-
-        const auto& desc = *it->second;
-        return desc.factory();
+        return desc != nullptr ? desc->factory() : nullptr;
     }
 
     ClassRegistry& ClassRegistry::Get(){
@@ -26,12 +19,26 @@ namespace Crowy
         return singleton;
     }
 
-    bool ClassRegistry::Register(ClassDesc& desc){
-        CROWY_ASSERT(!desc.name.empty());
-        CROWY_ASSERT(desc.factory);
-        auto [_, ret] = classByName.try_emplace(desc.name, &desc);
+    const TypeDesc* ClassRegistry::FindType(StrView name) {
+        const auto& typeByName = Get().typeByName;
+        const auto it = typeByName.find(name);
 
-        return ret;
+        return it == typeByName.end() ? nullptr : it->second;
+    }
+
+    void ClassRegistry::Register(TypeDesc& desc) {
+        CROWY_ASSERT(!desc.name.empty());
+
+        const auto [it, inserted] = typeByName.try_emplace(desc.name, &desc);
+        if(!inserted) {
+            detail::assertFail(
+                "inserted",
+                std::source_location::current(),
+                it->second == &desc
+                    ? std::format("'{}' is registered twice", desc.name)
+                    : std::format("two types are registered as '{}'", desc.name)
+            );
+        }
     }
 
     namespace

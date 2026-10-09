@@ -90,10 +90,11 @@ namespace Crowy
     class ClassRegistry{
     private:
         std::unordered_map<std::type_index, RAII<TypeDesc>> descByTypeindex;
-        // only a Class can be created by name
-        StringHashMap<ClassDesc*> classByName;
+        // a Struct and a Class share one name space
+        StringHashMap<TypeDesc*> typeByName;
 
     public:
+        // nullptr for an unknown name, and for a Struct's
         static ObjectRAII Create(StrView type);
         template<std::derived_from<Object> T>
         static ObjectRAII Create(){
@@ -101,6 +102,9 @@ namespace Crowy
         }
 
         static ClassRegistry& Get();
+
+        // nullptr for a name no registration gave
+        static const TypeDesc* FindType(StrView name);
 
         // creates the slot on demand, and its address stays valid.
         // T alone decides the slot kind, so the cast is safe
@@ -115,7 +119,9 @@ namespace Crowy
             return static_cast<DescOf<T>&>(*slot);
         }
 
-        bool Register(ClassDesc& desc);
+        // a name registered twice stops the process in every build, since
+        // the winner would otherwise be whichever object the linker put first
+        void Register(TypeDesc& desc);
     };
 
     template<typename T>
@@ -309,8 +315,10 @@ namespace Crowy
         }
 
         bool Build(){
-            auto& registry = ClassRegistry::Get();
-            return registry.Register(this->desc);
+            CROWY_ASSERT(this->desc.factory);
+            ClassRegistry::Get().Register(this->desc);
+
+            return true;
         }
 
     private:
@@ -343,8 +351,7 @@ namespace Crowy
 
     public:
         bool Build(){
-            // a Struct has no name lookup, its desc is already in place
-            CROWY_ASSERT(!this->desc.name.empty());
+            ClassRegistry::Get().Register(this->desc);
 
             return true;
         }
