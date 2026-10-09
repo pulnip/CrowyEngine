@@ -69,7 +69,7 @@ TEST(Reflection, NestedProperty){
     "scale": [4.0, 5.0, 6.0]
 }
 })");
-        Crowy::ApplyProperties(nested, dom);
+        EXPECT_TRUE(Crowy::ApplyProperties(nested, dom).empty());
 
         Transform expected{
             .position = Vec3{1.0, 2.0, 3.0},
@@ -88,7 +88,7 @@ TEST(Reflection, NestedProperty){
 "rotation": [1.0, 0.0, 0.0, 0.0],
 "scale": [6.0, 5.0, 4.0]
 })");
-        Crowy::ApplyProperties(nested, dom);
+        EXPECT_TRUE(Crowy::ApplyProperties(nested, dom).empty());
 
         Transform expected{
             .position = Vec3{3.0, 2.0, 1.0},
@@ -155,7 +155,7 @@ TEST(Reflection, NestedStructDesc){
     "health": {"current": 7}
 }
 })");
-    ApplyProperties(testObject, dom);
+    EXPECT_TRUE(ApplyProperties(testObject, dom).empty());
 
     EXPECT_EQ(testObject->stats.speed, 3.5f);
     EXPECT_EQ(testObject->stats.health.current, 7);
@@ -194,7 +194,7 @@ TEST(Reflection, ChainedStructDesc){
     "maximum": 12
 }
 })");
-    ApplyProperties(testObject, dom);
+    EXPECT_TRUE(ApplyProperties(testObject, dom).empty());
 
     EXPECT_EQ(testObject->stats.health.current, 3);
     EXPECT_EQ(testObject->stats.health.maximum, 12);
@@ -297,7 +297,8 @@ TEST(Reflection, InheritedPropertyApplies){
 "baseValue": 2.5,
 "ownValue": 7.5
 })");
-    ApplyProperties(child, dom);
+    // one flat table holds the parent's keys and the child's
+    EXPECT_TRUE(ApplyProperties(child, dom).empty());
 
     EXPECT_EQ(child->baseValue, 2.5f);
     EXPECT_EQ(child->ownValue, 7.5f);
@@ -377,12 +378,15 @@ TEST(Reflection, EnumDeserializesByName){
     ASSERT_TRUE(testObject != nullptr);
 
     auto dom = parseJsonString(R"({"mode": "Multiply"})");
-    ApplyProperties(testObject, dom);
+    EXPECT_TRUE(ApplyProperties(testObject, dom).empty());
     EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
 
-    // an unknown name keeps the current value, like an absent key
+    // an unknown name is reported and keeps the current value
     auto unknown = parseJsonString(R"({"mode": "Screen"})");
-    ApplyProperties(testObject, unknown);
+    EXPECT_EQ(
+        ApplyProperties(testObject, unknown),
+        PropertyErrors{"'mode' expects BlendProbe"}
+    );
     EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
 }
 
@@ -407,7 +411,7 @@ TEST(Reflection, SerializedObjectAppliesBack){
     EXPECT_TRUE(out.at("stats.health.current") != nullptr);
 
     StructTestObject back;
-    ApplyProperties(&back, parseJsonString(emitJson(out)));
+    EXPECT_TRUE(ApplyProperties(&back, parseJsonString(emitJson(out))).empty());
     EXPECT_EQ(back.stats.speed, 3.5f);
     EXPECT_EQ(back.stats.health.current, 7);
     EXPECT_EQ(back.stats.health.maximum, 42);
@@ -479,4 +483,59 @@ TEST(Reflection, ResolvePropertyNamesTheFailure){
     auto indexed = ResolveProperty(&object, desc, "stats[0]");
     EXPECT_TRUE(indexed.desc == nullptr);
     EXPECT_EQ(indexed.error, "index paths are not supported: 'stats[0]'");
+}
+
+TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
+    StructTestObject object;
+
+    const auto errors = ApplyProperties(&object, parseJsonString(R"({
+"stats": {"speed": 2.0, "sped": 3.0, "health": {"curent": 4}},
+"stat": 1
+})"));
+
+    // sorted, and what did bind still applied
+    EXPECT_EQ(
+        errors,
+        (PropertyErrors{
+            "no property 'stat' on 'StructTestObject'",
+            "no property 'stats.health.curent' on 'Health'",
+            "no property 'stats.sped' on 'Stats'"
+        })
+    );
+    EXPECT_EQ(object.stats.speed, 2.0f);
+}
+
+TEST(Reflection, ApplyReportsAValueThatDoesNotBind) {
+    StructTestObject object;
+
+    const auto errors = ApplyProperties(&object, parseJsonString(R"({
+"stats": {"speed": "fast", "health": 3}
+})"));
+
+    EXPECT_EQ(
+        errors,
+        (PropertyErrors{
+            "'stats.health' is a struct and expects a table",
+            "'stats.speed' expects f32"
+        })
+    );
+    EXPECT_EQ(object.stats.speed, 1.0f);
+    EXPECT_EQ(object.stats.health.maximum, 100);
+}
+
+TEST(Reflection, ApplyReportsARootThatIsNotATable) {
+    StructTestObject object;
+
+    EXPECT_EQ(
+        ApplyProperties(&object, parseJsonString("[1]")),
+        PropertyErrors{"'StructTestObject' expects a table"}
+    );
+}
+
+TEST(Reflection, ApplyLeavesAbsentKeysAlone) {
+    StructTestObject object;
+
+    EXPECT_TRUE(ApplyProperties(&object, parseJsonString("{}")).empty());
+    EXPECT_EQ(object.stats.speed, 1.0f);
+    EXPECT_EQ(object.stats.health.maximum, 100);
 }

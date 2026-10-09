@@ -1,6 +1,9 @@
-#include <format>
-#include "Assert.hpp"
 #include "ClassRegistry.hpp"
+
+#include <algorithm>
+#include <format>
+
+#include "Assert.hpp"
 #include "Object.hpp"
 
 namespace Crowy
@@ -51,31 +54,113 @@ namespace Crowy
         return HasProperties(*desc) ? desc : nullptr;
     }
 
-    void ApplyProperties(const TypeDesc& desc, void* object, const DOM::Value& table){
-        if(desc.parent != nullptr){
-            ApplyProperties(*desc.parent, object, table);
+    namespace
+    {
+        Str joinPath(StrView prefix, StrView name) {
+            return prefix.empty() ? Str(name)
+                                  : std::format("{}.{}", prefix, name);
         }
 
-        for(const auto& prop: desc.properties){
-            auto node = table.at(prop.name);
+        void applyTable(
+            const TypeDesc& desc,
+            void* object,
+            const DOM::Table& table,
+            StrView prefix,
+            PropertyErrors& errors
+        );
 
-            // use default value if prop is not specified
-            if(node == nullptr){
-                continue;
+        void applyOwnProperties(
+            const TypeDesc& desc,
+            void* object,
+            const DOM::Table& table,
+            StrView prefix,
+            PropertyErrors& errors
+        ) {
+            if(desc.parent != nullptr) {
+                applyOwnProperties(*desc.parent, object, table, prefix, errors);
             }
 
-            auto member = prop.accessor->Get(object);
+            for(const auto& prop: desc.properties) {
+                const auto node = table.find(prop.name);
+                // an absent key keeps the member's value
+                if(node == table.end()) {
+                    continue;
+                }
 
-            // a reflected type is filled property by property,
-            // so its unspecified members keep their default too
-            auto nested = NestedDesc(prop);
-            if(nested != nullptr && node->is_table()){
-                ApplyProperties(*nested, member, *node);
-            }
-            else if(prop.type.deserialize != nullptr){
-                prop.type.deserialize(member, *node);
+                auto member = prop.accessor->Get(object);
+                const auto path = joinPath(prefix, prop.name);
+
+                // a reflected type is filled property by property,
+                // so its unspecified members keep their default too
+                if(const auto* nested = NestedDesc(prop)) {
+                    if(const auto* inner = node->second.asTable()) {
+                        applyTable(*nested, member, *inner, path, errors);
+                    } else {
+                        errors.push_back(
+                            std::format(
+                                "'{}' is a struct and expects a table",
+                                path
+                            )
+                        );
+                    }
+                } else if(prop.type.deserialize == nullptr) {
+                    errors.push_back(
+                        std::format(
+                            "'{}' is a {} with no properties registered",
+                            path,
+                            prop.type.name
+                        )
+                    );
+                } else if(!prop.type.deserialize(member, node->second)) {
+                    errors.push_back(
+                        std::format("'{}' expects {}", path, prop.type.name)
+                    );
+                }
             }
         }
+
+        // the unknown-key check runs once per table, against the whole chain,
+        // since a parent's keys sit in the child's table
+        void applyTable(
+            const TypeDesc& desc,
+            void* object,
+            const DOM::Table& table,
+            StrView prefix,
+            PropertyErrors& errors
+        ) {
+            for(const auto& [key, value]: table) {
+                if(desc.FindInChain(key) == nullptr) {
+                    errors.push_back(
+                        std::format(
+                            "no property '{}' on '{}'",
+                            joinPath(prefix, key),
+                            desc.name
+                        )
+                    );
+                }
+            }
+
+            applyOwnProperties(desc, object, table, prefix, errors);
+        }
+    }
+
+    PropertyErrors ApplyProperties(
+        const TypeDesc& desc,
+        void* object,
+        const DOM::Value& table
+    ) {
+        PropertyErrors errors;
+
+        if(const auto* root = table.asTable()) {
+            applyTable(desc, object, *root, {}, errors);
+        } else {
+            errors.push_back(std::format("'{}' expects a table", desc.name));
+        }
+
+        // the table is unordered, so the report is sorted to stay stable
+        std::ranges::sort(errors);
+
+        return errors;
     }
 
     namespace

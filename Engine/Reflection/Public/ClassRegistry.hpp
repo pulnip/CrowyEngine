@@ -190,17 +190,28 @@ namespace Crowy
     // or nullptr when the property is a leaf
     const TypeDesc* NestedDesc(const PropertyDesc&);
 
-    // parents first, then own properties in declaration order;
-    // a key the table lacks keeps the member's value
-    void ApplyProperties(const TypeDesc&, void* object, const DOM::Value& table);
+    // what ApplyProperties could not apply, one message per key, sorted
+    using PropertyErrors = std::vector<Str>;
+
+    // parents first, then own properties in declaration order; a key the
+    // table lacks keeps the member's value, and everything else that does
+    // not bind is reported while the rest still applies
+    [[nodiscard]] PropertyErrors ApplyProperties(
+        const TypeDesc&,
+        void* object,
+        const DOM::Value& table
+    );
     // the same walk in the other direction, into one flat table
     void SerializeProperties(const TypeDesc&, const void* object, DOM::Value& out);
 
     template<typename T>
-        requires (!std::is_pointer_v<T>)
-    void ApplyProperties(T* object, const DOM::Value& dom){
+        requires(!std::is_pointer_v<T>)
+    [[nodiscard]] PropertyErrors ApplyProperties(
+        T* object,
+        const DOM::Value& dom
+    ) {
         auto& desc = Crowy::ClassRegistry::Get().DescFor<T>();
-        ApplyProperties(desc, object, dom);
+        return ApplyProperties(desc, object, dom);
     }
 
     template<typename T>

@@ -390,9 +390,15 @@ namespace Crowy
         if(env == nullptr || *env == '\0')
             return;
 
-        ApplyProperties(&debug, parseJsonString(env));
+        // a bench run with a misspelled switch would measure the wrong thing
+        if(const auto errors = ApplyProperties(&debug, parseJsonString(env));
+           !errors.empty()) {
+            Str message = "CROWY_DEBUG:";
+            for(const auto& error: errors)
+                message += std::format(" {};", error);
+            throw std::runtime_error(message);
+        }
 
-        // a misspelled key applies nothing, so the log says what took effect
         DOM::Value applied;
         SerializeProperties(&debug, applied);
         LOG_INFO("RenderApp", "CROWY_DEBUG: debug is {}", emitJson(applied));
