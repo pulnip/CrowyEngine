@@ -345,6 +345,7 @@ namespace Crowy
         auto oldParentSlot = node.parentSlot;
         // the block root carries the only link that changes
         node.parentSlot = newParentSlot;
+        markDirty(node);
 
         // after the destination is measured: growing first would push it past the
         // block by the block's own size
@@ -394,6 +395,7 @@ namespace Crowy
             .parentSlot = create.parentSlot
         };
         pendingLocals.erase(create.slot);
+        markDirty(node);
 
         insertNode(
             insertionPointOf(create.parentSlot),
@@ -432,6 +434,11 @@ namespace Crowy
     }
 
     void TransformHierarchy::CommitStructuralChanges(){
+        // nothing moves, so the parent indexes and the inverses still hold
+        if(!HasPendingChanges()) {
+            return;
+        }
+
         // Destroys first, so a create never has to make room next to a corpse.
         // Reparents last, so a node can be moved under a parent born in the very
         // same batch.
@@ -444,37 +451,79 @@ namespace Crowy
         invalidateInverses();
     }
 
+    void TransformHierarchy::markDirty(TransformHandle handle) noexcept {
+        const auto index = indexOf(handle);
+        if(index != PENDING_INDEX) {
+            markDirty(nodes[index.value]);
+        }
+    }
+
+    void TransformHierarchy::markDirty(TransformNode& node) {
+        if((node.flags & TransformNode::DIRTY) == 0) {
+            node.flags |= TransformNode::DIRTY;
+            dirtySlots.push_back(node.slot);
+        }
+    }
+
     void TransformHierarchy::UpdateWorldTransforms(){
-        // Parallel note: root subtrees are independent of each other, and by I2
-        // each one is a contiguous range, so a fork-join over roots parallelizes
-        // as is. One thread is enough for now, so it stays a plain loop.
-        // (Commit is a different story: it memmoves and its phases are ordered.)
-        for(auto& node: nodes){
-            // I1 puts every parent in front, so its world is already this frame's
-            const auto local = modelMat(node.local);
-            const auto inherited = !node.IsRoot() &&
-                (nodes[node.parentIndex.value].flags &
-                    TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
+        updated.clear();
 
-            if(node.IsRoot()){
-                node.world = local;
-                node.worldRotation = node.local.rotation;
+        std::vector<usize> starts;
+        for(auto slot: dirtySlots) {
+            // destroyed since it was marked, or its slot reissued to a node
+            // still waiting for its commit
+            if(!slots.IsLiving(slot) || slots.IndexOf(slot) == PENDING_INDEX) {
+                continue;
             }
-            else{
-                const auto& parent = nodes[node.parentIndex.value];
-                node.world = parent.world * local;
-                node.worldRotation = quat(parent.worldRotation, node.local.rotation);
+            starts.push_back(slots.IndexOf(slot).value);
+        }
+        dirtySlots.clear();
+        std::ranges::sort(starts);
+
+        // By I2 a marked node's subtree is one range, and a marked node inside
+        // a range already recomputed needs nothing more. Parallel note: the
+        // ranges are independent, so a fork-join over them parallelizes as is.
+        usize covered = 0;
+        for(auto start: starts) {
+            if(start < covered) {
+                continue;
             }
 
-            setFlag(
-                node.flags,
-                TransformNode::NON_UNIFORM_IN_CHAIN,
-                inherited || !isUniform(node.local.scale)
-            );
-            warnOnNonUniformChain(node);
+            covered = start + nodes[start].subtreeSize;
+            for(auto index = start; index < covered; ++index) {
+                updateNode(index);
+            }
+        }
+    }
+
+    void TransformHierarchy::updateNode(usize index) {
+        // I1 puts every parent in front, so its world is already this frame's
+        auto& node = nodes[index];
+        const auto local = modelMat(node.local);
+        const auto inherited =
+            !node.IsRoot() && (nodes[node.parentIndex.value].flags &
+                               TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
+
+        if(node.IsRoot()) {
+            node.world = local;
+            node.worldRotation = node.local.rotation;
+        } else {
+            const auto& parent = nodes[node.parentIndex.value];
+            node.world = parent.world * local;
+            node.worldRotation =
+                quat(parent.worldRotation, node.local.rotation);
         }
 
-        invalidateInverses();
+        setFlag(
+            node.flags,
+            TransformNode::NON_UNIFORM_IN_CHAIN,
+            inherited || !isUniform(node.local.scale)
+        );
+        node.flags &= ~TransformNode::DIRTY;
+        warnOnNonUniformChain(node);
+
+        inverseValid[index] = 0;
+        updated.push_back(slots.HandleOf(node.slot));
     }
 
     Mat4 TransformHierarchy::ComputeWorldMatrixNow(

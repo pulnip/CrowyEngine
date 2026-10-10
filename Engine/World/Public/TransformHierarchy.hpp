@@ -1,8 +1,10 @@
 #pragma once
 
+#include <span>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "Assert.hpp"
 #include "GenericHandle.hpp"
 #include "HandleTable.hpp"
@@ -25,6 +27,8 @@ namespace Crowy
         static constexpr u32 NON_UNIFORM_IN_CHAIN = 1u << 0;
         // already warned about, so the log stays readable
         static constexpr u32 WARNED_NON_UNIFORM = 1u << 1;
+        // its world is owed: a local write, a commit that placed it
+        static constexpr u32 DIRTY = 1u << 2;
 
         Transform local = Transform::Identity();
         // caches, refreshed by UpdateWorldTransforms
@@ -59,7 +63,11 @@ namespace Crowy
     //   and its local transform reads and writes right away.
     // Everything else answers as of the last commit.
     //
-    // Not thread safe, const methods included: the inverse cache is filled in on read.
+    // A local write, and a commit that places a node, mark it; the next
+    // UpdateWorldTransforms recomputes only the marked subtrees.
+    //
+    // Not thread safe, const methods included: the inverse cache is filled in
+    // on read.
     class TransformHierarchy{
     private:
         // A slot holding a handle to a node that is not in the array yet. Never a
@@ -85,6 +93,11 @@ namespace Crowy
         std::vector<PendingReparent> pendingReparents;
         std::unordered_map<TransformSlot, Transform> pendingLocals;
         std::unordered_set<TransformSlot> pendingDestroys;
+
+        // slots marked since the last update; one may have died since
+        std::vector<TransformSlot> dirtySlots;
+        // what the last update recomputed, in preorder
+        std::vector<TransformHandle> updated;
 
         // Kept out of TransformNode on purpose: another 64 bytes per node would
         // slow the sequential pass in UpdateWorldTransforms down for the few nodes
@@ -165,6 +178,7 @@ namespace Crowy
         }
         void SetLocalTransform(TransformHandle handle, const Transform& transform) noexcept{
             localTransform(handle) = transform;
+            markDirty(handle);
         }
 
         Vec3 GetLocalPosition(TransformHandle handle) const noexcept{
@@ -178,16 +192,24 @@ namespace Crowy
         }
         void SetLocalPosition(TransformHandle handle, const Vec3& position) noexcept{
             localTransform(handle).position = position;
+            markDirty(handle);
         }
         void SetLocalRotation(TransformHandle handle, const Vec4& rotation) noexcept{
             localTransform(handle).rotation = rotation;
+            markDirty(handle);
         }
         void SetLocalScale(TransformHandle handle, const Vec3& scale) noexcept{
             localTransform(handle).scale = scale;
+            markDirty(handle);
         }
 
-        // world transform
+        // world transform: the marked subtrees only
         void UpdateWorldTransforms();
+        // the nodes the last UpdateWorldTransforms recomputed, in preorder,
+        // until the next one
+        std::span<const TransformHandle> GetUpdatedNodes() const noexcept {
+            return updated;
+        }
 
         const Mat4& GetWorldMatrix(TransformHandle handle) const noexcept{
             return nodeOf(handle).world;
@@ -236,6 +258,10 @@ namespace Crowy
         void rebuildParentIndexes() noexcept;
 
         void invalidateInverses() const noexcept;
+        // a pending node needs none: its commit marks it
+        void markDirty(TransformHandle handle) noexcept;
+        void markDirty(TransformNode& node);
+        void updateNode(usize index);
         void scheduleDestroy(TransformIndex index, TransformSlot slot);
         void cancelPendingCreate(TransformSlot slot);
         void cancelPendingCreatesUnder(
