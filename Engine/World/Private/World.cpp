@@ -1,0 +1,224 @@
+#include "World.hpp"
+
+namespace Crowy
+{
+    World::World(const SystemRegistry& systems)
+        : schedule(scheduleSystems(systems.All())) {}
+
+    ActorId World::Spawn(const Transform& local, ActorId parent) {
+        CROWY_ASSERT(!applyingStructure, "a spawn inside Sync");
+
+        return actorOf(
+            parent.IsValid() ? hierarchy.CreateNode(nodeOf(parent), local)
+                             : hierarchy.CreateNode(local)
+        );
+    }
+
+    void World::Destroy(ActorId actor) {
+        CROWY_ASSERT(!applyingStructure, "a destroy inside Sync");
+        CROWY_ASSERT(IsValid(actor), "destroying an actor that is not alive");
+
+        std::vector<TransformHandle> destroyed;
+        hierarchy.DestroySubtree(nodeOf(actor), destroyed);
+
+        for(const auto node: destroyed)
+            dyingActors.push_back(actorOf(node));
+    }
+
+    bool World::IsValid(ActorId actor) const noexcept {
+        return hierarchy.IsValid(nodeOf(actor));
+    }
+
+    void World::SetLocalTransform(
+        ActorId actor,
+        const Transform& local
+    ) noexcept {
+        hierarchy.SetLocalTransform(nodeOf(actor), local);
+    }
+
+    const Mat4& World::WorldMatrix(ActorId actor) const noexcept {
+        return hierarchy.GetWorldMatrix(nodeOf(actor));
+    }
+
+    void World::Frame(f64 realSeconds) {
+        const auto gameSeconds = realSeconds * TimeScale;
+        const FrameTime frame{
+            .realSeconds = realSeconds,
+            .gameSeconds = gameSeconds,
+            .tick = ticks
+        };
+        run(Phase::Input, frame);
+
+        const auto due = fixedClock.Advance(toNanoseconds(gameSeconds));
+        for(u32 i = 0; i < due; ++i) {
+            const FrameTime tick{
+                .realSeconds = realSeconds,
+                .gameSeconds = static_cast<f64>(TickNanoseconds) * 1e-9,
+                .tick = ++ticks
+            };
+            run(Phase::PreTick, tick);
+            run(Phase::Physics, tick);
+            run(Phase::PostTick, tick);
+        }
+
+        const FrameTime ticked{
+            .realSeconds = realSeconds,
+            .gameSeconds = gameSeconds,
+            .tick = ticks
+        };
+        run(Phase::Update, ticked);
+        sync(ticked);
+
+        extracting = true;
+        run(Phase::Extract, ticked);
+        extracting = false;
+
+        // what changed is now extracted; the next frame records afresh
+        for(const auto& store: stores)
+            store->changed.clear();
+        ++epoch;
+    }
+
+    TransformHandle World::nodeOf(ActorId actor) noexcept {
+        return {actor.GetIndex(), actor.GetGeneration()};
+    }
+
+    ActorId World::actorOf(TransformHandle node) noexcept {
+        return {node.GetIndex(), node.GetGeneration()};
+    }
+
+    void World::addComponent(
+        const TypeDesc& desc,
+        ActorId actor,
+        void* component
+    ) {
+        CROWY_ASSERT(!applyingStructure, "a component added inside Sync");
+        CROWY_ASSERT(IsValid(actor), "adding to an actor that is not alive");
+
+        auto& store = storeFor(desc);
+        CROWY_ASSERT(
+            store.rows.Find(actor) == nullptr &&
+                store.pendingAdds.Find(actor) == nullptr,
+            "the actor already has this component"
+        );
+
+        store.pendingAdds.Insert(actor, component);
+    }
+
+    void World::removeComponent(const TypeDesc& desc, ActorId actor) {
+        CROWY_ASSERT(!applyingStructure, "a component removed inside Sync");
+        CROWY_ASSERT(
+            IsValid(actor),
+            "removing from an actor that is not alive"
+        );
+
+        auto* store = findStore(desc);
+        CROWY_ASSERT(
+            store != nullptr && store->rows.Find(actor) != nullptr,
+            "the actor has no such component to remove"
+        );
+
+        store->pendingRemoves.push_back(actor);
+    }
+
+    World::ComponentStore& World::storeFor(const TypeDesc& desc) {
+        if(auto* store = findStore(desc))
+            return *store;
+
+        // GetDesc made an empty desc: the registration was never linked
+        CROWY_ASSERT(!desc.name.empty(), "a type that was never registered");
+        const auto* info = ComponentRegistry::Get().Find(desc);
+        CROWY_ASSERT(info != nullptr, "a type that is not a component");
+
+        auto& store = stores.emplace_back(
+            std::make_unique<ComponentStore>(*info, *desc.ops)
+        );
+        storeOfType.emplace(&desc, store.get());
+
+        return *store;
+    }
+
+    World::ComponentStore* World::findStore(
+        const TypeDesc& desc
+    ) const noexcept {
+        const auto it = storeOfType.find(&desc);
+        return it == storeOfType.end() ? nullptr : it->second;
+    }
+
+    void World::markChanged(ComponentStore& store, ActorId actor) {
+        CROWY_ASSERT(!extracting, "a component written inside Extract");
+
+        const auto slot = actor.GetIndex();
+        if(slot >= store.changedIn.size())
+            store.changedIn.resize(slot + 1, 0);
+
+        if(store.changedIn[slot] != epoch) {
+            store.changedIn[slot] = epoch;
+            store.changed.push_back(actor);
+        }
+    }
+
+    void World::run(Phase phase, const FrameTime& time) {
+        for(const auto system: schedule[static_cast<usize>(phase)])
+            system(*this, time);
+    }
+
+    void World::sync(const FrameTime& time) {
+        applyingStructure = true;
+
+        // the dying first, so nothing below adds to an actor that is gone
+        for(const auto actor: dyingActors) {
+            for(const auto& store: stores) {
+                if(auto* row = store->rows.Find(actor)) {
+                    if(store->info.onRemove)
+                        store->info.onRemove(*this, actor, row);
+                    store->rows.Erase(actor);
+                }
+                if(store->pendingAdds.Find(actor) != nullptr)
+                    store->pendingAdds.Erase(actor);
+            }
+        }
+        dyingActors.clear();
+
+        for(const auto& store: stores) {
+            for(const auto actor: store->pendingRemoves) {
+                auto* row = store->rows.Find(actor);
+                if(row == nullptr)
+                    continue;
+
+                if(store->info.onRemove)
+                    store->info.onRemove(*this, actor, row);
+                store->rows.Erase(actor);
+            }
+            store->pendingRemoves.clear();
+        }
+
+        // the dying actors' slots are released here, after their rows left
+        hierarchy.CommitStructuralChanges();
+
+        for(const auto& store: stores) {
+            for(usize i = 0; i < store->pendingAdds.Count(); ++i) {
+                const auto actor = store->pendingAdds.OwnerAt(i);
+                auto* row = store->rows.Insert(actor, store->pendingAdds.At(i));
+                if(store->info.onAdd)
+                    store->info.onAdd(*this, actor, row);
+                markChanged(*store, actor);
+            }
+            store->pendingAdds.Clear();
+        }
+
+        applyingStructure = false;
+
+        run(Phase::Sync, time);
+
+        // only the marked subtrees, and every row riding on them changed
+        hierarchy.UpdateWorldTransforms();
+        for(const auto node: hierarchy.GetUpdatedNodes()) {
+            const auto actor = actorOf(node);
+            for(const auto& store: stores) {
+                if(store->rows.Find(actor) != nullptr)
+                    markChanged(*store, actor);
+            }
+        }
+    }
+}
