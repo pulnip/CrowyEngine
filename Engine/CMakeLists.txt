@@ -27,3 +27,5 @@ endif()
 add_subdirectory(Render)
 # 3-1) on top of Render
 add_subdirectory(Effects)
+# 3-2) the World's side of each subsystem
+add_subdirectory(WorldRender)

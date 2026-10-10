@@ -32,10 +32,18 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 crowy_link_or_copy_directory(Content)
 crowy_link_or_copy_directory(Config)
 
+# WHOLE_ARCHIVE: the module registers types or systems from objects nothing
+# references, so Crowy::NAME links its archive whole
 function(crowy_declare_module NAME)
-    cmake_parse_arguments(ARG "" "" "PUBLIC;PRIVATE" ${ARGN})
+    cmake_parse_arguments(ARG "WHOLE_ARCHIVE" "" "PUBLIC;PRIVATE" ${ARGN})
 
-    add_library(Crowy${NAME} STATIC)
+    if(ARG_WHOLE_ARCHIVE)
+        set(LIBRARY Crowy${NAME}Archive)
+    else()
+        set(LIBRARY Crowy${NAME})
+    endif()
+
+    add_library(${LIBRARY} STATIC)
 
     file(GLOB_RECURSE PUBLIC_SOURCES
         "Public/*.hpp"
@@ -45,25 +53,29 @@ function(crowy_declare_module NAME)
         "Private/*.cpp"
     )
 
-    target_sources(Crowy${NAME}
+    target_sources(${LIBRARY}
     PUBLIC
         ${PUBLIC_SOURCES}
     PRIVATE
         ${PRIVATE_SOURCES}
     )
 
-    target_include_directories(Crowy${NAME}
+    target_include_directories(${LIBRARY}
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     )
 
-    target_link_libraries(Crowy${NAME}
+    target_link_libraries(${LIBRARY}
     PUBLIC
         CrowyProjectInterface
         ${ARG_PUBLIC}
     PRIVATE
         ${ARG_PRIVATE}
     )
+
+    if(ARG_WHOLE_ARCHIVE)
+        crowy_whole_archive(Crowy${NAME} ${LIBRARY})
+    endif()
 
     add_library(Crowy::${NAME} ALIAS Crowy${NAME})
 endfunction()
