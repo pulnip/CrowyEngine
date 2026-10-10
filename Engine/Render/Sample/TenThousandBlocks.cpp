@@ -5,16 +5,19 @@
 #include "FlyCamera.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
+#include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
 #include "Primitives.hpp"
 #include "RHIPipelineState.hpp"
 #include "RenderApp.hpp"
+#include "World.hpp"
 
 namespace Crowy
 {
     // Engine/RHI/Sample/TenThousandCubes built on RenderScene instead of a
     // hand-rolled object list. Same lattice, meshes, pose and clear color,
-    // so a smoke capture of the two has to compare equal.
+    // so a smoke capture of the two has to compare equal. Each block is an
+    // actor with a mesh, and the World extracts the rows.
     class TenThousandBlocks: public RenderApp {
         // keep in sync with TenThousandBlocks.slang
         static constexpr u32 GridX = 20, GridY = 20, GridZ = 25;
@@ -31,6 +34,7 @@ namespace Crowy
         Geometries geometry;
         Meshes meshes;
         MaterialHandle material;
+        World world;
 
     public:
         TenThousandBlocks()
@@ -85,23 +89,17 @@ namespace Crowy
                 );
             }
 
+            // the shader colours by row, so the rows land in lattice order
+            world.Provide(scene);
             for(u32 i = 0; i < BlockCount; ++i) {
-                const auto position = blockPosition(i);
-
-                scene.Primitives().Add(
-                    PrimitiveSnapshot{
-                        .localToWorld = translateMat(position),
-                        // every mesh type fits the box's extent
-                        .worldBounds =
-                            AABB3D{
-                                .center = position,
-                                .halfScale = BlockHalfSize * ones()
-                            },
-                        .mesh = meshes[i % MeshTypeCount]
-                    }
+                world.Add(
+                    world.Spawn(Transform{.position = blockPosition(i)}),
+                    MeshComponent{meshes[i % MeshTypeCount]}
                 );
             }
         }
+
+        void OnUpdateScene(f64 seconds) override { world.Frame(seconds); }
 
     private:
         static Config makeConfig() {

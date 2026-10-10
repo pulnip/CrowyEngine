@@ -57,6 +57,7 @@ crowy_declare_example(TenThousandBlocks
 SOURCES
     TenThousandBlocks.cpp
 DEPENDS
+    Crowy::WorldRender
     SampleRenderApp
 )
 
