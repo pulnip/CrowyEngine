@@ -14,7 +14,11 @@ backends D3D12 and Metal. Modules under `Engine/`:
   `Shader` (the shared Slang root); `Effects` (GPU particles and fields);
   `Physics` (Jolt; its targets and glue compile with
   `crowy_fp_contract_off`).
-- `Resource` and `Scene` have no consumers yet.
+- `World` (actors, component pools, the fixed phases and clocks, the
+  transform hierarchy; it records what changed, and a frame where nothing
+  did recomputes nothing) and `WorldRender` (the World's meshes extracted
+  into a `RenderScene`; Render does not see the World). `Resource` has no
+  consumers yet.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in
