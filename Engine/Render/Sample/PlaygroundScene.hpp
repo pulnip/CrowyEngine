@@ -124,7 +124,7 @@ namespace Crowy
 
         struct NamedLight {
             CStr name;
-            LightHandle handle;
+            ActorId actor;
         };
 
         struct CameraPose {
@@ -234,7 +234,8 @@ namespace Crowy
             CStr label,
             MaterialHandle handle
         );
-        Widget lightSection(RenderScene& scene, CStr label, LightHandle handle);
+        // the light, then its actor's transform
+        Widget lightSection(const NamedLight& light);
         Widget environmentSection(RenderScene& scene);
         Widget debugSection();
         Widget shadingSection();

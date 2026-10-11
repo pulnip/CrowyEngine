@@ -1,6 +1,7 @@
 #include "PlaygroundScene.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <memory>
 #include <numbers>
@@ -8,6 +9,7 @@
 
 #include <imgui.h>
 
+#include "LightComponent.hpp"
 #include "Log.hpp"
 #include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
@@ -24,8 +26,10 @@ namespace Crowy
             port->Unexpose("shading");
             port->Unexpose("camera");
             port->Unexpose("environment");
-            for(const auto& light: exposedLights)
+            for(const auto& light: exposedLights) {
                 port->Unexpose(std::format("light.{}", light.name));
+                port->Unexpose(std::format("light.{}.transform", light.name));
+            }
             for(const auto& material: exposedMaterials)
                 port->Unexpose(std::format("material.{}", material.name));
         }
@@ -88,24 +92,31 @@ namespace Crowy
         // map from the front: pitched 60 degrees down, turned 30 to -x
         constexpr auto Pi = std::numbers::pi_v<f32>;
         const auto sunRotation = quat(rotateY(-Pi / 6), rotateX(Pi / 3));
-        const auto sun = scene.Lights().Add(
-            LightSnapshot{
+        const auto sun = world.Spawn(Transform{.rotation = sunRotation});
+        world.Add(
+            sun,
+            LightComponent{
                 .castShadow = true,
                 .color = ones(),
-                .intensity = 3.0f,
-                .direction = forward(sunRotation)
+                .intensity = 3.0f
             }
         );
         // off until the port or the panel turns it on, so the golden
-        // never sees it; aimed down at the chart for when it is a spot
-        const auto lamp = scene.Lights().Add(
-            LightSnapshot{
+        // never sees it; aimed down at the chart, half a metre down per
+        // metre forward, for when it is a spot
+        const auto lamp = world.Spawn(
+            Transform{
+                .position = {0.0f, 1.5f, 2.5f},
+                .rotation = rotateX(std::atan(0.5f))
+            }
+        );
+        world.Add(
+            lamp,
+            LightComponent{
                 .kind = LightKind::Point,
                 .enabled = false,
                 .color = {1.0f, 0.8f, 0.6f},
                 .intensity = 4.0f,
-                .position = {0.0f, 1.5f, 2.5f},
-                .direction = {0.0f, -0.45f, 0.9f},
                 .range = 4.0f
             }
         );
@@ -375,8 +386,12 @@ namespace Crowy
             for(const auto& light: exposedLights) {
                 port->Expose(
                     std::format("light.{}", light.name),
-                    &scene.Lights().GetRef(light.handle),
-                    *GetDesc<LightSnapshot>(),
+                    world.Target<LightComponent>(light.actor),
+                    [this] { uiContext.panelDirty = true; }
+                );
+                port->Expose(
+                    std::format("light.{}.transform", light.name),
+                    world.TransformTarget(light.actor),
                     [this] { uiContext.panelDirty = true; }
                 );
             }
@@ -622,7 +637,7 @@ namespace Crowy
             cameraSection()
         };
         for(const auto& light: exposedLights) {
-            sections.push_back(lightSection(Scene(), light.name, light.handle));
+            sections.push_back(lightSection(light));
         }
         sections.push_back(environmentSection(Scene()));
         for(const auto& material: exposedMaterials) {
@@ -648,17 +663,19 @@ namespace Crowy
         );
     }
 
-    Widget PlaygroundScene::lightSection(
-        RenderScene& scene,
-        CStr label,
-        LightHandle handle
-    ) {
-        // BeginFrame re-reads the table every frame; no dirty consumer
-        return buildPropertyTree(
-            label,
-            &scene.Lights().GetRef(handle),
-            *GetDesc<LightSnapshot>(),
-            [] {}
+    Widget PlaygroundScene::lightSection(const NamedLight& light) {
+        // the World extracts what changed; no dirty consumer
+        return Column(
+            {buildPropertyTree(
+                 light.name,
+                 world.Target<LightComponent>(light.actor),
+                 [] {}
+             ),
+             buildPropertyTree(
+                 std::format("{} transform", light.name).c_str(),
+                 world.TransformTarget(light.actor),
+                 [] {}
+             )}
         );
     }
 
