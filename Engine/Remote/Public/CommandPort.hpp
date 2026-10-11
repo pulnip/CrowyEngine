@@ -5,6 +5,7 @@
 
 #include "DOM.hpp"
 #include "Primitives.hpp"
+#include "PropertyTarget.hpp"
 #include "PropertyWrite.hpp"
 #include "Semantics.hpp"
 
@@ -93,9 +94,15 @@ namespace Crowy
         explicit CommandPort(const CommandPortConfig& config = {});
 
         void RegisterVerb(Str name, VerbHandler);
-        // A name the reflection verbs address. The target must outlive the
-        // port or be unexposed first; the callback fires after every
-        // successful write.
+        // A name the reflection verbs address, resolved at every request.
+        // The resolver must stay callable until the port is gone or the name
+        // is unexposed; the callback fires after every successful write.
+        void Expose(
+            Str name,
+            PropertyTarget target,
+            DirtyCallback onDirty = {}
+        );
+        // an object whose address never changes
         void Expose(Str name, void* target, const TypeDesc&, DirtyCallback onDirty = {});
         void Unexpose(StrView name);
         void Drain();

@@ -2,14 +2,14 @@
 
 #include "ClassRegistry.hpp"
 #include "CommandPort.hpp"
+#include "PropertyTarget.hpp"
 #include "PropertyWrite.hpp"
 #include "StringUtil.hpp"
 
 namespace Crowy
 {
     struct Exposure {
-        void* target = nullptr;
-        const TypeDesc* desc = nullptr;
+        PropertyTarget target;
         DirtyCallback onDirty;
     };
 

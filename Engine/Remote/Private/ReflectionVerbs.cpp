@@ -32,6 +32,23 @@ namespace Crowy
             return &it->second;
         }
 
+        // answers the reply itself when what the target names is gone
+        void* resolveTarget(
+            const Exposure& exposure,
+            const DOM::Value& args,
+            TargetAccess access,
+            Reply& reply
+        ) {
+            auto object = exposure.target.Resolve(access);
+            if(object == nullptr) {
+                reply.Error(
+                    std::format("target '{}' is gone", *args.get<Str>("target"))
+                );
+            }
+
+            return object;
+        }
+
         DOM::Value describeProperties(const TypeDesc& desc);
 
         // parents first, then own properties in declaration order,
@@ -114,7 +131,7 @@ namespace Crowy
         for(const auto& [name, exposure]: sorted) {
             DOM::Table entry;
             entry.emplace("name", Str(name));
-            entry.emplace("type", exposure->desc->name);
+            entry.emplace("type", exposure->target.Desc().name);
 
             objects.emplace_back(std::move(entry));
         }
@@ -134,9 +151,11 @@ namespace Crowy
         if(exposure == nullptr)
             return;
 
+        const auto& desc = exposure->target.Desc();
+
         DOM::Table result;
-        result.emplace("type", exposure->desc->name);
-        result.emplace("properties", describeProperties(*exposure->desc));
+        result.emplace("type", desc.name);
+        result.emplace("properties", describeProperties(desc));
 
         reply.Ok(std::move(result));
     }
@@ -150,6 +169,12 @@ namespace Crowy
         if(exposure == nullptr)
             return;
 
+        auto* object =
+            resolveTarget(*exposure, args, TargetAccess::Read, reply);
+        if(object == nullptr)
+            return;
+        const auto& desc = exposure->target.Desc();
+
         DOM::Value value;
         if(const auto* node = args.at("path")) {
             const auto* path = node->asString();
@@ -159,7 +184,7 @@ namespace Crowy
                 return;
             }
 
-            auto resolved = ResolveProperty(exposure->target, *exposure->desc, *path);
+            auto resolved = ResolveProperty(object, desc, *path);
             if(resolved.desc == nullptr) {
                 reply.Error(std::move(resolved.error));
 
@@ -174,7 +199,7 @@ namespace Crowy
             }
         }
         else {
-            SerializeProperties(*exposure->desc, exposure->target, value);
+            SerializeProperties(desc, object, value);
         }
 
         DOM::Table result;
@@ -206,16 +231,24 @@ namespace Crowy
             return;
         }
 
-        auto resolved = ResolveProperty(exposure->target, *exposure->desc, *path);
-        if(resolved.desc == nullptr) {
-            reply.Error(std::move(resolved.error));
+        // the path is checked on a read, so a refused write never asks for
+        // the write access that records a change
+        auto* readable =
+            resolveTarget(*exposure, args, TargetAccess::Read, reply);
+        if(readable == nullptr)
+            return;
+        const auto& desc = exposure->target.Desc();
+
+        const auto checked = ResolveProperty(readable, desc, *path);
+        if(checked.desc == nullptr) {
+            reply.Error(checked.error);
 
             return;
         }
 
         // a whole-struct write would go through ApplyProperties, which writes
         // what binds before it reports the rest; the port answers per leaf
-        if(NestedDesc(*resolved.desc) != nullptr) {
+        if(NestedDesc(*checked.desc) != nullptr) {
             reply.Error(std::format(
                 "'{}' is a struct; set one of its properties", *path
             ));
@@ -223,6 +256,12 @@ namespace Crowy
             return;
         }
 
+        auto* writable =
+            resolveTarget(*exposure, args, TargetAccess::Write, reply);
+        if(writable == nullptr)
+            return;
+
+        const auto resolved = ResolveProperty(writable, desc, *path);
         if(!resolved.desc->type.deserialize(resolved.member, *value)) {
             reply.Error(std::format(
                 "'{}' expects {}", *path, resolved.desc->type.name

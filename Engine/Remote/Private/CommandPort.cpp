@@ -218,7 +218,7 @@ namespace Crowy
         explicit CommandPortImpl(const CommandPortConfig& config);
 
         void RegisterVerb(Str name, VerbHandler handler);
-        void Expose(Str name, void* target, const TypeDesc& desc, DirtyCallback onDirty);
+        void Expose(Str name, PropertyTarget target, DirtyCallback onDirty);
         void Unexpose(StrView name);
         void Drain();
 
@@ -325,18 +325,19 @@ namespace Crowy
 
     void CommandPortImpl::Expose(
         Str name,
-        void* target,
-        const TypeDesc& desc,
+        PropertyTarget target,
         DirtyCallback onDirty
-    ){
+    ) {
         CROWY_ASSERT(!exposures.contains(name), "target exposed twice");
         // GetDesc made an empty desc: the registration was never linked
-        CROWY_ASSERT(!desc.name.empty(), "a type that was never registered");
-        exposures.emplace(std::move(name), Exposure{
-            .target = target,
-            .desc = &desc,
-            .onDirty = std::move(onDirty)
-        });
+        CROWY_ASSERT(
+            !target.Desc().name.empty(),
+            "a type that was never registered"
+        );
+        exposures.emplace(
+            std::move(name),
+            Exposure{.target = std::move(target), .onDirty = std::move(onDirty)}
+        );
     }
 
     void CommandPortImpl::Unexpose(StrView name){
@@ -690,11 +691,23 @@ namespace Crowy
 
     void CommandPort::Expose(
         Str name,
+        PropertyTarget target,
+        DirtyCallback onDirty
+    ) {
+        impl->Expose(std::move(name), std::move(target), std::move(onDirty));
+    }
+
+    void CommandPort::Expose(
+        Str name,
         void* target,
         const TypeDesc& desc,
         DirtyCallback onDirty
     ){
-        impl->Expose(std::move(name), target, desc, std::move(onDirty));
+        impl->Expose(
+            std::move(name),
+            PropertyTarget::Fixed(target, desc),
+            std::move(onDirty)
+        );
     }
 
     void CommandPort::Unexpose(StrView name){

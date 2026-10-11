@@ -658,6 +658,100 @@ TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
     EXPECT_EQ(probe.nested.amount, 0.25f);
 }
 
+TEST_F(CommandPortTest, ATargetIsResolvedAtEveryRequest) {
+    PortProbe first;
+    PortProbe second;
+    PortProbe* current = &first;
+    port.Expose(
+        "probe",
+        PropertyTarget(
+            [&current](TargetAccess) { return static_cast<void*>(current); },
+            *GetDesc<PortProbe>()
+        )
+    );
+
+    current = &second;
+    second.roughness = 0.75f;
+    auto read = exchange(post(
+        R"({"cmd":"get_property","args":{"target":"probe","path":"roughness"}})"
+    ));
+    ASSERT_TRUE(read.ok()) << read.body;
+    EXPECT_EQ(read.json.get<f32>("result.value"), 0.75f);
+
+    auto write = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"probe","path":"roughness","value":0.125}})"
+    ));
+    ASSERT_TRUE(write.ok()) << write.body;
+    EXPECT_EQ(second.roughness, 0.125f);
+    EXPECT_EQ(first.roughness, 0.5f);
+}
+
+TEST_F(CommandPortTest, AGoneTargetIsAnErrorButStaysListed) {
+    int dirty = 0;
+    port.Expose(
+        "gone",
+        PropertyTarget(
+            [](TargetAccess) -> void* { return nullptr; },
+            *GetDesc<PortProbe>()
+        ),
+        [&dirty] { ++dirty; }
+    );
+
+    auto read = exchange(
+        post(R"({"cmd":"get_property","args":{"target":"gone","path":"tint"}})")
+    );
+    EXPECT_EQ(read.error(), "target 'gone' is gone");
+    auto write = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"gone","path":"tint","value":[1,0,0]}})"
+    ));
+    EXPECT_EQ(write.error(), "target 'gone' is gone");
+    EXPECT_EQ(dirty, 0);
+
+    auto listed = exchange(post(R"({"cmd":"list_objects"})"));
+    ASSERT_TRUE(listed.ok()) << listed.body;
+    EXPECT_EQ(listed.json.get<Str>("result.objects[0].name"), "gone");
+    auto described =
+        exchange(post(R"({"cmd":"describe","args":{"target":"gone"}})"));
+    ASSERT_TRUE(described.ok()) << described.body;
+    EXPECT_EQ(described.json.get<Str>("result.type"), "PortProbe");
+}
+
+// a write access may record a change, so only a write that lands asks for it
+TEST_F(CommandPortTest, OnlyAWriteThatLandsResolvesForWriting) {
+    PortProbe probe;
+    int writes = 0;
+    port.Expose(
+        "probe",
+        PropertyTarget(
+            [&probe, &writes](TargetAccess access) {
+                writes += access == TargetAccess::Write;
+                return static_cast<void*>(&probe);
+            },
+            *GetDesc<PortProbe>()
+        )
+    );
+
+    exchange(post(
+        R"({"cmd":"get_property","args":{"target":"probe","path":"tint"}})"
+    ));
+    exchange(post(
+        R"({"cmd":"set_property","args":{"target":"probe","path":"nested.nope","value":1}})"
+    ));
+    exchange(post(
+        R"({"cmd":"set_property","args":{"target":"probe","path":"nested","value":{"amount":1}}})"
+    ));
+    exchange(post(
+        R"({"cmd":"set_property","args":{"target":"probe","path":"tint"}})"
+    ));
+    EXPECT_EQ(writes, 0);
+
+    auto good = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"probe","path":"tint","value":[0,1,0]}})"
+    ));
+    ASSERT_TRUE(good.ok()) << good.body;
+    EXPECT_EQ(writes, 1);
+}
+
 TEST_F(CommandPortTest, ExposingATypeNeverRegisteredStops) {
     struct NeverRegistered {
         f32 value = 0.0f;
