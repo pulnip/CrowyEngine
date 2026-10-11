@@ -85,13 +85,15 @@ namespace Crowy
 
         // Godot's editor-preview sun: 60 degrees up, 30 degrees east of
         // north, with north behind the start camera, so it lights the
-        // map from the front
+        // map from the front: pitched 60 degrees down, turned 30 to -x
+        constexpr auto Pi = std::numbers::pi_v<f32>;
+        const auto sunRotation = quat(rotateY(-Pi / 6), rotateX(Pi / 3));
         const auto sun = scene.Lights().Add(
             LightSnapshot{
                 .castShadow = true,
                 .color = ones(),
                 .intensity = 3.0f,
-                .direction = -normalize(Vec3{0.25f, 0.866f, -0.433f})
+                .direction = forward(sunRotation)
             }
         );
         // off until the port or the panel turns it on, so the golden
