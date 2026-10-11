@@ -16,8 +16,10 @@ backends D3D12 and Metal. Modules under `Engine/`:
   `crowy_fp_contract_off`).
 - `World` (actors, component pools, the fixed phases and clocks, the
   transform hierarchy; it records what changed, and a frame where nothing
-  did recomputes nothing) and `WorldRender` (the World's meshes extracted
-  into a `RenderScene`; Render does not see the World). `Resource` has no
+  did recomputes nothing; an actor's component or transform is a port and
+  panel target found again at every access) and `WorldRender` (the World's
+  meshes, lights and camera extracted into a `RenderScene` and a
+  `CameraSnapshot`; Render does not see the World). `Resource` has no
   consumers yet.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
