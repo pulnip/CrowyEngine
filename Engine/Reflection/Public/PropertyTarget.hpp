@@ -9,38 +9,39 @@ namespace Crowy
 {
     struct TypeDesc;
 
-    // a write access may record a change, so it is asked for only at the
-    // moment of writing
-    enum class TargetAccess : u8 {
-        Read,
-        Write,
-    };
-
     // What a port target or a panel section edits, found again at every
     // access, so a row that moved or went away is never reached through a
-    // stale address.
+    // stale address. A read hands out only a const object, so nothing can
+    // write past the write access, which may record the change.
     class PropertyTarget {
     public:
         // nullptr when what the target names is gone
-        using Resolver = std::function<void*(TargetAccess)>;
+        using Reader = std::function<const void*()>;
+        using Writer = std::function<void*()>;
 
     private:
-        Resolver resolver;
+        Reader reader;
+        Writer writer;
         const TypeDesc* desc = nullptr;
 
     public:
-        PropertyTarget(Resolver resolver, const TypeDesc& desc)
-            : resolver(std::move(resolver)), desc(&desc) {}
+        PropertyTarget(Reader reader, Writer writer, const TypeDesc& desc)
+            : reader(std::move(reader)),
+              writer(std::move(writer)),
+              desc(&desc) {}
 
         // an object whose address never changes
         static PropertyTarget Fixed(void* object, const TypeDesc& desc) {
             return PropertyTarget(
-                [object](TargetAccess) { return object; },
+                [object]() -> const void* { return object; },
+                [object] { return object; },
                 desc
             );
         }
 
-        void* Resolve(TargetAccess access) const { return resolver(access); }
+        const void* Read() const { return reader(); }
+        // asked for only at the moment of writing
+        void* Write() const { return writer(); }
 
         const TypeDesc& Desc() const noexcept { return *desc; }
     };

@@ -10,6 +10,7 @@ namespace Crowy
     struct PropertyAccessor{
         virtual ~PropertyAccessor() = default;
         virtual void* Get(void* obj) const = 0;
+        virtual const void* Get(const void* obj) const = 0;
     };
 
     namespace detail
@@ -79,10 +80,14 @@ namespace Crowy
         void* Get(void* obj) const override{
             return Resolve<0>(static_cast<Root*>(obj));
         }
+        const void* Get(const void* obj) const override {
+            return Resolve<0>(static_cast<const Root*>(obj));
+        }
 
     private:
+        // a const owner yields a const member, all the way down
         template<usize I, typename Owner>
-        void* Resolve(Owner* owner) const{
+        auto* Resolve(Owner* owner) const {
             if constexpr(I == sizeof...(Ptrs)){
                 return owner;
             }

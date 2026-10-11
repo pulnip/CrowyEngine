@@ -11,7 +11,7 @@ namespace
     Widget makeLeaf(
         const PropertyDesc&,
         const PropertyTarget& owner,
-        void* seed,
+        const void* seed,
         const DirtyCallback&
     );
 
@@ -19,7 +19,7 @@ namespace
     void appendProperties(
         std::vector<Widget>& out,
         const PropertyTarget& owner,
-        void* seed,
+        const void* seed,
         const TypeDesc& desc,
         const DirtyCallback& onDirty
     ) {
@@ -42,7 +42,7 @@ namespace
         F write
     ) {
         return [owner, accessor, onDirty, write](UIContext&, V v) {
-            auto* object = owner.Resolve(TargetAccess::Write);
+            auto object = owner.Write();
             if(object == nullptr)
                 return;
 
@@ -66,7 +66,7 @@ namespace
     W makeField(
         const PropertyDesc& prop,
         const PropertyTarget& owner,
-        void* member,
+        const void* member,
         const DirtyCallback& onDirty
     ) {
         return W{
@@ -79,12 +79,12 @@ namespace
     Widget makeLeaf(
         const PropertyDesc& prop,
         const PropertyTarget& owner,
-        void* seed,
+        const void* seed,
         const DirtyCallback& onDirty
     ) {
         const auto* info = &prop.type;
         const auto* accessor = prop.accessor.get();
-        auto* member = accessor->Get(seed);
+        const auto member = accessor->Get(seed);
 
         if(info == GetTypeOps<f32>()){
             if(prop.meta.uiRange.has_value()){
@@ -159,8 +159,12 @@ namespace
         }
         if(const auto* nested = NestedDesc(prop)){
             const PropertyTarget inner(
-                [owner, accessor](TargetAccess access) -> void* {
-                    auto* object = owner.Resolve(access);
+                [owner, accessor]() -> const void* {
+                    const auto object = owner.Read();
+                    return object == nullptr ? nullptr : accessor->Get(object);
+                },
+                [owner, accessor]() -> void* {
+                    const auto object = owner.Write();
                     return object == nullptr ? nullptr : accessor->Get(object);
                 },
                 *nested
@@ -194,7 +198,7 @@ namespace Crowy
             "a type that was never registered"
         );
 
-        auto seed = target.Resolve(TargetAccess::Read);
+        auto seed = target.Read();
         if(seed == nullptr) {
             return Collapsing{
                 .label = label,

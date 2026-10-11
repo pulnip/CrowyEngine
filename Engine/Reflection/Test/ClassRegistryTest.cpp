@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <type_traits>
 
 #include <gtest/gtest.h>
 
@@ -452,6 +453,23 @@ TEST(Reflection, ResolvePropertyWalksDots){
     EXPECT_TRUE(stats.member == &object.stats);
     EXPECT_TRUE(stats.desc->type.serialize == nullptr);
     EXPECT_TRUE(NestedDesc(*stats.desc) != nullptr);
+}
+
+// a const object resolves to const members only, so a read cannot write
+TEST(Reflection, AConstObjectResolvesToAConstMember) {
+    const StructTestObject object;
+    const auto& desc = *GetDesc<StructTestObject>();
+
+    const auto current = ResolveProperty(&object, desc, "stats.health.current");
+    static_assert(std::is_same_v<decltype(current.member), const void*>);
+    ASSERT_TRUE(current.desc != nullptr);
+    EXPECT_TRUE(current.member == &object.stats.health.current);
+
+    const auto* accessor = current.desc->accessor.get();
+    static_assert(std::is_same_v<
+                  decltype(accessor->Get(&object.stats.health)),
+                  const void*>);
+    EXPECT_TRUE(accessor->Get(&object.stats.health) == current.member);
 }
 
 TEST(Reflection, ResolvePropertyReachesTheParent){

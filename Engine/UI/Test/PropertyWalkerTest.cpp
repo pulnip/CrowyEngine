@@ -262,8 +262,9 @@ namespace
 
         PropertyTarget Target() {
             return PropertyTarget(
-                [this](TargetAccess access) -> void* {
-                    writes += access == TargetAccess::Write;
+                [this]() -> const void* { return current; },
+                [this]() -> void* {
+                    ++writes;
                     return current;
                 },
                 *GetDesc<WalkerFixture>()

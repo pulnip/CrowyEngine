@@ -665,7 +665,8 @@ TEST_F(CommandPortTest, ATargetIsResolvedAtEveryRequest) {
     port.Expose(
         "probe",
         PropertyTarget(
-            [&current](TargetAccess) { return static_cast<void*>(current); },
+            [&current]() -> const void* { return current; },
+            [&current]() -> void* { return current; },
             *GetDesc<PortProbe>()
         )
     );
@@ -691,7 +692,8 @@ TEST_F(CommandPortTest, AGoneTargetIsAnErrorButStaysListed) {
     port.Expose(
         "gone",
         PropertyTarget(
-            [](TargetAccess) -> void* { return nullptr; },
+            []() -> const void* { return nullptr; },
+            []() -> void* { return nullptr; },
             *GetDesc<PortProbe>()
         ),
         [&dirty] { ++dirty; }
@@ -723,9 +725,10 @@ TEST_F(CommandPortTest, OnlyAWriteThatLandsResolvesForWriting) {
     port.Expose(
         "probe",
         PropertyTarget(
-            [&probe, &writes](TargetAccess access) {
-                writes += access == TargetAccess::Write;
-                return static_cast<void*>(&probe);
+            [&probe]() -> const void* { return &probe; },
+            [&probe, &writes]() -> void* {
+                ++writes;
+                return &probe;
             },
             *GetDesc<PortProbe>()
         )

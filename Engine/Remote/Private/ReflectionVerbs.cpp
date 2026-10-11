@@ -33,13 +33,8 @@ namespace Crowy
         }
 
         // answers the reply itself when what the target names is gone
-        void* resolveTarget(
-            const Exposure& exposure,
-            const DOM::Value& args,
-            TargetAccess access,
-            Reply& reply
-        ) {
-            auto object = exposure.target.Resolve(access);
+        template<typename Object>
+        Object* present(Object* object, const DOM::Value& args, Reply& reply) {
             if(object == nullptr) {
                 reply.Error(
                     std::format("target '{}' is gone", *args.get<Str>("target"))
@@ -169,8 +164,7 @@ namespace Crowy
         if(exposure == nullptr)
             return;
 
-        auto* object =
-            resolveTarget(*exposure, args, TargetAccess::Read, reply);
+        const auto object = present(exposure->target.Read(), args, reply);
         if(object == nullptr)
             return;
         const auto& desc = exposure->target.Desc();
@@ -233,8 +227,7 @@ namespace Crowy
 
         // the path is checked on a read, so a refused write never asks for
         // the write access that records a change
-        auto* readable =
-            resolveTarget(*exposure, args, TargetAccess::Read, reply);
+        const auto readable = present(exposure->target.Read(), args, reply);
         if(readable == nullptr)
             return;
         const auto& desc = exposure->target.Desc();
@@ -256,8 +249,7 @@ namespace Crowy
             return;
         }
 
-        auto* writable =
-            resolveTarget(*exposure, args, TargetAccess::Write, reply);
+        const auto writable = present(exposure->target.Write(), args, reply);
         if(writable == nullptr)
             return;
 

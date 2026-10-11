@@ -252,16 +252,26 @@ namespace Crowy
         SerializeProperties(desc, object, out);
     }
 
-    struct ResolvedProperty{
-        void* member = nullptr;
+    // Member is void or const void, as the target was
+    template<typename Member>
+    struct BasicResolvedProperty {
+        Member* member = nullptr;
         // null on failure; error says which segment and why
         const PropertyDesc* desc = nullptr;
         Str error;
     };
 
+    using ResolvedProperty = BasicResolvedProperty<void>;
+    using ResolvedConstProperty = BasicResolvedProperty<const void>;
+
     // "a.b.c" from target: each interior segment must be a reflected struct;
     // no [index], containers are not reflected
     ResolvedProperty ResolveProperty(void* target, const TypeDesc&, StrView path);
+    ResolvedConstProperty ResolveProperty(
+        const void* target,
+        const TypeDesc&,
+        StrView path
+    );
 
     // everything a Class and a Struct declare the same way
     template<typename Self, typename T, typename Desc>

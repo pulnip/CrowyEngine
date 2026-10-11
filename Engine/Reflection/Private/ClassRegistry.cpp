@@ -178,8 +178,7 @@ namespace Crowy
             }
 
             for(const auto& prop: desc.properties){
-                // the accessor has one signature for both directions; this walk only reads
-                const void* member = prop.accessor->Get(const_cast<void*>(object));
+                const void* member = prop.accessor->Get(object);
 
                 DOM::Value value;
                 if(const auto* nested = NestedDesc(prop)){
@@ -204,47 +203,77 @@ namespace Crowy
         out = DOM::Value(std::move(table));
     }
 
-    ResolvedProperty ResolveProperty(void* target, const TypeDesc& desc, StrView path){
-        ResolvedProperty result;
+    namespace
+    {
+        template<typename Member>
+        BasicResolvedProperty<Member> resolveProperty(
+            Member* target,
+            const TypeDesc& desc,
+            StrView path
+        ) {
+            BasicResolvedProperty<Member> result;
 
-        if(path.find('[') != StrView::npos){
-            result.error = std::format("index paths are not supported: '{}'", path);
-            return result;
+            if(path.find('[') != StrView::npos) {
+                result.error =
+                    std::format("index paths are not supported: '{}'", path);
+                return result;
+            }
+
+            auto* object = target;
+            const TypeDesc* current = &desc;
+            StrView rest = path;
+            while(true) {
+                const auto dot = rest.find('.');
+                const auto segment = rest.substr(0, dot);
+                if(segment.empty()) {
+                    result.error = std::format("empty segment in '{}'", path);
+                    return result;
+                }
+
+                const auto* prop = current->FindInChain(segment);
+                if(prop == nullptr) {
+                    result.error = std::format(
+                        "no property '{}' on '{}'",
+                        segment,
+                        current->name
+                    );
+                    return result;
+                }
+
+                auto* member = prop->accessor->Get(object);
+                if(dot == StrView::npos) {
+                    result.member = member;
+                    result.desc = prop;
+                    return result;
+                }
+
+                const auto* nested = NestedDesc(*prop);
+                if(nested == nullptr) {
+                    result.error =
+                        std::format("'{}' has no properties", segment);
+                    return result;
+                }
+
+                object = member;
+                current = nested;
+                rest.remove_prefix(dot + 1);
+            }
         }
+    }
 
-        void* object = target;
-        const TypeDesc* current = &desc;
-        StrView rest = path;
-        while(true){
-            const auto dot = rest.find('.');
-            const auto segment = rest.substr(0, dot);
-            if(segment.empty()){
-                result.error = std::format("empty segment in '{}'", path);
-                return result;
-            }
+    ResolvedProperty ResolveProperty(
+        void* target,
+        const TypeDesc& desc,
+        StrView path
+    ) {
+        return resolveProperty(target, desc, path);
+    }
 
-            const auto* prop = current->FindInChain(segment);
-            if(prop == nullptr){
-                result.error = std::format("no property '{}' on '{}'", segment, current->name);
-                return result;
-            }
-
-            void* member = prop->accessor->Get(object);
-            if(dot == StrView::npos){
-                result.member = member;
-                result.desc = prop;
-                return result;
-            }
-
-            const auto* nested = NestedDesc(*prop);
-            if(nested == nullptr){
-                result.error = std::format("'{}' has no properties", segment);
-                return result;
-            }
-
-            object = member;
-            current = nested;
-            rest.remove_prefix(dot + 1);
-        }
+    ResolvedConstProperty ResolveProperty(
+        const void* target,
+        const TypeDesc& desc,
+        StrView path
+    ) {
+        return resolveProperty(target, desc, path);
     }
 }
