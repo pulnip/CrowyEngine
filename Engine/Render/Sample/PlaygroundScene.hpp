@@ -174,8 +174,8 @@ namespace Crowy
         // the start pose is the overview bookmark, which `current` starts on
         static FlyCamera::Config MakeCamera();
 
-        // after every material row is added and before any address is
-        // taken; `shading` is what the toggle starts on
+        // after every material row is added; `shading` is what the toggle
+        // starts on
         virtual void OnRestyleMaterials(
             RenderScene&,
             const PlaygroundMaterials&,
@@ -196,12 +196,6 @@ namespace Crowy
         void OnRecordUI(RHICommandList& cmdList) override;
 
     private:
-        // rows do not move after extraction, so the row's address holds as
-        // a write-back target for the panel and the port alike
-        static MaterialData& materialData(
-            RenderScene& scene,
-            MaterialHandle handle
-        );
         static CStr moduleOf(ChartShading chart);
         // each close-up frames its station at eye height
         static std::optional<CameraPose> poseOf(CameraBookmark bookmark);
@@ -229,11 +223,9 @@ namespace Crowy
         void addPrimitive(MeshHandle mesh, Vec3 position, Vec3 scale);
 
         Widget buildPanel();
-        Widget materialSection(
-            RenderScene& scene,
-            CStr label,
-            MaterialHandle handle
-        );
+        // the row's data by its handle, for the panel and the port alike
+        PropertyTarget materialTarget(MaterialHandle handle);
+        Widget materialSection(CStr label, MaterialHandle handle);
         // the light, then its actor's transform
         Widget lightSection(const NamedLight& light);
         Widget environmentSection(RenderScene& scene);

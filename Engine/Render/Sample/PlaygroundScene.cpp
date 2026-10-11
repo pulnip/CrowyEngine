@@ -84,9 +84,6 @@ namespace Crowy
 
         world.Provide(scene);
 
-        // every row before any address is taken: the table is a vector,
-        // so a later Add could move the rows the panel and port point at
-
         // Godot's editor-preview sun: 60 degrees up, 30 degrees east of
         // north, with north behind the start camera, so it lights the
         // map from the front: pitched 60 degrees down, turned 30 to -x
@@ -404,8 +401,7 @@ namespace Crowy
             for(const auto& material: exposedMaterials) {
                 port->Expose(
                     std::format("material.{}", material.name),
-                    &materialData(scene, material.handle),
-                    *GetDesc<MaterialData>(),
+                    materialTarget(material.handle),
                     [this] { uiContext.panelDirty = true; }
                 );
             }
@@ -501,11 +497,22 @@ namespace Crowy
         uiRenderer->Record(cmdList);
     }
 
-    MaterialData& PlaygroundScene::materialData(
-        RenderScene& scene,
-        MaterialHandle handle
-    ) {
-        return scene.Materials().GetRef(handle).data;
+    PropertyTarget PlaygroundScene::materialTarget(MaterialHandle handle) {
+        return PropertyTarget(
+            [this, handle]() -> const void* {
+                const auto& materials = Scene().Materials();
+                return materials.IsValid(handle)
+                           ? &materials.GetRef(handle).data
+                           : nullptr;
+            },
+            [this, handle]() -> void* {
+                auto& materials = Scene().Materials();
+                return materials.IsValid(handle)
+                           ? &materials.GetRef(handle).data
+                           : nullptr;
+            },
+            *GetDesc<MaterialData>()
+        );
     }
 
     CStr PlaygroundScene::moduleOf(ChartShading chart) {
@@ -641,26 +648,15 @@ namespace Crowy
         }
         sections.push_back(environmentSection(Scene()));
         for(const auto& material: exposedMaterials) {
-            sections.push_back(
-                materialSection(Scene(), material.name, material.handle)
-            );
+            sections.push_back(materialSection(material.name, material.handle));
         }
 
         return Column(std::move(sections));
     }
 
-    Widget PlaygroundScene::materialSection(
-        RenderScene& scene,
-        CStr label,
-        MaterialHandle handle
-    ) {
+    Widget PlaygroundScene::materialSection(CStr label, MaterialHandle handle) {
         // the draw lists re-read the table every frame; no dirty consumer
-        return buildPropertyTree(
-            label,
-            &materialData(scene, handle),
-            *GetDesc<MaterialData>(),
-            [] {}
-        );
+        return buildPropertyTree(label, materialTarget(handle), [] {});
     }
 
     Widget PlaygroundScene::lightSection(const NamedLight& light) {
