@@ -14,6 +14,7 @@ add_subdirectory(Stage)
 # build on; App itself comes from each executable's FRAMEWORK
 add_library(SampleRenderApp STATIC
     FlyCamera.cpp
+    FlyControl.cpp
     OrbitCamera.cpp
     RenderApp.cpp
 )
