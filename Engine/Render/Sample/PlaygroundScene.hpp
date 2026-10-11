@@ -74,6 +74,13 @@ namespace Crowy
         ChartShading chart = ChartShading::PBR;
     };
 
+    // exposed as `camera.look`: the camera's turn, kept apart from its
+    // rotation the way a mouse look keeps it, and written into it
+    struct CameraLook {
+        f32 yaw = 0.0f;
+        f32 pitch = 0.0f;
+    };
+
     // the map's material rows by station
     struct PlaygroundMaterials {
         MaterialHandle floor{};
@@ -156,6 +163,11 @@ namespace Crowy
         RenderDebug shownDebug;
         CameraBookmarks bookmarks;
         PlaygroundShading shading;
+        // the actor the map is seen through, flown by the mouse and the keys
+        ActorId cameraActor;
+        CameraLook look;
+        bool looked = false;
+        Vec3 moveInput{};
         PlaygroundMaterials materials;
 
         // shown by debug.showStats, hidden by default like the panel so the
@@ -232,10 +244,13 @@ namespace Crowy
         Widget debugSection();
         Widget shadingSection();
         Widget bookmarksSection();
+        // the camera, then its actor's transform and its look
         Widget cameraSection();
         void linkChartShading();
         // a snap changes the camera section too, so the panel rebuilds; from
         // inside the panel's own submit this only raises the flag
         void snapCamera();
+        // the look into the camera actor's rotation
+        void applyLook();
     };
 }

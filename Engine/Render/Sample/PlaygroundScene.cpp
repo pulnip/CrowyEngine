@@ -9,6 +9,8 @@
 
 #include <imgui.h>
 
+#include "CameraComponent.hpp"
+#include "FlyControl.hpp"
 #include "LightComponent.hpp"
 #include "Log.hpp"
 #include "MeshComponent.hpp"
@@ -17,6 +19,7 @@
 #include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "ShadingModel.hpp"
+#include "SnapshotCamera.hpp"
 
 namespace Crowy
 {
@@ -25,6 +28,8 @@ namespace Crowy
             port->Unexpose("bookmarks");
             port->Unexpose("shading");
             port->Unexpose("camera");
+            port->Unexpose("camera.transform");
+            port->Unexpose("camera.look");
             port->Unexpose("environment");
             for(const auto& light: exposedLights) {
                 port->Unexpose(std::format("light.{}", light.name));
@@ -36,7 +41,7 @@ namespace Crowy
     }
 
     PlaygroundScene::PlaygroundScene(const Config& config)
-        : RenderApp(config, std::make_unique<FlyCamera>(MakeCamera())) {}
+        : RenderApp(config, std::make_unique<SnapshotCamera>()) {}
 
     RenderApp::Config PlaygroundScene::MakeConfig() {
         return Config{
@@ -83,6 +88,24 @@ namespace Crowy
         constexpr Vec3 QuadHalf{0.5f, 0.5f, 0.0f};
 
         world.Provide(scene);
+        world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
+
+        const auto start = MakeCamera();
+        look = CameraLook{.yaw = start.yaw, .pitch = start.pitch};
+        cameraActor = world.Spawn(
+            Transform{
+                .position = start.position,
+                .rotation = flyRotation(look.yaw, look.pitch)
+            }
+        );
+        world.Add(
+            cameraActor,
+            CameraComponent{
+                .fovY = start.fovY,
+                .nearZ = start.nearZ,
+                .farZ = start.farZ
+            }
+        );
 
         // Godot's editor-preview sun: 60 degrees up, 30 degrees east of
         // north, with north behind the start camera, so it lights the
@@ -354,8 +377,6 @@ namespace Crowy
         // the port's targets are the panel's, under the same rule; a
         // port write lands behind the panel's widgets, so it rebuilds them
         if(auto* port = Port()) {
-            auto& camera = static_cast<FlyCamera&>(Camera());
-
             port->Expose(
                 "bookmarks",
                 &bookmarks,
@@ -373,13 +394,20 @@ namespace Crowy
             );
             port->Expose(
                 "camera",
-                &camera,
-                *GetDesc<FlyCamera>(),
-                [this, &camera] {
-                    camera.RecomputeView();
-                    uiContext.panelDirty = true;
-                }
+                world.Target<CameraComponent>(cameraActor),
+                [this] { uiContext.panelDirty = true; }
             );
+            // a rotation written here lasts until the next mouse look, which
+            // turns from `camera.look`
+            port->Expose(
+                "camera.transform",
+                world.TransformTarget(cameraActor),
+                [this] { uiContext.panelDirty = true; }
+            );
+            port->Expose("camera.look", &look, *GetDesc<CameraLook>(), [this] {
+                applyLook();
+                uiContext.panelDirty = true;
+            });
             for(const auto& light: exposedLights) {
                 port->Expose(
                     std::format("light.{}", light.name),
@@ -416,9 +444,27 @@ namespace Crowy
         if(input.IsKeyPressed(StatsToggleKey)) {
             debug.showStats = !debug.showStats;
         }
+
+        const auto fly = MakeCamera();
+        looked = flyLook(input, fly.lookSensitivity, look.yaw, look.pitch);
+        moveInput = flyMoveInput(input);
     }
 
     void PlaygroundScene::OnUpdateScene(f64 seconds) {
+        // a still camera writes nothing, so nothing is extracted for it
+        if(looked || moveInput != zeros()) {
+            world.SetLocalTransform(
+                cameraActor,
+                flyStep(
+                    world.LocalTransform(cameraActor),
+                    look.yaw,
+                    look.pitch,
+                    moveInput,
+                    MakeCamera().moveSpeed,
+                    seconds
+                )
+            );
+        }
         world.Frame(seconds);
     }
 
@@ -716,13 +762,24 @@ namespace Crowy
     }
 
     Widget PlaygroundScene::cameraSection() {
-        auto& camera = static_cast<FlyCamera&>(Camera());
-
-        return buildPropertyTree(
-            "camera",
-            &camera,
-            *GetDesc<FlyCamera>(),
-            [&camera] { camera.RecomputeView(); }
+        // the World extracts what changed; only the look writes through
+        return Column(
+            {buildPropertyTree(
+                 "camera",
+                 world.Target<CameraComponent>(cameraActor),
+                 [] {}
+             ),
+             buildPropertyTree(
+                 "camera transform",
+                 world.TransformTarget(cameraActor),
+                 [] {}
+             ),
+             buildPropertyTree(
+                 "camera look",
+                 &look,
+                 *GetDesc<CameraLook>(),
+                 [this] { applyLook(); }
+             )}
         );
     }
 
@@ -738,12 +795,21 @@ namespace Crowy
         if(!pose)
             return;
 
-        auto& camera = static_cast<FlyCamera&>(Camera());
-        camera.position = pose->position;
-        camera.yaw = pose->yaw;
-        camera.pitch = pose->pitch;
-        camera.RecomputeView();
+        look = CameraLook{.yaw = pose->yaw, .pitch = pose->pitch};
+        world.SetLocalTransform(
+            cameraActor,
+            Transform{
+                .position = pose->position,
+                .rotation = flyRotation(look.yaw, look.pitch)
+            }
+        );
         uiContext.panelDirty = true;
+    }
+
+    void PlaygroundScene::applyLook() {
+        auto local = world.LocalTransform(cameraActor);
+        local.rotation = flyRotation(look.yaw, look.pitch);
+        world.SetLocalTransform(cameraActor, local);
     }
 
     // clang-format off: each registration opens a namespace the formatter
@@ -756,13 +822,10 @@ namespace Crowy
         .SetProperty("chart", &PlaygroundShading::chart)
     CROWY_STRUCT_END(PlaygroundShading)
 
-    CROWY_STRUCT(FlyCamera)
-        .SetProperty("position", &FlyCamera::position)
-        .SetProperty("yaw", &FlyCamera::yaw)
-        .SetProperty("pitch", &FlyCamera::pitch)
+    CROWY_STRUCT(CameraLook)
+        .SetProperty("yaw", &CameraLook::yaw)
+        .SetProperty("pitch", &CameraLook::pitch)
         .SetUIRange(-1.55f, 1.55f)
-        .SetProperty("fovY", &FlyCamera::config, &FlyCamera::Config::fovY)
-        .SetUIRange(0.35f, 2.4f)
-    CROWY_STRUCT_END(FlyCamera)
+    CROWY_STRUCT_END(CameraLook)
     // clang-format on
 }
