@@ -2,6 +2,7 @@
 
 #include "ClassRegistry.hpp"
 #include "Primitives.hpp"
+#include "PropertyTarget.hpp"
 #include "PropertyWrite.hpp"
 #include "Widget.hpp"
 
@@ -14,7 +15,14 @@ namespace Crowy
     // Values are seeded at build time and the tree is rebuilt
     // only when the target set changes,
     // so a write that bypasses the tree desyncs the display
-    // until the next rebuild.
+    // until the next rebuild. An edit resolves the target again, so it
+    // lands on the object as it is then, or nowhere if it is gone.
+    Widget buildPropertyTree(
+        CStr label,
+        PropertyTarget target,
+        DirtyCallback onDirty
+    );
+    // an object whose address never changes
     Widget buildPropertyTree(
         CStr label,
         void* target,

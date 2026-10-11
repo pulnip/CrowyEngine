@@ -252,6 +252,90 @@ TEST(PropertyWalker, TwoTargetsBindIndependently){
     EXPECT_EQ(dirtyB, 0);
 }
 
+namespace
+{
+    // a target that resolves to whichever fixture `current` names, counting
+    // the write accesses
+    struct SwitchedTarget {
+        WalkerFixture* current = nullptr;
+        int writes = 0;
+
+        PropertyTarget Target() {
+            return PropertyTarget(
+                [this](TargetAccess access) -> void* {
+                    writes += access == TargetAccess::Write;
+                    return current;
+                },
+                *GetDesc<WalkerFixture>()
+            );
+        }
+    };
+}
+
+TEST(PropertyWalker, AnEditLandsOnTheObjectTheTargetNamesThen) {
+    WalkerFixture first, second;
+    SwitchedTarget target{.current = &first};
+    int dirty = 0;
+    UIContext ctx;
+
+    auto tree =
+        buildPropertyTree("Switched", target.Target(), [&dirty] { ++dirty; });
+    auto& root = std::get<Collapsing>(tree);
+
+    target.current = &second;
+    std::get<Slider>(root.children[3]).onChanged(ctx, 0.75f);
+    EXPECT_EQ(second.roughness, 0.75f);
+    EXPECT_EQ(first.roughness, 0.5f);
+
+    // the nested member is found from its parent at the moment of the edit
+    auto& nested = std::get<Collapsing>(root.children[8]);
+    std::get<DragFloat>(nested.children[0]).onChanged(ctx, 0.5f);
+    EXPECT_EQ(second.nested.amount, 0.5f);
+    EXPECT_EQ(first.nested.amount, 0.25f);
+    EXPECT_EQ(dirty, 2);
+}
+
+TEST(PropertyWalker, AnEditToAGoneTargetIsDropped) {
+    WalkerFixture fixture;
+    SwitchedTarget target{.current = &fixture};
+    int dirty = 0;
+    UIContext ctx;
+
+    auto tree =
+        buildPropertyTree("Switched", target.Target(), [&dirty] { ++dirty; });
+    auto& root = std::get<Collapsing>(tree);
+
+    target.current = nullptr;
+    std::get<Slider>(root.children[3]).onChanged(ctx, 0.75f);
+    std::get<Dropdown>(root.children[9]).onChanged(ctx, 0);
+    EXPECT_EQ(fixture.roughness, 0.5f);
+    EXPECT_EQ(fixture.blend, WalkerBlend::Masked);
+    EXPECT_EQ(dirty, 0);
+}
+
+TEST(PropertyWalker, ATargetGoneAtBuildShowsThatItIsGone) {
+    SwitchedTarget target;
+
+    auto tree = buildPropertyTree("Gone", target.Target(), {});
+    auto& root = std::get<Collapsing>(tree);
+    ASSERT_EQ(root.children.size(), 1u);
+    EXPECT_EQ(std::get<Text>(root.children[0]).data, "gone");
+}
+
+// a write access may record a change, so building asks only to read
+TEST(PropertyWalker, BuildingReadsAndAnEditWritesOnce) {
+    WalkerFixture fixture;
+    SwitchedTarget target{.current = &fixture};
+    UIContext ctx;
+
+    auto tree = buildPropertyTree("Switched", target.Target(), [] {});
+    EXPECT_EQ(target.writes, 0);
+
+    auto& nested = std::get<Collapsing>(std::get<Collapsing>(tree).children[8]);
+    std::get<DragFloat>(nested.children[0]).onChanged(ctx, 0.5f);
+    EXPECT_EQ(target.writes, 1);
+}
+
 TEST(PropertyWalker, ATypeNeverRegisteredStops) {
     struct NeverRegistered {
         f32 value = 0.0f;
