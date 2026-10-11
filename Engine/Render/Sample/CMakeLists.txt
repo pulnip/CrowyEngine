@@ -32,6 +32,14 @@ PRIVATE
     Crowy::Log
 )
 
+if(CROWY_ENABLE_TEST)
+    crowy_declare_test(SampleRenderApp
+        DIRECTORY Test
+        DEPENDS SampleRenderApp Crowy::WorldRender
+        LABELS "unit"
+    )
+endif()
+
 # the render scene's rows as reflected types; registrations only
 add_library(SampleRenderReflectionArchive STATIC
     RenderReflection.cpp

@@ -29,4 +29,14 @@ namespace Crowy
         f32 speed,
         f64 seconds
     );
+
+    // the local transform a look and a walk leave a flown actor at
+    Transform flyStep(
+        const Transform& local,
+        f32 yaw,
+        f32 pitch,
+        Vec3 moveInput,
+        f32 speed,
+        f64 seconds
+    );
 }

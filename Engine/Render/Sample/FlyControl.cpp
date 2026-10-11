@@ -63,4 +63,25 @@ namespace Crowy
         const auto moveAmount = speed * static_cast<f32>(seconds);
         return position + direction * moveAmount;
     }
+
+    Transform flyStep(
+        const Transform& local,
+        f32 yaw,
+        f32 pitch,
+        Vec3 moveInput,
+        f32 speed,
+        f64 seconds
+    ) {
+        const auto rotation = flyRotation(yaw, pitch);
+        const auto position =
+            moveInput == zeros()
+                ? local.position
+                : flyMove(local.position, rotation, moveInput, speed, seconds);
+
+        return Transform{
+            .position = position,
+            .rotation = rotation,
+            .scale = local.scale
+        };
+    }
 }
