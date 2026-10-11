@@ -37,8 +37,8 @@ namespace Crowy
 
         node.flags |= TransformNode::WARNED_NON_UNIFORM;
         LOG_WARN(
-            "slot {} scales unevenly somewhere in its chain, so its world matrix "
-            "carries shear that the position and rotation accessors cannot show",
+            "slot {} sits below an uneven scale, so its world matrix may carry "
+            "shear that the position and rotation accessors cannot show",
             node.slot.value
         );
     }
@@ -520,7 +520,10 @@ namespace Crowy
             inherited || !isUniform(node.local.scale)
         );
         node.flags &= ~TransformNode::DIRTY;
-        warnOnNonUniformChain(node);
+        // a node's own uneven scale is exact in its world matrix; only what
+        // rides below one can shear
+        if(inherited)
+            warnOnNonUniformChain(node);
 
         inverseValid[index] = 0;
         updated.push_back(slots.HandleOf(node.slot));

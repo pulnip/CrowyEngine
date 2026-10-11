@@ -133,20 +133,24 @@ TEST_F(WorldAccessorTest, ChainClearsWhenTheParentTurnsEvenAgain){
     EXPECT_TRUE(hierarchy.IsValid(child));
 }
 
-TEST_F(WorldAccessorTest, UpdateWarnsOnceAndOnlyForTheUnevenNode){
-    Create(scaled(Vec3{1.0f, 2.0f, 1.0f}));
+TEST_F(WorldAccessorTest, UpdateWarnsOnceAndOnlyBelowAnUnevenScale) {
+    auto uneven = Create(scaled(Vec3{1.0f, 2.0f, 1.0f}));
+    Create(uneven, Transform::Identity());
     Create(Transform::Identity());
 
-    // nobody asked for a rotation, the scene itself is what is being reported
+    // nobody asked for a rotation, the scene itself is what is being reported;
+    // the uneven node's own matrix is exact, so only its child is
     hierarchy.UpdateWorldTransforms();
 
-    EXPECT_TRUE(HasWarned(FlagsAt(0)));
-    EXPECT_FALSE(HasWarned(FlagsAt(1)));
+    EXPECT_FALSE(HasWarned(FlagsAt(0)));
+    EXPECT_TRUE(HasWarned(FlagsAt(1)));
+    EXPECT_FALSE(HasWarned(FlagsAt(2)));
 
     // the bit is what keeps the next frame from logging again
     hierarchy.UpdateWorldTransforms();
-    EXPECT_TRUE(HasWarned(FlagsAt(0)));
-    EXPECT_FALSE(HasWarned(FlagsAt(1)));
+    EXPECT_FALSE(HasWarned(FlagsAt(0)));
+    EXPECT_TRUE(HasWarned(FlagsAt(1)));
+    EXPECT_FALSE(HasWarned(FlagsAt(2)));
 }
 
 TEST_F(WorldAccessorTest, RotationSurvivesAZeroScale){
