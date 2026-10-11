@@ -1,5 +1,7 @@
 #include "World.hpp"
 
+#include "Object.hpp"
+
 namespace Crowy
 {
     World::World(const SystemRegistry& systems)
@@ -29,6 +31,10 @@ namespace Crowy
         return hierarchy.IsValid(nodeOf(actor));
     }
 
+    const Transform& World::LocalTransform(ActorId actor) const noexcept {
+        return hierarchy.GetLocalTransform(nodeOf(actor));
+    }
+
     void World::SetLocalTransform(
         ActorId actor,
         const Transform& local
@@ -38,6 +44,51 @@ namespace Crowy
 
     const Mat4& World::WorldMatrix(ActorId actor) const noexcept {
         return hierarchy.GetWorldMatrix(nodeOf(actor));
+    }
+
+    Vec3 World::WorldPosition(ActorId actor) const noexcept {
+        return hierarchy.GetWorldPosition(nodeOf(actor));
+    }
+
+    Vec4 World::WorldRotation(ActorId actor) const noexcept {
+        return hierarchy.GetWorldRotation(nodeOf(actor));
+    }
+
+    PropertyTarget World::Target(ActorId actor, const TypeDesc& desc) {
+        CROWY_ASSERT(
+            ComponentRegistry::Get().Find(desc) != nullptr,
+            "a type that is not a component"
+        );
+
+        // a destroyed actor keeps its rows until Sync, so validity comes first
+        return PropertyTarget(
+            [this, actor, &desc]() -> const void* {
+                return IsValid(actor) ? findRow(desc, actor) : nullptr;
+            },
+            [this, actor, &desc]() -> void* {
+                if(!IsValid(actor) || findRow(desc, actor) == nullptr)
+                    return nullptr;
+
+                return writeRow(desc, actor);
+            },
+            desc
+        );
+    }
+
+    PropertyTarget World::TransformTarget(ActorId actor) {
+        return PropertyTarget(
+            [this, actor]() -> const void* {
+                return IsValid(actor)
+                           ? &hierarchy.GetLocalTransform(nodeOf(actor))
+                           : nullptr;
+            },
+            [this, actor]() -> void* {
+                return IsValid(actor)
+                           ? &hierarchy.WriteLocalTransform(nodeOf(actor))
+                           : nullptr;
+            },
+            *GetDesc<Transform>()
+        );
     }
 
     void World::Frame(f64 realSeconds) {
@@ -145,6 +196,30 @@ namespace Crowy
         return it == storeOfType.end() ? nullptr : it->second;
     }
 
+    const void* World::findRow(
+        const TypeDesc& desc,
+        ActorId actor
+    ) const noexcept {
+        const auto* store = findStore(desc);
+        if(store == nullptr)
+            return nullptr;
+
+        auto row = store->rows.Find(actor);
+        return row;
+    }
+
+    void* World::writeRow(const TypeDesc& desc, ActorId actor) noexcept {
+        auto store = findStore(desc);
+        if(store == nullptr)
+            return nullptr;
+
+        auto row = store->rows.Find(actor);
+        CROWY_ASSERT(row != nullptr, "the actor has no such component");
+
+        markChanged(*store, actor);
+        return row;
+    }
+
     void World::markChanged(ComponentStore& store, ActorId actor) {
         CROWY_ASSERT(!extracting, "a component written inside Extract");
 
@@ -221,4 +296,14 @@ namespace Crowy
             }
         }
     }
+
+    // here rather than in a file of its own: every World user links this one
+    // clang-format off: each registration opens a namespace the formatter
+    // cannot see
+    CROWY_STRUCT(Transform)
+        .SetProperty("position", &Transform::position)
+        .SetProperty("rotation", &Transform::rotation)
+        .SetProperty("scale", &Transform::scale)
+    CROWY_STRUCT_END(Transform)
+    // clang-format on
 }

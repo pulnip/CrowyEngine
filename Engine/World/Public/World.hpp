@@ -13,6 +13,7 @@
 #include "FixedTickClock.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
+#include "PropertyTarget.hpp"
 #include "Semantics.hpp"
 #include "System.hpp"
 #include "TransformHierarchy.hpp"
@@ -92,9 +93,25 @@ namespace Crowy
         void Destroy(ActorId actor);
         bool IsValid(ActorId actor) const noexcept;
 
+        const Transform& LocalTransform(ActorId actor) const noexcept;
         void SetLocalTransform(ActorId actor, const Transform& local) noexcept;
         // as of the last Sync
         const Mat4& WorldMatrix(ActorId actor) const noexcept;
+        Vec3 WorldPosition(ActorId actor) const noexcept;
+        // the rotation of the TRS chain, which an uneven scale above the
+        // actor leaves out of WorldMatrix's
+        Vec4 WorldRotation(ActorId actor) const noexcept;
+
+        // the actor's component of this type, found again at every access:
+        // nullptr until the component's Sync, and once it or the actor is gone
+        PropertyTarget Target(ActorId actor, const TypeDesc& desc);
+        // the actor's local transform; a write moves it at the next Sync
+        PropertyTarget TransformTarget(ActorId actor);
+
+        template<typename T>
+        PropertyTarget Target(ActorId actor) {
+            return Target(actor, *GetDesc<T>());
+        }
 
         template<typename T>
         void Add(ActorId actor, T component) {
@@ -109,25 +126,13 @@ namespace Crowy
         // nullptr until the component's Sync, and after it is removed
         template<typename T>
         const T* Get(ActorId actor) const noexcept {
-            const auto store = findStore(*GetDesc<T>());
-            if(store == nullptr)
-                return nullptr;
-
-            return static_cast<const T*>(store->rows.Find(actor));
+            return static_cast<const T*>(findRow(*GetDesc<T>(), actor));
         }
 
         // the only way to change a row, so the next Extract sees it
         template<typename T>
         T* Write(ActorId actor) noexcept {
-            auto store = findStore(*GetDesc<T>());
-            if(store == nullptr)
-                return nullptr;
-
-            auto row = static_cast<T*>(store->rows.Find(actor));
-            CROWY_ASSERT(row != nullptr, "the actor has no such component");
-
-            markChanged(*store, actor);
-            return row;
+            return static_cast<T*>(writeRow(*GetDesc<T>(), actor));
         }
 
         // f(ActorId, const T&) for every row, in the order the rows landed
@@ -188,6 +193,9 @@ namespace Crowy
         void removeComponent(const TypeDesc& desc, ActorId actor);
         ComponentStore& storeFor(const TypeDesc& desc);
         ComponentStore* findStore(const TypeDesc& desc) const noexcept;
+        const void* findRow(const TypeDesc& desc, ActorId actor) const noexcept;
+        // nullptr when no actor has had the component yet
+        void* writeRow(const TypeDesc& desc, ActorId actor) noexcept;
         void markChanged(ComponentStore& store, ActorId actor);
 
         void run(Phase phase, const FrameTime& time);

@@ -57,6 +57,31 @@ TEST(TransformChange, ALocalWriteUpdatesItsSubtreeAndNothingElse) {
     EXPECT_EQ(hierarchy.GetWorldPosition(other), (Vec3{5.0f, 0.0f, 0.0f}));
 }
 
+TEST(TransformChange, AWriteInPlaceUpdatesItsSubtree) {
+    TransformHierarchy hierarchy;
+    const auto moved = hierarchy.CreateNode();
+    const auto child = hierarchy.CreateNode(moved, at({0.0f, 1.0f, 0.0f}));
+    hierarchy.CreateNode(at({5.0f, 0.0f, 0.0f}));
+    commitAndUpdate(hierarchy);
+
+    hierarchy.WriteLocalTransform(moved).position = {2.0f, 0.0f, 0.0f};
+    hierarchy.UpdateWorldTransforms();
+
+    EXPECT_EQ(updatedNodes(hierarchy), (Handles{moved, child}));
+    EXPECT_EQ(hierarchy.GetWorldPosition(child), (Vec3{2.0f, 1.0f, 0.0f}));
+}
+
+TEST(TransformChange, AWriteInPlaceBeforeTheCommitLandsAtIt) {
+    TransformHierarchy hierarchy;
+    const auto node = hierarchy.CreateNode(at({1.0f, 0.0f, 0.0f}));
+
+    hierarchy.WriteLocalTransform(node).position = {3.0f, 0.0f, 0.0f};
+    commitAndUpdate(hierarchy);
+
+    EXPECT_EQ(updatedNodes(hierarchy), (Handles{node}));
+    EXPECT_EQ(hierarchy.GetWorldPosition(node), (Vec3{3.0f, 0.0f, 0.0f}));
+}
+
 TEST(TransformChange, AMarkedNodeInsideAMarkedSubtreeIsUpdatedOnce) {
     TransformHierarchy hierarchy;
     const auto root = hierarchy.CreateNode();

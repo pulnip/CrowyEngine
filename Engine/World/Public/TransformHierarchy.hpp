@@ -173,7 +173,15 @@ namespace Crowy
                 !pendingDestroys.contains(TransformNodeTable::SlotOf(handle));
         }
 
-        Transform GetLocalTransform(TransformHandle handle) const noexcept{
+        const Transform& GetLocalTransform(
+            TransformHandle handle
+        ) const noexcept {
+            return localTransform(handle);
+        }
+        // to write in place: the node is marked now, so the write must land
+        // before the next UpdateWorldTransforms
+        Transform& WriteLocalTransform(TransformHandle handle) noexcept {
+            markDirty(handle);
             return localTransform(handle);
         }
         void SetLocalTransform(TransformHandle handle, const Transform& transform) noexcept{
