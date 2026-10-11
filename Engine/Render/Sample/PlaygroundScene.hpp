@@ -13,6 +13,7 @@
 #include "RenderApp.hpp"
 #include "StatsOverlay.hpp"
 #include "UIRenderer.hpp"
+#include "World.hpp"
 
 namespace Crowy
 {
@@ -133,6 +134,9 @@ namespace Crowy
         };
 
     private:
+        // the map's primitives as actors; the RenderScene rows are its
+        World world;
+
         GeometryAllocation sphere{};
         // stretched into walls, boards and bars, scaled into blocks
         GeometryAllocation unitBox{};
@@ -181,6 +185,7 @@ namespace Crowy
         void OnBuildGeometry(GeometryPool& pool) override;
         void ExtractScene(RenderScene& scene) override;
         void OnProcessInput(const InputProvider& input) override;
+        void OnUpdateScene(f64 seconds) override;
         void OnInitUI(
             RHIDevice& device,
             const OverlayFormats& formats
@@ -211,14 +216,6 @@ namespace Crowy
             MaterialHandle material,
             Vec3 halfScale
         );
-        // translate and scale only, so the world bounds are the local ones
-        // scaled per axis
-        static void addPrimitive(
-            RenderScene& scene,
-            MeshHandle mesh,
-            Vec3 position,
-            Vec3 scale
-        );
         // both stages from one file, so the prepass and the colour pass run
         // the same vertex shader; every material links the default PBR
         static MaterialPipelineDesc basePipeline(CStr file, CStr fragmentEntry);
@@ -227,6 +224,9 @@ namespace Crowy
         static MaterialPipelineDesc opaquePipeline();
         static MaterialPipelineDesc doubleSidedPipeline();
         static MaterialPipelineDesc translucentPipeline();
+
+        // an actor drawing the mesh, translated and scaled only
+        void addPrimitive(MeshHandle mesh, Vec3 position, Vec3 scale);
 
         Widget buildPanel();
         Widget materialSection(

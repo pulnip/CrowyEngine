@@ -9,6 +9,7 @@
 #include <imgui.h>
 
 #include "Log.hpp"
+#include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
 #include "Object.hpp"
 #include "PortStatusChip.hpp"
@@ -76,6 +77,8 @@ namespace Crowy
         constexpr auto ChartColumns = PlaygroundChartColumns;
         const auto boxHalf = 0.5f * ones();
         constexpr Vec3 QuadHalf{0.5f, 0.5f, 0.0f};
+
+        world.Provide(scene);
 
         // every row before any address is taken: the table is a vector,
         // so a later Add could move the rows the panel and port point at
@@ -190,22 +193,16 @@ namespace Crowy
         const auto blockMesh =
             addMesh(scene, unitBox, materials.block, boxHalf);
         addPrimitive(
-            scene,
             addMesh(scene, floorPlane, materials.floor, {10.0f, 0.0f, 10.0f}),
             zeros(),
             ones()
         );
         const auto wallMesh = addMesh(scene, unitBox, materials.wall, boxHalf);
-        addPrimitive(
-            scene,
-            wallMesh,
-            {-10.1f, 2.0f, 0.0f},
-            {0.2f, 4.0f, 20.4f}
-        );
-        addPrimitive(scene, wallMesh, {10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
+        addPrimitive(wallMesh, {-10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
+        addPrimitive(wallMesh, {10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
         // nearer centres draw first, so the back wall draws after the side
         // walls, and Equal behind the prepass keeps it on the corner seams
-        addPrimitive(scene, wallMesh, {0.0f, 2.0f, 10.1f}, {20.4f, 4.0f, 0.2f});
+        addPrimitive(wallMesh, {0.0f, 2.0f, 10.1f}, {20.4f, 4.0f, 0.2f});
 
         // scale: blocks of 1, 0.5 and 0.25 m, left faces at these x
         for(const auto [left, edge]:
@@ -215,7 +212,6 @@ namespace Crowy
             const auto half = 0.5f * edge;
 
             addPrimitive(
-                scene,
                 blockMesh,
                 {left + half, half, FrontZ + half},
                 edge * ones()
@@ -223,7 +219,7 @@ namespace Crowy
         }
         // the chart's back row stands a metre up, so it clears the
         // front row from eye height
-        addPrimitive(scene, blockMesh, {0.0f, 0.5f, 4.25f}, {5.0f, 1.0f, 0.5f});
+        addPrimitive(blockMesh, {0.0f, 0.5f, 4.25f}, {5.0f, 1.0f, 0.5f});
 
         // opaque. emissive: three 0.5 m panels at the back of a niche
         // 2.5 m wide and 0.5 m deep, whose roof shades the whole band
@@ -233,27 +229,23 @@ namespace Crowy
         constexpr f32 NicheZ = FrontZ + 0.5f * NicheDepth;
         // the back, then the two sides, the roof and the sill
         addPrimitive(
-            scene,
             blockMesh,
             {-4.25f, 1.0f, FrontZ + NicheDepth + 0.125f},
             {3.0f, 2.0f, 0.25f}
         );
         for(const auto x: {-5.625f, -2.875f}) {
             addPrimitive(
-                scene,
                 blockMesh,
                 {x, 1.0f, NicheZ},
                 {0.25f, 2.0f, NicheDepth}
             );
         }
         addPrimitive(
-            scene,
             blockMesh,
             {-4.25f, 1.875f, NicheZ},
             {2.5f, 0.25f, NicheDepth}
         );
         addPrimitive(
-            scene,
             blockMesh,
             {-4.25f, 0.375f, NicheZ},
             {2.5f, 0.75f, NicheDepth}
@@ -262,7 +254,6 @@ namespace Crowy
             const auto x = -5.0f + 0.75f * static_cast<f32>(i);
 
             addPrimitive(
-                scene,
                 addMesh(
                     scene,
                     quadFacingCamera,
@@ -286,13 +277,11 @@ namespace Crowy
                 const auto x = static_cast<f32>(column) - 2.0f;
 
                 addPrimitive(
-                    scene,
                     addMesh(scene, unitBox, material, boxHalf),
                     {x, base + 0.25f, z},
                     0.5f * ones()
                 );
                 addPrimitive(
-                    scene,
                     addMesh(scene, sphere, material, SphereRadius * ones()),
                     {x, base + 0.5f + SphereRadius, z},
                     ones()
@@ -304,7 +293,6 @@ namespace Crowy
         // colour shows both through the glass and bare
         for(u32 i = 0; i < materials.bars.size(); ++i) {
             addPrimitive(
-                scene,
                 addMesh(scene, unitBox, materials.bars[i], boxHalf),
                 {3.5f + 0.75f * static_cast<f32>(i), 1.0f, FrontZ + 1.125f},
                 {0.5f, 2.0f, 0.25f}
@@ -315,13 +303,11 @@ namespace Crowy
         // back, which shows only because nothing is culled; the two
         // should look alike
         addPrimitive(
-            scene,
             addMesh(scene, quadFacingCamera, materials.doubleSided, QuadHalf),
             {6.5f, 0.75f, FrontZ},
             {1.0f, 1.5f, 1.0f}
         );
         addPrimitive(
-            scene,
             addMesh(scene, quadFacingAway, materials.doubleSided, QuadHalf),
             {7.75f, 0.75f, FrontZ},
             {1.0f, 1.5f, 1.0f}
@@ -329,11 +315,13 @@ namespace Crowy
 
         // translucent, last: the pane in front of the bars
         addPrimitive(
-            scene,
             addMesh(scene, quadFacingCamera, materials.translucent, QuadHalf),
             {4.25f, 0.75f, FrontZ},
             {2.5f, 1.5f, 1.0f}
         );
+
+        // the actors' rows land, so the panel and the port find them
+        world.Frame(0.0);
 
         exposedLights = {NamedLight{"sun", sun}, NamedLight{"lamp", lamp}};
 
@@ -415,6 +403,10 @@ namespace Crowy
         if(input.IsKeyPressed(StatsToggleKey)) {
             debug.showStats = !debug.showStats;
         }
+    }
+
+    void PlaygroundScene::OnUpdateScene(f64 seconds) {
+        world.Frame(seconds);
     }
 
     void PlaygroundScene::OnInitUI(
@@ -568,23 +560,13 @@ namespace Crowy
     }
 
     void PlaygroundScene::addPrimitive(
-        RenderScene& scene,
         MeshHandle mesh,
         Vec3 position,
         Vec3 scale
     ) {
-        const auto& local = scene.Meshes().GetRef(mesh).localBounds;
-
-        scene.Primitives().Add(
-            PrimitiveSnapshot{
-                .localToWorld = translateMat(position) * scaleMat(scale),
-                .worldBounds =
-                    AABB3D{
-                        .center = position,
-                        .halfScale = local.halfScale * scale
-                    },
-                .mesh = mesh
-            }
+        world.Add(
+            world.Spawn(Transform{.position = position, .scale = scale}),
+            MeshComponent{.mesh = mesh}
         );
     }
 
