@@ -13,12 +13,14 @@
 #include "Island/IslandShapes.hpp"
 #include "Island/Weather.hpp"
 #include "IslandMeshes.hpp"
+#include "LightComponent.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
 #include "ParticleEffects.hpp"
 #include "PipelineCache.hpp"
 #include "RenderApp.hpp"
+#include "ScriptComponent.hpp"
 #include "StandardPipeline.hpp"
 #include "World.hpp"
 #include "WorldClock.hpp"
@@ -52,9 +54,7 @@ namespace Crowy
         GeometryAllocation canvas{};
         GeometryAllocation pole{};
         GeometryAllocation log{};
-        LightHandle fire{};
         MaterialHandle canvasMaterial{};
-        MaterialHandle seaMaterial{};
         std::unique_ptr<EffectSystem> effects;
         World world;
 
@@ -95,15 +95,6 @@ namespace Crowy
                     .direction = -ToMoon
                 }
             );
-            fire = scene.Lights().Add(
-                LightSnapshot{
-                    .kind = LightKind::Point,
-                    .color = {1.0f, 0.55f, 0.2f},
-                    .intensity = FireIntensity,
-                    .position = {ISLAND_FIRE_LIGHT},
-                    .range = 6.5f
-                }
-            );
             scene.Environment() = EnvironmentSnapshot{
                 .skyAmbient = {0.03f, 0.04f, 0.08f},
                 .groundAmbient = {0.01f, 0.01f, 0.012f}
@@ -142,18 +133,32 @@ namespace Crowy
 
             // the sea's material reads the world's step and the moon from its
             // lanes; casting nothing, it stays out of the shadow's fit
-            seaMaterial = scene.Materials().Add(
+            const auto seaMaterial = scene.Materials().Add(
                 MaterialResource{
                     .data = {.custom1 = toVec4(ToMoon, 0.0f)},
                     .pipeline = oceanPipeline()
                 }
             );
-            add(scene,
-                seaMaterial,
-                sea,
-                Transform{},
-                {282.0f, 0.4f, 282.0f},
-                PrimitiveFlags::Visible);
+            const auto seaActor =
+                add(scene,
+                    seaMaterial,
+                    sea,
+                    Transform{},
+                    {282.0f, 0.4f, 282.0f},
+                    PrimitiveFlags::Visible);
+            // the sea moves on the world's loop
+            world.Add(
+                seaActor,
+                ScriptComponent{[seaMaterial](
+                                    World& world,
+                                    ActorId,
+                                    const FrameTime& time
+                                ) {
+                    auto& materials = world.Service<RenderScene>().Materials();
+                    materials.GetRef(seaMaterial).data.custom0.x =
+                        static_cast<f32>(stepOf(time) % LoopSteps);
+                }}
+            );
             // an ellipsoid whose crown is the fire's ground
             add(scene,
                 sand,
@@ -216,18 +221,7 @@ namespace Crowy
             return desc;
         }
 
-        // the fire breathes on the world's loop, and its glow through the
-        // canvas with it; the sea moves on the same loop
-        void OnUpdateScene(f64 deltaTime) override {
-            world.Frame(deltaTime);
-            const auto step = worldStep();
-            const auto breath = fireBreath(step);
-            Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
-            Scene().Materials().GetRef(canvasMaterial).data.emissive =
-                CanvasGlow * breath;
-            Scene().Materials().GetRef(seaMaterial).data.custom0.x =
-                static_cast<f32>(step % LoopSteps);
-        }
+        void OnUpdateScene(f64 deltaTime) override { world.Frame(deltaTime); }
 
         // the effects' steps too, so spawn and update reload with the draws
         usize OnReloadShaders() override { return effects->ReloadKernels(); }
@@ -385,7 +379,7 @@ namespace Crowy
 
         // a mesh at an actor placed by `local`; `localHalf` is its half
         // extent around its origin
-        void add(
+        ActorId add(
             RenderScene& scene,
             MaterialHandle material,
             const GeometryAllocation& geometry,
@@ -403,10 +397,10 @@ namespace Crowy
                     .localBounds = bounds
                 }
             );
-            world.Add(
-                world.Spawn(local),
-                MeshComponent{.mesh = mesh, .flags = flags}
-            );
+            const auto actor = world.Spawn(local);
+            world.Add(actor, MeshComponent{.mesh = mesh, .flags = flags});
+
+            return actor;
         }
 
         // a cylinder mesh from `from` along `direction`, `length` long
@@ -514,6 +508,35 @@ namespace Crowy
                     logLength()
                 );
             }
+
+            // the fire breathes on the world's loop, and its glow through the
+            // canvas with it
+            const auto light =
+                world.Spawn(Transform{.position = {ISLAND_FIRE_LIGHT}});
+            world.Add(
+                light,
+                LightComponent{
+                    .kind = LightKind::Point,
+                    .color = {1.0f, 0.55f, 0.2f},
+                    .intensity = FireIntensity,
+                    .range = 6.5f
+                }
+            );
+            world.Add(
+                light,
+                ScriptComponent{[canvas = canvasMaterial](
+                                    World& world,
+                                    ActorId self,
+                                    const FrameTime& time
+                                ) {
+                    const auto breath = fireBreath(stepOf(time));
+                    world.Write<LightComponent>(self)->intensity =
+                        FireIntensity * breath;
+                    auto& materials = world.Service<RenderScene>().Materials();
+                    materials.GetRef(canvas).data.emissive =
+                        CanvasGlow * breath;
+                }}
+            );
         }
 
         // the night sky first, where the scene left the depth clear
@@ -535,6 +558,9 @@ namespace Crowy
         }
 
         // the step the effects and the scene share; the loops divide its wrap
+        static u32 stepOf(const FrameTime& time) {
+            return static_cast<u32>(time.tick);
+        }
         u32 worldStep() const { return static_cast<u32>(world.Ticks()); }
     };
 }
