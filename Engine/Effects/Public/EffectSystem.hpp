@@ -97,6 +97,11 @@ namespace Crowy
         FieldBuffer& Particles(StrView name);
         // the steps the effect of that name has run
         u32 Steps(StrView name) const;
+        // where the effect of that name sits; a move reaches its next step
+        // and draw, while the particles already born stay put
+
+        Vec3 Origin(StrView name) const;
+        void SetOrigin(StrView name, Vec3 origin);
 
     private:
         // an effect's push with the frame's camera; the step is the caller's

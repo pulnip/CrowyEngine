@@ -221,6 +221,41 @@ TEST(EffectSystem, PushesCarryTheWorldStep) {
         EXPECT_EQ(pushOf(push).worldStep, 2u);
 }
 
+// a moved origin reaches the next frame's steps and draws, and only its
+// own effect's; the size stays
+TEST(EffectSystem, AMovedOriginReachesTheNextStepsAndDraws) {
+    Fixture f;
+    auto sized = desc("a", 32);
+    sized.size = 0.5f;
+    f.effects.Add(sized);
+    f.effects.Add(desc("b", 32));
+    f.Frame();
+
+    const Vec3 moved{1.0f, 2.0f, 3.0f};
+    f.effects.SetOrigin("a", moved);
+    EXPECT_EQ(f.effects.Origin("a"), moved);
+    EXPECT_EQ(f.effects.Origin("b"), Vec3{});
+
+    f.Frame();
+    const auto& steps = f.cmdList.computePasses.at(0).dispatches;
+    ASSERT_EQ(steps.size(), 2u);
+    EXPECT_EQ(pushOf(steps[0].push).origin, toVec4(moved, 0.0f));
+    EXPECT_EQ(pushOf(steps[0].push).size, 0.5f);
+    EXPECT_EQ(pushOf(steps[1].push).origin, Vec4{});
+    const auto& draws = f.cmdList.passes.at(0).pushes;
+    ASSERT_EQ(draws.size(), 2u);
+    EXPECT_EQ(pushOf(draws[0]).origin, toVec4(moved, 0.0f));
+    EXPECT_EQ(pushOf(draws[1]).origin, Vec4{});
+}
+
+TEST(EffectSystem, AnOriginIsReachedOnlyByAnEffectsName) {
+    Fixture f;
+    f.effects.Add(desc("a", 32));
+
+    EXPECT_THROW(f.effects.Origin("b"), std::invalid_argument);
+    EXPECT_THROW(f.effects.SetOrigin("b", Vec3{}), std::invalid_argument);
+}
+
 // a frame takes the steps its clock owes: two up to the world step, or none
 // while the draws still show it
 TEST(EffectSystem, AFrameTakesTheStepsItsClockOwes) {

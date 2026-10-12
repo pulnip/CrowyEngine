@@ -235,6 +235,14 @@ namespace Crowy
         return find(name).next;
     }
 
+    Vec3 EffectSystem::Origin(StrView name) const {
+        return find(name).desc.origin;
+    }
+
+    void EffectSystem::SetOrigin(StrView name, Vec3 origin) {
+        find(name).desc.origin = origin;
+    }
+
     EffectPush EffectSystem::pushOf(Effect& effect) const {
         const auto& desc = effect.desc;
 
