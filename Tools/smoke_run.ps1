@@ -7,8 +7,10 @@
 # Same contract as Tools/smoke_run.sh:
 #   duration falls back to $env:CROWY_SMOKE_DURATION, then 5 seconds.
 #   a capture path falls back to $env:CROWY_SMOKE_CAPTURE_DIR\<sample>.bmp
-#   when that directory variable is set; capture rides on the engine's
-#   CROWY_DUMP_FRAME hook, frame index override via CROWY_SMOKE_CAPTURE_AT.
+#   when that directory variable is set; capture rides on the app's
+#   --capture-frame <frame> <path> argument, frame 60 unless
+#   CROWY_SMOKE_CAPTURE_AT says otherwise. A check (CROWY_SMOKE_MUST_EXIT)
+#   gets no arguments.
 #   a .bmp capture becomes a PNG through ImageCompareCheck.exe beside the
 #   executable (the BMP stays when that tool is not built).
 #   when Engine\*\Sample\Golden\<sample>.dx12.png (or Spike\Golden) exists,
@@ -138,13 +140,19 @@ if ($Capture) {
         Remove-Item -Force -ErrorAction SilentlyContinue `
             ([IO.Path]::ChangeExtension($Capture, ".png"))
     }
-    $env:CROWY_DUMP_FRAME = $Capture
-    if ($env:CROWY_SMOKE_CAPTURE_AT) {
-        $env:CROWY_DUMP_FRAME_AT = $env:CROWY_SMOKE_CAPTURE_AT
-    }
 }
 
-$proc = Start-Process -FilePath $App `
+# a check is headless and may parse arguments of its own
+$launch = @{}
+if ($Capture -and -not $mustExit) {
+    $frame = "60"
+    if ($env:CROWY_SMOKE_CAPTURE_AT) {
+        $frame = $env:CROWY_SMOKE_CAPTURE_AT
+    }
+    $launch.ArgumentList = @("--capture-frame", $frame, "`"$Capture`"")
+}
+
+$proc = Start-Process -FilePath $App @launch `
     -WorkingDirectory (Get-Location) `
     -RedirectStandardOutput $outLog `
     -RedirectStandardError $errLog `

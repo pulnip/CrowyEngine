@@ -16,10 +16,11 @@ missing (`StageEditor` without `../Backlot`).
 
 A golden is the frame-60 picture at
 `Engine/*/{Sample,Spike}/Golden/<exe>.<dx12|metal>.png`. When one exists,
-every run captures frame 60 and compares: to `%TEMP%\crowy-smoke\` by
-default, or to `CROWY_SMOKE_CAPTURE_DIR` when set, which also keeps the
-captures of samples without a golden. A slow start waits up to 60 s more
-for frame 60, and a golden with no frame captured fails.
+every run captures frame 60 (the app's `--capture-frame`) and compares: to
+`%TEMP%\crowy-smoke\` by default, or to `CROWY_SMOKE_CAPTURE_DIR` when set,
+which also keeps the captures of samples without a golden. A slow start
+waits up to 60 s more for frame 60, and a golden with no frame captured
+fails.
 
 - The comparison is `ImageCompareCheck` with `ImageTolerance`'s defaults:
   each channel within 2, no pixel failing.

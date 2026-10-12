@@ -1,10 +1,14 @@
 #include "RuntimeConfig.hpp"
+
+#include <charconv>
 #include <format>
 #include <stdexcept>
+
 #include "DOM.hpp"
 #include "DomTraits.hpp"
 #include "JsonLoader.hpp"
 #include "RHIFrameStats.hpp"
+#include "RHISwapchain.hpp"
 #include "StringUtil.hpp"
 
 namespace Crowy
@@ -84,7 +88,18 @@ namespace Crowy
     }
 
     void applyCommandLine(RuntimeConfig& config, std::span<char* const> args){
-        constexpr auto Usage = "usage: <app> [--config <path>] [--hold]";
+        constexpr auto Usage = "usage: <app> [--config <path>] [--hold] "
+                               "[--capture-frame <frame> <path>]...";
+
+        // the argument after a flag that takes one
+        const auto valueOf = [&](usize& i, StrView flag) {
+            if(i + 1 == args.size()) {
+                throw std::runtime_error(
+                    std::format("'{}' needs a value\n{}", flag, Usage)
+                );
+            }
+            return args[++i];
+        };
 
         for(usize i = 0; i < args.size(); ++i){
             const StrView arg = args[i];
@@ -92,20 +107,68 @@ namespace Crowy
                 config.hold = true;
                 continue;
             }
+            if(arg == "--capture-frame") {
+                const StrView text = valueOf(i, arg);
+                u64 frame = 0;
+                const auto [end, error] = std::from_chars(
+                    text.data(),
+                    text.data() + text.size(),
+                    frame
+                );
+                if(error != std::errc{} || end != text.data() + text.size() ||
+                   frame == 0) {
+                    throw std::runtime_error(
+                        std::format(
+                            "'{}' needs a frame from 1, not '{}'\n{}",
+                            arg,
+                            text,
+                            Usage
+                        )
+                    );
+                }
+                config.captures.push_back(
+                    FrameCaptureConfig{.frame = frame, .path = valueOf(i, arg)}
+                );
+                continue;
+            }
             if(arg != "--config"){
                 throw std::runtime_error(std::format(
                     "unknown argument '{}'\n{}", arg, Usage
                 ));
             }
-            if(i + 1 == args.size()){
-                throw std::runtime_error(std::format(
-                    "'--config' needs a path\n{}", Usage
-                ));
-            }
 
-            const auto loaded = loadJsonFile<RuntimeConfig>(toPath(args[++i]));
+            const auto loaded =
+                loadJsonFile<RuntimeConfig>(toPath(valueOf(i, arg)));
             config.benchmark = loaded.benchmark;
             config.window.vsync = loaded.window.vsync;
+        }
+
+        // what the swapchain would refuse, refused before the window opens
+        const auto& captures = config.captures;
+        if(captures.size() > MaxFrameDumps) {
+            throw std::runtime_error(
+                std::format(
+                    "more than {} '--capture-frame'\n{}",
+                    MaxFrameDumps,
+                    Usage
+                )
+            );
+        }
+        for(usize i = 0; i < captures.size(); ++i) {
+            for(usize j = 0; j < i; ++j) {
+                const auto& one = captures[i];
+                const auto& other = captures[j];
+                if(one.frame == other.frame || one.path == other.path) {
+                    throw std::runtime_error(
+                        std::format(
+                            "two '--capture-frame' share frame {} or '{}'\n{}",
+                            one.frame,
+                            one.path,
+                            Usage
+                        )
+                    );
+                }
+            }
         }
 
         // fail now rather than run until the bench script's timeout

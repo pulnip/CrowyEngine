@@ -162,15 +162,8 @@ namespace Crowy
         return 0;
     }
 
-    // a sample that only cares about its window
-    template<std::derived_from<App> T>
-    int Main(const WindowConfig& windowConfig){
-        return Main<T>(RuntimeConfig{
-            .window = windowConfig
-        });
-    }
-
-    // a sample a run can configure from the command line (--config)
+    // a sample a run configures from the command line: --config, --hold,
+    // --capture-frame
     template<std::derived_from<App> T>
     int Main(int argc, char** argv, const WindowConfig& windowConfig){
         RuntimeConfig runtimeConfig{

@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <memory>
 #include <numbers>
 #include <vector>
@@ -25,7 +24,8 @@
 namespace Crowy
 {
     // A night island whose effects draw in a hook pass before the glass,
-    // stepped by time; a frame dump counts a step a frame, so frame 60 repeats.
+    // stepped by time; a frame capture counts a step a frame, so frame 60
+    // repeats.
     class Island final: public RenderApp {
         // the sky's draw: the camera's basis scaled to the frame, the moon
         struct SkyPush {
@@ -59,9 +59,6 @@ namespace Crowy
         u32 worldStep = 0;
         u32 frameSteps = 0;
         f64 stepDebt = 0.0;
-        // a frame dump wants frame N to be one picture: it counts a step a
-        // frame instead of the time
-        bool countsFrames = std::getenv("CROWY_DUMP_FRAME") != nullptr;
 
     public:
         Island()
@@ -224,7 +221,9 @@ namespace Crowy
         // the fire breathes on the world's loop, and its glow through the
         // canvas with it; the sea moves on the same loop
         void OnUpdateScene(f64 deltaTime) override {
-            frameSteps = countsFrames ? 1 : stepsOwed(deltaTime);
+            // a capture wants frame N to be one picture: it counts a step a
+            // frame instead of the time
+            frameSteps = Runtime().captures.empty() ? stepsOwed(deltaTime) : 1;
             worldStep += frameSteps;
             const auto step = worldStep;
             const auto breath = fireBreath(step);

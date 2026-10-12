@@ -79,6 +79,8 @@ powershell -NoProfile -File Tools/build.ps1 -Status
 - The command port (Debug only) listens on 27500; `StageEditor`'s scripts
   use 27520; `CROWY_COMMAND_PORT` overrides (0 disables). A second worktree
   running at the same time needs its own port. `--hold` starts paused.
+  `--capture-frame <frame> <path>` (any build, repeatable) writes that
+  frame as a BMP; the smokes capture frame 60 this way.
   Drive it with `. Tools/port.ps1` (`Wait-Port`, `Set-PortProperty`,
   `Get-PortProperty`, `Save-PortFrame`, `Invoke-Port quit`).
 - On Windows, read `docs/windows.md` before debugging a crash, a silent

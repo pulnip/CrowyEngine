@@ -121,6 +121,8 @@ namespace Crowy
             .bufferCount = 3,
             .vsync = config.window.vsync
         }, std::format("Swapchain for {}", config.window.title));
+        for(const auto& capture: config.captures)
+            swapchain->RequestFrameDump(capture.path, capture.frame);
     }
 
     OS::~OS(){

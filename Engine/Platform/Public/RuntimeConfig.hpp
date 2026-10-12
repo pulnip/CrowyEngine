@@ -1,6 +1,8 @@
 #pragma once
 
 #include <span>
+#include <vector>
+
 #include "DOM.hpp"
 #include "DomTraits.hpp"
 #include "Primitives.hpp"
@@ -44,6 +46,13 @@ namespace Crowy
         Str framePath;   // one row per frame, for regressing against draw counts
     };
 
+    // one frame written to a BMP, as the command port's capture_frame writes
+    // one; frames count from 1
+    struct FrameCaptureConfig {
+        u64 frame = 0;
+        Str path;
+    };
+
     struct RuntimeConfig{
         Str name = "AnonymousApp";
         Str version = "v0.0.1";
@@ -55,6 +64,8 @@ namespace Crowy
         // argv only: --hold starts the loop held before frame 1. Debug
         // builds only, since only the command port can release it
         bool hold = false;
+        // argv only: --capture-frame <frame> <path>, once per frame
+        std::vector<FrameCaptureConfig> captures;
     };
 
     template<>
@@ -64,6 +75,7 @@ namespace Crowy
     };
 
     // The arguments after the program name: --config <path>, whose app
-    // document's benchmark and window.vsync replace the sample's, and --hold.
+    // document's benchmark and window.vsync replace the sample's, --hold,
+    // and --capture-frame <frame> <path>, which may repeat.
     void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
 }

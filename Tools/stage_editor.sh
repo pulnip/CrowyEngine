@@ -36,9 +36,9 @@ stage_editor_start() {
         return 1
     fi
     # the child alone takes the port, without retries, and inherits no debug
-    # override or frame dump that would change the pictures
+    # override that would change the pictures
     (
-        unset CROWY_DEBUG CROWY_DUMP_FRAME CROWY_DUMP_FRAME_AT
+        unset CROWY_DEBUG
         CROWY_COMMAND_PORT="$2" exec "$1" --hold
     ) >/dev/null 2>&1 &
     STAGE_EDITOR_PID=$!

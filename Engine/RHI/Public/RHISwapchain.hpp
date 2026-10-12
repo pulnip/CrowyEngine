@@ -57,8 +57,7 @@ namespace Crowy
         // Requested format; Could be differ from Actual format
         RHIPixelFormat format;
 
-        // in frame order, one per frame. CROWY_DUMP_FRAME / _AT seed one at
-        // construction
+        // in frame order, one per frame
         std::vector<FrameDumpRequest> dumpRequests;
         // taken by the backend, until TakeFrameDumpOutcomes hands them over
         std::vector<FrameDumpInFlight> dumpsInFlight;

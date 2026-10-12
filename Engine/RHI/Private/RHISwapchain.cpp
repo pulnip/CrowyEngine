@@ -1,34 +1,24 @@
+#include "RHISwapchain.hpp"
+
 #include <algorithm>
 #include <chrono>
-#include <cstdlib>
 #include <thread>
 #include <utility>
+
 #include "Assert.hpp"
 #include "LogLocal.hpp"
-#include "RHISwapchain.hpp"
 
 namespace Crowy
 {
-    namespace{
-        constexpr u64 DefaultDumpFrame = 60;
+    namespace
+    {
         // far past any BMP write; a handler that never runs must not hang
         // the exit
         constexpr auto DumpJoinLimit = std::chrono::seconds(5);
     }
 
     RHISwapchain::RHISwapchain(RHIPixelFormat format)
-        : format(format)
-    {
-        if(const char* path = std::getenv("CROWY_DUMP_FRAME")){
-            auto frame = DefaultDumpFrame;
-            if(const char* at = std::getenv("CROWY_DUMP_FRAME_AT")){
-                if(const int parsed = std::atoi(at); parsed > 0)
-                    frame = static_cast<u64>(parsed);
-            }
-
-            RequestFrameDump(path, frame);
-        }
-    }
+        : format(format) {}
 
     RHISwapchain::~RHISwapchain(){
         // a Metal handler runs once its GPU work is done, which the loop's

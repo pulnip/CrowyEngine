@@ -6,9 +6,9 @@ function Resolve-LocalPath([string]$Path) {
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
-# what the editor must not inherit: a debug override or a frame dump would
-# change the pictures a script compares
-$StageEditorScrubbed = @("CROWY_DEBUG", "CROWY_DUMP_FRAME", "CROWY_DUMP_FRAME_AT")
+# what the editor must not inherit: a debug override would change the
+# pictures a script compares
+$StageEditorScrubbed = @("CROWY_DEBUG")
 
 # launches the editor held, on `Port` alone, and waits until it answers
 # there; an editor that exits 77 (its content missing) ends the script with 77

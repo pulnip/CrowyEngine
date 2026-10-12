@@ -66,6 +66,52 @@ TEST(RuntimeConfig, CommandLineRefusesWhatItDoesNotKnow){
     );
 }
 
+TEST(RuntimeConfig, CommandLineTakesFrameCaptures) {
+    RuntimeConfig config;
+    EXPECT_TRUE(config.captures.empty());
+
+    static char captureFlag[] = "--capture-frame";
+    static char sixty[] = "60";
+    static char first[] = "captures/a.bmp";
+    static char ninety[] = "90";
+    static char second[] = "captures/b.bmp";
+    applyCommandLine(
+        config,
+        std::array{captureFlag, sixty, first, captureFlag, ninety, second}
+    );
+    ASSERT_EQ(config.captures.size(), 2u);
+    EXPECT_EQ(config.captures[0].frame, 60u);
+    EXPECT_EQ(config.captures[0].path, "captures/a.bmp");
+    EXPECT_EQ(config.captures[1].frame, 90u);
+    EXPECT_EQ(config.captures[1].path, "captures/b.bmp");
+}
+
+TEST(RuntimeConfig, CommandLineRefusesAFrameCaptureItCannotTake) {
+    static char captureFlag[] = "--capture-frame";
+    static char sixty[] = "60";
+    static char zero[] = "0";
+    static char word[] = "sixty";
+    static char path[] = "a.bmp";
+    static char other[] = "b.bmp";
+
+    const auto refused = [](auto... args) {
+        RuntimeConfig config;
+        EXPECT_THROW(
+            applyCommandLine(config, std::array{args...}),
+            std::runtime_error
+        );
+    };
+    refused(captureFlag);
+    refused(captureFlag, sixty);
+    refused(captureFlag, zero, path);
+    // the frame comes first, so a path where it goes is caught
+    refused(captureFlag, path, sixty);
+    refused(captureFlag, word, path);
+    // two dumps of one frame, or into one file
+    refused(captureFlag, sixty, path, captureFlag, sixty, other);
+    refused(captureFlag, sixty, path, captureFlag, zero, path);
+}
+
 TEST(RuntimeConfig, CommandLineTakesHold){
     RuntimeConfig config;
     EXPECT_FALSE(config.hold);

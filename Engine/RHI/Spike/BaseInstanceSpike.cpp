@@ -75,7 +75,7 @@ namespace Crowy
     };
 }
 
-int main(void){
+int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
@@ -85,5 +85,5 @@ int main(void){
         .fullscreen = false,
         .resizable = true,
     };
-    return Main<BaseInstanceSpike>(windowConfig);
+    return Main<BaseInstanceSpike>(argc, argv, windowConfig);
 }

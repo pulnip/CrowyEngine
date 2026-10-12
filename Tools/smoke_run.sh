@@ -13,8 +13,9 @@
 # argument, or set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per
 # sample:
 #   CROWY_SMOKE_CAPTURE_DIR=captures ctest --test-dir build -C Debug -L smoke
-# It rides on the engine's CROWY_DUMP_FRAME hook, which writes a BMP; the
-# captured frame index can be overridden with $CROWY_SMOKE_CAPTURE_AT.
+# It rides on the app's --capture-frame <frame> <path> argument, which writes
+# a BMP; the frame is 60 unless $CROWY_SMOKE_CAPTURE_AT says otherwise. A
+# check (CROWY_SMOKE_MUST_EXIT=1) gets no arguments.
 # A .bmp capture becomes a PNG through ImageCompareCheck beside the
 # executable (the BMP stays when that tool is not built).
 #
@@ -99,13 +100,15 @@ if [ -n "$CAPTURE" ]; then
     case "$CAPTURE" in
     *.bmp) rm -f "${CAPTURE%.bmp}.png" ;;
     esac
-    export CROWY_DUMP_FRAME="$CAPTURE"
-    if [ -n "${CROWY_SMOKE_CAPTURE_AT:-}" ]; then
-        export CROWY_DUMP_FRAME_AT="$CROWY_SMOKE_CAPTURE_AT"
-    fi
 fi
 
-"$APP" >"$LOG" 2>&1 &
+# a check is headless and may parse arguments of its own
+set --
+if [ -n "$CAPTURE" ] && [ "${CROWY_SMOKE_MUST_EXIT:-}" != 1 ]; then
+    set -- --capture-frame "${CROWY_SMOKE_CAPTURE_AT:-60}" "$CAPTURE"
+fi
+
+"$APP" "$@" >"$LOG" 2>&1 &
 PID=$!
 
 STATUS=0
