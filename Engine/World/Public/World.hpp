@@ -76,6 +76,7 @@ namespace Crowy
         // the game's fixed clock, fed the game's time
         FixedTickClock fixedClock;
         u64 ticks = 0;
+        u32 frameTicks = 0;
 
     public:
         ~World() = default;
@@ -184,6 +185,12 @@ namespace Crowy
         // Input, the fixed ticks the game clock owes (PreTick, Physics,
         // PostTick each), Update, Sync, Extract
         void Frame(f64 realSeconds);
+
+        // what a reader outside the phases, such as a GPU simulation
+        // recorded after the frame, steps by: the fixed ticks run so far,
+        // and those the last Frame ran
+        u64 Ticks() const noexcept { return ticks; }
+        u32 FrameTicks() const noexcept { return frameTicks; }
 
     private:
         static TransformHandle nodeOf(ActorId actor) noexcept;

@@ -116,6 +116,25 @@ TEST(WorldSystems, TheTickPhasesRunOncePerTickTheGameClockOwes) {
     EXPECT_EQ(ticksSeen.back(), 6u);
 }
 
+TEST(WorldSystems, TheWorldTellsItsTicksAndTheLastFramesTicks) {
+    SystemRegistry registry;
+    World world(registry);
+    EXPECT_EQ(world.Ticks(), 0u);
+    EXPECT_EQ(world.FrameTicks(), 0u);
+
+    world.Frame(2.0 * OneTick);
+    EXPECT_EQ(world.Ticks(), 2u);
+    EXPECT_EQ(world.FrameTicks(), 2u);
+
+    world.Frame(0.0);
+    EXPECT_EQ(world.Ticks(), 2u);
+    EXPECT_EQ(world.FrameTicks(), 0u);
+
+    world.Frame(1.0);
+    EXPECT_EQ(world.Ticks(), 2u + MaxTicksPerAdvance);
+    EXPECT_EQ(world.FrameTicks(), MaxTicksPerAdvance);
+}
+
 TEST(WorldSystems, AnUnorderedRegistryStillRunsEachPhaseOnce) {
     ran.clear();
     SystemRegistry registry;

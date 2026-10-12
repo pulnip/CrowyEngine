@@ -101,6 +101,7 @@ namespace Crowy
         run(Phase::Input, frame);
 
         const auto due = fixedClock.Advance(toNanoseconds(gameSeconds));
+        frameTicks = due;
         for(u32 i = 0; i < due; ++i) {
             const FrameTime tick{
                 .realSeconds = realSeconds,
