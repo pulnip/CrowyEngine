@@ -57,9 +57,17 @@ TEST(WorldSystems, ThePhasesRunInTheirFixedOrder) {
     registry.Add(describe("extract", Phase::Extract, RECORD("Extract")));
     registry.Add(describe("sync", Phase::Sync, RECORD("Sync")));
     registry.Add(describe("update", Phase::Update, RECORD("Update")));
-    registry.Add(describe("postTick", Phase::PostTick, RECORD("PostTick")));
+    registry.Add(describe(
+        "postFixedUpdate",
+        Phase::PostFixedUpdate,
+        RECORD("PostFixedUpdate")
+    ));
     registry.Add(describe("physics", Phase::Physics, RECORD("Physics")));
-    registry.Add(describe("preTick", Phase::PreTick, RECORD("PreTick")));
+    registry.Add(describe(
+        "preFixedUpdate",
+        Phase::PreFixedUpdate,
+        RECORD("PreFixedUpdate")
+    ));
     registry.Add(describe("input", Phase::Input, RECORD("Input")));
 
     World world(registry);
@@ -69,9 +77,9 @@ TEST(WorldSystems, ThePhasesRunInTheirFixedOrder) {
         ran,
         (std::vector<Str>{
             "Input",
-            "PreTick",
+            "PreFixedUpdate",
             "Physics",
-            "PostTick",
+            "PostFixedUpdate",
             "Update",
             "Sync",
             "Extract"
@@ -92,12 +100,12 @@ TEST(WorldSystems, AfterOrdersAPhaseAndNamesBreakTheTies) {
     EXPECT_EQ(ran, (std::vector<Str>{"beta", "zeta", "alpha"}));
 }
 
-TEST(WorldSystems, TheTickPhasesRunOncePerTickTheGameClockOwes) {
+TEST(WorldSystems, TheFixedUpdatePhasesRunOncePerTickTheGameClockOwes) {
     ticksSeen.clear();
     SystemRegistry registry;
     registry.Add(describe(
-        "tick",
-        Phase::PreTick,
+        "fixedUpdate",
+        Phase::PreFixedUpdate,
         +[](World&, const FrameTime& time) { ticksSeen.push_back(time.tick); }
     ));
     World world(registry);
@@ -138,7 +146,9 @@ TEST(WorldSystems, TheWorldTellsItsTicksAndTheLastFramesTicks) {
 TEST(WorldSystems, AnUnorderedRegistryStillRunsEachPhaseOnce) {
     ran.clear();
     SystemRegistry registry;
-    registry.Add(describe("tick", Phase::PreTick, RECORD("tick")));
+    registry.Add(
+        describe("fixedUpdate", Phase::PreFixedUpdate, RECORD("fixedUpdate"))
+    );
     registry.Add(describe("update", Phase::Update, RECORD("update")));
 
     World world(registry);

@@ -182,8 +182,8 @@ namespace Crowy
             return *static_cast<T*>(it->second);
         }
 
-        // Input, the fixed ticks the game clock owes (PreTick, Physics,
-        // PostTick each), Update, Sync, Extract
+        // Input, the fixed ticks the game clock owes (PreFixedUpdate, Physics,
+        // PostFixedUpdate each), Update, Sync, Extract
         void Frame(f64 realSeconds);
 
         // what a reader outside the phases, such as a GPU simulation

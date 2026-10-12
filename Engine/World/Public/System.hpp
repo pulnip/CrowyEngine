@@ -9,12 +9,12 @@ namespace Crowy
 {
     class World;
 
-    // the frame's fixed order; the Tick phases run once per fixed tick
+    // the frame's fixed order; the FixedUpdate phases run once per fixed tick
     enum class Phase : u8 {
         Input,
-        PreTick,
+        PreFixedUpdate,
         Physics,
-        PostTick,
+        PostFixedUpdate,
         Update,
         Sync,
         Extract,
@@ -25,7 +25,7 @@ namespace Crowy
     struct FrameTime {
         // the wall clock's, untouched by pause or scale
         f64 realSeconds = 0.0;
-        // the game's; in a Tick phase, one fixed tick
+        // the game's; in a FixedUpdate phase, one fixed tick
         f64 gameSeconds = 0.0;
         // fixed ticks run so far, the running one included
         u64 tick = 0;

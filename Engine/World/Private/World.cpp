@@ -108,9 +108,9 @@ namespace Crowy
                 .gameSeconds = static_cast<f64>(TickNanoseconds) * 1e-9,
                 .tick = ++ticks
             };
-            run(Phase::PreTick, tick);
+            run(Phase::PreFixedUpdate, tick);
             run(Phase::Physics, tick);
-            run(Phase::PostTick, tick);
+            run(Phase::PostFixedUpdate, tick);
         }
 
         const FrameTime ticked{
