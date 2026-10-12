@@ -92,6 +92,11 @@ inline ParticleEffectDesc sparksDesc() {
 - `origin`과 `size`: 이펙트가 있는 자리와, 거기서 닿는 거리(반지름, 반높이 같은 것)다.
   이펙트를 옮기는 쪽은 `origin`만 바꾸고 `size`는 그대로 둔다. 하늘의 별과 유성처럼
   자리가 없는 이펙트는 `origin`을 읽지 않는다.
+- 이펙트가 액터를 따라가게 하려면 액터에 `EffectComponent{"이름"}`을 단다
+  (`Engine/WorldEffects`). 그 액터가 놓이거나 움직인 프레임의 Extract가 `origin`을 액터의
+  월드 위치로 쓴다. Island의 불꽃과 불씨가 불 액터 아래에 이렇게 달려 있다. 옮긴
+  `origin`은 다음 탄생부터 쓰이고, 이미 태어난 파티클은 제자리다. 셰이더가 월드 좌표를
+  따로 쓰면(불씨의 티피 굴뚝) 그 부분은 따라가지 않는다.
 - `params[0..3]`: 이펙트가 정하는 float4 네 개다. 뜻은 파일 머리의 접근자 함수가
   이름으로 말한다(`Rain.slang`의 `fallSpeed()`, `ringOpacity()`처럼). 자리가 아닌 값은
   `origin`이 아니라 여기에 둔다.

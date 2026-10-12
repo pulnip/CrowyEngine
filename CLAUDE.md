@@ -15,12 +15,13 @@ backends D3D12 and Metal. Modules under `Engine/`:
   `Physics` (Jolt; its targets and glue compile with
   `crowy_fp_contract_off`).
 - `World` (actors, component pools, the fixed phases and clocks, the
-  transform hierarchy; it records what changed, and a frame where nothing
-  did recomputes nothing; an actor's component or transform is a port and
-  panel target found again at every access) and `WorldRender` (the World's
-  meshes, lights and camera extracted into a `RenderScene` and a
-  `CameraSnapshot`; Render does not see the World). `Resource` has no
-  consumers yet.
+  transform hierarchy, `ScriptComponent` for one actor's own behaviour; it
+  records what changed, and a frame where nothing did recomputes nothing;
+  an actor's component or transform is a port and panel target found again
+  at every access), `WorldRender` (the World's meshes, lights and camera
+  extracted into a `RenderScene` and a `CameraSnapshot`; Render does not
+  see the World) and `WorldEffects` (an actor's position written into an
+  effect's origin). `Resource` has no consumers yet.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in
