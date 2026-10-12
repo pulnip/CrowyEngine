@@ -83,7 +83,9 @@ namespace Crowy
 
         virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
         bool Update() override final{
-            if(stepped)
+            // a frame capture wants frame N to be one picture, so every frame
+            // of its run is a fixed step too
+            if(stepped || !Runtime().captures.empty())
                 timer.Step(FixedStep);
             else
                 timer.NewFrame();

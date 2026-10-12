@@ -197,7 +197,8 @@ namespace Crowy
         virtual void OnProcessInput(const InputProvider&) {}
 
         // after the camera, on every frame the loop runs: the frame's time,
-        // the fixed 1/60 step on a frame a counted run lets through
+        // the fixed 1/60 step on a frame a counted run lets through, and on
+        // every frame of a frame capture's run
         virtual void OnUpdateScene(f64) {}
 
         // the formats of the pass the UI rides, frozen for the app's life
