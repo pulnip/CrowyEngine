@@ -29,3 +29,4 @@ add_subdirectory(Render)
 add_subdirectory(Effects)
 # 3-2) the World's side of each subsystem
 add_subdirectory(WorldRender)
+add_subdirectory(WorldEffects)
