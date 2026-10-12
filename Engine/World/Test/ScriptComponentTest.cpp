@@ -96,6 +96,28 @@ TEST(ScriptComponent, ScriptsRunInTheOrderTheyLanded) {
     EXPECT_EQ(order, (std::vector<i32>{0, 1, 2}));
 }
 
+// the removal at Sync moves the last script into the destroyed one's row
+TEST(ScriptComponent, ARemovalMovesTheLastScriptIntoItsRow) {
+    std::vector<i32> order;
+    std::vector<ActorId> actors;
+    World world;
+    for(i32 i = 0; i < 3; ++i) {
+        actors.push_back(world.Spawn());
+        world.Add(
+            actors.back(),
+            ScriptComponent{[&order, i](World&, ActorId, const FrameTime&) {
+                order.push_back(i);
+            }}
+        );
+    }
+    world.Frame(0.0);
+
+    world.Destroy(actors[0]);
+    world.Frame(0.0);
+    world.Frame(0.0);
+    EXPECT_EQ(order, (std::vector<i32>{1, 2, 2, 1}));
+}
+
 TEST(ScriptComponent, AScriptsWriteIsTheNextExtractsChange) {
     World world;
     const auto actor = world.Spawn();
