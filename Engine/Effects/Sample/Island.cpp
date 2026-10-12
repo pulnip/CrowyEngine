@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "CameraComponent.hpp"
+#include "EffectComponent.hpp"
 #include "EffectSystem.hpp"
 #include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
@@ -50,6 +51,9 @@ namespace Crowy
         static constexpr Vec3 CanvasGlow{0.075f, 0.032f, 0.008f};
         static constexpr f32 PoleRadius = 0.035f;
         static constexpr f32 LogRadius = 0.045f;
+        // drawn and casting, as every mesh but the sea
+        static constexpr auto Solid =
+            combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow);
 
         GeometryAllocation sea{};
         GeometryAllocation island{};
@@ -60,6 +64,8 @@ namespace Crowy
         MaterialHandle canvasMaterial{};
         std::unique_ptr<EffectSystem> effects;
         World world;
+        // what the fire's bed, logs, light and effects ride
+        ActorId fire;
         // flown: the mouse's turn, kept apart from the actor's rotation, and
         // this frame's look and walk
         ActorId cameraActor;
@@ -73,6 +79,7 @@ namespace Crowy
             if(auto* port = Port()) {
                 port->Unexpose("camera");
                 port->Unexpose("camera.transform");
+                port->Unexpose("fire.transform");
             }
         }
         CROWY_DECLARE_PINNED(Island)
@@ -204,6 +211,15 @@ namespace Crowy
                 Transform{.position = {0.0f, ISLAND_CENTER_Y, 0.0f}},
                 IslandRadii);
             addTipi(scene, wood);
+
+            // the ripples blend over what is drawn before them, so they lead
+            effects = std::make_unique<EffectSystem>(Device());
+            effects->Add(rainDesc());
+            effects->Add(starsDesc());
+            effects->Add(meteorsDesc());
+            effects->Add(flamesDesc());
+            effects->Add(embersDesc());
+            world.Provide(*effects);
             addFire(scene, charcoal, coals);
             // the actors' rows land before the first frame records, so the
             // port finds them
@@ -218,15 +234,9 @@ namespace Crowy
                     "camera.transform",
                     world.TransformTarget(cameraActor)
                 );
+                // the embers keep to the tipi wherever the fire goes
+                port->Expose("fire.transform", world.TransformTarget(fire));
             }
-
-            // the ripples blend over what is drawn before them, so they lead
-            effects = std::make_unique<EffectSystem>(Device());
-            effects->Add(rainDesc());
-            effects->Add(starsDesc());
-            effects->Add(meteorsDesc());
-            effects->Add(flamesDesc());
-            effects->Add(embersDesc());
         }
 
         FramePipelineDesc DescribePipeline(
@@ -448,16 +458,16 @@ namespace Crowy
             return desc;
         }
 
-        // a mesh at an actor placed by `local`; `localHalf` is its half
-        // extent around its origin
+        // a mesh at an actor placed by `local` under `parent`; `localHalf` is
+        // its half extent around its origin
         ActorId add(
             RenderScene& scene,
             MaterialHandle material,
             const GeometryAllocation& geometry,
             const Transform& local,
             Vec3 localHalf,
-            PrimitiveFlags flags =
-                combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow)
+            PrimitiveFlags flags = Solid,
+            ActorId parent = ActorId::InvalidHandle()
         ) {
             const AABB3D bounds{.center = zeros(), .halfScale = localHalf};
             const auto mesh = scene.Meshes().Add(
@@ -468,13 +478,14 @@ namespace Crowy
                     .localBounds = bounds
                 }
             );
-            const auto actor = world.Spawn(local);
+            const auto actor = world.Spawn(local, parent);
             world.Add(actor, MeshComponent{.mesh = mesh, .flags = flags});
 
             return actor;
         }
 
-        // a cylinder mesh from `from` along `direction`, `length` long
+        // a cylinder mesh from `from` along `direction`, `length` long, under
+        // `parent`
         void addRod(
             RenderScene& scene,
             MaterialHandle material,
@@ -482,7 +493,8 @@ namespace Crowy
             Vec3 from,
             Vec3 direction,
             f32 radius,
-            f32 length
+            f32 length,
+            ActorId parent = ActorId::InvalidHandle()
         ) {
             const auto center = from + direction * (0.5f * length);
             add(scene,
@@ -492,21 +504,27 @@ namespace Crowy
                     .position = center,
                     .rotation = turnTo(unitY(), direction)
                 },
-                {radius, 0.5f * length, radius});
+                {radius, 0.5f * length, radius},
+                Solid,
+                parent);
         }
 
-        // the unit box at `position`, stretched along its faces by `scale`
+        // the unit box at `position` under `parent`, stretched along its
+        // faces by `scale`
         void addBox(
             RenderScene& scene,
             MaterialHandle material,
             Vec3 position,
-            Vec3 scale
+            Vec3 scale,
+            ActorId parent
         ) {
             add(scene,
                 material,
                 box,
                 Transform{.position = position, .scale = scale},
-                ones());
+                ones(),
+                Solid,
+                parent);
         }
 
         // the canvas over all but the open facets, and the poles crossing
@@ -543,7 +561,8 @@ namespace Crowy
             }
         }
 
-        // the glowing bed and three logs leaning into a tripod over it
+        // the glowing bed, three logs leaning into a tripod over it, the light
+        // and the flames and embers, all placed from the fire's actor
         void addFire(
             RenderScene& scene,
             MaterialHandle charcoal,
@@ -552,25 +571,27 @@ namespace Crowy
             constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
             constexpr auto BedHalfHeight = 0.03f;
             constexpr Vec3 Crossing{
-                FirePosition.x,
-                ISLAND_LOG_CROSSING_Y,
-                FirePosition.z
+                0.0f,
+                ISLAND_LOG_CROSSING_Y - FirePosition.y,
+                0.0f
             };
 
+            fire = world.Spawn(Transform{.position = FirePosition});
             addBox(
                 scene,
                 coals,
-                {FirePosition.x,
-                 ISLAND_COALS_TOP_Y - BedHalfHeight,
-                 FirePosition.z},
-                {ISLAND_COALS_HALF, BedHalfHeight, ISLAND_COALS_HALF}
+                {0.0f,
+                 ISLAND_COALS_TOP_Y - BedHalfHeight - FirePosition.y,
+                 0.0f},
+                {ISLAND_COALS_HALF, BedHalfHeight, ISLAND_COALS_HALF},
+                fire
             );
             for(u32 i = 0; i < 3; ++i) {
                 const auto azimuth = TwoPi * static_cast<f32>(i) / 3.0f;
                 const Vec3 base{
-                    FirePosition.x + ISLAND_LOG_CIRCLE * std::sin(azimuth),
-                    ISLAND_LOG_BASE_Y,
-                    FirePosition.z + ISLAND_LOG_CIRCLE * std::cos(azimuth)
+                    ISLAND_LOG_CIRCLE * std::sin(azimuth),
+                    ISLAND_LOG_BASE_Y - FirePosition.y,
+                    ISLAND_LOG_CIRCLE * std::cos(azimuth)
                 };
                 addRod(
                     scene,
@@ -579,14 +600,29 @@ namespace Crowy
                     base,
                     normalize(Crossing - base),
                     LogRadius,
-                    logLength()
+                    logLength(),
+                    fire
+                );
+            }
+            // where the effects' own descriptions put them
+            for(const auto* name: {"flames", "embers"}) {
+                const auto origin = effects->Origin(name);
+                world.Add(
+                    world.Spawn(
+                        Transform{.position = origin - FirePosition},
+                        fire
+                    ),
+                    EffectComponent{name}
                 );
             }
 
             // the fire breathes on the world's loop, and its glow through the
             // canvas with it
-            const auto light =
-                world.Spawn(Transform{.position = {ISLAND_FIRE_LIGHT}});
+            const Vec3 lightPosition{ISLAND_FIRE_LIGHT};
+            const auto light = world.Spawn(
+                Transform{.position = lightPosition - FirePosition},
+                fire
+            );
             world.Add(
                 light,
                 LightComponent{
