@@ -90,6 +90,7 @@ TEST(RuntimeConfig, CommandLineRefusesAFrameCaptureItCannotTake) {
     static char captureFlag[] = "--capture-frame";
     static char sixty[] = "60";
     static char zero[] = "0";
+    static char ninety[] = "90";
     static char word[] = "sixty";
     static char path[] = "a.bmp";
     static char other[] = "b.bmp";
@@ -109,7 +110,7 @@ TEST(RuntimeConfig, CommandLineRefusesAFrameCaptureItCannotTake) {
     refused(captureFlag, word, path);
     // two dumps of one frame, or into one file
     refused(captureFlag, sixty, path, captureFlag, sixty, other);
-    refused(captureFlag, sixty, path, captureFlag, zero, path);
+    refused(captureFlag, sixty, path, captureFlag, ninety, path);
 }
 
 TEST(RuntimeConfig, CommandLineTakesHold){
