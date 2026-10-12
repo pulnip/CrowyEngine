@@ -19,13 +19,14 @@
 #include "PipelineCache.hpp"
 #include "RenderApp.hpp"
 #include "StandardPipeline.hpp"
+#include "World.hpp"
 #include "WorldClock.hpp"
 
 namespace Crowy
 {
     // A night island whose effects draw in a hook pass before the glass,
-    // stepped by time; a frame capture counts a step a frame, so frame 60
-    // repeats.
+    // stepped by the World's fixed ticks; a frame capture runs a tick a
+    // frame, so frame 60 repeats.
     class Island final: public RenderApp {
         // the sky's draw: the camera's basis scaled to the frame, the moon
         struct SkyPush {
@@ -54,11 +55,7 @@ namespace Crowy
         MaterialHandle canvasMaterial{};
         MaterialHandle seaMaterial{};
         std::unique_ptr<EffectSystem> effects;
-        // the world's clock: its step, the steps this frame took, and the
-        // part of a step the frames' time has run up
-        u32 worldStep = 0;
-        u32 frameSteps = 0;
-        f64 stepDebt = 0.0;
+        World world;
 
     public:
         Island()
@@ -221,11 +218,8 @@ namespace Crowy
         // the fire breathes on the world's loop, and its glow through the
         // canvas with it; the sea moves on the same loop
         void OnUpdateScene(f64 deltaTime) override {
-            // a capture wants frame N to be one picture: it counts a step a
-            // frame instead of the time
-            frameSteps = Runtime().captures.empty() ? stepsOwed(deltaTime) : 1;
-            worldStep += frameSteps;
-            const auto step = worldStep;
+            world.Frame(deltaTime);
+            const auto step = worldStep();
             const auto breath = fireBreath(step);
             Scene().Lights().GetRef(fire).intensity = FireIntensity * breath;
             Scene().Materials().GetRef(canvasMaterial).data.emissive =
@@ -247,8 +241,8 @@ namespace Crowy
             const auto releases = effects->Simulate(
                 cmdList,
                 effectViewOf(Camera().View()),
-                worldStep,
-                frameSteps
+                worldStep(),
+                world.FrameTicks()
             );
             hooks.push_back(PassHook{
                 .name = EffectsHook,
@@ -549,17 +543,8 @@ namespace Crowy
             cmdList.Draw(3, 1);
         }
 
-        // the steps of 1/60 s this frame's time owes, at 60 a second whatever
-        // the display draws; at most four after a hitch
-        u32 stepsOwed(f64 deltaTime) {
-            constexpr auto MostSteps = 4.0;
-
-            stepDebt += deltaTime / EffectStep;
-            const auto owed = std::min(std::floor(stepDebt), MostSteps);
-            stepDebt = std::min(stepDebt - owed, 1.0);
-
-            return static_cast<u32>(owed);
-        }
+        // the step the effects and the scene share; the loops divide its wrap
+        u32 worldStep() const { return static_cast<u32>(world.Ticks()); }
     };
 }
 

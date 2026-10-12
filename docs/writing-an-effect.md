@@ -3,9 +3,9 @@
 파티클 이펙트 하나는 **`.slang` 파일 하나와 `ParticleEffectDesc` 하나**다. CMake도
 C++ 클래스도 필요 없다. 엔진은 슬롯마다 파티클 하나(64바이트)를 GPU 필드에 두고,
 1/60초 스텝마다 `cs_step`을 한 번 돌리고, 파일에 적은 그리기로 그린다. 한 프레임에
-몇 스텝을 돌지는 샘플이 정한다. Island는 시간으로 센다(120 Hz 화면이면 두 프레임에
-한 스텝). smoke가 프레임을 찍을 때만 프레임마다 한 스텝이라, 60번째 프레임이 매번
-같은 그림이다.
+몇 스텝을 돌지는 샘플이 정한다. Island는 World의 고정 틱을 그대로 쓴다(120 Hz
+화면이면 두 프레임에 한 틱). 프레임을 찍는 실행(`--capture-frame`, smoke가 이렇게
+찍는다)은 앱이 프레임마다 정확히 한 틱을 내서, 60번째 프레임이 매번 같은 그림이다.
 예제는 `Engine/Effects/Sample/Island/`의 `Embers.slang`, `Flames.slang`,
 `Rain.slang`, `Stars.slang`, `Meteors.slang`이다.
 
