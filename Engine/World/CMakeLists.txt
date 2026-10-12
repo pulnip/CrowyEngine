@@ -1,4 +1,5 @@
 crowy_declare_module(World
+WHOLE_ARCHIVE
 PUBLIC
     Crowy::Core
     Crowy::Reflection
