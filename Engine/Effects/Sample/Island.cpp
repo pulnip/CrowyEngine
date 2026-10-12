@@ -4,9 +4,11 @@
 #include <numbers>
 #include <vector>
 
+#include "CameraComponent.hpp"
 #include "EffectSystem.hpp"
 #include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
+#include "FlyControl.hpp"
 #include "Geometry/Overlap3D.hpp"
 #include "Island/IslandEffects.hpp"
 #include "Island/IslandScene.h"
@@ -21,6 +23,7 @@
 #include "PipelineCache.hpp"
 #include "RenderApp.hpp"
 #include "ScriptComponent.hpp"
+#include "SnapshotCamera.hpp"
 #include "StandardPipeline.hpp"
 #include "World.hpp"
 #include "WorldClock.hpp"
@@ -57,13 +60,25 @@ namespace Crowy
         MaterialHandle canvasMaterial{};
         std::unique_ptr<EffectSystem> effects;
         World world;
+        // flown: the mouse's turn, kept apart from the actor's rotation, and
+        // this frame's look and walk
+        ActorId cameraActor;
+        f32 yaw = 0.0f;
+        f32 pitch = 0.0f;
+        bool looked = false;
+        Vec3 moveInput{};
 
     public:
+        ~Island() override {
+            if(auto* port = Port()) {
+                port->Unexpose("camera");
+                port->Unexpose("camera.transform");
+            }
+        }
+        CROWY_DECLARE_PINNED(Island)
+
         Island()
-            : RenderApp(
-                  makeConfig(),
-                  std::make_unique<FlyCamera>(makeCamera())
-              ) {}
+            : RenderApp(makeConfig(), std::make_unique<SnapshotCamera>()) {}
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
@@ -86,6 +101,25 @@ namespace Crowy
 
         void ExtractScene(RenderScene& scene) override {
             world.Provide(scene);
+            world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
+
+            const auto start = makeCamera();
+            yaw = start.yaw;
+            pitch = start.pitch;
+            cameraActor = world.Spawn(
+                Transform{
+                    .position = start.position,
+                    .rotation = flyRotation(yaw, pitch)
+                }
+            );
+            world.Add(
+                cameraActor,
+                CameraComponent{
+                    .fovY = start.fovY,
+                    .nearZ = start.nearZ,
+                    .farZ = start.farZ
+                }
+            );
 
             // the moon's light travels along its actor's +Z, away from it;
             // it lands first, so it is the shadow's caster
@@ -171,8 +205,20 @@ namespace Crowy
                 IslandRadii);
             addTipi(scene, wood);
             addFire(scene, charcoal, coals);
-            // the actors' rows land before the first frame records
+            // the actors' rows land before the first frame records, so the
+            // port finds them
             world.Frame(0.0);
+            if(auto* port = Port()) {
+                port->Expose(
+                    "camera",
+                    world.Target<CameraComponent>(cameraActor)
+                );
+                // a rotation written here lasts until the next mouse look
+                port->Expose(
+                    "camera.transform",
+                    world.TransformTarget(cameraActor)
+                );
+            }
 
             // the ripples blend over what is drawn before them, so they lead
             effects = std::make_unique<EffectSystem>(Device());
@@ -225,7 +271,28 @@ namespace Crowy
             return desc;
         }
 
-        void OnUpdateScene(f64 deltaTime) override { world.Frame(deltaTime); }
+        void OnProcessInput(const InputProvider& input) override {
+            looked = flyLook(input, makeCamera().lookSensitivity, yaw, pitch);
+            moveInput = flyMoveInput(input);
+        }
+
+        void OnUpdateScene(f64 deltaTime) override {
+            // a still camera writes nothing, so nothing is extracted for it
+            if(looked || moveInput != zeros()) {
+                world.SetLocalTransform(
+                    cameraActor,
+                    flyStep(
+                        world.LocalTransform(cameraActor),
+                        yaw,
+                        pitch,
+                        moveInput,
+                        makeCamera().moveSpeed,
+                        deltaTime
+                    )
+                );
+            }
+            world.Frame(deltaTime);
+        }
 
         // the effects' steps too, so spawn and update reload with the draws
         usize OnReloadShaders() override { return effects->ReloadKernels(); }
