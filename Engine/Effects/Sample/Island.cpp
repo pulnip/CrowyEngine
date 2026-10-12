@@ -14,6 +14,7 @@
 #include "Island/Weather.hpp"
 #include "IslandMeshes.hpp"
 #include "LinearAlgebra.hpp"
+#include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
 #include "ParticleEffects.hpp"
 #include "PipelineCache.hpp"
@@ -84,6 +85,8 @@ namespace Crowy
         }
 
         void ExtractScene(RenderScene& scene) override {
+            world.Provide(scene);
+
             scene.Lights().Add(
                 LightSnapshot{
                     .castShadow = true,
@@ -145,24 +148,22 @@ namespace Crowy
                     .pipeline = oceanPipeline()
                 }
             );
-            add(
-                scene,
+            add(scene,
                 seaMaterial,
                 sea,
-                unitMat(),
+                Transform{},
                 {282.0f, 0.4f, 282.0f},
-                PrimitiveFlags::Visible
-            );
+                PrimitiveFlags::Visible);
             // an ellipsoid whose crown is the fire's ground
-            add(
-                scene,
+            add(scene,
                 sand,
                 island,
-                translateMat({0.0f, ISLAND_CENTER_Y, 0.0f}),
-                IslandRadii
-            );
+                Transform{.position = {0.0f, ISLAND_CENTER_Y, 0.0f}},
+                IslandRadii);
             addTipi(scene, wood);
             addFire(scene, charcoal, coals);
+            // the actors' rows land before the first frame records
+            world.Frame(0.0);
 
             // the ripples blend over what is drawn before them, so they lead
             effects = std::make_unique<EffectSystem>(Device());
@@ -382,38 +383,34 @@ namespace Crowy
             return desc;
         }
 
-        // a mesh placed by `localToWorld`; `localHalf` is its half extent
-        // around its origin
-        static void add(
+        // a mesh at an actor placed by `local`; `localHalf` is its half
+        // extent around its origin
+        void add(
             RenderScene& scene,
             MaterialHandle material,
             const GeometryAllocation& geometry,
-            const Mat4& localToWorld,
+            const Transform& local,
             Vec3 localHalf,
             PrimitiveFlags flags =
                 combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow)
         ) {
-            const AABB3D local{.center = zeros(), .halfScale = localHalf};
+            const AABB3D bounds{.center = zeros(), .halfScale = localHalf};
             const auto mesh = scene.Meshes().Add(
                 MeshResource{
                     .subMeshes =
-                        {SubMesh{.geometry = geometry, .localBounds = local}},
+                        {SubMesh{.geometry = geometry, .localBounds = bounds}},
                     .materials = {material},
-                    .localBounds = local
+                    .localBounds = bounds
                 }
             );
-            scene.Primitives().Add(
-                PrimitiveSnapshot{
-                    .localToWorld = localToWorld,
-                    .worldBounds = transformAABB3D(localToWorld, local),
-                    .mesh = mesh,
-                    .flags = flags
-                }
+            world.Add(
+                world.Spawn(local),
+                MeshComponent{.mesh = mesh, .flags = flags}
             );
         }
 
         // a cylinder mesh from `from` along `direction`, `length` long
-        static void addRod(
+        void addRod(
             RenderScene& scene,
             MaterialHandle material,
             const GeometryAllocation& geometry,
@@ -423,13 +420,11 @@ namespace Crowy
             f32 length
         ) {
             const auto center = from + direction * (0.5f * length);
-            add(
-                scene,
+            add(scene,
                 material,
                 geometry,
-                modelMat(center, turnUpTo(direction), ones()),
-                {radius, 0.5f * length, radius}
-            );
+                Transform{.position = center, .rotation = turnUpTo(direction)},
+                {radius, 0.5f * length, radius});
         }
 
         // the unit box at `position`, stretched along its faces by `scale`
@@ -438,32 +433,28 @@ namespace Crowy
             MaterialHandle material,
             Vec3 position,
             Vec3 scale
-        ) const {
-            add(
-                scene,
+        ) {
+            add(scene,
                 material,
                 box,
-                translateMat(position) * scaleMat(scale),
-                ones()
-            );
+                Transform{.position = position, .scale = scale},
+                ones());
         }
 
         // the canvas over all but the open facets, and the poles crossing
         // above it
-        void addTipi(RenderScene& scene, MaterialHandle wood) const {
+        void addTipi(RenderScene& scene, MaterialHandle wood) {
             constexpr auto Middle =
                 0.5f * (ISLAND_TIPI_BASE_Y + ISLAND_TIPI_CANVAS_TOP_Y);
             constexpr auto HalfHeight =
                 0.5f * (ISLAND_TIPI_CANVAS_TOP_Y - ISLAND_TIPI_BASE_Y);
             constexpr Vec3 Apex{0.0f, ISLAND_TIPI_APEX_Y, 0.0f};
 
-            add(
-                scene,
+            add(scene,
                 canvasMaterial,
                 canvas,
-                translateMat({0.0f, Middle, 0.0f}),
-                {ISLAND_TIPI_RADIUS, HalfHeight, ISLAND_TIPI_RADIUS}
-            );
+                Transform{.position = {0.0f, Middle, 0.0f}},
+                {ISLAND_TIPI_RADIUS, HalfHeight, ISLAND_TIPI_RADIUS});
             for(u32 k = 0; k < ISLAND_TIPI_FACETS; ++k) {
                 const auto azimuth = ISLAND_TIPI_FIRST_POLE +
                                      TipiFacetAngle * static_cast<f32>(k);
@@ -489,7 +480,7 @@ namespace Crowy
             RenderScene& scene,
             MaterialHandle charcoal,
             MaterialHandle coals
-        ) const {
+        ) {
             constexpr auto TwoPi = 2.0f * std::numbers::pi_v<f32>;
             constexpr auto BedHalfHeight = 0.03f;
             constexpr Vec3 Crossing{

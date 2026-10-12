@@ -5,7 +5,7 @@ SOURCES
     IslandMeshes.cpp
 DEPENDS
     Crowy::Effects
-    Crowy::World
+    Crowy::WorldRender
     SampleRenderApp
 )
 
