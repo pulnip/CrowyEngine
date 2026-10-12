@@ -87,12 +87,16 @@ namespace Crowy
         void ExtractScene(RenderScene& scene) override {
             world.Provide(scene);
 
-            scene.Lights().Add(
-                LightSnapshot{
+            // the moon's light travels along its actor's +Z, away from it;
+            // it lands first, so it is the shadow's caster
+            const auto moon =
+                world.Spawn(Transform{.rotation = turnTo(unitZ(), -ToMoon)});
+            world.Add(
+                moon,
+                LightComponent{
                     .castShadow = true,
                     .color = {ISLAND_MOON_COLOR},
-                    .intensity = ISLAND_MOON_INTENSITY,
-                    .direction = -ToMoon
+                    .intensity = ISLAND_MOON_INTENSITY
                 }
             );
             scene.Environment() = EnvironmentSnapshot{
@@ -336,11 +340,11 @@ namespace Crowy
             return std::hypot(ISLAND_LOG_CIRCLE, rise) + Overhang;
         }
 
-        // the rotation that turns +y onto `direction`
-        static Vec4 turnUpTo(Vec3 direction) {
-            const auto axis = normalize(cross(unitY(), direction));
+        // the rotation that turns the unit `from` onto the unit `to`
+        static Vec4 turnTo(Vec3 from, Vec3 to) {
+            const auto axis = normalize(cross(from, to));
 
-            return axisAngle(axis, std::acos(dot(unitY(), direction)));
+            return axisAngle(axis, std::acos(dot(from, to)));
         }
 
         // a triangle over the screen at the far plane, tested against the
@@ -417,7 +421,10 @@ namespace Crowy
             add(scene,
                 material,
                 geometry,
-                Transform{.position = center, .rotation = turnUpTo(direction)},
+                Transform{
+                    .position = center,
+                    .rotation = turnTo(unitY(), direction)
+                },
                 {radius, 0.5f * length, radius});
         }
 
