@@ -44,9 +44,9 @@ namespace
         const auto spread = [&](u32 k) {
             return effectRandom(rain.seed, slot, generation, k) * 2.0f - 1.0f;
         };
-        const auto box = rain.emitter;
+        const auto box = rain.origin;
         const auto extent = rain.params[0];
-        const auto height = generation == 0 ? spread(3) * box.w : box.w;
+        const auto height = generation == 0 ? spread(3) * rain.size : rain.size;
 
         return Vec3{
             box.x + spread(1) * extent.x,
@@ -183,7 +183,7 @@ namespace
             .shader = "Engine/Effects/Sample/Island/WeatherProbe.slang",
             .count = Places * ProbedSteps,
             .seed = 1,
-            .emitter = Vec4{0.0f, 0.0f, 0.0f, 20.0f}
+            .size = 20.0f
         };
         const auto snapshot = runParticles(device, probes, 0, Copies).front();
 

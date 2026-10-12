@@ -4,8 +4,8 @@
 #include "Effect.slang"
 #include "IslandScene.h"
 
-// what the desc's emitter and params mean here
-float domeRadius() { return effect.emitter.w; }
+// what the desc's origin, size and params mean here
+float domeRadius() { return effect.size; }
 float lowestSine() { return effect.params[0].x; }
 float halfPixels() { return effect.params[0].y; }
 uint twinkleSteps() { return uint(effect.params[0].z); }

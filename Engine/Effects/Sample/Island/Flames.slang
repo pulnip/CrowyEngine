@@ -4,9 +4,9 @@
 #include "Effect.slang"
 #include "Weather.slang"
 
-// what the desc's emitter and params mean here
-float3 bedCenter() { return effect.emitter.xyz; }
-float bedRadius() { return effect.emitter.w; }
+// what the desc's origin, size and params mean here
+float3 bedCenter() { return effect.origin.xyz; }
+float bedRadius() { return effect.size; }
 float riseMin() { return effect.params[0].x; }
 float riseMax() { return effect.params[0].y; }
 float lift() { return effect.params[0].z; }

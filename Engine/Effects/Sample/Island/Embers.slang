@@ -5,9 +5,9 @@
 #include "IslandShapes.slang"
 #include "Weather.slang"
 
-// what the desc's emitter and params mean here
-float3 discCenter() { return effect.emitter.xyz; }
-float discRadius() { return effect.emitter.w; }
+// what the desc's origin, size and params mean here
+float3 discCenter() { return effect.origin.xyz; }
+float discRadius() { return effect.size; }
 float riseMin() { return effect.params[0].x; }
 float riseMax() { return effect.params[0].y; }
 // the lift under the canvas, where the chimney draws

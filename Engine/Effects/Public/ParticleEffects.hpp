@@ -47,9 +47,12 @@ namespace Crowy
         // steps the first frame runs before it shows, so an effect starts
         // in its steady state
         u32 prewarmSteps = 0;
-        // the effect's to read: commonly a position and a size
-        Vec4 emitter{};
-        std::array<Vec4, 3> params{};
+        // where the effect sits and how far it reaches around there; what
+        // moves an effect moves only its origin
+        Vec3 origin{};
+        f32 size = 0.0f;
+        // the effect's own lanes, named by the accessors atop its file
+        std::array<Vec4, 4> params{};
         EffectDrawDescs draws;
     };
 
@@ -87,19 +90,21 @@ namespace Crowy
         u32 seed = 0;
         Vec4 cameraRight{};
         Vec4 cameraUp{};
-        Vec4 emitter{};
-        std::array<Vec4, 3> params{};
+        // the desc's origin; w is unused
+        Vec4 origin{};
+        std::array<Vec4, 4> params{};
         // the world's step this dispatch or draw shows, shared with the scene
         u32 worldStep = 0;
+        f32 size = 0.0f;
         u32 _pad0 = 0;
         u32 _pad1 = 0;
-        u32 _pad2 = 0;
     };
-    static_assert(sizeof(EffectPush) == 144);
+    static_assert(sizeof(EffectPush) == 160);
     static_assert(offsetof(EffectPush, cameraRight) == 32);
-    static_assert(offsetof(EffectPush, emitter) == 64);
+    static_assert(offsetof(EffectPush, origin) == 64);
     static_assert(offsetof(EffectPush, params) == 80);
-    static_assert(offsetof(EffectPush, worldStep) == 128);
+    static_assert(offsetof(EffectPush, worldStep) == 144);
+    static_assert(offsetof(EffectPush, size) == 148);
 
     // the right and up a world-to-view matrix rotates onto x and y
     inline constexpr EffectView effectViewOf(const Mat4& view) {

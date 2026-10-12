@@ -246,9 +246,10 @@ namespace Crowy
             .seed = desc.seed,
             .cameraRight = toVec4(view.right, 0.0f),
             .cameraUp = toVec4(view.up, 0.0f),
-            .emitter = desc.emitter,
+            .origin = toVec4(desc.origin, 0.0f),
             .params = desc.params,
-            .worldStep = worldStep
+            .worldStep = worldStep,
+            .size = desc.size
         };
     }
 

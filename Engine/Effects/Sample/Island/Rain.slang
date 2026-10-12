@@ -6,9 +6,9 @@
 #include "Sea.slang"
 #include "Weather.slang"
 
-// what the desc's emitter and params mean here
-float3 boxCenter() { return effect.emitter.xyz; }
-float boxHalfHeight() { return effect.emitter.w; }
+// what the desc's origin, size and params mean here
+float3 boxCenter() { return effect.origin.xyz; }
+float boxHalfHeight() { return effect.size; }
 float2 boxHalfExtent() { return effect.params[0].xy; }
 float fallSpeed() { return effect.params[0].z; }
 float streakSeconds() { return effect.params[1].y; }

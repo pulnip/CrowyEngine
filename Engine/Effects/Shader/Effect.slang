@@ -31,14 +31,16 @@ struct EffectPush {
     uint seed;
     float4 cameraRight;
     float4 cameraUp;
-    float4 emitter;
-    float4 params[3];
+    // where the effect sits, which is all that moves with it; w is unused
+    float4 origin;
+    float4 params[4];
     // the world's step this dispatch or draw shows, shared with the scene;
     // a prewarm counts back from it
     uint worldStep;
+    // how far the effect reaches around its origin
+    float size;
     uint _pad0;
     uint _pad1;
-    uint _pad2;
 };
 
 [[vk::push_constant]]

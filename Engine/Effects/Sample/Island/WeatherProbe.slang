@@ -15,7 +15,7 @@ static const uint ProbeSteps[10] = {
 Particle spawn(uint slot, uint generation) {
     uint place = slot % (ProbeSide * ProbeSide);
     float2 cell = float2(float(place % ProbeSide), float(place / ProbeSide));
-    float2 xz = (cell / float(ProbeSide - 1u) * 2.0 - 1.0) * effect.emitter.w;
+    float2 xz = (cell / float(ProbeSide - 1u) * 2.0 - 1.0) * effect.size;
     uint step = ProbeSteps[(slot / (ProbeSide * ProbeSide)) % 10u];
     float2 wind = windAt(xz, step);
     float sea = seaHeight(xz, step, SEA_VERTEX_WAVES, true);

@@ -32,11 +32,13 @@ float3 skyDirection(float azimuth, float elevation) {
     );
 }
 
-// what the desc's emitter and params mean here
-float3 radiant() { return skyDirection(effect.emitter.x, effect.emitter.y); }
-float shellRadius() { return effect.emitter.z; }
+// what the desc's origin, size and params mean here
+float3 radiant() {
+    return skyDirection(effect.params[3].x, effect.params[3].y);
+}
+float shellRadius() { return effect.size; }
 // the sine of the elevation no meteor ends below
-float lowestSine() { return effect.emitter.w; }
+float lowestSine() { return effect.params[3].z; }
 // where meteors ignite: x and y over z in front of the island
 float4 startWindow() { return effect.params[0]; }
 // radians a meteor sweeps, and its mean speed in radians a second

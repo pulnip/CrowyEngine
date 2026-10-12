@@ -18,14 +18,14 @@ C++ 클래스도 필요 없다. 엔진은 슬롯마다 파티클 하나(64바이
 
 #include "Effect.slang"
 
-// desc의 emitter와 params가 여기서 뜻하는 것: 이름이 설명이다
-float3 origin() { return effect.emitter.xyz; }
+// desc의 origin, size, params가 여기서 뜻하는 것: 이름이 설명이다
+float3 source() { return effect.origin.xyz; }
 float brightness() { return effect.params[0].x; }
 
 // 슬롯 slot이 generation번째로 태어날 때: 위치, 속도, 수명(스텝)
 Particle spawn(uint slot, uint generation) {
     Particle p = (Particle)0;
-    p.position = origin();
+    p.position = source();
     p.velocity = float3(0.0, 1.0, 0.0);
     p.lifeSteps = 60u + effectHash(effect.seed, slot, generation, 1u) % 60u;
     p.generation = generation;
@@ -78,8 +78,9 @@ inline ParticleEffectDesc sparksDesc() {
         .count = 512,
         .seed = 31,
         .prewarmSteps = 120,
-        .emitter = Vec4{0.0f, 0.5f, 0.0f, 0.2f},
-        .params = {Vec4{8.0f, 0.0f, 0.0f, 0.0f}, Vec4{}, Vec4{}},
+        .origin = Vec3{0.0f, 0.5f, 0.0f},
+        .size = 0.2f,
+        .params = {Vec4{8.0f, 0.0f, 0.0f, 0.0f}},
         .draws = {{.entry = "spark", .blend = EffectBlend::Additive}}
     };
 }
@@ -88,8 +89,12 @@ inline ParticleEffectDesc sparksDesc() {
 `Engine/Effects/Sample/Island.cpp`의 `ExtractScene`에서 `effects->Add(sparksDesc());`
 한 줄을 더한다.
 
-- `emitter`와 `params[0..2]`: 이펙트가 정하는 float4 네 개다. 뜻은 파일 머리의 접근자
-  함수가 이름으로 말한다(`Rain.slang`의 `fallSpeed()`, `ringOpacity()`처럼).
+- `origin`과 `size`: 이펙트가 있는 자리와, 거기서 닿는 거리(반지름, 반높이 같은 것)다.
+  이펙트를 옮기는 쪽은 `origin`만 바꾸고 `size`는 그대로 둔다. 하늘의 별과 유성처럼
+  자리가 없는 이펙트는 `origin`을 읽지 않는다.
+- `params[0..3]`: 이펙트가 정하는 float4 네 개다. 뜻은 파일 머리의 접근자 함수가
+  이름으로 말한다(`Rain.slang`의 `fallSpeed()`, `ringOpacity()`처럼). 자리가 아닌 값은
+  `origin`이 아니라 여기에 둔다.
 - `count`: 슬롯 수. 슬롯 하나가 늘 같은 파티클이고, 수명이 끝나면 `generation + 1`로
   다시 태어난다.
 - `prewarmSteps`: 첫 프레임이 보여 주기 전에 미리 도는 스텝 수다. 가장 긴 수명보다
@@ -104,7 +109,8 @@ inline ParticleEffectDesc sparksDesc() {
 ## 3. 셰이더에서 쓸 수 있는 것
 
 - `effect.count`, `effect.step`, `effect.worldStep`, `effect.dt`(1/60), `effect.seed`,
-  `effect.emitter`, `effect.params[0..2]`, `effect.cameraRight`, `effect.cameraUp`
+  `effect.origin.xyz`, `effect.size`, `effect.params[0..3]`, `effect.cameraRight`,
+  `effect.cameraUp`
 - `loopPhase(step, cycles)`: 4096스텝(68.3초) 루프를 `cycles`번 도는 것의 위상, [0, 1)
 - `View.slang`의 `viewProj`, `cameraPosition`
 - `particleRandom(slot, generation, k)`: [0, 1) 균등 난수. `effectHash(...)`: 32비트 해시
