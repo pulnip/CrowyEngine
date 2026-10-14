@@ -53,11 +53,14 @@ namespace Crowy
     }
 
     const TypeDesc* NestedDesc(const PropertyDesc& prop){
-        if(prop.type.getDesc == nullptr){
-            return nullptr;
-        }
+        return NestedDesc(prop.type);
+    }
 
-        const TypeDesc* desc = prop.type.getDesc();
+    const TypeDesc* NestedDesc(const TypeOps& type) {
+        if(type.getDesc == nullptr)
+            return nullptr;
+
+        const TypeDesc* desc = type.getDesc();
         return HasProperties(*desc) ? desc : nullptr;
     }
 
@@ -75,6 +78,63 @@ namespace Crowy
             StrView prefix,
             PropertyErrors& errors
         );
+
+        void applyValue(
+            const TypeOps& type,
+            void* member,
+            const DOM::Value& node,
+            StrView path,
+            PropertyErrors& errors
+        ) {
+            // a reflected type is filled property by property,
+            // so its unspecified members keep their default too
+            if(const auto* nested = NestedDesc(type)) {
+                if(const auto* inner = node.asTable()) {
+                    applyTable(*nested, member, *inner, path, errors);
+                } else {
+                    errors.push_back(
+                        std::format(
+                            "'{}' is a struct and expects a table",
+                            path
+                        )
+                    );
+                }
+            } else if(const auto* list = type.list) {
+                const auto* items = node.asArray();
+                if(items == nullptr) {
+                    errors.push_back(
+                        std::format("'{}' is a list and expects an array", path)
+                    );
+
+                    return;
+                }
+
+                // the file's length is the list's
+                list->resize(member, items->size());
+                const auto& element = *list->elementOps();
+                for(usize i = 0; i < items->size(); ++i) {
+                    applyValue(
+                        element,
+                        list->element(member, i),
+                        (*items)[i],
+                        std::format("{}[{}]", path, i),
+                        errors
+                    );
+                }
+            } else if(type.deserialize == nullptr) {
+                errors.push_back(
+                    std::format(
+                        "'{}' is a {} with no properties registered",
+                        path,
+                        type.name
+                    )
+                );
+            } else if(!type.deserialize(member, node)) {
+                errors.push_back(
+                    std::format("'{}' expects {}", path, type.name)
+                );
+            }
+        }
 
         void applyOwnProperties(
             const TypeDesc& desc,
@@ -94,35 +154,13 @@ namespace Crowy
                     continue;
                 }
 
-                auto member = prop.accessor->Get(object);
-                const auto path = joinPath(prefix, prop.name);
-
-                // a reflected type is filled property by property,
-                // so its unspecified members keep their default too
-                if(const auto* nested = NestedDesc(prop)) {
-                    if(const auto* inner = node->second.asTable()) {
-                        applyTable(*nested, member, *inner, path, errors);
-                    } else {
-                        errors.push_back(
-                            std::format(
-                                "'{}' is a struct and expects a table",
-                                path
-                            )
-                        );
-                    }
-                } else if(prop.type.deserialize == nullptr) {
-                    errors.push_back(
-                        std::format(
-                            "'{}' is a {} with no properties registered",
-                            path,
-                            prop.type.name
-                        )
-                    );
-                } else if(!prop.type.deserialize(member, node->second)) {
-                    errors.push_back(
-                        std::format("'{}' expects {}", path, prop.type.name)
-                    );
-                }
+                applyValue(
+                    prop.type,
+                    prop.accessor->Get(object),
+                    node->second,
+                    joinPath(prefix, prop.name),
+                    errors
+                );
             }
         }
 
@@ -172,6 +210,47 @@ namespace Crowy
 
     namespace
     {
+        // false when the type has nothing to write
+        bool serializeValue(
+            const TypeOps& type,
+            const void* member,
+            DOM::Value& out
+        ) {
+            if(const auto* nested = NestedDesc(type)) {
+                SerializeProperties(*nested, member, out);
+
+                return true;
+            }
+            if(const auto* list = type.list) {
+                const auto& element = *list->elementOps();
+                const auto count = list->count(member);
+
+                DOM::Array items;
+                items.reserve(count);
+                for(usize i = 0; i < count; ++i) {
+                    // an element with nothing to write is null, so the
+                    // indices still line up
+                    DOM::Value item;
+                    serializeValue(
+                        element,
+                        list->constElement(member, i),
+                        item
+                    );
+                    items.push_back(std::move(item));
+                }
+                out = DOM::Value(std::move(items));
+
+                return true;
+            }
+            if(type.serialize != nullptr) {
+                type.serialize(member, out);
+
+                return true;
+            }
+
+            return false;
+        }
+
         void appendProperties(const TypeDesc& desc, const void* object, DOM::Table& table){
             if(desc.parent != nullptr){
                 appendProperties(*desc.parent, object, table);
@@ -179,17 +258,9 @@ namespace Crowy
 
             for(const auto& prop: desc.properties){
                 const void* member = prop.accessor->Get(object);
-
                 DOM::Value value;
-                if(const auto* nested = NestedDesc(prop)){
-                    SerializeProperties(*nested, member, value);
-                }
-                else if(prop.type.serialize != nullptr){
-                    prop.type.serialize(member, value);
-                }
-                else{
+                if(!serializeValue(prop.type, member, value))
                     continue;
-                }
 
                 // the most derived declaration wins a shadowed name
                 table.insert_or_assign(prop.name, std::move(value));

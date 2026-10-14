@@ -21,6 +21,18 @@ namespace Crowy
     class Object;
     using ObjectRAII = RAII<Object>;
 
+    namespace detail
+    {
+        template<typename T>
+        struct IsVector: std::false_type {};
+        template<typename E, typename A>
+        struct IsVector<std::vector<E, A>>: std::true_type {};
+    }
+
+    // a property type reflected as a list of its elements
+    template<typename T>
+    concept ListType = detail::IsVector<T>::value;
+
     template<typename T>
     const TypeOps* GetTypeOps();
 
@@ -43,10 +55,10 @@ namespace Crowy
             using Leaf = typename detail::MemberChain<Ptrs...>::Leaf;
 
             static_assert(
-                HasTypeTraits<Leaf> ||
+                HasTypeTraits<Leaf> || ListType<Leaf> ||
                     (std::is_class_v<Leaf> && !std::ranges::range<Leaf>),
-                "container properties are not supported; "
-                "register a leaf type or a reflectable struct"
+                "of containers only std::vector is reflected; register a "
+                "leaf type, a reflectable struct or a std::vector of one"
             );
 
             auto [it, ret] = indexByName.try_emplace(name, properties.size());
@@ -156,6 +168,26 @@ namespace Crowy
         }
 
         template<typename T>
+        usize listCount(const void* items) {
+            return static_cast<const T*>(items)->size();
+        }
+
+        template<typename T>
+        void listResize(void* items, usize count) {
+            static_cast<T*>(items)->resize(count);
+        }
+
+        template<typename T>
+        void* listElement(void* items, usize index) {
+            return &(*static_cast<T*>(items))[index];
+        }
+
+        template<typename T>
+        const void* listConstElement(const void* items, usize index) {
+            return &(*static_cast<const T*>(items))[index];
+        }
+
+        template<typename T>
         TypeOps MakeTypeOps(){
             static_assert(
                 HasTypeTraits<T> || std::is_class_v<T>,
@@ -194,8 +226,34 @@ namespace Crowy
             }
             // the desc may stay empty, which just means
             // the type was never registered
-            if constexpr(std::is_class_v<T>){
+            if constexpr(std::is_class_v<T> && !ListType<T>) {
                 ops.getDesc = &GetDesc<T>;
+            }
+            if constexpr(ListType<T>) {
+                using Element = typename T::value_type;
+                static_assert(
+                    !std::same_as<Element, bool>,
+                    "std::vector<bool> has no element addresses"
+                );
+                static_assert(
+                    HasTypeTraits<Element> || (std::is_class_v<Element> &&
+                                               !std::ranges::range<Element>),
+                    "a list's element is a leaf type or a reflectable struct"
+                );
+                static_assert(
+                    std::is_default_constructible_v<Element>,
+                    "a longer list default-constructs its new elements"
+                );
+
+                static constexpr ListOps list{
+                    .elementOps = &GetTypeOps<Element>,
+                    .count = &listCount<T>,
+                    .resize = &listResize<T>,
+                    .element = &listElement<T>,
+                    .constElement = &listConstElement<T>
+                };
+                ops.name = "list";
+                ops.list = &list;
             }
             if constexpr(HasEnumTraits<T>){
                 ops.enumerators = &EnumeratorsOf<T>;
@@ -217,9 +275,10 @@ namespace Crowy
         return &ops;
     }
 
-    // the registered type this property recurses into,
-    // or nullptr when the property is a leaf
+    // the registered type this property or type recurses into,
+    // or nullptr when it is a leaf or a list
     const TypeDesc* NestedDesc(const PropertyDesc&);
+    const TypeDesc* NestedDesc(const TypeOps&);
 
     // what ApplyProperties could not apply, one message per key, sorted
     using PropertyErrors = std::vector<Str>;

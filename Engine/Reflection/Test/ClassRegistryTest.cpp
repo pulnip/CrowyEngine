@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <type_traits>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -647,4 +648,95 @@ TEST(Reflection, ALifetimeTheTypeLacksStaysNull) {
     EXPECT_TRUE(ops.construct == nullptr);
     EXPECT_TRUE(ops.moveConstruct != nullptr);
     EXPECT_TRUE(ops.destroy != nullptr);
+}
+
+struct ListItem {
+    f32 weight = 1.0f;
+    Str label;
+};
+
+// clang-format off: a registration opens a namespace the formatter cannot see
+CROWY_STRUCT(ListItem)
+    .SetProperty("weight", &ListItem::weight)
+    .SetProperty("label", &ListItem::label)
+CROWY_STRUCT_END(ListItem)
+// clang-format on
+
+struct ListProbe {
+    std::vector<f32> weights;
+    std::vector<ListItem> items;
+    std::vector<BlendProbe> modes;
+};
+
+// clang-format off: a registration opens a namespace the formatter cannot see
+CROWY_STRUCT(ListProbe)
+    .SetProperty("weights", &ListProbe::weights)
+    .SetProperty("items", &ListProbe::items)
+    .SetProperty("modes", &ListProbe::modes)
+CROWY_STRUCT_END(ListProbe)
+// clang-format on
+
+TEST(Reflection, AListIsItsElementsInOrder) {
+    const auto& ops = *GetTypeOps<std::vector<ListItem>>();
+    ASSERT_TRUE(ops.list != nullptr);
+    EXPECT_EQ(ops.list->elementOps(), GetTypeOps<ListItem>());
+    EXPECT_TRUE(ops.getDesc == nullptr);
+
+    ListProbe probe{
+        .weights = {0.5f, 2.0f},
+        .items = {{.weight = 0.25f, .label = "a"}, {}},
+        .modes = {BlendProbe::Multiply, BlendProbe::Off}
+    };
+    DOM::Value value;
+    SerializeProperties(&probe, value);
+    const auto text = emitJson(value);
+    EXPECT_EQ(
+        text,
+        R"({"weights":[0.5,2.0],"items":[{"weight":0.25,"label":"a"},)"
+        R"({"weight":1.0,"label":""}],"modes":["Multiply","Off"]})"
+    );
+
+    ListProbe back;
+    EXPECT_TRUE(ApplyProperties(&back, parseJsonString(text)).empty());
+    EXPECT_EQ(back.weights, probe.weights);
+    ASSERT_EQ(back.items.size(), 2u);
+    EXPECT_EQ(back.items[0].label, "a");
+    EXPECT_EQ(back.modes, probe.modes);
+}
+
+TEST(Reflection, AListTakesTheLengthItIsGiven) {
+    ListProbe probe{.weights = {1.0f, 2.0f, 3.0f}};
+    EXPECT_TRUE(
+        ApplyProperties(&probe, parseJsonString(R"({"weights":[9]})")).empty()
+    );
+    EXPECT_EQ(probe.weights, (std::vector<f32>{9.0f}));
+
+    // a new element starts from its default, and its absent keys keep it
+    EXPECT_TRUE(
+        ApplyProperties(&probe, parseJsonString(R"({"items":[{"label":"x"}]})"))
+            .empty()
+    );
+    ASSERT_EQ(probe.items.size(), 1u);
+    EXPECT_EQ(probe.items[0].weight, 1.0f);
+    EXPECT_EQ(probe.items[0].label, "x");
+}
+
+TEST(Reflection, AListErrorNamesTheElement) {
+    ListProbe probe;
+    const auto errors = ApplyProperties(
+        &probe,
+        parseJsonString(
+            R"({"weights":"no","items":[{"weight":"x"},{"nope":1}],)"
+            R"("modes":["Bad"]})"
+        )
+    );
+    EXPECT_EQ(
+        errors,
+        (PropertyErrors{
+            "'items[0].weight' expects f32",
+            "'modes[0]' expects BlendProbe",
+            "'weights' is a list and expects an array",
+            "no property 'items[1].nope' on 'ListItem'"
+        })
+    );
 }

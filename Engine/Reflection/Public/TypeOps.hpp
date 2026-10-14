@@ -73,6 +73,18 @@ namespace Crowy
         i64 value;
     };
 
+    struct TypeOps;
+
+    // what a list type adds: its element's ops and access to its elements
+    struct ListOps {
+        const TypeOps* (*elementOps)() = nullptr;
+        usize (*count)(const void*) = nullptr;
+        // a longer list default-constructs its new elements
+        void (*resize)(void*, usize) = nullptr;
+        void* (*element)(void*, usize) = nullptr;
+        const void* (*constElement)(const void*, usize) = nullptr;
+    };
+
     // erased operations and identity of one type.
     // built by MakeTypeOps, see ClassRegistry.hpp
     struct TypeOps{
@@ -98,6 +110,8 @@ namespace Crowy
         // so an erased reader compares with no width or sign guess
         i64 (*enumLoad)(const void*) = nullptr;
         void (*enumStore)(void*, i64) = nullptr;
+        // list type: its elements, each a leaf or a reflected type
+        const ListOps* list = nullptr;
     };
 }
 
