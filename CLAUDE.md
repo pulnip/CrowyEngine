@@ -100,13 +100,15 @@ Run what the change can break, not everything:
 | Effects | + the `check` label and `IslandSmoke` |
 | Physics | + `PhysicsPlaygroundSmoke` |
 | A `Tools/` script | that script, by hand |
-| Before a merge to master | the whole `smoke` label (39 tests, ~4 min) |
+| Before a merge to master | the whole `smoke` label (39 tests, ~2.5 min with `-j 8`) |
 
 ```bash
-ctest --test-dir build -C Debug -L unit
-ctest --test-dir build -C Debug -R "Playground|ShadowSample|PrepassEqual|Textured|Island|StageEditor"
+ctest --test-dir build -C Debug -L unit -j 8
+ctest --test-dir build -C Debug -j 8 -R "Playground|ShadowSample|PrepassEqual|Textured|Island|StageEditor"
 ```
 
+- `-j` runs units and checks side by side; windowed smokes stay one at
+  a time (`RUN_SERIAL`).
 - A unit binary with no tests fails by itself; do not count tests.
 - Smoke runs break on D3D12 debug-layer errors and compare a golden on
   every run where one exists; there is no separate "debug layer" pass.

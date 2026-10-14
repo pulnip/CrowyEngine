@@ -150,5 +150,7 @@ function(crowy_declare_check NAME)
         set_property(TEST ${NAME}Smoke
             APPEND PROPERTY ENVIRONMENT "CROWY_SMOKE_MUST_EXIT=1"
         )
+        # no window to focus and no port to bind, so checks run side by side
+        set_tests_properties(${NAME}Smoke PROPERTIES RUN_SERIAL FALSE)
     endif()
 endfunction()
