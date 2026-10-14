@@ -161,9 +161,12 @@ PaintSlabInputs buildSlab(SurfacePoint p) {
     // MF_PaintOverlay's thin-paint opacity; with the shipped minimum of 1
     // paint never turns see-through
     float thin = lerp(lookStyle2.w, 1.0, smoothstep(0.0, lookStyle2.z, p.height.thickness));
-    PaintLook look = p.kept
-        ? BlendTeams(base, p.coverage, p.paintNormal, lookModes.z, thin)
-        : base;
+    PaintLook look = base;
+    if(p.kept) {
+        look = lookModes.y == PAINT_EDGE_BILINEAR
+            ? AverageTeams(base, p.coverage, p.paintNormal, thin)
+            : BlendTeams(base, p.coverage, p.paintNormal, lookModes.z, thin);
+    }
     look.normal = normalize(look.normal);
     PaintStyled style = ApplyStyle(look, lookStyle.x, lookStyle.y, lookStyle.z);
     PaintSlabInputs slab = ToSlab(look, style, lookStyle2.y);

@@ -107,16 +107,29 @@ float4 PaintCorners(Texture2D Tex, float2 UV, float TexelSize, float DistRange) 
     return sd;
 }
 
+// each team's share of the four texels a bilinear read weighs: what a
+// bilinear read of the team colors would mix
+float4 PaintCornerShares(Texture2D Tex, float2 UV, float TexelSize) {
+    const uint4 Teams = uint4(0u, 1u, 2u, 3u);
+    float2 tc = UV / TexelSize - 0.5;
+    float2 f = frac(tc);
+    float2 baseUV = (floor(tc) + 0.5) * TexelSize;
+    float4 m00 = float4(Teams == DecodePaintId(Tex.SampleLevel(nearestClamp, baseUV, 0).r));
+    float4 m10 = float4(Teams == DecodePaintId(Tex.SampleLevel(nearestClamp, baseUV + float2(TexelSize, 0.0), 0).r));
+    float4 m01 = float4(Teams == DecodePaintId(Tex.SampleLevel(nearestClamp, baseUV + float2(0.0, TexelSize), 0).r));
+    float4 m11 = float4(Teams == DecodePaintId(Tex.SampleLevel(nearestClamp, baseUV + float2(TexelSize, TexelSize), 0).r));
+    return lerp(lerp(m00, m10, f.x), lerp(m01, m11, f.x), f.y);
+}
+
 // each team's coverage at this pixel, by the edge mode the data views compare
 float4 TeamCoverage(Texture2D Tex, float2 UV, float TexelSize, float DistRange, uint edgeMode, out float4 sd) {
     sd = PaintCorners(Tex, UV, TexelSize, DistRange);
-    if(edgeMode != PAINT_EDGE_SIGNED_DISTANCE) {
-        // a bilinear read of an id map blends the bytes, so between team 1
-        // and none it invents the ids in between
-        float r = edgeMode == PAINT_EDGE_NEAREST
-            ? Tex.SampleLevel(nearestClamp, UV, 0).r
-            : Tex.SampleLevel(linearClamp, UV, 0).r;
+    if(edgeMode == PAINT_EDGE_NEAREST) {
+        float r = Tex.SampleLevel(nearestClamp, UV, 0).r;
         return float4(uint4(0u, 1u, 2u, 3u) == DecodePaintId(r));
+    }
+    if(edgeMode == PAINT_EDGE_BILINEAR) {
+        return PaintCornerShares(Tex, UV, TexelSize);
     }
 
     // MF_PaintTeamBlend's band: one pixel wide, capped at one texel, so
@@ -141,6 +154,19 @@ PaintLook BlendTeams(PaintLook base, float4 cov, float3 paintNormal, uint blend,
             : saturate(c / max(1.0 - S, 1e-4));
         o = lerpLook(o, TeamLook(t, paintNormal), alpha);
         S = saturate(S + c);
+    }
+    return o;
+}
+
+// the bilinear read's weighted average: the bare look and every team in
+// proportion to their shares, so colors mix across a whole texel
+PaintLook AverageTeams(PaintLook base, float4 shares, float3 paintNormal, float thin) {
+    PaintLook o = base;
+    float weight = 1.0 - saturate(dot(shares, 1.0) * thin);
+    for(uint t = 0u; t < 4u; ++t) {
+        float c = shares[t] * thin;
+        weight += c;
+        o = lerpLook(o, TeamLook(t, paintNormal), c / max(weight, 1e-4));
     }
     return o;
 }
