@@ -126,6 +126,35 @@ TEST(World, ADestroyTakesTheSubtreeAtOnce) {
     EXPECT_FALSE(world.IsValid(child));
 }
 
+TEST(World, AnActorIsNamedOnceItIsAlive) {
+    World world;
+    const auto first = world.Spawn();
+    const auto second = world.Spawn();
+    EXPECT_EQ(world.Name(first), "");
+
+    world.SetName(first, "lamp");
+    world.SetName(second, "lamp");
+    EXPECT_EQ(world.Name(first), "lamp");
+    EXPECT_EQ(world.Name(second), "lamp");
+
+    world.SetName(second, "post");
+    EXPECT_EQ(world.Name(first), "lamp");
+    EXPECT_EQ(world.Name(second), "post");
+}
+
+TEST(World, AReusedSlotStartsUnnamed) {
+    World world;
+    const auto old = world.Spawn();
+    world.SetName(old, "lamp");
+    world.Frame(0.0);
+
+    world.Destroy(old);
+    world.Frame(0.0);
+    const auto reused = world.Spawn();
+    ASSERT_EQ(reused.GetIndex(), old.GetIndex());
+    EXPECT_EQ(world.Name(reused), "");
+}
+
 TEST(World, ComponentsLandAtSyncInTheOrderTheyWereAdded) {
     World world;
     std::vector<ActorId> actors;

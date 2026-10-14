@@ -31,6 +31,23 @@ namespace Crowy
         return hierarchy.IsValid(nodeOf(actor));
     }
 
+    const Str& World::Name(ActorId actor) const noexcept {
+        static const Str unnamed;
+        CROWY_ASSERT(IsValid(actor), "naming an actor that is not alive");
+
+        const auto slot = actor.GetIndex();
+        return slot < names.size() ? names[slot] : unnamed;
+    }
+
+    void World::SetName(ActorId actor, Str name) {
+        CROWY_ASSERT(IsValid(actor), "naming an actor that is not alive");
+
+        const auto slot = actor.GetIndex();
+        if(slot >= names.size())
+            names.resize(slot + 1);
+        names[slot] = std::move(name);
+    }
+
     const Transform& World::LocalTransform(ActorId actor) const noexcept {
         return hierarchy.GetLocalTransform(nodeOf(actor));
     }
@@ -244,6 +261,10 @@ namespace Crowy
 
         // the dying first, so nothing below adds to an actor that is gone
         for(const auto actor: dyingActors) {
+            // the slot is released below, and its next actor starts unnamed
+            if(actor.GetIndex() < names.size())
+                names[actor.GetIndex()].clear();
+
             for(const auto& store: stores) {
                 if(auto* row = store->rows.Find(actor)) {
                     if(store->info.onRemove)

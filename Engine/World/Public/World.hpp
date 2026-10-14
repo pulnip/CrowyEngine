@@ -57,6 +57,8 @@ namespace Crowy
 
         TransformHierarchy hierarchy;
         std::vector<ActorId> dyingActors;
+        // by the actor's slot; empty is no name
+        std::vector<Str> names;
 
         // in the order each type was first added, which Sync follows
         Stores stores;
@@ -93,6 +95,11 @@ namespace Crowy
         // the actor and every actor below it
         void Destroy(ActorId actor);
         bool IsValid(ActorId actor) const noexcept;
+
+        // what the actor is shown as, empty until set; two actors may share
+        // one, so a reference names the actor itself
+        const Str& Name(ActorId actor) const noexcept;
+        void SetName(ActorId actor, Str name);
 
         const Transform& LocalTransform(ActorId actor) const noexcept;
         void SetLocalTransform(ActorId actor, const Transform& local) noexcept;
