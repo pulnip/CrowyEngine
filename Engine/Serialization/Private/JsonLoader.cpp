@@ -12,28 +12,31 @@ namespace
 {
     using namespace Crowy;
 
+    // keeps an object's keys in the file's order
+    using Json = nlohmann::ordered_json;
+
     // JSON 1 lands as i64 and 1.0 as f64; an f64 never binds an integer
     // property, so a wrong literal fails loudly instead of converting.
-    DOM::Value parseFromJson(const nlohmann::json& j){
+    DOM::Value parseFromJson(const Json& j) {
         using namespace DOM;
 
         switch(j.type()){
-        case nlohmann::json::value_t::boolean:
+        case Json::value_t::boolean:
             return Value(j.get<bool>());
-        case nlohmann::json::value_t::number_unsigned: {
+        case Json::value_t::number_unsigned: {
             auto u = j.get<std::uint64_t>();
             if(u > static_cast<std::uint64_t>(std::numeric_limits<i64>::max())){
                 throw std::out_of_range("JSON integer exceeds i64 range");
             }
             return Value(static_cast<i64>(u));
         }
-        case nlohmann::json::value_t::number_integer:
+        case Json::value_t::number_integer:
             return Value(j.get<i64>());
-        case nlohmann::json::value_t::number_float:
+        case Json::value_t::number_float:
             return Value(j.get<f64>());
-        case nlohmann::json::value_t::string:
+        case Json::value_t::string:
             return Value(j.get<Str>());
-        case nlohmann::json::value_t::array: {
+        case Json::value_t::array: {
             Array arr;
             arr.reserve(j.size());
 
@@ -43,7 +46,7 @@ namespace
 
             return Value(std::move(arr));
         }
-        case nlohmann::json::value_t::object: {
+        case Json::value_t::object: {
             Table tbl;
             for(auto& [k, child]: j.items()){
                 tbl.emplace(Str(k), parseFromJson(child));
@@ -56,7 +59,7 @@ namespace
         }
     }
 
-    nlohmann::json emitFromValue(const DOM::Value& v){
+    Json emitFromValue(const DOM::Value& v) {
         using enum DOM::Value::Kind;
 
         switch(v.kind()){
@@ -69,14 +72,14 @@ namespace
         case String:
             return *v.asString();
         case Array: {
-            auto arr = nlohmann::json::array();
+            auto arr = Json::array();
             for(auto& child: *v.asArray()){
                 arr.emplace_back(emitFromValue(child));
             }
             return arr;
         }
         case Table: {
-            auto obj = nlohmann::json::object();
+            auto obj = Json::object();
             for(auto& [k, child]: *v.asTable()){
                 obj[k] = emitFromValue(child);
             }
@@ -92,7 +95,7 @@ namespace
 namespace Crowy
 {
     DOM::Value parseJsonString(StrView str){
-        auto j = nlohmann::json::parse(str);
+        auto j = Json::parse(str);
 
         return parseFromJson(j);
     }
@@ -103,7 +106,7 @@ namespace Crowy
             throw std::runtime_error("cannot open JSON file: " + toUTF8String(path));
         }
 
-        auto j = nlohmann::json::parse(stream);
+        auto j = Json::parse(stream);
 
         return parseFromJson(j);
     }

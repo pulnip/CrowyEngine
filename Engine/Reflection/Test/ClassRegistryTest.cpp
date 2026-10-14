@@ -233,6 +233,18 @@ TEST(Reflection, RegistrationOrderSurvives){
     EXPECT_EQ(desc->properties[3].name, "beta");
 }
 
+TEST(Reflection, SerializedKeysFollowRegistration) {
+    OrderProbe probe;
+    DOM::Value value;
+    SerializeProperties(&probe, value);
+
+    std::vector<Str> keys;
+    for(const auto& [key, _]: *value.asTable()) {
+        keys.push_back(key);
+    }
+    EXPECT_EQ(keys, (std::vector<Str>{"delta", "alpha", "gamma", "beta"}));
+}
+
 TEST(Reflection, RangeReachesTheMeta){
     const auto* desc = GetDesc<OrderProbe>();
 

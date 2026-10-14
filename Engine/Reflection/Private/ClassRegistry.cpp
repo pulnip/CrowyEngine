@@ -164,7 +164,7 @@ namespace Crowy
             errors.push_back(std::format("'{}' expects a table", desc.name));
         }
 
-        // the table is unordered, so the report is sorted to stay stable
+        // sorted, so the report does not depend on the file's key order
         std::ranges::sort(errors);
 
         return errors;

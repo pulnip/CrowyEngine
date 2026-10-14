@@ -205,6 +205,19 @@ TEST(Serializer, JsonRoundTrip){
     EXPECT_TRUE(deepEqual(v, pretty));
 }
 
+TEST(Serializer, ATableKeepsTheOrderItWasGiven) {
+    const auto text = R"({"zeta":1,"alpha":{"y":2,"x":3},"mid":[4]})";
+    EXPECT_EQ(emitJson(parseJsonString(text)), text);
+
+    DOM::Table table;
+    table.emplace("b", i64{1});
+    table.emplace("a", i64{2});
+    // emplace keeps what is there; insert_or_assign keeps the place
+    EXPECT_FALSE(table.emplace("b", i64{3}).second);
+    EXPECT_FALSE(table.insert_or_assign("b", i64{4}).second);
+    EXPECT_EQ(emitJson(DOM::Value(std::move(table))), R"({"b":4,"a":2})");
+}
+
 TEST(Serializer, JsonParseErrors){
     EXPECT_THROW(parseJsonString("{invalid"), std::exception);
     EXPECT_THROW(parseJsonString(""), std::exception);

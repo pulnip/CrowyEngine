@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <concepts>
 #include <optional>
 #if defined(__cpp_lib_ranges_enumerate)
@@ -7,9 +8,10 @@
 #else
     #include "View.hpp"
 #endif
-#include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
+
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
@@ -20,7 +22,39 @@ namespace Crowy
         class Value;
 
         using Array = std::vector<Value>;
-        using Table = std::unordered_map<Str, Value>;
+
+        // A JSON object's keys in the order they were inserted, so what is
+        // written reads back in that order; a lookup is a linear scan. What
+        // needs Value whole is defined after it.
+        class Table {
+        public:
+            using Entry = std::pair<Str, Value>;
+            using iterator = std::vector<Entry>::iterator;
+            using const_iterator = std::vector<Entry>::const_iterator;
+
+        private:
+            std::vector<Entry> entries;
+
+        public:
+            iterator begin() noexcept;
+            iterator end() noexcept;
+            const_iterator begin() const noexcept;
+            const_iterator end() const noexcept;
+            usize size() const noexcept;
+            bool empty() const noexcept;
+
+            iterator find(StrView key) noexcept;
+            const_iterator find(StrView key) const noexcept;
+            bool contains(StrView key) const noexcept;
+
+            // a key already present keeps its value, as a map's emplace does
+            template<typename V>
+            std::pair<iterator, bool> emplace(Str key, V&& v);
+
+            // a key already present keeps its place and takes the value
+            template<typename V>
+            std::pair<iterator, bool> insert_or_assign(Str key, V&& v);
+        };
 
         class Value{
         private:
@@ -197,6 +231,59 @@ namespace Crowy
                 static_assert(false);
             }
         };
+
+        inline Table::iterator Table::begin() noexcept {
+            return entries.begin();
+        }
+        inline Table::iterator Table::end() noexcept {
+            return entries.end();
+        }
+        inline Table::const_iterator Table::begin() const noexcept {
+            return entries.begin();
+        }
+        inline Table::const_iterator Table::end() const noexcept {
+            return entries.end();
+        }
+        inline usize Table::size() const noexcept {
+            return entries.size();
+        }
+        inline bool Table::empty() const noexcept {
+            return entries.empty();
+        }
+
+        inline Table::iterator Table::find(StrView key) noexcept {
+            return std::ranges::find(entries, key, &Entry::first);
+        }
+        inline Table::const_iterator Table::find(StrView key) const noexcept {
+            return std::ranges::find(entries, key, &Entry::first);
+        }
+        inline bool Table::contains(StrView key) const noexcept {
+            return find(key) != end();
+        }
+
+        template<typename V>
+        std::pair<Table::iterator, bool> Table::emplace(Str key, V&& v) {
+            if(auto it = find(key); it != end())
+                return {it, false};
+
+            entries.emplace_back(std::move(key), Value(std::forward<V>(v)));
+
+            return {std::prev(entries.end()), true};
+        }
+
+        template<typename V>
+        std::pair<Table::iterator, bool> Table::insert_or_assign(
+            Str key,
+            V&& v
+        ) {
+            if(auto it = find(key); it != end()) {
+                it->second = Value(std::forward<V>(v));
+
+                return {it, false};
+            }
+
+            return emplace(std::move(key), std::forward<V>(v));
+        }
 
     #define DECLARE_VALUE_GETIMPL_NOEXCEPT(TYPE) \
         template<> \
