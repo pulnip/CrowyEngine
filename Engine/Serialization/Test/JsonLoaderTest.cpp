@@ -163,6 +163,10 @@ bool deepEqual(const DOM::Value& a, const DOM::Value& b){
     case Int:
         return *a.asInt() == *b.asInt();
     case Float:
+        // text read back from an f32 is the f32, not its widened value
+        if(a.asSingle() || b.asSingle())
+            return static_cast<f32>(*a.asFloat()) ==
+                   static_cast<f32>(*b.asFloat());
         return *a.asFloat() == *b.asFloat();
     case String:
         return *a.asString() == *b.asString();
@@ -235,6 +239,26 @@ TEST(Serializer, EmitWritesTheShortestNumbersAndEscapes) {
         "null"
     );
     EXPECT_THROW(emitJson(DOM::Value("\xff")), std::invalid_argument);
+}
+
+TEST(Serializer, AnF32WritesAsItsOwnShortestText) {
+    EXPECT_EQ(emitJson(DOM::Value::from(0.1f)), "0.1");
+    EXPECT_EQ(emitJson(DOM::Value::from(1.0f)), "1.0");
+    EXPECT_EQ(
+        emitJson(DOM::Value::from(Vec3{0.1f, 0.2f, 0.3f})),
+        "[0.1,0.2,0.3]"
+    );
+    // an f64 keeps its own precision
+    EXPECT_EQ(
+        emitJson(DOM::Value::from(static_cast<f64>(0.1f))),
+        "0.10000000149011612"
+    );
+
+    // every f32 reads back as itself
+    for(const f32 value: {0.1f, 1.0f / 3.0f, 3.4e38f, 1.4e-45f, -2.5e-7f}) {
+        const auto back = parseJsonString(emitJson(DOM::Value::from(value)));
+        EXPECT_EQ(back.get<f32>(), value);
+    }
 }
 
 TEST(Serializer, EmitPrettyIndentsFourSpaces) {

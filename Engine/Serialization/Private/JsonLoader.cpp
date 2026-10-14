@@ -170,7 +170,10 @@ namespace
             break;
         }
         case Float:
-            writeFloat(out, *v.asFloat());
+            if(const auto single = v.asSingle())
+                writeFloat(out, *single);
+            else
+                writeFloat(out, *v.asFloat());
             break;
         case String:
             writeString(out, *v.asString());

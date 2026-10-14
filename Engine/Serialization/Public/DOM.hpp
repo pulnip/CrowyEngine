@@ -66,6 +66,7 @@ namespace Crowy
                 bool,
                 i64,
                 f64,
+                f32,
                 Str,
                 ArrayRAII,
                 TableRAII
@@ -76,6 +77,7 @@ namespace Crowy
             Value(bool v) noexcept: value(v){}
             Value(i64 v) noexcept: value(v){}
             Value(f64 v) noexcept: value(v){}
+            Value(f32 v) noexcept: value(v) {}
             Value(Str v):value(v){}
             Value(const char* v):value(Str(v)){}
             Value(Array&& v): value(std::make_unique<Array>(std::move(v))){}
@@ -98,7 +100,10 @@ namespace Crowy
             bool is_none() const noexcept{ return std::holds_alternative<std::monostate>(value); }
             bool is_bool() const noexcept{ return std::holds_alternative<bool>(value); }
             bool is_int() const noexcept{ return std::holds_alternative<i64>(value); }
-            bool is_float() const noexcept{ return std::holds_alternative<f64>(value); }
+            bool is_float() const noexcept {
+                return std::holds_alternative<f64>(value) ||
+                       std::holds_alternative<f32>(value);
+            }
             bool is_string() const noexcept{ return std::holds_alternative<Str>(value); }
             bool is_array() const noexcept{ return std::holds_alternative<ArrayRAII>(value); }
             bool is_table() const noexcept{ return std::holds_alternative<TableRAII>(value); }
@@ -108,6 +113,8 @@ namespace Crowy
             std::optional<i64> asInt() const noexcept;
             // expect like 1.0, also 1 can be Float
             std::optional<f64> asFloat() const noexcept;
+            // only a float that was made from an f32
+            std::optional<f32> asSingle() const noexcept;
             const Str* asString() const noexcept;
             const Array* asArray() const noexcept;
             const Table* asTable() const noexcept;
@@ -164,7 +171,8 @@ namespace Crowy
                     return Value(static_cast<i64>(v));
                 }
                 else if constexpr(std::floating_point<T>){
-                    return Value(static_cast<f64>(v));
+                    // an f32 stays one, so it writes as its own shortest text
+                    return Value(v);
                 }
                 else if constexpr(std::same_as<T, Str>){
                     return Value(v);

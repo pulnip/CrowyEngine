@@ -61,7 +61,9 @@ namespace Crowy
             else if constexpr(std::is_same_v<T, i64>){
                 return Kind::Int;
             }
-            else if constexpr(std::is_same_v<T, f64>){
+            else if constexpr(
+                std::is_same_v<T, f64> || std::is_same_v<T, f32>
+            ) {
                 return Kind::Float;
             }
             else if constexpr(std::is_same_v<T, Str>){
@@ -129,6 +131,16 @@ namespace Crowy
     }
     std::optional<f64> DOM::Value::asFloat() const noexcept{
         if(auto p = std::get_if<f64>(&value)){
+            return *p;
+        }
+        if(auto p = std::get_if<f32>(&value)) {
+            return static_cast<f64>(*p);
+        }
+
+        return std::nullopt;
+    }
+    std::optional<f32> DOM::Value::asSingle() const noexcept {
+        if(auto p = std::get_if<f32>(&value)) {
             return *p;
         }
 
@@ -262,8 +274,8 @@ namespace Crowy
         DOM::Array a;
         a.reserve(2);
 
-        a.emplace_back(static_cast<f64>(v.x));
-        a.emplace_back(static_cast<f64>(v.y));
+        a.emplace_back(v.x);
+        a.emplace_back(v.y);
 
         return DOM::Value(std::move(a));
     }
@@ -273,9 +285,9 @@ namespace Crowy
         DOM::Array a;
         a.reserve(3);
 
-        a.emplace_back(static_cast<f64>(v.x));
-        a.emplace_back(static_cast<f64>(v.y));
-        a.emplace_back(static_cast<f64>(v.z));
+        a.emplace_back(v.x);
+        a.emplace_back(v.y);
+        a.emplace_back(v.z);
 
         return DOM::Value(std::move(a));
     }
@@ -285,10 +297,10 @@ namespace Crowy
         DOM::Array a;
         a.reserve(4);
 
-        a.emplace_back(static_cast<f64>(v.x));
-        a.emplace_back(static_cast<f64>(v.y));
-        a.emplace_back(static_cast<f64>(v.z));
-        a.emplace_back(static_cast<f64>(v.w));
+        a.emplace_back(v.x);
+        a.emplace_back(v.y);
+        a.emplace_back(v.z);
+        a.emplace_back(v.w);
 
         return DOM::Value(std::move(a));
     }
