@@ -1,6 +1,6 @@
 """PaintLab's shots for the MintChoco paint deck, read by paint_record.py.
 
-A clip is about 5 s of counted 60 Hz frames. `setup` runs before frame 0,
+A clip is counted 60 Hz frames. `setup` runs before frame 0,
 `events` maps a frame index to port calls made before that frame, `animate`
 takes (frame, frame count) and returns calls for each frame, `captions` are
 (frame, text) pairs burnt in by ffmpeg, `stills` name frames to keep as PNG.
@@ -179,8 +179,21 @@ def t2_shots():
     ]
 
 
+def dolly_down(far, near, far_height, near_height, first, last, fov):
+    """a top-down camera closing in on `near` along a geometric height"""
+    def animate(frame, total):
+        u = min(max((frame - first) / max(last - first, 1), 0.0), 1.0)
+        u = u * u * (3.0 - 2.0 * u)
+        h = far_height * (near_height / far_height) ** u
+        t = [far[k] + (near[k] - far[k]) * u for k in range(3)]
+        return camera((t[0] - 0.5, t[1], h), t, fov)
+    return animate
+
+
 def t3_shots():
     seam_y = SPOT[1] + 16.0
+    # where mint, choco and the bare floor all meet, seen from straight above
+    meet = (83.0, 19.0, 0.0)
     seam = [
         shot_at(list(SPOT), seed=2024, team=0),
         shot_at(add(SPOT, (0.0, 35.0, 0.0)), seed=99, team=1),
@@ -212,21 +225,37 @@ def t3_shots():
     return [
         {
             "name": "t3_edge_modes",
-            "seconds": 5.0,
-            "setup": camera((SPOT[0], SPOT[1] - 60.0, 45.0), (SPOT[0], SPOT[1] - 22.0, 0.0), 30)
-            + [shot_at(list(SPOT), seed=2024, team=0), look("edgeMode", "Nearest")],
-            "events": {100: [look("edgeMode", "Bilinear")], 200: [look("edgeMode", "SignedDistance")]},
-            "captions": [(0, "Nearest: 텍셀 계단"), (100, "Bilinear: id가 섞여 없는 팀이 생김"), (200, "Signed distance: 서브텍셀 경계")],
-            "stills": {"t3_edge_nearest": 50, "t3_edge_bilinear": 150, "t3_edge_sdf": 250},
+            "seconds": 12.0,
+            "setup": camera((meet[0] - 0.5, meet[1], 40.0), meet, 30) + seam + [look("edgeMode", "Nearest")],
+            "events": {240: [look("edgeMode", "Bilinear")], 480: [look("edgeMode", "SignedDistance")]},
+            "captions": [
+                (0, "Nearest: 색은 깨끗하지만 경계가 텍셀 계단"),
+                (240, "색 bilinear: 계단은 흐려졌지만 바닥·옆 팀 색이 섞인 띠"),
+                (480, "Signed distance: 색은 안 섞이고 경계만 부드럽게"),
+            ],
+            "stills": {"t3_edge_nearest": 120, "t3_edge_bilinear": 360, "t3_edge_sdf": 600},
+        },
+        {
+            "name": "t3_edge_zoom",
+            "seconds": 10.0,
+            "setup": seam + [look("edgeMode", "Bilinear")],
+            "animate": dolly_down((SPOT[0], SPOT[1] + 15.0, 0.0), meet, 160.0, 12.0, 60, 360, 30),
+            "events": {420: [look("edgeMode", "SignedDistance")]},
+            "captions": [
+                (0, "색 bilinear: 섞인 띠의 폭은 1 texel"),
+                (180, "가까이 갈수록 띠도 같이 커진다"),
+                (420, "Signed distance: 확대해도 경계는 1픽셀"),
+            ],
+            "stills": {"t3_zoom_bilinear": 400, "t3_zoom_sdf": 560},
         },
         {
             "name": "t3_team_blend",
-            "seconds": 5.0,
+            "seconds": 8.0,
             "setup": camera((SPOT[0], seam_y, 30.0), (SPOT[0] + 0.01, seam_y, 0.0), 30)
             + seam + [look("teamBlend", "Naive")],
-            "events": {150: [look("teamBlend", "ConsumedCoverage")]},
-            "captions": [(0, "Naive lerp: 이음매로 바닥색이 샘"), (150, "Consumed coverage: α = cov / (1 − S)")],
-            "stills": {"t3_blend_naive": 75, "t3_blend_consumed": 225},
+            "events": {240: [look("teamBlend", "ConsumedCoverage")]},
+            "captions": [(0, "남은 구멍: 두 팀이 맞닿는 1픽셀에서 바닥색이 샘"), (240, "Consumed coverage: α = cov / (1 − S)")],
+            "stills": {"t3_blend_naive": 120, "t3_blend_consumed": 360},
             # the seam band is one pixel wide by design: twelve times larger
             "zoom": (374, 752, 160, 90),
         },
@@ -251,14 +280,26 @@ def t3_shots():
     ]
 
 
+def staged(path, stops, hold, move, target="lab"):
+    """a property resting on every whole stop, eased from one to the next"""
+    def value(frame):
+        k, u = divmod(frame, hold + move)
+        if k >= stops - 1:
+            return float(stops - 1)
+        t = min(max((u - hold) / move, 0.0), 1.0)
+        return k + t * t * (3.0 - 2.0 * t)
+    return path, value, target
+
+
 def t4_shots():
     panel = [lab("panel", "ShapeLab"), splat("seed", 5), splat("theta", 50.0), splat("shapeStage", 0.0)]
+    hold, move = 36, 54
     return [
         {
             "name": "t4_shape_morph",
-            "seconds": 5.0,
+            "seconds": (9 * hold + 8 * move) / 60.0,
             "setup": panel,
-            "animate": animate_ramps([ramp("shapeStage", 0.0, 8.0, 0, 264, "splat")]),
+            "animate": animate_ramps([staged("shapeStage", 9, hold, move, "splat")]),
             "crop": PANEL_CROP,
         },
         {
@@ -413,19 +454,20 @@ def e2e_shots():
             captions.append((frame(6), "7 스플래시"))
         return events, captions
 
-    six_events, six_captions = steps(60, False)
-    seven_events, seven_captions = steps(51, True)
+    step = 150
+    six_events, six_captions = steps(step, False)
+    seven_events, seven_captions = steps(step, True)
     return [
         {
             "name": "e2e_1to6",
-            "seconds": 6.0,
+            "seconds": 6 * step / 60.0,
             "setup": camera(eye, SPOT, 50),
             "events": six_events,
             "captions": six_captions,
         },
         {
             "name": "e2e_1to7",
-            "seconds": 6.0,
+            "seconds": 7 * step / 60.0,
             "setup": camera(eye, SPOT, 50),
             "events": seven_events,
             "captions": seven_captions,
