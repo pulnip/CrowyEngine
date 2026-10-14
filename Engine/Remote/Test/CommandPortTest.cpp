@@ -64,6 +64,23 @@ CROWY_STRUCT(PortProbe)
     .SetProperty("nested", &PortProbe::nested)
 CROWY_STRUCT_END(PortProbe)
 
+// a member whose type registers no properties and has no conversion
+struct PortOpaque{
+    i32 hidden = 0;
+};
+
+struct PortHolder{
+    f32 level = 0.5f;
+    PortOpaque opaque;
+};
+
+// clang-format off: a registration opens a namespace the formatter cannot see
+CROWY_STRUCT(PortHolder)
+    .SetProperty("level", &PortHolder::level)
+    .SetProperty("opaque", &PortHolder::opaque)
+CROWY_STRUCT_END(PortHolder)
+// clang-format on
+
 namespace
 {
     // short enough that the timeout cases finish inside a test, long enough
@@ -656,6 +673,36 @@ TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
     EXPECT_EQ(probe.roughness, 0.5f);
     EXPECT_EQ(probe.blend, PortBlend::Masked);
     EXPECT_EQ(probe.nested.amount, 0.25f);
+}
+
+TEST_F(CommandPortTest, APropertyWithNoConversionIsRefused) {
+    PortHolder holder;
+    int dirty = 0;
+    port.Expose("holder", &holder, *GetDesc<PortHolder>(), [&dirty] {
+        ++dirty;
+    });
+
+    auto read = exchange(post(
+        R"({"cmd":"get_property","args":{"target":"holder","path":"opaque"}})"
+    ));
+    EXPECT_FALSE(read.ok());
+    EXPECT_TRUE(read.error().starts_with("'opaque' is a ")) << read.error();
+    EXPECT_TRUE(read.error().ends_with(" the port cannot read"))
+        << read.error();
+
+    auto write = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"holder","path":"opaque","value":1}})"
+    ));
+    EXPECT_FALSE(write.ok());
+    EXPECT_TRUE(write.error().ends_with(" the port cannot write"))
+        << write.error();
+    EXPECT_EQ(dirty, 0);
+
+    // the rest of the object still reads
+    auto whole =
+        exchange(post(R"({"cmd":"get_property","args":{"target":"holder"}})"));
+    ASSERT_TRUE(whole.ok()) << whole.body;
+    EXPECT_EQ(whole.json.get<f32>("result.value.level"), 0.5f);
 }
 
 TEST_F(CommandPortTest, ATargetIsResolvedAtEveryRequest) {

@@ -185,11 +185,23 @@ namespace Crowy
                 return;
             }
 
+            const auto& type = resolved.desc->type;
             if(const auto* nested = NestedDesc(*resolved.desc)) {
                 SerializeProperties(*nested, resolved.member, value);
             }
+            else if(type.serialize != nullptr) {
+                type.serialize(resolved.member, value);
+            }
             else {
-                resolved.desc->type.serialize(resolved.member, value);
+                reply.Error(
+                    std::format(
+                        "'{}' is a {} the port cannot read",
+                        *path,
+                        type.name
+                    )
+                );
+
+                return;
             }
         }
         else {
@@ -245,6 +257,18 @@ namespace Crowy
             reply.Error(std::format(
                 "'{}' is a struct; set one of its properties", *path
             ));
+
+            return;
+        }
+
+        if(checked.desc->type.deserialize == nullptr) {
+            reply.Error(
+                std::format(
+                    "'{}' is a {} the port cannot write",
+                    *path,
+                    checked.desc->type.name
+                )
+            );
 
             return;
         }
