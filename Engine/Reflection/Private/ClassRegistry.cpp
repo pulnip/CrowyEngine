@@ -1,7 +1,9 @@
 #include "ClassRegistry.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <format>
+#include <optional>
 
 #include "Assert.hpp"
 #include "Object.hpp"
@@ -276,6 +278,21 @@ namespace Crowy
 
     namespace
     {
+        // "[N]" and nothing else
+        std::optional<usize> parseIndex(StrView text) {
+            if(text.size() < 3 || text.front() != '[' || text.back() != ']')
+                return std::nullopt;
+
+            usize index = 0;
+            const auto* first = text.data() + 1;
+            const auto* last = text.data() + text.size() - 1;
+            const auto [end, error] = std::from_chars(first, last, index);
+            if(error != std::errc{} || end != last)
+                return std::nullopt;
+
+            return index;
+        }
+
         template<typename Member>
         BasicResolvedProperty<Member> resolveProperty(
             Member* target,
@@ -284,41 +301,71 @@ namespace Crowy
         ) {
             BasicResolvedProperty<Member> result;
 
-            if(path.find('[') != StrView::npos) {
-                result.error =
-                    std::format("index paths are not supported: '{}'", path);
-                return result;
-            }
-
             auto* object = target;
             const TypeDesc* current = &desc;
             StrView rest = path;
             while(true) {
                 const auto dot = rest.find('.');
                 const auto segment = rest.substr(0, dot);
-                if(segment.empty()) {
+                const auto bracket = segment.find('[');
+                const auto name = segment.substr(0, bracket);
+                if(name.empty()) {
                     result.error = std::format("empty segment in '{}'", path);
                     return result;
                 }
 
-                const auto* prop = current->FindInChain(segment);
+                const auto* prop = current->FindInChain(name);
                 if(prop == nullptr) {
                     result.error = std::format(
                         "no property '{}' on '{}'",
-                        segment,
+                        name,
                         current->name
                     );
                     return result;
                 }
 
                 auto* member = prop->accessor->Get(object);
+                const auto* type = &prop->type;
+                if(bracket != StrView::npos) {
+                    const auto index = parseIndex(segment.substr(bracket));
+                    if(!index) {
+                        result.error = std::format("bad index in '{}'", path);
+                        return result;
+                    }
+
+                    const auto* list = type->list;
+                    if(list == nullptr) {
+                        result.error = std::format("'{}' is not a list", name);
+                        return result;
+                    }
+
+                    const auto count = list->count(member);
+                    if(*index >= count) {
+                        result.error = std::format(
+                            "'{}' is out of range ({} elements)",
+                            segment,
+                            count
+                        );
+                        return result;
+                    }
+
+                    if constexpr(std::is_const_v<Member>) {
+                        member = list->constElement(member, *index);
+                    }
+                    else {
+                        member = list->element(member, *index);
+                    }
+                    type = list->elementOps();
+                }
+
                 if(dot == StrView::npos) {
                     result.member = member;
-                    result.desc = prop;
+                    result.type = type;
+                    result.meta = &prop->meta;
                     return result;
                 }
 
-                const auto* nested = NestedDesc(*prop);
+                const auto* nested = NestedDesc(*type);
                 if(nested == nullptr) {
                     result.error =
                         std::format("'{}' has no properties", segment);

@@ -179,14 +179,14 @@ namespace Crowy
             }
 
             auto resolved = ResolveProperty(object, desc, *path);
-            if(resolved.desc == nullptr) {
+            if(resolved.type == nullptr) {
                 reply.Error(std::move(resolved.error));
 
                 return;
             }
 
-            const auto& type = resolved.desc->type;
-            if(const auto* nested = NestedDesc(*resolved.desc)) {
+            const auto& type = *resolved.type;
+            if(const auto* nested = NestedDesc(type)) {
                 SerializeProperties(*nested, resolved.member, value);
             }
             else if(type.serialize != nullptr) {
@@ -245,7 +245,7 @@ namespace Crowy
         const auto& desc = exposure->target.Desc();
 
         const auto checked = ResolveProperty(readable, desc, *path);
-        if(checked.desc == nullptr) {
+        if(checked.type == nullptr) {
             reply.Error(checked.error);
 
             return;
@@ -253,7 +253,7 @@ namespace Crowy
 
         // a whole-struct write would go through ApplyProperties, which writes
         // what binds before it reports the rest; the port answers per leaf
-        if(NestedDesc(*checked.desc) != nullptr) {
+        if(NestedDesc(*checked.type) != nullptr) {
             reply.Error(std::format(
                 "'{}' is a struct; set one of its properties", *path
             ));
@@ -261,12 +261,12 @@ namespace Crowy
             return;
         }
 
-        if(checked.desc->type.deserialize == nullptr) {
+        if(checked.type->deserialize == nullptr) {
             reply.Error(
                 std::format(
                     "'{}' is a {} the port cannot write",
                     *path,
-                    checked.desc->type.name
+                    checked.type->name
                 )
             );
 
@@ -278,10 +278,10 @@ namespace Crowy
             return;
 
         const auto resolved = ResolveProperty(writable, desc, *path);
-        if(!resolved.desc->type.deserialize(resolved.member, *value)) {
-            reply.Error(std::format(
-                "'{}' expects {}", *path, resolved.desc->type.name
-            ));
+        if(!resolved.type->deserialize(resolved.member, *value)) {
+            reply.Error(
+                std::format("'{}' expects {}", *path, resolved.type->name)
+            );
 
             return;
         }

@@ -315,16 +315,18 @@ namespace Crowy
     template<typename Member>
     struct BasicResolvedProperty {
         Member* member = nullptr;
-        // null on failure; error says which segment and why
-        const PropertyDesc* desc = nullptr;
+        // what member is; null on failure, and error says which segment and why
+        const TypeOps* type = nullptr;
+        // the named property's; an element shares its list's
+        const PropertyMeta* meta = nullptr;
         Str error;
     };
 
     using ResolvedProperty = BasicResolvedProperty<void>;
     using ResolvedConstProperty = BasicResolvedProperty<const void>;
 
-    // "a.b.c" from target: each interior segment must be a reflected struct;
-    // no [index], containers are not reflected
+    // "a.b[2].c" from target: each interior segment must be a reflected
+    // struct, and an [index] picks one element of a list
     ResolvedProperty ResolveProperty(void* target, const TypeDesc&, StrView path);
     ResolvedConstProperty ResolveProperty(
         const void* target,

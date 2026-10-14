@@ -452,20 +452,20 @@ TEST(Reflection, ResolvePropertyWalksDots){
     const auto& desc = *GetDesc<StructTestObject>();
 
     auto speed = ResolveProperty(&object, desc, "stats.speed");
-    ASSERT_TRUE(speed.desc != nullptr);
+    ASSERT_TRUE(speed.type != nullptr);
     EXPECT_TRUE(speed.member == &object.stats.speed);
-    EXPECT_EQ(speed.desc->name, "speed");
+    EXPECT_EQ(speed.type, GetTypeOps<f32>());
 
     auto current = ResolveProperty(&object, desc, "stats.health.current");
-    ASSERT_TRUE(current.desc != nullptr);
+    ASSERT_TRUE(current.type != nullptr);
     EXPECT_TRUE(current.member == &object.stats.health.current);
 
     // a terminal struct resolves too; it has no leaf serializer
     auto stats = ResolveProperty(&object, desc, "stats");
-    ASSERT_TRUE(stats.desc != nullptr);
+    ASSERT_TRUE(stats.type != nullptr);
     EXPECT_TRUE(stats.member == &object.stats);
-    EXPECT_TRUE(stats.desc->type.serialize == nullptr);
-    EXPECT_TRUE(NestedDesc(*stats.desc) != nullptr);
+    EXPECT_TRUE(stats.type->serialize == nullptr);
+    EXPECT_TRUE(NestedDesc(*stats.type) != nullptr);
 }
 
 // a const object resolves to const members only, so a read cannot write
@@ -475,10 +475,10 @@ TEST(Reflection, AConstObjectResolvesToAConstMember) {
 
     const auto current = ResolveProperty(&object, desc, "stats.health.current");
     static_assert(std::is_same_v<decltype(current.member), const void*>);
-    ASSERT_TRUE(current.desc != nullptr);
+    ASSERT_TRUE(current.type != nullptr);
     EXPECT_TRUE(current.member == &object.stats.health.current);
 
-    const auto* accessor = current.desc->accessor.get();
+    const auto* accessor = GetDesc<Health>()->Find("current")->accessor.get();
     static_assert(std::is_same_v<
                   decltype(accessor->Get(&object.stats.health)),
                   const void*>);
@@ -489,7 +489,7 @@ TEST(Reflection, ResolvePropertyReachesTheParent){
     InheritanceChildObject child;
 
     auto base = ResolveProperty(&child, *GetDesc<InheritanceChildObject>(), "baseValue");
-    ASSERT_TRUE(base.desc != nullptr);
+    ASSERT_TRUE(base.type != nullptr);
     EXPECT_TRUE(base.member == &child.baseValue);
 }
 
@@ -498,25 +498,25 @@ TEST(Reflection, ResolvePropertyNamesTheFailure){
     const auto& desc = *GetDesc<StructTestObject>();
 
     auto unknown = ResolveProperty(&object, desc, "nope");
-    EXPECT_TRUE(unknown.desc == nullptr);
+    EXPECT_TRUE(unknown.type == nullptr);
     EXPECT_EQ(unknown.error, "no property 'nope' on 'StructTestObject'");
 
     auto unknownNested = ResolveProperty(&object, desc, "stats.nope");
-    EXPECT_TRUE(unknownNested.desc == nullptr);
+    EXPECT_TRUE(unknownNested.type == nullptr);
     EXPECT_EQ(unknownNested.error, "no property 'nope' on 'Stats'");
 
     auto intoLeaf = ResolveProperty(&object, desc, "stats.speed.x");
-    EXPECT_TRUE(intoLeaf.desc == nullptr);
+    EXPECT_TRUE(intoLeaf.type == nullptr);
     EXPECT_EQ(intoLeaf.error, "'speed' has no properties");
 
-    EXPECT_TRUE(ResolveProperty(&object, desc, "").desc == nullptr);
-    EXPECT_TRUE(ResolveProperty(&object, desc, "stats.").desc == nullptr);
-    EXPECT_TRUE(ResolveProperty(&object, desc, ".stats").desc == nullptr);
-    EXPECT_TRUE(ResolveProperty(&object, desc, "stats..speed").desc == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, "").type == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, "stats.").type == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, ".stats").type == nullptr);
+    EXPECT_TRUE(ResolveProperty(&object, desc, "stats..speed").type == nullptr);
 
-    auto indexed = ResolveProperty(&object, desc, "stats[0]");
-    EXPECT_TRUE(indexed.desc == nullptr);
-    EXPECT_EQ(indexed.error, "index paths are not supported: 'stats[0]'");
+    auto notAList = ResolveProperty(&object, desc, "stats[0]");
+    EXPECT_TRUE(notAList.type == nullptr);
+    EXPECT_EQ(notAList.error, "'stats' is not a list");
 }
 
 TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
@@ -738,5 +738,61 @@ TEST(Reflection, AListErrorNamesTheElement) {
             "'weights' is a list and expects an array",
             "no property 'items[1].nope' on 'ListItem'"
         })
+    );
+}
+
+TEST(Reflection, AnIndexPicksAnElement) {
+    ListProbe probe{
+        .weights = {0.5f, 2.0f},
+        .items = {{.weight = 0.25f, .label = "a"}, {.label = "b"}}
+    };
+    const auto& desc = *GetDesc<ListProbe>();
+
+    const auto weight = ResolveProperty(&probe, desc, "weights[1]");
+    ASSERT_TRUE(weight.type != nullptr) << weight.error;
+    EXPECT_TRUE(weight.member == &probe.weights[1]);
+    EXPECT_EQ(weight.type, GetTypeOps<f32>());
+
+    const auto label = ResolveProperty(&probe, desc, "items[1].label");
+    ASSERT_TRUE(label.type != nullptr) << label.error;
+    EXPECT_TRUE(label.member == &probe.items[1].label);
+
+    const auto item = ResolveProperty(&probe, desc, "items[0]");
+    ASSERT_TRUE(item.type != nullptr) << item.error;
+    EXPECT_EQ(NestedDesc(*item.type), GetDesc<ListItem>());
+
+    // a list path names the whole list
+    const auto list = ResolveProperty(&probe, desc, "items");
+    ASSERT_TRUE(list.type != nullptr) << list.error;
+    EXPECT_TRUE(list.type->list != nullptr);
+
+    const ListProbe& readOnly = probe;
+    const auto constant = ResolveProperty(&readOnly, desc, "weights[0]");
+    EXPECT_TRUE(constant.member == &probe.weights[0]);
+}
+
+TEST(Reflection, AnIndexNamesItsFailure) {
+    ListProbe probe{.weights = {0.5f, 2.0f}};
+    const auto& desc = *GetDesc<ListProbe>();
+
+    EXPECT_EQ(
+        ResolveProperty(&probe, desc, "weights[2]").error,
+        "'weights[2]' is out of range (2 elements)"
+    );
+    EXPECT_EQ(
+        ResolveProperty(&probe, desc, "weights[x]").error,
+        "bad index in 'weights[x]'"
+    );
+    EXPECT_EQ(
+        ResolveProperty(&probe, desc, "weights[1]x").error,
+        "bad index in 'weights[1]x'"
+    );
+    EXPECT_EQ(
+        ResolveProperty(&probe, desc, "weights[0].x").error,
+        "'weights[0]' has no properties"
+    );
+    EXPECT_EQ(
+        ResolveProperty(&probe, desc, "items[0]").error,
+        "'items[0]' is out of range (0 elements)"
     );
 }

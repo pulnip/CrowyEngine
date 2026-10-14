@@ -275,8 +275,10 @@ TEST(EditorSession, ThePortsWriteBehavesAsADirectOne) {
     const auto* desc = GetDesc<EditorState>();
     ASSERT_NE(desc, nullptr);
     auto resolved = ResolveProperty(&f.session.State(), *desc, "cut");
-    ASSERT_NE(resolved.desc, nullptr) << resolved.error;
-    ASSERT_TRUE(resolved.desc->type.deserialize(resolved.member, DOM::Value(Str("plan"))));
+    ASSERT_NE(resolved.type, nullptr) << resolved.error;
+    ASSERT_TRUE(
+        resolved.type->deserialize(resolved.member, DOM::Value(Str("plan")))
+    );
     f.session.Sync();
 
     EXPECT_FLOAT_EQ(f.camera.position.y, 120.0f);
