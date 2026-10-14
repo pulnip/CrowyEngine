@@ -1,6 +1,10 @@
 #include "JsonLoader.hpp"
 
+#include <charconv>
+#include <cmath>
+#include <format>
 #include <fstream>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 
@@ -59,36 +63,151 @@ namespace
         }
     }
 
-    Json emitFromValue(const DOM::Value& v) {
+    // whether the bytes are well-formed UTF-8, which a JSON string must be
+    bool isUtf8(StrView text) noexcept {
+        for(usize i = 0; i < text.size();) {
+            const auto lead = static_cast<u8>(text[i]);
+            const usize length = lead < 0x80             ? 1
+                                 : (lead & 0xE0) == 0xC0 ? 2
+                                 : (lead & 0xF0) == 0xE0 ? 3
+                                 : (lead & 0xF8) == 0xF0 ? 4
+                                                         : 0;
+            if(length == 0 || i + length > text.size())
+                return false;
+
+            for(usize k = 1; k < length; ++k) {
+                if((static_cast<u8>(text[i + k]) & 0xC0) != 0x80)
+                    return false;
+            }
+            i += length;
+        }
+
+        return true;
+    }
+
+    void writeString(Str& out, StrView text) {
+        if(!isUtf8(text))
+            throw std::invalid_argument("a JSON string must be UTF-8");
+
+        out += '"';
+        for(const char c: text) {
+            switch(c) {
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\b':
+                out += "\\b";
+                break;
+            case '\f':
+                out += "\\f";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                if(static_cast<u8>(c) < 0x20)
+                    out += std::format("\\u{:04x}", static_cast<u32>(c));
+                else
+                    out += c;
+            }
+        }
+        out += '"';
+    }
+
+    // the shortest text that reads back as the same value
+    template<typename T>
+        requires std::floating_point<T>
+    void writeFloat(Str& out, T value) {
+        if(!std::isfinite(value)) {
+            out += "null";
+
+            return;
+        }
+
+        char buffer[32];
+        const auto end =
+            std::to_chars(std::begin(buffer), std::end(buffer), value).ptr;
+        const StrView text(std::begin(buffer), end);
+        out += text;
+        // without a point or an exponent it would read back as an integer
+        if(text.find_first_of(".e") == StrView::npos)
+            out += ".0";
+    }
+
+    // a pretty line break, indented four spaces a level
+    void breakLine(Str& out, JsonStyle style, u32 depth) {
+        if(style == JsonStyle::Pretty) {
+            out += '\n';
+            out.append(4 * depth, ' ');
+        }
+    }
+
+    void writeValue(Str& out, const DOM::Value& v, JsonStyle style, u32 depth) {
         using enum DOM::Value::Kind;
 
-        switch(v.kind()){
-        case Bool:
-            return *v.asBool();
-        case Int:
-            return *v.asInt();
-        case Float:
-            return *v.asFloat();
-        case String:
-            return *v.asString();
-        case Array: {
-            auto arr = Json::array();
-            for(auto& child: *v.asArray()){
-                arr.emplace_back(emitFromValue(child));
-            }
-            return arr;
-        }
-        case Table: {
-            auto obj = Json::object();
-            for(auto& [k, child]: *v.asTable()){
-                obj[k] = emitFromValue(child);
-            }
-            return obj;
-        }
+        switch(v.kind()) {
         case None:
+            out += "null";
+            break;
+        case Bool:
+            out += *v.asBool() ? "true" : "false";
+            break;
+        case Int: {
+            char buffer[24];
+            const auto end =
+                std::to_chars(std::begin(buffer), std::end(buffer), *v.asInt())
+                    .ptr;
+            out.append(std::begin(buffer), end);
             break;
         }
-        return nullptr;
+        case Float:
+            writeFloat(out, *v.asFloat());
+            break;
+        case String:
+            writeString(out, *v.asString());
+            break;
+        case Array: {
+            const auto& array = *v.asArray();
+            out += '[';
+            for(usize i = 0; i < array.size(); ++i) {
+                if(i > 0)
+                    out += ',';
+                breakLine(out, style, depth + 1);
+                writeValue(out, array[i], style, depth + 1);
+            }
+            if(!array.empty())
+                breakLine(out, style, depth);
+            out += ']';
+            break;
+        }
+        case Table: {
+            const auto& table = *v.asTable();
+            out += '{';
+            bool first = true;
+            for(const auto& [key, child]: table) {
+                if(!first)
+                    out += ',';
+                first = false;
+                breakLine(out, style, depth + 1);
+                writeString(out, key);
+                out += style == JsonStyle::Pretty ? ": " : ":";
+                writeValue(out, child, style, depth + 1);
+            }
+            if(!table.empty())
+                breakLine(out, style, depth);
+            out += '}';
+            break;
+        }
+        }
     }
 }
 
@@ -112,8 +231,9 @@ namespace Crowy
     }
 
     Str emitJson(const DOM::Value& v, JsonStyle style){
-        auto j = emitFromValue(v);
+        Str out;
+        writeValue(out, v, style, 0);
 
-        return style == JsonStyle::Pretty ? j.dump(4) : j.dump();
+        return out;
     }
 }

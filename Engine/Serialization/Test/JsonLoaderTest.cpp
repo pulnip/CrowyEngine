@@ -1,4 +1,9 @@
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+
 #include <gtest/gtest.h>
+
 #include "DOM.hpp"
 #include "JsonLoader.hpp"
 
@@ -216,6 +221,38 @@ TEST(Serializer, ATableKeepsTheOrderItWasGiven) {
     EXPECT_FALSE(table.emplace("b", i64{3}).second);
     EXPECT_FALSE(table.insert_or_assign("b", i64{4}).second);
     EXPECT_EQ(emitJson(DOM::Value(std::move(table))), R"({"b":4,"a":2})");
+}
+
+TEST(Serializer, EmitWritesTheShortestNumbersAndEscapes) {
+    const auto text =
+        R"({"a":0.1,"b":1.0,"c":1e-05,"d":-0.0,"e":9007199254740993,)"
+        R"("f":"q\"\\\n\u0001é","g":[],"h":{},"i":null,"j":true})";
+    EXPECT_EQ(emitJson(parseJsonString(text)), text);
+
+    EXPECT_EQ(emitJson(DOM::Value(std::nan(""))), "null");
+    EXPECT_EQ(
+        emitJson(DOM::Value(std::numeric_limits<f64>::infinity())),
+        "null"
+    );
+    EXPECT_THROW(emitJson(DOM::Value("\xff")), std::invalid_argument);
+}
+
+TEST(Serializer, EmitPrettyIndentsFourSpaces) {
+    const auto value =
+        parseJsonString(R"({"list":[1,{"x":2.5}],"empty":[],"none":{}})");
+    EXPECT_EQ(
+        emitJson(value, JsonStyle::Pretty),
+        "{\n"
+        "    \"list\": [\n"
+        "        1,\n"
+        "        {\n"
+        "            \"x\": 2.5\n"
+        "        }\n"
+        "    ],\n"
+        "    \"empty\": [],\n"
+        "    \"none\": {}\n"
+        "}"
+    );
 }
 
 TEST(Serializer, JsonParseErrors){

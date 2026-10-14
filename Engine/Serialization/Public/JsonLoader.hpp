@@ -13,6 +13,8 @@ namespace Crowy
     DOM::Value parseJsonString(StrView);
     DOM::Value parseJsonFile(const std::filesystem::path&);
 
+    // keys in table order, numbers in the shortest text that reads back the
+    // same, so a value always writes the same bytes; throws on non-UTF-8
     Str emitJson(const DOM::Value&, JsonStyle style = JsonStyle::Compact);
 
     template<typename T>
