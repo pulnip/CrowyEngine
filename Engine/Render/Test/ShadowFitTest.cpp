@@ -32,7 +32,7 @@ namespace
     }
 
     bool Finite(const Mat4& m) {
-        for(const auto& c: m) {
+        for(const auto& c: m.columns) {
             if(!std::isfinite(c.x) || !std::isfinite(c.y) ||
                !std::isfinite(c.z) || !std::isfinite(c.w))
                 return false;

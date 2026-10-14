@@ -8,7 +8,19 @@
 namespace Crowy
 {
     // column-major matrix
-    using Mat4 = std::array<Vec4, 4>;
+    struct Mat4 {
+        std::array<Vec4, 4> columns;
+
+        constexpr Vec4& operator[](usize column) noexcept {
+            return columns[column];
+        }
+        constexpr const Vec4& operator[](usize column) const noexcept {
+            return columns[column];
+        }
+
+        constexpr bool operator==(const Mat4&) const noexcept = default;
+    };
+    static_assert(sizeof(Mat4) == 64);
 #ifdef __cpp_lib_is_implicit_lifetime
     static_assert(std::is_implicit_lifetime_v<Mat4>);
 #else
