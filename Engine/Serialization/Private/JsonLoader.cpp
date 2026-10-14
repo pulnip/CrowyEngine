@@ -123,6 +123,13 @@ namespace
         out += '"';
     }
 
+    void writeNumberText(Str& out, StrView text) {
+        out += text;
+        // without a point or an exponent it would read back as an integer
+        if(text.find_first_of(".e") == StrView::npos)
+            out += ".0";
+    }
+
     // the shortest text that reads back as the same value
     template<typename T>
         requires std::floating_point<T>
@@ -136,11 +143,28 @@ namespace
         char buffer[32];
         const auto end =
             std::to_chars(std::begin(buffer), std::end(buffer), value).ptr;
-        const StrView text(std::begin(buffer), end);
-        out += text;
-        // without a point or an exponent it would read back as an integer
-        if(text.find_first_of(".e") == StrView::npos)
-            out += ".0";
+        writeNumberText(out, StrView(std::begin(buffer), end));
+    }
+
+    // a reader parses through an f64, which can round the shortest f32 text
+    // onto the tie between two f32; the f64 text of the same value cannot
+    void writeSingle(Str& out, f32 value) {
+        if(!std::isfinite(value)) {
+            out += "null";
+
+            return;
+        }
+
+        char buffer[32];
+        auto end =
+            std::to_chars(std::begin(buffer), std::end(buffer), value).ptr;
+        auto back = 0.0;
+        std::from_chars(std::begin(buffer), end, back);
+        if(static_cast<f32>(back) != value) {
+            const auto wide = static_cast<f64>(value);
+            end = std::to_chars(std::begin(buffer), std::end(buffer), wide).ptr;
+        }
+        writeNumberText(out, StrView(std::begin(buffer), end));
     }
 
     // a pretty line break, indented four spaces a level
@@ -171,7 +195,7 @@ namespace
         }
         case Float:
             if(const auto single = v.asSingle())
-                writeFloat(out, *single);
+                writeSingle(out, *single);
             else
                 writeFloat(out, *v.asFloat());
             break;

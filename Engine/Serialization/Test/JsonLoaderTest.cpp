@@ -254,8 +254,10 @@ TEST(Serializer, AnF32WritesAsItsOwnShortestText) {
         "0.10000000149011612"
     );
 
-    // every f32 reads back as itself
-    for(const f32 value: {0.1f, 1.0f / 3.0f, 3.4e38f, 1.4e-45f, -2.5e-7f}) {
+    // every f32 reads back as itself; 7.038531e-26 read as an f64 lands on
+    // the tie between two f32 and rounds to the other one
+    for(const f32 value:
+        {0.1f, 1.0f / 3.0f, 3.4e38f, 1.4e-45f, -2.5e-7f, 7.038531e-26f}) {
         const auto back = parseJsonString(emitJson(DOM::Value::from(value)));
         EXPECT_EQ(back.get<f32>(), value);
     }
