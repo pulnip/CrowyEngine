@@ -4,8 +4,9 @@
   edit it back or touch it, then grep `build/build-log.txt` for its compile
   line before trusting the binary.
 - `powershell -File script.ps1 -Target A,B` passes one string `A,B`.
-- Smoke runs end a sample with `Stop-Process`, which hides a crash in
-  normal shutdown; close the window or `Invoke-Port quit` to test teardown.
+- A smoke run ends a windowed sample through its own shutdown
+  (`--exit-after-frame`); only a hang or a headless example's timed run
+  ends with `Stop-Process`, which hides a crash in teardown.
 - D3D12 debug-layer messages reach stderr only with
   `CROWY_D3D_DEBUG_BREAK=1`; without it a hand run prints nothing.
 - lldb is broken (no `python311.dll`) and there is no cdb or WinDbg. For a

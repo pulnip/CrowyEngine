@@ -1,16 +1,20 @@
-# Smoke-run a sample: launch it, let it render for a while,
-# then fail on crashes, thrown exceptions, or D3D12 validation errors.
-# An early exit with status 0 counts as success (e.g. HelloCompute).
+# Smoke-run a sample: launch it, let it render a counted number of frames
+# and exit by itself, then fail on crashes, thrown exceptions, or D3D12
+# validation errors.
 #
 # usage: smoke_run.ps1 <executable> [duration-seconds] [capture-image-path]
 #
 # Same contract as Tools/smoke_run.sh:
-#   duration falls back to $env:CROWY_SMOKE_DURATION, then 5 seconds.
+#   the sample gets --exit-after-frame $env:CROWY_SMOKE_FRAMES (60), or the
+#   capture frame when that is later, and must exit within
+#   $env:CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure.
+#   a duration (the argument, else $env:CROWY_SMOKE_DURATION) instead runs
+#   a program with no frames to count for that long: an early exit with
+#   status 0 passes (HelloCompute), and so does one still running at the end.
 #   a capture path falls back to $env:CROWY_SMOKE_CAPTURE_DIR\<sample>.bmp
 #   when that directory variable is set; capture rides on the app's
 #   --capture-frame <frame> <path> argument, frame 60 unless
-#   CROWY_SMOKE_CAPTURE_AT says otherwise. A check (CROWY_SMOKE_MUST_EXIT)
-#   gets no arguments.
+#   CROWY_SMOKE_CAPTURE_AT says otherwise.
 #   a .bmp capture becomes a PNG through ImageCompareCheck.exe beside the
 #   executable (the BMP stays when that tool is not built).
 #   when Engine\*\Sample\Golden\<sample>.dx12.png (or Spike\Golden) exists,
@@ -18,14 +22,13 @@
 #   directory) and compared against it on every run, and a
 #   difference fails the run with a heat map beside the capture; the
 #   failure prints the Copy-Item that accepts the new picture.
-#   with such a golden the run waits past the duration until frame 60's
-#   capture is complete, up to $env:CROWY_SMOKE_CAPTURE_TIMEOUT seconds
-#   (60), and fails when none lands: a golden never gates on a frame it
-#   did not compare.
+#   a run that exited has written its captures; a golden whose capture is
+#   missing fails: a golden never gates on a frame it did not compare.
 #   an exit status of 77 is a skip (the sample's content is missing), and
 #   passes through for ctest's SKIP_RETURN_CODE.
-#   with CROWY_SMOKE_MUST_EXIT=1 (checks) the program must exit by itself
-#   within 60 s or the duration, whichever is longer.
+#   with CROWY_SMOKE_MUST_EXIT=1 (checks) the program gets no arguments
+#   and must exit by itself within 60 s or the duration, whichever is
+#   longer.
 #
 # Validation errors: the script sets CROWY_D3D_DEBUG_BREAK=1, which makes
 # the engine break on debug-layer errors — without a debugger that aborts
@@ -68,11 +71,8 @@ function Invoke-ImageCompare([string[]]$Arguments, [switch]$Quiet) {
     }
 }
 
-if ($Duration -le 0) {
-    $Duration = 5
-    if ($env:CROWY_SMOKE_DURATION) {
-        $Duration = [int]$env:CROWY_SMOKE_DURATION
-    }
+if ($Duration -le 0 -and $env:CROWY_SMOKE_DURATION) {
+    $Duration = [int]$env:CROWY_SMOKE_DURATION
 }
 
 if (-not $Capture -and $env:CROWY_SMOKE_CAPTURE_DIR) {
@@ -93,33 +93,22 @@ if (-not $Capture -and $expectedGolden) {
     $Capture = Join-Path $env:TEMP "crowy-smoke\$sampleName.bmp"
 }
 $mustExit = $env:CROWY_SMOKE_MUST_EXIT -eq "1"
-$captureTimeout = 60
-if ($env:CROWY_SMOKE_CAPTURE_TIMEOUT) {
-    $captureTimeout = [int]$env:CROWY_SMOKE_CAPTURE_TIMEOUT
+$timed = $Duration -gt 0 -and -not $mustExit
+$captureAt = 60
+if ($env:CROWY_SMOKE_CAPTURE_AT) {
+    $captureAt = [int]$env:CROWY_SMOKE_CAPTURE_AT
 }
-
-# a dump is written on a thread: complete once the BMP header's file size
-# matches the bytes on disk
-function Test-CaptureComplete([string]$Path) {
-    if (-not $Path -or -not (Test-Path $Path)) {
-        return $false
-    }
-    try {
-        $stream = [IO.File]::Open($Path, "Open", "Read", "ReadWrite")
-        try {
-            $header = New-Object byte[] 6
-            if ($stream.Read($header, 0, 6) -lt 6) {
-                return $false
-            }
-            return [BitConverter]::ToUInt32($header, 2) -eq $stream.Length
-        }
-        finally {
-            $stream.Dispose()
-        }
-    }
-    catch {
-        return $false
-    }
+$frames = 60
+if ($env:CROWY_SMOKE_FRAMES) {
+    $frames = [int]$env:CROWY_SMOKE_FRAMES
+}
+# a capture asks for its frame, so the run reaches it
+if ($Capture -and $captureAt -gt $frames) {
+    $frames = $captureAt
+}
+$timeout = 60
+if ($env:CROWY_SMOKE_TIMEOUT) {
+    $timeout = [int]$env:CROWY_SMOKE_TIMEOUT
 }
 
 $outLog = Join-Path $env:TEMP "crowy-smoke-$PID-out.log"
@@ -144,12 +133,12 @@ if ($Capture) {
 
 # a check is headless and may parse arguments of its own
 $launch = @{}
-if ($Capture -and -not $mustExit) {
-    $frame = "60"
-    if ($env:CROWY_SMOKE_CAPTURE_AT) {
-        $frame = $env:CROWY_SMOKE_CAPTURE_AT
+if (-not $mustExit -and -not $timed) {
+    $arguments = @("--exit-after-frame", "$frames")
+    if ($Capture) {
+        $arguments += @("--capture-frame", "$captureAt", "`"$Capture`"")
     }
-    $launch.ArgumentList = @("--capture-frame", $frame, "`"$Capture`"")
+    $launch.ArgumentList = $arguments
 }
 
 $proc = Start-Process -FilePath $App @launch `
@@ -163,25 +152,14 @@ $proc = Start-Process -FilePath $App @launch `
 $null = $proc.Handle
 
 $status = 0
-$watch = $Duration
+$watch = $timeout
 if ($mustExit) {
     $watch = [Math]::Max($Duration, 60)
 }
-$exited = $proc.WaitForExit($watch * 1000)
-if (-not $exited -and $expectedGolden -and $Capture.EndsWith(".bmp")) {
-    # a slow start has not reached frame 60 yet: wait for its capture
-    $waited = 0
-    while (-not (Test-CaptureComplete $Capture) -and $waited -lt $captureTimeout) {
-        if ($proc.WaitForExit(1000)) {
-            $exited = $true
-            break
-        }
-        $waited += 1
-    }
-    if ($waited -gt 0) {
-        Write-Host "waited $waited s past the duration for frame 60"
-    }
+elseif ($timed) {
+    $watch = $Duration
 }
+$exited = $proc.WaitForExit($watch * 1000)
 if ($exited) {
     $status = $proc.ExitCode
     if ($status -eq 77) {
@@ -195,11 +173,15 @@ if ($exited) {
     }
 }
 else {
-    # still alive after the watch window: healthy, unless it had to exit
+    # still alive after the watch window: healthy only for a timed run
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
     $proc.WaitForExit() | Out-Null
     if ($mustExit) {
         Write-Host "FAIL: did not exit within $watch s"
+        $status = 1
+    }
+    elseif (-not $timed) {
+        Write-Host "FAIL: did not exit after frame $frames within $watch s"
         $status = 1
     }
 }
@@ -231,7 +213,7 @@ if (-not $Capture) {
 }
 if (-not (Test-Path $Capture)) {
     if ($expectedGolden) {
-        Write-Host "FAIL: $($expectedGolden.FullName) exists, but frame 60 was not captured within $($Duration + $captureTimeout) s"
+        Write-Host "FAIL: $($expectedGolden.FullName) exists, but frame 60 was not captured"
         exit 1
     }
     # headless samples have no swapchain, so nothing to dump
@@ -260,8 +242,7 @@ if (-not $golden) {
 }
 $golden = $golden.FullName
 
-$captureAt = $env:CROWY_SMOKE_CAPTURE_AT
-if ($captureAt -and $captureAt -ne "60") {
+if ($captureAt -ne 60) {
     Write-Host "note: not compared with $golden (captured frame $captureAt, the golden is frame 60)"
     exit 0
 }

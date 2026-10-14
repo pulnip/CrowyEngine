@@ -7,19 +7,23 @@ and what a test has to prove.
 ## Smoke runs and goldens
 
 Every executable gets a `<Name>Smoke` test that runs it through
-`Tools/smoke_run.ps1` (macOS: `smoke_run.sh`) for 5 s
-(`CROWY_SMOKE_DURATION`). The run fails on a crash, an early nonzero exit,
-or a D3D12 debug-layer error (the script sets `CROWY_D3D_DEBUG_BREAK=1`);
-a window still open at the end passes. A check must exit by itself within
-60 s, or it fails as hung. Exit 77 is a skip: the sample's content is
-missing (`StageEditor` without `../Backlot`).
+`Tools/smoke_run.ps1` (macOS: `smoke_run.sh`). A windowed one gets
+`--exit-after-frame` and must exit by itself, shutdown included, within
+60 s (`CROWY_SMOKE_TIMEOUT`). It runs 60 frames, or the `FRAMES` its
+declaration in `cmake/sample.cmake` gives, or `CROWY_SMOKE_FRAMES`. The
+run fails on a crash, a nonzero exit, a hang, or a D3D12 debug-layer error
+(the script sets `CROWY_D3D_DEBUG_BREAK=1`). A check gets no arguments and
+must also exit within 60 s. A headless example has no frames to count and
+runs for 5 s (`CROWY_SMOKE_DURATION`), where still running at the end
+passes. Exit 77 is a skip: the sample's content is missing (`StageEditor`
+without `../Backlot`).
 
 A golden is the frame-60 picture at
 `Engine/*/{Sample,Spike}/Golden/<exe>.<dx12|metal>.png`. When one exists,
 every run captures frame 60 (the app's `--capture-frame`) and compares: to
 `%TEMP%\crowy-smoke\` by default, or to `CROWY_SMOKE_CAPTURE_DIR` when set,
-which also keeps the captures of samples without a golden. A slow start
-waits up to 60 s more for frame 60, and a golden with no frame captured
+which also keeps the captures of samples without a golden. A run that
+exited has written its captures, and a golden with no frame captured
 fails.
 
 - The comparison is `ImageCompareCheck` with `ImageTolerance`'s defaults:

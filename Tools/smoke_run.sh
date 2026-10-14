@@ -1,21 +1,23 @@
 #!/bin/sh
-# Smoke-run a sample: launch it, let it render for a while,
-# then fail on crashes, thrown exceptions, or Metal validation errors.
-# An early exit with status 0 counts as success (e.g. HelloCompute).
+# Smoke-run a sample: launch it, let it render a counted number of frames
+# and exit by itself, then fail on crashes, thrown exceptions, or Metal
+# validation errors.
 #
 # usage: smoke_run.sh <executable> [duration-seconds] [capture-image-path]
 #
-# duration falls back to $CROWY_SMOKE_DURATION, then 5 seconds, so a
-# ctest run can be stretched without reconfiguring:
-#   CROWY_SMOKE_DURATION=15 ctest --test-dir build -C Debug -L smoke
+# The sample gets --exit-after-frame $CROWY_SMOKE_FRAMES (60), or the
+# capture frame when that is later, and must exit within
+# $CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure. A
+# duration (the argument, else $CROWY_SMOKE_DURATION) instead runs a
+# program with no frames to count for that long: an early exit with status
+# 0 passes (HelloCompute), and so does one still running at the end.
 #
 # capture saves one rendered frame. Either pass a path as the third
 # argument, or set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per
 # sample:
 #   CROWY_SMOKE_CAPTURE_DIR=captures ctest --test-dir build -C Debug -L smoke
 # It rides on the app's --capture-frame <frame> <path> argument, which writes
-# a BMP; the frame is 60 unless $CROWY_SMOKE_CAPTURE_AT says otherwise. A
-# check (CROWY_SMOKE_MUST_EXIT=1) gets no arguments.
+# a BMP; the frame is 60 unless $CROWY_SMOKE_CAPTURE_AT says otherwise.
 # A .bmp capture becomes a PNG through ImageCompareCheck beside the
 # executable (the BMP stays when that tool is not built).
 #
@@ -24,23 +26,22 @@
 # directory) and compared against it on every run with
 # ImageCompareCheck's defaults, and a difference fails the run with a heat
 # map beside the capture. To accept a new picture, copy the capture over
-# the golden; the failure prints the command. With such a golden the run
-# waits past the duration until frame 60's capture is complete, up to
-# $CROWY_SMOKE_CAPTURE_TIMEOUT seconds (60), and fails when none lands: a
-# golden never gates on a frame it did not compare.
+# the golden; the failure prints the command. A run that exited has
+# written its captures; a golden whose capture is missing fails: a golden
+# never gates on a frame it did not compare.
 #
 # An exit status of 77 is a skip (the sample's content is missing) and
 # passes through for ctest's SKIP_RETURN_CODE.
 #
-# With CROWY_SMOKE_MUST_EXIT=1 (checks) the program must exit by itself
-# within 60 s or the duration, whichever is longer.
+# With CROWY_SMOKE_MUST_EXIT=1 (checks) the program gets no arguments and
+# must exit by itself within 60 s or the duration, whichever is longer.
 #
 # Run from the repository root: samples load Engine/Shader and Content
 # by relative path.
 set -u
 
 APP="$1"
-DURATION="${2:-${CROWY_SMOKE_DURATION:-5}}"
+DURATION="${2:-${CROWY_SMOKE_DURATION:-0}}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="$(basename "$APP")"
@@ -69,19 +70,23 @@ fi
 if [ -z "$CAPTURE" ] && [ -n "$EXPECTED_GOLDEN" ]; then
     CAPTURE="${TMPDIR:-/tmp}/crowy-smoke/$NAME.bmp"
 fi
-CAPTURE_TIMEOUT="${CROWY_SMOKE_CAPTURE_TIMEOUT:-60}"
-WATCH="$DURATION"
-if [ "${CROWY_SMOKE_MUST_EXIT:-}" = 1 ] && [ "$WATCH" -lt 60 ]; then
-    WATCH=60
+MUST_EXIT=0
+[ "${CROWY_SMOKE_MUST_EXIT:-}" = 1 ] && MUST_EXIT=1
+TIMED=0
+[ "$DURATION" -gt 0 ] && [ "$MUST_EXIT" -eq 0 ] && TIMED=1
+CAPTURE_AT="${CROWY_SMOKE_CAPTURE_AT:-60}"
+FRAMES="${CROWY_SMOKE_FRAMES:-60}"
+# a capture asks for its frame, so the run reaches it
+if [ -n "$CAPTURE" ] && [ "$CAPTURE_AT" -gt "$FRAMES" ]; then
+    FRAMES="$CAPTURE_AT"
 fi
-
-# a dump is written on a thread: complete once the BMP header's file size
-# (bytes 2-5, little-endian) matches the bytes on disk
-capture_complete() {
-    [ -f "$1" ] || return 1
-    HEADER_SIZE=$(od -An -t u4 -j 2 -N 4 "$1" 2>/dev/null | tr -d ' ')
-    [ -n "$HEADER_SIZE" ] && [ "$HEADER_SIZE" -eq "$(wc -c <"$1" | tr -d ' ')" ]
-}
+WATCH="${CROWY_SMOKE_TIMEOUT:-60}"
+if [ "$MUST_EXIT" -eq 1 ]; then
+    WATCH=60
+    [ "$DURATION" -gt 60 ] && WATCH="$DURATION"
+elif [ "$TIMED" -eq 1 ]; then
+    WATCH="$DURATION"
+fi
 
 LOG="${TMPDIR:-/tmp}/crowy-smoke-$$.log"
 trap 'rm -f "$LOG"' EXIT
@@ -104,8 +109,11 @@ fi
 
 # a check is headless and may parse arguments of its own
 set --
-if [ -n "$CAPTURE" ] && [ "${CROWY_SMOKE_MUST_EXIT:-}" != 1 ]; then
-    set -- --capture-frame "${CROWY_SMOKE_CAPTURE_AT:-60}" "$CAPTURE"
+if [ "$MUST_EXIT" -eq 0 ] && [ "$TIMED" -eq 0 ]; then
+    set -- --exit-after-frame "$FRAMES"
+    if [ -n "$CAPTURE" ]; then
+        set -- "$@" --capture-frame "$CAPTURE_AT" "$CAPTURE"
+    fi
 fi
 
 "$APP" "$@" >"$LOG" 2>&1 &
@@ -123,26 +131,6 @@ while [ "$ELAPSED" -lt "$WATCH" ]; do
     ELAPSED=$((ELAPSED + 1))
 done
 
-if [ "$EXITED" -eq 0 ] && [ -n "$EXPECTED_GOLDEN" ]; then
-    case "$CAPTURE" in
-    *.bmp)
-        # a slow start has not reached frame 60 yet: wait for its capture
-        WAITED=0
-        while ! capture_complete "$CAPTURE" && [ "$WAITED" -lt "$CAPTURE_TIMEOUT" ]; do
-            if ! kill -0 "$PID" 2>/dev/null; then
-                EXITED=1
-                break
-            fi
-            sleep 1
-            WAITED=$((WAITED + 1))
-        done
-        if [ "$WAITED" -gt 0 ]; then
-            echo "waited $WAITED s past the duration for frame 60"
-        fi
-        ;;
-    esac
-fi
-
 if [ "$EXITED" -eq 1 ]; then
     wait "$PID"
     STATUS=$?
@@ -155,11 +143,14 @@ if [ "$EXITED" -eq 1 ]; then
         echo "FAIL: exited early with status $STATUS" >&2
     fi
 else
-    # still alive after the watch window: healthy, unless it had to exit
+    # still alive after the watch window: healthy only for a timed run
     kill "$PID" 2>/dev/null
     wait "$PID" 2>/dev/null
-    if [ "${CROWY_SMOKE_MUST_EXIT:-}" = 1 ]; then
+    if [ "$MUST_EXIT" -eq 1 ]; then
         echo "FAIL: did not exit within $WATCH s" >&2
+        STATUS=1
+    elif [ "$TIMED" -eq 0 ]; then
+        echo "FAIL: did not exit after frame $FRAMES within $WATCH s" >&2
         STATUS=1
     fi
 fi
@@ -180,7 +171,7 @@ if [ -z "$CAPTURE" ]; then
 fi
 if [ ! -f "$CAPTURE" ]; then
     if [ -n "$EXPECTED_GOLDEN" ]; then
-        echo "FAIL: $EXPECTED_GOLDEN exists, but frame 60 was not captured within $((DURATION + CAPTURE_TIMEOUT)) s" >&2
+        echo "FAIL: $EXPECTED_GOLDEN exists, but frame 60 was not captured" >&2
         exit 1
     fi
     # headless samples have no swapchain, so nothing to dump
@@ -213,8 +204,8 @@ if [ -z "$GOLDEN" ]; then
     exit 0
 fi
 
-if [ "${CROWY_SMOKE_CAPTURE_AT:-60}" != 60 ]; then
-    echo "note: not compared with $GOLDEN (captured frame $CROWY_SMOKE_CAPTURE_AT, the golden is frame 60)" >&2
+if [ "$CAPTURE_AT" != 60 ]; then
+    echo "note: not compared with $GOLDEN (captured frame $CAPTURE_AT, the golden is frame 60)" >&2
     exit 0
 fi
 if [ ! -x "$TOOL" ]; then

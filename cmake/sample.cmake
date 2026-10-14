@@ -13,7 +13,7 @@
 set(CROWY_APP_FRAMEWORK_DIR "${CMAKE_SOURCE_DIR}/Engine/RHI/Sample")
 
 function(crowy_declare_executable NAME)
-    cmake_parse_arguments(ARG "FRAMEWORK" "CATEGORY" "SOURCES;DEPENDS" ${ARGN})
+    cmake_parse_arguments(ARG "FRAMEWORK" "CATEGORY;FRAMES" "SOURCES;DEPENDS" ${ARGN})
 
     add_executable(${NAME}
         ${ARG_SOURCES}
@@ -49,8 +49,8 @@ function(crowy_declare_executable NAME)
 
     # launch-and-watch smoke test (see Tools/smoke_run.sh|.ps1);
     # registered here so every new executable gets one automatically.
-    # duration and frame capture come from CROWY_SMOKE_* environment
-    # variables read by the scripts, so no values are baked in here.
+    # a windowed one exits by itself after FRAMES frames (the scripts'
+    # default when not given); the rest comes from CROWY_SMOKE_* variables.
     if(APPLE)
         set(SMOKE_COMMAND
             "${CMAKE_SOURCE_DIR}/Tools/smoke_run.sh"
@@ -81,13 +81,19 @@ function(crowy_declare_executable NAME)
             # scripts pass it through
             SKIP_RETURN_CODE 77
         )
+        # appended: a caller may set more of the environment after this
+        if(ARG_FRAMES)
+            set_property(TEST ${NAME}Smoke
+                APPEND PROPERTY ENVIRONMENT "CROWY_SMOKE_FRAMES=${ARG_FRAMES}"
+            )
+        endif()
     endif()
 endfunction()
 
 # windowed, and shows something. HEADLESS is the one exception that computes
 # and exits, so it needs neither AppFramework nor a window.
 function(crowy_declare_example NAME)
-    cmake_parse_arguments(ARG "HEADLESS" "" "SOURCES;DEPENDS" ${ARGN})
+    cmake_parse_arguments(ARG "HEADLESS" "FRAMES" "SOURCES;DEPENDS" ${ARGN})
 
     set(FRAMEWORK FRAMEWORK)
     if(ARG_HEADLESS)
@@ -96,21 +102,29 @@ function(crowy_declare_example NAME)
 
     crowy_declare_executable(${NAME}
         CATEGORY example
+        FRAMES ${ARG_FRAMES}
         ${FRAMEWORK}
     SOURCES
         ${ARG_SOURCES}
     DEPENDS
         ${ARG_DEPENDS}
     )
+    if(ARG_HEADLESS AND TEST ${NAME}Smoke)
+        # no frames to count, so it runs for a time instead
+        set_property(TEST ${NAME}Smoke
+            APPEND PROPERTY ENVIRONMENT "CROWY_SMOKE_DURATION=5"
+        )
+    endif()
 endfunction()
 
 # windowed; pins a semantics difference between the backends, so the picture
 # it draws is the assertion.
 function(crowy_declare_spike NAME)
-    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
+    cmake_parse_arguments(ARG "" "FRAMES" "SOURCES;DEPENDS" ${ARGN})
 
     crowy_declare_executable(${NAME}
         CATEGORY spike
+        FRAMES ${ARG_FRAMES}
         FRAMEWORK
     SOURCES
         ${ARG_SOURCES}
@@ -133,9 +147,8 @@ function(crowy_declare_check NAME)
     )
     if(TEST ${NAME}Smoke)
         # a check that outlives the watch window is hung, not healthy
-        set_tests_properties(${NAME}Smoke
-        PROPERTIES
-            ENVIRONMENT "CROWY_SMOKE_MUST_EXIT=1"
+        set_property(TEST ${NAME}Smoke
+            APPEND PROPERTY ENVIRONMENT "CROWY_SMOKE_MUST_EXIT=1"
         )
     endif()
 endfunction()

@@ -131,14 +131,6 @@ set_source_files_properties(StageEditor.cpp
 PROPERTIES
     COMPILE_DEFINITIONS "CROWY_BACKLOT_DIR=\"${CROWY_BACKLOT_DIR}\""
 )
-if(TEST StageEditorSmoke)
-    # the set loads for about 2.4 s in Debug before frame 1
-    set_tests_properties(StageEditorSmoke
-    PROPERTIES
-        ENVIRONMENT "CROWY_SMOKE_DURATION=20"
-    )
-endif()
-
 # every cut against its golden through the command port, which only
 # Debug builds open; skipped when Backlot is not the stamped commit
 set(STAGE_CUTS_OUT "${CMAKE_SOURCE_DIR}/captures/stage/ctest")

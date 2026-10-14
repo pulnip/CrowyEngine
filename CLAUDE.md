@@ -82,7 +82,8 @@ powershell -NoProfile -File Tools/build.ps1 -Status
   running at the same time needs its own port. `--hold` starts paused.
   `--capture-frame <frame> <path>` (any build, repeatable) writes that
   frame as a BMP and runs every frame as a fixed step; the smokes capture
-  frame 60 this way.
+  frame 60 this way. `--exit-after-frame <frame>` quits after presenting
+  that frame; every windowed smoke ends this way.
   Drive it with `. Tools/port.ps1` (`Wait-Port`, `Set-PortProperty`,
   `Get-PortProperty`, `Save-PortFrame`, `Invoke-Port quit`).
 - On Windows, read `docs/windows.md` before debugging a crash, a silent
