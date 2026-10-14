@@ -113,6 +113,45 @@ TEST(RuntimeConfig, CommandLineRefusesAFrameCaptureItCannotTake) {
     refused(captureFlag, sixty, path, captureFlag, ninety, path);
 }
 
+TEST(RuntimeConfig, CommandLineTakesAnExitFrame) {
+    RuntimeConfig config;
+    EXPECT_FALSE(config.exitAfterFrame.has_value());
+
+    static char exitFlag[] = "--exit-after-frame";
+    static char sixty[] = "60";
+    static char captureFlag[] = "--capture-frame";
+    static char path[] = "a.bmp";
+    applyCommandLine(
+        config,
+        std::array{exitFlag, sixty, captureFlag, sixty, path}
+    );
+    EXPECT_EQ(config.exitAfterFrame, 60u);
+}
+
+TEST(RuntimeConfig, CommandLineRefusesAnExitItCannotTake) {
+    static char exitFlag[] = "--exit-after-frame";
+    static char thirty[] = "30";
+    static char zero[] = "0";
+    static char word[] = "sixty";
+    static char captureFlag[] = "--capture-frame";
+    static char sixty[] = "60";
+    static char path[] = "a.bmp";
+
+    const auto refused = [](auto... args) {
+        RuntimeConfig config;
+        EXPECT_THROW(
+            applyCommandLine(config, std::array{args...}),
+            std::runtime_error
+        );
+    };
+    refused(exitFlag);
+    refused(exitFlag, zero);
+    refused(exitFlag, word);
+    // a capture past the exit would never be written; either order is caught
+    refused(exitFlag, thirty, captureFlag, sixty, path);
+    refused(captureFlag, sixty, path, exitFlag, thirty);
+}
+
 TEST(RuntimeConfig, CommandLineTakesHold){
     RuntimeConfig config;
     EXPECT_FALSE(config.hold);

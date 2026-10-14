@@ -89,7 +89,8 @@ namespace Crowy
 
     void applyCommandLine(RuntimeConfig& config, std::span<char* const> args){
         constexpr auto Usage = "usage: <app> [--config <path>] [--hold] "
-                               "[--capture-frame <frame> <path>]...";
+                               "[--capture-frame <frame> <path>]... "
+                               "[--exit-after-frame <frame>]";
 
         // the argument after a flag that takes one
         const auto valueOf = [&](usize& i, StrView flag) {
@@ -100,6 +101,25 @@ namespace Crowy
             }
             return args[++i];
         };
+        // frames count from 1
+        const auto frameOf = [&](usize& i, StrView flag) {
+            const StrView text = valueOf(i, flag);
+            u64 frame = 0;
+            const auto [end, error] =
+                std::from_chars(text.data(), text.data() + text.size(), frame);
+            if(error != std::errc{} || end != text.data() + text.size() ||
+               frame == 0) {
+                throw std::runtime_error(
+                    std::format(
+                        "'{}' needs a frame from 1, not '{}'\n{}",
+                        flag,
+                        text,
+                        Usage
+                    )
+                );
+            }
+            return frame;
+        };
 
         for(usize i = 0; i < args.size(); ++i){
             const StrView arg = args[i];
@@ -108,27 +128,14 @@ namespace Crowy
                 continue;
             }
             if(arg == "--capture-frame") {
-                const StrView text = valueOf(i, arg);
-                u64 frame = 0;
-                const auto [end, error] = std::from_chars(
-                    text.data(),
-                    text.data() + text.size(),
-                    frame
-                );
-                if(error != std::errc{} || end != text.data() + text.size() ||
-                   frame == 0) {
-                    throw std::runtime_error(
-                        std::format(
-                            "'{}' needs a frame from 1, not '{}'\n{}",
-                            arg,
-                            text,
-                            Usage
-                        )
-                    );
-                }
+                const auto frame = frameOf(i, arg);
                 config.captures.push_back(
                     FrameCaptureConfig{.frame = frame, .path = valueOf(i, arg)}
                 );
+                continue;
+            }
+            if(arg == "--exit-after-frame") {
+                config.exitAfterFrame = frameOf(i, arg);
                 continue;
             }
             if(arg != "--config"){
@@ -164,6 +171,23 @@ namespace Crowy
                             "two '--capture-frame' share frame {} or '{}'\n{}",
                             one.frame,
                             one.path,
+                            Usage
+                        )
+                    );
+                }
+            }
+        }
+
+        // a capture the run never reaches would be dropped without a word
+        if(const auto exit = config.exitAfterFrame) {
+            for(const auto& capture: captures) {
+                if(capture.frame > *exit) {
+                    throw std::runtime_error(
+                        std::format(
+                            "the capture at frame {} comes after the exit at "
+                            "frame {}\n{}",
+                            capture.frame,
+                            *exit,
                             Usage
                         )
                     );

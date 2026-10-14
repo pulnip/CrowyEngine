@@ -62,6 +62,7 @@ namespace Crowy
         FrameProfiler profiler;
 
         bool imguiEnabled = false;
+        std::optional<u64> exitAfterFrame;
 
     public:
         Impl(const RuntimeConfig&, RHIDevice&);
@@ -107,7 +108,7 @@ namespace Crowy
         , framePacer(device)
         , cmdListPool(device)
         , profiler(config, device)
-    {
+        , exitAfterFrame(config.exitAfterFrame) {
         RHITextureCreateDesc backBufferDesc{
             .width = config.window.width,
             .height = config.window.height,
@@ -239,6 +240,9 @@ namespace Crowy
 
             mainLoop.OnFrameEnd(profiler.EndFrame(cmdListPool.GetFrameStats()));
             if(profiler.ShouldStop()) [[unlikely]]
+                return;
+            if(exitAfterFrame.has_value() && frame >= *exitAfterFrame)
+                [[unlikely]]
                 return;
         }
     }

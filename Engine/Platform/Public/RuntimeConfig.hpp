@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -66,6 +67,9 @@ namespace Crowy
         bool hold = false;
         // argv only: --capture-frame <frame> <path>, once per frame
         std::vector<FrameCaptureConfig> captures;
+        // argv only: --exit-after-frame <frame> ends the loop once that frame
+        // is presented, so a run's length is counted, not timed
+        std::optional<u64> exitAfterFrame;
     };
 
     template<>
