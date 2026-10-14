@@ -1,3 +1,5 @@
+#include <vector>
+
 #include <gtest/gtest.h>
 #include "ClassRegistry.hpp"
 #include "Object.hpp"
@@ -127,9 +129,10 @@ TEST(PropertyWalker, TreeShape){
     EXPECT_EQ(title->label, "title");
     EXPECT_EQ(title->str, "untitled");
 
+    // a leaf with no widget of its own shows what it holds
     auto* flags = std::get_if<Text>(&root->children[7]);
     ASSERT_TRUE(flags != nullptr);
-    EXPECT_TRUE(flags->data.starts_with("unsupported:"));
+    EXPECT_EQ(flags->data, "flags: 0");
 
     auto* nested = std::get_if<Collapsing>(&root->children[8]);
     ASSERT_TRUE(nested != nullptr);
@@ -352,4 +355,106 @@ TEST(PropertyWalker, ATypeNeverRegisteredStops) {
         ),
         "a type that was never registered"
     );
+}
+
+struct WalkerList {
+    std::vector<f32> weights{0.5f, 1.0f};
+    std::vector<WalkerNested> parts{WalkerNested{}};
+};
+
+// clang-format off: a registration opens a namespace the formatter cannot see
+CROWY_STRUCT(WalkerList)
+    .SetProperty("weights", &WalkerList::weights)
+        .SetUIRange(0.0f, 2.0f)
+    .SetProperty("parts", &WalkerList::parts)
+CROWY_STRUCT_END(WalkerList)
+// clang-format on
+
+TEST(PropertyWalker, AListShowsItsElementsAndALengthControl) {
+    WalkerList list;
+    auto tree = buildPropertyTree("List", &list, *GetDesc<WalkerList>(), [] {});
+    auto& root = std::get<Collapsing>(tree);
+    ASSERT_EQ(root.children.size(), 2u);
+
+    auto& weights = std::get<Collapsing>(root.children[0]);
+    EXPECT_EQ(weights.label, "weights (2)");
+    EXPECT_EQ(weights.scopeId, &list.weights);
+    ASSERT_EQ(weights.children.size(), 4u);
+
+    // an element takes the list's range
+    auto& second = std::get<Slider>(weights.children[1]);
+    EXPECT_EQ(second.label, "[1]");
+    EXPECT_EQ(second.v, 1.0f);
+    EXPECT_EQ(second.v_max, 2.0f);
+    EXPECT_EQ(std::get<TextButton>(weights.children[2]).label, "+");
+    EXPECT_EQ(std::get<TextButton>(weights.children[3]).label, "-");
+
+    auto& parts = std::get<Collapsing>(root.children[1]);
+    auto& part = std::get<Collapsing>(parts.children[0]);
+    EXPECT_EQ(part.label, "[0]");
+    EXPECT_EQ(std::get<DragFloat>(part.children[0]).v, 0.25f);
+}
+
+TEST(PropertyWalker, AListElementAndItsLengthAreWritten) {
+    WalkerList list;
+    int dirty = 0;
+    UIContext ctx;
+    auto tree =
+        buildPropertyTree("List", &list, *GetDesc<WalkerList>(), [&dirty] {
+            ++dirty;
+        });
+    auto& root = std::get<Collapsing>(tree);
+    auto& weights = std::get<Collapsing>(root.children[0]);
+
+    std::get<Slider>(weights.children[1]).onChanged(ctx, 1.5f);
+    EXPECT_EQ(list.weights, (std::vector<f32>{0.5f, 1.5f}));
+
+    auto& parts = std::get<Collapsing>(root.children[1]);
+    auto& part = std::get<Collapsing>(parts.children[0]);
+    std::get<DragFloat>(part.children[0]).onChanged(ctx, 0.75f);
+    EXPECT_EQ(list.parts[0].amount, 0.75f);
+
+    std::get<TextButton>(weights.children[2]).onPressed(ctx);
+    EXPECT_EQ(list.weights, (std::vector<f32>{0.5f, 1.5f, 0.0f}));
+    EXPECT_EQ(dirty, 3);
+
+    // a shorter list drops the widget's element, and an empty one stays
+    std::get<TextButton>(weights.children[3]).onPressed(ctx);
+    std::get<TextButton>(weights.children[3]).onPressed(ctx);
+    std::get<Slider>(weights.children[1]).onChanged(ctx, 0.25f);
+    EXPECT_EQ(list.weights, (std::vector<f32>{0.5f}));
+
+    std::get<TextButton>(weights.children[3]).onPressed(ctx);
+    std::get<TextButton>(weights.children[3]).onPressed(ctx);
+    EXPECT_TRUE(list.weights.empty());
+    EXPECT_EQ(dirty, 6);
+}
+
+TEST(PropertyWalker, AListEditToAGoneTargetIsDropped) {
+    WalkerList list;
+    WalkerList* current = &list;
+    int dirty = 0;
+    UIContext ctx;
+    auto tree = buildPropertyTree(
+        "List",
+        PropertyTarget(
+            [&current]() -> const void* { return current; },
+            [&current]() -> void* { return current; },
+            *GetDesc<WalkerList>()
+        ),
+        [&dirty] { ++dirty; }
+    );
+    auto& root = std::get<Collapsing>(tree);
+    auto& weights = std::get<Collapsing>(root.children[0]);
+    auto& parts = std::get<Collapsing>(root.children[1]);
+    auto& part = std::get<Collapsing>(parts.children[0]);
+
+    current = nullptr;
+    std::get<Slider>(weights.children[1]).onChanged(ctx, 1.5f);
+    std::get<TextButton>(weights.children[2]).onPressed(ctx);
+    std::get<TextButton>(weights.children[3]).onPressed(ctx);
+    std::get<DragFloat>(part.children[0]).onChanged(ctx, 0.75f);
+    EXPECT_EQ(list.weights, (std::vector<f32>{0.5f, 1.0f}));
+    EXPECT_EQ(list.parts[0].amount, 0.25f);
+    EXPECT_EQ(dirty, 0);
 }
