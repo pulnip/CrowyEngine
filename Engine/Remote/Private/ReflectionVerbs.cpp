@@ -1,9 +1,12 @@
 #include "ReflectionVerbs.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <format>
 #include <utility>
 #include <vector>
+
+#include "Assert.hpp"
 
 namespace Crowy
 {
@@ -46,6 +49,38 @@ namespace Crowy
 
         DOM::Value describeProperties(const TypeDesc& desc);
 
+        // what a value of the type is: its name, and its enumerators, its
+        // element or its properties
+        void describeType(const TypeOps& type, DOM::Table& entry) {
+            const auto* nested = NestedDesc(type);
+            // a struct's TypeOps name is the compiler's; the desc has the
+            // registered one
+            entry.emplace(
+                "type",
+                nested != nullptr ? nested->name : Str(type.name)
+            );
+
+            if(type.enumerators != nullptr) {
+                DOM::Array names;
+                for(const auto& enumerator: type.enumerators()) {
+                    names.emplace_back(enumerator.name);
+                }
+
+                entry.emplace("enumerators", std::move(names));
+            }
+
+            if(type.list != nullptr) {
+                DOM::Table element;
+                describeType(*type.list->elementOps(), element);
+
+                entry.emplace("element", std::move(element));
+            }
+
+            if(nested != nullptr) {
+                entry.emplace("properties", describeProperties(*nested));
+            }
+        }
+
         // parents first, then own properties in declaration order,
         // with the metadata a generic client needs to build a control
         void appendDescriptions(const TypeDesc& desc, DOM::Array& out) {
@@ -54,16 +89,9 @@ namespace Crowy
             }
 
             for(const auto& prop: desc.properties) {
-                const auto* nested = NestedDesc(prop);
-
                 DOM::Table entry;
                 entry.emplace("name", prop.name);
-                // a struct's TypeOps name is the compiler's; the desc has the
-                // registered one
-                entry.emplace(
-                    "type",
-                    nested != nullptr ? nested->name : Str(prop.type.name)
-                );
+                describeType(prop.type, entry);
 
                 if(prop.meta.uiRange) {
                     DOM::Array range;
@@ -77,19 +105,6 @@ namespace Crowy
                     entry.emplace("tooltip", prop.meta.tooltip);
                 }
 
-                if(prop.type.enumerators != nullptr) {
-                    DOM::Array names;
-                    for(const auto& enumerator: prop.type.enumerators()) {
-                        names.emplace_back(enumerator.name);
-                    }
-
-                    entry.emplace("enumerators", std::move(names));
-                }
-
-                if(nested != nullptr) {
-                    entry.emplace("properties", describeProperties(*nested));
-                }
-
                 out.emplace_back(std::move(entry));
             }
         }
@@ -99,6 +114,37 @@ namespace Crowy
             appendDescriptions(desc, properties);
 
             return DOM::Value(std::move(properties));
+        }
+
+        // what writing the value would report, found on a scratch value of
+        // the type, so a refused write changes nothing
+        PropertyErrors tryValue(
+            const TypeOps& type,
+            const DOM::Value& value,
+            StrView path
+        ) {
+            CROWY_ASSERT(type.align <= alignof(std::max_align_t));
+            std::vector<std::max_align_t> storage(
+                type.size / sizeof(std::max_align_t) + 1
+            );
+            auto* scratch = storage.data();
+
+            type.construct(scratch);
+            auto errors = ApplyValue(type, scratch, value, path);
+            type.destroy(scratch);
+
+            return errors;
+        }
+
+        Str joinErrors(const PropertyErrors& errors) {
+            Str joined;
+            for(const auto& error: errors) {
+                if(!joined.empty())
+                    joined += "; ";
+                joined += error;
+            }
+
+            return joined;
         }
     }
 
@@ -186,13 +232,7 @@ namespace Crowy
             }
 
             const auto& type = *resolved.type;
-            if(const auto* nested = NestedDesc(type)) {
-                SerializeProperties(*nested, resolved.member, value);
-            }
-            else if(type.serialize != nullptr) {
-                type.serialize(resolved.member, value);
-            }
-            else {
+            if(!SerializeValue(type, resolved.member, value)) {
                 reply.Error(
                     std::format(
                         "'{}' is a {} the port cannot read",
@@ -257,6 +297,34 @@ namespace Crowy
             reply.Error(std::format(
                 "'{}' is a struct; set one of its properties", *path
             ));
+
+            return;
+        }
+
+        // a list is written whole, as the inspector's add and remove do
+        if(checked.type->list != nullptr) {
+            const auto errors = tryValue(*checked.type, *value, *path);
+            if(!errors.empty()) {
+                reply.Error(joinErrors(errors));
+
+                return;
+            }
+
+            const auto writable =
+                present(exposure->target.Write(), args, reply);
+            if(writable == nullptr)
+                return;
+
+            const auto resolved = ResolveProperty(writable, desc, *path);
+            const auto written =
+                ApplyValue(*resolved.type, resolved.member, *value, *path);
+            CROWY_ASSERT(written.empty(), "the scratch write passed");
+
+            if(exposure->onDirty) {
+                exposure->onDirty();
+            }
+
+            reply.Ok(DOM::Table{});
 
             return;
         }

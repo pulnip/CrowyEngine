@@ -212,47 +212,6 @@ namespace Crowy
 
     namespace
     {
-        // false when the type has nothing to write
-        bool serializeValue(
-            const TypeOps& type,
-            const void* member,
-            DOM::Value& out
-        ) {
-            if(const auto* nested = NestedDesc(type)) {
-                SerializeProperties(*nested, member, out);
-
-                return true;
-            }
-            if(const auto* list = type.list) {
-                const auto& element = *list->elementOps();
-                const auto count = list->count(member);
-
-                DOM::Array items;
-                items.reserve(count);
-                for(usize i = 0; i < count; ++i) {
-                    // an element with nothing to write is null, so the
-                    // indices still line up
-                    DOM::Value item;
-                    serializeValue(
-                        element,
-                        list->constElement(member, i),
-                        item
-                    );
-                    items.push_back(std::move(item));
-                }
-                out = DOM::Value(std::move(items));
-
-                return true;
-            }
-            if(type.serialize != nullptr) {
-                type.serialize(member, out);
-
-                return true;
-            }
-
-            return false;
-        }
-
         void appendProperties(const TypeDesc& desc, const void* object, DOM::Table& table){
             if(desc.parent != nullptr){
                 appendProperties(*desc.parent, object, table);
@@ -261,13 +220,62 @@ namespace Crowy
             for(const auto& prop: desc.properties){
                 const void* member = prop.accessor->Get(object);
                 DOM::Value value;
-                if(!serializeValue(prop.type, member, value))
+                if(!SerializeValue(prop.type, member, value))
                     continue;
 
                 // the most derived declaration wins a shadowed name
                 table.insert_or_assign(prop.name, std::move(value));
             }
         }
+    }
+
+    PropertyErrors ApplyValue(
+        const TypeOps& type,
+        void* member,
+        const DOM::Value& value,
+        StrView path
+    ) {
+        PropertyErrors errors;
+        applyValue(type, member, value, path, errors);
+        std::ranges::sort(errors);
+
+        return errors;
+    }
+
+    bool SerializeValue(
+        const TypeOps& type,
+        const void* member,
+        DOM::Value& out
+    ) {
+        if(const auto* nested = NestedDesc(type)) {
+            SerializeProperties(*nested, member, out);
+
+            return true;
+        }
+        if(const auto* list = type.list) {
+            const auto& element = *list->elementOps();
+            const auto count = list->count(member);
+
+            DOM::Array items;
+            items.reserve(count);
+            for(usize i = 0; i < count; ++i) {
+                // an element with nothing to write is null, so the
+                // indices still line up
+                DOM::Value item;
+                SerializeValue(element, list->constElement(member, i), item);
+                items.push_back(std::move(item));
+            }
+            out = DOM::Value(std::move(items));
+
+            return true;
+        }
+        if(type.serialize != nullptr) {
+            type.serialize(member, out);
+
+            return true;
+        }
+
+        return false;
     }
 
     void SerializeProperties(const TypeDesc& desc, const void* object, DOM::Value& out){

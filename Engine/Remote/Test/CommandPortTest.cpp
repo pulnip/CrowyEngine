@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -79,6 +80,18 @@ CROWY_STRUCT(PortHolder)
     .SetProperty("level", &PortHolder::level)
     .SetProperty("opaque", &PortHolder::opaque)
 CROWY_STRUCT_END(PortHolder)
+// clang-format on
+
+struct PortList {
+    std::vector<f32> weights{0.5f, 1.0f};
+    std::vector<PortNested> parts{PortNested{}};
+};
+
+// clang-format off: a registration opens a namespace the formatter cannot see
+CROWY_STRUCT(PortList)
+    .SetProperty("weights", &PortList::weights)
+    .SetProperty("parts", &PortList::parts)
+CROWY_STRUCT_END(PortList)
 // clang-format on
 
 namespace
@@ -703,6 +716,85 @@ TEST_F(CommandPortTest, APropertyWithNoConversionIsRefused) {
         exchange(post(R"({"cmd":"get_property","args":{"target":"holder"}})"));
     ASSERT_TRUE(whole.ok()) << whole.body;
     EXPECT_EQ(whole.json.get<f32>("result.value.level"), 0.5f);
+}
+
+TEST_F(CommandPortTest, AListIsDescribedReadAndWritten) {
+    PortList list;
+    int dirty = 0;
+    port.Expose("list", &list, *GetDesc<PortList>(), [&dirty] { ++dirty; });
+
+    auto described =
+        exchange(post(R"({"cmd":"describe","args":{"target":"list"}})"));
+    ASSERT_TRUE(described.ok()) << described.body;
+    const auto& json = described.json;
+    EXPECT_EQ(json.get<Str>("result.properties[0].type"), "list");
+    EXPECT_EQ(json.get<Str>("result.properties[0].element.type"), "f32");
+    EXPECT_EQ(json.get<Str>("result.properties[1].element.type"), "PortNested");
+    EXPECT_EQ(
+        json.get<Str>("result.properties[1].element.properties[0].name"),
+        "amount"
+    );
+
+    auto whole = exchange(post(
+        R"({"cmd":"get_property","args":{"target":"list","path":"weights"}})"
+    ));
+    ASSERT_TRUE(whole.ok()) << whole.body;
+    EXPECT_EQ(whole.json.get<Vec2>("result.value"), Vec2(0.5f, 1.0f));
+
+    auto element = exchange(post(
+        R"({"cmd":"get_property","args":{"target":"list","path":"parts[0].amount"}})"
+    ));
+    ASSERT_TRUE(element.ok()) << element.body;
+    EXPECT_EQ(element.json.get<f32>("result.value"), 0.25f);
+
+    auto one = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"list","path":"weights[0]","value":2}})"
+    ));
+    ASSERT_TRUE(one.ok()) << one.body;
+    EXPECT_EQ(list.weights, (std::vector<f32>{2.0f, 1.0f}));
+
+    // a whole list takes the length it is given
+    auto longer = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"list","path":"weights","value":[3,4,5]}})"
+    ));
+    ASSERT_TRUE(longer.ok()) << longer.body;
+    EXPECT_EQ(list.weights, (std::vector<f32>{3.0f, 4.0f, 5.0f}));
+
+    auto parts = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"list","path":"parts","value":[{"amount":0.5},{}]}})"
+    ));
+    ASSERT_TRUE(parts.ok()) << parts.body;
+    ASSERT_EQ(list.parts.size(), 2u);
+    EXPECT_EQ(list.parts[0].amount, 0.5f);
+    EXPECT_EQ(list.parts[1].amount, 0.25f);
+    EXPECT_EQ(dirty, 3);
+}
+
+TEST_F(CommandPortTest, ARefusedListWriteChangesNothing) {
+    PortList list;
+    int dirty = 0;
+    port.Expose("list", &list, *GetDesc<PortList>(), [&dirty] { ++dirty; });
+
+    auto bad = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"list","path":"weights","value":[1,"x",true]}})"
+    ));
+    EXPECT_EQ(
+        bad.error(),
+        "'weights[1]' expects f32; 'weights[2]' expects f32"
+    );
+
+    auto notAnArray = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"list","path":"weights","value":1}})"
+    ));
+    EXPECT_EQ(notAnArray.error(), "'weights' is a list and expects an array");
+
+    auto outOfRange = exchange(post(
+        R"({"cmd":"set_property","args":{"target":"list","path":"weights[2]","value":1}})"
+    ));
+    EXPECT_EQ(outOfRange.error(), "'weights[2]' is out of range (2 elements)");
+
+    EXPECT_EQ(list.weights, (std::vector<f32>{0.5f, 1.0f}));
+    EXPECT_EQ(dirty, 0);
 }
 
 TEST_F(CommandPortTest, ATargetIsResolvedAtEveryRequest) {

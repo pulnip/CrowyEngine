@@ -294,6 +294,17 @@ namespace Crowy
     // the same walk in the other direction, into one flat table
     void SerializeProperties(const TypeDesc&, const void* object, DOM::Value& out);
 
+    // one value as a property of its type is applied, its errors under path
+    [[nodiscard]] PropertyErrors ApplyValue(
+        const TypeOps&,
+        void* member,
+        const DOM::Value& value,
+        StrView path
+    );
+    // one value as a property of its type is written; false when the type
+    // has nothing to write
+    bool SerializeValue(const TypeOps&, const void* member, DOM::Value& out);
+
     template<typename T>
         requires(!std::is_pointer_v<T>)
     [[nodiscard]] PropertyErrors ApplyProperties(
