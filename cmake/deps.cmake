@@ -254,6 +254,8 @@ if(CROWY_ENABLE_PHYSICS)
     # the same results on Windows and the Mac, about 8 % slower
     set(CROSS_PLATFORM_DETERMINISTIC ON CACHE BOOL "" FORCE)
     set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+    # a subclass of PhysicsMaterial needs its typeinfo, which only Jolt emits
+    set(CPP_RTTI_ENABLED ON CACHE BOOL "" FORCE)
     # /Wall under clang-cl is -Weverything, and a newer clang than Jolt's CI
     # would fail its -Werror
     set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
