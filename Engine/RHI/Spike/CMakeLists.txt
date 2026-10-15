@@ -4,6 +4,7 @@ SOURCES
 )
 
 crowy_declare_spike(InstanceIdSpike
+    TEST render
 SOURCES
     InstanceIdSpike.cpp
 )

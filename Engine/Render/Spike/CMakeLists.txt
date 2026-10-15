@@ -1,6 +1,7 @@
 # guards the shared-pool vertex pulling contract: a mesh's pool offset travels
 # in DrawData::vbIndex, never in the args' baseVertex
 crowy_declare_spike(VertexPullSpike
+    TEST render
 SOURCES
     VertexPullSpike.cpp
 DEPENDS
