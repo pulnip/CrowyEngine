@@ -244,6 +244,12 @@ namespace Crowy
         bool IsEmpty() const noexcept{
             return Size() == 0;
         }
+        // committed nodes in preorder, so a parent comes before its children
+        TransformHandle HandleAt(usize index) const noexcept {
+            CROWY_ASSERT(index < nodes.size());
+
+            return slots.HandleOf(nodes[index].slot);
+        }
 
     private:
         void commitDestroys();

@@ -257,6 +257,18 @@ namespace Crowy
         }
     }
 
+    bool World::hasPendingStructure() const noexcept {
+        if(!dyingActors.empty() || hierarchy.HasPendingChanges())
+            return true;
+
+        for(const auto& store: stores) {
+            if(store->pendingAdds.Count() != 0 ||
+               !store->pendingRemoves.empty())
+                return true;
+        }
+        return false;
+    }
+
     void World::run(Phase phase, const FrameTime& time) {
         for(const auto system: schedule[static_cast<usize>(phase)])
             system(*this, time);

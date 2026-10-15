@@ -1,5 +1,7 @@
 #include <format>
 #include <memory>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -51,6 +53,17 @@ namespace
 
     Transform at(Vec3 position) {
         return Transform{.position = position};
+    }
+
+    using Walk = std::vector<std::pair<ActorId, ActorId>>;
+
+    Walk walk(const World& world) {
+        Walk visits;
+        world.EachActor([&](ActorId actor, ActorId parent) {
+            visits.emplace_back(actor, parent);
+        });
+
+        return visits;
     }
 
     std::vector<i32> markerValues(World& world) {
@@ -124,6 +137,56 @@ TEST(World, ADestroyTakesTheSubtreeAtOnce) {
     world.Spawn();
     EXPECT_FALSE(world.IsValid(parent));
     EXPECT_FALSE(world.IsValid(child));
+}
+
+TEST(World, EveryActorIsWalkedParentFirst) {
+    World world;
+    const auto first = world.Spawn();
+    const auto second = world.Spawn();
+    const auto child = world.Spawn(Transform::Identity(), first);
+    const auto secondChild = world.Spawn(Transform::Identity(), second);
+    const auto grandchild = world.Spawn(Transform::Identity(), child);
+    world.Frame(0.0);
+
+    const auto none = ActorId::InvalidHandle();
+    EXPECT_EQ(
+        walk(world),
+        (Walk{
+            {first, none},
+            {child, first},
+            {grandchild, child},
+            {second, none},
+            {secondChild, second}
+        })
+    );
+}
+
+TEST(World, ActorsSpawnedInWalkOrderWalkTheSameWay) {
+    World source;
+    const auto first = source.Spawn();
+    const auto second = source.Spawn();
+    const auto child = source.Spawn(Transform::Identity(), first);
+    source.Spawn(Transform::Identity(), second);
+    source.Spawn(Transform::Identity(), child);
+    source.Frame(0.0);
+
+    World copy;
+    std::unordered_map<ActorId, ActorId> copied;
+    for(const auto& [actor, parent]: walk(source)) {
+        const auto copiedParent =
+            parent.IsValid() ? copied.at(parent) : ActorId::InvalidHandle();
+        copied[actor] = copy.Spawn(Transform::Identity(), copiedParent);
+    }
+    copy.Frame(0.0);
+
+    Walk expected;
+    for(const auto& [actor, parent]: walk(source)) {
+        expected.emplace_back(
+            copied.at(actor),
+            parent.IsValid() ? copied.at(parent) : ActorId::InvalidHandle()
+        );
+    }
+    EXPECT_EQ(walk(copy), expected);
 }
 
 TEST(World, AnActorIsNamedOnceItIsAlive) {
@@ -391,6 +454,16 @@ TEST(WorldDeathTest, ALeafTypeStopsAsAnErasedValue) {
     ErasedValue leaf(*GetTypeOps<i32>());
 
     EXPECT_DEATH(world.Add(actor, leaf), "a type that is not a component");
+}
+
+TEST(WorldDeathTest, WalkingTheActorsBeforeSyncStops) {
+    World world;
+    world.Spawn();
+
+    EXPECT_DEATH(
+        walk(world),
+        "walking the actors before Sync applied a change"
+    );
 }
 
 TEST(WorldDeathTest, ATypeNeverRegisteredStops) {

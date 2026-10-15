@@ -177,6 +177,22 @@ namespace Crowy
             }
         }
 
+        // f(ActorId actor, ActorId parent) for every actor, a parent before
+        // its children; a root's parent is invalid
+        template<typename F>
+        void EachActor(F&& f) const {
+            // an unplaced spawn would be missed and a pending destroy walked
+            CROWY_ASSERT(
+                !hasPendingStructure(),
+                "walking the actors before Sync applied a change"
+            );
+
+            for(usize i = 0; i < hierarchy.Size(); ++i) {
+                const auto node = hierarchy.HandleAt(i);
+                f(actorOf(node), actorOf(hierarchy.GetParent(node)));
+            }
+        }
+
         // what a system or a hook reaches outside the World, by type
         template<typename T>
         void Provide(T& service) {
@@ -215,6 +231,7 @@ namespace Crowy
         // nullptr when no actor has had the component yet
         void* writeRow(const TypeDesc& desc, ActorId actor) noexcept;
         void markChanged(ComponentStore& store, ActorId actor);
+        bool hasPendingStructure() const noexcept;
 
         void run(Phase phase, const FrameTime& time);
         void sync(const FrameTime& time);
