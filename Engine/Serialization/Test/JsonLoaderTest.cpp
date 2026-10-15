@@ -227,6 +227,20 @@ TEST(Serializer, ATableKeepsTheOrderItWasGiven) {
     EXPECT_EQ(emitJson(DOM::Value(std::move(table))), R"({"b":4,"a":2})");
 }
 
+TEST(Serializer, AParsedValueIsChangedInPlace) {
+    auto value = parseJsonString(R"({"type":"a","x":1,"list":[2],"y":3})");
+
+    auto* table = value.asTable();
+    ASSERT_TRUE(table != nullptr);
+    EXPECT_TRUE(table->erase("type"));
+    EXPECT_FALSE(table->erase("type"));
+    table->insert_or_assign("x", i64{4});
+    table->find("list")->second.asArray()->emplace_back(i64{5});
+
+    EXPECT_EQ(emitJson(value), R"({"x":4,"list":[2,5],"y":3})");
+    EXPECT_EQ(value.asArray(), nullptr);
+}
+
 TEST(Serializer, EmitWritesTheShortestNumbersAndEscapes) {
     const auto text =
         R"({"a":0.1,"b":1.0,"c":1e-05,"d":-0.0,"e":9007199254740993,)"

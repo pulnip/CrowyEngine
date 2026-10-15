@@ -157,6 +157,16 @@ namespace Crowy
         if(auto p = std::get_if<TableRAII>(&value)) return p->get();
         return nullptr;
     }
+    DOM::Array* DOM::Value::asArray() noexcept {
+        if(auto p = std::get_if<ArrayRAII>(&value))
+            return p->get();
+        return nullptr;
+    }
+    DOM::Table* DOM::Value::asTable() noexcept {
+        if(auto p = std::get_if<TableRAII>(&value))
+            return p->get();
+        return nullptr;
+    }
 
     template<>
     std::optional<Vec2> DOM::Value::getImpl<Vec2>() const noexcept{

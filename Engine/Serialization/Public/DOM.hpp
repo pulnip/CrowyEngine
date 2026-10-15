@@ -46,6 +46,8 @@ namespace Crowy
             iterator find(StrView key) noexcept;
             const_iterator find(StrView key) const noexcept;
             bool contains(StrView key) const noexcept;
+            // false when the key was not there; the rest keep their order
+            bool erase(StrView key);
 
             // a key already present keeps its value, as a map's emplace does
             template<typename V>
@@ -118,6 +120,8 @@ namespace Crowy
             const Str* asString() const noexcept;
             const Array* asArray() const noexcept;
             const Table* asTable() const noexcept;
+            Array* asArray() noexcept;
+            Table* asTable() noexcept;
 
             const Value* at(StrView path) const noexcept;
 
@@ -267,6 +271,14 @@ namespace Crowy
         }
         inline bool Table::contains(StrView key) const noexcept {
             return find(key) != end();
+        }
+        inline bool Table::erase(StrView key) {
+            const auto it = find(key);
+            if(it == end())
+                return false;
+
+            entries.erase(it);
+            return true;
         }
 
         template<typename V>
