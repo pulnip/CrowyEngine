@@ -25,9 +25,9 @@ backends D3D12 and Metal. Modules under `Engine/`:
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in
-`cmake/sample.cmake`. ctest labels: `unit`, `smoke` (every executable
-declared `SMOKE`: all but the `Hello*` ones), `example`, `spike`, `check`,
-`stage`.
+`cmake/sample.cmake`. ctest labels: `unit`, `gpu` (checks), `render`
+(spikes), `app` (four hosts), `scenario`, `content` (`docs/testing.md`); an
+executable without one is built only.
 
 ## Code conventions here
 
@@ -82,9 +82,9 @@ powershell -NoProfile -File Tools/build.ps1 -Status
   use 27520; `CROWY_COMMAND_PORT` overrides (0 disables). A second worktree
   running at the same time needs its own port. `--hold` starts paused.
   `--capture-frame <frame> <path>` (any build, repeatable) writes that
-  frame as a BMP and runs every frame as a fixed step; the smokes capture
-  frame 60 this way. `--exit-after-frame <frame>` quits after presenting
-  that frame; every windowed smoke ends this way.
+  frame as a BMP and runs every frame as a fixed step; the spikes' goldens
+  are frame 60 captured this way. `--exit-after-frame <frame>` quits after
+  presenting that frame; every windowed ctest entry ends this way.
   Drive it with `. Tools/port.ps1` (`Wait-Port`, `Set-PortProperty`,
   `Get-PortProperty`, `Save-PortFrame`, `Invoke-Port quit`).
 - On Windows, read `docs/windows.md` before debugging a crash, a silent
@@ -92,27 +92,44 @@ powershell -NoProfile -File Tools/build.ps1 -Status
 
 ## Verification
 
-Run what the change can break, not everything:
+Run a test for a reason: to diagnose a failure, to confirm an increment,
+or for a merge.
 
-| Changed | Run |
+- Diagnosing: rerun only what failed (`ctest -R "^<name>$"`,
+  `--gtest_filter`).
+- Iterating: build the target and run its own unit binary; never `gpu`,
+  `render` or `app` while the logic is still changing.
+- Confirming an increment, once before its commit: the `unit` label, plus
+  the row below for what changed.
+- A merge to master, when the owner asks: the whole ctest, once.
+
+| Changed | Add, once per increment |
 |---|---|
-| Any code | build its targets, then the `unit` label |
-| Render, Shader or RHI code | + the golden smokes below |
-| Effects | + the `check` label and `IslandSmoke` |
-| Physics | + `PhysicsPlaygroundSmoke` |
+| RHI, DX12RHI, MetalRHI, `Engine/Shader` | `-L "gpu\|render"` |
+| Render | `-L render`, `-R "^Playground$"` |
+| Effects GPU code or `.slang` | `-L gpu`, `-R "^Island$"` |
+| Physics, the puzzles, PhysicsSync | `-L scenario`, `-R "^PhysicsPlayground$"` |
+| The window path (OS, input, AppFramework, swapchain, RenderApp, UIRenderer, port verbs), a reflection registration, a CMake link | `-L app` |
+| The Stage loader, a Backlot bump | `-L content`, `Tools/stage_cuts.ps1` |
 | A `Tools/` script | that script, by hand |
-| Before a merge to master | the whole `smoke` label (33 tests, ~2.5 min with `-j 8`) |
+| Anything else: CPU modules, tests, docs | nothing more |
 
 ```bash
 ctest --test-dir build -C Debug -L unit -j 8
-ctest --test-dir build -C Debug -j 8 -R "Playground|ShadowSample|PrepassEqual|Textured|Island|StageEditor"
+ctest --test-dir build -C Debug -L "gpu|render" -j 8
+ctest --test-dir build -C Debug -j 8
 ```
 
-- `-j` runs units and checks side by side; windowed smokes stay one at
-  a time (`RUN_SERIAL`).
-- A unit binary with no tests fails by itself; do not count tests.
-- Smoke runs break on D3D12 debug-layer errors and compare a golden on
-  every run where one exists; there is no separate "debug layer" pass.
+- Do not run: a passing test again on an unchanged binary; the whole ctest
+  outside a merge; a by-hand debug-layer, GBV or two-run determinism pass;
+  anything to count tests. The final message names the row run and its
+  result.
+- Before adding a test, an executable, a golden or a ctest entry, read
+  `docs/testing.md` (Adding a test).
+- `-j` runs headless entries side by side; windowed ones stay one at a
+  time (`RUN_SERIAL`). A unit binary with no tests fails by itself.
+- Windowed runs break on D3D12 debug-layer errors, and a spike compares
+  its golden on every run; there is no separate "debug layer" pass.
   Goldens, baselines and cross-machine checks: `docs/testing.md`.
 - Fix only review findings that survived an independent refutation, one
   defect per commit; style goes through clang-format, not a review fix.
@@ -122,4 +139,5 @@ ctest --test-dir build -C Debug -j 8 -R "Playground|ShadowSample|PrepassEqual|Te
 - Commit only when the owner asks; never push, amend, rebase or reset.
 - Message: one short imperative clause, lowercase, like `drop the frame-slot
   machinery from buffer creation`. A body only when the why is not obvious,
-  a few lines. End with the session's Co-Authored-By line.
+  a few lines, and no test counts. End with the session's Co-Authored-By
+  line.

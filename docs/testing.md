@@ -1,71 +1,141 @@
 # Testing
 
 What to run for a change is in `CLAUDE.md` (Verification). This file holds
-the rules behind it: goldens, baselines, the stage, the other machine,
-and what a test has to prove.
+the rules behind it: the kinds of test, when one is added, goldens,
+baselines, the stage, the other machine, and what a test has to prove.
 
-## Smoke runs and goldens
+## Kinds
 
-An executable declared `SMOKE` in `cmake/sample.cmake` gets a
-`<Name>Smoke` test; every spike and check is, and every example but the
-`Hello*` ones. The test runs it through `Tools/smoke_run.ps1` (macOS:
-`smoke_run.sh`). A windowed one gets
-`--exit-after-frame` and must exit by itself, shutdown included, within
-60 s (`CROWY_SMOKE_TIMEOUT`). It runs 60 frames, or the `FRAMES` its
-declaration in `cmake/sample.cmake` gives, or `CROWY_SMOKE_FRAMES`. The
-run fails on a crash, a nonzero exit, a hang, or a D3D12 debug-layer error
-(the script sets `CROWY_D3D_DEBUG_BREAK=1`). A check gets no arguments and
-must also exit within 60 s. A headless example has no frames to count and
-runs for 5 s (`CROWY_SMOKE_DURATION`), where still running at the end
-passes. Exit 77 is a skip: the sample's content is missing (`StageEditor`
-without `../Backlot`).
+A test has one ctest label, and the label says what it needs and when it
+runs.
 
-A golden is the frame-60 picture at
-`Engine/*/{Sample,Spike}/Golden/<exe>.<dx12|metal>.png`. When one exists,
-every run captures frame 60 (the app's `--capture-frame`) and compares: to
-`%TEMP%\crowy-smoke\` by default, or to `CROWY_SMOKE_CAPTURE_DIR` when set,
-which also keeps the captures of samples without a golden. A run that
-exited has written its captures, and a golden with no frame captured
-fails.
+| Label | Needs | Holds | Runs when |
+|---|---|---|---|
+| `unit` | CPU only: no device, file outside the repo, socket timing or sleep | contracts of functions, classes and RHI calls on the fakes; reference models and seeded fuzz | any compiled change, once per increment |
+| `gpu` | a device, no window | `*Check`: device results held against a CPU reference | GPU code or shaders change |
+| `render` | a window | `*Spike`: one backend semantic pinned by its frame-60 golden | RHI, Render or shaders change |
+| `app` | a window and content | a host starts, runs its frames and shuts down by itself, with no assert or debug-layer error | the window path, a registration or a link changes |
+| `scenario` | CPU, long simulations | sample content behaves: the puzzles solve, their pinned hashes hold | Physics or the puzzles change |
+| `content` | `../Backlot` | the external set imports at its pinned commit; skipped without it | the Stage loader or Backlot changes |
 
+Outside ctest:
+- Examples are built only. `Tools/smoke_run.ps1 <exe>` runs one when you
+  want to look at it.
+- Tolerance-0 baselines (below), benchmarks (`Tools/bench_run.ps1`), and
+  the stage scripts.
+
+Words used here:
+- **Smoke** means a shallow, broad "does it start and stop": the `app`
+  label.
+- **Spike** means an experiment. One that is kept pins its answer as a
+  `render` golden.
+- **Check** means a component test on the device: `gpu`.
+- **Golden** is a way to judge a test, not a kind of test.
+
+## Adding a test
+
+A test is added for a kind of defect, not for a function, a feature or a
+round of work.
+
+1. Name the wrong behavior it catches and why it can happen: a bug seen, a
+   review finding, a backend difference. New code, coverage and a test
+   count are not reasons.
+2. Search the existing tests for that behavior first. If one would fail on
+   the defect, add nothing; if one nearly would, extend it (a row, a
+   parameter, a seed).
+3. Take the cheapest kind that can see it, in this order:
+   - an assert or `static_assert` in the code;
+   - `unit`;
+   - `gpu`;
+   - `render`;
+   - `app`.
+
+   A new executable, ctest entry or golden needs the owner's yes and a
+   one-line reason above its declaration.
+4. Show it failing once against the defect; do not rerun that by hand.
+5. A test that covers another deletes it in the same commit.
+
+A fix adds no test when:
+- an existing test failed on the defect;
+- the check could only restate the fix (the same formula, its own setup);
+- the change is look or tuning (a golden or pin is recorded once, when the
+  owner accepts it);
+- the finding is a name, a comment or style.
+
+A design or task file may name the defects a round must guard. It does not
+prescribe tests, counts or gates.
+
+## Windowed runs and goldens
+
+An executable declared with `TEST gpu`, `TEST render` or `TEST app` in
+`cmake/sample.cmake` gets a ctest entry of its own name, which runs it
+through `Tools/smoke_run.ps1` (macOS: `smoke_run.sh`).
+- A windowed one gets `--exit-after-frame` and must exit by itself,
+  shutdown included, within 60 s (`CROWY_SMOKE_TIMEOUT`).
+- It runs 60 frames, or the `FRAMES` its declaration gives, or
+  `CROWY_SMOKE_FRAMES`.
+- A check gets no arguments and must also exit within 60 s.
+- The run fails on a crash, a nonzero exit, a hang, or a D3D12 debug-layer
+  error (the script sets `CROWY_D3D_DEBUG_BREAK=1`).
+- Exit 77 is a skip: the program's content is missing (`StageEditor`
+  without `../Backlot`).
+
+A golden is a spike's frame-60 picture at
+`Engine/*/Spike/Golden/<exe>.<dx12|metal>.png`.
+- When one exists, every run captures frame 60 (the app's
+  `--capture-frame`) and compares it. The capture goes to
+  `%TEMP%\crowy-smoke\` by default, or to `CROWY_SMOKE_CAPTURE_DIR` when
+  set.
+- A run that exited has written its captures, and a golden with no frame
+  captured fails.
 - The comparison is `ImageCompareCheck` with `ImageTolerance`'s defaults:
   each channel within 2, no pixel failing.
 - A difference writes a heat map beside the capture and prints the
   `Copy-Item` (or `cp`) that accepts the new picture. Accept only a change
   you meant; say why in the commit.
 - Re-recording one backend's golden makes the other backend's stale:
-  delete it and list the sample for the other machine (below), or that
+  delete it and list the spike for the other machine (below), or that
   machine fails for a reason that is not a bug.
-- A golden of a scene still being art-directed is recorded once, when the
-  look settles, not after every tweak.
+
+A sample's picture under `Engine/*/Sample/Golden/` is a baseline, not a
+golden. ctest never compares it. It is the "before" of a tolerance-0
+comparison, and the stage scripts' launch picture. It is re-recorded only
+when the owner accepts a new look, once, not after every tweak.
 
 ## Tolerance-0 baselines
 
 When a render change claims "the picture is unchanged" (a refactor, a new
-pass that must be neutral), capture the affected samples before and after
-at `ImageCompareCheck <a> <b> --tolerance 0` into `captures/` (git-ignored).
+pass that must be neutral), capture the affected samples and compare them
+with their baseline, or with captures from before the change:
+`ImageCompareCheck <a> <b> --tolerance 0`, into `captures/` (git-ignored).
 This is a manual step for that claim, not part of every run.
 
 ## The stage
 
-`StageEditorCuts` (label `stage`) runs `Tools/stage_cuts.ps1`: every cut of
-Backlot's scene in the pinned keys, against
-`Engine/Render/Sample/Golden/StageEditor/*.<dx12|metal>.png`. The goldens are
-stamped with a Backlot commit (`StageEditor.backlot.txt`); a Backlot at
-another commit, or with changes to files the editor reads, is captured but
-not compared (77). `-Record` re-records and re-stamps.
+`Tools/stage_cuts.ps1` checks every cut of Backlot's scene in the pinned
+keys against `Engine/Render/Sample/Golden/StageEditor/*.<dx12|metal>.png`.
+Run it by hand when the Stage loader or Backlot changes.
+- The pictures are stamped with a Backlot commit
+  (`StageEditor.backlot.txt`).
+- A Backlot at another commit, or with changes to files the editor reads,
+  is captured but not compared (77).
+- `-Record` re-records and re-stamps.
+
 `Tools/stage_task.ps1` performs the owner's hand task over the port and
-asserts each step; it is not in ctest.
+asserts each step. The `content` label covers Backlot's import itself.
 
 ## The other machine
 
 Work is built and verified on one machine first; the other backend and the
-other platform's scripts are written blind there. Whatever only the other
-machine can verify (a blind backend path, its goldens, its scripts, a
-platform-dependent number) goes into a short list file at the repo root,
-added when an increment changes it and measured, never predicted. The list
-says what to run and what passing looks like; the person on that machine
-marks each line with the date and the result, and a failure becomes a task.
+other platform's scripts are written blind there.
+- Whatever only the other machine can verify (a blind backend path, its
+  goldens, its scripts, a platform-dependent number) goes into a short list
+  file at the repo root.
+- An item is added when an increment changes it, and it is measured, never
+  predicted.
+- The list says what to run and what passing looks like.
+- The person on that machine marks each line with the date and the result,
+  and a failure becomes a task.
 
 ## What a test must prove
 
