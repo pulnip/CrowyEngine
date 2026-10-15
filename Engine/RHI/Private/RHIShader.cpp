@@ -295,7 +295,8 @@ namespace Crowy
         const std::filesystem::path& filePath,
         RHIBackend backend,
         CStr profile,
-        std::span<const std::filesystem::path> linkedModules
+        std::span<const std::filesystem::path> linkedModules,
+        StrView onlyEntryPoint
     )
         : path(toUTF8String(filePath)),
           hash(hashAll(filePath))
@@ -415,27 +416,41 @@ namespace Crowy
         }
 
         // entry points
-        const auto entryPointCount = mod->getDefinedEntryPointCount();
         std::vector<ComPtr<IEntryPoint>> entryPoints;
-        entryPoints.reserve(entryPointCount);
+        if(onlyEntryPoint.empty()){
+            const auto entryPointCount = mod->getDefinedEntryPointCount();
+            entryPoints.reserve(entryPointCount);
+            for(SlangInt32 i=0; i<entryPointCount; ++i){
+                ComPtr<IEntryPoint> entryPoint = nullptr;
+                CHECK_SRESULT(mod->getDefinedEntryPoint(
+                    i,
+                    entryPoint.writeRef()
+                ), "Failed to find entry point");
+
+                entryPoints.push_back(std::move(entryPoint));
+            }
+        }
+        else{
+            ComPtr<IEntryPoint> entryPoint = nullptr;
+            const Str name{onlyEntryPoint};
+            mod->findEntryPointByName(name.c_str(), entryPoint.writeRef());
+            if(entryPoint == nullptr) [[unlikely]]{
+                throw std::runtime_error(std::format(
+                    "unknown entry point '{}' in {}", onlyEntryPoint, path
+                ));
+            }
+
+            entryPoints.push_back(std::move(entryPoint));
+        }
 
         // the file, its modules, then every entry point, which resolves the
         // file's extern types against the modules' exports
         std::vector<IComponentType*> components;
-        components.reserve(1 + modules.size() + entryPointCount);
+        components.reserve(1 + modules.size() + entryPoints.size());
         components.push_back(mod);
         components.insert(components.end(), modules.begin(), modules.end());
-
-        for(SlangInt32 i=0; i<entryPointCount; ++i){
-            ComPtr<IEntryPoint> entryPoint = nullptr;
-            CHECK_SRESULT(mod->getDefinedEntryPoint(
-                i,
-                entryPoint.writeRef()
-            ), "Failed to find entry point");
-
-            entryPoints.push_back(std::move(entryPoint));
-            components.push_back(entryPoints.back().get());
-        }
+        for(const auto& entryPoint: entryPoints)
+            components.push_back(entryPoint.get());
 
         ComPtr<IComponentType> composed = nullptr;
         {

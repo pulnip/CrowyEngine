@@ -506,7 +506,10 @@ namespace Crowy
 
         RHIShader shaderProgram{
             filePath,
-            RHIBackend::Metal
+            RHIBackend::Metal,
+            nullptr,
+            {},
+            entryPoint
         };
         auto library = NS::TransferPtr(makeLibrary(device, shaderProgram));
     #if defined(_DEBUG) || !defined(NDEBUG)

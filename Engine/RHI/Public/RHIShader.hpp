@@ -47,7 +47,10 @@ namespace Crowy
             CStr profile = nullptr,
             // composed after this file, each exporting a link-time type the
             // file declares extern; none may declare a shader parameter
-            std::span<const std::filesystem::path> linkedModules = {}
+            std::span<const std::filesystem::path> linkedModules = {},
+            // the one entry composed, else every entry the file defines; Metal
+            // links a whole program, handing each entry every entry's globals
+            StrView onlyEntryPoint = {}
         );
 
         std::size_t Gethash() const noexcept{
