@@ -30,3 +30,5 @@ add_subdirectory(Effects)
 # 3-2) the World's side of each subsystem
 add_subdirectory(WorldRender)
 add_subdirectory(WorldEffects)
+# 3-3) the World saved as a scene file
+add_subdirectory(Scene)
