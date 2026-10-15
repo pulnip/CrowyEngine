@@ -10,6 +10,7 @@
 #include "ClassRegistry.hpp"
 #include "Component.hpp"
 #include "ComponentPool.hpp"
+#include "ErasedValue.hpp"
 #include "FixedTickClock.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
@@ -120,6 +121,9 @@ namespace Crowy
         PropertyTarget Target(ActorId actor) {
             return Target(actor, *GetDesc<T>());
         }
+
+        // moves the row out of `component`; its type is the value's own
+        void Add(ActorId actor, ErasedValue& component);
 
         template<typename T>
         void Add(ActorId actor, T component) {

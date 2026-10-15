@@ -156,6 +156,12 @@ namespace Crowy
         return {node.GetIndex(), node.GetGeneration()};
     }
 
+    void World::Add(ActorId actor, ErasedValue& component) {
+        const auto& ops = component.Ops();
+        CROWY_ASSERT(ops.getDesc != nullptr, "a type that is not a component");
+        addComponent(*ops.getDesc(), actor, component.Get());
+    }
+
     void World::addComponent(
         const TypeDesc& desc,
         ActorId actor,

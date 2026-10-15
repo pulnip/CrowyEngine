@@ -169,6 +169,20 @@ TEST(World, ComponentsLandAtSyncInTheOrderTheyWereAdded) {
     EXPECT_EQ(world.Get<WorldMarker>(actors[1])->value, 2);
 }
 
+TEST(World, AComponentAddedAsAnErasedValueIsMovedIn) {
+    World world;
+    const auto actor = world.Spawn();
+    ErasedValue erased(*GetDesc<WorldOwned>()->ops);
+    auto& owned = *static_cast<WorldOwned*>(erased.Get());
+    owned.value = std::make_unique<i32>(7);
+
+    world.Add(actor, erased);
+    EXPECT_EQ(owned.value, nullptr);
+
+    world.Frame(0.0);
+    EXPECT_EQ(*world.Get<WorldOwned>(actor)->value, 7);
+}
+
 TEST(World, ARemovalMovesTheLastRowIntoTheHole) {
     World world;
     std::vector<ActorId> actors;
@@ -361,6 +375,22 @@ TEST(WorldDeathTest, AStructThatIsNotAComponentStops) {
         world.Add(actor, WorldPlainStruct{}),
         "a type that is not a component"
     );
+}
+
+TEST(WorldDeathTest, AStructThatIsNotAComponentStopsAsAnErasedValueToo) {
+    World world;
+    const auto actor = world.Spawn();
+    ErasedValue plain(*GetDesc<WorldPlainStruct>()->ops);
+
+    EXPECT_DEATH(world.Add(actor, plain), "a type that is not a component");
+}
+
+TEST(WorldDeathTest, ALeafTypeStopsAsAnErasedValue) {
+    World world;
+    const auto actor = world.Spawn();
+    ErasedValue leaf(*GetTypeOps<i32>());
+
+    EXPECT_DEATH(world.Add(actor, leaf), "a type that is not a component");
 }
 
 TEST(WorldDeathTest, ATypeNeverRegisteredStops) {
