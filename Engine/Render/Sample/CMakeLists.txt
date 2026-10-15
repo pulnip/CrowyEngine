@@ -106,6 +106,8 @@ if(CROWY_ENABLE_PHYSICS)
     # PhysicsSync glue
     crowy_declare_example(PhysicsPlayground
         TEST app
+        # past the 90-frame lead-in, so the run steps the puzzles too
+        FRAMES 120
     SOURCES
         PhysicsPlayground.cpp
     DEPENDS
