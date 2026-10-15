@@ -193,6 +193,22 @@ namespace Crowy
             }
         }
 
+        // f(const ComponentInfo&, const void* row) for each component the
+        // actor has, in the order this World first met each type: a file
+        // written in that order would not read back in it
+        template<typename F>
+        void EachComponent(ActorId actor, F&& f) const {
+            CROWY_ASSERT(
+                !hasPendingStructure(),
+                "reading the components before Sync applied a change"
+            );
+
+            for(const auto& store: stores) {
+                if(const void* row = store->rows.Find(actor))
+                    f(store->info, row);
+            }
+        }
+
         // what a system or a hook reaches outside the World, by type
         template<typename T>
         void Provide(T& service) {

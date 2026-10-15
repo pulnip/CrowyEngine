@@ -189,6 +189,38 @@ TEST(World, ActorsSpawnedInWalkOrderWalkTheSameWay) {
     EXPECT_EQ(walk(copy), expected);
 }
 
+TEST(World, AnActorsComponentsAreVisitedByTheirDesc) {
+    World world;
+    const auto both = world.Spawn();
+    const auto marked = world.Spawn();
+    const auto bare = world.Spawn();
+    world.Add(both, WorldMarker{.value = 1});
+    world.Add(both, WorldOwned{});
+    world.Add(marked, WorldMarker{.value = 2});
+    world.Frame(0.0);
+
+    auto visit = [&](ActorId actor) {
+        std::vector<Str> seen;
+        world.EachComponent(
+            actor,
+            [&](const ComponentInfo& info, const void* row) {
+                auto entry = Str(info.desc->name);
+                if(info.desc == GetDesc<WorldMarker>()) {
+                    const auto value =
+                        static_cast<const WorldMarker*>(row)->value;
+                    entry += std::format(" {}", value);
+                }
+                seen.push_back(entry);
+            }
+        );
+
+        return seen;
+    };
+    EXPECT_EQ(visit(both), (std::vector<Str>{"WorldMarker 1", "WorldOwned"}));
+    EXPECT_EQ(visit(marked), (std::vector<Str>{"WorldMarker 2"}));
+    EXPECT_TRUE(visit(bare).empty());
+}
+
 TEST(World, AnActorIsNamedOnceItIsAlive) {
     World world;
     const auto first = world.Spawn();
