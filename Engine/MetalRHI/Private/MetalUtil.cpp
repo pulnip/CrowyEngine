@@ -147,11 +147,6 @@ namespace Crowy
                 );
                 return MTL::TextureType3D;
             }
-            else if(height == 1){
-                return arraySize == 1 ?
-                    MTL::TextureType1D :
-                    MTL::TextureType1DArray;
-            }
 
             return arraySize == 1 ?
                 MTL::TextureType2D :
