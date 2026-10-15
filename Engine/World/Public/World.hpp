@@ -60,6 +60,9 @@ namespace Crowy
         std::vector<ActorId> dyingActors;
         // by the actor's slot; empty is no name
         std::vector<Str> names;
+        // by the actor's slot
+        std::vector<i64> fileIds;
+        i64 nextFileId = 1;
 
         // in the order each type was first added, which Sync follows
         Stores stores;
@@ -101,6 +104,12 @@ namespace Crowy
         // one, so a reference names the actor itself
         const Str& Name(ActorId actor) const noexcept;
         void SetName(ActorId actor, Str name);
+
+        // the id a scene file knows the actor by, given at its spawn; a load
+        // keeps the file's, so an edit renumbers no other actor
+        i64 FileId(ActorId actor) const noexcept;
+        // unique by the caller, as a load keeps it; later spawns go above it
+        void SetFileId(ActorId actor, i64 id);
 
         const Transform& LocalTransform(ActorId actor) const noexcept;
         void SetLocalTransform(ActorId actor, const Transform& local) noexcept;

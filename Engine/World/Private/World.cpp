@@ -1,5 +1,7 @@
 #include "World.hpp"
 
+#include <algorithm>
+
 #include "Object.hpp"
 
 namespace Crowy
@@ -10,10 +12,17 @@ namespace Crowy
     ActorId World::Spawn(const Transform& local, ActorId parent) {
         CROWY_ASSERT(!applyingStructure, "a spawn inside Sync");
 
-        return actorOf(
+        const auto actor = actorOf(
             parent.IsValid() ? hierarchy.CreateNode(nodeOf(parent), local)
                              : hierarchy.CreateNode(local)
         );
+
+        const auto slot = actor.GetIndex();
+        if(slot >= fileIds.size())
+            fileIds.resize(slot + 1);
+        fileIds[slot] = nextFileId++;
+
+        return actor;
     }
 
     void World::Destroy(ActorId actor) {
@@ -46,6 +55,20 @@ namespace Crowy
         if(slot >= names.size())
             names.resize(slot + 1);
         names[slot] = std::move(name);
+    }
+
+    i64 World::FileId(ActorId actor) const noexcept {
+        CROWY_ASSERT(IsValid(actor), "reading the id of an actor not alive");
+
+        return fileIds[actor.GetIndex()];
+    }
+
+    void World::SetFileId(ActorId actor, i64 id) {
+        CROWY_ASSERT(IsValid(actor), "giving an id to an actor not alive");
+        CROWY_ASSERT(id >= 1, "a file id starts at 1");
+
+        fileIds[actor.GetIndex()] = id;
+        nextFileId = std::max(nextFileId, id + 1);
     }
 
     const Transform& World::LocalTransform(ActorId actor) const noexcept {

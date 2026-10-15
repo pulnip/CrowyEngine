@@ -250,6 +250,39 @@ TEST(World, AReusedSlotStartsUnnamed) {
     EXPECT_EQ(world.Name(reused), "");
 }
 
+TEST(World, EverySpawnTakesTheNextFileId) {
+    World world;
+    const auto first = world.Spawn();
+    const auto second = world.Spawn(Transform::Identity(), first);
+
+    EXPECT_EQ(world.FileId(first), 1);
+    EXPECT_EQ(world.FileId(second), 2);
+}
+
+TEST(World, AGivenFileIdPutsLaterSpawnsAboveIt) {
+    World world;
+    const auto loaded = world.Spawn();
+    world.SetFileId(loaded, 10);
+    const auto next = world.Spawn();
+    EXPECT_EQ(world.FileId(next), 11);
+
+    // a lower id given later leaves the next spawn above the highest
+    world.SetFileId(next, 3);
+    EXPECT_EQ(world.FileId(world.Spawn()), 12);
+}
+
+TEST(World, AReusedSlotTakesANewFileId) {
+    World world;
+    const auto gone = world.Spawn();
+    world.Frame(0.0);
+    world.Destroy(gone);
+    world.Frame(0.0);
+
+    const auto reused = world.Spawn();
+    ASSERT_EQ(reused.GetIndex(), gone.GetIndex());
+    EXPECT_EQ(world.FileId(reused), 2);
+}
+
 TEST(World, ComponentsLandAtSyncInTheOrderTheyWereAdded) {
     World world;
     std::vector<ActorId> actors;
@@ -496,6 +529,13 @@ TEST(WorldDeathTest, WalkingTheActorsBeforeSyncStops) {
         walk(world),
         "walking the actors before Sync applied a change"
     );
+}
+
+TEST(WorldDeathTest, AFileIdBelowOneStops) {
+    World world;
+    const auto actor = world.Spawn();
+
+    EXPECT_DEATH(world.SetFileId(actor, 0), "a file id starts at 1");
 }
 
 TEST(WorldDeathTest, ATypeNeverRegisteredStops) {
