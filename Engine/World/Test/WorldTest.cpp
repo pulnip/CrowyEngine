@@ -101,6 +101,12 @@ namespace Crowy
     // clang-format on
 }
 
+TEST(World, AComponentIsSavedUnlessMarkedTransient) {
+    const auto* info = ComponentRegistry::Get().Find(*GetDesc<WorldMarker>());
+    ASSERT_TRUE(info != nullptr);
+    EXPECT_FALSE(info->transient);
+}
+
 TEST(World, ASpawnIsAliveAtOnceAndPlacedAtSync) {
     World world;
     const auto actor = world.Spawn(at({1.0f, 2.0f, 3.0f}));

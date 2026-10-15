@@ -64,6 +64,14 @@ TEST(ScriptComponent, RegistersWithoutAReference) {
     }));
 }
 
+// a function is no data a scene file could hold
+TEST(ScriptComponent, IsLeftOutOfAScene) {
+    const auto* info =
+        ComponentRegistry::Get().Find(*GetDesc<ScriptComponent>());
+    ASSERT_TRUE(info != nullptr);
+    EXPECT_TRUE(info->transient);
+}
+
 // it lands at Sync, after the frame's Update, so it first runs a frame later
 TEST(ScriptComponent, RunsOnceAFrameAfterTheFramesTicks) {
     std::vector<u64> ticks;

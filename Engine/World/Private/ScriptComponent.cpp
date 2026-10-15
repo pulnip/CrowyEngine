@@ -21,6 +21,7 @@ namespace Crowy
     // clang-format off: each registration opens a namespace the formatter
     // cannot see
     CROWY_COMPONENT(ScriptComponent)
+        .Transient()
     CROWY_COMPONENT_END(ScriptComponent)
 
     CROWY_SYSTEM(RunScripts, Update, &runScripts)

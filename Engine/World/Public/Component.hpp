@@ -19,6 +19,8 @@ namespace Crowy
         // at Sync: after the row lands, and before it leaves
         ComponentHook onAdd;
         ComponentHook onRemove;
+        // its state lives only while the program runs, so a scene leaves it out
+        bool transient = false;
     };
 
     // every component linked in, registered by CROWY_COMPONENT at static init
@@ -57,6 +59,12 @@ namespace Crowy
 
         ComponentBuilder& OnRemove(Hook hook) {
             info.onRemove = typed(hook);
+
+            return *this;
+        }
+
+        ComponentBuilder& Transient() {
+            info.transient = true;
 
             return *this;
         }
