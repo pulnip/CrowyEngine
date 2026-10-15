@@ -9,10 +9,10 @@
 # The goldens are Engine/Render/Sample/Golden/StageEditor/<name>.<backend>.png
 # (metal on macOS, dx12 elsewhere), taken at the Backlot commit
 # StageEditor.backlot.txt names, for the keys it pins; the launch picture's
-# golden is the smoke's StageEditor.<backend>.png. A Backlot at another
-# commit, or with changes the editor reads, is captured but not compared
-# (exit 77). --record copies the pictures that are missing or differ and
-# stamps Backlot's commit.
+# golden is StageEditor.<backend>.png, a plain run's frame 60. A Backlot at
+# another commit, or with changes the editor reads, is captured but not
+# compared (exit 77). --record copies the pictures that are missing or
+# differ and stamps Backlot's commit.
 #
 # --unity-run <run> sets each picture against Unity's of the same name in
 # <Backlot>/Captures/<run> (or a folder given as a path) by their edges,
@@ -121,7 +121,7 @@ if [ "$PAUSED" != true ] || ! is_zero "$TIME" || [ "$REVISION" != 1 ]; then
     echo "a golden needs the launch's still scene (paused $PAUSED, time $TIME, revision $REVISION)" >&2
     exit 1
 fi
-# the cut the editor launches on, in the default key: the smoke's picture
+# the cut the editor launches on, in the default key: a plain run's picture
 LAUNCH_NAME=$(port_get editor cut | stage_unquote) || exit 1
 
 ROOT=$(stage_root "$(port_get editor scene | stage_unquote)") || exit 1
@@ -185,7 +185,7 @@ else
     fi
 fi
 
-# the launch picture is the smoke's golden; every other one has its own
+# the launch picture is a plain run's frame 60; every other one has its own
 golden_path() {
     if [ "$1" = "$LAUNCH_NAME" ]; then
         echo "$GOLDEN_ROOT/StageEditor.$BACKEND.png"
@@ -243,7 +243,7 @@ for KEY in $KEYS; do
             echo "FAIL: no golden for $NAME on $BACKEND ($GOLDEN)"
             if [ "$SMOKE" = 1 ]; then
                 SMOKE_MISSING=1
-                echo "this is the smoke's golden, which --record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.sh build/bin/StageEditor and copy the capture to $GOLDEN"
+                echo "this is a plain run's frame 60, which --record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.sh build/bin/StageEditor and copy the capture to $GOLDEN"
             fi
             continue
         fi
@@ -276,7 +276,7 @@ for KEY in $KEYS; do
         "$TOOL" "$PNG" "$GOLDEN" $COMPARE_ARGS --diff "$OUT/$NAME.diff.png"
         echo "diff: $OUT/$NAME.diff.png"
         if [ "$SMOKE" = 1 ]; then
-            echo "this is the smoke's golden: if StageEditorSmoke passes, the port's held frames and the free-running frame 60 draw different pictures; accept through Tools/smoke_run.sh build/bin/StageEditor"
+            echo "this is a plain run's frame 60: if a fresh capture through Tools/smoke_run.sh build/bin/StageEditor matches it, the port's held frames and the free-running frame 60 draw different pictures; a meant change is accepted by copying that capture over it"
         else
             echo "to accept: cp \"$PNG\" \"$GOLDEN\""
         fi

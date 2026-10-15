@@ -28,7 +28,7 @@ if(CROWY_ENABLE_TEST)
     crowy_declare_test(SamplePuzzle
         DIRECTORY Test
         DEPENDS SamplePuzzle
-        LABELS "unit"
+        LABELS "scenario"
     )
     crowy_fp_contract_off(CrowySamplePuzzleTest)
 endif()

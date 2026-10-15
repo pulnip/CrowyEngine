@@ -1,5 +1,6 @@
 # fails the run if the CPU and GPU density fields drift apart
 crowy_declare_check(TerrainDensityCheck
+    TEST gpu
 SOURCES
     TerrainDensityCheck.cpp
 DEPENDS
@@ -8,6 +9,7 @@ DEPENDS
 
 # runs the marching passes once and checks the mesh landed on the isosurface
 crowy_declare_check(TerrainMarchCheck
+    TEST gpu
 SOURCES
     TerrainMarchCheck.cpp
 DEPENDS
@@ -16,6 +18,7 @@ DEPENDS
 
 # copies the trail ring back and holds it against the Kepler solver
 crowy_declare_check(OrbitTrailCheck
+    TEST gpu
 SOURCES
     OrbitTrailCheck.cpp
 DEPENDS
@@ -25,6 +28,7 @@ DEPENDS
 # forces a creation-upload flush while a transient slice waits in an
 # unsubmitted copy, and fails if the flush let the slice be overwritten
 crowy_declare_check(UploadFlushCheck
+    TEST gpu
 SOURCES
     UploadFlushCheck.cpp
 )

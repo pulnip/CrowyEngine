@@ -7,10 +7,10 @@
 #
 # The goldens are Engine/Render/Sample/Golden/StageEditor/<name>.dx12.png,
 # taken at the Backlot commit StageEditor.backlot.txt names, for the keys it
-# pins; the launch picture's golden is the smoke's StageEditor.dx12.png. A
-# Backlot at another commit, or with changes the editor reads, is captured
-# but not compared (exit 77). -Record copies the pictures that are missing
-# or differ and stamps Backlot's commit.
+# pins; the launch picture's golden is StageEditor.dx12.png, a plain run's
+# frame 60. A Backlot at another commit, or with changes the editor reads,
+# is captured but not compared (exit 77). -Record copies the pictures that
+# are missing or differ and stamps Backlot's commit.
 #
 # -UnityRun <run> sets each picture against Unity's of the same name in
 # <Backlot>/Captures/<run> (or a folder given as a path) by their edges,
@@ -64,7 +64,7 @@ if ($Tolerance -ge 0) {
     $compareArguments = @("--tolerance", "$Tolerance")
 }
 
-# the launch picture is the smoke's golden; every other one has its own
+# the launch picture is a plain run's frame 60; every other one has its own
 function Get-GoldenPath([string]$Name) {
     if ($Name -eq $launchName) {
         return Join-Path $goldenRoot "StageEditor.$backend.png"
@@ -194,7 +194,7 @@ try {
     if (-not ($paused -eq $true -and $time -eq 0 -and $revision -eq 1)) {
         throw "a golden needs the launch's still scene (paused $paused, time $time, revision $revision)"
     }
-    # the cut the editor launches on, in the default key: the smoke's picture
+    # the cut the editor launches on, in the default key: a plain run's picture
     $launchName = Get-PortProperty editor cut
 
     $root = Get-StageRoot (Get-PortProperty editor scene)
@@ -302,7 +302,7 @@ try {
                 Write-Host "FAIL: no golden for $name on $backend ($golden)"
                 if ($smoke) {
                     ++$smokeMissing
-                    Write-Host "this is the smoke's golden, which -Record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.ps1 build\bin\StageEditor.exe and copy the capture to $golden"
+                    Write-Host "this is a plain run's frame 60, which -Record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.ps1 build\bin\StageEditor.exe and copy the capture to $golden"
                 }
                 continue
             }
@@ -333,7 +333,7 @@ try {
             $null = Invoke-ImageCompareCheck $tool (@($png, $golden) + $compareArguments + @("--diff", $diff))
             Write-Host "diff: $diff"
             if ($smoke) {
-                Write-Host "this is the smoke's golden: if StageEditorSmoke passes, the port's held frames and the free-running frame 60 draw different pictures; accept through Tools/smoke_run.ps1 build\bin\StageEditor.exe"
+                Write-Host "this is a plain run's frame 60: if a fresh capture through Tools/smoke_run.ps1 build\bin\StageEditor.exe matches it, the port's held frames and the free-running frame 60 draw different pictures; a meant change is accepted by copying that capture over it"
             }
             else {
                 Write-Host "to accept: Copy-Item -Force '$png' '$golden'"

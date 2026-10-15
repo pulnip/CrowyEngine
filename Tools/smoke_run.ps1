@@ -1,34 +1,31 @@
-# Smoke-run a sample: launch it, let it render a counted number of frames
-# and exit by itself, then fail on crashes, thrown exceptions, or D3D12
-# validation errors.
+# Run one executable the way its ctest entry does: launch it, let it render a
+# counted number of frames and exit by itself, then fail on crashes, thrown
+# exceptions, or D3D12 validation errors.
 #
-# usage: smoke_run.ps1 <executable> [duration-seconds] [capture-image-path]
+# usage: smoke_run.ps1 <executable> [capture-image-path]
 #
 # Same contract as Tools/smoke_run.sh:
-#   the sample gets --exit-after-frame $env:CROWY_SMOKE_FRAMES (60), or the
+#   the program gets --exit-after-frame $env:CROWY_SMOKE_FRAMES (60), or the
 #   capture frame when that is later, and must exit within
 #   $env:CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure.
-#   a duration (the argument, else $env:CROWY_SMOKE_DURATION) instead runs
-#   a program with no frames to count for that long: an early exit with
-#   status 0 passes (HelloCompute), and so does one still running at the end.
 #   a capture path falls back to $env:CROWY_SMOKE_CAPTURE_DIR\<sample>.bmp
 #   when that directory variable is set; capture rides on the app's
 #   --capture-frame <frame> <path> argument, frame 60 unless
 #   CROWY_SMOKE_CAPTURE_AT says otherwise.
 #   a .bmp capture becomes a PNG through ImageCompareCheck.exe beside the
 #   executable (the BMP stays when that tool is not built).
-#   when Engine\*\Sample\Golden\<sample>.dx12.png (or Spike\Golden) exists,
-#   frame 60 is captured (to %TEMP%\crowy-smoke without a capture
-#   directory) and compared against it on every run, and a
-#   difference fails the run with a heat map beside the capture; the
-#   failure prints the Copy-Item that accepts the new picture.
+#   when Engine\*\Spike\Golden\<spike>.dx12.png exists, frame 60 is
+#   captured (to %TEMP%\crowy-smoke without a capture directory) and
+#   compared against it on every run, and a difference fails the run with a
+#   heat map beside the capture; the failure prints the Copy-Item that
+#   accepts the new picture. A sample's picture under Sample\Golden is a
+#   baseline to compare a capture with by hand, never a gate.
 #   a run that exited has written its captures; a golden whose capture is
 #   missing fails: a golden never gates on a frame it did not compare.
 #   an exit status of 77 is a skip (the sample's content is missing), and
 #   passes through for ctest's SKIP_RETURN_CODE.
 #   with CROWY_SMOKE_MUST_EXIT=1 (checks) the program gets no arguments
-#   and must exit by itself within 60 s or the duration, whichever is
-#   longer.
+#   and must exit by itself within the same timeout.
 #
 # Validation errors: the script sets CROWY_D3D_DEBUG_BREAK=1, which makes
 # the engine break on debug-layer errors — without a debugger that aborts
@@ -39,7 +36,6 @@
 # by relative path.
 param(
     [Parameter(Mandatory = $true)][string]$App,
-    [int]$Duration = 0,
     [string]$Capture = ""
 )
 
@@ -71,29 +67,23 @@ function Invoke-ImageCompare([string[]]$Arguments, [switch]$Quiet) {
     }
 }
 
-if ($Duration -le 0 -and $env:CROWY_SMOKE_DURATION) {
-    $Duration = [int]$env:CROWY_SMOKE_DURATION
-}
-
 if (-not $Capture -and $env:CROWY_SMOKE_CAPTURE_DIR) {
     $Capture = Join-Path $env:CROWY_SMOKE_CAPTURE_DIR "$sampleName.bmp"
 }
 
-# the golden a frame-60 capture is compared with, found before the launch so
-# the watch can wait for that capture
+# a spike's golden, found before the launch so the run captures its frame
+$golden = Get-ChildItem -ErrorAction SilentlyContinue `
+    -Path (Join-Path $repoRoot "Engine\*\Spike\Golden\$sampleName.$backend.png") |
+    Select-Object -First 1
 $expectedGolden = $null
 if (-not $env:CROWY_SMOKE_CAPTURE_AT -or $env:CROWY_SMOKE_CAPTURE_AT -eq "60") {
-    $expectedGolden = Get-ChildItem -ErrorAction SilentlyContinue -Path @(
-        (Join-Path $repoRoot "Engine\*\Sample\Golden\$sampleName.$backend.png"),
-        (Join-Path $repoRoot "Engine\*\Spike\Golden\$sampleName.$backend.png")
-    ) | Select-Object -First 1
+    $expectedGolden = $golden
 }
 # a golden gates every run, not only runs that collect captures
 if (-not $Capture -and $expectedGolden) {
     $Capture = Join-Path $env:TEMP "crowy-smoke\$sampleName.bmp"
 }
 $mustExit = $env:CROWY_SMOKE_MUST_EXIT -eq "1"
-$timed = $Duration -gt 0 -and -not $mustExit
 $captureAt = 60
 if ($env:CROWY_SMOKE_CAPTURE_AT) {
     $captureAt = [int]$env:CROWY_SMOKE_CAPTURE_AT
@@ -133,7 +123,7 @@ if ($Capture) {
 
 # a check is headless and may parse arguments of its own
 $launch = @{}
-if (-not $mustExit -and -not $timed) {
+if (-not $mustExit) {
     $arguments = @("--exit-after-frame", "$frames")
     if ($Capture) {
         $arguments += @("--capture-frame", "$captureAt", "`"$Capture`"")
@@ -152,14 +142,7 @@ $proc = Start-Process -FilePath $App @launch `
 $null = $proc.Handle
 
 $status = 0
-$watch = $timeout
-if ($mustExit) {
-    $watch = [Math]::Max($Duration, 60)
-}
-elseif ($timed) {
-    $watch = $Duration
-}
-$exited = $proc.WaitForExit($watch * 1000)
+$exited = $proc.WaitForExit($timeout * 1000)
 if ($exited) {
     $status = $proc.ExitCode
     if ($status -eq 77) {
@@ -173,17 +156,15 @@ if ($exited) {
     }
 }
 else {
-    # still alive after the watch window: healthy only for a timed run
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
     $proc.WaitForExit() | Out-Null
     if ($mustExit) {
-        Write-Host "FAIL: did not exit within $watch s"
-        $status = 1
+        Write-Host "FAIL: did not exit within $timeout s"
     }
-    elseif (-not $timed) {
-        Write-Host "FAIL: did not exit after frame $frames within $watch s"
-        $status = 1
+    else {
+        Write-Host "FAIL: did not exit after frame $frames within $timeout s"
     }
+    $status = 1
 }
 
 $log = @()
@@ -233,10 +214,6 @@ if ($Capture.EndsWith(".bmp") -and $haveTool) {
 }
 Write-Host "captured frame: $Capture"
 
-$golden = Get-ChildItem -ErrorAction SilentlyContinue -Path @(
-    (Join-Path $repoRoot "Engine\*\Sample\Golden\$sampleName.$backend.png"),
-    (Join-Path $repoRoot "Engine\*\Spike\Golden\$sampleName.$backend.png")
-) | Select-Object -First 1
 if (-not $golden) {
     exit 0
 }

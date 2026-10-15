@@ -9,6 +9,7 @@ SOURCES
 )
 
 crowy_declare_spike(ShadowSampleSpike
+    TEST render
 SOURCES
     ShadowSampleSpike.cpp
 )

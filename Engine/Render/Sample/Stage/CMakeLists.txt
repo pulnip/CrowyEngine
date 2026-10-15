@@ -35,7 +35,7 @@ if(CROWY_ENABLE_TEST)
     crowy_declare_test(SampleStageBacklot
         DIRECTORY BacklotTest
         DEPENDS SampleStage
-        LABELS "unit;stage"
+        LABELS "content"
     )
     target_compile_definitions(CrowySampleStageBacklotTest
     PRIVATE

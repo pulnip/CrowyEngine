@@ -6,8 +6,10 @@ and what a test has to prove.
 
 ## Smoke runs and goldens
 
-Every executable gets a `<Name>Smoke` test that runs it through
-`Tools/smoke_run.ps1` (macOS: `smoke_run.sh`). A windowed one gets
+An executable declared `SMOKE` in `cmake/sample.cmake` gets a
+`<Name>Smoke` test; every spike and check is, and every example but the
+`Hello*` ones. The test runs it through `Tools/smoke_run.ps1` (macOS:
+`smoke_run.sh`). A windowed one gets
 `--exit-after-frame` and must exit by itself, shutdown included, within
 60 s (`CROWY_SMOKE_TIMEOUT`). It runs 60 frames, or the `FRAMES` its
 declaration in `cmake/sample.cmake` gives, or `CROWY_SMOKE_FRAMES`. The

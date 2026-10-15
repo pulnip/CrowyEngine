@@ -1,70 +1,66 @@
 #!/bin/sh
-# Smoke-run a sample: launch it, let it render a counted number of frames
-# and exit by itself, then fail on crashes, thrown exceptions, or Metal
-# validation errors.
+# Run one executable the way its ctest entry does: launch it, let it render
+# a counted number of frames and exit by itself, then fail on crashes,
+# thrown exceptions, or Metal validation errors.
 #
-# usage: smoke_run.sh <executable> [duration-seconds] [capture-image-path]
+# usage: smoke_run.sh <executable> [capture-image-path]
 #
-# The sample gets --exit-after-frame $CROWY_SMOKE_FRAMES (60), or the
+# The program gets --exit-after-frame $CROWY_SMOKE_FRAMES (60), or the
 # capture frame when that is later, and must exit within
-# $CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure. A
-# duration (the argument, else $CROWY_SMOKE_DURATION) instead runs a
-# program with no frames to count for that long: an early exit with status
-# 0 passes (HelloCompute), and so does one still running at the end.
+# $CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure.
 #
-# capture saves one rendered frame. Either pass a path as the third
+# capture saves one rendered frame. Either pass a path as the second
 # argument, or set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per
 # sample:
-#   CROWY_SMOKE_CAPTURE_DIR=captures ctest --test-dir build -C Debug -L smoke
+#   CROWY_SMOKE_CAPTURE_DIR=captures Tools/smoke_run.sh build/bin/Playground
 # It rides on the app's --capture-frame <frame> <path> argument, which writes
 # a BMP; the frame is 60 unless $CROWY_SMOKE_CAPTURE_AT says otherwise.
 # A .bmp capture becomes a PNG through ImageCompareCheck beside the
 # executable (the BMP stays when that tool is not built).
 #
-# golden: when Engine/*/Sample/Golden/<sample>.metal.png (or Spike/Golden)
-# exists, frame 60 is captured (to $TMPDIR/crowy-smoke without a capture
-# directory) and compared against it on every run with
-# ImageCompareCheck's defaults, and a difference fails the run with a heat
-# map beside the capture. To accept a new picture, copy the capture over
-# the golden; the failure prints the command. A run that exited has
-# written its captures; a golden whose capture is missing fails: a golden
-# never gates on a frame it did not compare.
+# golden: when Engine/*/Spike/Golden/<spike>.metal.png exists, frame 60 is
+# captured (to $TMPDIR/crowy-smoke without a capture directory) and compared
+# against it on every run with ImageCompareCheck's defaults, and a
+# difference fails the run with a heat map beside the capture. To accept a
+# new picture, copy the capture over the golden; the failure prints the
+# command. A run that exited has written its captures; a golden whose
+# capture is missing fails: a golden never gates on a frame it did not
+# compare. A sample's picture under Sample/Golden is a baseline to compare
+# a capture with by hand, never a gate.
 #
 # An exit status of 77 is a skip (the sample's content is missing) and
 # passes through for ctest's SKIP_RETURN_CODE.
 #
 # With CROWY_SMOKE_MUST_EXIT=1 (checks) the program gets no arguments and
-# must exit by itself within 60 s or the duration, whichever is longer.
+# must exit by itself within the same timeout.
 #
 # Run from the repository root: samples load Engine/Shader and Content
 # by relative path.
 set -u
 
 APP="$1"
-DURATION="${2:-${CROWY_SMOKE_DURATION:-0}}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="$(basename "$APP")"
 TOOL="$(dirname "$APP")/ImageCompareCheck"
 BACKEND=metal
 
-CAPTURE="${3:-}"
+CAPTURE="${2:-}"
 if [ -z "$CAPTURE" ] && [ -n "${CROWY_SMOKE_CAPTURE_DIR:-}" ]; then
     CAPTURE="$CROWY_SMOKE_CAPTURE_DIR/$NAME.bmp"
 fi
 
-# the golden a frame-60 capture is compared with, found before the launch
-# so the watch can wait for that capture
+# a spike's golden, found before the launch so the run captures its frame
+GOLDEN=""
+for CANDIDATE in "$REPO_ROOT"/Engine/*/Spike/Golden/"$NAME.$BACKEND.png"; do
+    if [ -f "$CANDIDATE" ]; then
+        GOLDEN="$CANDIDATE"
+        break
+    fi
+done
 EXPECTED_GOLDEN=""
 if [ "${CROWY_SMOKE_CAPTURE_AT:-60}" = 60 ]; then
-    for CANDIDATE in \
-        "$REPO_ROOT"/Engine/*/Sample/Golden/"$NAME.$BACKEND.png" \
-        "$REPO_ROOT"/Engine/*/Spike/Golden/"$NAME.$BACKEND.png"; do
-        if [ -f "$CANDIDATE" ]; then
-            EXPECTED_GOLDEN="$CANDIDATE"
-            break
-        fi
-    done
+    EXPECTED_GOLDEN="$GOLDEN"
 fi
 # a golden gates every run, not only runs that collect captures
 if [ -z "$CAPTURE" ] && [ -n "$EXPECTED_GOLDEN" ]; then
@@ -72,8 +68,6 @@ if [ -z "$CAPTURE" ] && [ -n "$EXPECTED_GOLDEN" ]; then
 fi
 MUST_EXIT=0
 [ "${CROWY_SMOKE_MUST_EXIT:-}" = 1 ] && MUST_EXIT=1
-TIMED=0
-[ "$DURATION" -gt 0 ] && [ "$MUST_EXIT" -eq 0 ] && TIMED=1
 CAPTURE_AT="${CROWY_SMOKE_CAPTURE_AT:-60}"
 FRAMES="${CROWY_SMOKE_FRAMES:-60}"
 # a capture asks for its frame, so the run reaches it
@@ -81,12 +75,6 @@ if [ -n "$CAPTURE" ] && [ "$CAPTURE_AT" -gt "$FRAMES" ]; then
     FRAMES="$CAPTURE_AT"
 fi
 WATCH="${CROWY_SMOKE_TIMEOUT:-60}"
-if [ "$MUST_EXIT" -eq 1 ]; then
-    WATCH=60
-    [ "$DURATION" -gt 60 ] && WATCH="$DURATION"
-elif [ "$TIMED" -eq 1 ]; then
-    WATCH="$DURATION"
-fi
 
 LOG="${TMPDIR:-/tmp}/crowy-smoke-$$.log"
 trap 'rm -f "$LOG"' EXIT
@@ -109,7 +97,7 @@ fi
 
 # a check is headless and may parse arguments of its own
 set --
-if [ "$MUST_EXIT" -eq 0 ] && [ "$TIMED" -eq 0 ]; then
+if [ "$MUST_EXIT" -eq 0 ]; then
     set -- --exit-after-frame "$FRAMES"
     if [ -n "$CAPTURE" ]; then
         set -- "$@" --capture-frame "$CAPTURE_AT" "$CAPTURE"
@@ -143,16 +131,14 @@ if [ "$EXITED" -eq 1 ]; then
         echo "FAIL: exited early with status $STATUS" >&2
     fi
 else
-    # still alive after the watch window: healthy only for a timed run
     kill "$PID" 2>/dev/null
     wait "$PID" 2>/dev/null
     if [ "$MUST_EXIT" -eq 1 ]; then
         echo "FAIL: did not exit within $WATCH s" >&2
-        STATUS=1
-    elif [ "$TIMED" -eq 0 ]; then
+    else
         echo "FAIL: did not exit after frame $FRAMES within $WATCH s" >&2
-        STATUS=1
     fi
+    STATUS=1
 fi
 
 if grep -q "failed assertion\|Draw Errors\|terminating\|Assertion failed" "$LOG"; then
@@ -191,15 +177,6 @@ case "$CAPTURE" in
 esac
 echo "captured frame: $CAPTURE"
 
-GOLDEN=""
-for CANDIDATE in \
-    "$REPO_ROOT"/Engine/*/Sample/Golden/"$NAME.$BACKEND.png" \
-    "$REPO_ROOT"/Engine/*/Spike/Golden/"$NAME.$BACKEND.png"; do
-    if [ -f "$CANDIDATE" ]; then
-        GOLDEN="$CANDIDATE"
-        break
-    fi
-done
 if [ -z "$GOLDEN" ]; then
     exit 0
 fi
