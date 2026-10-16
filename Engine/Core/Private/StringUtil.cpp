@@ -97,11 +97,15 @@ namespace Crowy
         }
         return std::filesystem::path(buffer).parent_path();
     #elif defined(__APPLE__)
-        char buffer[PATH_MAX];
-        uint32_t size = PATH_MAX;
-        if(_NSGetExecutablePath(buffer, &size) != 0)
-            throw std::runtime_error("_NSGetExecutablePath failed");
-        return std::filesystem::canonical(buffer).parent_path();
+        // a buffer too small fails and reports the size the path needs
+        std::string buffer(PATH_MAX, '\0');
+        uint32_t size = static_cast<uint32_t>(buffer.size());
+        if(_NSGetExecutablePath(buffer.data(), &size) != 0) {
+            buffer.resize(size);
+            if(_NSGetExecutablePath(buffer.data(), &size) != 0)
+                throw std::runtime_error("_NSGetExecutablePath failed");
+        }
+        return std::filesystem::canonical(buffer.c_str()).parent_path();
     #else // Linux
         char buffer[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", buffer, PATH_MAX - 1);
