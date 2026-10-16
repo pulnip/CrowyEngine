@@ -18,6 +18,7 @@ endif()
 
 add_subdirectory(UI)
 
+add_subdirectory(Asset)
 # 3-0) Subsystem Layer
 add_subdirectory(World)
 if(CROWY_ENABLE_PHYSICS)
