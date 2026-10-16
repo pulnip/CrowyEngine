@@ -23,7 +23,10 @@ backends D3D12 and Metal. Modules under `Engine/`:
   see the World) and `WorldEffects` (an actor's position written into an
   effect's origin). `Scene` saves a World's actors to a scene file and
   loads one back; a component marked `Transient` is left out, and one with
-  no reflected properties stops the save.
+  no reflected properties stops the save. `Asset` names an asset by its
+  mount and normalized path (`AssetRef`, `engine:` or the content root) and
+  loads each once, released at the `Collect` after its last handle goes
+  (`AssetStore`); nothing loads through it yet.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in
