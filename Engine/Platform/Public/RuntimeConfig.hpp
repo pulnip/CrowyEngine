@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <span>
 #include <vector>
@@ -70,6 +71,9 @@ namespace Crowy
         // argv only: --exit-after-frame <frame> ends the loop once that frame
         // is presented, so a run's length is counted, not timed
         std::optional<u64> exitAfterFrame;
+        // argv only: --project <folder> stands in for the project root found
+        // above the executable
+        std::optional<std::filesystem::path> project;
     };
 
     template<>
@@ -80,6 +84,7 @@ namespace Crowy
 
     // The arguments after the program name: --config <path>, whose app
     // document's benchmark and window.vsync replace the sample's, --hold,
-    // and --capture-frame <frame> <path>, which may repeat.
+    // --capture-frame <frame> <path>, which may repeat, --exit-after-frame
+    // <frame> and --project <folder>.
     void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
 }

@@ -15,6 +15,7 @@
 #include "Assert.hpp"
 #include "HashUtil.hpp"
 #include "LogLocal.hpp"
+#include "ProjectRoot.hpp"
 #include "StringUtil.hpp"
 
 namespace{
@@ -101,11 +102,12 @@ namespace Crowy
         const std::vector<std::string>& libraryRoots() {
             static const auto roots = [] {
                 std::vector<std::string> found{
-                    toUTF8String(std::filesystem::absolute("Engine/Shader"))
+                    toUTF8String(resolveProjectPath("Engine/Shader"))
                 };
                 std::vector<std::filesystem::path> modules;
-                for(const auto& entry:
-                    std::filesystem::directory_iterator("Engine")) {
+                for(const auto& entry: std::filesystem::directory_iterator(
+                        resolveProjectPath("Engine")
+                    )) {
                     const auto shaders = entry.path() / "Shader";
                     if(entry.is_directory() &&
                        std::filesystem::is_directory(shaders))
@@ -113,9 +115,7 @@ namespace Crowy
                 }
                 std::ranges::sort(modules);
                 for(const auto& shaders: modules)
-                    found.push_back(
-                        toUTF8String(std::filesystem::absolute(shaders))
-                    );
+                    found.push_back(toUTF8String(shaders));
 
                 return found;
             }();
@@ -316,7 +316,7 @@ namespace Crowy
                 .profile = globalSession->findProfile(profile)
             }
         };
-        const auto absPath = std::filesystem::absolute(filePath);
+        const auto absPath = resolveProjectPath(filePath);
         const auto modulePath = toUTF8String(absPath);
 
         const auto searchDir = toUTF8String(absPath.parent_path());
@@ -374,7 +374,7 @@ namespace Crowy
         std::vector<std::filesystem::path> linkedPaths;
         Str linkedNames;
         for(const auto& linked: linkedModules){
-            const auto linkedPath = std::filesystem::absolute(linked);
+            const auto linkedPath = resolveProjectPath(linked);
             // composing one module twice is an error Slang reports vaguely
             if(std::ranges::contains(linkedPaths, linkedPath)) [[unlikely]]{
                 throw std::runtime_error(std::format(

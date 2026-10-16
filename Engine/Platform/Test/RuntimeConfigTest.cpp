@@ -167,3 +167,22 @@ TEST(RuntimeConfig, CommandLineTakesHold){
         std::runtime_error
     );
 }
+
+// kept as given: Main resolves it against the cwd it was launched from
+TEST(RuntimeConfig, CommandLineTakesTheProjectFolder) {
+    RuntimeConfig config;
+    EXPECT_FALSE(config.project);
+
+    static char projectFlag[] = "--project";
+    static char folder[] = "../MyGame";
+    applyCommandLine(config, std::array{projectFlag, folder});
+
+    ASSERT_TRUE(config.project);
+    EXPECT_EQ(*config.project, std::filesystem::path("../MyGame"));
+
+    RuntimeConfig missing;
+    EXPECT_THROW(
+        applyCommandLine(missing, std::array{projectFlag}),
+        std::runtime_error
+    );
+}

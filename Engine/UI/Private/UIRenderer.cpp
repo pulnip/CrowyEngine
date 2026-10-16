@@ -1,12 +1,17 @@
+#include "UIRenderer.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include <imgui.h>
+
 #include "Assert.hpp"
 #include "IntMath.hpp"
+#include "ProjectRoot.hpp"
 #include "PtrUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -14,7 +19,7 @@
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
-#include "UIRenderer.hpp"
+#include "StringUtil.hpp"
 
 namespace{
     using namespace Crowy;
@@ -133,10 +138,10 @@ namespace Crowy
         io.BackendRendererUserData = this;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-        io.Fonts->AddFontFromFileTTF(
-            "Content/Fonts/NanumBarunGothic.ttf",
-            18.0f
+        const auto fontPath = toUTF8String(
+            resolveProjectPath("Engine/UI/Fonts/NanumBarunGothic.ttf")
         );
+        io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 18.0f);
 
         // dockspace with BeginDockSpace()
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

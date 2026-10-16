@@ -79,21 +79,34 @@ namespace Crowy
 
     std::filesystem::path getExecutableDir(){
     #if defined(_WIN32)
-        wchar_t buffer[MAX_PATH];
-        GetModuleFileNameW(
-            nullptr,
-            buffer,
-            MAX_PATH
-        );
+        // a long path is cut to the buffer, so grow it until the name fits
+        std::wstring buffer(MAX_PATH, L'\0');
+        while(true) {
+            const auto length = GetModuleFileNameW(
+                nullptr,
+                buffer.data(),
+                static_cast<DWORD>(buffer.size())
+            );
+            if(length == 0)
+                throw std::runtime_error("GetModuleFileNameW failed");
+            if(length < buffer.size()) {
+                buffer.resize(length);
+                break;
+            }
+            buffer.resize(buffer.size() * 2);
+        }
         return std::filesystem::path(buffer).parent_path();
     #elif defined(__APPLE__)
         char buffer[PATH_MAX];
         uint32_t size = PATH_MAX;
-        _NSGetExecutablePath(buffer, &size);
+        if(_NSGetExecutablePath(buffer, &size) != 0)
+            throw std::runtime_error("_NSGetExecutablePath failed");
         return std::filesystem::canonical(buffer).parent_path();
     #else // Linux
         char buffer[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", buffer, PATH_MAX - 1);
+        if(len < 0)
+            throw std::runtime_error("readlink /proc/self/exe failed");
         buffer[len] = '\0';
         return std::filesystem::path(buffer).parent_path();
     #endif

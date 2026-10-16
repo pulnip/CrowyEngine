@@ -90,7 +90,8 @@ namespace Crowy
     void applyCommandLine(RuntimeConfig& config, std::span<char* const> args){
         constexpr auto Usage = "usage: <app> [--config <path>] [--hold] "
                                "[--capture-frame <frame> <path>]... "
-                               "[--exit-after-frame <frame>]";
+                               "[--exit-after-frame <frame>] "
+                               "[--project <folder>]";
 
         // the argument after a flag that takes one
         const auto valueOf = [&](usize& i, StrView flag) {
@@ -136,6 +137,10 @@ namespace Crowy
             }
             if(arg == "--exit-after-frame") {
                 config.exitAfterFrame = frameOf(i, arg);
+                continue;
+            }
+            if(arg == "--project") {
+                config.project = toPath(valueOf(i, arg));
                 continue;
             }
             if(arg != "--config"){

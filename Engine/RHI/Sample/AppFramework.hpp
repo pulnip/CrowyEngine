@@ -11,6 +11,7 @@
 #include "FrameControl.hpp"
 #include "MainLoop.hpp"
 #include "OS.hpp"
+#include "ProjectRoot.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHISwapchain.hpp"
@@ -141,6 +142,9 @@ namespace Crowy
     template<std::derived_from<App> T>
     int Main(const RuntimeConfig& runtimeConfig){
         try{
+            if(runtimeConfig.project)
+                setProjectRoot(*runtimeConfig.project);
+
             auto device = CreateDevice();
 
             OS os(runtimeConfig, *device);
