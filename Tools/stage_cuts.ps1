@@ -19,7 +19,7 @@
 # never change the exit status.
 #
 # usage: Tools/stage_cuts.ps1 [-Keys day,night] [-Cuts street,roof]
-#        [-Out captures/stage/<stamp>] [-Exe build/bin/StageEditor.exe]
+#        [-Out captures/stage/<stamp>] [-Exe build/bin/Debug/StageEditor.exe]
 #        [-Port 27520] [-Tolerance N] [-Record] [-UnityRun <run>]
 #
 # Debug builds only (the port). Run from the repository root. The editor
@@ -28,7 +28,7 @@ param(
     [string[]]$Keys = @(),
     [string[]]$Cuts = @(),
     [string]$Out = "",
-    [string]$Exe = "build\bin\StageEditor.exe",
+    [string]$Exe = "build\bin\Debug\StageEditor.exe",
     [int]$Port = 27520,
     [int]$Tolerance = -1,
     [switch]$Record,
@@ -302,7 +302,7 @@ try {
                 Write-Host "FAIL: no golden for $name on $backend ($golden)"
                 if ($smoke) {
                     ++$smokeMissing
-                    Write-Host "this is a plain run's frame 60, which -Record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.ps1 build\bin\StageEditor.exe and copy the capture to $golden"
+                    Write-Host "this is a plain run's frame 60, which -Record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.ps1 $Exe and copy the capture to $golden"
                 }
                 continue
             }
@@ -333,7 +333,7 @@ try {
             $null = Invoke-ImageCompareCheck $tool (@($png, $golden) + $compareArguments + @("--diff", $diff))
             Write-Host "diff: $diff"
             if ($smoke) {
-                Write-Host "this is a plain run's frame 60: if a fresh capture through Tools/smoke_run.ps1 build\bin\StageEditor.exe matches it, the port's held frames and the free-running frame 60 draw different pictures; a meant change is accepted by copying that capture over it"
+                Write-Host "this is a plain run's frame 60: if a fresh capture through Tools/smoke_run.ps1 $Exe matches it, the port's held frames and the free-running frame 60 draw different pictures; a meant change is accepted by copying that capture over it"
             }
             else {
                 Write-Host "to accept: Copy-Item -Force '$png' '$golden'"

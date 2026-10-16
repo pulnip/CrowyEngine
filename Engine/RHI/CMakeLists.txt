@@ -12,18 +12,6 @@ PRIVATE
     OffsetAllocator
 )
 
-if(SLANG_RUNTIME_LIBS)
-    add_custom_command(TARGET CrowyRHI POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${SLANG_RUNTIME_LIBS}
-            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-        COMMENT "Copying slang runtime libraries into ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-        VERBATIM
-    )
-endif()
-
 if(CROWY_ENABLE_TEST)
     # recording fakes the subsystem tests run against instead of a device
     crowy_declare_interface(RHITestSupport

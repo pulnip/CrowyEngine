@@ -12,7 +12,7 @@
 # capture saves one rendered frame. Either pass a path as the second
 # argument, or set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per
 # sample:
-#   CROWY_SMOKE_CAPTURE_DIR=captures Tools/smoke_run.sh build/bin/Playground
+#   CROWY_SMOKE_CAPTURE_DIR=captures Tools/smoke_run.sh build/bin/Debug/Playground
 # It rides on the app's --capture-frame <frame> <path> argument, which writes
 # a BMP; the frame is 60 unless $CROWY_SMOKE_CAPTURE_AT says otherwise.
 # A .bmp capture becomes a PNG through ImageCompareCheck beside the

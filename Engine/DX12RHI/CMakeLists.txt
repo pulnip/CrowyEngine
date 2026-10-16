@@ -31,23 +31,6 @@ PRIVATE
     <wrl/client.h>
 )
 
-add_custom_command(TARGET CrowyDX12RHI POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${AGILITY_SDK_BIN_DIR}/D3D12Core.dll"
-        "${CMAKE_BINARY_DIR}/bin/D3D12Core.dll"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${AGILITY_SDK_BIN_DIR}/d3d12SDKLayers.dll"
-        "${CMAKE_BINARY_DIR}/bin/d3d12SDKLayers.dll"
-    COMMENT "Copying DirectX Agility SDK DLL"
-)
-
-add_custom_command(TARGET CrowyDX12RHI POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${DXCOMPILER_DLL}" "${DXIL_DLL}"
-        "${CMAKE_BINARY_DIR}/bin"
-    COMMENT "Copying dxcompiler.dll/dxil.dll"
-)
-
 crowy_declare_private_interface(DX12RHI)
 
 # if(CROWY_ENABLE_TEST)

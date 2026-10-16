@@ -21,7 +21,7 @@
 # never change the exit status.
 #
 # usage: Tools/stage_cuts.sh [--keys day,night] [--cuts street,roof]
-#        [--out captures/stage/<stamp>] [--exe build/bin/StageEditor]
+#        [--out captures/stage/<stamp>] [--exe build/bin/Debug/StageEditor]
 #        [--port 27520] [--tolerance N] [--record] [--unity-run <run>]
 #
 # Debug builds only (the port). Run from the repository root. The editor
@@ -40,7 +40,7 @@ usage() {
 KEYS=""
 CUTS=""
 OUT=""
-EXE="build/bin/StageEditor"
+EXE="build/bin/Debug/StageEditor"
 PORT=27520
 TOLERANCE=""
 RECORD=0
@@ -243,7 +243,7 @@ for KEY in $KEYS; do
             echo "FAIL: no golden for $NAME on $BACKEND ($GOLDEN)"
             if [ "$SMOKE" = 1 ]; then
                 SMOKE_MISSING=1
-                echo "this is a plain run's frame 60, which --record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.sh build/bin/StageEditor and copy the capture to $GOLDEN"
+                echo "this is a plain run's frame 60, which --record never writes: capture it with CROWY_SMOKE_CAPTURE_DIR set through Tools/smoke_run.sh $EXE and copy the capture to $GOLDEN"
             fi
             continue
         fi
@@ -276,7 +276,7 @@ for KEY in $KEYS; do
         "$TOOL" "$PNG" "$GOLDEN" $COMPARE_ARGS --diff "$OUT/$NAME.diff.png"
         echo "diff: $OUT/$NAME.diff.png"
         if [ "$SMOKE" = 1 ]; then
-            echo "this is a plain run's frame 60: if a fresh capture through Tools/smoke_run.sh build/bin/StageEditor matches it, the port's held frames and the free-running frame 60 draw different pictures; a meant change is accepted by copying that capture over it"
+            echo "this is a plain run's frame 60: if a fresh capture through Tools/smoke_run.sh $EXE matches it, the port's held frames and the free-running frame 60 draw different pictures; a meant change is accepted by copying that capture over it"
         else
             echo "to accept: cp \"$PNG\" \"$GOLDEN\""
         fi

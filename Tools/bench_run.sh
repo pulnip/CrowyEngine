@@ -16,7 +16,7 @@
 # CROWY_BENCH_DEBUG_A and CROWY_BENCH_DEBUG_B reach a RenderApp sample as
 # CROWY_DEBUG, so A and B may be one executable with two debug switches:
 #   CROWY_BENCH_DEBUG_B='{"depthPrepass":false}' \
-#       Tools/bench_run.sh build-bench/bin/Playground build-bench/bin/Playground
+#       Tools/bench_run.sh build-bench/bin/Release/Playground build-bench/bin/Release/Playground
 # Each run is filed as <name>-<A|B>-rep<n>.
 #
 # Run from the repository root: samples load Engine/Shader and Content by

@@ -18,6 +18,7 @@ function(crowy_declare_executable NAME)
     add_executable(${NAME}
         ${ARG_SOURCES}
     )
+    crowy_copy_runtime_files(${NAME})
 
     target_link_options(${NAME}
     PRIVATE

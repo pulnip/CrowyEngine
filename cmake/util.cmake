@@ -1,36 +1,25 @@
-# symlink for Config/ or Content/ directory
-function(crowy_link_or_copy_directory DIR_NAME)
-    set(SRC "${CMAKE_SOURCE_DIR}/${DIR_NAME}")
-    set(DST "${CMAKE_BINARY_DIR}/bin/${DIR_NAME}")
+# DLLs no target here builds, copied next to every executable
+set(CROWY_RUNTIME_FILES ${SLANG_RUNTIME_LIBS})
+if(WIN32)
+    list(APPEND CROWY_RUNTIME_FILES
+        "${AGILITY_SDK_BIN_DIR}/D3D12Core.dll"
+        "${AGILITY_SDK_BIN_DIR}/d3d12SDKLayers.dll"
+        "${DXCOMPILER_DLL}"
+        "${DXIL_DLL}"
+    )
+endif()
 
-    if(EXISTS "${DST}")
+function(crowy_copy_runtime_files TARGET)
+    if(NOT CROWY_RUNTIME_FILES)
         return()
     endif()
-
-    if(WIN32)
-        file(TO_NATIVE_PATH "${DST}" DST_NATIVE)
-        file(TO_NATIVE_PATH "${SRC}" SRC_NATIVE)
-        execute_process(
-            COMMAND cmd /c mklink /J "${DST_NATIVE}" "${SRC_NATIVE}"
-            RESULT_VARIABLE LINK_RESULT
-        )
-    else()
-        file(CREATE_LINK "${SRC}" "${DST}"
-            RESULT LINK_RESULT
-            SYMBOLIC
-        )
-    endif()
-
-    # fallback: copy directory
-    if(NOT LINK_RESULT EQUAL 0)
-        message(STATUS "[${DIR_NAME}] Symlink failed, falling back to copy...")
-        file(COPY "${SRC}" DESTINATION "${CMAKE_BINARY_DIR}/bin")
-    endif()
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CROWY_RUNTIME_FILES}
+            "$<TARGET_FILE_DIR:${TARGET}>"
+        VERBATIM
+    )
 endfunction()
-
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-crowy_link_or_copy_directory(Content)
-crowy_link_or_copy_directory(Config)
 
 # WHOLE_ARCHIVE: the module registers types or systems from objects nothing
 # references, so Crowy::NAME links its archive whole
@@ -151,6 +140,7 @@ function(crowy_declare_test NAME)
     endif()
 
     add_executable(Crowy${NAME}Test)
+    crowy_copy_runtime_files(Crowy${NAME}Test)
 
     file(GLOB TEST_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/${ARG_DIRECTORY}/*.hpp"

@@ -17,7 +17,7 @@
 #
 # -DebugA and -DebugB reach a RenderApp sample as CROWY_DEBUG, so A and B may
 # be one executable with two debug switches:
-#   -AppA build-bench\bin\Playground.exe -AppB build-bench\bin\Playground.exe
+#   -AppA build-bench\bin\Release\Playground.exe -AppB build-bench\bin\Release\Playground.exe
 #   -DebugB '{"depthPrepass":false}'
 # Each run is filed as <name>-<A|B>-rep<n>.
 #

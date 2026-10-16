@@ -205,6 +205,14 @@ FetchContent_Declare(ktx
 FetchContent_MakeAvailable(ktx)
 # KTX builds itself shared, and leaves BUILD_SHARED_LIBS on for everyone below
 unset(BUILD_SHARED_LIBS CACHE)
+# KTX pins its DLLs to its own <Config> folder; put them beside the executables
+foreach(KTX_TARGET ktx ktx_read)
+    if(TARGET ${KTX_TARGET})
+        set_target_properties(${KTX_TARGET} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+        )
+    endif()
+endforeach()
 
 # ufbx - single source file FBX file loader
 FetchContent_Declare(ufbx

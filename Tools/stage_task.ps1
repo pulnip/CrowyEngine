@@ -4,13 +4,13 @@
 # to night, capture. Every step is a property write the panels and the mouse
 # make too; the script asserts each outcome and exits 1 on the first that fails.
 #
-# usage: Tools/stage_task.ps1 [-Out captures/stage-task] [-Exe build/bin/StageEditor.exe]
+# usage: Tools/stage_task.ps1 [-Out captures/stage-task] [-Exe build/bin/Debug/StageEditor.exe]
 #        [-Backlot ../Backlot] [-Port 27520]
 #
 # Debug builds only (the port). Run from the repository root.
 param(
     [string]$Out = "captures\stage-task",
-    [string]$Exe = "build\bin\StageEditor.exe",
+    [string]$Exe = "build\bin\Debug\StageEditor.exe",
     [string]$Backlot = "",
     [int]$Port = 27520
 )

@@ -172,7 +172,7 @@ powershell -NoProfile -File Tools/build.ps1 -Config Debug -Target Island
 ```
 
 ```bash
-build/bin/Island.exe
+build/bin/Debug/Island.exe
 ```
 
 - 실행 중에 포트의 `reload_shaders`를 부르면 그리기(`vs_`/`fs_`)와 `cs_step`(`spawn`,
@@ -188,7 +188,7 @@ build/bin/Island.exe
   그 줄은 PowerShell 명령이라 PowerShell에서 실행하면 새 그림이 골든이 된다.
 
 ```bash
-CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1 build/bin/Island.exe
+CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1 build/bin/Debug/Island.exe
 ```
 
 ## 6. 파티클이 아닌 것

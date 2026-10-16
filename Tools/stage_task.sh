@@ -17,7 +17,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO_ROOT/Tools/stage_editor.sh"
 
 OUT="${1:-captures/stage-task}"
-EXE="${2:-build/bin/StageEditor}"
+EXE="${2:-build/bin/Debug/StageEditor}"
 BACKLOT="${3:-$REPO_ROOT/../Backlot}"
 PORT="${4:-27520}"
 TOOL="$(dirname "$EXE")/ImageCompareCheck"
