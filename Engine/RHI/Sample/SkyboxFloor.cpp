@@ -1,16 +1,19 @@
+#include "SkyboxFloor.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <numbers>
+
 #include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "Primitives.hpp"
+#include "ProjectFile.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
-#include "SkyboxFloor.hpp"
 
 namespace Crowy
 {
@@ -165,7 +168,10 @@ namespace Crowy
                 .initialData = floor.mesh.indices.data()
             });
             floorIndexCount = static_cast<u32>(floor.mesh.indices.size());
-            floorAlbedo = LoadTexture(device, floor.material.albedoMap);
+            floorAlbedo = LoadTexture(
+                device,
+                resolveContentPath(floor.material.albedoMap)
+            );
 
             // a sphere well inside the far plane, wound for a viewer outside it,
             // so it has to be reversed to be seen from within
@@ -181,7 +187,8 @@ namespace Crowy
             });
             skyIndexCount = static_cast<u32>(skyMesh.indices.size());
 
-            const auto faces = SkyboxFacePaths(scene.skybox);
+            const auto faces =
+                SkyboxFacePaths(resolveContentPath(scene.skybox));
 
             std::vector<RHISubresourceData> subs;
             std::vector<ImageData> faceImages;

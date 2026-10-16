@@ -1,12 +1,14 @@
 #include <algorithm>
 #include <array>
 #include <numbers>
+
 #include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "Primitives.hpp"
+#include "ProjectFile.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -77,12 +79,17 @@ namespace Crowy
             });
             indexCount = static_cast<u32>(cubeMesh.indices.size());
 
-            auto right = LoadImage("Content/Assets/skybox/right.ktx2");
-            auto left = LoadImage("Content/Assets/skybox/left.ktx2");
-            auto top = LoadImage("Content/Assets/skybox/top.ktx2");
-            auto bottom = LoadImage("Content/Assets/skybox/bottom.ktx2");
-            auto front = LoadImage("Content/Assets/skybox/front.ktx2");
-            auto back = LoadImage("Content/Assets/skybox/back.ktx2");
+            auto right =
+                LoadImage(resolveContentPath("Assets/skybox/right.ktx2"));
+            auto left =
+                LoadImage(resolveContentPath("Assets/skybox/left.ktx2"));
+            auto top = LoadImage(resolveContentPath("Assets/skybox/top.ktx2"));
+            auto bottom =
+                LoadImage(resolveContentPath("Assets/skybox/bottom.ktx2"));
+            auto front =
+                LoadImage(resolveContentPath("Assets/skybox/front.ktx2"));
+            auto back =
+                LoadImage(resolveContentPath("Assets/skybox/back.ktx2"));
 
             std::vector<RHISubresourceData> subs;
             subs.reserve(6 * back.subs.size());

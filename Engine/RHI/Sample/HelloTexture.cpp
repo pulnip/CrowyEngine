@@ -1,6 +1,7 @@
 #include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "Primitives.hpp"
+#include "ProjectFile.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
@@ -50,9 +51,15 @@ namespace Crowy
                 .renderTargetCount = 1
             });
 
-            auto diffuse = LoadImage("Content/Assets/3crates/crate1/crate1_diffuse.ktx2");
-            auto normal = LoadImage("Content/Assets/3crates/crate1/crate1_normal.ktx2");
-            auto bump = LoadImage("Content/Assets/3crates/crate1/crate1_bump.ktx2");
+            auto diffuse = LoadImage(
+                resolveContentPath("Assets/3crates/crate1/crate1_diffuse.ktx2")
+            );
+            auto normal = LoadImage(
+                resolveContentPath("Assets/3crates/crate1/crate1_normal.ktx2")
+            );
+            auto bump = LoadImage(
+                resolveContentPath("Assets/3crates/crate1/crate1_bump.ktx2")
+            );
 
             this->diffuse = device.CreateTexture(RHITextureCreateDesc{
                 .width = diffuse.width, .height = diffuse.height,

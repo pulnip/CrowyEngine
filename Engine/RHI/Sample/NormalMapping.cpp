@@ -1,10 +1,12 @@
 #include <array>
+
 #include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "Primitives.hpp"
+#include "ProjectFile.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -86,9 +88,15 @@ namespace Crowy
             // - the normal map is a wide, gentle bevel per plank,
             // - the height map a narrow, sharp notch that also carries the frame and the brace.
             // so the first shades and the second displaces
-            auto diffuseImage = LoadImage("Content/Assets/3crates/crate1/crate1_diffuse.ktx2");
-            auto normalImage = LoadImage("Content/Assets/3crates/crate1/crate1_normal.ktx2");
-            auto bumpImage = LoadImage("Content/Assets/3crates/crate1/crate1_bump.ktx2");
+            auto diffuseImage = LoadImage(
+                resolveContentPath("Assets/3crates/crate1/crate1_diffuse.ktx2")
+            );
+            auto normalImage = LoadImage(
+                resolveContentPath("Assets/3crates/crate1/crate1_normal.ktx2")
+            );
+            auto bumpImage = LoadImage(
+                resolveContentPath("Assets/3crates/crate1/crate1_bump.ktx2")
+            );
 
             diffuse = device.CreateTexture(RHITextureCreateDesc{
                 .width = diffuseImage.width, .height = diffuseImage.height,
