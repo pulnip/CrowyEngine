@@ -1,4 +1,5 @@
 #include <cstring>
+#include <format>
 #include <numeric>
 #include <vector>
 
@@ -163,4 +164,38 @@ TEST_F(GeometryPoolTest, AMeshPastTheIndexSpaceTakesNoVertexSpace) {
         << result.error();
 
     EXPECT_TRUE(pool.Add(vertices(64, 0.0f), indices(3)).has_value());
+}
+
+TEST(GeometryPool, OneFramesUploadsStayInsideTheStagingBudget) {
+    constexpr auto MeshBytes = geometryStagingBytes(3, 3);
+    FakeDevice device;
+    GeometryPool
+        pool{device, 64, 256, RHIResourceUsage::SampledVertex, 2 * MeshBytes};
+
+    EXPECT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)).has_value());
+    EXPECT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)).has_value());
+
+    const auto past = pool.Add(vertices(3, 0.0f), indices(3));
+    ASSERT_FALSE(past.has_value());
+    EXPECT_EQ(
+        past.error(),
+        std::format(
+            "geometry pool upload stages {} bytes this frame, past its {} "
+            "budget",
+            3 * MeshBytes,
+            2 * MeshBytes
+        )
+    );
+
+    // the next frame's budget is whole again
+    FakeCommandList cmdList;
+    pool.RecordUploads(cmdList);
+    EXPECT_EQ(device.transientUsed, 2 * MeshBytes);
+    EXPECT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)).has_value());
+}
+
+TEST(GeometryPool, AStagedMeshAlignsEachArray) {
+    EXPECT_EQ(geometryStagingBytes(1, 1), 48u + 16u);
+    EXPECT_EQ(geometryStagingBytes(2, 5), 96u + 32u);
+    EXPECT_EQ(geometryStagingBytes(0, 4), 16u);
 }

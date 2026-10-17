@@ -6,6 +6,7 @@
 #include <span>
 #include <vector>
 
+#include "IntMath.hpp"
 #include "Primitives.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDefinitions.hpp"
@@ -18,6 +19,25 @@ namespace OffsetAllocator{
 
 namespace Crowy
 {
+    // every staged array starts on this; nothing binds a view on the staging
+    // side, so it only has to be a safe upper bound
+    inline constexpr u64 GeometryStagingAlign = 16;
+    // the most one frame's uploads may stage: a slice of the device's 32 MiB
+    // transient ring, with room left for the rest of that frame
+    inline constexpr u64 GeometryStagingBudget = 24ull << 20;
+
+    // what one mesh takes of a frame's staging
+    inline constexpr u64 geometryStagingBytes(
+        usize vertexCount,
+        usize indexCount
+    ) {
+        return nextMul<u64>(
+                   vertexCount * sizeof(Vertex),
+                   GeometryStagingAlign
+               ) +
+               nextMul<u64>(indexCount * sizeof(u32), GeometryStagingAlign);
+    }
+
     // where a mesh landed inside the pool; feeds RHIDrawIndexedArgs
     // (or DrawIndexed) directly
     struct GeometryAllocation{
@@ -52,8 +72,11 @@ namespace Crowy
         u32 vertexCapacity = 0, indexCapacity = 0;
         // what the draws read the vertex buffer as, between uploads
         RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex;
+        u64 stagingBudget = GeometryStagingBudget;
         u64 vertexBufferID = 0;
         std::vector<PendingUpload> pendingUploads;
+        // what pendingUploads will stage
+        u64 pendingStagingBytes = 0;
         std::array<RHIBufferBarrier, 2> uploadReleases{};
         bool uploaded = false;
 
@@ -64,12 +87,14 @@ namespace Crowy
             RHIDevice&,
             u32 vertexCapacity,
             u32 indexCapacity,
-            RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex
+            RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex,
+            u64 stagingBudget = GeometryStagingBudget
         );
         ~GeometryPool();
 
         // suballocates now and keeps a copy of the data; nothing touches the
-        // GPU until RecordUploads. A mesh that does not fit takes no space.
+        // GPU until RecordUploads. A mesh that does not fit, in the pool or
+        // in this frame's staging budget, takes no space.
         [[nodiscard]] AddResult Add(
             std::span<const Vertex> vertices,
             std::span<const u32> indices

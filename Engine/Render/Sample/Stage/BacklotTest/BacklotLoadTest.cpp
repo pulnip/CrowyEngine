@@ -36,7 +36,7 @@ TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
     const auto& capacities = stage.capacities;
     EXPECT_GT(capacities.vertices, vertices);
     EXPECT_GT(capacities.indices, indices);
-    EXPECT_LE(capacities.stagingBytes, StageStagingBudget);
+    EXPECT_LE(capacities.stagingBytes, GeometryStagingBudget);
     // the palette, an emissive palette per channel in use, one per quad
     EXPECT_GE(capacities.materials, 1u + 1u + 179u);
     EXPECT_GE(capacities.draws, 1488u + 179u);

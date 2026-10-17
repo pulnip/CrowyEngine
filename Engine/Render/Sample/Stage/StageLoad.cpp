@@ -19,10 +19,6 @@ namespace Crowy
     {
         using Clock = std::chrono::steady_clock;
 
-        constexpr u64 alignUp(u64 value, u64 alignment) noexcept {
-            return (value + alignment - 1) / alignment * alignment;
-        }
-
         // the OffsetAllocator rounds a request up to its bin but files a free
         // region rounded down, so an exact capacity can still refuse
         constexpr u32 withPoolSlack(u64 elements) noexcept {
@@ -45,11 +41,10 @@ namespace Crowy
         }
 
         u64 stagingBytesOf(const MeshData& mesh) {
-            // the pool stages each array 16-byte aligned
-            constexpr u64 StagingAlign = 16;
-
-            return alignUp(mesh.vertices.size() * sizeof(Vertex), StagingAlign)
-                + alignUp(mesh.indices.size() * sizeof(u32), StagingAlign);
+            return geometryStagingBytes(
+                mesh.vertices.size(),
+                mesh.indices.size()
+            );
         }
 
         // the model `id` names in `table`, which `models` is parallel to
@@ -163,12 +158,15 @@ namespace Crowy
 
         stage.unitQuad = makeStageUnitQuad();
         stage.capacities = capacitiesOf(stage);
-        if(stage.capacities.stagingBytes > StageStagingBudget) {
-            throw std::runtime_error(std::format(
-                "stage: geometry stages {} bytes, past the {} the pool's one upload may use",
-                stage.capacities.stagingBytes,
-                StageStagingBudget
-            ));
+        if(stage.capacities.stagingBytes > GeometryStagingBudget) {
+            throw std::runtime_error(
+                std::format(
+                    "stage: geometry stages {} bytes, past the {} one frame's "
+                    "pool uploads may use",
+                    stage.capacities.stagingBytes,
+                    GeometryStagingBudget
+                )
+            );
         }
 
         return stage;

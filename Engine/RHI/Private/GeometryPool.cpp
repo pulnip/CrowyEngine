@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <format>
+#include <limits>
 #include <optional>
 
 #include <offsetAllocator.hpp>
@@ -18,10 +19,6 @@
 namespace Crowy
 {
     namespace{
-        // one alignment for every staged copy - nothing here ever binds a
-        // view on the staging side, so all that matters is a safe upper bound
-        inline constexpr u64 STAGING_ALIGN = 16;
-
         std::optional<OffsetAllocator::Allocation> allocate(
             OffsetAllocator::Allocator& allocator,
             u32 count
@@ -52,7 +49,8 @@ namespace Crowy
         RHIDevice& device,
         u32 vertexCapacity,
         u32 indexCapacity,
-        RHIResourceUsage vertexRead
+        RHIResourceUsage vertexRead,
+        u64 stagingBudget
     )
         : device(device)
         , vertexAllocator(std::make_unique<OffsetAllocator::Allocator>(vertexCapacity))
@@ -60,7 +58,11 @@ namespace Crowy
         , vertexCapacity(vertexCapacity)
         , indexCapacity(indexCapacity)
         , vertexRead(vertexRead)
+        , stagingBudget(stagingBudget)
     {
+        // the staging size is handed to the device as a u32
+        CROWY_ASSERT(stagingBudget <= std::numeric_limits<u32>::max());
+
         vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = vertexCapacity * static_cast<u32>(sizeof(Vertex))
         }, "geometry pool vertices");
@@ -87,6 +89,18 @@ namespace Crowy
         const auto vertexCount = static_cast<u32>(vertices.size());
         const auto indexCount = static_cast<u32>(indices.size());
 
+        const auto staging = geometryStagingBytes(vertexCount, indexCount);
+        if(pendingStagingBytes + staging > stagingBudget) {
+            return std::unexpected(
+                std::format(
+                    "geometry pool upload stages {} bytes this frame, past "
+                    "its {} budget",
+                    pendingStagingBytes + staging,
+                    stagingBudget
+                )
+            );
+        }
+
         const auto vertexAlloc = allocate(*vertexAllocator, vertexCount);
         if(!vertexAlloc)
             return std::unexpected(
@@ -109,6 +123,7 @@ namespace Crowy
                 .indexOffset = indexAlloc->offset
             }
         );
+        pendingStagingBytes += staging;
 
         return GeometryAllocation{
             .firstIndex = indexAlloc->offset,
@@ -142,23 +157,11 @@ namespace Crowy
             "geometry pool uploads after the first are not supported yet"
         );
 
-        u64 stagingBytes = 0;
-        for(const auto& upload: pendingUploads){
-            stagingBytes = nextMul(
-                stagingBytes + upload.vertices.size() * sizeof(Vertex),
-                STAGING_ALIGN
-            );
-            stagingBytes = nextMul(
-                stagingBytes + upload.indices.size() * sizeof(u32),
-                STAGING_ALIGN
-            );
-        }
-
         // staged here rather than at Add: a slice lives until the batch it
         // is recorded into completes, and that batch is only known now
         const auto staging = device.AllocateTransient(
-            static_cast<u32>(stagingBytes),
-            static_cast<u32>(STAGING_ALIGN)
+            static_cast<u32>(pendingStagingBytes),
+            static_cast<u32>(GeometryStagingAlign)
         );
 
         RHIEventScope event(cmdList, "GeometryUpload");
@@ -173,7 +176,7 @@ namespace Crowy
         const auto stage = [&](RHIBuffer& dst, const void* data, u64 bytes, u64 dstOffset){
             std::memcpy(ptrAdd(staging.cpuPtr, cursor), data, bytes);
             cmdList.Copy(*staging.buffer, dst, staging.offset + cursor, dstOffset, bytes);
-            cursor = nextMul(cursor + bytes, STAGING_ALIGN);
+            cursor = nextMul(cursor + bytes, GeometryStagingAlign);
         };
         for(const auto& upload: pendingUploads){
             stage(
@@ -205,6 +208,7 @@ namespace Crowy
         cmdList.EndBlitPass({}, uploadReleases);
 
         pendingUploads.clear();
+        pendingStagingBytes = 0;
         uploaded = true;
 
         return uploadReleases;

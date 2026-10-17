@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "GeometryPool.hpp"
 #include "ImageLoader.hpp"
 #include "MeshData.hpp"
 #include "ModelLoader.hpp"
@@ -19,14 +20,10 @@ namespace Crowy
     using StageSamplers = std::map<Str, StageSampler>;
     using StageSprites = std::map<Str, StageSprite>;
 
-    // the most the GeometryPool's one upload may stage: a slice of the
-    // device's 32 MiB transient ring, with room left for the first frame
-    inline constexpr u64 StageStagingBudget = 24ull << 20;
-
     bool isLfsPointer(const std::filesystem::path& file);
 
     // everything the scene file names, on the CPU; throws naming a missing
-    // file, a Git LFS pointer, or geometry past StageStagingBudget
+    // file, a Git LFS pointer, or geometry past GeometryStagingBudget
     LoadedStage loadStage(const std::filesystem::path& root);
     LoadedStage loadStage(
         const std::filesystem::path& root,
