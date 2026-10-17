@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "CornellBox.hpp"
+#include "Expected.hpp"
 #include "LinearAlgebra.hpp"
 #include "OrbitCamera.hpp"
 #include "RHIBuffer.hpp"
@@ -55,7 +56,9 @@ namespace Crowy
             for(const auto& object: source.objects) {
                 const auto mesh = bakeTransform(object);
 
-                geometry.push_back(pool.Add(mesh.vertices, mesh.indices));
+                geometry.push_back(
+                    valueOrThrow(pool.Add(mesh.vertices, mesh.indices))
+                );
             }
         }
 

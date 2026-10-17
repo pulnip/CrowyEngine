@@ -4,6 +4,7 @@
 #include <memory>
 #include <numbers>
 
+#include "Expected.hpp"
 #include "FlyCamera.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshData.hpp"
@@ -50,7 +51,8 @@ namespace Crowy
             for(u32 i = 0; i < SlotCount; ++i) {
                 const auto mesh = makePolygon(FirstSideCount + i);
 
-                polygons[i] = pool.Add(mesh.vertices, mesh.indices);
+                polygons[i] =
+                    valueOrThrow(pool.Add(mesh.vertices, mesh.indices));
             }
         }
 

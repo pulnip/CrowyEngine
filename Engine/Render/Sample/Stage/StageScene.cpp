@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include "EnumUtil.hpp"
+#include "Expected.hpp"
 #include "Geometry/Overlap3D.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
@@ -171,9 +172,13 @@ namespace Crowy
         for(const auto& model: stage.models) {
             auto& slots = geometry.models.emplace_back();
             for(const auto& slot: model.slots)
-                slots.push_back(pool.Add(slot.mesh.vertices, slot.mesh.indices));
+                slots.push_back(valueOrThrow(
+                    pool.Add(slot.mesh.vertices, slot.mesh.indices)
+                ));
         }
-        geometry.unitQuad = pool.Add(stage.unitQuad.vertices, stage.unitQuad.indices);
+        geometry.unitQuad = valueOrThrow(
+            pool.Add(stage.unitQuad.vertices, stage.unitQuad.indices)
+        );
 
         return geometry;
     }

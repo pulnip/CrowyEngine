@@ -3,7 +3,9 @@
 #include <memory>
 #include <numbers>
 #include <vector>
+
 #include "AppFramework.hpp"
+#include "Expected.hpp"
 #include "GeometryPool.hpp"
 #include "InputProvider.hpp"
 #include "IntMath.hpp"
@@ -161,9 +163,15 @@ namespace Crowy
             );
 
             // the pool queues the copies; the first frame records them
-            meshes[0] = geometryPool->Add(boxMesh.vertices, boxMesh.indices);
-            meshes[1] = geometryPool->Add(sphereMesh.vertices, sphereMesh.indices);
-            meshes[2] = geometryPool->Add(planeMesh.vertices, planeMesh.indices);
+            meshes[0] = valueOrThrow(
+                geometryPool->Add(boxMesh.vertices, boxMesh.indices)
+            );
+            meshes[1] = valueOrThrow(
+                geometryPool->Add(sphereMesh.vertices, sphereMesh.indices)
+            );
+            meshes[2] = valueOrThrow(
+                geometryPool->Add(planeMesh.vertices, planeMesh.indices)
+            );
 
             geometryPool->LogAllocationStats();
         }

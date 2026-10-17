@@ -3,6 +3,7 @@
 #include <memory>
 #include <numbers>
 
+#include "Expected.hpp"
 #include "FlyCamera.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
@@ -60,12 +61,16 @@ namespace Crowy
             const auto wallMesh =
                 MakePlane(-unitZ(), unitX(), Vec2{WallHalf.x, WallHalf.y});
 
-            box = pool.Add(boxMesh.vertices, boxMesh.indices);
-            sphere = pool.Add(sphereMesh.vertices, sphereMesh.indices);
-            denseSphere =
-                pool.Add(denseSphereMesh.vertices, denseSphereMesh.indices);
-            floorPlane = pool.Add(floorMesh.vertices, floorMesh.indices);
-            wallPlane = pool.Add(wallMesh.vertices, wallMesh.indices);
+            box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+            sphere =
+                valueOrThrow(pool.Add(sphereMesh.vertices, sphereMesh.indices));
+            denseSphere = valueOrThrow(
+                pool.Add(denseSphereMesh.vertices, denseSphereMesh.indices)
+            );
+            floorPlane =
+                valueOrThrow(pool.Add(floorMesh.vertices, floorMesh.indices));
+            wallPlane =
+                valueOrThrow(pool.Add(wallMesh.vertices, wallMesh.indices));
         }
 
         void ExtractScene(RenderScene& scene) override {

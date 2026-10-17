@@ -4,6 +4,7 @@
 #include <numbers>
 #include <vector>
 
+#include "Expected.hpp"
 #include "FlyCamera.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
@@ -60,10 +61,11 @@ namespace Crowy
             const auto tileMesh = MakePlane(Vec2{0.25f, 0.25f});
             const auto cardMesh = MakePlane(-unitZ(), unitX(), 0.5f);
 
-            box = pool.Add(boxMesh.vertices, boxMesh.indices);
-            floorPlane = pool.Add(floorMesh.vertices, floorMesh.indices);
-            tile = pool.Add(tileMesh.vertices, tileMesh.indices);
-            card = pool.Add(cardMesh.vertices, cardMesh.indices);
+            box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+            floorPlane =
+                valueOrThrow(pool.Add(floorMesh.vertices, floorMesh.indices));
+            tile = valueOrThrow(pool.Add(tileMesh.vertices, tileMesh.indices));
+            card = valueOrThrow(pool.Add(cardMesh.vertices, cardMesh.indices));
         }
 
         void ExtractScene(RenderScene& scene) override {

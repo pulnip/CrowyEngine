@@ -10,6 +10,7 @@
 #include <imgui.h>
 
 #include "CameraComponent.hpp"
+#include "Expected.hpp"
 #include "FlyControl.hpp"
 #include "LightComponent.hpp"
 #include "Log.hpp"
@@ -74,11 +75,15 @@ namespace Crowy
         const auto towardMesh = MakePlane(-unitZ(), unitX(), 0.5f);
         const auto awayMesh = MakePlane(unitZ(), unitX(), 0.5f);
 
-        sphere = pool.Add(sphereMesh.vertices, sphereMesh.indices);
-        unitBox = pool.Add(boxMesh.vertices, boxMesh.indices);
-        floorPlane = pool.Add(floorMesh.vertices, floorMesh.indices);
-        quadFacingCamera = pool.Add(towardMesh.vertices, towardMesh.indices);
-        quadFacingAway = pool.Add(awayMesh.vertices, awayMesh.indices);
+        sphere =
+            valueOrThrow(pool.Add(sphereMesh.vertices, sphereMesh.indices));
+        unitBox = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+        floorPlane =
+            valueOrThrow(pool.Add(floorMesh.vertices, floorMesh.indices));
+        quadFacingCamera =
+            valueOrThrow(pool.Add(towardMesh.vertices, towardMesh.indices));
+        quadFacingAway =
+            valueOrThrow(pool.Add(awayMesh.vertices, awayMesh.indices));
     }
 
     void PlaygroundScene::ExtractScene(RenderScene& scene) {

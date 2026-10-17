@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <expected>
 #include <memory>
 #include <span>
 #include <vector>
@@ -32,6 +33,9 @@ namespace Crowy
     // draws differ only by firstIndex/baseVertex and geometry never
     // rebinds between them. Sub-ranges come from OffsetAllocator.
     class GeometryPool{
+    public:
+        using AddResult = std::expected<GeometryAllocation, Str>;
+
     private:
         // a mesh's data, held from Add until RecordUploads copies it in
         struct PendingUpload{
@@ -65,8 +69,8 @@ namespace Crowy
         ~GeometryPool();
 
         // suballocates now and keeps a copy of the data; nothing touches the
-        // GPU until RecordUploads, so a mesh can be added at any time
-        GeometryAllocation Add(
+        // GPU until RecordUploads. A mesh that does not fit takes no space.
+        [[nodiscard]] AddResult Add(
             std::span<const Vertex> vertices,
             std::span<const u32> indices
         );

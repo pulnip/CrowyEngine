@@ -1,9 +1,12 @@
+#include "GeometryPool.hpp"
+
 #include <cstring>
 #include <format>
-#include <stdexcept>
+#include <optional>
+
 #include <offsetAllocator.hpp>
+
 #include "Assert.hpp"
-#include "GeometryPool.hpp"
 #include "IntMath.hpp"
 #include "LogLocal.hpp"
 #include "PtrUtil.hpp"
@@ -19,19 +22,29 @@ namespace Crowy
         // view on the staging side, so all that matters is a safe upper bound
         inline constexpr u64 STAGING_ALIGN = 16;
 
-        OffsetAllocator::Allocation allocateOrThrow(
+        std::optional<OffsetAllocator::Allocation> allocate(
             OffsetAllocator::Allocator& allocator,
-            u32 count,
-            CStr what
-        ){
+            u32 count
+        ) {
             const auto allocation = allocator.allocate(count);
-            if(allocation.offset == OffsetAllocator::Allocation::NO_SPACE){
-                throw std::runtime_error(std::format(
-                    "geometry pool out of {} space ({} elements requested)",
-                    what, count
-                ));
-            }
+            if(allocation.offset == OffsetAllocator::Allocation::NO_SPACE)
+                return std::nullopt;
+
             return allocation;
+        }
+
+        Str outOfSpace(
+            const OffsetAllocator::Allocator& allocator,
+            CStr what,
+            u32 count
+        ) {
+            return std::format(
+                "geometry pool out of {} space ({} elements requested, "
+                "largest free run {})",
+                what,
+                count,
+                allocator.storageReport().largestFreeRegion
+            );
         }
     }
 
@@ -67,34 +80,42 @@ namespace Crowy
         return vertexBufferID;
     }
 
-    GeometryAllocation GeometryPool::Add(
+    GeometryPool::AddResult GeometryPool::Add(
         std::span<const Vertex> vertices,
         std::span<const u32> indices
-    ){
-        const auto vertexAlloc = allocateOrThrow(
-            *vertexAllocator,
-            static_cast<u32>(vertices.size()),
-            "vertex"
-        );
-        const auto indexAlloc = allocateOrThrow(
-            *indexAllocator,
-            static_cast<u32>(indices.size()),
-            "index"
-        );
+    ) {
+        const auto vertexCount = static_cast<u32>(vertices.size());
+        const auto indexCount = static_cast<u32>(indices.size());
 
-        pendingUploads.push_back(PendingUpload{
-            .vertices = {vertices.begin(), vertices.end()},
-            .indices = {indices.begin(), indices.end()},
-            .vertexOffset = vertexAlloc.offset,
-            .indexOffset = indexAlloc.offset
-        });
+        const auto vertexAlloc = allocate(*vertexAllocator, vertexCount);
+        if(!vertexAlloc)
+            return std::unexpected(
+                outOfSpace(*vertexAllocator, "vertex", vertexCount)
+            );
+
+        const auto indexAlloc = allocate(*indexAllocator, indexCount);
+        if(!indexAlloc) {
+            vertexAllocator->free(*vertexAlloc);
+            return std::unexpected(
+                outOfSpace(*indexAllocator, "index", indexCount)
+            );
+        }
+
+        pendingUploads.push_back(
+            PendingUpload{
+                .vertices = {vertices.begin(), vertices.end()},
+                .indices = {indices.begin(), indices.end()},
+                .vertexOffset = vertexAlloc->offset,
+                .indexOffset = indexAlloc->offset
+            }
+        );
 
         return GeometryAllocation{
-            .firstIndex = indexAlloc.offset,
-            .indexCount = static_cast<u32>(indices.size()),
-            .baseVertex = static_cast<i32>(vertexAlloc.offset),
-            .vertexMetadata = vertexAlloc.metadata,
-            .indexMetadata = indexAlloc.metadata
+            .firstIndex = indexAlloc->offset,
+            .indexCount = indexCount,
+            .baseVertex = static_cast<i32>(vertexAlloc->offset),
+            .vertexMetadata = vertexAlloc->metadata,
+            .indexMetadata = indexAlloc->metadata
         };
     }
 

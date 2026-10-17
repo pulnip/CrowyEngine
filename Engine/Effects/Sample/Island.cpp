@@ -8,6 +8,7 @@
 #include "EffectComponent.hpp"
 #include "EffectSystem.hpp"
 #include "EnumUtil.hpp"
+#include "Expected.hpp"
 #include "FlyCamera.hpp"
 #include "FlyControl.hpp"
 #include "Geometry/Overlap3D.hpp"
@@ -98,12 +99,14 @@ namespace Crowy
                 makeCylinder(PoleRadius, 0.5f * poleLength(), 8);
             const auto logMesh = makeCylinder(LogRadius, 0.5f * logLength(), 8);
 
-            sea = pool.Add(seaMesh.vertices, seaMesh.indices);
-            island = pool.Add(islandMesh.vertices, islandMesh.indices);
-            box = pool.Add(boxMesh.vertices, boxMesh.indices);
-            canvas = pool.Add(canvasMesh.vertices, canvasMesh.indices);
-            pole = pool.Add(poleMesh.vertices, poleMesh.indices);
-            log = pool.Add(logMesh.vertices, logMesh.indices);
+            sea = valueOrThrow(pool.Add(seaMesh.vertices, seaMesh.indices));
+            island =
+                valueOrThrow(pool.Add(islandMesh.vertices, islandMesh.indices));
+            box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+            canvas =
+                valueOrThrow(pool.Add(canvasMesh.vertices, canvasMesh.indices));
+            pole = valueOrThrow(pool.Add(poleMesh.vertices, poleMesh.indices));
+            log = valueOrThrow(pool.Add(logMesh.vertices, logMesh.indices));
         }
 
         void ExtractScene(RenderScene& scene) override {

@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include "BodyPrimitiveSync.hpp"
+#include "Expected.hpp"
 #include "FixedTickClock.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
@@ -252,10 +253,14 @@ namespace Crowy
                 const auto quadMesh = MakePlane(Vec2{0.5f, 0.5f});
                 const auto floorMesh =
                     MakePlane(Vec2{FloorHalf.x, FloorHalf.z});
-                box = pool.Add(boxMesh.vertices, boxMesh.indices);
-                ball = pool.Add(ballMesh.vertices, ballMesh.indices);
-                quad = pool.Add(quadMesh.vertices, quadMesh.indices);
-                floorPlane = pool.Add(floorMesh.vertices, floorMesh.indices);
+                box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+                ball =
+                    valueOrThrow(pool.Add(ballMesh.vertices, ballMesh.indices));
+                quad =
+                    valueOrThrow(pool.Add(quadMesh.vertices, quadMesh.indices));
+                floorPlane = valueOrThrow(
+                    pool.Add(floorMesh.vertices, floorMesh.indices)
+                );
             }
 
             void ExtractScene(RenderScene& scene) override {

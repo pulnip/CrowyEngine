@@ -2,6 +2,7 @@
 #include <memory>
 #include <numbers>
 
+#include "Expected.hpp"
 #include "FlyCamera.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
@@ -50,9 +51,12 @@ namespace Crowy
             // single-sided quad facing the start camera
             const auto planeMesh = MakePlane(-unitZ(), unitX(), BlockHalfSize);
 
-            geometry[0] = pool.Add(boxMesh.vertices, boxMesh.indices);
-            geometry[1] = pool.Add(sphereMesh.vertices, sphereMesh.indices);
-            geometry[2] = pool.Add(planeMesh.vertices, planeMesh.indices);
+            geometry[0] =
+                valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+            geometry[1] =
+                valueOrThrow(pool.Add(sphereMesh.vertices, sphereMesh.indices));
+            geometry[2] =
+                valueOrThrow(pool.Add(planeMesh.vertices, planeMesh.indices));
         }
 
         void ExtractScene(RenderScene& scene) override {

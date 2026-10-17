@@ -56,7 +56,7 @@ namespace
 TEST_F(GeometryPoolTest, TheFirstUploadTakesTheBuffersFresh) {
     const auto mesh = vertices(3, 0.0f);
     const auto tris = indices(3);
-    pool.Add(mesh, tris);
+    ASSERT_TRUE(pool.Add(mesh, tris));
 
     const auto releases = pool.RecordUploads(cmdList);
 
@@ -83,7 +83,7 @@ TEST_F(GeometryPoolTest, TheFirstUploadTakesTheBuffersFresh) {
 
 // vertex pulling reads the vertices as a buffer in the vertex stage
 TEST_F(GeometryPoolTest, TheVerticesGoToTheReadTheDrawsMake) {
-    pool.Add(vertices(3, 0.0f), indices(3));
+    ASSERT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)));
 
     const auto releases = pool.RecordUploads(cmdList);
     ASSERT_EQ(releases.size(), 2u);
@@ -96,7 +96,7 @@ TEST(GeometryPool, ABoundVertexBufferIsReleasedAsOne) {
     FakeDevice device;
     GeometryPool pool{device, 64, 256, RHIResourceUsage::VertexBuffer};
     FakeCommandList cmdList;
-    pool.Add(vertices(3, 0.0f), indices(3));
+    ASSERT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)));
 
     const auto releases = pool.RecordUploads(cmdList);
     ASSERT_EQ(releases.size(), 2u);
@@ -111,9 +111,9 @@ TEST(GeometryPool, ABoundVertexBufferIsReleasedAsOne) {
 }
 
 TEST_F(GeometryPoolTest, EachMeshIsCopiedWhereItWasPlaced) {
-    pool.Add(vertices(3, 0.0f), indices(3));
+    ASSERT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)));
     const auto second = vertices(4, 10.0f);
-    const auto placed = pool.Add(second, indices(6));
+    const auto placed = pool.Add(second, indices(6)).value();
 
     pool.RecordUploads(cmdList);
 
@@ -145,4 +145,22 @@ TEST_F(GeometryPoolTest, EachMeshIsCopiedWhereItWasPlaced) {
 TEST_F(GeometryPoolTest, NothingQueuedRecordsNothing) {
     EXPECT_TRUE(pool.RecordUploads(cmdList).empty());
     EXPECT_TRUE(cmdList.blitPasses.empty());
+}
+
+TEST_F(GeometryPoolTest, AMeshPastTheVertexSpaceIsAnError) {
+    const auto result = pool.Add(vertices(65, 0.0f), indices(3));
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_TRUE(result.error().starts_with("geometry pool out of vertex space"))
+        << result.error();
+}
+
+// the vertices found room before the indices did not, and give it back
+TEST_F(GeometryPoolTest, AMeshPastTheIndexSpaceTakesNoVertexSpace) {
+    const auto result = pool.Add(vertices(64, 0.0f), indices(257));
+    ASSERT_FALSE(result.has_value());
+    EXPECT_TRUE(result.error().starts_with("geometry pool out of index space"))
+        << result.error();
+
+    EXPECT_TRUE(pool.Add(vertices(64, 0.0f), indices(3)).has_value());
 }
