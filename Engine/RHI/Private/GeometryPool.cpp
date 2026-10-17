@@ -151,12 +151,6 @@ namespace Crowy
         if(pendingUploads.empty())
             return {};
 
-        // a later upload lands under draws of earlier frames, so it needs a
-        // cross-submission acquire - nothing exercises one yet
-        CROWY_ASSERT(!uploaded,
-            "geometry pool uploads after the first are not supported yet"
-        );
-
         // staged here rather than at Add: a slice lives until the batch it
         // is recorded into completes, and that batch is only known now
         const auto staging = device.AllocateTransient(
@@ -166,9 +160,16 @@ namespace Crowy
 
         RHIEventScope event(cmdList, "GeometryUpload");
 
+        // a later copy waits for the earlier submissions that drew from it
+        const auto acquire = [&](RHIBuffer& buffer, RHIResourceUsage read) {
+            using enum RHIResourceUsage;
+            return everRecorded
+                       ? MakeCrossSubmissionBarrier(buffer, read, CopyDst)
+                       : MakeBarrier(buffer, Undefined, CopyDst);
+        };
         const std::array acquires{
-            MakeBarrier(*vertexBuffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst),
-            MakeBarrier(*indexBuffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
+            acquire(*vertexBuffer, vertexRead),
+            acquire(*indexBuffer, RHIResourceUsage::IndexBuffer)
         };
         cmdList.BeginBlitPass({}, acquires);
 
@@ -209,7 +210,7 @@ namespace Crowy
 
         pendingUploads.clear();
         pendingStagingBytes = 0;
-        uploaded = true;
+        everRecorded = true;
 
         return uploadReleases;
     }

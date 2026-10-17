@@ -199,3 +199,40 @@ TEST(GeometryPool, AStagedMeshAlignsEachArray) {
     EXPECT_EQ(geometryStagingBytes(2, 5), 96u + 32u);
     EXPECT_EQ(geometryStagingBytes(0, 4), 16u);
 }
+
+// the frames before drew from both buffers, and may still be on the GPU
+TEST_F(GeometryPoolTest, ALaterUploadWaitsForTheFramesThatDrewFromThePool) {
+    ASSERT_TRUE(pool.Add(vertices(3, 0.0f), indices(3)));
+    pool.RecordUploads(cmdList);
+
+    FakeCommandList nextFrame;
+    const auto later = pool.Add(vertices(4, 10.0f), indices(6)).value();
+    const auto releases = pool.RecordUploads(nextFrame);
+
+    ASSERT_EQ(nextFrame.blitPasses.size(), 1u);
+    const auto& pass = nextFrame.blitPasses[0];
+    EXPECT_EQ(
+        pass.bufferAcquires,
+        (FakeCommandList::BufferBarriers{
+            MakeCrossSubmissionBarrier(
+                pool.GetVertexBuffer(),
+                RHIResourceUsage::SampledVertex,
+                RHIResourceUsage::CopyDst
+            ),
+            MakeCrossSubmissionBarrier(
+                pool.GetIndexBuffer(),
+                RHIResourceUsage::IndexBuffer,
+                RHIResourceUsage::CopyDst
+            ),
+        })
+    );
+    EXPECT_TRUE(nextFrame.violations.empty());
+    ASSERT_EQ(releases.size(), 2u);
+    EXPECT_EQ(releases[0], VertexRelease(RHIResourceUsage::SampledVertex));
+
+    ASSERT_EQ(pass.bufferCopies.size(), 2u);
+    EXPECT_EQ(
+        pass.bufferCopies[0].dstOffset,
+        static_cast<usize>(later.baseVertex) * sizeof(Vertex)
+    );
+}

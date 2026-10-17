@@ -78,7 +78,8 @@ namespace Crowy
         // what pendingUploads will stage
         u64 pendingStagingBytes = 0;
         std::array<RHIBufferBarrier, 2> uploadReleases{};
-        bool uploaded = false;
+        // from then on, earlier frames' draws read the buffers under a copy
+        bool everRecorded = false;
 
     public:
         // capacities are element counts (Vertex / u32 index); vertex pulling
