@@ -38,13 +38,15 @@ namespace Crowy
     GeometryPool::GeometryPool(
         RHIDevice& device,
         u32 vertexCapacity,
-        u32 indexCapacity
+        u32 indexCapacity,
+        RHIResourceUsage vertexRead
     )
         : device(device)
         , vertexAllocator(std::make_unique<OffsetAllocator::Allocator>(vertexCapacity))
         , indexAllocator(std::make_unique<OffsetAllocator::Allocator>(indexCapacity))
         , vertexCapacity(vertexCapacity)
         , indexCapacity(indexCapacity)
+        , vertexRead(vertexRead)
     {
         vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
             .size = vertexCapacity * static_cast<u32>(sizeof(Vertex))
@@ -168,8 +170,16 @@ namespace Crowy
         }
 
         uploadReleases = {
-            MakeBarrier(*vertexBuffer, RHIResourceUsage::CopyDst, RHIResourceUsage::VertexBuffer),
-            MakeBarrier(*indexBuffer, RHIResourceUsage::CopyDst, RHIResourceUsage::IndexBuffer)
+            MakeBarrier(
+                *vertexBuffer,
+                RHIResourceUsage::CopyDst,
+                vertexRead
+            ),
+            MakeBarrier(
+                *indexBuffer,
+                RHIResourceUsage::CopyDst,
+                RHIResourceUsage::IndexBuffer
+            )
         };
         cmdList.EndBlitPass({}, uploadReleases);
 

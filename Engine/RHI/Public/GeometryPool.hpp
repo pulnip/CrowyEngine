@@ -4,7 +4,9 @@
 #include <memory>
 #include <span>
 #include <vector>
+
 #include "Primitives.hpp"
+#include "RHICommandList.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 #include "Vertex.hpp"
@@ -44,14 +46,22 @@ namespace Crowy
         RHIBufferRAII vertexBuffer, indexBuffer;
         std::unique_ptr<OffsetAllocator::Allocator> vertexAllocator, indexAllocator;
         u32 vertexCapacity = 0, indexCapacity = 0;
+        // what the draws read the vertex buffer as, between uploads
+        RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex;
         u64 vertexBufferID = 0;
         std::vector<PendingUpload> pendingUploads;
         std::array<RHIBufferBarrier, 2> uploadReleases{};
         bool uploaded = false;
 
     public:
-        // capacities are element counts (Vertex / u32 index)
-        GeometryPool(RHIDevice&, u32 vertexCapacity, u32 indexCapacity);
+        // capacities are element counts (Vertex / u32 index); vertex pulling
+        // reads the vertices as a buffer, a bound vertex buffer as VertexBuffer
+        GeometryPool(
+            RHIDevice&,
+            u32 vertexCapacity,
+            u32 indexCapacity,
+            RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex
+        );
         ~GeometryPool();
 
         // suballocates now and keeps a copy of the data; nothing touches the

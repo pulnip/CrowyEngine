@@ -145,7 +145,8 @@ namespace Crowy
             geometryPool = std::make_unique<GeometryPool>(
                 device,
                 VERTEX_POOL_CAPACITY,
-                INDEX_POOL_CAPACITY
+                INDEX_POOL_CAPACITY,
+                RHIResourceUsage::VertexBuffer
             );
             drawDataScratch.resize(DRAW_COUNT);
             argsScratch.resize(DRAW_COUNT);

@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "Assert.hpp"
@@ -262,7 +263,7 @@ namespace Crowy
             return completedFrame;
         }
         void WaitFrame(u64) override { std::terminate(); }
-        void WaitIdle() override { std::terminate(); }
+        void WaitIdle() override { RunDeferred(); }
 
         void DeferRetire(std::move_only_function<void()> reclaim) override {
             deferred.push_back(std::move(reclaim));
@@ -287,10 +288,10 @@ namespace Crowy
             return Capabilities;
         }
 
+        // a reclaim may defer another, which waits for the next run
         void RunDeferred() {
-            for(auto& reclaim: deferred)
+            for(auto& reclaim: std::exchange(deferred, Reclaims{}))
                 reclaim();
-            deferred.clear();
         }
     };
 }

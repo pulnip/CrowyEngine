@@ -93,6 +93,16 @@ namespace Crowy
 
         using RecordedCopies = std::vector<RecordedCopy>;
 
+        struct RecordedBufferCopy {
+            RHIBuffer* src = nullptr;
+            RHIBuffer* dst = nullptr;
+            usize srcOffset = 0;
+            usize dstOffset = 0;
+            usize size = 0;
+        };
+
+        using RecordedBufferCopies = std::vector<RecordedBufferCopy>;
+
         struct RecordedBlitPass {
             // the event opened inside it
             Str event;
@@ -103,6 +113,7 @@ namespace Crowy
             TextureBarriers releases;
             BufferBarriers bufferReleases;
             RecordedCopies copies;
+            RecordedBufferCopies bufferCopies;
         };
 
         struct RecordedDispatch {
@@ -408,6 +419,34 @@ namespace Crowy
             }
 
             RHICommandList::DispatchBarrier(textureBarriers, bufferBarriers);
+        }
+
+        void Copy(
+            RHIBuffer& src,
+            RHIBuffer& dst,
+            usize srcOffset,
+            usize dstOffset,
+            usize size
+        ) override {
+            if(!blitPasses.empty()) {
+                blitPasses.back().bufferCopies.push_back(
+                    RecordedBufferCopy{
+                        .src = &src,
+                        .dst = &dst,
+                        .srcOffset = srcOffset,
+                        .dstOffset = dstOffset,
+                        .size = size
+                    }
+                );
+            }
+
+            RHICommandList::Copy(
+                src,
+                dst,
+                srcOffset,
+                dstOffset,
+                size
+            );
         }
 
         void Copy(
