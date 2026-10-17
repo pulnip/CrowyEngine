@@ -71,7 +71,13 @@ namespace Crowy
         }, "geometry pool indices");
     }
 
-    GeometryPool::~GeometryPool() = default;
+    GeometryPool::~GeometryPool() {
+        // a free still on the device would reach into a dead pool
+        if(freesInFlight != 0)
+            device.WaitIdle();
+
+        CROWY_ASSERT(freesInFlight == 0, "a geometry free outlived its pool");
+    }
 
     u64 GeometryPool::GetVertexBufferID(){
         if(vertexBufferID == 0){
@@ -135,13 +141,21 @@ namespace Crowy
     }
 
     void GeometryPool::Free(const GeometryAllocation& allocation){
-        vertexAllocator->free(OffsetAllocator::Allocation{
-            .offset = static_cast<u32>(allocation.baseVertex),
-            .metadata = allocation.vertexMetadata
-        });
-        indexAllocator->free(OffsetAllocator::Allocation{
-            .offset = allocation.firstIndex,
-            .metadata = allocation.indexMetadata
+        ++freesInFlight;
+        device.DeferRetire([this, allocation] {
+            vertexAllocator->free(
+                OffsetAllocator::Allocation{
+                    .offset = static_cast<u32>(allocation.baseVertex),
+                    .metadata = allocation.vertexMetadata
+                }
+            );
+            indexAllocator->free(
+                OffsetAllocator::Allocation{
+                    .offset = allocation.firstIndex,
+                    .metadata = allocation.indexMetadata
+                }
+            );
+            --freesInFlight;
         });
     }
 

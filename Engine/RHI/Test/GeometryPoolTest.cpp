@@ -1,6 +1,7 @@
 #include <cstring>
 #include <format>
 #include <numeric>
+#include <optional>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -235,4 +236,33 @@ TEST_F(GeometryPoolTest, ALaterUploadWaitsForTheFramesThatDrewFromThePool) {
         pass.bufferCopies[0].dstOffset,
         static_cast<usize>(later.baseVertex) * sizeof(Vertex)
     );
+}
+
+TEST_F(GeometryPoolTest, AFreedRangeComesBackOnlyOnceTheGPUIsDone) {
+    const auto whole = pool.Add(vertices(64, 0.0f), indices(3)).value();
+    EXPECT_FALSE(pool.Add(vertices(1, 0.0f), indices(3)).has_value());
+
+    pool.Free(whole);
+    EXPECT_FALSE(pool.Add(vertices(64, 0.0f), indices(3)).has_value());
+
+    device.RunDeferred();
+    EXPECT_TRUE(pool.Add(vertices(64, 0.0f), indices(3)).has_value());
+}
+
+TEST(GeometryPool, ADestroyedPoolWaitsOutItsFrees) {
+    FakeDevice device;
+    {
+        GeometryPool pool{device, 64, 256};
+        pool.Free(pool.Add(vertices(3, 0.0f), indices(3)).value());
+        ASSERT_EQ(device.deferred.size(), 1u);
+    }
+    EXPECT_TRUE(device.deferred.empty());
+}
+
+TEST(GeometryPool, APoolWithNoFreesLeavesTheDeviceAlone) {
+    FakeDevice device;
+    bool reclaimed = false;
+    device.DeferRetire([&] { reclaimed = true; });
+    { GeometryPool pool{device, 64, 256}; }
+    EXPECT_FALSE(reclaimed);
 }

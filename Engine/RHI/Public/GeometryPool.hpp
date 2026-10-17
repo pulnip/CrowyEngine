@@ -11,6 +11,7 @@
 #include "RHICommandList.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
+#include "Semantics.hpp"
 #include "Vertex.hpp"
 
 namespace OffsetAllocator{
@@ -77,6 +78,8 @@ namespace Crowy
         std::vector<PendingUpload> pendingUploads;
         // what pendingUploads will stage
         u64 pendingStagingBytes = 0;
+        // frees the device still holds; each reaches back into this pool
+        u32 freesInFlight = 0;
         std::array<RHIBufferBarrier, 2> uploadReleases{};
         // from then on, earlier frames' draws read the buffers under a copy
         bool everRecorded = false;
@@ -92,6 +95,7 @@ namespace Crowy
             u64 stagingBudget = GeometryStagingBudget
         );
         ~GeometryPool();
+        CROWY_DECLARE_PINNED(GeometryPool)
 
         // suballocates now and keeps a copy of the data; nothing touches the
         // GPU until RecordUploads. A mesh that does not fit, in the pool or
@@ -100,6 +104,8 @@ namespace Crowy
             std::span<const Vertex> vertices,
             std::span<const u32> indices
         );
+        // the range comes back once the batch being recorded now is done on
+        // the GPU, so draws already recorded this frame still read it whole
         void Free(const GeometryAllocation&);
 
         // records every copy Add queued as one blit pass, outside any other
