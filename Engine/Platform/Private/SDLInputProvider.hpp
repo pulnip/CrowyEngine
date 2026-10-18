@@ -18,6 +18,10 @@ namespace Crowy
         std::bitset<NUM_MOUSE_BUTTON> mouseHeldState;
         InputGate gate;
 
+        bool relative = false;
+        // where the cursor hid, which it reports until it returns there
+        Vec2 hiddenAt;
+
     public:
         SDLInputProvider();
         ~SDLInputProvider();
@@ -35,8 +39,16 @@ namespace Crowy
             mouseHeldState.reset();
         }
 
+        // relative: the cursor hides where it is and the mouse reports motion
+        // only; leaving puts it back there unless `restore` is false
+        void SetRelativeMouse(SDL_Window* window, bool relative, bool restore = true) noexcept;
+        bool IsRelativeMouse() const noexcept{
+            return relative;
+        }
+
         // Process Event
         void OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept;
+        void OnPlatformEvent(const SDL_MouseMotionEvent& event) noexcept;
         void OnPlatformEvent(const SDL_MouseButtonEvent& event) noexcept;
         void OnPlatformEvent(const SDL_MouseWheelEvent& event) noexcept;
     };

@@ -108,5 +108,8 @@ namespace Crowy
             mouse.dpos = dpos;
             mouse.pos = pos;
         }
+        void AddMouseMotion(Vec2 delta) noexcept{
+            mouse.dpos = mouse.dpos + delta;
+        }
     };
 }

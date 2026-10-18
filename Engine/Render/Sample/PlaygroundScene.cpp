@@ -452,6 +452,9 @@ namespace Crowy
 
         const auto fly = MakeCamera();
         looked = flyLook(input, fly.lookSensitivity, look.yaw, look.pitch);
+        // the cursor hides while it turns, so a look never meets a screen edge
+        if(looked)
+            RequestRelativeMouse();
         moveInput = flyMoveInput(input);
         speedScale = flySpeedScale(input, speedScale);
     }

@@ -32,6 +32,7 @@ namespace Crowy
         void NewFrame() override final;
         void ProcessInput(const InputProvider& input) override final;
         void OnUpdate(f64 deltaTime, f64 elapsedTime) override final;
+        bool WantsRelativeMouse() override final;
         void OnRecord(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
@@ -51,6 +52,9 @@ namespace Crowy
         // the scene view target for the UI to sample this frame; 0 without
         // debug.sceneView
         u64 SceneViewID() const { return host.SceneViewID(); }
+        // the cursor hidden for this frame, as a look turning the camera
+        // asks; asked again every frame it holds
+        void RequestRelativeMouse() noexcept { host.RequestRelativeMouse(); }
         // the back buffer of `frame` to `path` as a BMP, with the
         // capture_frame verb's checks; why not, empty once queued
         Str RequestCapture(Str path, u64 frame) {

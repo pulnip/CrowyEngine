@@ -31,6 +31,9 @@ namespace Crowy
 
         virtual void ProcessInput(const InputProvider&){}
         virtual bool Update(){ return true; };
+        // asked after Update: true hides the cursor and keeps it in the
+        // window, and the mouse reports motion that no window edge stops
+        virtual bool WantsRelativeMouse(){ return false; }
         // TODO. support multi-window if needed
         virtual void Render(CommandListPool&, RHISwapchain& swapchain) = 0;
 

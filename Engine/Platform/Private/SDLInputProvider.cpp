@@ -2,6 +2,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_mouse.h>
 #include "KeyCode.hpp"
 #include "SDLInputProvider.hpp"
 
@@ -227,11 +228,10 @@ namespace Crowy
         Vec2 mousePos;
         auto buttons = SDL_GetMouseState(&mousePos.x, &mousePos.y);
 
-        if(gate.mouse){
-            SetMouseMotion(mousePos, Vec2{0.0f, 0.0f});
+        // the motion events add the frame's delta; a hidden cursor stays put
+        SetMouseMotion(relative ? hiddenAt : mousePos, Vec2{0.0f, 0.0f});
+        if(gate.mouse)
             return;
-        }
-        SetCurrentMousePos(mousePos);
 
         if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)){
             mouseHeldState.set(static_cast<usize>(MouseButton::LButton));
@@ -242,6 +242,22 @@ namespace Crowy
         if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)){
             mouseHeldState.set(static_cast<usize>(MouseButton::MButton));
         }
+    }
+
+    void SDLInputProvider::SetRelativeMouse(SDL_Window* window, bool relative, bool restore) noexcept{
+        if(relative == this->relative)
+            return;
+
+        if(relative){
+            hiddenAt = GetMousePos();
+        }
+        else if(restore){
+            // still relative, this only moves SDL's own position, which
+            // leaving puts the cursor back at
+            SDL_WarpMouseInWindow(window, hiddenAt.x, hiddenAt.y);
+        }
+        if(SDL_SetWindowRelativeMouseMode(window, relative))
+            this->relative = relative;
     }
 
     void SDLInputProvider::OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept{
@@ -270,13 +286,19 @@ namespace Crowy
         }
     }
 
+    void SDLInputProvider::OnPlatformEvent(const SDL_MouseMotionEvent& event) noexcept{
+        if(gate.mouse)
+            return;
+
+        // its own delta, which a window edge clamps in neither mode
+        AddMouseMotion(Vec2{event.xrel, event.yrel});
+    }
+
     void SDLInputProvider::OnPlatformEvent(const SDL_MouseButtonEvent& event) noexcept{
         if(gate.mouse)
             return;
 
         switch(event.type){
-        case SDL_EVENT_MOUSE_MOTION:
-            break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
             [[fallthrough]];
         case SDL_EVENT_MOUSE_BUTTON_UP: {

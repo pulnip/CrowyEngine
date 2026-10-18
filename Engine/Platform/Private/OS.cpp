@@ -3,6 +3,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
+#include <SDL3/SDL_keyboard.h>
 #include <imgui_impl_sdl3.h>
 #include "CommandListPool.hpp"
 #include "FramePacer.hpp"
@@ -84,6 +85,7 @@ namespace Crowy
         // the held iteration's pump: the window stays alive, input is dropped
         bool PumpHeld(MainLoop&, RHIDevice&);
         void HandleWindowEvent(MainLoop&, const SDL_WindowEvent&);
+        void ApplyRelativeMouse(bool wanted);
 
         void BeginFrame(RHIDevice&);
         void EndFrame(RHIDevice&);
@@ -210,6 +212,7 @@ namespace Crowy
 
                 if(!mainLoop.Update()) [[unlikely]]
                     return;
+                ApplyRelativeMouse(mainLoop.WantsRelativeMouse());
             }
 
             {
@@ -253,14 +256,17 @@ namespace Crowy
         InputGate gate;
         if(imguiEnabled){
             const auto& io = ImGui::GetIO();
-            gate.mouse = io.WantCaptureMouse;
+            // a relative look has the mouse, whatever the UI was hovering
+            gate.mouse = io.WantCaptureMouse && !inputProvider.IsRelativeMouse();
             gate.keyboard = io.WantCaptureKeyboard;
         }
         inputProvider.NewFrame(gate);
 
         SDL_Event event;
         while(SDL_PollEvent(&event)){
-            if(imguiEnabled)
+            // a relative look leaves the UI's mouse where the look began
+            const bool lookMotion = event.type == SDL_EVENT_MOUSE_MOTION && inputProvider.IsRelativeMouse();
+            if(imguiEnabled && !lookMotion)
                 ImGui_ImplSDL3_ProcessEvent(&event);
 
             if(SDL_EVENT_QUIT == event.type) [[unlikely]]{
@@ -277,7 +283,8 @@ namespace Crowy
                 break;
             // Mouse Event
             case SDL_EVENT_MOUSE_MOTION:
-                [[fallthrough]];
+                inputProvider.OnPlatformEvent(event.motion);
+                break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 [[fallthrough]];
             case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -302,9 +309,8 @@ namespace Crowy
     bool OS::Impl::PumpHeld(MainLoop& mainLoop, RHIDevice& device){
         // no frame's pool is open between frames, and a resize allocates
         const auto scope = device.CreateFrameScope();
-
-        // so the next frame's mouse delta spans one wait, not the whole hold
-        inputProvider.NewFrame();
+        // a held loop gives the cursor back
+        ApplyRelativeMouse(false);
 
         SDL_Event event;
         for(bool have = SDL_WaitEventTimeout(&event, HELD_WAIT_MS); have; have = SDL_PollEvent(&event)){
@@ -328,7 +334,21 @@ namespace Crowy
             swapchain->Resize(w, h);
             mainLoop.OnResize(w, h);
         }
+        if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST){
+            // the cursor stays wherever the other window has it
+            auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
+            inputProvider.SetRelativeMouse(sdlWindow, false, false);
+        }
         window.OnPlatformEvent(event);
+    }
+
+    void OS::Impl::ApplyRelativeMouse(bool wanted){
+        auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
+
+        // SDL turns it back on for a window that regains focus, so only a
+        // focused window holds it
+        const bool focused = SDL_GetKeyboardFocus() == sdlWindow;
+        inputProvider.SetRelativeMouse(sdlWindow, wanted && focused);
     }
 
     void OS::Impl::BeginFrame(RHIDevice& device){

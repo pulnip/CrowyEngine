@@ -36,6 +36,10 @@ namespace Crowy
         host.Update(deltaTime);
     }
 
+    bool RenderApp::WantsRelativeMouse() {
+        return host.WantsRelativeMouse();
+    }
+
     void RenderApp::OnRecord(
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer

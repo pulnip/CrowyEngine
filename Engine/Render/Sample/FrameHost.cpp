@@ -291,6 +291,7 @@ namespace Crowy
     }
 
     void FrameHost::ProcessInput(const InputProvider& input) {
+        relativeMouse = false;
         camera->ProcessInput(input);
         content.OnProcessInput(input);
     }

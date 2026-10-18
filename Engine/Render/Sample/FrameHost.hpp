@@ -126,6 +126,8 @@ namespace Crowy
         // OnRecordSimulation's, alive until the walker has recorded
         std::vector<PassHook> frameHooks;
 
+        // this frame's, asked by a look while it turns
+        bool relativeMouse = false;
         bool reportedCullStats = false;
 
     public:
@@ -164,6 +166,10 @@ namespace Crowy
         // the scene view target for the UI to sample this frame; 0 without
         // debug.sceneView
         u64 SceneViewID() const;
+        // the cursor hidden for this frame, as a look turning the camera
+        // asks; asked again every frame it holds
+        void RequestRelativeMouse() noexcept { relativeMouse = true; }
+        bool WantsRelativeMouse() const noexcept { return relativeMouse; }
         // the back buffer of `frame` to `path` as a BMP, with the
         // capture_frame verb's checks; why not, empty once queued
         Str RequestCapture(Str path, u64 frame) {
