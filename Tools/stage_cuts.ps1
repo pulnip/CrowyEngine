@@ -270,8 +270,7 @@ try {
             foreach ($stale in @("$name.png", "$name.bmp", "$name.diff.png")) {
                 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Out $stale)
             }
-            # a key change rebuilds the walker on the next frame: capture the
-            # one after it
+            # a key change lands on the next frame: capture the one after it
             $png = Save-StageCapture (Join-Path $Out "$name.bmp") $tool ((Invoke-Port ping).frame + 2)
             ++$captured
             $capture = [pscustomobject]@{ Name = $name; Cut = $cut; Key = $key; Png = $png; Golden = "skipped" }

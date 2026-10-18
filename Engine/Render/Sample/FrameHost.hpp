@@ -155,8 +155,8 @@ namespace Crowy
         void FrameEnd(const FrameReport& report);
         void Resize(u32 width, u32 height);
 
-        // the lit views' clear, as a lighting key's sky; the walker is
-        // rebuilt with it at the next frame
+        // the lit views' clear, as a lighting key's sky, from the next frame;
+        // the pipeline stays as it is
         void SetClearColor(Color color) noexcept { config.clearColor = color; }
         // the scene view's size from the next frame on; a zero side is
         // ignored, as a collapsed window's

@@ -207,8 +207,7 @@ for KEY in $KEYS; do
         set_editor cut "$CUT" || exit 1
         if [ "$KEY" = "$DEFAULT_KEY" ]; then NAME="$CUT"; else NAME="$CUT@$KEY"; fi
         rm -f "$OUT/$NAME.png" "$OUT/$NAME.bmp" "$OUT/$NAME.diff.png"
-        # a key change rebuilds the walker on the next frame: capture the
-        # one after it
+        # a key change lands on the next frame: capture the one after it
         FRAME=$(port_frame) || exit 1
         PNG=$(stage_snap "$OUT/$NAME.bmp" "$TOOL" "$((FRAME + 2))") || exit 1
         CAPTURED=$((CAPTURED + 1))

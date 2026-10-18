@@ -24,7 +24,8 @@ namespace Crowy
         // what the colour passes write; RGBA8_UNORM for a scene already in
         // display values
         RHIPixelFormat sceneColorFormat = RHIPixelFormat::RGBA16_FLOAT;
-        // the scene colour's clear, at creation and in the pass alike
+        // the scene colour's clear at creation; the walker clears with
+        // FrameInputs::sceneClear
         Color clearColor = Colors::Black;
         // each mesh pass's list reserve
         u32 drawCapacity = 256;

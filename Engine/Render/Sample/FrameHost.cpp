@@ -81,8 +81,7 @@ namespace Crowy
         }
 
         // the lit views take the sample's clear and post list; the data views
-        // copy through Present over a scene colour created black, so the
-        // clear always matches the one the target was created with
+        // copy through Present over a scene colour cleared black
         StandardPipelineConfig standardConfig(
             const FrameHost::Config& config,
             const RenderDebug& debug,
@@ -335,7 +334,12 @@ namespace Crowy
         // walker's targets
         auto wanted =
             standardConfig(config, frameDebug, swapchain->GetFormat());
+        // the walker clears with this every frame; the list only keeps the
+        // value its scene colour was created with
+        const auto sceneClear = wanted.clearColor;
+        wanted.clearColor = pipelineConfig.clearColor;
         if(wanted != pipelineConfig) {
+            wanted.clearColor = sceneClear;
             pipelineConfig = std::move(wanted);
             auto rebuilt = describePipeline();
             CROWY_ASSERT(
@@ -374,7 +378,7 @@ namespace Crowy
         stats.Begin(renderer->Visible(ViewMain).primitiveCount);
 
         frameInputs.backBuffer = backBuffer.texture;
-        frameInputs.sceneClear = pipelineConfig.clearColor;
+        frameInputs.sceneClear = sceneClear;
         frameInputs.indices =
             RHIIndexBufferView{.buffer = &geometryPool->GetIndexBuffer()};
         // the pool is GPUOnly, so unlike the renderer's own buffers this one
