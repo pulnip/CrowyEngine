@@ -10,9 +10,8 @@
 #include "CommandPort.hpp"
 #include "DebugMode.hpp"
 #include "EnumUtil.hpp"
-#include "FrameHistory.hpp"
 #include "FramePipeline.hpp"
-#include "FrameProfiler.hpp"
+#include "FrameStatsLog.hpp"
 #include "GeometryPool.hpp"
 #include "MeshAsset.hpp"
 #include "Primitives.hpp"
@@ -80,27 +79,11 @@ namespace Crowy
             u32 indexPoolCapacity = 4096;
         };
 
-        // one finished frame: what the loop measured and what the renderer
-        // counted, taken together so every reader sees the same frame
-        struct FrameStats {
-            FrameReport report;
-            usize primitives = 0;
-            u32 visiblePrimitives = 0;
-            u64 triangles = 0;
-            u32 draws = 0;
-            usize runs = 0;
-            usize pipelines = 0;
-            // in list order; draws, runs and triangles sum these
-            std::vector<PassStats> passes;
-        };
+        using FrameStats = Crowy::FrameStats;
 
         static constexpr u32 ViewMain = 0;
 
     private:
-        // how far back read_stats can name a frame
-        static constexpr usize FrameStatsDepth = 64;
-        using FrameStatsHistory = FrameHistory<FrameStats, FrameStatsDepth>;
-
         // a wait_frame reply, held until its frame has ended
         struct PendingWait {
             u64 frame = 0;
@@ -139,7 +122,7 @@ namespace Crowy
         // a wait the port already timed out stays until its frame ends, and
         // answering it then does nothing
         std::vector<PendingWait> pendingWaits;
-        FrameStatsHistory frameStats;
+        FrameStatsLog stats;
         // captures whose dump failed, since launch
         u32 captureFailures = 0;
         // the named targets' captures; the swapchain keeps the back buffer's
@@ -148,10 +131,6 @@ namespace Crowy
         TargetReadbacks frameCaptures;
         // OnRecordSimulation's, alive until the walker has recorded
         std::vector<PassHook> frameHooks;
-
-        // this frame's counts, summed over its passes; OnFrameEnd adds the
-        // report and the totals
-        FrameStats recorded;
 
         bool reportedCullStats = false;
 
@@ -253,7 +232,9 @@ namespace Crowy
         // for a sample that registers verbs of its own
         CommandPort* Port() noexcept { return port.get(); }
         // the newest frame that ended; empty before frame 1 has
-        const FrameStats& LastFrameStats() const noexcept;
+        const FrameStats& LastFrameStats() const noexcept {
+            return stats.Last();
+        }
         // the formats of the running list's pass naming `hook`; empty when
         // the list has none, as a data view's
         std::optional<HookPassFormats> FindHook(StrView hook) const noexcept {
@@ -279,8 +260,6 @@ namespace Crowy
         // the requests due this frame, one per target, resolved by name
         std::span<TargetReadback> takeDueCaptures();
         void collectCaptures();
-        // the history's entry for the frame stats.report.gpu times, if kept
-        const FrameStats* gpuFrameStats(const FrameStats& stats) const noexcept;
         void answerWaits();
         void reportCullStatsOnce();
     };
