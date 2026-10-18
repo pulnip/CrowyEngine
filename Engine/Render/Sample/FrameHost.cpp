@@ -97,7 +97,7 @@ namespace Crowy
                     wantsDepthPrepass(debug, meshPassOverride(debug)),
                 .shadowMapSize = config.shadowMapSize,
                 .post = config.post,
-                .sceneView = debug.sceneView,
+                .sceneView = debug.sceneView && config.showsSceneView,
                 .sceneViewFormat = backBufferFormat
             };
             if(showsData(debug.mode)) {
@@ -216,10 +216,28 @@ namespace Crowy
                 message += std::format(" {};", error);
             throw std::runtime_error(message);
         }
+        if(debug.sceneView && !config.showsSceneView) {
+            throw std::runtime_error(
+                "CROWY_DEBUG: sceneView needs a sample that draws the scene "
+                "view;"
+            );
+        }
 
         DOM::Value applied;
         SerializeProperties(&debug, applied);
         LOG_INFO("RenderApp", "CROWY_DEBUG: debug is {}", emitJson(applied));
+    }
+
+    void FrameHost::refuseSceneView() {
+        if(!debug.sceneView || config.showsSceneView)
+            return;
+
+        debug.sceneView = false;
+        LOG_WARN(
+            "RenderApp",
+            "debug.sceneView needs a sample that draws the scene view; it "
+            "stays off"
+        );
     }
 
     void FrameHost::openCommandPort() {
@@ -228,9 +246,11 @@ namespace Crowy
         if(port == nullptr)
             return;
 
-        // no callback: every reader reads it each frame. Exposed even on an
-        // inert port, like the samples' own targets
-        port->Expose("debug", &debug, *GetDesc<RenderDebug>());
+        // every reader reads it each frame, so the callback only refuses a
+        // scene view; exposed even on an inert port, like the samples' own
+        port->Expose("debug", &debug, *GetDesc<RenderDebug>(), [this] {
+            refuseSceneView();
+        });
         // a port that could not bind stays, inert, so a sample can show
         // that it did not; only its verbs are skipped
         if(port->Port() == 0)

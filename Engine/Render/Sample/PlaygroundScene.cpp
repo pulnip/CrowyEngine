@@ -50,7 +50,8 @@ namespace Crowy
             .drawCapacity = 64,
             .materialCapacity = 64,
             .vertexPoolCapacity = 4096,
-            .indexPoolCapacity = 16384
+            .indexPoolCapacity = 16384,
+            .showsSceneView = true
         };
     }
 

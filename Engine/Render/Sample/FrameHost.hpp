@@ -48,7 +48,7 @@ namespace Crowy
         bool showStats = false;
         bool showPanel = false;
         // the scene drawn into a target the sample's UI shows, sized by
-        // SetSceneViewSize
+        // SetSceneViewSize; refused where Config::showsSceneView is off
         bool sceneView = false;
 
         friend bool operator==(const RenderDebug&, const RenderDebug&) =
@@ -81,6 +81,10 @@ namespace Crowy
             // element counts, as GeometryPool takes them
             u32 vertexPoolCapacity = 1024;
             u32 indexPoolCapacity = 4096;
+
+            // the UI draws SceneViewID(); without it the window would only
+            // get the UI pass over black
+            bool showsSceneView = false;
         };
 
         static constexpr u32 ViewMain = 0;
@@ -194,6 +198,8 @@ namespace Crowy
         FramePipelinePtr describePipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();
+        // a port write of debug.sceneView where nothing draws the view
+        void refuseSceneView();
         void reportCullStatsOnce();
     };
 }
