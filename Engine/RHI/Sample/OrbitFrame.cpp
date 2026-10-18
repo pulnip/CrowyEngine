@@ -484,15 +484,6 @@ namespace Crowy
         }
 
         void ProcessInput(const InputProvider& input) override{
-            // the OS layer already drops events ImGui claimed, but IsKeyDown is
-            // a level query: a key-up swallowed mid-drag would stick
-            if(ImGui::GetIO().WantCaptureKeyboard){
-                zoomInput = 0.0f;
-                turnsInput = 0.0f;
-
-                return;
-            }
-
             zoomInput =
                 (input.IsKeyDown(KeyCode::Up) ? 1.0f : 0.0f) -
                 (input.IsKeyDown(KeyCode::Down) ? 1.0f : 0.0f);

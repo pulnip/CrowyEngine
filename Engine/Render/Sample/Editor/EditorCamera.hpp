@@ -42,7 +42,7 @@ namespace Crowy
     }
 
     // A fly camera that snaps to cuts and can look through an orthographic
-    // lens; held keys are ignored while keyboardGated.
+    // lens.
     class EditorCamera final: public Camera {
     public:
         // public so the pose can be registered as reflected properties
@@ -52,8 +52,6 @@ namespace Crowy
         EditorLens lens;
         f32 moveSpeed = 15.0f;
         f32 lookSensitivity = 0.003f;
-        // a text field has the keyboard
-        bool keyboardGated = false;
 
     private:
         Vec3 moveInput{};

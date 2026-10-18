@@ -3,8 +3,6 @@
 #include "InputProvider.hpp"
 #include "TerrainCamera.hpp"
 
-#include <imgui.h>
-
 namespace{
     using namespace Crowy;
 
@@ -21,9 +19,7 @@ namespace{
 namespace Crowy
 {
     void TerrainCamera::ProcessInput(const InputProvider& input){
-        const auto& io = ImGui::GetIO();
-
-        if(input.IsKeyDown(MouseButton::RButton) && !io.WantCaptureMouse){
+        if(input.IsKeyDown(MouseButton::RButton)){
             const auto dpos = input.GetMouseDPos();
             yaw += dpos.x * LOOK_SENSITIVITY;
             // straight up would leave the yaw axis undefined
@@ -32,11 +28,6 @@ namespace Crowy
                 -PITCH_LIMIT,
                 PITCH_LIMIT
             );
-        }
-
-        if(io.WantCaptureKeyboard){
-            moveInput = Vec3{};
-            return;
         }
 
         moveInput = Vec3{

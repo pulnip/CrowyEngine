@@ -250,14 +250,13 @@ namespace Crowy
     bool OS::Impl::ProcessEvents(MainLoop& mainLoop){
         bool keepRunning = true;
 
-        inputProvider.NewFrame();
-
-        bool uiWantsMouse = false, uiWantsKeyboard = false;
+        InputGate gate;
         if(imguiEnabled){
             const auto& io = ImGui::GetIO();
-            uiWantsMouse = io.WantCaptureMouse;
-            uiWantsKeyboard = io.WantCaptureKeyboard;
+            gate.mouse = io.WantCaptureMouse;
+            gate.keyboard = io.WantCaptureKeyboard;
         }
+        inputProvider.NewFrame(gate);
 
         SDL_Event event;
         while(SDL_PollEvent(&event)){
@@ -274,8 +273,7 @@ namespace Crowy
             case SDL_EVENT_KEY_DOWN:
                 [[fallthrough]];
             case SDL_EVENT_KEY_UP:
-                if(!uiWantsKeyboard)
-                    inputProvider.OnPlatformEvent(event.key);
+                inputProvider.OnPlatformEvent(event.key);
                 break;
             // Mouse Event
             case SDL_EVENT_MOUSE_MOTION:
@@ -283,8 +281,7 @@ namespace Crowy
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 [[fallthrough]];
             case SDL_EVENT_MOUSE_BUTTON_UP:
-                if(!uiWantsMouse)
-                    inputProvider.OnPlatformEvent(event.button);
+                inputProvider.OnPlatformEvent(event.button);
                 break;
             }
 

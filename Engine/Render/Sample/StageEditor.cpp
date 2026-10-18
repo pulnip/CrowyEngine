@@ -166,8 +166,6 @@ namespace Crowy
         void OnUpdateFrameData() override {
             const auto& io = ImGui::GetIO();
             session->Update(Vec2{io.DisplaySize.x, io.DisplaySize.y});
-            // a text field has the keyboard: typing must not fly the camera
-            camera().keyboardGated = io.WantCaptureKeyboard;
         }
 
         void OnInitUI(RHIDevice& device, const OverlayFormats& formats) override {

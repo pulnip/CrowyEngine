@@ -209,7 +209,7 @@ namespace Crowy
     bool SDLInputProvider::IsKeyDown(KeyCode keyCode) const noexcept{
         auto sdlCode = convert(keyCode);
 
-        return heldState[sdlCode];
+        return !gate.keyboard && heldState[sdlCode];
     }
 
     bool SDLInputProvider::IsKeyDown(MouseButton button) const noexcept{
@@ -218,13 +218,18 @@ namespace Crowy
         return mouseHeldState.test(ordKey);
     }
 
-    void SDLInputProvider::NewFrame() noexcept{
+    void SDLInputProvider::NewFrame(InputGate gate) noexcept{
         InputProvider::ConsumeEdge();
         mouseHeldState.reset();
+        this->gate = gate;
 
         Vec2 mousePos;
         auto buttons = SDL_GetMouseState(&mousePos.x, &mousePos.y);
 
+        if(gate.mouse){
+            SetMouseMotion(mousePos, Vec2{0.0f, 0.0f});
+            return;
+        }
         SetCurrentMousePos(mousePos);
 
         if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)){
@@ -236,6 +241,9 @@ namespace Crowy
     }
 
     void SDLInputProvider::OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept{
+        if(gate.keyboard)
+            return;
+
         switch(event.type){
         case SDL_EVENT_KEY_DOWN:
             [[fallthrough]];
@@ -259,6 +267,9 @@ namespace Crowy
     }
 
     void SDLInputProvider::OnPlatformEvent(const SDL_MouseButtonEvent& event) noexcept{
+        if(gate.mouse)
+            return;
+
         switch(event.type){
         case SDL_EVENT_MOUSE_MOTION:
             break;

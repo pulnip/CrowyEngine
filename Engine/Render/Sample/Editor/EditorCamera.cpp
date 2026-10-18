@@ -25,10 +25,6 @@ namespace Crowy
             }
         }
 
-        if(keyboardGated) {
-            moveInput = zeros();
-            return;
-        }
         const auto axis = [&](KeyCode positive, KeyCode negative) {
             return (input.IsKeyDown(positive) ? 1.0f : 0.0f) - (input.IsKeyDown(negative) ? 1.0f : 0.0f);
         };

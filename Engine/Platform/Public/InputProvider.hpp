@@ -91,7 +91,11 @@ namespace Crowy
         }
 
         void SetCurrentMousePos(Vec2 pos) noexcept{
-            mouse.dpos = pos - mouse.pos;
+            SetMouseMotion(pos, pos - mouse.pos);
+        }
+        // the motion a frame reports, apart from where the mouse ended up
+        void SetMouseMotion(Vec2 pos, Vec2 dpos) noexcept{
+            mouse.dpos = dpos;
             mouse.pos = pos;
         }
     };
