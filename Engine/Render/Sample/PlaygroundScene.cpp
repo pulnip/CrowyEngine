@@ -70,14 +70,15 @@ namespace Crowy
 
     void PlaygroundScene::OnBuildGeometry(GeometryPool& pool) {
         const auto sphereMesh = MakeSphere(SphereRadius, 48, 24);
-        const auto boxMesh = MakeBox(0.5f);
         const auto floorMesh = MakePlane(Vec2{10.0f, 10.0f});
         const auto towardMesh = MakePlane(-unitZ(), unitX(), 0.5f);
         const auto awayMesh = MakePlane(unitZ(), unitX(), 0.5f);
 
         sphere =
             valueOrThrow(pool.Add(sphereMesh.vertices, sphereMesh.indices));
-        unitBox = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+        unitBox = valueOrThrow(
+            Meshes().Load(AssetRef::Parse("engine:Builtin/Box").value())
+        );
         floorPlane =
             valueOrThrow(pool.Add(floorMesh.vertices, floorMesh.indices));
         quadFacingCamera =
@@ -89,7 +90,6 @@ namespace Crowy
     void PlaygroundScene::ExtractScene(RenderScene& scene) {
         constexpr auto ChartRows = PlaygroundChartRows;
         constexpr auto ChartColumns = PlaygroundChartColumns;
-        const auto boxHalf = 0.5f * ones();
         constexpr Vec3 QuadHalf{0.5f, 0.5f, 0.0f};
 
         world.Provide(scene);
@@ -228,14 +228,13 @@ namespace Crowy
 
         // grid: the floor, three walls leaving the camera side open, the
         // scale blocks and the chart's step
-        const auto blockMesh =
-            addMesh(scene, unitBox, materials.block, boxHalf);
+        const auto blockMesh = addMesh(scene, unitBox, materials.block);
         addPrimitive(
             addMesh(scene, floorPlane, materials.floor, {10.0f, 0.0f, 10.0f}),
             zeros(),
             ones()
         );
-        const auto wallMesh = addMesh(scene, unitBox, materials.wall, boxHalf);
+        const auto wallMesh = addMesh(scene, unitBox, materials.wall);
         addPrimitive(wallMesh, {-10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
         addPrimitive(wallMesh, {10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
         // nearer centres draw first, so the back wall draws after the side
@@ -315,7 +314,7 @@ namespace Crowy
                 const auto x = static_cast<f32>(column) - 2.0f;
 
                 addPrimitive(
-                    addMesh(scene, unitBox, material, boxHalf),
+                    addMesh(scene, unitBox, material),
                     {x, base + 0.25f, z},
                     0.5f * ones()
                 );
@@ -331,7 +330,7 @@ namespace Crowy
         // colour shows both through the glass and bare
         for(u32 i = 0; i < materials.bars.size(); ++i) {
             addPrimitive(
-                addMesh(scene, unitBox, materials.bars[i], boxHalf),
+                addMesh(scene, unitBox, materials.bars[i]),
                 {3.5f + 0.75f * static_cast<f32>(i), 1.0f, FrontZ + 1.125f},
                 {0.5f, 2.0f, 0.25f}
             );
@@ -632,6 +631,14 @@ namespace Crowy
                 .localBounds = bounds
             }
         );
+    }
+
+    MeshHandle PlaygroundScene::addMesh(
+        RenderScene& scene,
+        const MeshAssetHandle& asset,
+        MaterialHandle material
+    ) {
+        return scene.Meshes().Add(meshResourceOf(asset, {material}));
     }
 
     void PlaygroundScene::addPrimitive(

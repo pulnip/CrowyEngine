@@ -38,7 +38,7 @@ namespace Crowy
             bool box = false;
         };
 
-        GeometryAllocation box{};
+        MeshAssetHandle box;
         GeometryAllocation sphere{};
         GeometryAllocation denseSphere{};
         GeometryAllocation floorPlane{};
@@ -53,7 +53,6 @@ namespace Crowy
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
-            const auto boxMesh = MakeBox(0.5f);
             const auto sphereMesh = MakeSphere(1.0f, 48, 24);
             // most of its triangles cover less than a pixel
             const auto denseSphereMesh = MakeSphere(1.0f, 96, 48);
@@ -61,7 +60,9 @@ namespace Crowy
             const auto wallMesh =
                 MakePlane(-unitZ(), unitX(), Vec2{WallHalf.x, WallHalf.y});
 
-            box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+            box = valueOrThrow(
+                Meshes().Load(AssetRef::Parse("engine:Builtin/Box").value())
+            );
             sphere =
                 valueOrThrow(pool.Add(sphereMesh.vertices, sphereMesh.indices));
             denseSphere = valueOrThrow(
@@ -216,7 +217,27 @@ namespace Crowy
                     .localBounds = localBounds
                 }
             );
+            place(scene, mesh, localHalf, localToWorld);
+        }
 
+        static void addPrimitive(
+            RenderScene& scene,
+            MaterialHandle group,
+            const MeshAssetHandle& asset,
+            Vec3 localHalf,
+            const Mat4& localToWorld
+        ) {
+            const auto mesh =
+                scene.Meshes().Add(meshResourceOf(asset, {group}));
+            place(scene, mesh, localHalf, localToWorld);
+        }
+
+        static void place(
+            RenderScene& scene,
+            MeshHandle mesh,
+            Vec3 localHalf,
+            const Mat4& localToWorld
+        ) {
             scene.Primitives().Add(
                 PrimitiveSnapshot{
                     .localToWorld = localToWorld,

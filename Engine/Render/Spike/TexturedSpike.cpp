@@ -44,7 +44,7 @@ namespace Crowy
             u8 a = 255;
         };
 
-        GeometryAllocation box{};
+        MeshAssetHandle box;
         GeometryAllocation floorPlane{};
         GeometryAllocation tile{};
         // facing the camera, u to the right and v down
@@ -56,12 +56,13 @@ namespace Crowy
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
-            const auto boxMesh = MakeBox(0.5f);
             const auto floorMesh = MakePlane(Vec2{4.0f, 4.0f});
             const auto tileMesh = MakePlane(Vec2{0.25f, 0.25f});
             const auto cardMesh = MakePlane(-unitZ(), unitX(), 0.5f);
 
-            box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
+            box = valueOrThrow(
+                Meshes().Load(AssetRef::Parse("engine:Builtin/Box").value())
+            );
             floorPlane =
                 valueOrThrow(pool.Add(floorMesh.vertices, floorMesh.indices));
             tile = valueOrThrow(pool.Add(tileMesh.vertices, tileMesh.indices));
@@ -320,7 +321,30 @@ namespace Crowy
                     .localBounds = local
                 }
             );
-            const auto stretch = size * scale;
+            place(scene, mesh, position, localHalf, size * scale);
+        }
+
+        static void add(
+            RenderScene& scene,
+            MaterialHandle material,
+            const MeshAssetHandle& asset,
+            Vec3 position,
+            Vec3 localHalf,
+            f32 size = 1.0f,
+            Vec3 scale = ones()
+        ) {
+            const auto mesh =
+                scene.Meshes().Add(meshResourceOf(asset, {material}));
+            place(scene, mesh, position, localHalf, size * scale);
+        }
+
+        static void place(
+            RenderScene& scene,
+            MeshHandle mesh,
+            Vec3 position,
+            Vec3 localHalf,
+            Vec3 stretch
+        ) {
             scene.Primitives().Add(
                 PrimitiveSnapshot{
                     .localToWorld = translateMat(position) * scaleMat(stretch),

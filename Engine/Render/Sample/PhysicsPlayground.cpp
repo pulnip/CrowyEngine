@@ -209,9 +209,9 @@ namespace Crowy
             PuzzleLanes lanes;
             FixedTickClock clock;
             PuzzleMaterials materials;
-            GeometryAllocation box{};
-            GeometryAllocation ball{};
-            GeometryAllocation quad{};
+            MeshAssetHandle box;
+            MeshAssetHandle ball;
+            MeshAssetHandle quad;
             GeometryAllocation floorPlane{};
             RAII<UIRenderer> uiRenderer;
             StatsOverlay statsOverlay;
@@ -248,16 +248,21 @@ namespace Crowy
 
         protected:
             void OnBuildGeometry(GeometryPool& pool) override {
-                const auto boxMesh = MakeBox(0.5f);
-                const auto ballMesh = MakeSphere(0.5f, 32, 16);
-                const auto quadMesh = MakePlane(Vec2{0.5f, 0.5f});
                 const auto floorMesh =
                     MakePlane(Vec2{FloorHalf.x, FloorHalf.z});
-                box = valueOrThrow(pool.Add(boxMesh.vertices, boxMesh.indices));
-                ball =
-                    valueOrThrow(pool.Add(ballMesh.vertices, ballMesh.indices));
-                quad =
-                    valueOrThrow(pool.Add(quadMesh.vertices, quadMesh.indices));
+                box = valueOrThrow(
+                    Meshes().Load(AssetRef::Parse("engine:Builtin/Box").value())
+                );
+                ball = valueOrThrow(
+                    Meshes().Load(
+                        AssetRef::Parse("engine:Builtin/Sphere").value()
+                    )
+                );
+                quad = valueOrThrow(
+                    Meshes().Load(
+                        AssetRef::Parse("engine:Builtin/Plane").value()
+                    )
+                );
                 floorPlane = valueOrThrow(
                     pool.Add(floorMesh.vertices, floorMesh.indices)
                 );
@@ -522,12 +527,8 @@ namespace Crowy
                 Vec3 center,
                 Vec2 halfExtent
             ) {
-                const auto mesh = addMeshResource(
-                    scene,
-                    quad,
-                    material,
-                    AABB3D{.halfScale = {0.5f, 0.0f, 0.5f}}
-                );
+                const auto mesh =
+                    scene.Meshes().Add(meshResourceOf(quad, {material}));
                 addStatic(
                     scene,
                     mesh,
@@ -540,11 +541,11 @@ namespace Crowy
 
             PrimitiveHandle addMoving(
                 RenderScene& scene,
-                const GeometryAllocation& geometry,
+                const MeshAssetHandle& asset,
                 MaterialHandle material
             ) {
                 const auto mesh =
-                    addMeshResource(scene, geometry, material, UnitMeshBounds);
+                    scene.Meshes().Add(meshResourceOf(asset, {material}));
 
                 return scene.Primitives().Add(PrimitiveSnapshot{.mesh = mesh});
             }
@@ -563,11 +564,8 @@ namespace Crowy
                 for(const auto& water: puzzle.waters) {
                     addStatic(
                         scene,
-                        addMeshResource(
-                            scene,
-                            box,
-                            materials.water,
-                            UnitMeshBounds
+                        scene.Meshes().Add(
+                            meshResourceOf(box, {materials.water})
                         ),
                         translateMat(lane.origin + water.center) *
                             scaleMat(2.0f * (water.halfExtent - WaterInset)),

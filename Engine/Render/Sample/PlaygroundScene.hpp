@@ -146,7 +146,7 @@ namespace Crowy
 
         GeometryAllocation sphere{};
         // stretched into walls, boards and bars, scaled into blocks
-        GeometryAllocation unitBox{};
+        MeshAssetHandle unitBox;
         GeometryAllocation floorPlane{};
         // unit quads; the one facing away only shows where nothing is culled
         GeometryAllocation quadFacingCamera{};
@@ -221,6 +221,11 @@ namespace Crowy
             const GeometryAllocation& geometry,
             MaterialHandle material,
             Vec3 halfScale
+        );
+        static MeshHandle addMesh(
+            RenderScene& scene,
+            const MeshAssetHandle& asset,
+            MaterialHandle material
         );
         // both stages from one file, so the prepass and the colour pass run
         // the same vertex shader; every material links the default PBR
