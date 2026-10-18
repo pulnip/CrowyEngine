@@ -6,6 +6,7 @@
 #include "Geometry/Overlap3D.hpp"
 #include "GeometryPool.hpp"
 #include "LinearAlgebra.hpp"
+#include "MeshAsset.hpp"
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
@@ -41,11 +42,20 @@ namespace Crowy
     using SubMeshes = std::vector<SubMesh>;
     using MaterialHandles = std::vector<MaterialHandle>;
 
+    // a submesh per slot, each drawing the material of the same index
+    MeshResource meshResourceOf(
+        MeshAssetHandle asset,
+        MaterialHandles materials
+    );
+
     struct MeshResource {
         SubMeshes subMeshes;
         // one per material slot the submeshes name
         MaterialHandles materials;
         AABB3D localBounds{};
+        // the asset whose pool ranges subMeshes draw, held while the row is;
+        // empty for geometry the caller placed itself
+        MeshAssetHandle source;
     };
 
     // What extraction writes and the only thing the renderer reads.

@@ -8,6 +8,7 @@
 #include "MeshAsset.hpp"
 #include "MeshGenerator.hpp"
 #include "ModelLoader.hpp"
+#include "RenderScene.hpp"
 #include "StringUtil.hpp"
 
 using namespace Crowy;
@@ -133,4 +134,75 @@ TEST_F(MeshAssetTest, AReleaseFreesEverySlotOnceTheGPUIsDone) {
 
     device.RunDeferred();
     EXPECT_TRUE(device.deferred.empty());
+}
+
+namespace
+{
+    // the store goes after the scene, whose rows hold its handles
+    class MeshRowTest: public testing::Test {
+    protected:
+        FakeDevice device;
+        GeometryPool pool{device, 8192, 32768};
+        MeshStore store{
+            [this](const AssetRef& ref) {
+                return loadMeshAsset(pool, AssetRoots{}, ref);
+            },
+            [this](MeshAsset asset) {
+                releaseMeshAsset(pool, std::move(asset));
+            }
+        };
+        RenderScene scene;
+        MaterialHandle material = scene.Materials().Add(MaterialResource{});
+
+        MeshHandle AddBox() {
+            return scene.Meshes().Add(meshResourceOf(
+                store.Load(parsed("engine:Builtin/Box")).value(),
+                {material}
+            ));
+        }
+    };
+}
+
+TEST_F(MeshRowTest, ARowDrawsEverySlotOfItsAsset) {
+    const auto row = scene.Meshes().GetRef(AddBox());
+
+    ASSERT_EQ(row.subMeshes.size(), 1u);
+    EXPECT_EQ(row.subMeshes[0].geometry.indexCount, 36u);
+    EXPECT_EQ(row.subMeshes[0].materialSlot, 0u);
+    EXPECT_EQ(row.localBounds.halfScale, (Vec3{0.5f, 0.5f, 0.5f}));
+    EXPECT_EQ(row.source.Ref(), parsed("engine:Builtin/Box"));
+}
+
+TEST_F(MeshRowTest, TheAssetStaysWhileARowDrawsIt) {
+    const auto row = AddBox();
+
+    store.Collect();
+    EXPECT_EQ(store.Count(), 1u);
+    EXPECT_TRUE(device.deferred.empty());
+
+    scene.Meshes().Remove(row);
+    store.Collect();
+    EXPECT_EQ(store.Count(), 0u);
+    EXPECT_EQ(device.deferred.size(), 1u);
+}
+
+TEST_F(MeshRowTest, RowsThatShareAnAssetKeepItUntilTheLastGoes) {
+    const auto first = AddBox();
+    const auto second = AddBox();
+
+    scene.Meshes().Remove(first);
+    store.Collect();
+    EXPECT_EQ(store.Count(), 1u);
+
+    scene.Meshes().Remove(second);
+    store.Collect();
+    EXPECT_EQ(store.Count(), 0u);
+}
+
+TEST_F(MeshRowTest, AClearedSceneLetsItsAssetsGo) {
+    AddBox();
+
+    scene.Clear();
+    store.Collect();
+    EXPECT_EQ(store.Count(), 0u);
 }
