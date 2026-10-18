@@ -4,7 +4,6 @@
 #include <array>
 #include <cmath>
 #include <format>
-#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -42,24 +41,6 @@ namespace Crowy
 
         constexpr Vec3 componentMax(Vec3 a, Vec3 b) noexcept {
             return Vec3{std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)};
-        }
-
-        AABB3D boundsOf(const Vertices& vertices) {
-            if(vertices.empty())
-                return AABB3D{.center = zeros(), .halfScale = zeros()};
-
-            constexpr auto Huge = std::numeric_limits<f32>::max();
-            auto low = Vec3{Huge, Huge, Huge};
-            auto high = Vec3{-Huge, -Huge, -Huge};
-            for(const auto& vertex: vertices) {
-                low = componentMin(low, vertex.position);
-                high = componentMax(high, vertex.position);
-            }
-
-            return AABB3D{
-                .center = 0.5f * (low + high),
-                .halfScale = 0.5f * (high - low)
-            };
         }
 
         AABB3D unionOf(const AABB3D& a, const AABB3D& b) {
