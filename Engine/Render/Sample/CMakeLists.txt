@@ -16,6 +16,7 @@ add_library(SampleRenderApp STATIC
     FlyCamera.cpp
     FlyControl.cpp
     FrameCaptures.cpp
+    FrameHost.cpp
     FramePort.cpp
     FrameStatsLog.cpp
     OrbitCamera.cpp

@@ -1,124 +1,26 @@
 #pragma once
 
-#include <memory>
 #include <optional>
-#include <span>
-#include <vector>
 
 #include "AppFramework.hpp"
-#include "Camera.hpp"
-#include "CommandPort.hpp"
-#include "DebugMode.hpp"
-#include "EnumUtil.hpp"
-#include "FrameCaptures.hpp"
-#include "FramePipeline.hpp"
-#include "FramePort.hpp"
-#include "FrameStatsLog.hpp"
-#include "GeometryPool.hpp"
-#include "MeshAsset.hpp"
+#include "FrameContent.hpp"
+#include "FrameHost.hpp"
 #include "Primitives.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIFWD.hpp"
-#include "RenderScene.hpp"
-#include "SceneRenderer.hpp"
-#include "StandardPipeline.hpp"
+#include "Semantics.hpp"
 
 namespace Crowy
 {
-    using FramePipelinePtr = RAII<FramePipeline>;
-    using GeometryPoolPtr = RAII<GeometryPool>;
-    using MeshStorePtr = RAII<MeshStore>;
-    using SceneRendererPtr = RAII<SceneRenderer>;
-    using FrameCapturesPtr = RAII<FrameCaptures>;
-    using FramePortPtr = RAII<FramePort>;
-
-    // what the frame shows instead of the plain lit picture, exposed as `debug`
-    struct RenderDebug {
-        DebugMode mode = DebugMode::Lit;
-        bool wireframe = false;
-        // off, the opaque round tests Less and writes depth itself; a view
-        // that overrides fill mode or depth draws without a prepass anyway
-        bool depthPrepass = true;
-        // Hard is the exact 0 or 1 every golden is recorded with
-        ShadowFilter shadowFilter = ShadowFilter::Hard;
-        // read by a sample that hosts the stats overlay or a panel
-        bool showStats = false;
-        bool showPanel = false;
-        // the scene drawn into a target the sample's UI shows, sized by
-        // SetSceneViewSize
-        bool sceneView = false;
-
-        friend bool operator==(
-            const RenderDebug&,
-            const RenderDebug&
-        ) = default;
-    };
-
-    // Sample framework for Engine/Render: Owns the frame order and seals it
-    class RenderApp: public App {
+    // Sample framework for Engine/Render: an App whose frame a FrameHost runs
+    // in an order it seals; a sample overrides the FrameContent hooks
+    class RenderApp: public App, public FrameContent {
     public:
-        // the sample's statement of what its capture is taken against
-        struct Config {
-            RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
-            // what the colour passes write; RGBA8_UNORM for a scene already
-            // in display values
-            RHIPixelFormat sceneColorFormat = RHIPixelFormat::RGBA16_FLOAT;
-            // the lit views' scene colour; the data views clear black
-            Color clearColor = Colors::Black;
-            // the lit views' post list; the data views copy through Present
-            std::vector<PostPassDesc> post{tonemapPass()};
-
-            // reserves: the scratch grows, and the transient ring is the limit
-            u32 drawCapacity = 4096;
-            u32 materialCapacity = 256;
-            // the standard pipeline's shadow map; 0 for a sample with no
-            // lights, which keeps one view row and no Shadow pass
-            u32 shadowMapSize = 2048;
-
-            // element counts, as GeometryPool takes them
-            u32 vertexPoolCapacity = 1024;
-            u32 indexPoolCapacity = 4096;
-        };
-
+        using Config = FrameHost::Config;
         using FrameStats = Crowy::FrameStats;
 
-        static constexpr u32 ViewMain = 0;
+        static constexpr u32 ViewMain = FrameHost::ViewMain;
 
     private:
-        Config config;
-
-        RHIDevice* device = nullptr;
-        RHISwapchain* swapchain = nullptr;
-        // the scene's, from its color target
-        f32 aspect = 1.0f;
-        // the scene view's, applied at the next frame; 0 keeps the back
-        // buffer's
-        Size2D sceneViewSize;
-
-        GeometryPoolPtr geometryPool;
-        // after the pool it frees into, before the scene whose rows hold it
-        MeshStorePtr meshes;
-        SceneRendererPtr renderer;
-        // what DescribePipeline was last asked for, from config and the debug
-        // view; a change rebuilds it
-        StandardPipelineConfig pipelineConfig;
-        FramePipelinePtr pipeline;
-        // bindMeshPass and recordOverlay are set once; the rest, hooks
-        // included, is refilled every frame
-        FrameInputs frameInputs;
-        RenderScene scene;
-        CameraRAII camera;
-        // declared before the port, which points at it, so it outlives it
-        RenderDebug debug;
-
-        // its port opens in debug builds only
-        FramePortPtr framePort;
-        FrameStatsLog stats;
-        FrameCapturesPtr captures;
-        // OnRecordSimulation's, alive until the walker has recorded
-        std::vector<PassHook> frameHooks;
-
-        bool reportedCullStats = false;
+        FrameHost host;
 
     public:
         ~RenderApp() override;
@@ -138,104 +40,42 @@ namespace Crowy
         void OnResize(u32 width, u32 height) override final;
 
     protected:
-        // once, from OnInit; the pool queues the copies and the first frame
-        // records them
-        virtual void OnBuildGeometry(GeometryPool& pool) = 0;
-
-        // The only sample code allowed to see both where a thing is in the
-        // world and what the renderer stores about it.
-        virtual void ExtractScene(RenderScene& scene) = 0;
-
-        // The pass list; the default is the standard one. Called at init
-        // and again whenever the config changes, as a debug view does. An
-        // override that builds its own desc clears scene colour with
-        // config.clearColor and ends with appendPostChain(config.post).
-        virtual FramePipelineDesc DescribePipeline(
-            const StandardPipelineConfig& config
-        );
-
-        // Override to push a struct starting with the same members
-        // when a shader wants more root constants. Runs in every mesh pass.
-        virtual void OnBindPass(RHICommandList& cmdList, const ScenePush& push);
-
-        // The sample's own per-frame buffers, written here
-        // because the pass has not opened yet.
-        virtual void OnUpdateFrameData() {}
-
-        // input a sample reads beyond the camera's
-        virtual void OnProcessInput(const InputProvider&) {}
-
-        // after the camera, on every frame the loop runs: the frame's time,
-        // the fixed 1/60 step on a frame a counted run lets through, and on
-        // every frame of a frame capture's run
-        virtual void OnUpdateScene(f64) {}
-
-        // the formats of the pass the UI rides, frozen for the app's life
-        virtual void OnInitUI(RHIDevice&, const OverlayFormats&) {
-            // default no-op so a sample without UI is unchanged
-        }
-
-        // runs before the first pass; the acquires ride the overlay pass
-        virtual std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList&) {
-            return {};
-        }
-
-        // runs inside the overlay pass, after its draws
-        virtual void OnRecordUI(RHICommandList&) {}
-
-        // after the reload_shaders verb rebuilt the renderer's pipelines: the
-        // sample's own programs; returns how many it rebuilt
-        virtual usize OnReloadShaders() { return 0; }
-
-        // runs before the first pass, after OnPrepareUI: the sample's own
-        // GPU work, and one binding per hook pass of the running list
-        virtual std::vector<PassHook> OnRecordSimulation(RHICommandList&) {
-            return {};
-        }
-
         // the lit views' clear, as a lighting key's sky; the walker is
         // rebuilt with it at the next frame
-        void SetClearColor(Color color) noexcept { config.clearColor = color; }
+        void SetClearColor(Color color) noexcept { host.SetClearColor(color); }
         // the scene view's size from the next frame on; a zero side is
         // ignored, as a collapsed window's
-        void SetSceneViewSize(u32 width, u32 height) noexcept;
+        void SetSceneViewSize(u32 width, u32 height) noexcept {
+            host.SetSceneViewSize(width, height);
+        }
         // the scene view target for the UI to sample this frame; 0 without
         // debug.sceneView
-        u64 SceneViewID() const;
+        u64 SceneViewID() const { return host.SceneViewID(); }
         // the back buffer of `frame` to `path` as a BMP, with the
         // capture_frame verb's checks; why not, empty once queued
         Str RequestCapture(Str path, u64 frame) {
-            return captures->Request(std::move(path), frame);
+            return host.RequestCapture(std::move(path), frame);
         }
 
-        auto& Device() noexcept { return *device; }
-        auto& Geometry() noexcept { return *geometryPool; }
-        auto& Meshes() noexcept { return *meshes; }
-        auto& Scene() noexcept { return scene; }
-        auto& Renderer() noexcept { return *renderer; }
-        const auto& Camera() const noexcept { return *camera; }
-        auto& Camera() noexcept { return *camera; }
-        RenderDebug& Debug() noexcept { return debug; }
-        f32 Aspect() const noexcept { return aspect; }
+        auto& Device() noexcept { return host.Device(); }
+        auto& Geometry() noexcept { return host.Geometry(); }
+        auto& Meshes() noexcept { return host.Meshes(); }
+        auto& Scene() noexcept { return host.Scene(); }
+        auto& Renderer() noexcept { return host.Renderer(); }
+        const auto& Camera() const noexcept { return host.Camera(); }
+        auto& Camera() noexcept { return host.Camera(); }
+        RenderDebug& Debug() noexcept { return host.Debug(); }
+        f32 Aspect() const noexcept { return host.Aspect(); }
         // for a sample that registers verbs of its own
-        CommandPort* Port() noexcept {
-            return framePort != nullptr ? framePort->Port() : nullptr;
-        }
+        CommandPort* Port() noexcept { return host.Port(); }
         // the newest frame that ended; empty before frame 1 has
         const FrameStats& LastFrameStats() const noexcept {
-            return stats.Last();
+            return host.LastFrameStats();
         }
         // the formats of the running list's pass naming `hook`; empty when
         // the list has none, as a data view's
         std::optional<HookPassFormats> FindHook(StrView hook) const noexcept {
-            return pipeline->FindHook(hook);
+            return host.FindHook(hook);
         }
-
-    private:
-        // a new walker from DescribePipeline(pipelineConfig)
-        FramePipelinePtr describePipeline();
-        void openCommandPort();
-        void applyDebugFromEnvironment();
-        void reportCullStatsOnce();
     };
 }
