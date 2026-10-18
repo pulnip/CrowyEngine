@@ -24,6 +24,36 @@
 
 namespace Crowy
 {
+    namespace
+    {
+        // the scene as a button the size of the image, so a drag on it turns
+        // the camera instead of moving the window
+        void drawSceneView(u64 sceneView, ImVec2 size) {
+            constexpr auto Buttons = ImGuiButtonFlags_MouseButtonLeft |
+                                     ImGuiButtonFlags_MouseButtonRight |
+                                     ImGuiButtonFlags_MouseButtonMiddle;
+
+            // a zero side is a collapsed window, which the button asserts on
+            if(size.x <= 0.0f || size.y <= 0.0f)
+                return;
+
+            const auto origin = ImGui::GetCursorScreenPos();
+            ImGui::InvisibleButton("scene", size, Buttons);
+            // the scene's input is the scene's: the mouse over it, the keys
+            // too while a press on it holds the button
+            if(ImGui::IsItemHovered() || ImGui::IsItemActive())
+                ImGui::SetNextFrameWantCaptureMouse(false);
+            if(ImGui::IsItemActive())
+                ImGui::SetNextFrameWantCaptureKeyboard(false);
+
+            ImGui::GetWindowDrawList()->AddImage(
+                static_cast<ImTextureID>(sceneView),
+                origin,
+                ImVec2(origin.x + size.x, origin.y + size.y)
+            );
+        }
+    }
+
     PlaygroundScene::~PlaygroundScene() {
         if(auto* port = Port()) {
             port->Unexpose("bookmarks");
@@ -525,7 +555,7 @@ namespace Crowy
                     static_cast<u32>(std::max(size.x, 0.0f)),
                     static_cast<u32>(std::max(size.y, 0.0f))
                 );
-                ImGui::Image(static_cast<ImTextureID>(sceneView), size);
+                drawSceneView(sceneView, size);
             }
             ImGui::End();
         }
