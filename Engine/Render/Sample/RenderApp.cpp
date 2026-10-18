@@ -171,6 +171,16 @@ namespace Crowy
             pipeline,
             [this] { return FrameNumber(); }
         );
+        framePort = std::make_unique<FramePort>(
+            FrameLoop{
+                .control = Control(),
+                .frame = [this] { return FrameNumber(); },
+                .elapsedSeconds = [this] { return ElapsedSeconds(); },
+                .requestQuit = [this] { RequestQuit(); },
+                .title = Runtime().window.title
+            },
+            *captures
+        );
         // as many view rows as the pass list names
         renderer = std::make_unique<SceneRenderer>(
             device,
@@ -195,16 +205,8 @@ namespace Crowy
         openCommandPort();
     #endif
 
-        // only a port verb can release the hold, so no port is no hold
-        if(Runtime().hold) {
-            if(port == nullptr || port->Port() == 0) {
-                throw std::runtime_error(
-                    "--hold needs the command port "
-                    "(Debug builds, and a port that binds)"
-                );
-            }
-            Control().Hold();
-        }
+        if(Runtime().hold)
+            framePort->Hold();
 
         // after the port, so the scene can expose itself before the loop
         OnBuildGeometry(*geometryPool);
@@ -235,30 +237,12 @@ namespace Crowy
         LOG_INFO("RenderApp", "CROWY_DEBUG: debug is {}", emitJson(applied));
     }
 
-    // CROWY_COMMAND_PORT: unset is the default port with retries,
-    // 0 disables, N forces exactly that port
     void RenderApp::openCommandPort() {
-        CommandPortConfig portConfig;
-        if(const char* env = std::getenv("CROWY_COMMAND_PORT")) {
-            const StrView text = env;
-            u16 forced = 0;
-            const auto [ptr, ec] =
-                std::from_chars(text.data(), text.data() + text.size(), forced);
-            if(ec != std::errc{} || ptr != text.data() + text.size()) {
-                LOG_WARN(
-                    "RenderApp",
-                    "CROWY_COMMAND_PORT='{}' is not a port number; using the default",
-                    text
-                );
-            } else if(forced == 0) {
-                return;
-            } else {
-                portConfig.port = forced;
-                portConfig.portRetries = 0;
-            }
-        }
+        framePort->Open();
+        auto* port = framePort->Port();
+        if(port == nullptr)
+            return;
 
-        port = std::make_unique<CommandPort>(portConfig);
         // no callback: every reader reads it each frame. Exposed even on an
         // inert port, like the samples' own targets
         port->Expose("debug", &debug, *GetDesc<RenderDebug>());
@@ -267,96 +251,7 @@ namespace Crowy
         if(port->Port() == 0)
             return;
 
-        port->RegisterVerb("ping", [this](const DOM::Value&, Reply reply) {
-            auto result = controlStatus();
-            result.emplace("pong", DOM::Value(true));
-            result.emplace("app", DOM::Value(Runtime().window.title));
-            result.emplace("elapsed", DOM::Value(ElapsedSeconds()));
-            result.emplace(
-                "capturesPending",
-                DOM::Value(static_cast<i64>(captures->Pending()))
-            );
-            result.emplace(
-                "captureFailures",
-                DOM::Value(static_cast<i64>(captures->Failures()))
-            );
-            reply.Ok(DOM::Value(std::move(result)));
-        });
-        port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply) {
-            RequestQuit();
-            reply.Ok(DOM::Value(DOM::Table{}));
-        });
-        port->RegisterVerb("run", [this](const DOM::Value& args, Reply reply) {
-            const auto* frames = args.at("frames");
-            const auto* until = args.at("until");
-            if(frames != nullptr && until != nullptr) {
-                reply.Error("run takes frames or until, not both");
-
-                return;
-            }
-
-            if(frames != nullptr) {
-                const auto count = parsePositiveInteger(frames);
-                if(!count) {
-                    reply.Error("frames must be a positive integer");
-
-                    return;
-                }
-                Control().RunFrames(*count);
-            } else if(until != nullptr) {
-                const auto frame = parsePositiveInteger(until);
-                if(!frame) {
-                    reply.Error("until must be a positive integer");
-
-                    return;
-                }
-                if(*frame <= FrameNumber()) {
-                    reply.Error(std::format(
-                        "frame {} has already ended (the last frame is {})",
-                        *frame,
-                        FrameNumber()
-                    ));
-
-                    return;
-                }
-                Control().RunUntil(*frame);
-            } else {
-                Control().Run();
-            }
-
-            reply.Ok(DOM::Value(controlStatus()));
-        });
-        // the gate runs right after this drain, so the loop stops at the
-        // frame that has just ended
-        port->RegisterVerb("hold", [this](const DOM::Value&, Reply reply) {
-            Control().Hold();
-            reply.Ok(DOM::Value(controlStatus()));
-        });
-        port->RegisterVerb("step", [this](const DOM::Value&, Reply reply) {
-            Control().RunFrames(1);
-            reply.Ok(DOM::Value(controlStatus()));
-        });
-        // answers once `frame` has ended; it never advances the loop itself
-        port->RegisterVerb(
-            "wait_frame",
-            [this](const DOM::Value& args, Reply reply) {
-                const auto frame = parsePositiveInteger(args.at("frame"));
-                if(!frame) {
-                    reply.Error("\"frame\" is missing or not a positive integer");
-
-                    return;
-                }
-                if(*frame <= FrameNumber()) {
-                    reply.Ok(DOM::Value(controlStatus()));
-
-                    return;
-                }
-
-                pendingWaits.push_back(
-                    PendingWait{.frame = *frame, .reply = std::move(reply)}
-                );
-            }
-        );
+        framePort->RegisterVerbs();
         captures->RegisterVerbs(*port);
         stats.RegisterVerbs(*port, [this] { return FrameNumber(); });
         // every cached pipeline, recompiled from disk; a failed compile keeps
@@ -382,41 +277,13 @@ namespace Crowy
         );
     }
 
-    // every control verb answers with where the loop stands afterwards
-    DOM::Table RenderApp::controlStatus() const {
-        const auto frame = FrameNumber();
-        const auto holdAt = Control().HoldAt(frame);
-
-        DOM::Table status;
-        status.emplace("frame", DOM::Value(static_cast<i64>(frame)));
-        status.emplace("held", DOM::Value(Control().IsHeld(frame)));
-        status.emplace(
-            "holdAt",
-            holdAt ? DOM::Value(static_cast<i64>(*holdAt)) : DOM::Value()
-        );
-
-        return status;
-    }
-
-    void RenderApp::answerWaits() {
-        const auto frame = FrameNumber();
-        for(auto& wait: pendingWaits) {
-            if(wait.frame <= frame)
-                wait.reply.Ok(DOM::Value(controlStatus()));
-        }
-        std::erase_if(pendingWaits, [frame](const PendingWait& wait) {
-            return wait.frame <= frame;
-        });
-    }
-
     void RenderApp::NewFrame() {
-        if(port == nullptr)
+        if(framePort->Port() == nullptr)
             return;
 
         // the completions go out on this same drain
         captures->Collect();
-        answerWaits();
-        port->Drain();
+        framePort->Drain();
     }
 
     void RenderApp::ProcessInput(const InputProvider& input) {

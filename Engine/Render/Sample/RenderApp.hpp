@@ -12,6 +12,7 @@
 #include "EnumUtil.hpp"
 #include "FrameCaptures.hpp"
 #include "FramePipeline.hpp"
+#include "FramePort.hpp"
 #include "FrameStatsLog.hpp"
 #include "GeometryPool.hpp"
 #include "MeshAsset.hpp"
@@ -28,8 +29,8 @@ namespace Crowy
     using GeometryPoolPtr = RAII<GeometryPool>;
     using MeshStorePtr = RAII<MeshStore>;
     using SceneRendererPtr = RAII<SceneRenderer>;
-    using CommandPortPtr = RAII<CommandPort>;
     using FrameCapturesPtr = RAII<FrameCaptures>;
+    using FramePortPtr = RAII<FramePort>;
 
     // what the frame shows instead of the plain lit picture, exposed as `debug`
     struct RenderDebug {
@@ -84,12 +85,6 @@ namespace Crowy
         static constexpr u32 ViewMain = 0;
 
     private:
-        // a wait_frame reply, held until its frame has ended
-        struct PendingWait {
-            u64 frame = 0;
-            Reply reply;
-        };
-
         Config config;
 
         RHIDevice* device = nullptr;
@@ -116,12 +111,8 @@ namespace Crowy
         // declared before the port, which points at it, so it outlives it
         RenderDebug debug;
 
-        // debug builds only; null when disabled, inert with
-        // Status().server == BindFailed when no port could bind
-        CommandPortPtr port;
-        // a wait the port already timed out stays until its frame ends, and
-        // answering it then does nothing
-        std::vector<PendingWait> pendingWaits;
+        // its port opens in debug builds only
+        FramePortPtr framePort;
         FrameStatsLog stats;
         FrameCapturesPtr captures;
         // OnRecordSimulation's, alive until the walker has recorded
@@ -227,7 +218,9 @@ namespace Crowy
         RenderDebug& Debug() noexcept { return debug; }
         f32 Aspect() const noexcept { return aspect; }
         // for a sample that registers verbs of its own
-        CommandPort* Port() noexcept { return port.get(); }
+        CommandPort* Port() noexcept {
+            return framePort != nullptr ? framePort->Port() : nullptr;
+        }
         // the newest frame that ended; empty before frame 1 has
         const FrameStats& LastFrameStats() const noexcept {
             return stats.Last();
@@ -243,8 +236,6 @@ namespace Crowy
         FramePipelinePtr describePipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();
-        DOM::Table controlStatus() const;
-        void answerWaits();
         void reportCullStatsOnce();
     };
 }
