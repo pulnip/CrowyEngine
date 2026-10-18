@@ -453,6 +453,7 @@ namespace Crowy
         const auto fly = MakeCamera();
         looked = flyLook(input, fly.lookSensitivity, look.yaw, look.pitch);
         moveInput = flyMoveInput(input);
+        speedScale = flySpeedScale(input, speedScale);
     }
 
     void PlaygroundScene::OnUpdateScene(f64 seconds) {
@@ -465,7 +466,7 @@ namespace Crowy
                     look.yaw,
                     look.pitch,
                     moveInput,
-                    MakeCamera().moveSpeed,
+                    MakeCamera().moveSpeed * speedScale,
                     seconds
                 )
             );

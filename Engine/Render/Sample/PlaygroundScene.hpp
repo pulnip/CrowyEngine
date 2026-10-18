@@ -168,6 +168,8 @@ namespace Crowy
         CameraLook look;
         bool looked = false;
         Vec3 moveInput{};
+        // the wheel's, on the camera's move speed
+        f32 speedScale = 1.0f;
         PlaygroundMaterials materials;
 
         // shown by debug.showStats, hidden by default like the panel so the

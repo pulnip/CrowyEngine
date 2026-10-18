@@ -9,6 +9,7 @@ namespace Crowy
             RecomputeView();
 
         moveInput = flyMoveInput(input);
+        speedScale = flySpeedScale(input, speedScale);
     }
 
     void FlyCamera::Update(f64 deltaTime) {
@@ -19,7 +20,7 @@ namespace Crowy
             position,
             Rotation(),
             moveInput,
-            config.moveSpeed,
+            config.moveSpeed * speedScale,
             deltaTime
         );
         RecomputeView();

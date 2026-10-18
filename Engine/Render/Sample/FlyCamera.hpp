@@ -28,6 +28,8 @@ namespace Crowy
 
     private:
         Vec3 moveInput{};
+        // the wheel's, on config.moveSpeed
+        f32 speedScale = 1.0f;
         // cached; call RecomputeView() if dirty
         Mat4 view = unitMat();
 

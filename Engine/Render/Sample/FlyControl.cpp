@@ -1,6 +1,7 @@
 #include "FlyControl.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <numbers>
 
 #include "InputProvider.hpp"
@@ -39,6 +40,22 @@ namespace Crowy
             (input.IsKeyDown(KeyCode::W) ? 1.0f : 0.0f) -
                 (input.IsKeyDown(KeyCode::S) ? 1.0f : 0.0f)
         };
+    }
+
+    f32 flySpeedScale(const InputProvider& input, f32 scale) {
+        constexpr f32 NotchFactor = 1.25f;
+        constexpr f32 MinScale = 1.0f / 8.0f;
+        constexpr f32 MaxScale = 8.0f;
+
+        const auto notches = input.GetMouseWheel();
+        if(notches == 0.0f)
+            return scale;
+
+        return std::clamp(
+            scale * std::pow(NotchFactor, notches),
+            MinScale,
+            MaxScale
+        );
     }
 
     Vec4 flyRotation(f32 yaw, f32 pitch) {

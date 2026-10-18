@@ -19,6 +19,8 @@ namespace Crowy
 
     // WASD, Space and Shift: x to the right, y up, z forward
     Vec3 flyMoveInput(const InputProvider& input);
+    // the wheel scales the walk's speed, a notch at a time, from `scale`
+    f32 flySpeedScale(const InputProvider& input, f32 scale);
 
     Vec4 flyRotation(f32 yaw, f32 pitch);
     // where a walk along moveInput, turned by rotation, ends

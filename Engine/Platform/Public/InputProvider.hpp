@@ -15,6 +15,8 @@ namespace Crowy
         struct MouseState{
             Vec2 pos;
             Vec2 dpos{0.0f, 0.0f};
+            // notches this frame, positive away from the user
+            f32 wheel = 0.0f;
 
             std::bitset<NUM_MOUSE_BUTTON> pressedState;
             std::bitset<NUM_MOUSE_BUTTON> releasedState;
@@ -58,6 +60,9 @@ namespace Crowy
         Vec2 GetMouseDPos() const noexcept{
             return mouse.dpos;
         }
+        f32 GetMouseWheel() const noexcept{
+            return mouse.wheel;
+        }
 
     protected:
         void ConsumeEdge() noexcept{
@@ -66,6 +71,7 @@ namespace Crowy
 
             mouse.pressedState.reset();
             mouse.releasedState.reset();
+            mouse.wheel = 0.0f;
         }
 
         void PressKey(KeyCode keyCode) noexcept{
@@ -88,6 +94,10 @@ namespace Crowy
             auto ordKey = static_cast<usize>(button);
 
             mouse.releasedState.set(ordKey);
+        }
+
+        void AddMouseWheel(f32 notches) noexcept{
+            mouse.wheel += notches;
         }
 
         void SetCurrentMousePos(Vec2 pos) noexcept{

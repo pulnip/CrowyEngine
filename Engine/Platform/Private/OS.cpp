@@ -283,6 +283,9 @@ namespace Crowy
             case SDL_EVENT_MOUSE_BUTTON_UP:
                 inputProvider.OnPlatformEvent(event.button);
                 break;
+            case SDL_EVENT_MOUSE_WHEEL:
+                inputProvider.OnPlatformEvent(event.wheel);
+                break;
             }
 
             if(!keepRunning) [[unlikely]]

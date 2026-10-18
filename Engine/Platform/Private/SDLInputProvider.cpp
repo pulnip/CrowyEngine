@@ -161,8 +161,9 @@ namespace{
         using enum Crowy::MouseButton;
 
         switch(mouseIndex){
-        case SDL_BUTTON_LEFT:  return LButton;
-        case SDL_BUTTON_RIGHT: return RButton;
+        case SDL_BUTTON_LEFT:   return LButton;
+        case SDL_BUTTON_RIGHT:  return RButton;
+        case SDL_BUTTON_MIDDLE: return MButton;
         default:
             return Unknown;
         }
@@ -238,6 +239,9 @@ namespace Crowy
         if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)){
             mouseHeldState.set(static_cast<usize>(MouseButton::RButton));
         }
+        if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)){
+            mouseHeldState.set(static_cast<usize>(MouseButton::MButton));
+        }
     }
 
     void SDLInputProvider::OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept{
@@ -289,5 +293,14 @@ namespace Crowy
         default:
             std::unreachable();
         }
+    }
+
+    void SDLInputProvider::OnPlatformEvent(const SDL_MouseWheelEvent& event) noexcept{
+        if(gate.mouse)
+            return;
+
+        // a flipped wheel reports the other way round from how it turned
+        const auto flipped = event.direction == SDL_MOUSEWHEEL_FLIPPED;
+        AddMouseWheel(flipped ? -event.y : event.y);
     }
 }

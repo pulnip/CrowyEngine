@@ -27,7 +27,7 @@ namespace Crowy
     constexpr auto NUM_KEY = static_cast<usize>(KeyCode::Unknown);
 
     enum class MouseButton{
-        LButton, RButton,
+        LButton, RButton, MButton,
         // Sentinel
         Unknown
     };

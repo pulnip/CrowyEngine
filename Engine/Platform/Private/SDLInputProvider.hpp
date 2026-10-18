@@ -38,5 +38,6 @@ namespace Crowy
         // Process Event
         void OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept;
         void OnPlatformEvent(const SDL_MouseButtonEvent& event) noexcept;
+        void OnPlatformEvent(const SDL_MouseWheelEvent& event) noexcept;
     };
 }
