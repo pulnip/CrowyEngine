@@ -10,6 +10,7 @@
 #include "CommandPort.hpp"
 #include "DebugMode.hpp"
 #include "EnumUtil.hpp"
+#include "FrameCaptures.hpp"
 #include "FramePipeline.hpp"
 #include "FrameStatsLog.hpp"
 #include "GeometryPool.hpp"
@@ -20,7 +21,6 @@
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
 #include "StandardPipeline.hpp"
-#include "TargetCapture.hpp"
 
 namespace Crowy
 {
@@ -29,7 +29,7 @@ namespace Crowy
     using MeshStorePtr = RAII<MeshStore>;
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
-    using TargetCaptureQueuePtr = RAII<TargetCaptureQueue>;
+    using FrameCapturesPtr = RAII<FrameCaptures>;
 
     // what the frame shows instead of the plain lit picture, exposed as `debug`
     struct RenderDebug {
@@ -123,12 +123,7 @@ namespace Crowy
         // answering it then does nothing
         std::vector<PendingWait> pendingWaits;
         FrameStatsLog stats;
-        // captures whose dump failed, since launch
-        u32 captureFailures = 0;
-        // the named targets' captures; the swapchain keeps the back buffer's
-        TargetCaptureQueuePtr targetCaptures;
-        // this frame's, filled by the walker and then handed to the queue
-        TargetReadbacks frameCaptures;
+        FrameCapturesPtr captures;
         // OnRecordSimulation's, alive until the walker has recorded
         std::vector<PassHook> frameHooks;
 
@@ -218,7 +213,9 @@ namespace Crowy
         u64 SceneViewID() const;
         // the back buffer of `frame` to `path` as a BMP, with the
         // capture_frame verb's checks; why not, empty once queued
-        Str RequestCapture(Str path, u64 frame);
+        Str RequestCapture(Str path, u64 frame) {
+            return captures->Request(std::move(path), frame);
+        }
 
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
@@ -247,19 +244,6 @@ namespace Crowy
         void openCommandPort();
         void applyDebugFromEnvironment();
         DOM::Table controlStatus() const;
-        // why the running pipeline's target `name` cannot be captured; empty
-        // when it can
-        Str refuseCaptureTarget(StrView name) const;
-        // a path taken in either queue, or a frame taken in the one asked
-        // about: the swapchain's for no target, the target's otherwise
-        bool isCaptureQueued(u64 frame, StrView target, StrView path) const;
-        // why `frames` cannot be captured to `paths`, the back buffer for an
-        // empty target; empty when every one can
-        Str refuseCaptures(StrView target, std::span<const u64> frames, std::span<const Str> paths) const;
-        void queueCaptures(StrView target, std::span<const u64> frames, std::span<const Str> paths);
-        // the requests due this frame, one per target, resolved by name
-        std::span<TargetReadback> takeDueCaptures();
-        void collectCaptures();
         void answerWaits();
         void reportCullStatsOnce();
     };

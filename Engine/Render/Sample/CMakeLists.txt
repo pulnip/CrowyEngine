@@ -15,6 +15,7 @@ add_subdirectory(Stage)
 add_library(SampleRenderApp STATIC
     FlyCamera.cpp
     FlyControl.cpp
+    FrameCaptures.cpp
     FrameStatsLog.cpp
     OrbitCamera.cpp
     RenderApp.cpp
