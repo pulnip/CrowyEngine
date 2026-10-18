@@ -16,6 +16,8 @@
 #include "JsonLoader.hpp"
 #include "Log.hpp"
 #include "Object.hpp"
+#include "ProjectFile.hpp"
+#include "ProjectRoot.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
@@ -336,6 +338,18 @@ namespace Crowy
             device,
             config.vertexPoolCapacity,
             config.indexPoolCapacity
+        );
+        const AssetRoots roots{
+            .engine = projectRoot() / "Engine",
+            .content = resolveContentPath("")
+        };
+        meshes = std::make_unique<MeshStore>(
+            [this, roots](const AssetRef& ref) {
+                return loadMeshAsset(*geometryPool, roots, ref);
+            },
+            [this](MeshAsset asset) {
+                releaseMeshAsset(*geometryPool, std::move(asset));
+            }
         );
         pipelineConfig = standardConfig(config, debug, swapchain.GetFormat());
         pipeline = describePipeline();
@@ -866,6 +880,8 @@ namespace Crowy
     void RenderApp::OnUpdate(f64 deltaTime, f64) {
         camera->Update(deltaTime);
         OnUpdateScene(deltaTime);
+        // after the scene's own Sync, so what it let go leaves this frame
+        meshes->Collect();
     }
 
     void RenderApp::OnBindPass(RHICommandList& cmdList, const ScenePush& push) {

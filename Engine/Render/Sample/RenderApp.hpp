@@ -14,6 +14,7 @@
 #include "FramePipeline.hpp"
 #include "FrameProfiler.hpp"
 #include "GeometryPool.hpp"
+#include "MeshAsset.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
@@ -26,6 +27,7 @@ namespace Crowy
 {
     using FramePipelinePtr = RAII<FramePipeline>;
     using GeometryPoolPtr = RAII<GeometryPool>;
+    using MeshStorePtr = RAII<MeshStore>;
     using SceneRendererPtr = RAII<SceneRenderer>;
     using CommandPortPtr = RAII<CommandPort>;
     using TargetCaptureQueuePtr = RAII<TargetCaptureQueue>;
@@ -116,6 +118,8 @@ namespace Crowy
         Size2D sceneViewSize;
 
         GeometryPoolPtr geometryPool;
+        // after the pool it frees into, before the scene whose rows hold it
+        MeshStorePtr meshes;
         SceneRendererPtr renderer;
         // what DescribePipeline was last asked for, from config and the debug
         // view; a change rebuilds it
@@ -239,6 +243,7 @@ namespace Crowy
 
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
+        auto& Meshes() noexcept { return *meshes; }
         auto& Scene() noexcept { return scene; }
         auto& Renderer() noexcept { return *renderer; }
         const auto& Camera() const noexcept { return *camera; }
