@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "humanize-korean@im-not-ai": true,
+    "kind-ko@kind-ko": true
+  },
+  "outputStyle": "kind-ko:coding"
+}
