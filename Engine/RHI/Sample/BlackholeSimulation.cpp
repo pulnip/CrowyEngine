@@ -59,7 +59,7 @@ namespace Crowy
         };
 
     public:
-        void Init(RHIDevice& device, RHITexture& source, u32 levels = 4){
+        void Init(RHIDevice& device, RHITexture& source) {
             RHIGraphicsPipelineStateDesc desc{
                 .preRasterizer = RHILegacyFrontendDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
@@ -95,7 +95,14 @@ namespace Crowy
                 }
             };
             upsampleAccum = device.CreatePipelineState(desc, "bloomUpsample");
+        }
 
+        // sized after the source, so called again whenever it is recreated
+        void CreateTargets(
+            RHIDevice& device,
+            RHITexture& source,
+            u32 levels = 4
+        ) {
             const auto usage = combine(
                 RHITextureUsage::ShaderRead,
                 RHITextureUsage::RenderTarget
@@ -392,30 +399,13 @@ namespace Crowy
                 },
                 .renderTargetCount = 2
             });
-            scene = device.CreateTexture(RHITextureCreateDesc{
-                .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
-                .format = HDR_FORMAT,
-                .usage = combine(
-                    RHITextureUsage::ShaderRead,
-                    RHITextureUsage::RenderTarget
-                )
-            }, "scene");
 
             simParam.camForward = normalize(simParam.bhPos - simParam.camPos);
             simParam.camRight   = normalize(cross(unitY(), simParam.camForward));
             simParam.camUp      = cross(simParam.camForward, simParam.camRight);
 
-            simParam.aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
-
-            brightMask = device.CreateTexture(RHITextureCreateDesc{
-                .width = swapchain.GetWidth(), .height = swapchain.GetHeight(),
-                .format = HDR_FORMAT,
-                .usage = combine(
-                    RHITextureUsage::ShaderRead,
-                    RHITextureUsage::RenderTarget
-                )
-            }, "brightMask");
-            bloomPass.Init(device, *brightMask, 4);
+            createTargets(device, swapchain.GetWidth(), swapchain.GetHeight());
+            bloomPass.Init(device, *brightMask);
 
             composite = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
@@ -591,6 +581,32 @@ namespace Crowy
         }
 
         void OnResize(u32 width, u32 height) override{
+            // a minimized window reports zero, which the swapchain also skips
+            if(width == 0 || height == 0)
+                return;
+
+            // the OS waited for the GPU to go idle before calling this,
+            // so the old targets can go right away
+            createTargets(Device(), width, height);
+        }
+
+    private:
+        // everything sized after the back buffer; the disk is not, since it
+        // is sampled by its own coordinates and drawn only once
+        void createTargets(RHIDevice& device, u32 width, u32 height) {
+            const RHITextureCreateDesc desc{
+                .width = width,
+                .height = height,
+                .format = HDR_FORMAT,
+                .usage = combine(
+                    RHITextureUsage::ShaderRead,
+                    RHITextureUsage::RenderTarget
+                )
+            };
+            scene = device.CreateTexture(desc, "scene");
+            brightMask = device.CreateTexture(desc, "brightMask");
+            bloomPass.CreateTargets(device, *brightMask, 4);
+
             simParam.aspect = static_cast<f32>(width) / height;
         }
     };
