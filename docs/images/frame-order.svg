@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 1150" width="880" height="1150" role="img" aria-label="CrowyEngine 한 프레임의 순서">
+<style>
+  text { font-family: -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  .mono { font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace; }
+  .h1 { font-size: 18px; font-weight: 700; fill: #1F2328; }
+  .cap { font-size: 12px; fill: #59636E; }
+  .lane { fill: #F6F8FA; stroke: #D8DEE4; stroke-width: 1; }
+  .laneh { font-size: 14px; font-weight: 700; fill: #1F2328; }
+  .title { font-size: 13px; font-weight: 700; fill: #1F2328; }
+  .sub { font-size: 12px; fill: #59636E; }
+  .numt { font-size: 12px; font-weight: 700; fill: #FFFFFF; }
+  .card { stroke-width: 1.25; }
+  .card.os { fill: #EAF1FE; stroke: #3B6FD8; }  .num.os { fill: #3B6FD8; }
+  .card.ml { fill: #E7F6F0; stroke: #1F9D74; }  .num.ml { fill: #1F9D74; }
+  .card.w  { fill: #FFF5E3; stroke: #C98211; }  .num.w  { fill: #C98211; }
+  .dot.os { fill: #3B6FD8; } .dot.ml { fill: #1F9D74; } .dot.w { fill: #C98211; }
+  .pill { fill: #FFFFFF; stroke: #E0C48E; stroke-width: 1; }
+  .pill.r { stroke: #9FD3BF; }
+  .pill.hot { fill: #C98211; stroke: #C98211; }
+  .pillt { font-size: 11.5px; fill: #1F2328; }
+  .pill.hot + .pillt { fill: #FFFFFF; font-weight: 700; }
+  .tick { fill: none; stroke: #C98211; stroke-width: 1; stroke-dasharray: 4 3; }
+  .tickt { font-size: 11px; fill: #9A6510; font-weight: 700; }
+  .flow { fill: none; stroke: #8C959F; stroke-width: 1.5; }
+  .hold { fill: none; stroke: #1F9D74; stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .snap { fill: none; stroke: #C98211; stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .ah-flow { fill: #8C959F; } .ah-hold { fill: #1F9D74; } .ah-snap { fill: #C98211; }
+  .note { font-size: 11.5px; fill: #59636E; }
+  .note.ml { fill: #1F9D74; font-weight: 700; } .note.w { fill: #9A6510; font-weight: 700; }
+  @media (prefers-color-scheme: dark) {
+    .h1, .laneh, .title, .pillt { fill: #E6EDF3; }
+    .cap, .sub, .note { fill: #9198A1; }
+    .lane { fill: #151B23; stroke: #30363D; }
+    .card.os { fill: #16233B; stroke: #6E9BFF; }  .num.os, .dot.os { fill: #4C7FE8; }
+    .card.ml { fill: #10291F; stroke: #4CD3A5; }  .num.ml, .dot.ml { fill: #1F9D74; }
+    .card.w  { fill: #2E2410; stroke: #F2B24C; }  .num.w, .dot.w { fill: #C98211; }
+    .pill { fill: #0D1117; stroke: #6B5427; } .pill.r { stroke: #2C5E4C; }
+    .pill.hot { fill: #C98211; stroke: #C98211; }
+    .tick { stroke: #F2B24C; } .tickt { fill: #F2B24C; }
+    .flow { stroke: #6E7681; } .ah-flow { fill: #6E7681; }
+    .hold { stroke: #4CD3A5; } .ah-hold { fill: #4CD3A5; }
+    .snap { stroke: #F2B24C; } .ah-snap { fill: #F2B24C; }
+    .note.ml { fill: #4CD3A5; } .note.w { fill: #F2B24C; }
+  }
+</style>
+<defs>
+<marker id="ah-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-flow" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="ah-hold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-hold" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="ah-snap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-snap" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<text class="h1" x="20" y="32">한 프레임의 순서</text>
+<text class="cap mono" x="860" y="32" text-anchor="end">OS::Impl::RunLoop</text>
+<rect class="lane" x="12" y="52" width="266" height="1052" rx="14"/>
+<circle class="dot os" cx="28" cy="75" r="5"/>
+<text class="laneh" x="40" y="80">OS</text>
+<text class="cap" x="40" y="98">창 · 스왑체인 · 페이싱 소유</text>
+<rect class="lane" x="307" y="52" width="266" height="1052" rx="14"/>
+<circle class="dot ml" cx="323" cy="75" r="5"/>
+<text class="laneh" x="335" y="80">MainLoop → FrameHost</text>
+<text class="cap" x="335" y="98">프레임 내용 (훅 구현)</text>
+<rect class="lane" x="602" y="52" width="266" height="1052" rx="14"/>
+<circle class="dot w" cx="618" cy="75" r="5"/>
+<text class="laneh" x="630" y="80">World</text>
+<text class="cap" x="630" y="98">게임 상태, 바뀐 것만 기록</text>
+<rect class="card ml" x="315" y="120" width="250" height="58" rx="10"/>
+<circle class="num ml" cx="337" cy="149" r="11"/>
+<text class="numt" x="337" y="153.5" text-anchor="middle">1</text>
+<text class="title mono" x="357" y="145">NewFrame()</text>
+<text class="sub" x="357" y="164">명령 포트 요청을 여기서 처리</text>
+<rect class="card ml" x="315" y="204" width="250" height="58" rx="10"/>
+<circle class="num ml" cx="337" cy="233" r="11"/>
+<text class="numt" x="337" y="237.5" text-anchor="middle">2</text>
+<text class="title mono" x="357" y="229">ShouldAdvance()</text>
+<text class="sub" x="357" y="248">false면 hold: 창만 살리고 ①로</text>
+<rect class="card os" x="20" y="288" width="250" height="58" rx="10"/>
+<circle class="num os" cx="42" cy="317" r="11"/>
+<text class="numt" x="42" y="321.5" text-anchor="middle">3</text>
+<text class="title mono" x="62" y="313">FramePacer.BeginFrame()</text>
+<text class="sub" x="62" y="332">번호 N 부여, N-3 완료 대기</text>
+<rect class="card os" x="20" y="372" width="250" height="58" rx="10"/>
+<circle class="num os" cx="42" cy="401" r="11"/>
+<text class="numt" x="42" y="405.5" text-anchor="middle">4</text>
+<text class="title mono" x="62" y="397">ProcessEvents()</text>
+<text class="sub" x="62" y="416">SDL 이벤트, UI 입력 게이트</text>
+<rect class="card ml" x="315" y="372" width="250" height="58" rx="10"/>
+<circle class="num ml" cx="337" cy="401" r="11"/>
+<text class="numt" x="337" y="405.5" text-anchor="middle">5</text>
+<text class="title mono" x="357" y="397">ProcessInput()</text>
+<text class="sub" x="357" y="416">카메라 · 씬에 입력 전달</text>
+<rect class="card ml" x="315" y="456" width="250" height="58" rx="10"/>
+<circle class="num ml" cx="337" cy="485" r="11"/>
+<text class="numt" x="337" y="489.5" text-anchor="middle">6</text>
+<text class="title mono" x="357" y="481">Update()</text>
+<text class="sub" x="357" y="500">씬이 World::Frame(dt) 호출</text>
+<rect class="card os" x="20" y="730" width="250" height="58" rx="10"/>
+<circle class="num os" cx="42" cy="759" r="11"/>
+<text class="numt" x="42" y="763.5" text-anchor="middle">7</text>
+<text class="title mono" x="62" y="755">AcquireNextImage()</text>
+<text class="sub" x="62" y="774">스왑체인 이미지 확보</text>
+<rect class="card ml" x="315" y="814" width="250" height="108" rx="10"/>
+<circle class="num ml" cx="337" cy="843" r="11"/>
+<text class="numt" x="337" y="847.5" text-anchor="middle">8</text>
+<text class="title mono" x="357" y="839">Render()</text>
+<text class="sub" x="357" y="858">패스 기록</text>
+<rect class="card os" x="20" y="948" width="250" height="58" rx="10"/>
+<circle class="num os" cx="42" cy="977" r="11"/>
+<text class="numt" x="42" y="981.5" text-anchor="middle">9</text>
+<text class="title mono" x="62" y="973">FramePacer.EndFrame()</text>
+<text class="sub" x="62" y="992">커맨드 제출 + Present</text>
+<rect class="card ml" x="315" y="1032" width="250" height="58" rx="10"/>
+<circle class="num ml" cx="337" cy="1061" r="11"/>
+<text class="numt" x="337" y="1065.5" text-anchor="middle">10</text>
+<text class="title mono" x="357" y="1057">OnFrameEnd(report)</text>
+<text class="sub" x="357" y="1076">측정값을 앱으로 밀어줌</text>
+<rect class="card w" x="610" y="456" width="250" height="248" rx="10"/>
+<text class="title mono" x="626" y="481">World::Frame(dt)</text>
+<text class="sub" x="626" y="500">⑥ 안에서 고정 phase 순서로</text>
+<rect class="pill" x="626" y="514" width="218" height="22" rx="6"/>
+<text class="pillt mono" x="735.0" y="529.0" text-anchor="middle">Input</text>
+<rect class="tick" x="622" y="544" width="226" height="108" rx="8"/>
+<text class="tickt" x="630" y="561">× N tick</text>
+<text class="note" x="844" y="561" text-anchor="end">1/60 s 정수 ns, N ≤ 4</text>
+<rect class="pill" x="634" y="570" width="202" height="22" rx="6"/>
+<text class="pillt mono" x="735.0" y="585.0" text-anchor="middle">PreFixedUpdate</text>
+<rect class="pill" x="634" y="596" width="202" height="22" rx="6"/>
+<text class="pillt mono" x="735.0" y="611.0" text-anchor="middle">Physics</text>
+<rect class="pill" x="634" y="622" width="202" height="22" rx="6"/>
+<text class="pillt mono" x="735.0" y="637.0" text-anchor="middle">PostFixedUpdate</text>
+<rect class="pill" x="626" y="660" width="218" height="22" rx="6"/>
+<text class="pillt mono" x="735.0" y="675.0" text-anchor="middle">Update  →  Sync</text>
+<rect class="pill hot" x="626" y="688" width="218" height="22" rx="6"/>
+<text class="pillt mono" x="735.0" y="703.0" text-anchor="middle">Extract → RenderScene</text>
+<rect class="pill r" x="331" y="870" width="52" height="22" rx="6"/>
+<text class="pillt mono" x="357.0" y="885.0" text-anchor="middle">Shadow</text>
+<rect class="pill r" x="390" y="870" width="94" height="22" rx="6"/>
+<text class="pillt mono" x="437.0" y="885.0" text-anchor="middle">DepthPrepass</text>
+<rect class="pill r" x="491" y="870" width="56" height="22" rx="6"/>
+<text class="pillt mono" x="519.0" y="885.0" text-anchor="middle">Opaque</text>
+<rect class="pill r" x="331" y="896" width="86" height="22" rx="6"/>
+<text class="pillt mono" x="374.0" y="911.0" text-anchor="middle">Translucent</text>
+<rect class="pill r" x="424" y="896" width="62" height="22" rx="6"/>
+<text class="pillt mono" x="455.0" y="911.0" text-anchor="middle">Tonemap</text>
+<rect class="pill r" x="493" y="896" width="58" height="22" rx="6"/>
+<text class="pillt mono" x="522.0" y="911.0" text-anchor="middle">Present</text>
+<path class="flow" d="M440 178 V204" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M440 262 V275 H145 V288" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M145 346 V372" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M270 401 H315" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M440 430 V456" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M565 485 H610" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M610 690 H145 V730" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M145 788 V801 H440 V814" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M440 922 V935 H145 V948" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M145 1006 V1019 H440 V1032" marker-end="url(#ah-flow)"/>
+<path class="hold" d="M565 233 H587 V149 H565" marker-end="url(#ah-hold)"/>
+<text class="note ml" x="595" y="195">hold</text>
+<path class="snap" d="M836 704 V868 H565" marker-end="url(#ah-snap)"/>
+<text class="note w" x="824" y="738" text-anchor="end">RenderScene, CameraSnapshot</text>
+<text class="note" x="824" y="758" text-anchor="end">Render는 World를 모르고</text>
+<text class="note" x="824" y="774" text-anchor="end">이 스냅샷만 읽는다</text>
+<text class="note" x="440" y="1130" text-anchor="middle">↻ 다음 프레임은 ①부터</text>
+</svg>
