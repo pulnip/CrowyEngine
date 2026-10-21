@@ -331,6 +331,7 @@ namespace Crowy
                 Color{0.4f, 0.7f, 0.1f, 1}
             };
             f32 elapsedTimeSeconds = 0.0f;
+            f32 showDisk = 1.0f;
         } simParam;
         RHIBufferSlice simParamBuffer;
 

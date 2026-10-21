@@ -96,10 +96,32 @@ cbuffer params : register(b1) {
     float4 camUp_diskInner;
     // xyz = camera forward, w = disk outer radius
     float4 camForward_diskOuter;
+    // xyz = planet center relative to the black hole, w = radius
     float4 posRadius[PLANET_COUNT];
     float4 planetColor[PLANET_COUNT];
     float elapsedTimeSeconds;
+    // nonzero draws the disk; zero leaves the planets' lensed images alone
+    float showDisk;
 };
+
+// the first point of segment [from, to] inside the sphere, as a fraction of
+// the segment, or -1 when the segment misses it
+float intersectSegmentSphere(float3 from, float3 to, float4 sphere) {
+    float3 d = to - from;
+    float3 oc = from - sphere.xyz;
+    float a = dot(d, d);
+    float b = dot(oc, d);
+    float c = dot(oc, oc) - sphere.w * sphere.w;
+    if (c <= 0.0)
+        return 0.0;
+
+    float disc = b * b - a * c;
+    if (disc < 0.0 || b >= 0.0)
+        return -1.0;
+
+    float t = (-b - sqrt(disc)) / a;
+    return t <= 1.0 ? t : -1.0;
+}
 
 float3 sampleDiskWithDoppler(
     float3 hitPos,
@@ -171,21 +193,6 @@ FragmentOut fs_main(VertexOut input) {
     for (int i = 0; i < MAX_STEPS; ++i) {
         float r = length(prevPos);
 
-        for (int j = 0; j < PLANET_COUNT; ++j) {
-            float3 pPos = posRadius[j].xyz;
-            float pRad = posRadius[j].w;
-            float3 pToRay = prevPos - pPos;
-            // in planet
-            if (length(pToRay) <= pRad) {
-                float3 N = normalize(pToRay);
-                float3 L = normalize(camPos - prevPos);
-                float diff = max(dot(N, L), 0.1);
-
-                output.scene = float4(diff * planetColor[j].rgb, 1);
-                return output;
-            }
-        }
-
         // in event horizon
         if (r <= rs) {
             output.scene = float4(0, 0, 0, 1);
@@ -203,35 +210,58 @@ FragmentOut fs_main(VertexOut input) {
         rk4(state, dl);
         float3 newPos = state.pos;
 
-        // in disk
-        if (prevPos.y * newPos.y < 0.0) {
-            float t = abs(prevPos.y) / (abs(prevPos.y) + abs(newPos.y));
-            float3 y0Pos = lerp(prevPos, newPos, t);
-
-            float y0r = length(y0Pos);
-
-            if (diskInner <= y0r && y0r <= diskOuter) {
-                // float t2 = y0r / diskOuter;
-                // float3 diskColor = float3(1.0, t2, 0.2);
-                float3 diskColor = sampleDiskWithDoppler(
-                    y0Pos,
-                    elapsedTimeSeconds,
-                    dir,
-                    rs,
-                    diskInner,
-                    diskOuter,
-                    resource.disk,
-                    linearWrap
-                );
-                output.scene = float4(diskColor, 1.0);
-
-                float brightness = dot(diskColor, float3(0.2126, 0.7152, 0.0722));
-                output.brightMask = brightness > 0.3 ?
-                    float4(diskColor, 1) :
-                    float4(0, 0, 0, 1);
-
-                return output;
+        // the nearest planet this step's segment enters
+        float planetT = 2.0;
+        int planet = -1;
+        for (int j = 0; j < PLANET_COUNT; ++j) {
+            float t = intersectSegmentSphere(prevPos, newPos, posRadius[j]);
+            if (0.0 <= t && t < planetT) {
+                planetT = t;
+                planet = j;
             }
+        }
+
+        // in disk, unless a planet is nearer along the segment
+        float diskT = 2.0;
+        if (showDisk != 0.0 && prevPos.y * newPos.y < 0.0) {
+            float t = abs(prevPos.y) / (abs(prevPos.y) + abs(newPos.y));
+            float y0r = length(lerp(prevPos, newPos, t));
+            if (diskInner <= y0r && y0r <= diskOuter)
+                diskT = t;
+        }
+
+        if (planet >= 0 && planetT <= diskT) {
+            float3 hitPos = lerp(prevPos, newPos, planetT);
+            float3 N = normalize(hitPos - posRadius[planet].xyz);
+            // toward where the bent ray came from, so a lensed image is lit
+            // the way its own ray sees it
+            float3 V = normalize(prevPos - newPos);
+            float diff = max(dot(N, V), 0.1);
+
+            output.scene = float4(diff * planetColor[planet].rgb, 1);
+            return output;
+        }
+
+        if (diskT <= 1.0) {
+            float3 y0Pos = lerp(prevPos, newPos, diskT);
+            float3 diskColor = sampleDiskWithDoppler(
+                y0Pos,
+                elapsedTimeSeconds,
+                dir,
+                rs,
+                diskInner,
+                diskOuter,
+                resource.disk,
+                linearWrap
+            );
+            output.scene = float4(diskColor, 1.0);
+
+            float brightness = dot(diskColor, float3(0.2126, 0.7152, 0.0722));
+            output.brightMask = brightness > 0.3 ?
+                float4(diskColor, 1) :
+                float4(0, 0, 0, 1);
+
+            return output;
         }
 
         prevPos = newPos;
