@@ -79,6 +79,7 @@ SOURCES
     BlackholeSimulation.cpp
 DEPENDS
     Crowy::Reflection
+    Crowy::UI
 )
 
 crowy_declare_example(OrbitFrame

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <vector>
 #include "AppFramework.hpp"
 #include "ClassRegistry.hpp"
@@ -14,6 +15,9 @@
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
+#include "UIRenderer.hpp"
+
+#include <imgui.h>
 
 namespace Crowy
 {
@@ -358,6 +362,18 @@ namespace Crowy
         .SetProperty("showPanel", &BlackholeControls::showPanel)
     CROWY_STRUCT_END(BlackholeControls)
 
+    namespace{
+        // travels the range the reflection registered, so the panel and the
+        // port's describe agree on it
+        template<typename T>
+        void sliderFor(CStr property, f32& value, CStr format){
+            const auto* desc = GetDesc<T>()->Find(property);
+            CROWY_ASSERT(desc != nullptr && desc->meta.uiRange.has_value());
+            const auto [min, max] = *desc->meta.uiRange;
+            ImGui::SliderFloat(property, &value, min, max, format);
+        }
+    }
+
     class BlackholeSimulation: public App{
         using App::App;
 
@@ -402,6 +418,7 @@ namespace Crowy
         RHIBufferSlice simParamBuffer;
 
         BlackholeControls controls;
+        RAII<UIRenderer> uiRenderer;
         // the disk's clock, which stops with the orbits
         f64 simulationSeconds = 0.0;
 
@@ -471,8 +488,6 @@ namespace Crowy
                 .renderTargetCount = 2
             });
 
-            applyControls();
-
             createTargets(device, swapchain.GetWidth(), swapchain.GetHeight());
             bloomPass.Init(device, *brightMask);
 
@@ -496,6 +511,8 @@ namespace Crowy
                 },
                 .renderTargetCount = 1
             }, "composite");
+
+            uiRenderer = std::make_unique<UIRenderer>(device, swapchain.GetFormat());
         }
 
         // the caller's first pass that samples the disk acquires `release`
@@ -554,10 +571,17 @@ namespace Crowy
                     );
                 }
             }
-            applyControls();
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+            // before anything reads a control, so a slider dragged this frame
+            // lands in this frame's picture
+            if(controls.showPanel)
+                drawPanel();
+            // closes the ImGui frame even when no panel was drawn
+            uiRenderer->Prepare(cmdList);
+
+            applyControls();
             simParamBuffer = Device().UploadTransient(simParam);
 
             // the simulation pass below is the disk's first reader
@@ -642,7 +666,7 @@ namespace Crowy
                         .storeAction = backBuffer.storeAction
                     }
                 };
-                const std::array acquires{
+                std::vector acquires{
                     sceneEdge,
                     // the edge Execute's last upsample released
                     MakeBarrier(bloom,
@@ -651,6 +675,8 @@ namespace Crowy
                     ),
                     AcquireBackBuffer(backBuffer)
                 };
+                // the pass samples the font atlas Prepare just refreshed
+                acquires.append_range(uiRenderer->TextureAcquires());
                 cmdList.BeginRenderPass(RHIRenderPassDesc{
                     .colorAttachments = colorAttachments
                 }, acquires);
@@ -663,6 +689,8 @@ namespace Crowy
                     .bloom = bloom.GetReadableID()
                 });
                 cmdList.Draw(4);
+
+                uiRenderer->Record(cmdList);
 
                 const std::array releases{ReleaseBackBuffer(backBuffer)};
                 cmdList.EndRenderPass(releases);
@@ -680,6 +708,43 @@ namespace Crowy
         }
 
     private:
+        void drawPanel(){
+            ImGui::SetNextWindowPos(ImVec2(12.0f, 12.0f), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);
+            ImGui::Begin("BlackholeSimulation");
+            ImGui::PushItemWidth(-130.0f);
+
+            ImGui::Checkbox("disk", &controls.showDisk);
+            ImGui::SameLine();
+            ImGui::Checkbox("paused", &controls.paused);
+
+            if(ImGui::CollapsingHeader("camera", ImGuiTreeNodeFlags_DefaultOpen)){
+                sliderFor<BlackholeControls>("cameraYaw", controls.cameraYaw, "%.1f deg");
+                sliderFor<BlackholeControls>("cameraPitch", controls.cameraPitch, "%.1f deg");
+                sliderFor<BlackholeControls>("cameraDistance", controls.cameraDistance, "%.1f");
+                sliderFor<BlackholeControls>("fovY", controls.fovY, "%.0f deg");
+                ImGui::TextDisabled("right drag orbits, the wheel zooms");
+            }
+
+            for(usize i = 0; i < controls.planets.size(); ++i){
+                auto& planet = controls.planets[i];
+                ImGui::PushID(static_cast<int>(i));
+                const auto header = std::format("planet {}", i);
+                if(ImGui::CollapsingHeader(header.c_str())){
+                    sliderFor<PlanetOrbit>("orbitRadius", planet.orbitRadius, "%.1f");
+                    sliderFor<PlanetOrbit>("orbitAngle", planet.orbitAngle, "%.1f deg");
+                    sliderFor<PlanetOrbit>("orbitSpeed", planet.orbitSpeed, "%.1f deg/s");
+                    sliderFor<PlanetOrbit>("inclination", planet.inclination, "%.1f deg");
+                    sliderFor<PlanetOrbit>("radius", planet.radius, "%.2f");
+                    ImGui::ColorEdit3("color", &planet.color.x);
+                }
+                ImGui::PopID();
+            }
+
+            ImGui::PopItemWidth();
+            ImGui::End();
+        }
+
         void applyControls(){
             // the shader marches no further than 100 rs, so a camera past it
             // would see nothing but the background
