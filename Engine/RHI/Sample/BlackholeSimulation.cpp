@@ -1,13 +1,20 @@
 #include <algorithm>
+#include <charconv>
 #include <cmath>
+#include <cstdlib>
 #include <format>
+#include <memory>
 #include <vector>
 #include "AppFramework.hpp"
 #include "ClassRegistry.hpp"
+#include "CommandPort.hpp"
+#include "DOM.hpp"
 #include "EnumUtil.hpp"
+#include "FrameSelector.hpp"
 #include "InputProvider.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
+#include "Log.hpp"
 #include "Object.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
@@ -372,6 +379,18 @@ namespace Crowy
             const auto [min, max] = *desc->meta.uiRange;
             ImGui::SliderFloat(property, &value, min, max, format);
         }
+
+        Str withFrame(StrView path, u64 frame){
+            constexpr StrView FramePlaceholder = "{frame}";
+            Str out(path);
+            for(auto found = out.find(FramePlaceholder); found != Str::npos;
+                found = out.find(FramePlaceholder, found)){
+                const auto number = std::to_string(frame);
+                out.replace(found, FramePlaceholder.size(), number);
+                found += number.size();
+            }
+            return out;
+        }
     }
 
     class BlackholeSimulation: public App{
@@ -419,6 +438,18 @@ namespace Crowy
 
         BlackholeControls controls;
         RAII<UIRenderer> uiRenderer;
+
+        // the verbs speak FramePort's protocol, so Tools/port.sh drives this
+        // sample the way it drives a RenderApp
+        RAII<CommandPort> port;
+        // the port's captures go straight to it; it outlives every frame
+        RHISwapchain* swapchain = nullptr;
+        u64 captureFailures = 0;
+        struct PendingWait{
+            u64 frame;
+            Reply reply;
+        };
+        std::vector<PendingWait> pendingWaits;
         // the disk's clock, which stops with the orbits
         f64 simulationSeconds = 0.0;
 
@@ -513,6 +544,25 @@ namespace Crowy
             }, "composite");
 
             uiRenderer = std::make_unique<UIRenderer>(device, swapchain.GetFormat());
+
+            this->swapchain = &swapchain;
+#if defined(_DEBUG) || !defined(NDEBUG)
+            openPort();
+#endif
+        }
+
+        // called on held iterations too, so the port answers while the loop
+        // waits for it
+        void NewFrame() override{
+            if(port == nullptr)
+                return;
+
+            for(const auto& outcome: swapchain->TakeFrameDumpOutcomes()){
+                if(!outcome.written)
+                    ++captureFailures;
+            }
+            answerWaits();
+            port->Drain();
         }
 
         // the caller's first pass that samples the disk acquires `release`
@@ -708,6 +758,201 @@ namespace Crowy
         }
 
     private:
+        // CROWY_COMMAND_PORT: unset is the default port with retries,
+        // 0 disables, N forces exactly that port
+        void openPort(){
+            CommandPortConfig config;
+            if(const char* env = std::getenv("CROWY_COMMAND_PORT")){
+                const StrView text = env;
+                u16 forced = 0;
+                const auto [ptr, ec] =
+                    std::from_chars(text.data(), text.data() + text.size(), forced);
+                if(ec != std::errc{} || ptr != text.data() + text.size()){
+                    LOG_WARN("BlackholeSimulation",
+                        "CROWY_COMMAND_PORT='{}' is not a port number; using the default",
+                        text
+                    );
+                }
+                else if(forced == 0){
+                    return;
+                }
+                else{
+                    config.port = forced;
+                    config.portRetries = 0;
+                }
+            }
+
+            port = std::make_unique<CommandPort>(config);
+            port->Expose("blackhole", &controls, *GetDesc<BlackholeControls>());
+            registerVerbs();
+            LOG_INFO("BlackholeSimulation", "command port on 127.0.0.1:{}", port->Port());
+        }
+
+        void registerVerbs(){
+            port->RegisterVerb("ping", [this](const DOM::Value&, Reply reply){
+                auto result = status();
+                result.emplace("pong", DOM::Value(true));
+                result.emplace("app", DOM::Value(Str("BlackholeSimulation")));
+                result.emplace("capturesPending",
+                    DOM::Value(static_cast<i64>(swapchain->PendingFrameDumps()))
+                );
+                result.emplace("captureFailures",
+                    DOM::Value(static_cast<i64>(captureFailures))
+                );
+                reply.Ok(DOM::Value(std::move(result)));
+            });
+            port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply){
+                RequestQuit();
+                reply.Ok(DOM::Value(DOM::Table{}));
+            });
+            port->RegisterVerb("run", [this](const DOM::Value& args, Reply reply){
+                const auto* frames = args.at("frames");
+                const auto* until = args.at("until");
+                if(frames != nullptr && until != nullptr){
+                    reply.Error("run takes frames or until, not both");
+                    return;
+                }
+
+                if(frames != nullptr){
+                    const auto count = parsePositiveInteger(frames);
+                    if(!count){
+                        reply.Error("frames must be a positive integer");
+                        return;
+                    }
+                    Control().RunFrames(*count);
+                }
+                else if(until != nullptr){
+                    const auto frame = parsePositiveInteger(until);
+                    if(!frame){
+                        reply.Error("until must be a positive integer");
+                        return;
+                    }
+                    if(*frame <= FrameNumber()){
+                        reply.Error(std::format(
+                            "frame {} has already ended (the last frame is {})",
+                            *frame, FrameNumber()
+                        ));
+                        return;
+                    }
+                    Control().RunUntil(*frame);
+                }
+                else{
+                    Control().Run();
+                }
+                reply.Ok(DOM::Value(status()));
+            });
+            port->RegisterVerb("hold", [this](const DOM::Value&, Reply reply){
+                Control().Hold();
+                reply.Ok(DOM::Value(status()));
+            });
+            port->RegisterVerb("step", [this](const DOM::Value&, Reply reply){
+                Control().RunFrames(1);
+                reply.Ok(DOM::Value(status()));
+            });
+            // answers once `frame` has ended; it never advances the loop itself
+            port->RegisterVerb("wait_frame", [this](const DOM::Value& args, Reply reply){
+                const auto frame = parsePositiveInteger(args.at("frame"));
+                if(!frame){
+                    reply.Error("\"frame\" is missing or not a positive integer");
+                    return;
+                }
+                if(*frame <= FrameNumber()){
+                    reply.Ok(DOM::Value(status()));
+                    return;
+                }
+                pendingWaits.push_back(PendingWait{.frame = *frame, .reply = std::move(reply)});
+            });
+            // the back buffer only; answers at once with what it queued, and
+            // ping's capturesPending says when the files are on disk
+            port->RegisterVerb("capture_frame", [this](const DOM::Value& args, Reply reply){
+                const auto path = args.get<Str>("path");
+                if(!path || path->empty()){
+                    reply.Error("\"path\" is missing or not a string");
+                    return;
+                }
+                if(args.at("target") != nullptr){
+                    reply.Error("this sample captures the back buffer only");
+                    return;
+                }
+
+                auto selector = parseFrameSelector(args);
+                if(!selector.error.empty()){
+                    reply.Error(selector.error);
+                    return;
+                }
+                if(selector.frames.empty())
+                    selector.frames.push_back(FrameNumber() + 1);
+                const auto& frames = selector.frames;
+                if(frames.size() > 1 && !path->contains("{frame}")){
+                    reply.Error("path needs {frame} for more than one frame");
+                    return;
+                }
+
+                // all or none: every frame is checked before any is queued
+                const auto pending = swapchain->PendingFrameDumps();
+                if(pending + frames.size() > MaxFrameDumps){
+                    reply.Error(std::format("the capture queue is full ({} pending)", pending));
+                    return;
+                }
+                std::vector<Str> paths;
+                for(const auto frame: frames){
+                    if(frame <= FrameNumber()){
+                        reply.Error(std::format(
+                            "frame {} has already been submitted (the last frame is {})",
+                            frame, FrameNumber()
+                        ));
+                        return;
+                    }
+                    auto framePath = withFrame(*path, frame);
+                    if(swapchain->IsFrameDumpQueued(frame, framePath)){
+                        reply.Error(std::format(
+                            "a capture for frame {} or to '{}' is already queued",
+                            frame, framePath
+                        ));
+                        return;
+                    }
+                    paths.push_back(std::move(framePath));
+                }
+
+                DOM::Array queuedFrames;
+                DOM::Array queuedPaths;
+                for(usize i = 0; i < frames.size(); ++i){
+                    swapchain->RequestFrameDump(paths[i], frames[i]);
+                    queuedFrames.emplace_back(static_cast<i64>(frames[i]));
+                    queuedPaths.emplace_back(paths[i]);
+                }
+                DOM::Table result;
+                result.emplace("frames", DOM::Value(std::move(queuedFrames)));
+                result.emplace("paths", DOM::Value(std::move(queuedPaths)));
+                reply.Ok(DOM::Value(std::move(result)));
+            });
+        }
+
+        // every control verb answers with where the loop stands afterwards
+        DOM::Table status() const{
+            const auto frame = FrameNumber();
+            const auto holdAt = Control().HoldAt(frame);
+
+            DOM::Table status;
+            status.emplace("frame", DOM::Value(static_cast<i64>(frame)));
+            status.emplace("held", DOM::Value(Control().IsHeld(frame)));
+            status.emplace("holdAt",
+                holdAt ? DOM::Value(static_cast<i64>(*holdAt)) : DOM::Value()
+            );
+            return status;
+        }
+
+        void answerWaits(){
+            const auto frame = FrameNumber();
+            for(auto& wait: pendingWaits){
+                if(wait.frame <= frame)
+                    wait.reply.Ok(DOM::Value(status()));
+            }
+            std::erase_if(pendingWaits, [frame](const PendingWait& wait){
+                return wait.frame <= frame;
+            });
+        }
+
         void drawPanel(){
             ImGui::SetNextWindowPos(ImVec2(12.0f, 12.0f), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);

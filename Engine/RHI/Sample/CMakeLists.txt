@@ -79,6 +79,7 @@ SOURCES
     BlackholeSimulation.cpp
 DEPENDS
     Crowy::Reflection
+    Crowy::Remote
     Crowy::UI
 )
 
