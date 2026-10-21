@@ -77,6 +77,8 @@ DEPENDS
 crowy_declare_example(BlackholeSimulation
 SOURCES
     BlackholeSimulation.cpp
+DEPENDS
+    Crowy::Reflection
 )
 
 crowy_declare_example(OrbitFrame

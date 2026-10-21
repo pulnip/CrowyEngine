@@ -1,7 +1,13 @@
+#include <algorithm>
+#include <cmath>
+#include <vector>
 #include "AppFramework.hpp"
+#include "ClassRegistry.hpp"
 #include "EnumUtil.hpp"
+#include "InputProvider.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
+#include "Object.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -285,6 +291,73 @@ namespace Crowy
         }
     };
 
+    // angles are degrees throughout, so a port write reads the way the panel shows it
+    struct PlanetOrbit{
+        f32 orbitRadius = 15.0f;
+        // from +x toward +z, before the tilt
+        f32 orbitAngle = 0.0f;
+        // degrees per second
+        f32 orbitSpeed = 0.0f;
+        // the orbit plane's tilt about the x axis
+        f32 inclination = 0.0f;
+        f32 radius = 2.0f;
+        Color color{1, 1, 1, 1};
+    };
+
+    struct BlackholeControls{
+        std::vector<PlanetOrbit> planets{
+            PlanetOrbit{
+                .orbitRadius = 15.0f, .orbitAngle = 90.0f, .orbitSpeed = 20.0f,
+                .radius = 2.0f, .color = Color{0.5f, 0.1f, 0.1f, 1}
+            },
+            PlanetOrbit{
+                .orbitRadius = 22.4f, .orbitAngle = -26.6f, .orbitSpeed = 12.0f,
+                .radius = 2.5f, .color = Color{0.0f, 0.5f, 1.0f, 1}
+            },
+            PlanetOrbit{
+                .orbitRadius = 21.2f, .orbitAngle = -135.0f, .orbitSpeed = 13.0f,
+                .radius = 3.0f, .color = Color{0.4f, 0.7f, 0.1f, 1}
+            }
+        };
+        // orbits the black hole the way OrbitCamera orbits its target
+        f32 cameraYaw = 84.3f;
+        f32 cameraPitch = 9.4f;
+        f32 cameraDistance = 30.5f;
+        f32 fovY = 45.0f;
+        bool showDisk = true;
+        bool paused = false;
+        bool showPanel = true;
+    };
+
+    CROWY_STRUCT(PlanetOrbit)
+        .SetProperty("orbitRadius", &PlanetOrbit::orbitRadius)
+            .SetUIRange(4.0f, 60.0f)
+        .SetProperty("orbitAngle", &PlanetOrbit::orbitAngle)
+            .SetUIRange(-180.0f, 180.0f)
+        .SetProperty("orbitSpeed", &PlanetOrbit::orbitSpeed)
+            .SetUIRange(-90.0f, 90.0f)
+        .SetProperty("inclination", &PlanetOrbit::inclination)
+            .SetUIRange(-90.0f, 90.0f)
+        .SetProperty("radius", &PlanetOrbit::radius)
+            .SetUIRange(0.5f, 6.0f)
+        .SetProperty("color", &PlanetOrbit::color)
+    CROWY_STRUCT_END(PlanetOrbit)
+
+    CROWY_STRUCT(BlackholeControls)
+        .SetProperty("planets", &BlackholeControls::planets)
+        .SetProperty("cameraYaw", &BlackholeControls::cameraYaw)
+            .SetUIRange(-180.0f, 180.0f)
+        .SetProperty("cameraPitch", &BlackholeControls::cameraPitch)
+            .SetUIRange(-89.0f, 89.0f)
+        .SetProperty("cameraDistance", &BlackholeControls::cameraDistance)
+            .SetUIRange(6.0f, 90.0f)
+        .SetProperty("fovY", &BlackholeControls::fovY)
+            .SetUIRange(20.0f, 90.0f)
+        .SetProperty("showDisk", &BlackholeControls::showDisk)
+        .SetProperty("paused", &BlackholeControls::paused)
+        .SetProperty("showPanel", &BlackholeControls::showPanel)
+    CROWY_STRUCT_END(BlackholeControls)
+
     class BlackholeSimulation: public App{
         using App::App;
 
@@ -312,28 +385,25 @@ namespace Crowy
         struct SimulationParam{
             Vec3 bhPos{0.0, 0.0, 3.0f};
             f32 rs = 1.0f;
-            Vec3 camPos{30.0f, 5.0f, 0.0f};
+            Vec3 camPos;
             f32 aspect;
-            Vec3 camRight = unitX();
-            f32 tanHalfFov = std::tanf(0.5f * static_cast<f32>(toRadian(45.0f)));
-            Vec3 camUp = unitY();
+            Vec3 camRight;
+            f32 tanHalfFov;
+            Vec3 camUp;
             f32 diskInner = 3.0f;
-            Vec3 camForward = unitZ();
+            Vec3 camForward;
             f32 diskOuter = 10.0f;
-            Vec4 posRadius[PLANET_COUNT] = {
-                Vec4{  0, 0,  15,   2},
-                Vec4{ 20, 0, -10, 2.5},
-                Vec4{-15, 0, -15,   3}
-            };
-            Color planetColor[PLANET_COUNT] = {
-                Color{0.5f, 0.1f, 0.1f, 1},
-                Color{0.0f, 0.5f, 1.0f, 1},
-                Color{0.4f, 0.7f, 0.1f, 1}
-            };
+            // relative to the black hole
+            Vec4 posRadius[PLANET_COUNT];
+            Color planetColor[PLANET_COUNT];
             f32 elapsedTimeSeconds = 0.0f;
             f32 showDisk = 1.0f;
         } simParam;
         RHIBufferSlice simParamBuffer;
+
+        BlackholeControls controls;
+        // the disk's clock, which stops with the orbits
+        f64 simulationSeconds = 0.0;
 
         BloomPass bloomPass;
         RHITextureRAII brightMask = nullptr;
@@ -401,9 +471,7 @@ namespace Crowy
                 .renderTargetCount = 2
             });
 
-            simParam.camForward = normalize(simParam.bhPos - simParam.camPos);
-            simParam.camRight   = normalize(cross(unitY(), simParam.camForward));
-            simParam.camUp      = cross(simParam.camForward, simParam.camRight);
+            applyControls();
 
             createTargets(device, swapchain.GetWidth(), swapchain.GetHeight());
             bloomPass.Init(device, *brightMask);
@@ -465,8 +533,28 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnUpdate(f64, f64 elapsedTime) override{
-            simParam.elapsedTimeSeconds = static_cast<f32>(elapsedTime);
+        void ProcessInput(const InputProvider& input) override{
+            constexpr f32 DegreesPerPixel = 0.3f;
+            if(input.IsKeyDown(MouseButton::RButton)){
+                const auto dpos = input.GetMouseDPos();
+                controls.cameraYaw -= dpos.x * DegreesPerPixel;
+                controls.cameraPitch += dpos.y * DegreesPerPixel;
+            }
+            // proportional, so a notch feels the same near and far
+            controls.cameraDistance *= std::exp(-0.1f * input.GetMouseWheel());
+        }
+
+        void OnUpdate(f64 deltaTime, f64) override{
+            if(!controls.paused){
+                simulationSeconds += deltaTime;
+                for(auto& planet: controls.planets){
+                    planet.orbitAngle = std::remainder(
+                        planet.orbitAngle + planet.orbitSpeed * static_cast<f32>(deltaTime),
+                        360.0f
+                    );
+                }
+            }
+            applyControls();
         }
 
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
@@ -592,6 +680,49 @@ namespace Crowy
         }
 
     private:
+        void applyControls(){
+            // the shader marches no further than 100 rs, so a camera past it
+            // would see nothing but the background
+            controls.cameraPitch = std::clamp(controls.cameraPitch, -89.0f, 89.0f);
+            controls.cameraDistance = std::clamp(controls.cameraDistance, 6.0f, 90.0f);
+
+            const auto yaw = static_cast<f32>(toRadian(controls.cameraYaw));
+            const auto pitch = static_cast<f32>(toRadian(controls.cameraPitch));
+            const auto offset = controls.cameraDistance * Vec3{
+                std::cos(pitch) * std::sin(yaw),
+                std::sin(pitch),
+                -std::cos(pitch) * std::cos(yaw)
+            };
+            simParam.camPos = simParam.bhPos + offset;
+            simParam.camForward = normalize(-offset);
+            simParam.camRight = normalize(cross(unitY(), simParam.camForward));
+            simParam.camUp = cross(simParam.camForward, simParam.camRight);
+            simParam.tanHalfFov = std::tan(0.5f * static_cast<f32>(toRadian(controls.fovY)));
+
+            // the port can resize the list; a planet it no longer has is drawn
+            // nowhere, since a zero radius never meets a step
+            for(u32 i = 0; i < PLANET_COUNT; ++i){
+                if(i >= controls.planets.size()){
+                    simParam.posRadius[i] = Vec4{};
+                    simParam.planetColor[i] = Color{};
+                    continue;
+                }
+
+                const auto& planet = controls.planets[i];
+                const auto angle = static_cast<f32>(toRadian(planet.orbitAngle));
+                const auto tilt = static_cast<f32>(toRadian(planet.inclination));
+                const auto x = planet.orbitRadius * std::cos(angle);
+                const auto z = planet.orbitRadius * std::sin(angle);
+                simParam.posRadius[i] = Vec4{
+                    x, -z * std::sin(tilt), z * std::cos(tilt), planet.radius
+                };
+                simParam.planetColor[i] = planet.color;
+            }
+
+            simParam.elapsedTimeSeconds = static_cast<f32>(simulationSeconds);
+            simParam.showDisk = controls.showDisk ? 1.0f : 0.0f;
+        }
+
         // everything sized after the back buffer; the disk is not, since it
         // is sampled by its own coordinates and drawn only once
         void createTargets(RHIDevice& device, u32 width, u32 height) {
