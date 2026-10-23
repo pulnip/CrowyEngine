@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "DOM.hpp"
 #include "Primitives.hpp"
@@ -44,6 +45,9 @@ namespace Crowy
     };
 
     using VerbHandler = std::function<void(const DOM::Value&, Reply)>;
+    // the argument keys a verb reads; the port refuses any other before the
+    // handler runs
+    using VerbKeys = std::vector<Str>;
 
     struct CommandPortConfig{
         // 0 binds an ephemeral port and skips the retries
@@ -79,7 +83,8 @@ namespace Crowy
     // An HTTP/1.1 subset on 127.0.0.1, pumped by Drain() once per frame on
     // the calling thread: accept, read, dispatch, reply, all inline.
     // POST /rpc {"cmd": "<verb>", "args": {...}} -> {"ok": true, "result": ...}
-    // or {"ok": false, "error": "..."}; GET / lists the registered verbs.
+    // or {"ok": false, "error": "..."}; GET / lists the registered verbs and
+    // the keys each takes.
     // The port itself registers only the reflection verbs - list_objects,
     // describe, get_property, set_property - generic over what Expose gave
     // it; every other verb is the owner's to register.
@@ -93,7 +98,7 @@ namespace Crowy
 
         explicit CommandPort(const CommandPortConfig& config = {});
 
-        void RegisterVerb(Str name, VerbHandler);
+        void RegisterVerb(Str name, VerbKeys keys, VerbHandler);
         // A name the reflection verbs address, resolved at every request.
         // The resolver must stay callable until the port is gone or the name
         // is unexposed; the callback fires after every successful write.

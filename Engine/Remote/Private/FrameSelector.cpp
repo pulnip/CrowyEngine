@@ -24,6 +24,11 @@ namespace Crowy
         return static_cast<u64>(*integer);
     }
 
+    std::vector<Str> withSelectorKeys(std::vector<Str> keys) {
+        keys.insert(keys.end(), {"frame", "frames", "from", "to"});
+        return keys;
+    }
+
     FrameSelector parseFrameSelector(const DOM::Value& args) {
         constexpr auto BadList =
             "frames must be a non-empty array of positive integers";

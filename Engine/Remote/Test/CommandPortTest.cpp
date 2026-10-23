@@ -245,7 +245,7 @@ protected:
         ASSERT_NE(port.Port(), 0);
         ASSERT_EQ(port.Status().server, CommandPortStatus::Server::Listening);
 
-        port.RegisterVerb("ping", [](const DOM::Value&, Reply reply) {
+        port.RegisterVerb("ping", {}, [](const DOM::Value&, Reply reply) {
             DOM::Table result;
             result.emplace("pong", DOM::Value(true));
             reply.Ok(DOM::Value(std::move(result)));
@@ -281,7 +281,7 @@ TEST_F(CommandPortTest, PingRoundTrip) {
 }
 
 TEST_F(CommandPortTest, InfoListsRegisteredVerbs) {
-    port.RegisterVerb("alpha", [](const DOM::Value&, Reply reply) {
+    port.RegisterVerb("alpha", {}, [](const DOM::Value&, Reply reply) {
         reply.Ok(DOM::Value(true));
     });
 
@@ -388,11 +388,15 @@ TEST_F(CommandPortTest, RequestSplitAcrossDrainsIsAccumulated) {
 TEST_F(CommandPortTest, VerbSeesItsArgsAndArgsDefaultToEmptyTable) {
     std::optional<i64> seen;
     bool sawTable = false;
-    port.RegisterVerb("echo", [&](const DOM::Value& args, Reply reply) {
-        sawTable = args.is_table();
-        seen = args.get<i64>("value");
-        reply.Ok(DOM::Value(seen.value_or(-1)));
-    });
+    port.RegisterVerb(
+        "echo",
+        {"value"},
+        [&](const DOM::Value& args, Reply reply) {
+            sawTable = args.is_table();
+            seen = args.get<i64>("value");
+            reply.Ok(DOM::Value(seen.value_or(-1)));
+        }
+    );
 
     auto response = exchange(post(R"({"cmd":"echo","args":{"value":42}})"));
     EXPECT_TRUE(response.ok()) << response.body;
@@ -407,7 +411,7 @@ TEST_F(CommandPortTest, VerbSeesItsArgsAndArgsDefaultToEmptyTable) {
 
 TEST_F(CommandPortTest, FlagVerbFiresBeforeTheReplyGoesOut) {
     bool fired = false;
-    port.RegisterVerb("flag", [&](const DOM::Value&, Reply reply) {
+    port.RegisterVerb("flag", {}, [&](const DOM::Value&, Reply reply) {
         fired = true;
         reply.Ok(DOM::Value(DOM::Table{}));
     });
@@ -420,7 +424,7 @@ TEST_F(CommandPortTest, FlagVerbFiresBeforeTheReplyGoesOut) {
 
 TEST_F(CommandPortTest, DeferredReplyCompletesOnALaterDrain) {
     std::optional<Reply> held;
-    port.RegisterVerb("later", [&](const DOM::Value&, Reply reply) {
+    port.RegisterVerb("later", {}, [&](const DOM::Value&, Reply reply) {
         held = std::move(reply);
     });
 
@@ -441,7 +445,7 @@ TEST_F(CommandPortTest, DeferredReplyCompletesOnALaterDrain) {
 
 TEST_F(CommandPortTest, DeferredReplyTimesOutIntoAnError) {
     std::optional<Reply> held;
-    port.RegisterVerb("never", [&](const DOM::Value&, Reply reply) {
+    port.RegisterVerb("never", {}, [&](const DOM::Value&, Reply reply) {
         held = std::move(reply);
     });
 
@@ -461,7 +465,7 @@ TEST_F(CommandPortTest, DeferredReplyTimesOutIntoAnError) {
 }
 
 TEST_F(CommandPortTest, DroppedReplyIsAnError) {
-    port.RegisterVerb("drop", [](const DOM::Value&, Reply) {});
+    port.RegisterVerb("drop", {}, [](const DOM::Value&, Reply) {});
 
     const auto response = exchange(post(R"({"cmd":"drop"})"));
 
@@ -470,7 +474,7 @@ TEST_F(CommandPortTest, DroppedReplyIsAnError) {
 }
 
 TEST_F(CommandPortTest, ThrowingVerbIsAnError) {
-    port.RegisterVerb("boom", [](const DOM::Value&, Reply) {
+    port.RegisterVerb("boom", {}, [](const DOM::Value&, Reply) {
         throw std::runtime_error("kaboom");
     });
 

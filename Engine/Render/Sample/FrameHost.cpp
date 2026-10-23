@@ -262,6 +262,7 @@ namespace Crowy
         // the old ones drawing and throws its diagnostic into the error reply
         port->RegisterVerb(
             "reload_shaders",
+            {},
             [this](const DOM::Value&, Reply reply) {
                 const auto rebuild = renderer->ReloadPipelines();
                 const auto programs = content.OnReloadShaders();

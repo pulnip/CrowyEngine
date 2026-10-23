@@ -45,7 +45,7 @@ namespace Crowy
     }
 
     void FramePort::RegisterVerbs() {
-        port->RegisterVerb("ping", [this](const DOM::Value&, Reply reply) {
+        port->RegisterVerb("ping", {}, [this](const DOM::Value&, Reply reply) {
             auto result = status();
             result.emplace("pong", DOM::Value(true));
             result.emplace("app", DOM::Value(loop.title));
@@ -60,67 +60,73 @@ namespace Crowy
             );
             reply.Ok(DOM::Value(std::move(result)));
         });
-        port->RegisterVerb("quit", [this](const DOM::Value&, Reply reply) {
+        port->RegisterVerb("quit", {}, [this](const DOM::Value&, Reply reply) {
             loop.requestQuit();
             reply.Ok(DOM::Value(DOM::Table{}));
         });
-        port->RegisterVerb("run", [this](const DOM::Value& args, Reply reply) {
-            const auto* frames = args.at("frames");
-            const auto* until = args.at("until");
-            if(frames != nullptr && until != nullptr) {
-                reply.Error("run takes frames or until, not both");
-
-                return;
-            }
-
-            if(frames != nullptr) {
-                const auto count = parsePositiveInteger(frames);
-                if(!count) {
-                    reply.Error("frames must be a positive integer");
+        port->RegisterVerb(
+            "run",
+            {"frames", "until"},
+            [this](const DOM::Value& args, Reply reply) {
+                const auto* frames = args.at("frames");
+                const auto* until = args.at("until");
+                if(frames != nullptr && until != nullptr) {
+                    reply.Error("run takes frames or until, not both");
 
                     return;
                 }
-                loop.control.RunFrames(*count);
-            }
-            else if(until != nullptr) {
-                const auto frame = parsePositiveInteger(until);
-                if(!frame) {
-                    reply.Error("until must be a positive integer");
 
-                    return;
+                if(frames != nullptr) {
+                    const auto count = parsePositiveInteger(frames);
+                    if(!count) {
+                        reply.Error("frames must be a positive integer");
+
+                        return;
+                    }
+                    loop.control.RunFrames(*count);
                 }
-                if(*frame <= loop.frame()) {
-                    reply.Error(
-                        std::format(
-                            "frame {} has already ended (the last frame is {})",
-                            *frame,
-                            loop.frame()
-                        )
-                    );
+                else if(until != nullptr) {
+                    const auto frame = parsePositiveInteger(until);
+                    if(!frame) {
+                        reply.Error("until must be a positive integer");
 
-                    return;
+                        return;
+                    }
+                    if(*frame <= loop.frame()) {
+                        reply.Error(
+                            std::format(
+                                "frame {} has already ended (the last frame is "
+                                "{})",
+                                *frame,
+                                loop.frame()
+                            )
+                        );
+
+                        return;
+                    }
+                    loop.control.RunUntil(*frame);
                 }
-                loop.control.RunUntil(*frame);
-            }
-            else {
-                loop.control.Run();
-            }
+                else {
+                    loop.control.Run();
+                }
 
-            reply.Ok(DOM::Value(status()));
-        });
+                reply.Ok(DOM::Value(status()));
+            }
+        );
         // the gate runs right after this drain, so the loop stops at the
         // frame that has just ended
-        port->RegisterVerb("hold", [this](const DOM::Value&, Reply reply) {
+        port->RegisterVerb("hold", {}, [this](const DOM::Value&, Reply reply) {
             loop.control.Hold();
             reply.Ok(DOM::Value(status()));
         });
-        port->RegisterVerb("step", [this](const DOM::Value&, Reply reply) {
+        port->RegisterVerb("step", {}, [this](const DOM::Value&, Reply reply) {
             loop.control.RunFrames(1);
             reply.Ok(DOM::Value(status()));
         });
         // answers once `frame` has ended; it never advances the loop itself
         port->RegisterVerb(
             "wait_frame",
+            {"frame"},
             [this](const DOM::Value& args, Reply reply) {
                 const auto frame = parsePositiveInteger(args.at("frame"));
                 if(!frame) {

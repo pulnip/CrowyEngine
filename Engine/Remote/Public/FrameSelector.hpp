@@ -23,4 +23,6 @@ namespace Crowy
     std::optional<u64> parsePositiveInteger(const DOM::Value*);
 
     FrameSelector parseFrameSelector(const DOM::Value& args);
+    // `keys` and a selector's, for a verb that takes one
+    std::vector<Str> withSelectorKeys(std::vector<Str> keys);
 }

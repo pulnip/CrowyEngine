@@ -199,6 +199,7 @@ namespace Crowy
         // last to finish
         port.RegisterVerb(
             "read_stats",
+            withSelectorKeys({}),
             [this,
              lastFrame =
                  std::move(lastFrame)](const DOM::Value& args, Reply reply) {

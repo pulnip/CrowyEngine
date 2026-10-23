@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <format>
 #include <functional>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -31,6 +32,24 @@ namespace Crowy
     template<typename T>
     using StringHashMap =
         std::unordered_map<Str, T, StringHash, std::equal_to<>>;
+
+    inline constexpr Str join(std::span<const Str> tokens, StrView sep={}){
+        Str joined;
+        bool first = true;
+
+        for(const auto& token: tokens){
+            if(first){
+                first = false;
+            }
+            else{
+                joined += sep;
+            }
+
+            joined += token;
+        }
+
+        return joined;
+    }
 
     Str readFileAsString(const std::filesystem::path&);
     std::vector<u8> readFileAsBinary(const std::filesystem::path&);

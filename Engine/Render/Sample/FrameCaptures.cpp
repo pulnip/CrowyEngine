@@ -55,6 +55,7 @@ namespace Crowy
         // when the files are on disk, and captureFailures whether one failed
         port.RegisterVerb(
             "capture_frame",
+            withSelectorKeys({"path", "target"}),
             [this](const DOM::Value& args, Reply reply) {
                 const auto path = args.get<Str>("path");
                 if(!path || path->empty()) {

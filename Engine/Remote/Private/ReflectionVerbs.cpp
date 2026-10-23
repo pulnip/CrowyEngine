@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Assert.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -134,17 +135,6 @@ namespace Crowy
             type.destroy(scratch);
 
             return errors;
-        }
-
-        Str joinErrors(const PropertyErrors& errors) {
-            Str joined;
-            for(const auto& error: errors) {
-                if(!joined.empty())
-                    joined += "; ";
-                joined += error;
-            }
-
-            return joined;
         }
     }
 
@@ -305,7 +295,7 @@ namespace Crowy
         if(checked.type->list != nullptr) {
             const auto errors = tryValue(*checked.type, *value, *path);
             if(!errors.empty()) {
-                reply.Error(joinErrors(errors));
+                reply.Error(join(errors, "; "));
 
                 return;
             }

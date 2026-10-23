@@ -42,6 +42,7 @@ namespace Crowy
             const_iterator end() const noexcept;
             usize size() const noexcept;
             bool empty() const noexcept;
+            auto keys() const noexcept;
 
             iterator find(StrView key) noexcept;
             const_iterator find(StrView key) const noexcept;
@@ -261,6 +262,9 @@ namespace Crowy
         }
         inline bool Table::empty() const noexcept {
             return entries.empty();
+        }
+        inline auto Table::keys() const noexcept {
+            return entries | std::views::keys;
         }
 
         inline Table::iterator Table::find(StrView key) noexcept {

@@ -17,6 +17,7 @@
 #include "Component.hpp"
 #include "ErasedValue.hpp"
 #include "JsonLoader.hpp"
+#include "RangeUtil.hpp"
 
 namespace Crowy
 {
@@ -52,12 +53,8 @@ namespace Crowy
             StrView where,
             Errors& errors
         ) {
-            for(const auto& [key, value]: table) {
-                if(std::ranges::find(known, StrView(key)) == known.end())
-                    errors.push_back(
-                        std::format("{} has no key '{}'", where, key)
-                    );
-            }
+            for(const auto& key: stray(table.keys(), known))
+                errors.push_back(std::format("{} has no key '{}'", where, key));
         }
 
         DOM::Array saveComponents(

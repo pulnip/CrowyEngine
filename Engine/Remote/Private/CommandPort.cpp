@@ -1,6 +1,7 @@
 #include "CommandPort.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
 #include <chrono>
@@ -13,7 +14,9 @@
 
 #include "JsonLoader.hpp"
 #include "LogLocal.hpp"
+#include "RangeUtil.hpp"
 #include "ReflectionVerbs.hpp"
+#include "StringUtil.hpp"
 #include "Socket.hpp"
 
 namespace Crowy
@@ -199,7 +202,11 @@ namespace Crowy
 
     class CommandPortImpl: public std::enable_shared_from_this<CommandPortImpl>{
     private:
-        using Verbs = std::unordered_map<Str, VerbHandler>;
+        struct Verb{
+            VerbKeys keys;
+            VerbHandler handler;
+        };
+        using Verbs = std::unordered_map<Str, Verb>;
         using Connections = std::vector<Connection>;
 
         CommandPortConfig config;
@@ -217,7 +224,7 @@ namespace Crowy
 
         explicit CommandPortImpl(const CommandPortConfig& config);
 
-        void RegisterVerb(Str name, VerbHandler handler);
+        void RegisterVerb(Str name, VerbKeys keys, VerbHandler handler);
         void Expose(Str name, PropertyTarget target, DirtyCallback onDirty);
         void Unexpose(StrView name);
         void Drain();
@@ -255,16 +262,16 @@ namespace Crowy
         : config(config)
         , receiveBuffer(ReceiveChunkBytes)
     {
-        RegisterVerb("list_objects", [this](const DOM::Value& args, Reply reply){
+        RegisterVerb("list_objects", {}, [this](const DOM::Value& args, Reply reply){
             listObjects(exposures, args, std::move(reply));
         });
-        RegisterVerb("describe", [this](const DOM::Value& args, Reply reply){
+        RegisterVerb("describe", {"target"}, [this](const DOM::Value& args, Reply reply){
             describeObject(exposures, args, std::move(reply));
         });
-        RegisterVerb("get_property", [this](const DOM::Value& args, Reply reply){
+        RegisterVerb("get_property", {"target", "path"}, [this](const DOM::Value& args, Reply reply){
             getProperty(exposures, args, std::move(reply));
         });
-        RegisterVerb("set_property", [this](const DOM::Value& args, Reply reply){
+        RegisterVerb("set_property", {"target", "path", "value"}, [this](const DOM::Value& args, Reply reply){
             setProperty(exposures, args, std::move(reply));
         });
 
@@ -318,9 +325,9 @@ namespace Crowy
         );
     }
 
-    void CommandPortImpl::RegisterVerb(Str name, VerbHandler handler){
+    void CommandPortImpl::RegisterVerb(Str name, VerbKeys keys, VerbHandler handler){
         CROWY_ASSERT(!verbs.contains(name), "verb registered twice");
-        verbs.emplace(std::move(name), std::move(handler));
+        verbs.emplace(std::move(name), Verb{std::move(keys), std::move(handler)});
     }
 
     void CommandPortImpl::Expose(
@@ -487,11 +494,20 @@ namespace Crowy
 
         DOM::Array list;
         list.reserve(names.size());
-        for(auto& name: names)
-            list.emplace_back(std::move(name));
+        for(const auto& name: names)
+            list.emplace_back(name);
+
+        DOM::Table arguments;
+        for(const auto& name: names){
+            DOM::Array keys;
+            for(const auto& key: verbs.at(name).keys)
+                keys.emplace_back(key);
+            arguments.emplace(name, DOM::Value(std::move(keys)));
+        }
 
         DOM::Table result;
         result.emplace("verbs", DOM::Value(std::move(list)));
+        result.emplace("arguments", DOM::Value(std::move(arguments)));
         respond(c, 200, okBody(DOM::Value(std::move(result))), now);
     }
 
@@ -514,6 +530,15 @@ namespace Crowy
 
             return;
         }
+        // a misspelt "args" would otherwise run the verb with none
+        constexpr std::array<StrView, 2> RequestKeys{"cmd", "args"};
+        if(const auto unknown = stray(doc.asTable()->keys(), RequestKeys); !unknown.empty()){
+            respond(c, 200, errorBody(std::format(
+                "a request takes cmd and args; got {}", join(unknown, ", ")
+            )), now);
+
+            return;
+        }
         const auto verb = verbs.find(*cmd);
         if(verb == verbs.end()){
             respond(c, 200, errorBody(std::format("unknown verb '{}'", *cmd)), now);
@@ -523,6 +548,22 @@ namespace Crowy
 
         static const DOM::Value noArgs{DOM::Table{}};
         const auto* args = doc.at("args");
+        if(args != nullptr && args->asTable() == nullptr){
+            respond(c, 200, errorBody("\"args\" is not an object"), now);
+
+            return;
+        }
+        // a key the verb does not read would be dropped without a word
+        const auto& keys = verb->second.keys;
+        const auto unknown = args != nullptr ? stray(args->asTable()->keys(), keys) : std::vector<Str>{};
+        if(!unknown.empty()){
+            auto message = keys.empty()
+                ? std::format("{} takes no arguments; got {}", *cmd, join(unknown, ", "))
+                : std::format("{} does not take {}; it takes {}", *cmd, join(unknown, ", "), join(keys, ", "));
+            respond(c, 200, errorBody(std::move(message)), now);
+
+            return;
+        }
 
         const auto id = nextRequest++;
         c.request = id;
@@ -533,7 +574,7 @@ namespace Crowy
         status.lastVerbDrain = status.drainCount;
 
         try{
-            verb->second(args != nullptr ? *args : noArgs, Reply(weak_from_this(), id));
+            verb->second.handler(args != nullptr ? *args : noArgs, Reply(weak_from_this(), id));
         }
         catch(const std::exception& e){
             Complete(id, errorBody(std::format("verb '{}' threw: {}", *cmd, e.what())));
@@ -685,8 +726,8 @@ namespace Crowy
 
     CommandPort::~CommandPort() = default;
 
-    void CommandPort::RegisterVerb(Str name, VerbHandler handler){
-        impl->RegisterVerb(std::move(name), std::move(handler));
+    void CommandPort::RegisterVerb(Str name, VerbKeys keys, VerbHandler handler){
+        impl->RegisterVerb(std::move(name), std::move(keys), std::move(handler));
     }
 
     void CommandPort::Expose(

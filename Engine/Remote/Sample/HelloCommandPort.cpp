@@ -61,14 +61,14 @@ int main(void){
             std::println("knobs: gain {} label {}", knobs.gain, knobs.label);
         });
 
-        port.RegisterVerb("ping", [&port](auto&, Reply reply){
+        port.RegisterVerb("ping", {}, [&port](auto&, Reply reply){
             DOM::Table result;
             result.emplace("pong", true);
             result.emplace("drain", static_cast<i64>(port.Status().drainCount));
 
             reply.Ok(std::move(result));
         });
-        port.RegisterVerb("quit", [&quitRequested](auto&, Reply reply){
+        port.RegisterVerb("quit", {}, [&quitRequested](auto&, Reply reply){
             quitRequested = true;
 
             reply.Ok();
