@@ -11,16 +11,16 @@ namespace Crowy
         bool keyboard = false;
     };
 
+    // Held keys and buttons and the mouse position come from the events, as
+    // every other state does, so an event made by hand counts as a real one.
     class SDLInputProvider final: public InputProvider{
     private:
-        const bool* heldState;
-
+        std::bitset<NUM_KEY> keyHeldState;
         std::bitset<NUM_MOUSE_BUTTON> mouseHeldState;
         InputGate gate;
 
+        // the position stays where the cursor hid until it returns there
         bool relative = false;
-        // where the cursor hid, which it reports until it returns there
-        Vec2 hiddenAt;
 
     public:
         SDLInputProvider();
@@ -36,6 +36,7 @@ namespace Crowy
         void Reset() noexcept{
             InputProvider::ConsumeEdge();
 
+            keyHeldState.reset();
             mouseHeldState.reset();
         }
 
@@ -45,6 +46,9 @@ namespace Crowy
         bool IsRelativeMouse() const noexcept{
             return relative;
         }
+        // keys get their releases from SDL; buttons get theirs only once the
+        // window is focused again, so they let go here
+        void OnFocusLost(SDL_Window* window) noexcept;
 
         // Process Event
         void OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept;

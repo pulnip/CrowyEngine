@@ -82,9 +82,11 @@ namespace Crowy
         // returns when the loop ends by itself; a throw leaves it mid-frame
         void RunLoop(MainLoop&, RHIDevice&);
         bool ProcessEvents(MainLoop&);
-        // the held iteration's pump: the window stays alive, input is dropped
+        // the held iteration's pump: the window stays alive, input reaches
+        // only the held state
         bool PumpHeld(MainLoop&, RHIDevice&);
         void HandleWindowEvent(MainLoop&, const SDL_WindowEvent&);
+        void ForwardInput(const SDL_Event&);
         void ApplyRelativeMouse(bool wanted);
 
         void BeginFrame(RHIDevice&);
@@ -274,26 +276,7 @@ namespace Crowy
                 break;
             }
 
-            switch(event.type){
-            // Keyboard Event
-            case SDL_EVENT_KEY_DOWN:
-                [[fallthrough]];
-            case SDL_EVENT_KEY_UP:
-                inputProvider.OnPlatformEvent(event.key);
-                break;
-            // Mouse Event
-            case SDL_EVENT_MOUSE_MOTION:
-                inputProvider.OnPlatformEvent(event.motion);
-                break;
-            case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                [[fallthrough]];
-            case SDL_EVENT_MOUSE_BUTTON_UP:
-                inputProvider.OnPlatformEvent(event.button);
-                break;
-            case SDL_EVENT_MOUSE_WHEEL:
-                inputProvider.OnPlatformEvent(event.wheel);
-                break;
-            }
+            ForwardInput(event);
 
             if(!keepRunning) [[unlikely]]
                 break;
@@ -317,6 +300,10 @@ namespace Crowy
             if(SDL_EVENT_QUIT == event.type) [[unlikely]]
                 return false;
 
+            // so a key let go during the hold is not held after it; the next
+            // frame's NewFrame drops the edges and the motion
+            ForwardInput(event);
+
             if(SDL_EVENT_WINDOW_FIRST <= event.type && event.type <= SDL_EVENT_WINDOW_LAST)
                 HandleWindowEvent(mainLoop, event.window);
         }
@@ -335,11 +322,33 @@ namespace Crowy
             mainLoop.OnResize(w, h);
         }
         if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST){
-            // the cursor stays wherever the other window has it
             auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
-            inputProvider.SetRelativeMouse(sdlWindow, false, false);
+            inputProvider.OnFocusLost(sdlWindow);
         }
         window.OnPlatformEvent(event);
+    }
+
+    void OS::Impl::ForwardInput(const SDL_Event& event){
+        switch(event.type){
+        // Keyboard Event
+        case SDL_EVENT_KEY_DOWN:
+            [[fallthrough]];
+        case SDL_EVENT_KEY_UP:
+            inputProvider.OnPlatformEvent(event.key);
+            break;
+        // Mouse Event
+        case SDL_EVENT_MOUSE_MOTION:
+            inputProvider.OnPlatformEvent(event.motion);
+            break;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            [[fallthrough]];
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            inputProvider.OnPlatformEvent(event.button);
+            break;
+        case SDL_EVENT_MOUSE_WHEEL:
+            inputProvider.OnPlatformEvent(event.wheel);
+            break;
+        }
     }
 
     void OS::Impl::ApplyRelativeMouse(bool wanted){

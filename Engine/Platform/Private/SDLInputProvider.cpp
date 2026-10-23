@@ -182,88 +182,57 @@ namespace Crowy
             ));
         }
 
-        heldState = SDL_GetKeyboardState(nullptr);
-        if(heldState == nullptr){
-            SDL_QuitSubSystem(flags);
-
-            throw std::runtime_error(std::format(
-                "Couldn't get keyboard state: {}",
-                SDL_GetError()
-            ));
-        }
-
+        // the first motion event moves it from here
         Vec2 mousePos;
         SDL_GetMouseState(&mousePos.x, &mousePos.y);
-
-        SetCurrentMousePos(mousePos);
-        // call twice for init mouse.dpos
-        SetCurrentMousePos(mousePos);
+        SetMouseMotion(mousePos, Vec2{0.0f, 0.0f});
     }
 
     SDLInputProvider::~SDLInputProvider(){
-        if(heldState != nullptr){
-            heldState = nullptr;
-
-            SDL_QuitSubSystem(SDL_INIT_EVENTS);
-        }
+        SDL_QuitSubSystem(SDL_INIT_EVENTS);
     }
 
     bool SDLInputProvider::IsKeyDown(KeyCode keyCode) const noexcept{
-        auto sdlCode = convert(keyCode);
+        auto ordKey = static_cast<usize>(keyCode);
 
-        return !gate.keyboard && heldState[sdlCode];
+        return !gate.keyboard && keyHeldState.test(ordKey);
     }
 
     bool SDLInputProvider::IsKeyDown(MouseButton button) const noexcept{
         auto ordKey = static_cast<usize>(button);
 
-        return mouseHeldState.test(ordKey);
+        return !gate.mouse && mouseHeldState.test(ordKey);
     }
 
     void SDLInputProvider::NewFrame(InputGate gate) noexcept{
         InputProvider::ConsumeEdge();
-        mouseHeldState.reset();
         this->gate = gate;
 
-        Vec2 mousePos;
-        auto buttons = SDL_GetMouseState(&mousePos.x, &mousePos.y);
-
-        // the motion events add the frame's delta; a hidden cursor stays put
-        SetMouseMotion(relative ? hiddenAt : mousePos, Vec2{0.0f, 0.0f});
-        if(gate.mouse)
-            return;
-
-        if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)){
-            mouseHeldState.set(static_cast<usize>(MouseButton::LButton));
-        }
-        if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)){
-            mouseHeldState.set(static_cast<usize>(MouseButton::RButton));
-        }
-        if(buttons & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)){
-            mouseHeldState.set(static_cast<usize>(MouseButton::MButton));
-        }
+        // the motion events add the frame's delta
+        SetMouseMotion(GetMousePos(), Vec2{0.0f, 0.0f});
     }
 
     void SDLInputProvider::SetRelativeMouse(SDL_Window* window, bool relative, bool restore) noexcept{
         if(relative == this->relative)
             return;
 
-        if(relative){
-            hiddenAt = GetMousePos();
-        }
-        else if(restore){
+        if(!relative && restore){
             // still relative, this only moves SDL's own position, which
             // leaving puts the cursor back at
+            const auto hiddenAt = GetMousePos();
             SDL_WarpMouseInWindow(window, hiddenAt.x, hiddenAt.y);
         }
         if(SDL_SetWindowRelativeMouseMode(window, relative))
             this->relative = relative;
     }
 
-    void SDLInputProvider::OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept{
-        if(gate.keyboard)
-            return;
+    void SDLInputProvider::OnFocusLost(SDL_Window* window) noexcept{
+        // the cursor stays wherever the other window has it
+        SetRelativeMouse(window, false, false);
+        mouseHeldState.reset();
+    }
 
+    void SDLInputProvider::OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept{
         switch(event.type){
         case SDL_EVENT_KEY_DOWN:
             [[fallthrough]];
@@ -273,6 +242,12 @@ namespace Crowy
 
             auto keyCode = convert(event.scancode);
             if(keyCode == KeyCode::Unknown)
+                break;
+
+            // held whatever the gate, which only hides it, so a release the
+            // UI took still lets go
+            keyHeldState.set(static_cast<usize>(keyCode), event.down);
+            if(gate.keyboard)
                 break;
 
             if(event.down)
@@ -287,6 +262,9 @@ namespace Crowy
     }
 
     void SDLInputProvider::OnPlatformEvent(const SDL_MouseMotionEvent& event) noexcept{
+        // a relative look's position is SDL's, clamped to the window
+        if(!relative)
+            SetMousePos(Vec2{event.x, event.y});
         if(gate.mouse)
             return;
 
@@ -295,9 +273,6 @@ namespace Crowy
     }
 
     void SDLInputProvider::OnPlatformEvent(const SDL_MouseButtonEvent& event) noexcept{
-        if(gate.mouse)
-            return;
-
         switch(event.type){
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
             [[fallthrough]];
@@ -305,6 +280,10 @@ namespace Crowy
 
             auto mouseButton = convert(event.button);
             if(mouseButton == MouseButton::Unknown)
+                break;
+
+            mouseHeldState.set(static_cast<usize>(mouseButton), event.down);
+            if(gate.mouse)
                 break;
 
             if(event.down)
