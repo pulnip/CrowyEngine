@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL_events.h>
+#include "InputEvent.hpp"
 #include "InputProvider.hpp"
 
 namespace Crowy
@@ -19,11 +20,14 @@ namespace Crowy
         std::bitset<NUM_MOUSE_BUTTON> mouseHeldState;
         InputGate gate;
 
+        // false in a --port-input run: the relative mode is the provider's
+        // alone, and the OS cursor is left where the owner has it
+        bool ownsCursor = true;
         // the position stays where the cursor hid until it returns there
         bool relative = false;
 
     public:
-        SDLInputProvider();
+        explicit SDLInputProvider(bool ownsCursor = true);
         ~SDLInputProvider();
 
         bool IsKeyDown(KeyCode) const noexcept override;
@@ -46,9 +50,16 @@ namespace Crowy
         bool IsRelativeMouse() const noexcept{
             return relative;
         }
+        const InputGate& Gate() const noexcept{
+            return gate;
+        }
         // keys get their releases from SDL; buttons get theirs only once the
         // window is focused again, so they let go here
         void OnFocusLost(SDL_Window* window) noexcept;
+
+        // `input` as the event a device would send, from where the mouse
+        // and the modifiers stand now
+        SDL_Event Synthesize(const InputEvent& input, SDL_WindowID window) const noexcept;
 
         // Process Event
         void OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept;

@@ -191,6 +191,7 @@ namespace Crowy
 
         if(hold)
             framePort->Hold();
+        framePort->CheckPortInput();
 
         // after the port, so the scene can expose itself before the loop
         content.OnBuildGeometry(*geometryPool);

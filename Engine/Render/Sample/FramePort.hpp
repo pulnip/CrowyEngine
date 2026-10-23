@@ -7,6 +7,8 @@
 #include "CommandPort.hpp"
 #include "FrameCaptures.hpp"
 #include "FrameControl.hpp"
+#include "InputEvent.hpp"
+#include "InputProvider.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
@@ -23,11 +25,16 @@ namespace Crowy
         std::function<void()> requestQuit;
         // what ping names the app
         Str title;
+        // the input as the last frame saw it, for read_input
+        const InputProvider* input = nullptr;
+        std::function<InputStatus()> inputStatus;
+        // a --port-input run's way in; empty in any other
+        std::function<void(const InputEvent&)> pushInput;
     };
 
     // The command port and the verbs that drive the loop: ping, quit, run,
-    // hold, step and wait_frame. Every control verb answers with where the
-    // loop stands afterwards.
+    // hold, step and wait_frame, and the input's push_input and read_input.
+    // Every control verb answers with where the loop stands afterwards.
     class FramePort {
     private:
         // a wait_frame reply, held until its frame has ended
@@ -58,6 +65,8 @@ namespace Crowy
         void RegisterVerbs();
         // --hold, which throws without a bound port to release it
         void Hold();
+        // --port-input, which throws without a bound port to push its input
+        void CheckPortInput() const;
         // the waits whose frame ended, then every request that arrived
         void Drain();
 
@@ -65,6 +74,7 @@ namespace Crowy
 
     private:
         DOM::Table status() const;
+        DOM::Table inputReport() const;
         void answerWaits();
     };
 }

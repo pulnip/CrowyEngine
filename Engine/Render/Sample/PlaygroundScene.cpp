@@ -544,7 +544,13 @@ namespace Crowy
 
         // the running list's, not debug's, which the panel may flip mid-frame
         if(const auto sceneView = SceneViewID(); sceneView != 0) {
-            // the image fills the window, so the window cannot size itself
+            // the image fills the window, so the window cannot size itself;
+            // right of where the panel opens, so a run without a saved
+            // layout has the two apart
+            ImGui::SetNextWindowPos(
+                ImVec2(376.0f, 8.0f),
+                ImGuiCond_FirstUseEver
+            );
             ImGui::SetNextWindowSize(
                 ImVec2(640.0f, 400.0f),
                 ImGuiCond_FirstUseEver

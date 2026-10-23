@@ -92,7 +92,8 @@ namespace Crowy
             (config.fullscreen    ? SDL_WINDOW_FULLSCREEN    : 0) |
             (config.resizable     ? SDL_WINDOW_RESIZABLE     : 0) |
             (config.borderless    ? SDL_WINDOW_BORDERLESS    : 0) |
-            (config.always_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
+            (config.always_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0) |
+            (config.focusable     ? 0 : SDL_WINDOW_NOT_FOCUSABLE);
         const auto position = initialPosition();
         const SDL_PropertiesID properties = SDL_CreateProperties();
         SDL_SetStringProperty(properties, SDL_PROP_WINDOW_CREATE_TITLE_STRING, config.title.c_str());

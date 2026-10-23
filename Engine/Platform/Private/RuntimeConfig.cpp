@@ -91,7 +91,7 @@ namespace Crowy
         constexpr auto Usage = "usage: <app> [--config <path>] [--hold] "
                                "[--capture-frame <frame> <path>]... "
                                "[--exit-after-frame <frame>] "
-                               "[--project <folder>]";
+                               "[--port-input] [--project <folder>]";
 
         // the argument after a flag that takes one
         const auto valueOf = [&](usize& i, StrView flag) {
@@ -133,6 +133,10 @@ namespace Crowy
                 config.captures.push_back(
                     FrameCaptureConfig{.frame = frame, .path = valueOf(i, arg)}
                 );
+                continue;
+            }
+            if(arg == "--port-input") {
+                config.portInput = true;
                 continue;
             }
             if(arg == "--exit-after-frame") {

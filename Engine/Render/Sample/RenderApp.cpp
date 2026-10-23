@@ -10,6 +10,13 @@ namespace Crowy
         : host(*this, config, std::move(camera)) {}
 
     void RenderApp::OnInit(RHIDevice& device, RHISwapchain& swapchain) {
+        std::function<void(const InputEvent&)> pushInput;
+        if(Runtime().portInput) {
+            pushInput = [](const InputEvent& input) {
+                OS::Get()->PushInput(input);
+            };
+        }
+
         host.Init(
             device,
             swapchain,
@@ -18,7 +25,10 @@ namespace Crowy
                 .frame = [this] { return FrameNumber(); },
                 .elapsedSeconds = [this] { return ElapsedSeconds(); },
                 .requestQuit = [this] { RequestQuit(); },
-                .title = Runtime().window.title
+                .title = Runtime().window.title,
+                .input = &OS::Get()->GetInputProvider(),
+                .inputStatus = [] { return OS::Get()->ReadInput(); },
+                .pushInput = std::move(pushInput)
             },
             Runtime().hold
         );

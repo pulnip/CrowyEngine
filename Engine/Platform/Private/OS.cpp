@@ -1,10 +1,12 @@
 #include <algorithm>
 #include <utility>
+#include <vector>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keyboard.h>
 #include <imgui_impl_sdl3.h>
+#include "Assert.hpp"
 #include "CommandListPool.hpp"
 #include "FramePacer.hpp"
 #include "FrameProfiler.hpp"
@@ -24,11 +26,46 @@ namespace Crowy
     // well under ImGui's KeyRepeatDelay (0.275s),
     // so no single hitch can reach it
     inline constexpr f32 UI_MAX_DELTA_TIME = 0.1f;
+    // a --port-input run counts the UI's time as it counts its frames
+    inline constexpr f32 UI_PORT_DELTA_TIME = 1.0f / 60.0f;
 
     // the port is not an SDL event, so this is how late a held loop answers it
     inline constexpr i32 HELD_WAIT_MS = 4;
 
     OS* OS::singleton = nullptr;
+
+    namespace{
+        // what a --port-input run keeps from ImGui and the provider: the
+        // devices, and the focus and hover that would let ImGui read them
+        bool isDeviceEvent(Uint32 type) noexcept{
+            switch(type){
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:
+            case SDL_EVENT_TEXT_EDITING:
+            case SDL_EVENT_TEXT_INPUT:
+            case SDL_EVENT_MOUSE_MOTION:
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+            case SDL_EVENT_MOUSE_WHEEL:
+            case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            case SDL_EVENT_WINDOW_FOCUS_LOST:
+            case SDL_EVENT_WINDOW_MOUSE_ENTER:
+            case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        WindowConfig windowOf(const RuntimeConfig& config){
+            auto window = config.window;
+            // nothing the owner does on it takes their keyboard or mouse
+            if(config.portInput)
+                window.focusable = false;
+
+            return window;
+        }
+    }
 
     class SDLInitializer final{
     public:
@@ -64,6 +101,9 @@ namespace Crowy
 
         bool imguiEnabled = false;
         std::optional<u64> exitAfterFrame;
+        bool portInput = false;
+        // pushed by the port, delivered by the next frame that advances
+        std::vector<InputEvent> pushedInput;
 
     public:
         Impl(const RuntimeConfig&, RHIDevice&);
@@ -77,6 +117,19 @@ namespace Crowy
         const Window& GetWindow() const noexcept{
             return window;
         }
+        InputStatus ReadInput() const noexcept{
+            const auto& gate = inputProvider.Gate();
+
+            return InputStatus{
+                .relativeMouse = inputProvider.IsRelativeMouse(),
+                .uiHasMouse = gate.mouse,
+                .uiHasKeyboard = gate.keyboard
+            };
+        }
+        void PushInput(const InputEvent& input){
+            CROWY_ASSERT(portInput, "pushed input outside a --port-input run");
+            pushedInput.push_back(input);
+        }
 
     private:
         // returns when the loop ends by itself; a throw leaves it mid-frame
@@ -87,6 +140,9 @@ namespace Crowy
         bool PumpHeld(MainLoop&, RHIDevice&);
         void HandleWindowEvent(MainLoop&, const SDL_WindowEvent&);
         void ForwardInput(const SDL_Event&);
+        void DeliverPushedInput();
+        // a relative look leaves the UI's mouse where the look began
+        bool IsLookMotion(const SDL_Event&) const noexcept;
         void ApplyRelativeMouse(bool wanted);
 
         void BeginFrame(RHIDevice&);
@@ -107,12 +163,13 @@ namespace Crowy
         RHIDevice& device
     )
         : initializer(config)
-        , window(config.window)
-        , inputProvider()
+        , window(windowOf(config))
+        , inputProvider(!config.portInput)
         , framePacer(device)
         , cmdListPool(device)
         , profiler(config, device)
-        , exitAfterFrame(config.exitAfterFrame) {
+        , exitAfterFrame(config.exitAfterFrame)
+        , portInput(config.portInput) {
         RHITextureCreateDesc backBufferDesc{
             .width = config.window.width,
             .height = config.window.height,
@@ -147,6 +204,9 @@ namespace Crowy
 
             // D3D, Metal, Vulkan, ... all same!
             ImGui_ImplSDL3_InitForOther(sdlWindow);
+            // a scripted run neither reads nor writes the owner's layout
+            if(portInput)
+                ImGui::GetIO().IniFilename = nullptr;
         }
 
         try{
@@ -190,8 +250,10 @@ namespace Crowy
                 held = true;
                 continue;
             }
-            // what the hold dropped included releases, so nothing may stay down
-            if(std::exchange(held, false) && imguiEnabled){
+            // what the hold dropped included releases, so nothing may stay
+            // down; a --port-input run's hold drops nothing, and its held
+            // keys and buttons are the port's
+            if(std::exchange(held, false) && imguiEnabled && !portInput){
                 auto& io = ImGui::GetIO();
                 io.ClearInputKeys();
                 io.ClearInputMouse();
@@ -231,7 +293,9 @@ namespace Crowy
                     // so an unbounded hitch trips auto-repeat (> KeyRepeatDelay)
                     // on the next frame and one click steps twice
                     auto& io = ImGui::GetIO();
-                    io.DeltaTime = std::min(io.DeltaTime, UI_MAX_DELTA_TIME);
+                    io.DeltaTime = portInput
+                        ? UI_PORT_DELTA_TIME
+                        : std::min(io.DeltaTime, UI_MAX_DELTA_TIME);
 
                     ImGui::NewFrame();
                 }
@@ -266,9 +330,9 @@ namespace Crowy
 
         SDL_Event event;
         while(SDL_PollEvent(&event)){
-            // a relative look leaves the UI's mouse where the look began
-            const bool lookMotion = event.type == SDL_EVENT_MOUSE_MOTION && inputProvider.IsRelativeMouse();
-            if(imguiEnabled && !lookMotion)
+            // a --port-input run hears only the port
+            const bool unheard = portInput && isDeviceEvent(event.type);
+            if(imguiEnabled && !unheard && !IsLookMotion(event))
                 ImGui_ImplSDL3_ProcessEvent(&event);
 
             if(SDL_EVENT_QUIT == event.type) [[unlikely]]{
@@ -276,7 +340,8 @@ namespace Crowy
                 break;
             }
 
-            ForwardInput(event);
+            if(!unheard)
+                ForwardInput(event);
 
             if(!keepRunning) [[unlikely]]
                 break;
@@ -285,6 +350,8 @@ namespace Crowy
             if(SDL_EVENT_WINDOW_FIRST <= event.type && event.type <= SDL_EVENT_WINDOW_LAST)
                 HandleWindowEvent(mainLoop, event.window);
         }
+        if(keepRunning)
+            DeliverPushedInput();
 
         return keepRunning;
     }
@@ -292,8 +359,10 @@ namespace Crowy
     bool OS::Impl::PumpHeld(MainLoop& mainLoop, RHIDevice& device){
         // no frame's pool is open between frames, and a resize allocates
         const auto scope = device.CreateFrameScope();
-        // a held loop gives the cursor back
-        ApplyRelativeMouse(false);
+        // a held loop gives the cursor back; a --port-input run holds none,
+        // and its look goes on across the steps that hold it between frames
+        if(!portInput)
+            ApplyRelativeMouse(false);
 
         SDL_Event event;
         for(bool have = SDL_WaitEventTimeout(&event, HELD_WAIT_MS); have; have = SDL_PollEvent(&event)){
@@ -302,7 +371,8 @@ namespace Crowy
 
             // so a key let go during the hold is not held after it; the next
             // frame's NewFrame drops the edges and the motion
-            ForwardInput(event);
+            if(!(portInput && isDeviceEvent(event.type)))
+                ForwardInput(event);
 
             if(SDL_EVENT_WINDOW_FIRST <= event.type && event.type <= SDL_EVENT_WINDOW_LAST)
                 HandleWindowEvent(mainLoop, event.window);
@@ -321,7 +391,7 @@ namespace Crowy
             swapchain->Resize(w, h);
             mainLoop.OnResize(w, h);
         }
-        if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST){
+        if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST && !portInput){
             auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
             inputProvider.OnFocusLost(sdlWindow);
         }
@@ -355,9 +425,26 @@ namespace Crowy
         auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
 
         // SDL turns it back on for a window that regains focus, so only a
-        // focused window holds it
-        const bool focused = SDL_GetKeyboardFocus() == sdlWindow;
+        // focused window holds it; a --port-input run's needs no window
+        const bool focused = portInput || SDL_GetKeyboardFocus() == sdlWindow;
         inputProvider.SetRelativeMouse(sdlWindow, wanted && focused);
+    }
+
+    void OS::Impl::DeliverPushedInput(){
+        const auto windowID = SDL_GetWindowID(static_cast<SDL_Window*>(window.GetWindow()));
+
+        // one at a time: each starts from where the one before left the mouse
+        for(const auto& input: pushedInput){
+            const auto event = inputProvider.Synthesize(input, windowID);
+            if(imguiEnabled && !IsLookMotion(event))
+                ImGui_ImplSDL3_ProcessEvent(&event);
+            ForwardInput(event);
+        }
+        pushedInput.clear();
+    }
+
+    bool OS::Impl::IsLookMotion(const SDL_Event& event) const noexcept{
+        return event.type == SDL_EVENT_MOUSE_MOTION && inputProvider.IsRelativeMouse();
     }
 
     void OS::Impl::BeginFrame(RHIDevice& device){
@@ -382,5 +469,13 @@ namespace Crowy
 
     const Window& OS::GetWindow() const noexcept{
         return impl->GetWindow();
+    }
+
+    InputStatus OS::ReadInput() const noexcept{
+        return impl->ReadInput();
+    }
+
+    void OS::PushInput(const InputEvent& input){
+        impl->PushInput(input);
     }
 }

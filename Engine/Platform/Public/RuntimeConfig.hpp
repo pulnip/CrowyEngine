@@ -21,6 +21,8 @@ namespace Crowy
         bool resizable = false;
         bool borderless = false;
         bool always_on_top = false;
+        // false: no click or Alt+Tab focuses it, as a --port-input run's
+        bool focusable = true;
 
         // a timed run wants Present(0, 0): with vsync on, every frame time
         // is really the refresh rate talking
@@ -71,6 +73,9 @@ namespace Crowy
         // argv only: --exit-after-frame <frame> ends the loop once that frame
         // is presented, so a run's length is counted, not timed
         std::optional<u64> exitAfterFrame;
+        // argv only: --port-input takes the keyboard and mouse from the
+        // command port's push_input alone; the devices are not heard
+        bool portInput = false;
         // argv only: --project <folder> stands in for the project root found
         // above the executable
         std::optional<std::filesystem::path> project;
@@ -85,6 +90,6 @@ namespace Crowy
     // The arguments after the program name: --config <path>, whose app
     // document's benchmark and window.vsync replace the sample's, --hold,
     // --capture-frame <frame> <path>, which may repeat, --exit-after-frame
-    // <frame> and --project <folder>.
+    // <frame>, --port-input and --project <folder>.
     void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
 }

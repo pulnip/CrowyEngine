@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FastPimpl.hpp"
+#include "InputEvent.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 #include "Semantics.hpp"
@@ -16,7 +17,7 @@ namespace Crowy
     class OS{
     private:
         class Impl;
-        static constexpr usize implSize = 760;
+        static constexpr usize implSize = 792;
         static constexpr usize implAlign = 8;
         FastPimpl<Impl, implSize, implAlign> impl;
 
@@ -33,6 +34,10 @@ namespace Crowy
 
         const InputProvider& GetInputProvider() const noexcept;
         const Window& GetWindow() const noexcept;
+        InputStatus ReadInput() const noexcept;
+
+        // a --port-input run's input, taken by the next frame that advances
+        void PushInput(const InputEvent&);
     };
 
     // direct access to ptr is unsafe, but handy helper
