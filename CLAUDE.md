@@ -84,12 +84,16 @@ powershell -NoProfile -File Tools/build.ps1 -Status
   relative path). Set `CROWY_WINDOW_DISPLAY=1` for every window you open.
 - `Tools/smoke_run.ps1 <exe>` runs one executable the way ctest does.
 - The command port (Debug only) listens on 27500; `StageEditor`'s scripts
-  use 27520; `CROWY_COMMAND_PORT` overrides (0 disables). A second worktree
+  use 27520, `Tools/input_checks.ps1` 27530; `CROWY_COMMAND_PORT` overrides
+  (0 disables). A second worktree
   running at the same time needs its own port. `--hold` starts paused.
   `--capture-frame <frame> <path>` (any build, repeatable) writes that
   frame as a BMP and runs every frame as a fixed step; the spikes' goldens
   are frame 60 captured this way. `--exit-after-frame <frame>` quits after
   presenting that frame; every windowed ctest entry ends this way.
+  `--port-input` hears no keyboard or mouse and takes the port's
+  `push_input` instead (`read_input` reports what the app saw); its window
+  never takes the focus, so a script never moves the owner's cursor.
   Drive it with `. Tools/port.ps1` (`Wait-Port`, `Set-PortProperty`,
   `Get-PortProperty`, `Save-PortFrame`, `Invoke-Port quit`).
 - On Windows, read `docs/windows.md` before debugging a crash, a silent
@@ -114,7 +118,8 @@ or for a merge.
 | Render | `-L render`, `-R "^Playground$"` |
 | Effects GPU code or `.slang` | `-L gpu`, `-R "^Island$"` |
 | Physics, the puzzles, PhysicsSync | `-L scenario`, `-R "^PhysicsPlayground$"` |
-| The window path (OS, input, AppFramework, swapchain, RenderApp, UIRenderer, port verbs), a reflection registration, a CMake link | `-L app` |
+| The window path (OS, AppFramework, swapchain, RenderApp, UIRenderer, port verbs), a reflection registration, a CMake link | `-L app` |
+| Platform input, the OS event path | `-L app`, `Tools/input_checks.ps1` |
 | The Stage loader, a Backlot bump | `-L content`, `Tools/stage_cuts.ps1` |
 | A `Tools/` script | that script, by hand |
 | Anything else: CPU modules, tests, docs | nothing more |

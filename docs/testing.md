@@ -124,6 +124,18 @@ Run it by hand when the Stage loader or Backlot changes.
 `Tools/stage_task.ps1` performs the owner's hand task over the port and
 asserts each step. The `content` label covers Backlot's import itself.
 
+## The input
+
+`Tools/input_checks.ps1` (and `.sh`) runs Playground held with
+`--port-input` and checks the input layer through `push_input` and
+`read_input`, a counted step at a time: the look, the panel's hold on the
+mouse, the wheel, the UI's hold on the keyboard and the Scene View's image.
+Run it by hand when Platform input or the OS event path changes.
+- It needs no hand on the mouse: the run hears no device and its window
+  never takes the focus.
+- What only a device shows stays a hand check: the OS cursor hiding and
+  coming back, raw input, a real change of focus.
+
 ## The other machine
 
 Work is built and verified on one machine first; the other backend and the
