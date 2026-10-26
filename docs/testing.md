@@ -6,17 +6,17 @@ baselines, the stage, the other machine, and what a test has to prove.
 
 ## Kinds
 
-A test has one ctest label, and the label says what it needs and when it
-runs.
+A test has one ctest label, and the label says what it needs. Which labels
+a change adds is the Verification table in `CLAUDE.md`.
 
-| Label | Needs | Holds | Runs when |
-|---|---|---|---|
-| `unit` | CPU only: no device, window or file outside the repo; a sleep only where elapsed time is the contract (a timer, a timeout) | contracts of functions, classes and RHI calls on the fakes; reference models and seeded fuzz | any compiled change, once per increment |
-| `gpu` | a device, no window | `*Check`: device results held against a CPU reference | GPU code or shaders change |
-| `render` | a window | `*Spike`: one backend semantic pinned by its frame-60 golden | RHI, Render or shaders change |
-| `app` | a window and content | a host starts, runs its frames and shuts down by itself, with no assert or debug-layer error | the window path, a registration or a link changes |
-| `scenario` | CPU, long simulations | sample content behaves: the puzzles solve, their pinned hashes hold | Physics or the puzzles change |
-| `content` | `../Backlot` | the external set imports at its pinned commit; skipped without it | the Stage loader or Backlot changes |
+| Label | Needs | Holds |
+|---|---|---|
+| `unit` | CPU only: no device, window or file outside the repo; a sleep only where elapsed time is the contract (a timer, a timeout) | contracts of functions, classes and RHI calls on the fakes; reference models and seeded fuzz |
+| `gpu` | a device, no window | `*Check`: device results held against a CPU reference |
+| `render` | a window | `*Spike`: one backend semantic pinned by its frame-60 golden |
+| `app` | a window and content | a host starts, runs its frames and shuts down by itself, with no assert or debug-layer error |
+| `scenario` | CPU, long simulations | sample content behaves: the puzzles solve, their pinned hashes hold |
+| `content` | `../Backlot` | the external set imports at its pinned commit; skipped without it |
 
 Outside ctest:
 - An example whose declaration names no `TEST` is built only.
@@ -25,8 +25,9 @@ Outside ctest:
   the stage scripts.
 
 Words used here:
-- **Smoke** means a shallow, broad "does it start and stop": the `app`
-  label.
+- **Smoke** run: one executable through `Tools/smoke_run`, the way its
+  ctest entry runs it (any `gpu`, `render` or `app` entry; a spike's run
+  also compares its golden).
 - **Spike** means an experiment. One that is kept pins its answer as a
   `render` golden.
 - **Check** means a component test on the device: `gpu`.

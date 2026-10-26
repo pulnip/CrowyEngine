@@ -29,7 +29,7 @@ git lfs pull
 
 ### Windows
 
-- x64, Shader Model 6.6 이상
+- x64, Shader Model 6.8 이상
 - LLVM clang-cl **20 이상** (VS 2026의 STL이 요구)
 - Visual Studio C++ 도구 + Windows SDK, CMake **3.31 이상**, Ninja, git-lfs
 - 개발 환경: LLVM 22.1.8, VS 2026 18.10, CMake 4.4, Windows SDK 10.0.26100

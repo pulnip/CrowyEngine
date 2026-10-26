@@ -6,8 +6,7 @@ C++ 클래스도 필요 없다. 엔진은 슬롯마다 파티클 하나(64바이
 몇 스텝을 돌지는 샘플이 정한다. Island는 World의 고정 틱을 그대로 쓴다(120 Hz
 화면이면 두 프레임에 한 틱). 프레임을 찍는 실행(`--capture-frame`, smoke가 이렇게
 찍는다)은 앱이 프레임마다 정확히 한 틱을 내서, 60번째 프레임이 매번 같은 그림이다.
-예제는 `Engine/Effects/Sample/Island/`의 `Embers.slang`, `Flames.slang`,
-`Rain.slang`, `Stars.slang`, `Meteors.slang`이다.
+예제는 `Engine/Effects/Sample/Island/`의 `.slang` 파일들이다.
 
 ## 1. 파일 하나
 
@@ -107,7 +106,8 @@ inline ParticleEffectDesc sparksDesc() {
 - `draws`: 그리기마다 `vs_<entry>`와 `fs_<entry>`를 쓴다. `Additive`는 빛을 더하고(순서
   상관없음), `Alpha`는 슬롯 순서대로 덮는다. 이펙트는 깊이를 쓰지 않으니 `Alpha`는 먼저
   그려진 이펙트를 앞뒤 없이 모두 덮는다. 그래서 `Alpha` 그리기는 `Additive`보다 앞에
-  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 별, 유성, 불꽃, 불씨 순서).
+  두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island의 순서는 `Island.cpp`의
+  `ExtractScene`에 있는 `Add` 호출 순서다).
 - 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 엔진의 표준 파이프라인에
   없다. Island가 자기 `DescribePipeline`에서 유리(Translucent) 앞에 끼워 넣는 hook 패스다.
 
@@ -116,7 +116,8 @@ inline ParticleEffectDesc sparksDesc() {
 - `effect.count`, `effect.step`, `effect.worldStep`, `effect.dt`(1/60), `effect.seed`,
   `effect.origin.xyz`, `effect.size`, `effect.params[0..3]`, `effect.cameraRight`,
   `effect.cameraUp`
-- `loopPhase(step, cycles)`: 4096스텝(68.3초) 루프를 `cycles`번 도는 것의 위상, [0, 1)
+- `loopPhase(step, cycles)`: `LoopSteps`(`WorldClock.slang`) 루프를 `cycles`번 도는 것의
+  위상, [0, 1)
 - `View.slang`의 `viewProj`, `cameraPosition`
 - `particleRandom(slot, generation, k)`: [0, 1) 균등 난수. `effectHash(...)`: 32비트 해시
 - `loadParticle(slot)`, `stripCorner(vertexID)`, `billboardCorner(center, halfSize, corner)`,
@@ -147,7 +148,8 @@ inline ParticleEffectDesc sparksDesc() {
     2^32를 나누므로 prewarm에서 0 아래로 감긴 스텝도 같은 위상이 된다.
 - **난수는 `particleRandom(slot, generation, k)`나 `effectHash(effect.seed, slot,
   generation, k)`, 그 [0, 1) 판인 `effectRandom(effect.seed, slot, generation, k)`로만**
-  만든다. k는 작은 수로 쓴다. `0xA6E`는 첫 스텝의 나이 분산이 쓰는 값이다. 시간에 따라
+  만든다. k는 작은 수로 쓴다. `ParticleStaggerDraw`(`Effect.slang`)는 첫 스텝의 나이
+  분산이 쓰는 k다. 시간에 따라
   바뀌는 난수는 generation 자리에 world step을 나눈 값을 넣는다(`Stars.slang`의 반짝임).
 - **원자 연산과 readback은 쓰지 않는다.** GPU 결과는 게임플레이로 돌아가지 않는다.
 - **한 파일에 push struct는 하나만 둔다.** 이펙트는 `EffectPush`만 쓴다. 다른 push가
@@ -199,19 +201,19 @@ build/bin/Debug/ImageCompareCheck.exe captures/Island.png Engine/Effects/Sample/
 ## 6. 파티클이 아닌 것
 
 Island의 바다는 파티클도 필드도 아니고 머티리얼이다. `Ocean.slang`의 `vs_ocean`이
-섬을 둘러싼 극좌표 격자(반지름 3.5~280 m)를 긴 파도 12개로 들어 올린다. `fs_ocean`은
+섬을 둘러싼 극좌표 격자를 긴 파도 `SEA_VERTEX_WAVES`개로 들어 올린다. `fs_ocean`은
 그 픽셀이 감당하는 만큼의 파도로 노멀을 만들고, 밤하늘의 반사(emissive)와 물가의
 거품(albedo, roughness)을 `Surface`에 넣은 뒤 엔진의 빛 루프(`sceneColor`)로 달과
 물가의 불빛 반사를 얻는다. 그래서 Normals 같은 데이터 뷰도 그대로 맞다.
 - 파도는 `Sea.slang`의 `seaHeight(xz, step, count, onGrid)`다. 날카로운 마루의 파도
-  36개(`SeaWaves.h`, C++도 같은 표를 읽는다)를 바람 방향으로 흘린다. 셰이더토이의
-  Seascape(CC BY-NC-SA)와 afl_ext의 바다(2023판 MIT)에서 기법을 배웠고 코드는 가져오지
-  않았다. 파장 비 1.18과 12/36 나눔은 afl_ext의 값이고, 높이와 방향과 속도는 물리에서
-  새로 정했다.
+  `SEA_WAVE_COUNT`개(`SeaWaves.h`, C++도 같은 표를 읽는다)를 바람 방향으로 흘린다.
+  셰이더토이의 Seascape(CC BY-NC-SA)와 afl_ext의 바다(2023판 MIT)에서 기법을 배웠고
+  코드는 가져오지 않았다. 파장 비 1.18과 정점·픽셀 파도 수의 나눔은 afl_ext의 값이고,
+  높이와 방향과 속도는 물리에서 새로 정했다.
 - 머티리얼의 레인 두 개로 시간과 달을 받는다: `custom0.x`가 루프 안의 world step,
   `custom1.xyz`가 달 쪽 방향이다. `Island.cpp`가 step은 프레임마다, 달은 만들 때 한 번
   쓴다.
-- 비는 같은 `seaHeight`(격자 파도 12개)에 떨어지고, 물결 고리는 파도를 타고,
+- 비는 같은 `seaHeight`(격자 파도 `SEA_VERTEX_WAVES`개)에 떨어지고, 물결 고리는 파도를 타고,
   `IslandCheck`의 CPU 트윈(`Sea.hpp`)이 같은 높이를 계산한다.
 
 바다 물결의 시뮬레이션이나 연기 같은 격자는 한 층 아래에서 만든다.
@@ -219,5 +221,4 @@ Island의 바다는 파티클도 필드도 아니고 머티리얼이다. `Ocean.
 - `ComputeKernel`: 컴퓨트 진입점 하나
 - `FieldPass`: 획득과 해제, 디스패치 사이 배리어, 처음 쓰는 필드의 클리어
 
-예제는 `Engine/Effects/Check/FieldCheck.cpp`다. 2D·3D 텍스처 필드와 핑퐁은 아직
-없다(설계만 있다).
+예제는 `Engine/Effects/Check/FieldCheck.cpp`다.

@@ -41,22 +41,10 @@
             }
         },
         {
-            "name": "Windows-llvm-x86",
-            "displayName": "llvm-x86",
-            "inherits": "Windows-llvm",
-            "architecture": {
-                "value": "x86",
-                "strategy": "external"
-            },
-            "toolset": {
-                "value": "host=x64",
-                "strategy": "external"
-            }
-        },
-        {
             "name": "Windows-msvc",
             "hidden": true,
             "inherits": "base",
+            "binaryDir": "build-msvc",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
@@ -71,19 +59,6 @@
             "inherits": "Windows-msvc",
             "architecture": {
                 "value": "x64",
-                "strategy": "set"
-            },
-            "toolset": {
-                "value": "host=x64",
-                "strategy": "set"
-            }
-        },
-        {
-            "name": "Windows-msvc-x86",
-            "displayName": "msvc-x86",
-            "inherits": "Windows-msvc",
-            "architecture": {
-                "value": "Win32",
                 "strategy": "set"
             },
             "toolset": {
@@ -145,24 +120,6 @@
             "configuration": "Release"
         },
         {
-            "name": "Windows-llvm-x86-Debug",
-            "displayName": "Debug",
-            "configurePreset": "Windows-llvm-x86",
-            "configuration": "Debug"
-        },
-        {
-            "name": "Windows-llvm-x86-RelWithDebInfo",
-            "displayName": "RelWithDebInfo",
-            "configurePreset": "Windows-llvm-x86",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "Windows-llvm-x86-Release",
-            "displayName": "Release",
-            "configurePreset": "Windows-llvm-x86",
-            "configuration": "Release"
-        },
-        {
             "name": "Windows-msvc-x64-Debug",
             "displayName": "Debug",
             "configurePreset": "Windows-msvc-x64",
@@ -178,24 +135,6 @@
             "name": "Windows-msvc-x64-Release",
             "displayName": "Release",
             "configurePreset": "Windows-msvc-x64",
-            "configuration": "Release"
-        },
-        {
-            "name": "Windows-msvc-x86-Debug",
-            "displayName": "Debug",
-            "configurePreset": "Windows-msvc-x86",
-            "configuration": "Debug"
-        },
-        {
-            "name": "Windows-msvc-x86-RelWithDebInfo",
-            "displayName": "RelWithDebInfo",
-            "configurePreset": "Windows-msvc-x86",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "Windows-msvc-x86-Release",
-            "displayName": "Release",
-            "configurePreset": "Windows-msvc-x86",
             "configuration": "Release"
         },
         {
