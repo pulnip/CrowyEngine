@@ -8,7 +8,6 @@ namespace
 {
     using History = FrameHistory<int, 4>;
 
-    // frames 1..count, each holding ten times its number
     History pushed(u64 count) {
         History history;
         for(u64 frame = 1; frame <= count; ++frame)

@@ -54,7 +54,6 @@ TEST(PackedTable, RemoveSwapsTheLastRowIntoTheHole) {
     ASSERT_EQ(table.Count(), 2u);
     EXPECT_FALSE(table.IsValid(middle));
 
-    // its handle followed it into the hole
     EXPECT_TRUE(table.IsValid(last));
     EXPECT_EQ(table.GetRef(last).value, 2);
     EXPECT_EQ(table.At(1).value, 2);

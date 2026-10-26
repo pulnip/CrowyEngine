@@ -34,7 +34,6 @@ namespace Crowy
                 ++generation;
             }
         };
-        // indexed by slot number
         std::vector<Entry> entries;
         std::vector<Slot> freeSlots;
 
@@ -61,7 +60,6 @@ namespace Crowy
             CROWY_ASSERT(IsValid(handle));
             auto slot = SlotOf(handle);
 
-            // expire old handles before the slot is reused
             entries[slot.value].Reset();
             freeSlots.push_back(slot);
         }
@@ -95,7 +93,6 @@ namespace Crowy
             return entries[slot.value].generation;
         }
 
-        // Points an already living slot at another position.
         void Bind(Slot slot, Index index) noexcept {
             CROWY_ASSERT(IsLiving(slot));
             CROWY_ASSERT(index.IsValid());
@@ -113,7 +110,6 @@ namespace Crowy
             return slot.value < entries.size() && entries[slot.value].IsValid();
         }
 
-        // Every slot ever handed out, living or not.
         usize SlotCount() const noexcept { return entries.size(); }
         usize LiveCount() const noexcept {
             return entries.size() - freeSlots.size();
@@ -128,7 +124,6 @@ namespace Crowy
                 return slot;
             }
 
-            // growing table for keeping slot vaild
             auto slot = Slot{entries.size()};
             entries.emplace_back();
 

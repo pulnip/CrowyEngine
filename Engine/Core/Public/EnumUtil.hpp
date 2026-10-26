@@ -17,10 +17,6 @@ namespace Crowy
         T value;
     };
 
-    // declared once per enum through CROWY_ENUM_BEGIN below, which fills:
-    //   static constexpr CStr name;
-    //   static constexpr std::array entries;  // of EnumEntry<T>
-    // every lookup here and every consumer derives from those two
     template<EnumType T>
     struct EnumTraits;
 
@@ -72,10 +68,7 @@ namespace Crowy
     }
 }
 
-// Declares EnumTraits<TYPE> from the enumerators themselves, so an entry's
-// string and its value cannot disagree. Write it inside namespace Crowy;
-// the enum itself may live anywhere.
-//
+// Write it inside namespace Crowy; the enum itself may live anywhere.
 //   CROWY_ENUM_BEGIN(RHIBackend)
 //       CROWY_ENUM_VALUE(DirectX12)
 //       CROWY_ENUM_VALUE(Metal)

@@ -1,4 +1,3 @@
-// for std::views::enumerate
 #pragma once
 
 #include <ranges>

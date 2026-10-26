@@ -10,7 +10,6 @@ using namespace Crowy;
 
 namespace
 {
-    // a fresh folder under the temp directory, removed with the fixture
     class ProjectRootTest: public testing::Test {
     protected:
         std::filesystem::path base;

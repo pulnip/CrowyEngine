@@ -59,7 +59,6 @@ TEST_F(HandleTableTest, ReleaseInvalidatesOnlyItsHandle) {
     EXPECT_FALSE(table.IsValid(first));
     EXPECT_TRUE(table.IsValid(second));
     EXPECT_EQ(table.LiveCount(), 1);
-    // a released slot stays counted, it is only parked for reuse
     EXPECT_EQ(table.SlotCount(), 2);
 }
 
@@ -133,7 +132,6 @@ TEST_F(HandleTableTest, ReleaseAllThenReacquire) {
 
     EXPECT_EQ(table.LiveCount(), 0);
 
-    // every slot comes back from the free list, none is freshly appended
     for(usize i = 0; i < COUNT; ++i) {
         table.Acquire(at(i));
     }

@@ -15,7 +15,6 @@ namespace Crowy
     // found once, from the executable's folder: engine files resolve against
     // it however the process was launched, never against the cwd
     const std::filesystem::path& projectRoot();
-    // --project: only before anything asked for projectRoot()
     void setProjectRoot(const std::filesystem::path& folder);
 
     // a relative path is taken from projectRoot(), an absolute one kept

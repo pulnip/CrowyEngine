@@ -42,21 +42,18 @@ namespace Crowy
             return bindLastRow();
         }
 
-        // for a row that cannot be copied, such as one owning a GPU resource
         Handle Add(T&& row) {
             rows.push_back(std::move(row));
 
             return bindLastRow();
         }
 
-        // the row's current position, valid until the next Remove
         usize IndexOf(Handle handle) const noexcept {
             CROWY_ASSERT(IsValid(handle));
 
             return slots.IndexOf(handle).value;
         }
 
-        // the handle of the row at this position, valid until the next Remove
         Handle HandleAt(usize index) const noexcept {
             CROWY_ASSERT(index < rows.size());
 
@@ -78,7 +75,6 @@ namespace Crowy
             if(index != last) {
                 rows[index] = std::move(rows[last]);
                 slotOfRow[index] = slotOfRow[last];
-                // the moved row's handle has to follow it
                 slots.Bind(slotOfRow[index], Index{index});
             }
 
@@ -87,7 +83,6 @@ namespace Crowy
             slots.Release(handle);
         }
 
-        // releases every slot so old handles stay dead; lowest reused first
         void Clear() {
             std::ranges::sort(slotOfRow, std::greater{}, &Slot::value);
             for(const auto slot: slotOfRow)

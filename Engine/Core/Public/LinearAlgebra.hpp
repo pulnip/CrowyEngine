@@ -181,11 +181,9 @@ namespace Crowy
 
     // inverse for Mat4 without Scale (= Rotation + Translation Only)
     inline constexpr Mat4 inverseRigid(const Mat4 mat) noexcept {
-        // basis vector
         const auto x = static_cast<Vec3>(mat[0]);
         const auto y = static_cast<Vec3>(mat[1]);
         const auto z = static_cast<Vec3>(mat[2]);
-        // translation
         const auto t = static_cast<Vec3>(mat[3]);
         const auto tx = -dot(x, t);
         const auto ty = -dot(y, t);
@@ -201,11 +199,9 @@ namespace Crowy
 
     // inverse for Mat4 with scale, but no projection (last row is 0 0 0 1)
     inline constexpr Mat4 inverseAffine(const Mat4 mat) noexcept {
-        // basis vector
         const auto x = static_cast<Vec3>(mat[0]);
         const auto y = static_cast<Vec3>(mat[1]);
         const auto z = static_cast<Vec3>(mat[2]);
-        // translation
         const auto t = static_cast<Vec3>(mat[3]);
 
         // rows of the inverted basis, adjugate over determinant
@@ -222,7 +218,6 @@ namespace Crowy
         };
     }
 
-    // expected multiplication form
     inline constexpr Vec4 operator*(const Mat4& lhs, const Vec4& rhs) noexcept {
         return lhs[0] * rhs.x + lhs[1] * rhs.y + lhs[2] * rhs.z +
                lhs[3] * rhs.w;
@@ -237,7 +232,6 @@ namespace Crowy
         auto f = normalize(target - eye);
         auto r = normalize(cross(up, f));
         auto u = cross(f, r);
-        // column-major
         return Mat4{
             Vec4{r.x, u.x, f.x, 0.0f},
             Vec4{r.y, u.y, f.y, 0.0f},
@@ -249,7 +243,6 @@ namespace Crowy
     inline auto rotateXMat(f32 theta) noexcept {
         f32 c = std::cos(theta);
         f32 s = std::sin(theta);
-        // column-major
         return Mat4{
             Vec4{1.0f, 0.0f, 0.0f, 0.0f},
             Vec4{0.0f, c, s, 0.0f},
@@ -261,7 +254,6 @@ namespace Crowy
     inline auto rotateYMat(f32 theta) noexcept {
         f32 c = std::cos(theta);
         f32 s = std::sin(theta);
-        // column-major
         return Mat4{
             Vec4{c, 0.0f, -s, 0.0f},
             Vec4{0.0f, 1.0f, 0.0f, 0.0f},
@@ -273,7 +265,6 @@ namespace Crowy
     inline auto rotateZMat(f32 theta) noexcept {
         f32 c = std::cos(theta);
         f32 s = std::sin(theta);
-        // column-major
         return Mat4{
             Vec4{c, s, 0.0f, 0.0f},
             Vec4{-s, c, 0.0f, 0.0f},
@@ -283,7 +274,6 @@ namespace Crowy
     }
 
     inline constexpr auto translateMat(Vec3 t) noexcept {
-        // column-major
         return Mat4{
             Vec4{1.0f, 0.0f, 0.0f, 0.0f},
             Vec4{0.0f, 1.0f, 0.0f, 0.0f},
@@ -296,7 +286,6 @@ namespace Crowy
         f32 xx = q.x * q.x, yy = q.y * q.y, zz = q.z * q.z;
         f32 xy = q.x * q.y, xz = q.x * q.z, yz = q.y * q.z;
         f32 wx = q.w * q.x, wy = q.w * q.y, wz = q.w * q.z;
-        // column-major
         return Mat4{
             Vec4{1 - 2 * (yy + zz), 2 * (xy + wz), 2 * (xz - wy), 0.0f},
             Vec4{2 * (xy - wz), 1 - 2 * (xx + zz), 2 * (yz + wx), 0.0f},
@@ -349,7 +338,6 @@ namespace Crowy
         auto e23 = -nearZ * e22;
 
         return Mat4{
-            // column-major
             Vec4{2 / w, 0.0f, 0.0f, 0.0f},
             Vec4{0.0f, 2 / h, 0.0f, 0.0f},
             Vec4{0.0f, 0.0f, e22, 0.0f},

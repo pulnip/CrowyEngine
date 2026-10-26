@@ -1,4 +1,3 @@
-// for std::move_only_function
 #pragma once
 
 #include <functional>

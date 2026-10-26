@@ -1,6 +1,5 @@
 #pragma once
 
-// copy - move semantics
 #define CROWY_DECLARE_DEFAULT_COPYABLE(Type)                                   \
     Type(const Type&) = default;                                               \
     Type& operator=(const Type&) = default;
@@ -54,7 +53,6 @@
     Type(Type&&) noexcept = default;                                           \
     CROWY_DECLARE_NON_ASSIGNABLE(Type)
 
-// interface semantics
 #define CROWY_DECLARE_INTERFACE(Type)                                          \
     Type() = default;                                                          \
     virtual ~Type() = default;                                                 \
