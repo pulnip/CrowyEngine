@@ -6,7 +6,7 @@ D3D12와 Metal의 호출을 단일한 gfx api로 가능하게 만들었다.
 ## 구조
 
 - **가상 인터페이스.**
-  `RHIDevice`, `RHICommandList`, `RHITexture`, `RHIBuffer`, `RHISwapchain`, `RHIPipelineState`, `RHIFence`가 추상 클래스로 있다([Engine/RHI/Public](../Engine/RHI/Public)).
+  `RHIDevice`, `RHICommandList`, `RHITexture`, `RHIBuffer`, `RHISwapchain`, `RHIGraphicsPipelineState`, `RHIComputePipelineState`, `RHIFence`가 추상 클래스로 있다([Engine/RHI/Public](../Engine/RHI/Public)).
   구현은 `DX12Device`([DX12RHI](../Engine/DX12RHI))랑 `MetalDevice`([MetalRHI](../Engine/MetalRHI))가 한다.
 - **백엔드는 플랫폼마다 하나, 컴파일 타임에 정해진다.**
   CMake가 Windows에선 DX12RHI를, macOS에선 MetalRHI를 링크하고 `CreateDevice()`의 기본값도 `#if`로 갈린다([RHIDevice.hpp](../Engine/RHI/Public/RHIDevice.hpp)).

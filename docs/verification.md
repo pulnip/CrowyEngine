@@ -59,12 +59,15 @@ instance id의 기준값, 깊이 prepass와 Equal 테스트 사이의 위치 불
 테스트를 추가하지 않는 대부분의 변경, 실제 앱에서의 동작에 대해서도 검증할 방법이 필요하다.
 그런데, AI는 창을 직접 보거나 패널을 누를 수 없으므로 별도 방법이 필요하다.
 
-Debug 빌드의 앱은 로컬 HTTP 포트로 명령을 받는데([CommandPort.hpp](../Engine/Remote/Public/CommandPort.hpp)), 명령 종류는 아래와 같다.
+Debug 빌드에서 `FrameHost` 위에 선 렌더러 샘플은 로컬 HTTP 포트로 명령을 받는데([CommandPort.hpp](../Engine/Remote/Public/CommandPort.hpp)), 명령 종류는 아래와 같다.
 
 - **조작**: 리플렉션으로 등록된 값을 읽고 쓴다. 사람이 패널에서 바꾸는 값과 같은 경로다.
 - **관찰**: 프레임을 캡처하고 프레임 통계를 읽는다.
 - **진행 제어**: 앱을 멈추고, N프레임만 돌리고, 특정 프레임까지 기다린다.
   앱이 계속 돌면 읽은 값이 어느 시점의 것인지 매번 달라지므로, 같은 결과를 얻으려면 이 제어가 필요하다.
+- **입력**: `--port-input`으로 띄운 앱에 키보드·마우스 입력을 넣고(`push_input`), 앱이 본 입력을 읽는다(`read_input`).
+
+전체 verb와 각 verb가 받는 인자는 포트의 `GET /`가 보여 준다.
 
 ```bash
 curl -X POST http://127.0.0.1:27500/rpc \

@@ -108,8 +108,8 @@ inline ParticleEffectDesc sparksDesc() {
   상관없음), `Alpha`는 슬롯 순서대로 덮는다. 이펙트는 깊이를 쓰지 않으니 `Alpha`는 먼저
   그려진 이펙트를 앞뒤 없이 모두 덮는다. 그래서 `Alpha` 그리기는 `Additive`보다 앞에
   두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island는 비, 별, 유성, 불꽃, 불씨 순서).
-- 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 유리(Translucent)보다
-  먼저 그려진다.
+- 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 엔진의 표준 파이프라인에
+  없다. Island가 자기 `DescribePipeline`에서 유리(Translucent) 앞에 끼워 넣는 hook 패스다.
 
 ## 3. 셰이더에서 쓸 수 있는 것
 
@@ -183,12 +183,17 @@ build/bin/Debug/Island.exe
 . Tools/port.ps1; Invoke-Port reload_shaders
 ```
 - 포트는 `CROWY_COMMAND_PORT`(없으면 27500)다. Island를 띄울 때와 같은 값이어야 한다.
-- 그림이 마음에 들면 smoke로 프레임 60을 `captures/Island.png`에 찍는다. 골든과 같으면
-  `similar`로 끝난다. 다르면 `FAIL`과 함께 `to accept: Copy-Item ...` 줄을 출력한다.
-  그 줄은 PowerShell 명령이라 PowerShell에서 실행하면 새 그림이 골든이 된다.
+- 그림이 마음에 들면 smoke로 프레임 60을 `captures/Island.png`에 찍는다.
+  `Engine/Effects/Sample/Golden/Island.<dx12|metal>.png`는 골든이 아니라 기준선이라서
+  smoke와 ctest는 비교하지 않는다. 그림이 그대로인지는 `ImageCompareCheck`로 손수
+  비교하고, 기준선은 오너가 새 모습을 받아들일 때만 다시 찍는다(`docs/testing.md`).
 
 ```bash
 CROWY_SMOKE_CAPTURE_DIR=captures powershell -NoProfile -File Tools/smoke_run.ps1 build/bin/Debug/Island.exe
+```
+
+```bash
+build/bin/Debug/ImageCompareCheck.exe captures/Island.png Engine/Effects/Sample/Golden/Island.dx12.png --tolerance 0
 ```
 
 ## 6. 파티클이 아닌 것

@@ -11,7 +11,7 @@ runs.
 
 | Label | Needs | Holds | Runs when |
 |---|---|---|---|
-| `unit` | CPU only: no device, file outside the repo, socket timing or sleep | contracts of functions, classes and RHI calls on the fakes; reference models and seeded fuzz | any compiled change, once per increment |
+| `unit` | CPU only: no device, window or file outside the repo; a sleep only where elapsed time is the contract (a timer, a timeout) | contracts of functions, classes and RHI calls on the fakes; reference models and seeded fuzz | any compiled change, once per increment |
 | `gpu` | a device, no window | `*Check`: device results held against a CPU reference | GPU code or shaders change |
 | `render` | a window | `*Spike`: one backend semantic pinned by its frame-60 golden | RHI, Render or shaders change |
 | `app` | a window and content | a host starts, runs its frames and shuts down by itself, with no assert or debug-layer error | the window path, a registration or a link changes |
@@ -19,8 +19,8 @@ runs.
 | `content` | `../Backlot` | the external set imports at its pinned commit; skipped without it | the Stage loader or Backlot changes |
 
 Outside ctest:
-- Examples are built only. `Tools/smoke_run.ps1 <exe>` runs one when you
-  want to look at it.
+- An example whose declaration names no `TEST` is built only.
+  `Tools/smoke_run.ps1 <exe>` runs one when you want to look at it.
 - Tolerance-0 baselines (below), benchmarks (`Tools/bench_run.ps1`), and
   the stage scripts.
 
@@ -67,9 +67,9 @@ prescribe tests, counts or gates.
 
 ## Windowed runs and goldens
 
-An executable declared with `TEST gpu`, `TEST render` or `TEST app` in
-`cmake/sample.cmake` gets a ctest entry of its own name, which runs it
-through `Tools/smoke_run.ps1` (macOS: `smoke_run.sh`).
+An executable whose declaration in its module's CMakeLists names
+`TEST gpu`, `TEST render` or `TEST app` gets a ctest entry of its own name,
+which runs it through `Tools/smoke_run.ps1` (macOS: `smoke_run.sh`).
 - A windowed one gets `--exit-after-frame` and must exit by itself,
   shutdown included, within 60 s (`CROWY_SMOKE_TIMEOUT`).
 - It runs 60 frames, or the `FRAMES` its declaration gives, or

@@ -16,7 +16,7 @@
 
 .EXAMPLE
     Tools/build.ps1                                  # foreground, configure if needed
-    Tools/build.ps1 -Target CrowyEditor -Detach      # start and return immediately
+    Tools/build.ps1 -Target CrowyRenderTest -Detach  # start and return immediately
     Tools/build.ps1 -Status                          # running? / exit code / log tail
 #>
 [CmdletBinding()]

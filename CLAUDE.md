@@ -26,13 +26,14 @@ backends D3D12 and Metal. Modules under `Engine/`:
   no reflected properties stops the save. `Asset` names an asset by its
   mount and normalized path (`AssetRef`, `engine:` or the content root) and
   loads each once, released at the `Collect` after its last handle goes
-  (`AssetStore`); nothing loads through it yet.
+  (`AssetStore`); Render's `MeshStore` loads meshes through it.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
-`*Check` (headless, exits nonzero on a wrong number), declared in
-`cmake/sample.cmake`. ctest labels: `unit`, `gpu` (checks), `render`
-(spikes), `app` (four hosts), `scenario`, `content` (`docs/testing.md`); an
-executable without one is built only.
+`*Check` (headless, exits nonzero on a wrong number), declared in their
+module's CMakeLists through the functions in `cmake/sample.cmake`. ctest
+labels: `unit`, `gpu` (checks), `render` (spikes), `app` (four hosts),
+`scenario`, `content` (`docs/testing.md`); an executable without one is
+built only.
 
 ## Code conventions here
 
@@ -79,9 +80,10 @@ powershell -NoProfile -File Tools/build.ps1 -Status
 
 - Poll until `running : False`, then read `build/build-log.txt`. A tool
   timeout is not a failure; the detached build continues.
-- A full Debug build is ~60 s, an incremental one ~15 s; editing
-  `RenderApp.cpp` rebuilds every executable that compiles it. Ten minutes
-  means wedged: check `Get-Process ninja,clang-cl,lld-link`, never kill it.
+- A full Debug build is ~60 s, an incremental one ~15 s; every windowed
+  executable compiles `RHI/Sample/AppFramework.cpp` itself, so editing it
+  rebuilds them all. Ten minutes means wedged: check
+  `Get-Process ninja,clang-cl,lld-link`, never kill it.
 - One target per call, one build at a time. Windows PowerShell 5.1
   (`powershell`), never `pwsh`.
 - `file(GLOB)` has no `CONFIGURE_DEPENDS`: a new source file needs a
