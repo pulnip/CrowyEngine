@@ -88,7 +88,7 @@ namespace Crowy
             return {InspectSection{
                 .label = "transform",
                 .target = &stage.document.instances[object],
-                .desc = GetDesc<StageInstance>(),
+                .desc = getDesc<StageInstance>(),
                 .apply = [this, object] { ApplyInstance(object); },
                 // only the unit box is scaled per axis
                 .gizmo = combine(GizmoParts::Move, GizmoParts::Turn, box ? GizmoParts::ScaleAxes : GizmoParts::Scale)
@@ -100,7 +100,7 @@ namespace Crowy
                 InspectSection{
                     .label = "transform",
                     .target = &stage.document.quads[quad],
-                    .desc = GetDesc<StageQuad>(),
+                    .desc = getDesc<StageQuad>(),
                     .apply = [this, quad] { ApplyQuad(quad); },
                     // width and height stay with the inspector
                     .gizmo = combine(GizmoParts::Move, GizmoParts::Turn)
@@ -110,7 +110,7 @@ namespace Crowy
                 InspectSection{
                     .label = "material",
                     .target = &scene.Materials().GetRef(bindings.quadMaterials[quad]).data,
-                    .desc = GetDesc<MaterialData>(),
+                    .desc = getDesc<MaterialData>(),
                     .apply = [this, quad] { ApplyQuad(quad); }
                 }
             };
@@ -121,7 +121,7 @@ namespace Crowy
         return {InspectSection{
             .label = "light",
             .target = &stage.document.lights[light],
-            .desc = GetDesc<StageLight>(),
+            .desc = getDesc<StageLight>(),
             .apply = [this, light] { ApplyLight(light); },
             .gizmo = GizmoParts::Move
         }};

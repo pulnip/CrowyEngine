@@ -35,7 +35,7 @@ TEST(Reflection, NestedProperty){
     "scale": [4.0, 5.0, 6.0]
 }
 })");
-        EXPECT_TRUE(Crowy::ApplyProperties(&probe, dom).empty());
+        EXPECT_TRUE(Crowy::applyProperties(&probe, dom).empty());
 
         Transform expected{
             .position = Vec3{1.0, 2.0, 3.0},
@@ -54,7 +54,7 @@ TEST(Reflection, NestedProperty){
 "rotation": [1.0, 0.0, 0.0, 0.0],
 "scale": [6.0, 5.0, 4.0]
 })");
-        EXPECT_TRUE(Crowy::ApplyProperties(&probe, dom).empty());
+        EXPECT_TRUE(Crowy::applyProperties(&probe, dom).empty());
 
         Transform expected{
             .position = Vec3{3.0, 2.0, 1.0},
@@ -114,7 +114,7 @@ TEST(Reflection, NestedStructDesc){
     "health": {"current": 7}
 }
 })");
-    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
+    EXPECT_TRUE(applyProperties(&probe, dom).empty());
 
     EXPECT_EQ(probe.stats.speed, 3.5f);
     EXPECT_EQ(probe.stats.health.current, 7);
@@ -144,7 +144,7 @@ TEST(Reflection, ChainedStructDesc){
     "maximum": 12
 }
 })");
-    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
+    EXPECT_TRUE(applyProperties(&probe, dom).empty());
 
     EXPECT_EQ(probe.stats.health.current, 3);
     EXPECT_EQ(probe.stats.health.maximum, 12);
@@ -173,7 +173,7 @@ CROWY_STRUCT_END(OrderProbe)
 TEST(Reflection, RegistrationOrderSurvives){
     ASSERT_TRUE(IsOrderProbeRegistered);
 
-    const auto* desc = GetDesc<OrderProbe>();
+    const auto* desc = getDesc<OrderProbe>();
     ASSERT_EQ(desc->properties.size(), 4u);
     EXPECT_EQ(desc->properties[0].name, "delta");
     EXPECT_EQ(desc->properties[1].name, "alpha");
@@ -184,7 +184,7 @@ TEST(Reflection, RegistrationOrderSurvives){
 TEST(Reflection, SerializedKeysFollowRegistration) {
     OrderProbe probe;
     DOM::Value value;
-    SerializeProperties(&probe, value);
+    serializeProperties(&probe, value);
 
     std::vector<Str> keys;
     for(const auto& [key, _]: *value.asTable()) {
@@ -194,7 +194,7 @@ TEST(Reflection, SerializedKeysFollowRegistration) {
 }
 
 TEST(Reflection, RangeReachesTheMeta){
-    const auto* desc = GetDesc<OrderProbe>();
+    const auto* desc = getDesc<OrderProbe>();
 
     const auto* ranged = desc->Find("delta");
     ASSERT_TRUE(ranged != nullptr);
@@ -208,7 +208,7 @@ TEST(Reflection, RangeReachesTheMeta){
 }
 
 TEST(Reflection, FindByName){
-    const auto* desc = GetDesc<OrderProbe>();
+    const auto* desc = getDesc<OrderProbe>();
 
     const auto* found = desc->Find("gamma");
     ASSERT_TRUE(found != nullptr);
@@ -249,14 +249,14 @@ TEST(Reflection, InheritedPropertyApplies){
 "ownValue": 7.5
 })");
     // one flat table holds the parent's keys and the child's
-    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
+    EXPECT_TRUE(applyProperties(&probe, dom).empty());
 
     EXPECT_EQ(probe.baseValue, 2.5f);
     EXPECT_EQ(probe.ownValue, 7.5f);
 }
 
 TEST(Reflection, InheritedPropertyStaysOnTheParentTable){
-    const auto* desc = GetDesc<InheritanceChild>();
+    const auto* desc = getDesc<InheritanceChild>();
 
     // per-class tables are not merged: a consumer follows parent itself
     EXPECT_TRUE(desc->Find("ownValue") != nullptr);
@@ -305,7 +305,7 @@ TEST(Reflection, EnumNameLookupsRoundTrip){
 TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps){
     ASSERT_TRUE(IsEnumProbeRegistered);
 
-    const auto* prop = GetDesc<EnumProbe>()->Find("mode");
+    const auto* prop = getDesc<EnumProbe>()->Find("mode");
     ASSERT_TRUE(prop != nullptr);
     EXPECT_STREQ(prop->type.name, "BlendProbe");
 
@@ -322,20 +322,20 @@ TEST(Reflection, EnumDeserializesByName){
     EnumProbe probe;
 
     auto dom = parseJsonString(R"({"mode": "Multiply"})");
-    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
+    EXPECT_TRUE(applyProperties(&probe, dom).empty());
     EXPECT_EQ(probe.mode, BlendProbe::Multiply);
 
     // an unknown name is reported and keeps the current value
     auto unknown = parseJsonString(R"({"mode": "Screen"})");
     EXPECT_EQ(
-        ApplyProperties(&probe, unknown),
+        applyProperties(&probe, unknown),
         PropertyErrors{"'mode' expects BlendProbe"}
     );
     EXPECT_EQ(probe.mode, BlendProbe::Multiply);
 }
 
 TEST(Reflection, FindInChainReachesTheParent){
-    const auto* desc = GetDesc<InheritanceChild>();
+    const auto* desc = getDesc<InheritanceChild>();
 
     EXPECT_TRUE(desc->FindInChain("ownValue") != nullptr);
     EXPECT_TRUE(desc->FindInChain("baseValue") != nullptr);
@@ -349,13 +349,13 @@ TEST(Reflection, SerializedObjectAppliesBack){
     source.stats.health.maximum = 42;
 
     DOM::Value out;
-    SerializeProperties(&source, out);
+    serializeProperties(&source, out);
     ASSERT_TRUE(out.is_table());
     // two levels of struct below the one registered property
     EXPECT_TRUE(out.at("stats.health.current") != nullptr);
 
     StructProbe back;
-    EXPECT_TRUE(ApplyProperties(&back, parseJsonString(emitJson(out))).empty());
+    EXPECT_TRUE(applyProperties(&back, parseJsonString(emitJson(out))).empty());
     EXPECT_EQ(back.stats.speed, 3.5f);
     EXPECT_EQ(back.stats.health.current, 7);
     EXPECT_EQ(back.stats.health.maximum, 42);
@@ -367,45 +367,45 @@ TEST(Reflection, SerializeFlattensTheParentChain){
     child.ownValue = 7.5f;
 
     DOM::Value out;
-    SerializeProperties(&child, out);
+    serializeProperties(&child, out);
 
-    // the parent's keys sit beside the child's, the shape ApplyProperties reads
+    // the parent's keys sit beside the child's, the shape applyProperties reads
     EXPECT_EQ(out.get<f32>("baseValue"), 2.5f);
     EXPECT_EQ(out.get<f32>("ownValue"), 7.5f);
 }
 
 TEST(Reflection, ResolvePropertyWalksDots){
     StructProbe object;
-    const auto& desc = *GetDesc<StructProbe>();
+    const auto& desc = *getDesc<StructProbe>();
 
-    auto speed = ResolveProperty(&object, desc, "stats.speed");
+    auto speed = resolveProperty(&object, desc, "stats.speed");
     ASSERT_TRUE(speed.type != nullptr);
     EXPECT_TRUE(speed.member == &object.stats.speed);
-    EXPECT_EQ(speed.type, GetTypeOps<f32>());
+    EXPECT_EQ(speed.type, getTypeOps<f32>());
 
-    auto current = ResolveProperty(&object, desc, "stats.health.current");
+    auto current = resolveProperty(&object, desc, "stats.health.current");
     ASSERT_TRUE(current.type != nullptr);
     EXPECT_TRUE(current.member == &object.stats.health.current);
 
     // a terminal struct resolves too; it has no leaf serializer
-    auto stats = ResolveProperty(&object, desc, "stats");
+    auto stats = resolveProperty(&object, desc, "stats");
     ASSERT_TRUE(stats.type != nullptr);
     EXPECT_TRUE(stats.member == &object.stats);
     EXPECT_TRUE(stats.type->serialize == nullptr);
-    EXPECT_TRUE(NestedDesc(*stats.type) != nullptr);
+    EXPECT_TRUE(nestedDesc(*stats.type) != nullptr);
 }
 
 // a const object resolves to const members only, so a read cannot write
 TEST(Reflection, AConstObjectResolvesToAConstMember) {
     const StructProbe object;
-    const auto& desc = *GetDesc<StructProbe>();
+    const auto& desc = *getDesc<StructProbe>();
 
-    const auto current = ResolveProperty(&object, desc, "stats.health.current");
+    const auto current = resolveProperty(&object, desc, "stats.health.current");
     static_assert(std::is_same_v<decltype(current.member), const void*>);
     ASSERT_TRUE(current.type != nullptr);
     EXPECT_TRUE(current.member == &object.stats.health.current);
 
-    const auto* accessor = GetDesc<Health>()->Find("current")->accessor.get();
+    const auto* accessor = getDesc<Health>()->Find("current")->accessor.get();
     static_assert(std::is_same_v<
                   decltype(accessor->Get(&object.stats.health)),
                   const void*>);
@@ -415,33 +415,33 @@ TEST(Reflection, AConstObjectResolvesToAConstMember) {
 TEST(Reflection, ResolvePropertyReachesTheParent){
     InheritanceChild child;
 
-    auto base = ResolveProperty(&child, *GetDesc<InheritanceChild>(), "baseValue");
+    auto base = resolveProperty(&child, *getDesc<InheritanceChild>(), "baseValue");
     ASSERT_TRUE(base.type != nullptr);
     EXPECT_TRUE(base.member == &child.baseValue);
 }
 
 TEST(Reflection, ResolvePropertyNamesTheFailure){
     StructProbe object;
-    const auto& desc = *GetDesc<StructProbe>();
+    const auto& desc = *getDesc<StructProbe>();
 
-    auto unknown = ResolveProperty(&object, desc, "nope");
+    auto unknown = resolveProperty(&object, desc, "nope");
     EXPECT_TRUE(unknown.type == nullptr);
     EXPECT_EQ(unknown.error, "no property 'nope' on 'StructProbe'");
 
-    auto unknownNested = ResolveProperty(&object, desc, "stats.nope");
+    auto unknownNested = resolveProperty(&object, desc, "stats.nope");
     EXPECT_TRUE(unknownNested.type == nullptr);
     EXPECT_EQ(unknownNested.error, "no property 'nope' on 'Stats'");
 
-    auto intoLeaf = ResolveProperty(&object, desc, "stats.speed.x");
+    auto intoLeaf = resolveProperty(&object, desc, "stats.speed.x");
     EXPECT_TRUE(intoLeaf.type == nullptr);
     EXPECT_EQ(intoLeaf.error, "'speed' has no properties");
 
-    EXPECT_TRUE(ResolveProperty(&object, desc, "").type == nullptr);
-    EXPECT_TRUE(ResolveProperty(&object, desc, "stats.").type == nullptr);
-    EXPECT_TRUE(ResolveProperty(&object, desc, ".stats").type == nullptr);
-    EXPECT_TRUE(ResolveProperty(&object, desc, "stats..speed").type == nullptr);
+    EXPECT_TRUE(resolveProperty(&object, desc, "").type == nullptr);
+    EXPECT_TRUE(resolveProperty(&object, desc, "stats.").type == nullptr);
+    EXPECT_TRUE(resolveProperty(&object, desc, ".stats").type == nullptr);
+    EXPECT_TRUE(resolveProperty(&object, desc, "stats..speed").type == nullptr);
 
-    auto notAList = ResolveProperty(&object, desc, "stats[0]");
+    auto notAList = resolveProperty(&object, desc, "stats[0]");
     EXPECT_TRUE(notAList.type == nullptr);
     EXPECT_EQ(notAList.error, "'stats' is not a list");
 }
@@ -449,7 +449,7 @@ TEST(Reflection, ResolvePropertyNamesTheFailure){
 TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
     StructProbe object;
 
-    const auto errors = ApplyProperties(&object, parseJsonString(R"({
+    const auto errors = applyProperties(&object, parseJsonString(R"({
 "stats": {"speed": 2.0, "sped": 3.0, "health": {"curent": 4}},
 "stat": 1
 })"));
@@ -469,7 +469,7 @@ TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
 TEST(Reflection, ApplyReportsAValueThatDoesNotBind) {
     StructProbe object;
 
-    const auto errors = ApplyProperties(&object, parseJsonString(R"({
+    const auto errors = applyProperties(&object, parseJsonString(R"({
 "stats": {"speed": "fast", "health": 3}
 })"));
 
@@ -488,7 +488,7 @@ TEST(Reflection, ApplyReportsARootThatIsNotATable) {
     StructProbe object;
 
     EXPECT_EQ(
-        ApplyProperties(&object, parseJsonString("[1]")),
+        applyProperties(&object, parseJsonString("[1]")),
         PropertyErrors{"'StructProbe' expects a table"}
     );
 }
@@ -496,16 +496,16 @@ TEST(Reflection, ApplyReportsARootThatIsNotATable) {
 TEST(Reflection, ApplyLeavesAbsentKeysAlone) {
     StructProbe object;
 
-    EXPECT_TRUE(ApplyProperties(&object, parseJsonString("{}")).empty());
+    EXPECT_TRUE(applyProperties(&object, parseJsonString("{}")).empty());
     EXPECT_EQ(object.stats.speed, 1.0f);
     EXPECT_EQ(object.stats.health.maximum, 100);
 }
 
 TEST(Reflection, FindTypeSeesEveryRegistration) {
-    EXPECT_EQ(ClassRegistry::FindType("Health"), GetDesc<Health>());
+    EXPECT_EQ(ClassRegistry::FindType("Health"), getDesc<Health>());
     EXPECT_EQ(
         ClassRegistry::FindType("InheritanceChild"),
-        GetDesc<InheritanceChild>()
+        getDesc<InheritanceChild>()
     );
     EXPECT_TRUE(ClassRegistry::FindType("Nope") == nullptr);
 }
@@ -543,7 +543,7 @@ TEST(Reflection, ATypeFoundByNameLivesInCallerMemory) {
 
     ops.construct(first);
     // the desc found by name, not a static type, decides what applies
-    EXPECT_TRUE(ApplyProperties(*desc, first, parseJsonString(R"({
+    EXPECT_TRUE(applyProperties(*desc, first, parseJsonString(R"({
 "speed": 2.5, "health": {"current": 9}
 })"))
                     .empty());
@@ -552,7 +552,7 @@ TEST(Reflection, ATypeFoundByNameLivesInCallerMemory) {
     ops.destroy(first);
 
     DOM::Value out;
-    SerializeProperties(*desc, second, out);
+    serializeProperties(*desc, second, out);
     EXPECT_EQ(out.get<f32>("speed"), 2.5f);
     EXPECT_EQ(out.get<i32>("health.current"), 9);
     EXPECT_EQ(out.get<i32>("health.maximum"), 100);
@@ -568,7 +568,7 @@ TEST(Reflection, ALifetimeTheTypeLacksStaysNull) {
         i32 value;
     };
 
-    const auto& ops = *GetTypeOps<NeedsAnArgument>();
+    const auto& ops = *getTypeOps<NeedsAnArgument>();
     EXPECT_TRUE(ops.construct == nullptr);
     EXPECT_TRUE(ops.moveConstruct != nullptr);
     EXPECT_TRUE(ops.destroy != nullptr);
@@ -601,9 +601,9 @@ CROWY_STRUCT_END(ListProbe)
 // clang-format on
 
 TEST(Reflection, AListIsItsElementsInOrder) {
-    const auto& ops = *GetTypeOps<std::vector<ListItem>>();
+    const auto& ops = *getTypeOps<std::vector<ListItem>>();
     ASSERT_TRUE(ops.list != nullptr);
-    EXPECT_EQ(ops.list->elementOps(), GetTypeOps<ListItem>());
+    EXPECT_EQ(ops.list->elementOps(), getTypeOps<ListItem>());
     EXPECT_TRUE(ops.getDesc == nullptr);
 
     ListProbe probe{
@@ -612,7 +612,7 @@ TEST(Reflection, AListIsItsElementsInOrder) {
         .modes = {BlendProbe::Multiply, BlendProbe::Off}
     };
     DOM::Value value;
-    SerializeProperties(&probe, value);
+    serializeProperties(&probe, value);
     const auto text = emitJson(value);
     EXPECT_EQ(
         text,
@@ -621,7 +621,7 @@ TEST(Reflection, AListIsItsElementsInOrder) {
     );
 
     ListProbe back;
-    EXPECT_TRUE(ApplyProperties(&back, parseJsonString(text)).empty());
+    EXPECT_TRUE(applyProperties(&back, parseJsonString(text)).empty());
     EXPECT_EQ(back.weights, probe.weights);
     ASSERT_EQ(back.items.size(), 2u);
     EXPECT_EQ(back.items[0].label, "a");
@@ -631,13 +631,13 @@ TEST(Reflection, AListIsItsElementsInOrder) {
 TEST(Reflection, AListTakesTheLengthItIsGiven) {
     ListProbe probe{.weights = {1.0f, 2.0f, 3.0f}};
     EXPECT_TRUE(
-        ApplyProperties(&probe, parseJsonString(R"({"weights":[9]})")).empty()
+        applyProperties(&probe, parseJsonString(R"({"weights":[9]})")).empty()
     );
     EXPECT_EQ(probe.weights, (std::vector<f32>{9.0f}));
 
     // a new element starts from its default, and its absent keys keep it
     EXPECT_TRUE(
-        ApplyProperties(&probe, parseJsonString(R"({"items":[{"label":"x"}]})"))
+        applyProperties(&probe, parseJsonString(R"({"items":[{"label":"x"}]})"))
             .empty()
     );
     ASSERT_EQ(probe.items.size(), 1u);
@@ -647,7 +647,7 @@ TEST(Reflection, AListTakesTheLengthItIsGiven) {
 
 TEST(Reflection, AListErrorNamesTheElement) {
     ListProbe probe;
-    const auto errors = ApplyProperties(
+    const auto errors = applyProperties(
         &probe,
         parseJsonString(
             R"({"weights":"no","items":[{"weight":"x"},{"nope":1}],)"
@@ -670,53 +670,53 @@ TEST(Reflection, AnIndexPicksAnElement) {
         .weights = {0.5f, 2.0f},
         .items = {{.weight = 0.25f, .label = "a"}, {.label = "b"}}
     };
-    const auto& desc = *GetDesc<ListProbe>();
+    const auto& desc = *getDesc<ListProbe>();
 
-    const auto weight = ResolveProperty(&probe, desc, "weights[1]");
+    const auto weight = resolveProperty(&probe, desc, "weights[1]");
     ASSERT_TRUE(weight.type != nullptr) << weight.error;
     EXPECT_TRUE(weight.member == &probe.weights[1]);
-    EXPECT_EQ(weight.type, GetTypeOps<f32>());
+    EXPECT_EQ(weight.type, getTypeOps<f32>());
 
-    const auto label = ResolveProperty(&probe, desc, "items[1].label");
+    const auto label = resolveProperty(&probe, desc, "items[1].label");
     ASSERT_TRUE(label.type != nullptr) << label.error;
     EXPECT_TRUE(label.member == &probe.items[1].label);
 
-    const auto item = ResolveProperty(&probe, desc, "items[0]");
+    const auto item = resolveProperty(&probe, desc, "items[0]");
     ASSERT_TRUE(item.type != nullptr) << item.error;
-    EXPECT_EQ(NestedDesc(*item.type), GetDesc<ListItem>());
+    EXPECT_EQ(nestedDesc(*item.type), getDesc<ListItem>());
 
     // a list path names the whole list
-    const auto list = ResolveProperty(&probe, desc, "items");
+    const auto list = resolveProperty(&probe, desc, "items");
     ASSERT_TRUE(list.type != nullptr) << list.error;
     EXPECT_TRUE(list.type->list != nullptr);
 
     const ListProbe& readOnly = probe;
-    const auto constant = ResolveProperty(&readOnly, desc, "weights[0]");
+    const auto constant = resolveProperty(&readOnly, desc, "weights[0]");
     EXPECT_TRUE(constant.member == &probe.weights[0]);
 }
 
 TEST(Reflection, AnIndexNamesItsFailure) {
     ListProbe probe{.weights = {0.5f, 2.0f}};
-    const auto& desc = *GetDesc<ListProbe>();
+    const auto& desc = *getDesc<ListProbe>();
 
     EXPECT_EQ(
-        ResolveProperty(&probe, desc, "weights[2]").error,
+        resolveProperty(&probe, desc, "weights[2]").error,
         "'weights[2]' is out of range (2 elements)"
     );
     EXPECT_EQ(
-        ResolveProperty(&probe, desc, "weights[x]").error,
+        resolveProperty(&probe, desc, "weights[x]").error,
         "bad index in 'weights[x]'"
     );
     EXPECT_EQ(
-        ResolveProperty(&probe, desc, "weights[1]x").error,
+        resolveProperty(&probe, desc, "weights[1]x").error,
         "bad index in 'weights[1]x'"
     );
     EXPECT_EQ(
-        ResolveProperty(&probe, desc, "weights[0].x").error,
+        resolveProperty(&probe, desc, "weights[0].x").error,
         "'weights[0]' has no properties"
     );
     EXPECT_EQ(
-        ResolveProperty(&probe, desc, "items[0]").error,
+        resolveProperty(&probe, desc, "items[0]").error,
         "'items[0]' is out of range (0 elements)"
     );
 }

@@ -101,7 +101,7 @@ namespace Crowy
                     }
 
                     DOM::Value properties;
-                    SerializeProperties(desc, row, properties);
+                    serializeProperties(desc, row, properties);
 
                     DOM::Table component;
                     component.emplace(TypeKey, desc.name);
@@ -218,7 +218,7 @@ namespace Crowy
                 fields->erase(TypeKey);
                 ErasedValue value(*desc->ops);
                 for(const auto& error:
-                    ApplyProperties(*desc, value.Get(), component)) {
+                    applyProperties(*desc, value.Get(), component)) {
                     errors.push_back(
                         std::format("actor {}: {}: {}", loaded.id, type, error)
                     );
@@ -272,8 +272,8 @@ namespace Crowy
         DOM::Array rows;
         for(const auto& [actor, parent]: actors) {
             DOM::Value transform;
-            SerializeValue(
-                *GetTypeOps<Transform>(),
+            serializeValue(
+                *getTypeOps<Transform>(),
                 &world.LocalTransform(actor),
                 transform
             );
@@ -383,8 +383,8 @@ namespace Crowy
             auto local = Transform::Identity();
             if(const auto entry = fields->find("transform");
                entry != fields->end()) {
-                for(const auto& error: ApplyValue(
-                        *GetTypeOps<Transform>(),
+                for(const auto& error: applyValue(
+                        *getTypeOps<Transform>(),
                         &local,
                         entry->second,
                         "transform"

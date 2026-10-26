@@ -28,7 +28,7 @@ namespace
     // the erased pair the port will drive, through the text the wire carries
     template<typename T>
     T roundTrip(const T& in){
-        const auto* ops = GetTypeOps<T>();
+        const auto* ops = getTypeOps<T>();
         DOM::Value out;
         ops->serialize(&in, out);
 
@@ -82,19 +82,19 @@ TEST(Serialize, ShapesFollowTheParsingConvention){
     DOM::Value out;
 
     const auto v = Vec3(1.0f, 2.0f, 3.0f);
-    GetTypeOps<Vec3>()->serialize(&v, out);
+    getTypeOps<Vec3>()->serialize(&v, out);
     ASSERT_TRUE(out.is_array());
     EXPECT_EQ(out.asArray()->size(), 3u);
     EXPECT_TRUE((*out.asArray())[0].is_float());
 
     const auto size = Size2D{640, 480};
-    GetTypeOps<Size2D>()->serialize(&size, out);
+    getTypeOps<Size2D>()->serialize(&size, out);
     ASSERT_TRUE(out.is_array());
     EXPECT_EQ(out.asArray()->size(), 2u);
     EXPECT_TRUE((*out.asArray())[0].is_int());
 
     const auto transform = Transform{};
-    GetTypeOps<Transform>()->serialize(&transform, out);
+    getTypeOps<Transform>()->serialize(&transform, out);
     ASSERT_TRUE(out.is_table());
     EXPECT_EQ(out.asTable()->size(), 3u);
     EXPECT_TRUE(out.at("position") != nullptr);
@@ -102,49 +102,49 @@ TEST(Serialize, ShapesFollowTheParsingConvention){
     EXPECT_TRUE(out.at("scale") != nullptr);
 
     const auto blend = SerializeBlend::Masked;
-    GetTypeOps<SerializeBlend>()->serialize(&blend, out);
+    getTypeOps<SerializeBlend>()->serialize(&blend, out);
     ASSERT_TRUE(out.is_string());
     EXPECT_EQ(*out.asString(), "Masked");
 
     // no enumerator, no name
     const auto unlisted = static_cast<SerializeBlend>(9);
-    GetTypeOps<SerializeBlend>()->serialize(&unlisted, out);
+    getTypeOps<SerializeBlend>()->serialize(&unlisted, out);
     EXPECT_TRUE(out.is_none());
 }
 
 TEST(Serialize, DeserializeReportsWhetherItWrote){
     f32 real = 0.5f;
-    EXPECT_TRUE(GetTypeOps<f32>()->deserialize(&real, DOM::Value(static_cast<i64>(1))));
+    EXPECT_TRUE(getTypeOps<f32>()->deserialize(&real, DOM::Value(static_cast<i64>(1))));
     EXPECT_EQ(real, 1.0f);
-    EXPECT_FALSE(GetTypeOps<f32>()->deserialize(&real, DOM::Value("text")));
+    EXPECT_FALSE(getTypeOps<f32>()->deserialize(&real, DOM::Value("text")));
     EXPECT_EQ(real, 1.0f);
 
     i32 whole = 3;
-    EXPECT_FALSE(GetTypeOps<i32>()->deserialize(&whole, DOM::Value(1.0)));
+    EXPECT_FALSE(getTypeOps<i32>()->deserialize(&whole, DOM::Value(1.0)));
     EXPECT_EQ(whole, 3);
 
     Vec3 v(1.0f, 2.0f, 3.0f);
     DOM::Array two;
     two.emplace_back(0.0);
     two.emplace_back(0.0);
-    EXPECT_FALSE(GetTypeOps<Vec3>()->deserialize(&v, DOM::Value(std::move(two))));
+    EXPECT_FALSE(getTypeOps<Vec3>()->deserialize(&v, DOM::Value(std::move(two))));
     EXPECT_EQ(v, Vec3(1.0f, 2.0f, 3.0f));
 
     auto blend = SerializeBlend::Masked;
-    EXPECT_FALSE(GetTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Unknown")));
+    EXPECT_FALSE(getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Unknown")));
     EXPECT_EQ(blend, SerializeBlend::Masked);
-    EXPECT_FALSE(GetTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value()));
+    EXPECT_FALSE(getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value()));
     EXPECT_EQ(blend, SerializeBlend::Masked);
-    EXPECT_TRUE(GetTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Opaque")));
+    EXPECT_TRUE(getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Opaque")));
     EXPECT_EQ(blend, SerializeBlend::Opaque);
 }
 
 TEST(Serialize, EnumOpsCarryTheEnumeratorValue){
-    const auto* ops = GetTypeOps<SerializeBlend>();
+    const auto* ops = getTypeOps<SerializeBlend>();
     ASSERT_TRUE(ops->enumLoad != nullptr);
     ASSERT_TRUE(ops->enumStore != nullptr);
     // no enum ops on a leaf
-    EXPECT_TRUE(GetTypeOps<i32>()->enumLoad == nullptr);
+    EXPECT_TRUE(getTypeOps<i32>()->enumLoad == nullptr);
 
     // negative in a signed underlying type reads back signed,
     // the same i64 enumerators() lists it as

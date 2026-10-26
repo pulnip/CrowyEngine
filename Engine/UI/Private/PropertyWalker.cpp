@@ -150,7 +150,7 @@ namespace
     ) {
         const auto* info = &type;
 
-        if(info == GetTypeOps<f32>()){
+        if(info == getTypeOps<f32>()){
             if(meta.uiRange.has_value()) {
                 return Slider{
                     .label = std::move(label),
@@ -163,22 +163,22 @@ namespace
 
             return makeField<f32, DragFloat>(label, target, member, onDirty);
         }
-        if(info == GetTypeOps<bool>()){
+        if(info == getTypeOps<bool>()){
             return makeField<bool, Checkbox>(label, target, member, onDirty);
         }
-        if(info == GetTypeOps<i32>()){
+        if(info == getTypeOps<i32>()){
             return makeField<i32, IntField>(label, target, member, onDirty);
         }
-        if(info == GetTypeOps<Vec2>()){
+        if(info == getTypeOps<Vec2>()){
             return makeField<Vec2, Float2Field>(label, target, member, onDirty);
         }
-        if(info == GetTypeOps<Vec3>()){
+        if(info == getTypeOps<Vec3>()){
             return makeField<Vec3, Float3Field>(label, target, member, onDirty);
         }
-        if(info == GetTypeOps<Vec4>()){
+        if(info == getTypeOps<Vec4>()){
             return makeField<Vec4, Float4Field>(label, target, member, onDirty);
         }
-        if(info == GetTypeOps<Str>()){
+        if(info == getTypeOps<Str>()){
             return SearchBar{
                 .label = std::move(label),
                 .onChanged = editThrough<StrView>(
@@ -219,7 +219,7 @@ namespace
                 .current = current
             };
         }
-        if(const auto* nested = NestedDesc(type)) {
+        if(const auto* nested = nestedDesc(type)) {
             std::vector<Widget> children;
             appendProperties(children, target, member, *nested, onDirty);
 
@@ -277,7 +277,7 @@ namespace Crowy
         PropertyTarget target,
         DirtyCallback onDirty
     ) {
-        // GetDesc made an empty desc: the registration was never linked
+        // getDesc made an empty desc: the registration was never linked
         CROWY_ASSERT(
             !target.Desc().name.empty(),
             "a type that was never registered"

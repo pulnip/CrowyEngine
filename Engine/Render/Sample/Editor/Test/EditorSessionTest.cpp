@@ -109,7 +109,7 @@ namespace
             return {InspectSection{
                 .label = "row",
                 .target = &rows[object],
-                .desc = GetDesc<FakeRow>(),
+                .desc = getDesc<FakeRow>(),
                 .apply = apply,
                 .gizmo = Parts[object]
             }};
@@ -273,9 +273,9 @@ TEST(EditorSession, AWrittenStatusIsReverted) {
 // target's callback, which is Sync
 TEST(EditorSession, ThePortsWriteBehavesAsADirectOne) {
     Fixture f;
-    const auto* desc = GetDesc<EditorState>();
+    const auto* desc = getDesc<EditorState>();
     ASSERT_NE(desc, nullptr);
-    auto resolved = ResolveProperty(&f.session.State(), *desc, "cut");
+    auto resolved = resolveProperty(&f.session.State(), *desc, "cut");
     ASSERT_NE(resolved.type, nullptr) << resolved.error;
     ASSERT_TRUE(
         resolved.type->deserialize(resolved.member, DOM::Value(Str("plan")))

@@ -292,13 +292,13 @@ namespace Crowy
                         port->Expose(
                             std::format("control.{}", enumName(lane.kind)),
                             &lane.control,
-                            *GetDesc<PuzzleControl>(),
+                            *getDesc<PuzzleControl>(),
                             [this, &lane] { restart(lane, lane.control.mode); }
                         );
                         port->Expose(
                             std::format("status.{}", enumName(lane.kind)),
                             &lane.status,
-                            *GetDesc<PuzzleStatusMirror>(),
+                            *getDesc<PuzzleStatusMirror>(),
                             [&lane] { lane.status = mirrorOf(*lane.session); }
                         );
                     }

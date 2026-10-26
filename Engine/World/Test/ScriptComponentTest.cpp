@@ -66,7 +66,7 @@ TEST(ScriptComponent, RegistersWithoutAReference) {
 // a function is no data a scene file could hold
 TEST(ScriptComponent, IsLeftOutOfAScene) {
     const auto* info =
-        ComponentRegistry::Get().Find(*GetDesc<ScriptComponent>());
+        ComponentRegistry::Get().Find(*getDesc<ScriptComponent>());
     ASSERT_TRUE(info != nullptr);
     EXPECT_TRUE(info->transient);
 }

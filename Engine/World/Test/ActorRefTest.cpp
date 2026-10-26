@@ -19,12 +19,12 @@ namespace
 
     DOM::Value serialized(const ActorRef& ref) {
         DOM::Value value;
-        GetTypeOps<ActorRef>()->serialize(&ref, value);
+        getTypeOps<ActorRef>()->serialize(&ref, value);
         return value;
     }
 
     bool deserialized(ActorRef& ref, const DOM::Value& value) {
-        return GetTypeOps<ActorRef>()->deserialize(&ref, value);
+        return getTypeOps<ActorRef>()->deserialize(&ref, value);
     }
 }
 
@@ -49,7 +49,7 @@ TEST(ActorRef, AFileWritesAndReadsItsOwnIds) {
         ActorRefScope scope;
         scope.Bind(1, a);
         scope.Bind(2, b);
-        SerializeProperties(&holder, value);
+        serializeProperties(&holder, value);
     }
     EXPECT_EQ(emitJson(value), R"({"target":2,"path":[1,2,null]})");
 
@@ -62,7 +62,7 @@ TEST(ActorRef, AFileWritesAndReadsItsOwnIds) {
         ActorRefScope scope;
         scope.Bind(1, c);
         scope.Bind(2, d);
-        EXPECT_TRUE(ApplyProperties(&back, value).empty());
+        EXPECT_TRUE(applyProperties(&back, value).empty());
     }
     EXPECT_EQ(back.target.actor, d);
     EXPECT_EQ(
@@ -77,7 +77,7 @@ TEST(ActorRef, AnIdTheFileNeverGaveIsRefused) {
     scope.Bind(1, world.Spawn());
 
     RefHolder holder;
-    const auto errors = ApplyProperties(
+    const auto errors = applyProperties(
         &holder,
         parseJsonString(R"({"target":7,"path":[1,[0,0]]})")
     );

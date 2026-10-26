@@ -195,9 +195,9 @@ TEST(WorldTarget, TheTransformIsAReflectedStruct) {
 
     Transform transform;
     const auto rotation =
-        ResolveProperty(&transform, target.Desc(), "rotation");
+        resolveProperty(&transform, target.Desc(), "rotation");
     ASSERT_NE(rotation.type, nullptr) << rotation.error;
-    EXPECT_EQ(rotation.type, GetTypeOps<Vec4>());
+    EXPECT_EQ(rotation.type, getTypeOps<Vec4>());
 }
 
 // what an Extract reads for a camera or a light, to the bit

@@ -53,7 +53,7 @@ namespace Crowy
         // what a value of the type is: its name, and its enumerators, its
         // element or its properties
         void describeType(const TypeOps& type, DOM::Table& entry) {
-            const auto* nested = NestedDesc(type);
+            const auto* nested = nestedDesc(type);
             // a struct's TypeOps name is the compiler's; the desc has the
             // registered one
             entry.emplace(
@@ -131,7 +131,7 @@ namespace Crowy
             auto* scratch = storage.data();
 
             type.construct(scratch);
-            auto errors = ApplyValue(type, scratch, value, path);
+            auto errors = applyValue(type, scratch, value, path);
             type.destroy(scratch);
 
             return errors;
@@ -214,7 +214,7 @@ namespace Crowy
                 return;
             }
 
-            auto resolved = ResolveProperty(object, desc, *path);
+            auto resolved = resolveProperty(object, desc, *path);
             if(resolved.type == nullptr) {
                 reply.Error(std::move(resolved.error));
 
@@ -222,7 +222,7 @@ namespace Crowy
             }
 
             const auto& type = *resolved.type;
-            if(!SerializeValue(type, resolved.member, value)) {
+            if(!serializeValue(type, resolved.member, value)) {
                 reply.Error(
                     std::format(
                         "'{}' is a {} the port cannot read",
@@ -235,7 +235,7 @@ namespace Crowy
             }
         }
         else {
-            SerializeProperties(desc, object, value);
+            serializeProperties(desc, object, value);
         }
 
         DOM::Table result;
@@ -274,16 +274,16 @@ namespace Crowy
             return;
         const auto& desc = exposure->target.Desc();
 
-        const auto checked = ResolveProperty(readable, desc, *path);
+        const auto checked = resolveProperty(readable, desc, *path);
         if(checked.type == nullptr) {
             reply.Error(checked.error);
 
             return;
         }
 
-        // a whole-struct write would go through ApplyProperties, which writes
+        // a whole-struct write would go through applyProperties, which writes
         // what binds before it reports the rest; the port answers per leaf
-        if(NestedDesc(*checked.type) != nullptr) {
+        if(nestedDesc(*checked.type) != nullptr) {
             reply.Error(std::format(
                 "'{}' is a struct; set one of its properties", *path
             ));
@@ -305,9 +305,9 @@ namespace Crowy
             if(writable == nullptr)
                 return;
 
-            const auto resolved = ResolveProperty(writable, desc, *path);
+            const auto resolved = resolveProperty(writable, desc, *path);
             const auto written =
-                ApplyValue(*resolved.type, resolved.member, *value, *path);
+                applyValue(*resolved.type, resolved.member, *value, *path);
             CROWY_ASSERT(written.empty(), "the scratch write passed");
 
             if(exposure->onDirty) {
@@ -335,7 +335,7 @@ namespace Crowy
         if(writable == nullptr)
             return;
 
-        const auto resolved = ResolveProperty(writable, desc, *path);
+        const auto resolved = resolveProperty(writable, desc, *path);
         if(!resolved.type->deserialize(resolved.member, *value)) {
             reply.Error(
                 std::format("'{}' expects {}", *path, resolved.type->name)

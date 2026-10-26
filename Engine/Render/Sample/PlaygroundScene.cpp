@@ -415,13 +415,13 @@ namespace Crowy
             port->Expose(
                 "bookmarks",
                 &bookmarks,
-                *GetDesc<CameraBookmarks>(),
+                *getDesc<CameraBookmarks>(),
                 [this] { snapCamera(); }
             );
             port->Expose(
                 "shading",
                 &shading,
-                *GetDesc<PlaygroundShading>(),
+                *getDesc<PlaygroundShading>(),
                 [this] {
                     linkChartShading();
                     uiContext.panelDirty = true;
@@ -439,7 +439,7 @@ namespace Crowy
                 world.TransformTarget(cameraActor),
                 [this] { uiContext.panelDirty = true; }
             );
-            port->Expose("camera.look", &look, *GetDesc<CameraLook>(), [this] {
+            port->Expose("camera.look", &look, *getDesc<CameraLook>(), [this] {
                 applyLook();
                 uiContext.panelDirty = true;
             });
@@ -458,7 +458,7 @@ namespace Crowy
             port->Expose(
                 "environment",
                 &scene.Environment(),
-                *GetDesc<EnvironmentSnapshot>(),
+                *getDesc<EnvironmentSnapshot>(),
                 [this] { uiContext.panelDirty = true; }
             );
             for(const auto& material: exposedMaterials) {
@@ -602,7 +602,7 @@ namespace Crowy
                            ? &materials.GetRef(handle).data
                            : nullptr;
             },
-            *GetDesc<MaterialData>()
+            *getDesc<MaterialData>()
         );
     }
 
@@ -779,7 +779,7 @@ namespace Crowy
         return buildPropertyTree(
             "environment",
             &scene.Environment(),
-            *GetDesc<EnvironmentSnapshot>(),
+            *getDesc<EnvironmentSnapshot>(),
             [] {}
         );
     }
@@ -789,7 +789,7 @@ namespace Crowy
         return buildPropertyTree(
             "debug",
             &Debug(),
-            *GetDesc<RenderDebug>(),
+            *getDesc<RenderDebug>(),
             [] {}
         );
     }
@@ -800,7 +800,7 @@ namespace Crowy
         return buildPropertyTree(
             "shading",
             &shading,
-            *GetDesc<PlaygroundShading>(),
+            *getDesc<PlaygroundShading>(),
             [this] { linkChartShading(); }
         );
     }
@@ -809,7 +809,7 @@ namespace Crowy
         return buildPropertyTree(
             "bookmarks",
             &bookmarks,
-            *GetDesc<CameraBookmarks>(),
+            *getDesc<CameraBookmarks>(),
             [this] { snapCamera(); }
         );
     }
@@ -830,7 +830,7 @@ namespace Crowy
              buildPropertyTree(
                  "camera look",
                  &look,
-                 *GetDesc<CameraLook>(),
+                 *getDesc<CameraLook>(),
                  [this] { applyLook(); }
              )}
         );

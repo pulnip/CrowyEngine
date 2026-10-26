@@ -18,7 +18,7 @@ namespace Crowy
     struct TypeDesc;
 
     // empty by default, so a type without traits can still be
-    // reflected property by property. see MakeTypeOps
+    // reflected property by property. see makeTypeOps
     template<typename T>
     struct TypeTraits{};
 
@@ -86,7 +86,7 @@ namespace Crowy
     };
 
     // erased operations and identity of one type.
-    // built by MakeTypeOps, see ClassRegistry.hpp
+    // built by makeTypeOps, see ClassRegistry.hpp
     struct TypeOps{
         CStr name = nullptr;
         usize size = 0;

@@ -82,20 +82,20 @@ TEST(AssetRef, APropertyReadsAndWritesItsText) {
     };
 
     DOM::Value value;
-    SerializeProperties(&holder, value);
+    serializeProperties(&holder, value);
     EXPECT_EQ(
         emitJson(value),
         R"({"mesh":"engine:Builtin/Box","textures":["a.png",null]})"
     );
 
     RefHolder back;
-    EXPECT_TRUE(ApplyProperties(&back, value).empty());
+    EXPECT_TRUE(applyProperties(&back, value).empty());
     EXPECT_EQ(back.mesh, holder.mesh);
     EXPECT_EQ(back.textures, holder.textures);
 
     // a file's spelling reads as the one spelling
     EXPECT_TRUE(
-        ApplyProperties(&back, parseJsonString(R"({"mesh":"./b/../a.png"})"))
+        applyProperties(&back, parseJsonString(R"({"mesh":"./b/../a.png"})"))
             .empty()
     );
     EXPECT_EQ(back.mesh, parsed("a.png"));
@@ -103,7 +103,7 @@ TEST(AssetRef, APropertyReadsAndWritesItsText) {
 
 TEST(AssetRef, AValueThatNamesNoAssetIsRefused) {
     RefHolder holder{.mesh = parsed("a.png")};
-    const auto errors = ApplyProperties(
+    const auto errors = applyProperties(
         &holder,
         parseJsonString(R"({"mesh":"../a.png","textures":["b.png",7]})")
     );

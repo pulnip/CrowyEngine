@@ -128,7 +128,7 @@ namespace Crowy
 
         template<typename T>
         PropertyTarget Target(ActorId actor) {
-            return Target(actor, *GetDesc<T>());
+            return Target(actor, *getDesc<T>());
         }
 
         // moves the row out of `component`; its type is the value's own
@@ -136,30 +136,30 @@ namespace Crowy
 
         template<typename T>
         void Add(ActorId actor, T component) {
-            addComponent(*GetDesc<T>(), actor, &component);
+            addComponent(*getDesc<T>(), actor, &component);
         }
 
         template<typename T>
         void Remove(ActorId actor) {
-            removeComponent(*GetDesc<T>(), actor);
+            removeComponent(*getDesc<T>(), actor);
         }
 
         // nullptr until the component's Sync, and after it is removed
         template<typename T>
         const T* Get(ActorId actor) const noexcept {
-            return static_cast<const T*>(findRow(*GetDesc<T>(), actor));
+            return static_cast<const T*>(findRow(*getDesc<T>(), actor));
         }
 
         // the only way to change a row, so the next Extract sees it
         template<typename T>
         T* Write(ActorId actor) noexcept {
-            return static_cast<T*>(writeRow(*GetDesc<T>(), actor));
+            return static_cast<T*>(writeRow(*getDesc<T>(), actor));
         }
 
         // f(ActorId, const T&) for every row, in the order the rows landed
         template<typename T, typename F>
         void Each(F&& f) {
-            const auto store = findStore(*GetDesc<T>());
+            const auto store = findStore(*getDesc<T>());
             if(store == nullptr)
                 return;
 
@@ -175,7 +175,7 @@ namespace Crowy
         // the last Extract, each once; empty after Extract
         template<typename T, typename F>
         void EachChanged(F&& f) {
-            const auto store = findStore(*GetDesc<T>());
+            const auto store = findStore(*getDesc<T>());
             if(store == nullptr)
                 return;
 

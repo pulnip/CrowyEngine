@@ -105,7 +105,7 @@ namespace Crowy
                 },
                 // every widget below this line was chosen by property type
                 buildPropertyTree(
-                    "Reflected", &knobs, *GetDesc<GalleryKnobs>(), []{}
+                    "Reflected", &knobs, *getDesc<GalleryKnobs>(), []{}
                 )
             });
         }

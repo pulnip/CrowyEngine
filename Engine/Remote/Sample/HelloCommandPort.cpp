@@ -61,7 +61,7 @@ int main(void){
         HelloKnobs knobs;
 
         // the callback is the write's only side effect a frame would see
-        port.Expose("knobs", &knobs, *GetDesc<HelloKnobs>(), [&knobs]{
+        port.Expose("knobs", &knobs, *getDesc<HelloKnobs>(), [&knobs]{
             std::println("knobs: gain {} label {}", knobs.gain, knobs.label);
         });
 

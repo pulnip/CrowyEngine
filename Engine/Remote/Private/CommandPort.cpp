@@ -336,7 +336,7 @@ namespace Crowy
         DirtyCallback onDirty
     ) {
         CROWY_ASSERT(!exposures.contains(name), "target exposed twice");
-        // GetDesc made an empty desc: the registration was never linked
+        // getDesc made an empty desc: the registration was never linked
         CROWY_ASSERT(
             !target.Desc().name.empty(),
             "a type that was never registered"

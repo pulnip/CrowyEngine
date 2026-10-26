@@ -28,7 +28,7 @@ namespace Crowy
     concept ListType = detail::IsVector<T>::value;
 
     template<typename T>
-    const TypeOps* GetTypeOps();
+    const TypeOps* getTypeOps();
 
     struct TypeDesc{
         Str name;
@@ -56,7 +56,7 @@ namespace Crowy
 
             properties.push_back(PropertyDesc{
                 .name = name,
-                .type = *GetTypeOps<Leaf>(),
+                .type = *getTypeOps<Leaf>(),
                 .accessor = std::make_unique<MemberAccessor<Ptrs...>>(ptrs...),
                 .meta = {}
             });
@@ -98,7 +98,7 @@ namespace Crowy
 
             if(slot == nullptr){
                 slot = std::make_unique<TypeDesc>();
-                slot->ops = GetTypeOps<T>();
+                slot->ops = getTypeOps<T>();
             }
 
             return *slot;
@@ -110,7 +110,7 @@ namespace Crowy
     };
 
     template<typename T>
-    const TypeDesc* GetDesc(){
+    const TypeDesc* getDesc(){
         return &ClassRegistry::Get().DescFor<T>();
     }
 
@@ -118,7 +118,7 @@ namespace Crowy
     {
         template<typename T>
             requires HasEnumTraits<T>
-        std::span<const EnumeratorDesc> EnumeratorsOf(){
+        std::span<const EnumeratorDesc> enumeratorsOf(){
             static constexpr auto list = []{
                 constexpr auto count = EnumTraits<T>::entries.size();
 
@@ -156,7 +156,7 @@ namespace Crowy
         }
 
         template<typename T>
-        TypeOps MakeTypeOps(){
+        TypeOps makeTypeOps(){
             static_assert(
                 HasTypeTraits<T> || std::is_class_v<T>,
                 "type has no TypeTraits and cannot be reflected"
@@ -195,7 +195,7 @@ namespace Crowy
             // the desc may stay empty, which just means
             // the type was never registered
             if constexpr(std::is_class_v<T> && !ListType<T>) {
-                ops.getDesc = &GetDesc<T>;
+                ops.getDesc = &getDesc<T>;
             }
             if constexpr(ListType<T>) {
                 using Element = typename T::value_type;
@@ -214,7 +214,7 @@ namespace Crowy
                 );
 
                 static constexpr ListOps list{
-                    .elementOps = &GetTypeOps<Element>,
+                    .elementOps = &getTypeOps<Element>,
                     .count = &listCount<T>,
                     .resize = &listResize<T>,
                     .element = &listElement<T>,
@@ -224,7 +224,7 @@ namespace Crowy
                 ops.list = &list;
             }
             if constexpr(HasEnumTraits<T>){
-                ops.enumerators = &EnumeratorsOf<T>;
+                ops.enumerators = &enumeratorsOf<T>;
                 ops.enumLoad = [](const void* member){
                     return static_cast<i64>(*static_cast<const T*>(member));
                 };
@@ -238,32 +238,32 @@ namespace Crowy
     }
 
     template<typename T>
-    const TypeOps* GetTypeOps(){
-        static const TypeOps ops = detail::MakeTypeOps<T>();
+    const TypeOps* getTypeOps(){
+        static const TypeOps ops = detail::makeTypeOps<T>();
         return &ops;
     }
 
     // the registered type this property or type recurses into,
     // or nullptr when it is a leaf or a list
-    const TypeDesc* NestedDesc(const PropertyDesc&);
-    const TypeDesc* NestedDesc(const TypeOps&);
+    const TypeDesc* nestedDesc(const PropertyDesc&);
+    const TypeDesc* nestedDesc(const TypeOps&);
 
-    // what ApplyProperties could not apply, one message per key, sorted
+    // what applyProperties could not apply, one message per key, sorted
     using PropertyErrors = std::vector<Str>;
 
     // parents first, then own properties in declaration order; a key the
     // table lacks keeps the member's value, and everything else that does
     // not bind is reported while the rest still applies
-    [[nodiscard]] PropertyErrors ApplyProperties(
+    [[nodiscard]] PropertyErrors applyProperties(
         const TypeDesc&,
         void* object,
         const DOM::Value& table
     );
     // the same walk in the other direction, into one flat table
-    void SerializeProperties(const TypeDesc&, const void* object, DOM::Value& out);
+    void serializeProperties(const TypeDesc&, const void* object, DOM::Value& out);
 
     // one value as a property of its type is applied, its errors under path
-    [[nodiscard]] PropertyErrors ApplyValue(
+    [[nodiscard]] PropertyErrors applyValue(
         const TypeOps&,
         void* member,
         const DOM::Value& value,
@@ -271,23 +271,23 @@ namespace Crowy
     );
     // one value as a property of its type is written; false when the type
     // has nothing to write
-    bool SerializeValue(const TypeOps&, const void* member, DOM::Value& out);
+    bool serializeValue(const TypeOps&, const void* member, DOM::Value& out);
 
     template<typename T>
         requires(!std::is_pointer_v<T>)
-    [[nodiscard]] PropertyErrors ApplyProperties(
+    [[nodiscard]] PropertyErrors applyProperties(
         T* object,
         const DOM::Value& dom
     ) {
         auto& desc = Crowy::ClassRegistry::Get().DescFor<T>();
-        return ApplyProperties(desc, object, dom);
+        return applyProperties(desc, object, dom);
     }
 
     template<typename T>
         requires (!std::is_pointer_v<T>)
-    void SerializeProperties(const T* object, DOM::Value& out){
+    void serializeProperties(const T* object, DOM::Value& out){
         auto& desc = Crowy::ClassRegistry::Get().DescFor<T>();
-        SerializeProperties(desc, object, out);
+        serializeProperties(desc, object, out);
     }
 
     // Member is void or const void, as the target was
@@ -306,8 +306,8 @@ namespace Crowy
 
     // "a.b[2].c" from target: each interior segment must be a reflected
     // struct, and an [index] picks one element of a list
-    ResolvedProperty ResolveProperty(void* target, const TypeDesc&, StrView path);
-    ResolvedConstProperty ResolveProperty(
+    ResolvedProperty resolveProperty(void* target, const TypeDesc&, StrView path);
+    ResolvedConstProperty resolveProperty(
         const void* target,
         const TypeDesc&,
         StrView path
@@ -370,7 +370,7 @@ namespace Crowy
     class StructBuilder;
 
     template<typename T>
-    StructBuilder<T> ReflectStruct();
+    StructBuilder<T> reflectStruct();
 
     template<typename T>
     class StructBuilder: public DescBuilder<StructBuilder<T>, T>{
@@ -384,21 +384,21 @@ namespace Crowy
         }
 
     private:
-        friend StructBuilder ReflectStruct<T>();
+        friend StructBuilder reflectStruct<T>();
 
         StructBuilder()
             : Base(ClassRegistry::Get().DescFor<T>()){}
     };
 
     template<typename T>
-    StructBuilder<T> ReflectStruct(){
+    StructBuilder<T> reflectStruct(){
         return StructBuilder<T>();
     }
 }
 
 #define CROWY_STRUCT(TYPE) \
 namespace{ \
-    const auto Is##TYPE##Registered = ::Crowy::ReflectStruct<TYPE>() \
+    const auto Is##TYPE##Registered = ::Crowy::reflectStruct<TYPE>() \
         .SetName(#TYPE)
 
 #define CROWY_STRUCT_END(TYPE) \

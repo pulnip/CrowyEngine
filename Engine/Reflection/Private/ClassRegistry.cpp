@@ -47,11 +47,11 @@ namespace Crowy
         }
     }
 
-    const TypeDesc* NestedDesc(const PropertyDesc& prop){
-        return NestedDesc(prop.type);
+    const TypeDesc* nestedDesc(const PropertyDesc& prop){
+        return nestedDesc(prop.type);
     }
 
-    const TypeDesc* NestedDesc(const TypeOps& type) {
+    const TypeDesc* nestedDesc(const TypeOps& type) {
         if(type.getDesc == nullptr)
             return nullptr;
 
@@ -74,7 +74,7 @@ namespace Crowy
             PropertyErrors& errors
         );
 
-        void applyValue(
+        void applyNode(
             const TypeOps& type,
             void* member,
             const DOM::Value& node,
@@ -83,7 +83,7 @@ namespace Crowy
         ) {
             // a reflected type is filled property by property,
             // so its unspecified members keep their default too
-            if(const auto* nested = NestedDesc(type)) {
+            if(const auto* nested = nestedDesc(type)) {
                 if(const auto* inner = node.asTable()) {
                     applyTable(*nested, member, *inner, path, errors);
                 } else {
@@ -108,7 +108,7 @@ namespace Crowy
                 list->resize(member, items->size());
                 const auto& element = *list->elementOps();
                 for(usize i = 0; i < items->size(); ++i) {
-                    applyValue(
+                    applyNode(
                         element,
                         list->element(member, i),
                         (*items)[i],
@@ -149,7 +149,7 @@ namespace Crowy
                     continue;
                 }
 
-                applyValue(
+                applyNode(
                     prop.type,
                     prop.accessor->Get(object),
                     node->second,
@@ -184,7 +184,7 @@ namespace Crowy
         }
     }
 
-    PropertyErrors ApplyProperties(
+    PropertyErrors applyProperties(
         const TypeDesc& desc,
         void* object,
         const DOM::Value& table
@@ -213,7 +213,7 @@ namespace Crowy
             for(const auto& prop: desc.properties){
                 const void* member = prop.accessor->Get(object);
                 DOM::Value value;
-                if(!SerializeValue(prop.type, member, value))
+                if(!serializeValue(prop.type, member, value))
                     continue;
 
                 // the most derived declaration wins a shadowed name
@@ -222,26 +222,26 @@ namespace Crowy
         }
     }
 
-    PropertyErrors ApplyValue(
+    PropertyErrors applyValue(
         const TypeOps& type,
         void* member,
         const DOM::Value& value,
         StrView path
     ) {
         PropertyErrors errors;
-        applyValue(type, member, value, path, errors);
+        applyNode(type, member, value, path, errors);
         std::ranges::sort(errors);
 
         return errors;
     }
 
-    bool SerializeValue(
+    bool serializeValue(
         const TypeOps& type,
         const void* member,
         DOM::Value& out
     ) {
-        if(const auto* nested = NestedDesc(type)) {
-            SerializeProperties(*nested, member, out);
+        if(const auto* nested = nestedDesc(type)) {
+            serializeProperties(*nested, member, out);
 
             return true;
         }
@@ -255,7 +255,7 @@ namespace Crowy
                 // an element with nothing to write is null, so the
                 // indices still line up
                 DOM::Value item;
-                SerializeValue(element, list->constElement(member, i), item);
+                serializeValue(element, list->constElement(member, i), item);
                 items.push_back(std::move(item));
             }
             out = DOM::Value(std::move(items));
@@ -271,7 +271,7 @@ namespace Crowy
         return false;
     }
 
-    void SerializeProperties(const TypeDesc& desc, const void* object, DOM::Value& out){
+    void serializeProperties(const TypeDesc& desc, const void* object, DOM::Value& out){
         DOM::Table table;
         appendProperties(desc, object, table);
         out = DOM::Value(std::move(table));
@@ -295,7 +295,7 @@ namespace Crowy
         }
 
         template<typename Member>
-        BasicResolvedProperty<Member> resolveProperty(
+        BasicResolvedProperty<Member> resolveIn(
             Member* target,
             const TypeDesc& desc,
             StrView path
@@ -366,7 +366,7 @@ namespace Crowy
                     return result;
                 }
 
-                const auto* nested = NestedDesc(*type);
+                const auto* nested = nestedDesc(*type);
                 if(nested == nullptr) {
                     result.error =
                         std::format("'{}' has no properties", segment);
@@ -380,19 +380,19 @@ namespace Crowy
         }
     }
 
-    ResolvedProperty ResolveProperty(
+    ResolvedProperty resolveProperty(
         void* target,
         const TypeDesc& desc,
         StrView path
     ) {
-        return resolveProperty(target, desc, path);
+        return resolveIn(target, desc, path);
     }
 
-    ResolvedConstProperty ResolveProperty(
+    ResolvedConstProperty resolveProperty(
         const void* target,
         const TypeDesc& desc,
         StrView path
     ) {
-        return resolveProperty(target, desc, path);
+        return resolveIn(target, desc, path);
     }
 }

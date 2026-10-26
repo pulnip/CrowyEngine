@@ -85,7 +85,7 @@ TEST(PropertyWalker, TreeShape){
 
     WalkerFixture fixture;
     auto tree = buildPropertyTree(
-        "Fixture", &fixture, *GetDesc<WalkerFixture>(), []{}
+        "Fixture", &fixture, *getDesc<WalkerFixture>(), []{}
     );
 
     auto* root = std::get_if<Collapsing>(&tree);
@@ -168,7 +168,7 @@ TEST(PropertyWalker, DropdownWritesTheValueNotTheIndex){
     UIContext ctx;
 
     auto tree = buildPropertyTree(
-        "Fixture", &fixture, *GetDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
+        "Fixture", &fixture, *getDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
     );
     auto& root = std::get<Collapsing>(tree);
     auto& blend = std::get<Dropdown>(root.children[9]);
@@ -189,7 +189,7 @@ TEST(PropertyWalker, DropdownSelectsNothingForAnUnlistedValue){
     fixture.blend = static_cast<WalkerBlend>(42);
 
     auto tree = buildPropertyTree(
-        "Fixture", &fixture, *GetDesc<WalkerFixture>(), []{}
+        "Fixture", &fixture, *getDesc<WalkerFixture>(), []{}
     );
     auto& root = std::get<Collapsing>(tree);
     auto& blend = std::get<Dropdown>(root.children[9]);
@@ -204,7 +204,7 @@ TEST(PropertyWalker, WritesLandAndNotify){
     UIContext ctx;
 
     auto tree = buildPropertyTree(
-        "Fixture", &fixture, *GetDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
+        "Fixture", &fixture, *getDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
     );
     auto& root = std::get<Collapsing>(tree);
 
@@ -242,10 +242,10 @@ TEST(PropertyWalker, TwoTargetsBindIndependently){
     UIContext ctx;
 
     auto treeA = buildPropertyTree(
-        "A", &a, *GetDesc<WalkerFixture>(), [&dirtyA]{ ++dirtyA; }
+        "A", &a, *getDesc<WalkerFixture>(), [&dirtyA]{ ++dirtyA; }
     );
     auto treeB = buildPropertyTree(
-        "B", &b, *GetDesc<WalkerFixture>(), [&dirtyB]{ ++dirtyB; }
+        "B", &b, *getDesc<WalkerFixture>(), [&dirtyB]{ ++dirtyB; }
     );
 
     auto& rootA = std::get<Collapsing>(treeA);
@@ -277,7 +277,7 @@ namespace
                     ++writes;
                     return current;
                 },
-                *GetDesc<WalkerFixture>()
+                *getDesc<WalkerFixture>()
             );
         }
     };
@@ -357,7 +357,7 @@ TEST(PropertyWalker, ATypeNeverRegisteredStops) {
         buildPropertyTree(
             "Unregistered",
             &target,
-            *GetDesc<NeverRegistered>(),
+            *getDesc<NeverRegistered>(),
             {}
         ),
         "a type that was never registered"
@@ -379,7 +379,7 @@ CROWY_STRUCT_END(WalkerList)
 
 TEST(PropertyWalker, AListShowsItsElementsAndALengthControl) {
     WalkerList list;
-    auto tree = buildPropertyTree("List", &list, *GetDesc<WalkerList>(), [] {});
+    auto tree = buildPropertyTree("List", &list, *getDesc<WalkerList>(), [] {});
     auto& root = std::get<Collapsing>(tree);
     ASSERT_EQ(root.children.size(), 2u);
 
@@ -407,7 +407,7 @@ TEST(PropertyWalker, AListElementAndItsLengthAreWritten) {
     int dirty = 0;
     UIContext ctx;
     auto tree =
-        buildPropertyTree("List", &list, *GetDesc<WalkerList>(), [&dirty] {
+        buildPropertyTree("List", &list, *getDesc<WalkerList>(), [&dirty] {
             ++dirty;
         });
     auto& root = std::get<Collapsing>(tree);
@@ -447,7 +447,7 @@ TEST(PropertyWalker, AListEditToAGoneTargetIsDropped) {
         PropertyTarget(
             [&current]() -> const void* { return current; },
             [&current]() -> void* { return current; },
-            *GetDesc<WalkerList>()
+            *getDesc<WalkerList>()
         ),
         [&dirty] { ++dirty; }
     );

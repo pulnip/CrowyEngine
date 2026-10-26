@@ -101,7 +101,7 @@ namespace Crowy
 }
 
 TEST(World, AComponentIsSavedUnlessMarkedTransient) {
-    const auto* info = ComponentRegistry::Get().Find(*GetDesc<WorldMarker>());
+    const auto* info = ComponentRegistry::Get().Find(*getDesc<WorldMarker>());
     ASSERT_TRUE(info != nullptr);
     EXPECT_FALSE(info->transient);
 }
@@ -210,7 +210,7 @@ TEST(World, AnActorsComponentsAreVisitedByTheirDesc) {
             actor,
             [&](const ComponentInfo& info, const void* row) {
                 auto entry = Str(info.desc->name);
-                if(info.desc == GetDesc<WorldMarker>()) {
+                if(info.desc == getDesc<WorldMarker>()) {
                     const auto value =
                         static_cast<const WorldMarker*>(row)->value;
                     entry += std::format(" {}", value);
@@ -305,7 +305,7 @@ TEST(World, ComponentsLandAtSyncInTheOrderTheyWereAdded) {
 TEST(World, AComponentAddedAsAnErasedValueIsMovedIn) {
     World world;
     const auto actor = world.Spawn();
-    ErasedValue erased(*GetDesc<WorldOwned>()->ops);
+    ErasedValue erased(*getDesc<WorldOwned>()->ops);
     auto& owned = *static_cast<WorldOwned*>(erased.Get());
     owned.value = std::make_unique<i32>(7);
 
@@ -513,7 +513,7 @@ TEST(WorldDeathTest, AStructThatIsNotAComponentStops) {
 TEST(WorldDeathTest, AStructThatIsNotAComponentStopsAsAnErasedValueToo) {
     World world;
     const auto actor = world.Spawn();
-    ErasedValue plain(*GetDesc<WorldPlainStruct>()->ops);
+    ErasedValue plain(*getDesc<WorldPlainStruct>()->ops);
 
     EXPECT_DEATH(world.Add(actor, plain), "a type that is not a component");
 }
@@ -521,7 +521,7 @@ TEST(WorldDeathTest, AStructThatIsNotAComponentStopsAsAnErasedValueToo) {
 TEST(WorldDeathTest, ALeafTypeStopsAsAnErasedValue) {
     World world;
     const auto actor = world.Spawn();
-    ErasedValue leaf(*GetTypeOps<i32>());
+    ErasedValue leaf(*getTypeOps<i32>());
 
     EXPECT_DEATH(world.Add(actor, leaf), "a type that is not a component");
 }

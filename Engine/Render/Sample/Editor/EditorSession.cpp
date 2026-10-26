@@ -263,14 +263,14 @@ namespace Crowy
         if(!port.expose)
             return;
 
-        port.expose(StateTarget, &state, *GetDesc<EditorState>(), [this] { Sync(); });
-        port.expose(CameraTarget, &camera, *GetDesc<EditorCamera>(), [this] {
+        port.expose(StateTarget, &state, *getDesc<EditorState>(), [this] { Sync(); });
+        port.expose(CameraTarget, &camera, *getDesc<EditorCamera>(), [this] {
             camera.RecomputeView();
             leaveCut();
             refreshGizmo();
         });
         // read-only: a write is put back
-        port.expose(GizmoTarget, &gizmoView, *GetDesc<GizmoView>(), [this] { refreshGizmo(); });
+        port.expose(GizmoTarget, &gizmoView, *getDesc<GizmoView>(), [this] { refreshGizmo(); });
     }
 
     void EditorSession::leaveCut() {
@@ -527,13 +527,13 @@ namespace Crowy
         const auto& section = inspected.front();
         // the accessor a port write goes through, checked for the type it must be
         const auto field = [&](CStr name, const TypeOps* type) {
-            const auto resolved = ResolveProperty(section.target, *section.desc, name);
+            const auto resolved = resolveProperty(section.target, *section.desc, name);
             return resolved.type == type ? resolved.member : nullptr;
         };
         GizmoRow row{
-            .position = static_cast<Vec3*>(field("position", GetTypeOps<Vec3>())),
-            .yaw = static_cast<f32*>(field("yaw", GetTypeOps<f32>())),
-            .scale = static_cast<Vec3*>(field("scale", GetTypeOps<Vec3>())),
+            .position = static_cast<Vec3*>(field("position", getTypeOps<Vec3>())),
+            .yaw = static_cast<f32*>(field("yaw", getTypeOps<f32>())),
+            .scale = static_cast<Vec3*>(field("scale", getTypeOps<Vec3>())),
             .parts = section.gizmo
         };
         CROWY_ASSERT(row.position != nullptr, "a section offering a gizmo has a Vec3 position");

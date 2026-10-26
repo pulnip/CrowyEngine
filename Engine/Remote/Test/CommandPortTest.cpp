@@ -546,7 +546,7 @@ TEST_F(CommandPortTest, ListObjectsNamesEachExposure) {
     EXPECT_EQ(empty.json.at("result.objects")->asArray()->size(), 0u);
 
     PortProbe probe;
-    port.Expose("probe", &probe, *GetDesc<PortProbe>());
+    port.Expose("probe", &probe, *getDesc<PortProbe>());
 
     auto one = exchange(post(R"({"cmd":"list_objects"})"));
     ASSERT_TRUE(one.ok()) << one.body;
@@ -561,7 +561,7 @@ TEST_F(CommandPortTest, ListObjectsNamesEachExposure) {
 
 TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
     PortProbe probe;
-    port.Expose("probe", &probe, *GetDesc<PortProbe>());
+    port.Expose("probe", &probe, *getDesc<PortProbe>());
 
     auto response = exchange(post(R"({"cmd":"describe","args":{"target":"probe"}})"));
     ASSERT_TRUE(response.ok()) << response.body;
@@ -605,7 +605,7 @@ TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
 
 TEST_F(CommandPortTest, GetPropertyReadsAPathOrTheWholeObject) {
     PortProbe probe;
-    port.Expose("probe", &probe, *GetDesc<PortProbe>());
+    port.Expose("probe", &probe, *getDesc<PortProbe>());
 
     auto tint = exchange(post(R"({"cmd":"get_property","args":{"target":"probe","path":"tint"}})"));
     ASSERT_TRUE(tint.ok()) << tint.body;
@@ -643,7 +643,7 @@ TEST_F(CommandPortTest, GetPropertyReadsAPathOrTheWholeObject) {
 TEST_F(CommandPortTest, SetPropertyWritesAndFiresDirtyOnce) {
     PortProbe probe;
     int dirty = 0;
-    port.Expose("probe", &probe, *GetDesc<PortProbe>(), [&dirty] { ++dirty; });
+    port.Expose("probe", &probe, *getDesc<PortProbe>(), [&dirty] { ++dirty; });
 
     auto tint = exchange(post(R"({"cmd":"set_property","args":{"target":"probe","path":"tint","value":[1,0,0]}})"));
     ASSERT_TRUE(tint.ok()) << tint.body;
@@ -670,7 +670,7 @@ TEST_F(CommandPortTest, SetPropertyWritesAndFiresDirtyOnce) {
 TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
     PortProbe probe;
     int dirty = 0;
-    port.Expose("probe", &probe, *GetDesc<PortProbe>(), [&dirty] { ++dirty; });
+    port.Expose("probe", &probe, *getDesc<PortProbe>(), [&dirty] { ++dirty; });
 
     auto unknown = exchange(post(R"({"cmd":"set_property","args":{"target":"nope","path":"tint","value":1}})"));
     EXPECT_EQ(unknown.error(), "unknown target 'nope'");
@@ -702,7 +702,7 @@ TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
 TEST_F(CommandPortTest, APropertyWithNoConversionIsRefused) {
     PortHolder holder;
     int dirty = 0;
-    port.Expose("holder", &holder, *GetDesc<PortHolder>(), [&dirty] {
+    port.Expose("holder", &holder, *getDesc<PortHolder>(), [&dirty] {
         ++dirty;
     });
 
@@ -732,7 +732,7 @@ TEST_F(CommandPortTest, APropertyWithNoConversionIsRefused) {
 TEST_F(CommandPortTest, AListIsDescribedReadAndWritten) {
     PortList list;
     int dirty = 0;
-    port.Expose("list", &list, *GetDesc<PortList>(), [&dirty] { ++dirty; });
+    port.Expose("list", &list, *getDesc<PortList>(), [&dirty] { ++dirty; });
 
     auto described =
         exchange(post(R"({"cmd":"describe","args":{"target":"list"}})"));
@@ -784,7 +784,7 @@ TEST_F(CommandPortTest, AListIsDescribedReadAndWritten) {
 TEST_F(CommandPortTest, ARefusedListWriteChangesNothing) {
     PortList list;
     int dirty = 0;
-    port.Expose("list", &list, *GetDesc<PortList>(), [&dirty] { ++dirty; });
+    port.Expose("list", &list, *getDesc<PortList>(), [&dirty] { ++dirty; });
 
     auto bad = exchange(post(
         R"({"cmd":"set_property","args":{"target":"list","path":"weights","value":[1,"x",true]}})"
@@ -817,7 +817,7 @@ TEST_F(CommandPortTest, ATargetIsResolvedAtEveryRequest) {
         PropertyTarget(
             [&current]() -> const void* { return current; },
             [&current]() -> void* { return current; },
-            *GetDesc<PortProbe>()
+            *getDesc<PortProbe>()
         )
     );
 
@@ -844,7 +844,7 @@ TEST_F(CommandPortTest, AGoneTargetIsAnErrorButStaysListed) {
         PropertyTarget(
             []() -> const void* { return nullptr; },
             []() -> void* { return nullptr; },
-            *GetDesc<PortProbe>()
+            *getDesc<PortProbe>()
         ),
         [&dirty] { ++dirty; }
     );
@@ -880,7 +880,7 @@ TEST_F(CommandPortTest, OnlyAWriteThatLandsResolvesForWriting) {
                 ++writes;
                 return &probe;
             },
-            *GetDesc<PortProbe>()
+            *getDesc<PortProbe>()
         )
     );
 
@@ -912,7 +912,7 @@ TEST_F(CommandPortTest, ExposingATypeNeverRegisteredStops) {
     NeverRegistered target;
 
     EXPECT_DEATH(
-        port.Expose("unregistered", &target, *GetDesc<NeverRegistered>()),
+        port.Expose("unregistered", &target, *getDesc<NeverRegistered>()),
         "a type that was never registered"
     );
 }

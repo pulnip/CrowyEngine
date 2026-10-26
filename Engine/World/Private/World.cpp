@@ -127,7 +127,7 @@ namespace Crowy
                            ? &hierarchy.WriteLocalTransform(nodeOf(actor))
                            : nullptr;
             },
-            *GetDesc<Transform>()
+            *getDesc<Transform>()
         );
     }
 
@@ -223,7 +223,7 @@ namespace Crowy
         if(auto* store = findStore(desc))
             return *store;
 
-        // GetDesc made an empty desc: the registration was never linked
+        // getDesc made an empty desc: the registration was never linked
         CROWY_ASSERT(!desc.name.empty(), "a type that was never registered");
         const auto* info = ComponentRegistry::Get().Find(desc);
         CROWY_ASSERT(info != nullptr, "a type that is not a component");

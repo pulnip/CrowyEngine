@@ -208,7 +208,7 @@ namespace Crowy
             return;
 
         // a bench run with a misspelled switch would measure the wrong thing
-        if(const auto errors = ApplyProperties(&debug, parseJsonString(env));
+        if(const auto errors = applyProperties(&debug, parseJsonString(env));
            !errors.empty()) {
             Str message = "CROWY_DEBUG:";
             for(const auto& error: errors)
@@ -223,7 +223,7 @@ namespace Crowy
         }
 
         DOM::Value applied;
-        SerializeProperties(&debug, applied);
+        serializeProperties(&debug, applied);
         LOG_INFO("RenderApp", "CROWY_DEBUG: debug is {}", emitJson(applied));
     }
 
@@ -247,7 +247,7 @@ namespace Crowy
 
         // every reader reads it each frame, so the callback only refuses a
         // scene view; exposed even on an inert port, like the samples' own
-        port->Expose("debug", &debug, *GetDesc<RenderDebug>(), [this] {
+        port->Expose("debug", &debug, *getDesc<RenderDebug>(), [this] {
             refuseSceneView();
         });
         // a port that could not bind stays, inert, so a sample can show
