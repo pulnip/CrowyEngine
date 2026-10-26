@@ -9,7 +9,6 @@
 
 namespace Crowy
 {
-    // SlotMap without the ownership
     template<typename T>
     class HandleTable{
     public:
