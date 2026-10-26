@@ -1,6 +1,6 @@
 # ready-made scenes the samples can render
 add_subdirectory(Scene)
-# density field, noise and UI panel the two terrain samples share
+# density field, noise and UI panel for MarchingTerrain and the terrain checks
 add_subdirectory(Terrain)
 # Keplerian orbits, trail ring buffer and panel for OrbitFrame
 add_subdirectory(Orbit)
@@ -63,14 +63,6 @@ SOURCES
     OrbitFrame.cpp
 DEPENDS
     SampleOrbit
-    Crowy::UI
-)
-
-crowy_declare_example(SpanTerrain
-SOURCES
-    SpanTerrain.cpp
-DEPENDS
-    Crowy::SampleTerrain
     Crowy::UI
 )
 

@@ -14,7 +14,6 @@
 namespace Crowy
 {
     // Terrain from marching cubes over the density field, meshed on the GPU.
-    // The smooth reading of the same field SpanTerrain facets.
     //
     // How many triangles came out is never known to the CPU: a compute pass
     // writes the draw arguments and ExecuteIndirect consumes them. The only
