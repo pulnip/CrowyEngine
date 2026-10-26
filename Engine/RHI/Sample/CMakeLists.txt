@@ -29,11 +29,6 @@ SOURCES
     HelloCompute.cpp
 )
 
-crowy_declare_example(HelloIndirectDraw
-SOURCES
-    HelloIndirectDraw.cpp
-)
-
 crowy_declare_example(NormalMapping
 SOURCES
     NormalMapping.cpp

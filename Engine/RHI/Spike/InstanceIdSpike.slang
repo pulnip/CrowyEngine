@@ -9,7 +9,7 @@
 // addressing on the zero-based reading, and one segment there is sub-pixel -
 // it could never show this.
 //
-// Row comes from the draw (baseInstance, already proven by BaseInstanceSpike),
+// Row comes from the draw (baseInstance as SV_StartInstanceLocation),
 // column from the zero-based index. The helper working gives a left-aligned
 // block on every backend; a base instance leaking through gives a staircase.
 
@@ -42,8 +42,8 @@ VertexOut vs_main(
         float3(0.3, 0.5, 1)
     };
 
-    // draws start at baseInstance 1, matching BaseInstanceSpike's convention
-    // that index 0 must never appear
+    // draws start at baseInstance 1, so a base instance that never arrives
+    // cannot pass for row 0
     const uint row = drawID - 1;
     const uint column = zeroBasedInstanceID(instanceID, drawID);
 

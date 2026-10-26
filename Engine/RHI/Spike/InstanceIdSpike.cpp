@@ -4,11 +4,11 @@
 
 namespace Crowy
 {
-    // Companion to BaseInstanceSpike: that one proved baseInstance reaches the
-    // shader as SV_StartInstanceLocation, this one guards that the zero-based
-    // instance index (zeroBasedInstanceID in InstanceIndex.slang) really is
-    // zero-based on every backend. Slang's Metal target emits [[instance_id]]
-    // raw, which counts from the base instance - the helper subtracts it there.
+    // Guards that baseInstance reaches the shader as SV_StartInstanceLocation
+    // and that the zero-based instance index (zeroBasedInstanceID in
+    // InstanceIndex.slang) really is zero-based on every backend. Slang's
+    // Metal target emits [[instance_id]] raw, which counts from the base
+    // instance - the helper subtracts it there.
     //
     // Three draws of four instances each, baseInstance 1, 2, 3. Row comes from
     // the draw, column from the zero-based index.
