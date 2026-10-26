@@ -1,15 +1,15 @@
 #include "TypeOps.hpp"
 
-#define DEFINE_TYPETRAITS(TYPE) \
-    bool TypeTraits<TYPE>::deserialize(void* data, const DOM::Value& value){ \
-        if(auto v = value.get<TYPE>()){ \
-            *static_cast<TYPE*>(data) = *v; \
-            return true; \
-        } \
-        return false; \
-    } \
-    void TypeTraits<TYPE>::serialize(const void* data, DOM::Value& out){ \
-        out = DOM::Value::from(*static_cast<const TYPE*>(data)); \
+#define DEFINE_TYPETRAITS(TYPE)                                                \
+    bool TypeTraits<TYPE>::deserialize(void* data, const DOM::Value& value) {  \
+        if(auto v = value.get<TYPE>()) {                                       \
+            *static_cast<TYPE*>(data) = *v;                                    \
+            return true;                                                       \
+        }                                                                      \
+        return false;                                                          \
+    }                                                                          \
+    void TypeTraits<TYPE>::serialize(const void* data, DOM::Value& out) {      \
+        out = DOM::Value::from(*static_cast<const TYPE*>(data));               \
     }
 
 namespace Crowy

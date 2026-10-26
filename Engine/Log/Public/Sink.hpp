@@ -8,7 +8,7 @@ namespace Crowy
 {
     struct LogMessage;
 
-    class Sink{
+    class Sink {
     public:
         CROWY_DECLARE_INTERFACE(Sink)
 

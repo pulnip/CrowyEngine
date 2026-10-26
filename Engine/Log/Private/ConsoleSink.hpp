@@ -4,7 +4,7 @@
 
 namespace Crowy
 {
-    class ConsoleSink: public Sink{
+    class ConsoleSink: public Sink {
     public:
         void Write(const LogMessage&) override;
     };

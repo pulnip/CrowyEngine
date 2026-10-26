@@ -2,12 +2,13 @@
 
 #include <atomic>
 #include <vector>
+
 #include "Primitives.hpp"
 #include "Sink.hpp"
 
 namespace Crowy
 {
-    class Logger{
+    class Logger {
     private:
         using SinkRAII = RAII<Sink>;
 

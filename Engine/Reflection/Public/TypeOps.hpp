@@ -1,16 +1,17 @@
 #pragma once
 
 #include <span>
+
 #include "DOM.hpp"
 #include "EnumUtil.hpp"
 #include "Primitives.hpp"
 
-#define DECLARE_TYPETRAITS(TYPE) \
-    template<> \
-    struct TypeTraits<TYPE>{ \
-        static constexpr CStr name = #TYPE; \
-        static bool deserialize(void*, const DOM::Value&); \
-        static void serialize(const void*, DOM::Value&); \
+#define DECLARE_TYPETRAITS(TYPE)                                               \
+    template<>                                                                 \
+    struct TypeTraits<TYPE> {                                                  \
+        static constexpr CStr name = #TYPE;                                    \
+        static bool deserialize(void*, const DOM::Value&);                     \
+        static void serialize(const void*, DOM::Value&);                       \
     };
 
 namespace Crowy
@@ -20,23 +21,24 @@ namespace Crowy
     // empty by default, so a type without traits can still be
     // reflected property by property. see makeTypeOps
     template<typename T>
-    struct TypeTraits{};
+    struct TypeTraits {};
 
     template<typename T>
         requires HasEnumTraits<T>
-    struct TypeTraits<T>{
+    struct TypeTraits<T> {
         static constexpr CStr name = EnumTraits<T>::name;
-        static bool deserialize(void* data, const DOM::Value& value){
-            if(auto v = value.asString()){
-                if(auto parsed = enumFromName<T>(*v)){
+        static bool deserialize(void* data, const DOM::Value& value) {
+            if(auto v = value.asString()) {
+                if(auto parsed = enumFromName<T>(*v)) {
                     *static_cast<T*>(data) = *parsed;
                     return true;
                 }
             }
-            // an unknown name keeps the value; the caller decides what that means
+            // an unknown name keeps the value; the caller decides what that
+            // means
             return false;
         }
-        static void serialize(const void* data, DOM::Value& out){
+        static void serialize(const void* data, DOM::Value& out) {
             // a value with no enumerator has no name; null says so
             const auto name = enumName(*static_cast<const T*>(data));
             out = name != nullptr ? DOM::Value(name) : DOM::Value();
@@ -62,13 +64,13 @@ namespace Crowy
     DECLARE_TYPETRAITS(Transform)
 
     template<typename T>
-    concept HasTypeTraits = requires{
+    concept HasTypeTraits = requires {
         TypeTraits<T>::name;
         TypeTraits<T>::deserialize;
         TypeTraits<T>::serialize;
     };
 
-    struct EnumeratorDesc{
+    struct EnumeratorDesc {
         CStr name;
         i64 value;
     };
@@ -87,7 +89,7 @@ namespace Crowy
 
     // erased operations and identity of one type.
     // built by makeTypeOps, see ClassRegistry.hpp
-    struct TypeOps{
+    struct TypeOps {
         CStr name = nullptr;
         usize size = 0;
         usize align = 0;
@@ -102,7 +104,8 @@ namespace Crowy
         // leaf type: emits the value deserialize reads back
         void (*serialize)(const void*, DOM::Value&) = nullptr;
         // reflected type: filled property by property.
-        // resolved lazily, so the desc may register after this TypeOps was built
+        // resolved lazily, so the desc may register after this TypeOps was
+        // built
         const TypeDesc* (*getDesc)() = nullptr;
         // enum type: its enumerators, for dropdowns and by-name writers
         std::span<const EnumeratorDesc> (*enumerators)() = nullptr;

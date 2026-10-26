@@ -30,7 +30,7 @@ namespace Crowy
     template<typename T>
     const TypeOps* getTypeOps();
 
-    struct TypeDesc{
+    struct TypeDesc {
         Str name;
         const TypeDesc* parent = nullptr;
         // what creating the type by name goes through
@@ -41,7 +41,7 @@ namespace Crowy
 
         template<typename... Ptrs>
             requires detail::MemberPointers<Ptrs...>
-        PropertyDesc& AddProperty(CStr name, Ptrs... ptrs){
+        PropertyDesc& AddProperty(CStr name, Ptrs... ptrs) {
             using Leaf = typename detail::MemberChain<Ptrs...>::Leaf;
 
             static_assert(
@@ -54,25 +54,28 @@ namespace Crowy
             auto [it, ret] = indexByName.try_emplace(name, properties.size());
             CROWY_ASSERT(ret);
 
-            properties.push_back(PropertyDesc{
-                .name = name,
-                .type = *getTypeOps<Leaf>(),
-                .accessor = std::make_unique<MemberAccessor<Ptrs...>>(ptrs...),
-                .meta = {}
-            });
+            properties.push_back(
+                PropertyDesc{
+                    .name = name,
+                    .type = *getTypeOps<Leaf>(),
+                    .accessor =
+                        std::make_unique<MemberAccessor<Ptrs...>>(ptrs...),
+                    .meta = {}
+                }
+            );
 
             return properties.back();
         }
 
-        const PropertyDesc* Find(StrView name) const{
+        const PropertyDesc* Find(StrView name) const {
             auto it = indexByName.find(name);
             return it == indexByName.end() ? nullptr : &properties[it->second];
         }
 
         // own properties shadow the parent chain's
-        const PropertyDesc* FindInChain(StrView name) const{
-            for(const auto* desc = this; desc != nullptr; desc = desc->parent){
-                if(const auto* prop = desc->Find(name)){
+        const PropertyDesc* FindInChain(StrView name) const {
+            for(const auto* desc = this; desc != nullptr; desc = desc->parent) {
+                if(const auto* prop = desc->Find(name)) {
                     return prop;
                 }
             }
@@ -80,7 +83,7 @@ namespace Crowy
         }
     };
 
-    class ClassRegistry{
+    class ClassRegistry {
     private:
         std::unordered_map<std::type_index, RAII<TypeDesc>> descByTypeindex;
         StringHashMap<TypeDesc*> typeByName;
@@ -93,10 +96,10 @@ namespace Crowy
 
         // creates the slot on demand, and its address stays valid
         template<typename T>
-        TypeDesc& DescFor(){
+        TypeDesc& DescFor() {
             auto& slot = descByTypeindex[std::type_index(typeid(T))];
 
-            if(slot == nullptr){
+            if(slot == nullptr) {
                 slot = std::make_unique<TypeDesc>();
                 slot->ops = getTypeOps<T>();
             }
@@ -110,7 +113,7 @@ namespace Crowy
     };
 
     template<typename T>
-    const TypeDesc* getDesc(){
+    const TypeDesc* getDesc() {
         return &ClassRegistry::Get().DescFor<T>();
     }
 
@@ -118,12 +121,12 @@ namespace Crowy
     {
         template<typename T>
             requires HasEnumTraits<T>
-        std::span<const EnumeratorDesc> enumeratorsOf(){
-            static constexpr auto list = []{
+        std::span<const EnumeratorDesc> enumeratorsOf() {
+            static constexpr auto list = [] {
                 constexpr auto count = EnumTraits<T>::entries.size();
 
                 std::array<EnumeratorDesc, count> out{};
-                for(usize i = 0; i < count; ++i){
+                for(usize i = 0; i < count; ++i) {
                     out[i] = EnumeratorDesc{
                         EnumTraits<T>::entries[i].name,
                         static_cast<i64>(EnumTraits<T>::entries[i].value)
@@ -156,7 +159,7 @@ namespace Crowy
         }
 
         template<typename T>
-        TypeOps makeTypeOps(){
+        TypeOps makeTypeOps() {
             static_assert(
                 HasTypeTraits<T> || std::is_class_v<T>,
                 "type has no TypeTraits and cannot be reflected"
@@ -187,7 +190,7 @@ namespace Crowy
                 };
             }
 
-            if constexpr(HasTypeTraits<T>){
+            if constexpr(HasTypeTraits<T>) {
                 ops.name = TypeTraits<T>::name;
                 ops.deserialize = &TypeTraits<T>::deserialize;
                 ops.serialize = &TypeTraits<T>::serialize;
@@ -223,12 +226,12 @@ namespace Crowy
                 ops.name = "list";
                 ops.list = &list;
             }
-            if constexpr(HasEnumTraits<T>){
+            if constexpr(HasEnumTraits<T>) {
                 ops.enumerators = &enumeratorsOf<T>;
-                ops.enumLoad = [](const void* member){
+                ops.enumLoad = [](const void* member) {
                     return static_cast<i64>(*static_cast<const T*>(member));
                 };
-                ops.enumStore = [](void* member, i64 value){
+                ops.enumStore = [](void* member, i64 value) {
                     *static_cast<T*>(member) = static_cast<T>(value);
                 };
             }
@@ -238,7 +241,7 @@ namespace Crowy
     }
 
     template<typename T>
-    const TypeOps* getTypeOps(){
+    const TypeOps* getTypeOps() {
         static const TypeOps ops = detail::makeTypeOps<T>();
         return &ops;
     }
@@ -260,7 +263,11 @@ namespace Crowy
         const DOM::Value& table
     );
     // the same walk in the other direction, into one flat table
-    void serializeProperties(const TypeDesc&, const void* object, DOM::Value& out);
+    void serializeProperties(
+        const TypeDesc&,
+        const void* object,
+        DOM::Value& out
+    );
 
     // one value as a property of its type is applied, its errors under path
     [[nodiscard]] PropertyErrors applyValue(
@@ -284,8 +291,8 @@ namespace Crowy
     }
 
     template<typename T>
-        requires (!std::is_pointer_v<T>)
-    void serializeProperties(const T* object, DOM::Value& out){
+        requires(!std::is_pointer_v<T>)
+    void serializeProperties(const T* object, DOM::Value& out) {
         auto& desc = Crowy::ClassRegistry::Get().DescFor<T>();
         serializeProperties(desc, object, out);
     }
@@ -306,7 +313,11 @@ namespace Crowy
 
     // "a.b[2].c" from target: each interior segment must be a reflected
     // struct, and an [index] picks one element of a list
-    ResolvedProperty resolveProperty(void* target, const TypeDesc&, StrView path);
+    ResolvedProperty resolveProperty(
+        void* target,
+        const TypeDesc&,
+        StrView path
+    );
     ResolvedConstProperty resolveProperty(
         const void* target,
         const TypeDesc&,
@@ -314,20 +325,18 @@ namespace Crowy
     );
 
     template<typename Self, typename T>
-    class DescBuilder{
+    class DescBuilder {
     protected:
         TypeDesc& desc;
         PropertyDesc* lastProp = nullptr;
 
         explicit DescBuilder(TypeDesc& desc)
-            : desc(desc){}
+            : desc(desc) {}
 
-        Self& self(){
-            return static_cast<Self&>(*this);
-        }
+        Self& self() { return static_cast<Self&>(*this); }
 
     public:
-        Self& SetName(CStr name){
+        Self& SetName(CStr name) {
             desc.name = name;
 
             return self();
@@ -335,7 +344,7 @@ namespace Crowy
 
         template<typename Parent>
             requires std::is_base_of_v<Parent, T>
-        Self& Inherits(){
+        Self& Inherits() {
             desc.parent = &ClassRegistry::Get().DescFor<Parent>();
 
             return self();
@@ -343,22 +352,22 @@ namespace Crowy
 
         template<typename... Ptrs>
             requires detail::MemberChainOf<T, Ptrs...>
-        Self& AddProperty(CStr name, Ptrs... ptrs){
+        Self& AddProperty(CStr name, Ptrs... ptrs) {
             lastProp = &desc.AddProperty(name, ptrs...);
 
             return self();
         }
 
-        Self& SetTooltip(CStr tooltip){
-            if(lastProp != nullptr){
+        Self& SetTooltip(CStr tooltip) {
+            if(lastProp != nullptr) {
                 lastProp->meta.tooltip = tooltip;
             }
 
             return self();
         }
 
-        Self& SetUIRange(f32 min, f32 max){
-            if(lastProp != nullptr){
+        Self& SetUIRange(f32 min, f32 max) {
+            if(lastProp != nullptr) {
                 lastProp->meta.uiRange = {min, max};
             }
 
@@ -373,11 +382,11 @@ namespace Crowy
     StructBuilder<T> reflectStruct();
 
     template<typename T>
-    class StructBuilder: public DescBuilder<StructBuilder<T>, T>{
+    class StructBuilder: public DescBuilder<StructBuilder<T>, T> {
         using Base = DescBuilder<StructBuilder<T>, T>;
 
     public:
-        bool Build(){
+        bool Build() {
             ClassRegistry::Get().Register(this->desc);
 
             return true;
@@ -387,20 +396,21 @@ namespace Crowy
         friend StructBuilder reflectStruct<T>();
 
         StructBuilder()
-            : Base(ClassRegistry::Get().DescFor<T>()){}
+            : Base(ClassRegistry::Get().DescFor<T>()) {}
     };
 
     template<typename T>
-    StructBuilder<T> reflectStruct(){
+    StructBuilder<T> reflectStruct() {
         return StructBuilder<T>();
     }
 }
 
-#define CROWY_STRUCT(TYPE) \
-namespace{ \
-    const auto Is##TYPE##Registered = ::Crowy::reflectStruct<TYPE>() \
-        .SetName(#TYPE)
+#define CROWY_STRUCT(TYPE)                                                     \
+    namespace                                                                  \
+    {                                                                          \
+        const auto Is##TYPE##Registered =                                      \
+            ::Crowy::reflectStruct<TYPE>().SetName(#TYPE)
 
-#define CROWY_STRUCT_END(TYPE) \
-        .Build(); \
-}
+#define CROWY_STRUCT_END(TYPE)                                                 \
+    .Build();                                                                  \
+    }

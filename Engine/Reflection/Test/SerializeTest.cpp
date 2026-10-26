@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include "ClassRegistry.hpp"
 #include "JsonLoader.hpp"
 
@@ -6,11 +7,7 @@ using namespace Crowy;
 
 // non-contiguous and negative in a signed underlying type,
 // so a name round trip cannot pass by accident of index
-enum class SerializeBlend: i16{
-    Opaque = -1,
-    Masked = 7,
-    Additive = 300
-};
+enum class SerializeBlend : i16 { Opaque = -1, Masked = 7, Additive = 300 };
 
 namespace Crowy
 {
@@ -27,7 +24,7 @@ namespace
 {
     // the erased pair the port will drive, through the text the wire carries
     template<typename T>
-    T roundTrip(const T& in){
+    T roundTrip(const T& in) {
         const auto* ops = getTypeOps<T>();
         DOM::Value out;
         ops->serialize(&in, out);
@@ -39,7 +36,7 @@ namespace
     }
 }
 
-TEST(Serialize, ScalarsRoundTrip){
+TEST(Serialize, ScalarsRoundTrip) {
     EXPECT_EQ(roundTrip<bool>(true), true);
     EXPECT_EQ(roundTrip<i8>(-8), -8);
     EXPECT_EQ(roundTrip<i16>(-16), -16);
@@ -54,31 +51,36 @@ TEST(Serialize, ScalarsRoundTrip){
     EXPECT_EQ(roundTrip<Str>("title"), "title");
 }
 
-TEST(Serialize, CompoundsRoundTrip){
+TEST(Serialize, CompoundsRoundTrip) {
     EXPECT_EQ(roundTrip(Vec2(1.0f, 2.0f)), Vec2(1.0f, 2.0f));
     EXPECT_EQ(roundTrip(Vec3(1.0f, 2.0f, 3.0f)), Vec3(1.0f, 2.0f, 3.0f));
-    EXPECT_EQ(roundTrip(Vec4(1.0f, 2.0f, 3.0f, 4.0f)), Vec4(1.0f, 2.0f, 3.0f, 4.0f));
+    EXPECT_EQ(
+        roundTrip(Vec4(1.0f, 2.0f, 3.0f, 4.0f)),
+        Vec4(1.0f, 2.0f, 3.0f, 4.0f)
+    );
 
     const auto size = roundTrip(Size2D{640, 480});
     EXPECT_EQ(size.x, 640u);
     EXPECT_EQ(size.y, 480u);
 
-    const auto transform = roundTrip(Transform{
-        .position = Vec3(1.0f, 2.0f, 3.0f),
-        .rotation = Vec4(0.0f, 0.0f, 1.0f, 0.0f),
-        .scale = Vec3(2.0f, 2.0f, 2.0f)
-    });
+    const auto transform = roundTrip(
+        Transform{
+            .position = Vec3(1.0f, 2.0f, 3.0f),
+            .rotation = Vec4(0.0f, 0.0f, 1.0f, 0.0f),
+            .scale = Vec3(2.0f, 2.0f, 2.0f)
+        }
+    );
     EXPECT_EQ(transform.position, Vec3(1.0f, 2.0f, 3.0f));
     EXPECT_EQ(transform.rotation, Vec4(0.0f, 0.0f, 1.0f, 0.0f));
     EXPECT_EQ(transform.scale, Vec3(2.0f, 2.0f, 2.0f));
 }
 
-TEST(Serialize, EnumRoundTripsByName){
+TEST(Serialize, EnumRoundTripsByName) {
     EXPECT_EQ(roundTrip(SerializeBlend::Opaque), SerializeBlend::Opaque);
     EXPECT_EQ(roundTrip(SerializeBlend::Additive), SerializeBlend::Additive);
 }
 
-TEST(Serialize, ShapesFollowTheParsingConvention){
+TEST(Serialize, ShapesFollowTheParsingConvention) {
     DOM::Value out;
 
     const auto v = Vec3(1.0f, 2.0f, 3.0f);
@@ -112,9 +114,11 @@ TEST(Serialize, ShapesFollowTheParsingConvention){
     EXPECT_TRUE(out.is_none());
 }
 
-TEST(Serialize, DeserializeReportsWhetherItWrote){
+TEST(Serialize, DeserializeReportsWhetherItWrote) {
     f32 real = 0.5f;
-    EXPECT_TRUE(getTypeOps<f32>()->deserialize(&real, DOM::Value(static_cast<i64>(1))));
+    EXPECT_TRUE(
+        getTypeOps<f32>()->deserialize(&real, DOM::Value(static_cast<i64>(1)))
+    );
     EXPECT_EQ(real, 1.0f);
     EXPECT_FALSE(getTypeOps<f32>()->deserialize(&real, DOM::Value("text")));
     EXPECT_EQ(real, 1.0f);
@@ -127,19 +131,27 @@ TEST(Serialize, DeserializeReportsWhetherItWrote){
     DOM::Array two;
     two.emplace_back(0.0);
     two.emplace_back(0.0);
-    EXPECT_FALSE(getTypeOps<Vec3>()->deserialize(&v, DOM::Value(std::move(two))));
+    EXPECT_FALSE(
+        getTypeOps<Vec3>()->deserialize(&v, DOM::Value(std::move(two)))
+    );
     EXPECT_EQ(v, Vec3(1.0f, 2.0f, 3.0f));
 
     auto blend = SerializeBlend::Masked;
-    EXPECT_FALSE(getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Unknown")));
+    EXPECT_FALSE(
+        getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Unknown"))
+    );
     EXPECT_EQ(blend, SerializeBlend::Masked);
-    EXPECT_FALSE(getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value()));
+    EXPECT_FALSE(
+        getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value())
+    );
     EXPECT_EQ(blend, SerializeBlend::Masked);
-    EXPECT_TRUE(getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Opaque")));
+    EXPECT_TRUE(
+        getTypeOps<SerializeBlend>()->deserialize(&blend, DOM::Value("Opaque"))
+    );
     EXPECT_EQ(blend, SerializeBlend::Opaque);
 }
 
-TEST(Serialize, EnumOpsCarryTheEnumeratorValue){
+TEST(Serialize, EnumOpsCarryTheEnumeratorValue) {
     const auto* ops = getTypeOps<SerializeBlend>();
     ASSERT_TRUE(ops->enumLoad != nullptr);
     ASSERT_TRUE(ops->enumStore != nullptr);

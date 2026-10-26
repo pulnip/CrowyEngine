@@ -9,7 +9,7 @@
 
 namespace Crowy
 {
-    ClassRegistry& ClassRegistry::Get(){
+    ClassRegistry& ClassRegistry::Get() {
         static ClassRegistry singleton;
         return singleton;
     }
@@ -38,8 +38,8 @@ namespace Crowy
 
     namespace
     {
-        bool HasProperties(const TypeDesc& desc){
-            if(!desc.properties.empty()){
+        bool HasProperties(const TypeDesc& desc) {
+            if(!desc.properties.empty()) {
                 return true;
             }
 
@@ -47,7 +47,7 @@ namespace Crowy
         }
     }
 
-    const TypeDesc* nestedDesc(const PropertyDesc& prop){
+    const TypeDesc* nestedDesc(const PropertyDesc& prop) {
         return nestedDesc(prop.type);
     }
 
@@ -86,7 +86,8 @@ namespace Crowy
             if(const auto* nested = nestedDesc(type)) {
                 if(const auto* inner = node.asTable()) {
                     applyTable(*nested, member, *inner, path, errors);
-                } else {
+                }
+                else {
                     errors.push_back(
                         std::format(
                             "'{}' is a struct and expects a table",
@@ -94,7 +95,8 @@ namespace Crowy
                         )
                     );
                 }
-            } else if(const auto* list = type.list) {
+            }
+            else if(const auto* list = type.list) {
                 const auto* items = node.asArray();
                 if(items == nullptr) {
                     errors.push_back(
@@ -116,7 +118,8 @@ namespace Crowy
                         errors
                     );
                 }
-            } else if(type.deserialize == nullptr) {
+            }
+            else if(type.deserialize == nullptr) {
                 errors.push_back(
                     std::format(
                         "'{}' is a {} with no properties registered",
@@ -124,7 +127,8 @@ namespace Crowy
                         type.name
                     )
                 );
-            } else if(!type.deserialize(member, node)) {
+            }
+            else if(!type.deserialize(member, node)) {
                 errors.push_back(
                     std::format("'{}' expects {}", path, type.name)
                 );
@@ -193,7 +197,8 @@ namespace Crowy
 
         if(const auto* root = table.asTable()) {
             applyTable(desc, object, *root, {}, errors);
-        } else {
+        }
+        else {
             errors.push_back(std::format("'{}' expects a table", desc.name));
         }
 
@@ -205,12 +210,16 @@ namespace Crowy
 
     namespace
     {
-        void appendProperties(const TypeDesc& desc, const void* object, DOM::Table& table){
-            if(desc.parent != nullptr){
+        void appendProperties(
+            const TypeDesc& desc,
+            const void* object,
+            DOM::Table& table
+        ) {
+            if(desc.parent != nullptr) {
                 appendProperties(*desc.parent, object, table);
             }
 
-            for(const auto& prop: desc.properties){
+            for(const auto& prop: desc.properties) {
                 const void* member = prop.accessor->Get(object);
                 DOM::Value value;
                 if(!serializeValue(prop.type, member, value))
@@ -271,7 +280,11 @@ namespace Crowy
         return false;
     }
 
-    void serializeProperties(const TypeDesc& desc, const void* object, DOM::Value& out){
+    void serializeProperties(
+        const TypeDesc& desc,
+        const void* object,
+        DOM::Value& out
+    ) {
         DOM::Table table;
         appendProperties(desc, object, table);
         out = DOM::Value(std::move(table));

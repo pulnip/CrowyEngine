@@ -9,7 +9,7 @@
 
 using namespace Crowy;
 
-struct InjectionProbe{
+struct InjectionProbe {
     Transform transform;
 };
 
@@ -22,7 +22,7 @@ CROWY_STRUCT(InjectionProbe)
 CROWY_STRUCT_END(InjectionProbe)
 // clang-format on
 
-TEST(Reflection, NestedProperty){
+TEST(Reflection, NestedProperty) {
     ASSERT_TRUE(IsInjectionProbeRegistered);
 
     InjectionProbe probe;
@@ -68,12 +68,12 @@ TEST(Reflection, NestedProperty){
     }
 }
 
-struct Health{
+struct Health {
     i32 current = 0;
     i32 maximum = 100;
 };
 
-struct Stats{
+struct Stats {
     Health health;
     f32 speed = 1.0f;
 };
@@ -90,7 +90,7 @@ CROWY_STRUCT(Stats)
 CROWY_STRUCT_END(Stats)
 // clang-format on
 
-struct StructProbe{
+struct StructProbe {
     Stats stats;
 };
 
@@ -100,7 +100,7 @@ CROWY_STRUCT(StructProbe)
 CROWY_STRUCT_END(StructProbe)
 // clang-format on
 
-TEST(Reflection, NestedStructDesc){
+TEST(Reflection, NestedStructDesc) {
     ASSERT_TRUE(IsHealthRegistered);
     ASSERT_TRUE(IsStatsRegistered);
     ASSERT_TRUE(IsStructProbeRegistered);
@@ -122,7 +122,7 @@ TEST(Reflection, NestedStructDesc){
     EXPECT_EQ(probe.stats.health.maximum, 100);
 }
 
-struct AliasProbe{
+struct AliasProbe {
     Stats stats;
 };
 
@@ -133,7 +133,7 @@ CROWY_STRUCT(AliasProbe)
 CROWY_STRUCT_END(AliasProbe)
 // clang-format on
 
-TEST(Reflection, ChainedStructDesc){
+TEST(Reflection, ChainedStructDesc) {
     ASSERT_TRUE(IsAliasProbeRegistered);
 
     AliasProbe probe;
@@ -152,7 +152,7 @@ TEST(Reflection, ChainedStructDesc){
     EXPECT_EQ(probe.stats.speed, 1.0f);
 }
 
-struct OrderProbe{
+struct OrderProbe {
     f32 alpha = 0.0f;
     bool beta = false;
     i32 gamma = 0;
@@ -170,7 +170,7 @@ CROWY_STRUCT(OrderProbe)
 CROWY_STRUCT_END(OrderProbe)
 // clang-format on
 
-TEST(Reflection, RegistrationOrderSurvives){
+TEST(Reflection, RegistrationOrderSurvives) {
     ASSERT_TRUE(IsOrderProbeRegistered);
 
     const auto* desc = getDesc<OrderProbe>();
@@ -193,7 +193,7 @@ TEST(Reflection, SerializedKeysFollowRegistration) {
     EXPECT_EQ(keys, (std::vector<Str>{"delta", "alpha", "gamma", "beta"}));
 }
 
-TEST(Reflection, RangeReachesTheMeta){
+TEST(Reflection, RangeReachesTheMeta) {
     const auto* desc = getDesc<OrderProbe>();
 
     const auto* ranged = desc->Find("delta");
@@ -207,7 +207,7 @@ TEST(Reflection, RangeReachesTheMeta){
     EXPECT_FALSE(rangeless->meta.uiRange.has_value());
 }
 
-TEST(Reflection, FindByName){
+TEST(Reflection, FindByName) {
     const auto* desc = getDesc<OrderProbe>();
 
     const auto* found = desc->Find("gamma");
@@ -217,7 +217,7 @@ TEST(Reflection, FindByName){
     EXPECT_TRUE(desc->Find("epsilon") == nullptr);
 }
 
-struct InheritanceBase{
+struct InheritanceBase {
     f32 baseValue = 0.0f;
 };
 
@@ -227,7 +227,7 @@ CROWY_STRUCT(InheritanceBase)
 CROWY_STRUCT_END(InheritanceBase)
 // clang-format on
 
-struct InheritanceChild: InheritanceBase{
+struct InheritanceChild: InheritanceBase {
     f32 ownValue = 0.0f;
 };
 
@@ -238,7 +238,7 @@ CROWY_STRUCT(InheritanceChild)
 CROWY_STRUCT_END(InheritanceChild)
 // clang-format on
 
-TEST(Reflection, InheritedPropertyApplies){
+TEST(Reflection, InheritedPropertyApplies) {
     ASSERT_TRUE(IsInheritanceBaseRegistered);
     ASSERT_TRUE(IsInheritanceChildRegistered);
 
@@ -255,7 +255,7 @@ TEST(Reflection, InheritedPropertyApplies){
     EXPECT_EQ(probe.ownValue, 7.5f);
 }
 
-TEST(Reflection, InheritedPropertyStaysOnTheParentTable){
+TEST(Reflection, InheritedPropertyStaysOnTheParentTable) {
     const auto* desc = getDesc<InheritanceChild>();
 
     // per-class tables are not merged: a consumer follows parent itself
@@ -266,7 +266,7 @@ TEST(Reflection, InheritedPropertyStaysOnTheParentTable){
     EXPECT_TRUE(desc->parent->Find("baseValue") != nullptr);
 }
 
-enum class BlendProbe : u8{
+enum class BlendProbe : u8 {
     Off = 0,
     Additive = 1,
     // deliberately sparse: value != index
@@ -284,7 +284,7 @@ namespace Crowy
     // clang-format on
 }
 
-struct EnumProbe{
+struct EnumProbe {
     BlendProbe mode = BlendProbe::Off;
 };
 
@@ -294,7 +294,7 @@ CROWY_STRUCT(EnumProbe)
 CROWY_STRUCT_END(EnumProbe)
 // clang-format on
 
-TEST(Reflection, EnumNameLookupsRoundTrip){
+TEST(Reflection, EnumNameLookupsRoundTrip) {
     EXPECT_STREQ(enumName(BlendProbe::Multiply), "Multiply");
     EXPECT_TRUE(enumName(static_cast<BlendProbe>(9)) == nullptr);
 
@@ -302,7 +302,7 @@ TEST(Reflection, EnumNameLookupsRoundTrip){
     EXPECT_FALSE(enumFromName<BlendProbe>("Screen").has_value());
 }
 
-TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps){
+TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps) {
     ASSERT_TRUE(IsEnumProbeRegistered);
 
     const auto* prop = getDesc<EnumProbe>()->Find("mode");
@@ -318,7 +318,7 @@ TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps){
     EXPECT_EQ(enumerators[2].value, 4);
 }
 
-TEST(Reflection, EnumDeserializesByName){
+TEST(Reflection, EnumDeserializesByName) {
     EnumProbe probe;
 
     auto dom = parseJsonString(R"({"mode": "Multiply"})");
@@ -334,7 +334,7 @@ TEST(Reflection, EnumDeserializesByName){
     EXPECT_EQ(probe.mode, BlendProbe::Multiply);
 }
 
-TEST(Reflection, FindInChainReachesTheParent){
+TEST(Reflection, FindInChainReachesTheParent) {
     const auto* desc = getDesc<InheritanceChild>();
 
     EXPECT_TRUE(desc->FindInChain("ownValue") != nullptr);
@@ -342,7 +342,7 @@ TEST(Reflection, FindInChainReachesTheParent){
     EXPECT_TRUE(desc->FindInChain("nope") == nullptr);
 }
 
-TEST(Reflection, SerializedObjectAppliesBack){
+TEST(Reflection, SerializedObjectAppliesBack) {
     StructProbe source;
     source.stats.speed = 3.5f;
     source.stats.health.current = 7;
@@ -361,7 +361,7 @@ TEST(Reflection, SerializedObjectAppliesBack){
     EXPECT_EQ(back.stats.health.maximum, 42);
 }
 
-TEST(Reflection, SerializeFlattensTheParentChain){
+TEST(Reflection, SerializeFlattensTheParentChain) {
     InheritanceChild child;
     child.baseValue = 2.5f;
     child.ownValue = 7.5f;
@@ -374,7 +374,7 @@ TEST(Reflection, SerializeFlattensTheParentChain){
     EXPECT_EQ(out.get<f32>("ownValue"), 7.5f);
 }
 
-TEST(Reflection, ResolvePropertyWalksDots){
+TEST(Reflection, ResolvePropertyWalksDots) {
     StructProbe object;
     const auto& desc = *getDesc<StructProbe>();
 
@@ -412,15 +412,16 @@ TEST(Reflection, AConstObjectResolvesToAConstMember) {
     EXPECT_TRUE(accessor->Get(&object.stats.health) == current.member);
 }
 
-TEST(Reflection, ResolvePropertyReachesTheParent){
+TEST(Reflection, ResolvePropertyReachesTheParent) {
     InheritanceChild child;
 
-    auto base = resolveProperty(&child, *getDesc<InheritanceChild>(), "baseValue");
+    auto base =
+        resolveProperty(&child, *getDesc<InheritanceChild>(), "baseValue");
     ASSERT_TRUE(base.type != nullptr);
     EXPECT_TRUE(base.member == &child.baseValue);
 }
 
-TEST(Reflection, ResolvePropertyNamesTheFailure){
+TEST(Reflection, ResolvePropertyNamesTheFailure) {
     StructProbe object;
     const auto& desc = *getDesc<StructProbe>();
 

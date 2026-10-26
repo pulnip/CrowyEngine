@@ -2,12 +2,13 @@
 
 #include <optional>
 #include <tuple>
+
 #include "Primitives.hpp"
 #include "TypeOps.hpp"
 
 namespace Crowy
 {
-    struct PropertyAccessor{
+    struct PropertyAccessor {
         virtual ~PropertyAccessor() = default;
         virtual void* Get(void* obj) const = 0;
         virtual const void* Get(const void* obj) const = 0;
@@ -19,7 +20,7 @@ namespace Crowy
         struct MemberPointerTraits;
 
         template<typename Class, typename Member>
-        struct MemberPointerTraits<Member Class::*>{
+        struct MemberPointerTraits<Member Class::*> {
             using Owner = Class;
             using Member_ = Member;
         };
@@ -30,29 +31,27 @@ namespace Crowy
         struct MemberChain;
 
         template<typename Ptr>
-        struct MemberChain<Ptr>{
+        struct MemberChain<Ptr> {
             using Root = typename MemberPointerTraits<Ptr>::Owner;
             using Leaf = typename MemberPointerTraits<Ptr>::Member_;
         };
 
         template<typename Ptr, typename... Rest>
-        struct MemberChain<Ptr, Rest...>{
+        struct MemberChain<Ptr, Rest...> {
             using Root = typename MemberPointerTraits<Ptr>::Owner;
             using Leaf = typename MemberChain<Rest...>::Leaf;
 
             static_assert(
                 std::is_base_of_v<
                     typename MemberChain<Rest...>::Root,
-                    typename MemberPointerTraits<Ptr>::Member_
-                >,
+                    typename MemberPointerTraits<Ptr>::Member_>,
                 "member pointer chain is disconnected"
             );
         };
 
         template<typename... Ptrs>
-        concept MemberPointers =
-            sizeof...(Ptrs) > 0 &&
-            (std::is_member_object_pointer_v<Ptrs> && ...);
+        concept MemberPointers = sizeof...(Ptrs) > 0 &&
+                                 (std::is_member_object_pointer_v<Ptrs> && ...);
 
         // the chain must start at Class, or at one of its bases
         template<typename Class, typename... Ptrs>
@@ -67,7 +66,7 @@ namespace Crowy
     //   MemberAccessor{&A::b, &B::c, ...}  -> A::b.c...
     template<typename... Ptrs>
         requires detail::MemberPointers<Ptrs...>
-    struct MemberAccessor: public PropertyAccessor{
+    struct MemberAccessor: public PropertyAccessor {
     private:
         using Root = typename detail::MemberChain<Ptrs...>::Root;
 
@@ -75,9 +74,9 @@ namespace Crowy
 
     public:
         explicit MemberAccessor(Ptrs... ptrs)
-            : ptrs(ptrs...){}
+            : ptrs(ptrs...) {}
 
-        void* Get(void* obj) const override{
+        void* Get(void* obj) const override {
             return Resolve<0>(static_cast<Root*>(obj));
         }
         const void* Get(const void* obj) const override {
@@ -88,23 +87,23 @@ namespace Crowy
         // a const owner yields a const member, all the way down
         template<usize I, typename Owner>
         auto* Resolve(Owner* owner) const {
-            if constexpr(I == sizeof...(Ptrs)){
+            if constexpr(I == sizeof...(Ptrs)) {
                 return owner;
             }
-            else{
+            else {
                 return Resolve<I + 1>(&(owner->*std::get<I>(ptrs)));
             }
         }
     };
 
-    struct PropertyMeta{
+    struct PropertyMeta {
         // slider travel range, not a hard clamp
         // - a widget walks it, nothing enforces it on write
         std::optional<std::pair<f32, f32>> uiRange = std::nullopt;
         CStr tooltip = nullptr;
     };
 
-    struct PropertyDesc{
+    struct PropertyDesc {
         Str name;
         const TypeOps& type;
         RAII<PropertyAccessor> accessor;
