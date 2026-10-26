@@ -152,7 +152,7 @@ TEST(AssetStore, ADestroyedStoreReleasesWhatNoHandleHolds) {
     EXPECT_EQ(releases, Paths{"a.png"});
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(AssetStoreDeathTest, AHandleOutlivingItsStoreStops) {
     EXPECT_DEATH(
         {

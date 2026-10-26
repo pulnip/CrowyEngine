@@ -3,8 +3,8 @@
 #include <chrono>
 #include <source_location>
 #include <thread>
-#include <utility>
 
+#include "EnumUtil.hpp"
 #include "Primitives.hpp"
 
 namespace Crowy
@@ -18,24 +18,16 @@ namespace Crowy
         Fatal = 5
     };
 
-    inline CStr convert(LogLevel level) noexcept {
-        switch(level) {
-        case LogLevel::Trace:
-            return "Trace";
-        case LogLevel::Debug:
-            return "Debug";
-        case LogLevel::Info:
-            return "Info";
-        case LogLevel::Warn:
-            return "Warn";
-        case LogLevel::Error:
-            return "Error";
-        case LogLevel::Fatal:
-            return "Fatal";
-        default:
-            std::unreachable();
-        }
-    }
+    // clang-format off
+    CROWY_ENUM_BEGIN(LogLevel)
+        CROWY_ENUM_VALUE(Trace)
+        CROWY_ENUM_VALUE(Debug)
+        CROWY_ENUM_VALUE(Info)
+        CROWY_ENUM_VALUE(Warn)
+        CROWY_ENUM_VALUE(Error)
+        CROWY_ENUM_VALUE(Fatal)
+    CROWY_ENUM_END()
+    // clang-format on
 
     struct LogMessage {
         LogLevel level;

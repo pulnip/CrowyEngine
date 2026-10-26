@@ -266,6 +266,46 @@ TEST(Reflection, InheritedPropertyStaysOnTheParentTable) {
     EXPECT_TRUE(desc->parent->Find("baseValue") != nullptr);
 }
 
+struct ShadowedBase {
+    f32 value = 0.0f;
+};
+
+// clang-format off
+CROWY_STRUCT(ShadowedBase)
+    .AddProperty("value", &ShadowedBase::value)
+CROWY_STRUCT_END(ShadowedBase)
+// clang-format on
+
+struct ShadowingChild: ShadowedBase {
+    f32 own = 0.0f;
+};
+
+// clang-format off
+CROWY_STRUCT(ShadowingChild)
+    .Inherits<ShadowedBase>()
+    .AddProperty("value", &ShadowingChild::own)
+CROWY_STRUCT_END(ShadowingChild)
+// clang-format on
+
+TEST(Reflection, TheMostDerivedPropertyTakesAShadowedName) {
+    const auto* desc = getDesc<ShadowingChild>();
+    const auto chain = desc->PropertiesInChain();
+    ASSERT_EQ(chain.size(), 1u);
+    EXPECT_EQ(chain[0], desc->Find("value"));
+
+    ShadowingChild probe;
+    EXPECT_TRUE(
+        applyProperties(&probe, parseJsonString(R"({"value": 2})")).empty()
+    );
+    EXPECT_EQ(probe.own, 2.0f);
+    EXPECT_EQ(probe.value, 0.0f);
+
+    probe.value = 5.0f;
+    DOM::Value out;
+    serializeProperties(&probe, out);
+    EXPECT_EQ(out.get<f32>("value"), 2.0f);
+}
+
 enum class BlendProbe : u8 {
     Off = 0,
     Additive = 1,
@@ -329,7 +369,9 @@ TEST(Reflection, EnumDeserializesByName) {
     auto unknown = parseJsonString(R"({"mode": "Screen"})");
     EXPECT_EQ(
         applyProperties(&probe, unknown),
-        PropertyErrors{"'mode' expects BlendProbe"}
+        PropertyErrors{
+            "'mode' expects BlendProbe (one of Off, Additive, Multiply)"
+        }
     );
     EXPECT_EQ(probe.mode, BlendProbe::Multiply);
 }
@@ -659,7 +701,7 @@ TEST(Reflection, AListErrorNamesTheElement) {
         errors,
         (PropertyErrors{
             "'items[0].weight' expects f32",
-            "'modes[0]' expects BlendProbe",
+            "'modes[0]' expects BlendProbe (one of Off, Additive, Multiply)",
             "'weights' is a list and expects an array",
             "no property 'items[1].nope' on 'ListItem'"
         })

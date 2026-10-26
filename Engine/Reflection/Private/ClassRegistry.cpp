@@ -1,7 +1,6 @@
 #include "ClassRegistry.hpp"
 
 #include <algorithm>
-#include <charconv>
 #include <format>
 #include <optional>
 
@@ -36,17 +35,6 @@ namespace Crowy
         }
     }
 
-    namespace
-    {
-        bool HasProperties(const TypeDesc& desc) {
-            if(!desc.properties.empty()) {
-                return true;
-            }
-
-            return desc.parent != nullptr && HasProperties(*desc.parent);
-        }
-    }
-
     const TypeDesc* nestedDesc(const PropertyDesc& prop) {
         return nestedDesc(prop.type);
     }
@@ -56,7 +44,7 @@ namespace Crowy
             return nullptr;
 
         const TypeDesc* desc = type.getDesc();
-        return HasProperties(*desc) ? desc : nullptr;
+        return desc->HasProperties() ? desc : nullptr;
     }
 
     namespace
@@ -64,6 +52,17 @@ namespace Crowy
         Str joinPath(StrView prefix, StrView name) {
             return prefix.empty() ? Str(name)
                                   : std::format("{}.{}", prefix, name);
+        }
+
+        Str expectedOf(const TypeOps& type) {
+            if(type.enumerators == nullptr)
+                return type.name;
+
+            return std::format(
+                "{} (one of {})",
+                type.name,
+                join(type.enumerators(), ", ", &EnumeratorDesc::name)
+            );
         }
 
         void applyTable(
@@ -130,34 +129,7 @@ namespace Crowy
             }
             else if(!type.deserialize(member, node)) {
                 errors.push_back(
-                    std::format("'{}' expects {}", path, type.name)
-                );
-            }
-        }
-
-        void applyOwnProperties(
-            const TypeDesc& desc,
-            void* object,
-            const DOM::Table& table,
-            StrView prefix,
-            PropertyErrors& errors
-        ) {
-            if(desc.parent != nullptr) {
-                applyOwnProperties(*desc.parent, object, table, prefix, errors);
-            }
-
-            for(const auto& prop: desc.properties) {
-                const auto node = table.find(prop.name);
-                if(node == table.end()) {
-                    continue;
-                }
-
-                applyNode(
-                    prop.type,
-                    prop.accessor->Get(object),
-                    node->second,
-                    joinPath(prefix, prop.name),
-                    errors
+                    std::format("'{}' expects {}", path, expectedOf(type))
                 );
             }
         }
@@ -183,7 +155,20 @@ namespace Crowy
                 }
             }
 
-            applyOwnProperties(desc, object, table, prefix, errors);
+            for(const auto* prop: desc.PropertiesInChain()) {
+                const auto node = table.find(prop->name);
+                if(node == table.end()) {
+                    continue;
+                }
+
+                applyNode(
+                    prop->type,
+                    prop->accessor->Get(object),
+                    node->second,
+                    joinPath(prefix, prop->name),
+                    errors
+                );
+            }
         }
     }
 
@@ -205,29 +190,6 @@ namespace Crowy
         std::ranges::sort(errors);
 
         return errors;
-    }
-
-    namespace
-    {
-        void appendProperties(
-            const TypeDesc& desc,
-            const void* object,
-            DOM::Table& table
-        ) {
-            if(desc.parent != nullptr) {
-                appendProperties(*desc.parent, object, table);
-            }
-
-            for(const auto& prop: desc.properties) {
-                const void* member = prop.accessor->Get(object);
-                DOM::Value value;
-                if(!serializeValue(prop.type, member, value))
-                    continue;
-
-                // the most derived declaration wins a shadowed name
-                table.insert_or_assign(prop.name, std::move(value));
-            }
-        }
     }
 
     PropertyErrors applyValue(
@@ -285,25 +247,21 @@ namespace Crowy
         DOM::Value& out
     ) {
         DOM::Table table;
-        appendProperties(desc, object, table);
+        for(const auto* prop: desc.PropertiesInChain()) {
+            DOM::Value value;
+            if(serializeValue(prop->type, prop->accessor->Get(object), value))
+                table.emplace(prop->name, std::move(value));
+        }
         out = DOM::Value(std::move(table));
     }
 
     namespace
     {
-        // "[N]" and nothing else
         std::optional<usize> parseIndex(StrView text) {
             if(text.size() < 3 || text.front() != '[' || text.back() != ']')
                 return std::nullopt;
 
-            usize index = 0;
-            const auto* first = text.data() + 1;
-            const auto* last = text.data() + text.size() - 1;
-            const auto [end, error] = std::from_chars(first, last, index);
-            if(error != std::errc{} || end != last)
-                return std::nullopt;
-
-            return index;
+            return parseNumber<usize>(text.substr(1, text.size() - 2));
         }
 
         template<typename Member>

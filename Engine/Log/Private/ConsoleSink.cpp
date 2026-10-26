@@ -15,7 +15,7 @@ namespace Crowy
             out,
             "[{:%H:%M:%S}][{}][{}]: {}({}:{})",
             msg.time_point,
-            convert(msg.level),
+            enumName(msg.level),
             msg.category,
             msg.text,
             msg.location.file_name(),

@@ -79,6 +79,29 @@ namespace Crowy
             }
             return nullptr;
         }
+
+        bool HasProperties() const {
+            for(const auto* desc = this; desc != nullptr; desc = desc->parent) {
+                if(!desc->properties.empty())
+                    return true;
+            }
+            return false;
+        }
+
+        std::vector<const PropertyDesc*> PropertiesInChain() const {
+            std::vector<const TypeDesc*> chain;
+            for(const auto* desc = this; desc != nullptr; desc = desc->parent)
+                chain.push_back(desc);
+
+            std::vector<const PropertyDesc*> inChain;
+            for(const auto* desc: chain | std::views::reverse) {
+                for(const auto& prop: desc->properties) {
+                    if(FindInChain(prop.name) == &prop)
+                        inChain.push_back(&prop);
+                }
+            }
+            return inChain;
+        }
     };
 
     class ClassRegistry {

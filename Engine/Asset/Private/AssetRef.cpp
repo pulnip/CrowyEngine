@@ -4,9 +4,11 @@
 #include <ranges>
 #include <vector>
 
+#include "StringUtil.hpp"
+
 namespace
 {
-    constexpr Crowy::StrView EnginePrefix = "engine";
+    constexpr Crowy::StrView EnginePrefix = "engine:";
 
     // Split by hand: std::filesystem turns '/' into '\' on Windows.
     std::optional<Crowy::Str> normalizePath(Crowy::StrView text) {
@@ -34,13 +36,7 @@ namespace
         if(names.empty())
             return std::nullopt;
 
-        Str path;
-        for(const auto name: names) {
-            if(!path.empty())
-                path += '/';
-            path += name;
-        }
-        return path;
+        return join(names, "/");
     }
 }
 
@@ -49,13 +45,8 @@ namespace Crowy
     std::optional<AssetRef> AssetRef::Parse(StrView text) {
         AssetRef ref;
 
-        if(const auto colon = text.find(':'); colon != StrView::npos) {
-            if(text.substr(0, colon) != EnginePrefix)
-                return std::nullopt;
-
+        if(consumePrefix(text, EnginePrefix))
             ref.mount = AssetMount::Engine;
-            text.remove_prefix(colon + 1);
-        }
 
         auto path = normalizePath(text);
         if(!path)
@@ -67,7 +58,7 @@ namespace Crowy
 
     Str AssetRef::ToString() const {
         if(mount == AssetMount::Engine)
-            return std::format("{}:{}", EnginePrefix, path);
+            return std::format("{}{}", EnginePrefix, path);
 
         return path;
     }

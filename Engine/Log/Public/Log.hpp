@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include <utility>
 
 #include "LogDefinitions.hpp"
 
@@ -18,7 +19,7 @@ namespace Crowy
         std::source_location location,
         std::format_string<Args...> fmt,
         Args&&... args
-    ) noexcept {
+    ) {
         LogMessage msg{
             .level = level,
             .category = category,
