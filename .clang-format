@@ -82,10 +82,16 @@ IncludeIsMainRegex: '$'
 IncludeCategories:
   - Regex: '^<[^.]*>$'
     Priority: 1
+  # Jolt requires Jolt.h before any other Jolt header.
+  - Regex: '^<Jolt/Jolt\.h>$'
+    Priority: 2
+    SortPriority: 2
   - Regex: '^<.*>$'
     Priority: 2
+    SortPriority: 3
   - Regex: '^".*"$'
     Priority: 3
+    SortPriority: 4
 
 EmptyLineBeforeAccessModifier: LogicalBlock
 KeepEmptyLinesAtTheStartOfBlocks: false
