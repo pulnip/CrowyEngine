@@ -101,32 +101,33 @@ namespace Crowy
 
             // the sky never writes depth, so the floor always wins over it
             // regardless of how the sphere and the plane happen to overlap
-            skyPSO = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .vertexLayout = VERTEX_INPUT_LAYOUT,
-                    .topology = RHIPrimitiveTopology::TriangleList,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/CubeMapping.slang",
-                        .entryPoint = "vs_main"
-                    }
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/CubeMapping.slang",
-                    .entryPoint = "fs_main"
-                },
-                .depthStencil = RHIDepthStencilState{
-                    .format = DEPTH_FORMAT,
-                    .depthWriteEnable = false,
-                    .depthFunc = RHIComparisonFunc::Always
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1
-            });
+            skyPSO = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .preRasterizer =
+                        RHILegacyFrontendDesc{
+                            .vertexLayout = VERTEX_INPUT_LAYOUT,
+                            .topology = RHIPrimitiveTopology::TriangleList,
+                            .vertexShader =
+                                {.path = "Engine/RHI/Sample/Skybox.slang",
+                                 .entryPoint = "vs_main"}
+                        },
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/Skybox.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .depthStencil =
+                        RHIDepthStencilState{
+                            .format = DEPTH_FORMAT,
+                            .depthWriteEnable = false,
+                            .depthFunc = RHIComparisonFunc::Always
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1
+                }
+            );
 
             floorPSO = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
