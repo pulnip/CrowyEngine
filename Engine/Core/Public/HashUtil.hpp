@@ -17,8 +17,8 @@ namespace Crowy
 }
 
 template<>
-struct std::hash<Crowy::Vec2>{
-    std::size_t operator()(const Crowy::Vec2& v) const noexcept{
+struct std::hash<Crowy::Vec2> {
+    std::size_t operator()(const Crowy::Vec2& v) const noexcept {
         using namespace Crowy;
 
         return hashAll(v.x, v.y);
@@ -26,8 +26,8 @@ struct std::hash<Crowy::Vec2>{
 };
 
 template<>
-struct std::hash<Crowy::Vec3>{
-    std::size_t operator()(const Crowy::Vec3& v) const noexcept{
+struct std::hash<Crowy::Vec3> {
+    std::size_t operator()(const Crowy::Vec3& v) const noexcept {
         using namespace Crowy;
 
         return hashAll(v.x, v.y, v.z);
@@ -35,8 +35,8 @@ struct std::hash<Crowy::Vec3>{
 };
 
 template<>
-struct std::hash<Crowy::Vec4>{
-    std::size_t operator()(const Crowy::Vec4& v) const noexcept{
+struct std::hash<Crowy::Vec4> {
+    std::size_t operator()(const Crowy::Vec4& v) const noexcept {
         using namespace Crowy;
 
         return hashAll(v.x, v.y, v.z, v.w);
@@ -44,8 +44,8 @@ struct std::hash<Crowy::Vec4>{
 };
 
 template<>
-struct std::hash<Crowy::Size2D>{
-    std::size_t operator()(const Crowy::Size2D& s) const noexcept{
+struct std::hash<Crowy::Size2D> {
+    std::size_t operator()(const Crowy::Size2D& s) const noexcept {
         using namespace Crowy;
 
         return hashAll(s.x, s.y);
@@ -53,8 +53,8 @@ struct std::hash<Crowy::Size2D>{
 };
 
 template<>
-struct std::hash<Crowy::Size3D>{
-    std::size_t operator()(const Crowy::Size3D& s) const noexcept{
+struct std::hash<Crowy::Size3D> {
+    std::size_t operator()(const Crowy::Size3D& s) const noexcept {
         using namespace Crowy;
 
         return hashAll(s.x, s.y, s.z);

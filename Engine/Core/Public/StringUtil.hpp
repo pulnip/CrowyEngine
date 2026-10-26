@@ -33,15 +33,15 @@ namespace Crowy
     using StringHashMap =
         std::unordered_map<Str, T, StringHash, std::equal_to<>>;
 
-    inline constexpr Str join(std::span<const Str> tokens, StrView sep={}){
+    inline constexpr Str join(std::span<const Str> tokens, StrView sep = {}) {
         Str joined;
         bool first = true;
 
-        for(const auto& token: tokens){
-            if(first){
+        for(const auto& token: tokens) {
+            if(first) {
                 first = false;
             }
-            else{
+            else {
                 joined += sep;
             }
 

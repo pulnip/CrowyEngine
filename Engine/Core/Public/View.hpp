@@ -14,13 +14,14 @@
 
 namespace std
 {
-    template <std::ranges::input_range R>
+    template<std::ranges::input_range R>
         requires std::ranges::view<R>
-    class enumerate_view: public std::ranges::view_interface<enumerate_view<R>>{
+    class enumerate_view
+        : public std::ranges::view_interface<enumerate_view<R>> {
         R range = R{};
         using Diff = std::ranges::range_difference_t<R>;
 
-        struct iterator{
+        struct iterator {
             std::ranges::iterator_t<R> cur{};
             Diff idx = 0;
 
@@ -29,14 +30,16 @@ namespace std
             using iterator_concept = std::conditional_t<
                 std::ranges::forward_range<R>,
                 std::forward_iterator_tag,
-                std::input_iterator_tag
-            >;
+                std::input_iterator_tag>;
 
-            constexpr auto operator*() const{
-                return std::tuple<Diff, std::ranges::range_reference_t<R>>(idx, *cur);
+            constexpr auto operator*() const {
+                return std::tuple<Diff, std::ranges::range_reference_t<R>>(
+                    idx,
+                    *cur
+                );
             }
 
-            constexpr iterator& operator++(){
+            constexpr iterator& operator++() {
                 ++cur;
                 ++idx;
 
@@ -44,7 +47,7 @@ namespace std
             }
 
             constexpr void operator++(int)
-                requires (!std::ranges::forward_range<R>)
+                requires(!std::ranges::forward_range<R>)
             {
                 ++*this;
             }
@@ -58,17 +61,23 @@ namespace std
                 return tmp;
             }
 
-            friend constexpr bool operator==(const iterator& lhs, const iterator& rhs)
+            friend constexpr bool operator==(
+                const iterator& lhs,
+                const iterator& rhs
+            )
                 requires std::equality_comparable<std::ranges::iterator_t<R>>
             {
                 return lhs.cur == rhs.cur;
             }
         };
 
-        struct sentinel{
+        struct sentinel {
             std::ranges::sentinel_t<R> end_{};
 
-            friend constexpr bool operator==(const iterator& it, const sentinel& s){
+            friend constexpr bool operator==(
+                const iterator& it,
+                const sentinel& s
+            ) {
                 return it.cur == s.end_;
             }
         };
@@ -78,7 +87,7 @@ namespace std
             requires std::default_initializable<R>
         = default;
         constexpr explicit enumerate_view(R base)
-            : range(std::move(base)){}
+            : range(std::move(base)) {}
 
         constexpr R base() const&
             requires std::copy_constructible<R>
@@ -86,16 +95,12 @@ namespace std
             return range;
         }
 
-        constexpr R base() &&{
-            return std::move(range);
-        }
+        constexpr R base() && { return std::move(range); }
 
-        constexpr iterator begin(){
+        constexpr iterator begin() {
             return iterator{std::ranges::begin(range), Diff(0)};
         }
-        constexpr sentinel end(){
-            return sentinel{std::ranges::end(range)};
-        }
+        constexpr sentinel end() { return sentinel{std::ranges::end(range)}; }
 
         constexpr auto size()
             requires std::ranges::sized_range<R>
@@ -104,13 +109,15 @@ namespace std
         }
     };
 
-    template <class R>
+    template<class R>
     enumerate_view(R&&) -> enumerate_view<std::views::all_t<R>>;
 
-    namespace detail {
-        struct enumerate_fn: public std::ranges::range_adaptor_closure<enumerate_fn>{
-            template <std::ranges::viewable_range R>
-            constexpr auto operator()(R&& r) const{
+    namespace detail
+    {
+        struct enumerate_fn
+            : public std::ranges::range_adaptor_closure<enumerate_fn> {
+            template<std::ranges::viewable_range R>
+            constexpr auto operator()(R&& r) const {
                 return enumerate_view<std::views::all_t<R>>(
                     std::views::all(std::forward<R>(r))
                 );
@@ -118,7 +125,8 @@ namespace std
         };
     }
 
-    namespace ranges::views{
+    namespace ranges::views
+    {
         inline constexpr detail::enumerate_fn enumerate{};
     }
 }

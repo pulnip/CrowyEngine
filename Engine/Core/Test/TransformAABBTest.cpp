@@ -22,16 +22,27 @@ namespace
                 corner & 4 ? 1.0f : -1.0f
             };
             const auto local = box.center + Vec3{
-                sign.x * box.halfScale.x,
-                sign.y * box.halfScale.y,
-                sign.z * box.halfScale.z
-            };
+                                                sign.x * box.halfScale.x,
+                                                sign.y * box.halfScale.y,
+                                                sign.z * box.halfScale.z
+                                            };
             const auto world = m * Vec4{local.x, local.y, local.z, 1.0f};
-            low = Vec3{std::min(low.x, world.x), std::min(low.y, world.y), std::min(low.z, world.z)};
-            high = Vec3{std::max(high.x, world.x), std::max(high.y, world.y), std::max(high.z, world.z)};
+            low = Vec3{
+                std::min(low.x, world.x),
+                std::min(low.y, world.y),
+                std::min(low.z, world.z)
+            };
+            high = Vec3{
+                std::max(high.x, world.x),
+                std::max(high.y, world.y),
+                std::max(high.z, world.z)
+            };
         }
 
-        return AABB3D{.center = 0.5f * (low + high), .halfScale = 0.5f * (high - low)};
+        return AABB3D{
+            .center = 0.5f * (low + high),
+            .halfScale = 0.5f * (high - low)
+        };
     }
 
     void expectNear(const AABB3D& a, const AABB3D& b) {
@@ -48,18 +59,25 @@ namespace
 // a footprint-centered box, not one around the origin, under a yaw, a
 // per-axis scale that makes the matrix asymmetric, and an offset
 TEST(TransformAABB, MatchesTheCornersUnderYawScaleAndOffset) {
-    const AABB3D model{.center = {0.0f, 1.0f, 0.0f}, .halfScale = {1.0f, 1.0f, 0.5f}};
+    const AABB3D model{
+        .center = {0.0f, 1.0f, 0.0f},
+        .halfScale = {1.0f, 1.0f, 0.5f}
+    };
     for(const auto degrees: {0.0f, 30.0f, 90.0f, 135.0f, 270.0f}) {
-        const auto m = translateMat({5.0f, 0.0f, 3.0f})
-            * rotateYMat(degrees * std::numbers::pi_v<f32> / 180.0f)
-            * scaleMat({3.0f, 1.0f, 0.5f});
+        const auto m = translateMat({5.0f, 0.0f, 3.0f}) *
+                       rotateYMat(degrees * std::numbers::pi_v<f32> / 180.0f) *
+                       scaleMat({3.0f, 1.0f, 0.5f});
         expectNear(transformAABB3D(m, model), bruteForce(m, model));
     }
 }
 
 TEST(TransformAABB, PerAxisScaleOfTheUnitBox) {
-    const AABB3D unit{.center = {0.0f, 0.5f, 0.0f}, .halfScale = {0.5f, 0.5f, 0.5f}};
-    const auto m = translateMat({18.65f, 0.15f, 18.65f}) * scaleMat({14.7f, 34.2f, 14.7f});
+    const AABB3D unit{
+        .center = {0.0f, 0.5f, 0.0f},
+        .halfScale = {0.5f, 0.5f, 0.5f}
+    };
+    const auto m =
+        translateMat({18.65f, 0.15f, 18.65f}) * scaleMat({14.7f, 34.2f, 14.7f});
     const auto box = transformAABB3D(m, unit);
 
     EXPECT_NEAR(box.center.y, 0.15f + 17.1f, 1e-4f);

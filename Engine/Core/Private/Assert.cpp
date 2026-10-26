@@ -1,6 +1,7 @@
+#include "Assert.hpp"
+
 #include <cstdlib>
 #include <print>
-#include "Assert.hpp"
 
 namespace Crowy
 {
@@ -8,17 +9,26 @@ namespace Crowy
         const char* expr,
         std::source_location sl,
         std::string_view msg
-    ) noexcept{
-        if(msg.empty()){
-            std::println(stderr, 
+    ) noexcept {
+        if(msg.empty()) {
+            std::println(
+                stderr,
                 "Assertion failed: {}\n  {}:{} ({})",
-                expr, sl.file_name(), sl.line(), sl.function_name()
+                expr,
+                sl.file_name(),
+                sl.line(),
+                sl.function_name()
             );
         }
-        else{
-            std::println(stderr,
+        else {
+            std::println(
+                stderr,
                 "Assertion failed: {}\n  {}:{} ({})\n  {}",
-                expr, sl.file_name(), sl.line(), sl.function_name(), msg
+                expr,
+                sl.file_name(),
+                sl.line(),
+                sl.function_name(),
+                msg
             );
         }
         std::abort();

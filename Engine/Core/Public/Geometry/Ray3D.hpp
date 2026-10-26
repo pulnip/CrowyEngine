@@ -13,11 +13,18 @@ namespace Crowy
 
     // where the ray enters the box, 0 from inside; nullopt when it misses
     // or the box is behind it
-    inline constexpr std::optional<f32> intersectRayAABB3D(const Ray3D& ray, const AABB3D& box) noexcept;
+    inline constexpr std::optional<f32> intersectRayAABB3D(
+        const Ray3D& ray,
+        const AABB3D& box
+    ) noexcept;
 
     // t where the ray meets the plane through `point` facing `normal`;
     // nullopt when it runs along the plane or meets it behind
-    inline constexpr std::optional<f32> intersectRayPlane(const Ray3D& ray, Vec3 point, Vec3 normal) noexcept;
+    inline constexpr std::optional<f32> intersectRayPlane(
+        const Ray3D& ray,
+        Vec3 point,
+        Vec3 normal
+    ) noexcept;
 
     // t of the hit, nullopt for a miss; `frontOnly` refuses a triangle the
     // ray meets from behind, a front being clockwise as MeshData's are
@@ -35,7 +42,10 @@ namespace Crowy
         Vec3 direction{0.0f, 0.0f, 1.0f};
     };
 
-    inline constexpr std::optional<f32> intersectRayAABB3D(const Ray3D& ray, const AABB3D& box) noexcept {
+    inline constexpr std::optional<f32> intersectRayAABB3D(
+        const Ray3D& ray,
+        const AABB3D& box
+    ) noexcept {
         constexpr auto Huge = 3.0e38f;
 
         auto enter = 0.0f;
@@ -65,7 +75,11 @@ namespace Crowy
         return enter;
     }
 
-    inline constexpr std::optional<f32> intersectRayPlane(const Ray3D& ray, Vec3 point, Vec3 normal) noexcept {
+    inline constexpr std::optional<f32> intersectRayPlane(
+        const Ray3D& ray,
+        Vec3 point,
+        Vec3 normal
+    ) noexcept {
         constexpr auto Epsilon = 1e-6f;
 
         // written so that a NaN fails every rejection

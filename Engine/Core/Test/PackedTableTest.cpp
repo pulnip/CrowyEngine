@@ -183,4 +183,3 @@ TEST(PackedTable, HoldsMoveOnlyRows) {
     table.Clear();
     EXPECT_TRUE(table.IsEmpty());
 }
-

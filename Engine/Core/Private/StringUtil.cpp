@@ -3,33 +3,33 @@
 #include <sstream>
 #include <stdexcept>
 #if defined(_WIN32)
-    #include <Windows.h>
+#include <Windows.h>
 #elif defined(__APPLE__)
-    #include <mach-o/dyld.h>
+#include <mach-o/dyld.h>
 #else // Linux
-    #include <unistd.h>
-    #include <limits.h>
+#include <limits.h>
+#include <unistd.h>
 #endif
 #include "StringUtil.hpp"
 
 namespace Crowy
 {
-    Str toUpper(StrView view){
+    Str toUpper(StrView view) {
         Str upper(view);
-        std::transform(view.begin(), view.end(), upper.begin(),
-            [](auto c){ return std::toupper(c); }
-        );
+        std::transform(view.begin(), view.end(), upper.begin(), [](auto c) {
+            return std::toupper(c);
+        });
         return upper;
     }
 
-    Str readFileAsString(const std::filesystem::path& path){
+    Str readFileAsString(const std::filesystem::path& path) {
         std::ifstream file(path);
         std::stringstream buffer;
         buffer << file.rdbuf();
         return buffer.str();
     }
 
-    std::vector<u8> readFileAsBinary(const std::filesystem::path& path){
+    std::vector<u8> readFileAsBinary(const std::filesystem::path& path) {
         std::ifstream file(path, std::ios::binary | std::ios::ate);
         if(!file.is_open())
             throw std::runtime_error("Failed to open file: " + path.string());
@@ -43,17 +43,17 @@ namespace Crowy
         return buffer;
     }
 
-    std::string toUTF8String(const std::filesystem::path& path){
-    #ifdef __cpp_char8_t
+    std::string toUTF8String(const std::filesystem::path& path) {
+#ifdef __cpp_char8_t
         auto u8str = path.u8string();
         return std::string(u8str.begin(), u8str.end());
-    #else
+#else
         return path.u8string();
-    #endif
+#endif
     }
 
 #ifdef _WIN32
-    std::wstring toUTF16String(std::string_view utf8Str){
+    std::wstring toUTF16String(std::string_view utf8Str) {
         auto wlen = MultiByteToWideChar(
             CP_UTF8,
             0,
@@ -77,8 +77,8 @@ namespace Crowy
     }
 #endif
 
-    std::filesystem::path getExecutableDir(){
-    #if defined(_WIN32)
+    std::filesystem::path getExecutableDir() {
+#if defined(_WIN32)
         // a long path is cut to the buffer, so grow it until the name fits
         std::wstring buffer(MAX_PATH, L'\0');
         while(true) {
@@ -96,7 +96,7 @@ namespace Crowy
             buffer.resize(buffer.size() * 2);
         }
         return std::filesystem::path(buffer).parent_path();
-    #elif defined(__APPLE__)
+#elif defined(__APPLE__)
         // a buffer too small fails and reports the size the path needs
         std::string buffer(PATH_MAX, '\0');
         uint32_t size = static_cast<uint32_t>(buffer.size());
@@ -106,28 +106,28 @@ namespace Crowy
                 throw std::runtime_error("_NSGetExecutablePath failed");
         }
         return std::filesystem::canonical(buffer.c_str()).parent_path();
-    #else // Linux
+#else // Linux
         char buffer[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", buffer, PATH_MAX - 1);
         if(len < 0)
             throw std::runtime_error("readlink /proc/self/exe failed");
         buffer[len] = '\0';
         return std::filesystem::path(buffer).parent_path();
-    #endif
+#endif
     }
 
-    std::filesystem::path getAbsolutePath(const std::filesystem::path& path){
+    std::filesystem::path getAbsolutePath(const std::filesystem::path& path) {
         if(path.is_absolute())
             return path;
 
         return getExecutableDir() / path;
     }
 
-    std::filesystem::path toPath(const char* utf8Str){
-    #ifdef _WIN32
+    std::filesystem::path toPath(const char* utf8Str) {
+#ifdef _WIN32
         return std::filesystem::path(toUTF16String(utf8Str));
-    #else
+#else
         return std::filesystem::path(utf8Str);
-    #endif
+#endif
     }
 }
