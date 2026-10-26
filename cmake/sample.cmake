@@ -155,3 +155,59 @@ function(crowy_declare_check NAME)
         ${ARG_DEPENDS}
     )
 endfunction()
+
+# Crowy::Sample<NAME>. Sources are listed, not globbed: one sample folder holds
+# several libraries and the executables built on them.
+function(crowy_declare_sample_library NAME)
+    cmake_parse_arguments(ARG
+        "WHOLE_ARCHIVE;FP_CONTRACT_OFF"
+        "TEST_DIRECTORY;TEST_LABELS"
+        "SOURCES;INCLUDE;PUBLIC;PRIVATE;TEST_DEPENDS"
+        ${ARGN}
+    )
+
+    if(ARG_WHOLE_ARCHIVE)
+        set(LIBRARY CrowySample${NAME}Archive)
+    else()
+        set(LIBRARY CrowySample${NAME})
+    endif()
+
+    add_library(${LIBRARY} STATIC
+        ${ARG_SOURCES}
+    )
+
+    target_include_directories(${LIBRARY}
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        ${ARG_INCLUDE}
+    )
+
+    target_link_libraries(${LIBRARY}
+    PUBLIC
+        CrowyProjectInterface
+        ${ARG_PUBLIC}
+    PRIVATE
+        ${ARG_PRIVATE}
+    )
+
+    if(ARG_FP_CONTRACT_OFF)
+        crowy_fp_contract_off(${LIBRARY})
+    endif()
+
+    if(ARG_WHOLE_ARCHIVE)
+        crowy_whole_archive(CrowySample${NAME} ${LIBRARY})
+    endif()
+
+    add_library(Crowy::Sample${NAME} ALIAS CrowySample${NAME})
+
+    if(ARG_TEST_DIRECTORY AND CROWY_ENABLE_TEST)
+        crowy_declare_test(Sample${NAME}
+            DIRECTORY ${ARG_TEST_DIRECTORY}
+            DEPENDS Crowy::Sample${NAME} ${ARG_TEST_DEPENDS}
+            LABELS "${ARG_TEST_LABELS}"
+        )
+        if(ARG_FP_CONTRACT_OFF)
+            crowy_fp_contract_off(CrowySample${NAME}Test)
+        endif()
+    endif()
+endfunction()
