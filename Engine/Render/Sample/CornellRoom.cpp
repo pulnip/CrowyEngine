@@ -11,11 +11,7 @@
 
 namespace Crowy
 {
-    // CornellBox built on RenderScene.
-    //
-    // The five walls are one mesh with five submeshes here,
-    // where the RHI sample draws five separate objects.
-    // Nothing about the image changes, but it is what puts a
+    // The five walls are one mesh with five submeshes: it is what puts a
     // real submesh list and a real materialSlot indirection under test.
     class CornellRoom: public RenderApp {
         static constexpr f32 BoxHalfSize = 1.0f;

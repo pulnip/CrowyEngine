@@ -41,13 +41,6 @@ DEPENDS
     Crowy::Serialization
 )
 
-crowy_declare_example(CornellBox
-SOURCES
-    CornellBox.cpp
-DEPENDS
-    Crowy::SampleScene
-)
-
 crowy_declare_example(SkyboxFloor
 SOURCES
     SkyboxFloor.cpp
