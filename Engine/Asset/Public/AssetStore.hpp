@@ -19,10 +19,7 @@ namespace Crowy
     template<typename T>
     class AssetHandle;
 
-    // Loads each asset once and keeps it while a handle holds it; a failed
-    // load is the caller's to report and leaves nothing behind. The last
-    // handle only marks it, and Collect releases what is still unheld. One
-    // thread owns a store, so the count is not atomic.
+    // One thread owns a store, so the count is not atomic.
     template<typename T>
     class AssetStore {
     public:
@@ -47,7 +44,6 @@ namespace Crowy
         Loader load;
         Releaser release;
         Entries entries;
-        // weak: an entry leaves the map when it is released
         StringHashMap<EntryHandle> entryOfPath;
         // may repeat an entry that was held again and dropped again
         EntryHandles unheld;
@@ -64,7 +60,6 @@ namespace Crowy
         }
         CROWY_DECLARE_PINNED(AssetStore)
 
-        // without a releaser a release only destroys the value
         explicit AssetStore(Loader load, Releaser release = {})
             : load(std::move(load)), release(std::move(release)) {}
 
@@ -73,7 +68,6 @@ namespace Crowy
             CROWY_ASSERT(!ref.IsNone(), "loading a ref that names no asset");
 
             auto path = ref.ToString();
-            // an entry marked but not yet collected is held again as it is
             if(const auto it = entryOfPath.find(path); it != entryOfPath.end())
                 return Handle(*this, it->second);
 
@@ -94,8 +88,6 @@ namespace Crowy
             return Handle(*this, entry);
         }
 
-        // Releases every asset no handle holds, including any a release
-        // leaves unheld in turn.
         void Collect() {
             while(!unheld.empty()) {
                 const auto candidates = std::exchange(unheld, EntryHandles{});
@@ -117,7 +109,6 @@ namespace Crowy
             }
         }
 
-        // the assets loaded and not yet released
         usize Count() const noexcept { return entries.Count(); }
 
     private:
@@ -136,8 +127,8 @@ namespace Crowy
         }
     };
 
-    // Holds one asset of a store. A reference from it lasts until the
-    // store's next Collect, as rows move when one is released.
+    // A reference from it lasts until the store's next Collect, as rows
+    // move when one is released.
     template<typename T>
     class AssetHandle {
     private:
@@ -163,7 +154,6 @@ namespace Crowy
             : store(std::exchange(other.store, nullptr)),
               entry(std::exchange(other.entry, EntryHandle::InvalidHandle())) {}
 
-        // one assignment for copy and move, safe against itself
         AssetHandle& operator=(AssetHandle other) noexcept {
             std::swap(store, other.store);
             std::swap(entry, other.entry);

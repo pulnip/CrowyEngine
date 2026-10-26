@@ -148,7 +148,6 @@ namespace Crowy
 
             for(const auto& prop: desc.properties) {
                 const auto node = table.find(prop.name);
-                // an absent key keeps the member's value
                 if(node == table.end()) {
                     continue;
                 }

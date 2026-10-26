@@ -88,7 +88,7 @@ namespace Crowy
     };
 
     // erased operations and identity of one type.
-    // built by makeTypeOps, see ClassRegistry.hpp
+    // built by makeTypeOps
     struct TypeOps {
         CStr name = nullptr;
         usize size = 0;

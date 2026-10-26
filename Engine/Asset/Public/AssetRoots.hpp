@@ -6,7 +6,6 @@
 
 namespace Crowy
 {
-    // The folder each mount names.
     struct AssetRoots {
         std::filesystem::path engine;
         std::filesystem::path content;

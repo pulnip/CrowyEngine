@@ -12,15 +12,12 @@ namespace Crowy
         Engine,
     };
 
-    // Names one asset as a mount and a path under it. Parse keeps the path
-    // normalized, so one asset has one spelling; the default names none.
     class AssetRef {
     private:
         AssetMount mount = AssetMount::Content;
         Str path;
 
     public:
-        // "engine:" names the engine mount, no prefix the content mount
         static std::optional<AssetRef> Parse(StrView text);
 
         bool IsNone() const noexcept { return path.empty(); }
@@ -34,7 +31,6 @@ namespace Crowy
     template<>
     struct TypeTraits<AssetRef> {
         static constexpr CStr name = "AssetRef";
-        // null, or the text Parse reads
         static bool deserialize(void*, const DOM::Value&);
         static void serialize(const void*, DOM::Value&);
     };

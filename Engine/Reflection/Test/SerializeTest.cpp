@@ -22,7 +22,7 @@ namespace Crowy
 
 namespace
 {
-    // the erased pair the port will drive, through the text the wire carries
+    // the erased pair the port drives, through the text the wire carries
     template<typename T>
     T roundTrip(const T& in) {
         const auto* ops = getTypeOps<T>();

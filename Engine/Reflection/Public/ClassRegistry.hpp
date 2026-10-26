@@ -23,7 +23,6 @@ namespace Crowy
         struct IsVector<std::vector<E, A>>: std::true_type {};
     }
 
-    // a property type reflected as a list of its elements
     template<typename T>
     concept ListType = detail::IsVector<T>::value;
 
@@ -72,7 +71,6 @@ namespace Crowy
             return it == indexByName.end() ? nullptr : &properties[it->second];
         }
 
-        // own properties shadow the parent chain's
         const PropertyDesc* FindInChain(StrView name) const {
             for(const auto* desc = this; desc != nullptr; desc = desc->parent) {
                 if(const auto* prop = desc->Find(name)) {
@@ -91,7 +89,6 @@ namespace Crowy
     public:
         static ClassRegistry& Get();
 
-        // nullptr for a name no registration gave
         static const TypeDesc* FindType(StrView name);
 
         // creates the slot on demand, and its address stays valid
