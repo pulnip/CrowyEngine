@@ -24,6 +24,5 @@ if(CROWY_ENABLE_TEST)
         CROWY_SERIALIZATION_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/Test/Data"
     )
 
-    add_subdirectory(Sample)
     add_subdirectory(Check)
 endif()
