@@ -34,13 +34,6 @@ SOURCES
     HelloIndirectDraw.cpp
 )
 
-crowy_declare_example(CubeMapping
-SOURCES
-    CubeMapping.cpp
-DEPENDS
-    Crowy::Serialization
-)
-
 crowy_declare_example(NormalMapping
 SOURCES
     NormalMapping.cpp
