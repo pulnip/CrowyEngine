@@ -15,8 +15,8 @@
 #include "Assert.hpp"
 #include "HashUtil.hpp"
 #include "LogLocal.hpp"
+#include "PathUtil.hpp"
 #include "ProjectRoot.hpp"
-#include "StringUtil.hpp"
 
 namespace{
     Crowy::Str SlangResultToString(SlangResult result){

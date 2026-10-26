@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "BacklotContent.hpp"
+#include "PathUtil.hpp"
 #include "StageLoad.hpp"
 
 namespace Crowy

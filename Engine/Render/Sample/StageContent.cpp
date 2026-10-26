@@ -6,7 +6,7 @@
 
 #include "ClassRegistry.hpp"
 #include "Geometry/Overlap3D.hpp"
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {

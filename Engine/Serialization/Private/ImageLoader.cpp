@@ -6,9 +6,10 @@
 #include <ktx.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include "FileUtil.hpp"
 #include "ImageLoader.hpp"
+#include "PathUtil.hpp"
 #include "PtrUtil.hpp"
-#include "StringUtil.hpp"
 
 #define CHECK_KTX_ERROR(expr, msg) \
     do{ \

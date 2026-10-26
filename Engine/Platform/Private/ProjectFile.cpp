@@ -4,8 +4,8 @@
 #include <stdexcept>
 
 #include "JsonLoader.hpp"
+#include "PathUtil.hpp"
 #include "ProjectRoot.hpp"
-#include "StringUtil.hpp"
 
 namespace Crowy
 {

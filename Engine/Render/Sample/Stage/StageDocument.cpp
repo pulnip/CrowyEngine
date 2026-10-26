@@ -6,7 +6,7 @@
 
 #include "ColorSpace.hpp"
 #include "JsonLoader.hpp"
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {

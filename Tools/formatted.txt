@@ -1,1 +1,2 @@
 # one directory per line, formatted whole; Tools/format_check.ps1 checks them
+Engine/Core

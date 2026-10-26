@@ -4,7 +4,7 @@
 #include <mutex>
 #include <stdexcept>
 
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {

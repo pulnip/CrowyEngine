@@ -12,11 +12,11 @@
 #include "EditorPanels.hpp"
 #include "EditorSession.hpp"
 #include "InputProvider.hpp"
+#include "PathUtil.hpp"
 #include "PortStatusChip.hpp"
 #include "RenderApp.hpp"
 #include "StageContent.hpp"
 #include "StageScene.hpp"
-#include "StringUtil.hpp"
 #include "UIRenderer.hpp"
 
 namespace Crowy

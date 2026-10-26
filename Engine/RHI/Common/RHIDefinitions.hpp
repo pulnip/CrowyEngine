@@ -1260,6 +1260,8 @@ struct std::hash<Crowy::RHISamplerState> {
 namespace Crowy
 {
     inline constexpr u32 RHI_FRAMES_IN_FLIGHT = 3;
+    inline constexpr u64 RHI_UPLOAD_STAGING_BYTES = 32ull << 20;
+    inline constexpr u64 RHI_TRANSIENT_STAGING_BYTES = 32ull << 20;
 
     struct RHISwapchainCreateDesc {
         void* sdlWindow = nullptr;

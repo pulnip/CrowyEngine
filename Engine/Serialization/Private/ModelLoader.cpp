@@ -11,7 +11,7 @@
 #include <ufbx.h>
 
 #include "LinearAlgebra.hpp"
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {

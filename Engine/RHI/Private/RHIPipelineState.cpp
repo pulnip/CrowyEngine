@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <variant>
 
+#include "PathUtil.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy

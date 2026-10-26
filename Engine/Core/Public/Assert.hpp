@@ -17,7 +17,7 @@ namespace Crowy
     }
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 #define CROWY_ASSERT(expr, ...)                                                \
     do {                                                                       \
         if(!(expr)) [[unlikely]] {                                             \

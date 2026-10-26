@@ -9,9 +9,9 @@
 
 #include "Assert.hpp"
 #include "LogLocal.hpp"
+#include "PathUtil.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
-#include "StringUtil.hpp"
 
 namespace
 {

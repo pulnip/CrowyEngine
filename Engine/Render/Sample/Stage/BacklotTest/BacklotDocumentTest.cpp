@@ -12,6 +12,7 @@
 
 #include "BacklotContent.hpp"
 #include "ModelLoader.hpp"
+#include "PathUtil.hpp"
 #include "StageDocument.hpp"
 
 using namespace Crowy;

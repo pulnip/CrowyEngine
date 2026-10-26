@@ -8,11 +8,13 @@
 
 namespace Crowy
 {
+    inline constexpr u32 TicksPerSecond = 60;
     inline constexpr i64 TickNanoseconds =
         std::chrono::round<std::chrono::nanoseconds>(
-            std::chrono::duration<i64, std::ratio<1, 60>>(1)
+            std::chrono::duration<i64, std::ratio<1, TicksPerSecond>>(1)
         )
             .count();
+    inline constexpr f64 TickSeconds = static_cast<f64>(TickNanoseconds) * 1e-9;
     inline constexpr u32 MaxTicksPerAdvance = 4;
 
     static_assert(TickNanoseconds == 16'666'667);

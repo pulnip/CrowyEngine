@@ -11,6 +11,7 @@
 
 #include "Assert.hpp"
 #include "IntMath.hpp"
+#include "PathUtil.hpp"
 #include "ProjectRoot.hpp"
 #include "PtrUtil.hpp"
 #include "RHIBuffer.hpp"
@@ -19,7 +20,6 @@
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
-#include "StringUtil.hpp"
 
 namespace{
     using namespace Crowy;

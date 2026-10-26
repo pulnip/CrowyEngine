@@ -10,7 +10,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace
 {

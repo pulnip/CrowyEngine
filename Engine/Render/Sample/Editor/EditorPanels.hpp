@@ -6,6 +6,7 @@
 
 #include "EditorSession.hpp"
 #include "RenderScene.hpp"
+#include "StringUtil.hpp"
 #include "Widget.hpp"
 
 namespace Crowy
@@ -14,14 +15,6 @@ namespace Crowy
 
     using CaptureRequest = std::function<void()>;
     using HierarchyGroups = std::vector<HierarchyGroup>;
-
-    // ASCII letters only, which is what names and models are written in
-    inline constexpr bool containsIgnoringCase(StrView text, StrView part) {
-        const auto lower = [](char c) { return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c; };
-        const auto found = std::ranges::search(text, part, [&](char a, char b) { return lower(a) == lower(b); });
-
-        return !found.empty() || part.empty();
-    }
 
     // the rows whose name or detail holds `filter`, ignoring case; every row
     // for an empty one

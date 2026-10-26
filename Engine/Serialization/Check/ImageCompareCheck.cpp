@@ -14,6 +14,7 @@
 #include "ImageLoader.hpp"
 #include "ImageView.hpp"
 #include "ImageWriter.hpp"
+#include "PathUtil.hpp"
 #include "Primitives.hpp"
 #include "RHIUtil.hpp"
 #include "StringUtil.hpp"

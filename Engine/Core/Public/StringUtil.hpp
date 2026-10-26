@@ -1,16 +1,21 @@
 #pragma once
 
-#include <filesystem>
-#include <format>
+#include <algorithm>
+#include <charconv>
+#include <concepts>
 #include <functional>
-#include <span>
+#include <optional>
+#include <ranges>
 #include <unordered_map>
-#include <vector>
 
 #include "Primitives.hpp"
 
 namespace Crowy
 {
+    template<typename T>
+    concept Number =
+        (std::integral<T> && !std::same_as<T, bool>) || std::floating_point<T>;
+
     inline constexpr bool sameCStr(CStr lhs, CStr rhs) noexcept {
         if(lhs == rhs)
             return true;
@@ -20,7 +25,67 @@ namespace Crowy
         return StrView{lhs} == StrView{rhs};
     }
 
-    Str toUpper(StrView);
+    template<std::ranges::input_range R, typename Proj = std::identity>
+    inline constexpr Str join(R&& tokens, StrView sep = {}, Proj proj = {}) {
+        Str joined;
+        bool first = true;
+
+        for(auto&& token: tokens) {
+            if(first) {
+                first = false;
+            }
+            else {
+                joined += sep;
+            }
+
+            joined += std::invoke(proj, token);
+        }
+
+        return joined;
+    }
+
+    inline constexpr bool consumePrefix(
+        StrView& text,
+        StrView prefix
+    ) noexcept {
+        if(!text.starts_with(prefix))
+            return false;
+
+        text.remove_prefix(prefix.size());
+        return true;
+    }
+
+    template<Number T>
+    inline constexpr std::optional<T> parseNumber(StrView text) {
+        T value{};
+        const auto* end = text.data() + text.size();
+        const auto [ptr, error] = std::from_chars(text.data(), end, value);
+        if(error != std::errc{} || ptr != end)
+            return std::nullopt;
+
+        return value;
+    }
+
+    inline constexpr char lowerChar(char c) noexcept {
+        return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
+    }
+
+    inline constexpr Str lower(StrView text) {
+        Str lowered(text);
+        std::ranges::transform(lowered, lowered.begin(), lowerChar);
+
+        return lowered;
+    }
+
+    inline constexpr bool equalsIgnoringCase(StrView lhs, StrView rhs) {
+        return std::ranges::equal(lhs, rhs, {}, lowerChar, lowerChar);
+    }
+
+    inline constexpr bool containsIgnoringCase(StrView text, StrView part) {
+        return part.empty() ||
+               !std::ranges::search(text, part, {}, lowerChar, lowerChar)
+                    .empty();
+    }
 
     struct StringHash {
         using is_transparent = void;
@@ -32,43 +97,4 @@ namespace Crowy
     template<typename T>
     using StringHashMap =
         std::unordered_map<Str, T, StringHash, std::equal_to<>>;
-
-    inline constexpr Str join(std::span<const Str> tokens, StrView sep = {}) {
-        Str joined;
-        bool first = true;
-
-        for(const auto& token: tokens) {
-            if(first) {
-                first = false;
-            }
-            else {
-                joined += sep;
-            }
-
-            joined += token;
-        }
-
-        return joined;
-    }
-
-    Str readFileAsString(const std::filesystem::path&);
-    std::vector<u8> readFileAsBinary(const std::filesystem::path&);
-
-    std::string toUTF8String(const std::filesystem::path& path);
-#ifdef _WIN32
-    std::wstring toUTF16String(std::string_view utf8Str);
-#endif
-
-    std::filesystem::path getExecutableDir();
-    std::filesystem::path getAbsolutePath(const std::filesystem::path&);
-
-    std::filesystem::path toPath(const char* utf8Str);
 }
-
-template<>
-struct std::formatter<std::filesystem::path>: std::formatter<std::string> {
-    inline auto format(const std::filesystem::path& p, auto& ctx) const {
-        auto u8str = Crowy::toUTF8String(p);
-        return std::formatter<std::string>::format(u8str, ctx);
-    }
-};

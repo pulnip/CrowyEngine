@@ -11,7 +11,7 @@
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "MipChain.hpp"
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {

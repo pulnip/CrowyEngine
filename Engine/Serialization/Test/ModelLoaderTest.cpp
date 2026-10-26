@@ -12,7 +12,7 @@
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "ModelLoader.hpp"
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 using namespace Crowy;
 

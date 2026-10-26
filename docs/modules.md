@@ -24,7 +24,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 
 | Module | Owns | Start at | Samples and tests |
 |---|---|---|---|
-| `Core` | the type aliases, asserts, math and geometry, containers and handles, text and range helpers, `FixedTickClock` | `Primitives.hpp` (`u32`, `Str`, ...), `Assert.hpp` (`CROWY_ASSERT`), `StringUtil.hpp`, `RangeUtil.hpp`, `LinearAlgebra.hpp` | Test |
+| `Core` | the type aliases, asserts, math and geometry, containers and handles, text, path, file and range helpers, `FixedTickClock` | `Primitives.hpp` (`u32`, `Str`, ...), `Assert.hpp` (`CROWY_ASSERT`), `StringUtil.hpp`, `PathUtil.hpp`, `FileUtil.hpp`, `RangeUtil.hpp`, `LinearAlgebra.hpp` | Test |
 | `Log` | log levels, categories and sinks | `Log.hpp` | |
 | `Platform` | the window, the loop (`OS` runs a `MainLoop`), input, the command line and runtime flags, the frame profiler | `OS.hpp`, `MainLoop.hpp`, `RuntimeConfig.hpp`, `InputProvider.hpp` | Test |
 | `Reflection` | registered types and their properties, property paths and writes | `ClassRegistry.hpp` (`CROWY_STRUCT`), `PropertyTarget.hpp` | Test |

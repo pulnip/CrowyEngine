@@ -13,6 +13,7 @@
 #include "MetalPipelineState.hpp"
 #include "MetalSampler.hpp"
 #include "MetalUtil.hpp"
+#include "PathUtil.hpp"
 #include "RHIShader.hpp"
 
 namespace Crowy

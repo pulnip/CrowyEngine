@@ -1,7 +1,7 @@
 #include "AssetRoots.hpp"
 
 #include "Assert.hpp"
-#include "StringUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {

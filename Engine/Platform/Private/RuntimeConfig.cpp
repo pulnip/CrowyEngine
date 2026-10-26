@@ -7,9 +7,9 @@
 #include "DOM.hpp"
 #include "DomTraits.hpp"
 #include "JsonLoader.hpp"
+#include "PathUtil.hpp"
 #include "RHIFrameStats.hpp"
 #include "RHISwapchain.hpp"
-#include "StringUtil.hpp"
 
 namespace Crowy
 {

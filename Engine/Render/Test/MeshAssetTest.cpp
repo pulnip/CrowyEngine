@@ -8,8 +8,8 @@
 #include "MeshAsset.hpp"
 #include "MeshGenerator.hpp"
 #include "ModelLoader.hpp"
+#include "PathUtil.hpp"
 #include "RenderScene.hpp"
-#include "StringUtil.hpp"
 
 using namespace Crowy;
 
