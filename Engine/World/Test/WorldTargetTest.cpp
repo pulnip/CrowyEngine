@@ -52,7 +52,7 @@ namespace Crowy
 {
     // clang-format off
     CROWY_COMPONENT(TargetMarker)
-        .SetProperty("value", &TargetMarker::value)
+        .AddProperty("value", &TargetMarker::value)
     CROWY_COMPONENT_END(TargetMarker)
     // clang-format on
 }

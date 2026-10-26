@@ -867,16 +867,16 @@ namespace Crowy
 
     // clang-format off
     CROWY_STRUCT(CameraBookmarks)
-        .SetProperty("current", &CameraBookmarks::current)
+        .AddProperty("current", &CameraBookmarks::current)
     CROWY_STRUCT_END(CameraBookmarks)
 
     CROWY_STRUCT(PlaygroundShading)
-        .SetProperty("chart", &PlaygroundShading::chart)
+        .AddProperty("chart", &PlaygroundShading::chart)
     CROWY_STRUCT_END(PlaygroundShading)
 
     CROWY_STRUCT(CameraLook)
-        .SetProperty("yaw", &CameraLook::yaw)
-        .SetProperty("pitch", &CameraLook::pitch)
+        .AddProperty("yaw", &CameraLook::yaw)
+        .AddProperty("pitch", &CameraLook::pitch)
         .SetUIRange(-1.55f, 1.55f)
     CROWY_STRUCT_END(CameraLook)
     // clang-format on

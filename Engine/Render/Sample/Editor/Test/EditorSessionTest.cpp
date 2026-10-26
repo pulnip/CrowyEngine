@@ -191,9 +191,9 @@ namespace
 
 // clang-format off
 CROWY_STRUCT(FakeRow)
-    .SetProperty("position", &FakeRow::position)
-    .SetProperty("yaw", &FakeRow::yaw)
-    .SetProperty("scale", &FakeRow::scale)
+    .AddProperty("position", &FakeRow::position)
+    .AddProperty("yaw", &FakeRow::yaw)
+    .AddProperty("scale", &FakeRow::scale)
 CROWY_STRUCT_END(FakeRow)
 // clang-format on
 

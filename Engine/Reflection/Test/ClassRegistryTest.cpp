@@ -15,10 +15,10 @@ struct InjectionProbe{
 
 // clang-format off
 CROWY_STRUCT(InjectionProbe)
-    .SetProperty("transform", &InjectionProbe::transform)
-    .SetProperty("position", &InjectionProbe::transform, &Transform::position)
-    .SetProperty("rotation", &InjectionProbe::transform, &Transform::rotation)
-    .SetProperty("scale", &InjectionProbe::transform, &Transform::scale)
+    .AddProperty("transform", &InjectionProbe::transform)
+    .AddProperty("position", &InjectionProbe::transform, &Transform::position)
+    .AddProperty("rotation", &InjectionProbe::transform, &Transform::rotation)
+    .AddProperty("scale", &InjectionProbe::transform, &Transform::scale)
 CROWY_STRUCT_END(InjectionProbe)
 // clang-format on
 
@@ -80,13 +80,13 @@ struct Stats{
 
 // clang-format off
 CROWY_STRUCT(Health)
-    .SetProperty("current", &Health::current)
-    .SetProperty("maximum", &Health::maximum)
+    .AddProperty("current", &Health::current)
+    .AddProperty("maximum", &Health::maximum)
 CROWY_STRUCT_END(Health)
 
 CROWY_STRUCT(Stats)
-    .SetProperty("health", &Stats::health)
-    .SetProperty("speed", &Stats::speed)
+    .AddProperty("health", &Stats::health)
+    .AddProperty("speed", &Stats::speed)
 CROWY_STRUCT_END(Stats)
 // clang-format on
 
@@ -96,7 +96,7 @@ struct StructProbe{
 
 // clang-format off
 CROWY_STRUCT(StructProbe)
-    .SetProperty("stats", &StructProbe::stats)
+    .AddProperty("stats", &StructProbe::stats)
 CROWY_STRUCT_END(StructProbe)
 // clang-format on
 
@@ -129,7 +129,7 @@ struct AliasProbe{
 // a member chain ending on a reflected struct: both features compose
 // clang-format off
 CROWY_STRUCT(AliasProbe)
-    .SetProperty("hp", &AliasProbe::stats, &Stats::health)
+    .AddProperty("hp", &AliasProbe::stats, &Stats::health)
 CROWY_STRUCT_END(AliasProbe)
 // clang-format on
 
@@ -162,11 +162,11 @@ struct OrderProbe{
 // deliberately not member order
 // clang-format off
 CROWY_STRUCT(OrderProbe)
-    .SetProperty("delta", &OrderProbe::delta)
+    .AddProperty("delta", &OrderProbe::delta)
         .SetUIRange(0.0f, 1.0f)
-    .SetProperty("alpha", &OrderProbe::alpha)
-    .SetProperty("gamma", &OrderProbe::gamma)
-    .SetProperty("beta", &OrderProbe::beta)
+    .AddProperty("alpha", &OrderProbe::alpha)
+    .AddProperty("gamma", &OrderProbe::gamma)
+    .AddProperty("beta", &OrderProbe::beta)
 CROWY_STRUCT_END(OrderProbe)
 // clang-format on
 
@@ -223,7 +223,7 @@ struct InheritanceBase{
 
 // clang-format off
 CROWY_STRUCT(InheritanceBase)
-    .SetProperty("baseValue", &InheritanceBase::baseValue)
+    .AddProperty("baseValue", &InheritanceBase::baseValue)
 CROWY_STRUCT_END(InheritanceBase)
 // clang-format on
 
@@ -234,7 +234,7 @@ struct InheritanceChild: InheritanceBase{
 // clang-format off
 CROWY_STRUCT(InheritanceChild)
     .Inherits<InheritanceBase>()
-    .SetProperty("ownValue", &InheritanceChild::ownValue)
+    .AddProperty("ownValue", &InheritanceChild::ownValue)
 CROWY_STRUCT_END(InheritanceChild)
 // clang-format on
 
@@ -290,7 +290,7 @@ struct EnumProbe{
 
 // clang-format off
 CROWY_STRUCT(EnumProbe)
-    .SetProperty("mode", &EnumProbe::mode)
+    .AddProperty("mode", &EnumProbe::mode)
 CROWY_STRUCT_END(EnumProbe)
 // clang-format on
 
@@ -581,8 +581,8 @@ struct ListItem {
 
 // clang-format off
 CROWY_STRUCT(ListItem)
-    .SetProperty("weight", &ListItem::weight)
-    .SetProperty("label", &ListItem::label)
+    .AddProperty("weight", &ListItem::weight)
+    .AddProperty("label", &ListItem::label)
 CROWY_STRUCT_END(ListItem)
 // clang-format on
 
@@ -594,9 +594,9 @@ struct ListProbe {
 
 // clang-format off
 CROWY_STRUCT(ListProbe)
-    .SetProperty("weights", &ListProbe::weights)
-    .SetProperty("items", &ListProbe::items)
-    .SetProperty("modes", &ListProbe::modes)
+    .AddProperty("weights", &ListProbe::weights)
+    .AddProperty("items", &ListProbe::items)
+    .AddProperty("modes", &ListProbe::modes)
 CROWY_STRUCT_END(ListProbe)
 // clang-format on
 

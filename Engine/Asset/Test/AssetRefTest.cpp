@@ -27,8 +27,8 @@ namespace Crowy
 {
     // clang-format off
     CROWY_STRUCT(RefHolder)
-        .SetProperty("mesh", &RefHolder::mesh)
-        .SetProperty("textures", &RefHolder::textures)
+        .AddProperty("mesh", &RefHolder::mesh)
+        .AddProperty("textures", &RefHolder::textures)
     CROWY_STRUCT_END(RefHolder)
     // clang-format on
 }

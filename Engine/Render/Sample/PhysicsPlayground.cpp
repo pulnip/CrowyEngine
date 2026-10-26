@@ -757,24 +757,24 @@ namespace Crowy
 
     // clang-format off
     CROWY_STRUCT(PuzzleControl)
-        .SetProperty("mode", &PuzzleControl::mode)
+        .AddProperty("mode", &PuzzleControl::mode)
     CROWY_STRUCT_END(PuzzleControl)
 
     CROWY_STRUCT(PuzzleStatusMirror)
-        .SetProperty("mode", &PuzzleStatusMirror::mode)
-        .SetProperty("tick", &PuzzleStatusMirror::tick)
-        .SetProperty("hash", &PuzzleStatusMirror::hash)
-        .SetProperty("solved", &PuzzleStatusMirror::solved)
-        .SetProperty("solvedAt", &PuzzleStatusMirror::solvedAt)
-        .SetProperty(
+        .AddProperty("mode", &PuzzleStatusMirror::mode)
+        .AddProperty("tick", &PuzzleStatusMirror::tick)
+        .AddProperty("hash", &PuzzleStatusMirror::hash)
+        .AddProperty("solved", &PuzzleStatusMirror::solved)
+        .AddProperty("solvedAt", &PuzzleStatusMirror::solvedAt)
+        .AddProperty(
             "checkpointsMatched",
             &PuzzleStatusMirror::checkpointsMatched
         )
-        .SetProperty(
+        .AddProperty(
             "checkpointsMissed",
             &PuzzleStatusMirror::checkpointsMissed
         )
-        .SetProperty("eventsApplied", &PuzzleStatusMirror::eventsApplied)
+        .AddProperty("eventsApplied", &PuzzleStatusMirror::eventsApplied)
     CROWY_STRUCT_END(PuzzleStatusMirror)
     // clang-format on
 }

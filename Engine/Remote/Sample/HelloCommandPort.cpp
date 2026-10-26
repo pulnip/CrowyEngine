@@ -38,10 +38,10 @@ struct HelloKnobs{
 
 // clang-format off
 CROWY_STRUCT(HelloKnobs)
-    .SetProperty("gain", &HelloKnobs::gain)
+    .AddProperty("gain", &HelloKnobs::gain)
         .SetUIRange(0.0f, 4.0f)
-    .SetProperty("label", &HelloKnobs::label)
-    .SetProperty("blend", &HelloKnobs::blend)
+    .AddProperty("label", &HelloKnobs::label)
+    .AddProperty("blend", &HelloKnobs::blend)
 CROWY_STRUCT_END(HelloKnobs)
 // clang-format on
 

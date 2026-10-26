@@ -34,7 +34,7 @@ namespace Crowy
 
     // clang-format off
     CROWY_COMPONENT(EffectComponent)
-        .SetProperty("effect", &EffectComponent::effect)
+        .AddProperty("effect", &EffectComponent::effect)
         .OnAdd(&requireEffect)
     CROWY_COMPONENT_END(EffectComponent)
 

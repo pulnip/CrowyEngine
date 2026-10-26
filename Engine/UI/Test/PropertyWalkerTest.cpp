@@ -17,7 +17,7 @@ struct WalkerNested{
 
 // clang-format off
 CROWY_STRUCT(WalkerNested)
-    .SetProperty("amount", &WalkerNested::amount)
+    .AddProperty("amount", &WalkerNested::amount)
 CROWY_STRUCT_END(WalkerNested)
 // clang-format on
 
@@ -27,7 +27,7 @@ struct WalkerBase{
 
 // clang-format off
 CROWY_STRUCT(WalkerBase)
-    .SetProperty("exposure", &WalkerBase::exposure)
+    .AddProperty("exposure", &WalkerBase::exposure)
 CROWY_STRUCT_END(WalkerBase)
 // clang-format on
 
@@ -65,16 +65,16 @@ struct WalkerFixture: WalkerBase{
 // clang-format off
 CROWY_STRUCT(WalkerFixture)
     .Inherits<WalkerBase>()
-    .SetProperty("visible", &WalkerFixture::visible)
-    .SetProperty("count", &WalkerFixture::count)
-    .SetProperty("roughness", &WalkerFixture::roughness)
+    .AddProperty("visible", &WalkerFixture::visible)
+    .AddProperty("count", &WalkerFixture::count)
+    .AddProperty("roughness", &WalkerFixture::roughness)
         .SetUIRange(0.0f, 1.0f)
-    .SetProperty("speed", &WalkerFixture::speed)
-    .SetProperty("tint", &WalkerFixture::tint)
-    .SetProperty("title", &WalkerFixture::title)
-    .SetProperty("flags", &WalkerFixture::flags)
-    .SetProperty("nested", &WalkerFixture::nested)
-    .SetProperty("blend", &WalkerFixture::blend)
+    .AddProperty("speed", &WalkerFixture::speed)
+    .AddProperty("tint", &WalkerFixture::tint)
+    .AddProperty("title", &WalkerFixture::title)
+    .AddProperty("flags", &WalkerFixture::flags)
+    .AddProperty("nested", &WalkerFixture::nested)
+    .AddProperty("blend", &WalkerFixture::blend)
 CROWY_STRUCT_END(WalkerFixture)
 // clang-format on
 
@@ -371,9 +371,9 @@ struct WalkerList {
 
 // clang-format off
 CROWY_STRUCT(WalkerList)
-    .SetProperty("weights", &WalkerList::weights)
+    .AddProperty("weights", &WalkerList::weights)
         .SetUIRange(0.0f, 2.0f)
-    .SetProperty("parts", &WalkerList::parts)
+    .AddProperty("parts", &WalkerList::parts)
 CROWY_STRUCT_END(WalkerList)
 // clang-format on
 

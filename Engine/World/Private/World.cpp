@@ -363,9 +363,9 @@ namespace Crowy
     // here rather than in a file of its own: every World user links this one
     // clang-format off
     CROWY_STRUCT(Transform)
-        .SetProperty("position", &Transform::position)
-        .SetProperty("rotation", &Transform::rotation)
-        .SetProperty("scale", &Transform::scale)
+        .AddProperty("position", &Transform::position)
+        .AddProperty("rotation", &Transform::rotation)
+        .AddProperty("scale", &Transform::scale)
     CROWY_STRUCT_END(Transform)
     // clang-format on
 }

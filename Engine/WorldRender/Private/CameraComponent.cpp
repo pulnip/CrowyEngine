@@ -47,10 +47,10 @@ namespace Crowy
 
     // clang-format off
     CROWY_COMPONENT(CameraComponent)
-        .SetProperty("fovY", &CameraComponent::fovY)
+        .AddProperty("fovY", &CameraComponent::fovY)
         .SetUIRange(0.35f, 2.4f)
-        .SetProperty("nearZ", &CameraComponent::nearZ)
-        .SetProperty("farZ", &CameraComponent::farZ)
+        .AddProperty("nearZ", &CameraComponent::nearZ)
+        .AddProperty("farZ", &CameraComponent::farZ)
         .OnAdd(&requireOneCamera)
     CROWY_COMPONENT_END(CameraComponent)
 

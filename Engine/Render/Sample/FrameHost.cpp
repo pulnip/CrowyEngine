@@ -439,13 +439,13 @@ namespace Crowy
 
     // clang-format off
     CROWY_STRUCT(RenderDebug)
-        .SetProperty("mode", &RenderDebug::mode)
-        .SetProperty("wireframe", &RenderDebug::wireframe)
-        .SetProperty("depthPrepass", &RenderDebug::depthPrepass)
-        .SetProperty("shadowFilter", &RenderDebug::shadowFilter)
-        .SetProperty("showStats", &RenderDebug::showStats)
-        .SetProperty("showPanel", &RenderDebug::showPanel)
-        .SetProperty("sceneView", &RenderDebug::sceneView)
+        .AddProperty("mode", &RenderDebug::mode)
+        .AddProperty("wireframe", &RenderDebug::wireframe)
+        .AddProperty("depthPrepass", &RenderDebug::depthPrepass)
+        .AddProperty("shadowFilter", &RenderDebug::shadowFilter)
+        .AddProperty("showStats", &RenderDebug::showStats)
+        .AddProperty("showPanel", &RenderDebug::showPanel)
+        .AddProperty("sceneView", &RenderDebug::sceneView)
     CROWY_STRUCT_END(RenderDebug)
     // clang-format on
 }

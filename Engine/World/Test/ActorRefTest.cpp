@@ -32,8 +32,8 @@ namespace Crowy
 {
     // clang-format off
     CROWY_STRUCT(RefHolder)
-        .SetProperty("target", &RefHolder::target)
-        .SetProperty("path", &RefHolder::path)
+        .AddProperty("target", &RefHolder::target)
+        .AddProperty("path", &RefHolder::path)
     CROWY_STRUCT_END(RefHolder)
     // clang-format on
 }

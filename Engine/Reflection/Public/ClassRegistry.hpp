@@ -343,7 +343,7 @@ namespace Crowy
 
         template<typename... Ptrs>
             requires detail::MemberChainOf<T, Ptrs...>
-        Self& SetProperty(CStr name, Ptrs... ptrs){
+        Self& AddProperty(CStr name, Ptrs... ptrs){
             lastProp = &desc.AddProperty(name, ptrs...);
 
             return self();

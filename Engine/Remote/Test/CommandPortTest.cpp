@@ -22,7 +22,7 @@ struct PortNested{
 
 // clang-format off
 CROWY_STRUCT(PortNested)
-    .SetProperty("amount", &PortNested::amount)
+    .AddProperty("amount", &PortNested::amount)
 CROWY_STRUCT_END(PortNested)
 // clang-format on
 
@@ -32,7 +32,7 @@ struct PortProbeBase{
 
 // clang-format off
 CROWY_STRUCT(PortProbeBase)
-    .SetProperty("exposure", &PortProbeBase::exposure)
+    .AddProperty("exposure", &PortProbeBase::exposure)
 CROWY_STRUCT_END(PortProbeBase)
 // clang-format on
 
@@ -63,12 +63,12 @@ struct PortProbe: PortProbeBase{
 // clang-format off
 CROWY_STRUCT(PortProbe)
     .Inherits<PortProbeBase>()
-    .SetProperty("roughness", &PortProbe::roughness)
+    .AddProperty("roughness", &PortProbe::roughness)
         .SetUIRange(0.0f, 1.0f)
         .SetTooltip("microfacet spread")
-    .SetProperty("tint", &PortProbe::tint)
-    .SetProperty("blend", &PortProbe::blend)
-    .SetProperty("nested", &PortProbe::nested)
+    .AddProperty("tint", &PortProbe::tint)
+    .AddProperty("blend", &PortProbe::blend)
+    .AddProperty("nested", &PortProbe::nested)
 CROWY_STRUCT_END(PortProbe)
 // clang-format on
 
@@ -84,8 +84,8 @@ struct PortHolder{
 
 // clang-format off
 CROWY_STRUCT(PortHolder)
-    .SetProperty("level", &PortHolder::level)
-    .SetProperty("opaque", &PortHolder::opaque)
+    .AddProperty("level", &PortHolder::level)
+    .AddProperty("opaque", &PortHolder::opaque)
 CROWY_STRUCT_END(PortHolder)
 // clang-format on
 
@@ -96,8 +96,8 @@ struct PortList {
 
 // clang-format off
 CROWY_STRUCT(PortList)
-    .SetProperty("weights", &PortList::weights)
-    .SetProperty("parts", &PortList::parts)
+    .AddProperty("weights", &PortList::weights)
+    .AddProperty("parts", &PortList::parts)
 CROWY_STRUCT_END(PortList)
 // clang-format on
 

@@ -115,13 +115,13 @@ namespace Crowy
     CROWY_ENUM_END()
 
     CROWY_COMPONENT(ScenePaint)
-        .SetProperty("color", &ScenePaint::color)
-        .SetProperty("strength", &ScenePaint::strength)
-        .SetProperty("finish", &ScenePaint::finish)
+        .AddProperty("color", &ScenePaint::color)
+        .AddProperty("strength", &ScenePaint::strength)
+        .AddProperty("finish", &ScenePaint::finish)
     CROWY_COMPONENT_END(ScenePaint)
 
     CROWY_COMPONENT(SceneLink)
-        .SetProperty("target", &SceneLink::target)
+        .AddProperty("target", &SceneLink::target)
     CROWY_COMPONENT_END(SceneLink)
 
     CROWY_COMPONENT(SceneRuntime)

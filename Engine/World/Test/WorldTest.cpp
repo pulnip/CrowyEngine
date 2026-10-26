@@ -80,7 +80,7 @@ namespace Crowy
 {
     // clang-format off
     CROWY_COMPONENT(WorldMarker)
-        .SetProperty("value", &WorldMarker::value)
+        .AddProperty("value", &WorldMarker::value)
     CROWY_COMPONENT_END(WorldMarker)
 
     CROWY_COMPONENT(WorldOwned)
@@ -95,7 +95,7 @@ namespace Crowy
     CROWY_COMPONENT_END(WorldHooked)
 
     CROWY_STRUCT(WorldPlainStruct)
-        .SetProperty("value", &WorldPlainStruct::value)
+        .AddProperty("value", &WorldPlainStruct::value)
     CROWY_STRUCT_END(WorldPlainStruct)
     // clang-format on
 }

@@ -81,9 +81,9 @@ ImGui 인스펙터도 리플렉션을 사용하므로, 동일한 값 수정 경�
 
 ```cpp
 CROWY_STRUCT(RenderDebug)
-    .SetProperty("mode", &RenderDebug::mode)
-    .SetProperty("wireframe", &RenderDebug::wireframe)
-    .SetProperty("shadowFilter", &RenderDebug::shadowFilter)
+    .AddProperty("mode", &RenderDebug::mode)
+    .AddProperty("wireframe", &RenderDebug::wireframe)
+    .AddProperty("shadowFilter", &RenderDebug::shadowFilter)
     // ...
 CROWY_STRUCT_END(RenderDebug)
 ```

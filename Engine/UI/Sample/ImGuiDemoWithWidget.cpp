@@ -36,11 +36,11 @@ struct GalleryKnobs{
 
 // clang-format off
 CROWY_STRUCT(GalleryKnobs)
-    .SetProperty("shape", &GalleryKnobs::shape)
-    .SetProperty("scale", &GalleryKnobs::scale)
+    .AddProperty("shape", &GalleryKnobs::shape)
+    .AddProperty("scale", &GalleryKnobs::scale)
         .SetUIRange(0.1f, 4.0f)
-    .SetProperty("wireframe", &GalleryKnobs::wireframe)
-    .SetProperty("name", &GalleryKnobs::name)
+    .AddProperty("wireframe", &GalleryKnobs::wireframe)
+    .AddProperty("name", &GalleryKnobs::name)
 CROWY_STRUCT_END(GalleryKnobs)
 // clang-format on
 
