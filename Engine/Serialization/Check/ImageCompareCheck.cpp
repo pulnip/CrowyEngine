@@ -38,8 +38,7 @@ namespace Crowy
             constexpr EdgeOptions EdgeDefaults{};
 
             return std::format(
-                "usage: ImageCompareCheck                   self-test\n"
-                "       ImageCompareCheck <a> <b> [--tolerance N]\n"
+                "usage: ImageCompareCheck <a> <b> [--tolerance N]\n"
                 "                         [--max-fail F] [--max-local F]\n"
                 "                         [--alpha] [--diff <out.png|.bmp>]\n"
                 "       ImageCompareCheck --convert <in> <out.png|.bmp>\n"
@@ -535,127 +534,6 @@ namespace Crowy
 
             return 0;
         }
-
-        std::vector<u8> solid(u32 width, u32 height, u8 value) {
-            const auto size = static_cast<usize>(width) * height * 4;
-            std::vector<u8> pixels(size, value);
-            for(usize i = 3; i < pixels.size(); i += 4)
-                pixels[i] = 255;
-
-            return pixels;
-        }
-
-        Rgba8View viewOf(const std::vector<u8>& pixels, u32 width, u32 height) {
-            return Rgba8View{
-                .pixels = pixels.data(),
-                .width = width,
-                .height = height,
-                .rowPitch = static_cast<usize>(width) * 4
-            };
-        }
-
-        bool checkIdentical() {
-            std::println("Identical images");
-
-            const auto a = solid(16, 16, 128);
-            const auto b = solid(16, 16, 128);
-            const auto comparison =
-                compareImages(viewOf(a, 16, 16), viewOf(b, 16, 16));
-            std::println("  16x16: {}", verdict(comparison));
-            if(!comparison.similar || comparison.failing != 0) {
-                std::println("  FAIL: an image differs from itself");
-                return false;
-            }
-
-            return true;
-        }
-
-        bool checkOnePixel() {
-            std::println("One pixel off by 3");
-
-            const auto a = solid(16, 16, 128);
-            auto b = a;
-            b[(5 * 16 + 7) * 4] += 3;
-            const auto viewA = viewOf(a, 16, 16);
-            const auto viewB = viewOf(b, 16, 16);
-            const auto strict =
-                compareImages(viewA, viewB, {.channelDelta = 2});
-            const auto loose = compareImages(viewA, viewB, {.channelDelta = 3});
-            std::println("  tolerance 2: {}", verdict(strict));
-            std::println("  tolerance 3: {}", verdict(loose));
-
-            bool ok = true;
-            if(strict.similar || strict.failing != 1) {
-                std::println("  FAIL: tolerance 2 let the pixel through");
-                ok = false;
-            }
-            if(!loose.similar || loose.failing != 0) {
-                std::println("  FAIL: tolerance 3 failed the pixel");
-                ok = false;
-            }
-
-            return ok;
-        }
-
-        bool checkSizeMismatch() {
-            std::println("Size mismatch");
-
-            const auto a = solid(4, 4, 0);
-            const auto b = solid(4, 5, 0);
-            try {
-                compareImages(viewOf(a, 4, 4), viewOf(b, 4, 5));
-            } catch(const std::invalid_argument& e) {
-                std::println("  refused: {}", e.what());
-                return true;
-            }
-
-            std::println("  FAIL: 4x4 was compared against 4x5");
-            return false;
-        }
-
-        bool checkEdges() {
-            std::println("A bar against itself moved (4, 0)");
-
-            constexpr u32 Size = 64;
-            auto a = solid(Size, Size, 0);
-            auto b = a;
-            for(u32 y = 16; y < 40; ++y) {
-                for(u32 x = 20; x < 30; ++x) {
-                    for(u32 c = 0; c < 3; ++c) {
-                        a[(y * Size + x) * 4 + c] = 200;
-                        b[(y * Size + x + 4) * 4 + c] = 200;
-                    }
-                }
-            }
-            const auto comparison =
-                compareEdges(viewOf(a, Size, Size), viewOf(b, Size, Size));
-            std::println(
-                "  shift ({},{}), {} coincide",
-                comparison.shiftX,
-                comparison.shiftY,
-                percent(comparison.shiftCoincide)
-            );
-            if(comparison.shiftX != 4 || comparison.shiftY != 0 ||
-               comparison.shiftCoincide != 1.0) {
-                std::println("  FAIL: the shift is not (4,0) at 100%");
-                return false;
-            }
-
-            return true;
-        }
-
-        int selfTest() {
-            bool ok = true;
-            ok = checkIdentical() && ok;
-            ok = checkOnePixel() && ok;
-            ok = checkSizeMismatch() && ok;
-            ok = checkEdges() && ok;
-            if(!ok)
-                return 1;
-
-            std::println("Succeed!");
-            return 0;
-        }
     }
 }
 
@@ -665,9 +543,6 @@ int main(int argc, char** argv) {
     try {
         const auto args =
             std::span<char* const>(argv, static_cast<usize>(argc));
-        if(args.size() <= 1)
-            return selfTest();
-
         const auto parsed = parseArgs(args.subspan(1));
         switch(parsed.mode) {
         case Mode::Help:

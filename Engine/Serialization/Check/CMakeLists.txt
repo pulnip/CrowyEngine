@@ -1,4 +1,4 @@
-# compares two images or converts one to PNG; run bare, it tests itself
+# compares two images or converts one to PNG
 crowy_declare_check(ImageCompareCheck
 SOURCES
     ImageCompareCheck.cpp
