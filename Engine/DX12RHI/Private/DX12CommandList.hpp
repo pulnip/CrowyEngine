@@ -75,7 +75,6 @@ namespace Crowy
         DescriptorHeapAllocator& cbvsrvuavHeap;
         DescriptorHeapAllocator& rtvHeap;
         DescriptorHeapAllocator& dsvHeap;
-        DescriptorHeapAllocator& samplerHeap;
         // TODO. Add REAL bindless api
         DX12GraphicsPipelineState* currentGraphicsPSO = nullptr;
         DX12ComputePipelineState* currentComputePSO = nullptr;
@@ -93,8 +92,7 @@ namespace Crowy
             DX12Fence& serialFence,
             DescriptorHeapAllocator& cbvsrvuavHeap,
             DescriptorHeapAllocator& rtvHeap,
-            DescriptorHeapAllocator& dsvHeap,
-            DescriptorHeapAllocator& samplerHeap
+            DescriptorHeapAllocator& dsvHeap
         );
         ~DX12CommandList();
 

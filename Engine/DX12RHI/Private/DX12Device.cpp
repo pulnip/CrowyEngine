@@ -15,7 +15,6 @@
 #include "DX12Fence.hpp"
 #include "DX12FrameScope.hpp"
 #include "DX12PipelineState.hpp"
-#include "DX12Sampler.hpp"
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
@@ -485,7 +484,6 @@ namespace Crowy
         DescriptorHeapAllocatorRAII cbvsrvuavHeap = nullptr;
         DescriptorHeapAllocatorRAII rtvHeap = nullptr;
         DescriptorHeapAllocatorRAII dsvHeap = nullptr;
-        DescriptorHeapAllocatorRAII samplerHeap = nullptr;
 
         RootSignatureRAII globalRootSignature;
         CommandSignatureRAII drawSignature;
@@ -539,12 +537,6 @@ namespace Crowy
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
                 UINT(32),
-                retireQueue
-            ))
-            , samplerHeap(std::make_unique<DescriptorHeapAllocator>(
-                *device.Get(),
-                D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-                UINT(64),
                 retireQueue
             ))
             , globalRootSignature(::createGlobalRootSignature(*device.Get()))
@@ -674,15 +666,6 @@ namespace Crowy
             return texture;
         }
 
-        RAII<DX12Sampler> CreateSampler(
-            const RHISamplerState& desc
-        ){
-            return std::make_unique<DX12Sampler>(
-                desc,
-                *samplerHeap
-            );
-        }
-
         RAII<DX12GraphicsPipelineState> CreatePipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             StrView name
@@ -737,8 +720,7 @@ namespace Crowy
                 *serialFence,
                 *cbvsrvuavHeap,
                 *rtvHeap,
-                *dsvHeap,
-                *samplerHeap
+                *dsvHeap
             );
         }
 
@@ -1011,12 +993,6 @@ namespace Crowy
         StrView name
     ){
         return impl->CreateTexture(desc, name);
-    }
-
-    RAII<DX12Sampler> DX12Device::CreateSampler(
-        const RHISamplerState& desc
-    ){
-        return impl->CreateSampler(desc);
     }
 
     RAII<RHIGraphicsPipelineState> DX12Device::CreatePipelineState(

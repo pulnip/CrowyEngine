@@ -54,10 +54,6 @@ namespace Crowy
             const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc
         );
 
-        UINT Allocate(
-            const D3D12_SAMPLER_DESC& desc
-        );
-
         // safe to call from a destructor - the index only becomes available
         // again (or, in poison mode, never does) once the retire queue
         // confirms the GPU is done with whatever last read it

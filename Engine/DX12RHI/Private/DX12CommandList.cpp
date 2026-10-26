@@ -161,8 +161,7 @@ namespace Crowy
         DX12Fence& serialFence,
         DescriptorHeapAllocator& cbvsrvuavHeap,
         DescriptorHeapAllocator& rtvHeap,
-        DescriptorHeapAllocator& dsvHeap,
-        DescriptorHeapAllocator& samplerHeap
+        DescriptorHeapAllocator& dsvHeap
     )
         : commandQueue(commandQueue)
         , rootSignature(rootSignature)
@@ -172,7 +171,6 @@ namespace Crowy
         , cbvsrvuavHeap(cbvsrvuavHeap)
         , rtvHeap(rtvHeap)
         , dsvHeap(dsvHeap)
-        , samplerHeap(samplerHeap)
     {
         for(auto& slot: allocators){
             CHECK_HRESULT(device.CreateCommandAllocator(
@@ -253,10 +251,7 @@ namespace Crowy
         pendingTextureReleases.clear();
         pendingBufferReleases.clear();
 
-        std::array heaps{
-            cbvsrvuavHeap.Get(),
-            samplerHeap.Get()
-        };
+        std::array heaps{cbvsrvuavHeap.Get()};
         commandList->SetDescriptorHeaps(
             heaps.size(),
             heaps.data()

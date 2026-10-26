@@ -111,18 +111,6 @@ namespace Crowy
         return index;
     }
 
-    UINT DescriptorHeapAllocator::Allocate(
-        const D3D12_SAMPLER_DESC& desc
-    ){
-        auto index = acquireIndex();
-        device.CreateSampler(
-            &desc,
-            GetCPUHandle(index)
-        );
-
-        return index;
-    }
-
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapAllocator::GetCPUHandle(UINT index) const{
         auto handle = heap->GetCPUDescriptorHandleForHeapStart();
         auto offset = index * descriptorSize;

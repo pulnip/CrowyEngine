@@ -9,8 +9,6 @@
 
 namespace Crowy
 {
-    class DX12Sampler;
-
     class DX12Device: public RHIDevice{
     private:
         class Impl;
@@ -32,10 +30,6 @@ namespace Crowy
             const RHITextureCreateDesc&,
             StrView name = {}
         ) RHI_OVERRIDE;
-        RAII<DX12Sampler> CreateSampler(
-            const RHISamplerState&
-        );
-
         RAII<RHIGraphicsPipelineState> CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
