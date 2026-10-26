@@ -15,10 +15,7 @@
 
 namespace Crowy
 {
-    // Engine/RHI/Sample/TenThousandCubes built on RenderScene instead of a
-    // hand-rolled object list. Same lattice, meshes, pose and clear color,
-    // so a smoke capture of the two has to compare equal. Each block is an
-    // actor with a mesh, and the World extracts the rows.
+    // Each block is an actor with a mesh, and the World extracts the rows.
     class TenThousandBlocks: public RenderApp {
         // keep in sync with TenThousandBlocks.slang
         static constexpr u32 GridX = 20, GridY = 20, GridZ = 25;

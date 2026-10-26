@@ -53,13 +53,6 @@ SOURCES
     Checkerboard.cpp
 )
 
-crowy_declare_example(TenThousandCubes
-SOURCES
-    TenThousandCubes.cpp
-DEPENDS
-    Crowy::Serialization
-)
-
 crowy_declare_example(BlackholeSimulation
 SOURCES
     BlackholeSimulation.cpp
