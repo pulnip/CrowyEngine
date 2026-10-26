@@ -42,12 +42,23 @@ These override the global CLAUDE.md where they differ.
   not `std::uint32_t`. Everything lives in `namespace Crowy`.
 - Code text spells "color". When a test matches a message, grep both sides
   after rewording it.
-- A comment is one line, two at most, and says why. No process notes, no
-  milestone or ticket names, no history of a bug.
-- Format: `clang-format -i` on a file you create; `git clang-format` on the
-  lines you change in an older file, never the whole file.
+- Comments: the default is none. Write one only for a fact the code, its
+  names, its asserts and its tests cannot show: an external API's or
+  driver's behaviour, a spec number, a decision whose alternative is not
+  visible from here. One line, two at most. Never what a test shows, what
+  the next line does, a plan, a date or a step. A protocol or format
+  someone outside the repo reads goes in docs/, not in a header.
+- Format: a module listed in Tools/formatted.txt is formatted whole
+  (`clang-format -i`), and `Tools/format_check.ps1` fails on drift; a
+  new file is formatted whole and its module added to the list. Elsewhere
+  `git clang-format` on changed lines only.
+- Shared text and range helpers live in Core: StringUtil.hpp (join,
+  parseNumber, case), PathUtil.hpp, FileUtil.hpp, RangeUtil.hpp (stray,
+  firstRepeat). Look there before writing a loop.
 - Anything that advances per frame is paced by time (the owner's display is
   120 Hz); goldens stay deterministic by counted frames.
+- A registration (`CROWY_STRUCT`, `CROWY_COMPONENT`, `CROWY_ENUM_BEGIN`,
+  ...) sits between `// clang-format off` and `// clang-format on`.
 - A file that only registers (`CROWY_STRUCT`, `CROWY_OBJECT`) goes in a
   static library wrapped by `crowy_whole_archive` (`cmake/util.cmake`); a
   plain one drops the object and the type silently goes missing.
@@ -108,8 +119,8 @@ or for a merge.
   `--gtest_filter`).
 - Iterating: build the target and run its own unit binary; never `gpu`,
   `render` or `app` while the logic is still changing.
-- Confirming an increment, once before its commit: the `unit` label, plus
-  the row below for what changed.
+- Confirming an increment, once before its commit: the `unit` label,
+  `Tools/format_check.ps1`, plus the row below for what changed.
 - A merge to master, when the owner asks: the whole ctest, once.
 
 | Changed | Add, once per increment |
@@ -147,7 +158,7 @@ ctest --test-dir build -C Debug -j 8
 ## Git
 
 - Commit only when the owner asks; never push, amend, rebase or reset.
-- Message: one short imperative clause, lowercase, like `drop the frame-slot
-  machinery from buffer creation`. A body only when the why is not obvious,
-  a few lines, and no test counts. End with the session's Co-Authored-By
-  line.
+- Commit message: the subject alone, one short imperative clause,
+  lowercase. A body only when the diff would look wrong without it, two
+  lines at most. No test counts, no file lists. End with the session's
+  Co-Authored-By line.
