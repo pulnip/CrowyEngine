@@ -451,41 +451,6 @@ namespace Crowy
         return lhs.x<=rhs.x && lhs.y<=rhs.y && lhs.z<=rhs.z;
     }
 
-    struct Transform;
-
-    struct Transform2D{
-        Vec2 position = Vec2{0.0f, 0.0f};
-        f32 theta = 0.0f;
-        Vec2 scale = Vec2{1.0f, 1.0f};
-
-        constexpr operator Transform() const noexcept;
-    };
-
-    inline auto rotate(Vec2 v, f32 theta) noexcept{
-        f32 c = std::cos(theta), s = std::sin(theta);
-
-        return Vec2{
-            .x = c*v.x - s*v.y,
-            .y = s*v.x + c*v.y
-        };
-    }
-
-    inline constexpr Transform2D operator*(Transform2D lhs, Transform2D rhs) noexcept{
-        return Transform2D{
-            // Notice. Expect lhs has uniform scale
-            .position = lhs.position + rotate(lhs.scale * rhs.position, lhs.theta),
-            .theta = lhs.theta + rhs.theta,
-            .scale = lhs.scale * rhs.scale
-        };
-    }
-
-    inline auto extractZRot(Vec4 quat) noexcept{
-        f32 sinz_cosx = 2*(quat.w*quat.z + quat.x*quat.y);
-        f32 cosz_cosx = 1 - 2*(quat.y*quat.y + quat.z*quat.z);
-
-        return std::atan2(sinz_cosx, cosz_cosx);
-    }
-
     struct Transform{
         Vec3 position = zeros();
         Vec4 rotation = unitQuat();
@@ -493,15 +458,6 @@ namespace Crowy
 
         static constexpr Transform Identity() noexcept{
             return Transform{};
-        }
-
-        // Defined in LinearAlgebra.hpp
-        explicit constexpr operator Transform2D() const noexcept{
-            return Transform2D{
-                .position = static_cast<Vec2>(position),
-                .theta = extractZRot(rotation),
-                .scale = static_cast<Vec2>(scale)
-            };
         }
     };
 

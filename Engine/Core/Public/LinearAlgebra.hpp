@@ -145,20 +145,6 @@ namespace Crowy
         };
     }
 
-    inline auto extractYRot(Vec4 quat) noexcept{
-        f32 siny_cosx = 2*(quat.w*quat.y + quat.x*quat.z);
-        f32 cosy_cosx = 1 - 2*(quat.y*quat.y + quat.x*quat.x);
-
-        return std::atan2(siny_cosx, cosy_cosx);
-    }
-
-    inline auto extractYQuat(Vec4 quat) noexcept{
-        return rotateY(extractYRot(quat));
-    }
-    inline auto extractZQuat(Vec4 quat) noexcept{
-        return rotateZ(extractZRot(quat));
-    }
-
     inline auto axisAngle(Vec3 axis, f32 radian) noexcept{
         auto half = radian / 2;
         f32 s = std::sin(half);
@@ -170,21 +156,6 @@ namespace Crowy
         };
     }
 
-    // 2D
-    inline auto right(f32 theta) noexcept{
-        return Vec2{
-            .x = std::cos(theta),
-            .y = std::sin(theta)
-        };
-    }
-    inline auto up(f32 theta) noexcept{
-        return Vec2{
-            .x = -std::sin(theta),
-            .y = std::cos(theta)
-        };
-    }
-
-    // 3D
     inline constexpr auto right(Vec4 q) noexcept{
         auto e_x = Vec4{1.0f, 0.0f, 0.0f, 0.0f};
         auto r = rotate(e_x, q);
@@ -422,20 +393,6 @@ namespace Crowy
     inline constexpr auto mvp(Mat4 model, Mat4 view, Mat4 proj) noexcept{
         // column-vector convention
         return proj * view * model;
-    }
-
-    inline constexpr bool overlap(
-        f32 m1, f32 M1,
-        f32 m2, f32 M2,
-        f32 epsilon = 0
-    ) noexcept{
-        CROWY_ASSERT(epsilon >= 0);
-        if(m1 > m2){
-            std::swap(m1, m2);
-            std::swap(M1, M2);
-        }
-
-        return M1 >= m2 - epsilon;
     }
 
     inline constexpr f64 toRadian(f64 degree) noexcept{
