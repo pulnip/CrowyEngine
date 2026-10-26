@@ -361,8 +361,7 @@ namespace Crowy
     }
 
     // here rather than in a file of its own: every World user links this one
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_STRUCT(Transform)
         .SetProperty("position", &Transform::position)
         .SetProperty("rotation", &Transform::rotation)

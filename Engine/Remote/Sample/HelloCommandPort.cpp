@@ -21,10 +21,12 @@ enum class HelloBlend: Crowy::u8{
 
 namespace Crowy
 {
+    // clang-format off
     CROWY_ENUM_BEGIN(HelloBlend)
         CROWY_ENUM_VALUE(Opaque)
         CROWY_ENUM_VALUE(Additive)
     CROWY_ENUM_END()
+    // clang-format on
 }
 
 // the reflection verbs need nothing beyond a registered struct
@@ -34,12 +36,14 @@ struct HelloKnobs{
     HelloBlend blend = HelloBlend::Opaque;
 };
 
+// clang-format off
 CROWY_STRUCT(HelloKnobs)
     .SetProperty("gain", &HelloKnobs::gain)
         .SetUIRange(0.0f, 4.0f)
     .SetProperty("label", &HelloKnobs::label)
     .SetProperty("blend", &HelloKnobs::blend)
 CROWY_STRUCT_END(HelloKnobs)
+// clang-format on
 
 int main(void){
     using namespace Crowy;

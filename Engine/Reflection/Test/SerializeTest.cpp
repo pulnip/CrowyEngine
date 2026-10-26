@@ -14,11 +14,13 @@ enum class SerializeBlend: i16{
 
 namespace Crowy
 {
+    // clang-format off
     CROWY_ENUM_BEGIN(SerializeBlend)
         CROWY_ENUM_VALUE(Opaque)
         CROWY_ENUM_VALUE(Masked)
         CROWY_ENUM_VALUE(Additive)
     CROWY_ENUM_END()
+    // clang-format on
 }
 
 namespace

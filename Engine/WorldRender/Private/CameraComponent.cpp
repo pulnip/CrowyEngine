@@ -45,8 +45,7 @@ namespace Crowy
         }
     }
 
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_COMPONENT(CameraComponent)
         .SetProperty("fovY", &CameraComponent::fovY)
         .SetUIRange(0.35f, 2.4f)

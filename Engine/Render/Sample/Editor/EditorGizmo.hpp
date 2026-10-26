@@ -415,6 +415,7 @@ namespace Crowy
         return edit;
     }
 
+    // clang-format off
     CROWY_ENUM_BEGIN(GizmoHandle)
         CROWY_ENUM_VALUE(None)
         CROWY_ENUM_VALUE(ScaleX)
@@ -426,4 +427,5 @@ namespace Crowy
         CROWY_ENUM_VALUE(MoveZ)
         CROWY_ENUM_VALUE(Ring)
     CROWY_ENUM_END()
+    // clang-format on
 }

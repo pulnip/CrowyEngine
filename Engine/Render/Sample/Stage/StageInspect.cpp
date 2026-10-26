@@ -6,8 +6,7 @@
 // names stay out so the selection keeps naming its row.
 namespace Crowy
 {
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_STRUCT(StageInstance)
         .SetProperty("position", &StageInstance::position)
         .SetProperty("yaw", &StageInstance::yaw)

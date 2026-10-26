@@ -49,8 +49,7 @@ namespace Crowy
         }
     }
 
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_COMPONENT(LightComponent)
         .SetProperty("kind", &LightComponent::kind)
         .SetProperty("enabled", &LightComponent::enabled)

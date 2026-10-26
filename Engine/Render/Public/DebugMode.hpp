@@ -18,8 +18,7 @@ namespace Crowy
         Shadow,
     };
 
-    // clang-format off: the formatter cannot see the specialization the
-    // macros open and close
+    // clang-format off
     CROWY_ENUM_BEGIN(DebugMode)
         CROWY_ENUM_VALUE(Lit)
         CROWY_ENUM_VALUE(Unshaded)

@@ -438,8 +438,7 @@ namespace Crowy
         return id ? pipeline->OverlayReadableID(*id) : 0;
     }
 
-    // clang-format off: the registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_STRUCT(RenderDebug)
         .SetProperty("mode", &RenderDebug::mode)
         .SetProperty("wireframe", &RenderDebug::wireframe)

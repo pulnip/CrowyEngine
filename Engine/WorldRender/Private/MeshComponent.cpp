@@ -48,8 +48,7 @@ namespace Crowy
         }
     }
 
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_COMPONENT(MeshComponent)
         .OnAdd(&addRow)
         .OnRemove(&removeRow)

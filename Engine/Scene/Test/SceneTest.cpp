@@ -108,8 +108,7 @@ namespace
 
 namespace Crowy
 {
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_ENUM_BEGIN(SceneFinish)
         CROWY_ENUM_VALUE(Matte)
         CROWY_ENUM_VALUE(Gloss)

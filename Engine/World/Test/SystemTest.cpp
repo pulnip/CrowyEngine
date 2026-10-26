@@ -44,8 +44,7 @@ namespace
 
 namespace Crowy
 {
-    // clang-format off: the registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_SYSTEM(WorldTestCounter, Update, &countGlobalRuns)
     CROWY_SYSTEM_END(WorldTestCounter)
     // clang-format on

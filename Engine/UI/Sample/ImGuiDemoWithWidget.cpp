@@ -17,11 +17,13 @@ enum class GalleryShape: Crowy::u8{
 
 namespace Crowy
 {
+    // clang-format off
     CROWY_ENUM_BEGIN(GalleryShape)
         CROWY_ENUM_VALUE(Triangle)
         CROWY_ENUM_VALUE(Square)
         CROWY_ENUM_VALUE(Hexagon)
     CROWY_ENUM_END()
+    // clang-format on
 }
 
 // Nothing here draws: the point is that the section below it is built from
@@ -33,6 +35,7 @@ struct GalleryKnobs{
     Crowy::Str name = "knobs";
 };
 
+// clang-format off
 CROWY_STRUCT(GalleryKnobs)
     .SetProperty("shape", &GalleryKnobs::shape)
     .SetProperty("scale", &GalleryKnobs::scale)
@@ -40,6 +43,7 @@ CROWY_STRUCT(GalleryKnobs)
     .SetProperty("wireframe", &GalleryKnobs::wireframe)
     .SetProperty("name", &GalleryKnobs::name)
 CROWY_STRUCT_END(GalleryKnobs)
+// clang-format on
 
 namespace Crowy
 {

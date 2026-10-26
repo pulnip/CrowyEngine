@@ -25,11 +25,13 @@ namespace Crowy
         WebGPU = 3,
     };
 
+    // clang-format off
     CROWY_ENUM_BEGIN(RHIBackend)
         CROWY_ENUM_VALUE(DirectX12)
         CROWY_ENUM_VALUE(Metal)
         CROWY_ENUM_VALUE(WebGPU)
     CROWY_ENUM_END()
+    // clang-format on
 
     struct RHICapabilities {
         bool flipTextureV;

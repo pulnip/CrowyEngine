@@ -7,8 +7,7 @@
 // them in a panel or to the port.
 namespace Crowy
 {
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_STRUCT(LightSnapshot)
         .SetProperty("kind", &LightSnapshot::kind)
         .SetProperty("enabled", &LightSnapshot::enabled)

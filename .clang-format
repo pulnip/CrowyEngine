@@ -93,6 +93,12 @@ IncludeCategories:
     Priority: 3
     SortPriority: 4
 
+# The registration macros open and close a namespace or a specialization.
+# Each registration still sits in clang-format off: the formatter indents a
+# chain's second call one level deeper than its first.
+MacroBlockBegin: '^CROWY_(STRUCT|COMPONENT|SYSTEM|OBJECT|ENUM_BEGIN)$'
+MacroBlockEnd: '^CROWY_(STRUCT_END|COMPONENT_END|SYSTEM_END|OBJECT_END|ENUM_END)$'
+
 EmptyLineBeforeAccessModifier: LogicalBlock
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1

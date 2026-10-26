@@ -16,17 +16,21 @@ struct WalkerNested{
     f32 amount = 0.25f;
 };
 
+// clang-format off
 CROWY_STRUCT(WalkerNested)
     .SetProperty("amount", &WalkerNested::amount)
 CROWY_STRUCT_END(WalkerNested)
+// clang-format on
 
 struct WalkerBase{
     f32 exposure = 1.0f;
 };
 
+// clang-format off
 CROWY_STRUCT(WalkerBase)
     .SetProperty("exposure", &WalkerBase::exposure)
 CROWY_STRUCT_END(WalkerBase)
+// clang-format on
 
 // non-contiguous, and negative in a signed underlying type: the two things
 // an index-is-the-value dropdown would get wrong
@@ -38,11 +42,13 @@ enum class WalkerBlend: i16{
 
 namespace Crowy
 {
+    // clang-format off
     CROWY_ENUM_BEGIN(WalkerBlend)
         CROWY_ENUM_VALUE(Opaque)
         CROWY_ENUM_VALUE(Masked)
         CROWY_ENUM_VALUE(Additive)
     CROWY_ENUM_END()
+    // clang-format on
 }
 
 struct WalkerFixture: WalkerBase{
@@ -57,6 +63,7 @@ struct WalkerFixture: WalkerBase{
     WalkerBlend blend = WalkerBlend::Masked;
 };
 
+// clang-format off
 CROWY_STRUCT(WalkerFixture)
     .Inherits<WalkerBase>()
     .SetProperty("visible", &WalkerFixture::visible)
@@ -70,6 +77,7 @@ CROWY_STRUCT(WalkerFixture)
     .SetProperty("nested", &WalkerFixture::nested)
     .SetProperty("blend", &WalkerFixture::blend)
 CROWY_STRUCT_END(WalkerFixture)
+// clang-format on
 
 TEST(PropertyWalker, TreeShape){
     ASSERT_TRUE(IsWalkerNestedRegistered);
@@ -362,7 +370,7 @@ struct WalkerList {
     std::vector<WalkerNested> parts{WalkerNested{}};
 };
 
-// clang-format off: a registration opens a namespace the formatter cannot see
+// clang-format off
 CROWY_STRUCT(WalkerList)
     .SetProperty("weights", &WalkerList::weights)
         .SetUIRange(0.0f, 2.0f)

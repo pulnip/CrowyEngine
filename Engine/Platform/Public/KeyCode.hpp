@@ -34,6 +34,7 @@ namespace Crowy
     };
     constexpr auto NUM_MOUSE_BUTTON = static_cast<usize>(MouseButton::Unknown);
 
+    // clang-format off
     CROWY_ENUM_BEGIN(KeyCode)
         CROWY_ENUM_VALUE(Num0)
         CROWY_ENUM_VALUE(Num1)
@@ -101,4 +102,5 @@ namespace Crowy
         CROWY_ENUM_VALUE(RButton)
         CROWY_ENUM_VALUE(MButton)
     CROWY_ENUM_END()
+    // clang-format on
 }

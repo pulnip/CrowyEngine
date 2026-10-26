@@ -40,15 +40,17 @@ namespace Crowy
         DoubleSided,
     };
 
+    // clang-format off
     CROWY_ENUM_BEGIN(CameraBookmark)
-    CROWY_ENUM_VALUE(Free)
-    CROWY_ENUM_VALUE(Overview)
-    CROWY_ENUM_VALUE(Scale)
-    CROWY_ENUM_VALUE(Emissive)
-    CROWY_ENUM_VALUE(Materials)
-    CROWY_ENUM_VALUE(Glass)
-    CROWY_ENUM_VALUE(DoubleSided)
+        CROWY_ENUM_VALUE(Free)
+        CROWY_ENUM_VALUE(Overview)
+        CROWY_ENUM_VALUE(Scale)
+        CROWY_ENUM_VALUE(Emissive)
+        CROWY_ENUM_VALUE(Materials)
+        CROWY_ENUM_VALUE(Glass)
+        CROWY_ENUM_VALUE(DoubleSided)
     CROWY_ENUM_END()
+    // clang-format on
 
     // exposed as `bookmarks`; writing `current` snaps the camera, even to
     // the bookmark it already names
@@ -63,11 +65,13 @@ namespace Crowy
         Unlit,
     };
 
+    // clang-format off
     CROWY_ENUM_BEGIN(ChartShading)
-    CROWY_ENUM_VALUE(PBR)
-    CROWY_ENUM_VALUE(Toon)
-    CROWY_ENUM_VALUE(Unlit)
+        CROWY_ENUM_VALUE(PBR)
+        CROWY_ENUM_VALUE(Toon)
+        CROWY_ENUM_VALUE(Unlit)
     CROWY_ENUM_END()
+    // clang-format on
 
     // exposed as `shading`; writing `chart` relinks the chart's materials
     struct PlaygroundShading {

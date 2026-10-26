@@ -865,8 +865,7 @@ namespace Crowy
         world.SetLocalTransform(cameraActor, local);
     }
 
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_STRUCT(CameraBookmarks)
         .SetProperty("current", &CameraBookmarks::current)
     CROWY_STRUCT_END(CameraBookmarks)

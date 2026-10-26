@@ -21,17 +21,21 @@ struct PortNested{
     f32 amount = 0.25f;
 };
 
+// clang-format off
 CROWY_STRUCT(PortNested)
     .SetProperty("amount", &PortNested::amount)
 CROWY_STRUCT_END(PortNested)
+// clang-format on
 
 struct PortProbeBase{
     f32 exposure = 1.0f;
 };
 
+// clang-format off
 CROWY_STRUCT(PortProbeBase)
     .SetProperty("exposure", &PortProbeBase::exposure)
 CROWY_STRUCT_END(PortProbeBase)
+// clang-format on
 
 enum class PortBlend: i16{
     Opaque = -1,
@@ -41,11 +45,13 @@ enum class PortBlend: i16{
 
 namespace Crowy
 {
+    // clang-format off
     CROWY_ENUM_BEGIN(PortBlend)
         CROWY_ENUM_VALUE(Opaque)
         CROWY_ENUM_VALUE(Masked)
         CROWY_ENUM_VALUE(Additive)
     CROWY_ENUM_END()
+    // clang-format on
 }
 
 struct PortProbe: PortProbeBase{
@@ -55,6 +61,7 @@ struct PortProbe: PortProbeBase{
     PortNested nested;
 };
 
+// clang-format off
 CROWY_STRUCT(PortProbe)
     .Inherits<PortProbeBase>()
     .SetProperty("roughness", &PortProbe::roughness)
@@ -64,6 +71,7 @@ CROWY_STRUCT(PortProbe)
     .SetProperty("blend", &PortProbe::blend)
     .SetProperty("nested", &PortProbe::nested)
 CROWY_STRUCT_END(PortProbe)
+// clang-format on
 
 // a member whose type registers no properties and has no conversion
 struct PortOpaque{
@@ -75,7 +83,7 @@ struct PortHolder{
     PortOpaque opaque;
 };
 
-// clang-format off: a registration opens a namespace the formatter cannot see
+// clang-format off
 CROWY_STRUCT(PortHolder)
     .SetProperty("level", &PortHolder::level)
     .SetProperty("opaque", &PortHolder::opaque)
@@ -87,7 +95,7 @@ struct PortList {
     std::vector<PortNested> parts{PortNested{}};
 };
 
-// clang-format off: a registration opens a namespace the formatter cannot see
+// clang-format off
 CROWY_STRUCT(PortList)
     .SetProperty("weights", &PortList::weights)
     .SetProperty("parts", &PortList::parts)

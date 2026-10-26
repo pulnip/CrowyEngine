@@ -25,11 +25,13 @@ namespace Crowy
         Spot,
     };
 
+    // clang-format off
     CROWY_ENUM_BEGIN(LightKind)
         CROWY_ENUM_VALUE(Directional)
         CROWY_ENUM_VALUE(Point)
         CROWY_ENUM_VALUE(Spot)
     CROWY_ENUM_END()
+    // clang-format on
 
     // how a receiver reads the shadow map; mirrored by the constants in
     // Engine/Shader/Lighting.slang
@@ -40,10 +42,12 @@ namespace Crowy
         Pcf2x2,
     };
 
+    // clang-format off
     CROWY_ENUM_BEGIN(ShadowFilter)
         CROWY_ENUM_VALUE(Hard)
         CROWY_ENUM_VALUE(Pcf2x2)
     CROWY_ENUM_END()
+    // clang-format on
 
     // What extraction writes; packed into a LightData row each frame.
     struct LightSnapshot {

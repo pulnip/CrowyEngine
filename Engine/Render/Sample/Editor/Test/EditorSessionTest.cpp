@@ -190,11 +190,13 @@ namespace
     };
 }
 
+// clang-format off
 CROWY_STRUCT(FakeRow)
     .SetProperty("position", &FakeRow::position)
     .SetProperty("yaw", &FakeRow::yaw)
     .SetProperty("scale", &FakeRow::scale)
 CROWY_STRUCT_END(FakeRow)
+// clang-format on
 
 TEST(EditorCamera, PlanCutLooksStraightDownWithNorthUp) {
     FakeContent content;

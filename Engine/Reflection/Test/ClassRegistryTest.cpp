@@ -20,8 +20,10 @@ public:
     CROWY_DECLARE_MOVE_ONLY(CreationTestObject)
 };
 
+// clang-format off
 CROWY_OBJECT(CreationTestObject)
 CROWY_OBJECT_END(CreationTestObject)
+// clang-format on
 
 TEST(Reflection, CreationTestObject){
     ASSERT_TRUE(IsCreationTestObjectRegistered);
@@ -48,12 +50,14 @@ public:
     Transform transform;
 };
 
+// clang-format off
 CROWY_OBJECT(InjectionTestObject)
     .SetProperty("transform", &InjectionTestObject::transform)
     .SetProperty("position", &InjectionTestObject::transform, &Transform::position)
     .SetProperty("rotation", &InjectionTestObject::transform, &Transform::rotation)
     .SetProperty("scale", &InjectionTestObject::transform, &Transform::scale)
 CROWY_OBJECT_END(InjectionTestObject)
+// clang-format on
 
 TEST(Reflection, NestedProperty){
     ASSERT_TRUE(IsInjectionTestObjectRegistered);
@@ -117,6 +121,7 @@ struct Stats{
     f32 speed = 1.0f;
 };
 
+// clang-format off
 CROWY_STRUCT(Health)
     .SetProperty("current", &Health::current)
     .SetProperty("maximum", &Health::maximum)
@@ -126,6 +131,7 @@ CROWY_STRUCT(Stats)
     .SetProperty("health", &Stats::health)
     .SetProperty("speed", &Stats::speed)
 CROWY_STRUCT_END(Stats)
+// clang-format on
 
 class StructTestObject final: public Object{
     CROWY_OBJECT_BODY(StructTestObject)
@@ -138,9 +144,11 @@ public:
     Stats stats;
 };
 
+// clang-format off
 CROWY_OBJECT(StructTestObject)
     .SetProperty("stats", &StructTestObject::stats)
 CROWY_OBJECT_END(StructTestObject)
+// clang-format on
 
 TEST(Reflection, NestedStructDesc){
     ASSERT_TRUE(IsHealthRegistered);
@@ -180,9 +188,11 @@ public:
 };
 
 // a member chain ending on a reflected struct: both features compose
+// clang-format off
 CROWY_OBJECT(AliasTestObject)
     .SetProperty("hp", &AliasTestObject::stats, &Stats::health)
 CROWY_OBJECT_END(AliasTestObject)
+// clang-format on
 
 TEST(Reflection, ChainedStructDesc){
     ASSERT_TRUE(IsAliasTestObjectRegistered);
@@ -215,6 +225,7 @@ struct OrderProbe{
 };
 
 // deliberately not member order
+// clang-format off
 CROWY_STRUCT(OrderProbe)
     .SetProperty("delta", &OrderProbe::delta)
         .SetUIRange(0.0f, 1.0f)
@@ -222,6 +233,7 @@ CROWY_STRUCT(OrderProbe)
     .SetProperty("gamma", &OrderProbe::gamma)
     .SetProperty("beta", &OrderProbe::beta)
 CROWY_STRUCT_END(OrderProbe)
+// clang-format on
 
 TEST(Reflection, RegistrationOrderSurvives){
     ASSERT_TRUE(IsOrderProbeRegistered);
@@ -281,9 +293,11 @@ public:
     f32 baseValue = 0.0f;
 };
 
+// clang-format off
 CROWY_OBJECT(InheritanceBaseObject)
     .SetProperty("baseValue", &InheritanceBaseObject::baseValue)
 CROWY_OBJECT_END(InheritanceBaseObject)
+// clang-format on
 
 class InheritanceChildObject final: public InheritanceBaseObject{
     CROWY_OBJECT_BODY(InheritanceChildObject, InheritanceBaseObject)
@@ -296,9 +310,11 @@ public:
     f32 ownValue = 0.0f;
 };
 
+// clang-format off
 CROWY_OBJECT(InheritanceChildObject, InheritanceBaseObject)
     .SetProperty("ownValue", &InheritanceChildObject::ownValue)
 CROWY_OBJECT_END(InheritanceChildObject)
+// clang-format on
 
 TEST(Reflection, InheritedPropertyApplies){
     ASSERT_TRUE(IsInheritanceBaseObjectRegistered);
@@ -341,11 +357,13 @@ enum class BlendProbe : u8{
 
 namespace Crowy
 {
+    // clang-format off
     CROWY_ENUM_BEGIN(BlendProbe)
         CROWY_ENUM_VALUE(Off)
         CROWY_ENUM_VALUE(Additive)
         CROWY_ENUM_VALUE(Multiply)
     CROWY_ENUM_END()
+    // clang-format on
 }
 
 class EnumTestObject final: public Object{
@@ -359,9 +377,11 @@ public:
     BlendProbe mode = BlendProbe::Off;
 };
 
+// clang-format off
 CROWY_OBJECT(EnumTestObject)
     .SetProperty("mode", &EnumTestObject::mode)
 CROWY_OBJECT_END(EnumTestObject)
+// clang-format on
 
 TEST(Reflection, EnumNameLookupsRoundTrip){
     EXPECT_STREQ(enumName(BlendProbe::Multiply), "Multiply");
@@ -655,7 +675,7 @@ struct ListItem {
     Str label;
 };
 
-// clang-format off: a registration opens a namespace the formatter cannot see
+// clang-format off
 CROWY_STRUCT(ListItem)
     .SetProperty("weight", &ListItem::weight)
     .SetProperty("label", &ListItem::label)
@@ -668,7 +688,7 @@ struct ListProbe {
     std::vector<BlendProbe> modes;
 };
 
-// clang-format off: a registration opens a namespace the formatter cannot see
+// clang-format off
 CROWY_STRUCT(ListProbe)
     .SetProperty("weights", &ListProbe::weights)
     .SetProperty("items", &ListProbe::items)

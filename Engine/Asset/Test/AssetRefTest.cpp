@@ -26,8 +26,7 @@ namespace
 
 namespace Crowy
 {
-    // clang-format off: each registration opens a namespace the formatter
-    // cannot see
+    // clang-format off
     CROWY_STRUCT(RefHolder)
         .SetProperty("mesh", &RefHolder::mesh)
         .SetProperty("textures", &RefHolder::textures)
