@@ -57,7 +57,7 @@ crowy_declare_example(OrbitFrame
 SOURCES
     OrbitFrame.cpp
 DEPENDS
-    SampleOrbit
+    Crowy::SampleOrbit
     Crowy::UI
 )
 

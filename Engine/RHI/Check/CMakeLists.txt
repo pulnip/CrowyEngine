@@ -22,7 +22,7 @@ crowy_declare_check(OrbitTrailCheck
 SOURCES
     OrbitTrailCheck.cpp
 DEPENDS
-    SampleOrbit
+    Crowy::SampleOrbit
 )
 
 # forces a creation-upload flush while a transient slice waits in an

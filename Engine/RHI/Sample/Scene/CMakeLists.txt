@@ -1,17 +1,8 @@
-add_library(CrowySampleScene STATIC
+crowy_declare_sample_library(Scene
+SOURCES
     SampleScene.cpp
     CornellBox.cpp
     SkyboxFloor.cpp
-)
-
-target_include_directories(CrowySampleScene
-PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-target_link_libraries(CrowySampleScene
 PUBLIC
     Crowy::Serialization
 )
-
-add_library(Crowy::SampleScene ALIAS CrowySampleScene)
