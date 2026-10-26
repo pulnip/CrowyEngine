@@ -7,6 +7,7 @@ add_library(CrowyProjectInterface INTERFACE)
 target_compile_definitions(CrowyProjectInterface
 INTERFACE
     CROWY_BENCHMARK=$<BOOL:${CROWY_BENCHMARK}>
+    CROWY_DEBUG_BUILD=$<CONFIG:Debug>
 )
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
