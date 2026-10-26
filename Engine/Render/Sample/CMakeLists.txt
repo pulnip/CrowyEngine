@@ -12,7 +12,10 @@ add_subdirectory(Stage)
 
 # the render framework every windowed render sample, spike and the Island
 # build on; App itself comes from each executable's FRAMEWORK
-add_library(SampleRenderApp STATIC
+crowy_declare_sample_library(RenderApp
+    TEST_DIRECTORY Test
+    TEST_LABELS "unit"
+SOURCES
     FlyCamera.cpp
     FlyControl.cpp
     FrameCaptures.cpp
@@ -21,48 +24,35 @@ add_library(SampleRenderApp STATIC
     FrameStatsLog.cpp
     OrbitCamera.cpp
     RenderApp.cpp
-)
-target_include_directories(SampleRenderApp
-PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}"
+INCLUDE
     "${CROWY_APP_FRAMEWORK_DIR}"
-)
-target_link_libraries(SampleRenderApp
 PUBLIC
     Crowy::Platform
     Crowy::Remote
     Crowy::Render
 PRIVATE
     Crowy::Log
+TEST_DEPENDS
+    Crowy::WorldRender
 )
-
-if(CROWY_ENABLE_TEST)
-    crowy_declare_test(SampleRenderApp
-        DIRECTORY Test
-        DEPENDS SampleRenderApp Crowy::WorldRender
-        LABELS "unit"
-    )
-endif()
 
 # the render scene's rows as reflected types; registrations only
-add_library(SampleRenderReflectionArchive STATIC
+crowy_declare_sample_library(RenderReflection
+    WHOLE_ARCHIVE
+SOURCES
     RenderReflection.cpp
-)
-target_link_libraries(SampleRenderReflectionArchive
 PUBLIC
     Crowy::Reflection
     Crowy::Render
 )
-crowy_whole_archive(SampleRenderReflection SampleRenderReflectionArchive)
 
 # the ImGui overlays, apart so samples without a UI skip ImGui
-add_library(SampleRenderOverlay STATIC
+crowy_declare_sample_library(RenderOverlay
+SOURCES
     PortStatusChip.cpp
     StatsOverlay.cpp
-)
-target_link_libraries(SampleRenderOverlay
 PUBLIC
-    SampleRenderApp
+    Crowy::SampleRenderApp
     Crowy::UI
 )
 
@@ -71,7 +61,7 @@ SOURCES
     TenThousandBlocks.cpp
 DEPENDS
     Crowy::WorldRender
-    SampleRenderApp
+    Crowy::SampleRenderApp
 )
 
 crowy_declare_example(CornellRoom
@@ -79,7 +69,7 @@ SOURCES
     CornellRoom.cpp
 DEPENDS
     Crowy::SampleScene
-    SampleRenderApp
+    Crowy::SampleRenderApp
 )
 
 crowy_declare_example(Playground
@@ -90,8 +80,8 @@ SOURCES
 DEPENDS
     Crowy::Reflection
     Crowy::WorldRender
-    SampleRenderOverlay
-    SampleRenderReflection
+    Crowy::SampleRenderOverlay
+    Crowy::SampleRenderReflection
 )
 
 crowy_declare_example(ToonPlayground
@@ -101,8 +91,8 @@ SOURCES
 DEPENDS
     Crowy::Reflection
     Crowy::WorldRender
-    SampleRenderOverlay
-    SampleRenderReflection
+    Crowy::SampleRenderOverlay
+    Crowy::SampleRenderReflection
 )
 
 if(CROWY_ENABLE_PHYSICS)
@@ -116,9 +106,9 @@ if(CROWY_ENABLE_PHYSICS)
         PhysicsPlayground.cpp
     DEPENDS
         Crowy::Reflection
-        SamplePhysicsSync
+        Crowy::SamplePhysicsSync
         Crowy::SamplePuzzle
-        SampleRenderOverlay
+        Crowy::SampleRenderOverlay
     )
 endif()
 
@@ -131,10 +121,10 @@ SOURCES
     StageEditor.cpp
 DEPENDS
     Crowy::Reflection
-    SampleEditor
-    SampleRenderOverlay
-    SampleRenderReflection
-    SampleStage
+    Crowy::SampleEditor
+    Crowy::SampleRenderOverlay
+    Crowy::SampleRenderReflection
+    Crowy::SampleStage
 )
 set_source_files_properties(StageEditor.cpp
 PROPERTIES
