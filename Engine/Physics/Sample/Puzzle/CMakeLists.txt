@@ -1,4 +1,9 @@
-add_library(SamplePuzzle STATIC
+crowy_declare_sample_library(Puzzle
+    # the literals and the tracks' poses enter the simulation
+    FP_CONTRACT_OFF
+    TEST_DIRECTORY Test
+    TEST_LABELS "scenario"
+SOURCES
     BuoyPop.cpp
     CarriedScoop.cpp
     KickerJump.cpp
@@ -9,26 +14,6 @@ add_library(SamplePuzzle STATIC
     PuzzleTrack.cpp
     SwingCut.cpp
     TiltTray.cpp
-)
-
-target_include_directories(SamplePuzzle
-PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-target_link_libraries(SamplePuzzle
 PUBLIC
     Crowy::Physics
 )
-
-# the literals and the tracks' poses enter the simulation
-crowy_fp_contract_off(SamplePuzzle)
-
-if(CROWY_ENABLE_TEST)
-    crowy_declare_test(SamplePuzzle
-        DIRECTORY Test
-        DEPENDS SamplePuzzle
-        LABELS "scenario"
-    )
-    crowy_fp_contract_off(CrowySamplePuzzleTest)
-endif()

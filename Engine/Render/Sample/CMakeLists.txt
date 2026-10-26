@@ -117,7 +117,7 @@ if(CROWY_ENABLE_PHYSICS)
     DEPENDS
         Crowy::Reflection
         SamplePhysicsSync
-        SamplePuzzle
+        Crowy::SamplePuzzle
         SampleRenderOverlay
     )
 endif()
