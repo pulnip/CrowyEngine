@@ -5,33 +5,15 @@ This file is the one source for how to build, run, verify and commit here.
 ## Repository
 
 C++23 under clang-cl (Windows) and Homebrew LLVM (macOS), shaders in Slang,
-backends D3D12 and Metal. Modules under `Engine/`:
-
-- `Core` (math, containers, `FixedTickClock`), `Log`, `Platform` (window,
-  input, `RuntimeConfig` flags), `Reflection`, `Serialization` (JSON, FBX
-  `loadModel`), `Remote` (the command port), `UI` (ImGui panels).
-- `RHI` with `DX12RHI` / `MetalRHI`; `Render` (scene, pipeline, passes);
-  `Shader` (the shared Slang root); `Effects` (GPU particles and fields);
-  `Physics` (Jolt; its targets and glue compile with
-  `crowy_fp_contract_off`).
-- `World` (actors, component pools, the fixed phases and clocks, the
-  transform hierarchy, `ScriptComponent` for one actor's own behaviour; it
-  records what changed, and a frame where nothing did recomputes nothing;
-  an actor's component or transform is a port and panel target found again
-  at every access), `WorldRender` (the World's meshes, lights and camera
-  extracted into a `RenderScene` and a `CameraSnapshot`; Render does not
-  see the World) and `WorldEffects` (an actor's position written into an
-  effect's origin). `Scene` saves a World's actors to a scene file and
-  loads one back; a component marked `Transient` is left out, and one with
-  no reflected properties stops the save. `Asset` names an asset by its
-  mount and normalized path (`AssetRef`, `engine:` or the content root) and
-  loads each once, released at the `Collect` after its last handle goes
-  (`AssetStore`); Render's `MeshStore` loads meshes through it.
+backends D3D12 and Metal. `docs/modules.md` maps the modules under
+`Engine/`: what each owns and promises, where to start reading it, its
+samples and tests, and where the port verbs, flags, registrations, input
+gate and scene load live.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in their
 module's CMakeLists through the functions in `cmake/sample.cmake`. ctest
-labels: `unit`, `gpu` (checks), `render` (spikes), `app` (four hosts),
+labels: `unit`, `gpu` (checks), `render` (spikes), `app` (hosts),
 `scenario`, `content` (`docs/testing.md`); an executable without one is
 built only.
 
@@ -58,8 +40,11 @@ These override the global CLAUDE.md where they differ.
   firstRepeat). Look there before writing a loop.
 - Anything that advances per frame is paced by time (the owner's display is
   120 Hz); goldens stay deterministic by counted frames.
-- A registration (`CROWY_STRUCT`, `CROWY_COMPONENT`, `CROWY_ENUM_BEGIN`,
-  ...) sits between `// clang-format off` and `// clang-format on`.
+- A registration (`CROWY_STRUCT` from `ClassRegistry.hpp`,
+  `CROWY_COMPONENT`, `CROWY_ENUM_BEGIN`, ...) sits between
+  `// clang-format off` and `// clang-format on`. A registered struct
+  reaches the port through `CommandPort::Expose`;
+  `Remote/Sample/HelloCommandPort.cpp` shows both ends.
 - A file that only registers (`CROWY_STRUCT`, `CROWY_COMPONENT`) goes in a
   static library wrapped by `crowy_whole_archive` (`cmake/util.cmake`); a
   plain one drops the object and the type silently goes missing.
