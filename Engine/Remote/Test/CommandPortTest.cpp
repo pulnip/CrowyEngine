@@ -10,7 +10,6 @@
 #include "ClassRegistry.hpp"
 #include "CommandPort.hpp"
 #include "JsonLoader.hpp"
-#include "Object.hpp"
 #include "Socket.hpp"
 
 using namespace Crowy;

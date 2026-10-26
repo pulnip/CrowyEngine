@@ -1,5 +1,4 @@
 #include "ClassRegistry.hpp"
-#include "Object.hpp"
 #include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
 

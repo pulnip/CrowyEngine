@@ -39,10 +39,8 @@ namespace Crowy
     };
 
     template<typename T>
-        requires(!std::is_base_of_v<Object, T>)
-    class ComponentBuilder
-        : public DescBuilder<ComponentBuilder<T>, T, StructDesc> {
-        using Base = DescBuilder<ComponentBuilder<T>, T, StructDesc>;
+    class ComponentBuilder: public DescBuilder<ComponentBuilder<T>, T> {
+        using Base = DescBuilder<ComponentBuilder<T>, T>;
         using Hook = void (*)(World&, ActorId, T&);
 
         ComponentInfo info;

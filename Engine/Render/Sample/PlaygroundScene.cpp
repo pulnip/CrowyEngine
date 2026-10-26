@@ -10,13 +10,13 @@
 #include <imgui.h>
 
 #include "CameraComponent.hpp"
+#include "ClassRegistry.hpp"
 #include "Expected.hpp"
 #include "FlyControl.hpp"
 #include "LightComponent.hpp"
 #include "Log.hpp"
 #include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
-#include "Object.hpp"
 #include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "ShadingModel.hpp"

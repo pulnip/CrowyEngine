@@ -2,7 +2,6 @@
 #include <vector>
 #include "AppFramework.hpp"
 #include "ClassRegistry.hpp"
-#include "Object.hpp"
 #include "Primitives.hpp"
 #include "PropertyWalker.hpp"
 #include "UIRenderer.hpp"

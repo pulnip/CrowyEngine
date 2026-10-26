@@ -59,7 +59,7 @@ These override the global CLAUDE.md where they differ.
   120 Hz); goldens stay deterministic by counted frames.
 - A registration (`CROWY_STRUCT`, `CROWY_COMPONENT`, `CROWY_ENUM_BEGIN`,
   ...) sits between `// clang-format off` and `// clang-format on`.
-- A file that only registers (`CROWY_STRUCT`, `CROWY_OBJECT`) goes in a
+- A file that only registers (`CROWY_STRUCT`, `CROWY_COMPONENT`) goes in a
   static library wrapped by `crowy_whole_archive` (`cmake/util.cmake`); a
   plain one drops the object and the type silently goes missing.
 - Read `Engine/RHI/Sample` and its `.slang` for RHI usage, and

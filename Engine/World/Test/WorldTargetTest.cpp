@@ -5,7 +5,6 @@
 #include "ClassRegistry.hpp"
 #include "Component.hpp"
 #include "LinearAlgebra.hpp"
-#include "Object.hpp"
 #include "World.hpp"
 
 using namespace Crowy;

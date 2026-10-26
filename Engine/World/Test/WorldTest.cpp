@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "ClassRegistry.hpp"
 #include "Component.hpp"
-#include "Object.hpp"
 #include "World.hpp"
 
 using namespace Crowy;

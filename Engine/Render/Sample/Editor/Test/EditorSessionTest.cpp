@@ -11,7 +11,6 @@
 #include "ClassRegistry.hpp"
 #include "DOM.hpp"
 #include "EditorSession.hpp"
-#include "Object.hpp"
 
 using namespace Crowy;
 

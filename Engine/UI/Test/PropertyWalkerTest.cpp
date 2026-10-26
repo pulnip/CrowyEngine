@@ -2,7 +2,6 @@
 
 #include <gtest/gtest.h>
 #include "ClassRegistry.hpp"
-#include "Object.hpp"
 #include "PropertyWalker.hpp"
 
 namespace Crowy

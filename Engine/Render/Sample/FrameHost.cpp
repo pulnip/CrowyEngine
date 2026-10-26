@@ -14,7 +14,6 @@
 #include "FrameSelector.hpp"
 #include "JsonLoader.hpp"
 #include "Log.hpp"
-#include "Object.hpp"
 #include "ProjectFile.hpp"
 #include "ProjectRoot.hpp"
 #include "RHIBuffer.hpp"

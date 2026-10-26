@@ -1,5 +1,4 @@
 #include "ClassRegistry.hpp"
-#include "Object.hpp"
 #include "StageDocument.hpp"
 
 // The scene file's rows as the inspector edits them, in meters and degrees;

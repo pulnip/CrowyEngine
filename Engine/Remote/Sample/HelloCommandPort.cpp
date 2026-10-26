@@ -4,7 +4,6 @@
 #include "ClassRegistry.hpp"
 #include "CommandPort.hpp"
 #include "DOM.hpp"
-#include "Object.hpp"
 
 // The network HelloWorld: one port, two verbs, one exposed struct, a bare
 // loop standing in for the frame. From another shell:

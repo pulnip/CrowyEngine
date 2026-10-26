@@ -6,69 +6,26 @@
 
 #include "ClassRegistry.hpp"
 #include "JsonLoader.hpp"
-#include "Object.hpp"
-#include "Semantics.hpp"
 
 using namespace Crowy;
 
-class CreationTestObject final: public Object{
-    CROWY_OBJECT_BODY(CreationTestObject)
-
-public:
-    CreationTestObject() = default;
-    ~CreationTestObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(CreationTestObject)
-};
-
-// clang-format off
-CROWY_OBJECT(CreationTestObject)
-CROWY_OBJECT_END(CreationTestObject)
-// clang-format on
-
-TEST(Reflection, CreationTestObject){
-    ASSERT_TRUE(IsCreationTestObjectRegistered);
-
-    Str objectName = "CreationTestObject";
-    auto object = ClassRegistry::Create<CreationTestObject>();
-    ASSERT_TRUE(object != nullptr);
-    EXPECT_TRUE(std::strcmp(object->GetClassName(), "CreationTestObject") == 0);
-    EXPECT_TRUE(object->IsA<Object>());
-    EXPECT_TRUE(object->IsA<CreationTestObject>());
-
-    auto testObject = dynamic_cast<CreationTestObject*>(object.get());
-    EXPECT_TRUE(testObject != nullptr);
-}
-
-class InjectionTestObject final: public Object{
-    CROWY_OBJECT_BODY(InjectionTestObject)
-
-public:
-    InjectionTestObject() = default;
-    ~InjectionTestObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(InjectionTestObject)
-
+struct InjectionProbe{
     Transform transform;
 };
 
 // clang-format off
-CROWY_OBJECT(InjectionTestObject)
-    .SetProperty("transform", &InjectionTestObject::transform)
-    .SetProperty("position", &InjectionTestObject::transform, &Transform::position)
-    .SetProperty("rotation", &InjectionTestObject::transform, &Transform::rotation)
-    .SetProperty("scale", &InjectionTestObject::transform, &Transform::scale)
-CROWY_OBJECT_END(InjectionTestObject)
+CROWY_STRUCT(InjectionProbe)
+    .SetProperty("transform", &InjectionProbe::transform)
+    .SetProperty("position", &InjectionProbe::transform, &Transform::position)
+    .SetProperty("rotation", &InjectionProbe::transform, &Transform::rotation)
+    .SetProperty("scale", &InjectionProbe::transform, &Transform::scale)
+CROWY_STRUCT_END(InjectionProbe)
 // clang-format on
 
 TEST(Reflection, NestedProperty){
-    ASSERT_TRUE(IsInjectionTestObjectRegistered);
+    ASSERT_TRUE(IsInjectionProbeRegistered);
 
-    auto object = Crowy::ClassRegistry::Create("InjectionTestObject");
-    ASSERT_TRUE(object != nullptr);
-
-    auto nested = dynamic_cast<InjectionTestObject*>(object.get());
-    ASSERT_TRUE(nested != nullptr);
-
-
+    InjectionProbe probe;
 
     {
         auto dom = Crowy::parseJsonString(R"({
@@ -78,7 +35,7 @@ TEST(Reflection, NestedProperty){
     "scale": [4.0, 5.0, 6.0]
 }
 })");
-        EXPECT_TRUE(Crowy::ApplyProperties(nested, dom).empty());
+        EXPECT_TRUE(Crowy::ApplyProperties(&probe, dom).empty());
 
         Transform expected{
             .position = Vec3{1.0, 2.0, 3.0},
@@ -86,9 +43,9 @@ TEST(Reflection, NestedProperty){
             .scale = Vec3{4.0, 5.0, 6.0},
         };
 
-        EXPECT_EQ(nested->transform.position, expected.position);
-        EXPECT_EQ(nested->transform.rotation, expected.rotation);
-        EXPECT_EQ(nested->transform.scale, expected.scale);
+        EXPECT_EQ(probe.transform.position, expected.position);
+        EXPECT_EQ(probe.transform.rotation, expected.rotation);
+        EXPECT_EQ(probe.transform.scale, expected.scale);
     }
 
     {
@@ -97,7 +54,7 @@ TEST(Reflection, NestedProperty){
 "rotation": [1.0, 0.0, 0.0, 0.0],
 "scale": [6.0, 5.0, 4.0]
 })");
-        EXPECT_TRUE(Crowy::ApplyProperties(nested, dom).empty());
+        EXPECT_TRUE(Crowy::ApplyProperties(&probe, dom).empty());
 
         Transform expected{
             .position = Vec3{3.0, 2.0, 1.0},
@@ -105,9 +62,9 @@ TEST(Reflection, NestedProperty){
             .scale = Vec3{6.0, 5.0, 4.0},
         };
 
-        EXPECT_EQ(nested->transform.position, expected.position);
-        EXPECT_EQ(nested->transform.rotation, expected.rotation);
-        EXPECT_EQ(nested->transform.scale, expected.scale);
+        EXPECT_EQ(probe.transform.position, expected.position);
+        EXPECT_EQ(probe.transform.rotation, expected.rotation);
+        EXPECT_EQ(probe.transform.scale, expected.scale);
     }
 }
 
@@ -133,33 +90,22 @@ CROWY_STRUCT(Stats)
 CROWY_STRUCT_END(Stats)
 // clang-format on
 
-class StructTestObject final: public Object{
-    CROWY_OBJECT_BODY(StructTestObject)
-
-public:
-    StructTestObject() = default;
-    ~StructTestObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(StructTestObject)
-
+struct StructProbe{
     Stats stats;
 };
 
 // clang-format off
-CROWY_OBJECT(StructTestObject)
-    .SetProperty("stats", &StructTestObject::stats)
-CROWY_OBJECT_END(StructTestObject)
+CROWY_STRUCT(StructProbe)
+    .SetProperty("stats", &StructProbe::stats)
+CROWY_STRUCT_END(StructProbe)
 // clang-format on
 
 TEST(Reflection, NestedStructDesc){
     ASSERT_TRUE(IsHealthRegistered);
     ASSERT_TRUE(IsStatsRegistered);
-    ASSERT_TRUE(IsStructTestObjectRegistered);
+    ASSERT_TRUE(IsStructProbeRegistered);
 
-    auto object = ClassRegistry::Create("StructTestObject");
-    ASSERT_TRUE(object != nullptr);
-
-    auto testObject = dynamic_cast<StructTestObject*>(object.get());
-    ASSERT_TRUE(testObject != nullptr);
+    StructProbe probe;
 
     // a single registered property, two levels of struct below it
     auto dom = parseJsonString(R"({
@@ -168,40 +114,29 @@ TEST(Reflection, NestedStructDesc){
     "health": {"current": 7}
 }
 })");
-    EXPECT_TRUE(ApplyProperties(testObject, dom).empty());
+    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
 
-    EXPECT_EQ(testObject->stats.speed, 3.5f);
-    EXPECT_EQ(testObject->stats.health.current, 7);
+    EXPECT_EQ(probe.stats.speed, 3.5f);
+    EXPECT_EQ(probe.stats.health.current, 7);
     // not specified in the DOM, so the default survives
-    EXPECT_EQ(testObject->stats.health.maximum, 100);
+    EXPECT_EQ(probe.stats.health.maximum, 100);
 }
 
-class AliasTestObject final: public Object{
-    CROWY_OBJECT_BODY(AliasTestObject)
-
-public:
-    AliasTestObject() = default;
-    ~AliasTestObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(AliasTestObject)
-
+struct AliasProbe{
     Stats stats;
 };
 
 // a member chain ending on a reflected struct: both features compose
 // clang-format off
-CROWY_OBJECT(AliasTestObject)
-    .SetProperty("hp", &AliasTestObject::stats, &Stats::health)
-CROWY_OBJECT_END(AliasTestObject)
+CROWY_STRUCT(AliasProbe)
+    .SetProperty("hp", &AliasProbe::stats, &Stats::health)
+CROWY_STRUCT_END(AliasProbe)
 // clang-format on
 
 TEST(Reflection, ChainedStructDesc){
-    ASSERT_TRUE(IsAliasTestObjectRegistered);
+    ASSERT_TRUE(IsAliasProbeRegistered);
 
-    auto object = ClassRegistry::Create("AliasTestObject");
-    ASSERT_TRUE(object != nullptr);
-
-    auto testObject = dynamic_cast<AliasTestObject*>(object.get());
-    ASSERT_TRUE(testObject != nullptr);
+    AliasProbe probe;
 
     auto dom = parseJsonString(R"({
 "hp": {
@@ -209,12 +144,12 @@ TEST(Reflection, ChainedStructDesc){
     "maximum": 12
 }
 })");
-    EXPECT_TRUE(ApplyProperties(testObject, dom).empty());
+    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
 
-    EXPECT_EQ(testObject->stats.health.current, 3);
-    EXPECT_EQ(testObject->stats.health.maximum, 12);
-    // "stats" itself is not a property of AliasTestObject
-    EXPECT_EQ(testObject->stats.speed, 1.0f);
+    EXPECT_EQ(probe.stats.health.current, 3);
+    EXPECT_EQ(probe.stats.health.maximum, 12);
+    // "stats" itself is not a property of AliasProbe
+    EXPECT_EQ(probe.stats.speed, 1.0f);
 }
 
 struct OrderProbe{
@@ -282,63 +217,46 @@ TEST(Reflection, FindByName){
     EXPECT_TRUE(desc->Find("epsilon") == nullptr);
 }
 
-class InheritanceBaseObject: public Object{
-    CROWY_OBJECT_BODY(InheritanceBaseObject)
-
-public:
-    InheritanceBaseObject() = default;
-    ~InheritanceBaseObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(InheritanceBaseObject)
-
+struct InheritanceBase{
     f32 baseValue = 0.0f;
 };
 
 // clang-format off
-CROWY_OBJECT(InheritanceBaseObject)
-    .SetProperty("baseValue", &InheritanceBaseObject::baseValue)
-CROWY_OBJECT_END(InheritanceBaseObject)
+CROWY_STRUCT(InheritanceBase)
+    .SetProperty("baseValue", &InheritanceBase::baseValue)
+CROWY_STRUCT_END(InheritanceBase)
 // clang-format on
 
-class InheritanceChildObject final: public InheritanceBaseObject{
-    CROWY_OBJECT_BODY(InheritanceChildObject, InheritanceBaseObject)
-
-public:
-    InheritanceChildObject() = default;
-    ~InheritanceChildObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(InheritanceChildObject)
-
+struct InheritanceChild: InheritanceBase{
     f32 ownValue = 0.0f;
 };
 
 // clang-format off
-CROWY_OBJECT(InheritanceChildObject, InheritanceBaseObject)
-    .SetProperty("ownValue", &InheritanceChildObject::ownValue)
-CROWY_OBJECT_END(InheritanceChildObject)
+CROWY_STRUCT(InheritanceChild)
+    .Inherits<InheritanceBase>()
+    .SetProperty("ownValue", &InheritanceChild::ownValue)
+CROWY_STRUCT_END(InheritanceChild)
 // clang-format on
 
 TEST(Reflection, InheritedPropertyApplies){
-    ASSERT_TRUE(IsInheritanceBaseObjectRegistered);
-    ASSERT_TRUE(IsInheritanceChildObjectRegistered);
+    ASSERT_TRUE(IsInheritanceBaseRegistered);
+    ASSERT_TRUE(IsInheritanceChildRegistered);
 
-    auto object = ClassRegistry::Create("InheritanceChildObject");
-    ASSERT_TRUE(object != nullptr);
-
-    auto child = dynamic_cast<InheritanceChildObject*>(object.get());
-    ASSERT_TRUE(child != nullptr);
+    InheritanceChild probe;
 
     auto dom = parseJsonString(R"({
 "baseValue": 2.5,
 "ownValue": 7.5
 })");
     // one flat table holds the parent's keys and the child's
-    EXPECT_TRUE(ApplyProperties(child, dom).empty());
+    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
 
-    EXPECT_EQ(child->baseValue, 2.5f);
-    EXPECT_EQ(child->ownValue, 7.5f);
+    EXPECT_EQ(probe.baseValue, 2.5f);
+    EXPECT_EQ(probe.ownValue, 7.5f);
 }
 
 TEST(Reflection, InheritedPropertyStaysOnTheParentTable){
-    const auto* desc = GetDesc<InheritanceChildObject>();
+    const auto* desc = GetDesc<InheritanceChild>();
 
     // per-class tables are not merged: a consumer follows parent itself
     EXPECT_TRUE(desc->Find("ownValue") != nullptr);
@@ -366,21 +284,14 @@ namespace Crowy
     // clang-format on
 }
 
-class EnumTestObject final: public Object{
-    CROWY_OBJECT_BODY(EnumTestObject)
-
-public:
-    EnumTestObject() = default;
-    ~EnumTestObject() = default;
-    CROWY_DECLARE_MOVE_ONLY(EnumTestObject)
-
+struct EnumProbe{
     BlendProbe mode = BlendProbe::Off;
 };
 
 // clang-format off
-CROWY_OBJECT(EnumTestObject)
-    .SetProperty("mode", &EnumTestObject::mode)
-CROWY_OBJECT_END(EnumTestObject)
+CROWY_STRUCT(EnumProbe)
+    .SetProperty("mode", &EnumProbe::mode)
+CROWY_STRUCT_END(EnumProbe)
 // clang-format on
 
 TEST(Reflection, EnumNameLookupsRoundTrip){
@@ -392,9 +303,9 @@ TEST(Reflection, EnumNameLookupsRoundTrip){
 }
 
 TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps){
-    ASSERT_TRUE(IsEnumTestObjectRegistered);
+    ASSERT_TRUE(IsEnumProbeRegistered);
 
-    const auto* prop = GetDesc<EnumTestObject>()->Find("mode");
+    const auto* prop = GetDesc<EnumProbe>()->Find("mode");
     ASSERT_TRUE(prop != nullptr);
     EXPECT_STREQ(prop->type.name, "BlendProbe");
 
@@ -408,27 +319,23 @@ TEST(Reflection, EnumeratorsSurfaceOnTheTypeOps){
 }
 
 TEST(Reflection, EnumDeserializesByName){
-    auto object = ClassRegistry::Create("EnumTestObject");
-    ASSERT_TRUE(object != nullptr);
-
-    auto testObject = dynamic_cast<EnumTestObject*>(object.get());
-    ASSERT_TRUE(testObject != nullptr);
+    EnumProbe probe;
 
     auto dom = parseJsonString(R"({"mode": "Multiply"})");
-    EXPECT_TRUE(ApplyProperties(testObject, dom).empty());
-    EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
+    EXPECT_TRUE(ApplyProperties(&probe, dom).empty());
+    EXPECT_EQ(probe.mode, BlendProbe::Multiply);
 
     // an unknown name is reported and keeps the current value
     auto unknown = parseJsonString(R"({"mode": "Screen"})");
     EXPECT_EQ(
-        ApplyProperties(testObject, unknown),
+        ApplyProperties(&probe, unknown),
         PropertyErrors{"'mode' expects BlendProbe"}
     );
-    EXPECT_EQ(testObject->mode, BlendProbe::Multiply);
+    EXPECT_EQ(probe.mode, BlendProbe::Multiply);
 }
 
 TEST(Reflection, FindInChainReachesTheParent){
-    const auto* desc = GetDesc<InheritanceChildObject>();
+    const auto* desc = GetDesc<InheritanceChild>();
 
     EXPECT_TRUE(desc->FindInChain("ownValue") != nullptr);
     EXPECT_TRUE(desc->FindInChain("baseValue") != nullptr);
@@ -436,7 +343,7 @@ TEST(Reflection, FindInChainReachesTheParent){
 }
 
 TEST(Reflection, SerializedObjectAppliesBack){
-    StructTestObject source;
+    StructProbe source;
     source.stats.speed = 3.5f;
     source.stats.health.current = 7;
     source.stats.health.maximum = 42;
@@ -447,7 +354,7 @@ TEST(Reflection, SerializedObjectAppliesBack){
     // two levels of struct below the one registered property
     EXPECT_TRUE(out.at("stats.health.current") != nullptr);
 
-    StructTestObject back;
+    StructProbe back;
     EXPECT_TRUE(ApplyProperties(&back, parseJsonString(emitJson(out))).empty());
     EXPECT_EQ(back.stats.speed, 3.5f);
     EXPECT_EQ(back.stats.health.current, 7);
@@ -455,7 +362,7 @@ TEST(Reflection, SerializedObjectAppliesBack){
 }
 
 TEST(Reflection, SerializeFlattensTheParentChain){
-    InheritanceChildObject child;
+    InheritanceChild child;
     child.baseValue = 2.5f;
     child.ownValue = 7.5f;
 
@@ -468,8 +375,8 @@ TEST(Reflection, SerializeFlattensTheParentChain){
 }
 
 TEST(Reflection, ResolvePropertyWalksDots){
-    StructTestObject object;
-    const auto& desc = *GetDesc<StructTestObject>();
+    StructProbe object;
+    const auto& desc = *GetDesc<StructProbe>();
 
     auto speed = ResolveProperty(&object, desc, "stats.speed");
     ASSERT_TRUE(speed.type != nullptr);
@@ -490,8 +397,8 @@ TEST(Reflection, ResolvePropertyWalksDots){
 
 // a const object resolves to const members only, so a read cannot write
 TEST(Reflection, AConstObjectResolvesToAConstMember) {
-    const StructTestObject object;
-    const auto& desc = *GetDesc<StructTestObject>();
+    const StructProbe object;
+    const auto& desc = *GetDesc<StructProbe>();
 
     const auto current = ResolveProperty(&object, desc, "stats.health.current");
     static_assert(std::is_same_v<decltype(current.member), const void*>);
@@ -506,20 +413,20 @@ TEST(Reflection, AConstObjectResolvesToAConstMember) {
 }
 
 TEST(Reflection, ResolvePropertyReachesTheParent){
-    InheritanceChildObject child;
+    InheritanceChild child;
 
-    auto base = ResolveProperty(&child, *GetDesc<InheritanceChildObject>(), "baseValue");
+    auto base = ResolveProperty(&child, *GetDesc<InheritanceChild>(), "baseValue");
     ASSERT_TRUE(base.type != nullptr);
     EXPECT_TRUE(base.member == &child.baseValue);
 }
 
 TEST(Reflection, ResolvePropertyNamesTheFailure){
-    StructTestObject object;
-    const auto& desc = *GetDesc<StructTestObject>();
+    StructProbe object;
+    const auto& desc = *GetDesc<StructProbe>();
 
     auto unknown = ResolveProperty(&object, desc, "nope");
     EXPECT_TRUE(unknown.type == nullptr);
-    EXPECT_EQ(unknown.error, "no property 'nope' on 'StructTestObject'");
+    EXPECT_EQ(unknown.error, "no property 'nope' on 'StructProbe'");
 
     auto unknownNested = ResolveProperty(&object, desc, "stats.nope");
     EXPECT_TRUE(unknownNested.type == nullptr);
@@ -540,7 +447,7 @@ TEST(Reflection, ResolvePropertyNamesTheFailure){
 }
 
 TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
-    StructTestObject object;
+    StructProbe object;
 
     const auto errors = ApplyProperties(&object, parseJsonString(R"({
 "stats": {"speed": 2.0, "sped": 3.0, "health": {"curent": 4}},
@@ -551,7 +458,7 @@ TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
     EXPECT_EQ(
         errors,
         (PropertyErrors{
-            "no property 'stat' on 'StructTestObject'",
+            "no property 'stat' on 'StructProbe'",
             "no property 'stats.health.curent' on 'Health'",
             "no property 'stats.sped' on 'Stats'"
         })
@@ -560,7 +467,7 @@ TEST(Reflection, ApplyReportsUnknownKeysWithTheirPath) {
 }
 
 TEST(Reflection, ApplyReportsAValueThatDoesNotBind) {
-    StructTestObject object;
+    StructProbe object;
 
     const auto errors = ApplyProperties(&object, parseJsonString(R"({
 "stats": {"speed": "fast", "health": 3}
@@ -578,32 +485,29 @@ TEST(Reflection, ApplyReportsAValueThatDoesNotBind) {
 }
 
 TEST(Reflection, ApplyReportsARootThatIsNotATable) {
-    StructTestObject object;
+    StructProbe object;
 
     EXPECT_EQ(
         ApplyProperties(&object, parseJsonString("[1]")),
-        PropertyErrors{"'StructTestObject' expects a table"}
+        PropertyErrors{"'StructProbe' expects a table"}
     );
 }
 
 TEST(Reflection, ApplyLeavesAbsentKeysAlone) {
-    StructTestObject object;
+    StructProbe object;
 
     EXPECT_TRUE(ApplyProperties(&object, parseJsonString("{}")).empty());
     EXPECT_EQ(object.stats.speed, 1.0f);
     EXPECT_EQ(object.stats.health.maximum, 100);
 }
 
-TEST(Reflection, FindTypeSeesStructsAndClasses) {
+TEST(Reflection, FindTypeSeesEveryRegistration) {
     EXPECT_EQ(ClassRegistry::FindType("Health"), GetDesc<Health>());
     EXPECT_EQ(
-        ClassRegistry::FindType("InheritanceChildObject"),
-        GetDesc<InheritanceChildObject>()
+        ClassRegistry::FindType("InheritanceChild"),
+        GetDesc<InheritanceChild>()
     );
     EXPECT_TRUE(ClassRegistry::FindType("Nope") == nullptr);
-
-    // a Struct has a name but no factory
-    EXPECT_TRUE(ClassRegistry::Create("Health") == nullptr);
 }
 
 TEST(Reflection, ANameRegisteredTwiceStopsTheProcess) {
@@ -614,7 +518,7 @@ TEST(Reflection, ANameRegisteredTwiceStopsTheProcess) {
 
     EXPECT_DEATH(
         {
-            StructDesc impostor;
+            TypeDesc impostor;
             impostor.name = "Health";
             ClassRegistry::Get().Register(impostor);
         },

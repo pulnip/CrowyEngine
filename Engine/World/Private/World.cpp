@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "Object.hpp"
+#include "ClassRegistry.hpp"
 
 namespace Crowy
 {

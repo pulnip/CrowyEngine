@@ -6,16 +6,9 @@
 #include <optional>
 
 #include "Assert.hpp"
-#include "Object.hpp"
 
 namespace Crowy
 {
-    ObjectRAII ClassRegistry::Create(StrView type){
-        const auto* desc = dynamic_cast<const ClassDesc*>(FindType(type));
-
-        return desc != nullptr ? desc->factory() : nullptr;
-    }
-
     ClassRegistry& ClassRegistry::Get(){
         static ClassRegistry singleton;
         return singleton;

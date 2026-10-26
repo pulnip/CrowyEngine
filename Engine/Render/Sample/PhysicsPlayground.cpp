@@ -11,13 +11,13 @@
 #include <imgui.h>
 
 #include "BodyPrimitiveSync.hpp"
+#include "ClassRegistry.hpp"
 #include "Expected.hpp"
 #include "FixedTickClock.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
 #include "Log.hpp"
 #include "MeshGenerator.hpp"
-#include "Object.hpp"
 #include "PhysicsRuntime.hpp"
 #include "PortStatusChip.hpp"
 #include "Puzzle.hpp"

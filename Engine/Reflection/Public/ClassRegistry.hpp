@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <functional>
 #include <memory>
 #include <ranges>
 #include <typeindex>
@@ -16,11 +15,6 @@
 
 namespace Crowy
 {
-    // Reflection target is either a Class, an Object derived type
-    // created by name, or a Struct, plain data reached as a property
-    class Object;
-    using ObjectRAII = RAII<Object>;
-
     namespace detail
     {
         template<typename T>
@@ -36,7 +30,6 @@ namespace Crowy
     template<typename T>
     const TypeOps* GetTypeOps();
 
-    // name, inheritance and properties are common to both
     struct TypeDesc{
         Str name;
         const TypeDesc* parent = nullptr;
@@ -45,9 +38,6 @@ namespace Crowy
         // registration order, which consumers treat as declaration order
         std::vector<PropertyDesc> properties;
         StringHashMap<usize> indexByName;
-
-        // owned as RAII<TypeDesc>, so the destructor must be virtual
-        virtual ~TypeDesc() = default;
 
         template<typename... Ptrs>
             requires detail::MemberPointers<Ptrs...>
@@ -90,50 +80,28 @@ namespace Crowy
         }
     };
 
-    struct StructDesc: public TypeDesc{};
-
-    struct ClassDesc: public TypeDesc{
-        std::function<ObjectRAII()> factory;
-    };
-
-    template<typename T>
-    using DescOf = std::conditional_t<
-        std::is_base_of_v<Object, T>,
-        ClassDesc,
-        StructDesc
-    >;
-
     class ClassRegistry{
     private:
         std::unordered_map<std::type_index, RAII<TypeDesc>> descByTypeindex;
-        // a Struct and a Class share one name space
         StringHashMap<TypeDesc*> typeByName;
 
     public:
-        // nullptr for an unknown name, and for a Struct's
-        static ObjectRAII Create(StrView type);
-        template<std::derived_from<Object> T>
-        static ObjectRAII Create(){
-            return Create(T::StaticClassName());
-        }
-
         static ClassRegistry& Get();
 
         // nullptr for a name no registration gave
         static const TypeDesc* FindType(StrView name);
 
-        // creates the slot on demand, and its address stays valid.
-        // T alone decides the slot kind, so the cast is safe
+        // creates the slot on demand, and its address stays valid
         template<typename T>
-        DescOf<T>& DescFor(){
+        TypeDesc& DescFor(){
             auto& slot = descByTypeindex[std::type_index(typeid(T))];
 
             if(slot == nullptr){
-                slot = std::make_unique<DescOf<T>>();
+                slot = std::make_unique<TypeDesc>();
                 slot->ops = GetTypeOps<T>();
             }
 
-            return static_cast<DescOf<T>&>(*slot);
+            return *slot;
         }
 
         // a name registered twice stops the process in every build, since
@@ -345,14 +313,13 @@ namespace Crowy
         StrView path
     );
 
-    // everything a Class and a Struct declare the same way
-    template<typename Self, typename T, typename Desc>
+    template<typename Self, typename T>
     class DescBuilder{
     protected:
-        Desc& desc;
+        TypeDesc& desc;
         PropertyDesc* lastProp = nullptr;
 
-        explicit DescBuilder(Desc& desc)
+        explicit DescBuilder(TypeDesc& desc)
             : desc(desc){}
 
         Self& self(){
@@ -400,61 +367,14 @@ namespace Crowy
     };
 
     template<typename T>
-        requires std::is_base_of_v<Object, T>
-    class ClassBuilder;
-
-    template<typename T>
-        requires std::is_base_of_v<Object, T>
-    ClassBuilder<T> Reflect();
-
-    template<typename T>
-        requires std::is_base_of_v<Object, T>
-    class ClassBuilder: public DescBuilder<ClassBuilder<T>, T, ClassDesc>{
-        using Base = DescBuilder<ClassBuilder<T>, T, ClassDesc>;
-
-    public:
-        ClassBuilder& SetFactory(std::function<RAII<T>()>&& f){
-            this->desc.factory = [f = std::move(f)]() -> ObjectRAII {
-                return f();
-            };
-
-            return *this;
-        }
-
-        bool Build(){
-            CROWY_ASSERT(this->desc.factory);
-            ClassRegistry::Get().Register(this->desc);
-
-            return true;
-        }
-
-    private:
-        friend ClassBuilder Reflect<T>();
-
-        ClassBuilder()
-            : Base(ClassRegistry::Get().DescFor<T>())
-        {
-            // TODO.
-            if constexpr(std::is_default_constructible_v<T>){
-                this->desc.factory = []() -> ObjectRAII {
-                    return std::make_unique<T>();
-                };
-            }
-        }
-    };
-
-    template<typename T>
-        requires (!std::is_base_of_v<Object, T>)
     class StructBuilder;
 
     template<typename T>
-        requires (!std::is_base_of_v<Object, T>)
     StructBuilder<T> ReflectStruct();
 
     template<typename T>
-        requires (!std::is_base_of_v<Object, T>)
-    class StructBuilder: public DescBuilder<StructBuilder<T>, T, StructDesc>{
-        using Base = DescBuilder<StructBuilder<T>, T, StructDesc>;
+    class StructBuilder: public DescBuilder<StructBuilder<T>, T>{
+        using Base = DescBuilder<StructBuilder<T>, T>;
 
     public:
         bool Build(){
@@ -469,4 +389,18 @@ namespace Crowy
         StructBuilder()
             : Base(ClassRegistry::Get().DescFor<T>()){}
     };
+
+    template<typename T>
+    StructBuilder<T> ReflectStruct(){
+        return StructBuilder<T>();
+    }
+}
+
+#define CROWY_STRUCT(TYPE) \
+namespace{ \
+    const auto Is##TYPE##Registered = ::Crowy::ReflectStruct<TYPE>() \
+        .SetName(#TYPE)
+
+#define CROWY_STRUCT_END(TYPE) \
+        .Build(); \
 }

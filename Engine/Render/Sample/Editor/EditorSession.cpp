@@ -8,7 +8,6 @@
 
 #include "Assert.hpp"
 #include "ClassRegistry.hpp"
-#include "Object.hpp"
 
 namespace Crowy
 {

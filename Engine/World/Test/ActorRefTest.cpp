@@ -6,7 +6,6 @@
 #include "ActorRef.hpp"
 #include "ClassRegistry.hpp"
 #include "JsonLoader.hpp"
-#include "Object.hpp"
 #include "World.hpp"
 
 using namespace Crowy;

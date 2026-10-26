@@ -6,7 +6,6 @@
 #include "AssetRoots.hpp"
 #include "ClassRegistry.hpp"
 #include "JsonLoader.hpp"
-#include "Object.hpp"
 
 using namespace Crowy;
 
