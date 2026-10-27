@@ -136,9 +136,8 @@ namespace Crowy
             return HeadParse::Complete;
         }
 
-        // nlohmann says "[json.exception.parse_error.101] parse error at
-        // line 1, column 8: syntax error while parsing value - unexpected
-        // end of input; expected ..."; the wire wants the where and the what
+        // nlohmann: "[json.exception.parse_error.101] parse error at line 1,
+        // column 8: syntax error while parsing value - unexpected ..."
         Str briefParseError(StrView what) {
             if(what.starts_with('[')) {
                 if(const auto close = what.find("] "); close != StrView::npos)
@@ -254,7 +253,6 @@ namespace Crowy
         }
         u16 Port() const noexcept { return status.port; }
 
-        // Reply's half: both are no-ops once the request is answered or gone
         void Complete(RequestId id, Str body);
         void Abandon(RequestId id) noexcept;
 
@@ -306,7 +304,6 @@ namespace Crowy
     }
 
     CommandPortImpl::~CommandPortImpl() {
-        // a reply still owed gets a last word instead of a bare close
         for(auto& c: connections) {
             if(c.state == ConnectionState::Pending) {
                 const auto response =
@@ -370,7 +367,6 @@ namespace Crowy
         DirtyCallback onDirty
     ) {
         CROWY_ASSERT(!exposures.contains(name), "target exposed twice");
-        // getDesc made an empty desc: the registration was never linked
         CROWY_ASSERT(
             !target.Desc().name.empty(),
             "a type that was never registered"
@@ -465,7 +461,6 @@ namespace Crowy
 
         tryDispatch(c, now);
 
-        // nothing more can arrive, so a request still incomplete never will
         if(c.state == ConnectionState::Reading) {
             if(c.peerClosed)
                 c.closed = true;

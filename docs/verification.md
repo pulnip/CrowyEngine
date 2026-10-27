@@ -71,6 +71,14 @@ curl -X POST http://127.0.0.1:27500/rpc \
   -d '{"cmd":"set_property","args":{"target":"debug","path":"wireframe","value":true}}'
 ```
 
+포트는 127.0.0.1에서 HTTP/1.1의 일부만 받는다.
+호스트가 프레임마다 부르는 `Drain()`이 그 스레드에서 연결을 받고, 요청을 읽고, verb를 실행하고, 응답까지 보낸다.
+
+- `POST /rpc`의 본문은 `{"cmd": "<verb>", "args": {...}}`이고, 응답은 `{"ok": true, "result": ...}` 또는 `{"ok": false, "error": "..."}`이다.
+- `GET /`은 등록된 verb와 각 verb가 받는 인자 키를 돌려준다.
+- 포트가 스스로 등록하는 verb는 리플렉션 verb 넷(`list_objects`, `describe`, `get_property`, `set_property`)뿐이고, `Expose`로 받은 대상이면 무엇이든 다룬다. 나머지 verb는 호스트가 등록한다.
+- 프레임을 고르는 verb는 `{"frame": F}`, `{"frames": [F, ...]}`, `{"from": a, "to": b}` 중 하나를 받는다. 프레임 번호는 1부터 센다.
+
 이를 통해, AI가 자신의 기억에 의존해서 고쳤다고 말하지 않고, 앱을 띄우고 실제 동작을 확인하며 고칠 수 있게 만든다.
 사람 또한 동일한 명령으로 같은 결과를 확인할 수 있으므로, 재현 가능한 증거로도 쓸 수 있다.
 

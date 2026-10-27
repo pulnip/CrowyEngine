@@ -8,14 +8,7 @@
 #include "DOM.hpp"
 
 // The network HelloWorld: one port, two verbs, one exposed struct, a bare
-// loop standing in for the frame. From another shell:
-//   curl -s -X POST 127.0.0.1:27500/rpc -d '{"cmd":"ping"}'
-//   curl -s 127.0.0.1:27500/
-//   curl -s -X POST 127.0.0.1:27500/rpc -d
-//   '{"cmd":"describe","args":{"target":"knobs"}}' curl -s -X POST
-//   127.0.0.1:27500/rpc -d
-//   '{"cmd":"set_property","args":{"target":"knobs","path":"gain","value":2}}'
-//   curl -s -X POST 127.0.0.1:27500/rpc -d '{"cmd":"quit"}'
+// loop standing in for the frame. docs/verification.md shows the requests.
 
 enum class HelloBlend : Crowy::u8 { Opaque, Additive };
 
@@ -80,7 +73,6 @@ int main(void) {
 
         std::println("listening on 127.0.0.1:{}", port.Port());
 
-        // a frame, without the rest of one
         while(!quitRequested) {
             port.Drain();
             std::this_thread::sleep_for(16ms);

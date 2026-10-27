@@ -15,7 +15,6 @@ namespace Crowy
 
     using Exposures = StringHashMap<Exposure>;
 
-    // the reflection verbs, each generic over whatever was exposed
     void listObjects(const Exposures&, const DOM::Value& args, Reply);
     void describeObject(const Exposures&, const DOM::Value& args, Reply);
     void getProperty(const Exposures&, const DOM::Value& args, Reply);

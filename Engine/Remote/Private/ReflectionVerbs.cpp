@@ -13,7 +13,6 @@ namespace Crowy
 {
     namespace
     {
-        // answers the reply itself when the target cannot be found
         const Exposure* findTarget(
             const Exposures& exposures,
             const DOM::Value& args,
@@ -36,7 +35,6 @@ namespace Crowy
             return &it->second;
         }
 
-        // answers the reply itself when what the target names is gone
         template<typename Object>
         Object* present(Object* object, const DOM::Value& args, Reply& reply) {
             if(object == nullptr) {
@@ -50,8 +48,6 @@ namespace Crowy
 
         DOM::Value describeProperties(const TypeDesc& desc);
 
-        // what a value of the type is: its name, and its enumerators, its
-        // element or its properties
         void describeType(const TypeOps& type, DOM::Table& entry) {
             const auto* nested = nestedDesc(type);
             // a struct's TypeOps name is the compiler's; the desc has the
@@ -82,8 +78,6 @@ namespace Crowy
             }
         }
 
-        // parents first, then own properties in declaration order,
-        // with the metadata a generic client needs to build a control
         void appendDescriptions(const TypeDesc& desc, DOM::Array& out) {
             if(desc.parent != nullptr) {
                 appendDescriptions(*desc.parent, out);
@@ -117,8 +111,6 @@ namespace Crowy
             return DOM::Value(std::move(properties));
         }
 
-        // what writing the value would report, found on a scratch value of
-        // the type, so a refused write changes nothing
         PropertyErrors tryValue(
             const TypeOps& type,
             const DOM::Value& value,
@@ -143,7 +135,6 @@ namespace Crowy
         const DOM::Value&,
         Reply reply
     ) {
-        // the map has no order; the wire does
         std::vector<std::pair<StrView, const Exposure*>> sorted;
         sorted.reserve(exposures.size());
 
@@ -267,8 +258,6 @@ namespace Crowy
             return;
         }
 
-        // the path is checked on a read, so a refused write never asks for
-        // the write access that records a change
         const auto readable = present(exposure->target.Read(), args, reply);
         if(readable == nullptr)
             return;

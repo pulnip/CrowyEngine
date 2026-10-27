@@ -14,8 +14,6 @@
 
 using namespace Crowy;
 
-// what the reflection verbs see: a parent chain, ranged and documented
-// leaves, an enum with a negative enumerator, one nested struct
 struct PortNested {
     f32 amount = 0.25f;
 };
@@ -68,7 +66,6 @@ CROWY_STRUCT(PortProbe)
 CROWY_STRUCT_END(PortProbe)
 // clang-format on
 
-// a member whose type registers no properties and has no conversion
 struct PortOpaque {
     i32 hidden = 0;
 };
@@ -195,7 +192,6 @@ namespace
             }
         }
 
-        // drains the port until the server closes the connection
         Str Receive(CommandPort& port, int maxDrains = 200) {
             Str received;
             char buffer[4096];
@@ -369,7 +365,6 @@ TEST_F(CommandPortTest, UnknownPathIs404) {
     EXPECT_EQ(response.error(), "no route for GET /nope");
 }
 
-// rejected on the header alone: the body never has to arrive
 TEST_F(CommandPortTest, OversizedContentLengthIsRejectedWithoutBody) {
     const auto response =
         exchange("POST /rpc HTTP/1.1\r\nContent-Length: 9999999\r\n\r\n");
@@ -577,7 +572,6 @@ TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
     ASSERT_TRUE(properties != nullptr && properties->is_array());
     ASSERT_EQ(properties->asArray()->size(), 5u);
 
-    // the parent's property comes first
     EXPECT_EQ(json.get<Str>("result.properties[0].name"), "exposure");
     EXPECT_EQ(json.get<Str>("result.properties[0].type"), "f32");
     EXPECT_TRUE(json.at("result.properties[0].uiRange") == nullptr);
@@ -598,7 +592,6 @@ TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
     });
     EXPECT_EQ(names, (std::vector<Str>{"Opaque", "Masked", "Additive"}));
 
-    // a nested struct carries its own tree, under its registered name
     EXPECT_EQ(json.get<Str>("result.properties[4].type"), "PortNested");
     EXPECT_EQ(
         json.get<Str>("result.properties[4].properties[0].name"),
@@ -637,14 +630,12 @@ TEST_F(CommandPortTest, GetPropertyReadsAPathOrTheWholeObject) {
     ASSERT_TRUE(blend.ok()) << blend.body;
     EXPECT_EQ(blend.json.get<Str>("result.value"), "Masked");
 
-    // a struct path reads the whole struct
     auto nested = exchange(post(
         R"({"cmd":"get_property","args":{"target":"probe","path":"nested"}})"
     ));
     ASSERT_TRUE(nested.ok()) << nested.body;
     EXPECT_EQ(nested.json.get<f32>("result.value.amount"), 0.25f);
 
-    // no path reads the whole object, the parent's key flat beside the rest
     auto whole =
         exchange(post(R"({"cmd":"get_property","args":{"target":"probe"}})"));
     ASSERT_TRUE(whole.ok()) << whole.body;
@@ -691,7 +682,6 @@ TEST_F(CommandPortTest, SetPropertyWritesAndFiresDirtyOnce) {
     EXPECT_EQ(probe.blend, PortBlend::Opaque);
     EXPECT_EQ(dirty, 3);
 
-    // the inherited leaf writes through to the base member
     auto exposure = exchange(post(
         R"({"cmd":"set_property","args":{"target":"probe","path":"exposure","value":4}})"
     ));
@@ -772,7 +762,6 @@ TEST_F(CommandPortTest, APropertyWithNoConversionIsRefused) {
         << write.error();
     EXPECT_EQ(dirty, 0);
 
-    // the rest of the object still reads
     auto whole =
         exchange(post(R"({"cmd":"get_property","args":{"target":"holder"}})"));
     ASSERT_TRUE(whole.ok()) << whole.body;
@@ -814,7 +803,6 @@ TEST_F(CommandPortTest, AListIsDescribedReadAndWritten) {
     ASSERT_TRUE(one.ok()) << one.body;
     EXPECT_EQ(list.weights, (std::vector<f32>{2.0f, 1.0f}));
 
-    // a whole list takes the length it is given
     auto longer = exchange(post(
         R"({"cmd":"set_property","args":{"target":"list","path":"weights","value":[3,4,5]}})"
     ));

@@ -2,9 +2,6 @@
 
 #include "Primitives.hpp"
 
-// The one place the winsock / BSD split lives. Handles are opaque here so
-// no socket header reaches the rest of the module; every call is
-// non-blocking-aware and reports EWOULDBLOCK through wouldBlock().
 namespace Crowy
 {
     namespace Socket
@@ -40,7 +37,6 @@ namespace Crowy
         bool wouldBlock();
         int lastError();
 
-        // the port actually bound, for a listener opened on port 0
         u16 boundPort(Handle);
     }
 }
