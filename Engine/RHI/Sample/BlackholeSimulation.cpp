@@ -307,6 +307,7 @@ namespace Crowy
     class BlackholeSimulation: public App {
         // the g^3 doppler boost drives the disk well past 1, which UNORM clips
         static constexpr auto HDR_FORMAT = RHIPixelFormat::RGBA16_FLOAT;
+        static constexpr auto DISK_FORMAT = RHIPixelFormat::RGBA8_UNORM;
 
         RHIGraphicsPipelineStateRAII diskGenerator = nullptr;
         RHITextureRAII disk = nullptr;
@@ -375,7 +376,7 @@ namespace Crowy
                             .path = "Engine/RHI/Sample/BlackholeDisk.slang",
                             .entryPoint = "fs_main"
                         },
-                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetFormats = {DISK_FORMAT},
                     .renderTargetCount = 1
                 }
             );
@@ -383,7 +384,7 @@ namespace Crowy
                 RHITextureCreateDesc{
                     .width = swapchain.GetWidth(),
                     .height = swapchain.GetHeight(),
-                    .format = RHIPixelFormat::RGBA8_UNORM,
+                    .format = DISK_FORMAT,
                     .usage = combine(
                         RHITextureUsage::RenderTarget,
                         RHITextureUsage::ShaderRead
