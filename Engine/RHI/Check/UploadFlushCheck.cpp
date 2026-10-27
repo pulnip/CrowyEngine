@@ -21,10 +21,10 @@ namespace
     constexpr u32 PatternWords = 1024;
     constexpr u32 PatternBytes = PatternWords * sizeof(u32);
 
-    // five of these overrun 32 MiB of staging, so a flush has to happen and the
+    // one more of these than the staging holds, so a flush has to happen and the
     // allocation after it wraps back over offset 0, where the slice sits
     constexpr u32 FillerBytes = 8u << 20;
-    constexpr u32 FillerCount = 5;
+    constexpr u32 FillerCount = UploadStagingBytes / FillerBytes + 1;
 
     constexpr u32 patternWord(u32 i) noexcept { return 0xC0DE0000u ^ i; }
 }

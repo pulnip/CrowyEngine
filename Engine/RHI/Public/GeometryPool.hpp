@@ -24,9 +24,10 @@ namespace Crowy
     // every staged array starts on this; nothing binds a view on the staging
     // side, so it only has to be a safe upper bound
     inline constexpr u64 GeometryStagingAlign = 16;
-    // the most one frame's uploads may stage: a slice of the device's 32 MiB
-    // transient ring, with room left for the rest of that frame
+    // the most one frame's uploads may stage: a slice of the device's transient
+    // ring, with room left for the rest of that frame
     inline constexpr u64 GeometryStagingBudget = 24ull << 20;
+    static_assert(GeometryStagingBudget < TransientStagingBytes);
 
     // what one mesh takes of a frame's staging
     inline constexpr u64 geometryStagingBytes(

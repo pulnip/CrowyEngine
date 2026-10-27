@@ -176,7 +176,7 @@ namespace Crowy
 
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
-                    .size = 1 << 25,
+                    .size = UploadStagingBytes,
                     .memory = RHIMemoryType::CPUWrite
                 }, "upload staging"
             );
@@ -190,7 +190,7 @@ namespace Crowy
             // running out means the size is wrong, not that work is pending
             auto transientBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
-                    .size = 1 << 25,
+                    .size = TransientStagingBytes,
                     .memory = RHIMemoryType::CPUWrite
                 }, "transient staging"
             );
