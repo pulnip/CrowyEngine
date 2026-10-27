@@ -22,7 +22,7 @@ namespace Crowy
     // A token destroyed unanswered is answered by the port on its next Drain
     // with an error, so a dropped reply is loud rather than a hang.
     // Answering twice is a bug.
-    class Reply{
+    class Reply {
     private:
         std::weak_ptr<CommandPortImpl> port;
         RequestId id = 0;
@@ -33,7 +33,7 @@ namespace Crowy
         Reply(Reply&&) noexcept;
         Reply& operator=(Reply&&) noexcept;
 
-        void Ok(DOM::Value result={});
+        void Ok(DOM::Value result = {});
         void Error(Str message);
 
     private:
@@ -49,7 +49,7 @@ namespace Crowy
     // handler runs
     using VerbKeys = std::vector<Str>;
 
-    struct CommandPortConfig{
+    struct CommandPortConfig {
         // 0 binds an ephemeral port and skips the retries
         u16 port = 27500;
         u8 portRetries = 9;
@@ -59,12 +59,8 @@ namespace Crowy
         f64 idleTimeoutSeconds = 5.0;
     };
 
-    struct CommandPortStatus{
-        enum class Server: u8{
-            Disabled,
-            Listening,
-            BindFailed
-        };
+    struct CommandPortStatus {
+        enum class Server : u8 { Disabled, Listening, BindFailed };
 
         Server server = Server::Disabled;
         // the port actually bound
@@ -88,7 +84,7 @@ namespace Crowy
     // The port itself registers only the reflection verbs - list_objects,
     // describe, get_property, set_property - generic over what Expose gave
     // it; every other verb is the owner's to register.
-    class CommandPort{
+    class CommandPort {
     private:
         std::shared_ptr<CommandPortImpl> impl;
 
@@ -108,7 +104,12 @@ namespace Crowy
             DirtyCallback onDirty = {}
         );
         // an object whose address never changes
-        void Expose(Str name, void* target, const TypeDesc&, DirtyCallback onDirty = {});
+        void Expose(
+            Str name,
+            void* target,
+            const TypeDesc&,
+            DirtyCallback onDirty = {}
+        );
         void Unexpose(StrView name);
         void Drain();
 

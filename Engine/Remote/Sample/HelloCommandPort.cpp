@@ -2,6 +2,7 @@
 #include <print>
 #include <thread>
 #include <utility>
+
 #include "ClassRegistry.hpp"
 #include "CommandPort.hpp"
 #include "DOM.hpp"
@@ -10,14 +11,13 @@
 // loop standing in for the frame. From another shell:
 //   curl -s -X POST 127.0.0.1:27500/rpc -d '{"cmd":"ping"}'
 //   curl -s 127.0.0.1:27500/
-//   curl -s -X POST 127.0.0.1:27500/rpc -d '{"cmd":"describe","args":{"target":"knobs"}}'
-//   curl -s -X POST 127.0.0.1:27500/rpc -d '{"cmd":"set_property","args":{"target":"knobs","path":"gain","value":2}}'
+//   curl -s -X POST 127.0.0.1:27500/rpc -d
+//   '{"cmd":"describe","args":{"target":"knobs"}}' curl -s -X POST
+//   127.0.0.1:27500/rpc -d
+//   '{"cmd":"set_property","args":{"target":"knobs","path":"gain","value":2}}'
 //   curl -s -X POST 127.0.0.1:27500/rpc -d '{"cmd":"quit"}'
 
-enum class HelloBlend: Crowy::u8{
-    Opaque,
-    Additive
-};
+enum class HelloBlend : Crowy::u8 { Opaque, Additive };
 
 namespace Crowy
 {
@@ -30,7 +30,7 @@ namespace Crowy
 }
 
 // the reflection verbs need nothing beyond a registered struct
-struct HelloKnobs{
+struct HelloKnobs {
     Crowy::f32 gain = 1.0f;
     Crowy::Str label = "hello";
     HelloBlend blend = HelloBlend::Opaque;
@@ -45,13 +45,13 @@ CROWY_STRUCT(HelloKnobs)
 CROWY_STRUCT_END(HelloKnobs)
 // clang-format on
 
-int main(void){
+int main(void) {
     using namespace Crowy;
     using namespace std::chrono_literals;
 
-    try{
+    try {
         CommandPort port;
-        if(port.Port() == 0){
+        if(port.Port() == 0) {
             std::println("no port could be bound");
 
             return 1;
@@ -61,18 +61,18 @@ int main(void){
         HelloKnobs knobs;
 
         // the callback is the write's only side effect a frame would see
-        port.Expose("knobs", &knobs, *getDesc<HelloKnobs>(), [&knobs]{
+        port.Expose("knobs", &knobs, *getDesc<HelloKnobs>(), [&knobs] {
             std::println("knobs: gain {} label {}", knobs.gain, knobs.label);
         });
 
-        port.RegisterVerb("ping", {}, [&port](auto&, Reply reply){
+        port.RegisterVerb("ping", {}, [&port](auto&, Reply reply) {
             DOM::Table result;
             result.emplace("pong", true);
             result.emplace("drain", static_cast<i64>(port.Status().drainCount));
 
             reply.Ok(std::move(result));
         });
-        port.RegisterVerb("quit", {}, [&quitRequested](auto&, Reply reply){
+        port.RegisterVerb("quit", {}, [&quitRequested](auto&, Reply reply) {
             quitRequested = true;
 
             reply.Ok();
@@ -81,14 +81,14 @@ int main(void){
         std::println("listening on 127.0.0.1:{}", port.Port());
 
         // a frame, without the rest of one
-        while(!quitRequested){
+        while(!quitRequested) {
             port.Drain();
             std::this_thread::sleep_for(16ms);
         }
 
         std::println("Succeed!");
     }
-    catch(const std::exception& e){
+    catch(const std::exception& e) {
         std::println("Exception: {}", e.what());
 
         return 1;

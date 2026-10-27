@@ -284,9 +284,12 @@ namespace Crowy
         // a whole-struct write would go through applyProperties, which writes
         // what binds before it reports the rest; the port answers per leaf
         if(nestedDesc(*checked.type) != nullptr) {
-            reply.Error(std::format(
-                "'{}' is a struct; set one of its properties", *path
-            ));
+            reply.Error(
+                std::format(
+                    "'{}' is a struct; set one of its properties",
+                    *path
+                )
+            );
 
             return;
         }
