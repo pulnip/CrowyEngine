@@ -28,8 +28,7 @@ namespace Crowy
                             .entryPoint = "fs_main"
                         },
                     .renderTargetFormats = {swapchain.GetFormat()},
-                    .renderTargetCount = 1,
-                    .profile = "sm_6_8"
+                    .renderTargetCount = 1
                 }
             );
         }

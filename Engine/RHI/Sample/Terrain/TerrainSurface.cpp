@@ -19,12 +19,7 @@ namespace
             // no vertex layout: vertices are pulled by SV_VertexID
             .topology = RHIPrimitiveTopology::TriangleList,
             .vertexShader = {.path = SHADER_PATH, .entryPoint = "vs_main"},
-            .rasterizer =
-                RHIRasterizerState{
-                    .fillMode = fillMode,
-                    // left-handed, so the right-hand normal is the front face
-                    .frontCounterClockwise = false
-                },
+            .rasterizer = RHIRasterizerState{.fillMode = fillMode},
             .fragmentShader =
                 RHIShaderDesc{
                     .path = SHADER_PATH,

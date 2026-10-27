@@ -20,8 +20,6 @@ namespace Crowy
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/HelloConstantBuffer.slang",
                          .entryPoint = "vs_main"},
-                    .rasterizer =
-                        RHIRasterizerState{.frontCounterClockwise = false},
                     .fragmentShader =
                         RHIShaderDesc{
                             .path =

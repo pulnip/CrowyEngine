@@ -220,8 +220,7 @@ namespace Crowy
                         }}
                     },
                 .renderTargetFormats = {format},
-                .renderTargetCount = 1,
-                .profile = "sm_6_8"
+                .renderTargetCount = 1
             };
         }
 

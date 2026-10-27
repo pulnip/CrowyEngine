@@ -116,8 +116,6 @@ namespace Crowy
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/Skybox.slang",
                          .entryPoint = "vs_main"},
-                    .rasterizer =
-                        RHIRasterizerState{.frontCounterClockwise = false},
                     .fragmentShader =
                         RHIShaderDesc{
                             .path = "Engine/RHI/Sample/Skybox.slang",
@@ -141,8 +139,6 @@ namespace Crowy
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/SkyboxFloor.slang",
                          .entryPoint = "vs_main"},
-                    .rasterizer =
-                        RHIRasterizerState{.frontCounterClockwise = false},
                     .fragmentShader =
                         RHIShaderDesc{
                             .path = "Engine/RHI/Sample/SkyboxFloor.slang",

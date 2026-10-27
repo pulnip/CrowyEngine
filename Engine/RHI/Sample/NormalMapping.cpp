@@ -54,8 +54,6 @@ namespace Crowy
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/NormalMapping.slang",
                          .entryPoint = "vs_main"},
-                    .rasterizer =
-                        RHIRasterizerState{.frontCounterClockwise = false},
                     .fragmentShader =
                         RHIShaderDesc{
                             .path = "Engine/RHI/Sample/NormalMapping.slang",
