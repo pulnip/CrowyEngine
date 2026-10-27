@@ -1,5 +1,7 @@
 #include "SDLInputProvider.hpp"
 
+#include <algorithm>
+#include <array>
 #include <utility>
 #include <variant>
 
@@ -9,297 +11,122 @@
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_timer.h>
 
+#include "Assert.hpp"
 #include "KeyCode.hpp"
 #include "VariantUtil.hpp"
 
 namespace
 {
-    SDL_Scancode convert(Crowy::KeyCode keyCode) {
-        using enum Crowy::KeyCode;
+    using Crowy::KeyCode;
+    using Crowy::MouseButton;
+    using Crowy::usize;
 
-        switch(keyCode) {
-        case Num0:
-            return SDL_SCANCODE_0;
-        case Num1:
-            return SDL_SCANCODE_1;
-        case Num2:
-            return SDL_SCANCODE_2;
-        case Num3:
-            return SDL_SCANCODE_3;
-        case Num4:
-            return SDL_SCANCODE_4;
-        case Num5:
-            return SDL_SCANCODE_5;
-        case Num6:
-            return SDL_SCANCODE_6;
-        case Num7:
-            return SDL_SCANCODE_7;
-        case Num8:
-            return SDL_SCANCODE_8;
-        case Num9:
-            return SDL_SCANCODE_9;
-        case A:
-            return SDL_SCANCODE_A;
-        case B:
-            return SDL_SCANCODE_B;
-        case C:
-            return SDL_SCANCODE_C;
-        case D:
-            return SDL_SCANCODE_D;
-        case E:
-            return SDL_SCANCODE_E;
-        case F:
-            return SDL_SCANCODE_F;
-        case G:
-            return SDL_SCANCODE_G;
-        case H:
-            return SDL_SCANCODE_H;
-        case I:
-            return SDL_SCANCODE_I;
-        case J:
-            return SDL_SCANCODE_J;
-        case K:
-            return SDL_SCANCODE_K;
-        case L:
-            return SDL_SCANCODE_L;
-        case M:
-            return SDL_SCANCODE_M;
-        case N:
-            return SDL_SCANCODE_N;
-        case O:
-            return SDL_SCANCODE_O;
-        case P:
-            return SDL_SCANCODE_P;
-        case Q:
-            return SDL_SCANCODE_Q;
-        case R:
-            return SDL_SCANCODE_R;
-        case S:
-            return SDL_SCANCODE_S;
-        case T:
-            return SDL_SCANCODE_T;
-        case U:
-            return SDL_SCANCODE_U;
-        case V:
-            return SDL_SCANCODE_V;
-        case W:
-            return SDL_SCANCODE_W;
-        case X:
-            return SDL_SCANCODE_X;
-        case Y:
-            return SDL_SCANCODE_Y;
-        case Z:
-            return SDL_SCANCODE_Z;
-        case F1:
-            return SDL_SCANCODE_F1;
-        case F2:
-            return SDL_SCANCODE_F2;
-        case F3:
-            return SDL_SCANCODE_F3;
-        case F4:
-            return SDL_SCANCODE_F4;
-        case F5:
-            return SDL_SCANCODE_F5;
-        case F6:
-            return SDL_SCANCODE_F6;
-        case F7:
-            return SDL_SCANCODE_F7;
-        case F8:
-            return SDL_SCANCODE_F8;
-        case F9:
-            return SDL_SCANCODE_F9;
-        case F10:
-            return SDL_SCANCODE_F10;
-        case F11:
-            return SDL_SCANCODE_F11;
-        case F12:
-            return SDL_SCANCODE_F12;
-        case Ctrl:
-            return SDL_SCANCODE_LCTRL;
-        case Alt:
-            return SDL_SCANCODE_LALT;
-        case Shift:
-            return SDL_SCANCODE_LSHIFT;
-        case Tab:
-            return SDL_SCANCODE_TAB;
-        case Space:
-            return SDL_SCANCODE_SPACE;
-        case Enter:
-            return SDL_SCANCODE_RETURN;
-        case Escape:
-            return SDL_SCANCODE_ESCAPE;
-        case Left:
-            return SDL_SCANCODE_LEFT;
-        case Right:
-            return SDL_SCANCODE_RIGHT;
-        case Up:
-            return SDL_SCANCODE_UP;
-        case Down:
-            return SDL_SCANCODE_DOWN;
-        case Unknown:
-            [[fallthrough]];
-        default:
-            std::unreachable();
+    struct KeyRow {
+        KeyCode code;
+        SDL_Scancode native;
+    };
+
+    struct ButtonRow {
+        MouseButton code;
+        Uint8 native;
+    };
+
+    constexpr std::array<KeyRow, Crowy::NUM_KEY> KeyRows{{
+        {KeyCode::Num0, SDL_SCANCODE_0},
+        {KeyCode::Num1, SDL_SCANCODE_1},
+        {KeyCode::Num2, SDL_SCANCODE_2},
+        {KeyCode::Num3, SDL_SCANCODE_3},
+        {KeyCode::Num4, SDL_SCANCODE_4},
+        {KeyCode::Num5, SDL_SCANCODE_5},
+        {KeyCode::Num6, SDL_SCANCODE_6},
+        {KeyCode::Num7, SDL_SCANCODE_7},
+        {KeyCode::Num8, SDL_SCANCODE_8},
+        {KeyCode::Num9, SDL_SCANCODE_9},
+        {KeyCode::A, SDL_SCANCODE_A},
+        {KeyCode::B, SDL_SCANCODE_B},
+        {KeyCode::C, SDL_SCANCODE_C},
+        {KeyCode::D, SDL_SCANCODE_D},
+        {KeyCode::E, SDL_SCANCODE_E},
+        {KeyCode::F, SDL_SCANCODE_F},
+        {KeyCode::G, SDL_SCANCODE_G},
+        {KeyCode::H, SDL_SCANCODE_H},
+        {KeyCode::I, SDL_SCANCODE_I},
+        {KeyCode::J, SDL_SCANCODE_J},
+        {KeyCode::K, SDL_SCANCODE_K},
+        {KeyCode::L, SDL_SCANCODE_L},
+        {KeyCode::M, SDL_SCANCODE_M},
+        {KeyCode::N, SDL_SCANCODE_N},
+        {KeyCode::O, SDL_SCANCODE_O},
+        {KeyCode::P, SDL_SCANCODE_P},
+        {KeyCode::Q, SDL_SCANCODE_Q},
+        {KeyCode::R, SDL_SCANCODE_R},
+        {KeyCode::S, SDL_SCANCODE_S},
+        {KeyCode::T, SDL_SCANCODE_T},
+        {KeyCode::U, SDL_SCANCODE_U},
+        {KeyCode::V, SDL_SCANCODE_V},
+        {KeyCode::W, SDL_SCANCODE_W},
+        {KeyCode::X, SDL_SCANCODE_X},
+        {KeyCode::Y, SDL_SCANCODE_Y},
+        {KeyCode::Z, SDL_SCANCODE_Z},
+        {KeyCode::F1, SDL_SCANCODE_F1},
+        {KeyCode::F2, SDL_SCANCODE_F2},
+        {KeyCode::F3, SDL_SCANCODE_F3},
+        {KeyCode::F4, SDL_SCANCODE_F4},
+        {KeyCode::F5, SDL_SCANCODE_F5},
+        {KeyCode::F6, SDL_SCANCODE_F6},
+        {KeyCode::F7, SDL_SCANCODE_F7},
+        {KeyCode::F8, SDL_SCANCODE_F8},
+        {KeyCode::F9, SDL_SCANCODE_F9},
+        {KeyCode::F10, SDL_SCANCODE_F10},
+        {KeyCode::F11, SDL_SCANCODE_F11},
+        {KeyCode::F12, SDL_SCANCODE_F12},
+        {KeyCode::Ctrl, SDL_SCANCODE_LCTRL},
+        {KeyCode::Alt, SDL_SCANCODE_LALT},
+        {KeyCode::Shift, SDL_SCANCODE_LSHIFT},
+        {KeyCode::Tab, SDL_SCANCODE_TAB},
+        {KeyCode::Space, SDL_SCANCODE_SPACE},
+        {KeyCode::Enter, SDL_SCANCODE_RETURN},
+        {KeyCode::Escape, SDL_SCANCODE_ESCAPE},
+        {KeyCode::Left, SDL_SCANCODE_LEFT},
+        {KeyCode::Right, SDL_SCANCODE_RIGHT},
+        {KeyCode::Up, SDL_SCANCODE_UP},
+        {KeyCode::Down, SDL_SCANCODE_DOWN},
+    }};
+
+    constexpr std::array<ButtonRow, Crowy::NUM_MOUSE_BUTTON> ButtonRows{{
+        {MouseButton::LButton, SDL_BUTTON_LEFT},
+        {MouseButton::RButton, SDL_BUTTON_RIGHT},
+        {MouseButton::MButton, SDL_BUTTON_MIDDLE},
+    }};
+
+    template<typename Row, usize N>
+    consteval bool inEnumOrder(const std::array<Row, N>& rows) {
+        for(usize i = 0; i < N; ++i) {
+            if(static_cast<usize>(rows[i].code) != i)
+                return false;
         }
+        return true;
     }
 
-    inline Crowy::KeyCode convert(SDL_Scancode scancode) {
-        using enum Crowy::KeyCode;
+    static_assert(inEnumOrder(KeyRows));
+    static_assert(inEnumOrder(ButtonRows));
 
-        switch(scancode) {
-        case SDL_SCANCODE_0:
-            return Num0;
-        case SDL_SCANCODE_1:
-            return Num1;
-        case SDL_SCANCODE_2:
-            return Num2;
-        case SDL_SCANCODE_3:
-            return Num3;
-        case SDL_SCANCODE_4:
-            return Num4;
-        case SDL_SCANCODE_5:
-            return Num5;
-        case SDL_SCANCODE_6:
-            return Num6;
-        case SDL_SCANCODE_7:
-            return Num7;
-        case SDL_SCANCODE_8:
-            return Num8;
-        case SDL_SCANCODE_9:
-            return Num9;
-        case SDL_SCANCODE_A:
-            return A;
-        case SDL_SCANCODE_B:
-            return B;
-        case SDL_SCANCODE_C:
-            return C;
-        case SDL_SCANCODE_D:
-            return D;
-        case SDL_SCANCODE_E:
-            return E;
-        case SDL_SCANCODE_F:
-            return F;
-        case SDL_SCANCODE_G:
-            return G;
-        case SDL_SCANCODE_H:
-            return H;
-        case SDL_SCANCODE_I:
-            return I;
-        case SDL_SCANCODE_J:
-            return J;
-        case SDL_SCANCODE_K:
-            return K;
-        case SDL_SCANCODE_L:
-            return L;
-        case SDL_SCANCODE_M:
-            return M;
-        case SDL_SCANCODE_N:
-            return N;
-        case SDL_SCANCODE_O:
-            return O;
-        case SDL_SCANCODE_P:
-            return P;
-        case SDL_SCANCODE_Q:
-            return Q;
-        case SDL_SCANCODE_R:
-            return R;
-        case SDL_SCANCODE_S:
-            return S;
-        case SDL_SCANCODE_T:
-            return T;
-        case SDL_SCANCODE_U:
-            return U;
-        case SDL_SCANCODE_V:
-            return V;
-        case SDL_SCANCODE_W:
-            return W;
-        case SDL_SCANCODE_X:
-            return X;
-        case SDL_SCANCODE_Y:
-            return Y;
-        case SDL_SCANCODE_Z:
-            return Z;
-        case SDL_SCANCODE_F1:
-            return F1;
-        case SDL_SCANCODE_F2:
-            return F2;
-        case SDL_SCANCODE_F3:
-            return F3;
-        case SDL_SCANCODE_F4:
-            return F4;
-        case SDL_SCANCODE_F5:
-            return F5;
-        case SDL_SCANCODE_F6:
-            return F6;
-        case SDL_SCANCODE_F7:
-            return F7;
-        case SDL_SCANCODE_F8:
-            return F8;
-        case SDL_SCANCODE_F9:
-            return F9;
-        case SDL_SCANCODE_F10:
-            return F10;
-        case SDL_SCANCODE_F11:
-            return F11;
-        case SDL_SCANCODE_F12:
-            return F12;
-        case SDL_SCANCODE_LCTRL:
-            return Ctrl;
-        case SDL_SCANCODE_LALT:
-            return Alt;
-        case SDL_SCANCODE_LSHIFT:
-            return Shift;
-        case SDL_SCANCODE_TAB:
-            return Tab;
-        case SDL_SCANCODE_SPACE:
-            return Space;
-        case SDL_SCANCODE_RETURN:
-            return Enter;
-        case SDL_SCANCODE_ESCAPE:
-            return Escape;
-        case SDL_SCANCODE_LEFT:
-            return Left;
-        case SDL_SCANCODE_RIGHT:
-            return Right;
-        case SDL_SCANCODE_UP:
-            return Up;
-        case SDL_SCANCODE_DOWN:
-            return Down;
-        default:
-            return Unknown;
-        }
+    template<typename Row, usize N>
+    auto toNative(const std::array<Row, N>& rows, decltype(Row::code) code) {
+        const auto index = static_cast<usize>(code);
+        CROWY_ASSERT(index < N, "no native code for an Unknown");
+
+        return rows[index].native;
     }
 
-    inline Crowy::MouseButton convert(Uint8 mouseIndex) {
-        using enum Crowy::MouseButton;
+    template<typename Row, usize N>
+    auto fromNative(
+        const std::array<Row, N>& rows,
+        decltype(Row::native) native
+    ) {
+        const auto row = std::ranges::find(rows, native, &Row::native);
 
-        switch(mouseIndex) {
-        case SDL_BUTTON_LEFT:
-            return LButton;
-        case SDL_BUTTON_RIGHT:
-            return RButton;
-        case SDL_BUTTON_MIDDLE:
-            return MButton;
-        default:
-            return Unknown;
-        }
-    }
-
-    Uint8 sdlButtonOf(Crowy::MouseButton button) {
-        using enum Crowy::MouseButton;
-
-        switch(button) {
-        case LButton:
-            return SDL_BUTTON_LEFT;
-        case RButton:
-            return SDL_BUTTON_RIGHT;
-        case MButton:
-            return SDL_BUTTON_MIDDLE;
-        case Unknown:
-            [[fallthrough]];
-        default:
-            std::unreachable();
-        }
+        return row != rows.end() ? row->code : decltype(Row::code)::Unknown;
     }
 }
 
@@ -403,7 +230,7 @@ namespace Crowy
                         key.down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
                     event.key.timestamp = timestamp;
                     event.key.windowID = window;
-                    event.key.scancode = convert(key.key);
+                    event.key.scancode = toNative(KeyRows, key.key);
                     event.key.key = SDL_GetKeyFromScancode(
                         event.key.scancode,
                         SDL_KMOD_NONE,
@@ -418,7 +245,7 @@ namespace Crowy
                                             : SDL_EVENT_MOUSE_BUTTON_UP;
                     event.button.timestamp = timestamp;
                     event.button.windowID = window;
-                    event.button.button = sdlButtonOf(button.button);
+                    event.button.button = toNative(ButtonRows, button.button);
                     event.button.down = button.down;
                     event.button.clicks = 1;
                     event.button.x = pos.x;
@@ -468,7 +295,7 @@ namespace Crowy
             if(event.repeat)
                 break;
 
-            auto keyCode = convert(event.scancode);
+            auto keyCode = fromNative(KeyRows, event.scancode);
             if(keyCode == KeyCode::Unknown)
                 break;
 
@@ -508,7 +335,7 @@ namespace Crowy
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
             [[fallthrough]];
         case SDL_EVENT_MOUSE_BUTTON_UP: {
-            auto mouseButton = convert(event.button);
+            auto mouseButton = fromNative(ButtonRows, event.button);
             if(mouseButton == MouseButton::Unknown)
                 break;
 

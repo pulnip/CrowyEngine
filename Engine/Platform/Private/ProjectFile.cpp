@@ -1,11 +1,13 @@
 #include "ProjectFile.hpp"
 
+#include <array>
 #include <format>
 #include <stdexcept>
 
 #include "JsonLoader.hpp"
 #include "PathUtil.hpp"
 #include "ProjectRoot.hpp"
+#include "RangeUtil.hpp"
 
 namespace Crowy
 {
@@ -45,9 +47,11 @@ namespace Crowy
         if(table == nullptr)
             throw std::runtime_error("a project file is a JSON object");
 
-        for(const auto& [key, value]: *table) {
-            if(key != "content")
-                throw std::runtime_error(std::format("unknown key '{}'", key));
+        constexpr std::array<StrView, 1> Keys{"content"};
+        if(const auto unknown = stray(table->keys(), Keys); !unknown.empty()) {
+            throw std::runtime_error(
+                std::format("unknown key '{}'", unknown.front())
+            );
         }
         const auto content = table->find("content");
         if(content == table->end())

@@ -1,18 +1,50 @@
+#include <bitset>
+
 #include <gtest/gtest.h>
 
+#include "InputProvider.hpp"
 #include "KeyCode.hpp"
-#include "MockInputProvider.hpp"
 
 using namespace Crowy;
 
+namespace
+{
+    class FakeInputProvider final: public InputProvider {
+    private:
+        std::bitset<NUM_KEY> heldState;
+
+    public:
+        bool IsKeyDown(KeyCode keyCode) const noexcept override {
+            return heldState.test(static_cast<usize>(keyCode));
+        }
+
+        bool IsKeyDown(MouseButton) const noexcept override { return false; }
+
+        void NewFrame() noexcept { InputProvider::ConsumeEdge(); }
+        void Reset() noexcept {
+            InputProvider::ConsumeEdge();
+            heldState.reset();
+        }
+
+        void PressKey(KeyCode keyCode) noexcept {
+            InputProvider::PressKey(keyCode);
+            heldState.set(static_cast<usize>(keyCode), true);
+        }
+        void ReleaseKey(KeyCode keyCode) noexcept {
+            InputProvider::ReleaseKey(keyCode);
+            heldState.set(static_cast<usize>(keyCode), false);
+        }
+    };
+}
+
 class InputProviderTest: public ::testing::Test {
 protected:
-    static MockInputProvider provider;
+    static FakeInputProvider provider;
 
     void SetUp() override { provider.Reset(); }
 };
 
-MockInputProvider InputProviderTest::provider;
+FakeInputProvider InputProviderTest::provider;
 
 TEST_F(InputProviderTest, KeyStateLifecycleOccurFirst) {
     {

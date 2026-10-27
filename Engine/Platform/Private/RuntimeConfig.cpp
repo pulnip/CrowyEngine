@@ -1,6 +1,6 @@
 #include "RuntimeConfig.hpp"
 
-#include <charconv>
+#include <algorithm>
 #include <format>
 #include <stdexcept>
 
@@ -10,6 +10,8 @@
 #include "PathUtil.hpp"
 #include "RHIFrameStats.hpp"
 #include "RHISwapchain.hpp"
+#include "RangeUtil.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -99,11 +101,8 @@ namespace Crowy
         };
         const auto frameOf = [&](usize& i, StrView flag) {
             const StrView text = valueOf(i, flag);
-            u64 frame = 0;
-            const auto [end, error] =
-                std::from_chars(text.data(), text.data() + text.size(), frame);
-            if(error != std::errc{} || end != text.data() + text.size() ||
-               frame == 0) {
+            const auto frame = parseNumber<u64>(text);
+            if(!frame || *frame == 0) {
                 throw std::runtime_error(
                     std::format(
                         "'{}' needs a frame from 1, not '{}'\n{}",
@@ -113,7 +112,7 @@ namespace Crowy
                     )
                 );
             }
-            return frame;
+            return *frame;
         };
 
         for(usize i = 0; i < args.size(); ++i) {
@@ -164,21 +163,19 @@ namespace Crowy
                 )
             );
         }
-        for(usize i = 0; i < captures.size(); ++i) {
-            for(usize j = 0; j < i; ++j) {
-                const auto& one = captures[i];
-                const auto& other = captures[j];
-                if(one.frame == other.frame || one.path == other.path) {
-                    throw std::runtime_error(
-                        std::format(
-                            "two '--capture-frame' share frame {} or '{}'\n{}",
-                            one.frame,
-                            one.path,
-                            Usage
-                        )
-                    );
-                }
-            }
+        const auto repeat = std::min(
+            firstRepeat(captures, &FrameCaptureConfig::frame),
+            firstRepeat(captures, &FrameCaptureConfig::path)
+        );
+        if(repeat != captures.end()) {
+            throw std::runtime_error(
+                std::format(
+                    "two '--capture-frame' share frame {} or '{}'\n{}",
+                    repeat->frame,
+                    repeat->path,
+                    Usage
+                )
+            );
         }
 
         if(const auto exit = config.exitAfterFrame) {

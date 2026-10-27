@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+#include "EnumUtil.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 #include "RHIFrameStats.hpp"
@@ -30,7 +31,24 @@ namespace Crowy
     constexpr auto NUM_FRAME_SECTION =
         static_cast<usize>(FrameSection::Unknown);
 
-    CStr ToString(FrameSection) noexcept;
+    // clang-format off
+    CROWY_ENUM_BEGIN(FrameSection)
+        CROWY_ENUM_VALUE(Events)
+        CROWY_ENUM_VALUE(Update)
+        CROWY_ENUM_VALUE(FenceWait)
+        CROWY_ENUM_VALUE(Acquire)
+        CROWY_ENUM_VALUE(Record)
+        CROWY_ENUM_VALUE(Submit)
+        CROWY_ENUM_VALUE(Frame)
+        CROWY_ENUM_VALUE(Unknown)
+    CROWY_ENUM_END()
+    // clang-format on
+
+    static_assert(
+        EnumTraits<FrameSection>::entries.size() == NUM_FRAME_SECTION + 1
+    );
+
+    Str ToString(FrameSection);
 
     // a GPU time and the frame it belongs to: the GPU runs behind, so it is
     // an earlier frame than the one whose report carries it

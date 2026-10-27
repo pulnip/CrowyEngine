@@ -116,7 +116,6 @@ namespace Crowy
         const InputProvider& GetInputProvider() const noexcept {
             return inputProvider;
         }
-        const Window& GetWindow() const noexcept { return window; }
         InputStatus ReadInput() const noexcept {
             const auto& gate = inputProvider.Gate();
 
@@ -148,7 +147,7 @@ namespace Crowy
     };
 
     OS::OS(const RuntimeConfig& config, RHIDevice& device)
-        : impl(config, device) {
+        : impl(std::make_unique<Impl>(config, device)) {
         singleton = this;
     }
 
@@ -169,7 +168,7 @@ namespace Crowy
 
         swapchain = device.CreateSwapchain(
             RHISwapchainCreateDesc{
-                .sdlWindow = window.GetWindow(),
+                .sdlWindow = window.Handle(),
                 .bufferDesc = backBufferDesc,
                 .bufferCount = 3,
                 .vsync = config.window.vsync
@@ -193,9 +192,7 @@ namespace Crowy
 
         imguiEnabled = ImGui::GetCurrentContext() != nullptr;
         if(imguiEnabled) {
-            auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
-
-            ImGui_ImplSDL3_InitForOther(sdlWindow);
+            ImGui_ImplSDL3_InitForOther(window.Handle());
             // a scripted run neither reads nor writes the owner's layout
             if(portInput)
                 ImGui::GetIO().IniFilename = nullptr;
@@ -387,11 +384,8 @@ namespace Crowy
             swapchain->Resize(w, h);
             mainLoop.OnResize(w, h);
         }
-        if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST && !portInput) {
-            auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
-            inputProvider.OnFocusLost(sdlWindow);
-        }
-        window.OnPlatformEvent(event);
+        if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST && !portInput)
+            inputProvider.OnFocusLost(window.Handle());
     }
 
     void OS::Impl::ForwardInput(const SDL_Event& event) {
@@ -416,7 +410,7 @@ namespace Crowy
     }
 
     void OS::Impl::ApplyRelativeMouse(bool wanted) {
-        auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
+        auto sdlWindow = window.Handle();
 
         // SDL turns it back on for a window that regains focus, so only a
         // focused window holds it; a --port-input run's needs no window
@@ -425,8 +419,7 @@ namespace Crowy
     }
 
     void OS::Impl::DeliverPushedInput() {
-        const auto windowID =
-            SDL_GetWindowID(static_cast<SDL_Window*>(window.GetWindow()));
+        const auto windowID = SDL_GetWindowID(window.Handle());
 
         // one at a time: each starts from where the one before left the mouse
         for(const auto& input: pushedInput) {
@@ -458,10 +451,6 @@ namespace Crowy
 
     const InputProvider& OS::GetInputProvider() const noexcept {
         return impl->GetInputProvider();
-    }
-
-    const Window& OS::GetWindow() const noexcept {
-        return impl->GetWindow();
     }
 
     InputStatus OS::ReadInput() const noexcept {

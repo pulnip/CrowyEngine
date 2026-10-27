@@ -1,27 +1,14 @@
 #include "FrameProfiler.hpp"
 
+#include "StringUtil.hpp"
+
 namespace Crowy
 {
-    CStr ToString(FrameSection section) noexcept {
-        switch(section) {
-        case FrameSection::Events:
-            return "events";
-        case FrameSection::Update:
-            return "update";
-        case FrameSection::FenceWait:
-            return "fenceWait";
-        case FrameSection::Acquire:
-            return "acquire";
-        case FrameSection::Record:
-            return "record";
-        case FrameSection::Submit:
-            return "submit";
-        case FrameSection::Frame:
-            return "frame";
-        case FrameSection::Unknown:
-            break;
-        }
-        return "unknown";
+    Str ToString(FrameSection section) {
+        Str name = enumName(section);
+        name.front() = lowerChar(name.front());
+
+        return name;
     }
 }
 
@@ -33,6 +20,7 @@ namespace Crowy
 #include <fstream>
 
 #include "LogLocal.hpp"
+#include "PathUtil.hpp"
 #include "RHIDevice.hpp"
 #include "RHIGPUTime.hpp"
 
@@ -77,7 +65,7 @@ namespace Crowy
         );
 
         // the same gate DX12Device puts its debug layer behind
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         constexpr CStr BUILD_KIND = "Debug";
         constexpr CStr DEBUG_LAYER = "on";
 #else
@@ -129,11 +117,11 @@ namespace Crowy
                 return false;
 
             std::error_code error;
-            auto parent = std::filesystem::path(path).parent_path();
-            if(!parent.empty())
-                std::filesystem::create_directories(parent, error);
+            const auto file = toPath(path);
+            if(file.has_parent_path())
+                std::filesystem::create_directories(file.parent_path(), error);
 
-            out.open(path);
+            out.open(file);
             if(!out) {
                 LOG_WARN("cannot write the benchmark output '{}'", path);
                 return false;

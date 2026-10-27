@@ -141,4 +141,7 @@ namespace Crowy
         CROWY_ENUM_VALUE(MButton)
     CROWY_ENUM_END()
     // clang-format on
+
+    static_assert(EnumTraits<KeyCode>::entries.size() == NUM_KEY);
+    static_assert(EnumTraits<MouseButton>::entries.size() == NUM_MOUSE_BUTTON);
 }

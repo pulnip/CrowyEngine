@@ -1,30 +1,23 @@
 #pragma once
 
-#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
 
-#include "FastPimpl.hpp"
-#include "Primitives.hpp"
-#include "Window.hpp"
+#include "Semantics.hpp"
 
 namespace Crowy
 {
-    class SDLWindow: public Window {
+    struct WindowConfig;
+
+    class SDLWindow {
     private:
-        class Impl;
-        static constexpr usize implSize = 8;
-        static constexpr usize implAlign = 8;
-        FastPimpl<Impl, implSize, implAlign> impl;
+        SDL_Window* window = nullptr;
 
     public:
-        SDLWindow(const WindowConfig&);
         ~SDLWindow();
         CROWY_DECLARE_PINNED(SDLWindow)
 
-        void* GetWindow() const noexcept;
-        u32 GetWidth() const noexcept;
-        u32 GetHeight() const noexcept;
-        Size2D GetSize() const noexcept;
+        explicit SDLWindow(const WindowConfig&);
 
-        void OnPlatformEvent(const SDL_WindowEvent&) noexcept;
+        SDL_Window* Handle() const noexcept { return window; }
     };
 }

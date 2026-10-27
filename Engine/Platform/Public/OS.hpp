@@ -1,6 +1,7 @@
 #pragma once
 
-#include "FastPimpl.hpp"
+#include <memory>
+
 #include "InputEvent.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
@@ -10,16 +11,13 @@ namespace Crowy
 {
     class MainLoop;
     class InputProvider;
-    class Window;
 
     struct RuntimeConfig;
 
     class OS {
     private:
         class Impl;
-        static constexpr usize implSize = 792;
-        static constexpr usize implAlign = 8;
-        FastPimpl<Impl, implSize, implAlign> impl;
+        std::unique_ptr<Impl> impl;
 
         static OS* singleton;
 
@@ -33,7 +31,6 @@ namespace Crowy
         inline static OS* Get() { return singleton; }
 
         const InputProvider& GetInputProvider() const noexcept;
-        const Window& GetWindow() const noexcept;
         InputStatus ReadInput() const noexcept;
 
         // a --port-input run's input, taken by the next frame that advances
