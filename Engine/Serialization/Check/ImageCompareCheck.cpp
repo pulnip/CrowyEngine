@@ -153,7 +153,6 @@ namespace Crowy
             return value;
         }
 
-        // the arguments after the program name
         Args parseArgs(std::span<char* const> args) {
             Args parsed;
             bool convert = false;
@@ -317,7 +316,6 @@ namespace Crowy
             return std::format("{:.4f}%", fraction * 100.0);
         }
 
-        // "similar", or "different:" and the thresholds that failed
         Str verdict(const ImageComparison& comparison) {
             if(comparison.similar)
                 return "similar";
@@ -436,7 +434,7 @@ namespace Crowy
             return comparison.similar ? 0 : 1;
         }
 
-        // the report, then its numbers in one tab-separated row for scripts
+        // Tools/stage_cuts.ps1 and .sh read the row's columns by position
         int compareEdgeFiles(const Args& args) {
             const auto& pathA = args.paths[0];
             const auto& pathB = args.paths[1];

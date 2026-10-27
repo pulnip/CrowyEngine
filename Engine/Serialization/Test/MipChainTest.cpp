@@ -9,7 +9,6 @@ using namespace Crowy;
 
 namespace
 {
-    // a width x height gray image, texel (x, y) from `texel`
     template<typename F>
     ImageData makeImage(
         u32 width,
@@ -67,7 +66,6 @@ TEST(MipChain, UnormAveragesTheBytes) {
     EXPECT_NEAR(level(image, 1)[0], 128, 1);
 }
 
-// every level down to 1 x 1, each sub inside the blob with a tight pitch
 TEST(MipChain, LevelsRunDownToOne) {
     struct Case {
         u32 width;
@@ -138,15 +136,14 @@ TEST(MipChain, OddEdgesFoldIntoTheLastBoxPerChannel) {
     EXPECT_NEAR(mip1[1], 150, 1);
     EXPECT_NEAR(mip1[2], 25, 1);
     EXPECT_NEAR(mip1[3], 128, 1);
-    // (0 + 60 + 90) / 3, (0 + 0 + 30) / 3, (250 + 100 + 0) / 3, (30 + 60 + 90)
-    // / 3
+    // (0 + 60 + 90) / 3, (0 + 0 + 30) / 3, (250 + 100 + 0) / 3,
+    // (30 + 60 + 90) / 3
     EXPECT_NEAR(mip1[4], 50, 1);
     EXPECT_NEAR(mip1[5], 10, 1);
     EXPECT_NEAR(mip1[6], 117, 1);
     EXPECT_NEAR(mip1[7], 60, 1);
 }
 
-// sRGB color averages in linear light; alpha does not
 TEST(MipChain, SrgbColorIsLinearAndAlphaIsNot) {
     ImageData image{
         .format = RHIPixelFormat::RGBA8_UNORM_SRGB,

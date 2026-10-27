@@ -64,7 +64,6 @@ namespace
         }
     }
 
-    // whether the bytes are well-formed UTF-8, which a JSON string must be
     bool isUtf8(StrView text) noexcept {
         for(usize i = 0; i < text.size();) {
             const auto lead = static_cast<u8>(text[i]);
@@ -168,7 +167,6 @@ namespace
         writeNumberText(out, StrView(std::begin(buffer), end));
     }
 
-    // a pretty line break, indented four spaces a level
     void breakLine(Str& out, JsonStyle style, u32 depth) {
         if(style == JsonStyle::Pretty) {
             out += '\n';

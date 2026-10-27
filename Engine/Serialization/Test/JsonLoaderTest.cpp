@@ -238,7 +238,6 @@ TEST(Serializer, ATableKeepsTheOrderItWasGiven) {
     DOM::Table table;
     table.emplace("b", i64{1});
     table.emplace("a", i64{2});
-    // emplace keeps what is there; insert_or_assign keeps the place
     EXPECT_FALSE(table.emplace("b", i64{3}).second);
     EXPECT_FALSE(table.insert_or_assign("b", i64{4}).second);
     EXPECT_EQ(emitJson(DOM::Value(std::move(table))), R"({"b":4,"a":2})");
@@ -279,7 +278,6 @@ TEST(Serializer, AnF32WritesAsItsOwnShortestText) {
         emitJson(DOM::Value::from(Vec3{0.1f, 0.2f, 0.3f})),
         "[0.1,0.2,0.3]"
     );
-    // an f64 keeps its own precision
     EXPECT_EQ(
         emitJson(DOM::Value::from(static_cast<f64>(0.1f))),
         "0.10000000149011612"

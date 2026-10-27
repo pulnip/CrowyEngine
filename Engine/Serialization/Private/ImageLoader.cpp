@@ -29,7 +29,6 @@ namespace
         using enum Crowy::RHIPixelFormat;
 
         switch(format) {
-        // Uncompressed
         case 37:
             return RGBA8_UNORM; // VK_FORMAT_R8G8B8A8_UNORM
         case 43:
@@ -42,7 +41,6 @@ namespace
             return R8_UNORM; // VK_FORMAT_R8_UNORM
         case 16:
             return RG8_UNORM; // VK_FORMAT_R8G8_UNORM
-        // BCn
         case 131:
             return BC1_UNORM; // BC1_RGB_UNORM_BLOCK
         case 132:

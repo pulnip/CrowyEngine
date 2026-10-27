@@ -24,7 +24,6 @@ namespace Crowy
 
         constexpr u32 TexelBytes = 4;
 
-        // a byte's linear value, once per byte value
         DecodeTable makeDecodeTable() {
             DecodeTable table{};
             for(u32 i = 0; i < table.size(); ++i)

@@ -5,8 +5,8 @@
 namespace
 {
     struct PathToken {
-        Crowy::StrView key;          // empty if pure index
-        std::optional<size_t> index; // present if [N] follows
+        Crowy::StrView key;
+        std::optional<size_t> index;
         bool valid = true;
     };
 
@@ -21,7 +21,6 @@ namespace
             path.remove_prefix(1);
         }
 
-        // key 파싱 (있다면)
         if(!path.empty() && path.front() != '[') {
             size_t end = 0;
             while(end < path.size() && path[end] != '.' && path[end] != '[') {
@@ -32,7 +31,6 @@ namespace
             path.remove_prefix(end);
         }
 
-        // [N] 파싱 (있다면)
         if(!path.empty() && path.front() == '[') {
             path.remove_prefix(1);
             size_t idx = 0;
@@ -45,9 +43,7 @@ namespace
             }
 
             tok.index = idx;
-            path.remove_prefix(
-                static_cast<size_t>(p - path.data()) + 1
-            ); // +1 for ']'
+            path.remove_prefix(static_cast<size_t>(p - path.data()) + 1);
         }
 
         return tok;

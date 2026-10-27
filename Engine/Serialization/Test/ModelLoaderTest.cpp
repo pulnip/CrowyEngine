@@ -161,8 +161,6 @@ TEST(ModelLoader, AxisProbeMatchesItsTable) {
     );
 }
 
-// "front-facing from outside": every triangle's stored normal points away
-// from the centre of the box it belongs to
 TEST(ModelLoader, AxisProbeNormalsPointOutward) {
     const auto model = loadModel(testData / "AxisProbe.fbx");
     auto image = LoadImage(testData / "Palette.png");

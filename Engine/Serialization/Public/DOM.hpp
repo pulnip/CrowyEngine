@@ -23,9 +23,6 @@ namespace Crowy
 
         using Array = std::vector<Value>;
 
-        // A JSON object's keys in the order they were inserted, so what is
-        // written reads back in that order; a lookup is a linear scan. What
-        // needs Value whole is defined after it.
         class Table {
         public:
             using Entry = std::pair<Str, Value>;
@@ -47,14 +44,11 @@ namespace Crowy
             iterator find(StrView key) noexcept;
             const_iterator find(StrView key) const noexcept;
             bool contains(StrView key) const noexcept;
-            // false when the key was not there; the rest keep their order
             bool erase(StrView key);
 
-            // a key already present keeps its value, as a map's emplace does
             template<typename V>
             std::pair<iterator, bool> emplace(Str key, V&& v);
 
-            // a key already present keeps its place and takes the value
             template<typename V>
             std::pair<iterator, bool> insert_or_assign(Str key, V&& v);
         };
@@ -124,9 +118,7 @@ namespace Crowy
             }
 
             std::optional<bool> asBool() const noexcept;
-            // expect like 1, and 1.0 cannot be Integer
             std::optional<i64> asInt() const noexcept;
-            // expect like 1.0, also 1 can be Float
             std::optional<f64> asFloat() const noexcept;
             // only a float that was made from an f32
             std::optional<f32> asSingle() const noexcept;

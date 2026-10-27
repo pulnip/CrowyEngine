@@ -76,8 +76,6 @@ namespace Crowy
         Vec2 halfExtent,
         Vec2 uvScale
     ) {
-        // the corners are laid out along this, so it is the direction of
-        // increasing v, exactly as in MakeBox
         const auto bitangent = cross(normal, tangent);
 
         constexpr std::array<Vec2, 4> corners = {
@@ -168,11 +166,8 @@ namespace Crowy
                         .position = radius * normal,
                         .normal = normal,
                         .texCoord = Vec2{u, v},
-                        // d(position)/d(theta) normalized, which stays unit
-                        // length even at the poles where the position itself
-                        // degenerates. cross(normal, tangent) is
-                        // d(position)/d(phi), so the handedness is 1 here as
-                        // well
+                        // d(position)/d(theta), unit even at the poles;
+                        // cross(normal, tangent) is d(position)/d(phi)
                         .tangent = Vec4{-sint, 0.0f, cost, 1.0f}
                     }
                 );
@@ -193,18 +188,14 @@ namespace Crowy
                 const u32 bottomLeft = base + (slices + 1) + j;
                 const u32 bottomRight = base + (slices + 1) + (j + 1);
 
-                // the top row of the first ring sits entirely on the north
-                // pole, so topLeft and topRight coincide and this triangle has
-                // no area. the pole vertices still differ in u and tangent,
-                // which is why they are kept as separate vertices
+                // the first ring's top row is the north pole: no area here;
+                // its vertices stay apart because u and tangent differ
                 if(i != 0) {
                     indices.insert(
                         indices.end(),
                         {topLeft, topRight, bottomRight}
                     );
                 }
-                // and symmetrically, the last ring's bottom row is the south
-                // pole
                 if(i != stacks - 1) {
                     indices.insert(
                         indices.end(),

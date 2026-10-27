@@ -47,7 +47,6 @@ namespace
         return image.blob[pixel * 4 + channel];
     }
 
-    // a gray level per pixel from `level(x, y)`
     ImageData grayImage(
         u32 width,
         u32 height,
@@ -256,7 +255,6 @@ TEST(ImageCompare, LocalThresholdInclusive) {
     EXPECT_FALSE(over.similar);
 }
 
-// the concentrated regression a global fraction averages away
 TEST(ImageCompare, ClusterFailsLocalNotGlobal) {
     constexpr ImageTolerance Loose{
         .channelDelta = 2,
@@ -279,8 +277,6 @@ TEST(ImageCompare, ClusterFailsLocalNotGlobal) {
     EXPECT_FALSE(result.similar);
 }
 
-// one backend repeats a frame byte for byte, so the defaults let no pixel
-// fail, however large the image
 TEST(ImageCompare, DefaultsLetNoPixelFail) {
     const auto a = makeImage(200, 200, 50, 50, 50);
     auto b = makeImage(200, 200, 50, 50, 50);
@@ -326,28 +322,23 @@ TEST(ImageCompare, HeatMapColours) {
     for(usize i = 0; i < 4; ++i)
         EXPECT_EQ(heat[i * 4 + 3], 255) << "pixel " << i;
 
-    // equal: black
     EXPECT_EQ(heat[0], 0);
     EXPECT_EQ(heat[1], 0);
     EXPECT_EQ(heat[2], 0);
 
-    // within the tolerance: a grey apart from black and white
     EXPECT_EQ(heat[4], heat[5]);
     EXPECT_EQ(heat[5], heat[6]);
     EXPECT_GT(heat[4], 0);
     EXPECT_LT(heat[4], 255);
 
-    // at the tolerance: white
     EXPECT_EQ(heat[8], 255);
     EXPECT_EQ(heat[9], 255);
     EXPECT_EQ(heat[10], 255);
 
-    // failing: full red, no blue
     EXPECT_EQ(heat[12], 255);
     EXPECT_EQ(heat[14], 0);
 }
 
-// a step thins to one column, on its later side
 TEST(ImageCompare, EdgesOfAStepAreOneColumn) {
     const auto image =
         grayImage(32, 16, [](u32 x, u32) -> u8 { return x >= 16 ? 200 : 0; });
@@ -358,7 +349,6 @@ TEST(ImageCompare, EdgesOfAStepAreOneColumn) {
     EXPECT_EQ(columnsOf(edges, 32), std::set<u32>{16});
 }
 
-// the budget keeps the strongest edges by count
 TEST(ImageCompare, EdgesKeepTheStrongestByCount) {
     const auto image = grayImage(64, 64, [](u32 x, u32) -> u8 {
         return x < 20 ? 0 : (x < 40 ? 200 : 160);
@@ -373,7 +363,6 @@ TEST(ImageCompare, EdgesKeepTheStrongestByCount) {
     EXPECT_EQ(columnsOf(both, 64), (std::set<u32>{20, 40}));
 }
 
-// a tone curve moves no step
 TEST(ImageCompare, EdgesIgnoreAToneCurve) {
     const auto nested = [](u32 x, u32 y) -> u8 {
         if(x >= 28 && x < 36 && y >= 28 && y < 36)
@@ -395,7 +384,6 @@ TEST(ImageCompare, EdgesIgnoreAToneCurve) {
     EXPECT_EQ(edges, curvedEdges);
 }
 
-// a symmetric blur leaves the step's peak where it was
 TEST(ImageCompare, EdgesHoldUnderASymmetricBlur) {
     // a 0 to 200 step at 16 blurred by [1 4 6 4 1] / 16
     const auto image = grayImage(32, 16, [](u32 x, u32) -> u8 {
@@ -413,7 +401,6 @@ TEST(ImageCompare, EdgesHoldUnderASymmetricBlur) {
     EXPECT_EQ(columnsOf(edges, 32), std::set<u32>{16});
 }
 
-// within the radius an edge finds the other's; past it, few do
 TEST(ImageCompare, EdgesAgreeWithinTheRadius) {
     const auto bar = grayImage(100, 100, box(40, 30, 50, 70));
     const auto near = grayImage(100, 100, box(42, 30, 52, 70));
@@ -430,7 +417,6 @@ TEST(ImageCompare, EdgesAgreeWithinTheRadius) {
     EXPECT_DOUBLE_EQ(apart.bNearA, 21.0 / 96.0);
 }
 
-// the searched side's lenience forgives edges a tone curve reorders
 TEST(ImageCompare, EdgeLenienceForgivesReorderedStrengths) {
     const auto a = grayImage(64, 64, [](u32 x, u32) -> u8 {
         return x < 20 ? 0 : (x < 40 ? 200 : 160);
@@ -456,7 +442,6 @@ TEST(ImageCompare, EdgeLenienceForgivesReorderedStrengths) {
     EXPECT_EQ(lenient.bNearA, 1.0);
 }
 
-// the shift search finds how far B's content sits from A's
 TEST(ImageCompare, EdgeShiftFindsAMovedPicture) {
     const auto bar = grayImage(100, 100, box(40, 30, 50, 70));
     const auto moved = grayImage(100, 100, box(43, 28, 53, 68));
@@ -474,7 +459,6 @@ TEST(ImageCompare, EdgeShiftFindsAMovedPicture) {
     EXPECT_EQ(same.zeroCoincide, 1.0);
 }
 
-// the worst tile holds what moved
 TEST(ImageCompare, EdgeWorstTileHoldsTheMovedBar) {
     const auto scene = [](u32 dx) {
         return grayImage(200, 200, [dx](u32 x, u32 y) -> u8 {
