@@ -11,7 +11,7 @@ struct ImTextureData;
 
 namespace Crowy
 {
-    class UIRenderer{
+    class UIRenderer {
     private:
         ImGuiContext* context = nullptr;
 
@@ -53,7 +53,7 @@ namespace Crowy
         // Prepare's texture updates release edges whose acquire halves must
         // ride the render pass that draws the UI - pass these to that
         // BeginRenderPass alongside your own acquires
-        std::span<const RHITextureBarrier> TextureAcquires() const{
+        std::span<const RHITextureBarrier> TextureAcquires() const {
             return textureAcquires;
         }
 

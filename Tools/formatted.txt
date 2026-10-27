@@ -8,3 +8,4 @@ Engine/Platform
 Engine/Serialization
 Engine/Content
 Engine/RHI
+Engine/UI

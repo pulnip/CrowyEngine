@@ -60,11 +60,11 @@ namespace
         const TypeDesc& desc,
         const DirtyCallback& onDirty
     ) {
-        if(desc.parent != nullptr){
+        if(desc.parent != nullptr) {
             appendProperties(out, owner, seed, *desc.parent, onDirty);
         }
 
-        for(const auto& prop: desc.properties){
+        for(const auto& prop: desc.properties) {
             const auto* accessor = prop.accessor.get();
             out.push_back(makeValue(
                 prop.name,
@@ -150,7 +150,7 @@ namespace
     ) {
         const auto* info = &type;
 
-        if(info == getTypeOps<f32>()){
+        if(info == getTypeOps<f32>()) {
             if(meta.uiRange.has_value()) {
                 return Slider{
                     .label = std::move(label),
@@ -163,22 +163,22 @@ namespace
 
             return makeField<f32, DragFloat>(label, target, member, onDirty);
         }
-        if(info == getTypeOps<bool>()){
+        if(info == getTypeOps<bool>()) {
             return makeField<bool, Checkbox>(label, target, member, onDirty);
         }
-        if(info == getTypeOps<i32>()){
+        if(info == getTypeOps<i32>()) {
             return makeField<i32, IntField>(label, target, member, onDirty);
         }
-        if(info == getTypeOps<Vec2>()){
+        if(info == getTypeOps<Vec2>()) {
             return makeField<Vec2, Float2Field>(label, target, member, onDirty);
         }
-        if(info == getTypeOps<Vec3>()){
+        if(info == getTypeOps<Vec3>()) {
             return makeField<Vec3, Float3Field>(label, target, member, onDirty);
         }
-        if(info == getTypeOps<Vec4>()){
+        if(info == getTypeOps<Vec4>()) {
             return makeField<Vec4, Float4Field>(label, target, member, onDirty);
         }
-        if(info == getTypeOps<Str>()){
+        if(info == getTypeOps<Str>()) {
             return SearchBar{
                 .label = std::move(label),
                 .onChanged = editThrough<StrView>(
@@ -191,7 +191,7 @@ namespace
                 .str = *static_cast<const Str*>(member)
             };
         }
-        if(info->enumerators != nullptr){
+        if(info->enumerators != nullptr) {
             const auto enumerators = info->enumerators();
             const auto value = info->enumLoad(member);
 
@@ -199,9 +199,9 @@ namespace
             entries.reserve(enumerators.size());
             std::optional<usize> current;
 
-            for(usize i = 0; i < enumerators.size(); ++i){
+            for(usize i = 0; i < enumerators.size(); ++i) {
                 entries.emplace_back(enumerators[i].name);
-                if(!current.has_value() && enumerators[i].value == value){
+                if(!current.has_value() && enumerators[i].value == value) {
                     current = i;
                 }
             }

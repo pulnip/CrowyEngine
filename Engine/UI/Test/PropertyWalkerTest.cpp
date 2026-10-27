@@ -1,17 +1,18 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
 #include "ClassRegistry.hpp"
 #include "PropertyWalker.hpp"
 
 namespace Crowy
 {
-    struct UIContext{};
+    struct UIContext {};
 }
 
 using namespace Crowy;
 
-struct WalkerNested{
+struct WalkerNested {
     f32 amount = 0.25f;
 };
 
@@ -21,7 +22,7 @@ CROWY_STRUCT(WalkerNested)
 CROWY_STRUCT_END(WalkerNested)
 // clang-format on
 
-struct WalkerBase{
+struct WalkerBase {
     f32 exposure = 1.0f;
 };
 
@@ -33,11 +34,7 @@ CROWY_STRUCT_END(WalkerBase)
 
 // non-contiguous, and negative in a signed underlying type: the two things
 // an index-is-the-value dropdown would get wrong
-enum class WalkerBlend: i16{
-    Opaque = -1,
-    Masked = 7,
-    Additive = 300
-};
+enum class WalkerBlend : i16 { Opaque = -1, Masked = 7, Additive = 300 };
 
 namespace Crowy
 {
@@ -50,7 +47,7 @@ namespace Crowy
     // clang-format on
 }
 
-struct WalkerFixture: WalkerBase{
+struct WalkerFixture: WalkerBase {
     bool visible = true;
     i32 count = 3;
     f32 roughness = 0.5f;
@@ -78,15 +75,15 @@ CROWY_STRUCT(WalkerFixture)
 CROWY_STRUCT_END(WalkerFixture)
 // clang-format on
 
-TEST(PropertyWalker, TreeShape){
+TEST(PropertyWalker, TreeShape) {
     ASSERT_TRUE(IsWalkerNestedRegistered);
     ASSERT_TRUE(IsWalkerBaseRegistered);
     ASSERT_TRUE(IsWalkerFixtureRegistered);
 
     WalkerFixture fixture;
-    auto tree = buildPropertyTree(
-        "Fixture", &fixture, *getDesc<WalkerFixture>(), []{}
-    );
+    auto tree =
+        buildPropertyTree("Fixture", &fixture, *getDesc<WalkerFixture>(), [] {
+        });
 
     auto* root = std::get_if<Collapsing>(&tree);
     ASSERT_TRUE(root != nullptr);
@@ -157,18 +154,24 @@ TEST(PropertyWalker, TreeShape){
     auto* blend = std::get_if<Dropdown>(&root->children[9]);
     ASSERT_TRUE(blend != nullptr);
     EXPECT_EQ(blend->label, "blend");
-    EXPECT_EQ(blend->entries, (std::vector<Str>{"Opaque", "Masked", "Additive"}));
+    EXPECT_EQ(
+        blend->entries,
+        (std::vector<Str>{"Opaque", "Masked", "Additive"})
+    );
     ASSERT_TRUE(blend->current.has_value());
     EXPECT_EQ(*blend->current, 1u);
 }
 
-TEST(PropertyWalker, DropdownWritesTheValueNotTheIndex){
+TEST(PropertyWalker, DropdownWritesTheValueNotTheIndex) {
     WalkerFixture fixture;
     int dirty = 0;
     UIContext ctx;
 
     auto tree = buildPropertyTree(
-        "Fixture", &fixture, *getDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
+        "Fixture",
+        &fixture,
+        *getDesc<WalkerFixture>(),
+        [&dirty] { ++dirty; }
     );
     auto& root = std::get<Collapsing>(tree);
     auto& blend = std::get<Dropdown>(root.children[9]);
@@ -184,13 +187,13 @@ TEST(PropertyWalker, DropdownWritesTheValueNotTheIndex){
     EXPECT_EQ(dirty, 2);
 }
 
-TEST(PropertyWalker, DropdownSelectsNothingForAnUnlistedValue){
+TEST(PropertyWalker, DropdownSelectsNothingForAnUnlistedValue) {
     WalkerFixture fixture;
     fixture.blend = static_cast<WalkerBlend>(42);
 
-    auto tree = buildPropertyTree(
-        "Fixture", &fixture, *getDesc<WalkerFixture>(), []{}
-    );
+    auto tree =
+        buildPropertyTree("Fixture", &fixture, *getDesc<WalkerFixture>(), [] {
+        });
     auto& root = std::get<Collapsing>(tree);
     auto& blend = std::get<Dropdown>(root.children[9]);
 
@@ -198,13 +201,16 @@ TEST(PropertyWalker, DropdownSelectsNothingForAnUnlistedValue){
     EXPECT_FALSE(blend.current.has_value());
 }
 
-TEST(PropertyWalker, WritesLandAndNotify){
+TEST(PropertyWalker, WritesLandAndNotify) {
     WalkerFixture fixture;
     int dirty = 0;
     UIContext ctx;
 
     auto tree = buildPropertyTree(
-        "Fixture", &fixture, *getDesc<WalkerFixture>(), [&dirty]{ ++dirty; }
+        "Fixture",
+        &fixture,
+        *getDesc<WalkerFixture>(),
+        [&dirty] { ++dirty; }
     );
     auto& root = std::get<Collapsing>(tree);
 
@@ -222,7 +228,8 @@ TEST(PropertyWalker, WritesLandAndNotify){
     std::get<Slider>(root.children[3]).onChanged(ctx, 0.75f);
     EXPECT_EQ(fixture.roughness, 0.75f);
 
-    std::get<Float3Field>(root.children[5]).onChanged(ctx, Vec3{0.0f, 1.0f, 0.0f});
+    std::get<Float3Field>(root.children[5])
+        .onChanged(ctx, Vec3{0.0f, 1.0f, 0.0f});
     EXPECT_EQ(fixture.tint, (Vec3{0.0f, 1.0f, 0.0f}));
 
     std::get<SearchBar>(root.children[6]).onChanged(ctx, "renamed");
@@ -236,17 +243,19 @@ TEST(PropertyWalker, WritesLandAndNotify){
     EXPECT_EQ(dirty, 7);
 }
 
-TEST(PropertyWalker, TwoTargetsBindIndependently){
+TEST(PropertyWalker, TwoTargetsBindIndependently) {
     WalkerFixture a, b;
     int dirtyA = 0, dirtyB = 0;
     UIContext ctx;
 
-    auto treeA = buildPropertyTree(
-        "A", &a, *getDesc<WalkerFixture>(), [&dirtyA]{ ++dirtyA; }
-    );
-    auto treeB = buildPropertyTree(
-        "B", &b, *getDesc<WalkerFixture>(), [&dirtyB]{ ++dirtyB; }
-    );
+    auto treeA =
+        buildPropertyTree("A", &a, *getDesc<WalkerFixture>(), [&dirtyA] {
+            ++dirtyA;
+        });
+    auto treeB =
+        buildPropertyTree("B", &b, *getDesc<WalkerFixture>(), [&dirtyB] {
+            ++dirtyB;
+        });
 
     auto& rootA = std::get<Collapsing>(treeA);
     auto& rootB = std::get<Collapsing>(treeB);

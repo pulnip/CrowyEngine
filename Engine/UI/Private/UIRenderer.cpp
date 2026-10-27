@@ -21,7 +21,8 @@
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
 
-namespace{
+namespace
+{
     using namespace Crowy;
 
     inline constexpr std::array UI_VERTEX_LAYOUT = {
@@ -54,17 +55,17 @@ namespace{
         }
     };
 
-    inline constexpr auto UI_INDEX_FORMAT = sizeof(ImDrawIdx) == 2 ?
-        RHIIndexFormat::UInt16 :
-        RHIIndexFormat::UInt32;
-
+    inline constexpr auto UI_INDEX_FORMAT = sizeof(ImDrawIdx) == 2
+                                                ? RHIIndexFormat::UInt16
+                                                : RHIIndexFormat::UInt32;
 
     // a render target that encodes on write needs colors handed to it linear
-    constexpr bool encodesOnWrite(RHIPixelFormat format) noexcept{
+    constexpr bool encodesOnWrite(RHIPixelFormat format) noexcept {
         using enum RHIPixelFormat;
 
-        switch(format){
-        case RGBA8_UNORM_SRGB: [[fallthrough]];
+        switch(format) {
+        case RGBA8_UNORM_SRGB:
+            [[fallthrough]];
         case BGRA8_UNORM_SRGB:
             return true;
         default:
@@ -72,7 +73,7 @@ namespace{
         }
     }
 
-    struct PushConstants{
+    struct PushConstants {
         u64 texture = 0;
         Vec2 scale;
         Vec2 translate;
@@ -85,7 +86,7 @@ namespace{
         const ImDrawData& drawData,
         const ImDrawCmd& cmd,
         Vec2 framebuffer
-    ){
+    ) {
         const auto& origin = drawData.DisplayPos;
         const auto& scale = drawData.FramebufferScale;
 
@@ -100,12 +101,14 @@ namespace{
         if(max.x <= min.x || max.y <= min.y)
             return false;
 
-        cmdList.SetScissorRect(RHIScissorRect{
-            .left = static_cast<i32>(std::max(min.x, 0.0f)),
-            .top = static_cast<i32>(std::max(min.y, 0.0f)),
-            .right = static_cast<i32>(std::min(max.x, framebuffer.x)),
-            .bottom = static_cast<i32>(std::min(max.y, framebuffer.y))
-        });
+        cmdList.SetScissorRect(
+            RHIScissorRect{
+                .left = static_cast<i32>(std::max(min.x, 0.0f)),
+                .top = static_cast<i32>(std::max(min.y, 0.0f)),
+                .right = static_cast<i32>(std::min(max.x, framebuffer.x)),
+                .bottom = static_cast<i32>(std::min(max.y, framebuffer.y))
+            }
+        );
 
         return true;
     }
@@ -118,20 +121,21 @@ namespace Crowy
         RHIPixelFormat renderTargetFormat,
         RHIPixelFormat depthFormat
     )
-        : device(device)
-        , capabilities(device.GetCapabilities())
-        , srgbTarget(encodesOnWrite(renderTargetFormat) ? 1u : 0u)
-    {
+        : device(device),
+          capabilities(device.GetCapabilities()),
+          srgbTarget(encodesOnWrite(renderTargetFormat) ? 1u : 0u) {
         IMGUI_CHECKVERSION();
         context = ImGui::CreateContext();
         ImGui::StyleColorsDark();
 
-        CROWY_ASSERT(context != nullptr,
+        CROWY_ASSERT(
+            context != nullptr,
             "Did you create an ImGui context first?"
         );
 
         auto& io = ImGui::GetIO();
-        CROWY_ASSERT(io.BackendRendererUserData == nullptr,
+        CROWY_ASSERT(
+            io.BackendRendererUserData == nullptr,
             "a renderer backend is already installed"
         );
         io.BackendRendererName = "CrowyUIRenderer";
@@ -146,50 +150,47 @@ namespace Crowy
         // dockspace with BeginDockSpace()
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-        pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-            .vertexLayout = UI_VERTEX_LAYOUT,
-            .topology = RHIPrimitiveTopology::TriangleList,
-            .vertexShader = {
-                .path = "Engine/Shader/UI.slang",
-                .entryPoint = "vs_main"
+        pso = device.CreatePipelineState(
+            RHIGraphicsPipelineStateDesc{
+                .vertexLayout = UI_VERTEX_LAYOUT,
+                .topology = RHIPrimitiveTopology::TriangleList,
+                .vertexShader =
+                    {.path = "Engine/Shader/UI.slang", .entryPoint = "vs_main"},
+                .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
+                .fragmentShader =
+                    RHIShaderDesc{
+                        .path = "Engine/Shader/UI.slang",
+                        .entryPoint = "fs_main"
+                    },
+                // UI ignores the scene's depth but the formats must still agree
+                .depthStencil = depthFormat == RHIPixelFormat::Unknown
+                                    ? std::nullopt
+                                    : std::optional{RHIDepthStencilState{
+                                          .format = depthFormat,
+                                          .depthWriteEnable = false,
+                                          .depthFunc = RHIComparisonFunc::Always
+                                      }},
+                .blend =
+                    RHIBlendState{
+                        .renderTargets = {RHIRenderTargetBlendState{
+                            .blendEnable = true,
+                            .srcBlend = RHIBlend::SrcAlpha,
+                            .dstBlend = RHIBlend::InvSrcAlpha,
+                            .blendOp = RHIBlendOp::Add,
+                            .srcBlendAlpha = RHIBlend::One,
+                            .dstBlendAlpha = RHIBlend::InvSrcAlpha,
+                            .blendOpAlpha = RHIBlendOp::Add
+                        }}
+                    },
+                .renderTargetFormats = {renderTargetFormat},
+                .renderTargetCount = 1
             },
-            .rasterizer = RHIRasterizerState{
-                .cullMode = RHICullMode::None
-            },
-            .fragmentShader = RHIShaderDesc{
-                .path = "Engine/Shader/UI.slang",
-                .entryPoint = "fs_main"
-            },
-            // UI ignores the scene's depth but the formats must still agree
-            .depthStencil = depthFormat == RHIPixelFormat::Unknown ?
-                std::nullopt :
-                std::optional{RHIDepthStencilState{
-                    .format = depthFormat,
-                    .depthWriteEnable = false,
-                    .depthFunc = RHIComparisonFunc::Always
-                }},
-            .blend = RHIBlendState{
-                .renderTargets = {
-                    RHIRenderTargetBlendState{
-                        .blendEnable = true,
-                        .srcBlend = RHIBlend::SrcAlpha,
-                        .dstBlend = RHIBlend::InvSrcAlpha,
-                        .blendOp = RHIBlendOp::Add,
-                        .srcBlendAlpha = RHIBlend::One,
-                        .dstBlendAlpha = RHIBlend::InvSrcAlpha,
-                        .blendOpAlpha = RHIBlendOp::Add
-                    }
-                }
-            },
-            .renderTargetFormats = {
-                renderTargetFormat
-            },
-            .renderTargetCount = 1
-        }, "UIRenderer");
+            "UIRenderer"
+        );
     }
 
-    UIRenderer::~UIRenderer(){
-        for(auto tex: ImGui::GetPlatformIO().Textures){
+    UIRenderer::~UIRenderer() {
+        for(auto tex: ImGui::GetPlatformIO().Textures) {
             if(tex->RefCount == 1)
                 destroyTexture(*tex);
         }
@@ -203,9 +204,10 @@ namespace Crowy
         ImGui::DestroyContext(context);
     }
 
-    u32 UIRenderer::BeginDockSpace(){
+    u32 UIRenderer::BeginDockSpace() {
         return ImGui::DockSpaceOverViewport(
-            0, nullptr,
+            0,
+            nullptr,
             ImGuiDockNodeFlags_PassthruCentralNode
         );
     }
@@ -214,17 +216,15 @@ namespace Crowy
         RHICommandList& cmdList,
         Widget& widget,
         UIContext& context
-    ){
+    ) {
         ImGui::Begin("Crowy");
-        std::visit([&ctx = context](auto& w){
-            w.submit(ctx);
-        }, widget);
+        std::visit([&ctx = context](auto& w) { w.submit(ctx); }, widget);
         ImGui::End();
 
         Prepare(cmdList);
     }
 
-    void UIRenderer::Prepare(RHICommandList& cmdList){
+    void UIRenderer::Prepare(RHICommandList& cmdList) {
         ImGui::Render();
 
         RHIEventScope event(cmdList, "UI Upload");
@@ -234,9 +234,7 @@ namespace Crowy
         uploadGeometry();
     }
 
-    void UIRenderer::Record(
-        RHICommandList& cmdList
-    ){
+    void UIRenderer::Record(RHICommandList& cmdList) {
         RHIEventScope event(cmdList, "UI");
 
         auto& drawData = *ImGui::GetDrawData();
@@ -251,20 +249,19 @@ namespace Crowy
         if(drawData.TotalVtxCount == 0)
             return;
 
-        CROWY_ASSERT(vertices.IsValid() && indices.IsValid(),
+        CROWY_ASSERT(
+            vertices.IsValid() && indices.IsValid(),
             "Did you call UIRenderer::Prepare() with this frame's draw data?"
         );
 
         PushConstants pushConstants{
-            .scale = {
-                2.0f / drawData.DisplaySize.x,
-                -2.0f / drawData.DisplaySize.y
-            },
+            .scale =
+                {2.0f / drawData.DisplaySize.x, -2.0f / drawData.DisplaySize.y},
             .srgbTarget = srgbTarget
         };
         pushConstants.translate = {
             -1.0f - drawData.DisplayPos.x * pushConstants.scale.x,
-             1.0f - drawData.DisplayPos.y * pushConstants.scale.y
+            1.0f - drawData.DisplayPos.y * pushConstants.scale.y
         };
 
         setupRenderState(cmdList, framebuffer);
@@ -279,9 +276,9 @@ namespace Crowy
 
         // the lists share one pair of buffers, so their offsets accumulate
         u32 globalVertexOffset = 0, globalIndexOffset = 0;
-        for(const ImDrawList* list: drawData.CmdLists){
-            for(const auto& cmd: list->CmdBuffer){
-                if(cmd.UserCallback != nullptr){
+        for(const ImDrawList* list: drawData.CmdLists) {
+            for(const auto& cmd: list->CmdBuffer) {
+                if(cmd.UserCallback != nullptr) {
                     if(cmd.UserCallback == ImDrawCallback_ResetRenderState)
                         setupRenderState(cmdList, framebuffer);
                     else
@@ -313,12 +310,17 @@ namespace Crowy
     void UIRenderer::setupRenderState(
         RHICommandList& cmdList,
         Vec2 framebuffer
-    ){
-        cmdList.SetViewport(RHIViewport{
-            .x = 0.0f, .y = 0.0f,
-            .width = framebuffer.x, .height = framebuffer.y,
-            .minDepth = 0.0f, .maxDepth = 1.0f
-        });
+    ) {
+        cmdList.SetViewport(
+            RHIViewport{
+                .x = 0.0f,
+                .y = 0.0f,
+                .width = framebuffer.x,
+                .height = framebuffer.y,
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f
+            }
+        );
 
         cmdList.SetPipelineState(*pso);
         cmdList.SetVertexBuffer(
@@ -329,16 +331,14 @@ namespace Crowy
         );
     }
 
-    void UIRenderer::updateTextures(
-        RHICommandList& cmdList
-    ){
+    void UIRenderer::updateTextures(RHICommandList& cmdList) {
         auto& drawData = *ImGui::GetDrawData();
 
         if(drawData.Textures == nullptr)
             return;
 
-        for(auto* tex: *drawData.Textures){
-            switch(tex->Status){
+        for(auto* tex: *drawData.Textures) {
+            switch(tex->Status) {
             case ImTextureStatus_WantCreate:
                 createTexture(*tex);
                 break;
@@ -355,29 +355,30 @@ namespace Crowy
         }
     }
 
-    void UIRenderer::createTexture(
-        ImTextureData& tex
-    ){
-        CROWY_ASSERT(tex.Format == ImTextureFormat_RGBA32,
+    void UIRenderer::createTexture(ImTextureData& tex) {
+        CROWY_ASSERT(
+            tex.Format == ImTextureFormat_RGBA32,
             "the UI renderer only uploads RGBA32 textures"
         );
-        CROWY_ASSERT(tex.TexID == ImTextureID_Invalid,
+        CROWY_ASSERT(
+            tex.TexID == ImTextureID_Invalid,
             "texture was created twice"
         );
 
-        const std::array initialData = {
-            RHISubresourceData{
-                .data = tex.GetPixels(),
-                .rowPitch = static_cast<usize>(tex.GetPitch())
-            }
-        };
-        auto texture = device.CreateTexture(RHITextureCreateDesc{
-            .width = static_cast<u32>(tex.Width),
-            .height = static_cast<u32>(tex.Height),
-            .format = RHIPixelFormat::RGBA8_UNORM,
-            .usage = RHITextureUsage::ShaderResource,
-            .initialData = initialData
-        }, "ImGui texture");
+        const std::array initialData = {RHISubresourceData{
+            .data = tex.GetPixels(),
+            .rowPitch = static_cast<usize>(tex.GetPitch())
+        }};
+        auto texture = device.CreateTexture(
+            RHITextureCreateDesc{
+                .width = static_cast<u32>(tex.Width),
+                .height = static_cast<u32>(tex.Height),
+                .format = RHIPixelFormat::RGBA8_UNORM,
+                .usage = RHITextureUsage::ShaderResource,
+                .initialData = initialData
+            },
+            "ImGui texture"
+        );
 
         const auto id = texture->GetReadableID();
 
@@ -388,13 +389,18 @@ namespace Crowy
         tex.SetStatus(ImTextureStatus_OK);
     }
 
-    void UIRenderer::updateTexture(RHICommandList& cmdList, ImTextureData& tex){
-        CROWY_ASSERT(tex.Format == ImTextureFormat_RGBA32,
+    void UIRenderer::updateTexture(
+        RHICommandList& cmdList,
+        ImTextureData& tex
+    ) {
+        CROWY_ASSERT(
+            tex.Format == ImTextureFormat_RGBA32,
             "the UI renderer only uploads RGBA32 textures"
         );
 
         auto it = textures.find(tex.TexID);
-        CROWY_ASSERT(it != textures.end(),
+        CROWY_ASSERT(
+            it != textures.end(),
             "ImGui asked to update a texture we never created"
         );
         auto& texture = *it->second;
@@ -405,17 +411,18 @@ namespace Crowy
 
         const auto bytesPerPixel = static_cast<u32>(tex.BytesPerPixel);
         const u32 rowSize = width * bytesPerPixel;
-        const u32 rowPitch = nextMul(
-            rowSize,
-            capabilities.textureRowPitchAlign
+        const u32 rowPitch =
+            nextMul(rowSize, capabilities.textureRowPitchAlign);
+
+        auto staging = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = rowPitch * height,
+                .memory = RHIMemoryType::CPUWrite
+            },
+            "ImGui texture update"
         );
 
-        auto staging = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = rowPitch * height,
-            .memory = RHIMemoryType::CPUWrite
-        }, "ImGui texture update");
-
-        for(u32 row=0; row<height; ++row){
+        for(u32 row = 0; row < height; ++row) {
             staging->Upload(
                 tex.GetPixelsAt(
                     static_cast<int>(left),
@@ -428,13 +435,11 @@ namespace Crowy
 
         // the previous readers live in earlier submissions' UI passes;
         // a partial rect update must keep the untouched texels, so no discard
-        const std::array acquires{
-            makeCrossSubmissionBarrier(
-                texture,
-                RHIResourceUsage::SampledFragment,
-                RHIResourceUsage::CopyDst
-            )
-        };
+        const std::array acquires{makeCrossSubmissionBarrier(
+            texture,
+            RHIResourceUsage::SampledFragment,
+            RHIResourceUsage::CopyDst
+        )};
         cmdList.BeginBlitPass(acquires);
         cmdList.Copy(
             *staging,
@@ -442,19 +447,19 @@ namespace Crowy
             rowPitch,
             texture,
             RHITextureRegion{
-                .x = left, .y = top,
-                .width = width, .height = height
+                .x = left,
+                .y = top,
+                .width = width,
+                .height = height
             }
         );
         // this frame's UI pass samples the texture again - a real edge whose
         // acquire half goes back to the caller through TextureAcquires()
-        const std::array releases{
-            makeBarrier(
-                texture,
-                RHIResourceUsage::CopyDst,
-                RHIResourceUsage::SampledFragment
-            )
-        };
+        const std::array releases{makeBarrier(
+            texture,
+            RHIResourceUsage::CopyDst,
+            RHIResourceUsage::SampledFragment
+        )};
         cmdList.EndBlitPass(releases);
         textureAcquires.push_back(releases[0]);
 
@@ -462,8 +467,8 @@ namespace Crowy
         tex.SetStatus(ImTextureStatus_OK);
     }
 
-    void UIRenderer::destroyTexture(ImTextureData& tex){
-        if(auto it = textures.find(tex.TexID); it != textures.end()){
+    void UIRenderer::destroyTexture(ImTextureData& tex) {
+        if(auto it = textures.find(tex.TexID); it != textures.end()) {
             device.Retire(std::move(it->second));
             textures.erase(it);
         }
@@ -472,7 +477,7 @@ namespace Crowy
         tex.SetStatus(ImTextureStatus_Destroyed);
     }
 
-    void UIRenderer::uploadGeometry(){
+    void UIRenderer::uploadGeometry() {
         auto& drawData = *ImGui::GetDrawData();
 
         if(drawData.TotalVtxCount == 0)
@@ -490,22 +495,20 @@ namespace Crowy
         );
 
         u32 vertexOffset = 0, indexOffset = 0;
-        for(const ImDrawList* list: drawData.CmdLists){
-            const auto vertexBytes = static_cast<u32>(
-                list->VtxBuffer.Size * sizeof(ImDrawVert)
-            );
-            const auto indexBytes = static_cast<u32>(
-                list->IdxBuffer.Size * sizeof(ImDrawIdx)
-            );
+        for(const ImDrawList* list: drawData.CmdLists) {
+            const auto vertexBytes =
+                static_cast<u32>(list->VtxBuffer.Size * sizeof(ImDrawVert));
+            const auto indexBytes =
+                static_cast<u32>(list->IdxBuffer.Size * sizeof(ImDrawIdx));
 
-            if(vertexBytes > 0){
+            if(vertexBytes > 0) {
                 std::memcpy(
                     ptrAdd(vertices.cpuPtr, vertexOffset),
                     list->VtxBuffer.Data,
                     vertexBytes
                 );
             }
-            if(indexBytes > 0){
+            if(indexBytes > 0) {
                 std::memcpy(
                     ptrAdd(indices.cpuPtr, indexOffset),
                     list->IdxBuffer.Data,
