@@ -19,7 +19,7 @@ namespace
 {
     // records what the pacer asks of the device and creates nothing, so the
     // pacer's own arithmetic is all that runs
-    class FakeDevice final: public RHIDevice {
+    class PacerDevice final: public RHIDevice {
     public:
         std::vector<u64> waits;
         std::vector<u64> submits;
@@ -92,7 +92,7 @@ namespace
 }
 
 TEST(FramePacer, FramesCountFromOne) {
-    FakeDevice device;
+    PacerDevice device;
     FakeSwapchain swapchain;
     FramePacer pacer(device);
 
@@ -104,7 +104,7 @@ TEST(FramePacer, FramesCountFromOne) {
 }
 
 TEST(FramePacer, TheFirstFramesInFlightWaitForNothing) {
-    FakeDevice device;
+    PacerDevice device;
     FakeSwapchain swapchain;
     FramePacer pacer(device);
 
@@ -114,7 +114,7 @@ TEST(FramePacer, TheFirstFramesInFlightWaitForNothing) {
 }
 
 TEST(FramePacer, FrameNWaitsForFrameNMinusFramesInFlight) {
-    FakeDevice device;
+    PacerDevice device;
     FakeSwapchain swapchain;
     FramePacer pacer(device);
 
@@ -125,7 +125,7 @@ TEST(FramePacer, FrameNWaitsForFrameNMinusFramesInFlight) {
 }
 
 TEST(FramePacer, EndFrameSubmitsTheFrameItBegan) {
-    FakeDevice device;
+    PacerDevice device;
     FakeSwapchain swapchain;
     FramePacer pacer(device);
 
