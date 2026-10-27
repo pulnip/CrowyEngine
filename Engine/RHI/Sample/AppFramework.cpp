@@ -31,20 +31,4 @@ namespace Crowy
         cmdList.Close();
     }
 
-    RHIViewport FullViewport(const RHITexture& texture, u32 mipLevel){
-        return RHIViewport{
-            .x = 0, .y = 0,
-            .width = static_cast<f32>(texture.GetWidth(mipLevel)),
-            .height = static_cast<f32>(texture.GetHeight(mipLevel)),
-            .minDepth = 0, .maxDepth = 1
-        };
-    }
-
-    RHIScissorRect FullScissorRect(const RHITexture& texture, u32 mipLevel){
-        return RHIScissorRect{
-            .left = 0, .top = 0,
-            .right = static_cast<i32>(texture.GetWidth(mipLevel)),
-            .bottom = static_cast<i32>(texture.GetHeight(mipLevel))
-        };
-    }
 }

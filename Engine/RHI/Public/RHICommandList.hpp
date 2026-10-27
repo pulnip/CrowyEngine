@@ -352,6 +352,32 @@ namespace Crowy
         return barrier;
     }
 
+    inline RHIViewport fullViewport(
+        const RHITexture& texture,
+        u32 mipLevel = 0
+    ) {
+        return RHIViewport{
+            .x = 0,
+            .y = 0,
+            .width = static_cast<f32>(texture.GetWidth(mipLevel)),
+            .height = static_cast<f32>(texture.GetHeight(mipLevel)),
+            .minDepth = 0,
+            .maxDepth = 1
+        };
+    }
+
+    inline RHIScissorRect fullScissorRect(
+        const RHITexture& texture,
+        u32 mipLevel = 0
+    ) {
+        return RHIScissorRect{
+            .left = 0,
+            .top = 0,
+            .right = static_cast<i32>(texture.GetWidth(mipLevel)),
+            .bottom = static_cast<i32>(texture.GetHeight(mipLevel))
+        };
+    }
+
     static_assert(
         detail::expand(RHIResourceUsage::Undefined).access ==
         RHIBarrierAccess::NoAccess

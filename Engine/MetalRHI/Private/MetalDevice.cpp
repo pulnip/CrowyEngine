@@ -27,7 +27,6 @@ extern "C"{
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
-#include "RHIUtil.hpp"
 #include "UploadRing.hpp"
 
 namespace Crowy

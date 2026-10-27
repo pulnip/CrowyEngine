@@ -291,8 +291,8 @@ namespace Crowy
                     .clearDepthStencil = {.depth = 1.0f}
                 }
             }, acquires);
-            cmdList.SetViewport(FullViewport(*backBuffer.texture));
-            cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+            cmdList.SetViewport(fullViewport(*backBuffer.texture));
+            cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*skyPSO);
             cmdList.SetVertexBuffer(*skyVertices, 0, sizeof(Vertex));

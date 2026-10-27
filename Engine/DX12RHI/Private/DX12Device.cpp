@@ -21,7 +21,6 @@
 #include "RHIFrameTimeline.hpp"
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
-#include "RHIUtil.hpp"
 #include "RHIShader.hpp"
 #include "UploadRing.hpp"
 

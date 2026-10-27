@@ -1,13 +1,33 @@
 #pragma once
 
 #include <deque>
+#include <span>
 
 #include "Function.hpp"
 #include "Primitives.hpp"
+#include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 
 namespace Crowy
 {
+    void uploadGPUOnlyBuffer(
+        RHICommandList& cmdList,
+        UploadRing& ring,
+        u64 align,
+        RHIBuffer& buffer,
+        const RHISubresourceData& sub
+    );
+
+    void uploadTexture(
+        RHICommandList& cmdList,
+        UploadRing& ring,
+        u64 align,
+        RHITexture& texture,
+        std::span<const RHISubresourceData> subs,
+        std::span<const RHISubresourceLayout> layouts,
+        const u64 totalBytes
+    );
+
     // an allocation stays readable until the batch it was submitted with
     // completes; the device hands OnSubmit the serial each batch signals
     class UploadRing {

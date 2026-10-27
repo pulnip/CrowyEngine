@@ -264,8 +264,8 @@ namespace Crowy
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
             }, acquires);
-            cmdList.SetViewport(FullViewport(dst, dstMip));
-            cmdList.SetScissorRect(FullScissorRect(dst, dstMip));
+            cmdList.SetViewport(fullViewport(dst, dstMip));
+            cmdList.SetScissorRect(fullScissorRect(dst, dstMip));
 
             cmdList.SetPipelineState(pso);
             cmdList.SetPushGraphicsConstants(BloomParam{
@@ -448,8 +448,8 @@ namespace Crowy
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments,
             }, acquires);
-            cmdList.SetViewport(FullViewport(*disk));
-            cmdList.SetScissorRect(FullScissorRect(*disk));
+            cmdList.SetViewport(fullViewport(*disk));
+            cmdList.SetScissorRect(fullScissorRect(*disk));
 
             cmdList.SetPipelineState(*diskGenerator);
             cmdList.SetPushGraphicsConstants(GenerationParam{
@@ -527,8 +527,8 @@ namespace Crowy
                 cmdList.BeginRenderPass(RHIRenderPassDesc{
                     .colorAttachments = colorAttachments
                 }, std::span(acquires).first(recordsDisk ? 3 : 2));
-                cmdList.SetViewport(FullViewport(*backBuffer.texture));
-                cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+                cmdList.SetViewport(fullViewport(*backBuffer.texture));
+                cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
                 cmdList.SetPipelineState(*blackholeSimulator);
                 cmdList.SetPushGraphicsConstants(PushConstants{
@@ -565,8 +565,8 @@ namespace Crowy
                 cmdList.BeginRenderPass(RHIRenderPassDesc{
                     .colorAttachments = colorAttachments
                 }, acquires);
-                cmdList.SetViewport(FullViewport(*backBuffer.texture));
-                cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+                cmdList.SetViewport(fullViewport(*backBuffer.texture));
+                cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
                 cmdList.SetPipelineState(*composite);
                 cmdList.SetPushGraphicsConstants(CompositeParam{

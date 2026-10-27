@@ -795,8 +795,8 @@ namespace Crowy
             cmdList.BeginRenderPass(RHIRenderPassDesc{
                 .colorAttachments = colorAttachments
             }, textureAcquires, bufferAcquires);
-            cmdList.SetViewport(FullViewport(*backBuffer.texture));
-            cmdList.SetScissorRect(FullScissorRect(*backBuffer.texture));
+            cmdList.SetViewport(fullViewport(*backBuffer.texture));
+            cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetGraphicsConstantBuffer(frameCB, 0);
 

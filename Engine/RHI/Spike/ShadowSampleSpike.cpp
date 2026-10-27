@@ -148,8 +148,8 @@ namespace Crowy
                     },
                     acquires
                 );
-                cmdList.SetViewport(FullViewport(*depth));
-                cmdList.SetScissorRect(FullScissorRect(*depth));
+                cmdList.SetViewport(fullViewport(*depth));
+                cmdList.SetScissorRect(fullScissorRect(*depth));
 
                 cmdList.SetPipelineState(*writeDepth);
                 cmdList.SetPushGraphicsConstants(push);
