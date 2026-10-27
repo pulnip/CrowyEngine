@@ -51,8 +51,6 @@ namespace Crowy
     // camera, so at 0 the heliocentric ellipses come apart into Ptolemy's
     // epicycles.
     class OrbitFrame: public App {
-        using App::App;
-
         static constexpr f64 DAY_PER_SAMPLE = 1.0;
         static constexpr f64 START_DAY = 0.0;
 

@@ -1,11 +1,9 @@
 #include "Sampler.slang"
-#include "SRGB.slang"
 
 struct CompositeParam {
     DescriptorHandle<Texture2D> scene;
     DescriptorHandle<Texture2D> bloom;
     float bloomStrength;
-    float exposure;
 };
 
 [[vk::push_constant]]
@@ -33,17 +31,6 @@ VertexOut vs_main(uint vertexID: SV_VertexID) {
     output.uv = texCoords[vertexID];
 
     return output;
-}
-
-// Narkowicz 2015, fitted curve for the ACES filmic response
-float3 tonemapACES(float3 x) {
-    static const float a = 2.51;
-    static const float b = 0.03;
-    static const float c = 2.43;
-    static const float d = 0.59;
-    static const float e = 0.14;
-
-    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
 }
 
 [shader("fragment")]

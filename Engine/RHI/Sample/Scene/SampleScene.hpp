@@ -19,9 +19,6 @@ namespace Crowy
         Vec3 emissive{};
 
         std::filesystem::path albedoMap;
-        std::filesystem::path normalMap;
-        // metallic in B and roughness in G, per the glTF convention
-        std::filesystem::path metallicRoughnessMap;
     };
 
     struct SceneObject {

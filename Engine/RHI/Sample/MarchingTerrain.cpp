@@ -17,8 +17,6 @@ namespace Crowy
     // The CPU never learns the triangle count: a compute pass writes the draw
     // arguments for ExecuteIndirect, and only the counter comes back, late.
     class MarchingTerrain: public App {
-        using App::App;
-
         // the defaults mesh ~99k triangles; this leaves room for cave sliders
         // without reserving the 1.5M the cell count would permit
         static constexpr u32 TRIANGLE_CAPACITY = 600'000;

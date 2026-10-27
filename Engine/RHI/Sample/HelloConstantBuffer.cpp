@@ -5,8 +5,6 @@
 namespace Crowy
 {
     class HelloConstantBuffer: public App {
-        using App::App;
-
         struct SceneData {
             Vec4 offset{0, 0, 0, 0};
         } sceneData;

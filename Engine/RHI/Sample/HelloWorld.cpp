@@ -4,8 +4,6 @@
 namespace Crowy
 {
     class HelloWorld: public App {
-        using App::App;
-
         RHIGraphicsPipelineStateRAII pso;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {

@@ -6,8 +6,6 @@
 namespace Crowy
 {
     class ShadowSampleSpike: public App {
-        using App::App;
-
         static constexpr CStr SHADER_PATH =
             "Engine/RHI/Spike/ShadowSampleSpike.slang";
         // not square, so a width and height swapped anywhere shows

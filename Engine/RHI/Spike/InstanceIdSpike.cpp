@@ -6,8 +6,6 @@
 namespace Crowy
 {
     class InstanceIdSpike: public App {
-        using App::App;
-
         static constexpr u32 ROW_COUNT = 3;
         static constexpr u32 INSTANCES_PER_ROW = 4;
 

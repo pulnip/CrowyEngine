@@ -11,8 +11,6 @@ namespace
 namespace Crowy
 {
     class Checkerboard: public App {
-        using App::App;
-
         RHIComputePipelineStateRAII pso;
         RHITextureRAII checkerboard;
 

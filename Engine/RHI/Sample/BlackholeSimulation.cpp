@@ -305,8 +305,6 @@ namespace Crowy
     };
 
     class BlackholeSimulation: public App {
-        using App::App;
-
         // the g^3 doppler boost drives the disk well past 1, which UNORM clips
         static constexpr auto HDR_FORMAT = RHIPixelFormat::RGBA16_FLOAT;
 
@@ -363,7 +361,6 @@ namespace Crowy
             // brightMask carries the whole disk color, not the excess over the
             // threshold, so adding it at full strength would double the disk
             f32 bloomStrength = 0.2f;
-            f32 exposure = 1.0f;
         };
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {

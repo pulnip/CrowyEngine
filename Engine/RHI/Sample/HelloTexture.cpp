@@ -7,8 +7,6 @@
 namespace Crowy
 {
     class HelloTexture: public App {
-        using App::App;
-
         RHIGraphicsPipelineStateRAII pso;
         RHITextureRAII diffuse;
         RHITextureRAII normal;
