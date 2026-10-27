@@ -21,9 +21,7 @@
 
 namespace Crowy
 {
-    // Named UIContext because UIRenderer::Prepare takes one; the panel is raw
-    // ImGui.
-    struct UIContext {
+    struct OrbitControls {
         // 0 geocentric, 1 heliocentric
         f32 alpha = 0.0f;
         f32 frameLock = 0.0f;
@@ -46,7 +44,7 @@ namespace Crowy
         u32 filled = 0;
         u64 totalTicks = 0;
 
-        UIContext() { bodyEnabled.fill(true); }
+        OrbitControls() { bodyEnabled.fill(true); }
     };
 
     // The origin slides between Earth and the Sun in the shader, not the
@@ -181,8 +179,7 @@ namespace Crowy
         RHIResourceUsage beltResting = RHIResourceUsage::Undefined;
 
         RAII<UIRenderer> uiRenderer;
-        UIContext context;
-        Widget emptyPanel = Column({});
+        OrbitControls context;
 
         f64 pendingSeconds = 0.0;
         f32 viewportWidth = 1.0f, viewportHeight = 1.0f;
@@ -653,15 +650,7 @@ namespace Crowy
                 EnabledMask()
             );
 
-            // pushes the empty window Prepare opens into a corner
-            ImGui::SetNextWindowPos(
-                ImVec2(viewportWidth - 168.0f, 8.0f),
-                ImGuiCond_Always
-            );
-            ImGui::SetNextWindowSize(ImVec2(160.0f, 0.0f), ImGuiCond_Always);
-            ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-
-            uiRenderer->Prepare(cmdList, emptyPanel, context);
+            uiRenderer->Prepare(cmdList);
 
             auto colorAttachment = backBuffer;
             colorAttachment.clearColor = BACKGROUND;
