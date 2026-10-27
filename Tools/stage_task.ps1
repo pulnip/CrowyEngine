@@ -1,8 +1,9 @@
 # The owner's one task in StageEditor, performed over the command port the
-# way a person performs it by hand: go to the street cut, click the street
-# lamp, read it, drag it a meter and turn it a quarter on the gizmo, switch
-# to night, capture. Every step is a property write the panels and the mouse
-# make too; the script asserts each outcome and exits 1 on the first that fails.
+# way a person performs it by hand: the street cut, a click on the street
+# lamp, its row read, a meter east and a quarter turn on the gizmo, night,
+# reloads of the scene file (the same file, a scratch copy, a refused copy,
+# the original), and scene time. Every step is a property write the panels
+# and the mouse make too; the script exits 1 on the first that fails.
 #
 # usage: Tools/stage_task.ps1 [-Out captures/stage-task] [-Exe build/bin/Debug/StageEditor.exe]
 #        [-Backlot ../Backlot] [-Port 27520]
