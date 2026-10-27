@@ -15,12 +15,10 @@ namespace Crowy
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleList,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/HelloConstantBuffer.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleList,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/HelloConstantBuffer.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false

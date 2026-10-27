@@ -632,90 +632,6 @@ struct std::hash<Crowy::RHIShaderDesc> {
 
 namespace Crowy
 {
-    struct RHILegacyFrontendDesc {
-        std::optional<std::span<const RHIVertexElement>> vertexLayout =
-            std::nullopt;
-        RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
-
-        RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
-
-        friend bool operator==(
-            const RHILegacyFrontendDesc& lhs,
-            const RHILegacyFrontendDesc& rhs
-        ) noexcept {
-            if(lhs.vertexLayout.has_value() != rhs.vertexLayout.has_value())
-                return false;
-            if(lhs.vertexLayout.has_value() &&
-               !std::ranges::equal(*lhs.vertexLayout, *rhs.vertexLayout))
-                return false;
-
-            return lhs.topology == rhs.topology &&
-                   lhs.vertexShader == rhs.vertexShader;
-        }
-    };
-
-    struct RHIMeshFrontendDesc {
-        // Amplification Shader
-        std::optional<RHIShaderDesc> amplificationShader = std::nullopt;
-        RHIShaderDesc meshShader;
-
-        friend bool operator==(
-            const RHIMeshFrontendDesc&,
-            const RHIMeshFrontendDesc&
-        ) = default;
-    };
-
-    using RHIPreRasterizerDesc =
-        std::variant<RHILegacyFrontendDesc, RHIMeshFrontendDesc>;
-}
-
-template<>
-struct std::hash<Crowy::RHILegacyFrontendDesc> {
-    std::size_t operator()(
-        const Crowy::RHILegacyFrontendDesc& desc
-    ) const noexcept {
-        using namespace Crowy;
-
-        std::size_t h = 0;
-
-        if(desc.vertexLayout.has_value()) {
-            for(const auto& elm: *desc.vertexLayout) {
-                h = hashAll(h, elm);
-            }
-        }
-
-        return hashAll(h, desc.topology, desc.vertexShader);
-    }
-};
-
-template<>
-struct std::hash<Crowy::RHIMeshFrontendDesc> {
-    std::size_t operator()(
-        const Crowy::RHIMeshFrontendDesc& desc
-    ) const noexcept {
-        using namespace Crowy;
-
-        std::size_t h = desc.amplificationShader.has_value()
-                            ? hashAll(*desc.amplificationShader)
-                            : 0;
-
-        return hashAll(h, desc.meshShader);
-    }
-};
-
-template<>
-struct std::hash<Crowy::RHIPreRasterizerDesc> {
-    std::size_t operator()(
-        const Crowy::RHIPreRasterizerDesc& desc
-    ) const noexcept {
-        using namespace Crowy;
-
-        return std::visit([](const auto& desc) { return hashAll(desc); }, desc);
-    }
-};
-
-namespace Crowy
-{
     enum class RHICullMode : u8 {
         None,
         Front,
@@ -971,10 +887,11 @@ namespace Crowy
     inline constexpr CStr ShaderProfile = "sm_6_8";
 
     struct RHIGraphicsPipelineStateDesc {
-        // Geometry Frontend
-        RHIPreRasterizerDesc preRasterizer;
+        std::optional<std::span<const RHIVertexElement>> vertexLayout =
+            std::nullopt;
+        RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
+        RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
 
-        // Geometry Backend
         RHIRasterizerState rasterizer = {};
         // absent: no fragment stage, and renderTargetCount must be 0
         std::optional<RHIShaderDesc> fragmentShader = std::nullopt;
@@ -1005,7 +922,14 @@ namespace Crowy
                     return false;
             }
 
-            return lhs.preRasterizer == rhs.preRasterizer &&
+            if(lhs.vertexLayout.has_value() != rhs.vertexLayout.has_value())
+                return false;
+            if(lhs.vertexLayout.has_value() &&
+               !std::ranges::equal(*lhs.vertexLayout, *rhs.vertexLayout))
+                return false;
+
+            return lhs.topology == rhs.topology &&
+                   lhs.vertexShader == rhs.vertexShader &&
                    lhs.rasterizer == rhs.rasterizer &&
                    lhs.fragmentShader == rhs.fragmentShader &&
                    lhs.depthStencil == rhs.depthStencil &&
@@ -1027,8 +951,16 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc> {
     ) const noexcept {
         using namespace Crowy;
 
-        std::size_t h = hashAll(
-            desc.preRasterizer,
+        std::size_t h = 0;
+        if(desc.vertexLayout.has_value()) {
+            for(const auto& elm: *desc.vertexLayout) {
+                h = hashAll(h, elm);
+            }
+        }
+        h = hashAll(
+            h,
+            desc.topology,
+            desc.vertexShader,
             desc.rasterizer,
             desc.profile ? StrView{desc.profile} : StrView{}
         );

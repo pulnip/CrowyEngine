@@ -178,14 +178,13 @@ namespace Crowy
     ){
         validateGraphicsPipelineDesc(desc);
 
-        auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
-        primitiveTopology = ::convert(frontend.topology);
+        primitiveTopology = ::convert(desc.topology);
 
         // Input Layout
         std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
-        if(frontend.vertexLayout.has_value()){
-            primitiveTopology = ::convert(frontend.topology);
-            const auto& vertexLayout = frontend.vertexLayout.value();
+        if(desc.vertexLayout.has_value()){
+            primitiveTopology = ::convert(desc.topology);
+            const auto& vertexLayout = desc.vertexLayout.value();
 
             elements.resize(vertexLayout.size());
             for(usize i=0; i<vertexLayout.size(); ++i){
@@ -206,13 +205,13 @@ namespace Crowy
 
         // Vertex Shader
         RHIShader shaderProgram{
-            frontend.vertexShader.path,
+            desc.vertexShader.path,
             RHIBackend::DirectX12,
             desc.profile,
             desc.linkedModules
         };
         auto vertexShader = shaderProgram.GetEntryPointCode(
-            frontend.vertexShader.entryPoint
+            desc.vertexShader.entryPoint
         );
 
         // RasterizerState
@@ -235,7 +234,7 @@ namespace Crowy
         if(desc.fragmentShader.has_value()){
             const auto& fragmentShader = desc.fragmentShader.value();
 
-            if(frontend.vertexShader.path != fragmentShader.path){
+            if(desc.vertexShader.path != fragmentShader.path){
                 shaderProgram = RHIShader(
                     fragmentShader.path,
                     RHIBackend::DirectX12,

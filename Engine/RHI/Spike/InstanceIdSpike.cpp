@@ -30,12 +30,10 @@ namespace Crowy
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Spike/InstanceIdSpike.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = "Engine/RHI/Spike/InstanceIdSpike.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader = RHIShaderDesc{

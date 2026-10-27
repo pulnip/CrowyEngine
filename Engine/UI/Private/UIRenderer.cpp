@@ -147,13 +147,11 @@ namespace Crowy
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-            .preRasterizer = RHILegacyFrontendDesc{
-                .vertexLayout = UI_VERTEX_LAYOUT,
-                .topology = RHIPrimitiveTopology::TriangleList,
-                .vertexShader = {
-                    .path = "Engine/Shader/UI.slang",
-                    .entryPoint = "vs_main"
-                }
+            .vertexLayout = UI_VERTEX_LAYOUT,
+            .topology = RHIPrimitiveTopology::TriangleList,
+            .vertexShader = {
+                .path = "Engine/Shader/UI.slang",
+                .entryPoint = "vs_main"
             },
             .rasterizer = RHIRasterizerState{
                 .cullMode = RHICullMode::None

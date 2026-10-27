@@ -61,12 +61,10 @@ namespace Crowy
     public:
         void Init(RHIDevice& device, RHITexture& source) {
             RHIGraphicsPipelineStateDesc desc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/Bloom.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/Bloom.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
@@ -349,12 +347,10 @@ namespace Crowy
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             diskGenerator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/BlackholeDisk.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/BlackholeDisk.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
@@ -379,12 +375,10 @@ namespace Crowy
             });
 
             blackholeSimulator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/Blackhole.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/Blackhole.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false
@@ -408,12 +402,10 @@ namespace Crowy
             bloomPass.Init(device, *brightMask);
 
             composite = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/Composite.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/Composite.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false

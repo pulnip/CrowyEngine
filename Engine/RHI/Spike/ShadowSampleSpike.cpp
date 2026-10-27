@@ -49,11 +49,8 @@ namespace Crowy
             CStr fragmentEntry
         ) {
             return RHIGraphicsPipelineStateDesc{
-                .preRasterizer =
-                    RHILegacyFrontendDesc{
-                        .vertexShader =
-                            {.path = SHADER_PATH, .entryPoint = "vs_fullscreen"}
-                    },
+                .vertexShader =
+                    {.path = SHADER_PATH, .entryPoint = "vs_fullscreen"},
                 .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader =
                     RHIShaderDesc{
@@ -82,11 +79,8 @@ namespace Crowy
 
             writeDepth = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
-                    .preRasterizer =
-                        RHILegacyFrontendDesc{
-                            .vertexShader =
-                                {.path = SHADER_PATH, .entryPoint = "vs_shapes"}
-                        },
+                    .vertexShader =
+                        {.path = SHADER_PATH, .entryPoint = "vs_shapes"},
                     .rasterizer =
                         RHIRasterizerState{.cullMode = RHICullMode::None},
                     .depthStencil =

@@ -39,14 +39,11 @@ namespace Crowy
             const HookPassFormats& formats
         ) {
             RHIGraphicsPipelineStateDesc desc{
-                .preRasterizer =
-                    RHILegacyFrontendDesc{
-                        .topology = RHIPrimitiveTopology::TriangleStrip,
-                        .vertexShader =
-                            RHIShaderDesc{
-                                .path = effect.shader,
-                                .entryPoint = "vs_" + draw.entry
-                            }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader =
+                    RHIShaderDesc{
+                        .path = effect.shader,
+                        .entryPoint = "vs_" + draw.entry
                     },
                 .rasterizer =
                     RHIRasterizerState{.cullMode = RHICullMode::None},

@@ -1467,9 +1467,8 @@ TEST(FramePipeline, FullscreenPassPushesItsReadsInOrder) {
 
     // vs_main from the fragment shader's own file, cull none, no depth
     const auto& key = f.device.pipelineCreates.back();
-    const auto& frontend = std::get<RHILegacyFrontendDesc>(key.preRasterizer);
-    EXPECT_TRUE(frontend.vertexShader.path == compositeShader.path);
-    EXPECT_EQ(frontend.vertexShader.entryPoint, "vs_main");
+    EXPECT_TRUE(key.vertexShader.path == compositeShader.path);
+    EXPECT_EQ(key.vertexShader.entryPoint, "vs_main");
     EXPECT_TRUE(key.fragmentShader == compositeShader);
     EXPECT_EQ(key.rasterizer.cullMode, RHICullMode::None);
     EXPECT_FALSE(key.depthStencil.has_value());

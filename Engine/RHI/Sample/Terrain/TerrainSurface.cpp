@@ -15,10 +15,8 @@ namespace{
     ){
         return RHIGraphicsPipelineStateDesc{
             // no vertex layout: vertices are pulled by SV_VertexID
-            .preRasterizer = RHILegacyFrontendDesc{
-                .topology = RHIPrimitiveTopology::TriangleList,
-                .vertexShader = {.path = SHADER_PATH, .entryPoint = "vs_main"}
-            },
+            .topology = RHIPrimitiveTopology::TriangleList,
+            .vertexShader = {.path = SHADER_PATH, .entryPoint = "vs_main"},
             .rasterizer = RHIRasterizerState{
                 .fillMode = fillMode,
                 // left-handed, so the right-hand normal is the front face

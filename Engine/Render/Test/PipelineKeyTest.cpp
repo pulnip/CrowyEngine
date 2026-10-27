@@ -107,9 +107,9 @@ TEST(PipelineKey, VertexLayoutComparesItsElements) {
         .instanceDataStepRate = 0
     }};
 
-    const RHILegacyFrontendDesc lhs{.vertexLayout = layout};
-    const RHILegacyFrontendDesc rhs{.vertexLayout = sameLayout};
-    const RHILegacyFrontendDesc none{};
+    const RHIGraphicsPipelineStateDesc lhs{.vertexLayout = layout};
+    const RHIGraphicsPipelineStateDesc rhs{.vertexLayout = sameLayout};
+    const RHIGraphicsPipelineStateDesc none{};
 
     ASSERT_NE(layout[0].semanticName, sameLayout[0].semanticName);
     EXPECT_EQ(lhs, rhs);
@@ -148,8 +148,7 @@ TEST(PipelineKey, MeshAttributesDoNotReachTheKey) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
     const auto desc = Compose(OpaqueMaterial(), BasePass(formats));
 
-    const auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
-    EXPECT_FALSE(frontend.vertexLayout.has_value());
+    EXPECT_FALSE(desc.vertexLayout.has_value());
 }
 
 // The reason MaterialPipelineDesc carries no render target state: the same
@@ -302,7 +301,8 @@ TEST(PipelineKey, OneMaterialKeysApartInTwoPasses) {
     const auto opaqueDesc = Compose(OpaqueMaterial(), opaque);
 
     EXPECT_NE(prepassDesc, opaqueDesc);
-    EXPECT_EQ(prepassDesc.preRasterizer, opaqueDesc.preRasterizer);
+    EXPECT_EQ(prepassDesc.topology, opaqueDesc.topology);
+    EXPECT_EQ(prepassDesc.vertexShader, opaqueDesc.vertexShader);
     ASSERT_TRUE(prepassDesc.depthStencil.has_value());
     EXPECT_EQ(prepassDesc.depthStencil->depthFunc, RHIComparisonFunc::Less);
     EXPECT_TRUE(prepassDesc.depthStencil->depthWriteEnable);

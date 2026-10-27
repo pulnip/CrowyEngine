@@ -173,9 +173,8 @@ TEST(EffectSystem, DrawsAStripPerParticle) {
 
     ASSERT_EQ(f.device.pipelineCreates.size(), 2u);
     const auto& glow = f.device.pipelineCreates[0];
-    const auto& frontend = std::get<RHILegacyFrontendDesc>(glow.preRasterizer);
-    EXPECT_EQ(frontend.topology, RHIPrimitiveTopology::TriangleStrip);
-    EXPECT_EQ(frontend.vertexShader.entryPoint, "vs_glow");
+    EXPECT_EQ(glow.topology, RHIPrimitiveTopology::TriangleStrip);
+    EXPECT_EQ(glow.vertexShader.entryPoint, "vs_glow");
     EXPECT_EQ(glow.fragmentShader->entryPoint, "fs_glow");
     EXPECT_EQ(glow.rasterizer.cullMode, RHICullMode::None);
     ASSERT_TRUE(glow.depthStencil.has_value());

@@ -22,12 +22,10 @@ namespace Crowy
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/HelloTexture.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/HelloTexture.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false

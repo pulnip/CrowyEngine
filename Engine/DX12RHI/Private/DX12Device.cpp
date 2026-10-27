@@ -669,17 +669,12 @@ namespace Crowy
             const RHIGraphicsPipelineStateDesc& desc,
             StrView name
         ){
-            if(std::get_if<RHILegacyFrontendDesc>(&desc.preRasterizer)){
-                return std::make_unique<DX12GraphicsPipelineState>(
-                    *device.Get(),
-                    desc,
-                    *globalRootSignature.Get(),
-                    name
-                );
-            }
-            else{
-                throw std::runtime_error("Unimplemented");
-            }
+            return std::make_unique<DX12GraphicsPipelineState>(
+                *device.Get(),
+                desc,
+                *globalRootSignature.Get(),
+                name
+            );
         }
 
         RAII<DX12ComputePipelineState> CreatePipelineState(

@@ -255,12 +255,10 @@ namespace Crowy
             RHIPixelFormat format
         ){
             return RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .topology = RHIPrimitiveTopology::TriangleStrip,
-                    .vertexShader = {
-                        .path = path,
-                        .entryPoint = vertexEntry
-                    }
+                .topology = RHIPrimitiveTopology::TriangleStrip,
+                .vertexShader = {
+                    .path = path,
+                    .entryPoint = vertexEntry
                 },
                 .rasterizer = RHIRasterizerState{
                     .cullMode = RHICullMode::None

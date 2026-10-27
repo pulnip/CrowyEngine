@@ -2,7 +2,6 @@
 
 #include <format>
 #include <stdexcept>
-#include <variant>
 
 #include "PathUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -18,13 +17,10 @@ namespace Crowy
             return;
         }
 
-        // both backends refuse a mesh frontend before they construct a pipeline
-        const auto& frontend =
-            std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
         throw std::runtime_error(
             std::format(
                 "a pipeline with render targets needs a fragment shader ({})",
-                frontend.vertexShader.path
+                desc.vertexShader.path
             )
         );
     }

@@ -299,13 +299,10 @@ namespace Crowy
             std::span<const RHIPixelFormat> formats
         ) {
             RHIGraphicsPipelineStateDesc desc{
-                .preRasterizer =
-                    RHILegacyFrontendDesc{
-                        .vertexShader =
-                            RHIShaderDesc{
-                                .path = fullscreen.fragmentShader.path,
-                                .entryPoint = "vs_main"
-                            }
+                .vertexShader =
+                    RHIShaderDesc{
+                        .path = fullscreen.fragmentShader.path,
+                        .entryPoint = "vs_main"
                     },
                 .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader = fullscreen.fragmentShader,

@@ -21,8 +21,7 @@ namespace
     ) {
         using namespace Crowy;
 
-        const auto& vertex =
-            std::get<RHILegacyFrontendDesc>(desc.preRasterizer).vertexShader;
+        const auto& vertex = desc.vertexShader;
         if(!desc.fragmentShader) {
             return std::format(
                 "{} ({})",
@@ -69,13 +68,10 @@ namespace Crowy
         );
 
         RHIGraphicsPipelineStateDesc desc{
-            .preRasterizer =
-                RHILegacyFrontendDesc{
-                    // no vertex layout: vertices are pulled by SV_VertexID, so
-                    // a mesh's attribute set never reaches the pipeline key
-                    .topology = material.topology,
-                    .vertexShader = material.vertexShader
-                },
+            // no vertex layout: vertices are pulled by SV_VertexID, so
+            // a mesh's attribute set never reaches the pipeline key
+            .topology = material.topology,
+            .vertexShader = material.vertexShader,
             .rasterizer = material.rasterizer,
             // always present, even when the pass overrides it: without it
             // Metal loses the depth format and D3D12 gets DSVFormat UNKNOWN

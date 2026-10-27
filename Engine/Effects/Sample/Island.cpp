@@ -435,14 +435,11 @@ namespace Crowy
             constexpr CStr SkyShader = "Engine/Effects/Sample/Island/Sky.slang";
 
             RHIGraphicsPipelineStateDesc desc{
-                .preRasterizer =
-                    RHILegacyFrontendDesc{
-                        .topology = RHIPrimitiveTopology::TriangleList,
-                        .vertexShader =
-                            RHIShaderDesc{
-                                .path = SkyShader,
-                                .entryPoint = "vs_sky"
-                            }
+                .topology = RHIPrimitiveTopology::TriangleList,
+                .vertexShader =
+                    RHIShaderDesc{
+                        .path = SkyShader,
+                        .entryPoint = "vs_sky"
                     },
                 .rasterizer =
                     RHIRasterizerState{.cullMode = RHICullMode::None},

@@ -103,14 +103,11 @@ namespace Crowy
             // regardless of how the sphere and the plane happen to overlap
             skyPSO = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
-                    .preRasterizer =
-                        RHILegacyFrontendDesc{
-                            .vertexLayout = VertexInputLayout,
-                            .topology = RHIPrimitiveTopology::TriangleList,
-                            .vertexShader =
-                                {.path = "Engine/RHI/Sample/Skybox.slang",
-                                 .entryPoint = "vs_main"}
-                        },
+                    .vertexLayout = VertexInputLayout,
+                    .topology = RHIPrimitiveTopology::TriangleList,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/Skybox.slang",
+                         .entryPoint = "vs_main"},
                     .rasterizer =
                         RHIRasterizerState{.frontCounterClockwise = false},
                     .fragmentShader =
@@ -130,13 +127,11 @@ namespace Crowy
             );
 
             floorPSO = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .preRasterizer = RHILegacyFrontendDesc{
-                    .vertexLayout = VertexInputLayout,
-                    .topology = RHIPrimitiveTopology::TriangleList,
-                    .vertexShader = {
-                        .path = "Engine/RHI/Sample/SkyboxFloor.slang",
-                        .entryPoint = "vs_main"
-                    }
+                .vertexLayout = VertexInputLayout,
+                .topology = RHIPrimitiveTopology::TriangleList,
+                .vertexShader = {
+                    .path = "Engine/RHI/Sample/SkyboxFloor.slang",
+                    .entryPoint = "vs_main"
                 },
                 .rasterizer = RHIRasterizerState{
                     .frontCounterClockwise = false

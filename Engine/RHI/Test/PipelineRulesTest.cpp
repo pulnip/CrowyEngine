@@ -13,12 +13,8 @@ namespace
     // one render target and a fragment stage, as every color pass has
     RHIGraphicsPipelineStateDesc colorDesc() {
         return RHIGraphicsPipelineStateDesc{
-            .preRasterizer =
-                RHILegacyFrontendDesc{
-                    .vertexShader =
-                        {.path = "Engine/Shader/X.slang",
-                         .entryPoint = "vs_main"}
-                },
+            .vertexShader =
+                {.path = "Engine/Shader/X.slang", .entryPoint = "vs_main"},
             .fragmentShader =
                 RHIShaderDesc{
                     .path = "Engine/Shader/X.slang",

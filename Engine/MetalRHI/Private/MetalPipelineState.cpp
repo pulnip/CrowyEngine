@@ -214,15 +214,14 @@ namespace Crowy
 
         AutoreleasePoolScope _;
 
-        auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
         auto pipelineDesc = NS::TransferPtr(
             MTL::RenderPipelineDescriptor::alloc()->init()
         );
-        topology = convert(frontend.topology);
+        topology = convert(desc.topology);
 
         // Vertex Layout
-        if(frontend.vertexLayout.has_value()){
-            const auto& vertexLayout = frontend.vertexLayout.value();
+        if(desc.vertexLayout.has_value()){
+            const auto& vertexLayout = desc.vertexLayout.value();
             auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
             std::array<NS::UInteger, MaxVertexBufferSlots> strides{};
 
@@ -259,8 +258,8 @@ namespace Crowy
         NS::SharedPtr<MTL::Library> library;
         // Vertex Shader
         {
-            const auto& filePath = frontend.vertexShader.path;
-            const auto& entryPoint = frontend.vertexShader.entryPoint;
+            const auto& filePath = desc.vertexShader.path;
+            const auto& entryPoint = desc.vertexShader.entryPoint;
 
             RHIShader shaderProgram{
                 filePath,
@@ -323,7 +322,7 @@ namespace Crowy
 
         // Fragment Shader
         if(desc.fragmentShader &&
-            desc.fragmentShader->path != frontend.vertexShader.path
+            desc.fragmentShader->path != desc.vertexShader.path
         ){
             const auto& filePath = desc.fragmentShader->path;
 
