@@ -980,17 +980,17 @@ namespace Crowy
         return impl->CreateFrameScope();
     }
 
-    RHIBufferRAII DX12Device::CreateBuffer(
+    RHIBufferRAII DX12Device::createBuffer(
         const RHIBufferCreateDesc& desc,
         StrView name
-    ){
+    ) {
         return impl->CreateBuffer(desc, name);
     }
 
-    RHITextureRAII DX12Device::CreateTexture(
+    RHITextureRAII DX12Device::createTexture(
         const RHITextureCreateDesc& desc,
         StrView name
-    ){
+    ) {
         return impl->CreateTexture(desc, name);
     }
 

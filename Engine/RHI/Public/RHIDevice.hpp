@@ -21,15 +21,6 @@ namespace Crowy
 
         virtual RHIFrameScopeRAII CreateFrameScope() = 0;
 
-        virtual RHIBufferRAII CreateBuffer(
-            const RHIBufferCreateDesc&,
-            StrView name = {}
-        ) = 0;
-        virtual RHITextureRAII CreateTexture(
-            const RHITextureCreateDesc&,
-            StrView name = {}
-        ) = 0;
-
         virtual RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
@@ -79,6 +70,15 @@ namespace Crowy
         virtual RHIBufferSlice AllocateTransient(u32 size, u32 align) = 0;
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
 
+        RHIBufferRAII CreateBuffer(
+            const RHIBufferCreateDesc& desc,
+            StrView name = {}
+        );
+        RHITextureRAII CreateTexture(
+            const RHITextureCreateDesc& desc,
+            StrView name = {}
+        );
+
         void Retire(RHIBufferRAII buffer);
         void Retire(RHITextureRAII texture);
         void Retire(RHIGraphicsPipelineStateRAII state);
@@ -106,6 +106,16 @@ namespace Crowy
 
             return slice;
         }
+
+    private:
+        virtual RHIBufferRAII createBuffer(
+            const RHIBufferCreateDesc&,
+            StrView name
+        ) = 0;
+        virtual RHITextureRAII createTexture(
+            const RHITextureCreateDesc&,
+            StrView name
+        ) = 0;
     };
 
 #if defined(_WIN32)

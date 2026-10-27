@@ -259,7 +259,7 @@ namespace Crowy
         return idx;
     }
 
-    u64 DX12Texture::GetReadableID(const RHITextureViewDesc& desc){
+    u64 DX12Texture::readableIDOf(const RHITextureViewDesc& desc) {
         CROWY_ASSERT(!isDepthFormat(GetFormat()) || desc.format == GetFormat(),
             "a depth texture is read through a view of its own depth format"
         );
@@ -303,7 +303,7 @@ namespace Crowy
         return idx;
     }
 
-    u64 DX12Texture::GetWritableID(const RHITextureViewDesc& desc){
+    u64 DX12Texture::writableIDOf(const RHITextureViewDesc& desc) {
         if(auto it = uavs.find(desc); it != uavs.end())
             return it->second;
 

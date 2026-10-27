@@ -49,8 +49,6 @@ namespace Crowy
     class FakeBuffer final: public RHIBuffer {
     public:
         using Bytes = std::vector<std::byte>;
-        using RHIBuffer::GetReadableID;
-        using RHIBuffer::GetWritableID;
 
         // the id every readable view of this buffer answers
         static constexpr u64 ReadableID = 0xB0FF;
@@ -62,28 +60,10 @@ namespace Crowy
         explicit FakeBuffer(u32 size, u64 writableID = 0)
             : bytes(size), writableID(writableID) {}
 
-        void Upload(const void* data, u32 size, u32 offset) override {
-            CROWY_ASSERT(offset + size <= bytes.size());
-
-            std::memcpy(bytes.data() + offset, data, size);
-        }
-        void Download(void* data, u32 size, u32 offset) override {
-            CROWY_ASSERT(offset + size <= bytes.size());
-
-            std::memcpy(data, bytes.data() + offset, size);
-        }
         u32 GetSize() const noexcept override {
             return static_cast<u32>(bytes.size());
         }
         void* GetMappedPtr() noexcept override { return bytes.data(); }
-        u64 GetReadableID(const RHIBufferViewDesc&) override {
-            return ReadableID;
-        }
-        u64 GetWritableID(const RHIBufferViewDesc&) override {
-            CROWY_ASSERT(writableID != 0, "a buffer made without shaderWrite");
-
-            return writableID;
-        }
 
         // the element at this byte offset
         template<typename T>
@@ -95,6 +75,16 @@ namespace Crowy
             std::memcpy(&value, bytes.data() + offset, sizeof(T));
 
             return value;
+        }
+
+    private:
+        u64 readableIDOf(const RHIBufferViewDesc&) override {
+            return ReadableID;
+        }
+        u64 writableIDOf(const RHIBufferViewDesc&) override {
+            CROWY_ASSERT(writableID != 0, "a buffer made without shaderWrite");
+
+            return writableID;
         }
     };
 
@@ -111,9 +101,6 @@ namespace Crowy
         u32* destroyed = nullptr;
 
     public:
-        using RHITexture::GetReadableID;
-        using RHITexture::GetWritableID;
-
         ~FakeTexture() override {
             if(destroyed != nullptr)
                 ++*destroyed;
@@ -136,13 +123,15 @@ namespace Crowy
         u32 GetWidth() const noexcept override { return width; }
         u32 GetHeight() const noexcept override { return height; }
         u32 GetDepth() const noexcept override { return 1; }
-        u64 GetReadableID(const RHITextureViewDesc&) override {
+        void* GetNative() noexcept override { return nullptr; }
+
+    private:
+        u64 readableIDOf(const RHITextureViewDesc&) override {
             return readableID;
         }
-        u64 GetWritableID(const RHITextureViewDesc&) override {
+        u64 writableIDOf(const RHITextureViewDesc&) override {
             return readableID | WritableBit;
         }
-        void* GetNative() noexcept override { return nullptr; }
     };
 
     // compiles nothing; a deferred retire waits in `deferred` until the test
@@ -191,33 +180,6 @@ namespace Crowy
         u32 transientAllocations = 0;
 
         RHIFrameScopeRAII CreateFrameScope() override { std::terminate(); }
-        RHIBufferRAII CreateBuffer(
-            const RHIBufferCreateDesc& desc,
-            StrView
-        ) override {
-            const auto writableID =
-                desc.shaderWrite ? FirstWritableBufferID + bufferCreates.size()
-                                 : 0;
-            bufferCreates.push_back(desc);
-
-            return std::make_unique<FakeBuffer>(desc.size, writableID);
-        }
-        RHITextureRAII CreateTexture(
-            const RHITextureCreateDesc& desc,
-            StrView
-        ) override {
-            const auto id = FirstTextureID + textureCreates.size();
-            textureCreates.push_back(desc);
-
-            return std::make_unique<FakeTexture>(
-                desc.format,
-                desc.width,
-                desc.height,
-                id,
-                &texturesDestroyed
-            );
-        }
-
         RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             StrView
@@ -290,6 +252,34 @@ namespace Crowy
         void RunDeferred() {
             for(auto& reclaim: std::exchange(deferred, Reclaims{}))
                 reclaim();
+        }
+
+    private:
+        RHIBufferRAII createBuffer(
+            const RHIBufferCreateDesc& desc,
+            StrView
+        ) override {
+            const auto writableID =
+                desc.shaderWrite ? FirstWritableBufferID + bufferCreates.size()
+                                 : 0;
+            bufferCreates.push_back(desc);
+
+            return std::make_unique<FakeBuffer>(desc.size, writableID);
+        }
+        RHITextureRAII createTexture(
+            const RHITextureCreateDesc& desc,
+            StrView
+        ) override {
+            const auto id = FirstTextureID + textureCreates.size();
+            textureCreates.push_back(desc);
+
+            return std::make_unique<FakeTexture>(
+                desc.format,
+                desc.width,
+                desc.height,
+                id,
+                &texturesDestroyed
+            );
         }
     };
 }

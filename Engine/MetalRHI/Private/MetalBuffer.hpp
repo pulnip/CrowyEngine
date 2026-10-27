@@ -27,32 +27,20 @@ namespace Crowy
         );
         ~MetalBuffer();
 
-        void Upload(
-            const void* data,
-            u32 size,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
-        void Download(
-            void* data,
-            u32 size,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
         u32 GetSize() const noexcept RHI_OVERRIDE{ return size; }
 
         void* GetMappedPtr() noexcept RHI_OVERRIDE{ return mapped; }
 
-        u64 GetReadableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
-            return getResourceID(view);
-        }
-        u64 GetWritableID(const RHIBufferViewDesc& view) RHI_OVERRIDE{
-            return getResourceID(view);
-        }
-
-        MTL::Buffer* Get() noexcept{ return buffer; }
+        MTL::Buffer* Get() noexcept { return buffer; }
 
     private:
+        u64 readableIDOf(const RHIBufferViewDesc& view) RHI_OVERRIDE {
+            return getResourceID(view);
+        }
+        u64 writableIDOf(const RHIBufferViewDesc& view) RHI_OVERRIDE {
+            return getResourceID(view);
+        }
+
         u64 getResourceID(const RHIBufferViewDesc&);
     };
 }

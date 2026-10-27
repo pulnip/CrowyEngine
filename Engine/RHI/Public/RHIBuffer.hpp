@@ -1,9 +1,13 @@
 #pragma once
 
+#include <cstring>
 #include <type_traits>
 
+#include "Assert.hpp"
+#include "PtrUtil.hpp"
 #include "RHIDefinitions.hpp"
 #include "Semantics.hpp"
+#include "VariantUtil.hpp"
 
 namespace Crowy
 {
@@ -11,8 +15,9 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE(RHIBuffer)
 
-        // Notice! only valid for upload buffer
-        virtual void Upload(const void* data, u32 size, u32 offset = 0) = 0;
+        void Upload(const void* data, u32 size, u32 offset = 0) {
+            std::memcpy(mappedRange(size, offset), data, size);
+        }
 
         template<typename T>
             requires(!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
@@ -20,8 +25,9 @@ namespace Crowy
             Upload(&data, sizeof(T), offset);
         }
 
-        // Notice! only valid for readback buffer (performance issue)
-        virtual void Download(void* data, u32 size, u32 offset = 0) = 0;
+        void Download(void* data, u32 size, u32 offset = 0) {
+            std::memcpy(data, mappedRange(size, offset), size);
+        }
 
         template<typename T>
             requires(!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
@@ -35,7 +41,11 @@ namespace Crowy
         // Feeds RHIBufferSlice::cpuPtr; prefer Upload/Download elsewhere.
         virtual void* GetMappedPtr() noexcept = 0;
 
-        virtual u64 GetReadableID(const RHIBufferViewDesc&) = 0;
+        u64 GetReadableID(const RHIBufferViewDesc& view) {
+            checkView(view);
+
+            return readableIDOf(view);
+        }
         u64 GetReadableID() {
             return GetReadableID(
                 RHIBufferViewDesc{
@@ -64,7 +74,11 @@ namespace Crowy
             );
         }
         // Unordered Access
-        virtual u64 GetWritableID(const RHIBufferViewDesc&) = 0;
+        u64 GetWritableID(const RHIBufferViewDesc& view) {
+            checkView(view);
+
+            return writableIDOf(view);
+        }
         u64 GetWritableID() {
             return GetWritableID(
                 RHIBufferViewDesc{
@@ -90,6 +104,57 @@ namespace Crowy
                     .size = GetSize(),
                     .config = RHIBufferViewDesc::Structured{.stride = stride}
                 }
+            );
+        }
+
+    private:
+        virtual u64 readableIDOf(const RHIBufferViewDesc&) = 0;
+        virtual u64 writableIDOf(const RHIBufferViewDesc&) = 0;
+
+        void* mappedRange(u32 size, u32 offset) {
+            auto* mapped = GetMappedPtr();
+            CROWY_ASSERT(mapped != nullptr, "the CPU cannot reach this buffer");
+            CROWY_ASSERT(
+                offset <= GetSize() && size <= GetSize() - offset,
+                "[{}, {}) runs past the {}-byte buffer",
+                offset,
+                u64{offset} + size,
+                GetSize()
+            );
+
+            return ptrAdd(mapped, offset);
+        }
+
+        void checkView(const RHIBufferViewDesc& view) const {
+            const auto elementSize = std::visit(
+                overload{
+                    [](const RHIBufferViewDesc::Raw&) { return 4u; },
+                    [](const RHIBufferViewDesc::Typed& typed) {
+                        return detail::getBytesPerPixel(typed.format);
+                    },
+                    [](const RHIBufferViewDesc::Structured& structured) {
+                        return structured.stride;
+                    }
+                },
+                view.config
+            );
+            CROWY_ASSERT(
+                elementSize > 0,
+                "a buffer view needs an element size"
+            );
+            CROWY_ASSERT(
+                view.offset % elementSize == 0,
+                "buffer view offset {} does not land on a {}-byte element",
+                view.offset,
+                elementSize
+            );
+            CROWY_ASSERT(
+                view.offset <= GetSize() &&
+                    view.size <= GetSize() - view.offset,
+                "buffer view [{}, {}) runs past the {}-byte buffer",
+                view.offset,
+                u64{view.offset} + view.size,
+                GetSize()
             );
         }
     };

@@ -19,15 +19,6 @@ namespace Crowy
 
         RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE;
 
-        RHIBufferRAII CreateBuffer(
-            const RHIBufferCreateDesc&,
-            StrView name = {}
-        ) RHI_OVERRIDE;
-        RHITextureRAII CreateTexture(
-            const RHITextureCreateDesc&,
-            StrView name = {}
-        ) RHI_OVERRIDE;
-
         RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
@@ -61,5 +52,15 @@ namespace Crowy
         RHIBufferSlice AllocateTransient(u32 size, u32 align) RHI_OVERRIDE;
 
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
+
+    private:
+        RHIBufferRAII createBuffer(
+            const RHIBufferCreateDesc&,
+            StrView name
+        ) RHI_OVERRIDE;
+        RHITextureRAII createTexture(
+            const RHITextureCreateDesc&,
+            StrView name
+        ) RHI_OVERRIDE;
     };
 }

@@ -27,18 +27,6 @@ namespace
     public:
         RHIFrameScopeRAII CreateFrameScope() override { return nullptr; }
 
-        RHIBufferRAII CreateBuffer(
-            const RHIBufferCreateDesc&,
-            StrView
-        ) override {
-            return nullptr;
-        }
-        RHITextureRAII CreateTexture(
-            const RHITextureCreateDesc&,
-            StrView
-        ) override {
-            return nullptr;
-        }
         RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView
@@ -79,6 +67,20 @@ namespace
         void DeferRetire(std::move_only_function<void()>) override {}
         RHIBufferSlice AllocateTransient(u32, u32) override { return {}; }
         RHICapabilities GetCapabilities() const noexcept override { return {}; }
+
+    private:
+        RHIBufferRAII createBuffer(
+            const RHIBufferCreateDesc&,
+            StrView
+        ) override {
+            return nullptr;
+        }
+        RHITextureRAII createTexture(
+            const RHITextureCreateDesc&,
+            StrView
+        ) override {
+            return nullptr;
+        }
     };
 
     void runFrames(FramePacer& pacer, FakeSwapchain& swapchain, u64 count) {

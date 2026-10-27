@@ -52,24 +52,21 @@ namespace Crowy
         using RHITexture::GetHeight;
         using RHITexture::GetDepth;
 
+        auto Get() { return texture.get(); }
 
-        u64 GetReadableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+        virtual void* GetNative() noexcept RHI_OVERRIDE { return Get(); }
+
+    private:
+        u64 readableIDOf(const RHITextureViewDesc& view) RHI_OVERRIDE {
             CROWY_ASSERT(!isDepthFormat(GetFormat()) || view.format == GetFormat(),
                 "a depth texture is read through a view of its own depth format"
             );
             return getResourceID(view);
         }
-        u64 GetWritableID(const RHITextureViewDesc& view) RHI_OVERRIDE{
+        u64 writableIDOf(const RHITextureViewDesc& view) RHI_OVERRIDE {
             return getResourceID(view);
         }
 
-        auto Get(){ return texture.get(); }
-
-        virtual void* GetNative() noexcept RHI_OVERRIDE{
-            return Get();
-        }
-
-    private:
         u64 getResourceID(const RHITextureViewDesc&);
     };
 }

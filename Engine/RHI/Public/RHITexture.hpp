@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <variant>
 
 #include "Assert.hpp"
 #include "Primitives.hpp"
@@ -52,9 +53,27 @@ namespace Crowy
         u32 GetArraySize() const noexcept { return arraySize; }
         // a depth texture reads through its own depth format, as
         // Texture2D<float> whose .r is the depth
-        virtual u64 GetReadableID(const RHITextureViewDesc&) = 0;
+        u64 GetReadableID(const RHITextureViewDesc& view) {
+            CROWY_ASSERT(
+                !isDepthFormat(GetFormat()) || view.format == GetFormat(),
+                "a depth texture is read through a view of its own depth format"
+            );
+            checkMip(view);
+
+            return readableIDOf(view);
+        }
         // Unordered Access
-        virtual u64 GetWritableID(const RHITextureViewDesc&) = 0;
+        u64 GetWritableID(const RHITextureViewDesc& view) {
+            CROWY_ASSERT(
+                !std::holds_alternative<RHITextureViewDesc::TexCube>(
+                    view.config
+                ),
+                "cube unordered access views do not exist"
+            );
+            checkMip(view);
+
+            return writableIDOf(view);
+        }
 
         u64 GetReadableID() {
             return GetReadableID(
@@ -98,6 +117,18 @@ namespace Crowy
         }
 
     private:
+        virtual u64 readableIDOf(const RHITextureViewDesc&) = 0;
+        virtual u64 writableIDOf(const RHITextureViewDesc&) = 0;
+
+        void checkMip(const RHITextureViewDesc& view) const {
+            CROWY_ASSERT(
+                view.mostDetailedMip < GetMipLevels(),
+                "view's most detailed mip {} is past the texture's {} mips",
+                view.mostDetailedMip,
+                GetMipLevels()
+            );
+        }
+
         // a 3D texture's whole-resource view must be 3D-typed
         RHITextureViewDesc::Config DefaultViewConfig() const noexcept {
             return GetDepth() > 1

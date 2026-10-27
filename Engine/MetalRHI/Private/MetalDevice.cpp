@@ -571,17 +571,17 @@ namespace Crowy
         return impl->CreateFrameScope();
     }
 
-    RHIBufferRAII MetalDevice::CreateBuffer(
+    RHIBufferRAII MetalDevice::createBuffer(
         const RHIBufferCreateDesc& desc,
         StrView name
-    ){
+    ) {
         return impl->CreateBuffer(desc, name);
     }
 
-    RHITextureRAII MetalDevice::CreateTexture(
+    RHITextureRAII MetalDevice::createTexture(
         const RHITextureCreateDesc& desc,
         StrView name
-    ){
+    ) {
         return impl->CreateTexture(desc, name);
     }
 

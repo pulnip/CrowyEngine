@@ -22,14 +22,6 @@ namespace Crowy
 
         RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE;
 
-        RHIBufferRAII CreateBuffer(
-            const RHIBufferCreateDesc&,
-            StrView name = {}
-        ) RHI_OVERRIDE;
-        RHITextureRAII CreateTexture(
-            const RHITextureCreateDesc&,
-            StrView name = {}
-        ) RHI_OVERRIDE;
         RAII<RHIGraphicsPipelineState> CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
@@ -67,5 +59,15 @@ namespace Crowy
             RHITexture&,
             std::span<RHISubresourceLayout> out
         );
+
+    private:
+        RHIBufferRAII createBuffer(
+            const RHIBufferCreateDesc&,
+            StrView name
+        ) RHI_OVERRIDE;
+        RHITextureRAII createTexture(
+            const RHITextureCreateDesc&,
+            StrView name
+        ) RHI_OVERRIDE;
     };
 }

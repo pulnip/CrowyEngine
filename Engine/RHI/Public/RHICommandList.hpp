@@ -887,6 +887,11 @@ namespace Crowy
                 dst.GetDepth(mipLevel) == 1,
                 "RHITextureRegion cannot address a 3D texture's depth slices"
             );
+            CROWY_ASSERT(
+                region.x + region.width <= dst.GetWidth(mipLevel) &&
+                    region.y + region.height <= dst.GetHeight(mipLevel),
+                "copy region reaches past the mip"
+            );
 
             CROWY_STAT(copyCount);
         }

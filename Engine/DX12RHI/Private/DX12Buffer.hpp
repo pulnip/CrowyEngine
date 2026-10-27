@@ -35,18 +35,6 @@ namespace Crowy
 
         ~DX12Buffer();
 
-        void Upload(
-            const void* src,
-            u32 srcSize,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
-        void Download(
-            void* dst,
-            u32 dstSize,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
         u32 GetSize() const noexcept RHI_OVERRIDE{ return size; }
 
         void* GetMappedPtr() noexcept RHI_OVERRIDE{ return mapped; }
@@ -57,10 +45,10 @@ namespace Crowy
             return allocation.resource->GetGPUVirtualAddress();
         }
 
-        u64 GetReadableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
-        u64 GetWritableID(const RHIBufferViewDesc&) RHI_OVERRIDE;
-
     private:
+        u64 readableIDOf(const RHIBufferViewDesc&) RHI_OVERRIDE;
+        u64 writableIDOf(const RHIBufferViewDesc&) RHI_OVERRIDE;
+
         UINT createView(
             const RHIBufferViewDesc&,
             std::unordered_map<RHIBufferViewDesc, UINT>& cache,

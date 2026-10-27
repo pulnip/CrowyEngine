@@ -65,9 +65,6 @@ namespace Crowy
         UINT GetOrCreateRTV(const RHITextureViewDesc&);
         UINT GetOrCreateDSV(const RHITextureViewDesc&);
 
-        u64 GetReadableID(const RHITextureViewDesc&) RHI_OVERRIDE;
-        u64 GetWritableID(const RHITextureViewDesc&) RHI_OVERRIDE;
-
         // render and depth targets always bind exactly one mip
         UINT GetOrCreateRTV(u32 mipLevel){
             return GetOrCreateRTV(RHITextureViewDesc{
@@ -83,5 +80,9 @@ namespace Crowy
                 .mipCount = 1
             });
         }
+
+    private:
+        u64 readableIDOf(const RHITextureViewDesc&) RHI_OVERRIDE;
+        u64 writableIDOf(const RHITextureViewDesc&) RHI_OVERRIDE;
     };
 }

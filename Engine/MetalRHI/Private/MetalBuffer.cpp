@@ -49,36 +49,6 @@ namespace Crowy
         allocator.Free(allocation);
     }
 
-    void MetalBuffer::Upload(
-        const void* data,
-        u32 uploadSize,
-        u32 offset
-    ){
-        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-writable");
-        CROWY_ASSERT(uploadSize + offset <= size);
-
-        std::memcpy(
-            ptrAdd(mapped, offset),
-            data,
-            uploadSize
-        );
-    }
-
-    void MetalBuffer::Download(
-        void* data,
-        u32 downloadSize,
-        u32 offset
-    ){
-        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-readable");
-        CROWY_ASSERT(downloadSize + offset <= size);
-
-        std::memcpy(
-            data,
-            ptrAdd(mapped, offset),
-            downloadSize
-        );
-    }
-
     u64 MetalBuffer::getResourceID(const RHIBufferViewDesc& view){
         // a Metal resource ID is the address itself, so a sub-range view is
         // just that address moved forward

@@ -115,36 +115,6 @@ namespace Crowy
         allocator.Free(allocation);
     }
 
-    void DX12Buffer::Upload(
-        const void* src,
-        u32 srcSize,
-        u32 offset
-    ){
-        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-writable");
-        CROWY_ASSERT(srcSize <= size - offset);
-
-        std::memcpy(
-            ptrAdd(mapped, offset),
-            src,
-            srcSize
-        );
-    }
-
-    void DX12Buffer::Download(
-        void* dst,
-        u32 dstSize,
-        u32 offset
-    ){
-        CROWY_ASSERT(mapped != nullptr, "buffer is not CPU-readable");
-        CROWY_ASSERT(dstSize <= size - offset);
-
-        std::memcpy(
-            dst,
-            ptrAdd(mapped, offset),
-            dstSize
-        );
-    }
-
     UINT DX12Buffer::createView(
         const RHIBufferViewDesc& desc,
         std::unordered_map<RHIBufferViewDesc, UINT>& cache,
@@ -215,11 +185,11 @@ namespace Crowy
         return idx;
     }
 
-    u64 DX12Buffer::GetReadableID(const RHIBufferViewDesc& desc){
+    u64 DX12Buffer::readableIDOf(const RHIBufferViewDesc& desc) {
         return createView(desc, srvs, false);
     }
 
-    u64 DX12Buffer::GetWritableID(const RHIBufferViewDesc& desc){
+    u64 DX12Buffer::writableIDOf(const RHIBufferViewDesc& desc) {
         return createView(desc, uavs, true);
     }
 }
