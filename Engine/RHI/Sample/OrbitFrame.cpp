@@ -444,7 +444,6 @@ namespace Crowy
                 TURNS_MIN,
                 TURNS_MAX
             );
-            pendingSeconds += deltaTime;
 
             context.frameTimeMs = 1000.0 * deltaTime;
             context.halfHeight = std::exp(context.zoomLog);
