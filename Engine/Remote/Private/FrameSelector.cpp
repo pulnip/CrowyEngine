@@ -71,7 +71,7 @@ namespace Crowy
                 const auto number = parsePositiveInteger(&item);
                 if(!number)
                     return failure(BadList);
-                if(std::ranges::find(selected, *number) != selected.end())
+                if(std::ranges::contains(selected, *number))
                     return failure("frames must not repeat");
 
                 selected.push_back(*number);

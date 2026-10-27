@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <charconv>
 #include <chrono>
 #include <exception>
 #include <format>
 #include <optional>
+#include <ranges>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -54,16 +54,6 @@ namespace Crowy
         };
 
         enum class HeadParse : u8 { Incomplete, Complete, Malformed };
-
-        Str lowered(StrView text) {
-            Str out(text);
-            for(auto& c: out)
-                c = static_cast<char>(
-                    std::tolower(static_cast<unsigned char>(c))
-                );
-
-            return out;
-        }
 
         StrView trimmed(StrView text) {
             while(!text.empty() &&
@@ -114,23 +104,17 @@ namespace Crowy
                 if(colon == StrView::npos)
                     continue;
 
-                const auto key = lowered(trimmed(line.substr(0, colon)));
-                const auto value = trimmed(line.substr(colon + 1));
-                if(key != "content-length")
+                const auto key = trimmed(line.substr(0, colon));
+                if(!equalsIgnoringCase(key, "content-length"))
                     continue;
 
-                usize length = 0;
-                const auto [ptr, ec] = std::from_chars(
-                    value.data(),
-                    value.data() + value.size(),
-                    length
-                );
-                if(ec != std::errc{} || ptr != value.data() + value.size()) {
+                head.contentLength =
+                    parseNumber<usize>(trimmed(line.substr(colon + 1)));
+                if(!head.contentLength) {
                     error = "malformed Content-Length";
 
                     return HeadParse::Malformed;
                 }
-                head.contentLength = length;
             }
 
             return HeadParse::Complete;
@@ -144,8 +128,7 @@ namespace Crowy
                     what.remove_prefix(close + 2);
             }
             what = what.substr(0, what.find(';'));
-            if(what.starts_with("parse error "))
-                what.remove_prefix(Str("parse error ").size());
+            consumePrefix(what, "parse error ");
 
             const auto colon = what.find(": ");
             if(colon == StrView::npos)
@@ -160,18 +143,18 @@ namespace Crowy
 
         Str okBody(DOM::Value result) {
             DOM::Table table;
-            table.emplace("ok", DOM::Value(true));
+            table.emplace("ok", true);
             table.emplace("result", std::move(result));
 
-            return emitJson(DOM::Value(std::move(table)));
+            return emitJson(std::move(table));
         }
 
         Str errorBody(Str message) {
             DOM::Table table;
-            table.emplace("ok", DOM::Value(false));
-            table.emplace("error", DOM::Value(std::move(message)));
+            table.emplace("ok", false);
+            table.emplace("error", std::move(message));
 
-            return emitJson(DOM::Value(std::move(table)));
+            return emitJson(std::move(table));
         }
 
         CStr reasonOf(int code) noexcept {
@@ -262,11 +245,12 @@ namespace Crowy
         void readConnection(Connection&, Clock::time_point now);
         void tryDispatch(Connection&, Clock::time_point now);
         void rpc(Connection&, StrView body, Clock::time_point now);
-        void info(Connection&, Clock::time_point now);
+        void listVerbs(Connection&, Clock::time_point now);
         void sweepPending(Clock::time_point now);
         void writeConnection(Connection&, Clock::time_point now);
         void respond(Connection&, int code, Str body, Clock::time_point now);
         Connection* find(RequestId id) noexcept;
+        std::vector<Str> verbNames() const;
     };
 
     CommandPortImpl::CommandPortImpl(const CommandPortConfig& config)
@@ -439,11 +423,8 @@ namespace Crowy
             if(received > 0) {
                 c.in.append(receiveBuffer.data(), static_cast<usize>(received));
                 c.lastActivity = now;
-                if(c.in.size() > MaxHeadBytes + config.maxBodyBytes) {
-                    respond(c, 400, errorBody("request too large"), now);
-
-                    return;
-                }
+                if(c.in.size() > MaxHeadBytes + config.maxBodyBytes)
+                    break;
 
                 continue;
             }
@@ -462,7 +443,9 @@ namespace Crowy
         tryDispatch(c, now);
 
         if(c.state == ConnectionState::Reading) {
-            if(c.peerClosed)
+            if(c.in.size() > MaxHeadBytes + config.maxBodyBytes)
+                respond(c, 400, errorBody("request too large"), now);
+            else if(c.peerClosed)
                 c.closed = true;
             else if(
                 secondsSince(c.lastActivity, now) > config.idleTimeoutSeconds
@@ -489,7 +472,7 @@ namespace Crowy
         }
 
         if(head.method == "GET" && head.path == "/") {
-            info(c, now);
+            listVerbs(c, now);
 
             return;
         }
@@ -532,12 +515,8 @@ namespace Crowy
         rpc(c, StrView(c.in).substr(head.bytes, *head.contentLength), now);
     }
 
-    void CommandPortImpl::info(Connection& c, Clock::time_point now) {
-        std::vector<Str> names;
-        names.reserve(verbs.size());
-        for(const auto& [name, handler]: verbs)
-            names.push_back(name);
-        std::ranges::sort(names);
+    void CommandPortImpl::listVerbs(Connection& c, Clock::time_point now) {
+        const auto names = verbNames();
 
         DOM::Array list;
         list.reserve(names.size());
@@ -549,13 +528,13 @@ namespace Crowy
             DOM::Array keys;
             for(const auto& key: verbs.at(name).keys)
                 keys.emplace_back(key);
-            arguments.emplace(name, DOM::Value(std::move(keys)));
+            arguments.emplace(name, std::move(keys));
         }
 
         DOM::Table result;
-        result.emplace("verbs", DOM::Value(std::move(list)));
-        result.emplace("arguments", DOM::Value(std::move(arguments)));
-        respond(c, 200, okBody(DOM::Value(std::move(result))), now);
+        result.emplace("verbs", std::move(list));
+        result.emplace("arguments", std::move(arguments));
+        respond(c, 200, okBody(std::move(result)), now);
     }
 
     void CommandPortImpl::rpc(
@@ -614,7 +593,13 @@ namespace Crowy
             respond(
                 c,
                 200,
-                errorBody(std::format("unknown verb '{}'", *cmd)),
+                errorBody(
+                    std::format(
+                        "unknown verb '{}' (one of {})",
+                        *cmd,
+                        join(verbNames(), ", ")
+                    )
+                ),
                 now
             );
 
@@ -766,6 +751,14 @@ namespace Crowy
             });
 
         return it != connections.end() ? &*it : nullptr;
+    }
+
+    std::vector<Str> CommandPortImpl::verbNames() const {
+        auto names =
+            verbs | std::views::keys | std::ranges::to<std::vector<Str>>();
+        std::ranges::sort(names);
+
+        return names;
     }
 
     void CommandPortImpl::Complete(RequestId id, Str body) {

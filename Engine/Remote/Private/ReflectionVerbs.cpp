@@ -13,6 +13,21 @@ namespace Crowy
 {
     namespace
     {
+        using SortedExposures =
+            std::vector<std::pair<StrView, const Exposure*>>;
+
+        SortedExposures sortedByName(const Exposures& exposures) {
+            SortedExposures entries;
+            entries.reserve(exposures.size());
+
+            for(const auto& [name, exposure]: exposures) {
+                entries.emplace_back(name, &exposure);
+            }
+            std::ranges::sort(entries, {}, &SortedExposures::value_type::first);
+
+            return entries;
+        }
+
         const Exposure* findTarget(
             const Exposures& exposures,
             const DOM::Value& args,
@@ -27,7 +42,25 @@ namespace Crowy
 
             const auto it = exposures.find(*name);
             if(it == exposures.end()) {
-                reply.Error(std::format("unknown target '{}'", *name));
+                const auto names = join(
+                    sortedByName(exposures),
+                    ", ",
+                    &SortedExposures::value_type::first
+                );
+                if(names.empty()) {
+                    reply.Error(
+                        std::format("unknown target '{}'; none exposed", *name)
+                    );
+                }
+                else {
+                    reply.Error(
+                        std::format(
+                            "unknown target '{}' (one of {})",
+                            *name,
+                            names
+                        )
+                    );
+                }
 
                 return nullptr;
             }
@@ -78,37 +111,29 @@ namespace Crowy
             }
         }
 
-        void appendDescriptions(const TypeDesc& desc, DOM::Array& out) {
-            if(desc.parent != nullptr) {
-                appendDescriptions(*desc.parent, out);
-            }
-
-            for(const auto& prop: desc.properties) {
+        DOM::Value describeProperties(const TypeDesc& desc) {
+            DOM::Array properties;
+            for(const auto* prop: desc.PropertiesInChain()) {
                 DOM::Table entry;
-                entry.emplace("name", prop.name);
-                describeType(prop.type, entry);
+                entry.emplace("name", prop->name);
+                describeType(prop->type, entry);
 
-                if(prop.meta.uiRange) {
+                if(prop->meta.uiRange) {
                     DOM::Array range;
-                    range.emplace_back(prop.meta.uiRange->first);
-                    range.emplace_back(prop.meta.uiRange->second);
+                    range.emplace_back(prop->meta.uiRange->first);
+                    range.emplace_back(prop->meta.uiRange->second);
 
                     entry.emplace("uiRange", std::move(range));
                 }
 
-                if(prop.meta.tooltip != nullptr) {
-                    entry.emplace("tooltip", prop.meta.tooltip);
+                if(prop->meta.tooltip != nullptr) {
+                    entry.emplace("tooltip", prop->meta.tooltip);
                 }
 
-                out.emplace_back(std::move(entry));
+                properties.emplace_back(std::move(entry));
             }
-        }
 
-        DOM::Value describeProperties(const TypeDesc& desc) {
-            DOM::Array properties;
-            appendDescriptions(desc, properties);
-
-            return DOM::Value(std::move(properties));
+            return properties;
         }
 
         PropertyErrors tryValue(
@@ -135,22 +160,10 @@ namespace Crowy
         const DOM::Value&,
         Reply reply
     ) {
-        std::vector<std::pair<StrView, const Exposure*>> sorted;
-        sorted.reserve(exposures.size());
-
-        for(const auto& [name, exposure]: exposures) {
-            sorted.emplace_back(name, &exposure);
-        }
-        std::ranges::sort(
-            sorted,
-            {},
-            &std::pair<StrView, const Exposure*>::first
-        );
-
         DOM::Array objects;
-        objects.reserve(sorted.size());
+        objects.reserve(exposures.size());
 
-        for(const auto& [name, exposure]: sorted) {
+        for(const auto& [name, exposure]: sortedByName(exposures)) {
             DOM::Table entry;
             entry.emplace("name", Str(name));
             entry.emplace("type", exposure->target.Desc().name);
@@ -283,35 +296,8 @@ namespace Crowy
             return;
         }
 
-        // a list is written whole, as the inspector's add and remove do
-        if(checked.type->list != nullptr) {
-            const auto errors = tryValue(*checked.type, *value, *path);
-            if(!errors.empty()) {
-                reply.Error(join(errors, "; "));
-
-                return;
-            }
-
-            const auto writable =
-                present(exposure->target.Write(), args, reply);
-            if(writable == nullptr)
-                return;
-
-            const auto resolved = resolveProperty(writable, desc, *path);
-            const auto written =
-                applyValue(*resolved.type, resolved.member, *value, *path);
-            CROWY_ASSERT(written.empty(), "the scratch write passed");
-
-            if(exposure->onDirty) {
-                exposure->onDirty();
-            }
-
-            reply.Ok(DOM::Table{});
-
-            return;
-        }
-
-        if(checked.type->deserialize == nullptr) {
+        if(checked.type->list == nullptr &&
+           checked.type->deserialize == nullptr) {
             reply.Error(
                 std::format(
                     "'{}' is a {} the port cannot write",
@@ -323,18 +309,21 @@ namespace Crowy
             return;
         }
 
+        const auto errors = tryValue(*checked.type, *value, *path);
+        if(!errors.empty()) {
+            reply.Error(join(errors, "; "));
+
+            return;
+        }
+
         const auto writable = present(exposure->target.Write(), args, reply);
         if(writable == nullptr)
             return;
 
         const auto resolved = resolveProperty(writable, desc, *path);
-        if(!resolved.type->deserialize(resolved.member, *value)) {
-            reply.Error(
-                std::format("'{}' expects {}", *path, resolved.type->name)
-            );
-
-            return;
-        }
+        const auto written =
+            applyValue(*resolved.type, resolved.member, *value, *path);
+        CROWY_ASSERT(written.empty(), "the scratch write passed");
 
         if(exposure->onDirty) {
             exposure->onDirty();

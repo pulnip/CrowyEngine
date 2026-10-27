@@ -11,6 +11,7 @@
 #include "CommandPort.hpp"
 #include "JsonLoader.hpp"
 #include "Socket.hpp"
+#include "StringUtil.hpp"
 
 using namespace Crowy;
 
@@ -121,15 +122,15 @@ namespace
 
         const auto statusLine = StrView(raw).substr(0, lineEnd);
         EXPECT_TRUE(statusLine.starts_with("HTTP/1.1 ")) << statusLine;
-        response.code = std::stoi(Str(statusLine.substr(9, 3)));
+        response.code = parseNumber<int>(statusLine.substr(9, 3)).value_or(0);
 
         const auto head = StrView(raw).substr(0, headEnd);
         response.body = raw.substr(headEnd + 4);
 
-        EXPECT_TRUE(head.find("Connection: close") != StrView::npos) << head;
+        EXPECT_TRUE(head.contains("Connection: close")) << head;
         const auto expectedLength =
             std::format("Content-Length: {}", response.body.size());
-        EXPECT_TRUE(head.find(expectedLength) != StrView::npos) << head;
+        EXPECT_TRUE(head.contains(expectedLength)) << head;
 
         response.json = parseJsonString(response.body);
 
@@ -246,8 +247,8 @@ protected:
 
         port.RegisterVerb("ping", {}, [](const DOM::Value&, Reply reply) {
             DOM::Table result;
-            result.emplace("pong", DOM::Value(true));
-            reply.Ok(DOM::Value(std::move(result)));
+            result.emplace("pong", true);
+            reply.Ok(std::move(result));
         });
     }
 
@@ -323,7 +324,11 @@ TEST_F(CommandPortTest, UnknownVerbIsAnError) {
 
     EXPECT_EQ(response.code, 200);
     EXPECT_FALSE(response.ok());
-    EXPECT_EQ(response.error(), "unknown verb 'nope'");
+    EXPECT_EQ(
+        response.error(),
+        "unknown verb 'nope' (one of describe, get_property, list_objects, "
+        "ping, set_property)"
+    );
 }
 
 TEST_F(CommandPortTest, MissingCmdIsAnError) {
@@ -539,6 +544,18 @@ TEST(CommandPortConfigTest, RetriesStepPastAnOccupiedPort) {
     EXPECT_EQ(second.Port(), first.Port() + 1);
 }
 
+TEST(CommandPortConfigTest, AnOversizedBodySentWholeIsRefusedAsAnAnnouncedOne) {
+    CommandPort port{CommandPortConfig{.port = 0, .maxBodyBytes = 64}};
+    ASSERT_NE(port.Port(), 0);
+
+    Client client(port.Port());
+    client.Send(post(Str(20 * 1024, ' ')));
+    const auto response = parseResponse(client.Receive(port));
+
+    EXPECT_EQ(response.code, 200);
+    EXPECT_TRUE(response.error().contains("exceeds")) << response.error();
+}
+
 TEST_F(CommandPortTest, ListObjectsNamesEachExposure) {
     auto empty = exchange(post(R"({"cmd":"list_objects"})"));
     ASSERT_TRUE(empty.ok()) << empty.body;
@@ -601,7 +618,7 @@ TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
     auto unknown =
         exchange(post(R"({"cmd":"describe","args":{"target":"nope"}})"));
     EXPECT_FALSE(unknown.ok());
-    EXPECT_EQ(unknown.error(), "unknown target 'nope'");
+    EXPECT_EQ(unknown.error(), "unknown target 'nope' (one of probe)");
 
     auto missing = exchange(post(R"({"cmd":"describe"})"));
     EXPECT_FALSE(missing.ok());
@@ -698,7 +715,7 @@ TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
     auto unknown = exchange(post(
         R"({"cmd":"set_property","args":{"target":"nope","path":"tint","value":1}})"
     ));
-    EXPECT_EQ(unknown.error(), "unknown target 'nope'");
+    EXPECT_EQ(unknown.error(), "unknown target 'nope' (one of probe)");
 
     auto badPath = exchange(post(
         R"({"cmd":"set_property","args":{"target":"probe","path":"nested.nope","value":1}})"
@@ -713,7 +730,10 @@ TEST_F(CommandPortTest, SetPropertyErrorsAreLoudAndDoNotFire) {
     auto unknownName = exchange(post(
         R"({"cmd":"set_property","args":{"target":"probe","path":"blend","value":"Glow"}})"
     ));
-    EXPECT_EQ(unknownName.error(), "'blend' expects PortBlend");
+    EXPECT_EQ(
+        unknownName.error(),
+        "'blend' expects PortBlend (one of Opaque, Masked, Additive)"
+    );
 
     auto wholeStruct = exchange(post(
         R"({"cmd":"set_property","args":{"target":"probe","path":"nested","value":{"amount":1}}})"
