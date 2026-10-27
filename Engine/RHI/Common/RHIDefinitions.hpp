@@ -730,7 +730,7 @@ namespace Crowy
     struct RHIRasterizerState {
         RHIFillMode fillMode = RHIFillMode::Solid;
         RHICullMode cullMode = RHICullMode::Back;
-        bool frontCounterClockwise = true;
+        bool frontCounterClockwise = false;
         i32 depthBias = 0;
         f32 depthBiasClamp = 0.0f;
         f32 slopeScaledDepthBias = 0.0f;

@@ -37,6 +37,7 @@ namespace Crowy
                         .entryPoint = "vs_main"
                     }
                 },
+                .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader = RHIShaderDesc{
                     .path = "Engine/RHI/Spike/InstanceIdSpike.slang",
                     .entryPoint = "fs_main"

@@ -10,8 +10,8 @@ namespace Crowy
 {
     struct AABB3D;
 
-    // left-handed, +Y up, fronts wind clockwise seen from outside (a pipeline
-    // sets frontCounterClockwise to false), texCoord (0, 0) at the top-left
+    // left-handed, +Y up, fronts wind clockwise seen from outside (the RHI's
+    // default winding), texCoord (0, 0) at the top-left
     struct MeshData {
         std::vector<Vertex> vertices;
         std::vector<u32> indices;
