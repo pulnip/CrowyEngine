@@ -4,6 +4,7 @@
 #include <chrono>
 #include <optional>
 #include <vector>
+
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 #include "RHIFrameStats.hpp"
@@ -16,31 +17,32 @@ namespace Crowy
     // Record is the one the harness exists for: dividing it by the draw
     // count gives the per-draw CPU cost, which is what separates a D3D12
     // backend from a D3D11 one dressed up as D3D12.
-    enum class FrameSection{
-        Events,     // window messages and input
-        Update,     // game logic, identical either way - the control
-        FenceWait,  // blocked because the GPU is behind
-        Acquire,    // swapchain image and command list setup
-        Record,     // draw submission
-        Submit,     // execute and present
-        Frame,      // the fence wait through the submit
+    enum class FrameSection {
+        Events,    // window messages and input
+        Update,    // game logic, identical either way - the control
+        FenceWait, // blocked because the GPU is behind
+        Acquire,   // swapchain image and command list setup
+        Record,    // draw submission
+        Submit,    // execute and present
+        Frame,     // the fence wait through the submit
         // Sentinel
         Unknown
     };
-    constexpr auto NUM_FRAME_SECTION = static_cast<usize>(FrameSection::Unknown);
+    constexpr auto NUM_FRAME_SECTION =
+        static_cast<usize>(FrameSection::Unknown);
 
     CStr ToString(FrameSection) noexcept;
 
     // a GPU time and the frame it belongs to: the GPU runs behind, so it is
     // an earlier frame than the one whose report carries it
-    struct GPUFrameTime{
+    struct GPUFrameTime {
         u64 frame = 0;
         f64 seconds = 0.0;
     };
 
     // What one loop frame measured, handed to the app as the frame ends.
     // Every build has it; without CROWY_FRAME_STATS it stays empty.
-    struct FrameReport{
+    struct FrameReport {
         // the pacer's frame number, counted from 1
         u64 frame = 0;
         std::array<f64, NUM_FRAME_SECTION> seconds{};
@@ -54,7 +56,7 @@ namespace Crowy
     // Times each section of the frame loop, keeps every sample, and writes
     // percentiles out at the end. Nothing is printed while running: a
     // benchmark is read afterwards, not watched.
-    class FrameProfiler{
+    class FrameProfiler {
     private:
         using Clock = std::chrono::steady_clock;
 
@@ -82,7 +84,7 @@ namespace Crowy
 
         // Times one section for as long as it lives. The frame loop breaks
         // out of the middle, so this cannot be a manual begin/end pair.
-        class Scope{
+        class Scope {
         private:
             FrameProfiler& owner;
             FrameSection section;
@@ -90,14 +92,12 @@ namespace Crowy
 
         public:
             Scope(FrameProfiler& owner, FrameSection section) noexcept
-                : owner(owner)
-                , section(section)
-                , start(Clock::now())
-            {}
-            ~Scope() noexcept{
-                owner.Accumulate(section, std::chrono::duration<f64>(
-                    Clock::now() - start
-                ).count());
+                : owner(owner), section(section), start(Clock::now()) {}
+            ~Scope() noexcept {
+                owner.Accumulate(
+                    section,
+                    std::chrono::duration<f64>(Clock::now() - start).count()
+                );
             }
             CROWY_DECLARE_PINNED(Scope)
         };
@@ -120,29 +120,32 @@ namespace Crowy
         // asks the device for frames gpuPending..last, in order
         void readGPUTimesThrough(u64 last) noexcept;
 
-        bool IsMeasuring() const noexcept{
+        bool IsMeasuring() const noexcept {
             return config.enabled && current.frame > config.warmupFrames;
         }
     };
 #else
     // Release without CROWY_BENCHMARK: every one of these folds to nothing.
-    class FrameProfiler{
+    class FrameProfiler {
     public:
-        class Scope{
+        class Scope {
         public:
-            constexpr Scope(FrameProfiler&, FrameSection) noexcept{}
+            constexpr Scope(FrameProfiler&, FrameSection) noexcept {}
         };
 
-        constexpr FrameProfiler(const RuntimeConfig&, const RHIDevice&) noexcept{}
+        constexpr FrameProfiler(
+            const RuntimeConfig&,
+            const RHIDevice&
+        ) noexcept {}
 
-        constexpr void BeginFrame(u64, f64) noexcept{}
-        const FrameReport& EndFrame(const RHIFrameStats&) noexcept{
+        constexpr void BeginFrame(u64, f64) noexcept {}
+        const FrameReport& EndFrame(const RHIFrameStats&) noexcept {
             static constexpr FrameReport none;
             return none;
         }
-        constexpr void CollectGPUTimes() noexcept{}
-        constexpr bool ShouldStop() const noexcept{ return false; }
-        constexpr void WriteReport() const noexcept{}
+        constexpr void CollectGPUTimes() noexcept {}
+        constexpr bool ShouldStop() const noexcept { return false; }
+        constexpr void WriteReport() const noexcept {}
     };
 #endif
 }

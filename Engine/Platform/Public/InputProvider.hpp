@@ -1,18 +1,19 @@
 #pragma once
 
 #include <bitset>
+
 #include "KeyCode.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    class InputProvider{
+    class InputProvider {
     private:
         // Keyboard State
         std::bitset<NUM_KEY> pressedState;
         std::bitset<NUM_KEY> releasedState;
 
-        struct MouseState{
+        struct MouseState {
             Vec2 pos;
             Vec2 dpos{0.0f, 0.0f};
             // notches this frame, positive away from the user
@@ -29,13 +30,13 @@ namespace Crowy
         virtual bool IsKeyDown(KeyCode) const noexcept = 0;
 
         // true if Rising Edge Exist
-        bool IsKeyPressed(KeyCode keyCode) const noexcept{
+        bool IsKeyPressed(KeyCode keyCode) const noexcept {
             auto ordKey = static_cast<usize>(keyCode);
 
             return pressedState.test(ordKey);
         }
         // true if Falling Edge Exist
-        bool IsKeyReleased(KeyCode keyCode) const noexcept{
+        bool IsKeyReleased(KeyCode keyCode) const noexcept {
             auto ordKey = static_cast<usize>(keyCode);
 
             return releasedState.test(ordKey);
@@ -43,29 +44,23 @@ namespace Crowy
 
         virtual bool IsKeyDown(MouseButton) const noexcept = 0;
 
-        bool IsKeyPressed(MouseButton button) const noexcept{
+        bool IsKeyPressed(MouseButton button) const noexcept {
             auto ordKey = static_cast<usize>(button);
 
             return mouse.pressedState.test(ordKey);
         }
-        bool IsKeyReleased(MouseButton button) const noexcept{
+        bool IsKeyReleased(MouseButton button) const noexcept {
             auto ordKey = static_cast<usize>(button);
 
             return mouse.releasedState.test(ordKey);
         }
 
-        Vec2 GetMousePos() const noexcept{
-            return mouse.pos;
-        }
-        Vec2 GetMouseDPos() const noexcept{
-            return mouse.dpos;
-        }
-        f32 GetMouseWheel() const noexcept{
-            return mouse.wheel;
-        }
+        Vec2 GetMousePos() const noexcept { return mouse.pos; }
+        Vec2 GetMouseDPos() const noexcept { return mouse.dpos; }
+        f32 GetMouseWheel() const noexcept { return mouse.wheel; }
 
     protected:
-        void ConsumeEdge() noexcept{
+        void ConsumeEdge() noexcept {
             pressedState.reset();
             releasedState.reset();
 
@@ -74,44 +69,40 @@ namespace Crowy
             mouse.wheel = 0.0f;
         }
 
-        void PressKey(KeyCode keyCode) noexcept{
+        void PressKey(KeyCode keyCode) noexcept {
             auto ordKey = static_cast<usize>(keyCode);
 
             pressedState.set(ordKey);
         }
-        void ReleaseKey(KeyCode keyCode) noexcept{
+        void ReleaseKey(KeyCode keyCode) noexcept {
             auto ordKey = static_cast<usize>(keyCode);
 
             releasedState.set(ordKey);
         }
 
-        void PressKey(MouseButton button) noexcept{
+        void PressKey(MouseButton button) noexcept {
             auto ordKey = static_cast<usize>(button);
 
             mouse.pressedState.set(ordKey);
         }
-        void ReleaseKey(MouseButton button) noexcept{
+        void ReleaseKey(MouseButton button) noexcept {
             auto ordKey = static_cast<usize>(button);
 
             mouse.releasedState.set(ordKey);
         }
 
-        void AddMouseWheel(f32 notches) noexcept{
-            mouse.wheel += notches;
-        }
+        void AddMouseWheel(f32 notches) noexcept { mouse.wheel += notches; }
 
-        void SetCurrentMousePos(Vec2 pos) noexcept{
+        void SetCurrentMousePos(Vec2 pos) noexcept {
             SetMouseMotion(pos, pos - mouse.pos);
         }
         // the motion a frame reports, apart from where the mouse ended up
-        void SetMouseMotion(Vec2 pos, Vec2 dpos) noexcept{
+        void SetMouseMotion(Vec2 pos, Vec2 dpos) noexcept {
             mouse.dpos = dpos;
             mouse.pos = pos;
         }
-        void SetMousePos(Vec2 pos) noexcept{
-            mouse.pos = pos;
-        }
-        void AddMouseMotion(Vec2 delta) noexcept{
+        void SetMousePos(Vec2 pos) noexcept { mouse.pos = pos; }
+        void AddMouseMotion(Vec2 delta) noexcept {
             mouse.dpos = mouse.dpos + delta;
         }
     };

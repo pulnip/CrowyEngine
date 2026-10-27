@@ -14,7 +14,7 @@ namespace Crowy
 
     struct RuntimeConfig;
 
-    class OS{
+    class OS {
     private:
         class Impl;
         static constexpr usize implSize = 792;
@@ -30,7 +30,7 @@ namespace Crowy
 
         void Run(MainLoop&, RHIDevice&);
 
-        inline static OS* Get(){ return singleton; }
+        inline static OS* Get() { return singleton; }
 
         const InputProvider& GetInputProvider() const noexcept;
         const Window& GetWindow() const noexcept;
@@ -40,6 +40,6 @@ namespace Crowy
         void PushInput(const InputEvent&);
     };
 
-    // direct access to ptr is unsafe, but handy helper
-    #define OS_ *OS::Get()
+// direct access to ptr is unsafe, but handy helper
+#define OS_ *OS::Get()
 }

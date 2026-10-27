@@ -2,16 +2,24 @@
 
 namespace Crowy
 {
-    CStr ToString(FrameSection section) noexcept{
-        switch(section){
-        case FrameSection::Events:    return "events";
-        case FrameSection::Update:    return "update";
-        case FrameSection::FenceWait: return "fenceWait";
-        case FrameSection::Acquire:   return "acquire";
-        case FrameSection::Record:    return "record";
-        case FrameSection::Submit:    return "submit";
-        case FrameSection::Frame:     return "frame";
-        case FrameSection::Unknown:   break;
+    CStr ToString(FrameSection section) noexcept {
+        switch(section) {
+        case FrameSection::Events:
+            return "events";
+        case FrameSection::Update:
+            return "update";
+        case FrameSection::FenceWait:
+            return "fenceWait";
+        case FrameSection::Acquire:
+            return "acquire";
+        case FrameSection::Record:
+            return "record";
+        case FrameSection::Submit:
+            return "submit";
+        case FrameSection::Frame:
+            return "frame";
+        case FrameSection::Unknown:
+            break;
         }
         return "unknown";
     }
@@ -23,17 +31,19 @@ namespace Crowy
 #include <filesystem>
 #include <format>
 #include <fstream>
+
 #include "LogLocal.hpp"
 #include "RHIDevice.hpp"
 #include "RHIGPUTime.hpp"
 
 namespace Crowy
 {
-    namespace{
+    namespace
+    {
         constexpr f64 SECONDS_TO_MS = 1000.0;
         constexpr f64 MS_TO_US = 1000.0;
 
-        struct CounterColumn{
+        struct CounterColumn {
             CStr name;
             u32 RHIFrameStats::* field;
         };
@@ -41,12 +51,18 @@ namespace Crowy
         // the CSV and the report both write every counter from this list
         constexpr std::array COUNTER_COLUMNS{
             CounterColumn{"cmd_lists", &RHIFrameStats::commandListBeginCount},
-            CounterColumn{"cmd_lists_created", &RHIFrameStats::commandListCreateCount},
+            CounterColumn{
+                "cmd_lists_created",
+                &RHIFrameStats::commandListCreateCount
+            },
             CounterColumn{"render_passes", &RHIFrameStats::renderPassCount},
             CounterColumn{"compute_passes", &RHIFrameStats::computePassCount},
             CounterColumn{"blit_passes", &RHIFrameStats::blitPassCount},
             CounterColumn{"direct_draws", &RHIFrameStats::drawCount},
-            CounterColumn{"indirect_batches", &RHIFrameStats::indirectBatchCount},
+            CounterColumn{
+                "indirect_batches",
+                &RHIFrameStats::indirectBatchCount
+            },
             CounterColumn{"indirect_draws", &RHIFrameStats::indirectDrawCount},
             CounterColumn{"dispatches", &RHIFrameStats::dispatchCount},
             CounterColumn{"copies", &RHIFrameStats::copyCount},
@@ -62,29 +78,29 @@ namespace Crowy
         );
 
         // the same gate DX12Device puts its debug layer behind
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         constexpr CStr BUILD_KIND = "Debug";
         constexpr CStr DEBUG_LAYER = "on";
-    #else
+#else
         constexpr CStr BUILD_KIND = "Release";
         constexpr CStr DEBUG_LAYER = "off";
-    #endif
+#endif
 
-    #if defined(_WIN32)
+#if defined(_WIN32)
         constexpr CStr BACKEND = "D3D12";
-    #elif defined(__APPLE__)
+#elif defined(__APPLE__)
         constexpr CStr BACKEND = "Metal";
-    #else
+#else
         constexpr CStr BACKEND = "unknown";
-    #endif
+#endif
 
-        struct Summary{
+        struct Summary {
             f64 p50 = 0.0, p95 = 0.0, p99 = 0.0, max = 0.0, mean = 0.0;
         };
 
         // partitions the range; every call stands on its own, so the order
         // these run in does not matter
-        f64 percentileOf(std::vector<f64>& values, f64 ratio){
+        f64 percentileOf(std::vector<f64>& values, f64 ratio) {
             auto index = static_cast<usize>(ratio * (values.size() - 1));
             auto nth = values.begin() + index;
 
@@ -92,7 +108,7 @@ namespace Crowy
             return *nth;
         }
 
-        Summary summarize(std::vector<f64>& values){
+        Summary summarize(std::vector<f64>& values) {
             if(values.empty()) [[unlikely]]
                 return {};
 
@@ -109,7 +125,7 @@ namespace Crowy
             };
         }
 
-        bool openOutput(const Str& path, std::ofstream& out){
+        bool openOutput(const Str& path, std::ofstream& out) {
             if(path.empty())
                 return false;
 
@@ -119,7 +135,7 @@ namespace Crowy
                 std::filesystem::create_directories(parent, error);
 
             out.open(path);
-            if(!out){
+            if(!out) {
                 LOG_WARN("cannot write the benchmark output '{}'", path);
                 return false;
             }
@@ -132,29 +148,30 @@ namespace Crowy
         const RuntimeConfig& runtimeConfig,
         const RHIDevice& device
     )
-        : device(device)
-        , config(runtimeConfig.benchmark)
-        , title(runtimeConfig.window.title)
-        , width(runtimeConfig.window.width)
-        , height(runtimeConfig.window.height)
-        , vsync(runtimeConfig.window.vsync)
-    {
+        : device(device),
+          config(runtimeConfig.benchmark),
+          title(runtimeConfig.window.title),
+          width(runtimeConfig.window.width),
+          height(runtimeConfig.window.height),
+          vsync(runtimeConfig.window.vsync) {
         if(config.enabled)
             records.reserve(config.measureFrames);
     }
 
-    void FrameProfiler::BeginFrame(u64 frame, f64 fenceWaitSeconds) noexcept{
+    void FrameProfiler::BeginFrame(u64 frame, f64 fenceWaitSeconds) noexcept {
         current = FrameReport{.frame = frame};
         current.seconds[static_cast<usize>(FrameSection::FenceWait)] =
             fenceWaitSeconds;
         frameStart = Clock::now();
     }
 
-    void FrameProfiler::Accumulate(FrameSection section, f64 seconds) noexcept{
+    void FrameProfiler::Accumulate(FrameSection section, f64 seconds) noexcept {
         current.seconds[static_cast<usize>(section)] += seconds;
     }
 
-    const FrameReport& FrameProfiler::EndFrame(const RHIFrameStats& stats) noexcept{
+    const FrameReport& FrameProfiler::EndFrame(
+        const RHIFrameStats& stats
+    ) noexcept {
         auto& seconds = current.seconds;
 
         // the fence wait ran before BeginFrame started the clock
@@ -167,7 +184,7 @@ namespace Crowy
         readGPUTimesThrough(current.frame - 1);
         current.gpu = newestGPU;
 
-        if(IsMeasuring() && records.size() < config.measureFrames){
+        if(IsMeasuring() && records.size() < config.measureFrames) {
             records.push_back(current);
             // backfilled with its own once read
             records.back().gpu.reset();
@@ -176,14 +193,14 @@ namespace Crowy
         return current;
     }
 
-    void FrameProfiler::CollectGPUTimes() noexcept{
+    void FrameProfiler::CollectGPUTimes() noexcept {
         readGPUTimesThrough(current.frame);
     }
 
-    void FrameProfiler::readGPUTimesThrough(u64 last) noexcept{
-        for(; gpuPending <= last; ++gpuPending){
+    void FrameProfiler::readGPUTimesThrough(u64 last) noexcept {
+        for(; gpuPending <= last; ++gpuPending) {
             const auto seconds = device.GetGPUFrameTime(gpuPending);
-            if(!seconds){
+            if(!seconds) {
                 // not read back yet; a frame the device's history has
                 // already passed never will be
                 if(last - gpuPending < GPUTimeHistoryDepth)
@@ -195,7 +212,7 @@ namespace Crowy
             newestGPU = GPUFrameTime{.frame = gpuPending, .seconds = *seconds};
 
             // measured records run one per frame from warmupFrames + 1
-            if(gpuPending > config.warmupFrames){
+            if(gpuPending > config.warmupFrames) {
                 const auto index = gpuPending - config.warmupFrames - 1;
                 if(index < records.size())
                     records[index].gpu = newestGPU;
@@ -203,16 +220,17 @@ namespace Crowy
         }
     }
 
-    bool FrameProfiler::ShouldStop() const noexcept{
+    bool FrameProfiler::ShouldStop() const noexcept {
         return config.enabled && records.size() >= config.measureFrames;
     }
 
-    void FrameProfiler::WriteReport() const{
+    void FrameProfiler::WriteReport() const {
         if(!config.enabled)
             return;
 
-        if(records.empty()){
-            LOG_WARN("benchmark ended before the warmup of {} frames finished",
+        if(records.empty()) {
+            LOG_WARN(
+                "benchmark ended before the warmup of {} frames finished",
                 config.warmupFrames
             );
             return;
@@ -220,7 +238,7 @@ namespace Crowy
 
         // counters barely move frame to frame, so a median is a fair
         // stand-in and shrugs off the odd frame that toggled some UI
-        auto medianCounter = [this](u32 RHIFrameStats::* field) -> u32{
+        auto medianCounter = [this](u32 RHIFrameStats::* field) -> u32 {
             std::vector<u32> values;
             values.reserve(records.size());
             for(const auto& record: records)
@@ -232,7 +250,7 @@ namespace Crowy
         };
 
         std::array<Summary, NUM_FRAME_SECTION> summaries;
-        for(usize i = 0; i < NUM_FRAME_SECTION; ++i){
+        for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
             std::vector<f64> values;
             values.reserve(records.size());
             for(const auto& record: records)
@@ -242,25 +260,28 @@ namespace Crowy
         }
 
         // one row per frame, for regressing record time on the draw count
-        if(std::ofstream frames; openOutput(config.framePath, frames)){
-            frames <<
-                "frame,events_ms,update_ms,fence_wait_ms,acquire_ms,"
-                "record_ms,submit_ms,frame_ms,gpu_ms";
+        if(std::ofstream frames; openOutput(config.framePath, frames)) {
+            frames << "frame,events_ms,update_ms,fence_wait_ms,acquire_ms,"
+                      "record_ms,submit_ms,frame_ms,gpu_ms";
             for(const auto& column: COUNTER_COLUMNS)
                 frames << "," << column.name;
             frames << "\n";
 
-            for(const auto& record: records){
+            for(const auto& record: records) {
                 frames << std::format("{}", record.frame);
-                for(usize i = 0; i < NUM_FRAME_SECTION; ++i){
-                    frames << std::format(",{:.6f}",
+                for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
+                    frames << std::format(
+                        ",{:.6f}",
                         record.seconds[i] * SECONDS_TO_MS
                     );
                 }
                 // empty when the GPU was never timed, never a 0
                 frames << ",";
                 if(record.gpu)
-                    frames << std::format("{:.6f}", record.gpu->seconds * SECONDS_TO_MS);
+                    frames << std::format(
+                        "{:.6f}",
+                        record.gpu->seconds * SECONDS_TO_MS
+                    );
                 for(const auto& column: COUNTER_COLUMNS)
                     frames << std::format(",{}", record.rhi.*column.field);
                 frames << "\n";
@@ -275,26 +296,35 @@ namespace Crowy
         report << std::format(
             "api={}  build={}  debug_layer={}  vsync={}\n"
             "warmup={}  frames={}  resolution={}x{}\n\n",
-            BACKEND, BUILD_KIND, DEBUG_LAYER, vsync ? "on" : "off",
-            config.warmupFrames, records.size(), width, height
+            BACKEND,
+            BUILD_KIND,
+            DEBUG_LAYER,
+            vsync ? "on" : "off",
+            config.warmupFrames,
+            records.size(),
+            width,
+            height
         );
 
-        report <<
-            "## CPU sections (ms)\n\n"
-            "| section   |   p50 |   p95 |   p99 |   max |  mean |\n"
-            "|-----------|-------|-------|-------|-------|-------|\n";
-        for(usize i = 0; i < NUM_FRAME_SECTION; ++i){
+        report << "## CPU sections (ms)\n\n"
+                  "| section   |   p50 |   p95 |   p99 |   max |  mean |\n"
+                  "|-----------|-------|-------|-------|-------|-------|\n";
+        for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
             const auto& summary = summaries[i];
             report << std::format(
                 "| {:<9} | {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} |\n",
                 ToString(static_cast<FrameSection>(i)),
-                summary.p50, summary.p95, summary.p99, summary.max, summary.mean
+                summary.p50,
+                summary.p95,
+                summary.p99,
+                summary.max,
+                summary.mean
             );
         }
 
         std::vector<f64> gpuMs;
         gpuMs.reserve(records.size());
-        for(const auto& record: records){
+        for(const auto& record: records) {
             if(record.gpu)
                 gpuMs.push_back(record.gpu->seconds * SECONDS_TO_MS);
         }
@@ -303,16 +333,21 @@ namespace Crowy
 
         report << std::format(
             "\n## GPU (ms)\n\n{} of {} frames timed\n",
-            timed, records.size()
+            timed,
+            records.size()
         );
         // no row of zeros for a backend that cannot time the GPU
-        if(timed > 0){
+        if(timed > 0) {
             report << std::format(
                 "\n"
                 "|   p50 |   p95 |   p99 |   max |  mean |\n"
                 "|-------|-------|-------|-------|-------|\n"
                 "| {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} | {:5.3f} |\n",
-                gpu.p50, gpu.p95, gpu.p99, gpu.max, gpu.mean
+                gpu.p50,
+                gpu.p95,
+                gpu.p99,
+                gpu.max,
+                gpu.mean
             );
         }
 
@@ -321,26 +356,26 @@ namespace Crowy
             medianCounter(&RHIFrameStats::indirectDrawCount);
         const auto drawCount = directDraws + indirectDraws;
 
-        report <<
-            "\n## Per-frame RHI counters (median)\n\n"
-            "| counter           | median |\n"
-            "|-------------------|--------|\n";
-        for(const auto& column: COUNTER_COLUMNS){
-            report << std::format("| {:<17} | {:>6} |\n",
-                column.name, medianCounter(column.field)
+        report << "\n## Per-frame RHI counters (median)\n\n"
+                  "| counter           | median |\n"
+                  "|-------------------|--------|\n";
+        for(const auto& column: COUNTER_COLUMNS) {
+            report << std::format(
+                "| {:<17} | {:>6} |\n",
+                column.name,
+                medianCounter(column.field)
             );
         }
 
         report << "\n## Verdict\n\n";
-        if(drawCount == 0){
+        if(drawCount == 0) {
             report << "no draws recorded, so there is no per-draw cost\n";
             return;
         }
 
-        const auto& recordSection = summaries[
-            static_cast<usize>(FrameSection::Record)
-        ];
-        auto perDraw = [drawCount](f64 ms){
+        const auto& recordSection =
+            summaries[static_cast<usize>(FrameSection::Record)];
+        auto perDraw = [drawCount](f64 ms) {
             return ms * MS_TO_US / static_cast<f64>(drawCount);
         };
 
@@ -348,7 +383,8 @@ namespace Crowy
             "record CPU per draw: p50 {:.2f} us, p95 {:.2f} us\n\n"
             "Counters that scale with the draw count instead of the pass\n"
             "count are the thing to check before reading this number.\n",
-            perDraw(recordSection.p50), perDraw(recordSection.p95)
+            perDraw(recordSection.p50),
+            perDraw(recordSection.p95)
         );
     }
 }

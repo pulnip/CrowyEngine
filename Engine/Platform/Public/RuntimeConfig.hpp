@@ -12,7 +12,7 @@
 
 namespace Crowy
 {
-    struct WindowConfig{
+    struct WindowConfig {
         Str title = "DefaultWindow";
         u32 width = 800, height = 600;
         RHIPixelFormat format = RHIPixelFormat::RGBA8_UNORM_SRGB;
@@ -30,13 +30,13 @@ namespace Crowy
     };
 
     template<>
-    struct DomTraits<WindowConfig>{
+    struct DomTraits<WindowConfig> {
         static WindowConfig from(const DOM::Value&);
     };
 
     // Set by the sample itself, so its source says what the run is for.
     // Only has teeth where CROWY_FRAME_STATS is on: Debug, or CROWY_BENCHMARK.
-    struct BenchmarkConfig{
+    struct BenchmarkConfig {
         bool enabled = false;
         // dropped, not measured: pipeline creation, shader caches, first-touch
         // page faults and the GPU settling on its clocks all land in here.
@@ -46,8 +46,8 @@ namespace Crowy
         u32 measureFrames = 1000;
 
         // both optional; empty means don't write that one
-        Str reportPath;  // percentile summary, for reading
-        Str framePath;   // one row per frame, for regressing against draw counts
+        Str reportPath; // percentile summary, for reading
+        Str framePath;  // one row per frame, for regressing against draw counts
     };
 
     // one frame written to a BMP, as the command port's capture_frame writes
@@ -57,7 +57,7 @@ namespace Crowy
         Str path;
     };
 
-    struct RuntimeConfig{
+    struct RuntimeConfig {
         Str name = "AnonymousApp";
         Str version = "v0.0.1";
         Str identifier = "AnonymousIdentifier";
@@ -82,7 +82,7 @@ namespace Crowy
     };
 
     template<>
-    struct DomTraits<RuntimeConfig>{
+    struct DomTraits<RuntimeConfig> {
         // refuses any document whose metadata.type is not "app"
         static RuntimeConfig from(const DOM::Value&, const DocMetadata&);
     };

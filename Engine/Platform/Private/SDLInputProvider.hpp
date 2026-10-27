@@ -1,20 +1,21 @@
 #pragma once
 
 #include <SDL3/SDL_events.h>
+
 #include "InputEvent.hpp"
 #include "InputProvider.hpp"
 
 namespace Crowy
 {
     // what the UI took at its last frame: its events and held state read as up
-    struct InputGate{
+    struct InputGate {
         bool mouse = false;
         bool keyboard = false;
     };
 
     // Held keys and buttons and the mouse position come from the events, as
     // every other state does, so an event made by hand counts as a real one.
-    class SDLInputProvider final: public InputProvider{
+    class SDLInputProvider final: public InputProvider {
     private:
         std::bitset<NUM_KEY> keyHeldState;
         std::bitset<NUM_MOUSE_BUTTON> mouseHeldState;
@@ -37,7 +38,7 @@ namespace Crowy
         // Call Before Event Process
         void NewFrame(InputGate gate = {}) noexcept;
 
-        void Reset() noexcept{
+        void Reset() noexcept {
             InputProvider::ConsumeEdge();
 
             keyHeldState.reset();
@@ -46,20 +47,23 @@ namespace Crowy
 
         // relative: the cursor hides where it is and the mouse reports motion
         // only; leaving puts it back there unless `restore` is false
-        void SetRelativeMouse(SDL_Window* window, bool relative, bool restore = true) noexcept;
-        bool IsRelativeMouse() const noexcept{
-            return relative;
-        }
-        const InputGate& Gate() const noexcept{
-            return gate;
-        }
+        void SetRelativeMouse(
+            SDL_Window* window,
+            bool relative,
+            bool restore = true
+        ) noexcept;
+        bool IsRelativeMouse() const noexcept { return relative; }
+        const InputGate& Gate() const noexcept { return gate; }
         // keys get their releases from SDL; buttons get theirs only once the
         // window is focused again, so they let go here
         void OnFocusLost(SDL_Window* window) noexcept;
 
         // `input` as the event a device would send, from where the mouse
         // and the modifiers stand now
-        SDL_Event Synthesize(const InputEvent& input, SDL_WindowID window) const noexcept;
+        SDL_Event Synthesize(
+            const InputEvent& input,
+            SDL_WindowID window
+        ) const noexcept;
 
         // Process Event
         void OnPlatformEvent(const SDL_KeyboardEvent& event) noexcept;

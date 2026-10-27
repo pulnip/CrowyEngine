@@ -1,13 +1,14 @@
 #pragma once
 
 #include <chrono>
+
 #include "Primitives.hpp"
 
 namespace Crowy
 {
     // Frame time: the wall clock between frames, or a step a frame is told
     // it took
-    class Timer{
+    class Timer {
     public:
         using Duration = std::chrono::high_resolution_clock::duration;
 

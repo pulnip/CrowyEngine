@@ -1,12 +1,14 @@
 #include <array>
 #include <stdexcept>
+
 #include <gtest/gtest.h>
+
 #include "JsonLoader.hpp"
 #include "RuntimeConfig.hpp"
 
 using namespace Crowy;
 
-TEST(RuntimeConfig, AppDocumentSetsTheBenchmarkAndVsync){
+TEST(RuntimeConfig, AppDocumentSetsTheBenchmarkAndVsync) {
     const auto config = loadJson<RuntimeConfig>(R"({
         "metadata": {"version": 0, "name": "Bench", "type": "app"},
         "runtime": {
@@ -29,7 +31,7 @@ TEST(RuntimeConfig, AppDocumentSetsTheBenchmarkAndVsync){
     EXPECT_EQ(config.benchmark.framePath, "bench/frames.csv");
 }
 
-TEST(RuntimeConfig, AbsentKeysKeepTheirDefaults){
+TEST(RuntimeConfig, AbsentKeysKeepTheirDefaults) {
     const auto config =
         loadJson<RuntimeConfig>(R"({"metadata": {"type": "app"}})");
     const BenchmarkConfig defaults;
@@ -42,7 +44,7 @@ TEST(RuntimeConfig, AbsentKeysKeepTheirDefaults){
     EXPECT_TRUE(config.benchmark.framePath.empty());
 }
 
-TEST(RuntimeConfig, OtherDocumentTypesAreRefused){
+TEST(RuntimeConfig, OtherDocumentTypesAreRefused) {
     EXPECT_THROW(
         loadJson<RuntimeConfig>(R"({"metadata": {"type": "resources"}})"),
         std::runtime_error
@@ -50,7 +52,7 @@ TEST(RuntimeConfig, OtherDocumentTypesAreRefused){
 }
 
 // a typo on the command line is loud, unlike an env var nobody reads
-TEST(RuntimeConfig, CommandLineRefusesWhatItDoesNotKnow){
+TEST(RuntimeConfig, CommandLineRefusesWhatItDoesNotKnow) {
     RuntimeConfig config;
 
     static char misspelled[] = "--confg";
@@ -152,7 +154,7 @@ TEST(RuntimeConfig, CommandLineRefusesAnExitItCannotTake) {
     refused(captureFlag, sixty, path, exitFlag, thirty);
 }
 
-TEST(RuntimeConfig, CommandLineTakesHold){
+TEST(RuntimeConfig, CommandLineTakesHold) {
     RuntimeConfig config;
     EXPECT_FALSE(config.hold);
 

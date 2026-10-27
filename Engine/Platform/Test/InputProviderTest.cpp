@@ -1,21 +1,20 @@
 #include <gtest/gtest.h>
+
 #include "KeyCode.hpp"
 #include "MockInputProvider.hpp"
 
 using namespace Crowy;
 
-class InputProviderTest: public ::testing::Test{
+class InputProviderTest: public ::testing::Test {
 protected:
     static MockInputProvider provider;
 
-    void SetUp() override{
-        provider.Reset();
-    }
+    void SetUp() override { provider.Reset(); }
 };
 
 MockInputProvider InputProviderTest::provider;
 
-TEST_F(InputProviderTest, KeyStateLifecycleOccurFirst){
+TEST_F(InputProviderTest, KeyStateLifecycleOccurFirst) {
     {
         SCOPED_TRACE("Frame 0");
         provider.NewFrame();

@@ -7,7 +7,7 @@ namespace Crowy
 {
     struct WindowConfig;
 
-    class Window{
+    class Window {
     public:
         CROWY_DECLARE_INTERFACE(Window)
 
