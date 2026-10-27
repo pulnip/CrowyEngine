@@ -31,9 +31,3 @@ PRIVATE
     <d3dx12/d3dx12_root_signature.h>
     <wrl/client.h>
 )
-
-crowy_declare_private_interface(DX12RHI)
-
-# if(CROWY_ENABLE_TEST)
-#     add_subdirectory(Sample)
-# endif()

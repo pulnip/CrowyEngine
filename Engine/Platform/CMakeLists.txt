@@ -9,8 +9,6 @@ PRIVATE
     Crowy::Log
 )
 
-crowy_declare_private_interface(Platform)
-
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(Platform
         DIRECTORY Test
