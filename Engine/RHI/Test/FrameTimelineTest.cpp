@@ -70,7 +70,7 @@ TEST(RHIFrameTimeline, EarlyFramesCountFromZero) {
     EXPECT_EQ(timeline.CompletedFrame(3), 2u);
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(RHIFrameTimelineDeathTest, FramesAreContiguous) {
     EXPECT_DEATH(
         {

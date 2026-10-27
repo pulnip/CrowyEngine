@@ -24,7 +24,7 @@ TEST(RenderPassRules, ADepthOnlyPassBeginsAndEnds) {
     cmdList.EndRenderPass();
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(RenderPassRulesDeathTest, APassWithNoAttachmentDies) {
     EXPECT_DEATH(
         {

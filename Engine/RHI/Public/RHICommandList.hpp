@@ -389,7 +389,7 @@ namespace Crowy
 
     class RHICommandList {
     private:
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         enum class PassKind : u8 {
             None,
             Render,
@@ -455,7 +455,7 @@ namespace Crowy
                 textureAcquires.size() + bufferAcquires.size()
             );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passState = PassKind::Render;
 #endif
         }
@@ -479,7 +479,7 @@ namespace Crowy
                 textureReleases.size() + bufferReleases.size()
             );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passState = PassKind::None;
 #endif
         }
@@ -655,7 +655,7 @@ namespace Crowy
                 textureAcquires.size() + bufferAcquires.size()
             );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passState = PassKind::Compute;
 #endif
         }
@@ -679,7 +679,7 @@ namespace Crowy
                 textureReleases.size() + bufferReleases.size()
             );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passState = PassKind::None;
 #endif
         }
@@ -809,7 +809,7 @@ namespace Crowy
                 textureAcquires.size() + bufferAcquires.size()
             );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passState = PassKind::Blit;
 #endif
         }
@@ -833,7 +833,7 @@ namespace Crowy
                 textureReleases.size() + bufferReleases.size()
             );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passState = PassKind::None;
 #endif
         }

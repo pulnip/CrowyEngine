@@ -61,7 +61,7 @@ namespace Crowy
 
 // Counters and section timers.
 // Every file that tests this includes this header.
-#if CROWY_BENCHMARK || defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_BENCHMARK || CROWY_DEBUG_BUILD
 #define CROWY_FRAME_STATS 1
 #else
 #define CROWY_FRAME_STATS 0

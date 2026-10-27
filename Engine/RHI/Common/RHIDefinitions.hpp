@@ -533,7 +533,7 @@ namespace Crowy
     struct RHIRenderPassDesc {
         std::span<const RHIColorAttachment> colorAttachments;
         std::optional<RHIDepthAttachment> depthAttachment = std::nullopt;
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         Str debugName;
 #endif
     };

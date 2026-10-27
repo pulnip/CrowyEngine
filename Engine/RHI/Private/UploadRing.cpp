@@ -121,7 +121,7 @@ namespace Crowy
           staging(std::move(stagingBuffer)),
           flush(std::move(flush)),
           capacity(staging->GetSize())
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
           ,
           poisonMode(std::getenv("CROWY_RHI_POISON") != nullptr)
 #endif
@@ -214,7 +214,7 @@ namespace Crowy
         while(!inFlight.empty() && inFlight.front().tag <= completed) {
             const auto retired = inFlight.front().head;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             poisonRange(tail, retired);
 #endif
 
@@ -223,7 +223,7 @@ namespace Crowy
         }
     }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
     void UploadRing::poisonRange(u64 from, u64 to) {
         if(!poisonMode || from >= to)
             return;

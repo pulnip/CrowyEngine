@@ -55,7 +55,7 @@ namespace Crowy
         u64 head = 0, tail = 0;
         std::deque<InFlight> inFlight;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         // stamps freed bytes so a copy still reading a retired range shows up
         // in the destination instead of silently reproducing stale data
         bool poisonMode = false;
@@ -79,7 +79,7 @@ namespace Crowy
     private:
         void retireCompleted();
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         void poisonRange(u64 from, u64 to);
 #endif
     };
