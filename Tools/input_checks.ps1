@@ -105,6 +105,16 @@ function Walk([int]$Frames = 12) {
 
 # Playground held, on `Port` alone, hearing only the port
 function Start-Playground([string]$Debug) {
+    $answers = $true
+    try {
+        $null = Invoke-Port ping
+    }
+    catch {
+        $answers = $false
+    }
+    if ($answers) {
+        throw "port $Port already answers; close what holds it first"
+    }
     $saved = @{}
     foreach ($name in "CROWY_COMMAND_PORT", "CROWY_DEBUG") {
         $saved[$name] = [Environment]::GetEnvironmentVariable($name)
