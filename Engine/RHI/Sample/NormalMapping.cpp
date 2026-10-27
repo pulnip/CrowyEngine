@@ -12,7 +12,7 @@
 
 namespace Crowy
 {
-    class NormalMapping: public App{
+    class NormalMapping: public App {
     private:
         RHIGraphicsPipelineStateRAII pso;
 
@@ -20,7 +20,7 @@ namespace Crowy
         u32 indexCount = 0;
         RHITextureRAII diffuse, normal, bump;
 
-        struct PushConstants{
+        struct PushConstants {
             u64 diffuse;
             u64 normal;
             u64 bump;
@@ -40,7 +40,7 @@ namespace Crowy
         f32 aspect = 1.0f;
         static constexpr f32 nearZ = 0.1f, farZ = 100.0f;
 
-        struct Uniforms{
+        struct Uniforms {
             Mat4 model = unitMat();
             Mat4 viewProj = unitMat();
             Vec3 cameraPos{};
@@ -50,42 +50,49 @@ namespace Crowy
             float ambient = 0.15f;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .vertexLayout = VertexInputLayout,
-                .topology = RHIPrimitiveTopology::TriangleList,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/NormalMapping.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/NormalMapping.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1
-            });
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+            pso = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .vertexLayout = VertexInputLayout,
+                    .topology = RHIPrimitiveTopology::TriangleList,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/NormalMapping.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/NormalMapping.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1
+                }
+            );
 
             auto boxMesh = MakeBox(1.0f);
-            vertices = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(sizeof(Vertex) * boxMesh.vertices.size()),
-                .initialData = boxMesh.vertices.data()
-            });
-            indices = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = static_cast<u32>(sizeof(u32) * boxMesh.indices.size()),
-                .initialData = boxMesh.indices.data()
-            });
+            vertices = device.CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size = static_cast<u32>(
+                        sizeof(Vertex) * boxMesh.vertices.size()
+                    ),
+                    .initialData = boxMesh.vertices.data()
+                }
+            );
+            indices = device.CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size =
+                        static_cast<u32>(sizeof(u32) * boxMesh.indices.size()),
+                    .initialData = boxMesh.indices.data()
+                }
+            );
             indexCount = static_cast<u32>(boxMesh.indices.size());
 
-            // the normal map and the height map describe the same surface at different smoothness;
+            // the normal map and the height map describe the same surface at
+            // different smoothness;
             // - the normal map is a wide, gentle bevel per plank,
-            // - the height map a narrow, sharp notch that also carries the frame and the brace.
-            // so the first shades and the second displaces
+            // - the height map a narrow, sharp notch that also carries the
+            // frame and the brace. so the first shades and the second displaces
             auto diffuseImage = LoadImage(
                 resolveContentPath("Assets/3crates/crate1/crate1_diffuse.ktx2")
             );
@@ -96,35 +103,45 @@ namespace Crowy
                 resolveContentPath("Assets/3crates/crate1/crate1_bump.ktx2")
             );
 
-            diffuse = device.CreateTexture(RHITextureCreateDesc{
-                .width = diffuseImage.width, .height = diffuseImage.height,
-                .mipLevels = diffuseImage.mipLevels,
-                .arraySize = diffuseImage.arraySize,
-                .format = diffuseImage.format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialData = diffuseImage.subs
-            });
-            normal = device.CreateTexture(RHITextureCreateDesc{
-                .width = normalImage.width, .height = normalImage.height,
-                .mipLevels = normalImage.mipLevels,
-                .arraySize = normalImage.arraySize,
-                .format = normalImage.format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialData = normalImage.subs
-            });
-            bump = device.CreateTexture(RHITextureCreateDesc{
-                .width = bumpImage.width, .height = bumpImage.height,
-                .mipLevels = bumpImage.mipLevels,
-                .arraySize = bumpImage.arraySize,
-                .format = bumpImage.format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialData = bumpImage.subs
-            });
+            diffuse = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = diffuseImage.width,
+                    .height = diffuseImage.height,
+                    .mipLevels = diffuseImage.mipLevels,
+                    .arraySize = diffuseImage.arraySize,
+                    .format = diffuseImage.format,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialData = diffuseImage.subs
+                }
+            );
+            normal = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = normalImage.width,
+                    .height = normalImage.height,
+                    .mipLevels = normalImage.mipLevels,
+                    .arraySize = normalImage.arraySize,
+                    .format = normalImage.format,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialData = normalImage.subs
+                }
+            );
+            bump = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = bumpImage.width,
+                    .height = bumpImage.height,
+                    .mipLevels = bumpImage.mipLevels,
+                    .arraySize = bumpImage.arraySize,
+                    .format = bumpImage.format,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialData = bumpImage.subs
+                }
+            );
 
-            aspect = static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
+            aspect =
+                static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
         }
 
-        void ProcessInput(const InputProvider& input) override{
+        void ProcessInput(const InputProvider& input) override {
             if(!input.IsKeyDown(MouseButton::RButton))
                 return;
 
@@ -140,7 +157,10 @@ namespace Crowy
             boxRot = normalize(quat(axisAngle(axis, angle), boxRot));
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
             constexpr auto view = viewMat(eye, unitQuat());
             const auto proj = perspective(fovY, aspect, nearZ, farZ);
 
@@ -152,32 +172,27 @@ namespace Crowy
             };
             const auto frameCB = Device().UploadTransient(uniforms);
 
-            std::array colorAttachments = {
-                backBuffer
-            };
+            std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments
-            }, acquires);
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{.colorAttachments = colorAttachments},
+                acquires
+            );
             cmdList.SetViewport(fullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            cmdList.SetVertexBuffer(
-                *vertices,
-                0,
-                sizeof(Vertex)
+            cmdList.SetVertexBuffer(*vertices, 0, sizeof(Vertex));
+            cmdList.SetPushGraphicsConstants(
+                PushConstants{
+                    .diffuse = diffuse->GetReadableID(),
+                    .normal = normal->GetReadableID(),
+                    .bump = bump->GetReadableID()
+                }
             );
-            cmdList.SetPushGraphicsConstants(PushConstants{
-                .diffuse = diffuse->GetReadableID(),
-                .normal = normal->GetReadableID(),
-                .bump = bump->GetReadableID()
-            });
             cmdList.SetGraphicsConstantBuffer(frameCB, 0);
             cmdList.DrawIndexed(
-                RHIIndexBufferView{
-                    .buffer = indices.get()
-                },
+                RHIIndexBufferView{.buffer = indices.get()},
                 indexCount
             );
 
@@ -185,7 +200,7 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnResize(u32 width, u32 height) override{
+        void OnResize(u32 width, u32 height) override {
             aspect = static_cast<f32>(width) / height;
         }
     };
@@ -196,7 +211,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "NormalMapping",
-        .width = 800, .height = 800,
+        .width = 800,
+        .height = 800,
         .fullscreen = false,
         .resizable = true,
     };

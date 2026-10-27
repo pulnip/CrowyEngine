@@ -21,7 +21,7 @@
 
 namespace Crowy
 {
-    class App: public MainLoop{
+    class App: public MainLoop {
     private:
         // what a frame let through by a counted run takes, whatever the
         // clock says, so two runs of the same steps agree: Core's tick
@@ -46,32 +46,27 @@ namespace Crowy
     public:
         virtual ~App() = default;
 
-        void BindDevice(RHIDevice& device) noexcept{ this->device = &device; }
-        RHIDevice& Device() const noexcept{
+        void BindDevice(RHIDevice& device) noexcept { this->device = &device; }
+        RHIDevice& Device() const noexcept {
             CROWY_ASSERT(device != nullptr);
             return *device;
         }
-        void BindRuntime(const RuntimeConfig& runtime) noexcept{
+        void BindRuntime(const RuntimeConfig& runtime) noexcept {
             this->runtime = &runtime;
         }
-        const RuntimeConfig& Runtime() const noexcept{
+        const RuntimeConfig& Runtime() const noexcept {
             CROWY_ASSERT(runtime != nullptr);
             return *runtime;
         }
 
-        u64 FrameNumber() const noexcept{
-            return frame;
-        }
-        void OnFrameBegin(u64 frame) override final{
-            this->frame = frame;
-        }
-        bool ShouldAdvance() override final{
+        u64 FrameNumber() const noexcept { return frame; }
+        void OnFrameBegin(u64 frame) override final { this->frame = frame; }
+        bool ShouldAdvance() override final {
             // a quit leaves through Update(), so it releases any hold, even
             // one that arrives after it
-            const auto gate = quitRequested ?
-                FrameControl::Gate::Free :
-                control.Advance(frame);
-            if(gate == FrameControl::Gate::Hold){
+            const auto gate = quitRequested ? FrameControl::Gate::Free
+                                            : control.Advance(frame);
+            if(gate == FrameControl::Gate::Hold) {
                 held = true;
                 return false;
             }
@@ -82,8 +77,8 @@ namespace Crowy
             return true;
         }
 
-        virtual void OnUpdate(f64 deltaTime, f64 elapsedTime){}
-        bool Update() override final{
+        virtual void OnUpdate(f64 deltaTime, f64 elapsedTime) {}
+        bool Update() override final {
             // a frame capture wants frame N to be one picture, so every frame
             // of its run is a fixed step too
             if(stepped || !Runtime().captures.empty())
@@ -91,34 +86,38 @@ namespace Crowy
             else
                 timer.NewFrame();
 
-            OnUpdate(
-                timer.GetDeltaTime(),
-                timer.GetElapsedTime()
-            );
+            OnUpdate(timer.GetDeltaTime(), timer.GetElapsedTime());
             return !quitRequested;
         }
 
-        virtual void OnRecord(RHICommandList&, const RHIColorAttachment& backBuffer) = 0;
-        void Render(CommandListPool& pool, RHISwapchain& swapchain) override final;
+        virtual void OnRecord(
+            RHICommandList&,
+            const RHIColorAttachment& backBuffer
+        ) = 0;
+        void Render(
+            CommandListPool& pool,
+            RHISwapchain& swapchain
+        ) override final;
 
     protected:
         // the frame finishes, then the loop leaves through Update()
-        void RequestQuit() noexcept{
-            quitRequested = true;
-        }
+        void RequestQuit() noexcept { quitRequested = true; }
 
-        FrameControl& Control() noexcept{ return control; }
-        const FrameControl& Control() const noexcept{ return control; }
+        FrameControl& Control() noexcept { return control; }
+        const FrameControl& Control() const noexcept { return control; }
         // what OnUpdate has been told so far: fixed steps plus wall-clock
         // frames, with no hold in it
-        f64 ElapsedSeconds() const noexcept{ return timer.GetElapsedTime(); }
+        f64 ElapsedSeconds() const noexcept { return timer.GetElapsedTime(); }
     };
 
     // self-contained backbuffer barriers for the pass drawing to it.
     // the acquire discards previous contents (fine while the pass clears);
     // a sample that loads them instead should acquire Present → RenderTarget.
-    inline RHITextureBarrier AcquireBackBuffer(const RHIColorAttachment& backBuffer){
-        CROWY_ASSERT(backBuffer.loadAction != RHILoadAction::Load,
+    inline RHITextureBarrier AcquireBackBuffer(
+        const RHIColorAttachment& backBuffer
+    ) {
+        CROWY_ASSERT(
+            backBuffer.loadAction != RHILoadAction::Load,
             "discarding acquire but the pass loads previous contents"
         );
         return makeBarrier(
@@ -128,7 +127,9 @@ namespace Crowy
         );
     }
     // Present ordering is the swapchain's guarantee, so no pair needed
-    inline RHITextureBarrier ReleaseBackBuffer(const RHIColorAttachment& backBuffer){
+    inline RHITextureBarrier ReleaseBackBuffer(
+        const RHIColorAttachment& backBuffer
+    ) {
         return makeBarrier(
             *backBuffer.texture,
             RHIResourceUsage::RenderTarget,
@@ -137,8 +138,8 @@ namespace Crowy
     }
 
     template<std::derived_from<App> T>
-    int Main(const RuntimeConfig& runtimeConfig){
-        try{
+    int Main(const RuntimeConfig& runtimeConfig) {
+        try {
             if(runtimeConfig.project)
                 setProjectRoot(*runtimeConfig.project);
 
@@ -151,12 +152,12 @@ namespace Crowy
 
             os.Run(app, *device);
         }
-        catch(const std::exception& e){
+        catch(const std::exception& e) {
             std::println("Exception: {}", e.what());
 
             return 1;
         }
-        catch(...){
+        catch(...) {
             std::println("Unhandled Exception");
 
             return 1;
@@ -168,12 +169,10 @@ namespace Crowy
     // a sample a run configures from the command line: --config, --hold,
     // --capture-frame
     template<std::derived_from<App> T>
-    int Main(int argc, char** argv, const WindowConfig& windowConfig){
-        RuntimeConfig runtimeConfig{
-            .window = windowConfig
-        };
+    int Main(int argc, char** argv, const WindowConfig& windowConfig) {
+        RuntimeConfig runtimeConfig{.window = windowConfig};
 
-        try{
+        try {
             const auto args =
                 std::span<char* const>(argv, static_cast<usize>(argc));
             applyCommandLine(
@@ -181,7 +180,7 @@ namespace Crowy
                 args.empty() ? args : args.subspan(1)
             );
         }
-        catch(const std::exception& e){
+        catch(const std::exception& e) {
             std::println("{}", e.what());
 
             return 1;
@@ -190,4 +189,3 @@ namespace Crowy
         return Main<T>(runtimeConfig);
     }
 }
-

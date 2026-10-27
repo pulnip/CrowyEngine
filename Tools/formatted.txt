@@ -7,8 +7,4 @@ Engine/Remote
 Engine/Platform
 Engine/Serialization
 Engine/Content
-Engine/RHI/Common
-Engine/RHI/Public
-Engine/RHI/Private
-Engine/RHI/TestSupport
-Engine/RHI/Test
+Engine/RHI

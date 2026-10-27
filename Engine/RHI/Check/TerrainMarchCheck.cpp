@@ -4,6 +4,7 @@
 #include <print>
 #include <span>
 #include <vector>
+
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
@@ -19,7 +20,8 @@
 // alone, and the CPU density at its two corners must straddle zero and read
 // zero again at the point the GPU picked.
 
-namespace{
+namespace
+{
     using namespace Crowy;
 
     // measured at the default parameters; see the count this prints
@@ -38,22 +40,23 @@ namespace{
     // a coordinate is on a grid line if it is this close to one
     constexpr f32 LATTICE_TOLERANCE = 1e-3f;
     // below this a triangle is too thin for its winding to mean anything
-    constexpr f32 MIN_TRIANGLE_AREA = 0.01f * TERRAIN_CELL_SIZE * TERRAIN_CELL_SIZE;
+    constexpr f32 MIN_TRIANGLE_AREA =
+        0.01f * TERRAIN_CELL_SIZE * TERRAIN_CELL_SIZE;
 
     constexpr f32 GRID_MAX_X = TERRAIN_CELLS_X * TERRAIN_CELL_SIZE;
     constexpr f32 GRID_MAX_Y = TERRAIN_CELLS_Y * TERRAIN_CELL_SIZE;
     constexpr f32 GRID_MAX_Z = TERRAIN_CELLS_Z * TERRAIN_CELL_SIZE;
 
-    struct Failures{
+    struct Failures {
         u32 outOfBounds = 0;
         u32 offLattice = 0;
         u32 edgeDoesNotCross = 0;
         u32 offSurface = 0;
         u32 badNormal = 0;
 
-        u32 Total() const noexcept{
-            return outOfBounds + offLattice + edgeDoesNotCross +
-                offSurface + badNormal;
+        u32 Total() const noexcept {
+            return outOfBounds + offLattice + edgeDoesNotCross + offSurface +
+                   badNormal;
         }
     };
 
@@ -66,7 +69,7 @@ namespace{
     // whole mesh at once. So the verdict rides on the area-weighted total,
     // which slivers barely move, and the per-triangle rate is reported for
     // diagnosis rather than judged.
-    struct Winding{
+    struct Winding {
         u32 tested = 0;
         u32 disagreed = 0;
         // sum of cross(...) . normal, so each triangle counts for its area
@@ -77,37 +80,40 @@ namespace{
         Vec3 worstAt{};
     };
 
-    f32 Axis(Vec3 v, u32 axis) noexcept{
+    f32 Axis(Vec3 v, u32 axis) noexcept {
         return axis == 0 ? v.x : (axis == 1 ? v.y : v.z);
     }
 
     // every submit here is a frame of its own, drained before the next; the
     // device counts frames across the whole program, so the count lives here
-    void SubmitAndWait(RHIDevice& device, std::span<RHICommandList*> lists){
+    void SubmitAndWait(RHIDevice& device, std::span<RHICommandList*> lists) {
         static u64 frame = 0;
         device.Submit(lists, ++frame);
         device.WaitFrame(frame);
     }
 
-    void SetAxis(Vec3& v, u32 axis, f32 value) noexcept{
+    void SetAxis(Vec3& v, u32 axis, f32 value) noexcept {
         (axis == 0 ? v.x : (axis == 1 ? v.y : v.z)) = value;
     }
 
-    bool InsideGrid(Vec3 p) noexcept{
-        return p.x >= -LATTICE_TOLERANCE && p.x <= GRID_MAX_X + LATTICE_TOLERANCE
-            && p.y >= -LATTICE_TOLERANCE && p.y <= GRID_MAX_Y + LATTICE_TOLERANCE
-            && p.z >= -LATTICE_TOLERANCE && p.z <= GRID_MAX_Z + LATTICE_TOLERANCE;
+    bool InsideGrid(Vec3 p) noexcept {
+        return p.x >= -LATTICE_TOLERANCE &&
+               p.x <= GRID_MAX_X + LATTICE_TOLERANCE &&
+               p.y >= -LATTICE_TOLERANCE &&
+               p.y <= GRID_MAX_Y + LATTICE_TOLERANCE &&
+               p.z >= -LATTICE_TOLERANCE &&
+               p.z <= GRID_MAX_Z + LATTICE_TOLERANCE;
     }
 
     // the axis the vertex was interpolated along, or 3 if it landed on a
     // corner (t was 0 or 1, which the noise makes vanishingly rare) - and 4
     // if two axes are off the lattice, which no edge vertex can be
-    u32 InterpolatedAxis(Vec3 p) noexcept{
+    u32 InterpolatedAxis(Vec3 p) noexcept {
         u32 found = 3, count = 0;
 
-        for(u32 axis = 0; axis < 3; ++axis){
+        for(u32 axis = 0; axis < 3; ++axis) {
             const f32 grid = Axis(p, axis) / TERRAIN_CELL_SIZE;
-            if(std::abs(grid - std::round(grid)) > LATTICE_TOLERANCE){
+            if(std::abs(grid - std::round(grid)) > LATTICE_TOLERANCE) {
                 found = axis;
                 ++count;
             }
@@ -119,9 +125,15 @@ namespace{
     // The residual of the linear interpolation the shader did, evaluated with
     // CPU densities. Conditioning does not enter: this asks whether the
     // reported point reads zero, not where exactly zero was.
-    bool OnSurface(Vec3 p, u32 axis, const TerrainParams& params, Failures& failures){
+    bool OnSurface(
+        Vec3 p,
+        u32 axis,
+        const TerrainParams& params,
+        Failures& failures
+    ) {
         const f32 coord = Axis(p, axis);
-        const f32 low = std::floor(coord / TERRAIN_CELL_SIZE) * TERRAIN_CELL_SIZE;
+        const f32 low =
+            std::floor(coord / TERRAIN_CELL_SIZE) * TERRAIN_CELL_SIZE;
 
         Vec3 a = p, b = p;
         SetAxis(a, axis, low);
@@ -130,13 +142,13 @@ namespace{
         const f32 da = terrainDensity(a, params);
         const f32 db = terrainDensity(b, params);
 
-        if((da > 0.0f) == (db > 0.0f)){
+        if((da > 0.0f) == (db > 0.0f)) {
             ++failures.edgeDoesNotCross;
             return false;
         }
 
         const f32 t = (coord - low) / TERRAIN_CELL_SIZE;
-        if(std::abs(da + t * (db - da)) > DENSITY_TOLERANCE){
+        if(std::abs(da + t * (db - da)) > DENSITY_TOLERANCE) {
             ++failures.offSurface;
             return false;
         }
@@ -147,11 +159,11 @@ namespace{
     Failures CheckVertices(
         std::span<const TerrainVertex> vertices,
         const TerrainParams& params
-    ){
+    ) {
         Failures failures;
 
-        for(const auto& vertex: vertices){
-            if(!InsideGrid(vertex.position)){
+        for(const auto& vertex: vertices) {
+            if(!InsideGrid(vertex.position)) {
                 ++failures.outOfBounds;
                 continue;
             }
@@ -160,7 +172,7 @@ namespace{
                 ++failures.badNormal;
 
             const u32 axis = InterpolatedAxis(vertex.position);
-            if(axis == 4){
+            if(axis == 4) {
                 ++failures.offLattice;
                 continue;
             }
@@ -177,15 +189,16 @@ namespace{
     // the engine rasterizes the right-hand normal as the front face
     // (left-handed, frontCounterClockwise = false), so the winding has to
     // agree with the gradient normals the shader stored
-    Winding CheckWinding(std::span<const TerrainVertex> vertices){
+    Winding CheckWinding(std::span<const TerrainVertex> vertices) {
         Winding winding;
 
-        for(usize i = 0; i + 2 < vertices.size(); i += 3){
+        for(usize i = 0; i + 2 < vertices.size(); i += 3) {
             const auto& a = vertices[i];
             const auto& b = vertices[i + 1];
             const auto& c = vertices[i + 2];
 
-            const auto face = cross(b.position - a.position, c.position - a.position);
+            const auto face =
+                cross(b.position - a.position, c.position - a.position);
             const auto smooth = a.normal + b.normal + c.normal;
 
             winding.weighted += dot(face, smooth);
@@ -201,7 +214,7 @@ namespace{
                 continue;
 
             ++winding.disagreed;
-            if(cosine < winding.worstCosine){
+            if(cosine < winding.worstCosine) {
                 winding.worstCosine = cosine;
                 winding.worstArea = area;
                 winding.worstAt = a.position;
@@ -219,28 +232,31 @@ namespace{
         std::span<const TerrainVertex> stored,
         const TerrainMarchCounter& counter,
         std::vector<TerrainVertex>& soup
-    ){
+    ) {
         const u32 triangles = counter.DrawableTriangles();
 
-        std::println("  {} vertices welded, {:.2f} per triangle",
+        std::println(
+            "  {} vertices welded, {:.2f} per triangle",
             counter.vertexCount,
             static_cast<f32>(counter.vertexCount) / triangles
         );
 
-        if(counter.vertexCount > PREFIX_VERTICES){
+        if(counter.vertexCount > PREFIX_VERTICES) {
             std::println(
                 "  FAIL: {} vertices is more than the {} read back, so the "
                 "indices cannot be resolved - raise PREFIX_VERTICES",
-                counter.vertexCount, PREFIX_VERTICES
+                counter.vertexCount,
+                PREFIX_VERTICES
             );
             return false;
         }
         // welding that saves nothing is welding that did not happen
-        if(counter.vertexCount >= triangles * 3){
+        if(counter.vertexCount >= triangles * 3) {
             std::println(
                 "  FAIL: {} vertices for {} triangles - no sharing at all, "
                 "so the edge slots are not being reused",
-                counter.vertexCount, triangles
+                counter.vertexCount,
+                triangles
             );
             return false;
         }
@@ -248,14 +264,17 @@ namespace{
         const auto count = std::min(triangles * 3, PREFIX_INDICES);
         soup.reserve(count);
 
-        for(u32 i = 0; i + 2 < count; i += 3){
-            for(u32 k = 0; k < 3; ++k){
+        for(u32 i = 0; i + 2 < count; i += 3) {
+            for(u32 k = 0; k < 3; ++k) {
                 const u32 index = indices[i + k];
-                if(index >= counter.vertexCount){
+                if(index >= counter.vertexCount) {
                     std::println(
                         "  FAIL: index {} at slot {} names vertex {} of {} - "
                         "the edge slots and the vertex counter disagree",
-                        index, i + k, index, counter.vertexCount
+                        index,
+                        i + k,
+                        index,
+                        counter.vertexCount
                     );
                     return false;
                 }
@@ -272,14 +291,14 @@ namespace{
         RHIBuffer& readback,
         const TerrainMarchCounter& counter,
         TerrainMarchMode mode
-    ){
+    ) {
         const u32 expected = counter.DrawableTriangles() * 3;
 
         // the two layouts agree on the first three fields and differ after,
         // so only the tail needs telling apart
         RHIDrawArgs args{};
         u32 baseVertex = 0;
-        if(mode == TerrainMarchMode::Welded){
+        if(mode == TerrainMarchMode::Welded) {
             RHIDrawIndexedArgs indexed{};
             readback.Download(&indexed, sizeof(indexed));
 
@@ -291,33 +310,42 @@ namespace{
             };
             baseVertex = static_cast<u32>(indexed.baseVertex);
         }
-        else{
+        else {
             readback.Download(&args, sizeof(args));
         }
 
-        if(baseVertex != 0){
+        if(baseVertex != 0) {
             std::println("  FAIL: baseVertex should be 0, not {}", baseVertex);
             return false;
         }
 
-        const auto unit = mode == TerrainMarchMode::Welded ? "indices" : "vertices";
-        std::println("  draw args: {} {}, {} instances",
-            args.vertexCount, unit, args.instanceCount
+        const auto unit =
+            mode == TerrainMarchMode::Welded ? "indices" : "vertices";
+        std::println(
+            "  draw args: {} {}, {} instances",
+            args.vertexCount,
+            unit,
+            args.instanceCount
         );
 
-        if(args.vertexCount != expected){
+        if(args.vertexCount != expected) {
             std::println(
                 "  FAIL: the argument kernel asked for {} {} where the counter "
                 "says {}",
-                args.vertexCount, unit, expected
+                args.vertexCount,
+                unit,
+                expected
             );
             return false;
         }
-        if(args.instanceCount != 1 || args.firstVertex != 0 || args.baseInstance != 0){
+        if(args.instanceCount != 1 || args.firstVertex != 0 ||
+           args.baseInstance != 0) {
             std::println(
                 "  FAIL: draw args carry junk beyond the vertex count "
                 "({} instances, first {}, base {})",
-                args.instanceCount, args.firstVertex, args.baseInstance
+                args.instanceCount,
+                args.firstVertex,
+                args.baseInstance
             );
             return false;
         }
@@ -329,7 +357,7 @@ namespace{
     // towards everything, so this sits orders of magnitude away from both
     constexpr f32 MAX_DISAGREEMENT_RATE = 0.005f;
 
-    bool WindingIsRight(const Winding& winding){
+    bool WindingIsRight(const Winding& winding) {
         if(winding.tested == 0)
             return false;
 
@@ -338,24 +366,31 @@ namespace{
         std::println(
             "  winding: {} of {} triangles disagree ({:.4f}%), "
             "area-weighted total {:+.3e}",
-            winding.disagreed, winding.tested, 100.0f * rate, winding.weighted
+            winding.disagreed,
+            winding.tested,
+            100.0f * rate,
+            winding.weighted
         );
-        if(winding.disagreed > 0){
+        if(winding.disagreed > 0) {
             std::println(
-                "    worst: cos {:+.3f}, area {:.5f}, at ({:.2f}, {:.2f}, {:.2f})",
-                winding.worstCosine, winding.worstArea,
-                winding.worstAt.x, winding.worstAt.y, winding.worstAt.z
+                "    worst: cos {:+.3f}, area {:.5f}, at ({:.2f}, {:.2f}, "
+                "{:.2f})",
+                winding.worstCosine,
+                winding.worstArea,
+                winding.worstAt.x,
+                winding.worstAt.y,
+                winding.worstAt.z
             );
         }
 
-        if(winding.weighted <= 0.0){
+        if(winding.weighted <= 0.0) {
             std::println(
                 "  FAIL: the mesh faces inward - "
                 "reverse the emit order in cs_march"
             );
             return false;
         }
-        if(rate > MAX_DISAGREEMENT_RATE){
+        if(rate > MAX_DISAGREEMENT_RATE) {
             std::println(
                 "  FAIL: too many triangles wound against their normals for "
                 "slivers to explain"
@@ -366,45 +401,52 @@ namespace{
         return true;
     }
 
-    void Report(const Failures& failures, u32 checked){
+    void Report(const Failures& failures, u32 checked) {
         std::println("  vertices checked: {}", checked);
 
-        if(failures.Total() == 0){
+        if(failures.Total() == 0) {
             std::println("  every vertex sits on a cell edge at density zero");
             return;
         }
 
-        if(failures.outOfBounds > 0){
-            std::println("  FAIL: {} vertices outside the grid", failures.outOfBounds);
+        if(failures.outOfBounds > 0) {
+            std::println(
+                "  FAIL: {} vertices outside the grid",
+                failures.outOfBounds
+            );
         }
-        if(failures.offLattice > 0){
+        if(failures.offLattice > 0) {
             std::println(
                 "  FAIL: {} vertices off the cell edges - "
                 "the edge table and the corner offsets disagree",
                 failures.offLattice
             );
         }
-        if(failures.edgeDoesNotCross > 0){
+        if(failures.edgeDoesNotCross > 0) {
             std::println(
                 "  FAIL: {} vertices on edges whose corners are both solid or "
                 "both air - the case index does not match the table",
                 failures.edgeDoesNotCross
             );
         }
-        if(failures.offSurface > 0){
+        if(failures.offSurface > 0) {
             std::println(
                 "  FAIL: {} vertices away from density zero - "
                 "the edge interpolation is wrong",
                 failures.offSurface
             );
         }
-        if(failures.badNormal > 0){
-            std::println("  FAIL: {} normals are not unit length", failures.badNormal);
+        if(failures.badNormal > 0) {
+            std::println(
+                "  FAIL: {} normals are not unit length",
+                failures.badNormal
+            );
         }
     }
 }
 
-namespace{
+namespace
+{
     // Runs one mode end to end and judges what came back. Both modes mesh the
     // same field, so the same geometry checks apply to both - the welded one
     // just has to be dereferenced through its indices first.
@@ -412,7 +454,7 @@ namespace{
         RHIDevice& device,
         const TerrainParams& params,
         TerrainMarchMode mode
-    ){
+    ) {
         const bool welded = mode == TerrainMarchMode::Welded;
         std::println("--- {} ---", welded ? "welded" : "soup");
 
@@ -428,22 +470,34 @@ namespace{
             welded ? sizeof(RHIDrawIndexedArgs) : sizeof(RHIDrawArgs)
         );
 
-        auto counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(TerrainMarchCounter),
-            .memory = RHIMemoryType::CPURead
-        }, "TerrainMarchCounterReadback");
-        auto vertexReadback = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = vertexBytes,
-            .memory = RHIMemoryType::CPURead
-        }, "TerrainMarchVertexReadback");
-        auto indexReadback = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = indexBytes,
-            .memory = RHIMemoryType::CPURead
-        }, "TerrainMarchIndexReadback");
-        auto argsReadback = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = argsBytes,
-            .memory = RHIMemoryType::CPURead
-        }, "TerrainMarchArgsReadback");
+        auto counterReadback = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = sizeof(TerrainMarchCounter),
+                .memory = RHIMemoryType::CPURead
+            },
+            "TerrainMarchCounterReadback"
+        );
+        auto vertexReadback = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = vertexBytes,
+                .memory = RHIMemoryType::CPURead
+            },
+            "TerrainMarchVertexReadback"
+        );
+        auto indexReadback = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = indexBytes,
+                .memory = RHIMemoryType::CPURead
+            },
+            "TerrainMarchIndexReadback"
+        );
+        auto argsReadback = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = argsBytes,
+                .memory = RHIMemoryType::CPURead
+            },
+            "TerrainMarchArgsReadback"
+        );
 
         // A first run, submitted on its own, left the way a frame that drew
         // the result would leave it. The run that follows then has to wind
@@ -462,12 +516,15 @@ namespace{
 
         cmdList->Begin();
 
-        const auto edges = marcher.Record(*cmdList, params, mode, {
-            .vertices = RHIResourceUsage::CopySrc,
-            .counter = RHIResourceUsage::CopySrc,
-            .args = RHIResourceUsage::CopySrc,
-            .indices = RHIResourceUsage::CopySrc
-        });
+        const auto edges = marcher.Record(
+            *cmdList,
+            params,
+            mode,
+            {.vertices = RHIResourceUsage::CopySrc,
+             .counter = RHIResourceUsage::CopySrc,
+             .args = RHIResourceUsage::CopySrc,
+             .indices = RHIResourceUsage::CopySrc}
+        );
 
         {
             std::vector acquires{edges.vertices, edges.counter, edges.args};
@@ -476,13 +533,18 @@ namespace{
 
             cmdList->BeginBlitPass({}, acquires);
             cmdList->Copy(
-                marcher.Counter(), *counterReadback,
-                0, 0, sizeof(TerrainMarchCounter)
+                marcher.Counter(),
+                *counterReadback,
+                0,
+                0,
+                sizeof(TerrainMarchCounter)
             );
-            cmdList->Copy(marcher.Vertices(), *vertexReadback, 0, 0, vertexBytes);
+            cmdList
+                ->Copy(marcher.Vertices(), *vertexReadback, 0, 0, vertexBytes);
             cmdList->Copy(marcher.Args(mode), *argsReadback, 0, 0, argsBytes);
             if(welded)
-                cmdList->Copy(marcher.Indices(), *indexReadback, 0, 0, indexBytes);
+                cmdList
+                    ->Copy(marcher.Indices(), *indexReadback, 0, 0, indexBytes);
 
             cmdList->EndBlitPass();
         }
@@ -494,21 +556,23 @@ namespace{
         TerrainMarchCounter counter;
         counterReadback->Download(&counter, sizeof(counter));
 
-        std::println("  {} triangles of {} capacity ({:.1f}%)",
+        std::println(
+            "  {} triangles of {} capacity ({:.1f}%)",
             counter.triangleCount,
             TRIANGLE_CAPACITY,
             100.0f * counter.triangleCount / TRIANGLE_CAPACITY
         );
 
-        if(counter.overflowed != 0){
+        if(counter.overflowed != 0) {
             std::println(
                 "  FAIL: capacity ran out after {} triangles - "
                 "raise TRIANGLE_CAPACITY past {}",
-                counter.firstDropped, counter.triangleCount
+                counter.firstDropped,
+                counter.triangleCount
             );
             return false;
         }
-        if(counter.triangleCount == 0){
+        if(counter.triangleCount == 0) {
             std::println(
                 "  FAIL: no triangles - the case index never leaves 0 or 255, "
                 "so the density texture is probably empty"
@@ -522,18 +586,16 @@ namespace{
         std::vector<TerrainVertex> soup;
         bool indicesAreRight = true;
 
-        if(welded){
+        if(welded) {
             std::vector<u32> indices(PREFIX_INDICES);
             indexReadback->Download(indices.data(), indexBytes);
 
             indicesAreRight = BuildWeldedSoup(indices, stored, counter, soup);
         }
-        else{
+        else {
             // whole triangles only, and never past what was actually written
-            const auto emitted = std::min(
-                counter.DrawableTriangles() * 3,
-                PREFIX_VERTICES
-            );
+            const auto emitted =
+                std::min(counter.DrawableTriangles() * 3, PREFIX_VERTICES);
             stored.resize(emitted - emitted % 3);
             soup = std::move(stored);
         }
@@ -548,8 +610,8 @@ namespace{
     }
 }
 
-int main(void){
-    try{
+int main(void) {
+    try {
         using namespace Crowy;
 
         const TerrainParams params{};
@@ -567,7 +629,7 @@ int main(void){
 
         std::println("Succeed!");
     }
-    catch(const std::exception& e){
+    catch(const std::exception& e) {
         std::println("Exception: {}", e.what());
 
         return 1;

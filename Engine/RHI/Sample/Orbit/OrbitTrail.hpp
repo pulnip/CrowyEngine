@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <vector>
+
 #include "Kepler.hpp"
 #include "OrbitFill.hpp"
 #include "RHICommandList.hpp"
@@ -21,14 +22,14 @@ namespace Crowy
     inline constexpr u32 ORBIT_SAMPLE_BYTES =
         ORBIT_BODY_COUNT * static_cast<u32>(sizeof(Vec3));
 
-    enum class OrbitFillMode: u8{
+    enum class OrbitFillMode : u8 {
         // the CPU solves and a staging copy carries the result across
         Cpu,
         // a compute pass solves straight into the ring; nothing crosses the bus
         Gpu
     };
 
-    struct OrbitTrailStats{
+    struct OrbitTrailStats {
         // this frame
         u32 tickCount = 0;
         // 0 when idle, 1 normally, 2 when the write straddles the ring seam
@@ -57,7 +58,7 @@ namespace Crowy
     // earlier appends left. Hence device-local storage plus an explicit
     // staging copy - or, in OrbitFillMode::Gpu, a compute pass that writes
     // the ring in place and never touches the bus at all.
-    class OrbitTrail{
+    class OrbitTrail {
     private:
         u32 capacity;
         f64 dayPerSample;
@@ -127,8 +128,8 @@ namespace Crowy
 
         // Which path fills the ring. Both write the same samples, so the ring
         // stays valid across a switch and the two can be compared in place.
-        void SetFillMode(OrbitFillMode mode) noexcept{ fillMode = mode; }
-        OrbitFillMode FillMode() const noexcept{ return fillMode; }
+        void SetFillMode(OrbitFillMode mode) noexcept { fillMode = mode; }
+        OrbitFillMode FillMode() const noexcept { return fillMode; }
 
         // Records this frame's fill - staging copies or a compute pass,
         // depending on the mode. Call outside any pass.
@@ -137,25 +138,25 @@ namespace Crowy
         // the reader needs no acquire either - nothing wrote the buffer.
         std::optional<RHIBufferBarrier> Record(RHICommandList&);
 
-        RHIBuffer& Buffer() const noexcept{ return *trail; }
+        RHIBuffer& Buffer() const noexcept { return *trail; }
 
-        u32 Capacity() const noexcept{ return capacity; }
-        u32 Filled() const noexcept{ return filled; }
-        u32 Head() const noexcept{ return head; }
-        f64 DayPerSample() const noexcept{ return dayPerSample; }
-        f64 NewestDay() const noexcept{ return newestDay; }
-        const OrbitTrailStats& Stats() const noexcept{ return stats; }
+        u32 Capacity() const noexcept { return capacity; }
+        u32 Filled() const noexcept { return filled; }
+        u32 Head() const noexcept { return head; }
+        f64 DayPerSample() const noexcept { return dayPerSample; }
+        f64 NewestDay() const noexcept { return newestDay; }
+        const OrbitTrailStats& Stats() const noexcept { return stats; }
 
         // Newest-first addressing, shared with the vertex shader: age 0 is the
         // sample just pushed. Trails are drawn from the head backwards, so this
         // is the only indexing either side needs - and the ring seam it never
         // reaches cannot produce a stray segment.
-        u32 SlotForAge(u32 age) const noexcept{
+        u32 SlotForAge(u32 age) const noexcept {
             CROWY_ASSERT(age < filled);
 
             return (head + capacity - 1 - age) % capacity;
         }
-        f64 DayForAge(u32 age) const noexcept{
+        f64 DayForAge(u32 age) const noexcept {
             CROWY_ASSERT(age < filled);
 
             return newestDay - age * dayPerSample;

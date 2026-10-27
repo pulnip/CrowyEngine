@@ -1,6 +1,7 @@
 #include <array>
 #include <print>
 #include <vector>
+
 #include "AppFramework.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
@@ -19,7 +20,7 @@ namespace Crowy
     // writes the draw arguments and ExecuteIndirect consumes them. The only
     // thing that comes back is the counter, a few frames late, to drive the
     // stats and the overflow warning.
-    class MarchingTerrain: public App{
+    class MarchingTerrain: public App {
         using App::App;
 
         // the defaults mesh ~99k triangles. This leaves room for the cave
@@ -56,19 +57,22 @@ namespace Crowy
 
         TerrainCamera camera;
 
-        void CreateDepthBuffer(RHIDevice& device, u32 width, u32 height){
-            depthBuffer = device.CreateTexture(RHITextureCreateDesc{
-                .width = width, .height = height,
-                .format = TERRAIN_DEPTH_FORMAT,
-                .usage = RHITextureUsage::DepthStencil,
-                .clearDepthStencil = {.depth = 1.0f}
-            });
+        void CreateDepthBuffer(RHIDevice& device, u32 width, u32 height) {
+            depthBuffer = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = width,
+                    .height = height,
+                    .format = TERRAIN_DEPTH_FORMAT,
+                    .usage = RHITextureUsage::DepthStencil,
+                    .clearDepthStencil = {.depth = 1.0f}
+                }
+            );
         }
 
         // The copy rides frame counterCopyFrame's batch, so the bytes are
         // there the moment the GPU reports that frame complete. Reading then
         // costs no wait, and the stats trail by a few frames.
-        void CollectCounter(){
+        void CollectCounter() {
             if(!counterCopyInFlight)
                 return;
             if(device->GetCompletedFrame() < counterCopyFrame)
@@ -80,21 +84,22 @@ namespace Crowy
             ctx.stats.triangleCount = counter.DrawableTriangles();
             // the soup spends three vertices on every triangle; welding spends
             // one per crossing edge and says so in the counter
-            ctx.stats.vertexCount = mode == TerrainMarchMode::Soup ?
-                ctx.stats.triangleCount * 3 :
-                counter.vertexCount;
+            ctx.stats.vertexCount = mode == TerrainMarchMode::Soup
+                                        ? ctx.stats.triangleCount * 3
+                                        : counter.vertexCount;
 
             // once per episode, not once per rebuild - dragging a slider
             // through an overflowing range re-marches every frame
-            if(counter.overflowed == 0){
+            if(counter.overflowed == 0) {
                 overflowReported = false;
             }
-            else if(!overflowReported){
+            else if(!overflowReported) {
                 std::println(
                     "MarchingTerrain: triangle capacity {} exceeded "
                     "({} reserved), terrain truncated. "
                     "Raise caveThreshold or lower caveFreq.",
-                    TRIANGLE_CAPACITY, counter.triangleCount
+                    TRIANGLE_CAPACITY,
+                    counter.triangleCount
                 );
                 overflowReported = true;
             }
@@ -102,90 +107,105 @@ namespace Crowy
 
         // bytes the mesh occupies as drawn, so the welding toggle shows its
         // work rather than being taken on faith
-        u32 MeshBytes() const{
+        u32 MeshBytes() const {
             const auto vertexBytes =
                 ctx.stats.vertexCount * static_cast<u32>(sizeof(TerrainVertex));
             if(mode == TerrainMarchMode::Soup)
                 return vertexBytes;
 
             return vertexBytes +
-                ctx.stats.triangleCount * 3 * static_cast<u32>(sizeof(u32));
+                   ctx.stats.triangleCount * 3 * static_cast<u32>(sizeof(u32));
         }
 
-        std::vector<Widget> MakeSampleStats(){
+        std::vector<Widget> MakeSampleStats() {
             return {
                 Checkbox{
                     .label = "weld vertices",
-                    .onChanged = [this](UIContext& c, bool v){
-                        mode = v ?
-                            TerrainMarchMode::Welded :
-                            TerrainMarchMode::Soup;
-                        c.paramsDirty = true;
-                    },
+                    .onChanged =
+                        [this](UIContext& c, bool v) {
+                            mode = v ? TerrainMarchMode::Welded
+                                     : TerrainMarchMode::Soup;
+                            c.paramsDirty = true;
+                        },
                     .v = mode == TerrainMarchMode::Welded
                 },
                 FloatField{
                     .label = "mesh (MB)",
-                    .get = [this]{ return MeshBytes() / (1024.0f * 1024.0f); }
+                    .get = [this] { return MeshBytes() / (1024.0f * 1024.0f); }
                 },
                 FloatField{
                     // reservations, not written triangles, so this runs past
                     // 100 to show by how much the parameters overshot
                     .label = "capacity used (%)",
-                    .get = [this]{
-                        return 100.0f * counter.triangleCount / TRIANGLE_CAPACITY;
-                    }
+                    .get =
+                        [this] {
+                            return 100.0f * counter.triangleCount /
+                                   TRIANGLE_CAPACITY;
+                        }
                 },
-                IntField{
-                    .label = "overflowed",
-                    .get = [this]{ return counter.overflowed != 0 ? 1 : 0; }
-                }
+                IntField{.label = "overflowed", .get = [this] {
+                             return counter.overflowed != 0 ? 1 : 0;
+                         }}
             };
         }
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
             this->device = &device;
 
-            surface = std::make_unique<TerrainSurface>(device, swapchain.GetFormat());
+            surface =
+                std::make_unique<TerrainSurface>(device, swapchain.GetFormat());
 
-            CreateDepthBuffer(device, swapchain.GetWidth(), swapchain.GetHeight());
+            CreateDepthBuffer(
+                device,
+                swapchain.GetWidth(),
+                swapchain.GetHeight()
+            );
             camera.SetViewport(swapchain.GetWidth(), swapchain.GetHeight());
 
-            marcher = std::make_unique<TerrainMarcher>(device, TRIANGLE_CAPACITY);
-            counterReadback = device.CreateBuffer(RHIBufferCreateDesc{
-                .size = sizeof(TerrainMarchCounter),
-                .memory = RHIMemoryType::CPURead
-            }, "TerrainMarchCounterReadback");
+            marcher =
+                std::make_unique<TerrainMarcher>(device, TRIANGLE_CAPACITY);
+            counterReadback = device.CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size = sizeof(TerrainMarchCounter),
+                    .memory = RHIMemoryType::CPURead
+                },
+                "TerrainMarchCounterReadback"
+            );
 
             uiRenderer = std::make_unique<UIRenderer>(
-                device, swapchain.GetFormat(), TERRAIN_DEPTH_FORMAT
+                device,
+                swapchain.GetFormat(),
+                TERRAIN_DEPTH_FORMAT
             );
             // re-marching is cheap enough to chase a slider with
             ctx.autoRebuild = true;
             panel = std::make_unique<TerrainPanel>(ctx, MakeSampleStats());
         }
 
-        void ProcessInput(const InputProvider& input) override{
+        void ProcessInput(const InputProvider& input) override {
             camera.ProcessInput(input);
         }
 
-        void OnUpdate(f64 deltaTime, f64) override{
+        void OnUpdate(f64 deltaTime, f64) override {
             ctx.stats.frameTimeMs = deltaTime * 1000.0;
 
             CollectCounter();
             camera.Update(deltaTime);
 
             // panel callbacks run during Prepare; a press lands here next frame
-            if(ctx.ShouldRebuild()){
+            if(ctx.ShouldRebuild()) {
                 ctx.ClearRebuild();
                 rebuildPending = true;
             }
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
             std::vector<RHIBufferBarrier> bufferAcquires;
 
-            if(rebuildPending){
+            if(rebuildPending) {
                 // only ask for the counter when the last one has been read,
                 // so the copy never overtakes the CPU still reading it
                 const bool copyCounter = !counterCopyInFlight;
@@ -194,18 +214,23 @@ namespace Crowy
                 // stats all speak about the same recording
                 drawnMode = mode;
 
-                const auto edges = marcher->Record(cmdList, ctx.params, drawnMode, {
-                    .counter = copyCounter ?
-                        RHIResourceUsage::CopySrc :
-                        RHIResourceUsage::StorageCompute
-                });
+                const auto edges = marcher->Record(
+                    cmdList,
+                    ctx.params,
+                    drawnMode,
+                    {.counter = copyCounter ? RHIResourceUsage::CopySrc
+                                            : RHIResourceUsage::StorageCompute}
+                );
 
-                if(copyCounter){
+                if(copyCounter) {
                     const std::array acquires{edges.counter};
                     cmdList.BeginBlitPass({}, acquires);
                     cmdList.Copy(
-                        marcher->Counter(), *counterReadback,
-                        0, 0, sizeof(TerrainMarchCounter)
+                        marcher->Counter(),
+                        *counterReadback,
+                        0,
+                        0,
+                        sizeof(TerrainMarchCounter)
                     );
                     cmdList.EndBlitPass();
 
@@ -223,11 +248,13 @@ namespace Crowy
                 rebuildPending = false;
             }
 
-            frameCB = Device().UploadTransient(TerrainFrameUniforms{
-                .viewProj = camera.ViewProj(),
-                .toLight = {0.38f, 0.82f, 0.43f},
-                .ambient = 0.28f
-            });
+            frameCB = Device().UploadTransient(
+                TerrainFrameUniforms{
+                    .viewProj = camera.ViewProj(),
+                    .toLight = {0.38f, 0.82f, 0.43f},
+                    .ambient = 0.28f
+                }
+            );
 
             uiRenderer->Prepare(cmdList, panel->Get(ctx), ctx);
 
@@ -248,44 +275,50 @@ namespace Crowy
             // the pass samples the font atlas Prepare just refreshed
             textureAcquires.append_range(uiRenderer->TextureAcquires());
 
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments,
-                .depthAttachment = RHIDepthAttachment{
-                    .texture = depthBuffer.get(),
-                    .loadAction = RHILoadAction::Clear,
-                    .storeAction = RHIStoreAction::DontCare,
-                    .clearDepthStencil = {.depth = 1.0f}
-                }
-            }, textureAcquires, bufferAcquires);
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{
+                    .colorAttachments = colorAttachments,
+                    .depthAttachment =
+                        RHIDepthAttachment{
+                            .texture = depthBuffer.get(),
+                            .loadAction = RHILoadAction::Clear,
+                            .storeAction = RHIStoreAction::DontCare,
+                            .clearDepthStencil = {.depth = 1.0f}
+                        }
+                },
+                textureAcquires,
+                bufferAcquires
+            );
             cmdList.SetViewport(fullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetGraphicsConstantBuffer(frameCB, 0);
-            cmdList.SetPushGraphicsConstants(TerrainSurfacePush{
-                .vertices = marcher->Vertices().GetReadableID(
-                    static_cast<u32>(sizeof(TerrainVertex))
-                )
-            });
+            cmdList.SetPushGraphicsConstants(
+                TerrainSurfacePush{
+                    .vertices = marcher->Vertices().GetReadableID(
+                        static_cast<u32>(sizeof(TerrainVertex))
+                    )
+                }
+            );
             // how much this draws is only ever known to the GPU
             auto& pipeline = surface->Pipeline(ctx.debug);
             auto& args = marcher->Args(drawnMode);
-            if(drawnMode == TerrainMarchMode::Welded){
-                cmdList.ExecuteIndirectIndexed(DrawBatchIndexed{
-                    .pso = &pipeline,
-                    .args = &args,
-                    .drawCount = 1,
-                    .indices = RHIIndexBufferView{
-                        .buffer = &marcher->Indices()
+            if(drawnMode == TerrainMarchMode::Welded) {
+                cmdList.ExecuteIndirectIndexed(
+                    DrawBatchIndexed{
+                        .pso = &pipeline,
+                        .args = &args,
+                        .drawCount = 1,
+                        .indices =
+                            RHIIndexBufferView{.buffer = &marcher->Indices()}
                     }
-                });
+                );
             }
-            else{
+            else {
                 // the soup path emits its triangles unindexed
-                cmdList.ExecuteIndirect(DrawBatch{
-                    .pso = &pipeline,
-                    .args = &args,
-                    .drawCount = 1
-                });
+                cmdList.ExecuteIndirect(
+                    DrawBatch{.pso = &pipeline, .args = &args, .drawCount = 1}
+                );
             }
 
             uiRenderer->Record(cmdList);
@@ -294,7 +327,7 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnResize(u32 width, u32 height) override{
+        void OnResize(u32 width, u32 height) override {
             CreateDepthBuffer(*device, width, height);
             camera.SetViewport(width, height);
         }
@@ -306,7 +339,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "MarchingTerrain",
-        .width = 1280, .height = 720,
+        .width = 1280,
+        .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,

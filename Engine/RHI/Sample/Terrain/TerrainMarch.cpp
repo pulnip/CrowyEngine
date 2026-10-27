@@ -1,22 +1,25 @@
+#include "TerrainMarch.hpp"
+
 #include <array>
 #include <cstddef>
 #include <vector>
+
 #include "EnumUtil.hpp"
 #include "MarchingCubes.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
-#include "TerrainMarch.hpp"
 
-namespace{
+namespace
+{
     using namespace Crowy;
 
     constexpr CStr SHADER_PATH = "Engine/RHI/Sample/Terrain/TerrainMarch.slang";
 
     // must match ResourceData in Engine/RHI/Sample/Terrain/TerrainMarch.slang;
     // padding spelled out on both sides
-    struct PushConstants{
+    struct PushConstants {
         TerrainParams params;
         u32 cellsX, cellsY, cellsZ;
         f32 cellSize;
@@ -52,99 +55,138 @@ namespace{
     constexpr u32 EDGE_SLOT_COUNT =
         TERRAIN_CORNERS_X * TERRAIN_CORNERS_Y * TERRAIN_CORNERS_Z * 3;
 
-    RHIComputePipelineStateRAII MakePipeline(RHIDevice& device, CStr entryPoint){
-        return device.CreatePipelineState(RHIComputePipelineStateDesc{
-            .computeShader = {.path = SHADER_PATH, .entryPoint = entryPoint}
-        });
+    RHIComputePipelineStateRAII MakePipeline(
+        RHIDevice& device,
+        CStr entryPoint
+    ) {
+        return device.CreatePipelineState(
+            RHIComputePipelineStateDesc{
+                .computeShader = {.path = SHADER_PATH, .entryPoint = entryPoint}
+            }
+        );
     }
 
     // The first Record has nothing to pair with; later ones wind the resource
     // back from wherever the previous submission left it.
-    RHIBufferBarrier AcquireForWrite(RHIBuffer& buffer, RHIResourceUsage resting){
-        return resting == RHIResourceUsage::Undefined ?
-            makeBarrier(buffer,
-                RHIResourceUsage::Undefined,
-                RHIResourceUsage::StorageCompute
-            ) :
-            makeCrossSubmissionBarrier(buffer,
-                resting,
-                RHIResourceUsage::StorageCompute
-            );
+    RHIBufferBarrier AcquireForWrite(
+        RHIBuffer& buffer,
+        RHIResourceUsage resting
+    ) {
+        return resting == RHIResourceUsage::Undefined
+                   ? makeBarrier(
+                         buffer,
+                         RHIResourceUsage::Undefined,
+                         RHIResourceUsage::StorageCompute
+                     )
+                   : makeCrossSubmissionBarrier(
+                         buffer,
+                         resting,
+                         RHIResourceUsage::StorageCompute
+                     );
     }
 
-    RHITextureBarrier AcquireForWrite(RHITexture& texture, RHIResourceUsage resting){
+    RHITextureBarrier AcquireForWrite(
+        RHITexture& texture,
+        RHIResourceUsage resting
+    ) {
         // every texel is rewritten, so the old contents can go
-        return resting == RHIResourceUsage::Undefined ?
-            makeBarrier(texture,
-                RHIResourceUsage::Undefined,
-                RHIResourceUsage::StorageCompute
-            ) :
-            makeCrossSubmissionBarrier(texture,
-                resting,
-                RHIResourceUsage::StorageCompute,
-                /*discardContents=*/true
-            );
+        return resting == RHIResourceUsage::Undefined
+                   ? makeBarrier(
+                         texture,
+                         RHIResourceUsage::Undefined,
+                         RHIResourceUsage::StorageCompute
+                     )
+                   : makeCrossSubmissionBarrier(
+                         texture,
+                         resting,
+                         RHIResourceUsage::StorageCompute,
+                         /*discardContents=*/true
+                     );
     }
 }
 
 namespace Crowy
 {
     TerrainMarcher::TerrainMarcher(RHIDevice& device, u32 triangleCapacity)
-        : triangleCapacity(triangleCapacity)
-        , clearPSO(MakePipeline(device, "cs_clear"))
-        , densityPSO(MakePipeline(device, "cs_density"))
-        , marchPSO(MakePipeline(device, "cs_march"))
-        , argsPSO(MakePipeline(device, "cs_args"))
-        , edgesPSO(MakePipeline(device, "cs_edges"))
-        , indicesPSO(MakePipeline(device, "cs_indices"))
-        , argsIndexedPSO(MakePipeline(device, "cs_args_indexed"))
-    {
-        densityTexture = device.CreateTexture(RHITextureCreateDesc{
-            .width = TERRAIN_CORNERS_X,
-            .height = TERRAIN_CORNERS_Y,
-            .depth = TERRAIN_CORNERS_Z,
-            .format = RHIPixelFormat::R32_FLOAT,
-            .usage = combine(
-                RHITextureUsage::ShaderResource,
-                RHITextureUsage::UnorderedAccess
-            )
-        }, "TerrainDensity");
+        : triangleCapacity(triangleCapacity),
+          clearPSO(MakePipeline(device, "cs_clear")),
+          densityPSO(MakePipeline(device, "cs_density")),
+          marchPSO(MakePipeline(device, "cs_march")),
+          argsPSO(MakePipeline(device, "cs_args")),
+          edgesPSO(MakePipeline(device, "cs_edges")),
+          indicesPSO(MakePipeline(device, "cs_indices")),
+          argsIndexedPSO(MakePipeline(device, "cs_args_indexed")) {
+        densityTexture = device.CreateTexture(
+            RHITextureCreateDesc{
+                .width = TERRAIN_CORNERS_X,
+                .height = TERRAIN_CORNERS_Y,
+                .depth = TERRAIN_CORNERS_Z,
+                .format = RHIPixelFormat::R32_FLOAT,
+                .usage = combine(
+                    RHITextureUsage::ShaderResource,
+                    RHITextureUsage::UnorderedAccess
+                )
+            },
+            "TerrainDensity"
+        );
 
-        vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = VertexCapacity() * static_cast<u32>(sizeof(TerrainVertex)),
-            .shaderWrite = true
-        }, "TerrainMarchVertices");
+        vertexBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size =
+                    VertexCapacity() * static_cast<u32>(sizeof(TerrainVertex)),
+                .shaderWrite = true
+            },
+            "TerrainMarchVertices"
+        );
 
-        counterBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(TerrainMarchCounter),
-            .shaderWrite = true
-        }, "TerrainMarchCounter");
+        counterBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = sizeof(TerrainMarchCounter),
+                .shaderWrite = true
+            },
+            "TerrainMarchCounter"
+        );
 
         const auto triTable = MarchingCubesTriTable();
-        triTableBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = static_cast<u32>(triTable.size_bytes()),
-            .initialData = triTable.data()
-        }, "MarchingCubesTriTable");
+        triTableBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = static_cast<u32>(triTable.size_bytes()),
+                .initialData = triTable.data()
+            },
+            "MarchingCubesTriTable"
+        );
 
-        argsBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(RHIDrawArgs),
-            .shaderWrite = true
-        }, "TerrainMarchArgs");
+        argsBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = sizeof(RHIDrawArgs),
+                .shaderWrite = true
+            },
+            "TerrainMarchArgs"
+        );
 
-        edgeVertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = EDGE_SLOT_COUNT * static_cast<u32>(sizeof(u32)),
-            .shaderWrite = true
-        }, "TerrainMarchEdgeVertices");
+        edgeVertexBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = EDGE_SLOT_COUNT * static_cast<u32>(sizeof(u32)),
+                .shaderWrite = true
+            },
+            "TerrainMarchEdgeVertices"
+        );
 
-        indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = triangleCapacity * 3 * static_cast<u32>(sizeof(u32)),
-            .shaderWrite = true
-        }, "TerrainMarchIndices");
+        indexBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = triangleCapacity * 3 * static_cast<u32>(sizeof(u32)),
+                .shaderWrite = true
+            },
+            "TerrainMarchIndices"
+        );
 
-        argsIndexedBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(RHIDrawIndexedArgs),
-            .shaderWrite = true
-        }, "TerrainMarchArgsIndexed");
+        argsIndexedBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = sizeof(RHIDrawIndexedArgs),
+                .shaderWrite = true
+            },
+            "TerrainMarchArgsIndexed"
+        );
     }
 
     TerrainMarcher::~TerrainMarcher() = default;
@@ -154,7 +196,7 @@ namespace Crowy
         const TerrainParams& params,
         TerrainMarchMode mode,
         TerrainMarchTargets targets
-    ){
+    ) {
         const auto stride = static_cast<u32>(sizeof(u32));
         const bool welded = mode == TerrainMarchMode::Welded;
 
@@ -172,9 +214,8 @@ namespace Crowy
                 static_cast<u32>(sizeof(TerrainVertex))
             ),
             .counter = counterBuffer->GetWritableID(stride),
-            .triTable = triTableBuffer->GetReadableID(
-                static_cast<u32>(sizeof(i32))
-            ),
+            .triTable =
+                triTableBuffer->GetReadableID(static_cast<u32>(sizeof(i32))),
             .args = argsBuffer->GetWritableID(stride),
             .edgeVertices = edgeVertexBuffer->GetWritableID(stride),
             .indices = indexBuffer->GetWritableID(stride),
@@ -183,7 +224,8 @@ namespace Crowy
 
         // the density pass releases the field, the marching pass acquires it -
         // one edge, same value on both ends
-        const auto densityEdge = makeBarrier(*densityTexture,
+        const auto densityEdge = makeBarrier(
+            *densityTexture,
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::SampledCompute
         );
@@ -196,9 +238,9 @@ namespace Crowy
 
             cmdList.SetPipelineState(*densityPSO);
             cmdList.SetPushComputeConstants(pushConstants);
-            cmdList.Dispatch({
-                TERRAIN_CORNERS_X, TERRAIN_CORNERS_Y, TERRAIN_CORNERS_Z
-            });
+            cmdList.Dispatch(
+                {TERRAIN_CORNERS_X, TERRAIN_CORNERS_Y, TERRAIN_CORNERS_Z}
+            );
 
             const std::array releases{densityEdge};
             cmdList.EndComputePass(releases);
@@ -207,19 +249,23 @@ namespace Crowy
         auto& modeArgs = welded ? *argsIndexedBuffer : *argsBuffer;
 
         const TerrainMarchEdges edges{
-            .vertices = makeBarrier(*vertexBuffer,
+            .vertices = makeBarrier(
+                *vertexBuffer,
                 RHIResourceUsage::StorageCompute,
                 targets.vertices
             ),
-            .counter = makeBarrier(*counterBuffer,
+            .counter = makeBarrier(
+                *counterBuffer,
                 RHIResourceUsage::StorageCompute,
                 targets.counter
             ),
-            .args = makeBarrier(modeArgs,
+            .args = makeBarrier(
+                modeArgs,
                 RHIResourceUsage::StorageCompute,
                 targets.args
             ),
-            .indices = makeBarrier(*indexBuffer,
+            .indices = makeBarrier(
+                *indexBuffer,
                 RHIResourceUsage::StorageCompute,
                 targets.indices
             )
@@ -231,9 +277,12 @@ namespace Crowy
             std::vector<RHIBufferBarrier> bufferAcquires{
                 AcquireForWrite(*vertexBuffer, vertexResting),
                 AcquireForWrite(*counterBuffer, counterResting),
-                AcquireForWrite(modeArgs, welded ? argsIndexedResting : argsResting)
+                AcquireForWrite(
+                    modeArgs,
+                    welded ? argsIndexedResting : argsResting
+                )
             };
-            if(welded){
+            if(welded) {
                 bufferAcquires.push_back(
                     AcquireForWrite(*indexBuffer, indexResting)
                 );
@@ -249,26 +298,26 @@ namespace Crowy
 
             // whatever runs next accumulates into the counter the clear just
             // zeroed: a UAV -> UAV hazard inside one pass
-            const std::array counterHazard{
-                makeBarrier(*counterBuffer,
-                    RHIResourceUsage::StorageCompute,
-                    RHIResourceUsage::StorageCompute
-                )
-            };
+            const std::array counterHazard{makeBarrier(
+                *counterBuffer,
+                RHIResourceUsage::StorageCompute,
+                RHIResourceUsage::StorageCompute
+            )};
             cmdList.DispatchBarrier({}, counterHazard);
 
-            if(welded){
+            if(welded) {
                 cmdList.SetPipelineState(*edgesPSO);
                 cmdList.SetPushComputeConstants(pushConstants);
-                cmdList.Dispatch({
-                    TERRAIN_CORNERS_X, TERRAIN_CORNERS_Y, TERRAIN_CORNERS_Z
-                });
+                cmdList.Dispatch(
+                    {TERRAIN_CORNERS_X, TERRAIN_CORNERS_Y, TERRAIN_CORNERS_Z}
+                );
 
                 // the index pass reads the slots the vertex pass just filled,
                 // and the counter it advanced
                 const std::array weldHazard{
                     counterHazard[0],
-                    makeBarrier(*edgeVertexBuffer,
+                    makeBarrier(
+                        *edgeVertexBuffer,
                         RHIResourceUsage::StorageCompute,
                         RHIResourceUsage::StorageCompute
                     )
@@ -277,13 +326,13 @@ namespace Crowy
 
                 cmdList.SetPipelineState(*indicesPSO);
             }
-            else{
+            else {
                 cmdList.SetPipelineState(*marchPSO);
             }
             cmdList.SetPushComputeConstants(pushConstants);
-            cmdList.Dispatch({
-                TERRAIN_CELLS_X, TERRAIN_CELLS_Y, TERRAIN_CELLS_Z
-            });
+            cmdList.Dispatch(
+                {TERRAIN_CELLS_X, TERRAIN_CELLS_Y, TERRAIN_CELLS_Z}
+            );
 
             // the argument pass reads the count that just accumulated
             cmdList.DispatchBarrier({}, counterHazard);
@@ -293,7 +342,9 @@ namespace Crowy
             cmdList.Dispatch({1, 1, 1});
 
             std::vector<RHIBufferBarrier> releases{
-                edges.vertices, edges.counter, edges.args
+                edges.vertices,
+                edges.counter,
+                edges.args
             };
             if(welded)
                 releases.push_back(edges.indices);
@@ -304,12 +355,12 @@ namespace Crowy
         densityResting = RHIResourceUsage::SampledCompute;
         vertexResting = targets.vertices;
         counterResting = targets.counter;
-        if(welded){
+        if(welded) {
             argsIndexedResting = targets.args;
             indexResting = targets.indices;
             edgeVertexResting = RHIResourceUsage::StorageCompute;
         }
-        else{
+        else {
             argsResting = targets.args;
         }
 

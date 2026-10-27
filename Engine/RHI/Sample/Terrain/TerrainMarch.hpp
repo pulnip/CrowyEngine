@@ -14,14 +14,11 @@ namespace Crowy
     // instead. A closed surface carries about half as many vertices as
     // triangles, so the 3-per-triangle soup becomes 0.5, and the mesh lands at
     // roughly a third of the bytes even after paying for the indices.
-    enum class TerrainMarchMode: u8{
-        Soup,
-        Welded
-    };
+    enum class TerrainMarchMode : u8 { Soup, Welded };
 
     // Where a marching run leaves each buffer for whatever reads it next.
     // The defaults suit a sample that draws the result indirectly.
-    struct TerrainMarchTargets{
+    struct TerrainMarchTargets {
         RHIResourceUsage vertices = RHIResourceUsage::SampledVertex;
         // nothing outside the compute passes reads it, but the release still
         // stands: next frame's clear is a write-after-write
@@ -34,7 +31,7 @@ namespace Crowy
     // The release halves a marching run emitted. The consuming pass has to
     // acquire with these same values - that is what pairs the two ends of an
     // edge.
-    struct TerrainMarchEdges{
+    struct TerrainMarchEdges {
         RHIBufferBarrier vertices;
         RHIBufferBarrier counter;
         RHIBufferBarrier args;
@@ -48,7 +45,7 @@ namespace Crowy
     //
     // Owns its resources and the barrier bookkeeping between submissions, so a
     // sample only has to say what it wants to do with the results next.
-    class TerrainMarcher{
+    class TerrainMarcher {
     private:
         u32 triangleCapacity;
 
@@ -82,17 +79,18 @@ namespace Crowy
         // the RAII members hold types this header only forward-declares
         ~TerrainMarcher();
 
-        u32 TriangleCapacity() const noexcept{ return triangleCapacity; }
-        u32 VertexCapacity() const noexcept{ return triangleCapacity * 3; }
+        u32 TriangleCapacity() const noexcept { return triangleCapacity; }
+        u32 VertexCapacity() const noexcept { return triangleCapacity * 3; }
 
-        RHIBuffer& Vertices() noexcept{ return *vertexBuffer; }
-        RHIBuffer& Counter() noexcept{ return *counterBuffer; }
-        RHIBuffer& Indices() noexcept{ return *indexBuffer; }
+        RHIBuffer& Vertices() noexcept { return *vertexBuffer; }
+        RHIBuffer& Counter() noexcept { return *counterBuffer; }
+        RHIBuffer& Indices() noexcept { return *indexBuffer; }
 
         // the argument buffer the given mode fills; their layouts differ
         // (RHIDrawArgs against RHIDrawIndexedArgs), so they are separate
-        RHIBuffer& Args(TerrainMarchMode mode) noexcept{
-            return mode == TerrainMarchMode::Soup ? *argsBuffer : *argsIndexedBuffer;
+        RHIBuffer& Args(TerrainMarchMode mode) noexcept {
+            return mode == TerrainMarchMode::Soup ? *argsBuffer
+                                                  : *argsIndexedBuffer;
         }
 
         // Records the density pass and the marching pass, leaving each buffer
@@ -109,7 +107,7 @@ namespace Crowy
 
     // What the counter buffer holds once the marching pass has run.
     // Mirrors the four slots cs_clear zeroes in TerrainMarch.slang.
-    struct TerrainMarchCounter{
+    struct TerrainMarchCounter {
         // reservations handed out, which runs past capacity once it overflows
         u32 triangleCount = 0;
         u32 overflowed = 0;
@@ -121,7 +119,7 @@ namespace Crowy
         u32 vertexCount = 0;
 
         // how much of the vertex buffer is actually a mesh
-        u32 DrawableTriangles() const noexcept{
+        u32 DrawableTriangles() const noexcept {
             return triangleCount < firstDropped ? triangleCount : firstDropped;
         }
     };

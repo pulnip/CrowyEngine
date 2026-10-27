@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <span>
+
 #include "Kepler.hpp"
 #include "RHICommandList.hpp"
 #include "RHIFWD.hpp"
@@ -15,7 +16,7 @@ namespace Crowy
     // buffer be created with initial contents: a creation upload counts as an
     // access, so a buffer that carries one can never be acquired from
     // Undefined again, and the debug layer says so.
-    struct OrbitBodyDraw{
+    struct OrbitBodyDraw {
         f32 colorR = 0.0f, colorG = 0.0f, colorB = 0.0f;
         f32 trailPeriodDays = 0.0f;
     };
@@ -23,7 +24,7 @@ namespace Crowy
     static_assert(offsetof(OrbitBodyDraw, trailPeriodDays) == 12);
 
     // Mirrors OrbitArgsPush in Engine/RHI/Sample/Orbit/OrbitArgs.slang.
-    struct OrbitArgsPush{
+    struct OrbitArgsPush {
         u64 bodies;
         u64 args;
         u64 segCounts;
@@ -45,7 +46,7 @@ namespace Crowy
     // draw count stays fixed at one per body and a switched-off body is an
     // instanceCount of zero rather than a draw that never happens. At nine
     // bodies there is nothing to compact anyway.
-    class OrbitTrailArgs{
+    class OrbitTrailArgs {
     private:
         RHIComputePipelineStateRAII pso;
         RHIBufferRAII bodies;
@@ -61,7 +62,7 @@ namespace Crowy
     public:
         // The release halves this pass emits. Whatever consumes them has to
         // acquire with these same values - that is what pairs the two ends.
-        struct Edges{
+        struct Edges {
             RHIBufferBarrier segCounts;
             RHIBufferBarrier args;
         };
@@ -91,9 +92,9 @@ namespace Crowy
             u32 enabledMask
         );
 
-        RHIBuffer& Bodies() const noexcept{ return *bodies; }
-        RHIBuffer& SegCounts() const noexcept{ return *segCounts; }
-        RHIBuffer& Args() const noexcept{ return *args; }
-        u32 DrawCount() const noexcept{ return count; }
+        RHIBuffer& Bodies() const noexcept { return *bodies; }
+        RHIBuffer& SegCounts() const noexcept { return *segCounts; }
+        RHIBuffer& Args() const noexcept { return *args; }
+        u32 DrawCount() const noexcept { return count; }
     };
 }

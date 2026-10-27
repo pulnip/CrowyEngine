@@ -1,12 +1,13 @@
 #pragma once
 
 #include <vector>
+
 #include "Terrain.hpp"
 #include "Widget.hpp"
 
 namespace Crowy
 {
-    struct TerrainDebug{
+    struct TerrainDebug {
         bool showNormals = false;
         bool wireframe = false;
     };
@@ -15,13 +16,13 @@ namespace Crowy
     // panel instead - see TerrainPanel. Build time is not here on purpose:
     // only the CPU mesher knows how long it took, and a zero next to the GPU
     // one would read as "instant" rather than "not measured"
-    struct TerrainStats{
+    struct TerrainStats {
         u32 vertexCount = 0;
         u32 triangleCount = 0;
         f64 frameTimeMs = 0.0;
     };
 
-    struct UIContext{
+    struct UIContext {
         TerrainParams params;
         TerrainDebug debug;
         TerrainStats stats;
@@ -35,10 +36,10 @@ namespace Crowy
         // panel must be rebuilt for the controls to show it
         bool panelDirty = false;
 
-        bool ShouldRebuild() const noexcept{
+        bool ShouldRebuild() const noexcept {
             return rebuildRequested || (autoRebuild && paramsDirty);
         }
-        void ClearRebuild() noexcept{
+        void ClearRebuild() noexcept {
             rebuildRequested = false;
             paramsDirty = false;
         }
@@ -46,7 +47,7 @@ namespace Crowy
 
     // The shared parameter panel: a single Column, since UIRenderer::Prepare
     // renders the whole widget tree into one window.
-    class TerrainPanel{
+    class TerrainPanel {
     private:
         // kept for the rebuild
         std::vector<Widget> sampleStats;

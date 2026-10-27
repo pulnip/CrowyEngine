@@ -1,7 +1,9 @@
+#include "OrbitTrail.hpp"
+
 #include <algorithm>
 #include <array>
 #include <span>
-#include "OrbitTrail.hpp"
+
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
 
@@ -13,26 +15,29 @@ namespace Crowy
         u32 capacity,
         RHIResourceUsage nextUse
     )
-        : capacity(capacity)
-        , dayPerSample(dayPerSample)
-        , device(device)
-        , nextUse(nextUse)
-    {
-        CROWY_ASSERT(capacity > 1, "a trail needs two samples to have a segment");
+        : capacity(capacity),
+          dayPerSample(dayPerSample),
+          device(device),
+          nextUse(nextUse) {
+        CROWY_ASSERT(
+            capacity > 1,
+            "a trail needs two samples to have a segment"
+        );
         CROWY_ASSERT(dayPerSample > 0.0);
         // buffer sizes are u32; 7 MB of ring at the default capacity
         CROWY_ASSERT(capacity <= 0xFFFFFFFFu / ORBIT_SAMPLE_BYTES);
-        CROWY_ASSERT(capacity <= ORBIT_PHASE_MAX_STEPS,
+        CROWY_ASSERT(
+            capacity <= ORBIT_PHASE_MAX_STEPS,
             "a prefill walks the fixed-point phase over the whole ring, and "
             "the block split only reaches ORBIT_PHASE_MAX_STEPS"
         );
 
         const auto ringBytes = capacity * ORBIT_SAMPLE_BYTES;
 
-        trail = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = ringBytes,
-            .shaderWrite = true
-        }, "OrbitTrailRing");
+        trail = device.CreateBuffer(
+            RHIBufferCreateDesc{.size = ringBytes, .shaderWrite = true},
+            "OrbitTrailRing"
+        );
 
         gpuFill = std::make_unique<OrbitKeplerFill>(device, ORBIT_ELEMENTS);
 
@@ -41,7 +46,7 @@ namespace Crowy
 
     OrbitTrail::~OrbitTrail() = default;
 
-    void OrbitTrail::Prefill(f64 endDay){
+    void OrbitTrail::Prefill(f64 endDay) {
         head = 0;
         filled = capacity;
         newestDay = endDay;
@@ -53,7 +58,7 @@ namespace Crowy
         stage(0, capacity, endDay);
     }
 
-    u32 OrbitTrail::Advance(f64 deltaSeconds, f64 daysPerSecond){
+    u32 OrbitTrail::Advance(f64 deltaSeconds, f64 daysPerSecond) {
         CROWY_ASSERT(daysPerSecond >= 0.0, "sim time does not run backwards");
 
         stats.tickCount = 0;
@@ -71,12 +76,12 @@ namespace Crowy
         const auto maxTicks = std::min(ORBIT_MAX_TICKS_PER_FRAME, capacity);
 
         u32 ticks = 0;
-        while(accumDays >= dayPerSample && ticks < maxTicks){
+        while(accumDays >= dayPerSample && ticks < maxTicks) {
             accumDays -= dayPerSample;
             ++ticks;
         }
 
-        if(accumDays >= dayPerSample){
+        if(accumDays >= dayPerSample) {
             // the remainder is dropped rather than carried: carrying it would
             // just push the same overrun into the next frame. Sim time slows
             // down, which the counters make visible instead of mysterious.
@@ -102,7 +107,7 @@ namespace Crowy
         return ticks;
     }
 
-    void OrbitTrail::SetDayPerSample(f64 value){
+    void OrbitTrail::SetDayPerSample(f64 value) {
         CROWY_ASSERT(value > 0.0);
 
         if(value == dayPerSample)
@@ -114,40 +119,37 @@ namespace Crowy
         Prefill(newestDay);
     }
 
-    std::optional<RHIBufferBarrier> OrbitTrail::Record(RHICommandList& cmdList){
+    std::optional<RHIBufferBarrier> OrbitTrail::Record(
+        RHICommandList& cmdList
+    ) {
         stats.copyCount = 0;
         stats.dispatchCount = 0;
 
         if(pendingSamples == 0)
             return std::nullopt;
 
-        const auto firstRun = std::min(pendingSamples, capacity - pendingFirstSlot);
+        const auto firstRun =
+            std::min(pendingSamples, capacity - pendingFirstSlot);
         const auto secondRun = pendingSamples - firstRun;
 
         // the two paths differ only in how the ring is written; the edge either
         // way carries it from whatever the last submission left behind to
         // whatever reads it next
-        const auto writeAs = pendingGpu ?
-            RHIResourceUsage::StorageCompute :
-            RHIResourceUsage::CopyDst;
+        const auto writeAs = pendingGpu ? RHIResourceUsage::StorageCompute
+                                        : RHIResourceUsage::CopyDst;
 
         // the ring keeps its older samples, so this is a partial write and the
         // acquire must not discard
-        const auto acquire = resting == RHIResourceUsage::Undefined ?
-            makeBarrier(*trail,
-                RHIResourceUsage::Undefined,
-                writeAs
-            ) :
-            makeCrossSubmissionBarrier(*trail,
-                resting,
-                writeAs
-            );
+        const auto acquire =
+            resting == RHIResourceUsage::Undefined
+                ? makeBarrier(*trail, RHIResourceUsage::Undefined, writeAs)
+                : makeCrossSubmissionBarrier(*trail, resting, writeAs);
         const auto release = makeBarrier(*trail, writeAs, nextUse);
 
         const std::array acquires{acquire};
         const std::array releases{release};
 
-        if(pendingGpu){
+        if(pendingGpu) {
             cmdList.BeginComputePass({}, acquires);
 
             // one thread per (sample, body); the wrap is the shader's modulo,
@@ -181,7 +183,7 @@ namespace Crowy
             static_cast<usize>(pendingFirstSlot) * ORBIT_SAMPLE_BYTES,
             static_cast<usize>(firstRun) * ORBIT_SAMPLE_BYTES
         );
-        if(secondRun > 0){
+        if(secondRun > 0) {
             // sample-major pays off here: even the wrapped case is two runs,
             // not one copy per body
             cmdList.Copy(
@@ -206,7 +208,7 @@ namespace Crowy
         return release;
     }
 
-    void OrbitTrail::stage(u32 firstSlot, u32 count, f64 endDay){
+    void OrbitTrail::stage(u32 firstSlot, u32 count, f64 endDay) {
         CROWY_ASSERT(pendingSamples == 0);
         CROWY_ASSERT(0 < count && count <= capacity);
         CROWY_ASSERT(firstSlot < capacity);
@@ -215,7 +217,7 @@ namespace Crowy
         pendingSamples = count;
         pendingGpu = fillMode == OrbitFillMode::Gpu;
 
-        if(pendingGpu){
+        if(pendingGpu) {
             // nothing to generate here: the epoch is the whole handoff, and
             // Record turns it into one dispatch. Sample 0 of the run is the
             // oldest, so the epoch counts back from endDay the same way the
@@ -230,7 +232,7 @@ namespace Crowy
 
         scratch.resize(static_cast<usize>(count) * ORBIT_BODY_COUNT);
 
-        for(u32 s=0; s<count; ++s){
+        for(u32 s = 0; s < count; ++s) {
             // counted back from endDay, not forward from the start, so this is
             // the same expression DayForAge uses - the newest batch then
             // reproduces bit-exactly and a readback check can demand equality
@@ -241,7 +243,7 @@ namespace Crowy
             SampleOrbits(day, sample);
 
             const auto base = static_cast<usize>(s) * ORBIT_BODY_COUNT;
-            for(u32 b=0; b<ORBIT_BODY_COUNT; ++b){
+            for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
                 scratch[base + b] = static_cast<Vec3>(sample[b]);
             }
         }

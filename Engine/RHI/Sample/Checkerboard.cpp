@@ -3,25 +3,26 @@
 #include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
-namespace{
+namespace
+{
     inline constexpr std::uint32_t W = 512, H = 512;
 }
 
 namespace Crowy
 {
-    class Checkerboard: public App{
+    class Checkerboard: public App {
         using App::App;
 
         RHIComputePipelineStateRAII pso;
         RHITextureRAII checkerboard;
 
-        struct PushConstants{
+        struct PushConstants {
             u64 texture;
             u32 cellWidth;
             u32 cellHeight;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
             pso = device.CreatePipelineState(
                 RHIComputePipelineStateDesc{
                     .computeShader = {
@@ -30,17 +31,27 @@ namespace Crowy
                     }
                 }
             );
-            checkerboard = device.CreateTexture(RHITextureCreateDesc{
-                .width = W, .height = H,
-                .format = swapchain.GetFormat(),
-                .usage = combine(RHITextureUsage::ShaderRead, RHITextureUsage::ShaderWrite)
-            });
+            checkerboard = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = W,
+                    .height = H,
+                    .format = swapchain.GetFormat(),
+                    .usage = combine(
+                        RHITextureUsage::ShaderRead,
+                        RHITextureUsage::ShaderWrite
+                    )
+                }
+            );
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
             // the compute pass releases the checkerboard, the copy pass
             // acquires it - one edge, same value on both ends
-            const auto checkerboardEdge = makeBarrier(*checkerboard,
+            const auto checkerboardEdge = makeBarrier(
+                *checkerboard,
                 RHIResourceUsage::StorageCompute,
                 RHIResourceUsage::CopySrc
             );
@@ -59,11 +70,13 @@ namespace Crowy
                 cmdList.BeginComputePass(acquires);
 
                 cmdList.SetPipelineState(*pso);
-                cmdList.SetPushComputeConstants(PushConstants{
-                    .texture = checkerboard->GetWritableID(),
-                    .cellWidth = 64,
-                    .cellHeight = 32
-                });
+                cmdList.SetPushComputeConstants(
+                    PushConstants{
+                        .texture = checkerboard->GetWritableID(),
+                        .cellWidth = 64,
+                        .cellHeight = 32
+                    }
+                );
 
                 cmdList.Dispatch({W, H, 1});
 
@@ -75,22 +88,19 @@ namespace Crowy
                 const std::array acquires{
                     checkerboardEdge,
                     // the backbuffer is a copy target here, not a render target
-                    makeBarrier(*backBuffer.texture,
+                    makeBarrier(
+                        *backBuffer.texture,
                         RHIResourceUsage::Undefined,
                         RHIResourceUsage::CopyDst
                     )
                 };
                 cmdList.BeginBlitPass(acquires);
-                cmdList.Copy(
-                    *checkerboard,
-                    *backBuffer.texture
-                );
-                const std::array releases{
-                    makeBarrier(*backBuffer.texture,
-                        RHIResourceUsage::CopyDst,
-                        RHIResourceUsage::Present
-                    )
-                };
+                cmdList.Copy(*checkerboard, *backBuffer.texture);
+                const std::array releases{makeBarrier(
+                    *backBuffer.texture,
+                    RHIResourceUsage::CopyDst,
+                    RHIResourceUsage::Present
+                )};
                 cmdList.EndBlitPass(releases);
             }
         }
@@ -102,7 +112,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "Checkerboard",
-        .width = W, .height = H,
+        .width = W,
+        .height = H,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = false,

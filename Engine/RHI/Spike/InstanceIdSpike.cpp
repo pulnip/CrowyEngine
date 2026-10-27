@@ -1,4 +1,5 @@
 #include <array>
+
 #include "AppFramework.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -20,7 +21,7 @@ namespace Crowy
     // OrbitFrame addresses trail segments by SV_InstanceID while carrying
     // the body index in baseInstance, so the zero-based reading is load-bearing
     // there; a segment is sub-pixel in that sample and could never show this.
-    class InstanceIdSpike: public App{
+    class InstanceIdSpike: public App {
         using App::App;
 
         static constexpr u32 ROW_COUNT = 3;
@@ -28,37 +29,42 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII pso;
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .topology = RHIPrimitiveTopology::TriangleStrip,
-                .vertexShader = {
-                    .path = "Engine/RHI/Spike/InstanceIdSpike.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Spike/InstanceIdSpike.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1,
-                .profile = "sm_6_8"
-            });
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+            pso = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Spike/InstanceIdSpike.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.cullMode = RHICullMode::None},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Spike/InstanceIdSpike.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1,
+                    .profile = "sm_6_8"
+                }
+            );
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
             std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments
-            }, acquires);
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{.colorAttachments = colorAttachments},
+                acquires
+            );
             cmdList.SetViewport(fullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            for(u32 row=0; row<ROW_COUNT; ++row){
+            for(u32 row = 0; row < ROW_COUNT; ++row) {
                 cmdList.Draw(4, INSTANCES_PER_ROW, 0, row + 1);
             }
 
@@ -73,7 +79,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "InstanceIdSpike",
-        .width = 800, .height = 600,
+        .width = 800,
+        .height = 600,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,

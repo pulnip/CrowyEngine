@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <span>
 #include <vector>
+
 #include "Kepler.hpp"
 #include "RHICommandList.hpp"
 #include "RHIFWD.hpp"
@@ -10,7 +11,7 @@
 namespace Crowy
 {
     // Mirrors OrbitFillPush in Engine/RHI/Sample/Orbit/OrbitSample.slang.
-    struct OrbitFillPush{
+    struct OrbitFillPush {
         u64 elements;
         u64 phases;
         u64 output;
@@ -38,7 +39,7 @@ namespace Crowy
     // the phase arrives as fixed-point turns rather than a sim day, and turning
     // a day into turns is a multiply and a floor. What stays on the CPU is
     // cheap; what leaves is Newton and six trigonometric functions per sample.
-    class OrbitKeplerFill{
+    class OrbitKeplerFill {
     private:
         RHIComputePipelineStateRAII ringPSO, pointPSO;
         RHIBufferRAII elementBuffer;
@@ -53,9 +54,7 @@ namespace Crowy
         ~OrbitKeplerFill();
         CROWY_DECLARE_PINNED(OrbitKeplerFill)
 
-        u32 Count() const noexcept{
-            return static_cast<u32>(elements.size());
-        }
+        u32 Count() const noexcept { return static_cast<u32>(elements.size()); }
 
         // Rewrites the phase table so sample 0 lands on `day` and sample i on
         // `day + i * dayPerSample`. CPU-side only; the upload rides the

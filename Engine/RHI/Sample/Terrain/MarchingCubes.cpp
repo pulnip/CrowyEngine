@@ -1,8 +1,10 @@
-#include <array>
-#include <initializer_list>
 #include "MarchingCubes.hpp"
 
-namespace{
+#include <array>
+#include <initializer_list>
+
+namespace
+{
     using namespace Crowy;
 
     // The rows carry only their real edge indices; BuildTable pads each out to
@@ -283,11 +285,11 @@ namespace{
         {}
     };
 
-    constexpr auto BuildTriTable(){
+    constexpr auto BuildTriTable() {
         std::array<i32, MC_CASE_COUNT * MC_MAX_INDICES> table{};
         table.fill(-1);
 
-        for(usize c = 0; c < MC_CASE_COUNT; ++c){
+        for(usize c = 0; c < MC_CASE_COUNT; ++c) {
             usize i = 0;
             for(const i32 edge: TRI_ROWS[c])
                 table[c * MC_MAX_INDICES + i++] = edge;
@@ -306,14 +308,14 @@ namespace{
     // table picks one for the case and the other for its complement - case 5
     // spends two triangles where case 250 spends four. That asymmetry is the
     // marching cubes ambiguity, not a transcription slip.
-    constexpr bool RowsAreWellFormed(){
-        for(usize c = 0; c < MC_CASE_COUNT; ++c){
+    constexpr bool RowsAreWellFormed() {
+        for(usize c = 0; c < MC_CASE_COUNT; ++c) {
             usize count = 0;
             bool terminated = false;
 
-            for(usize i = 0; i < MC_MAX_INDICES; ++i){
+            for(usize i = 0; i < MC_MAX_INDICES; ++i) {
                 const auto edge = TRI_TABLE[c * MC_MAX_INDICES + i];
-                if(edge < 0){
+                if(edge < 0) {
                     terminated = true;
                     continue;
                 }
@@ -329,15 +331,16 @@ namespace{
 
         return true;
     }
-    static_assert(RowsAreWellFormed(),
+    static_assert(
+        RowsAreWellFormed(),
         "a transcription slip: a row runs past the terminator, names an edge "
         "that does not exist, or does not hold whole triangles"
     );
 
     // every edge a row names must separate a solid corner from an air one
-    constexpr bool EdgesCrossTheSurface(){
-        for(usize c = 0; c < MC_CASE_COUNT; ++c){
-            for(usize i = 0; i < MC_MAX_INDICES; ++i){
+    constexpr bool EdgesCrossTheSurface() {
+        for(usize c = 0; c < MC_CASE_COUNT; ++c) {
+            for(usize i = 0; i < MC_MAX_INDICES; ++i) {
                 const auto edge = TRI_TABLE[c * MC_MAX_INDICES + i];
                 if(edge < 0)
                     break;
@@ -351,7 +354,8 @@ namespace{
 
         return true;
     }
-    static_assert(EdgesCrossTheSurface(),
+    static_assert(
+        EdgesCrossTheSurface(),
         "a transcription slip: a row names an edge whose corners are both "
         "solid or both air, so the isosurface never crosses it"
     );
@@ -359,7 +363,7 @@ namespace{
 
 namespace Crowy
 {
-    std::span<const i32> MarchingCubesTriTable(){
+    std::span<const i32> MarchingCubesTriTable() {
         return TRI_TABLE;
     }
 }

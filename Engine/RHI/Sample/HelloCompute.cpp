@@ -1,20 +1,22 @@
 #include <array>
 #include <print>
+
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 
-namespace{
-    struct PushConstants{
+namespace
+{
+    struct PushConstants {
         Crowy::u64 lhs;
         Crowy::u64 rhs;
         Crowy::u64 out;
     };
 }
 
-int main(void){
-    try{
+int main(void) {
+    try {
         using namespace Crowy;
 
         auto device = createDevice();
@@ -29,14 +31,17 @@ int main(void){
         auto lhs = device->CreateBuffer(desc, "LHS");
         auto rhs = device->CreateBuffer(desc, "RHS");
 
-        auto out = device->CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(float) * N,
-            .shaderWrite = true
-        }, "OUT");
-        auto readback = device->CreateBuffer(RHIBufferCreateDesc{
-            .size = sizeof(float) * N,
-            .memory = RHIMemoryType::CPURead
-        }, "ReadBack");
+        auto out = device->CreateBuffer(
+            RHIBufferCreateDesc{.size = sizeof(float) * N, .shaderWrite = true},
+            "OUT"
+        );
+        auto readback = device->CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = sizeof(float) * N,
+                .memory = RHIMemoryType::CPURead
+            },
+            "ReadBack"
+        );
 
         auto addPipeline = device->CreatePipelineState(
             RHIComputePipelineStateDesc{
@@ -59,7 +64,8 @@ int main(void){
 
         // the compute pass releases `out`, the copy pass acquires it -
         // one edge, same value on both ends
-        const auto outEdge = makeBarrier(*out,
+        const auto outEdge = makeBarrier(
+            *out,
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::CopySrc
         );
@@ -67,7 +73,8 @@ int main(void){
         {
             const std::array acquires{
                 // first GPU use of `out`: self-contained acquire
-                makeBarrier(*out,
+                makeBarrier(
+                    *out,
                     RHIResourceUsage::Undefined,
                     RHIResourceUsage::StorageCompute
                 )
@@ -86,12 +93,11 @@ int main(void){
 
             // the second dispatch reads what the first just wrote —
             // a UAV → UAV hazard inside one pass, DispatchBarrier territory
-            const std::array hazards{
-                makeBarrier(*out,
-                    RHIResourceUsage::StorageCompute,
-                    RHIResourceUsage::StorageCompute
-                )
-            };
+            const std::array hazards{makeBarrier(
+                *out,
+                RHIResourceUsage::StorageCompute,
+                RHIResourceUsage::StorageCompute
+            )};
             cmdList->DispatchBarrier({}, hazards);
 
             cmdList->SetPipelineState(*doublePipeline);
@@ -107,13 +113,7 @@ int main(void){
             // never transition, and this copy is its first GPU use
             const std::array acquires{outEdge};
             cmdList->BeginBlitPass({}, acquires);
-            cmdList->Copy(
-                *out,
-                *readback,
-                0,
-                0,
-                sizeof(float) * N
-            );
+            cmdList->Copy(*out, *readback, 0, 0, sizeof(float) * N);
             // the CPU readback after the fence needs no release -
             // that ordering is the fence's job
             cmdList->EndBlitPass();
@@ -129,19 +129,19 @@ int main(void){
 
         // verify result: (1 + 1) doubled by the chained dispatch
         usize i = 0;
-        for(; i<N; ++i){
-            if(std::abs(result[i] - 4.0f) > 1e-3){
+        for(; i < N; ++i) {
+            if(std::abs(result[i] - 4.0f) > 1e-3) {
                 std::println("wrong result: out[{}] = {}", i, result[i]);
                 break;
             }
         }
 
-        if(i != N){
+        if(i != N) {
             return 1;
         }
         std::println("Succeed!");
     }
-    catch(const std::exception& e){
+    catch(const std::exception& e) {
         std::println("Exception: {}", e.what());
 
         return 1;

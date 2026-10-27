@@ -11,10 +11,11 @@
 
 namespace Crowy
 {
-    namespace{
-        u32 MipLevelCount(u32 width, u32 height){
+    namespace
+    {
+        u32 MipLevelCount(u32 width, u32 height) {
             u32 count = 1;
-            while((width > 1) || (height > 1)){
+            while((width > 1) || (height > 1)) {
                 width = halve(width);
                 height = halve(height);
                 ++count;
@@ -22,7 +23,7 @@ namespace Crowy
             return count;
         }
 
-        RHISubresourceRange MipRange(u32 mipLevel){
+        RHISubresourceRange MipRange(u32 mipLevel) {
             return RHISubresourceRange{
                 .firstMip = mipLevel,
                 .numMips = 1,
@@ -37,22 +38,23 @@ namespace Crowy
     // the widening radius comes from each level living
     // one mip further down:
     //     accum = up(L0) + 1/2 up(L1) + 1/4 up(L2) + ...
-    // Each level blurs the mip above it, so the chain is progressive and no pass
-    // ever reads the mip it is writing.
-    class BloomPass{
+    // Each level blurs the mip above it, so the chain is progressive and no
+    // pass ever reads the mip it is writing.
+    class BloomPass {
         // separable blur, overwrites its target
         RHIGraphicsPipelineStateRAII blur = nullptr;
         // point resample, adds into accum
         RHIGraphicsPipelineStateRAII upsampleAccum = nullptr;
 
         // mip i of both chains holds level i, at source size >> (i + 1)
-        RHITextureRAII temp = nullptr;    // horizontal blur result
-        RHITextureRAII blurred = nullptr; // vertical blur result, next level input
+        RHITextureRAII temp = nullptr; // horizontal blur result
+        RHITextureRAII blurred =
+            nullptr; // vertical blur result, next level input
         // full resolution, single mip
         RHITextureRAII accum = nullptr;
         u32 levelCount = 0;
 
-        struct BloomParam{
+        struct BloomParam {
             u64 texture;
             Vec2 texelDir;
             f32 intensity;
@@ -62,35 +64,31 @@ namespace Crowy
         void Init(RHIDevice& device, RHITexture& source) {
             RHIGraphicsPipelineStateDesc desc{
                 .topology = RHIPrimitiveTopology::TriangleStrip,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/Bloom.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/Bloom.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    source.GetFormat()
-                },
+                .vertexShader =
+                    {.path = "Engine/RHI/Sample/Bloom.slang",
+                     .entryPoint = "vs_main"},
+                .rasterizer =
+                    RHIRasterizerState{.frontCounterClockwise = false},
+                .fragmentShader =
+                    RHIShaderDesc{
+                        .path = "Engine/RHI/Sample/Bloom.slang",
+                        .entryPoint = "fs_main"
+                    },
+                .renderTargetFormats = {source.GetFormat()},
                 .renderTargetCount = 1
             };
             blur = device.CreatePipelineState(desc, "bloomBlur");
 
             desc.blend = RHIBlendState{
-                .renderTargets = {
-                    RHIRenderTargetBlendState{
-                        .blendEnable = true,
-                        .srcBlend = RHIBlend::One,
-                        .dstBlend = RHIBlend::One,
-                        .blendOp = RHIBlendOp::Add,
-                        // only the color accumulates, alpha stays at the clear value
-                        .writeMask = RHIColorWriteMask::EnableColor
-                    }
-                }
+                .renderTargets = {RHIRenderTargetBlendState{
+                    .blendEnable = true,
+                    .srcBlend = RHIBlend::One,
+                    .dstBlend = RHIBlend::One,
+                    .blendOp = RHIBlendOp::Add,
+                    // only the color accumulates, alpha stays at the clear
+                    // value
+                    .writeMask = RHIColorWriteMask::EnableColor
+                }}
             };
             upsampleAccum = device.CreatePipelineState(desc, "bloomUpsample");
         }
@@ -106,12 +104,15 @@ namespace Crowy
                 RHITextureUsage::RenderTarget
             );
 
-            accum = device.CreateTexture(RHITextureCreateDesc{
-                .width = source.GetWidth(),
-                .height = source.GetHeight(),
-                .format = source.GetFormat(),
-                .usage = usage
-            }, "bloomAccum");
+            accum = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = source.GetWidth(),
+                    .height = source.GetHeight(),
+                    .format = source.GetFormat(),
+                    .usage = usage
+                },
+                "bloomAccum"
+            );
 
             // level 0 already runs at half the source,
             // so the chain starts there rather than at source size.
@@ -135,22 +136,24 @@ namespace Crowy
         // the first horizontal blur closes that edge here. the result stays
         // released as `makeBarrier(result, RenderTarget, SampledFragment)` -
         // acquire that same edge in the pass that samples it.
-        RHITexture& Execute(RHITexture& source, RHICommandList& cmdList){
+        RHITexture& Execute(RHITexture& source, RHICommandList& cmdList) {
             using enum RHIResourceUsage;
 
-            for(u32 i=0; i<levelCount; ++i){
+            for(u32 i = 0; i < levelCount; ++i) {
                 // level 0 reads the source, deeper levels the mip above them
                 RHITexture& input = i == 0 ? source : *blurred;
                 const u32 inputMip = i == 0 ? 0 : i - 1;
-                const auto inputRange = i == 0 ?
-                    RHISubresourceRange{} :
-                    MipRange(inputMip);
+                const auto inputRange =
+                    i == 0 ? RHISubresourceRange{} : MipRange(inputMip);
 
                 // i == 0: closes the caller's source edge (first consumer).
                 // i > 0: second consumer of blurred mip i-1 - the upsample
                 // already closed it, so the backend emits a sync-only barrier
                 const auto inputAcquire = makeBarrier(
-                    input, RenderTarget, SampledFragment, inputRange
+                    input,
+                    RenderTarget,
+                    SampledFragment,
+                    inputRange
                 );
 
                 // horizontal blur, halving on the way out. the kernel steps in
@@ -161,77 +164,113 @@ namespace Crowy
                         // last frame's vertical blur read this mip (WAR);
                         // it is fully overwritten, so drop the contents
                         makeCrossSubmissionBarrier(
-                            *temp, SampledFragment, RenderTarget,
-                            /*discardContents=*/true, MipRange(i)
+                            *temp,
+                            SampledFragment,
+                            RenderTarget,
+                            /*discardContents=*/true,
+                            MipRange(i)
                         )
                     };
-                    const std::array releases{
-                        makeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i))
-                    };
+                    const std::array releases{makeBarrier(
+                        *temp,
+                        RenderTarget,
+                        SampledFragment,
+                        MipRange(i)
+                    )};
                     singleBlur(
                         cmdList,
                         *blur,
-                        input, inputMip,
-                        *temp, i,
-                        Vec2{2, 0}, 1.0f,
+                        input,
+                        inputMip,
+                        *temp,
+                        i,
+                        Vec2{2, 0},
+                        1.0f,
                         RHILoadAction::DontCare,
-                        acquires, releases
+                        acquires,
+                        releases
                     );
                 }
 
                 // vertical blur, already at the target resolution
                 {
                     const std::array acquires{
-                        makeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i)),
+                        makeBarrier(
+                            *temp,
+                            RenderTarget,
+                            SampledFragment,
+                            MipRange(i)
+                        ),
                         makeCrossSubmissionBarrier(
-                            *blurred, SampledFragment, RenderTarget,
-                            /*discardContents=*/true, MipRange(i)
+                            *blurred,
+                            SampledFragment,
+                            RenderTarget,
+                            /*discardContents=*/true,
+                            MipRange(i)
                         )
                     };
-                    const std::array releases{
-                        makeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i))
-                    };
+                    const std::array releases{makeBarrier(
+                        *blurred,
+                        RenderTarget,
+                        SampledFragment,
+                        MipRange(i)
+                    )};
                     singleBlur(
                         cmdList,
                         *blur,
-                        *temp, i,
-                        *blurred, i,
-                        Vec2{0, 1}, 1.0f,
+                        *temp,
+                        i,
+                        *blurred,
+                        i,
+                        Vec2{0, 1},
+                        1.0f,
                         RHILoadAction::DontCare,
-                        acquires, releases
+                        acquires,
+                        releases
                     );
                 }
 
-                // bilinear upsample back to full resolution, added on top of the coarser levels.
-                // a zero step collapses the kernel to a resample.
+                // bilinear upsample back to full resolution, added on top of
+                // the coarser levels. a zero step collapses the kernel to a
+                // resample.
                 {
                     const std::array acquires{
-                        makeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i)),
+                        makeBarrier(
+                            *blurred,
+                            RenderTarget,
+                            SampledFragment,
+                            MipRange(i)
+                        ),
                         // level 0 recycles accum from last frame's composite
                         // read; later levels chain WAW on their own blend work
-                        i == 0 ?
-                            makeCrossSubmissionBarrier(
-                                *accum, SampledFragment, RenderTarget,
-                                /*discardContents=*/true
-                            ) :
-                            makeBarrier(*accum, RenderTarget, RenderTarget)
+                        i == 0 ? makeCrossSubmissionBarrier(
+                                     *accum,
+                                     SampledFragment,
+                                     RenderTarget,
+                                     /*discardContents=*/true
+                                 )
+                               : makeBarrier(*accum, RenderTarget, RenderTarget)
                     };
                     const std::array releases{
                         // the last level hands accum to whoever samples the
                         // result; earlier levels feed the next blend
-                        i + 1 == levelCount ?
-                            makeBarrier(*accum, RenderTarget, SampledFragment) :
-                            makeBarrier(*accum, RenderTarget, RenderTarget)
+                        i + 1 == levelCount
+                            ? makeBarrier(*accum, RenderTarget, SampledFragment)
+                            : makeBarrier(*accum, RenderTarget, RenderTarget)
                     };
                     singleBlur(
                         cmdList,
                         *upsampleAccum,
-                        *blurred, i,
-                        *accum, 0,
-                        Vec2{0, 0}, 1.0f / static_cast<f32>(1u << i),
+                        *blurred,
+                        i,
+                        *accum,
+                        0,
+                        Vec2{0, 0},
+                        1.0f / static_cast<f32>(1u << i),
                         // accum must start empty every frame
                         i == 0 ? RHILoadAction::Clear : RHILoadAction::Load,
-                        acquires, releases
+                        acquires,
+                        releases
                     );
                 }
             }
@@ -243,47 +282,54 @@ namespace Crowy
         void singleBlur(
             RHICommandList& cmdList,
             RHIGraphicsPipelineState& pso,
-            RHITexture& src, u32 srcMip,
-            RHITexture& dst, u32 dstMip,
+            RHITexture& src,
+            u32 srcMip,
+            RHITexture& dst,
+            u32 dstMip,
             Vec2 texelDir,
             f32 intensity,
             RHILoadAction loadAction,
             std::span<const RHITextureBarrier> acquires,
             std::span<const RHITextureBarrier> releases
-        ){
-            std::array colorAttachments = {
-                RHIColorAttachment{
-                    .texture = &dst,
-                    .loadAction = loadAction,
-                    .storeAction = RHIStoreAction::Store,
-                    .mipLevel = dstMip
-                }
-            };
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments,
-            }, acquires);
+        ) {
+            std::array colorAttachments = {RHIColorAttachment{
+                .texture = &dst,
+                .loadAction = loadAction,
+                .storeAction = RHIStoreAction::Store,
+                .mipLevel = dstMip
+            }};
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{
+                    .colorAttachments = colorAttachments,
+                },
+                acquires
+            );
             cmdList.SetViewport(fullViewport(dst, dstMip));
             cmdList.SetScissorRect(fullScissorRect(dst, dstMip));
 
             cmdList.SetPipelineState(pso);
-            cmdList.SetPushGraphicsConstants(BloomParam{
-                // a single-mip view, so Sample and GetDimensions in the shader
-                // both see that mip and nothing else
-                .texture = src.GetReadableID(RHITextureViewDesc{
-                    .format = src.GetFormat(),
-                    .mostDetailedMip = srcMip,
-                    .mipCount = 1
-                }),
-                .texelDir = texelDir,
-                .intensity = intensity
-            });
+            cmdList.SetPushGraphicsConstants(
+                BloomParam{// a single-mip view, so Sample and GetDimensions in
+                           // the shader
+                           // both see that mip and nothing else
+                           .texture = src.GetReadableID(
+                               RHITextureViewDesc{
+                                   .format = src.GetFormat(),
+                                   .mostDetailedMip = srcMip,
+                                   .mipCount = 1
+                               }
+                           ),
+                           .texelDir = texelDir,
+                           .intensity = intensity
+                }
+            );
             cmdList.Draw(4);
 
             cmdList.EndRenderPass(releases);
         }
     };
 
-    class BlackholeSimulation: public App{
+    class BlackholeSimulation: public App {
         using App::App;
 
         // linear radiance. the g^3 doppler boost drives the disk well past 1,
@@ -294,7 +340,7 @@ namespace Crowy
         RHITextureRAII disk = nullptr;
         // procedural and never resized, so drawn once, by the first frame
         bool diskRecorded = false;
-        struct GenerationParam{
+        struct GenerationParam {
             f32 rs;
             f32 diskInner;
             f32 diskOuter;
@@ -303,25 +349,26 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII blackholeSimulator = nullptr;
         RHITextureRAII scene = nullptr;
-        struct PushConstants{
+        struct PushConstants {
             u64 disk;
         };
         static constexpr u32 PLANET_COUNT = 3;
-        struct SimulationParam{
+        struct SimulationParam {
             Vec3 bhPos{0.0, 0.0, 3.0f};
             f32 rs = 1.0f;
             Vec3 camPos{30.0f, 5.0f, 0.0f};
             f32 aspect;
             Vec3 camRight = unitX();
-            f32 tanHalfFov = std::tanf(0.5f * static_cast<f32>(toRadian(45.0f)));
+            f32 tanHalfFov =
+                std::tanf(0.5f * static_cast<f32>(toRadian(45.0f)));
             Vec3 camUp = unitY();
             f32 diskInner = 3.0f;
             Vec3 camForward = unitZ();
             f32 diskOuter = 10.0f;
             Vec4 posRadius[PLANET_COUNT] = {
-                Vec4{  0, 0,  15,   2},
-                Vec4{ 20, 0, -10, 2.5},
-                Vec4{-15, 0, -15,   3}
+                Vec4{0, 0, 15, 2},
+                Vec4{20, 0, -10, 2.5},
+                Vec4{-15, 0, -15, 3}
             };
             Color planetColor[PLANET_COUNT] = {
                 Color{0.5f, 0.1f, 0.1f, 1},
@@ -336,140 +383,151 @@ namespace Crowy
         RHITextureRAII brightMask = nullptr;
 
         RHIGraphicsPipelineStateRAII composite = nullptr;
-        struct CompositeParam{
+        struct CompositeParam {
             u64 scene;
             u64 bloom;
-            // brightMask carries the whole disk color, not just the excess over the threshold,
-            // so adding it back at full strength would double the disk
+            // brightMask carries the whole disk color, not just the excess over
+            // the threshold, so adding it back at full strength would double
+            // the disk
             f32 bloomStrength = 0.2f;
             f32 exposure = 1.0f;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            diskGenerator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .topology = RHIPrimitiveTopology::TriangleStrip,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/BlackholeDisk.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/BlackholeDisk.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1
-            });
-            disk = device.CreateTexture(RHITextureCreateDesc{
-                .width = swapchain.GetWidth(),
-                .height = swapchain.GetHeight(),
-                .format = RHIPixelFormat::RGBA8_UNORM,
-                .usage = combine(
-                    RHITextureUsage::RenderTarget,
-                    RHITextureUsage::ShaderRead
-                )
-            });
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+            diskGenerator = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/BlackholeDisk.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/BlackholeDisk.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1
+                }
+            );
+            disk = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = swapchain.GetWidth(),
+                    .height = swapchain.GetHeight(),
+                    .format = RHIPixelFormat::RGBA8_UNORM,
+                    .usage = combine(
+                        RHITextureUsage::RenderTarget,
+                        RHITextureUsage::ShaderRead
+                    )
+                }
+            );
 
-            blackholeSimulator = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .topology = RHIPrimitiveTopology::TriangleStrip,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/Blackhole.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/Blackhole.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    HDR_FORMAT,
-                    HDR_FORMAT
-                },
-                .renderTargetCount = 2
-            });
+            blackholeSimulator = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/Blackhole.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/Blackhole.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .renderTargetFormats = {HDR_FORMAT, HDR_FORMAT},
+                    .renderTargetCount = 2
+                }
+            );
 
             simParam.camForward = normalize(simParam.bhPos - simParam.camPos);
-            simParam.camRight   = normalize(cross(unitY(), simParam.camForward));
-            simParam.camUp      = cross(simParam.camForward, simParam.camRight);
+            simParam.camRight = normalize(cross(unitY(), simParam.camForward));
+            simParam.camUp = cross(simParam.camForward, simParam.camRight);
 
             createTargets(device, swapchain.GetWidth(), swapchain.GetHeight());
             bloomPass.Init(device, *brightMask);
 
-            composite = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .topology = RHIPrimitiveTopology::TriangleStrip,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/Composite.slang",
-                    .entryPoint = "vs_main"
+            composite = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/Composite.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/Composite.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1
                 },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/Composite.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1
-            }, "composite");
+                "composite"
+            );
         }
 
         // the caller's first pass that samples the disk acquires `release`
-        void recordDisk(RHICommandList& cmdList, const RHITextureBarrier& release){
-            std::array colorAttachments = {
-                RHIColorAttachment{
-                    .texture = disk.get(),
-                    .loadAction = RHILoadAction::DontCare,
-                    .storeAction = RHIStoreAction::Store
-                }
-            };
+        void recordDisk(
+            RHICommandList& cmdList,
+            const RHITextureBarrier& release
+        ) {
+            std::array colorAttachments = {RHIColorAttachment{
+                .texture = disk.get(),
+                .loadAction = RHILoadAction::DontCare,
+                .storeAction = RHIStoreAction::Store
+            }};
             const std::array acquires{
                 // first use of the freshly created texture
-                makeBarrier(*disk,
+                makeBarrier(
+                    *disk,
                     RHIResourceUsage::Undefined,
                     RHIResourceUsage::RenderTarget
                 )
             };
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments,
-            }, acquires);
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{
+                    .colorAttachments = colorAttachments,
+                },
+                acquires
+            );
             cmdList.SetViewport(fullViewport(*disk));
             cmdList.SetScissorRect(fullScissorRect(*disk));
 
             cmdList.SetPipelineState(*diskGenerator);
-            cmdList.SetPushGraphicsConstants(GenerationParam{
-                .rs = simParam.rs,
-                .diskInner = simParam.diskInner,
-                .diskOuter = simParam.diskOuter,
-                .maxTempKelvin = 1e+4
-            });
+            cmdList.SetPushGraphicsConstants(
+                GenerationParam{
+                    .rs = simParam.rs,
+                    .diskInner = simParam.diskInner,
+                    .diskOuter = simParam.diskOuter,
+                    .maxTempKelvin = 1e+4
+                }
+            );
             cmdList.Draw(4);
 
             const std::array releases{release};
             cmdList.EndRenderPass(releases);
         }
 
-        void OnUpdate(f64, f64 elapsedTime) override{
+        void OnUpdate(f64, f64 elapsedTime) override {
             simParam.elapsedTimeSeconds = static_cast<f32>(elapsedTime);
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
             simParamBuffer = Device().UploadTransient(simParam);
 
             // the simulation pass below is the disk's first reader
-            const auto diskEdge = makeBarrier(*disk,
+            const auto diskEdge = makeBarrier(
+                *disk,
                 RHIResourceUsage::RenderTarget,
                 RHIResourceUsage::SampledFragment
             );
             const bool recordsDisk = !diskRecorded;
-            if(recordsDisk){
+            if(recordsDisk) {
                 recordDisk(cmdList, diskEdge);
                 diskRecorded = true;
             }
@@ -477,12 +535,14 @@ namespace Crowy
             // the scene edge skips the whole bloom chain: released by the
             // simulation pass, acquired only by the composite - the
             // non-adjacent dependency this barrier model exists for
-            const auto sceneEdge = makeBarrier(*scene,
+            const auto sceneEdge = makeBarrier(
+                *scene,
                 RHIResourceUsage::RenderTarget,
                 RHIResourceUsage::SampledFragment
             );
             // brightMask goes to the bloom's first blur instead (adjacent)
-            const auto brightMaskEdge = makeBarrier(*brightMask,
+            const auto brightMaskEdge = makeBarrier(
+                *brightMask,
                 RHIResourceUsage::RenderTarget,
                 RHIResourceUsage::SampledFragment
             );
@@ -503,12 +563,14 @@ namespace Crowy
                 const std::array acquires{
                     // both were sampled by last frame's passes (WAR) and are
                     // fully rewritten, so the contents can go
-                    makeCrossSubmissionBarrier(*scene,
+                    makeCrossSubmissionBarrier(
+                        *scene,
                         RHIResourceUsage::SampledFragment,
                         RHIResourceUsage::RenderTarget,
                         /*discardContents=*/true
                     ),
-                    makeCrossSubmissionBarrier(*brightMask,
+                    makeCrossSubmissionBarrier(
+                        *brightMask,
                         RHIResourceUsage::SampledFragment,
                         RHIResourceUsage::RenderTarget,
                         /*discardContents=*/true
@@ -516,17 +578,20 @@ namespace Crowy
                     // last, so the frames that did not draw the disk drop it
                     diskEdge
                 };
-                cmdList.BeginRenderPass(RHIRenderPassDesc{
-                    .colorAttachments = colorAttachments
-                }, std::span(acquires).first(recordsDisk ? 3 : 2));
+                cmdList.BeginRenderPass(
+                    RHIRenderPassDesc{.colorAttachments = colorAttachments},
+                    std::span(acquires).first(recordsDisk ? 3 : 2)
+                );
                 cmdList.SetViewport(fullViewport(*backBuffer.texture));
                 cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
                 cmdList.SetPipelineState(*blackholeSimulator);
-                cmdList.SetPushGraphicsConstants(PushConstants{
-                    // drawn once, by recordDisk in the first frame
-                    .disk = disk->GetReadableID()
-                });
+                cmdList.SetPushGraphicsConstants(
+                    PushConstants{
+                        // drawn once, by recordDisk in the first frame
+                        .disk = disk->GetReadableID()
+                    }
+                );
                 cmdList.SetGraphicsConstantBuffer(simParamBuffer, 0);
                 cmdList.Draw(4);
 
@@ -537,34 +602,36 @@ namespace Crowy
             RHITexture& bloom = bloomPass.Execute(*brightMask, cmdList);
 
             {
-                std::array colorAttachments = {
-                    RHIColorAttachment{
-                        .texture = backBuffer.texture,
-                        // a full screen quad covers every pixel
-                        .loadAction = RHILoadAction::DontCare,
-                        .storeAction = backBuffer.storeAction
-                    }
-                };
+                std::array colorAttachments = {RHIColorAttachment{
+                    .texture = backBuffer.texture,
+                    // a full screen quad covers every pixel
+                    .loadAction = RHILoadAction::DontCare,
+                    .storeAction = backBuffer.storeAction
+                }};
                 const std::array acquires{
                     sceneEdge,
                     // the edge Execute's last upsample released
-                    makeBarrier(bloom,
+                    makeBarrier(
+                        bloom,
                         RHIResourceUsage::RenderTarget,
                         RHIResourceUsage::SampledFragment
                     ),
                     AcquireBackBuffer(backBuffer)
                 };
-                cmdList.BeginRenderPass(RHIRenderPassDesc{
-                    .colorAttachments = colorAttachments
-                }, acquires);
+                cmdList.BeginRenderPass(
+                    RHIRenderPassDesc{.colorAttachments = colorAttachments},
+                    acquires
+                );
                 cmdList.SetViewport(fullViewport(*backBuffer.texture));
                 cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
                 cmdList.SetPipelineState(*composite);
-                cmdList.SetPushGraphicsConstants(CompositeParam{
-                    .scene = scene->GetReadableID(),
-                    .bloom = bloom.GetReadableID()
-                });
+                cmdList.SetPushGraphicsConstants(
+                    CompositeParam{
+                        .scene = scene->GetReadableID(),
+                        .bloom = bloom.GetReadableID()
+                    }
+                );
                 cmdList.Draw(4);
 
                 const std::array releases{ReleaseBackBuffer(backBuffer)};
@@ -572,7 +639,7 @@ namespace Crowy
             }
         }
 
-        void OnResize(u32 width, u32 height) override{
+        void OnResize(u32 width, u32 height) override {
             // a minimized window reports zero, which the swapchain also skips
             if(width == 0 || height == 0)
                 return;
@@ -609,7 +676,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "BlackholeSimulation",
-        .width = 1280, .height = 720,
+        .width = 1280,
+        .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,

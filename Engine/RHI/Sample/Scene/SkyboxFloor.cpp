@@ -1,10 +1,11 @@
+#include "SkyboxFloor.hpp"
+
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
-#include "SkyboxFloor.hpp"
 
 namespace Crowy
 {
-    SceneData MakeSkyboxFloor(f32 halfSize, f32 uvScale){
+    SceneData MakeSkyboxFloor(f32 halfSize, f32 uvScale) {
         std::vector<SceneObject> objects;
         objects.reserve(1);
 

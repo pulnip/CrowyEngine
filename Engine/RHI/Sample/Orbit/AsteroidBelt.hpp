@@ -2,6 +2,7 @@
 
 #include <span>
 #include <vector>
+
 #include "Kepler.hpp"
 
 namespace Crowy
@@ -23,18 +24,21 @@ namespace Crowy
     inline constexpr f64 BELT_INNER_AU = 2.06;
     inline constexpr f64 BELT_OUTER_AU = 3.40;
 
-    class AsteroidBelt{
+    class AsteroidBelt {
     private:
         std::vector<OrbitalElements> elements;
 
     public:
         // `seed` picks the swarm; the same seed always gives the same belt, so
         // a capture is reproducible
-        explicit AsteroidBelt(u32 count = ASTEROID_COUNT, u32 seed = 0x5EED4A57u);
+        explicit AsteroidBelt(
+            u32 count = ASTEROID_COUNT,
+            u32 seed = 0x5EED4A57u
+        );
 
-        usize Count() const noexcept{ return elements.size(); }
-        const OrbitalElements& At(usize i) const{ return elements[i]; }
-        std::span<const OrbitalElements> Elements() const noexcept{
+        usize Count() const noexcept { return elements.size(); }
+        const OrbitalElements& At(usize i) const { return elements[i]; }
+        std::span<const OrbitalElements> Elements() const noexcept {
             return elements;
         }
 

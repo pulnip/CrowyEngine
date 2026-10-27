@@ -6,7 +6,7 @@
 
 namespace Crowy
 {
-    class HelloTexture: public App{
+    class HelloTexture: public App {
         using App::App;
 
         RHIGraphicsPipelineStateRAII pso;
@@ -14,40 +14,38 @@ namespace Crowy
         RHITextureRAII normal;
         RHITextureRAII bump;
 
-        struct PushConstants{
+        struct PushConstants {
             u64 diffuse;
             u64 normal;
             u64 bump;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .topology = RHIPrimitiveTopology::TriangleStrip,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/HelloTexture.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/HelloTexture.slang",
-                    .entryPoint = "fs_main"
-                },
-                .blend = RHIBlendState{
-                    .renderTargets = {
-                        RHIRenderTargetBlendState{
-                            .blendEnable = true,
-                            .srcBlend = RHIBlend::SrcAlpha,
-                            .dstBlend = RHIBlend::InvSrcAlpha
-                        }
-                    }
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1
-            });
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+            pso = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .topology = RHIPrimitiveTopology::TriangleStrip,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/HelloTexture.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/HelloTexture.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .blend =
+                        RHIBlendState{
+                            .renderTargets = {RHIRenderTargetBlendState{
+                                .blendEnable = true,
+                                .srcBlend = RHIBlend::SrcAlpha,
+                                .dstBlend = RHIBlend::InvSrcAlpha
+                            }}
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1
+                }
+            );
 
             auto diffuse = LoadImage(
                 resolveContentPath("Assets/3crates/crate1/crate1_diffuse.ktx2")
@@ -59,45 +57,56 @@ namespace Crowy
                 resolveContentPath("Assets/3crates/crate1/crate1_bump.ktx2")
             );
 
-            this->diffuse = device.CreateTexture(RHITextureCreateDesc{
-                .width = diffuse.width, .height = diffuse.height,
-                .mipLevels = diffuse.mipLevels,
-                .arraySize = diffuse.arraySize,
-                .format = diffuse.format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialData = diffuse.subs
-            });
-            this->normal = device.CreateTexture(RHITextureCreateDesc{
-                .width = normal.width, .height = normal.height,
-                .mipLevels = normal.mipLevels,
-                .arraySize = normal.arraySize,
-                .format = normal.format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialData = normal.subs
-            });
-            this->bump = device.CreateTexture(RHITextureCreateDesc{
-                .width = bump.width, .height = bump.height,
-                .mipLevels = bump.mipLevels,
-                .arraySize = bump.arraySize,
-                .format = bump.format,
-                .usage = RHITextureUsage::ShaderResource,
-                .initialData = bump.subs
-            });
+            this->diffuse = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = diffuse.width,
+                    .height = diffuse.height,
+                    .mipLevels = diffuse.mipLevels,
+                    .arraySize = diffuse.arraySize,
+                    .format = diffuse.format,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialData = diffuse.subs
+                }
+            );
+            this->normal = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = normal.width,
+                    .height = normal.height,
+                    .mipLevels = normal.mipLevels,
+                    .arraySize = normal.arraySize,
+                    .format = normal.format,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialData = normal.subs
+                }
+            );
+            this->bump = device.CreateTexture(
+                RHITextureCreateDesc{
+                    .width = bump.width,
+                    .height = bump.height,
+                    .mipLevels = bump.mipLevels,
+                    .arraySize = bump.arraySize,
+                    .format = bump.format,
+                    .usage = RHITextureUsage::ShaderResource,
+                    .initialData = bump.subs
+                }
+            );
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
-            std::array colorAttachments = {
-                RHIColorAttachment{
-                    .texture = backBuffer.texture,
-                    .loadAction = backBuffer.loadAction,
-                    .storeAction = backBuffer.storeAction,
-                    .clearColor = Colors::Grey
-                }
-            };
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
+            std::array colorAttachments = {RHIColorAttachment{
+                .texture = backBuffer.texture,
+                .loadAction = backBuffer.loadAction,
+                .storeAction = backBuffer.storeAction,
+                .clearColor = Colors::Grey
+            }};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments
-            }, acquires);
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{.colorAttachments = colorAttachments},
+                acquires
+            );
             cmdList.SetViewport(fullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
@@ -121,7 +130,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "HelloTexture",
-        .width = 800, .height = 800,
+        .width = 800,
+        .height = 800,
         .fullscreen = false,
         .resizable = true,
     };

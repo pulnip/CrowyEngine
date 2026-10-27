@@ -21,25 +21,30 @@ namespace
     constexpr u32 PatternWords = 1024;
     constexpr u32 PatternBytes = PatternWords * sizeof(u32);
 
-    // one more of these than the staging holds, so a flush has to happen and the
-    // allocation after it wraps back over offset 0, where the slice sits
+    // one more of these than the staging holds, so a flush has to happen and
+    // the allocation after it wraps back over offset 0, where the slice sits
     constexpr u32 FillerBytes = 8u << 20;
     constexpr u32 FillerCount = UploadStagingBytes / FillerBytes + 1;
 
-    constexpr u32 patternWord(u32 i) noexcept { return 0xC0DE0000u ^ i; }
+    constexpr u32 patternWord(u32 i) noexcept {
+        return 0xC0DE0000u ^ i;
+    }
 }
 
-int main(void){
-    try{
+int main(void) {
+    try {
         using namespace Crowy;
 
         auto device = createDevice();
         auto cmdList = device->CreateCommandList();
 
-        auto readback = device->CreateBuffer(RHIBufferCreateDesc{
-            .size = PatternBytes,
-            .memory = RHIMemoryType::CPURead
-        }, "UploadFlushReadback");
+        auto readback = device->CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = PatternBytes,
+                .memory = RHIMemoryType::CPURead
+            },
+            "UploadFlushReadback"
+        );
 
         std::array<u32, PatternWords> pattern{};
         for(u32 i = 0; i < PatternWords; ++i)
@@ -48,7 +53,8 @@ int main(void){
         cmdList->Begin();
 
         // allocated before any creation upload, so it sits where the wrap lands
-        const auto slice = device->UploadTransient(std::span<const u32>(pattern));
+        const auto slice =
+            device->UploadTransient(std::span<const u32>(pattern));
 
         cmdList->BeginBlitPass();
         cmdList->Copy(*slice.buffer, *readback, slice.offset, 0, PatternBytes);
@@ -56,11 +62,14 @@ int main(void){
 
         const std::vector<std::byte> fillerData(FillerBytes, std::byte{0x5A});
         std::vector<RHIBufferRAII> fillers;
-        for(u32 i = 0; i < FillerCount; ++i){
-            fillers.push_back(device->CreateBuffer(RHIBufferCreateDesc{
-                .size = FillerBytes,
-                .initialData = fillerData.data()
-            }, "UploadFlushFiller"));
+        for(u32 i = 0; i < FillerCount; ++i) {
+            fillers.push_back(device->CreateBuffer(
+                RHIBufferCreateDesc{
+                    .size = FillerBytes,
+                    .initialData = fillerData.data()
+                },
+                "UploadFlushFiller"
+            ));
         }
 
         cmdList->Close();
@@ -73,7 +82,7 @@ int main(void){
 
         u32 mismatches = 0;
         u32 firstMismatch = 0;
-        for(u32 i = 0; i < PatternWords; ++i){
+        for(u32 i = 0; i < PatternWords; ++i) {
             if(result[i] == pattern[i])
                 continue;
 
@@ -83,19 +92,25 @@ int main(void){
         }
 
         std::println(
-            "UploadFlushCheck: {} filler uploads of {} MiB behind one {}-byte slice",
-            FillerCount, FillerBytes >> 20, PatternBytes
+            "UploadFlushCheck: {} filler uploads of {} MiB behind one {}-byte "
+            "slice",
+            FillerCount,
+            FillerBytes >> 20,
+            PatternBytes
         );
 
-        if(mismatches > 0){
+        if(mismatches > 0) {
             std::println(
                 "  FAIL: {} of {} words changed before the copy ran - "
                 "the flush let the slice be reused",
-                mismatches, PatternWords
+                mismatches,
+                PatternWords
             );
             std::println(
                 "  first at word {}: 0x{:08X}, expected 0x{:08X}",
-                firstMismatch, result[firstMismatch], pattern[firstMismatch]
+                firstMismatch,
+                result[firstMismatch],
+                pattern[firstMismatch]
             );
 
             return 1;
@@ -103,7 +118,7 @@ int main(void){
 
         std::println("Succeed!");
     }
-    catch(const std::exception& e){
+    catch(const std::exception& e) {
         std::println("Exception: {}", e.what());
 
         return 1;

@@ -13,7 +13,7 @@ namespace Crowy
     // Shared rather than copied because comparing the two samples is the whole
     // point - they have to frame the same field from the same place, and a
     // camera that drifted between them would quietly undo that.
-    class TerrainCamera{
+    class TerrainCamera {
     private:
         Vec3 position = TERRAIN_CAMERA_START_POS;
         f32 yaw = TERRAIN_CAMERA_START_YAW;
@@ -29,7 +29,7 @@ namespace Crowy
         void Update(f64 deltaTime);
         void SetViewport(u32 width, u32 height);
 
-        Vec3 Position() const noexcept{ return position; }
+        Vec3 Position() const noexcept { return position; }
         Vec4 Rotation() const;
         Mat4 ViewProj() const;
     };

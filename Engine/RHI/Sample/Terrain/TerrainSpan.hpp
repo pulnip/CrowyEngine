@@ -2,6 +2,7 @@
 
 #include <span>
 #include <vector>
+
 #include "Terrain.hpp"
 
 namespace Crowy
@@ -11,23 +12,25 @@ namespace Crowy
 
     // one solid run along a column's height axis: the y-axis RLE of the
     // occupancy function
-    struct TerrainSpan{
+    struct TerrainSpan {
         f32 yBottom, yTop;
     };
 
-    struct TerrainSpanField{
+    struct TerrainSpanField {
         // indexed [z * TERRAIN_CELLS_X + x]
         // each column's runs are sorted by height and disjoint,
         // which the wall mesher relies on
         std::vector<std::vector<TerrainSpan>> columns;
 
-        std::span<const TerrainSpan> At(u32 x, u32 z) const{
+        std::span<const TerrainSpan> At(u32 x, u32 z) const {
             return columns[z * TERRAIN_CELLS_X + x];
         }
         // outside the grid reads as air, so border columns emit outward walls
-        std::span<const TerrainSpan> AtOrAir(i32 x, i32 z) const{
-            const auto xOutOfCell = x < 0 || x >= static_cast<i32>(TERRAIN_CELLS_X);
-            const auto zOutOfCell = z < 0 || z >= static_cast<i32>(TERRAIN_CELLS_Z);
+        std::span<const TerrainSpan> AtOrAir(i32 x, i32 z) const {
+            const auto xOutOfCell =
+                x < 0 || x >= static_cast<i32>(TERRAIN_CELLS_X);
+            const auto zOutOfCell =
+                z < 0 || z >= static_cast<i32>(TERRAIN_CELLS_Z);
             if(xOutOfCell || zOutOfCell)
                 return {};
 
@@ -39,7 +42,7 @@ namespace Crowy
     // sub-cell precision.
     TerrainSpanField ExtractTerrainSpans(const TerrainParams&);
 
-    struct TerrainSpanMeshStats{
+    struct TerrainSpanMeshStats {
         u32 columnCount = 0;
         u32 spanCount = 0;
         u32 maxSpansPerColumn = 0;
@@ -48,7 +51,7 @@ namespace Crowy
         bool overflowed = false;
     };
 
-    struct TerrainSpanMeshOptions{
+    struct TerrainSpanMeshOptions {
         bool emitWalls = true;
     };
 

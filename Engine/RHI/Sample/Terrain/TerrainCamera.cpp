@@ -1,9 +1,12 @@
-#include <algorithm>
-#include <numbers>
-#include "InputProvider.hpp"
 #include "TerrainCamera.hpp"
 
-namespace{
+#include <algorithm>
+#include <numbers>
+
+#include "InputProvider.hpp"
+
+namespace
+{
     using namespace Crowy;
 
     constexpr f32 FOV_Y = std::numbers::pi_v<f32> / 3;
@@ -18,8 +21,8 @@ namespace{
 
 namespace Crowy
 {
-    void TerrainCamera::ProcessInput(const InputProvider& input){
-        if(input.IsKeyDown(MouseButton::RButton)){
+    void TerrainCamera::ProcessInput(const InputProvider& input) {
+        if(input.IsKeyDown(MouseButton::RButton)) {
             const auto dpos = input.GetMouseDPos();
             yaw += dpos.x * LOOK_SENSITIVITY;
             // straight up would leave the yaw axis undefined
@@ -32,15 +35,15 @@ namespace Crowy
 
         moveInput = Vec3{
             (input.IsKeyDown(KeyCode::D) ? 1.0f : 0.0f) -
-            (input.IsKeyDown(KeyCode::A) ? 1.0f : 0.0f),
+                (input.IsKeyDown(KeyCode::A) ? 1.0f : 0.0f),
             (input.IsKeyDown(KeyCode::Space) ? 1.0f : 0.0f) -
-            (input.IsKeyDown(KeyCode::Shift) ? 1.0f : 0.0f),
+                (input.IsKeyDown(KeyCode::Shift) ? 1.0f : 0.0f),
             (input.IsKeyDown(KeyCode::W) ? 1.0f : 0.0f) -
-            (input.IsKeyDown(KeyCode::S) ? 1.0f : 0.0f)
+                (input.IsKeyDown(KeyCode::S) ? 1.0f : 0.0f)
         };
     }
 
-    void TerrainCamera::Update(f64 deltaTime){
+    void TerrainCamera::Update(f64 deltaTime) {
         if(moveInput.x == 0.0f && moveInput.y == 0.0f && moveInput.z == 0.0f)
             return;
 
@@ -50,23 +53,21 @@ namespace Crowy
 
         // up stays world up, so looking down does not sink the climb
         const auto direction = normalize(
-            right * moveInput.x +
-            unitY() * moveInput.y +
-            forward * moveInput.z
+            right * moveInput.x + unitY() * moveInput.y + forward * moveInput.z
         );
         position += direction * (MOVE_SPEED * static_cast<f32>(deltaTime));
     }
 
-    void TerrainCamera::SetViewport(u32 width, u32 height){
+    void TerrainCamera::SetViewport(u32 width, u32 height) {
         aspect = static_cast<f32>(width) / height;
     }
 
-    Vec4 TerrainCamera::Rotation() const{
+    Vec4 TerrainCamera::Rotation() const {
         return quat(rotateY(yaw), rotateX(pitch));
     }
 
-    Mat4 TerrainCamera::ViewProj() const{
+    Mat4 TerrainCamera::ViewProj() const {
         return perspective(FOV_Y, aspect, NEAR_Z, FAR_Z) *
-            viewMat(position, Rotation());
+               viewMat(position, Rotation());
     }
 }

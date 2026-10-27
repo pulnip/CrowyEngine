@@ -3,38 +3,41 @@
 
 namespace Crowy
 {
-    class HelloWorld: public App{
+    class HelloWorld: public App {
         using App::App;
 
         RHIGraphicsPipelineStateRAII pso;
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
-            pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
-                .topology = RHIPrimitiveTopology::TriangleList,
-                .vertexShader = {
-                    .path = "Engine/RHI/Sample/Triangle.slang",
-                    .entryPoint = "vs_main"
-                },
-                .rasterizer = RHIRasterizerState{
-                    .frontCounterClockwise = false
-                },
-                .fragmentShader = RHIShaderDesc{
-                    .path = "Engine/RHI/Sample/Triangle.slang",
-                    .entryPoint = "fs_main"
-                },
-                .renderTargetFormats = {
-                    swapchain.GetFormat()
-                },
-                .renderTargetCount = 1
-            });
+        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+            pso = device.CreatePipelineState(
+                RHIGraphicsPipelineStateDesc{
+                    .topology = RHIPrimitiveTopology::TriangleList,
+                    .vertexShader =
+                        {.path = "Engine/RHI/Sample/Triangle.slang",
+                         .entryPoint = "vs_main"},
+                    .rasterizer =
+                        RHIRasterizerState{.frontCounterClockwise = false},
+                    .fragmentShader =
+                        RHIShaderDesc{
+                            .path = "Engine/RHI/Sample/Triangle.slang",
+                            .entryPoint = "fs_main"
+                        },
+                    .renderTargetFormats = {swapchain.GetFormat()},
+                    .renderTargetCount = 1
+                }
+            );
         }
 
-        void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
+        void OnRecord(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override {
             std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
-            cmdList.BeginRenderPass(RHIRenderPassDesc{
-                .colorAttachments = colorAttachments
-            }, acquires);
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{.colorAttachments = colorAttachments},
+                acquires
+            );
             cmdList.SetViewport(fullViewport(*backBuffer.texture));
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
@@ -52,7 +55,8 @@ int main(int argc, char** argv) {
 
     const WindowConfig windowConfig{
         .title = "HelloWorld",
-        .width = 800, .height = 800,
+        .width = 800,
+        .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
         .fullscreen = false,
         .resizable = true,

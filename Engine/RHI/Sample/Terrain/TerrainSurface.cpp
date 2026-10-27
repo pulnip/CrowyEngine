@@ -1,8 +1,10 @@
-#include "RHIDevice.hpp"
-#include "RHIPipelineState.hpp"
 #include "TerrainSurface.hpp"
 
-namespace{
+#include "RHIDevice.hpp"
+#include "RHIPipelineState.hpp"
+
+namespace
+{
     using namespace Crowy;
 
     constexpr CStr SHADER_PATH = "Engine/RHI/Sample/Terrain/Terrain.slang";
@@ -12,25 +14,28 @@ namespace{
         RHIPixelFormat depthFormat,
         RHIFillMode fillMode,
         bool debugNormal
-    ){
+    ) {
         return RHIGraphicsPipelineStateDesc{
             // no vertex layout: vertices are pulled by SV_VertexID
             .topology = RHIPrimitiveTopology::TriangleList,
             .vertexShader = {.path = SHADER_PATH, .entryPoint = "vs_main"},
-            .rasterizer = RHIRasterizerState{
-                .fillMode = fillMode,
-                // left-handed, so the right-hand normal is the front face
-                .frontCounterClockwise = false
-            },
-            .fragmentShader = RHIShaderDesc{
-                .path = SHADER_PATH,
-                .entryPoint = debugNormal ? "fs_debug_normal" : "fs_main"
-            },
-            .depthStencil = RHIDepthStencilState{
-                .format = depthFormat,
-                .depthWriteEnable = true,
-                .depthFunc = RHIComparisonFunc::Less
-            },
+            .rasterizer =
+                RHIRasterizerState{
+                    .fillMode = fillMode,
+                    // left-handed, so the right-hand normal is the front face
+                    .frontCounterClockwise = false
+                },
+            .fragmentShader =
+                RHIShaderDesc{
+                    .path = SHADER_PATH,
+                    .entryPoint = debugNormal ? "fs_debug_normal" : "fs_main"
+                },
+            .depthStencil =
+                RHIDepthStencilState{
+                    .format = depthFormat,
+                    .depthWriteEnable = true,
+                    .depthFunc = RHIComparisonFunc::Less
+                },
             .renderTargetFormats = {colorFormat},
             .renderTargetCount = 1
         };
@@ -45,22 +50,29 @@ namespace Crowy
         RHIPixelFormat depthFormat
     )
         : fillShaded(device.CreatePipelineState(
-            PipelineDesc(colorFormat, depthFormat, RHIFillMode::Solid, false)
-        ))
-        , wireShaded(device.CreatePipelineState(
-            PipelineDesc(colorFormat, depthFormat, RHIFillMode::Wireframe, false)
-        ))
-        , fillNormal(device.CreatePipelineState(
-            PipelineDesc(colorFormat, depthFormat, RHIFillMode::Solid, true)
-        ))
-        , wireNormal(device.CreatePipelineState(
-            PipelineDesc(colorFormat, depthFormat, RHIFillMode::Wireframe, true)
-        ))
-    {}
+              PipelineDesc(colorFormat, depthFormat, RHIFillMode::Solid, false)
+          )),
+          wireShaded(device.CreatePipelineState(PipelineDesc(
+              colorFormat,
+              depthFormat,
+              RHIFillMode::Wireframe,
+              false
+          ))),
+          fillNormal(device.CreatePipelineState(
+              PipelineDesc(colorFormat, depthFormat, RHIFillMode::Solid, true)
+          )),
+          wireNormal(device.CreatePipelineState(PipelineDesc(
+              colorFormat,
+              depthFormat,
+              RHIFillMode::Wireframe,
+              true
+          ))) {}
 
     TerrainSurface::~TerrainSurface() = default;
 
-    RHIGraphicsPipelineState& TerrainSurface::Pipeline(const TerrainDebug& debug) const{
+    RHIGraphicsPipelineState& TerrainSurface::Pipeline(
+        const TerrainDebug& debug
+    ) const {
         if(debug.showNormals)
             return debug.wireframe ? *wireNormal : *fillNormal;
 
