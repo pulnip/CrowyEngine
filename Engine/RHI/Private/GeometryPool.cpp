@@ -18,7 +18,8 @@
 
 namespace Crowy
 {
-    namespace{
+    namespace
+    {
         std::optional<OffsetAllocator::Allocation> allocate(
             OffsetAllocator::Allocator& allocator,
             u32 count
@@ -52,23 +53,32 @@ namespace Crowy
         RHIResourceUsage vertexRead,
         u64 stagingBudget
     )
-        : device(device)
-        , vertexAllocator(std::make_unique<OffsetAllocator::Allocator>(vertexCapacity))
-        , indexAllocator(std::make_unique<OffsetAllocator::Allocator>(indexCapacity))
-        , vertexCapacity(vertexCapacity)
-        , indexCapacity(indexCapacity)
-        , vertexRead(vertexRead)
-        , stagingBudget(stagingBudget)
-    {
+        : device(device),
+          vertexAllocator(
+              std::make_unique<OffsetAllocator::Allocator>(vertexCapacity)
+          ),
+          indexAllocator(
+              std::make_unique<OffsetAllocator::Allocator>(indexCapacity)
+          ),
+          vertexCapacity(vertexCapacity),
+          indexCapacity(indexCapacity),
+          vertexRead(vertexRead),
+          stagingBudget(stagingBudget) {
         // the staging size is handed to the device as a u32
         CROWY_ASSERT(stagingBudget <= std::numeric_limits<u32>::max());
 
-        vertexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = vertexCapacity * static_cast<u32>(sizeof(Vertex))
-        }, "geometry pool vertices");
-        indexBuffer = device.CreateBuffer(RHIBufferCreateDesc{
-            .size = indexCapacity * static_cast<u32>(sizeof(u32))
-        }, "geometry pool indices");
+        vertexBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = vertexCapacity * static_cast<u32>(sizeof(Vertex))
+            },
+            "geometry pool vertices"
+        );
+        indexBuffer = device.CreateBuffer(
+            RHIBufferCreateDesc{
+                .size = indexCapacity * static_cast<u32>(sizeof(u32))
+            },
+            "geometry pool indices"
+        );
     }
 
     GeometryPool::~GeometryPool() {
@@ -79,8 +89,8 @@ namespace Crowy
         CROWY_ASSERT(freesInFlight == 0, "a geometry free outlived its pool");
     }
 
-    u64 GeometryPool::GetVertexBufferID(){
-        if(vertexBufferID == 0){
+    u64 GeometryPool::GetVertexBufferID() {
+        if(vertexBufferID == 0) {
             vertexBufferID =
                 vertexBuffer->GetReadableID(static_cast<u32>(sizeof(Vertex)));
         }
@@ -140,7 +150,7 @@ namespace Crowy
         };
     }
 
-    void GeometryPool::Free(const GeometryAllocation& allocation){
+    void GeometryPool::Free(const GeometryAllocation& allocation) {
         ++freesInFlight;
         device.DeferRetire([this, allocation] {
             vertexAllocator->free(
@@ -161,7 +171,7 @@ namespace Crowy
 
     std::span<const RHIBufferBarrier> GeometryPool::RecordUploads(
         RHICommandList& cmdList
-    ){
+    ) {
         if(pendingUploads.empty())
             return {};
 
@@ -188,12 +198,19 @@ namespace Crowy
         cmdList.BeginBlitPass({}, acquires);
 
         u64 cursor = 0;
-        const auto stage = [&](RHIBuffer& dst, const void* data, u64 bytes, u64 dstOffset){
-            std::memcpy(ptrAdd(staging.cpuPtr, cursor), data, bytes);
-            cmdList.Copy(*staging.buffer, dst, staging.offset + cursor, dstOffset, bytes);
-            cursor = nextMul(cursor + bytes, GeometryStagingAlign);
-        };
-        for(const auto& upload: pendingUploads){
+        const auto stage =
+            [&](RHIBuffer& dst, const void* data, u64 bytes, u64 dstOffset) {
+                std::memcpy(ptrAdd(staging.cpuPtr, cursor), data, bytes);
+                cmdList.Copy(
+                    *staging.buffer,
+                    dst,
+                    staging.offset + cursor,
+                    dstOffset,
+                    bytes
+                );
+                cursor = nextMul(cursor + bytes, GeometryStagingAlign);
+            };
+        for(const auto& upload: pendingUploads) {
             stage(
                 *vertexBuffer,
                 upload.vertices.data(),
@@ -209,11 +226,7 @@ namespace Crowy
         }
 
         uploadReleases = {
-            makeBarrier(
-                *vertexBuffer,
-                RHIResourceUsage::CopyDst,
-                vertexRead
-            ),
+            makeBarrier(*vertexBuffer, RHIResourceUsage::CopyDst, vertexRead),
             makeBarrier(
                 *indexBuffer,
                 RHIResourceUsage::CopyDst,
@@ -229,16 +242,18 @@ namespace Crowy
         return uploadReleases;
     }
 
-    void GeometryPool::LogAllocationStats() const{
+    void GeometryPool::LogAllocationStats() const {
         const auto vertexReport = vertexAllocator->storageReport();
         const auto indexReport = indexAllocator->storageReport();
 
         LOG_INFO(
             "geometry pool: vertices {}/{} used (largest free run {}), "
             "indices {}/{} used (largest free run {})",
-            vertexCapacity - vertexReport.totalFreeSpace, vertexCapacity,
+            vertexCapacity - vertexReport.totalFreeSpace,
+            vertexCapacity,
             vertexReport.largestFreeRegion,
-            indexCapacity - indexReport.totalFreeSpace, indexCapacity,
+            indexCapacity - indexReport.totalFreeSpace,
+            indexCapacity,
             indexReport.largestFreeRegion
         );
     }

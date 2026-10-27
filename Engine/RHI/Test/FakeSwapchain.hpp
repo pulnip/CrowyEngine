@@ -8,7 +8,7 @@ namespace Crowy
 {
     // presents nothing: the tests drive the swapchain's own bookkeeping,
     // and the frame dump's backend half is theirs to call
-    class FakeSwapchain final : public RHISwapchain {
+    class FakeSwapchain final: public RHISwapchain {
     public:
         using RHISwapchain::TakeFrameDump;
 

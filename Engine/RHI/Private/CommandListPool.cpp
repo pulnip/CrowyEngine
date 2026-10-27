@@ -1,18 +1,22 @@
-#include "Assert.hpp"
 #include "CommandListPool.hpp"
+
+#include "Assert.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 
 namespace Crowy
 {
     CommandListPool::CommandListPool(RHIDevice& device)
-        : device(device){}
+        : device(device) {}
 
     CommandListPool::~CommandListPool() = default;
 
-    void CommandListPool::BeginFrame(u64 frame){
-        CROWY_ASSERT(frame == this->frame + 1,
-            "the pool records frame {} after frame {}", frame, this->frame
+    void CommandListPool::BeginFrame(u64 frame) {
+        CROWY_ASSERT(
+            frame == this->frame + 1,
+            "the pool records frame {} after frame {}",
+            frame,
+            this->frame
         );
         this->frame = frame;
 
@@ -21,22 +25,22 @@ namespace Crowy
         auto& slot = slots[currentIndex()];
         slot.nextIndex = 0;
 
-    #if CROWY_FRAME_STATS
+#if CROWY_FRAME_STATS
         frameStats = RHIFrameStats{};
-    #endif
+#endif
     }
 
-    RHICommandList& CommandListPool::Acquire(){
+    RHICommandList& CommandListPool::Acquire() {
         auto& slot = slots[currentIndex()];
 
-        if(slot.nextIndex >= slot.cmdLists.size()){
+        if(slot.nextIndex >= slot.cmdLists.size()) {
             // reserve new commandList, if not enough
             auto newCmdList = device.CreateCommandList();
             slot.cmdLists.emplace_back(std::move(newCmdList));
 
-        #if CROWY_FRAME_STATS
+#if CROWY_FRAME_STATS
             ++frameStats.commandListCreateCount;
-        #endif
+#endif
         }
 
         auto acquireIndex = slot.nextIndex++;
@@ -45,7 +49,7 @@ namespace Crowy
         return *acquiredCmdList;
     }
 
-    std::vector<RHICommandList*> CommandListPool::ExtractRecorded(){
+    std::vector<RHICommandList*> CommandListPool::ExtractRecorded() {
         auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex == 0) [[unlikely]] {
@@ -59,12 +63,12 @@ namespace Crowy
         // cmdLists is a high-water mark now, so only what was handed out
         // this frame gets submitted
         std::vector<RHICommandList*> cmdLists(slot.nextIndex);
-        for(usize i=0; i<cmdLists.size(); ++i){
+        for(usize i = 0; i < cmdLists.size(); ++i) {
             cmdLists[i] = slot.cmdLists[i].get();
 
-        #if CROWY_FRAME_STATS
+#if CROWY_FRAME_STATS
             frameStats += cmdLists[i]->GetStats();
-        #endif
+#endif
         }
 
         return cmdLists;

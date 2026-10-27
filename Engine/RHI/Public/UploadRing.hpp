@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+
 #include "Function.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
@@ -10,9 +11,9 @@ namespace Crowy
     // Ring over one staging buffer, retired against the device's serial
     // fence: an allocation stays readable until the batch it was submitted
     // with completes. The device hands it the serial each batch signals.
-    class UploadRing{
+    class UploadRing {
     public:
-        struct Allocation{
+        struct Allocation {
             RHIBuffer& buffer;
             u64 offset;
             // into the staging buffer's persistent mapping, already offset
@@ -25,7 +26,7 @@ namespace Crowy
         using Flush = std::move_only_function<void()>;
 
     private:
-        struct InFlight{
+        struct InFlight {
             u64 head;
             u64 tag;
         };
@@ -36,11 +37,11 @@ namespace Crowy
         u64 head = 0, tail = 0;
         std::deque<InFlight> inFlight;
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         // stamps freed bytes so a copy still reading a retired range shows up
         // in the destination instead of silently reproducing stale data
         bool poisonMode = false;
-    #endif
+#endif
 
     public:
         UploadRing() = default;
@@ -51,10 +52,7 @@ namespace Crowy
             Flush flush = {}
         );
 
-        Allocation Allocate(
-            u64 size,
-            u64 align
-        );
+        Allocation Allocate(u64 size, u64 align);
 
         // call from the device's submit path once the batch's serial is
         // final: everything allocated since the last call rides that batch
@@ -63,8 +61,8 @@ namespace Crowy
     private:
         void retireCompleted();
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         void poisonRange(u64 from, u64 to);
-    #endif
+#endif
     };
 }

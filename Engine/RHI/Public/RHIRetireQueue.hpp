@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <vector>
+
 #include "Function.hpp"
 #include "Primitives.hpp"
 
@@ -11,12 +12,12 @@ namespace Crowy
     // A reclaim deferred mid-frame has no batch to wait behind yet - the
     // frame's commands are still being recorded - so it waits in `pending`
     // until the next Tag() attaches it to whatever is about to be submitted.
-    class RHIRetireQueue{
+    class RHIRetireQueue {
     public:
         using Reclaim = std::move_only_function<void()>;
 
     private:
-        struct Entry{
+        struct Entry {
             u64 tag;
             Reclaim reclaim;
         };

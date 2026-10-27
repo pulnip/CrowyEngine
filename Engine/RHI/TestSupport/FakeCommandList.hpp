@@ -440,13 +440,7 @@ namespace Crowy
                 );
             }
 
-            RHICommandList::Copy(
-                src,
-                dst,
-                srcOffset,
-                dstOffset,
-                size
-            );
+            RHICommandList::Copy(src, dst, srcOffset, dstOffset, size);
         }
 
         void Copy(

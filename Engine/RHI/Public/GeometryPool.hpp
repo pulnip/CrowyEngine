@@ -14,7 +14,8 @@
 #include "Semantics.hpp"
 #include "Vertex.hpp"
 
-namespace OffsetAllocator{
+namespace OffsetAllocator
+{
     class Allocator;
 }
 
@@ -41,7 +42,7 @@ namespace Crowy
 
     // where a mesh landed inside the pool; feeds RHIDrawIndexedArgs
     // (or DrawIndexed) directly
-    struct GeometryAllocation{
+    struct GeometryAllocation {
         u32 firstIndex = 0;
         u32 indexCount = 0;
         i32 baseVertex = 0;
@@ -53,13 +54,13 @@ namespace Crowy
     // one big vertex/index buffer pair shared by every pooled mesh, so
     // draws differ only by firstIndex/baseVertex and geometry never
     // rebinds between them. Sub-ranges come from OffsetAllocator.
-    class GeometryPool{
+    class GeometryPool {
     public:
         using AddResult = std::expected<GeometryAllocation, Str>;
 
     private:
         // a mesh's data, held from Add until RecordUploads copies it in
-        struct PendingUpload{
+        struct PendingUpload {
             std::vector<Vertex> vertices;
             std::vector<u32> indices;
             // element offsets into the pool's buffers
@@ -69,7 +70,8 @@ namespace Crowy
 
         RHIDevice& device;
         RHIBufferRAII vertexBuffer, indexBuffer;
-        std::unique_ptr<OffsetAllocator::Allocator> vertexAllocator, indexAllocator;
+        std::unique_ptr<OffsetAllocator::Allocator> vertexAllocator,
+            indexAllocator;
         u32 vertexCapacity = 0, indexCapacity = 0;
         // what the draws read the vertex buffer as, between uploads
         RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex;
@@ -113,8 +115,8 @@ namespace Crowy
         // frame must acquire; empty when nothing was queued
         std::span<const RHIBufferBarrier> RecordUploads(RHICommandList&);
 
-        RHIBuffer& GetVertexBuffer(){ return *vertexBuffer; }
-        RHIBuffer& GetIndexBuffer(){ return *indexBuffer; }
+        RHIBuffer& GetVertexBuffer() { return *vertexBuffer; }
+        RHIBuffer& GetIndexBuffer() { return *indexBuffer; }
 
         // For vertex pulling.
         u64 GetVertexBufferID();

@@ -27,10 +27,16 @@ namespace
     public:
         RHIFrameScopeRAII CreateFrameScope() override { return nullptr; }
 
-        RHIBufferRAII CreateBuffer(const RHIBufferCreateDesc&, StrView) override {
+        RHIBufferRAII CreateBuffer(
+            const RHIBufferCreateDesc&,
+            StrView
+        ) override {
             return nullptr;
         }
-        RHITextureRAII CreateTexture(const RHITextureCreateDesc&, StrView) override {
+        RHITextureRAII CreateTexture(
+            const RHITextureCreateDesc&,
+            StrView
+        ) override {
             return nullptr;
         }
         RHIGraphicsPipelineStateRAII CreatePipelineState(
@@ -45,7 +51,10 @@ namespace
         ) override {
             return nullptr;
         }
-        RHISwapchainRAII CreateSwapchain(const RHISwapchainCreateDesc&, StrView) override {
+        RHISwapchainRAII CreateSwapchain(
+            const RHISwapchainCreateDesc&,
+            StrView
+        ) override {
             return nullptr;
         }
         RHICommandListRAII CreateCommandList() override { return nullptr; }
@@ -53,7 +62,11 @@ namespace
         void Submit(std::span<RHICommandList*>, u64 frame) override {
             submits.push_back(frame);
         }
-        void SubmitAndPresent(std::span<RHICommandList*>, RHISwapchain&, u64 frame) override {
+        void SubmitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            u64 frame
+        ) override {
             submits.push_back(frame);
         }
 

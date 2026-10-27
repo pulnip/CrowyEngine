@@ -37,7 +37,8 @@ TEST(PipelineRules, RenderTargetsWithoutAFragmentStageThrow) {
     try {
         validateGraphicsPipelineDesc(desc);
         FAIL() << "validateGraphicsPipelineDesc did not throw";
-    } catch(const std::runtime_error& e) {
+    }
+    catch(const std::runtime_error& e) {
         EXPECT_STREQ(
             e.what(),
             "a pipeline with render targets needs a fragment shader "

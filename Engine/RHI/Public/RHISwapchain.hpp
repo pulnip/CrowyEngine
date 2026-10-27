@@ -5,23 +5,20 @@
 #include <memory>
 #include <optional>
 #include <vector>
-#include "Semantics.hpp"
+
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
+#include "Semantics.hpp"
 
 namespace Crowy
 {
     inline constexpr u32 MaxFrameDumps = 64;
 
-    enum class FrameDumpState: u8{
-        Pending,
-        Written,
-        Failed
-    };
+    enum class FrameDumpState : u8 { Pending, Written, Failed };
 
     // what became of one frame dump request
-    struct FrameDumpOutcome{
+    struct FrameDumpOutcome {
         // the frame asked for, and the one whose image was written: a later
         // one when the frame asked for presented nothing
         u64 requested = 0;
@@ -31,11 +28,11 @@ namespace Crowy
     };
 
     // Swapchain for presenting rendered images to the screen
-    class RHISwapchain{
+    class RHISwapchain {
     protected:
         // the backend's half of one request: write the presented image to
         // path, then report through completion, from any thread
-        struct FrameDumpJob{
+        struct FrameDumpJob {
             Str path;
             std::function<void(bool written)> completion;
         };
@@ -43,12 +40,12 @@ namespace Crowy
     private:
         using FrameDumpSignal = std::shared_ptr<std::atomic<FrameDumpState>>;
 
-        struct FrameDumpRequest{
+        struct FrameDumpRequest {
             u64 frame = 0;
             Str path;
         };
 
-        struct FrameDumpInFlight{
+        struct FrameDumpInFlight {
             FrameDumpOutcome outcome;
             // completion may arrive from another thread (Metal)
             FrameDumpSignal state;
@@ -73,9 +70,7 @@ namespace Crowy
 
         virtual void Resize(u32 newWidth, u32 newHeight) = 0;
 
-        RHIPixelFormat GetFormat() const noexcept{
-            return format;
-        }
+        RHIPixelFormat GetFormat() const noexcept { return format; }
         virtual u32 GetWidth() const noexcept = 0;
         virtual u32 GetHeight() const noexcept = 0;
 

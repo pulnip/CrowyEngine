@@ -612,9 +612,7 @@ struct std::hash<Crowy::RHIVertexElement> {
         using namespace Crowy;
 
         return hashAll(
-            elm.semanticName ?
-                StrView{elm.semanticName} :
-                StrView{},
+            elm.semanticName ? StrView{elm.semanticName} : StrView{},
             elm.semanticIndex,
             elm.format,
             elm.inputSlot,
@@ -937,8 +935,7 @@ namespace Crowy
     struct RHIBlendState {
         bool alphaToCoverageEnable = false;
         bool independentBlendEnable = false;
-        std::array<RHIRenderTargetBlendState, MaxRenderTargets>
-            renderTargets;
+        std::array<RHIRenderTargetBlendState, MaxRenderTargets> renderTargets;
 
         friend bool operator==(const RHIBlendState&, const RHIBlendState&) =
             default;
@@ -1044,9 +1041,7 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc> {
         std::size_t h = hashAll(
             desc.preRasterizer,
             desc.rasterizer,
-            desc.profile ?
-                StrView{desc.profile} :
-                StrView{}
+            desc.profile ? StrView{desc.profile} : StrView{}
         );
 
         if(desc.fragmentShader.has_value()) {
@@ -1267,7 +1262,7 @@ namespace Crowy
         void* sdlWindow = nullptr;
         RHITextureCreateDesc bufferDesc;
         u32 bufferCount = FramesInFlight; // Triple buffering
-        bool vsync = true;                      // VSync enabled by default
+        bool vsync = true;                // VSync enabled by default
     };
 
     struct RHIBufferViewDesc {
@@ -1304,7 +1299,7 @@ namespace Crowy
         // where to write it from the CPU; null for a device-local slice
         void* cpuPtr = nullptr;
 
-        [[nodiscard]] bool IsValid() const noexcept{
+        [[nodiscard]] bool IsValid() const noexcept {
             return buffer != nullptr;
         }
     };
@@ -1355,7 +1350,8 @@ struct std::hash<Crowy::RHIBufferViewDesc> {
                 }
                 if constexpr(std::is_same_v<T, RHIBufferViewDesc::Typed>) {
                     return hashAll(h, cfg.format);
-                } else if constexpr(
+                }
+                else if constexpr(
                     std::is_same_v<T, RHIBufferViewDesc::Structured>
                 ) {
                     return hashAll(h, cfg.stride);
@@ -1432,7 +1428,6 @@ namespace Crowy
     // Notice. for performance, keep push data around 64 bytes or less
     // - larger blocks may be spilled out of user-data registers by the driver,
     //   costing an extra memory read per access.
-    inline constexpr u32 PushConstantBytes =
-        (64 - 2 * DirectCbCount) * 4;
+    inline constexpr u32 PushConstantBytes = (64 - 2 * DirectCbCount) * 4;
     inline constexpr u32 CbAlign = 256;
 }

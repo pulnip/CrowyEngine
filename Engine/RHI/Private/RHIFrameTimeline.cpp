@@ -58,8 +58,6 @@ namespace Crowy
         }
 
         // nothing in the ring has completed, but the frame before it has
-        return lastFrame > FramesInFlight
-                   ? lastFrame - FramesInFlight
-                   : 0;
+        return lastFrame > FramesInFlight ? lastFrame - FramesInFlight : 0;
     }
 }

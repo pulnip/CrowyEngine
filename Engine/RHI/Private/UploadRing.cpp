@@ -1,10 +1,12 @@
+#include "UploadRing.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+
 #include "Assert.hpp"
 #include "IntMath.hpp"
 #include "PtrUtil.hpp"
-#include "UploadRing.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIFence.hpp"
 
@@ -15,27 +17,28 @@ namespace Crowy
         RHIBufferRAII stagingBuffer,
         Flush flush
     )
-        : fence(&serialFence)
-        , staging(std::move(stagingBuffer))
-        , flush(std::move(flush))
-        , capacity(staging->GetSize())
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        , poisonMode(std::getenv("CROWY_RHI_POISON") != nullptr)
-    #endif
+        : fence(&serialFence),
+          staging(std::move(stagingBuffer)),
+          flush(std::move(flush)),
+          capacity(staging->GetSize())
+#if defined(_DEBUG) || !defined(NDEBUG)
+          ,
+          poisonMode(std::getenv("CROWY_RHI_POISON") != nullptr)
+#endif
     {
         CROWY_ASSERT(nextMul(capacity, 512ull) == capacity);
     }
 
-    UploadRing::Allocation UploadRing::Allocate(
-        u64 size,
-        u64 align
-    ){
-        CROWY_ASSERT(staging != nullptr,
+    UploadRing::Allocation UploadRing::Allocate(u64 size, u64 align) {
+        CROWY_ASSERT(
+            staging != nullptr,
             "upload ring was never given a staging buffer"
         );
-        CROWY_ASSERT(size <= capacity,
+        CROWY_ASSERT(
+            size <= capacity,
             "upload ring holds {} bytes, so a {}-byte allocation never fits",
-            capacity, size
+            capacity,
+            size
         );
 
         u64 newHead = head;
@@ -45,17 +48,17 @@ namespace Crowy
         newHead += alignedPhys - phys;
         phys = alignedPhys;
 
-        if(phys + size > capacity){
+        if(phys + size > capacity) {
             newHead += capacity - phys;
             phys = 0;
         }
 
-        while(newHead + size > tail + capacity){
+        while(newHead + size > tail + capacity) {
             retireCompleted();
             if(newHead + size <= tail + capacity)
                 break;
 
-            if(!inFlight.empty()){
+            if(!inFlight.empty()) {
                 fence->WaitCPU(inFlight.front().tag);
                 continue;
             }
@@ -64,7 +67,8 @@ namespace Crowy
             // held by copies sitting in a command list nobody submitted, so
             // no serial will ever free it.
             const bool canFlush = tail != head && flush != nullptr;
-            CROWY_ASSERT(canFlush,
+            CROWY_ASSERT(
+                canFlush,
                 "upload ring cannot free {} bytes - no pending copies to "
                 "flush, so raise the staging size instead",
                 size
@@ -74,7 +78,8 @@ namespace Crowy
 
             flush();
 
-            CROWY_ASSERT(!inFlight.empty(),
+            CROWY_ASSERT(
+                !inFlight.empty(),
                 "upload ring flush submitted nothing to wait on"
             );
             if(inFlight.empty())
@@ -92,7 +97,7 @@ namespace Crowy
         };
     }
 
-    void UploadRing::OnSubmit(u64 tag){
+    void UploadRing::OnSubmit(u64 tag) {
         // an untouched ring, and a batch that allocated nothing, both would
         // otherwise push an entry per submit and grow without bound
         if(capacity == 0 || head == tail)
@@ -100,21 +105,18 @@ namespace Crowy
         if(!inFlight.empty() && inFlight.back().head == head)
             return;
 
-        inFlight.push_back(InFlight{
-            .head = head,
-            .tag = tag
-        });
+        inFlight.push_back(InFlight{.head = head, .tag = tag});
     }
 
-    void UploadRing::retireCompleted(){
+    void UploadRing::retireCompleted() {
         const auto completed = fence->GetValue();
 
-        while(!inFlight.empty() && inFlight.front().tag <= completed){
+        while(!inFlight.empty() && inFlight.front().tag <= completed) {
             const auto retired = inFlight.front().head;
 
-        #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
             poisonRange(tail, retired);
-        #endif
+#endif
 
             tail = retired;
             inFlight.pop_front();
@@ -122,12 +124,12 @@ namespace Crowy
     }
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-    void UploadRing::poisonRange(u64 from, u64 to){
+    void UploadRing::poisonRange(u64 from, u64 to) {
         if(!poisonMode || from >= to)
             return;
 
         static constexpr u32 chunkBytes = 4096;
-        static const auto pattern = []{
+        static const auto pattern = [] {
             std::array<u8, chunkBytes> bytes{};
             bytes.fill(0xCD);
             return bytes;
@@ -137,12 +139,12 @@ namespace Crowy
         // the capacity splits the range at the seam on its own
         u64 physical = from % capacity;
         u64 remaining = to - from;
-        while(remaining > 0){
-            const auto chunk = std::min({
-                remaining,
-                capacity - physical,
-                static_cast<u64>(pattern.size())
-            });
+        while(remaining > 0) {
+            const auto chunk = std::min(
+                {remaining,
+                 capacity - physical,
+                 static_cast<u64>(pattern.size())}
+            );
             staging->Upload(
                 pattern.data(),
                 static_cast<u32>(chunk),

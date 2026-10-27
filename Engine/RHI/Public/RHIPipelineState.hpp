@@ -10,12 +10,12 @@ namespace Crowy
     // throws where a desc breaks a rule every backend shares
     void validateGraphicsPipelineDesc(const RHIGraphicsPipelineStateDesc& desc);
 
-    class RHIGraphicsPipelineState{
+    class RHIGraphicsPipelineState {
     public:
         CROWY_DECLARE_INTERFACE(RHIGraphicsPipelineState)
     };
 
-    class RHIComputePipelineState{
+    class RHIComputePipelineState {
     public:
         CROWY_DECLARE_INTERFACE(RHIComputePipelineState)
     };

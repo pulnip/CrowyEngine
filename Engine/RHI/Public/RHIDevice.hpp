@@ -4,17 +4,18 @@
 #include <optional>
 #include <span>
 #include <type_traits>
+
 #include "Function.hpp"
-#include "Semantics.hpp"
 #include "Primitives.hpp"
-#include "RHIFWD.hpp"
 #include "RHIDefinitions.hpp"
+#include "RHIFWD.hpp"
+#include "Semantics.hpp"
 
 namespace Crowy
 {
     using NativeDeviceHandle = void*;
 
-    class RHIDevice{
+    class RHIDevice {
     public:
         CROWY_DECLARE_INTERFACE(RHIDevice)
 
@@ -66,7 +67,7 @@ namespace Crowy
         // command lists' runs. Empty until the frame has completed and been
         // read back, once it ages out, and on a backend that cannot time the
         // GPU - never a silent 0
-        virtual std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept{
+        virtual std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept {
             return std::nullopt;
         }
 
@@ -76,10 +77,7 @@ namespace Crowy
 
         // A CPU-writable range that stays readable by the GPU until the
         // batch it is recorded into completes.
-        virtual RHIBufferSlice AllocateTransient(
-            u32 size,
-            u32 align
-        ) = 0;
+        virtual RHIBufferSlice AllocateTransient(u32 size, u32 align) = 0;
         virtual RHICapabilities GetCapabilities() const noexcept = 0;
 
         void Retire(RHIBufferRAII buffer);
@@ -88,12 +86,10 @@ namespace Crowy
 
         // allocate a transient slice and fill it in one step
         template<typename T>
-            requires (!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
-        RHIBufferSlice UploadTransient(const T& data, u32 align = CbAlign){
-            const auto slice = AllocateTransient(
-                static_cast<u32>(sizeof(T)),
-                align
-            );
+            requires(!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
+        RHIBufferSlice UploadTransient(const T& data, u32 align = CbAlign) {
+            const auto slice =
+                AllocateTransient(static_cast<u32>(sizeof(T)), align);
             std::memcpy(slice.cpuPtr, &data, sizeof(T));
 
             return slice;
@@ -104,7 +100,7 @@ namespace Crowy
         RHIBufferSlice UploadTransient(
             std::span<const T> data,
             u32 align = CbAlign
-        ){
+        ) {
             const auto bytes = static_cast<u32>(data.size_bytes());
             const auto slice = AllocateTransient(bytes, align);
             std::memcpy(slice.cpuPtr, data.data(), bytes);

@@ -8,7 +8,7 @@ namespace Crowy
     // The point is the shape of these numbers against the scene:
     // work that scales with the draw count instead of the pass count is
     // the D3D11 immediate-context habit leaking into a D3D12 backend.
-    struct RHIFrameStats{
+    struct RHIFrameStats {
         // one per recorded command list. on DX12 this is also how often
         // the descriptor heaps and the root signatures get rebound
         u32 commandListBeginCount = 0;
@@ -35,7 +35,7 @@ namespace Crowy
         // DX12 fuses adjacent ones. O(pass) is healthy, O(draw) is not
         u32 barrierEdgeCount = 0;
 
-        RHIFrameStats& operator+=(const RHIFrameStats& rhs) noexcept{
+        RHIFrameStats& operator+=(const RHIFrameStats& rhs) noexcept {
             commandListBeginCount += rhs.commandListBeginCount;
             commandListCreateCount += rhs.commandListCreateCount;
 
@@ -64,17 +64,17 @@ namespace Crowy
 // Counters and section timers.
 // Every file that tests this includes this header.
 #if CROWY_BENCHMARK || defined(_DEBUG) || !defined(NDEBUG)
-    #define CROWY_FRAME_STATS 1
+#define CROWY_FRAME_STATS 1
 #else
-    #define CROWY_FRAME_STATS 0
+#define CROWY_FRAME_STATS 0
 #endif
 
 // Counting helpers for RHICommandList, which owns a member named `stats`.
 // Off, they leave nothing behind: no member, no reset, no increment.
 #if CROWY_FRAME_STATS
-    #define CROWY_STAT(field)        (++(stats.field))
-    #define CROWY_STAT_ADD(field, n) ((stats.field) += static_cast<Crowy::u32>(n))
+#define CROWY_STAT(field) (++(stats.field))
+#define CROWY_STAT_ADD(field, n) ((stats.field) += static_cast<Crowy::u32>(n))
 #else
-    #define CROWY_STAT(field)        ((void)0)
-    #define CROWY_STAT_ADD(field, n) ((void)0)
+#define CROWY_STAT(field) ((void)0)
+#define CROWY_STAT_ADD(field, n) ((void)0)
 #endif

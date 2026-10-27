@@ -4,11 +4,13 @@
 #include <memory>
 #include <span>
 #include <vector>
+
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "Semantics.hpp"
 
-namespace slang{
+namespace slang
+{
     struct IComponentType;
     struct ISession;
 }
@@ -18,15 +20,16 @@ namespace Crowy
     // call once in whole program-lifetime
     void initGlobalSession();
 
-    class RHIShader{
+    class RHIShader {
     private:
         // releases through ISlangUnknown without this header seeing slang.h
-        struct SlangRelease{
+        struct SlangRelease {
             void operator()(slang::ISession*) const noexcept;
             void operator()(slang::IComponentType*) const noexcept;
         };
         using SlangSession = std::unique_ptr<slang::ISession, SlangRelease>;
-        using SlangProgram = std::unique_ptr<slang::IComponentType, SlangRelease>;
+        using SlangProgram =
+            std::unique_ptr<slang::IComponentType, SlangRelease>;
 
         // as given, for messages; the compile resolves it to an absolute path
         Str path;
@@ -53,9 +56,7 @@ namespace Crowy
             StrView onlyEntryPoint = {}
         );
 
-        std::size_t Gethash() const noexcept{
-            return hash;
-        }
+        std::size_t Gethash() const noexcept { return hash; }
         Size3D GetThreadGroupSize(StrView entryPoint);
 
         std::span<const RHISamplerUse> GetUsedSamplers(StrView entryPoint);

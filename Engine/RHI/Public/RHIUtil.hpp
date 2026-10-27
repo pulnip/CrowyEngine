@@ -1,8 +1,9 @@
 #pragma once
 
 #include <span>
-#include "RHIFWD.hpp"
+
 #include "RHIDefinitions.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {

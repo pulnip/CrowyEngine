@@ -4,7 +4,7 @@
 
 namespace Crowy
 {
-    class RHIFrameScope{
+    class RHIFrameScope {
     public:
         CROWY_DECLARE_INTERFACE(RHIFrameScope)
     };

@@ -18,7 +18,8 @@ namespace
     RHIFrameTimeline submitted(u64 count) {
         RHIFrameTimeline timeline;
         for(u64 frame = 1; frame <= count; ++frame) {
-            const auto overwritten = frame > Depth ? FrameSerials[frame - Depth] : 0;
+            const auto overwritten =
+                frame > Depth ? FrameSerials[frame - Depth] : 0;
             timeline.OnSubmit(frame, FrameSerials[frame], overwritten);
         }
         return timeline;

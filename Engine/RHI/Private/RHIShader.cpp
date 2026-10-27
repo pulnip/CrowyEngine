@@ -18,33 +18,38 @@
 #include "PathUtil.hpp"
 #include "ProjectRoot.hpp"
 
-namespace{
-    Crowy::Str slangResultToString(SlangResult result){
-    #define CASE_RETURN(x) case x: return #x;
-        switch(result){
-        CASE_RETURN(SLANG_OK)
-        CASE_RETURN(SLANG_FAIL)
-        CASE_RETURN(SLANG_E_NOT_IMPLEMENTED)
-        CASE_RETURN(SLANG_E_NOT_FOUND)
-        CASE_RETURN(SLANG_E_INVALID_ARG)
-        CASE_RETURN(SLANG_E_OUT_OF_MEMORY)
-        CASE_RETURN(SLANG_E_INVALID_HANDLE)
-        CASE_RETURN(SLANG_E_UNINITIALIZED)
-        CASE_RETURN(SLANG_E_PENDING)
-        CASE_RETURN(SLANG_E_CANNOT_OPEN)
-        CASE_RETURN(SLANG_E_BUFFER_TOO_SMALL)
-        CASE_RETURN(SLANG_E_TIME_OUT)
-        CASE_RETURN(SLANG_E_INTERNAL_FAIL)
-        CASE_RETURN(SLANG_E_NOT_AVAILABLE)
+namespace
+{
+    Crowy::Str slangResultToString(SlangResult result) {
+#define CASE_RETURN(x)                                                         \
+    case x:                                                                    \
+        return #x;
+        switch(result) {
+            CASE_RETURN(SLANG_OK)
+            CASE_RETURN(SLANG_FAIL)
+            CASE_RETURN(SLANG_E_NOT_IMPLEMENTED)
+            CASE_RETURN(SLANG_E_NOT_FOUND)
+            CASE_RETURN(SLANG_E_INVALID_ARG)
+            CASE_RETURN(SLANG_E_OUT_OF_MEMORY)
+            CASE_RETURN(SLANG_E_INVALID_HANDLE)
+            CASE_RETURN(SLANG_E_UNINITIALIZED)
+            CASE_RETURN(SLANG_E_PENDING)
+            CASE_RETURN(SLANG_E_CANNOT_OPEN)
+            CASE_RETURN(SLANG_E_BUFFER_TOO_SMALL)
+            CASE_RETURN(SLANG_E_TIME_OUT)
+            CASE_RETURN(SLANG_E_INTERNAL_FAIL)
+            CASE_RETURN(SLANG_E_NOT_AVAILABLE)
         default:
-            return std::format("Unknown SlangResult (0x{:08X})",
-                static_cast<std::uint32_t>(result));
+            return std::format(
+                "Unknown SlangResult (0x{:08X})",
+                static_cast<std::uint32_t>(result)
+            );
         }
-    #undef CASE_RETURN
+#undef CASE_RETURN
     }
 
-    Crowy::StrView slangDiagnostics(ISlangBlob* diagnostics){
-        if(diagnostics == nullptr || diagnostics->getBufferSize() == 0){
+    Crowy::StrView slangDiagnostics(ISlangBlob* diagnostics) {
+        if(diagnostics == nullptr || diagnostics->getBufferSize() == 0) {
             return {};
         }
         return {
@@ -53,15 +58,15 @@ namespace{
         };
     }
 
-    void logSlangDiagnostics(ISlangBlob* diagnostics){
-        if(const auto text = ::slangDiagnostics(diagnostics); !text.empty()){
+    void logSlangDiagnostics(ISlangBlob* diagnostics) {
+        if(const auto text = ::slangDiagnostics(diagnostics); !text.empty()) {
             LOG_WARN("{}", text);
         }
     }
 
     Slang::ComPtr<slang::IGlobalSession> globalSession;
 
-    void checkMetadata(slang::IMetadata& metadata){
+    void checkMetadata(slang::IMetadata& metadata) {
         using namespace slang;
 
         auto bindless = static_cast<IBindlessResourceMetadata*>(
@@ -72,32 +77,37 @@ namespace{
     }
 }
 
-#define CHECK_SRESULT(expr, msg) \
-    do{ \
-        if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]]{ \
-            throw std::runtime_error(std::format( \
-                "{}: {}", msg, ::slangResultToString(hr) \
-            )); \
-        } \
+#define CHECK_SRESULT(expr, msg)                                               \
+    do {                                                                       \
+        if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]] {            \
+            throw std::runtime_error(                                          \
+                std::format("{}: {}", msg, ::slangResultToString(hr))          \
+            );                                                                 \
+        }                                                                      \
     } while(false)
 
 // The result decides success;
 // the blob only carries the explanation;
 // which is worth keeping on failure and worth logging on success.
-#define CHECK_SRESULT_DIAG(expr, diagnostics, msg) \
-    do{ \
-        if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]]{ \
-            throw std::runtime_error(std::format( \
-                "{}: {}\n{}", msg, ::slangResultToString(hr), \
-                ::slangDiagnostics(diagnostics) \
-            )); \
-        } \
-        ::logSlangDiagnostics(diagnostics); \
+#define CHECK_SRESULT_DIAG(expr, diagnostics, msg)                             \
+    do {                                                                       \
+        if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]] {            \
+            throw std::runtime_error(                                          \
+                std::format(                                                   \
+                    "{}: {}\n{}",                                              \
+                    msg,                                                       \
+                    ::slangResultToString(hr),                                 \
+                    ::slangDiagnostics(diagnostics)                            \
+                )                                                              \
+            );                                                                 \
+        }                                                                      \
+        ::logSlangDiagnostics(diagnostics);                                    \
     } while(false)
 
 namespace Crowy
 {
-    namespace{
+    namespace
+    {
         // Engine/Shader first, then each module's own Shader folder by name
         const std::vector<std::string>& libraryRoots() {
             static const auto roots = [] {
@@ -123,38 +133,40 @@ namespace Crowy
             return roots;
         }
 
-        SlangCompileTarget convert(RHIBackend backend){
+        SlangCompileTarget convert(RHIBackend backend) {
             using enum RHIBackend;
 
-            switch(backend){
-            case DirectX12: return SLANG_DXIL;
-            case Metal:     return SLANG_METAL_LIB;
+            switch(backend) {
+            case DirectX12:
+                return SLANG_DXIL;
+            case Metal:
+                return SLANG_METAL_LIB;
             default:
                 std::unreachable();
             }
         }
 
-        auto extractReflection(slang::ProgramLayout& layout){
+        auto extractReflection(slang::ProgramLayout& layout) {
             using namespace slang;
 
             RHIProgramReflection refl;
 
             const auto numParams = layout.getParameterCount();
-            for(u32 i=0; i<numParams; ++i){
+            for(u32 i = 0; i < numParams; ++i) {
                 auto param = layout.getParameterByIndex(i);
                 auto category = param->getCategory();
 
                 auto raw = param->getName();
 
-                switch(category){
+                switch(category) {
                 case Mixed: {
                     // Metal legalizes DescriptorHandle<T> members into
                     // real texture slots inside the argument buffer,
                     // so the CB param consumes ConstantBuffer + ShaderResource.
                     bool hasConstantBuffer = false;
                     const auto subCount = param->getCategoryCount();
-                    for(unsigned j=0; j<subCount; ++j){
-                        switch(param->getCategoryByIndex(j)){
+                    for(unsigned j = 0; j < subCount; ++j) {
+                        switch(param->getCategoryByIndex(j)) {
                         case ConstantBuffer:
                             hasConstantBuffer = true;
                             break;
@@ -168,14 +180,13 @@ namespace Crowy
                             );
                         }
                     }
-                    if(!hasConstantBuffer){
+                    if(!hasConstantBuffer) {
                         throw std::runtime_error(
                             "Mixed param without constant buffer"
                         );
                     }
-                    refl.nameToSlot[raw] = static_cast<u32>(
-                        param->getOffset(ConstantBuffer)
-                    );
+                    refl.nameToSlot[raw] =
+                        static_cast<u32>(param->getOffset(ConstantBuffer));
                     break;
                 }
                 case ConstantBuffer:
@@ -191,7 +202,7 @@ namespace Crowy
             }
 
             const auto count = layout.getEntryPointCount();
-            for(SlangUInt i = 0; i < count; ++i){
+            for(SlangUInt i = 0; i < count; ++i) {
                 auto entryPoint = layout.getEntryPointByIndex(i);
 
                 // thread group size
@@ -227,67 +238,68 @@ namespace Crowy
             "nearestBorder"
         };
 
-        struct SamplerParam{
+        struct SamplerParam {
             u32 slot;
             u32 space;
             u32 samplerIndex;
         };
 
-        auto collectSamplerParams(slang::ProgramLayout& layout){
+        auto collectSamplerParams(slang::ProgramLayout& layout) {
             using namespace slang;
 
             std::vector<SamplerParam> params;
 
             const auto numParams = layout.getParameterCount();
-            for(u32 i=0; i<numParams; ++i){
+            for(u32 i = 0; i < numParams; ++i) {
                 auto param = layout.getParameterByIndex(i);
                 if(param->getCategory() != SamplerState)
                     continue;
 
                 const StrView name = param->getName();
-                const auto found = std::ranges::find(
-                    staticSamplerNames,
-                    name
-                );
-                if(found == staticSamplerNames.end()){
-                    throw std::runtime_error(std::format(
-                        "unknown global sampler '{}'; "
-                        "only the static samplers of Sampler.slang can be bound",
-                        name
-                    ));
+                const auto found = std::ranges::find(staticSamplerNames, name);
+                if(found == staticSamplerNames.end()) {
+                    throw std::runtime_error(
+                        std::format(
+                            "unknown global sampler '{}'; "
+                            "only the static samplers of Sampler.slang can be "
+                            "bound",
+                            name
+                        )
+                    );
                 }
 
-                params.push_back(SamplerParam{
-                    .slot = param->getBindingIndex(),
-                    .space = static_cast<u32>(param->getBindingSpace()),
-                    .samplerIndex = static_cast<u32>(
-                        found - staticSamplerNames.begin()
-                    )
-                });
+                params.push_back(
+                    SamplerParam{
+                        .slot = param->getBindingIndex(),
+                        .space = static_cast<u32>(param->getBindingSpace()),
+                        .samplerIndex =
+                            static_cast<u32>(found - staticSamplerNames.begin())
+                    }
+                );
             }
 
             return params;
         }
     }
 
-    void initGlobalSession(){
+    void initGlobalSession() {
         const SlangGlobalSessionDesc desc{};
 
-        CHECK_SRESULT(slang_createGlobalSession2(
-            &desc,
-            globalSession.writeRef()
-        ), "Failed to create Global session");
+        CHECK_SRESULT(
+            slang_createGlobalSession2(&desc, globalSession.writeRef()),
+            "Failed to create Global session"
+        );
     }
 
     void RHIShader::SlangRelease::operator()(
         slang::ISession* session
-    ) const noexcept{
+    ) const noexcept {
         session->release();
     }
 
     void RHIShader::SlangRelease::operator()(
         slang::IComponentType* program
-    ) const noexcept{
+    ) const noexcept {
         program->release();
     }
 
@@ -298,24 +310,21 @@ namespace Crowy
         std::span<const std::filesystem::path> linkedModules,
         StrView onlyEntryPoint
     )
-        : path(toUTF8String(filePath)),
-          hash(hashAll(filePath))
-    {
+        : path(toUTF8String(filePath)), hash(hashAll(filePath)) {
         using namespace slang;
         using namespace Slang;
 
         const auto started = std::chrono::steady_clock::now();
 
-        CROWY_ASSERT(globalSession != nullptr,
+        CROWY_ASSERT(
+            globalSession != nullptr,
             "Did you call initGlobalSession()?"
         );
 
-        const std::array targetDescs{
-            TargetDesc{
-                .format = convert(backend),
-                .profile = globalSession->findProfile(profile)
-            }
-        };
+        const std::array targetDescs{TargetDesc{
+            .format = convert(backend),
+            .profile = globalSession->findProfile(profile)
+        }};
         const auto absPath = resolveProjectPath(filePath);
         const auto modulePath = toUTF8String(absPath);
 
@@ -325,15 +334,10 @@ namespace Crowy
         std::vector<const char*> searchPaths{searchDir.c_str()};
         for(const auto& root: libraryRoots())
             searchPaths.push_back(root.c_str());
-        const std::array compilerOptions{
-            CompilerOptionEntry{
-                .name = CompilerOptionName::GenerateWholeProgram,
-                .value = {
-                    .kind = CompilerOptionValueKind::Int,
-                    .intValue0 = 1
-                }
-            }
-        };
+        const std::array compilerOptions{CompilerOptionEntry{
+            .name = CompilerOptionName::GenerateWholeProgram,
+            .value = {.kind = CompilerOptionValueKind::Int, .intValue0 = 1}
+        }};
         const SessionDesc sessionDesc{
             .targets = targetDescs.data(),
             .targetCount = targetDescs.size(),
@@ -346,25 +350,26 @@ namespace Crowy
                     ? static_cast<u32>(compilerOptions.size())
                     : 0
         };
-        CHECK_SRESULT(globalSession->createSession(
-            sessionDesc,
-            std::out_ptr(session)
-        ), "Failed to create session");
+        CHECK_SRESULT(
+            globalSession->createSession(sessionDesc, std::out_ptr(session)),
+            "Failed to create session"
+        );
 
         // Compile
         IModule* mod = nullptr;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            mod = session->loadModule(
-                modulePath.c_str(),
-                diagnostics.writeRef()
-            );
+            mod =
+                session->loadModule(modulePath.c_str(), diagnostics.writeRef());
             // loadModule reports failure by returning null, not by a result
-            if(mod == nullptr) [[unlikely]]{
-                throw std::runtime_error(std::format(
-                    "Failed to load slang module '{}'\n{}",
-                    path, ::slangDiagnostics(diagnostics.get())
-                ));
+            if(mod == nullptr) [[unlikely]] {
+                throw std::runtime_error(
+                    std::format(
+                        "Failed to load slang module '{}'\n{}",
+                        path,
+                        ::slangDiagnostics(diagnostics.get())
+                    )
+                );
             }
             ::logSlangDiagnostics(diagnostics.get());
         }
@@ -373,13 +378,16 @@ namespace Crowy
         std::vector<IModule*> modules;
         std::vector<std::filesystem::path> linkedPaths;
         Str linkedNames;
-        for(const auto& linked: linkedModules){
+        for(const auto& linked: linkedModules) {
             const auto linkedPath = resolveProjectPath(linked);
             // composing one module twice is an error Slang reports vaguely
-            if(std::ranges::contains(linkedPaths, linkedPath)) [[unlikely]]{
-                throw std::runtime_error(std::format(
-                    "module '{}' is linked twice", toUTF8String(linked)
-                ));
+            if(std::ranges::contains(linkedPaths, linkedPath)) [[unlikely]] {
+                throw std::runtime_error(
+                    std::format(
+                        "module '{}' is linked twice",
+                        toUTF8String(linked)
+                    )
+                );
             }
             linkedPaths.push_back(linkedPath);
 
@@ -388,12 +396,14 @@ namespace Crowy
                 toUTF8String(linkedPath).c_str(),
                 diagnostics.writeRef()
             );
-            if(linkedModule == nullptr) [[unlikely]]{
-                throw std::runtime_error(std::format(
-                    "Failed to load slang module '{}'\n{}",
-                    toUTF8String(linked),
-                    ::slangDiagnostics(diagnostics.get())
-                ));
+            if(linkedModule == nullptr) [[unlikely]] {
+                throw std::runtime_error(
+                    std::format(
+                        "Failed to load slang module '{}'\n{}",
+                        toUTF8String(linked),
+                        ::slangDiagnostics(diagnostics.get())
+                    )
+                );
             }
             ::logSlangDiagnostics(diagnostics.get());
 
@@ -401,12 +411,14 @@ namespace Crowy
             // `view` a second time
             const auto parameterCount =
                 linkedModule->getLayout(0)->getParameterCount();
-            if(parameterCount > 0) [[unlikely]]{
-                throw std::runtime_error(std::format(
-                    "linked module '{}' declares {} shader parameters",
-                    toUTF8String(linked),
-                    parameterCount
-                ));
+            if(parameterCount > 0) [[unlikely]] {
+                throw std::runtime_error(
+                    std::format(
+                        "linked module '{}' declares {} shader parameters",
+                        toUTF8String(linked),
+                        parameterCount
+                    )
+                );
             }
 
             modules.push_back(linkedModule);
@@ -417,27 +429,31 @@ namespace Crowy
 
         // entry points
         std::vector<ComPtr<IEntryPoint>> entryPoints;
-        if(onlyEntryPoint.empty()){
+        if(onlyEntryPoint.empty()) {
             const auto entryPointCount = mod->getDefinedEntryPointCount();
             entryPoints.reserve(entryPointCount);
-            for(SlangInt32 i=0; i<entryPointCount; ++i){
+            for(SlangInt32 i = 0; i < entryPointCount; ++i) {
                 ComPtr<IEntryPoint> entryPoint = nullptr;
-                CHECK_SRESULT(mod->getDefinedEntryPoint(
-                    i,
-                    entryPoint.writeRef()
-                ), "Failed to find entry point");
+                CHECK_SRESULT(
+                    mod->getDefinedEntryPoint(i, entryPoint.writeRef()),
+                    "Failed to find entry point"
+                );
 
                 entryPoints.push_back(std::move(entryPoint));
             }
         }
-        else{
+        else {
             ComPtr<IEntryPoint> entryPoint = nullptr;
             const Str name{onlyEntryPoint};
             mod->findEntryPointByName(name.c_str(), entryPoint.writeRef());
-            if(entryPoint == nullptr) [[unlikely]]{
-                throw std::runtime_error(std::format(
-                    "unknown entry point '{}' in {}", onlyEntryPoint, path
-                ));
+            if(entryPoint == nullptr) [[unlikely]] {
+                throw std::runtime_error(
+                    std::format(
+                        "unknown entry point '{}' in {}",
+                        onlyEntryPoint,
+                        path
+                    )
+                );
             }
 
             entryPoints.push_back(std::move(entryPoint));
@@ -455,66 +471,78 @@ namespace Crowy
         ComPtr<IComponentType> composed = nullptr;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT_DIAG(session->createCompositeComponentType(
-                components.data(),
-                components.size(),
-                composed.writeRef(),
-                diagnostics.writeRef()
-            ), diagnostics.get(), "Failed to compose slang component");
+            CHECK_SRESULT_DIAG(
+                session->createCompositeComponentType(
+                    components.data(),
+                    components.size(),
+                    composed.writeRef(),
+                    diagnostics.writeRef()
+                ),
+                diagnostics.get(),
+                "Failed to compose slang component"
+            );
         }
 
         // link to single program
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT_DIAG(composed->link(
-                std::out_ptr(program),
-                diagnostics.writeRef()
-            ), diagnostics.get(), "Failed to link slang component");
+            CHECK_SRESULT_DIAG(
+                composed->link(std::out_ptr(program), diagnostics.writeRef()),
+                diagnostics.get(),
+                "Failed to link slang component"
+            );
         }
 
         reflection = extractReflection(*program->getLayout());
-        const auto samplerParams = collectSamplerParams(
-            *program->getLayout()
-        );
+        const auto samplerParams = collectSamplerParams(*program->getLayout());
 
-        for(auto& [name, refl]: reflection.shaderRefl){
+        for(auto& [name, refl]: reflection.shaderRefl) {
             ComPtr<IMetadata> metadata;
             ComPtr<ISlangBlob> diagnostics = nullptr;
-            CHECK_SRESULT_DIAG(program->getEntryPointMetadata(
-                refl.entryPointIndex,
-                0,
-                metadata.writeRef(),
-                diagnostics.writeRef()
-            ), diagnostics.get(), std::format(
-                "Failed to get entry point metadata for '{}' in {}",
-                name, path
-            ));
+            CHECK_SRESULT_DIAG(
+                program->getEntryPointMetadata(
+                    refl.entryPointIndex,
+                    0,
+                    metadata.writeRef(),
+                    diagnostics.writeRef()
+                ),
+                diagnostics.get(),
+                std::format(
+                    "Failed to get entry point metadata for '{}' in {}",
+                    name,
+                    path
+                )
+            );
 
             ::checkMetadata(*metadata);
 
-            for(const auto& sampler: samplerParams){
+            for(const auto& sampler: samplerParams) {
                 bool used = false;
-                CHECK_SRESULT(metadata->isParameterLocationUsed(
-                    SLANG_PARAMETER_CATEGORY_SAMPLER_STATE,
-                    sampler.space,
-                    sampler.slot,
-                    used
-                ), "Failed to query sampler usage");
+                CHECK_SRESULT(
+                    metadata->isParameterLocationUsed(
+                        SLANG_PARAMETER_CATEGORY_SAMPLER_STATE,
+                        sampler.space,
+                        sampler.slot,
+                        used
+                    ),
+                    "Failed to query sampler usage"
+                );
 
-                if(used){
-                    refl.usedSamplers.push_back({
-                        .slot = sampler.slot,
-                        .samplerIndex = sampler.samplerIndex
-                    });
+                if(used) {
+                    refl.usedSamplers.push_back(
+                        {.slot = sampler.slot,
+                         .samplerIndex = sampler.samplerIndex}
+                    );
                 }
             }
         }
 
         const std::chrono::duration<f64, std::milli> elapsed =
             std::chrono::steady_clock::now() - started;
-        if(linkedNames.empty()){
+        if(linkedNames.empty()) {
             LOG_DEBUG("compiled {} in {:.0f} ms", path, elapsed.count());
-        } else {
+        }
+        else {
             LOG_DEBUG(
                 "compiled {} with {} in {:.0f} ms",
                 path,
@@ -524,29 +552,33 @@ namespace Crowy
         }
     }
 
-    Size3D RHIShader::GetThreadGroupSize(StrView entryPoint){
+    Size3D RHIShader::GetThreadGroupSize(StrView entryPoint) {
         return findEntryPoint(entryPoint).threadGroupSize;
     }
 
     std::span<const RHISamplerUse> RHIShader::GetUsedSamplers(
         StrView entryPoint
-    ){
+    ) {
         return findEntryPoint(entryPoint).usedSamplers;
     }
 
-    std::vector<u8> RHIShader::GetEntryPointCode(StrView entryPoint){
+    std::vector<u8> RHIShader::GetEntryPointCode(StrView entryPoint) {
         using namespace Slang;
 
         const auto& refl = findEntryPoint(entryPoint);
 
         ComPtr<ISlangBlob> code = nullptr;
         ComPtr<ISlangBlob> diagnostics = nullptr;
-        CHECK_SRESULT_DIAG(program->getEntryPointCode(
-            refl.entryPointIndex,
-            0,
-            code.writeRef(),
-            diagnostics.writeRef()
-        ), diagnostics.get(), "failed to get target entry code");
+        CHECK_SRESULT_DIAG(
+            program->getEntryPointCode(
+                refl.entryPointIndex,
+                0,
+                code.writeRef(),
+                diagnostics.writeRef()
+            ),
+            diagnostics.get(),
+            "failed to get target entry code"
+        );
 
         std::vector<u8> bytecode(code->getBufferSize());
         std::memcpy(
@@ -558,16 +590,16 @@ namespace Crowy
         return bytecode;
     }
 
-    std::vector<u8> RHIShader::GetTargetCode(){
+    std::vector<u8> RHIShader::GetTargetCode() {
         using namespace Slang;
 
         ComPtr<ISlangBlob> code = nullptr;
         ComPtr<ISlangBlob> diagnostics = nullptr;
-        CHECK_SRESULT_DIAG(program->getTargetCode(
-            0,
-            code.writeRef(),
-            diagnostics.writeRef()
-        ), diagnostics.get(), "failed to get target code");
+        CHECK_SRESULT_DIAG(
+            program->getTargetCode(0, code.writeRef(), diagnostics.writeRef()),
+            diagnostics.get(),
+            "failed to get target code"
+        );
 
         std::vector<u8> bytecode(code->getBufferSize());
         std::memcpy(
@@ -581,12 +613,12 @@ namespace Crowy
 
     const RHIShaderReflection& RHIShader::findEntryPoint(
         StrView entryPoint
-    ) const{
+    ) const {
         const auto found = reflection.shaderRefl.find(entryPoint);
-        if(found == reflection.shaderRefl.end()){
-            throw std::runtime_error(std::format(
-                "unknown entry point '{}' in {}", entryPoint, path
-            ));
+        if(found == reflection.shaderRefl.end()) {
+            throw std::runtime_error(
+                std::format("unknown entry point '{}' in {}", entryPoint, path)
+            );
         }
 
         return found->second;

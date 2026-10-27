@@ -6,7 +6,7 @@
 namespace Crowy
 {
     // GPU fence for CPU/GPU synchronization
-    class RHIFence{
+    class RHIFence {
     public:
         CROWY_DECLARE_INTERFACE(RHIFence)
 
