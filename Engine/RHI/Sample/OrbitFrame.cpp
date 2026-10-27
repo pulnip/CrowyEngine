@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
-#include <numbers>
 #include <utility>
 #include <vector>
 
@@ -485,24 +484,19 @@ namespace Crowy
 
             const auto meanLon = earth.L0 + MeanMotionDegPerDay(earth) * day;
             const auto p = OrbitPosition(ORBIT_EARTH_INDEX, day);
-            const auto trueLon =
-                std::atan2(p.y, p.x) * 180.0 / std::numbers::pi;
+            const auto trueLon = toDegree(std::atan2(p.y, p.x));
 
             const auto unwrapped =
                 meanLon + NormalizeDegrees(trueLon - meanLon);
-            const auto radians =
-                -context.frameLock * unwrapped * std::numbers::pi / 180.0;
 
             return static_cast<f32>(
-                NormalizeDegrees(radians * 180.0 / std::numbers::pi) *
-                std::numbers::pi / 180.0
+                toRadian(NormalizeDegrees(-context.frameLock * unwrapped))
             );
         }
 
         static f32 EarthRadPerDay() {
             return static_cast<f32>(
-                MeanMotionDegPerDay(ORBIT_ELEMENTS[ORBIT_EARTH_INDEX]) *
-                std::numbers::pi / 180.0
+                toRadian(MeanMotionDegPerDay(ORBIT_ELEMENTS[ORBIT_EARTH_INDEX]))
             );
         }
 

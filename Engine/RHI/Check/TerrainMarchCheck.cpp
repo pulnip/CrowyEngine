@@ -62,20 +62,12 @@ namespace
         Vec3 worstAt{};
     };
 
-    f32 Axis(Vec3 v, u32 axis) noexcept {
-        return axis == 0 ? v.x : (axis == 1 ? v.y : v.z);
-    }
-
     // every submit here is a frame of its own, drained before the next; the
     // device counts frames across the whole program, so the count lives here
     void SubmitAndWait(RHIDevice& device, std::span<RHICommandList*> lists) {
         static u64 frame = 0;
         device.Submit(lists, ++frame);
         device.WaitFrame(frame);
-    }
-
-    void SetAxis(Vec3& v, u32 axis, f32 value) noexcept {
-        (axis == 0 ? v.x : (axis == 1 ? v.y : v.z)) = value;
     }
 
     bool InsideGrid(Vec3 p) noexcept {
@@ -93,7 +85,7 @@ namespace
         u32 found = 3, count = 0;
 
         for(u32 axis = 0; axis < 3; ++axis) {
-            const f32 grid = Axis(p, axis) / TERRAIN_CELL_SIZE;
+            const f32 grid = p[axis] / TERRAIN_CELL_SIZE;
             if(std::abs(grid - std::round(grid)) > LATTICE_TOLERANCE) {
                 found = axis;
                 ++count;
@@ -111,13 +103,13 @@ namespace
         const TerrainParams& params,
         Failures& failures
     ) {
-        const f32 coord = Axis(p, axis);
+        const f32 coord = p[axis];
         const f32 low =
             std::floor(coord / TERRAIN_CELL_SIZE) * TERRAIN_CELL_SIZE;
 
         Vec3 a = p, b = p;
-        SetAxis(a, axis, low);
-        SetAxis(b, axis, low + TERRAIN_CELL_SIZE);
+        a[axis] = low;
+        b[axis] = low + TERRAIN_CELL_SIZE;
 
         const f32 da = terrainDensity(a, params);
         const f32 db = terrainDensity(b, params);

@@ -206,8 +206,7 @@ TEST(Kepler, InclinationShowsUpInZ) {
 
         const auto& el = ORBIT_ELEMENTS[b];
         const auto period = PeriodDays(el);
-        const auto limit = el.a * (1.0 + el.e) *
-                           std::sin(el.i * std::numbers::pi_v<f64> / 180.0);
+        const auto limit = el.a * (1.0 + el.e) * std::sin(toRadian(el.i));
 
         auto peak = 0.0;
         for(u32 s = 0; s < STEPS; ++s) {
