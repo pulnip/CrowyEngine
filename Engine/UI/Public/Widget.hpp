@@ -10,7 +10,6 @@
 
 namespace Crowy
 {
-    // Defined at Lower layer
     struct UIContext;
 
     struct IntField {
@@ -104,16 +103,15 @@ namespace Crowy
         void submit(UIContext&);
     };
 
-    // onChanged carries the index into entries, never the underlying value:
-    // an enumerator's value is neither its position nor contiguous, so the
-    // mapping back belongs to whoever built the entries.
+    // onChanged carries the index into entries: an enumerator's value is
+    // neither its position nor contiguous
     struct Dropdown {
         Str label;
         std::function<void(UIContext&, usize)> onChanged = [](UIContext&,
                                                               usize) {
         };
         std::vector<Str> entries;
-        // no entry matches the current value; nothing is selected
+        // nullopt when no entry matches the current value
         std::optional<usize> current = std::nullopt;
 
         void submit(UIContext&);

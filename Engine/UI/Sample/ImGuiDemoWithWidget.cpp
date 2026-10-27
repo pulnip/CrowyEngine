@@ -94,7 +94,6 @@ namespace Crowy
                              return static_cast<f32>(1000.0 * ctx.frameTime);
                          }
                  },
-                 // every widget below this line was chosen by property type
                  buildPropertyTree(
                      "Reflected",
                      &knobs,

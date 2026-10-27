@@ -36,7 +36,6 @@ namespace
         }};
     }
 
-    // an element past the list's length as it is then is gone
     ValueTarget elementOf(
         const ValueTarget& list,
         const ListOps& ops,
@@ -77,7 +76,6 @@ namespace
         }
     }
 
-    // an edit to a value that is gone is dropped
     template<typename V, typename F>
     auto editThrough(
         const ValueTarget& target,
@@ -258,7 +256,6 @@ namespace
                 .scopeId = member
             };
         }
-        // a leaf with no widget of its own still shows what it holds
         if(info->serialize != nullptr) {
             DOM::Value value;
             info->serialize(member, value);

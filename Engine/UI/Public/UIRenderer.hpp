@@ -21,14 +21,11 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII pso;
 
-        // this frame's geometry, refreshed by every Prepare()
         RHIBufferSlice vertices;
         RHIBufferSlice indices;
 
         std::unordered_map<u64, RHITextureRAII> textures;
 
-        // acquire halves of this frame's texture-update edges;
-        // consumed by the render pass that samples them
         std::vector<RHITextureBarrier> textureAcquires;
 
     public:
@@ -50,9 +47,8 @@ namespace Crowy
         void Prepare(RHICommandList&);
         void Record(RHICommandList&);
 
-        // Prepare's texture updates release edges whose acquire halves must
-        // ride the render pass that draws the UI - pass these to that
-        // BeginRenderPass alongside your own acquires
+        // the acquire halves of Prepare's texture updates, for the
+        // BeginRenderPass that draws the UI
         std::span<const RHITextureBarrier> TextureAcquires() const {
             return textureAcquires;
         }
