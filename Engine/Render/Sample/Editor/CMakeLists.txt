@@ -13,11 +13,11 @@ INCLUDE
     # Camera.hpp lives in the sample framework
     "${CMAKE_CURRENT_SOURCE_DIR}/.."
 PUBLIC
+    Crowy::Content
     Crowy::Core
     Crowy::Platform
     Crowy::Reflection
     Crowy::Render
-    Crowy::Serialization
     Crowy::UI
     imgui
 )

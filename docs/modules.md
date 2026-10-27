@@ -28,7 +28,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `Log` | log levels, categories and sinks | `Log.hpp` | |
 | `Platform` | the window, the loop (`OS` runs a `MainLoop`), input, the command line and runtime flags, the frame profiler | `OS.hpp`, `MainLoop.hpp`, `RuntimeConfig.hpp`, `InputProvider.hpp` | Test |
 | `Reflection` | registered types and their properties, property paths and writes | `ClassRegistry.hpp` (`CROWY_STRUCT`), `PropertyTarget.hpp` | Test |
-| `Serialization` | the DOM and JSON; image, mip, mesh and model (FBX) loading | `DOM.hpp`, `JsonLoader.hpp`, `ImageLoader.hpp`, `ModelLoader.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
+| `Serialization` | the DOM and JSON | `DOM.hpp`, `JsonLoader.hpp` | Test |
 | `Remote` | the debug command port, HTTP/JSON on 127.0.0.1, and its reflection verbs | `CommandPort.hpp` | Test; Sample: `HelloCommandPort`, a struct on the port end to end |
 | `UI` | ImGui drawing and the reflection-driven inspector | `UIRenderer.hpp`, `PropertyWalker.hpp` | Test, Sample |
 | `RHI` | the device, command lists, resources, barriers and shaders over D3D12 and Metal; `Common/` the shared definitions, `TestSupport/` the recording fakes | `RHIDevice.hpp`, `RHICommandList.hpp`, `Common/RHIDefinitions.hpp`, [rhi.md](rhi.md) | Test; Sample, which also holds `AppFramework` (`App`, `Main<T>`) that every windowed executable compiles; Spike; Check |
@@ -42,9 +42,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
 | `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |
-
-`Engine/Content` is planned: the image, mip, mesh and model loaders move
-there from Serialization, which keeps the DOM and JSON.
+| `Content` | image, mip, mesh and model (FBX) loading, image writing and comparison | `ImageLoader.hpp`, `MeshData.hpp`, `ModelLoader.hpp`, `ImageCompare.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
 
 ## What a module promises
 

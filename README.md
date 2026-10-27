@@ -92,7 +92,8 @@ ctest --test-dir build -C Debug -L unit -j 8
 | `RHI`, `DX12RHI`, `MetalRHI` | 그래픽스 API 추상화와 두 백엔드 |
 | `Shader` | 공용 Slang 루트 |
 | `Render` | 렌더 씬, 패스 파이프라인, 그림자, 톤매핑 |
-| `Reflection`, `Serialization` | 리플렉션 등록, JSON, FBX/KTX2/이미지 로딩 |
+| `Reflection`, `Serialization` | 리플렉션 등록, DOM과 JSON |
+| `Content` | FBX/KTX2/이미지 로딩, 이미지 쓰기와 비교 |
 | `Remote`, `UI` | HTTP 명령 포트, ImGui 패널과 리플렉션 기반 인스펙터 |
 | `World`, `WorldRender`, `WorldEffects` | 액터와 컴포넌트, 고정 phase, transform 계층. 렌더 씬과 이펙트로 내보내기 |
 | `Effects`, `Physics` | GPU 파티클·필드, Jolt 기반 결정적 물리 |

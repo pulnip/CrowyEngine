@@ -22,7 +22,7 @@ namespace
         std::array<Vertex, 3> corners;
     };
 
-    const auto testData = toPath(CROWY_SERIALIZATION_TEST_DATA);
+    const auto testData = toPath(CROWY_CONTENT_TEST_DATA);
 
     std::vector<Triangle> trianglesOf(const MeshData& mesh) {
         std::vector<Triangle> triangles;

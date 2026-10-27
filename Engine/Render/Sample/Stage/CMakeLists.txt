@@ -11,6 +11,7 @@ SOURCES
     StageLoad.cpp
     StageScene.cpp
 PUBLIC
+    Crowy::Content
     Crowy::Core
     Crowy::Reflection
     Crowy::Render
@@ -28,7 +29,7 @@ if(CROWY_ENABLE_TEST)
     target_compile_definitions(CrowySampleStageBacklotTest
     PRIVATE
         CROWY_BACKLOT_DIR="${CROWY_BACKLOT_DIR}"
-        CROWY_ENGINE_PROBE="${CMAKE_SOURCE_DIR}/Engine/Serialization/Test/Data/AxisProbe.fbx"
+        CROWY_ENGINE_PROBE="${CMAKE_SOURCE_DIR}/Engine/Content/Test/Data/AxisProbe.fbx"
     )
     set_tests_properties(CrowySampleStageBacklotTest
     PROPERTIES

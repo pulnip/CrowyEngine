@@ -19,7 +19,7 @@ crowy_declare_example(HelloTexture
 SOURCES
     HelloTexture.cpp
 DEPENDS
-    Crowy::Serialization
+    Crowy::Content
 )
 
 # computes and exits, so it opens no window
@@ -33,7 +33,7 @@ crowy_declare_example(NormalMapping
 SOURCES
     NormalMapping.cpp
 DEPENDS
-    Crowy::Serialization
+    Crowy::Content
 )
 
 crowy_declare_example(SkyboxFloor

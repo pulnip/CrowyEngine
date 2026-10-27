@@ -4,5 +4,5 @@ SOURCES
     CornellBox.cpp
     SkyboxFloor.cpp
 PUBLIC
-    Crowy::Serialization
+    Crowy::Content
 )
