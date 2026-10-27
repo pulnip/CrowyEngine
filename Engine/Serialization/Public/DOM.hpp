@@ -4,9 +4,9 @@
 #include <concepts>
 #include <optional>
 #if defined(__cpp_lib_ranges_enumerate)
-    #include <ranges>
+#include <ranges>
 #else
-    #include "View.hpp"
+#include "View.hpp"
 #endif
 #include <utility>
 #include <variant>
@@ -59,7 +59,7 @@ namespace Crowy
             std::pair<iterator, bool> insert_or_assign(Str key, V&& v);
         };
 
-        class Value{
+        class Value {
         private:
             using ArrayRAII = RAII<Array>;
             using TableRAII = RAII<Table>;
@@ -72,44 +72,56 @@ namespace Crowy
                 f32,
                 Str,
                 ArrayRAII,
-                TableRAII
-            > value = std::monostate();
+                TableRAII>
+                value = std::monostate();
 
         public:
             Value() = default;
-            Value(bool v) noexcept: value(v){}
-            Value(i64 v) noexcept: value(v){}
-            Value(f64 v) noexcept: value(v){}
-            Value(f32 v) noexcept: value(v) {}
-            Value(Str v):value(v){}
-            Value(const char* v):value(Str(v)){}
-            Value(Array&& v): value(std::make_unique<Array>(std::move(v))){}
-            Value(Table&& v): value(std::make_unique<Table>(std::move(v))){}
+            Value(bool v) noexcept
+                : value(v) {}
+            Value(i64 v) noexcept
+                : value(v) {}
+            Value(f64 v) noexcept
+                : value(v) {}
+            Value(f32 v) noexcept
+                : value(v) {}
+            Value(Str v)
+                : value(v) {}
+            Value(const char* v)
+                : value(Str(v)) {}
+            Value(Array&& v)
+                : value(std::make_unique<Array>(std::move(v))) {}
+            Value(Table&& v)
+                : value(std::make_unique<Table>(std::move(v))) {}
 
             CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(Value)
 
-            enum class Kind{
-                None,
-                Bool,
-                Int,
-                Float,
-                String,
-                Array,
-                Table
-            };
+            enum class Kind { None, Bool, Int, Float, String, Array, Table };
 
             Kind kind() const noexcept;
 
-            bool is_none() const noexcept{ return std::holds_alternative<std::monostate>(value); }
-            bool is_bool() const noexcept{ return std::holds_alternative<bool>(value); }
-            bool is_int() const noexcept{ return std::holds_alternative<i64>(value); }
+            bool is_none() const noexcept {
+                return std::holds_alternative<std::monostate>(value);
+            }
+            bool is_bool() const noexcept {
+                return std::holds_alternative<bool>(value);
+            }
+            bool is_int() const noexcept {
+                return std::holds_alternative<i64>(value);
+            }
             bool is_float() const noexcept {
                 return std::holds_alternative<f64>(value) ||
                        std::holds_alternative<f32>(value);
             }
-            bool is_string() const noexcept{ return std::holds_alternative<Str>(value); }
-            bool is_array() const noexcept{ return std::holds_alternative<ArrayRAII>(value); }
-            bool is_table() const noexcept{ return std::holds_alternative<TableRAII>(value); }
+            bool is_string() const noexcept {
+                return std::holds_alternative<Str>(value);
+            }
+            bool is_array() const noexcept {
+                return std::holds_alternative<ArrayRAII>(value);
+            }
+            bool is_table() const noexcept {
+                return std::holds_alternative<TableRAII>(value);
+            }
 
             std::optional<bool> asBool() const noexcept;
             // expect like 1, and 1.0 cannot be Integer
@@ -128,27 +140,26 @@ namespace Crowy
 
             template<typename T>
             std::optional<T> get() const noexcept(
-                !std::is_same_v<T, Str> &&
-                noexcept(getImpl<T>())
-            ){
-                if constexpr(std::same_as<T, bool>){
+                !std::is_same_v<T, Str> && noexcept(getImpl<T>())
+            ) {
+                if constexpr(std::same_as<T, bool>) {
                     return asBool();
                 }
-                else if constexpr(std::integral<T>){
+                else if constexpr(std::integral<T>) {
                     if(auto opt = asInt())
                         return static_cast<T>(*opt);
                 }
-                else if constexpr(std::floating_point<T>){
+                else if constexpr(std::floating_point<T>) {
                     if(auto opt = asFloat())
                         return static_cast<T>(*opt);
                     else if(auto opt = asInt())
                         return static_cast<T>(*opt);
                 }
-                else if constexpr(std::same_as<T, Str>){
+                else if constexpr(std::same_as<T, Str>) {
                     if(auto ptr = asString())
                         return *ptr;
                 }
-                else{
+                else {
                     return getImpl<T>();
                 }
 
@@ -158,89 +169,93 @@ namespace Crowy
             template<typename T>
             std::optional<T> get(StrView path) const noexcept(
                 noexcept(get<T>())
-            ){
+            ) {
                 auto node = at(path);
 
-                return node != nullptr ?
-                    node->get<T>() :
-                    std::nullopt;
+                return node != nullptr ? node->get<T>() : std::nullopt;
             }
 
             // the write half of get<T>: builds the Value get<T> reads back
             template<typename T>
-            static Value from(const T& v){
-                if constexpr(std::same_as<T, bool>){
+            static Value from(const T& v) {
+                if constexpr(std::same_as<T, bool>) {
                     return Value(v);
                 }
-                else if constexpr(std::integral<T>){
+                else if constexpr(std::integral<T>) {
                     return Value(static_cast<i64>(v));
                 }
-                else if constexpr(std::floating_point<T>){
+                else if constexpr(std::floating_point<T>) {
                     // an f32 stays one, so it writes as its own shortest text
                     return Value(v);
                 }
-                else if constexpr(std::same_as<T, Str>){
+                else if constexpr(std::same_as<T, Str>) {
                     return Value(v);
                 }
-                else{
+                else {
                     return fromImpl<T>(v);
                 }
             }
 
             template<std::invocable<const DOM::Value&> F>
-            void forEach(F&& fn) const{
+            void forEach(F&& fn) const {
                 auto arr = asArray();
-                if(arr == nullptr) return;
+                if(arr == nullptr)
+                    return;
 
-                for(auto& val: *arr){
+                for(auto& val: *arr) {
                     fn(val);
                 }
             }
 
             template<std::invocable<const DOM::Value&> F>
-            void forEach(StrView path, F&& fn) const{
+            void forEach(StrView path, F&& fn) const {
                 auto n = at(path);
-                if(n == nullptr) return;
+                if(n == nullptr)
+                    return;
 
                 auto arr = n->asArray();
-                if(arr == nullptr) return;
+                if(arr == nullptr)
+                    return;
 
-                for(auto& val: *arr){
+                for(auto& val: *arr) {
                     fn(val);
                 }
             }
 
             template<std::invocable<isize, const DOM::Value&> F>
-            void enumerate(F&& fn) const{
+            void enumerate(F&& fn) const {
                 auto arr = asArray();
-                if(arr == nullptr) return;
+                if(arr == nullptr)
+                    return;
 
-                for(auto [idx, value]: std::views::enumerate(*arr)){
+                for(auto [idx, value]: std::views::enumerate(*arr)) {
                     fn(static_cast<isize>(idx), value);
                 }
             }
 
             template<std::invocable<isize, const DOM::Value&> F>
-            void enumerate(StrView path, F&& fn) const{
+            void enumerate(StrView path, F&& fn) const {
                 auto n = at(path);
-                if(n == nullptr) return;
+                if(n == nullptr)
+                    return;
 
                 auto arr = n->asArray();
-                if(arr == nullptr) return;
+                if(arr == nullptr)
+                    return;
 
-                for(auto [idx, value]: std::views::enumerate(*arr)){
+                for(auto [idx, value]: std::views::enumerate(*arr)) {
                     fn(static_cast<isize>(idx), value);
                 }
             }
 
         private:
             template<typename T>
-            std::optional<T> getImpl() const noexcept{
+            std::optional<T> getImpl() const noexcept {
                 static_assert(false);
             }
 
             template<typename T>
-            static Value fromImpl(const T&){
+            static Value fromImpl(const T&) {
                 static_assert(false);
             }
         };
@@ -309,9 +324,9 @@ namespace Crowy
             return emplace(std::move(key), std::forward<V>(v));
         }
 
-    #define DECLARE_VALUE_GETIMPL_NOEXCEPT(TYPE) \
-        template<> \
-        std::optional<TYPE> Value::getImpl<TYPE>() const noexcept;
+#define DECLARE_VALUE_GETIMPL_NOEXCEPT(TYPE)                                   \
+    template<>                                                                 \
+    std::optional<TYPE> Value::getImpl<TYPE>() const noexcept;
 
         DECLARE_VALUE_GETIMPL_NOEXCEPT(Vec2)
         DECLARE_VALUE_GETIMPL_NOEXCEPT(Vec3)
@@ -319,11 +334,11 @@ namespace Crowy
         DECLARE_VALUE_GETIMPL_NOEXCEPT(Size2D)
         DECLARE_VALUE_GETIMPL_NOEXCEPT(Transform)
 
-    #undef DECLARE_VALUE_GETIMPL_NOEXCEPT
+#undef DECLARE_VALUE_GETIMPL_NOEXCEPT
 
-    #define DECLARE_VALUE_FROMIMPL(TYPE) \
-        template<> \
-        Value Value::fromImpl<TYPE>(const TYPE&);
+#define DECLARE_VALUE_FROMIMPL(TYPE)                                           \
+    template<>                                                                 \
+    Value Value::fromImpl<TYPE>(const TYPE&);
 
         DECLARE_VALUE_FROMIMPL(Vec2)
         DECLARE_VALUE_FROMIMPL(Vec3)
@@ -331,6 +346,6 @@ namespace Crowy
         DECLARE_VALUE_FROMIMPL(Size2D)
         DECLARE_VALUE_FROMIMPL(Transform)
 
-    #undef DECLARE_VALUE_FROMIMPL
+#undef DECLARE_VALUE_FROMIMPL
     }
 }

@@ -143,13 +143,11 @@ namespace
         std::vector<u8> direction(count);
         for(i64 y = 0; y < height; ++y) {
             for(i64 x = 0; x < width; ++x) {
-                const auto gx = clamped(x + 1, y - 1) +
-                                2 * clamped(x + 1, y) + clamped(x + 1, y + 1) -
-                                clamped(x - 1, y - 1) -
+                const auto gx = clamped(x + 1, y - 1) + 2 * clamped(x + 1, y) +
+                                clamped(x + 1, y + 1) - clamped(x - 1, y - 1) -
                                 2 * clamped(x - 1, y) - clamped(x - 1, y + 1);
-                const auto gy = clamped(x - 1, y + 1) +
-                                2 * clamped(x, y + 1) + clamped(x + 1, y + 1) -
-                                clamped(x - 1, y - 1) -
+                const auto gy = clamped(x - 1, y + 1) + 2 * clamped(x, y + 1) +
+                                clamped(x + 1, y + 1) - clamped(x - 1, y - 1) -
                                 2 * clamped(x, y - 1) - clamped(x + 1, y - 1);
                 const auto ax = std::abs(gx);
                 const auto ay = std::abs(gy);
@@ -229,23 +227,19 @@ namespace
         using namespace Crowy;
 
         // the window's count slides along a line of `size` cells `stride` apart
-        const auto slide = [radius](
-                               const u8* in,
-                               u8* out,
-                               u32 size,
-                               usize stride
-                           ) {
-            u32 inside = 0;
-            for(u32 i = 0; i <= radius && i < size; ++i)
-                inside += in[i * stride];
-            for(u32 i = 0; i < size; ++i) {
-                out[i * stride] = inside > 0 ? 1 : 0;
-                if(i >= radius)
-                    inside -= in[(i - radius) * stride];
-                if(i + radius + 1 < size)
-                    inside += in[(i + radius + 1) * stride];
-            }
-        };
+        const auto slide =
+            [radius](const u8* in, u8* out, u32 size, usize stride) {
+                u32 inside = 0;
+                for(u32 i = 0; i <= radius && i < size; ++i)
+                    inside += in[i * stride];
+                for(u32 i = 0; i < size; ++i) {
+                    out[i * stride] = inside > 0 ? 1 : 0;
+                    if(i >= radius)
+                        inside -= in[(i - radius) * stride];
+                    if(i + radius + 1 < size)
+                        inside += in[(i + radius + 1) * stride];
+                }
+            };
 
         std::vector<u8> rows(mask.size());
         for(u32 y = 0; y < height; ++y) {
@@ -327,12 +321,10 @@ namespace
             return;
 
         // how many of `edges`, moved by (dx, dy), land on `mask`
-        const auto landing = [&](
-                                 const EdgePoints& edges,
+        const auto landing = [&](const EdgePoints& edges,
                                  const std::vector<u8>& mask,
                                  i64 dx,
-                                 i64 dy
-                             ) {
+                                 i64 dy) {
             u64 count = 0;
             for(const auto& [x, y]: edges) {
                 const auto mx = x + dx;
@@ -459,7 +451,8 @@ namespace Crowy
                         : 0;
                 pixel[0] = 255;
                 pixel[1] = static_cast<u8>(green);
-            } else if(d > 0) {
+            }
+            else if(d > 0) {
                 // the floor of 64 keeps a difference apart from black
                 const auto grey = 64 + (191 * d + tolerance / 2) / tolerance;
                 pixel[0] = pixel[1] = pixel[2] = static_cast<u8>(grey);
@@ -535,12 +528,12 @@ namespace Crowy
             }
         }
         if(result.edgesA > 0) {
-            result.aNearB = static_cast<f64>(matchedA) /
-                            static_cast<f64>(result.edgesA);
+            result.aNearB =
+                static_cast<f64>(matchedA) / static_cast<f64>(result.edgesA);
         }
         if(result.edgesB > 0) {
-            result.bNearA = static_cast<f64>(matchedB) /
-                            static_cast<f64>(result.edgesB);
+            result.bNearA =
+                static_cast<f64>(matchedB) / static_cast<f64>(result.edgesB);
         }
 
         rankEdgeTiles(result);
@@ -583,12 +576,16 @@ namespace Crowy
                 const auto stateB = comparison.b[at];
                 if(stateA == EdgeState::Unmatched) {
                     paint(at, 255, 0, 255);
-                } else if(stateB == EdgeState::Unmatched) {
+                }
+                else if(stateB == EdgeState::Unmatched) {
                     paint(at, 0, 255, 0);
-                } else if(stateA == EdgeState::Matched ||
-                          stateB == EdgeState::Matched) {
+                }
+                else if(
+                    stateA == EdgeState::Matched || stateB == EdgeState::Matched
+                ) {
                     paint(at, 160, 160, 160);
-                } else {
+                }
+                else {
                     const auto dim =
                         static_cast<u8>(lumaOf(row + x * 4) * 3 / 10);
                     paint(at, dim, dim, dim);

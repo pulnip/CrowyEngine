@@ -19,7 +19,8 @@ namespace Crowy
     // match one face of MakeBox exactly.
     // uvScale tiles the texture per axis: 1 maps it once across the quad.
     MeshData MakePlane(
-        Vec3 normal, Vec3 tangent,
+        Vec3 normal,
+        Vec3 tangent,
         Vec2 halfExtent,
         Vec2 uvScale = {1.0f, 1.0f}
     );
@@ -28,7 +29,12 @@ namespace Crowy
     MeshData MakePlane(Vec2 halfExtent, Vec2 uvScale = {1.0f, 1.0f});
 
     // square shorthands, since most planes are square
-    MeshData MakePlane(Vec3 normal, Vec3 tangent, f32 halfSize, f32 uvScale = 1.0f);
+    MeshData MakePlane(
+        Vec3 normal,
+        Vec3 tangent,
+        f32 halfSize,
+        f32 uvScale = 1.0f
+    );
     MeshData MakePlane(f32 halfSize = 1.0f, f32 uvScale = 1.0f);
 
     // A UV sphere with its poles on the Y axis.

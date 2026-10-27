@@ -267,7 +267,8 @@ namespace Crowy
                     );
                 }
                 parsed.mode = Mode::Edges;
-            } else if(convert) {
+            }
+            else if(convert) {
                 if(compareFlags || parsed.paths.size() != 2) {
                     throw std::runtime_error(
                         std::format(
@@ -278,7 +279,8 @@ namespace Crowy
                     );
                 }
                 parsed.mode = Mode::Convert;
-            } else if(parsed.paths.size() != 2) {
+            }
+            else if(parsed.paths.size() != 2) {
                 throw std::runtime_error(
                     std::format(
                         "expected two images to compare, got {}\n{}",
@@ -478,7 +480,8 @@ namespace Crowy
                     percent(comparison.worstTileNear),
                     comparison.worstTileEdges
                 );
-            } else {
+            }
+            else {
                 std::println(
                     "  worst tile: none holds {} of a's edges",
                     options.minTileEdges
@@ -556,7 +559,8 @@ int main(int argc, char** argv) {
         case Mode::Compare:
             return compareFiles(parsed);
         }
-    } catch(const std::exception& e) {
+    }
+    catch(const std::exception& e) {
         std::println(stderr, "error: {}", e.what());
         return 2;
     }

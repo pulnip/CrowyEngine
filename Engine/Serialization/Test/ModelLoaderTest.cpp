@@ -27,11 +27,13 @@ namespace
     std::vector<Triangle> trianglesOf(const MeshData& mesh) {
         std::vector<Triangle> triangles;
         for(usize i = 0; i + 2 < mesh.indices.size(); i += 3) {
-            triangles.push_back(Triangle{{
-                mesh.vertices[mesh.indices[i]],
-                mesh.vertices[mesh.indices[i + 1]],
-                mesh.vertices[mesh.indices[i + 2]]
-            }});
+            triangles.push_back(
+                Triangle{
+                    {mesh.vertices[mesh.indices[i]],
+                     mesh.vertices[mesh.indices[i + 1]],
+                     mesh.vertices[mesh.indices[i + 2]]}
+                }
+            );
         }
 
         return triangles;
@@ -41,7 +43,8 @@ namespace
     // triangle whose corners are not collinear
     f32 windingSign(const Triangle& t) {
         const auto& [a, b, c] = t.corners;
-        const auto winding = cross(b.position - a.position, c.position - a.position);
+        const auto winding =
+            cross(b.position - a.position, c.position - a.position);
 
         return dot(winding, a.normal) > 0.0f ? 1.0f : -1.0f;
     }
@@ -55,7 +58,8 @@ namespace
     // the texel a face's UVs name, as #RRGGBB
     u32 paletteColor(const Rgba8View& palette, Vec2 uv) {
         const auto x = static_cast<u32>(uv.x * static_cast<f32>(palette.width));
-        const auto y = static_cast<u32>(uv.y * static_cast<f32>(palette.height));
+        const auto y =
+            static_cast<u32>(uv.y * static_cast<f32>(palette.height));
         const auto* texel = palette.pixels + y * palette.rowPitch + x * 4;
 
         return (u32{texel[0]} << 16) | (u32{texel[1]} << 8) | u32{texel[2]};
@@ -68,8 +72,16 @@ namespace
 
     void extend(Extent& extent, Vec3 p) {
         auto& [low, high] = extent;
-        low = Vec3{std::min(low.x, p.x), std::min(low.y, p.y), std::min(low.z, p.z)};
-        high = Vec3{std::max(high.x, p.x), std::max(high.y, p.y), std::max(high.z, p.z)};
+        low = Vec3{
+            std::min(low.x, p.x),
+            std::min(low.y, p.y),
+            std::min(low.z, p.z)
+        };
+        high = Vec3{
+            std::max(high.x, p.x),
+            std::max(high.y, p.y),
+            std::max(high.z, p.z)
+        };
     }
 }
 
@@ -143,7 +155,10 @@ TEST(ModelLoader, AxisProbeMatchesItsTable) {
 
     const auto& shortArm = extents[ShortArm];
     EXPECT_NEAR(shortArm.high.x, 0.3f, Tolerance);
-    EXPECT_GT(shortArm.high.x - shortArm.low.x, shortArm.high.z - shortArm.low.z);
+    EXPECT_GT(
+        shortArm.high.x - shortArm.low.x,
+        shortArm.high.z - shortArm.low.z
+    );
 }
 
 // "front-facing from outside": every triangle's stored normal points away
@@ -157,7 +172,8 @@ TEST(ModelLoader, AxisProbeNormalsPointOutward) {
     std::vector<std::pair<u32, Triangle>> triangles;
     for(const auto& slot: model.slots) {
         for(const auto& triangle: trianglesOf(slot.mesh)) {
-            const auto color = paletteColor(palette, triangle.corners[0].texCoord);
+            const auto color =
+                paletteColor(palette, triangle.corners[0].texCoord);
             for(const auto& corner: triangle.corners)
                 extend(extents[color], corner.position);
             triangles.emplace_back(color, triangle);
@@ -167,7 +183,10 @@ TEST(ModelLoader, AxisProbeNormalsPointOutward) {
     for(const auto& [color, triangle]: triangles) {
         const auto& extent = extents[color];
         const auto boxCenter = 0.5f * (extent.low + extent.high);
-        EXPECT_GT(dot(triangle.corners[0].normal, centroidOf(triangle) - boxCenter), 0.0f);
+        EXPECT_GT(
+            dot(triangle.corners[0].normal, centroidOf(triangle) - boxCenter),
+            0.0f
+        );
     }
 }
 

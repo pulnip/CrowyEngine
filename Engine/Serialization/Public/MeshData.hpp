@@ -19,7 +19,7 @@ namespace Crowy
     //   viewing a mesh from the inside, as a skybox does, means reversing
     //   the index order or flipping the cull mode at the call site.
     // - texCoord follows the D3D convention, with (0, 0) at the top-left texel.
-    struct MeshData{
+    struct MeshData {
         std::vector<Vertex> vertices;
         std::vector<u32> indices;
     };

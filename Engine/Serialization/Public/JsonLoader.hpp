@@ -1,14 +1,12 @@
 #pragma once
 
 #include <filesystem>
+
 #include "DomTraits.hpp"
 
 namespace Crowy
 {
-    enum class JsonStyle : u8{
-        Compact,
-        Pretty
-    };
+    enum class JsonStyle : u8 { Compact, Pretty };
 
     DOM::Value parseJsonString(StrView);
     DOM::Value parseJsonFile(const std::filesystem::path&);
@@ -18,7 +16,7 @@ namespace Crowy
     Str emitJson(const DOM::Value&, JsonStyle style = JsonStyle::Compact);
 
     template<typename T>
-    T loadJson(StrView str){
+    T loadJson(StrView str) {
         auto tbl = parseJsonString(str);
         auto metadata = DomTraits<DocMetadata>::from(tbl);
 
@@ -26,7 +24,7 @@ namespace Crowy
     }
 
     template<typename T>
-    T loadJsonFile(const std::filesystem::path& path){
+    T loadJsonFile(const std::filesystem::path& path) {
         auto tbl = parseJsonFile(path);
         auto metadata = DomTraits<DocMetadata>::from(tbl);
 

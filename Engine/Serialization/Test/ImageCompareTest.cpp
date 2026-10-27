@@ -510,9 +510,7 @@ TEST(ImageCompare, EdgeOverlayColors) {
     };
     const auto a = stepAt(16);
     const auto b = stepAt(20);
-    const EdgeOptions untiled{
-        .minTileEdges = std::numeric_limits<u32>::max()
-    };
+    const EdgeOptions untiled{.minTileEdges = std::numeric_limits<u32>::max()};
     const auto pixelAt = [](const std::vector<u8>& overlay, u32 x, u32 y) {
         const auto* p = overlay.data() + (static_cast<usize>(y) * 32 + x) * 4;
         return std::array<u8, 4>{p[0], p[1], p[2], p[3]};

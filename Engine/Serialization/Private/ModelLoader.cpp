@@ -19,7 +19,8 @@ namespace Crowy
     {
         struct SlotBuilder;
 
-        using SceneOwner = std::unique_ptr<ufbx_scene, decltype(&ufbx_free_scene)>;
+        using SceneOwner =
+            std::unique_ptr<ufbx_scene, decltype(&ufbx_free_scene)>;
         using SlotBuilders = std::vector<SlotBuilder>;
         using Vertices = std::vector<Vertex>;
 
@@ -36,11 +37,19 @@ namespace Crowy
         }
 
         constexpr Vec3 componentMin(Vec3 a, Vec3 b) noexcept {
-            return Vec3{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)};
+            return Vec3{
+                std::min(a.x, b.x),
+                std::min(a.y, b.y),
+                std::min(a.z, b.z)
+            };
         }
 
         constexpr Vec3 componentMax(Vec3 a, Vec3 b) noexcept {
-            return Vec3{std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)};
+            return Vec3{
+                std::max(a.x, b.x),
+                std::max(a.y, b.y),
+                std::max(a.z, b.z)
+            };
         }
 
         AABB3D unionOf(const AABB3D& a, const AABB3D& b) {
@@ -89,9 +98,11 @@ namespace Crowy
             usize partIndex,
             u32 noMaterialSlot
         ) {
-            if(partIndex < node.materials.count && node.materials.data[partIndex])
+            if(partIndex < node.materials.count &&
+               node.materials.data[partIndex])
                 return node.materials.data[partIndex]->typed_id;
-            if(partIndex < mesh.materials.count && mesh.materials.data[partIndex])
+            if(partIndex < mesh.materials.count &&
+               mesh.materials.data[partIndex])
                 return mesh.materials.data[partIndex]->typed_id;
 
             return noMaterialSlot;
@@ -106,20 +117,20 @@ namespace Crowy
             // zeroed: ufbx_generate_indices compares corners with memcmp
             Vertex vertex{};
 
-            vertex.position =
-                toVec3(ufbx_transform_position(&toModel, mesh.vertex_position[index]));
+            vertex.position = toVec3(
+                ufbx_transform_position(&toModel, mesh.vertex_position[index])
+            );
             if(mesh.vertex_normal.exists) {
-                vertex.normal = normalize(toVec3(
-                    ufbx_transform_direction(&normalToModel, mesh.vertex_normal[index])
-                ));
+                vertex.normal = normalize(toVec3(ufbx_transform_direction(
+                    &normalToModel,
+                    mesh.vertex_normal[index]
+                )));
             }
             if(mesh.vertex_uv.exists) {
                 const auto uv = mesh.vertex_uv[index];
                 // FBX's origin is the bottom-left, MeshData's the top-left
-                vertex.texCoord = Vec2{
-                    static_cast<f32>(uv.x),
-                    1.0f - static_cast<f32>(uv.y)
-                };
+                vertex.texCoord =
+                    Vec2{static_cast<f32>(uv.x), 1.0f - static_cast<f32>(uv.y)};
             }
 
             return vertex;
@@ -147,13 +158,15 @@ namespace Crowy
                 3 * std::max<usize>(mesh.max_face_triangles, 1)
             );
 
-            for(usize partIndex = 0; partIndex < mesh.material_parts.count; ++partIndex) {
+            for(usize partIndex = 0; partIndex < mesh.material_parts.count;
+                ++partIndex) {
                 const auto& part = mesh.material_parts.data[partIndex];
                 if(part.num_triangles == 0)
                     continue;
 
                 auto& corners =
-                    slots[slotOf(node, mesh, partIndex, noMaterialSlot)].corners;
+                    slots[slotOf(node, mesh, partIndex, noMaterialSlot)]
+                        .corners;
                 for(const auto faceIndex: part.face_indices) {
                     // 0 for the point and line faces FBX also calls faces
                     const auto triangles = ufbx_triangulate_face(
@@ -164,11 +177,19 @@ namespace Crowy
                     );
                     for(u32 t = 0; t < triangles; ++t) {
                         const auto* triangle = faceCorners.data() + 3 * t;
-                        const auto order = mirrors
-                            ? std::array{triangle[0], triangle[2], triangle[1]}
-                            : std::array{triangle[0], triangle[1], triangle[2]};
+                        const auto order =
+                            mirrors
+                                ? std::
+                                      array{triangle[0], triangle[2], triangle[1]}
+                                : std::array{
+                                      triangle[0],
+                                      triangle[1],
+                                      triangle[2]
+                                  };
                         for(const auto corner: order)
-                            corners.push_back(makeCorner(mesh, corner, toModel, normalToModel));
+                            corners.push_back(
+                                makeCorner(mesh, corner, toModel, normalToModel)
+                            );
                     }
                 }
             }
@@ -176,7 +197,10 @@ namespace Crowy
 
         // per-triangle tangents averaged per vertex, after indexing so a UV
         // seam keeps a frame on each side
-        void generateTangents(Vertices& vertices, const std::vector<u32>& indices) {
+        void generateTangents(
+            Vertices& vertices,
+            const std::vector<u32>& indices
+        ) {
             std::vector<Vec3> alongU(vertices.size(), zeros());
             std::vector<Vec3> alongV(vertices.size(), zeros());
 
@@ -185,8 +209,10 @@ namespace Crowy
                 const auto i1 = indices[i + 1];
                 const auto i2 = indices[i + 2];
 
-                const auto edge1 = vertices[i1].position - vertices[i0].position;
-                const auto edge2 = vertices[i2].position - vertices[i0].position;
+                const auto edge1 =
+                    vertices[i1].position - vertices[i0].position;
+                const auto edge2 =
+                    vertices[i2].position - vertices[i0].position;
                 const auto duv1 = vertices[i1].texCoord - vertices[i0].texCoord;
                 const auto duv2 = vertices[i2].texCoord - vertices[i0].texCoord;
 
@@ -211,19 +237,24 @@ namespace Crowy
                 auto tangent = alongU[i] - normal * dot(normal, alongU[i]);
                 if(normSquared(tangent) < 1e-12f) {
                     // no usable UV gradient: any axis orthogonal to the normal
-                    const auto axis = std::abs(normal.x) < 0.9f ? unitX() : unitY();
+                    const auto axis =
+                        std::abs(normal.x) < 0.9f ? unitX() : unitY();
                     tangent = cross(axis, normal);
                 }
                 tangent = normalize(tangent);
 
                 // MeshData's increasing v is w * cross(normal, tangent)
                 const auto handedness =
-                    dot(cross(normal, tangent), alongV[i]) < 0.0f ? -1.0f : 1.0f;
+                    dot(cross(normal, tangent), alongV[i]) < 0.0f ? -1.0f
+                                                                  : 1.0f;
                 vertex.tangent = toVec4(tangent, handedness);
             }
         }
 
-        ModelSlot finishSlot(SlotBuilder&& builder, const std::filesystem::path& path) {
+        ModelSlot finishSlot(
+            SlotBuilder&& builder,
+            const std::filesystem::path& path
+        ) {
             auto vertices = std::move(builder.corners);
             std::vector<u32> indices(vertices.size());
 
@@ -243,12 +274,14 @@ namespace Crowy
                 &error
             );
             if(error.type != UFBX_ERROR_NONE) {
-                throw std::runtime_error(std::format(
-                    "cannot index material '{}' of {}: {}",
-                    builder.material,
-                    path,
-                    toView(error.description)
-                ));
+                throw std::runtime_error(
+                    std::format(
+                        "cannot index material '{}' of {}: {}",
+                        builder.material,
+                        path,
+                        toView(error.description)
+                    )
+                );
             }
             vertices.resize(unique);
             generateTangents(vertices, indices);
@@ -270,7 +303,9 @@ namespace Crowy
         SlotBuilders builders;
         builders.reserve(scene->materials.count + 1);
         for(const auto* material: scene->materials)
-            builders.push_back(SlotBuilder{.material = Str(toView(material->name))});
+            builders.push_back(
+                SlotBuilder{.material = Str(toView(material->name))}
+            );
         builders.push_back(SlotBuilder{});
 
         for(const auto* node: scene->nodes) {
@@ -285,8 +320,8 @@ namespace Crowy
 
             auto slot = finishSlot(std::move(builder), path);
             model.bounds = model.slots.empty()
-                ? slot.bounds
-                : unionOf(model.bounds, slot.bounds);
+                               ? slot.bounds
+                               : unionOf(model.bounds, slot.bounds);
             model.slots.push_back(std::move(slot));
         }
 

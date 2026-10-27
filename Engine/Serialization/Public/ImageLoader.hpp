@@ -2,12 +2,13 @@
 
 #include <filesystem>
 #include <vector>
+
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
-    struct ImageData{
+    struct ImageData {
         std::vector<u8> blob;
         std::vector<RHISubresourceData> subs;
         RHIPixelFormat format = RHIPixelFormat::Unknown;

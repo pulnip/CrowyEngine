@@ -26,65 +26,75 @@ const auto TEST_JSON1 = R"({
     ]
 })";
 
-TEST(Serializer, SpriteJSON){
+TEST(Serializer, SpriteJSON) {
     auto v = parseJsonString(TEST_JSON1);
 
-    if(auto* n = v.at("metadata.name")){
-        if(auto s = n->asString()){
+    if(auto* n = v.at("metadata.name")) {
+        if(auto s = n->asString()) {
             auto str = *s;
             EXPECT_EQ(str, "character.png");
         }
-        else FAIL();
+        else
+            FAIL();
     }
-    else FAIL();
+    else
+        FAIL();
 
-    if(auto* n = v.at("animations")){
-        if(auto a = n->asArray()){
+    if(auto* n = v.at("animations")) {
+        if(auto a = n->asArray()) {
             auto& e1 = (*a)[0];
 
-            if(auto t = e1.asTable()){
-                for(auto& [k, v]: *t){
-                    if(k=="name"){
-                        if(auto val = v.asString()){
+            if(auto t = e1.asTable()) {
+                for(auto& [k, v]: *t) {
+                    if(k == "name") {
+                        if(auto val = v.asString()) {
                             EXPECT_EQ(*val, "idle");
                         }
-                        else FAIL();
+                        else
+                            FAIL();
                     }
-                    else if(k=="start_row"){
-                        if(auto val = v.asInt()){
+                    else if(k == "start_row") {
+                        if(auto val = v.asInt()) {
                             EXPECT_EQ(*val, 0);
                         }
-                        else FAIL();
+                        else
+                            FAIL();
                     }
-                    else if(k=="tile_count"){
-                        if(auto val = v.asInt()){
+                    else if(k == "tile_count") {
+                        if(auto val = v.asInt()) {
                             EXPECT_EQ(*val, 4);
                         }
-                        else FAIL();
+                        else
+                            FAIL();
                     }
-                    else if(k=="frame_duration_ms"){
-                        if(auto val = v.asInt()){
+                    else if(k == "frame_duration_ms") {
+                        if(auto val = v.asInt()) {
                             EXPECT_EQ(*val, 100);
                         }
-                        else FAIL();
+                        else
+                            FAIL();
                     }
-                    else FAIL();
+                    else
+                        FAIL();
                 }
             }
-            else FAIL();
+            else
+                FAIL();
         }
-        else FAIL();
+        else
+            FAIL();
     }
-    else FAIL();
+    else
+        FAIL();
 }
 
-struct JsonTestResult1{
+struct JsonTestResult1 {
     DocMetadata metadata;
-    struct Grid{
+    struct Grid {
         i64 columns = 0;
         i64 rows = 0;
     } grid;
-    struct Animation{
+    struct Animation {
         Str name;
         i64 startRow = 0;
         i64 tileCount = 0;
@@ -94,22 +104,24 @@ struct JsonTestResult1{
 };
 
 template<>
-struct Crowy::DomTraits<JsonTestResult1>{
-    static JsonTestResult1 from(const DOM::Value& root, const DocMetadata& metadata){
-        JsonTestResult1 result{
-            .metadata = metadata
-        };
+struct Crowy::DomTraits<JsonTestResult1> {
+    static JsonTestResult1 from(
+        const DOM::Value& root,
+        const DocMetadata& metadata
+    ) {
+        JsonTestResult1 result{.metadata = metadata};
 
         auto& grid = result.grid;
         grid.columns = root.get<i64>("grid.columns").value_or(1);
         grid.rows = root.get<i64>("grid.rows").value_or(1);
 
-        root.forEach("animations", [&result](const DOM::Value& node){
+        root.forEach("animations", [&result](const DOM::Value& node) {
             JsonTestResult1::Animation animation{
                 .name = node.get<Str>("name").value_or(""),
                 .startRow = node.get<i64>("start_row").value_or(0),
                 .tileCount = node.get<i64>("tile_count").value_or(0),
-                .frameDurationMs = node.get<i64>("frame_duration_ms").value_or(0)
+                .frameDurationMs =
+                    node.get<i64>("frame_duration_ms").value_or(0)
             };
             result.animations.push_back(std::move(animation));
         });
@@ -118,7 +130,7 @@ struct Crowy::DomTraits<JsonTestResult1>{
     }
 };
 
-TEST(SerializerUsecase, SpriteJSON){
+TEST(SerializerUsecase, SpriteJSON) {
     auto result = loadJson<JsonTestResult1>(TEST_JSON1);
 
     const auto& metadata = result.metadata;
@@ -150,12 +162,13 @@ TEST(SerializerUsecase, SpriteJSON){
     EXPECT_EQ(anim2.frameDurationMs, 60);
 }
 
-bool deepEqual(const DOM::Value& a, const DOM::Value& b){
+bool deepEqual(const DOM::Value& a, const DOM::Value& b) {
     using enum DOM::Value::Kind;
 
-    if(a.kind() != b.kind()) return false;
+    if(a.kind() != b.kind())
+        return false;
 
-    switch(a.kind()){
+    switch(a.kind()) {
     case None:
         return true;
     case Bool:
@@ -173,21 +186,25 @@ bool deepEqual(const DOM::Value& a, const DOM::Value& b){
     case Array: {
         auto& lhs = *a.asArray();
         auto& rhs = *b.asArray();
-        if(lhs.size() != rhs.size()) return false;
+        if(lhs.size() != rhs.size())
+            return false;
 
-        for(std::size_t i = 0; i < lhs.size(); ++i){
-            if(!deepEqual(lhs[i], rhs[i])) return false;
+        for(std::size_t i = 0; i < lhs.size(); ++i) {
+            if(!deepEqual(lhs[i], rhs[i]))
+                return false;
         }
         return true;
     }
     case Table: {
         auto& lhs = *a.asTable();
         auto& rhs = *b.asTable();
-        if(lhs.size() != rhs.size()) return false;
+        if(lhs.size() != rhs.size())
+            return false;
 
-        for(auto& [k, v]: lhs){
+        for(auto& [k, v]: lhs) {
             auto it = rhs.find(k);
-            if(it == rhs.end() || !deepEqual(v, it->second)) return false;
+            if(it == rhs.end() || !deepEqual(v, it->second))
+                return false;
         }
         return true;
     }
@@ -195,7 +212,7 @@ bool deepEqual(const DOM::Value& a, const DOM::Value& b){
     return false;
 }
 
-TEST(Serializer, JsonRoundTrip){
+TEST(Serializer, JsonRoundTrip) {
     const auto fixture = R"({
         "flag": true,
         "count": 42,
@@ -295,15 +312,20 @@ TEST(Serializer, EmitPrettyIndentsFourSpaces) {
     );
 }
 
-TEST(Serializer, JsonParseErrors){
+TEST(Serializer, JsonParseErrors) {
     EXPECT_THROW(parseJsonString("{invalid"), std::exception);
     EXPECT_THROW(parseJsonString(""), std::exception);
-    EXPECT_THROW(parseJsonString(R"({"v": 9223372036854775808})"), std::out_of_range);
+    EXPECT_THROW(
+        parseJsonString(R"({"v": 9223372036854775808})"),
+        std::out_of_range
+    );
     EXPECT_THROW(parseJsonString("18446744073709551615"), std::out_of_range);
 }
 
-TEST(Serializer, Size2DFromPair){
-    auto v = parseJsonString(R"({"pair": [8, 4], "quad": [8, 4, 2, 1], "single": [8]})");
+TEST(Serializer, Size2DFromPair) {
+    auto v = parseJsonString(
+        R"({"pair": [8, 4], "quad": [8, 4, 2, 1], "single": [8]})"
+    );
 
     auto size = v.get<Size2D>("pair");
     ASSERT_TRUE(size.has_value());
@@ -314,8 +336,9 @@ TEST(Serializer, Size2DFromPair){
     EXPECT_FALSE(v.get<Size2D>("single").has_value());
 }
 
-TEST(Serializer, JsonNumberStrictness){
-    auto v = parseJsonString(R"({"i": 1, "f": 1.0, "big": 9223372036854775807})");
+TEST(Serializer, JsonNumberStrictness) {
+    auto v =
+        parseJsonString(R"({"i": 1, "f": 1.0, "big": 9223372036854775807})");
 
     EXPECT_TRUE(v.at("i")->asInt().has_value());
     EXPECT_FALSE(v.at("i")->asFloat().has_value());
