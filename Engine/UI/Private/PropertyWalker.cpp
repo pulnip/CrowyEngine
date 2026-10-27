@@ -59,16 +59,12 @@ namespace
         const TypeDesc& desc,
         const DirtyCallback& onDirty
     ) {
-        if(desc.parent != nullptr) {
-            appendProperties(out, owner, seed, *desc.parent, onDirty);
-        }
-
-        for(const auto& prop: desc.properties) {
-            const auto* accessor = prop.accessor.get();
+        for(const auto* prop: desc.PropertiesInChain()) {
+            const auto* accessor = prop->accessor.get();
             out.push_back(makeValue(
-                prop.name,
-                prop.type,
-                prop.meta,
+                prop->name,
+                prop->type,
+                prop->meta,
                 memberOf(owner, accessor),
                 accessor->Get(seed),
                 onDirty
