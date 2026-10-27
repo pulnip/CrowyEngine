@@ -3,5 +3,6 @@ crowy_declare_check(ImageCompareCheck
 SOURCES
     ImageCompareCheck.cpp
 DEPENDS
+    Crowy::RHI
     Crowy::Serialization
 )

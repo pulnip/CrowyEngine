@@ -1,7 +1,7 @@
 crowy_declare_module(Serialization
 PUBLIC
+    Crowy::CommonRHI
     Crowy::Core
-    Crowy::RHI
 PRIVATE
     ktx
     nlohmann_json::nlohmann_json
