@@ -21,9 +21,9 @@ namespace Crowy
         f64 end = 0.0;
     };
 
-    // how long the GPU was busy with any of them: the length of their union,
-    // so a gap where the GPU starved between lists is not GPU time. An
-    // interval that ends before it begins counts as empty
+    // the length of the intervals' union, so a gap where the GPU starved
+    // between lists is not GPU time; an interval ending before it begins is
+    // empty
     constexpr f64 busySeconds(std::span<const RHIGPUInterval> intervals) {
         std::vector<RHIGPUInterval> sorted(intervals.begin(), intervals.end());
         std::ranges::sort(sorted, {}, &RHIGPUInterval::begin);

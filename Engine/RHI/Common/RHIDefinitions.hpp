@@ -290,7 +290,6 @@ namespace Crowy
         using enum RHIPixelFormat;
 
         switch(format) {
-        // Compressed format => bytes in 4x4 block
         case BC1_UNORM:
             [[fallthrough]];
         case BC1_UNORM_SRGB:
@@ -319,7 +318,6 @@ namespace Crowy
             [[fallthrough]];
         case BC7_UNORM_SRGB:
             return 16;
-        // Uncompressed format => bytes per pixel
         default:
             return detail::getBytesPerPixel(format);
         }
@@ -353,13 +351,9 @@ namespace Crowy
         CopyDst = 1 << 5,
     };
 
-    // based on D3D12 Enhanced Barrier for hazard tracking.
-    // barriers are edges whose release half rides the producer's EndPass and
-    //                    whose acquire half rides the consumer's BeginPass,
-    // both carrying the same edge value.
-    // a half whose opposite sync is None is self-contained and needs no pair.
+    // an edge's release half rides the producer's EndPass, its acquire half the
+    // consumer's BeginPass; a half whose opposite sync is None stands alone
 
-    // Pipeline Stage Scope (bit flags - stages combine)
     enum class RHIBarrierSync : u32 {
         None = 0,
         All = 1u << 0,
@@ -375,7 +369,7 @@ namespace Crowy
         AllShading = VertexShading | PixelShading | Compute,
     };
 
-    // Cache Visibility (bit flags - read accesses combine, writes stand alone)
+    // read accesses combine, a write stands alone
     enum class RHIBarrierAccess : u32 {
         // "every access compatible with the current layout" (D3D12 semantics)
         Common = 0,
@@ -393,8 +387,6 @@ namespace Crowy
         NoAccess = 1u << 31,
     };
 
-    // Physical Layout in Memory (Texture only, single value -
-    // a texture's physical bit arrangement is one thing at a time)
     enum class RHITextureLayout : u8 {
         Undefined,
         Common,
@@ -420,9 +412,8 @@ namespace Crowy
 
     inline constexpr u32 AllSubresources = 0xFFFF'FFFF;
 
-    // numMips == 0 makes firstMip a flat subresource index instead of a range;
-    // AllSubresources there selects the whole resource,
-    // which is the default.
+    // numMips == 0 makes firstMip a flat subresource index; AllSubresources
+    // there, the default, selects the whole resource
     struct RHISubresourceRange {
         u32 firstMip = AllSubresources;
         u32 numMips = 0;
@@ -442,9 +433,9 @@ namespace Crowy
 
         RHIBarrierSync syncBefore, syncAfter;
         RHIBarrierAccess accessBefore, accessAfter;
-        // acquire whose producer lives in an earlier submission: no release
-        // in this command list can pair with it, so it is self-contained
-        // even though syncBefore names real work
+        // an acquire whose producer is in an earlier submission: nothing in
+        // this list pairs with it, so it stands alone though syncBefore names
+        // real work
         bool crossSubmission = false;
 
         friend bool operator==(
@@ -515,15 +506,11 @@ namespace Crowy
         ComputeShader,
     };
 
-    enum class RHILoadAction : u8 {
-        Load,    // Preserve existing contents
-        Clear,   // Clear to specified color
-        DontCare // Don't care about existing contents
-    };
+    enum class RHILoadAction : u8 { Load, Clear, DontCare };
 
     enum class RHIStoreAction : u8 {
-        Store,    // Save contents
-        DontCare, // Don't care about existing contents
+        Store,
+        DontCare,
     };
 
     struct RHIColorAttachment {
@@ -590,7 +577,7 @@ namespace Crowy
         u32 inputSlot;
         u32 alignedByteOffset;
         RHIInputClassification classification;
-        u32 instanceDataStepRate; // For per-instance data
+        u32 instanceDataStepRate;
 
         friend bool operator==(
             const RHIVertexElement& lhs,
@@ -999,8 +986,8 @@ namespace Crowy
         CStr profile = "sm_6_6";
 
         // linked into every program the pipeline compiles, each exporting a
-        // link-time type the program declares extern; pipeline-wide because
-        // Metal links whole programs
+        // link-time type the program declares extern; Metal links whole
+        // programs
         std::vector<std::filesystem::path> linkedModules;
 
         // Only the first renderTargetCount formats participate,
@@ -1103,11 +1090,10 @@ namespace Crowy
         RHIBuffer* args = nullptr;
         u64 argsOffset = 0;
         u32 drawCount = 0;
-        // reserved for GPU-driven compaction; must stay null for now
+        // reserved for GPU-driven compaction; must stay null
         RHIBuffer* countBuffer = nullptr;
     };
 
-    // one ExecuteIndirectIndexed submission
     struct DrawBatchIndexed {
         RHIGraphicsPipelineState* pso = nullptr;
         // RHIDrawIndexedArgs[drawCount] at argsOffset
@@ -1116,7 +1102,7 @@ namespace Crowy
         u32 drawCount = 0;
         // every draw in the batch reads this one
         RHIIndexBufferView indices{};
-        // reserved for GPU-driven compaction; must stay null for now
+        // reserved for GPU-driven compaction; must stay null
         RHIBuffer* countBuffer = nullptr;
     };
 }
@@ -1136,7 +1122,6 @@ namespace Crowy
         RHIAddressMode addressV = RHIAddressMode::Wrap;
         RHIAddressMode addressW = RHIAddressMode::Wrap;
 
-        // mip-map option
         f32 mipLODBias = 0.0f;
         f32 minLOD = 0.0f, maxLOD = std::numeric_limits<f32>::max();
 
@@ -1211,7 +1196,6 @@ namespace Crowy
         .addressW = RHIAddressMode::Border
     };
 
-    // the fixed sampler table.
     // order must match Sampler.slang
     inline constexpr std::array StaticSamplers{
         LinearWrapSampler,
@@ -1261,8 +1245,8 @@ namespace Crowy
     struct RHISwapchainCreateDesc {
         void* sdlWindow = nullptr;
         RHITextureCreateDesc bufferDesc;
-        u32 bufferCount = FramesInFlight; // Triple buffering
-        bool vsync = true;                // VSync enabled by default
+        u32 bufferCount = FramesInFlight;
+        bool vsync = true;
     };
 
     struct RHIBufferViewDesc {
@@ -1293,7 +1277,6 @@ namespace Crowy
 
     struct RHIBufferSlice {
         RHIBuffer* buffer = nullptr;
-        // borrowed range
         u32 offset = 0;
         u32 size = 0;
         // where to write it from the CPU; null for a device-local slice
@@ -1320,9 +1303,8 @@ namespace Crowy
 
         RHIPixelFormat format = RHIPixelFormat::Unknown;
         u32 mostDetailedMip = 0;
-        // AllMips reads every mip below mostDetailedMip.
-        // Render target and unordered access views bind exactly one mip and
-        // ignore this.
+        // AllMips reads every mip below mostDetailedMip; render target and
+        // unordered access views bind exactly one mip and ignore this
         u32 mipCount = AllMips;
         Config config = Tex2D{};
 
@@ -1403,7 +1385,6 @@ namespace Crowy
         u32 samplerIndex = 0;
     };
 
-    // Shader Reflection for bindless model
     struct RHIShaderReflection {
         u64 entryPointIndex = std::numeric_limits<u64>::max();
         // for compute pipeline, (0, 0, 0) for others.
@@ -1421,13 +1402,8 @@ namespace Crowy
 {
     // bindless rendering api
     inline constexpr u32 DirectCbCount = 3;
-    // ceiling set by D3D12 (Metal's setBytes allows 4 KB):
-    // - global root signature holds 64 DWORDs,
-    //   - root constants cost 1 DWORD per 4 bytes,
-    //   - and each direct CBV costs 2.
-    // Notice. for performance, keep push data around 64 bytes or less
-    // - larger blocks may be spilled out of user-data registers by the driver,
-    //   costing an extra memory read per access.
+    // D3D12's root signature holds 64 DWORDs: a root constant costs one per
+    // 4 bytes, a direct CBV two (Metal's setBytes allows 4 KB)
     inline constexpr u32 PushConstantBytes = (64 - 2 * DirectCbCount) * 4;
     inline constexpr u32 CbAlign = 256;
 }

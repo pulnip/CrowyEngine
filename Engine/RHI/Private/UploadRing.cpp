@@ -63,9 +63,9 @@ namespace Crowy
                 continue;
             }
 
-            // Nothing is in flight and the ring is still full: the space is
-            // held by copies sitting in a command list nobody submitted, so
-            // no serial will ever free it.
+            // nothing is in flight and the ring is full: copies in a command
+            // list nobody submitted hold the space, and no serial will ever
+            // free it
             const bool canFlush = tail != head && flush != nullptr;
             CROWY_ASSERT(
                 canFlush,

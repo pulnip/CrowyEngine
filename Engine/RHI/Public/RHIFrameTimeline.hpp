@@ -8,9 +8,8 @@
 
 namespace Crowy
 {
-    // Which serial each in-flight frame's submission signaled. Frame N is
-    // submitted only once frame N - FramesInFlight has completed, so a
-    // frame older than the ring is complete by that contract alone.
+    // frame N is submitted only once frame N - FramesInFlight has completed,
+    // so a frame older than the ring is complete by that contract alone
     class RHIFrameTimeline {
     private:
         struct Entry {

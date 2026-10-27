@@ -20,10 +20,8 @@ namespace Crowy
     ) {
         const auto totalBytes = buffer.GetSize();
 
-        // Allocate Staging buffer
         auto alloc = ring.Allocate(totalBytes, align);
 
-        // Copy from CPU to Staging buffer
         alloc.buffer.Upload(sub.data, sub.rowPitch, alloc.offset);
 
         // brand-new resource: first use is a self-contained acquire
@@ -36,10 +34,9 @@ namespace Crowy
 
         cmdList.Copy(alloc.buffer, buffer, alloc.offset, 0, sub.rowPitch);
 
-        // creation-time uploads are consumed by later submissions, so this
-        // release stays unmatched here and completes at Close.
-        // it runs once per resource, which is why it rests wide open rather
-        // than naming the reads a caller happens to have in mind
+        // later submissions consume a creation-time upload, so this release
+        // stays unmatched until Close, wide open because the readers are
+        // unknown
         const std::array releases{RHIBufferBarrier{
             .buffer = &buffer,
             .syncBefore = RHIBarrierSync::Copy,
@@ -63,14 +60,10 @@ namespace Crowy
 
         const usize n = subs.size();
 
-        // Allocate Staging buffer
         auto alloc = ring.Allocate(totalBytes, align);
 
-        // Copy from CPU to Staging buffer (with convert pitch & packing)
         for(usize s = 0; s < n; ++s) {
             const auto& layout = layouts[s];
-            // subs[s].rowPitch == RowPitch
-            // so, copy whole slice
             for(u32 r = 0; r < layout.rowCount; ++r) {
                 alloc.buffer.Upload(
                     ptrAdd(subs[s].data, subs[s].rowPitch * r),
@@ -101,9 +94,9 @@ namespace Crowy
             );
         }
 
-        // creation-time uploads are consumed by later submissions, so this
-        // release stays unmatched here and completes at Close. any-shader
-        // read is deliberately broad - the caller does not know the consumer
+        // later submissions consume a creation-time upload, so this release
+        // stays unmatched until Close, any-shader because the readers are
+        // unknown
         const std::array releases{RHITextureBarrier{
             .texture = &texture,
             .syncBefore = RHIBarrierSync::Copy,

@@ -18,8 +18,7 @@ namespace Crowy
     }
 
     void RHIRetireQueue::Collect(u64 completed) {
-        // Tag() only ever appends with a strictly increasing value, so
-        // `tagged` is already sorted ascending - popping the front until
+        // Tag() appends strictly increasing values, so popping the front until
         // it outruns `completed` is enough
         while(!tagged.empty() && tagged.front().tag <= completed) {
             tagged.front().reclaim();

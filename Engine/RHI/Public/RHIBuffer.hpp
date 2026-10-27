@@ -14,7 +14,6 @@ namespace Crowy
         // Notice! only valid for upload buffer
         virtual void Upload(const void* data, u32 size, u32 offset = 0) = 0;
 
-        // type-safe helper
         template<typename T>
             requires(!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
         void Upload(const T& data, u32 offset = 0) {
@@ -24,7 +23,6 @@ namespace Crowy
         // Notice! only valid for readback buffer (performance issue)
         virtual void Download(void* data, u32 size, u32 offset = 0) = 0;
 
-        // type-safe helper
         template<typename T>
             requires(!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
         void Download(T& data, u32 offset = 0) {
@@ -37,7 +35,6 @@ namespace Crowy
         // Feeds RHIBufferSlice::cpuPtr; prefer Upload/Download elsewhere.
         virtual void* GetMappedPtr() noexcept = 0;
 
-        // Shader Resource
         virtual u64 GetReadableID(const RHIBufferViewDesc&) = 0;
         u64 GetReadableID() {
             return GetReadableID(

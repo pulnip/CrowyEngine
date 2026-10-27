@@ -6,9 +6,8 @@
 
 namespace Crowy
 {
-    // Names a stretch of recorded commands for a GPU capture. PIX and
-    // RenderDoc both show these, which is the difference between a capture
-    // that reads as a frame and one that reads as three hundred draws.
+    // PIX and RenderDoc show these, so a capture reads as a frame rather than
+    // as three hundred draws
     class RHIEventScope {
     private:
         RHICommandList& cmdList;

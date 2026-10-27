@@ -18,9 +18,10 @@ namespace Crowy
 {
     // what the backends check when they pair barrier halves
     enum class FakeRule : u8 {
-        // an acquire with real producer work and no crossSubmission equals
-        // no parked release, or only one older than its texture's last
-        // attachment: identical edge values would pair it past that pass
+        // an acquire with real producer work and no crossSubmission meets no
+        // parked
+        // release newer than its texture's last attachment, the pass it would
+        // skip
         UnmatchedAcquire,
         // a range released again while its earlier release is unconsumed
         StaleRelease,
@@ -43,10 +44,8 @@ namespace Crowy
         Str what;
     };
 
-    // Records every call, mirrors how both backends pair barrier halves, and
-    // then calls the base, so a pass-state misuse still aborts in Debug. A
-    // broken pairing rule is a violation, never an abort, so a test can break
-    // one on purpose.
+    // pairs barrier halves as both backends do; a broken pairing rule is a
+    // violation rather than an abort, so a test can break one on purpose
     class FakeCommandList final: public RHICommandList {
     public:
         struct ConstantBufferSet {

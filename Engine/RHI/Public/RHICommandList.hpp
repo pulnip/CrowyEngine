@@ -12,7 +12,6 @@
 
 namespace Crowy
 {
-    // helper for resource barriers: most of barriers come from a usage pair.
     enum class RHIResourceUsage : u8 {
         // first use / discard; only valid as the before side of an acquire!
         Undefined,
@@ -64,7 +63,6 @@ namespace Crowy
             case IndirectArgs:
                 return {S::ExecuteIndirect, A::IndirectArgs, L::Undefined};
 
-            // render pass
             case RenderTarget:
                 return {S::RenderTarget, A::RenderTarget, L::RenderTarget};
             case DepthWrite:
@@ -72,7 +70,6 @@ namespace Crowy
             case DepthRead:
                 return {S::DepthStencil, A::DepthRead, L::DepthRead};
 
-            // shader read - same access/layout, only the sync differs
             case SampledVertex:
                 return {S::VertexShading, A::ShaderResource, L::ShaderResource};
             case SampledFragment:
@@ -80,11 +77,9 @@ namespace Crowy
             case SampledCompute:
                 return {S::Compute, A::ShaderResource, L::ShaderResource};
 
-            // shader write
             case StorageCompute:
                 return {S::Compute, A::UnorderedAccess, L::UnorderedAccess};
 
-            // transfer
             case CopySrc:
                 return {S::Copy, A::CopySrc, L::CopySrc};
             case CopyDst:
@@ -95,7 +90,6 @@ namespace Crowy
             return {S::None, A::NoAccess, L::Undefined};
         }
 
-        // which producer stages each pass kind can release
         inline constexpr auto RenderReleaseSync = combine(
             RHIBarrierSync::All,
             RHIBarrierSync::Draw,
@@ -119,9 +113,8 @@ namespace Crowy
             return (static_cast<u32>(sync) & ~static_cast<u32>(allowed)) == 0;
         }
 
-        // Sync::None demands Access::NoAccess. the reverse is allowed:
-        // NoAccess under real sync is an execution-only dependency
-        // (e.g. cross-submission discard — nothing to flush, only ordering)
+        // Sync::None demands Access::NoAccess; NoAccess under real sync is an
+        // execution-only dependency, like a cross-submission discard
         [[maybe_unused]]
         inline constexpr bool halfIsPaired(
             RHIBarrierSync sync,
@@ -131,7 +124,6 @@ namespace Crowy
                    access == RHIBarrierAccess::NoAccess;
         }
 
-        // write accesses cannot combine with anything
         [[maybe_unused]]
         inline constexpr bool writeAccessAlone(RHIBarrierAccess access) {
             constexpr auto writes = combine(
@@ -317,12 +309,8 @@ namespace Crowy
         };
     }
 
-    // acquire against work from an earlier submission (typically the previous
-    // frame): there is no release in this command list to pair with, but the
-    // sync applies to the whole queue timeline, so ordering still holds.
-    // `before` names the earlier submission's last real use of the resource.
-    // discardContents drops the old contents (execution-only dependency) -
-    // the pass must not load them.
+    // an acquire against an earlier submission's last use `before`: no release
+    // here pairs with it; with discardContents the pass must not load it
     inline constexpr RHITextureBarrier makeCrossSubmissionBarrier(
         RHITexture& texture,
         RHIResourceUsage before,
@@ -368,7 +356,6 @@ namespace Crowy
         detail::expand(RHIResourceUsage::Undefined).access ==
         RHIBarrierAccess::NoAccess
     );
-    // no layout transition between Sampled* usages
     static_assert(
         detail::expand(RHIResourceUsage::SampledFragment).layout ==
         detail::expand(RHIResourceUsage::SampledCompute).layout
@@ -402,7 +389,6 @@ namespace Crowy
         }
 #endif
 
-        // Command list lifecycle
         virtual void Begin() {
             CROWY_ASSERT(
                 passState == PassKind::None,
@@ -421,7 +407,6 @@ namespace Crowy
             );
         }
 
-        // Render Pass control
         virtual void BeginRenderPass(
             const RHIRenderPassDesc& desc,
             std::span<const RHITextureBarrier> textureAcquires = {},
@@ -473,7 +458,6 @@ namespace Crowy
 #endif
         }
 
-        // Pipeline state
         virtual void SetPipelineState(RHIGraphicsPipelineState&) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
@@ -484,7 +468,6 @@ namespace Crowy
             CROWY_STAT(pipelineSetCount);
         }
 
-        // stride = sizeof(Vertex)
         virtual void SetVertexBuffer(
             RHIBuffer&,
             u32 slot,
@@ -543,7 +526,6 @@ namespace Crowy
             SetGraphicsConstantBuffer(*slice.buffer, slot, slice.offset);
         }
 
-        // Viewport and scissor
         virtual void SetViewport(const RHIViewport&) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
@@ -559,7 +541,6 @@ namespace Crowy
             );
         }
 
-        // Draw commands
         virtual void Draw(
             u32 vertexCount,
             u32 instanceCount = 1,
@@ -613,7 +594,6 @@ namespace Crowy
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
         }
 
-        // binds batch.pso, then issues batch.drawCount indirect draws from
         virtual void ExecuteIndirectIndexed(const DrawBatchIndexed& batch) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
@@ -633,7 +613,6 @@ namespace Crowy
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
         }
 
-        // Compute Pass control
         virtual void BeginComputePass(
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
@@ -732,7 +711,6 @@ namespace Crowy
             SetComputeConstantBuffer(*slice.buffer, slot, slice.offset);
         }
 
-        // Compute dispatch
         virtual void Dispatch(Size3D gridSize) {
             CROWY_ASSERT(
                 passState == PassKind::Compute,
@@ -789,7 +767,6 @@ namespace Crowy
             }
         }
 
-        // Blit Pass control
         virtual void BeginBlitPass(
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
@@ -835,7 +812,6 @@ namespace Crowy
 #endif
         }
 
-        // Copy operations
         virtual void Copy(
             RHIBuffer& src,
             RHIBuffer& dst,
@@ -862,7 +838,6 @@ namespace Crowy
             CROWY_STAT(copyCount);
         }
 
-        // helper for RHISwapchain(backBuffer)
         void Copy(RHITexture& src, RHISwapchain& dst) {
             auto& backBuffer = dst.GetCurrentTexture();
             Copy(src, backBuffer);
@@ -914,7 +889,7 @@ namespace Crowy
             );
         }
 
-        // the region's rows land dstRowPitch bytes apart from dstOffset on
+        // the region's rows land dstRowPitch bytes apart, starting at dstOffset
         virtual void Copy(
             RHITexture& src,
             RHIBuffer& dst,
@@ -984,17 +959,8 @@ namespace Crowy
             );
         }
 
-        // virtual void WaitUntilCompleted() = 0;
-
-        // Debug markers (for GPU profiling)
         virtual void BeginEvent(CStr name) = 0;
         virtual void EndEvent() = 0;
         virtual void SetMarker(CStr name) = 0;
-
-        // // for UI,
-        // //   DeviceContext for D3D11,
-        // //   CommandBuffer for Metal,
-        // //   CommandList for D3D12
-        // virtual void* GetNative() noexcept = 0;
     };
 }

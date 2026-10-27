@@ -12,7 +12,7 @@ namespace Crowy
 {
     namespace
     {
-        // far past any BMP write; a handler that never runs must not hang
+        // far past any image write; a handler that never runs must not hang
         // the exit
         constexpr auto DumpJoinLimit = std::chrono::seconds(5);
     }

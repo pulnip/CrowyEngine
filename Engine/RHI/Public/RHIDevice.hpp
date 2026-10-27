@@ -63,10 +63,9 @@ namespace Crowy
         // block until every submission so far has completed
         virtual void WaitIdle() = 0;
 
-        // how long the GPU was busy with frame `frame`: the union of its
-        // command lists' runs. Empty until the frame has completed and been
-        // read back, once it ages out, and on a backend that cannot time the
-        // GPU - never a silent 0
+        // the union of frame `frame`'s command list runs; empty, never 0, until
+        // it completes and is read back, after it ages out, and on an untimed
+        // GPU
         virtual std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept {
             return std::nullopt;
         }

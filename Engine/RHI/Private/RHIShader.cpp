@@ -86,9 +86,8 @@ namespace
         }                                                                      \
     } while(false)
 
-// The result decides success;
-// the blob only carries the explanation;
-// which is worth keeping on failure and worth logging on success.
+// the result decides success; the diagnostics only explain it, kept on
+// failure and logged on success
 #define CHECK_SRESULT_DIAG(expr, diagnostics, msg)                             \
     do {                                                                       \
         if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]] {            \
@@ -160,9 +159,9 @@ namespace Crowy
 
                 switch(category) {
                 case Mixed: {
-                    // Metal legalizes DescriptorHandle<T> members into
-                    // real texture slots inside the argument buffer,
-                    // so the CB param consumes ConstantBuffer + ShaderResource.
+                    // Metal legalizes DescriptorHandle<T> members into texture
+                    // slots in the argument buffer, so the CB takes a
+                    // ConstantBuffer and a ShaderResource
                     bool hasConstantBuffer = false;
                     const auto subCount = param->getCategoryCount();
                     for(unsigned j = 0; j < subCount; ++j) {
@@ -205,7 +204,6 @@ namespace Crowy
             for(SlangUInt i = 0; i < count; ++i) {
                 auto entryPoint = layout.getEntryPointByIndex(i);
 
-                // thread group size
                 SlangUInt threadGroupSize[3] = {1, 1, 1};
                 entryPoint->getComputeThreadGroupSize(3, threadGroupSize);
 
@@ -225,8 +223,7 @@ namespace Crowy
             return refl;
         }
 
-        // names in StaticSamplers order;
-        // must match Engine/Shader/Sampler.slang
+        // in StaticSamplers order; must match Engine/Shader/Sampler.slang
         constexpr std::array staticSamplerNames{
             "linearWrap",
             "linearClamp",
@@ -355,7 +352,6 @@ namespace Crowy
             "Failed to create session"
         );
 
-        // Compile
         IModule* mod = nullptr;
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
@@ -427,7 +423,6 @@ namespace Crowy
             linkedNames += toUTF8String(linked);
         }
 
-        // entry points
         std::vector<ComPtr<IEntryPoint>> entryPoints;
         if(onlyEntryPoint.empty()) {
             const auto entryPointCount = mod->getDefinedEntryPointCount();
@@ -483,7 +478,6 @@ namespace Crowy
             );
         }
 
-        // link to single program
         {
             ComPtr<ISlangBlob> diagnostics = nullptr;
             CHECK_SRESULT_DIAG(

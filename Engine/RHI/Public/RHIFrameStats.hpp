@@ -4,10 +4,8 @@
 
 namespace Crowy
 {
-    // What one frame asked the RHI to do, counted at the backend-neutral layer.
-    // The point is the shape of these numbers against the scene:
-    // work that scales with the draw count instead of the pass count is
-    // the D3D11 immediate-context habit leaking into a D3D12 backend.
+    // work that scales with the draw count instead of the pass count is the
+    // D3D11 immediate-context habit leaking into a D3D12 backend
     struct RHIFrameStats {
         // one per recorded command list. on DX12 this is also how often
         // the descriptor heaps and the root signatures get rebound

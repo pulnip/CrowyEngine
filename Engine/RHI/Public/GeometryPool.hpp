@@ -51,9 +51,8 @@ namespace Crowy
         u32 indexMetadata = 0;
     };
 
-    // one big vertex/index buffer pair shared by every pooled mesh, so
-    // draws differ only by firstIndex/baseVertex and geometry never
-    // rebinds between them. Sub-ranges come from OffsetAllocator.
+    // one vertex/index buffer pair, suballocated by OffsetAllocator for every
+    // pooled mesh, so draws differ only by firstIndex and baseVertex
     class GeometryPool {
     public:
         using AddResult = std::expected<GeometryAllocation, Str>;
@@ -99,9 +98,8 @@ namespace Crowy
         ~GeometryPool();
         CROWY_DECLARE_PINNED(GeometryPool)
 
-        // suballocates now and keeps a copy of the data; nothing touches the
-        // GPU until RecordUploads. A mesh that does not fit, in the pool or
-        // in this frame's staging budget, takes no space.
+        // suballocates now and copies the data for RecordUploads; a mesh that
+        // fits neither the pool nor this frame's staging budget takes no space
         [[nodiscard]] AddResult Add(
             std::span<const Vertex> vertices,
             std::span<const u32> indices
@@ -110,9 +108,9 @@ namespace Crowy
         // the GPU, so draws already recorded this frame still read it whole
         void Free(const GeometryAllocation&);
 
-        // records every copy Add queued as one blit pass, outside any other
-        // pass, and returns the releases every pass drawing from the pool that
-        // frame must acquire; empty when nothing was queued
+        // one blit pass for every copy Add queued; returns the releases each
+        // pass drawing from the pool that frame acquires, empty when nothing
+        // was queued
         std::span<const RHIBufferBarrier> RecordUploads(RHICommandList&);
 
         RHIBuffer& GetVertexBuffer() { return *vertexBuffer; }

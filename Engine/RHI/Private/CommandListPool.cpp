@@ -34,7 +34,6 @@ namespace Crowy
         auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex >= slot.cmdLists.size()) {
-            // reserve new commandList, if not enough
             auto newCmdList = device.CreateCommandList();
             slot.cmdLists.emplace_back(std::move(newCmdList));
 
@@ -53,8 +52,8 @@ namespace Crowy
         auto& slot = slots[currentIndex()];
 
         if(slot.nextIndex == 0) [[unlikely]] {
-            // empty cmdList submit pattern
-            // for if none of renderer use cmdList in this frame
+            // one empty list is submitted when no renderer recorded one this
+            // frame
             auto& cmdList = Acquire();
             cmdList.Begin();
             cmdList.Close();

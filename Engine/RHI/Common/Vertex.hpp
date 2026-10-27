@@ -8,18 +8,13 @@
 
 namespace Crowy
 {
-    // Standard vertex format
-    // Matches common 3D model formats (glTF, FBX, OBJ)
     struct Vertex {
         Vec3 position;
         Vec3 normal;
         Vec2 texCoord;
-        // xyz = tangent direction, along increasing u.
-        // w = handedness sign, so the direction of increasing v is
-        // w * cross(normal, tangent.xyz).
+        // xyz runs along increasing u; w is the handedness, so increasing v
+        // runs along w * cross(normal, tangent.xyz)
         Vec4 tangent;
-
-        // Optional: vertex colors, bone weights, etc. can be added later
     };
     static_assert(sizeof(Vertex) == 48, "Vertex should be 48 bytes");
     static_assert(
@@ -31,7 +26,7 @@ namespace Crowy
         RHIVertexElement{
             .semanticName = "POSITION",
             .semanticIndex = 0,
-            .format = RHIPixelFormat::RGB32_FLOAT, // float3 (12 bytes)
+            .format = RHIPixelFormat::RGB32_FLOAT,
             .inputSlot = 0,
             .alignedByteOffset = 0,
             .classification = RHIInputClassification::PerVertex,
@@ -40,7 +35,7 @@ namespace Crowy
         RHIVertexElement{
             .semanticName = "NORMAL",
             .semanticIndex = 0,
-            .format = RHIPixelFormat::RGB32_FLOAT, // float3 (12 bytes)
+            .format = RHIPixelFormat::RGB32_FLOAT,
             .inputSlot = 0,
             .alignedByteOffset = 12,
             .classification = RHIInputClassification::PerVertex,

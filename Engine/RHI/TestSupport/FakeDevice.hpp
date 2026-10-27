@@ -145,10 +145,8 @@ namespace Crowy
         void* GetNative() noexcept override { return nullptr; }
     };
 
-    // compiles nothing: graphics pipelines are counted fakes, and a
-    // deferred retire waits in `deferred` until the test runs it; transient
-    // slices come from one CPU buffer that never moves; textures are fakes
-    // that remember their descs, and buffers CPU memory
+    // compiles nothing; a deferred retire waits in `deferred` until the test
+    // runs it, and transient slices come from one CPU buffer that never moves
     class FakeDevice final: public RHIDevice {
     public:
         using Reclaims = std::vector<std::move_only_function<void()>>;

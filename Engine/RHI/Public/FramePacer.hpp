@@ -9,8 +9,6 @@
 
 namespace Crowy
 {
-    // Frame pacing and synchronization system
-    // Manages triple buffering, frame timing, and CPU-GPU synchronization
     class FramePacer {
     private:
         RHIDevice& device;
@@ -36,16 +34,13 @@ namespace Crowy
         constexpr f64 GetLastWaitTime() const noexcept { return 0.0; }
 #endif
 
-        // Frame N begins only after frame N - FramesInFlight has
-        // completed, so its per-frame slot N % FramesInFlight is free.
-        // Returns N; frames count from 1.
+        // frame N begins once frame N - FramesInFlight has completed, freeing
+        // slot N % FramesInFlight; returns N, counting from 1
         u64 BeginFrame();
         u64 CurrentFrame() const noexcept { return frame; }
 
-        // End the current frame for rendering
         void EndFrame(std::span<RHICommandList*>, RHISwapchain& swapchain);
 
-        // Wait for all frames to complete
         void WaitForIdle();
     };
 }

@@ -27,7 +27,6 @@ namespace Crowy
         bool written = false;
     };
 
-    // Swapchain for presenting rendered images to the screen
     class RHISwapchain {
     protected:
         // the backend's half of one request: write the presented image to
@@ -79,7 +78,7 @@ namespace Crowy
         // whether that frame or that path already has a dump queued or
         // being written
         bool IsFrameDumpQueued(u64 frame, StrView path) const noexcept;
-        // dump `frame` to path as a BMP once it presents. The caller checks
+        // dump `frame` to path once it presents; the caller checks
         // IsFrameDumpQueued and the MaxFrameDumps cap first
         void RequestFrameDump(Str path, u64 frame);
         // queued, plus finished but not yet taken: 0 only once every
@@ -89,10 +88,9 @@ namespace Crowy
         std::vector<FrameDumpOutcome> TakeFrameDumpOutcomes();
 
     protected:
-        // the backend's half, called once per presented frame until it
-        // comes back empty: every request due at or before `frame`. A frame
-        // without a drawable presents nothing, so its request rides on the
-        // next one, and the outcome says which
+        // every request due at or before `frame`; a frame without a drawable
+        // presents nothing, so its request rides on the next and the outcome
+        // says
         std::optional<FrameDumpJob> TakeFrameDump(u64 frame);
     };
 }

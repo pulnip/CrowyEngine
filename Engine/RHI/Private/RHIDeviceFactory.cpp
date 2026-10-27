@@ -9,7 +9,6 @@
 // links without a backend, as a device-less test does
 namespace Crowy
 {
-    // each platform should implement this function
 #if defined(_WIN32)
     RHIDeviceRAII createDX12Device();
 #elif defined(__APPLE__)

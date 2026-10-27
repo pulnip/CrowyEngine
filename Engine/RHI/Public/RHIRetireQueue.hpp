@@ -8,10 +8,8 @@
 
 namespace Crowy
 {
-    // Retires GPU-referenced state once nothing GPU-side can still read it.
-    // A reclaim deferred mid-frame has no batch to wait behind yet - the
-    // frame's commands are still being recorded - so it waits in `pending`
-    // until the next Tag() attaches it to whatever is about to be submitted.
+    // a reclaim deferred mid-frame has no batch to wait behind yet, so it waits
+    // in `pending` until the next Tag() attaches it to the next submission
     class RHIRetireQueue {
     public:
         using Reclaim = std::move_only_function<void()>;
@@ -30,11 +28,8 @@ namespace Crowy
         // the batch about to be submitted
         void Defer(Reclaim reclaim);
 
-        // Submit (a): stamp everything deferred since the last Tag with
-        // this batch's frame value
         void Tag(u64 value);
 
-        // Submit entry (b): reclaim everything whose batch has completed
         void Collect(u64 completed);
 
         // reclaim everything unconditionally - only once nothing GPU-side
