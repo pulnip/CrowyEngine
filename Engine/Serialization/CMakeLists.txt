@@ -1,12 +1,8 @@
 crowy_declare_module(Serialization
 PUBLIC
-    Crowy::CommonRHI
     Crowy::Core
 PRIVATE
-    ktx
     nlohmann_json::nlohmann_json
-    stb
-    ufbx
 )
 
 if(CROWY_ENABLE_TEST)
