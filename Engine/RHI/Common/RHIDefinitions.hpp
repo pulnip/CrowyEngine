@@ -146,7 +146,7 @@ namespace Crowy
         BC7_UNORM_SRGB,
     };
 
-    inline constexpr auto IsDepthFormat(RHIPixelFormat format) {
+    inline constexpr auto isDepthFormat(RHIPixelFormat format) {
         using enum RHIPixelFormat;
 
         switch(format) {
@@ -163,7 +163,7 @@ namespace Crowy
         }
     }
 
-    inline constexpr auto HasStencil(RHIPixelFormat format) {
+    inline constexpr auto hasStencil(RHIPixelFormat format) {
         using enum RHIPixelFormat;
 
         switch(format) {
@@ -176,19 +176,19 @@ namespace Crowy
         }
     }
 
-    inline constexpr bool IsBlockCompressed(RHIPixelFormat format) {
+    inline constexpr bool isBlockCompressed(RHIPixelFormat format) {
         using enum RHIPixelFormat;
 
         return BC1_UNORM <= format && format <= BC7_UNORM_SRGB;
     }
 
-    inline constexpr u32 GetBlockDim(RHIPixelFormat format) {
-        return IsBlockCompressed(format) ? 4 : 1;
+    inline constexpr u32 getBlockDim(RHIPixelFormat format) {
+        return isBlockCompressed(format) ? 4 : 1;
     }
 
     namespace detail
     {
-        inline constexpr u32 GetBytesPerPixel(RHIPixelFormat format) {
+        inline constexpr u32 getBytesPerPixel(RHIPixelFormat format) {
             using enum RHIPixelFormat;
 
             switch(format) {
@@ -286,7 +286,7 @@ namespace Crowy
         }
     }
 
-    inline constexpr u32 GetBytesPerBlock(RHIPixelFormat format) {
+    inline constexpr u32 getBytesPerBlock(RHIPixelFormat format) {
         using enum RHIPixelFormat;
 
         switch(format) {
@@ -321,22 +321,22 @@ namespace Crowy
             return 16;
         // Uncompressed format => bytes per pixel
         default:
-            return detail::GetBytesPerPixel(format);
+            return detail::getBytesPerPixel(format);
         }
     }
 
-    inline constexpr u32 GetRowPitch(RHIPixelFormat format, u32 width) {
-        const u32 dim = GetBlockDim(format);
-        return ceilDiv(width, dim) * GetBytesPerBlock(format);
+    inline constexpr u32 getRowPitch(RHIPixelFormat format, u32 width) {
+        const u32 dim = getBlockDim(format);
+        return ceilDiv(width, dim) * getBytesPerBlock(format);
     }
 
     // a row of a texture copied into a buffer, padded to the backend's rule
-    inline constexpr u32 GetReadbackRowPitch(
+    inline constexpr u32 getReadbackRowPitch(
         RHIPixelFormat format,
         u32 width,
         const RHICapabilities& caps
     ) {
-        return nextMul(GetRowPitch(format, width), caps.textureRowPitchAlign);
+        return nextMul(getRowPitch(format, width), caps.textureRowPitchAlign);
     }
 
     enum class RHITextureUsage : u8 {
@@ -418,13 +418,13 @@ namespace Crowy
             default;
     };
 
-    inline constexpr u32 RHI_ALL_SUBRESOURCES = 0xFFFF'FFFF;
+    inline constexpr u32 AllSubresources = 0xFFFF'FFFF;
 
     // numMips == 0 makes firstMip a flat subresource index instead of a range;
-    // RHI_ALL_SUBRESOURCES there selects the whole resource,
+    // AllSubresources there selects the whole resource,
     // which is the default.
     struct RHISubresourceRange {
-        u32 firstMip = RHI_ALL_SUBRESOURCES;
+        u32 firstMip = AllSubresources;
         u32 numMips = 0;
         u32 firstArraySlice = 0;
         u32 numArraySlice = 0;
@@ -556,7 +556,7 @@ namespace Crowy
         UInt32,
     };
 
-    inline constexpr u32 IndexSize(RHIIndexFormat format) {
+    inline constexpr u32 indexSize(RHIIndexFormat format) {
         return format == RHIIndexFormat::UInt16 ? 2 : 4;
     }
 
@@ -932,12 +932,12 @@ namespace Crowy
         ) = default;
     };
 
-    inline constexpr u32 RHI_MAX_RENDER_TARGETS = 8;
+    inline constexpr u32 MaxRenderTargets = 8;
 
     struct RHIBlendState {
         bool alphaToCoverageEnable = false;
         bool independentBlendEnable = false;
-        std::array<RHIRenderTargetBlendState, RHI_MAX_RENDER_TARGETS>
+        std::array<RHIRenderTargetBlendState, MaxRenderTargets>
             renderTargets;
 
         friend bool operator==(const RHIBlendState&, const RHIBlendState&) =
@@ -995,7 +995,7 @@ namespace Crowy
         std::optional<RHIDepthStencilState> depthStencil = std::nullopt;
         std::optional<RHIBlendState> blend = std::nullopt;
 
-        std::array<RHIPixelFormat, RHI_MAX_RENDER_TARGETS> renderTargetFormats;
+        std::array<RHIPixelFormat, MaxRenderTargets> renderTargetFormats;
         usize renderTargetCount = 1;
 
         // HLSL shader model; Metal ignores it
@@ -1150,7 +1150,7 @@ namespace Crowy
         Color borderColor = Colors::Black;
     };
 
-    inline constexpr RHISamplerState LINEAR_WRAP_SAMPLER{
+    inline constexpr RHISamplerState LinearWrapSampler{
         .minFilter = RHIFilter::Linear,
         .magFilter = RHIFilter::Linear,
         .mipFilter = RHIFilter::Linear,
@@ -1158,7 +1158,7 @@ namespace Crowy
         .addressV = RHIAddressMode::Wrap,
         .addressW = RHIAddressMode::Wrap
     };
-    inline constexpr RHISamplerState LINEAR_CLAMP_SAMPLER{
+    inline constexpr RHISamplerState LinearClampSampler{
         .minFilter = RHIFilter::Linear,
         .magFilter = RHIFilter::Linear,
         .mipFilter = RHIFilter::Linear,
@@ -1166,7 +1166,7 @@ namespace Crowy
         .addressV = RHIAddressMode::Clamp,
         .addressW = RHIAddressMode::Clamp
     };
-    inline constexpr RHISamplerState LINEAR_MIRROR_SAMPLER{
+    inline constexpr RHISamplerState LinearMirrorSampler{
         .minFilter = RHIFilter::Linear,
         .magFilter = RHIFilter::Linear,
         .mipFilter = RHIFilter::Linear,
@@ -1174,7 +1174,7 @@ namespace Crowy
         .addressV = RHIAddressMode::Mirror,
         .addressW = RHIAddressMode::Mirror
     };
-    inline constexpr RHISamplerState LINEAR_BORDER_SAMPLER{
+    inline constexpr RHISamplerState LinearBorderSampler{
         .minFilter = RHIFilter::Linear,
         .magFilter = RHIFilter::Linear,
         .mipFilter = RHIFilter::Linear,
@@ -1183,7 +1183,7 @@ namespace Crowy
         .addressW = RHIAddressMode::Border
     };
 
-    inline constexpr RHISamplerState NEAREST_WRAP_SAMPLER{
+    inline constexpr RHISamplerState NearestWrapSampler{
         .minFilter = RHIFilter::Nearest,
         .magFilter = RHIFilter::Nearest,
         .mipFilter = RHIFilter::Nearest,
@@ -1191,7 +1191,7 @@ namespace Crowy
         .addressV = RHIAddressMode::Wrap,
         .addressW = RHIAddressMode::Wrap
     };
-    inline constexpr RHISamplerState NEAREST_CLAMP_SAMPLER{
+    inline constexpr RHISamplerState NearestClampSampler{
         .minFilter = RHIFilter::Nearest,
         .magFilter = RHIFilter::Nearest,
         .mipFilter = RHIFilter::Nearest,
@@ -1199,7 +1199,7 @@ namespace Crowy
         .addressV = RHIAddressMode::Clamp,
         .addressW = RHIAddressMode::Clamp
     };
-    inline constexpr RHISamplerState NEAREST_MIRROR_SAMPLER{
+    inline constexpr RHISamplerState NearestMirrorSampler{
         .minFilter = RHIFilter::Nearest,
         .magFilter = RHIFilter::Nearest,
         .mipFilter = RHIFilter::Nearest,
@@ -1207,7 +1207,7 @@ namespace Crowy
         .addressV = RHIAddressMode::Mirror,
         .addressW = RHIAddressMode::Mirror
     };
-    inline constexpr RHISamplerState NEAREST_BORDER_SAMPLER{
+    inline constexpr RHISamplerState NearestBorderSampler{
         .minFilter = RHIFilter::Nearest,
         .magFilter = RHIFilter::Nearest,
         .mipFilter = RHIFilter::Nearest,
@@ -1218,15 +1218,15 @@ namespace Crowy
 
     // the fixed sampler table.
     // order must match Sampler.slang
-    inline constexpr std::array RHI_STATIC_SAMPLERS{
-        LINEAR_WRAP_SAMPLER,
-        LINEAR_CLAMP_SAMPLER,
-        LINEAR_MIRROR_SAMPLER,
-        LINEAR_BORDER_SAMPLER,
-        NEAREST_WRAP_SAMPLER,
-        NEAREST_CLAMP_SAMPLER,
-        NEAREST_MIRROR_SAMPLER,
-        NEAREST_BORDER_SAMPLER
+    inline constexpr std::array StaticSamplers{
+        LinearWrapSampler,
+        LinearClampSampler,
+        LinearMirrorSampler,
+        LinearBorderSampler,
+        NearestWrapSampler,
+        NearestClampSampler,
+        NearestMirrorSampler,
+        NearestBorderSampler
     };
 }
 
@@ -1259,14 +1259,14 @@ struct std::hash<Crowy::RHISamplerState> {
 
 namespace Crowy
 {
-    inline constexpr u32 RHI_FRAMES_IN_FLIGHT = 3;
-    inline constexpr u64 RHI_UPLOAD_STAGING_BYTES = 32ull << 20;
-    inline constexpr u64 RHI_TRANSIENT_STAGING_BYTES = 32ull << 20;
+    inline constexpr u32 FramesInFlight = 3;
+    inline constexpr u64 UploadStagingBytes = 32ull << 20;
+    inline constexpr u64 TransientStagingBytes = 32ull << 20;
 
     struct RHISwapchainCreateDesc {
         void* sdlWindow = nullptr;
         RHITextureCreateDesc bufferDesc;
-        u32 bufferCount = RHI_FRAMES_IN_FLIGHT; // Triple buffering
+        u32 bufferCount = FramesInFlight; // Triple buffering
         bool vsync = true;                      // VSync enabled by default
     };
 
@@ -1309,7 +1309,7 @@ namespace Crowy
         }
     };
 
-    inline constexpr u32 RHI_ALL_MIPS = 0xFFFF'FFFF;
+    inline constexpr u32 AllMips = 0xFFFF'FFFF;
 
     struct RHITextureViewDesc {
         struct Tex2D {
@@ -1325,10 +1325,10 @@ namespace Crowy
 
         RHIPixelFormat format = RHIPixelFormat::Unknown;
         u32 mostDetailedMip = 0;
-        // RHI_ALL_MIPS reads every mip below mostDetailedMip.
+        // AllMips reads every mip below mostDetailedMip.
         // Render target and unordered access views bind exactly one mip and
         // ignore this.
-        u32 mipCount = RHI_ALL_MIPS;
+        u32 mipCount = AllMips;
         Config config = Tex2D{};
 
         friend bool operator==(
@@ -1403,7 +1403,7 @@ namespace Crowy
     struct RHISamplerUse {
         // backend binding index ([[sampler(n)]] on Metal)
         u32 slot = 0;
-        // index into RHI_STATIC_SAMPLERS
+        // index into StaticSamplers
         u32 samplerIndex = 0;
     };
 
@@ -1424,7 +1424,7 @@ namespace Crowy
 namespace Crowy
 {
     // bindless rendering api
-    inline constexpr u32 RHI_NUM_DIRECT_CBS = 3;
+    inline constexpr u32 DirectCbCount = 3;
     // ceiling set by D3D12 (Metal's setBytes allows 4 KB):
     // - global root signature holds 64 DWORDs,
     //   - root constants cost 1 DWORD per 4 bytes,
@@ -1432,7 +1432,7 @@ namespace Crowy
     // Notice. for performance, keep push data around 64 bytes or less
     // - larger blocks may be spilled out of user-data registers by the driver,
     //   costing an extra memory read per access.
-    inline constexpr u32 RHI_PUSH_CONSTANT_BYTES =
-        (64 - 2 * RHI_NUM_DIRECT_CBS) * 4;
-    inline constexpr u32 RHI_CB_ALIGN = 256;
+    inline constexpr u32 PushConstantBytes =
+        (64 - 2 * DirectCbCount) * 4;
+    inline constexpr u32 CbAlign = 256;
 }

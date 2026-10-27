@@ -70,7 +70,7 @@ namespace Crowy
         CROWY_ASSERT(
             width > 0 && height > 0 &&
                 bytes.size() >=
-                    usize{rowPitch} * (height - 1) + GetRowPitch(format, width),
+                    usize{rowPitch} * (height - 1) + getRowPitch(format, width),
             "the rows do not fit the bytes"
         );
 

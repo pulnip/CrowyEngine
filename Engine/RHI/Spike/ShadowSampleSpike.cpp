@@ -115,7 +115,7 @@ namespace Crowy
             const RHIColorAttachment& backBuffer
         ) override {
             // pass 1 writes, pass 2 reads
-            const auto depthEdge = MakeBarrier(
+            const auto depthEdge = makeBarrier(
                 *depth,
                 RHIResourceUsage::DepthWrite,
                 RHIResourceUsage::SampledFragment
@@ -129,7 +129,7 @@ namespace Crowy
             {
                 const std::array acquires{
                     // last frame's read; the clear drops what it read
-                    MakeCrossSubmissionBarrier(
+                    makeCrossSubmissionBarrier(
                         *depth,
                         RHIResourceUsage::SampledFragment,
                         RHIResourceUsage::DepthWrite,

@@ -59,7 +59,7 @@ namespace Crowy
         const MaterialPipelineDesc& material,
         const PassPipelineDesc& pass
     ) {
-        CROWY_ASSERT(pass.renderTargetFormats.size() <= RHI_MAX_RENDER_TARGETS);
+        CROWY_ASSERT(pass.renderTargetFormats.size() <= MaxRenderTargets);
 
         const bool depthOnly = pass.renderTargetFormats.empty();
         const auto& state = pass.state;

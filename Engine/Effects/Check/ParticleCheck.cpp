@@ -115,7 +115,7 @@ namespace
 
 int main() {
     try {
-        auto device = CreateDevice();
+        auto device = createDevice();
         std::println("ParticleCheck");
 
         const bool passed = checkReplay(*device);

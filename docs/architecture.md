@@ -32,7 +32,7 @@
   프레임 N-1은 끝났고 N은 아직 시작 안 한 지점이다.
   외부에서 값을 바꿔도 프레임 중간에 끼어들지 않는다.
   `--hold`로 멈춰 있을 때도 이 지점에서 계속 요청을 받는다.
-- **in-flight는 3프레임이다**(`RHI_FRAMES_IN_FLIGHT = 3`).
+- **in-flight는 3프레임이다**(`FramesInFlight = 3`).
   `BeginFrame`이 N-3의 완료를 기다리니까, 프레임별 버퍼는 3벌이면 안전하게 다시 쓸 수 있다.
 - **고정 tick은 정수 나노초로 센다.**
   `FixedTickClock`([FixedTickClock.hpp](../Engine/Core/Public/FixedTickClock.hpp))은 1/60초를 `16'666'667`ns로 한 번만 반올림해 두고 남은 시간은 carry로 넘긴다.

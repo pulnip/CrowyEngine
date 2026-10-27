@@ -554,7 +554,7 @@ int main(void){
 
         const TerrainParams params{};
 
-        auto device = CreateDevice();
+        auto device = createDevice();
 
         std::println("TerrainMarchCheck");
 

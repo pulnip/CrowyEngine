@@ -348,7 +348,7 @@ namespace Crowy
                 updateTexture(cmdList, *tex);
                 break;
             case ImTextureStatus_WantDestroy:
-                if(tex->UnusedFrames >= RHI_FRAMES_IN_FLIGHT)
+                if(tex->UnusedFrames >= FramesInFlight)
                     destroyTexture(*tex);
                 break;
             default:
@@ -431,7 +431,7 @@ namespace Crowy
         // the previous readers live in earlier submissions' UI passes;
         // a partial rect update must keep the untouched texels, so no discard
         const std::array acquires{
-            MakeCrossSubmissionBarrier(
+            makeCrossSubmissionBarrier(
                 texture,
                 RHIResourceUsage::SampledFragment,
                 RHIResourceUsage::CopyDst
@@ -451,7 +451,7 @@ namespace Crowy
         // this frame's UI pass samples the texture again - a real edge whose
         // acquire half goes back to the caller through TextureAcquires()
         const std::array releases{
-            MakeBarrier(
+            makeBarrier(
                 texture,
                 RHIResourceUsage::CopyDst,
                 RHIResourceUsage::SampledFragment

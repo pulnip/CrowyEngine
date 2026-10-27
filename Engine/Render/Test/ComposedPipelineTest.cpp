@@ -250,8 +250,8 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
         EXPECT_EQ(
             f.Pass("NormalsPrepass").acquires,
             (TextureBarriers{
-                MakeCrossSubmissionBarrier(depth, DepthWrite, DepthWrite, true),
-                MakeCrossSubmissionBarrier(
+                makeCrossSubmissionBarrier(depth, DepthWrite, DepthWrite, true),
+                makeCrossSubmissionBarrier(
                     normals,
                     SampledFragment,
                     RenderTarget,
@@ -262,15 +262,15 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
         EXPECT_EQ(
             f.Pass("NormalsPrepass").releases,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, DepthWrite),
-                MakeBarrier(normals, RenderTarget, SampledFragment)
+                makeBarrier(depth, DepthWrite, DepthWrite),
+                makeBarrier(normals, RenderTarget, SampledFragment)
             })
         );
         EXPECT_EQ(
             f.Pass("Opaque").acquires,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, DepthWrite),
-                MakeCrossSubmissionBarrier(
+                makeBarrier(depth, DepthWrite, DepthWrite),
+                makeCrossSubmissionBarrier(
                     color,
                     SampledFragment,
                     RenderTarget,
@@ -281,41 +281,41 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
         EXPECT_EQ(
             f.Pass("Opaque").releases,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, SampledFragment),
-                MakeBarrier(color, RenderTarget, RenderTarget)
+                makeBarrier(depth, DepthWrite, SampledFragment),
+                makeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Outline").acquires,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, SampledFragment),
-                MakeBarrier(normals, RenderTarget, SampledFragment),
-                MakeBarrier(color, RenderTarget, RenderTarget)
+                makeBarrier(depth, DepthWrite, SampledFragment),
+                makeBarrier(normals, RenderTarget, SampledFragment),
+                makeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Outline").releases,
             (TextureBarriers{
-                MakeBarrier(depth, SampledFragment, DepthWrite),
-                MakeBarrier(color, RenderTarget, RenderTarget)
+                makeBarrier(depth, SampledFragment, DepthWrite),
+                makeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Translucent").acquires,
             (TextureBarriers{
-                MakeBarrier(depth, SampledFragment, DepthWrite),
-                MakeBarrier(color, RenderTarget, RenderTarget)
+                makeBarrier(depth, SampledFragment, DepthWrite),
+                makeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Translucent").releases,
-            TextureBarriers{MakeBarrier(color, RenderTarget, SampledFragment)}
+            TextureBarriers{makeBarrier(color, RenderTarget, SampledFragment)}
         );
         EXPECT_EQ(
             f.Pass("Post1").acquires,
             (TextureBarriers{
-                MakeBarrier(color, RenderTarget, SampledFragment),
-                MakeCrossSubmissionBarrier(
+                makeBarrier(color, RenderTarget, SampledFragment),
+                makeCrossSubmissionBarrier(
                     intermediate,
                     SampledFragment,
                     RenderTarget,
@@ -326,19 +326,19 @@ TEST(ComposedPipeline, AToonShapedPipelineComposesFromPublicHeaders) {
         EXPECT_EQ(
             f.Pass("Post1").releases,
             TextureBarriers{
-                MakeBarrier(intermediate, RenderTarget, SampledFragment)
+                makeBarrier(intermediate, RenderTarget, SampledFragment)
             }
         );
         EXPECT_EQ(
             f.Pass("Post2").acquires,
             (TextureBarriers{
-                MakeBarrier(back, Undefined, RenderTarget),
-                MakeBarrier(intermediate, RenderTarget, SampledFragment)
+                makeBarrier(back, Undefined, RenderTarget),
+                makeBarrier(intermediate, RenderTarget, SampledFragment)
             })
         );
         EXPECT_EQ(
             f.Pass("Post2").releases,
-            TextureBarriers{MakeBarrier(back, RenderTarget, Present)}
+            TextureBarriers{makeBarrier(back, RenderTarget, Present)}
         );
 
         EXPECT_TRUE(f.cmdList.violations.empty())

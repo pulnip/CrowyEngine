@@ -97,7 +97,7 @@ namespace Crowy
                 "a dispatch names each field it touches once"
             );
             if(pending[indexOf(*touches[t])]) {
-                scratch.push_back(MakeBarrier(
+                scratch.push_back(makeBarrier(
                     touches[t]->Buffer(),
                     RHIResourceUsage::StorageCompute,
                     RHIResourceUsage::StorageCompute

@@ -53,7 +53,7 @@ namespace Crowy
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override{
             pso = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
-                    .vertexLayout = VERTEX_INPUT_LAYOUT,
+                    .vertexLayout = VertexInputLayout,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
                         .path = "Engine/RHI/Sample/NormalMapping.slang",

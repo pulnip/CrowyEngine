@@ -124,7 +124,7 @@ namespace Crowy
         CROWY_ASSERT(backBuffer.loadAction != RHILoadAction::Load,
             "discarding acquire but the pass loads previous contents"
         );
-        return MakeBarrier(
+        return makeBarrier(
             *backBuffer.texture,
             RHIResourceUsage::Undefined,
             RHIResourceUsage::RenderTarget
@@ -132,7 +132,7 @@ namespace Crowy
     }
     // Present ordering is the swapchain's guarantee, so no pair needed
     inline RHITextureBarrier ReleaseBackBuffer(const RHIColorAttachment& backBuffer){
-        return MakeBarrier(
+        return makeBarrier(
             *backBuffer.texture,
             RHIResourceUsage::RenderTarget,
             RHIResourceUsage::Present
@@ -145,7 +145,7 @@ namespace Crowy
             if(runtimeConfig.project)
                 setProjectRoot(*runtimeConfig.project);
 
-            auto device = CreateDevice();
+            auto device = createDevice();
 
             OS os(runtimeConfig, *device);
             T app;

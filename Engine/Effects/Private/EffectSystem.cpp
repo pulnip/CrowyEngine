@@ -10,7 +10,7 @@
 
 namespace Crowy
 {
-    static_assert(sizeof(EffectPush) <= RHI_PUSH_CONSTANT_BYTES);
+    static_assert(sizeof(EffectPush) <= PushConstantBytes);
 
     namespace
     {

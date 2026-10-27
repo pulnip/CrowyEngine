@@ -232,7 +232,7 @@ namespace
 
 int main() {
     try {
-        auto device = Crowy::CreateDevice();
+        auto device = Crowy::createDevice();
         Checks checks(*device);
 
         std::println("FieldCheck");

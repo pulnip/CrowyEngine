@@ -355,7 +355,7 @@ namespace Crowy
         // every target when `only` is empty, else the targets that follow it
         void createTargets(std::optional<FrameExtentID> only);
         RHITexture& texture(FrameTargetID id, const FrameInputs& inputs) const;
-        RHITextureBarrier makeBarrier(
+        RHITextureBarrier resolveBarrier(
             const CompiledBarrier& half,
             const FrameInputs& inputs
         ) const;

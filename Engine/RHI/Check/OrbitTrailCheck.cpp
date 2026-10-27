@@ -643,7 +643,7 @@ int main(void){
     try{
         using namespace Crowy;
 
-        auto device = CreateDevice();
+        auto device = createDevice();
 
         bool ok = true;
         ok = CheckPrefill(*device) && ok;

@@ -173,7 +173,7 @@ namespace Crowy
             },
             [&](const RHIBufferViewDesc::Typed& c){
                 const auto range = ::resolveRange(
-                    desc, size, detail::GetBytesPerPixel(c.format)
+                    desc, size, detail::getBytesPerPixel(c.format)
                 );
                 return writable ?
                     heap.Allocate(

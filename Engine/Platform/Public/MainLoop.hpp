@@ -23,7 +23,7 @@ namespace Crowy
         virtual bool ShouldAdvance() { return true; }
 
         // frame N has begun: the pacer assigned the number and waited for
-        // frame N - RHI_FRAMES_IN_FLIGHT to complete
+        // frame N - FramesInFlight to complete
         virtual void OnFrameBegin(u64 frame) {}
 
         virtual void ProcessInput(const InputProvider&) {}

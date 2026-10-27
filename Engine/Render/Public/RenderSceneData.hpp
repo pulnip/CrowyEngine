@@ -50,7 +50,7 @@ namespace Crowy
 
         f32 _pad[32]{};
     };
-    static_assert(sizeof(ViewData) == RHI_CB_ALIGN);
+    static_assert(sizeof(ViewData) == CbAlign);
     static_assert(offsetof(ViewData, debugMode) == 64);
     static_assert(offsetof(ViewData, shadowFilter) == 68);
     static_assert(offsetof(ViewData, cameraPosition) == 80);
@@ -96,7 +96,7 @@ namespace Crowy
     static_assert(offsetof(ScenePush, shadowMap) == 48);
     static_assert(offsetof(ScenePush, textures) == 56);
     static_assert(offsetof(ScenePush, textureBase) == 64);
-    static_assert(sizeof(ScenePush) <= RHI_PUSH_CONSTANT_BYTES);
+    static_assert(sizeof(ScenePush) <= PushConstantBytes);
     static_assert(std::is_trivially_copyable_v<ScenePush>);
 
     // Every fullscreen pass's push: its reads in order, then params.
@@ -112,6 +112,6 @@ namespace Crowy
     static_assert(sizeof(FullscreenPush) == 48);
     static_assert(offsetof(FullscreenPush, input0) == 8);
     static_assert(offsetof(FullscreenPush, params) == 32);
-    static_assert(sizeof(FullscreenPush) <= RHI_PUSH_CONSTANT_BYTES);
+    static_assert(sizeof(FullscreenPush) <= PushConstantBytes);
     static_assert(std::is_trivially_copyable_v<FullscreenPush>);
 }

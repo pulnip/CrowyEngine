@@ -105,7 +105,7 @@ namespace Crowy
                 RHIGraphicsPipelineStateDesc{
                     .preRasterizer =
                         RHILegacyFrontendDesc{
-                            .vertexLayout = VERTEX_INPUT_LAYOUT,
+                            .vertexLayout = VertexInputLayout,
                             .topology = RHIPrimitiveTopology::TriangleList,
                             .vertexShader =
                                 {.path = "Engine/RHI/Sample/Skybox.slang",
@@ -131,7 +131,7 @@ namespace Crowy
 
             floorPSO = device.CreatePipelineState(RHIGraphicsPipelineStateDesc{
                 .preRasterizer = RHILegacyFrontendDesc{
-                    .vertexLayout = VERTEX_INPUT_LAYOUT,
+                    .vertexLayout = VertexInputLayout,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader = {
                         .path = "Engine/RHI/Sample/SkyboxFloor.slang",
@@ -275,7 +275,7 @@ namespace Crowy
                 AcquireBackBuffer(backBuffer),
                 // waits for the previous frame's depth work (WAR), contents
                 // discarded - the pass clears anyway
-                MakeCrossSubmissionBarrier(
+                makeCrossSubmissionBarrier(
                     *depthBuffer,
                     RHIResourceUsage::DepthWrite,
                     RHIResourceUsage::DepthWrite,

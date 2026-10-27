@@ -62,11 +62,11 @@ namespace{
     // back from wherever the previous submission left it.
     RHIBufferBarrier AcquireForWrite(RHIBuffer& buffer, RHIResourceUsage resting){
         return resting == RHIResourceUsage::Undefined ?
-            MakeBarrier(buffer,
+            makeBarrier(buffer,
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::StorageCompute
             ) :
-            MakeCrossSubmissionBarrier(buffer,
+            makeCrossSubmissionBarrier(buffer,
                 resting,
                 RHIResourceUsage::StorageCompute
             );
@@ -75,11 +75,11 @@ namespace{
     RHITextureBarrier AcquireForWrite(RHITexture& texture, RHIResourceUsage resting){
         // every texel is rewritten, so the old contents can go
         return resting == RHIResourceUsage::Undefined ?
-            MakeBarrier(texture,
+            makeBarrier(texture,
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::StorageCompute
             ) :
-            MakeCrossSubmissionBarrier(texture,
+            makeCrossSubmissionBarrier(texture,
                 resting,
                 RHIResourceUsage::StorageCompute,
                 /*discardContents=*/true
@@ -183,7 +183,7 @@ namespace Crowy
 
         // the density pass releases the field, the marching pass acquires it -
         // one edge, same value on both ends
-        const auto densityEdge = MakeBarrier(*densityTexture,
+        const auto densityEdge = makeBarrier(*densityTexture,
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::SampledCompute
         );
@@ -207,19 +207,19 @@ namespace Crowy
         auto& modeArgs = welded ? *argsIndexedBuffer : *argsBuffer;
 
         const TerrainMarchEdges edges{
-            .vertices = MakeBarrier(*vertexBuffer,
+            .vertices = makeBarrier(*vertexBuffer,
                 RHIResourceUsage::StorageCompute,
                 targets.vertices
             ),
-            .counter = MakeBarrier(*counterBuffer,
+            .counter = makeBarrier(*counterBuffer,
                 RHIResourceUsage::StorageCompute,
                 targets.counter
             ),
-            .args = MakeBarrier(modeArgs,
+            .args = makeBarrier(modeArgs,
                 RHIResourceUsage::StorageCompute,
                 targets.args
             ),
-            .indices = MakeBarrier(*indexBuffer,
+            .indices = makeBarrier(*indexBuffer,
                 RHIResourceUsage::StorageCompute,
                 targets.indices
             )
@@ -250,7 +250,7 @@ namespace Crowy
             // whatever runs next accumulates into the counter the clear just
             // zeroed: a UAV -> UAV hazard inside one pass
             const std::array counterHazard{
-                MakeBarrier(*counterBuffer,
+                makeBarrier(*counterBuffer,
                     RHIResourceUsage::StorageCompute,
                     RHIResourceUsage::StorageCompute
                 )
@@ -268,7 +268,7 @@ namespace Crowy
                 // and the counter it advanced
                 const std::array weldHazard{
                     counterHazard[0],
-                    MakeBarrier(*edgeVertexBuffer,
+                    makeBarrier(*edgeVertexBuffer,
                         RHIResourceUsage::StorageCompute,
                         RHIResourceUsage::StorageCompute
                     )

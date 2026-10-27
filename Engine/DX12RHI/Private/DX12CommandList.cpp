@@ -103,7 +103,7 @@ namespace{
         const D3D12_RENDER_PASS_ENDING_ACCESS noEndingAccess{
             .Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS
         };
-        const bool hasStencil = HasStencil(format);
+        const bool hasStencil = Crowy::hasStencil(format);
 
         return D3D12_RENDER_PASS_DEPTH_STENCIL_DESC{
             .cpuDescriptor = dsvHeap.GetCPUHandle(
@@ -138,7 +138,7 @@ namespace Crowy
     namespace{
         inline auto convert(const RHISubresourceRange& range){
             if(range.numMips == 0){
-                // flat subresource index, RHI_ALL_SUBRESOURCES for everything
+                // flat subresource index, AllSubresources for everything
                 return CD3DX12_BARRIER_SUBRESOURCE_RANGE(range.firstMip);
             }
 
@@ -186,7 +186,7 @@ namespace Crowy
             IID_PPV_ARGS(&commandList)
         ), "Failed to create command list");
 
-        constexpr UINT TimestampCount = 2 * RHI_FRAMES_IN_FLIGHT;
+        constexpr UINT TimestampCount = 2 * FramesInFlight;
 
         const D3D12_QUERY_HEAP_DESC queryDesc{
             .Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
@@ -230,9 +230,9 @@ namespace Crowy
     void DX12CommandList::Begin(){
         Super::Begin();
 
-        cursor = (cursor + 1) % RHI_FRAMES_IN_FLIGHT;
+        cursor = (cursor + 1) % FramesInFlight;
         auto& slot = allocators[cursor];
-        // a pooled list comes back RHI_FRAMES_IN_FLIGHT frames later and finds
+        // a pooled list comes back FramesInFlight frames later and finds
         // its batch long done; the device's upload list may not
         if(serialFence.GetValue() < slot.serial)
             serialFence.WaitCPU(slot.serial, 0);
@@ -298,7 +298,7 @@ namespace Crowy
         // so the acquires land right before it
         applyAcquires(textureAcquires, bufferAcquires);
 
-        std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, RHI_MAX_RENDER_TARGETS> rts;
+        std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, MaxRenderTargets> rts;
         for(usize i=0; i<desc.colorAttachments.size(); ++i)
             rts[i] = ::convert(desc.colorAttachments[i], rtvHeap);
 
@@ -768,7 +768,7 @@ namespace Crowy
         const CD3DX12_TEXTURE_COPY_LOCATION dstLoc(dxDst.Get(), footprint);
 
         // a depth subresource copies whole, with no box
-        const bool whole = IsDepthFormat(src.GetFormat());
+        const bool whole = isDepthFormat(src.GetFormat());
         CROWY_ASSERT(
             !whole || (
                 region.x == 0 && region.y == 0 &&
@@ -931,7 +931,7 @@ namespace Crowy
             barrier.syncBefore == RHIBarrierSync::None || barrier.crossSubmission,
             "acquire with real before-sync has no matching release in this "
             "command list; producers in earlier submissions need the "
-            "crossSubmission flag (MakeCrossSubmissionBarrier)"
+            "crossSubmission flag (makeCrossSubmissionBarrier)"
         );
         pushFused(barrier);
     }
@@ -954,7 +954,7 @@ namespace Crowy
             barrier.syncBefore == RHIBarrierSync::None || barrier.crossSubmission,
             "acquire with real before-sync has no matching release in this "
             "command list; producers in earlier submissions need the "
-            "crossSubmission flag (MakeCrossSubmissionBarrier)"
+            "crossSubmission flag (makeCrossSubmissionBarrier)"
         );
         pushFused(barrier);
     }

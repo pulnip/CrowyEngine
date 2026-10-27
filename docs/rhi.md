@@ -9,7 +9,7 @@ D3D12와 Metal의 호출을 단일한 gfx api로 가능하게 만들었다.
   `RHIDevice`, `RHICommandList`, `RHITexture`, `RHIBuffer`, `RHISwapchain`, `RHIGraphicsPipelineState`, `RHIComputePipelineState`, `RHIFence`가 추상 클래스로 있다([Engine/RHI/Public](../Engine/RHI/Public)).
   구현은 `DX12Device`([DX12RHI](../Engine/DX12RHI))랑 `MetalDevice`([MetalRHI](../Engine/MetalRHI))가 한다.
 - **백엔드는 플랫폼마다 하나, 컴파일 타임에 정해진다.**
-  CMake가 Windows에선 DX12RHI를, macOS에선 MetalRHI를 링크하고 `CreateDevice()`의 기본값도 `#if`로 갈린다([RHIDevice.hpp](../Engine/RHI/Public/RHIDevice.hpp)).
+  CMake가 Windows에선 DX12RHI를, macOS에선 MetalRHI를 링크하고 `createDevice()`의 기본값도 `#if`로 갈린다([RHIDevice.hpp](../Engine/RHI/Public/RHIDevice.hpp)).
   한 플랫폼 내에서 두 백엔드가 가능한 상황이 없으므로 런타임에 백엔드를 바꾸는 건 현재 지원하지 않는다.
 - **디버그 빌드에서는 base 클래스가 검증을 한다.**
   `RHICommandList`의 가상 함수 기본 구현이 패스 상태를 검사한다. 패스 안에서 패스를 열었는지, 짝이 안 맞는 End인지, 배리어 형식이 맞는지.
@@ -26,11 +26,11 @@ D3D12 Enhanced Barrier를 기준으로 설계했다([RHIDefinitions.hpp](../Engi
 
 - **release**: 앞 패스는 리소스 접근을 모두 마친 뒤 `EndRenderPass(releases)`에서 edge를 알린다.
 - **acquire**: 뒤 패스가 `BeginRenderPass(desc, acquires)`에서 그 edge를 기다린 뒤에 리소스에 접근한다.
-- 양쪽 다 같은 edge 값(`MakeBarrier(texture, 이전 용도, 다음 용도)`)을 들고 있다.
+- 양쪽 다 같은 edge 값(`makeBarrier(texture, 이전 용도, 다음 용도)`)을 들고 있다.
 
 ```cpp
 // 시뮬레이션 패스가 scene을 다 그리고 release
-const auto sceneEdge = MakeBarrier(*scene, RenderTarget, SampledFragment);
+const auto sceneEdge = makeBarrier(*scene, RenderTarget, SampledFragment);
 cmdList.EndRenderPass(std::array{sceneEdge, brightMaskEdge});
 
 bloomPass.Execute(*brightMask, cmdList);   // scene은 안 건드림
@@ -58,7 +58,7 @@ cmdList.BeginRenderPass(compositeDesc, std::array{sceneEdge, bloomEdge});
   CPU 쪽에서는 `texture->GetReadableID()`로 인덱스를 넣어준다. (SRV/UAV를 슬롯에 바인딩하는 게 아니다.)
 - 샘플러는 [Sampler.slang](../Engine/Shader/Sampler.slang)에 정해둔 static sampler만 쓴다.
 - 직접 바인딩되는 건 constant buffer 3개랑 push constant뿐이다.
-  push constant 예산은 D3D12와 Metal 중 좁은 곳에 맞춘다. (`RHI_PUSH_CONSTANT_BYTES`)
+  push constant 예산은 D3D12와 Metal 중 좁은 곳에 맞춘다. (`PushConstantBytes`)
   D3D12 루트 시그니처는 64 DWORD, CBV 하나가 2 DWORD이므로 `(64 - 2×3) × 4 = 232`Bytes다.
   Metal에 대응되는 `setBytes`는 4KB.
 - Metal에선 Slang이 `DescriptorHandle<T>`를 argument buffer 안의 실제 텍스처 슬롯으로 처리하므로, 셰이더 리플렉션 코드에서 따로 처리한다([RHIShader.cpp](../Engine/RHI/Private/RHIShader.cpp)).

@@ -31,7 +31,7 @@ namespace Crowy
     };
 
     namespace detail{
-        inline constexpr RHIBarrierPoint Expand(RHIResourceUsage usage){
+        inline constexpr RHIBarrierPoint expand(RHIResourceUsage usage){
             using enum RHIResourceUsage;
             using S = RHIBarrierSync;
             using A = RHIBarrierAccess;
@@ -71,7 +71,7 @@ namespace Crowy
         }
 
         // which producer stages each pass kind can release
-        inline constexpr auto RENDER_RELEASE_SYNC = combine(
+        inline constexpr auto RenderReleaseSync = combine(
             RHIBarrierSync::All,
             RHIBarrierSync::Draw,
             RHIBarrierSync::IndexInput,
@@ -81,11 +81,11 @@ namespace Crowy
             RHIBarrierSync::RenderTarget,
             RHIBarrierSync::ExecuteIndirect
         );
-        inline constexpr auto COMPUTE_RELEASE_SYNC = combine(
+        inline constexpr auto ComputeReleaseSync = combine(
             RHIBarrierSync::All,
             RHIBarrierSync::Compute
         );
-        inline constexpr auto COPY_RELEASE_SYNC = combine(
+        inline constexpr auto CopyReleaseSync = combine(
             RHIBarrierSync::All,
             RHIBarrierSync::Copy
         );
@@ -209,23 +209,23 @@ namespace Crowy
             CROWY_ASSERT(indices.buffer != nullptr,
                 "an indexed draw needs an index buffer in its RHIIndexBufferView"
             );
-            CROWY_ASSERT(indices.offset % IndexSize(indices.format) == 0,
+            CROWY_ASSERT(indices.offset % indexSize(indices.format) == 0,
                 "index buffer offset must land on an index boundary"
             );
             CROWY_ASSERT(indices.offset < indices.buffer->GetSize());
         }
     }
 
-    inline constexpr bool IsBufferOnlyUsage(RHIResourceUsage u){
+    inline constexpr bool isBufferOnlyUsage(RHIResourceUsage u){
         return u == RHIResourceUsage::VertexBuffer  || u == RHIResourceUsage::IndexBuffer
             || u == RHIResourceUsage::UniformBuffer || u == RHIResourceUsage::IndirectArgs;
     }
-    inline constexpr bool IsTextureOnlyUsage(RHIResourceUsage u){
+    inline constexpr bool isTextureOnlyUsage(RHIResourceUsage u){
         return u == RHIResourceUsage::RenderTarget || u == RHIResourceUsage::DepthWrite
             || u == RHIResourceUsage::DepthRead    || u == RHIResourceUsage::Present;
     }
 
-    inline constexpr RHITextureBarrier MakeBarrier(
+    inline constexpr RHITextureBarrier makeBarrier(
         RHITexture& texture,
         RHIResourceUsage before,
         RHIResourceUsage after,
@@ -234,9 +234,9 @@ namespace Crowy
         CROWY_ASSERT(after != RHIResourceUsage::Undefined,
             "Undefined is only valid as the before side of an acquire"
         );
-        CROWY_ASSERT(!IsBufferOnlyUsage(before) && !IsBufferOnlyUsage(after));
-        const auto b = detail::Expand(before);
-        const auto a = detail::Expand(after);
+        CROWY_ASSERT(!isBufferOnlyUsage(before) && !isBufferOnlyUsage(after));
+        const auto b = detail::expand(before);
+        const auto a = detail::expand(after);
 
         return RHITextureBarrier{
             .texture      = &texture,
@@ -248,7 +248,7 @@ namespace Crowy
         };
     }
 
-    inline constexpr RHIBufferBarrier MakeBarrier(
+    inline constexpr RHIBufferBarrier makeBarrier(
         RHIBuffer& buffer,
         RHIResourceUsage before,
         RHIResourceUsage after
@@ -256,9 +256,9 @@ namespace Crowy
         CROWY_ASSERT(after != RHIResourceUsage::Undefined,
             "Undefined is only valid as the before side of an acquire"
         );
-        CROWY_ASSERT(!IsTextureOnlyUsage(before) && !IsTextureOnlyUsage(after));
-        const auto b = detail::Expand(before);
-        const auto a = detail::Expand(after);
+        CROWY_ASSERT(!isTextureOnlyUsage(before) && !isTextureOnlyUsage(after));
+        const auto b = detail::expand(before);
+        const auto a = detail::expand(after);
 
         return RHIBufferBarrier{
             .buffer       = &buffer,
@@ -273,7 +273,7 @@ namespace Crowy
     // `before` names the earlier submission's last real use of the resource.
     // discardContents drops the old contents (execution-only dependency) -
     // the pass must not load them.
-    inline constexpr RHITextureBarrier MakeCrossSubmissionBarrier(
+    inline constexpr RHITextureBarrier makeCrossSubmissionBarrier(
         RHITexture& texture,
         RHIResourceUsage before,
         RHIResourceUsage after,
@@ -284,9 +284,9 @@ namespace Crowy
             before != RHIResourceUsage::Undefined &&
             before != RHIResourceUsage::Present,
             "cross-submission needs the earlier submission's real work; "
-            "use MakeBarrier with Undefined/Present instead"
+            "use makeBarrier with Undefined/Present instead"
         );
-        auto barrier = MakeBarrier(texture, before, after, range);
+        auto barrier = makeBarrier(texture, before, after, range);
         if(discardContents){
             barrier.accessBefore = RHIBarrierAccess::NoAccess;
             barrier.layoutBefore = RHITextureLayout::Undefined;
@@ -297,7 +297,7 @@ namespace Crowy
         return barrier;
     }
 
-    inline constexpr RHIBufferBarrier MakeCrossSubmissionBarrier(
+    inline constexpr RHIBufferBarrier makeCrossSubmissionBarrier(
         RHIBuffer& buffer,
         RHIResourceUsage before,
         RHIResourceUsage after
@@ -306,19 +306,19 @@ namespace Crowy
             before != RHIResourceUsage::Undefined &&
             before != RHIResourceUsage::Present,
             "cross-submission needs the earlier submission's real work; "
-            "use MakeBarrier with Undefined instead"
+            "use makeBarrier with Undefined instead"
         );
-        auto barrier = MakeBarrier(buffer, before, after);
+        auto barrier = makeBarrier(buffer, before, after);
         barrier.crossSubmission = true;
 
         return barrier;
     }
 
-    static_assert(detail::Expand(RHIResourceUsage::Undefined).access
+    static_assert(detail::expand(RHIResourceUsage::Undefined).access
         == RHIBarrierAccess::NoAccess);
     // no layout transition between Sampled* usages
-    static_assert(detail::Expand(RHIResourceUsage::SampledFragment).layout
-        == detail::Expand(RHIResourceUsage::SampledCompute).layout);
+    static_assert(detail::expand(RHIResourceUsage::SampledFragment).layout
+        == detail::expand(RHIResourceUsage::SampledCompute).layout);
 
     class RHICommandList{
     private:
@@ -396,7 +396,7 @@ namespace Crowy
             detail::validateReleases(
                 textureReleases,
                 bufferReleases,
-                detail::RENDER_RELEASE_SYNC
+                detail::RenderReleaseSync
             );
 
             CROWY_STAT_ADD(barrierEdgeCount,
@@ -439,7 +439,7 @@ namespace Crowy
                 "Not in a render pass. Did you call RHICommandList::BeginRenderPass()?"
             );
 
-            CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
+            CROWY_ASSERT(size % 4 == 0 && size <= PushConstantBytes);
 
             CROWY_STAT(pushConstantSetCount);
         }
@@ -461,8 +461,8 @@ namespace Crowy
 
             CROWY_ASSERT(offset < buffer.GetSize());
 
-            CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
-            CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
+            CROWY_ASSERT(slot < DirectCbCount);
+            CROWY_ASSERT(offset % CbAlign == 0);
 
             CROWY_STAT(constantBufferSetCount);
         }
@@ -581,7 +581,7 @@ namespace Crowy
             detail::validateReleases(
                 textureReleases,
                 bufferReleases,
-                detail::COMPUTE_RELEASE_SYNC
+                detail::ComputeReleaseSync
             );
 
             CROWY_STAT_ADD(barrierEdgeCount,
@@ -609,7 +609,7 @@ namespace Crowy
                 "Not in a compute pass. Did you call RHICommandList::BeginComputePass()?"
             );
 
-            CROWY_ASSERT(size % 4 == 0 && size <= RHI_PUSH_CONSTANT_BYTES);
+            CROWY_ASSERT(size % 4 == 0 && size <= PushConstantBytes);
 
             CROWY_STAT(pushConstantSetCount);
         }
@@ -631,8 +631,8 @@ namespace Crowy
 
             CROWY_ASSERT(offset < buffer.GetSize());
 
-            CROWY_ASSERT(slot < RHI_NUM_DIRECT_CBS);
-            CROWY_ASSERT(offset % RHI_CB_ALIGN == 0);
+            CROWY_ASSERT(slot < DirectCbCount);
+            CROWY_ASSERT(offset % CbAlign == 0);
 
             CROWY_STAT(constantBufferSetCount);
         }
@@ -724,7 +724,7 @@ namespace Crowy
             detail::validateReleases(
                 textureReleases,
                 bufferReleases,
-                detail::COPY_RELEASE_SYNC
+                detail::CopyReleaseSync
             );
 
             CROWY_STAT_ADD(barrierEdgeCount,
@@ -833,7 +833,7 @@ namespace Crowy
             CROWY_ASSERT(src.GetDepth(mipLevel) == 1,
                 "RHITextureRegion cannot address a 3D texture's depth slices"
             );
-            CROWY_ASSERT(!IsBlockCompressed(src.GetFormat()),
+            CROWY_ASSERT(!isBlockCompressed(src.GetFormat()),
                 "a block-compressed texture has no rows of texels to read back"
             );
             CROWY_ASSERT(region.width > 0 && region.height > 0,
@@ -845,12 +845,12 @@ namespace Crowy
                 "copy region reaches past the mip"
             );
             CROWY_ASSERT(
-                dstRowPitch >= GetRowPitch(src.GetFormat(), region.width),
+                dstRowPitch >= getRowPitch(src.GetFormat(), region.width),
                 "a row is wider than its pitch"
             );
             CROWY_ASSERT(
                 dstOffset + u64{dstRowPitch} * (region.height - 1) +
-                    GetRowPitch(src.GetFormat(), region.width) <= dst.GetSize(),
+                    getRowPitch(src.GetFormat(), region.width) <= dst.GetSize(),
                 "the last row reaches past the buffer"
             );
 

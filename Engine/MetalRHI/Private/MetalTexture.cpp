@@ -70,7 +70,7 @@ namespace Crowy
 
         const bool wholeMipChain =
             view.mostDetailedMip == 0 &&
-            view.mipCount == RHI_ALL_MIPS;
+            view.mipCount == AllMips;
         if(wholeMipChain &&
             texture->textureType() == wantedType &&
             texture->pixelFormat() == format
@@ -85,7 +85,7 @@ namespace Crowy
         CROWY_ASSERT(view.mostDetailedMip < texture->mipmapLevelCount(),
             "view's most detailed mip out of range"
         );
-        const auto mipCount = view.mipCount == RHI_ALL_MIPS ?
+        const auto mipCount = view.mipCount == AllMips ?
             texture->mipmapLevelCount() - view.mostDetailedMip :
             view.mipCount;
         const auto sliceCount = wantsCube ? 6 : 1;

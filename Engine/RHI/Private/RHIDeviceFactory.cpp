@@ -11,21 +11,21 @@ namespace Crowy
 {
     // each platform should implement this function
 #if defined(_WIN32)
-    RHIDeviceRAII CreateDX12Device();
+    RHIDeviceRAII createDX12Device();
 #elif defined(__APPLE__)
-    RHIDeviceRAII CreateMetalDevice();
+    RHIDeviceRAII createMetalDevice();
 #endif
 
-    RHIDeviceRAII CreateDevice(RHIBackend backend) {
+    RHIDeviceRAII createDevice(RHIBackend backend) {
         using enum RHIBackend;
 
         switch(backend) {
 #if defined(_WIN32)
         case DirectX12:
-            return CreateDX12Device();
+            return createDX12Device();
 #elif defined(__APPLE__)
         case Metal:
-            return CreateMetalDevice();
+            return createMetalDevice();
 #endif
         default:
             throw std::runtime_error(

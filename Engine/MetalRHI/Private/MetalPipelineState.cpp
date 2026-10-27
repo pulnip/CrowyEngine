@@ -210,7 +210,7 @@ namespace Crowy
         : debugName(name)
     #endif
     {
-        ValidateGraphicsPipelineDesc(desc);
+        validateGraphicsPipelineDesc(desc);
 
         AutoreleasePoolScope _;
 
@@ -235,7 +235,7 @@ namespace Crowy
                 attr->setOffset(elem.alignedByteOffset);
                 attr->setBufferIndex(toVertexBufferIndex(elem.inputSlot));
 
-                auto elemSize = detail::GetBytesPerPixel(elem.format);
+                auto elemSize = detail::getBytesPerPixel(elem.format);
                 auto elemEnd = elem.alignedByteOffset + elemSize;
                 if(elemEnd > strides[elem.inputSlot]){
                     strides[elem.inputSlot] = elemEnd;

@@ -11,7 +11,7 @@
 
 namespace Crowy
 {
-    void UploadGpuOnlyBuffer(
+    void uploadGPUOnlyBuffer(
         RHICommandList& cmdList,
         UploadRing& ring,
         u64 align,
@@ -35,7 +35,7 @@ namespace Crowy
 
         // brand-new resource: first use is a self-contained acquire
         const std::array acquires{
-            MakeBarrier(buffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
+            makeBarrier(buffer, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
         };
         cmdList.BeginBlitPass({}, acquires);
 
@@ -63,7 +63,7 @@ namespace Crowy
         cmdList.EndBlitPass({}, releases);
     }
 
-    void UploadTexture(
+    void uploadTexture(
         RHICommandList& cmdList,
         UploadRing& ring,
         u64 align,
@@ -102,7 +102,7 @@ namespace Crowy
 
         // brand-new resource: first use is a self-contained acquire
         const std::array acquires{
-            MakeBarrier(texture, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
+            makeBarrier(texture, RHIResourceUsage::Undefined, RHIResourceUsage::CopyDst)
         };
         cmdList.BeginBlitPass(acquires);
 

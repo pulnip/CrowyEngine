@@ -35,8 +35,8 @@ namespace Crowy
         constexpr f64 GetLastWaitTime() const noexcept{ return 0.0; }
     #endif
 
-        // Frame N begins only after frame N - RHI_FRAMES_IN_FLIGHT has
-        // completed, so its per-frame slot N % RHI_FRAMES_IN_FLIGHT is free.
+        // Frame N begins only after frame N - FramesInFlight has
+        // completed, so its per-frame slot N % FramesInFlight is free.
         // Returns N; frames count from 1.
         u64 BeginFrame();
         u64 CurrentFrame() const noexcept{ return frame; }

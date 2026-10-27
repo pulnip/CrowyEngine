@@ -689,15 +689,15 @@ namespace Crowy
                 return std::nullopt;
 
             const auto acquire = beltResting == RHIResourceUsage::Undefined ?
-                MakeBarrier(*beltGpuBuffer,
+                makeBarrier(*beltGpuBuffer,
                     RHIResourceUsage::Undefined,
                     RHIResourceUsage::StorageCompute
                 ) :
-                MakeCrossSubmissionBarrier(*beltGpuBuffer,
+                makeCrossSubmissionBarrier(*beltGpuBuffer,
                     beltResting,
                     RHIResourceUsage::StorageCompute
                 );
-            const auto release = MakeBarrier(*beltGpuBuffer,
+            const auto release = makeBarrier(*beltGpuBuffer,
                 RHIResourceUsage::StorageCompute,
                 RHIResourceUsage::SampledVertex
             );

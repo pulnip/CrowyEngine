@@ -75,10 +75,10 @@ namespace Crowy
         const auto isRenderTarget    = hasFlag(desc.usage, RenderTarget);
         const auto isDepthStencil    = hasFlag(desc.usage, DepthStencil);
 
-        CROWY_ASSERT(!IsBlockCompressed(desc.format) || isShaderResource,
+        CROWY_ASSERT(!isBlockCompressed(desc.format) || isShaderResource,
             "Block-compressed textures are shader-resource only"
         );
-        CROWY_ASSERT(!IsDepthFormat(desc.format) || isDepthStencil,
+        CROWY_ASSERT(!isDepthFormat(desc.format) || isDepthStencil,
             "Depth format should be depth stencil usage"
         );
 
@@ -260,7 +260,7 @@ namespace Crowy
     }
 
     u64 DX12Texture::GetReadableID(const RHITextureViewDesc& desc){
-        CROWY_ASSERT(!IsDepthFormat(GetFormat()) || desc.format == GetFormat(),
+        CROWY_ASSERT(!isDepthFormat(GetFormat()) || desc.format == GetFormat(),
             "a depth texture is read through a view of its own depth format"
         );
 
@@ -268,7 +268,7 @@ namespace Crowy
             return it->second;
 
         const auto format = toShaderReadFormat(desc.format);
-        // RHI_ALL_MIPS is the same all-ones value D3D12 reads as "the rest"
+        // AllMips is the same all-ones value D3D12 reads as "the rest"
         const auto dxDesc = std::visit(overload{
             [&](const RHITextureViewDesc::Tex2D&){
                 return CD3DX12_SHADER_RESOURCE_VIEW_DESC::Tex2D(

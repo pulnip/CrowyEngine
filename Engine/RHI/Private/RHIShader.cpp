@@ -19,7 +19,7 @@
 #include "ProjectRoot.hpp"
 
 namespace{
-    Crowy::Str SlangResultToString(SlangResult result){
+    Crowy::Str slangResultToString(SlangResult result){
     #define CASE_RETURN(x) case x: return #x;
         switch(result){
         CASE_RETURN(SLANG_OK)
@@ -76,7 +76,7 @@ namespace{
     do{ \
         if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]]{ \
             throw std::runtime_error(std::format( \
-                "{}: {}", msg, ::SlangResultToString(hr) \
+                "{}: {}", msg, ::slangResultToString(hr) \
             )); \
         } \
     } while(false)
@@ -88,7 +88,7 @@ namespace{
     do{ \
         if(const auto hr = (expr); SLANG_FAILED(hr)) [[unlikely]]{ \
             throw std::runtime_error(std::format( \
-                "{}: {}\n{}", msg, ::SlangResultToString(hr), \
+                "{}: {}\n{}", msg, ::slangResultToString(hr), \
                 ::slangDiagnostics(diagnostics) \
             )); \
         } \
@@ -214,7 +214,7 @@ namespace Crowy
             return refl;
         }
 
-        // names in RHI_STATIC_SAMPLERS order;
+        // names in StaticSamplers order;
         // must match Engine/Shader/Sampler.slang
         constexpr std::array staticSamplerNames{
             "linearWrap",
@@ -270,7 +270,7 @@ namespace Crowy
         }
     }
 
-    void InitGlobalSession(){
+    void initGlobalSession(){
         const SlangGlobalSessionDesc desc{};
 
         CHECK_SRESULT(slang_createGlobalSession2(
@@ -307,7 +307,7 @@ namespace Crowy
         const auto started = std::chrono::steady_clock::now();
 
         CROWY_ASSERT(globalSession != nullptr,
-            "Did you call InitGlobalSession()?"
+            "Did you call initGlobalSession()?"
         );
 
         const std::array targetDescs{

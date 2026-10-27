@@ -133,9 +133,9 @@ namespace Crowy
         }
 
         // the caller's producing pass must have released
-        // `MakeBarrier(source, RenderTarget, SampledFragment)` (whole range);
+        // `makeBarrier(source, RenderTarget, SampledFragment)` (whole range);
         // the first horizontal blur closes that edge here. the result stays
-        // released as `MakeBarrier(result, RenderTarget, SampledFragment)` -
+        // released as `makeBarrier(result, RenderTarget, SampledFragment)` -
         // acquire that same edge in the pass that samples it.
         RHITexture& Execute(RHITexture& source, RHICommandList& cmdList){
             using enum RHIResourceUsage;
@@ -151,7 +151,7 @@ namespace Crowy
                 // i == 0: closes the caller's source edge (first consumer).
                 // i > 0: second consumer of blurred mip i-1 - the upsample
                 // already closed it, so the backend emits a sync-only barrier
-                const auto inputAcquire = MakeBarrier(
+                const auto inputAcquire = makeBarrier(
                     input, RenderTarget, SampledFragment, inputRange
                 );
 
@@ -162,13 +162,13 @@ namespace Crowy
                         inputAcquire,
                         // last frame's vertical blur read this mip (WAR);
                         // it is fully overwritten, so drop the contents
-                        MakeCrossSubmissionBarrier(
+                        makeCrossSubmissionBarrier(
                             *temp, SampledFragment, RenderTarget,
                             /*discardContents=*/true, MipRange(i)
                         )
                     };
                     const std::array releases{
-                        MakeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i))
+                        makeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i))
                     };
                     singleBlur(
                         cmdList,
@@ -184,14 +184,14 @@ namespace Crowy
                 // vertical blur, already at the target resolution
                 {
                     const std::array acquires{
-                        MakeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i)),
-                        MakeCrossSubmissionBarrier(
+                        makeBarrier(*temp, RenderTarget, SampledFragment, MipRange(i)),
+                        makeCrossSubmissionBarrier(
                             *blurred, SampledFragment, RenderTarget,
                             /*discardContents=*/true, MipRange(i)
                         )
                     };
                     const std::array releases{
-                        MakeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i))
+                        makeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i))
                     };
                     singleBlur(
                         cmdList,
@@ -208,22 +208,22 @@ namespace Crowy
                 // a zero step collapses the kernel to a resample.
                 {
                     const std::array acquires{
-                        MakeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i)),
+                        makeBarrier(*blurred, RenderTarget, SampledFragment, MipRange(i)),
                         // level 0 recycles accum from last frame's composite
                         // read; later levels chain WAW on their own blend work
                         i == 0 ?
-                            MakeCrossSubmissionBarrier(
+                            makeCrossSubmissionBarrier(
                                 *accum, SampledFragment, RenderTarget,
                                 /*discardContents=*/true
                             ) :
-                            MakeBarrier(*accum, RenderTarget, RenderTarget)
+                            makeBarrier(*accum, RenderTarget, RenderTarget)
                     };
                     const std::array releases{
                         // the last level hands accum to whoever samples the
                         // result; earlier levels feed the next blend
                         i + 1 == levelCount ?
-                            MakeBarrier(*accum, RenderTarget, SampledFragment) :
-                            MakeBarrier(*accum, RenderTarget, RenderTarget)
+                            makeBarrier(*accum, RenderTarget, SampledFragment) :
+                            makeBarrier(*accum, RenderTarget, RenderTarget)
                     };
                     singleBlur(
                         cmdList,
@@ -440,7 +440,7 @@ namespace Crowy
             };
             const std::array acquires{
                 // first use of the freshly created texture
-                MakeBarrier(*disk,
+                makeBarrier(*disk,
                     RHIResourceUsage::Undefined,
                     RHIResourceUsage::RenderTarget
                 )
@@ -472,7 +472,7 @@ namespace Crowy
             simParamBuffer = Device().UploadTransient(simParam);
 
             // the simulation pass below is the disk's first reader
-            const auto diskEdge = MakeBarrier(*disk,
+            const auto diskEdge = makeBarrier(*disk,
                 RHIResourceUsage::RenderTarget,
                 RHIResourceUsage::SampledFragment
             );
@@ -485,12 +485,12 @@ namespace Crowy
             // the scene edge skips the whole bloom chain: released by the
             // simulation pass, acquired only by the composite - the
             // non-adjacent dependency this barrier model exists for
-            const auto sceneEdge = MakeBarrier(*scene,
+            const auto sceneEdge = makeBarrier(*scene,
                 RHIResourceUsage::RenderTarget,
                 RHIResourceUsage::SampledFragment
             );
             // brightMask goes to the bloom's first blur instead (adjacent)
-            const auto brightMaskEdge = MakeBarrier(*brightMask,
+            const auto brightMaskEdge = makeBarrier(*brightMask,
                 RHIResourceUsage::RenderTarget,
                 RHIResourceUsage::SampledFragment
             );
@@ -511,12 +511,12 @@ namespace Crowy
                 const std::array acquires{
                     // both were sampled by last frame's passes (WAR) and are
                     // fully rewritten, so the contents can go
-                    MakeCrossSubmissionBarrier(*scene,
+                    makeCrossSubmissionBarrier(*scene,
                         RHIResourceUsage::SampledFragment,
                         RHIResourceUsage::RenderTarget,
                         /*discardContents=*/true
                     ),
-                    MakeCrossSubmissionBarrier(*brightMask,
+                    makeCrossSubmissionBarrier(*brightMask,
                         RHIResourceUsage::SampledFragment,
                         RHIResourceUsage::RenderTarget,
                         /*discardContents=*/true
@@ -556,7 +556,7 @@ namespace Crowy
                 const std::array acquires{
                     sceneEdge,
                     // the edge Execute's last upsample released
-                    MakeBarrier(bloom,
+                    makeBarrier(bloom,
                         RHIResourceUsage::RenderTarget,
                         RHIResourceUsage::SampledFragment
                     ),

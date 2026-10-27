@@ -27,7 +27,7 @@ namespace
         std::span<const RHIBufferBarrier> releases
     ) {
         const std::array colors{RHIColorAttachment{.texture = &color}};
-        const std::array acquires{MakeBarrier(
+        const std::array acquires{makeBarrier(
             color,
             RHIResourceUsage::Undefined,
             RHIResourceUsage::RenderTarget
@@ -98,7 +98,7 @@ TEST(FieldBuffer, AcquiresFromUndefinedOnceThenAcrossSubmissions) {
 
     EXPECT_EQ(
         field.AcquireForWrite(),
-        MakeBarrier(
+        makeBarrier(
             field.Buffer(),
             RHIResourceUsage::Undefined,
             RHIResourceUsage::StorageCompute
@@ -106,7 +106,7 @@ TEST(FieldBuffer, AcquiresFromUndefinedOnceThenAcrossSubmissions) {
     );
     EXPECT_EQ(
         field.Release(),
-        MakeBarrier(
+        makeBarrier(
             field.Buffer(),
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::SampledVertex
@@ -117,7 +117,7 @@ TEST(FieldBuffer, AcquiresFromUndefinedOnceThenAcrossSubmissions) {
     EXPECT_TRUE(again.crossSubmission);
     EXPECT_EQ(
         again,
-        MakeCrossSubmissionBarrier(
+        makeCrossSubmissionBarrier(
             field.Buffer(),
             RHIResourceUsage::SampledVertex,
             RHIResourceUsage::StorageCompute
@@ -126,7 +126,7 @@ TEST(FieldBuffer, AcquiresFromUndefinedOnceThenAcrossSubmissions) {
 
     EXPECT_EQ(
         copied.Release(),
-        MakeBarrier(
+        makeBarrier(
             copied.Buffer(),
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::CopySrc

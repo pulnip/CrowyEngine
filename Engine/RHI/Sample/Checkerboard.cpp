@@ -40,7 +40,7 @@ namespace Crowy
         void OnRecord(RHICommandList& cmdList, const RHIColorAttachment& backBuffer) override{
             // the compute pass releases the checkerboard, the copy pass
             // acquires it - one edge, same value on both ends
-            const auto checkerboardEdge = MakeBarrier(*checkerboard,
+            const auto checkerboardEdge = makeBarrier(*checkerboard,
                 RHIResourceUsage::StorageCompute,
                 RHIResourceUsage::CopySrc
             );
@@ -49,7 +49,7 @@ namespace Crowy
                 const std::array acquires{
                     // the previous frame's copy still reads the texture (WAR);
                     // every texel is rewritten, so the contents can go
-                    MakeCrossSubmissionBarrier(
+                    makeCrossSubmissionBarrier(
                         *checkerboard,
                         RHIResourceUsage::CopySrc,
                         RHIResourceUsage::StorageCompute,
@@ -75,7 +75,7 @@ namespace Crowy
                 const std::array acquires{
                     checkerboardEdge,
                     // the backbuffer is a copy target here, not a render target
-                    MakeBarrier(*backBuffer.texture,
+                    makeBarrier(*backBuffer.texture,
                         RHIResourceUsage::Undefined,
                         RHIResourceUsage::CopyDst
                     )
@@ -86,7 +86,7 @@ namespace Crowy
                     *backBuffer.texture
                 );
                 const std::array releases{
-                    MakeBarrier(*backBuffer.texture,
+                    makeBarrier(*backBuffer.texture,
                         RHIResourceUsage::CopyDst,
                         RHIResourceUsage::Present
                     )

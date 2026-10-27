@@ -20,12 +20,12 @@ namespace Crowy
         lastWaitSeconds = 0.0;
     #endif
 
-        if(frame > RHI_FRAMES_IN_FLIGHT) [[likely]] {
+        if(frame > FramesInFlight) [[likely]] {
         #if CROWY_FRAME_STATS
             const auto before = std::chrono::steady_clock::now();
         #endif
 
-            device.WaitFrame(frame - RHI_FRAMES_IN_FLIGHT);
+            device.WaitFrame(frame - FramesInFlight);
 
         #if CROWY_FRAME_STATS
             lastWaitSeconds = std::chrono::duration<f64>(

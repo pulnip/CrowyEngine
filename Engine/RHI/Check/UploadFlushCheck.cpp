@@ -33,7 +33,7 @@ int main(void){
     try{
         using namespace Crowy;
 
-        auto device = CreateDevice();
+        auto device = createDevice();
         auto cmdList = device->CreateCommandList();
 
         auto readback = device->CreateBuffer(RHIBufferCreateDesc{

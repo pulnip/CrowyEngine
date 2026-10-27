@@ -9,7 +9,7 @@
 namespace Crowy
 {
     // Which serial each in-flight frame's submission signaled. Frame N is
-    // submitted only once frame N - RHI_FRAMES_IN_FLIGHT has completed, so a
+    // submitted only once frame N - FramesInFlight has completed, so a
     // frame older than the ring is complete by that contract alone.
     class RHIFrameTimeline {
     private:
@@ -18,7 +18,7 @@ namespace Crowy
             u64 serial = 0;
         };
 
-        std::array<Entry, RHI_FRAMES_IN_FLIGHT> entries{};
+        std::array<Entry, FramesInFlight> entries{};
         u64 lastFrame = 0;
 
     public:

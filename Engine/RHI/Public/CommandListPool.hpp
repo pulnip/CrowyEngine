@@ -16,7 +16,7 @@ namespace Crowy
             std::vector<RHICommandListRAII> cmdLists;
             usize nextIndex = 0;
         };
-        std::array<FrameSlot, RHI_FRAMES_IN_FLIGHT> slots;
+        std::array<FrameSlot, FramesInFlight> slots;
         // the pacer's frame this pool is recording for
         u64 frame = 0;
 
@@ -46,7 +46,7 @@ namespace Crowy
     private:
         u32 currentIndex() const noexcept{
             return static_cast<u32>(
-                frame % RHI_FRAMES_IN_FLIGHT
+                frame % FramesInFlight
             );
         }
     };

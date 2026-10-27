@@ -124,10 +124,10 @@ namespace Crowy
         // hangover gate: acquire-less consumption of a hand-off release rides queue order,
         // so a recording that may share the GPU with the hand-off wave must be ordered behind it.
         // anything older is already CPU-fenced - FramePacer::BeginFrame waits frame
-        // N - RHI_FRAMES_IN_FLIGHT, whose serial is submissionSerial - (RHI_FRAMES_IN_FLIGHT - 1)
+        // N - FramesInFlight, whose serial is submissionSerial - (FramesInFlight - 1)
         // unless out-of-band signals came since, and each of those CPU-waited what preceded it.
         if(handoffSerial != 0 &&
-            submissionSerial < handoffSerial + RHI_FRAMES_IN_FLIGHT - 1
+            submissionSerial < handoffSerial + FramesInFlight - 1
         ){
             encodeSubmissionWait();
         }
@@ -246,7 +246,7 @@ namespace Crowy
                 acquire.crossSubmission,
                 "acquire with real before-sync has no matching release in "
                 "this command list; producers in earlier submissions need "
-                "the crossSubmission flag (MakeCrossSubmissionBarrier)"
+                "the crossSubmission flag (makeCrossSubmissionBarrier)"
             );
             if(acquire.crossSubmission){
                 // lazy gate: passes before the first cross-submission
@@ -426,7 +426,7 @@ namespace Crowy
         state->vsUsedBufferMask = metalPSO.GetVSUsedBufferMask();
         state->fsUsedBufferMask = metalPSO.GetFSUsedBufferMask();
 
-        constexpr u32 CB_ALL_CLEAN = (1u << RHI_NUM_DIRECT_CBS) - 1u;
+        constexpr u32 CB_ALL_CLEAN = (1u << DirectCbCount) - 1u;
         state->pushDirty = true;
         state->cbDirtyMask = CB_ALL_CLEAN;
     }
@@ -636,7 +636,7 @@ namespace Crowy
             applyPushConstants(state);
             state.pushDirty = false;
         }
-        for(u32 slot=0; slot<RHI_NUM_DIRECT_CBS; ++slot){
+        for(u32 slot=0; slot<DirectCbCount; ++slot){
             if(state.cbDirtyMask & (1u << slot)){
                 applyConstantBuffer(state, slot);
             }
@@ -725,7 +725,7 @@ namespace Crowy
 
         flush(*state);
         // Metal has no startIndex parameter - it is folded into the offset
-        auto indexOffset = indices.offset + startIndex * IndexSize(indices.format);
+        auto indexOffset = indices.offset + startIndex * indexSize(indices.format);
 
         state->encoder->drawIndexedPrimitives(
             state->topology,
@@ -1085,7 +1085,7 @@ namespace Crowy
         CROWY_ASSERT(state != nullptr,
             "Did you call RHICommandList::BeginBlitPass()?"
         );
-        [[maybe_unused]] const auto texelSize = GetBytesPerBlock(src.GetFormat());
+        [[maybe_unused]] const auto texelSize = getBytesPerBlock(src.GetFormat());
         CROWY_ASSERT(dstOffset % texelSize == 0 && dstRowPitch % texelSize == 0,
             "a readback offset and row pitch are whole texels"
         );

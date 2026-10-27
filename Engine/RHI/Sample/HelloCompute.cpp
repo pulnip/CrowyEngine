@@ -17,7 +17,7 @@ int main(void){
     try{
         using namespace Crowy;
 
-        auto device = CreateDevice();
+        auto device = createDevice();
         auto cmdList = device->CreateCommandList();
 
         constexpr size_t N = 1 << 20;
@@ -59,7 +59,7 @@ int main(void){
 
         // the compute pass releases `out`, the copy pass acquires it -
         // one edge, same value on both ends
-        const auto outEdge = MakeBarrier(*out,
+        const auto outEdge = makeBarrier(*out,
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::CopySrc
         );
@@ -67,7 +67,7 @@ int main(void){
         {
             const std::array acquires{
                 // first GPU use of `out`: self-contained acquire
-                MakeBarrier(*out,
+                makeBarrier(*out,
                     RHIResourceUsage::Undefined,
                     RHIResourceUsage::StorageCompute
                 )
@@ -87,7 +87,7 @@ int main(void){
             // the second dispatch reads what the first just wrote —
             // a UAV → UAV hazard inside one pass, DispatchBarrier territory
             const std::array hazards{
-                MakeBarrier(*out,
+                makeBarrier(*out,
                     RHIResourceUsage::StorageCompute,
                     RHIResourceUsage::StorageCompute
                 )

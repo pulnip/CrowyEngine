@@ -120,7 +120,7 @@ namespace
                 imageData.subs[slice * imageData.mipLevels + mip] =
                     RHISubresourceData{
                         .data = ptrAdd(imageData.blob.data(), offset),
-                        .rowPitch = GetRowPitch(imageData.format, mipW)
+                        .rowPitch = getRowPitch(imageData.format, mipW)
                     };
             }
         }
@@ -168,7 +168,7 @@ namespace
         imageData.subs.push_back(
             RHISubresourceData{
                 .data = imageData.blob.data(),
-                .rowPitch = GetRowPitch(imageData.format, imageData.width)
+                .rowPitch = getRowPitch(imageData.format, imageData.width)
             }
         );
 

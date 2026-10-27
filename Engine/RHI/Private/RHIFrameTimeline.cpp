@@ -17,14 +17,14 @@ namespace Crowy
             lastFrame
         );
 
-        auto& entry = entries[frame % RHI_FRAMES_IN_FLIGHT];
+        auto& entry = entries[frame % FramesInFlight];
         CROWY_ASSERT(
             entry.serial <= completedSerial,
             "frame {} submitted while frame {} is still on the GPU: frame N "
             "waits for frame N - {} first",
             frame,
             entry.frame,
-            RHI_FRAMES_IN_FLIGHT
+            FramesInFlight
         );
 
         entry = Entry{.frame = frame, .serial = serial};
@@ -39,10 +39,10 @@ namespace Crowy
             lastFrame
         );
 
-        if(frame == 0 || frame + RHI_FRAMES_IN_FLIGHT <= lastFrame)
+        if(frame == 0 || frame + FramesInFlight <= lastFrame)
             return std::nullopt;
 
-        const auto& entry = entries[frame % RHI_FRAMES_IN_FLIGHT];
+        const auto& entry = entries[frame % FramesInFlight];
         CROWY_ASSERT(entry.frame == frame);
         return entry.serial;
     }
@@ -51,15 +51,15 @@ namespace Crowy
         // serials grow with frames, so the newest completed one is the first
         // found walking back through the ring
         for(u64 frame = lastFrame;
-            frame > 0 && frame + RHI_FRAMES_IN_FLIGHT > lastFrame;
+            frame > 0 && frame + FramesInFlight > lastFrame;
             --frame) {
-            if(entries[frame % RHI_FRAMES_IN_FLIGHT].serial <= completedSerial)
+            if(entries[frame % FramesInFlight].serial <= completedSerial)
                 return frame;
         }
 
         // nothing in the ring has completed, but the frame before it has
-        return lastFrame > RHI_FRAMES_IN_FLIGHT
-                   ? lastFrame - RHI_FRAMES_IN_FLIGHT
+        return lastFrame > FramesInFlight
+                   ? lastFrame - FramesInFlight
                    : 0;
     }
 }

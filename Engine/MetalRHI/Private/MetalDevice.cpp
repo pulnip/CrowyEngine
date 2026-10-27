@@ -32,7 +32,7 @@ extern "C"{
 
 namespace Crowy
 {
-    RHIDeviceRAII CreateMetalDevice(){
+    RHIDeviceRAII createMetalDevice(){
         return std::make_unique<MetalDevice>();
     }
 
@@ -116,7 +116,7 @@ namespace Crowy
             if(desc.initialData != nullptr && desc.memory == RHIMemoryType::GPUOnly){
                 ensureUploadBegin();
 
-                UploadGpuOnlyBuffer(
+                uploadGPUOnlyBuffer(
                     uploadCmdList,
                     uploadRing,
                     4,
@@ -170,7 +170,7 @@ namespace Crowy
             submissionEvent->setLabel(toNSString("Crowy Submission Event"));
         #endif
 
-            InitGlobalSession();
+            initGlobalSession();
 
             commandQueue->addResidencySet(privateHeap.ResidencySet());
             commandQueue->addResidencySet(sharedHeap.ResidencySet());
@@ -240,7 +240,7 @@ namespace Crowy
                     desc,
                     layouts
                 );
-                UploadTexture(
+                uploadTexture(
                     uploadCmdList,
                     uploadRing,
                     sizeAlign.align,
@@ -419,7 +419,7 @@ namespace Crowy
             // the pixel size (block size for compressed formats);
             // 256 covers every format.
             constexpr u64 offsetAlign = 256;
-            const u32 blockDim = GetBlockDim(desc.format);
+            const u32 blockDim = getBlockDim(desc.format);
 
             u64 totalBytes = 0;
             for(u32 slice = 0; slice < desc.arraySize; ++slice){
@@ -427,7 +427,7 @@ namespace Crowy
                     const u32 mipWidth  = std::max(1u, desc.width  >> mip);
                     const u32 mipHeight = std::max(1u, desc.height >> mip);
 
-                    const u32 rowSize  = GetRowPitch(desc.format, mipWidth);
+                    const u32 rowSize  = getRowPitch(desc.format, mipWidth);
                     const u32 rowCount = ceilDiv(mipHeight, blockDim);
 
                     totalBytes = nextMul(totalBytes, offsetAlign);

@@ -16,7 +16,7 @@ namespace slang{
 namespace Crowy
 {
     // call once in whole program-lifetime
-    void InitGlobalSession();
+    void initGlobalSession();
 
     class RHIShader{
     private:

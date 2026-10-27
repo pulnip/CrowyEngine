@@ -178,8 +178,8 @@ namespace Crowy
         const auto acquire = [&](RHIBuffer& buffer, RHIResourceUsage read) {
             using enum RHIResourceUsage;
             return everRecorded
-                       ? MakeCrossSubmissionBarrier(buffer, read, CopyDst)
-                       : MakeBarrier(buffer, Undefined, CopyDst);
+                       ? makeCrossSubmissionBarrier(buffer, read, CopyDst)
+                       : makeBarrier(buffer, Undefined, CopyDst);
         };
         const std::array acquires{
             acquire(*vertexBuffer, vertexRead),
@@ -209,12 +209,12 @@ namespace Crowy
         }
 
         uploadReleases = {
-            MakeBarrier(
+            makeBarrier(
                 *vertexBuffer,
                 RHIResourceUsage::CopyDst,
                 vertexRead
             ),
-            MakeBarrier(
+            makeBarrier(
                 *indexBuffer,
                 RHIResourceUsage::CopyDst,
                 RHIResourceUsage::IndexBuffer

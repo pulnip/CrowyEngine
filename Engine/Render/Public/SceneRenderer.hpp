@@ -51,7 +51,7 @@ namespace Crowy
         RHIBufferSlice materialSlice;
         RHIBufferSlice lightSlice;
         RHIBufferSlice textureSlice;
-        // one RHI_CB_ALIGN record per view, selected by offset
+        // one CbAlign record per view, selected by offset
         RHIBufferSlice viewSlice;
 
         PipelineCache pipelines;

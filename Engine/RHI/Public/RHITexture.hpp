@@ -88,7 +88,7 @@ namespace Crowy
                 return range;
             }
 
-            CROWY_ASSERT(range.firstMip == RHI_ALL_SUBRESOURCES,
+            CROWY_ASSERT(range.firstMip == AllSubresources,
                 "a flat subresource index is not a range; "
                 "give explicit mip and array slice counts"
             );

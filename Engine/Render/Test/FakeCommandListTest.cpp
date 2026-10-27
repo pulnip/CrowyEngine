@@ -52,7 +52,7 @@ namespace
 TEST(FakeCommandList, AnAcquireWithNoReleaseIsUnmatched) {
     Fixture f;
     f.cmdList.Begin();
-    f.DepthPass(MakeBarrier(
+    f.DepthPass(makeBarrier(
         f.depth,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::DepthWrite
@@ -60,7 +60,7 @@ TEST(FakeCommandList, AnAcquireWithNoReleaseIsUnmatched) {
     f.cmdList.Close();
     ASSERT_TRUE(f.cmdList.violations.empty());
 
-    const auto edge = MakeBarrier(
+    const auto edge = makeBarrier(
         f.depth,
         RHIResourceUsage::DepthWrite,
         RHIResourceUsage::DepthWrite
@@ -75,7 +75,7 @@ TEST(FakeCommandList, AnAcquireWithNoReleaseIsUnmatched) {
     const std::array releases{edge};
     f.cmdList.Begin();
     f.DepthPass(
-        MakeBarrier(
+        makeBarrier(
             f.depth,
             RHIResourceUsage::Undefined,
             RHIResourceUsage::DepthWrite
@@ -94,7 +94,7 @@ TEST(FakeCommandList, AnAcquireWithNoReleaseIsUnmatched) {
 // a reader left out of the chain: the second release makes the first stale
 TEST(FakeCommandList, AReleaseOverAnUnconsumedOneIsStale) {
     Fixture f;
-    const auto toRead = MakeBarrier(
+    const auto toRead = makeBarrier(
         f.color,
         RHIResourceUsage::RenderTarget,
         RHIResourceUsage::SampledFragment
@@ -103,7 +103,7 @@ TEST(FakeCommandList, AReleaseOverAnUnconsumedOneIsStale) {
 
     f.cmdList.Begin();
     const auto colors = f.ColorAttachment();
-    const std::array acquires{MakeBarrier(
+    const std::array acquires{makeBarrier(
         f.color,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::RenderTarget
@@ -114,7 +114,7 @@ TEST(FakeCommandList, AReleaseOverAnUnconsumedOneIsStale) {
     );
     f.cmdList.EndRenderPass(releases);
     f.DepthPass(
-        MakeBarrier(
+        makeBarrier(
             f.depth,
             RHIResourceUsage::Undefined,
             RHIResourceUsage::DepthWrite
@@ -135,7 +135,7 @@ TEST(FakeCommandList, AnAttachmentNeedsItsOwnAcquire) {
     f.cmdList.Begin();
     f.cmdList.BeginRenderPass(RHIRenderPassDesc{.colorAttachments = colors});
     f.cmdList.EndRenderPass();
-    const std::array asRead{MakeBarrier(
+    const std::array asRead{makeBarrier(
         f.color,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::SampledFragment
@@ -156,7 +156,7 @@ TEST(FakeCommandList, AnAcquireFromTheWrongLayoutIsCaught) {
     Fixture f;
 
     f.cmdList.Begin();
-    f.DepthPass(MakeCrossSubmissionBarrier(
+    f.DepthPass(makeCrossSubmissionBarrier(
         f.depth,
         RHIResourceUsage::DepthWrite,
         RHIResourceUsage::DepthWrite
@@ -171,7 +171,7 @@ TEST(FakeCommandList, ADrawNeedsAFreshPushAndView) {
     Fixture f;
     FakeBuffer view{256};
     const auto colors = f.ColorAttachment();
-    const std::array acquires{MakeBarrier(
+    const std::array acquires{makeBarrier(
         f.color,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::RenderTarget
@@ -205,7 +205,7 @@ TEST(FakeCommandList, ADrawNeedsAFreshPushAndView) {
 TEST(FakeCommandList, ALoadAfterADiscardingAcquireIsCaught) {
     Fixture f;
     const auto colors = f.ColorAttachment(RHILoadAction::Load);
-    const std::array acquires{MakeBarrier(
+    const std::array acquires{makeBarrier(
         f.color,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::RenderTarget
@@ -229,17 +229,17 @@ TEST(FakeCommandList, AComputeReleaseFeedsARenderPass) {
     FakeBuffer field{64, 0xB100};
     u32 destroyed = 0;
     FakeComputePipelineState kernel{destroyed};
-    const std::array fresh{MakeBarrier(
+    const std::array fresh{makeBarrier(
         field,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::StorageCompute
     )};
-    const std::array edge{MakeBarrier(
+    const std::array edge{makeBarrier(
         field,
         RHIResourceUsage::StorageCompute,
         RHIResourceUsage::SampledVertex
     )};
-    const std::array acquires{MakeBarrier(
+    const std::array acquires{makeBarrier(
         f.color,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::RenderTarget
@@ -282,7 +282,7 @@ TEST(FakeCommandList, AComputeReleaseFeedsARenderPass) {
 TEST(FakeCommandList, ComputeHalvesPairLikeRenderHalves) {
     Fixture f;
     FakeBuffer field{64, 0xB100};
-    const std::array again{MakeBarrier(
+    const std::array again{makeBarrier(
         field,
         RHIResourceUsage::SampledVertex,
         RHIResourceUsage::StorageCompute
@@ -294,7 +294,7 @@ TEST(FakeCommandList, ComputeHalvesPairLikeRenderHalves) {
     f.ExpectOnly(FakeRule::UnmatchedAcquire);
 
     Fixture g;
-    const std::array edge{MakeBarrier(
+    const std::array edge{makeBarrier(
         field,
         RHIResourceUsage::StorageCompute,
         RHIResourceUsage::SampledVertex
@@ -312,7 +312,7 @@ TEST(FakeCommandList, ComputeHalvesPairLikeRenderHalves) {
 TEST(FakeCommandList, ADispatchBarrierIsRecordedInItsPass) {
     Fixture f;
     FakeBuffer field{64, 0xB100};
-    const std::array hazard{MakeBarrier(
+    const std::array hazard{makeBarrier(
         field,
         RHIResourceUsage::StorageCompute,
         RHIResourceUsage::StorageCompute

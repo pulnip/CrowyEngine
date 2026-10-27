@@ -23,7 +23,7 @@ namespace Crowy
     static_assert(sizeof(Vertex) == 48, "Vertex should be 48 bytes");
     static_assert(std::is_trivially_copyable_v<Vertex>, "Vertex must be trivially copyable");
 
-    inline constexpr std::array VERTEX_INPUT_LAYOUT = {
+    inline constexpr std::array VertexInputLayout = {
         RHIVertexElement{
             .semanticName = "POSITION",
             .semanticIndex = 0,

@@ -8,7 +8,7 @@ using namespace Crowy;
 
 namespace
 {
-    constexpr u64 Depth = RHI_FRAMES_IN_FLIGHT;
+    constexpr u64 Depth = FramesInFlight;
 
     // the serial each frame signals: out-of-band signals after frames 2 and 4
     // take 4 and 7, so serials and frames part the way a resize parts them

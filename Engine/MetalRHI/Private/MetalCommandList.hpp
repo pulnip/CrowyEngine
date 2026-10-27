@@ -34,7 +34,7 @@ namespace Crowy
             u32 fsUsedBufferMask = 0;
 
             // cache for lazy binding of PushConstant
-            std::array<u8, RHI_PUSH_CONSTANT_BYTES> pushConstants;
+            std::array<u8, PushConstantBytes> pushConstants;
             u32 pushConstantSize = 0;
             bool pushDirty = false;
 
@@ -43,7 +43,7 @@ namespace Crowy
                 MTL::Buffer* buffer = nullptr;
                 u32 offset = 0;
             };
-            std::array<ConstantBufferBinding, RHI_NUM_DIRECT_CBS> constantBuffers{};
+            std::array<ConstantBufferBinding, DirectCbCount> constantBuffers{};
             u32 cbDirtyMask = 0;
 
             // what this encoder already holds, so a pipeline switch or a

@@ -392,14 +392,14 @@ namespace{
     auto createGlobalRootSignature(Crowy::Device& device){
         using namespace Crowy;
 
-        std::array<CD3DX12_ROOT_PARAMETER1, 1 + RHI_NUM_DIRECT_CBS> params;
+        std::array<CD3DX12_ROOT_PARAMETER1, 1 + DirectCbCount> params;
         params[RootParamPush].InitAsConstants(
-            RHI_PUSH_CONSTANT_BYTES / 4,
+            PushConstantBytes / 4,
             0,
             0,
             D3D12_SHADER_VISIBILITY_ALL
         );
-        for(u32 i=0; i<RHI_NUM_DIRECT_CBS; ++i){
+        for(u32 i=0; i<DirectCbCount; ++i){
             params[RootParamCBBase + i].InitAsConstantBufferView(
                 1 + i,
                 0,
@@ -409,14 +409,14 @@ namespace{
         }
 
         std::array samplers = {
-            convert(LINEAR_WRAP_SAMPLER, 0),
-            convert(LINEAR_CLAMP_SAMPLER, 1),
-            convert(LINEAR_MIRROR_SAMPLER, 2),
-            convert(LINEAR_BORDER_SAMPLER, 3),
-            convert(NEAREST_WRAP_SAMPLER, 4),
-            convert(NEAREST_CLAMP_SAMPLER, 5),
-            convert(NEAREST_MIRROR_SAMPLER, 6),
-            convert(NEAREST_BORDER_SAMPLER, 7),
+            convert(LinearWrapSampler, 0),
+            convert(LinearClampSampler, 1),
+            convert(LinearMirrorSampler, 2),
+            convert(LinearBorderSampler, 3),
+            convert(NearestWrapSampler, 4),
+            convert(NearestClampSampler, 5),
+            convert(NearestMirrorSampler, 6),
+            convert(NearestBorderSampler, 7),
         };
 
         CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC desc;
@@ -458,7 +458,7 @@ namespace{
 
 namespace Crowy
 {
-    RHIDeviceRAII CreateDX12Device(){
+    RHIDeviceRAII createDX12Device(){
         return std::make_unique<DX12Device>();
     }
 
@@ -550,7 +550,7 @@ namespace Crowy
             setupValidationBreak(*device.Get());
             checkAgilitySDK();
             checkDeviceFeature(*device.Get(), dx12Capabilities);
-            InitGlobalSession();
+            initGlobalSession();
 
             // for prevent dx12Capabilities side-effect
             uploadCmdList = CreateCommandList();
@@ -603,7 +603,7 @@ namespace Crowy
             if(desc.initialData != nullptr && desc.memory == RHIMemoryType::GPUOnly){
                 ensureUploadBegin();
 
-                UploadGpuOnlyBuffer(
+                uploadGPUOnlyBuffer(
                     *uploadCmdList,
                     uploadRing,
                     D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
@@ -652,7 +652,7 @@ namespace Crowy
                     *texture,
                     layouts
                 );
-                UploadTexture(
+                uploadTexture(
                     *uploadCmdList,
                     uploadRing,
                     D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,

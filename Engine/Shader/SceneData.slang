@@ -47,7 +47,7 @@ static const uint MaterialFlagNoShadowReceive = 1;
 // a row of the frame's texture table; map ID n reads row n - 1
 struct TextureData{
     DescriptorHandle<Texture2D> texture;
-    // a TextureSampler: RHI_STATIC_SAMPLERS order
+    // a TextureSampler: StaticSamplers order
     uint sampler;
     uint _pad;
 };

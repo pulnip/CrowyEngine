@@ -93,7 +93,7 @@ TEST(FramePacer, TheFirstFramesInFlightWaitForNothing) {
     FakeSwapchain swapchain;
     FramePacer pacer(device);
 
-    runFrames(pacer, swapchain, RHI_FRAMES_IN_FLIGHT);
+    runFrames(pacer, swapchain, FramesInFlight);
 
     EXPECT_TRUE(device.waits.empty());
 }
@@ -103,7 +103,7 @@ TEST(FramePacer, FrameNWaitsForFrameNMinusFramesInFlight) {
     FakeSwapchain swapchain;
     FramePacer pacer(device);
 
-    runFrames(pacer, swapchain, RHI_FRAMES_IN_FLIGHT + 3);
+    runFrames(pacer, swapchain, FramesInFlight + 3);
 
     const std::vector<u64> expected{1, 2, 3};
     EXPECT_EQ(device.waits, expected);

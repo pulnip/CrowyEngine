@@ -59,7 +59,7 @@ namespace
             const auto releases =
                 effects.Simulate(cmdList, EffectView{}, worldStep, steps);
             const std::array colors{RHIColorAttachment{.texture = &color}};
-            const std::array acquires{MakeBarrier(
+            const std::array acquires{makeBarrier(
                 color,
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::RenderTarget

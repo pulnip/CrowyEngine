@@ -292,7 +292,7 @@ namespace Crowy
         }
         viewSlice = device.UploadTransient(
             std::span<const ViewData>(views),
-            RHI_CB_ALIGN
+            CbAlign
         );
 
         uploaded = true;

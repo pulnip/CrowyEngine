@@ -181,7 +181,7 @@ int main(void){
         const TerrainParams params{};
         const auto points = MakeSamplePoints();
 
-        auto device = CreateDevice();
+        auto device = createDevice();
         auto cmdList = device->CreateCommandList();
 
         const auto pointBytes = static_cast<u32>(sizeof(Vec4) * points.size());
@@ -211,14 +211,14 @@ int main(void){
 
         // the compute pass releases the results, the copy pass acquires
         // them - one edge, same value on both ends
-        const auto resultEdge = MakeBarrier(*resultBuffer,
+        const auto resultEdge = makeBarrier(*resultBuffer,
             RHIResourceUsage::StorageCompute,
             RHIResourceUsage::CopySrc
         );
 
         {
             const std::array acquires{
-                MakeBarrier(*resultBuffer,
+                makeBarrier(*resultBuffer,
                     RHIResourceUsage::Undefined,
                     RHIResourceUsage::StorageCompute
                 )

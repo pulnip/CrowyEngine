@@ -17,11 +17,11 @@ namespace{
     // back from wherever the previous submission left it.
     RHIBufferBarrier AcquireForWrite(RHIBuffer& buffer, RHIResourceUsage resting){
         return resting == RHIResourceUsage::Undefined ?
-            MakeBarrier(buffer,
+            makeBarrier(buffer,
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::StorageCompute
             ) :
-            MakeCrossSubmissionBarrier(buffer,
+            makeCrossSubmissionBarrier(buffer,
                 resting,
                 RHIResourceUsage::StorageCompute
             );
@@ -80,11 +80,11 @@ namespace Crowy
         CROWY_ASSERT(dayPerSample > 0.0f);
 
         const Edges edges{
-            .segCounts = MakeBarrier(*segCounts,
+            .segCounts = makeBarrier(*segCounts,
                 RHIResourceUsage::StorageCompute,
                 RHIResourceUsage::SampledVertex
             ),
-            .args = MakeBarrier(*args,
+            .args = makeBarrier(*args,
                 RHIResourceUsage::StorageCompute,
                 argsNextUse
             )

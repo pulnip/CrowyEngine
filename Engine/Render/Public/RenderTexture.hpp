@@ -15,7 +15,7 @@ namespace Crowy
     using TextureHandle = GenericHandle<TextureResource>;
     using TextureTable = PackedTable<TextureResource>;
 
-    // one of RHI_STATIC_SAMPLERS, in its order; SampleMap mirrors it
+    // one of StaticSamplers, in its order; SampleMap mirrors it
     enum class TextureSampler : u32 {
         LinearWrap,
         LinearClamp,
@@ -27,7 +27,7 @@ namespace Crowy
         NearestBorder,
     };
     static_assert(
-        static_cast<usize>(TextureSampler::NearestBorder) + 1 == RHI_STATIC_SAMPLERS.size()
+        static_cast<usize>(TextureSampler::NearestBorder) + 1 == StaticSamplers.size()
     );
 
     // an uploaded texture and its sampler: one decision with its mips, since

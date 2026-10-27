@@ -134,15 +134,15 @@ namespace Crowy
         // the ring keeps its older samples, so this is a partial write and the
         // acquire must not discard
         const auto acquire = resting == RHIResourceUsage::Undefined ?
-            MakeBarrier(*trail,
+            makeBarrier(*trail,
                 RHIResourceUsage::Undefined,
                 writeAs
             ) :
-            MakeCrossSubmissionBarrier(*trail,
+            makeCrossSubmissionBarrier(*trail,
                 resting,
                 writeAs
             );
-        const auto release = MakeBarrier(*trail, writeAs, nextUse);
+        const auto release = makeBarrier(*trail, writeAs, nextUse);
 
         const std::array acquires{acquire};
         const std::array releases{release};

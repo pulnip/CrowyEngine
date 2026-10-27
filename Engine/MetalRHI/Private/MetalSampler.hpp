@@ -24,7 +24,7 @@ namespace Crowy
         auto Get(){ return sampler.get(); }
     };
 
-    // the RHI_STATIC_SAMPLERS table;
+    // the StaticSamplers table;
     // slang cannot express Metal static samplers,
     // so bound per encoder at the fixed
     // indices assigned to the Sampler.slang globals
@@ -34,13 +34,13 @@ namespace Crowy
 
     public:
         explicit MetalReservedSamplers(MTL::Device& device){
-            samplers.reserve(RHI_STATIC_SAMPLERS.size());
-            for(const auto& desc: RHI_STATIC_SAMPLERS){
+            samplers.reserve(StaticSamplers.size());
+            for(const auto& desc: StaticSamplers){
                 samplers.emplace_back(device, desc);
             }
         }
 
-        // samplerIndex: index into RHI_STATIC_SAMPLERS
+        // samplerIndex: index into StaticSamplers
         MTL::SamplerState* Get(u32 samplerIndex){
             return samplers[samplerIndex].Get();
         }

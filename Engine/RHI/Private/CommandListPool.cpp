@@ -16,7 +16,7 @@ namespace Crowy
         );
         this->frame = frame;
 
-        // the lists stay: the pacer guarantees frame N - RHI_FRAMES_IN_FLIGHT,
+        // the lists stay: the pacer guarantees frame N - FramesInFlight,
         // their last user, has completed, so Begin() may reset them
         auto& slot = slots[currentIndex()];
         slot.nextIndex = 0;

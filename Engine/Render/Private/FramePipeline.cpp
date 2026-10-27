@@ -656,13 +656,13 @@ namespace Crowy
         return *textures[id];
     }
 
-    RHITextureBarrier FramePipeline::makeBarrier(
+    RHITextureBarrier FramePipeline::resolveBarrier(
         const CompiledBarrier& half,
         const FrameInputs& inputs
     ) const {
         auto& target = texture(half.target, inputs);
         if(half.crossSubmission) {
-            return MakeCrossSubmissionBarrier(
+            return makeCrossSubmissionBarrier(
                 target,
                 half.before,
                 half.after,
@@ -670,7 +670,7 @@ namespace Crowy
             );
         }
 
-        return MakeBarrier(target, half.before, half.after);
+        return makeBarrier(target, half.before, half.after);
     }
 
     bool FramePipeline::capturedAfter(
@@ -723,7 +723,7 @@ namespace Crowy
 
             acquireScratch.clear();
             for(const auto& half: compiled.acquires)
-                acquireScratch.push_back(makeBarrier(half, inputs));
+                acquireScratch.push_back(resolveBarrier(half, inputs));
             if(overlay)
                 acquireScratch.append_range(inputs.overlayAcquires);
             if(hook != nullptr)
@@ -864,13 +864,13 @@ namespace Crowy
 
             releaseScratch.clear();
             for(const auto& half: compiled.releases)
-                releaseScratch.push_back(makeBarrier(half, inputs));
+                releaseScratch.push_back(resolveBarrier(half, inputs));
             // this frame only: the capture blit acquires it after the list
             for(const auto& capture: inputs.captures) {
                 const auto& last = lastUses[capture.target];
                 if(last.pass != i)
                     continue;
-                releaseScratch.push_back(MakeBarrier(
+                releaseScratch.push_back(makeBarrier(
                     texture(capture.target, inputs),
                     last.usage,
                     RHIResourceUsage::CopySrc
@@ -905,10 +905,10 @@ namespace Crowy
             auto& source = texture(capture.target, inputs);
             const auto usage = lastUses[capture.target].usage;
             acquireScratch.push_back(
-                MakeBarrier(source, usage, RHIResourceUsage::CopySrc)
+                makeBarrier(source, usage, RHIResourceUsage::CopySrc)
             );
             releaseScratch.push_back(
-                MakeBarrier(source, RHIResourceUsage::CopySrc, usage)
+                makeBarrier(source, RHIResourceUsage::CopySrc, usage)
             );
         }
 
@@ -922,7 +922,7 @@ namespace Crowy
             capture.width = source.GetWidth();
             capture.height = source.GetHeight();
             capture.rowPitch =
-                GetReadbackRowPitch(capture.format, capture.width, caps);
+                getReadbackRowPitch(capture.format, capture.width, caps);
             capture.buffer = device.CreateBuffer(
                 RHIBufferCreateDesc{
                     .size = capture.rowPitch * capture.height,

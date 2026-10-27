@@ -51,7 +51,7 @@ namespace Crowy
             CommandAllocatorRAII allocator;
             u64 serial = 0;
         };
-        std::array<AllocatorSlot, RHI_FRAMES_IN_FLIGHT> allocators;
+        std::array<AllocatorSlot, FramesInFlight> allocators;
         u32 cursor = 0;
         DX12Fence& serialFence;
         // a begin and an end timestamp per allocator slot, following the

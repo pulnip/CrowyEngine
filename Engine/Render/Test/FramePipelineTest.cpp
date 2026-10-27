@@ -492,18 +492,18 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
         EXPECT_EQ(
             f.Pass("DepthPrepass").acquires,
             TextureBarriers{
-                MakeCrossSubmissionBarrier(depth, DepthWrite, DepthWrite, true)
+                makeCrossSubmissionBarrier(depth, DepthWrite, DepthWrite, true)
             }
         );
         EXPECT_EQ(
             f.Pass("DepthPrepass").releases,
-            TextureBarriers{MakeBarrier(depth, DepthWrite, DepthWrite)}
+            TextureBarriers{makeBarrier(depth, DepthWrite, DepthWrite)}
         );
         EXPECT_EQ(
             f.Pass("Opaque").acquires,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, DepthWrite),
-                MakeCrossSubmissionBarrier(
+                makeBarrier(depth, DepthWrite, DepthWrite),
+                makeCrossSubmissionBarrier(
                     color,
                     SampledFragment,
                     RenderTarget,
@@ -514,31 +514,31 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
         EXPECT_EQ(
             f.Pass("Opaque").releases,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, DepthWrite),
-                MakeBarrier(color, RenderTarget, RenderTarget)
+                makeBarrier(depth, DepthWrite, DepthWrite),
+                makeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Translucent").acquires,
             (TextureBarriers{
-                MakeBarrier(depth, DepthWrite, DepthWrite),
-                MakeBarrier(color, RenderTarget, RenderTarget)
+                makeBarrier(depth, DepthWrite, DepthWrite),
+                makeBarrier(color, RenderTarget, RenderTarget)
             })
         );
         EXPECT_EQ(
             f.Pass("Translucent").releases,
-            TextureBarriers{MakeBarrier(color, RenderTarget, SampledFragment)}
+            TextureBarriers{makeBarrier(color, RenderTarget, SampledFragment)}
         );
         EXPECT_EQ(
             f.Pass("Tonemap").acquires,
             (TextureBarriers{
-                MakeBarrier(back, Undefined, RenderTarget),
-                MakeBarrier(color, RenderTarget, SampledFragment)
+                makeBarrier(back, Undefined, RenderTarget),
+                makeBarrier(color, RenderTarget, SampledFragment)
             })
         );
         EXPECT_EQ(
             f.Pass("Tonemap").releases,
-            TextureBarriers{MakeBarrier(back, RenderTarget, Present)}
+            TextureBarriers{makeBarrier(back, RenderTarget, Present)}
         );
 
         EXPECT_TRUE(f.cmdList.violations.empty())
@@ -740,12 +740,12 @@ TEST(FramePipeline, GeometryAcquiresRideEveryMeshPass) {
     );
     FakeBuffer vertexBuffer{64};
     const std::array uploads{
-        MakeBarrier(
+        makeBarrier(
             vertexBuffer,
             RHIResourceUsage::CopyDst,
             RHIResourceUsage::VertexBuffer
         ),
-        MakeBarrier(
+        makeBarrier(
             f.indexBuffer,
             RHIResourceUsage::CopyDst,
             RHIResourceUsage::IndexBuffer
@@ -793,7 +793,7 @@ TEST(FramePipeline, OverlayRidesTheLastBackBufferPass) {
         Height
     );
     FakeTexture atlas{RHIPixelFormat::RGBA8_UNORM, 8, 8, 0xA7};
-    const std::array uiAcquires{MakeBarrier(
+    const std::array uiAcquires{makeBarrier(
         atlas,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::SampledFragment
@@ -967,7 +967,7 @@ TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
     );
 
     FakeTexture atlas{RHIPixelFormat::RGBA8_UNORM, 8, 8, 0xA7};
-    const std::array uiAcquires{MakeBarrier(atlas, Undefined, SampledFragment)};
+    const std::array uiAcquires{makeBarrier(atlas, Undefined, SampledFragment)};
     auto inputs = f.Inputs();
     inputs.overlayAcquires = uiAcquires;
     inputs.recordOverlay = [](RHICommandList& cmdList) {
@@ -985,7 +985,7 @@ TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
         EXPECT_TRUE(
             std::ranges::contains(
                 f.Pass("Tonemap").acquires,
-                MakeCrossSubmissionBarrier(
+                makeCrossSubmissionBarrier(
                     view,
                     SampledFragment,
                     RenderTarget,
@@ -1001,13 +1001,13 @@ TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
         EXPECT_TRUE(
             std::ranges::contains(
                 pass.acquires,
-                MakeBarrier(view, RenderTarget, SampledFragment)
+                makeBarrier(view, RenderTarget, SampledFragment)
             )
         );
         EXPECT_TRUE(std::ranges::contains(pass.acquires, uiAcquires[0]));
         EXPECT_EQ(
             pass.releases,
-            TextureBarriers{MakeBarrier(f.backBuffer, RenderTarget, Present)}
+            TextureBarriers{makeBarrier(f.backBuffer, RenderTarget, Present)}
         );
         // nothing of its own before the UI
         EXPECT_FALSE(std::ranges::contains(pass.log, Str{"draw"}));
@@ -1569,7 +1569,7 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
             auto& t = *f.Pass("Write").colors[0].texture;
             EXPECT_EQ(
                 halvesOf(f.Pass("Write").acquires, &t),
-                TextureBarriers{MakeCrossSubmissionBarrier(
+                TextureBarriers{makeCrossSubmissionBarrier(
                     t,
                     RenderTarget,
                     RenderTarget,
@@ -1578,31 +1578,31 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
             );
             EXPECT_EQ(
                 halvesOf(f.Pass("Write").releases, &t),
-                TextureBarriers{MakeBarrier(t, RenderTarget, SampledFragment)}
+                TextureBarriers{makeBarrier(t, RenderTarget, SampledFragment)}
             );
             EXPECT_EQ(
                 halvesOf(f.Pass("ReadA").acquires, &t),
-                TextureBarriers{MakeBarrier(t, RenderTarget, SampledFragment)}
+                TextureBarriers{makeBarrier(t, RenderTarget, SampledFragment)}
             );
             EXPECT_EQ(
                 halvesOf(f.Pass("ReadA").releases, &t),
                 TextureBarriers{
-                    MakeBarrier(t, SampledFragment, SampledFragment)
+                    makeBarrier(t, SampledFragment, SampledFragment)
                 }
             );
             EXPECT_EQ(
                 halvesOf(f.Pass("ReadB").acquires, &t),
                 TextureBarriers{
-                    MakeBarrier(t, SampledFragment, SampledFragment)
+                    makeBarrier(t, SampledFragment, SampledFragment)
                 }
             );
             EXPECT_EQ(
                 halvesOf(f.Pass("ReadB").releases, &t),
-                TextureBarriers{MakeBarrier(t, SampledFragment, RenderTarget)}
+                TextureBarriers{makeBarrier(t, SampledFragment, RenderTarget)}
             );
             EXPECT_EQ(
                 halvesOf(f.Pass("Rewrite").acquires, &t),
-                TextureBarriers{MakeBarrier(t, SampledFragment, RenderTarget)}
+                TextureBarriers{makeBarrier(t, SampledFragment, RenderTarget)}
             );
             EXPECT_TRUE(f.Pass("Rewrite").releases.empty());
 
@@ -1631,7 +1631,7 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
         auto& map = *f.Pass("Shadow").depth->texture;
         EXPECT_EQ(
             halvesOf(f.Pass("Shadow").acquires, &map),
-            TextureBarriers{MakeCrossSubmissionBarrier(
+            TextureBarriers{makeCrossSubmissionBarrier(
                 map,
                 SampledFragment,
                 DepthWrite,
@@ -1640,19 +1640,19 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
         );
         EXPECT_EQ(
             halvesOf(f.Pass("Shadow").releases, &map),
-            TextureBarriers{MakeBarrier(map, DepthWrite, SampledFragment)}
+            TextureBarriers{makeBarrier(map, DepthWrite, SampledFragment)}
         );
         EXPECT_EQ(
             halvesOf(f.Pass("Opaque").acquires, &map),
-            TextureBarriers{MakeBarrier(map, DepthWrite, SampledFragment)}
+            TextureBarriers{makeBarrier(map, DepthWrite, SampledFragment)}
         );
         EXPECT_EQ(
             halvesOf(f.Pass("Opaque").releases, &map),
-            TextureBarriers{MakeBarrier(map, SampledFragment, SampledFragment)}
+            TextureBarriers{makeBarrier(map, SampledFragment, SampledFragment)}
         );
         EXPECT_EQ(
             halvesOf(f.Pass("Translucent").acquires, &map),
-            TextureBarriers{MakeBarrier(map, SampledFragment, SampledFragment)}
+            TextureBarriers{makeBarrier(map, SampledFragment, SampledFragment)}
         );
         EXPECT_EQ(
             f.device.textureCreates[1].usage,
@@ -1817,15 +1817,15 @@ TEST(FramePipeline, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
         EXPECT_EQ(
             blit.acquires,
             (TextureBarriers{
-                MakeBarrier(color, SampledFragment, CopySrc),
-                MakeBarrier(depth, DepthWrite, CopySrc)
+                makeBarrier(color, SampledFragment, CopySrc),
+                makeBarrier(depth, DepthWrite, CopySrc)
             })
         );
         EXPECT_EQ(
             blit.releases,
             (TextureBarriers{
-                MakeBarrier(color, CopySrc, SampledFragment),
-                MakeBarrier(depth, CopySrc, DepthWrite)
+                makeBarrier(color, CopySrc, SampledFragment),
+                makeBarrier(depth, CopySrc, DepthWrite)
             })
         );
         EXPECT_TRUE(blit.bufferAcquires.empty());
@@ -1844,7 +1844,7 @@ TEST(FramePipeline, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
         for(usize c = 0; c < captures.size(); ++c) {
             const auto& capture = captures[c];
             const auto& copy = blit.copies[c];
-            const auto pitch = GetReadbackRowPitch(
+            const auto pitch = getReadbackRowPitch(
                 capture.format,
                 width,
                 FakeDevice::Capabilities
@@ -1903,7 +1903,7 @@ TEST(FramePipeline, ACaptureStoresTheLastWriterThatFrameOnly) {
     EXPECT_EQ(translucentStore(), RHIStoreAction::Store);
     auto& depth = *f.Pass("Translucent").depth->texture;
     auto withCapture = releases;
-    withCapture.push_back(MakeBarrier(depth, DepthWrite, CopySrc));
+    withCapture.push_back(makeBarrier(depth, DepthWrite, CopySrc));
     EXPECT_EQ(f.Pass("Translucent").releases, withCapture);
     EXPECT_EQ(pipeline.Stats()[Translucent].barrierEdges, edges + 1);
     // the blit's edges belong to no pass
@@ -2033,12 +2033,12 @@ TEST(FramePipeline, AHookPassDrawsWhatItsBindingRecords) {
         Height
     );
     FakeBuffer field{64, 0xB100};
-    const std::array fresh{MakeBarrier(
+    const std::array fresh{makeBarrier(
         field,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::StorageCompute
     )};
-    const std::array released{MakeBarrier(
+    const std::array released{makeBarrier(
         field,
         RHIResourceUsage::StorageCompute,
         RHIResourceUsage::SampledVertex
@@ -2243,12 +2243,12 @@ TEST(FramePipeline, AHookPassCarriesItsTextureAcquires) {
         Height
     );
     FakeTexture grid{RHIPixelFormat::R32_FLOAT, 8, 8, 0x61D};
-    const std::array fresh{MakeBarrier(
+    const std::array fresh{makeBarrier(
         grid,
         RHIResourceUsage::Undefined,
         RHIResourceUsage::StorageCompute
     )};
-    const std::array released{MakeBarrier(
+    const std::array released{makeBarrier(
         grid,
         RHIResourceUsage::StorageCompute,
         RHIResourceUsage::SampledFragment

@@ -9,7 +9,7 @@
 
 namespace Crowy
 {
-    void ValidateGraphicsPipelineDesc(
+    void validateGraphicsPipelineDesc(
         const RHIGraphicsPipelineStateDesc& desc
     ) {
         // a fragment stage without render targets stays legal: a masked depth

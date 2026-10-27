@@ -11,7 +11,7 @@ using namespace Crowy;
 namespace
 {
     // one render target and a fragment stage, as every color pass has
-    RHIGraphicsPipelineStateDesc ColorDesc() {
+    RHIGraphicsPipelineStateDesc colorDesc() {
         return RHIGraphicsPipelineStateDesc{
             .preRasterizer =
                 RHILegacyFrontendDesc{
@@ -31,12 +31,12 @@ namespace
 }
 
 TEST(PipelineRules, RenderTargetsWithoutAFragmentStageThrow) {
-    auto desc = ColorDesc();
+    auto desc = colorDesc();
     desc.fragmentShader = std::nullopt;
 
     try {
-        ValidateGraphicsPipelineDesc(desc);
-        FAIL() << "ValidateGraphicsPipelineDesc did not throw";
+        validateGraphicsPipelineDesc(desc);
+        FAIL() << "validateGraphicsPipelineDesc did not throw";
     } catch(const std::runtime_error& e) {
         EXPECT_STREQ(
             e.what(),
@@ -47,17 +47,17 @@ TEST(PipelineRules, RenderTargetsWithoutAFragmentStageThrow) {
 }
 
 TEST(PipelineRules, ADepthOnlyDescIsValid) {
-    auto desc = ColorDesc();
+    auto desc = colorDesc();
     desc.fragmentShader = std::nullopt;
     desc.renderTargetCount = 0;
 
-    EXPECT_NO_THROW(ValidateGraphicsPipelineDesc(desc));
+    EXPECT_NO_THROW(validateGraphicsPipelineDesc(desc));
 }
 
 // a masked depth pass will want one
 TEST(PipelineRules, AFragmentStageWithoutRenderTargetsIsValid) {
-    auto desc = ColorDesc();
+    auto desc = colorDesc();
     desc.renderTargetCount = 0;
 
-    EXPECT_NO_THROW(ValidateGraphicsPipelineDesc(desc));
+    EXPECT_NO_THROW(validateGraphicsPipelineDesc(desc));
 }

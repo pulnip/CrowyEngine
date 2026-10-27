@@ -61,14 +61,14 @@ namespace Crowy
 
     RHIBufferBarrier FieldBuffer::AcquireForWrite() const {
         if(Fresh()) {
-            return MakeBarrier(
+            return makeBarrier(
                 *buffer,
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::StorageCompute
             );
         }
 
-        return MakeCrossSubmissionBarrier(
+        return makeCrossSubmissionBarrier(
             *buffer,
             resting,
             RHIResourceUsage::StorageCompute
@@ -78,7 +78,7 @@ namespace Crowy
     RHIBufferBarrier FieldBuffer::Release() {
         resting = reader;
 
-        return MakeBarrier(*buffer, RHIResourceUsage::StorageCompute, reader);
+        return makeBarrier(*buffer, RHIResourceUsage::StorageCompute, reader);
     }
 
     u64 FieldBuffer::Writable() {

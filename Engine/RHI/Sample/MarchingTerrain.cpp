@@ -238,7 +238,7 @@ namespace Crowy
             std::vector<RHITextureBarrier> textureAcquires{
                 AcquireBackBuffer(backBuffer),
                 // WAR with the previous frame's depth; the pass clears anyway
-                MakeCrossSubmissionBarrier(
+                makeCrossSubmissionBarrier(
                     *depthBuffer,
                     RHIResourceUsage::DepthWrite,
                     RHIResourceUsage::DepthWrite,

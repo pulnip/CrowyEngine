@@ -219,7 +219,7 @@ namespace
 
 int main() {
     try {
-        auto device = CreateDevice();
+        auto device = createDevice();
         std::println("IslandCheck");
 
         const auto rain = rainDesc();

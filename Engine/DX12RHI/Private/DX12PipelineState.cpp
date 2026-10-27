@@ -176,7 +176,7 @@ namespace Crowy
         RootSignature& rootSignature,
         StrView name
     ){
-        ValidateGraphicsPipelineDesc(desc);
+        validateGraphicsPipelineDesc(desc);
 
         auto& frontend = std::get<RHILegacyFrontendDesc>(desc.preRasterizer);
         primitiveTopology = ::convert(frontend.topology);
@@ -281,7 +281,7 @@ namespace Crowy
         };
 
         constexpr auto MAX_RENDER_TARGETS = std::min(
-            RHI_MAX_RENDER_TARGETS,
+            MaxRenderTargets,
             8u
         );
         for(u32 i=0; i<MAX_RENDER_TARGETS; ++i){

@@ -46,7 +46,7 @@ namespace Crowy
         virtual RHICommandListRAII CreateCommandList() = 0;
 
         // the batch is frame `frame`'s; frames arrive contiguously from 1, and
-        // frame N only once frame N - RHI_FRAMES_IN_FLIGHT has completed
+        // frame N only once frame N - FramesInFlight has completed
         virtual void Submit(std::span<RHICommandList*>, u64 frame) = 0;
         virtual void SubmitAndPresent(
             std::span<RHICommandList*>,
@@ -89,7 +89,7 @@ namespace Crowy
         // allocate a transient slice and fill it in one step
         template<typename T>
             requires (!std::is_pointer_v<T> && std::is_trivially_copyable_v<T>)
-        RHIBufferSlice UploadTransient(const T& data, u32 align = RHI_CB_ALIGN){
+        RHIBufferSlice UploadTransient(const T& data, u32 align = CbAlign){
             const auto slice = AllocateTransient(
                 static_cast<u32>(sizeof(T)),
                 align
@@ -103,7 +103,7 @@ namespace Crowy
             requires std::is_trivially_copyable_v<T>
         RHIBufferSlice UploadTransient(
             std::span<const T> data,
-            u32 align = RHI_CB_ALIGN
+            u32 align = CbAlign
         ){
             const auto bytes = static_cast<u32>(data.size_bytes());
             const auto slice = AllocateTransient(bytes, align);
@@ -114,10 +114,10 @@ namespace Crowy
     };
 
 #if defined(_WIN32)
-    RHIDeviceRAII CreateDevice(RHIBackend backend = RHIBackend::DirectX12);
+    RHIDeviceRAII createDevice(RHIBackend backend = RHIBackend::DirectX12);
 #elif defined(__APPLE__)
-    RHIDeviceRAII CreateDevice(RHIBackend backend = RHIBackend::Metal);
+    RHIDeviceRAII createDevice(RHIBackend backend = RHIBackend::Metal);
 #else
-    RHIDeviceRAII CreateDevice(RHIBackend backend = RHIBackend::WebGPU);
+    RHIDeviceRAII createDevice(RHIBackend backend = RHIBackend::WebGPU);
 #endif
 }

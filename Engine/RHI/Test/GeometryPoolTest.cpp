@@ -38,7 +38,7 @@ namespace
         FakeCommandList cmdList;
 
         RHIBufferBarrier VertexRelease(RHIResourceUsage read) {
-            return MakeBarrier(
+            return makeBarrier(
                 pool.GetVertexBuffer(),
                 RHIResourceUsage::CopyDst,
                 read
@@ -46,7 +46,7 @@ namespace
         }
 
         RHIBufferBarrier IndexRelease() {
-            return MakeBarrier(
+            return makeBarrier(
                 pool.GetIndexBuffer(),
                 RHIResourceUsage::CopyDst,
                 RHIResourceUsage::IndexBuffer
@@ -67,12 +67,12 @@ TEST_F(GeometryPoolTest, TheFirstUploadTakesTheBuffersFresh) {
     EXPECT_EQ(
         pass.bufferAcquires,
         (FakeCommandList::BufferBarriers{
-            MakeBarrier(
+            makeBarrier(
                 pool.GetVertexBuffer(),
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::CopyDst
             ),
-            MakeBarrier(
+            makeBarrier(
                 pool.GetIndexBuffer(),
                 RHIResourceUsage::Undefined,
                 RHIResourceUsage::CopyDst
@@ -104,7 +104,7 @@ TEST(GeometryPool, ABoundVertexBufferIsReleasedAsOne) {
     ASSERT_EQ(releases.size(), 2u);
     EXPECT_EQ(
         releases[0],
-        MakeBarrier(
+        makeBarrier(
             pool.GetVertexBuffer(),
             RHIResourceUsage::CopyDst,
             RHIResourceUsage::VertexBuffer
@@ -215,12 +215,12 @@ TEST_F(GeometryPoolTest, ALaterUploadWaitsForTheFramesThatDrewFromThePool) {
     EXPECT_EQ(
         pass.bufferAcquires,
         (FakeCommandList::BufferBarriers{
-            MakeCrossSubmissionBarrier(
+            makeCrossSubmissionBarrier(
                 pool.GetVertexBuffer(),
                 RHIResourceUsage::SampledVertex,
                 RHIResourceUsage::CopyDst
             ),
-            MakeCrossSubmissionBarrier(
+            makeCrossSubmissionBarrier(
                 pool.GetIndexBuffer(),
                 RHIResourceUsage::IndexBuffer,
                 RHIResourceUsage::CopyDst

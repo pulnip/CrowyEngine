@@ -6,7 +6,7 @@
 
 namespace Crowy
 {
-    void UploadGpuOnlyBuffer(
+    void uploadGPUOnlyBuffer(
         RHICommandList& cmdList,
         UploadRing& ring,
         u64 align,
@@ -14,7 +14,7 @@ namespace Crowy
         const RHISubresourceData& sub
     );
 
-    void UploadTexture(
+    void uploadTexture(
         RHICommandList& cmdList,
         UploadRing& ring,
         u64 align,
