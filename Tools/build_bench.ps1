@@ -11,7 +11,7 @@
 #   Tools/build_bench.ps1 -Target Playground -Detach
 #   Tools/build.ps1 -Status
 param(
-    [string[]] $Target,
+    [string]   $Target,
     [switch]   $Clean,
     [switch]   $Fresh,
     [switch]   $Detach,

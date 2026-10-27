@@ -31,9 +31,7 @@ STATUS=0
 LOG_FILE=""
 
 usage() {
-    echo "usage: Tools/build.sh [--config Debug|RelWithDebInfo|Release] [--target <name>]" >&2
-    echo "                      [--preset <configure-preset>] [--clean] [--fresh]" >&2
-    echo "                      [--detach] [--status] [--log-file <path>]" >&2
+    sed -n 's/^# \{0,1\}//; /^usage:/,/^$/p' "$0" | sed '/^$/d' >&2
     exit 2
 }
 

@@ -4,15 +4,17 @@
 
 .DESCRIPTION
     VSCode's CMake Tools runs every build inside the Visual Studio Developer
-    environment (see .vscode/settings.json -> "cmake.useVsDeveloperEnvironment":
-    "always") and drives it through the CMake presets. A plain shell has no
-    INCLUDE/LIB/VCINSTALLDIR, so builds started from one behave differently.
-    This script reproduces that environment and command line, writes all output
-    to log files, and never uses a pipe (pipes buffer and make a live build look
-    hung).
+    environment (see .vscode/settings.template.json ->
+    "cmake.useVsDeveloperEnvironment": "always") and drives it through the
+    CMake presets. A plain shell has no INCLUDE/LIB/VCINSTALLDIR, so builds
+    started from one behave differently. This script reproduces that
+    environment and command line, writes all output to log files, and never
+    uses a pipe (pipes buffer and make a live build look hung).
 
     -Detach re-launches the script as a process that outlives its caller, so a
     long build cannot be killed by a shell timeout. Poll it with -Status.
+
+    One target per call and one build at a time; never kill a running build.
 
 .EXAMPLE
     Tools/build.ps1                                  # foreground, configure if needed
@@ -24,7 +26,7 @@ param(
     [string]   $Preset = 'Windows-llvm-x64',
     [ValidateSet('Debug', 'RelWithDebInfo', 'Release')]
     [string]   $Config = 'Debug',
-    [string[]] $Target,
+    [string]   $Target,
     [switch]   $Clean,
     [switch]   $Fresh,
     [switch]   $Detach,
@@ -33,9 +35,15 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Target -match '[,\s]') {
+    Write-Output 'FAIL: one target per call'
+    exit 2
+}
+
 $repoRoot  = Split-Path -Parent $PSScriptRoot
 $binaryDir = Join-Path $repoRoot 'build'
 
+$customLog = $LogFile
 if (-not $LogFile) { $LogFile = Join-Path $binaryDir 'build-log.txt' }
 $configureLog = Join-Path $binaryDir 'configure-log.txt'
 $summaryFile  = Join-Path $binaryDir 'build-summary.txt'
@@ -44,13 +52,19 @@ $statusFile   = Join-Path $binaryDir 'build-status.txt'
 
 New-Item -ItemType Directory -Force -Path $binaryDir | Out-Null
 
+# A PID alone is not enough: once a build is gone, an unrelated process can
+# be handed the same number.
+function Get-RunningBuild {
+    if (-not (Test-Path $pidFile)) { return $null }
+    $bpid = (Get-Content $pidFile -Raw).Trim()
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId=$bpid" -ErrorAction SilentlyContinue
+    if ($process -and $process.CommandLine -match 'build\.ps1') { return $bpid }
+    return $null
+}
+
 # ------------------------------------------------------------------- -Status
 if ($Status) {
-    $running = $false
-    if (Test-Path $pidFile) {
-        $bpid = (Get-Content $pidFile -Raw).Trim()
-        $running = [bool](Get-Process -Id $bpid -ErrorAction SilentlyContinue)
-    }
+    $running = [bool](Get-RunningBuild)
     Write-Output "running : $running"
     if (Test-Path $statusFile) { Write-Output "status  : $((Get-Content $statusFile -Raw).Trim())" }
 
@@ -72,19 +86,17 @@ if ($Status) {
 # a child when the parent exits, so the build keeps going across tool timeouts
 # and session teardown.
 if ($Detach) {
-    if (Test-Path $pidFile) {
-        $bpid = (Get-Content $pidFile -Raw).Trim()
-        if (Get-Process -Id $bpid -ErrorAction SilentlyContinue) {
-            Write-Output "A build is already running (PID $bpid). Exactly one build at a time - wait for it."
-            exit 1
-        }
+    if ($bpid = Get-RunningBuild) {
+        Write-Output "A build is already running (PID $bpid). Exactly one build at a time - wait for it."
+        exit 1
     }
     Remove-Item $statusFile -Force -ErrorAction SilentlyContinue
 
     $relaunch = @('-NoProfile', '-File', $PSCommandPath, '-Preset', $Preset, '-Config', $Config)
-    if ($Target) { $relaunch += '-Target'; $relaunch += ($Target -join ',') }
-    if ($Clean)  { $relaunch += '-Clean' }
-    if ($Fresh)  { $relaunch += '-Fresh' }
+    if ($Target)    { $relaunch += '-Target'; $relaunch += $Target }
+    if ($Clean)     { $relaunch += '-Clean' }
+    if ($Fresh)     { $relaunch += '-Fresh' }
+    if ($customLog) { $relaunch += '-LogFile'; $relaunch += $customLog }
 
     $child = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $relaunch `
         -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru `
@@ -95,6 +107,14 @@ if ($Detach) {
     Write-Output "poll with : Tools/build.ps1 -Status"
     exit 0
 }
+
+# ------------------------------------------------------------------- the run
+if (($bpid = Get-RunningBuild) -and $bpid -ne "$PID") {
+    Write-Output "A build is already running (PID $bpid). Exactly one build at a time - wait for it."
+    exit 1
+}
+$PID | Set-Content $pidFile
+Remove-Item $statusFile -Force -ErrorAction SilentlyContinue
 
 # ---------------------------------------------------------------- VS dev env
 # Locate the VS install the same way CMake Tools does, then import the
