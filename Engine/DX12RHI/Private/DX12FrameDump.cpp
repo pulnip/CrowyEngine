@@ -1,6 +1,10 @@
 #include "DX12FrameDump.hpp"
+
+#include <exception>
+
+#include "ImageWriter.hpp"
 #include "LogLocal.hpp"
-#include "RHIUtil.hpp"
+#include "PathUtil.hpp"
 
 namespace Crowy
 {
@@ -146,18 +150,24 @@ namespace Crowy
         }
 
         const auto width = static_cast<u32>(desc.Width);
-        const bool written = WriteBMP(
-            mapped,
-            footprint.Footprint.RowPitch,
-            width,
-            desc.Height,
-            bgra,
-            path
-        );
-        if(!written){
-            LOG_WARN("frame dump skipped: cannot open '{}'", path);
+        bool written = true;
+        try {
+            writeImage(
+                toPath(path),
+                Rgba8View{
+                    .pixels = mapped,
+                    .width = width,
+                    .height = desc.Height,
+                    .rowPitch = footprint.Footprint.RowPitch
+                },
+                bgra ? ChannelOrder::Bgra : ChannelOrder::Rgba
+            );
         }
-        else{
+        catch(const std::exception& e) {
+            written = false;
+            LOG_WARN("frame dump skipped: {}", e.what());
+        }
+        if(written) {
             LOG_INFO(
                 "frame dump: wrote {}x{} frame to '{}'",
                 width, desc.Height, path

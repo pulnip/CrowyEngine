@@ -1,16 +1,20 @@
-#include <cstdio>
+#include "MetalFrameDump.hpp"
+
+#include <exception>
 #include <utility>
 #include <vector>
+
 #include <Metal/MTLTexture.hpp>
+
+#include "ImageWriter.hpp"
 #include "LogLocal.hpp"
-#include "MetalFrameDump.hpp"
+#include "PathUtil.hpp"
 #include "Primitives.hpp"
-#include "RHIUtil.hpp"
 
 namespace Crowy
 {
     namespace{
-        bool writeBMP(MTL::Texture& texture, const Str& path){
+        bool writeFrame(MTL::Texture& texture, const Str& path) {
             const auto format = texture.pixelFormat();
             const bool bgra =
                 format == MTL::PixelFormatBGRA8Unorm ||
@@ -38,15 +42,20 @@ namespace Crowy
                 0
             );
 
-            if(!WriteBMP(
-                pixels.data(),
-                width * 4,
-                static_cast<u32>(width),
-                static_cast<u32>(height),
-                bgra,
-                path
-            )){
-                LOG_WARN("frame dump skipped: cannot open '{}'", path);
+            try {
+                writeImage(
+                    toPath(path),
+                    Rgba8View{
+                        .pixels = pixels.data(),
+                        .width = static_cast<u32>(width),
+                        .height = static_cast<u32>(height),
+                        .rowPitch = width * 4
+                    },
+                    bgra ? ChannelOrder::Bgra : ChannelOrder::Rgba
+                );
+            }
+            catch(const std::exception& e) {
+                LOG_WARN("frame dump skipped: {}", e.what());
                 return false;
             }
 
@@ -70,11 +79,14 @@ namespace Crowy
 
         // the handler outlives this call, so it keeps its own references
         texture->retain();
-        cmdBuffer.addCompletedHandler(MTL::HandlerFunction(
-            [texture, path = std::move(path), onDone = std::move(onDone)](MTL::CommandBuffer*){
-                onDone(writeBMP(*texture, path));
+        cmdBuffer.addCompletedHandler(
+            MTL::HandlerFunction([texture,
+                                  path = std::move(path),
+                                  onDone =
+                                      std::move(onDone)](MTL::CommandBuffer*) {
+                onDone(writeFrame(*texture, path));
                 texture->release();
-            }
-        ));
+            })
+        );
     }
 }

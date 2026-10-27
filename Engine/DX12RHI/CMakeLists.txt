@@ -10,6 +10,7 @@ PRIVATE
     # for Check DirectX Agility SDK
     psapi.lib
     SDL3::SDL3
+    Crowy::Content
     Crowy::Log
 )
 

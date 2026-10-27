@@ -14,7 +14,6 @@
 #include "ImageWriter.hpp"
 #include "PathUtil.hpp"
 #include "Primitives.hpp"
-#include "RHIUtil.hpp"
 #include "StringUtil.hpp"
 
 namespace Crowy
@@ -335,27 +334,6 @@ namespace Crowy
             }
         }
 
-        void writeImage(const Str& path, Rgba8View image) {
-            if(path.ends_with(".png")) {
-                writePng(toPath(path.c_str()), image);
-                return;
-            }
-
-            const bool written = WriteBMP(
-                image.pixels,
-                image.rowPitch,
-                image.width,
-                image.height,
-                false,
-                path
-            );
-            if(!written) {
-                throw std::runtime_error(
-                    std::format("cannot write '{}'", path)
-                );
-            }
-        }
-
         int compareFiles(const Args& args) {
             const auto& pathA = args.paths[0];
             const auto& pathB = args.paths[1];
@@ -368,7 +346,7 @@ namespace Crowy
             if(!args.diff.empty()) {
                 const auto heat = paintHeatMap(comparison);
                 writeImage(
-                    args.diff,
+                    toPath(args.diff),
                     Rgba8View{
                         .pixels = heat.data(),
                         .width = comparison.width,
@@ -444,7 +422,7 @@ namespace Crowy
             if(!args.overlay.empty()) {
                 const auto overlay = paintEdgeOverlay(comparison, viewRgba8(a));
                 writeImage(
-                    args.overlay,
+                    toPath(args.overlay),
                     Rgba8View{
                         .pixels = overlay.data(),
                         .width = comparison.width,
@@ -481,7 +459,7 @@ namespace Crowy
 
         int convertFile(const Args& args) {
             const auto image = LoadImage(toPath(args.paths[0].c_str()));
-            writeImage(args.paths[1], viewRgba8(image));
+            writeImage(toPath(args.paths[1]), viewRgba8(image));
 
             return 0;
         }

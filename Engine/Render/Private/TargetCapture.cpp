@@ -4,13 +4,15 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <exception>
 #include <utility>
 
 #include "Assert.hpp"
+#include "ImageWriter.hpp"
 #include "LogLocal.hpp"
+#include "PathUtil.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
-#include "RHIUtil.hpp"
 
 namespace Crowy
 {
@@ -281,20 +283,24 @@ namespace Crowy
             return false;
         }
 
-        if(!WriteBMP(
-               rgba.data(),
-               usize{readback.width} * 4,
-               readback.width,
-               readback.height,
-               /*bgra=*/false,
-               request.path
-           )) {
+        try {
+            writeImage(
+                toPath(request.path),
+                Rgba8View{
+                    .pixels = rgba.data(),
+                    .width = readback.width,
+                    .height = readback.height,
+                    .rowPitch = usize{readback.width} * 4
+                }
+            );
+        }
+        catch(const std::exception& e) {
             LOG_WARN(
-                "capture of '{}' at frame {} to '{}' failed: the file cannot "
-                "be created",
+                "capture of '{}' at frame {} to '{}' failed: {}",
                 request.target,
                 request.frame,
-                request.path
+                request.path,
+                e.what()
             );
 
             return false;

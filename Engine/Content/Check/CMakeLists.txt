@@ -4,5 +4,4 @@ SOURCES
     ImageCompareCheck.cpp
 DEPENDS
     Crowy::Content
-    Crowy::RHI
 )
