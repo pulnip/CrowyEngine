@@ -240,7 +240,7 @@ TEST(Serializer, ATableKeepsTheOrderItWasGiven) {
     table.emplace("a", i64{2});
     EXPECT_FALSE(table.emplace("b", i64{3}).second);
     EXPECT_FALSE(table.insert_or_assign("b", i64{4}).second);
-    EXPECT_EQ(emitJson(DOM::Value(std::move(table))), R"({"b":4,"a":2})");
+    EXPECT_EQ(emitJson(std::move(table)), R"({"b":4,"a":2})");
 }
 
 TEST(Serializer, AParsedValueIsChangedInPlace) {
@@ -322,7 +322,7 @@ TEST(Serializer, JsonParseErrors) {
 
 TEST(Serializer, Size2DFromPair) {
     auto v = parseJsonString(
-        R"({"pair": [8, 4], "quad": [8, 4, 2, 1], "single": [8]})"
+        R"({"pair": [8, 4], "quad": [8, 4, 2, 1], "single": [8], "negative": [8, -4]})"
     );
 
     auto size = v.get<Size2D>("pair");
@@ -332,6 +332,7 @@ TEST(Serializer, Size2DFromPair) {
 
     EXPECT_FALSE(v.get<Size2D>("quad").has_value());
     EXPECT_FALSE(v.get<Size2D>("single").has_value());
+    EXPECT_FALSE(v.get<Size2D>("negative").has_value());
 }
 
 TEST(Serializer, JsonNumberStrictness) {
@@ -345,5 +346,6 @@ TEST(Serializer, JsonNumberStrictness) {
 
     EXPECT_EQ(v.get<f64>("i"), 1.0);
     EXPECT_EQ(v.get<i64>("big"), std::numeric_limits<i64>::max());
+    EXPECT_EQ(v.get<i32>("big"), std::nullopt);
     EXPECT_EQ(v.get<i64>("f"), std::nullopt);
 }

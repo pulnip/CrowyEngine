@@ -5,3 +5,4 @@ Engine/Reflection
 Engine/Asset
 Engine/Remote
 Engine/Platform
+Engine/Serialization

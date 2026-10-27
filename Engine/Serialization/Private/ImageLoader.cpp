@@ -179,9 +179,7 @@ namespace
 namespace Crowy
 {
     ImageData LoadImage(const std::filesystem::path& path) {
-        auto ext = path.extension().string();
-
-        if(ext == ".ktx2") {
+        if(path.extension() == ".ktx2") {
             return loadCompressed(path);
         }
 

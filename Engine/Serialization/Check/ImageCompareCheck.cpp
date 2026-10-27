@@ -1,13 +1,11 @@
 #include <array>
-#include <charconv>
-#include <cmath>
 #include <cstdio>
 #include <exception>
 #include <format>
+#include <limits>
 #include <print>
 #include <span>
 #include <stdexcept>
-#include <system_error>
 #include <vector>
 
 #include "ImageCompare.hpp"
@@ -76,48 +74,10 @@ namespace Crowy
             return path.ends_with(".png") || path.ends_with(".bmp");
         }
 
-        u8 parseTolerance(StrView text) {
-            u32 value = 0;
-            const auto end = text.data() + text.size();
-            const auto [ptr, ec] = std::from_chars(text.data(), end, value);
-            if(ec != std::errc{} || ptr != end || value > 255) {
-                throw std::runtime_error(
-                    std::format(
-                        "'--tolerance' takes a whole number from 0 to 255, not "
-                        "'{}'\n{}",
-                        text,
-                        usage()
-                    )
-                );
-            }
-
-            return static_cast<u8>(value);
-        }
-
-        u32 parseRadius(StrView text) {
-            u32 value = 0;
-            const auto end = text.data() + text.size();
-            const auto [ptr, ec] = std::from_chars(text.data(), end, value);
-            if(ec != std::errc{} || ptr != end || value > 64) {
-                throw std::runtime_error(
-                    std::format(
-                        "'--radius' takes a whole number from 0 to 64, not "
-                        "'{}'\n{}",
-                        text,
-                        usage()
-                    )
-                );
-            }
-
-            return value;
-        }
-
-        f64 parseNumber(StrView flag, StrView text, f64 low, f64 high) {
-            f64 value = 0.0;
-            const auto end = text.data() + text.size();
-            const auto [ptr, ec] = std::from_chars(text.data(), end, value);
-            if(ec != std::errc{} || ptr != end || !std::isfinite(value) ||
-               value < low || value > high) {
+        template<Number T>
+        T parseFlag(StrView flag, StrView text, T low, T high) {
+            const auto value = parseNumber<T>(text);
+            if(!value || !(low <= *value && *value <= high)) {
                 throw std::runtime_error(
                     std::format(
                         "'{}' takes a number from {} to {}, not '{}'\n{}",
@@ -130,30 +90,12 @@ namespace Crowy
                 );
             }
 
-            return value;
-        }
-
-        f64 parseFraction(StrView flag, StrView text) {
-            f64 value = 0.0;
-            const auto end = text.data() + text.size();
-            const auto [ptr, ec] = std::from_chars(text.data(), end, value);
-
-            if(ec != std::errc{} || ptr != end || !std::isfinite(value) ||
-               value < 0.0 || value > 1.0) {
-                throw std::runtime_error(
-                    std::format(
-                        "'{}' takes a fraction from 0 to 1, not '{}'\n{}",
-                        flag,
-                        text,
-                        usage()
-                    )
-                );
-            }
-
-            return value;
+            return *value;
         }
 
         Args parseArgs(std::span<char* const> args) {
+            constexpr u32 MaxEdgeRadius = 64;
+
             Args parsed;
             bool convert = false;
             bool edges = false;
@@ -183,13 +125,14 @@ namespace Crowy
                     continue;
                 }
                 if(arg == "--radius") {
-                    parsed.edges.radius = parseRadius(value());
+                    parsed.edges.radius =
+                        parseFlag<u32>(arg, value(), 0, MaxEdgeRadius);
                     edgeFlags = true;
                     continue;
                 }
                 if(arg == "--density") {
                     const auto text = value();
-                    parsed.edges.density = parseFraction(arg, text);
+                    parsed.edges.density = parseFlag(arg, text, 0.0, 1.0);
                     if(parsed.edges.density == 0.0) {
                         throw std::runtime_error(
                             std::format(
@@ -203,7 +146,7 @@ namespace Crowy
                     continue;
                 }
                 if(arg == "--lenience") {
-                    parsed.edges.lenience = parseNumber(arg, value(), 1.0, 8.0);
+                    parsed.edges.lenience = parseFlag(arg, value(), 1.0, 8.0);
                     edgeFlags = true;
                     continue;
                 }
@@ -218,18 +161,24 @@ namespace Crowy
                     continue;
                 }
                 if(arg == "--tolerance") {
-                    parsed.tolerance.channelDelta = parseTolerance(value());
+                    parsed.tolerance.channelDelta = parseFlag<u8>(
+                        arg,
+                        value(),
+                        0,
+                        std::numeric_limits<u8>::max()
+                    );
                     compareFlags = true;
                     continue;
                 }
                 if(arg == "--max-fail") {
                     parsed.tolerance.maxGlobalFail =
-                        parseFraction(arg, value());
+                        parseFlag(arg, value(), 0.0, 1.0);
                     compareFlags = true;
                     continue;
                 }
                 if(arg == "--max-local") {
-                    parsed.tolerance.maxLocalFail = parseFraction(arg, value());
+                    parsed.tolerance.maxLocalFail =
+                        parseFlag(arg, value(), 0.0, 1.0);
                     compareFlags = true;
                     continue;
                 }

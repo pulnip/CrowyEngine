@@ -289,7 +289,7 @@ namespace Crowy
         a.emplace_back(v.x);
         a.emplace_back(v.y);
 
-        return DOM::Value(std::move(a));
+        return a;
     }
 
     template<>
@@ -301,7 +301,7 @@ namespace Crowy
         a.emplace_back(v.y);
         a.emplace_back(v.z);
 
-        return DOM::Value(std::move(a));
+        return a;
     }
 
     template<>
@@ -314,7 +314,7 @@ namespace Crowy
         a.emplace_back(v.z);
         a.emplace_back(v.w);
 
-        return DOM::Value(std::move(a));
+        return a;
     }
 
     template<>
@@ -322,10 +322,10 @@ namespace Crowy
         DOM::Array a;
         a.reserve(2);
 
-        a.emplace_back(static_cast<i64>(v.x));
-        a.emplace_back(static_cast<i64>(v.y));
+        a.emplace_back(v.x);
+        a.emplace_back(v.y);
 
-        return DOM::Value(std::move(a));
+        return a;
     }
 
     template<>
@@ -336,6 +336,6 @@ namespace Crowy
         t.emplace("rotation", from(v.rotation));
         t.emplace("scale", from(v.scale));
 
-        return DOM::Value(std::move(t));
+        return t;
     }
 }

@@ -7,15 +7,12 @@ PRIVATE
     nlohmann_json::nlohmann_json
     stb
     ufbx
-    Crowy::Log
 )
-
-crowy_declare_private_interface(Serialization)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(Serialization
         DIRECTORY Test
-        DEPENDS Crowy::Serialization::Private
+        DEPENDS Crowy::Serialization
         LABELS "unit"
     )
     # fixtures the tests read in place, whatever the working directory

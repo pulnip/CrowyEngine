@@ -12,6 +12,7 @@
 #include <variant>
 #include <vector>
 
+#include "Assert.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
@@ -73,8 +74,16 @@ namespace Crowy
             Value() = default;
             Value(bool v) noexcept
                 : value(v) {}
-            Value(i64 v) noexcept
-                : value(v) {}
+            template<typename T>
+                requires std::integral<T> && (!std::same_as<T, bool>)
+            Value(T v) noexcept
+                : value(static_cast<i64>(v)) {
+                CROWY_ASSERT(
+                    std::in_range<i64>(v),
+                    "{} does not fit an i64",
+                    v
+                );
+            }
             Value(f64 v) noexcept
                 : value(v) {}
             Value(f32 v) noexcept
@@ -138,7 +147,7 @@ namespace Crowy
                     return asBool();
                 }
                 else if constexpr(std::integral<T>) {
-                    if(auto opt = asInt())
+                    if(auto opt = asInt(); opt && std::in_range<T>(*opt))
                         return static_cast<T>(*opt);
                 }
                 else if constexpr(std::floating_point<T>) {
@@ -170,17 +179,11 @@ namespace Crowy
             // the write half of get<T>: builds the Value get<T> reads back
             template<typename T>
             static Value from(const T& v) {
-                if constexpr(std::same_as<T, bool>) {
-                    return Value(v);
-                }
-                else if constexpr(std::integral<T>) {
-                    return Value(static_cast<i64>(v));
-                }
-                else if constexpr(std::floating_point<T>) {
+                if constexpr(
+                    std::integral<T> || std::floating_point<T> ||
+                    std::same_as<T, Str>
+                ) {
                     // an f32 stays one, so it writes as its own shortest text
-                    return Value(v);
-                }
-                else if constexpr(std::same_as<T, Str>) {
                     return Value(v);
                 }
                 else {

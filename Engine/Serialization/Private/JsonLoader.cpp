@@ -49,7 +49,7 @@ namespace
                 arr.emplace_back(parseFromJson(child));
             }
 
-            return Value(std::move(arr));
+            return arr;
         }
         case Json::value_t::object: {
             Table tbl;
@@ -57,7 +57,7 @@ namespace
                 tbl.emplace(Str(k), parseFromJson(child));
             }
 
-            return Value(std::move(tbl));
+            return tbl;
         }
         default:
             return Value();
