@@ -18,7 +18,6 @@ namespace
         using enum Crowy::KeyCode;
 
         switch(keyCode) {
-        // Numbers
         case Num0:
             return SDL_SCANCODE_0;
         case Num1:
@@ -39,7 +38,6 @@ namespace
             return SDL_SCANCODE_8;
         case Num9:
             return SDL_SCANCODE_9;
-        // Letters
         case A:
             return SDL_SCANCODE_A;
         case B:
@@ -92,7 +90,6 @@ namespace
             return SDL_SCANCODE_Y;
         case Z:
             return SDL_SCANCODE_Z;
-        // Function Keys
         case F1:
             return SDL_SCANCODE_F1;
         case F2:
@@ -117,14 +114,12 @@ namespace
             return SDL_SCANCODE_F11;
         case F12:
             return SDL_SCANCODE_F12;
-        // Modifiers
         case Ctrl:
             return SDL_SCANCODE_LCTRL;
         case Alt:
             return SDL_SCANCODE_LALT;
         case Shift:
             return SDL_SCANCODE_LSHIFT;
-        // Special
         case Tab:
             return SDL_SCANCODE_TAB;
         case Space:
@@ -133,7 +128,6 @@ namespace
             return SDL_SCANCODE_RETURN;
         case Escape:
             return SDL_SCANCODE_ESCAPE;
-        // Arrows
         case Left:
             return SDL_SCANCODE_LEFT;
         case Right:
@@ -142,7 +136,6 @@ namespace
             return SDL_SCANCODE_UP;
         case Down:
             return SDL_SCANCODE_DOWN;
-        // Sentinel
         case Unknown:
             [[fallthrough]];
         default:
@@ -154,7 +147,6 @@ namespace
         using enum Crowy::KeyCode;
 
         switch(scancode) {
-        // Numbers
         case SDL_SCANCODE_0:
             return Num0;
         case SDL_SCANCODE_1:
@@ -175,7 +167,6 @@ namespace
             return Num8;
         case SDL_SCANCODE_9:
             return Num9;
-        // Letters
         case SDL_SCANCODE_A:
             return A;
         case SDL_SCANCODE_B:
@@ -228,7 +219,6 @@ namespace
             return Y;
         case SDL_SCANCODE_Z:
             return Z;
-        // Function Keys
         case SDL_SCANCODE_F1:
             return F1;
         case SDL_SCANCODE_F2:
@@ -253,14 +243,12 @@ namespace
             return F11;
         case SDL_SCANCODE_F12:
             return F12;
-        // Modifiers
         case SDL_SCANCODE_LCTRL:
             return Ctrl;
         case SDL_SCANCODE_LALT:
             return Alt;
         case SDL_SCANCODE_LSHIFT:
             return Shift;
-        // Special
         case SDL_SCANCODE_TAB:
             return Tab;
         case SDL_SCANCODE_SPACE:
@@ -269,7 +257,6 @@ namespace
             return Enter;
         case SDL_SCANCODE_ESCAPE:
             return Escape;
-        // Arrows
         case SDL_SCANCODE_LEFT:
             return Left;
         case SDL_SCANCODE_RIGHT:
@@ -278,7 +265,6 @@ namespace
             return Up;
         case SDL_SCANCODE_DOWN:
             return Down;
-        // Sentinel
         default:
             return Unknown;
         }
@@ -498,7 +484,6 @@ namespace Crowy
                 ReleaseKey(keyCode);
         } break;
         default:
-            // Input Provider should handle specific case
             std::unreachable();
         }
     }

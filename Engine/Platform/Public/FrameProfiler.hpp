@@ -25,7 +25,6 @@ namespace Crowy
         Record,    // draw submission
         Submit,    // execute and present
         Frame,     // the fence wait through the submit
-        // Sentinel
         Unknown
     };
     constexpr auto NUM_FRAME_SECTION =

@@ -9,7 +9,6 @@ namespace Crowy
 {
     class InputProvider {
     private:
-        // Keyboard State
         std::bitset<NUM_KEY> pressedState;
         std::bitset<NUM_KEY> releasedState;
 
@@ -29,13 +28,11 @@ namespace Crowy
         // Call After All Event Process Done
         virtual bool IsKeyDown(KeyCode) const noexcept = 0;
 
-        // true if Rising Edge Exist
         bool IsKeyPressed(KeyCode keyCode) const noexcept {
             auto ordKey = static_cast<usize>(keyCode);
 
             return pressedState.test(ordKey);
         }
-        // true if Falling Edge Exist
         bool IsKeyReleased(KeyCode keyCode) const noexcept {
             auto ordKey = static_cast<usize>(keyCode);
 

@@ -6,7 +6,6 @@
 namespace Crowy
 {
     enum class KeyCode {
-        // Numbers
         Num0,
         Num1,
         Num2,
@@ -17,7 +16,6 @@ namespace Crowy
         Num7,
         Num8,
         Num9,
-        // Letters
         A,
         B,
         C,
@@ -44,7 +42,6 @@ namespace Crowy
         X,
         Y,
         Z,
-        // Function Keys
         F1,
         F2,
         F3,
@@ -57,32 +54,22 @@ namespace Crowy
         F10,
         F11,
         F12,
-        // Modifiers
         Ctrl,
         Alt,
         Shift,
-        // Special
         Tab,
         Space,
         Enter,
         Escape,
-        // Arrows
         Left,
         Right,
         Up,
         Down,
-        // Sentinel
         Unknown
     };
     constexpr auto NUM_KEY = static_cast<usize>(KeyCode::Unknown);
 
-    enum class MouseButton {
-        LButton,
-        RButton,
-        MButton,
-        // Sentinel
-        Unknown
-    };
+    enum class MouseButton { LButton, RButton, MButton, Unknown };
     constexpr auto NUM_MOUSE_BUTTON = static_cast<usize>(MouseButton::Unknown);
 
     // clang-format off

@@ -39,8 +39,7 @@ namespace Crowy
     struct BenchmarkConfig {
         bool enabled = false;
         // dropped, not measured: pipeline creation, shader caches, first-touch
-        // page faults and the GPU settling on its clocks all land in here.
-        // long enough to cover two seconds of real time
+        // page faults and the GPU settling on its clocks, about two seconds
         u32 warmupFrames = 400;
         // measured, then the loop quits on its own
         u32 measureFrames = 1000;
@@ -87,9 +86,7 @@ namespace Crowy
         static RuntimeConfig from(const DOM::Value&, const DocMetadata&);
     };
 
-    // The arguments after the program name: --config <path>, whose app
-    // document's benchmark and window.vsync replace the sample's, --hold,
-    // --capture-frame <frame> <path>, which may repeat, --exit-after-frame
-    // <frame>, --port-input and --project <folder>.
+    // The arguments after the program name, as Usage lists them; a --config
+    // app document replaces the sample's benchmark and window.vsync.
     void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
 }

@@ -105,7 +105,6 @@ namespace Crowy
         bool imguiEnabled = false;
         std::optional<u64> exitAfterFrame;
         bool portInput = false;
-        // pushed by the port, delivered by the next frame that advances
         std::vector<InputEvent> pushedInput;
 
     public:
@@ -136,8 +135,6 @@ namespace Crowy
         // returns when the loop ends by itself; a throw leaves it mid-frame
         void RunLoop(MainLoop&, RHIDevice&);
         bool ProcessEvents(MainLoop&);
-        // the held iteration's pump: the window stays alive, input reaches
-        // only the held state
         bool PumpHeld(MainLoop&, RHIDevice&);
         void HandleWindowEvent(MainLoop&, const SDL_WindowEvent&);
         void ForwardInput(const SDL_Event&);
@@ -174,7 +171,6 @@ namespace Crowy
             RHISwapchainCreateDesc{
                 .sdlWindow = window.GetWindow(),
                 .bufferDesc = backBufferDesc,
-                // triple buffering
                 .bufferCount = 3,
                 .vsync = config.window.vsync
             },
@@ -199,7 +195,6 @@ namespace Crowy
         if(imguiEnabled) {
             auto sdlWindow = static_cast<SDL_Window*>(window.GetWindow());
 
-            // D3D, Metal, Vulkan, ... all same!
             ImGui_ImplSDL3_InitForOther(sdlWindow);
             // a scripted run neither reads nor writes the owner's layout
             if(portInput)
@@ -238,7 +233,6 @@ namespace Crowy
         // the scopes below are blocks because the loop leaves from the
         // middle of two of them, and a section still has to close
         while(true) {
-            // between frames: the last one has ended, the next has not begun
             mainLoop.NewFrame();
 
             if(!mainLoop.ShouldAdvance()) {
@@ -286,10 +280,8 @@ namespace Crowy
 
                 if(imguiEnabled) {
                     ImGui_ImplSDL3_NewFrame();
-                    // ImGui accumulates this into key/button hold times,
-                    // so an unbounded hitch trips auto-repeat (>
-                    // KeyRepeatDelay) on the next frame and one click steps
-                    // twice
+                    // ImGui adds this to hold times, so a hitch past its
+                    // KeyRepeatDelay auto-repeats and one click steps twice
                     auto& io = ImGui::GetIO();
                     io.DeltaTime =
                         portInput ? UI_PORT_DELTA_TIME
@@ -345,7 +337,6 @@ namespace Crowy
             if(!keepRunning) [[unlikely]]
                 break;
 
-            // Window Event
             if(SDL_EVENT_WINDOW_FIRST <= event.type &&
                event.type <= SDL_EVENT_WINDOW_LAST)
                 HandleWindowEvent(mainLoop, event.window);
@@ -405,13 +396,11 @@ namespace Crowy
 
     void OS::Impl::ForwardInput(const SDL_Event& event) {
         switch(event.type) {
-        // Keyboard Event
         case SDL_EVENT_KEY_DOWN:
             [[fallthrough]];
         case SDL_EVENT_KEY_UP:
             inputProvider.OnPlatformEvent(event.key);
             break;
-        // Mouse Event
         case SDL_EVENT_MOUSE_MOTION:
             inputProvider.OnPlatformEvent(event.motion);
             break;

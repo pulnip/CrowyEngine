@@ -40,6 +40,5 @@ namespace Crowy
         void PushInput(const InputEvent&);
     };
 
-// direct access to ptr is unsafe, but handy helper
 #define OS_ *OS::Get()
 }

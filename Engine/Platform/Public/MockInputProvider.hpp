@@ -7,7 +7,6 @@
 
 namespace Crowy
 {
-    // Does not handle mouse for now
     class MockInputProvider final: public InputProvider {
     private:
         std::bitset<NUM_KEY> heldState;
@@ -32,7 +31,6 @@ namespace Crowy
             heldState.reset();
         }
 
-        // simulate keyboard
         void PressKey(KeyCode keyCode) noexcept {
             InputProvider::PressKey(keyCode);
             auto ordKey = static_cast<usize>(keyCode);

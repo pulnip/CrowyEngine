@@ -48,7 +48,6 @@ namespace Crowy
             u32 RHIFrameStats::* field;
         };
 
-        // the CSV and the report both write every counter from this list
         constexpr std::array COUNTER_COLUMNS{
             CounterColumn{"cmd_lists", &RHIFrameStats::commandListBeginCount},
             CounterColumn{
@@ -259,7 +258,6 @@ namespace Crowy
             summaries[i] = summarize(values);
         }
 
-        // one row per frame, for regressing record time on the draw count
         if(std::ofstream frames; openOutput(config.framePath, frames)) {
             frames << "frame,events_ms,update_ms,fence_wait_ms,acquire_ms,"
                       "record_ms,submit_ms,frame_ms,gpu_ms";

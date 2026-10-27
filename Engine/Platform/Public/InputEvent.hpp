@@ -37,7 +37,6 @@ namespace Crowy
     using InputEvent =
         std::variant<KeyInput, ButtonInput, MoveInput, MoveToInput, WheelInput>;
 
-    // what the input reports beside InputProvider
     struct InputStatus {
         // a --port-input run's is only logical: the OS cursor is left alone
         bool relativeMouse = false;

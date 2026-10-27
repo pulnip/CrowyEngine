@@ -14,15 +14,12 @@ namespace Crowy
 
         virtual void OnInit(RHIDevice&, RHISwapchain& swapchain) {}
 
-        // the CPU-side frame boundary, before any input of the frame is
-        // read: the drain point for whatever collected between frames.
+        // the CPU-side frame boundary, before the frame reads any input:
         // frame N - 1 has ended here and frame N has not begun
         virtual void NewFrame() {}
 
-        // between frames, right after NewFrame: false holds the loop there.
-        // A held iteration keeps the window alive and drains again; nothing
-        // that costs a frame number runs, and input that arrives meanwhile
-        // is dropped
+        // false holds the loop between frames: the window stays alive, no
+        // frame number is spent, and input that arrives meanwhile is dropped
         virtual bool ShouldAdvance() { return true; }
 
         // frame N has begun: the pacer assigned the number and waited for
@@ -34,7 +31,6 @@ namespace Crowy
         // asked after Update: true hides the cursor and keeps it in the
         // window, and the mouse reports motion that no window edge stops
         virtual bool WantsRelativeMouse() { return false; }
-        // TODO. support multi-window if needed
         virtual void Render(CommandListPool&, RHISwapchain& swapchain) = 0;
 
         // the frame is submitted; what it measured, pushed so the app never

@@ -19,7 +19,6 @@ namespace Crowy
         auto width = root.get<u32>("runtime.window.width").value_or(800);
         auto height = root.get<u32>("runtime.window.height").value_or(600);
 
-        // Window Options
         auto fullscreen =
             root.get<bool>("runtime.window.fullscreen").value_or(false);
         auto resizable =
@@ -90,7 +89,6 @@ namespace Crowy
                                "[--exit-after-frame <frame>] "
                                "[--port-input] [--project <folder>]";
 
-        // the argument after a flag that takes one
         const auto valueOf = [&](usize& i, StrView flag) {
             if(i + 1 == args.size()) {
                 throw std::runtime_error(
@@ -99,7 +97,6 @@ namespace Crowy
             }
             return args[++i];
         };
-        // frames count from 1
         const auto frameOf = [&](usize& i, StrView flag) {
             const StrView text = valueOf(i, flag);
             u64 frame = 0;
@@ -184,7 +181,6 @@ namespace Crowy
             }
         }
 
-        // a capture the run never reaches would be dropped without a word
         if(const auto exit = config.exitAfterFrame) {
             for(const auto& capture: captures) {
                 if(capture.frame > *exit) {

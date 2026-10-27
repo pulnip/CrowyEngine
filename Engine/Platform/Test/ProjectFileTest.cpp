@@ -23,7 +23,6 @@ TEST(ProjectFile, ContentNamesAFolderInsideTheProject) {
     );
 }
 
-// a key nobody reads is refused, not carried
 TEST(ProjectFile, AnUnknownKeyIsAnError) {
     EXPECT_THROW(
         parse(R"({"content": "Content", "boot": {}})"),
