@@ -370,7 +370,7 @@ namespace Crowy
         RHIShader shaderProgram(
             desc.computeShader.path,
             RHIBackend::DirectX12,
-            "sm_6_6"
+            ShaderProfile
         );
         auto computeShader = shaderProgram.GetEntryPointCode(
             desc.computeShader.entryPoint

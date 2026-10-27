@@ -967,6 +967,9 @@ struct std::hash<Crowy::RHIBlendState> {
 
 namespace Crowy
 {
+    // HLSL shader model; Metal ignores it
+    inline constexpr CStr ShaderProfile = "sm_6_8";
+
     struct RHIGraphicsPipelineStateDesc {
         // Geometry Frontend
         RHIPreRasterizerDesc preRasterizer;
@@ -982,8 +985,7 @@ namespace Crowy
         std::array<RHIPixelFormat, MaxRenderTargets> renderTargetFormats;
         usize renderTargetCount = 1;
 
-        // HLSL shader model; Metal ignores it
-        CStr profile = "sm_6_6";
+        CStr profile = ShaderProfile;
 
         // linked into every program the pipeline compiles, each exporting a
         // link-time type the program declares extern; Metal links whole

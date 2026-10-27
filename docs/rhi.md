@@ -68,7 +68,7 @@ cmdList.BeginRenderPass(compositeDesc, std::array{sceneEdge, bloomEdge});
 HLSL와 MSL를 각각 유지하는 대신, Slang 하나를 사용한다.
 
 - D3D12는 DXIL, Metal은 metallib으로 번역된다.
-- 최소 셰이더 모델은 6.8이다. 렌더러와 이펙트의 파이프라인이 `sm_6_8`로 컴파일된다.
+- 최소 셰이더 모델은 6.8이다. 모든 파이프라인이 `sm_6_8`(`ShaderProfile`)로 컴파일된다.
   `DX12Device`의 장치 검사는 6.6부터 받으므로, 6.6~6.7 GPU에서는 장치가 열린 뒤 파이프라인 생성에서 실패한다.
 - 검색 경로:
   (1) 셰이더 파일 자기 폴더,
