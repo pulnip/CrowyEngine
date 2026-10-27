@@ -387,7 +387,7 @@ namespace Crowy
                         1.0f
                     }
                 );
-                ImGui::Checkbox(ORBIT_BODY_NAMES[b], &context.bodyEnabled[b]);
+                ImGui::Checkbox(ORBIT_BODIES[b].name, &context.bodyEnabled[b]);
                 ImGui::PopStyleColor();
             }
 
@@ -479,7 +479,7 @@ namespace Crowy
             if(context.frameLock <= 0.0f)
                 return 0.0f;
 
-            const auto& earth = ORBIT_ELEMENTS[ORBIT_EARTH_INDEX];
+            const auto& earth = ORBIT_BODIES[ORBIT_EARTH_INDEX].elements;
             const auto day = trail->NewestDay();
 
             const auto meanLon = earth.L0 + MeanMotionDegPerDay(earth) * day;
@@ -495,9 +495,9 @@ namespace Crowy
         }
 
         static f32 EarthRadPerDay() {
-            return static_cast<f32>(
-                toRadian(MeanMotionDegPerDay(ORBIT_ELEMENTS[ORBIT_EARTH_INDEX]))
-            );
+            return static_cast<f32>(toRadian(
+                MeanMotionDegPerDay(ORBIT_BODIES[ORBIT_EARTH_INDEX].elements)
+            ));
         }
 
         f32 PxPerWarpUnit() const {

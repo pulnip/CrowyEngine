@@ -2,6 +2,7 @@
 
 #include <array>
 #include <span>
+#include <stdexcept>
 
 #include "Primitives.hpp"
 
@@ -46,90 +47,60 @@ namespace Crowy
         f64 L0;    // mean longitude at J2000 (deg)
     };
 
+    struct OrbitBody {
+        CStr name;
+        OrbitalElements elements;
+    };
+
     // J2000 mean elements; a = 0 marks the Sun. Mean motion comes from Kepler's
     // third law so each orbit closes on its own period.
-    inline constexpr std::array<OrbitalElements, ORBIT_BODY_COUNT>
-        ORBIT_ELEMENTS{
-            OrbitalElements{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, // Sun
-            OrbitalElements{
-                0.38709927,
-                0.20563593,
-                7.00498,
-                77.45780,
-                48.33077,
-                252.25032
-            }, // Mercury
-            OrbitalElements{
-                0.72333566,
-                0.00677672,
-                3.39468,
-                131.60247,
-                76.67984,
-                181.97910
-            }, // Venus
-            OrbitalElements{
-                1.00000261,
-                0.01671123,
-                0.00000,
-                102.93768,
-                0.00000,
-                100.46457
-            }, // Earth
-            OrbitalElements{
-                1.52371034,
-                0.09339410,
-                1.84969,
-                -23.94363,
-                49.55954,
-                -4.55343
-            }, // Mars
-            OrbitalElements{
-                5.20288700,
-                0.04838624,
-                1.30440,
-                14.72848,
-                100.47391,
-                34.39644
-            }, // Jupiter
-            // varpi == Omega is in the published table, not a transcription
-            // slip
-            OrbitalElements{
-                9.53667594,
-                0.05386179,
-                2.48599,
-                113.66242,
-                113.66242,
-                49.95424
-            }, // Saturn
-            OrbitalElements{
-                19.18916464,
-                0.04725744,
-                0.77264,
-                170.95428,
-                74.01693,
-                313.23810
-            }, // Uranus
-            OrbitalElements{
-                30.06992276,
-                0.00859048,
-                1.77004,
-                44.96476,
-                131.78423,
-                -55.12003
-            } // Neptune
-        };
-
-    inline constexpr std::array<CStr, ORBIT_BODY_COUNT> ORBIT_BODY_NAMES{
-        "Sun",
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Mars",
-        "Jupiter",
-        "Saturn",
-        "Uranus",
-        "Neptune"
+    inline constexpr std::array<OrbitBody, ORBIT_BODY_COUNT> ORBIT_BODIES{
+        OrbitBody{"Sun", {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}},
+        OrbitBody{
+            "Mercury",
+            {0.38709927, 0.20563593, 7.00498, 77.45780, 48.33077, 252.25032}
+        },
+        OrbitBody{
+            "Venus",
+            {0.72333566, 0.00677672, 3.39468, 131.60247, 76.67984, 181.97910}
+        },
+        OrbitBody{
+            "Earth",
+            {1.00000261, 0.01671123, 0.00000, 102.93768, 0.00000, 100.46457}
+        },
+        OrbitBody{
+            "Mars",
+            {1.52371034, 0.09339410, 1.84969, -23.94363, 49.55954, -4.55343}
+        },
+        OrbitBody{
+            "Jupiter",
+            {5.20288700, 0.04838624, 1.30440, 14.72848, 100.47391, 34.39644}
+        },
+        // varpi == Omega is the published value, not a transcription slip
+        OrbitBody{
+            "Saturn",
+            {9.53667594, 0.05386179, 2.48599, 113.66242, 113.66242, 49.95424}
+        },
+        OrbitBody{
+            "Uranus",
+            {19.18916464, 0.04725744, 0.77264, 170.95428, 74.01693, 313.23810}
+        },
+        OrbitBody{
+            "Neptune",
+            {30.06992276, 0.00859048, 1.77004, 44.96476, 131.78423, -55.12003}
+        }
     };
+    static_assert(StrView{ORBIT_BODIES[ORBIT_SUN_INDEX].name} == "Sun");
+    static_assert(StrView{ORBIT_BODIES[ORBIT_EARTH_INDEX].name} == "Earth");
+
+    inline constexpr u32 OrbitBodyIndex(StrView name) {
+        for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
+            if(ORBIT_BODIES[b].name == name)
+                return b;
+        }
+
+        throw std::invalid_argument("no such orbit body");
+    }
 
     // Gaussian mean motion at a = 1 AU, deg/day
     inline constexpr f64 GAUSS_DEG_PER_DAY = 0.9856076686;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ranges>
 #include <span>
 
 #include "RHIBuffer.hpp"
@@ -38,7 +39,10 @@ namespace Crowy
             "OrbitTrailRing"
         );
 
-        gpuFill = std::make_unique<OrbitKeplerFill>(device, ORBIT_ELEMENTS);
+        const auto elements = ORBIT_BODIES |
+                              std::views::transform(&OrbitBody::elements) |
+                              std::ranges::to<std::vector>();
+        gpuFill = std::make_unique<OrbitKeplerFill>(device, elements);
 
         scratch.reserve(static_cast<usize>(capacity) * ORBIT_BODY_COUNT);
     }

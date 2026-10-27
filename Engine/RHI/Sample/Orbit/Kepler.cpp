@@ -56,7 +56,7 @@ namespace Crowy
         const auto source =
             bodyIdx == ORBIT_SUN_INDEX ? ORBIT_EARTH_INDEX : bodyIdx;
 
-        return PeriodDays(ORBIT_ELEMENTS[source]);
+        return PeriodDays(ORBIT_BODIES[source].elements);
     }
 
     f64 MeanAnomalyDeg(const OrbitalElements& el, f64 day) noexcept {
@@ -119,7 +119,7 @@ namespace Crowy
     Vec3d OrbitPosition(u32 bodyIdx, f64 day) noexcept {
         CROWY_ASSERT(bodyIdx < ORBIT_BODY_COUNT);
 
-        return OrbitPosition(ORBIT_ELEMENTS[bodyIdx], day);
+        return OrbitPosition(ORBIT_BODIES[bodyIdx].elements, day);
     }
 
     void SampleOrbits(
@@ -127,7 +127,7 @@ namespace Crowy
         std::span<Vec3d, ORBIT_BODY_COUNT> out
     ) noexcept {
         for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
-            out[b] = OrbitPosition(ORBIT_ELEMENTS[b], day);
+            out[b] = OrbitPosition(ORBIT_BODIES[b].elements, day);
         }
     }
 

@@ -138,7 +138,7 @@ namespace
             m.count,
             trail.Filled() * ORBIT_BODY_COUNT,
             m.worstAge,
-            ORBIT_BODY_NAMES[m.worstBody],
+            ORBIT_BODIES[m.worstBody].name,
             trail.DayForAge(m.worstAge)
         );
 
@@ -422,7 +422,7 @@ namespace
                 frame,
                 worst,
                 worstAge,
-                ORBIT_BODY_NAMES[worstBody]
+                ORBIT_BODIES[worstBody].name
             );
 
             return false;
@@ -478,7 +478,7 @@ namespace
             gpu.Stats().splitFrameCount,
             worst,
             worstAge,
-            ORBIT_BODY_NAMES[worstBody]
+            ORBIT_BODIES[worstBody].name
         );
 
         if(gpu.Stats().splitFrameCount == 0) {
@@ -614,7 +614,7 @@ namespace
                     std::println(
                         "  FAIL: {} - {} got vertexCount {} firstVertex {}",
                         c.what,
-                        ORBIT_BODY_NAMES[b],
+                        ORBIT_BODIES[b].name,
                         got[b].vertexCount,
                         got[b].firstVertex
                     );
@@ -624,7 +624,7 @@ namespace
                     std::println(
                         "  FAIL: {} - {} got baseInstance {}, not {}",
                         c.what,
-                        ORBIT_BODY_NAMES[b],
+                        ORBIT_BODIES[b].name,
                         got[b].baseInstance,
                         b
                     );
@@ -638,7 +638,7 @@ namespace
                     std::println(
                         "  FAIL: {} - {} got {} instances, expected {}",
                         c.what,
-                        ORBIT_BODY_NAMES[b],
+                        ORBIT_BODIES[b].name,
                         got[b].instanceCount,
                         expected
                     );
@@ -648,7 +648,7 @@ namespace
                     std::println(
                         "  FAIL: {} - {} is switched off but draws {}",
                         c.what,
-                        ORBIT_BODY_NAMES[b],
+                        ORBIT_BODIES[b].name,
                         got[b].instanceCount
                     );
                     ok = false;

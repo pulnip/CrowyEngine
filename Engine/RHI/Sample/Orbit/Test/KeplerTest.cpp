@@ -13,6 +13,10 @@ using namespace Crowy;
 
 namespace
 {
+    const OrbitalElements& ElementsOf(StrView name) {
+        return ORBIT_BODIES[OrbitBodyIndex(name)].elements;
+    }
+
     f64 LongitudeDeg(Vec3d p) {
         return NormalizeDegrees(toDegree(std::atan2(p.y, p.x)));
     }
@@ -31,7 +35,7 @@ namespace
 }
 
 TEST(Kepler, SunHasNoOrbit) {
-    const auto& sun = ORBIT_ELEMENTS[ORBIT_SUN_INDEX];
+    const auto& sun = ORBIT_BODIES[ORBIT_SUN_INDEX].elements;
 
     EXPECT_EQ(MeanMotionDegPerDay(sun), 0.0);
     EXPECT_EQ(PeriodDays(sun), 0.0);
@@ -52,37 +56,37 @@ TEST(Kepler, SunBorrowsEarthTrailLength) {
     );
 
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        EXPECT_EQ(TrailPeriodDays(b), PeriodDays(ORBIT_ELEMENTS[b]))
-            << ORBIT_BODY_NAMES[b];
+        EXPECT_EQ(TrailPeriodDays(b), PeriodDays(ORBIT_BODIES[b].elements))
+            << ORBIT_BODIES[b].name;
     }
 }
 
 TEST(Kepler, MeanMotionAndPeriodAgree) {
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
 
         EXPECT_NEAR(MeanMotionDegPerDay(el) * PeriodDays(el), 360.0, 1e-9)
-            << ORBIT_BODY_NAMES[b];
+            << ORBIT_BODIES[b].name;
     }
 }
 
 // the third-law periods must also land on the published sidereal ones
 TEST(Kepler, DerivedPeriodsMatchPublished) {
-    EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[1]), 87.969, 0.05);  // Mercury
-    EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[2]), 224.701, 0.05); // Venus
-    EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[3]), 365.256, 0.05); // Earth
-    EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[4]), 686.980, 0.20); // Mars
+    EXPECT_NEAR(PeriodDays(ElementsOf("Mercury")), 87.969, 0.05);
+    EXPECT_NEAR(PeriodDays(ElementsOf("Venus")), 224.701, 0.05);
+    EXPECT_NEAR(PeriodDays(ElementsOf("Earth")), 365.256, 0.05);
+    EXPECT_NEAR(PeriodDays(ElementsOf("Mars")), 686.980, 0.20);
     // the outer four drift more: the elements are J2000 means, not fits
-    EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[8]) / 365.25, 164.8, 0.5); // Neptune
+    EXPECT_NEAR(PeriodDays(ElementsOf("Neptune")) / 365.25, 164.8, 0.5);
 }
 
 TEST(Kepler, MeanAnomalyStaysNormalized) {
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
         for(const auto day: SAMPLE_DAYS) {
-            const auto M = MeanAnomalyDeg(ORBIT_ELEMENTS[b], day);
+            const auto M = MeanAnomalyDeg(ORBIT_BODIES[b].elements, day);
 
-            EXPECT_GE(M, -180.0) << ORBIT_BODY_NAMES[b] << " @ " << day;
-            EXPECT_LT(M, 180.0) << ORBIT_BODY_NAMES[b] << " @ " << day;
+            EXPECT_GE(M, -180.0) << ORBIT_BODIES[b].name << " @ " << day;
+            EXPECT_LT(M, 180.0) << ORBIT_BODIES[b].name << " @ " << day;
         }
     }
 }
@@ -90,18 +94,18 @@ TEST(Kepler, MeanAnomalyStaysNormalized) {
 // Mars and Neptune carry a negative L0
 TEST(Kepler, MeanLongitudeWrapsFreely) {
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        auto plus = ORBIT_ELEMENTS[b];
+        auto plus = ORBIT_BODIES[b].elements;
         plus.L0 += 360.0;
-        auto minus = ORBIT_ELEMENTS[b];
+        auto minus = ORBIT_BODIES[b].elements;
         minus.L0 -= 720.0;
 
         for(const auto day: SAMPLE_DAYS) {
-            const auto expected = OrbitPosition(ORBIT_ELEMENTS[b], day);
+            const auto expected = OrbitPosition(ORBIT_BODIES[b].elements, day);
 
             EXPECT_LT(Distance(OrbitPosition(plus, day), expected), 1e-9)
-                << ORBIT_BODY_NAMES[b] << " @ " << day;
+                << ORBIT_BODIES[b].name << " @ " << day;
             EXPECT_LT(Distance(OrbitPosition(minus, day), expected), 1e-9)
-                << ORBIT_BODY_NAMES[b] << " @ " << day;
+                << ORBIT_BODIES[b].name << " @ " << day;
         }
     }
 }
@@ -110,10 +114,10 @@ TEST(Kepler, NewtonConverges) {
     constexpr u32 STEPS = 2048;
 
     u32 worst = 0;
-    CStr worstBody = ORBIT_BODY_NAMES[0];
+    CStr worstBody = ORBIT_BODIES[0].name;
 
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
 
         for(u32 s = 0; s < STEPS; ++s) {
             const auto M = (-std::numbers::pi_v<f64>)+2.0 *
@@ -123,13 +127,13 @@ TEST(Kepler, NewtonConverges) {
             const auto residual =
                 std::abs(solved.value - el.e * std::sin(solved.value) - M);
             EXPECT_LT(residual, KEPLER_TOLERANCE)
-                << ORBIT_BODY_NAMES[b] << " M=" << M;
+                << ORBIT_BODIES[b].name << " M=" << M;
             ASSERT_LT(solved.iterations, KEPLER_MAX_ITERATIONS)
-                << ORBIT_BODY_NAMES[b] << " M=" << M;
+                << ORBIT_BODIES[b].name << " M=" << M;
 
             if(solved.iterations > worst) {
                 worst = solved.iterations;
-                worstBody = ORBIT_BODY_NAMES[b];
+                worstBody = ORBIT_BODIES[b].name;
             }
         }
     }
@@ -147,7 +151,7 @@ TEST(Kepler, RadiusStaysBetweenPerihelionAndAphelion) {
     constexpr u32 STEPS = 4096;
 
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
         const auto period = PeriodDays(el);
 
         const auto perihelion = el.a * (1.0 - el.e);
@@ -160,19 +164,20 @@ TEST(Kepler, RadiusStaysBetweenPerihelionAndAphelion) {
             minR = std::min(minR, r);
             maxR = std::max(maxR, r);
 
-            EXPECT_GE(r, perihelion - 1e-9) << ORBIT_BODY_NAMES[b];
-            EXPECT_LE(r, aphelion + 1e-9) << ORBIT_BODY_NAMES[b];
+            EXPECT_GE(r, perihelion - 1e-9) << ORBIT_BODIES[b].name;
+            EXPECT_LE(r, aphelion + 1e-9) << ORBIT_BODIES[b].name;
         }
 
         // the sampling misses the extremes by a term quadratic in the step
-        EXPECT_NEAR(minR, perihelion, perihelion * 1e-4) << ORBIT_BODY_NAMES[b];
-        EXPECT_NEAR(maxR, aphelion, aphelion * 1e-4) << ORBIT_BODY_NAMES[b];
+        EXPECT_NEAR(minR, perihelion, perihelion * 1e-4)
+            << ORBIT_BODIES[b].name;
+        EXPECT_NEAR(maxR, aphelion, aphelion * 1e-4) << ORBIT_BODIES[b].name;
     }
 }
 
 TEST(Kepler, ClosesAfterOnePeriod) {
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
         const auto period = PeriodDays(el);
 
         for(const auto day: SAMPLE_DAYS) {
@@ -182,7 +187,7 @@ TEST(Kepler, ClosesAfterOnePeriod) {
                     OrbitPosition(el, day + period)
                 ),
                 1e-9
-            ) << ORBIT_BODY_NAMES[b]
+            ) << ORBIT_BODIES[b].name
               << " @ " << day;
         }
     }
@@ -190,7 +195,7 @@ TEST(Kepler, ClosesAfterOnePeriod) {
 
 TEST(Kepler, InclinationShowsUpInZ) {
     // Earth defines the ecliptic
-    const auto& earth = ORBIT_ELEMENTS[ORBIT_EARTH_INDEX];
+    const auto& earth = ORBIT_BODIES[ORBIT_EARTH_INDEX].elements;
     ASSERT_EQ(earth.i, 0.0);
 
     constexpr u32 STEPS = 256;
@@ -204,7 +209,7 @@ TEST(Kepler, InclinationShowsUpInZ) {
         if(b == ORBIT_EARTH_INDEX)
             continue;
 
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
         const auto period = PeriodDays(el);
         const auto limit = el.a * (1.0 + el.e) * std::sin(toRadian(el.i));
 
@@ -216,21 +221,21 @@ TEST(Kepler, InclinationShowsUpInZ) {
             );
         }
 
-        EXPECT_LE(peak, limit + 1e-9) << ORBIT_BODY_NAMES[b];
-        EXPECT_GT(peak, limit * 0.5) << ORBIT_BODY_NAMES[b];
+        EXPECT_LE(peak, limit + 1e-9) << ORBIT_BODIES[b].name;
+        EXPECT_GT(peak, limit * 0.5) << ORBIT_BODIES[b].name;
     }
 }
 
 // The published row has varpi == Omega for Saturn; this fails if it is ever
 // corrected.
 TEST(Kepler, SaturnPerihelionSitsOnItsNode) {
-    const auto& saturn = ORBIT_ELEMENTS[6];
+    const auto& saturn = ElementsOf("Saturn");
     ASSERT_EQ(saturn.varpi, saturn.Omega);
 
     const auto p = OrbitPosition(saturn, PerihelionDay(saturn));
     EXPECT_NEAR(p.z, 0.0, 1e-9);
 
-    const auto& mercury = ORBIT_ELEMENTS[1];
+    const auto& mercury = ElementsOf("Mercury");
     const auto q = OrbitPosition(mercury, PerihelionDay(mercury));
     EXPECT_GT(std::abs(q.z), 0.01);
 }
@@ -253,7 +258,8 @@ TEST(Kepler, EarthReachesEquinoxOnSchedule) {
     // centre, about 1.4 degrees across this arc
     const auto june = OrbitPosition(
         ORBIT_EARTH_INDEX,
-        MARCH_EQUINOX_2000 + PeriodDays(ORBIT_ELEMENTS[ORBIT_EARTH_INDEX]) / 4
+        MARCH_EQUINOX_2000 +
+            PeriodDays(ORBIT_BODIES[ORBIT_EARTH_INDEX].elements) / 4
     );
     EXPECT_NEAR(LongitudeDeg(june), -90.0, 2.5);
 }
@@ -266,7 +272,7 @@ TEST(Kepler, SampleOrbitsMatchesIndividualCalls) {
 
         for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
             EXPECT_EQ(Distance(sampled[b], OrbitPosition(b, day)), 0.0)
-                << ORBIT_BODY_NAMES[b] << " @ " << day;
+                << ORBIT_BODIES[b].name << " @ " << day;
         }
     }
 }
@@ -277,10 +283,10 @@ TEST(KeplerPhase, ReconstructsMeanAnomaly) {
     constexpr u32 STEPS = ORBIT_PHASE_MAX_STEPS;
 
     f64 worstDeg = 0.0;
-    CStr worstBody = ORBIT_BODY_NAMES[0];
+    CStr worstBody = ORBIT_BODIES[0].name;
 
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
         // far enough out that a float mean anomaly is already hopeless
         const f64 startDay = 60000.0;
         const auto phase = MakePhaseGPU(el, startDay, DAY_PER_SAMPLE);
@@ -293,7 +299,7 @@ TEST(KeplerPhase, ReconstructsMeanAnomaly) {
             const auto delta = std::abs(NormalizeDegrees(actual - expected));
             if(delta > worstDeg) {
                 worstDeg = delta;
-                worstBody = ORBIT_BODY_NAMES[b];
+                worstBody = ORBIT_BODIES[b].name;
             }
         }
     }
@@ -309,7 +315,8 @@ TEST(KeplerPhase, ReconstructsMeanAnomaly) {
 
 // pins the difference so nobody "simplifies" the split away
 TEST(KeplerPhase, BlockSplitBeatsFlatStepping) {
-    const auto& el = ORBIT_ELEMENTS[1]; // Mercury, the fastest phase
+    // Mercury has the fastest phase
+    const auto& el = ElementsOf("Mercury");
     const auto phase = MakePhaseGPU(el, 0.0, 1.0);
 
     constexpr u32 INDEX = ORBIT_PHASE_MAX_STEPS - 1;
@@ -336,11 +343,11 @@ TEST(KeplerPhase, BlockSplitBeatsFlatStepping) {
 
 TEST(KeplerPhase, ElementsGPUMatchTheTable) {
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
-        const auto& el = ORBIT_ELEMENTS[b];
+        const auto& el = ORBIT_BODIES[b].elements;
         const auto gpu = MakeElementsGPU(el);
 
-        EXPECT_FLOAT_EQ(gpu.a, static_cast<f32>(el.a)) << ORBIT_BODY_NAMES[b];
-        EXPECT_FLOAT_EQ(gpu.e, static_cast<f32>(el.e)) << ORBIT_BODY_NAMES[b];
+        EXPECT_FLOAT_EQ(gpu.a, static_cast<f32>(el.a)) << ORBIT_BODIES[b].name;
+        EXPECT_FLOAT_EQ(gpu.e, static_cast<f32>(el.e)) << ORBIT_BODIES[b].name;
 
         EXPECT_NEAR(
             gpu.cosPeri * gpu.cosPeri + gpu.sinPeri * gpu.sinPeri,
