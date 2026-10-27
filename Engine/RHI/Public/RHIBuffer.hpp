@@ -47,30 +47,16 @@ namespace Crowy
             return readableIDOf(view);
         }
         u64 GetReadableID() {
-            return GetReadableID(
-                RHIBufferViewDesc{
-                    .offset = 0,
-                    .size = GetSize(),
-                    .config = RHIBufferViewDesc::Raw{}
-                }
-            );
+            return GetReadableID(wholeBuffer(RHIBufferViewDesc::Raw{}));
         }
         u64 GetReadableID(RHIPixelFormat format) {
             return GetReadableID(
-                RHIBufferViewDesc{
-                    .offset = 0,
-                    .size = GetSize(),
-                    .config = RHIBufferViewDesc::Typed{.format = format}
-                }
+                wholeBuffer(RHIBufferViewDesc::Typed{.format = format})
             );
         }
         u64 GetReadableID(u32 stride) {
             return GetReadableID(
-                RHIBufferViewDesc{
-                    .offset = 0,
-                    .size = GetSize(),
-                    .config = RHIBufferViewDesc::Structured{.stride = stride}
-                }
+                wholeBuffer(RHIBufferViewDesc::Structured{.stride = stride})
             );
         }
         // Unordered Access
@@ -80,36 +66,30 @@ namespace Crowy
             return writableIDOf(view);
         }
         u64 GetWritableID() {
-            return GetWritableID(
-                RHIBufferViewDesc{
-                    .offset = 0,
-                    .size = GetSize(),
-                    .config = RHIBufferViewDesc::Raw{}
-                }
-            );
+            return GetWritableID(wholeBuffer(RHIBufferViewDesc::Raw{}));
         }
         u64 GetWritableID(RHIPixelFormat format) {
             return GetWritableID(
-                RHIBufferViewDesc{
-                    .offset = 0,
-                    .size = GetSize(),
-                    .config = RHIBufferViewDesc::Typed{.format = format}
-                }
+                wholeBuffer(RHIBufferViewDesc::Typed{.format = format})
             );
         }
         u64 GetWritableID(u32 stride) {
             return GetWritableID(
-                RHIBufferViewDesc{
-                    .offset = 0,
-                    .size = GetSize(),
-                    .config = RHIBufferViewDesc::Structured{.stride = stride}
-                }
+                wholeBuffer(RHIBufferViewDesc::Structured{.stride = stride})
             );
         }
 
     private:
         virtual u64 readableIDOf(const RHIBufferViewDesc&) = 0;
         virtual u64 writableIDOf(const RHIBufferViewDesc&) = 0;
+
+        RHIBufferViewDesc wholeBuffer(RHIBufferViewDesc::Config config) const {
+            return RHIBufferViewDesc{
+                .offset = 0,
+                .size = GetSize(),
+                .config = config
+            };
+        }
 
         void* mappedRange(u32 size, u32 offset) {
             auto* mapped = GetMappedPtr();

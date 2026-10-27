@@ -11,6 +11,7 @@
 
 #include "Assert.hpp"
 #include "Function.hpp"
+#include "IntMath.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
@@ -231,7 +232,7 @@ namespace Crowy
 
         // a stride is an alignment here, and strides are no powers of two
         RHIBufferSlice AllocateTransient(u32 size, u32 align) override {
-            const auto offset = (transientUsed + align - 1) / align * align;
+            const auto offset = nextMul(transientUsed, align);
             CROWY_ASSERT(offset + size <= TransientSize);
 
             transientUsed = offset + size;

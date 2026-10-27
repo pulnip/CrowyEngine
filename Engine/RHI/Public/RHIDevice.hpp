@@ -4,6 +4,7 @@
 #include <optional>
 #include <span>
 #include <type_traits>
+#include <utility>
 
 #include "Function.hpp"
 #include "Primitives.hpp"
@@ -79,9 +80,13 @@ namespace Crowy
             StrView name = {}
         );
 
-        void Retire(RHIBufferRAII buffer);
-        void Retire(RHITextureRAII texture);
-        void Retire(RHIGraphicsPipelineStateRAII state);
+        template<typename T>
+        void Retire(RAII<T> object) {
+            if(object == nullptr)
+                return;
+
+            DeferRetire([object = std::move(object)] {});
+        }
 
         // allocate a transient slice and fill it in one step
         template<typename T>

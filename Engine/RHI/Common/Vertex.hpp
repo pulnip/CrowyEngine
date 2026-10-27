@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <type_traits>
 
 #include "Primitives.hpp"
@@ -28,7 +29,7 @@ namespace Crowy
             .semanticIndex = 0,
             .format = RHIPixelFormat::RGB32_FLOAT,
             .inputSlot = 0,
-            .alignedByteOffset = 0,
+            .alignedByteOffset = static_cast<u32>(offsetof(Vertex, position)),
             .classification = RHIInputClassification::PerVertex,
             .instanceDataStepRate = 0
         },
@@ -37,7 +38,7 @@ namespace Crowy
             .semanticIndex = 0,
             .format = RHIPixelFormat::RGB32_FLOAT,
             .inputSlot = 0,
-            .alignedByteOffset = 12,
+            .alignedByteOffset = static_cast<u32>(offsetof(Vertex, normal)),
             .classification = RHIInputClassification::PerVertex,
             .instanceDataStepRate = 0
         },
@@ -46,7 +47,7 @@ namespace Crowy
             .semanticIndex = 0,
             .format = RHIPixelFormat::RG32_FLOAT,
             .inputSlot = 0,
-            .alignedByteOffset = 24,
+            .alignedByteOffset = static_cast<u32>(offsetof(Vertex, texCoord)),
             .classification = RHIInputClassification::PerVertex,
             .instanceDataStepRate = 0
         },
@@ -55,7 +56,7 @@ namespace Crowy
             .semanticIndex = 0,
             .format = RHIPixelFormat::RGBA32_FLOAT,
             .inputSlot = 0,
-            .alignedByteOffset = 32,
+            .alignedByteOffset = static_cast<u32>(offsetof(Vertex, tangent)),
             .classification = RHIInputClassification::PerVertex,
             .instanceDataStepRate = 0
         }
