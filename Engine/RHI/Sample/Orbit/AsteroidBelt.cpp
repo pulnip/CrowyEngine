@@ -9,10 +9,8 @@ namespace
 {
     using namespace Crowy;
 
-    // Kirkwood gaps: semi-major axes in mean-motion resonance with Jupiter,
-    // where nothing stays put. They are the belt's most recognisable feature -
-    // without them it is a featureless annulus - and they cost one rejection
-    // test, so they are worth having even in a made-up belt.
+    // Kirkwood gaps: semi-major axes in mean-motion resonance with Jupiter;
+    // without them the belt is a featureless annulus.
     struct Gap {
         f64 centerAU;
         f64 halfWidthAU;
@@ -33,7 +31,7 @@ namespace
         return false;
     }
 
-    // xorshift32: deterministic, tiny, and good enough to scatter a belt
+    // xorshift32
     class Rng {
     private:
         u32 state;
@@ -50,7 +48,6 @@ namespace
             return state;
         }
 
-        // [0, 1)
         f64 Unit() { return Next() * (1.0 / 4294967296.0); }
         f64 Range(f64 lo, f64 hi) { return lo + (hi - lo) * Unit(); }
     };
@@ -75,13 +72,10 @@ namespace Crowy
                 OrbitalElements{
                     .a = a,
                     // most of the belt is under 0.2; a long tail would throw
-                    // asteroids across Mars's orbit and blur the gap between
-                    // them
+                    // asteroids across Mars's orbit
                     .e = rng.Range(0.0, 0.22) * rng.Unit() + 0.02,
-                    // real inclinations run to about 20 degrees. Seen from
-                    // above this only matters through the foreshortening, which
-                    // is exactly the point: the belt should look like a torus,
-                    // not a ring drawn with a compass
+                    // real inclinations reach about 20 degrees; from above, the
+                    // foreshortening makes the belt read as a torus
                     .i = rng.Range(0.0, 18.0) * rng.Unit(),
                     .varpi = rng.Range(0.0, 360.0),
                     .Omega = rng.Range(0.0, 360.0),

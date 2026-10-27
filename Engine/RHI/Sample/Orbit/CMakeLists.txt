@@ -9,6 +9,5 @@ SOURCES
     OrbitTrail.cpp
 PUBLIC
     Crowy::Core
-    # OrbitTrail.hpp hands out command list and buffer types
     Crowy::RHI
 )

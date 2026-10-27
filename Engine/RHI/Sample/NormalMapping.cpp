@@ -26,16 +26,12 @@ namespace Crowy
             u64 bump;
         };
 
-        // model geometry
         Vec4 boxRot = unitQuat();
 
-        // environment
         const Vec3 toLight = normalize(Vec3{0.4f, 0.7f, -0.6f});
 
-        // camera geometry
         static constexpr Vec3 eye{0.0f, 0.0f, -4.0f};
 
-        // camera lens
         static constexpr f32 fovY = static_cast<f32>(toRadian(60.0));
         f32 aspect = 1.0f;
         static constexpr f32 nearZ = 0.1f, farZ = 100.0f;
@@ -88,11 +84,8 @@ namespace Crowy
             );
             indexCount = static_cast<u32>(boxMesh.indices.size());
 
-            // the normal map and the height map describe the same surface at
-            // different smoothness;
-            // - the normal map is a wide, gentle bevel per plank,
-            // - the height map a narrow, sharp notch that also carries the
-            // frame and the brace. so the first shades and the second displaces
+            // normal map: a gentle bevel per plank, for shading. height map: a
+            // sharp notch that also carries frame and brace, for displacement
             auto diffuseImage = LoadImage(
                 resolveContentPath("Assets/3crates/crate1/crate1_diffuse.ktx2")
             );

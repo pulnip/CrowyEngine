@@ -127,7 +127,7 @@ int main(void) {
         std::vector<float> result(N, 0.0f);
         readback->Download(result.data(), sizeof(float) * result.size());
 
-        // verify result: (1 + 1) doubled by the chained dispatch
+        // (1 + 1) doubled by the chained dispatch
         usize i = 0;
         for(; i < N; ++i) {
             if(std::abs(result[i] - 4.0f) > 1e-3) {

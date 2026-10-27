@@ -1,8 +1,5 @@
-# ready-made scenes the samples can render
 add_subdirectory(Scene)
-# density field, noise and UI panel for MarchingTerrain and the terrain checks
 add_subdirectory(Terrain)
-# Keplerian orbits, trail ring buffer and panel for OrbitFrame
 add_subdirectory(Orbit)
 
 crowy_declare_example(HelloWorld
@@ -22,7 +19,6 @@ DEPENDS
     Crowy::Content
 )
 
-# computes and exits, so it opens no window
 crowy_declare_example(HelloCompute
     HEADLESS
 SOURCES

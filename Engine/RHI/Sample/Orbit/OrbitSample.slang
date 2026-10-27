@@ -1,29 +1,15 @@
 #include "OrbitCommon.slang"
 #include "OrbitKepler.slang"
 
-// Filling positions straight into GPU memory, so no orbit position ever crosses
-// the bus.
-//
-// Two entry points over the same solve:
-//   cs_ring    a run of consecutive samples into the trail ring, one thread per
-//              (sample, body). The prefill is this with sampleCount == capacity.
-//   cs_points  one position per element, for things with no history - the
-//              asteroid belt, which is 2400 solves every frame on the CPU.
-//
-// Mirrors OrbitFillPush in Engine/RHI/Sample/Orbit/OrbitTrail.hpp.
-
+// Mirrors OrbitFillPush in OrbitFill.hpp.
 struct OrbitFillPush{
     DescriptorHandle<StructuredBuffer<OrbitElements>> elements;  //  0
     DescriptorHandle<StructuredBuffer<OrbitPhase>> phases;       //  8
     DescriptorHandle<RWStructuredBuffer<float3>> output;         // 16
-    // how many elements the tables hold, and the ring's inner stride
     uint bodyCount;                                              // 24
-    // consecutive samples to write, starting at firstSlot
     uint sampleCount;                                            // 28
     uint firstSlot;                                              // 32
-    // the write wraps here; cs_points ignores it
     uint capacity;                                               // 36
-    // row 0 of this dispatch's phase slice inside the shared buffer
     uint phaseBase;                                              // 40
     uint _pad0;                                                  // 44
 };
@@ -37,8 +23,7 @@ void cs_ring(uint tid: SV_DispatchThreadID){
     if(tid >= push.sampleCount * push.bodyCount)
         return;
 
-    // sample-major, the same order the copy path writes and the vertex stage
-    // reads: adjacent threads land on adjacent bodies of one instant
+    // sample-major, the order the copy path writes and the vertex stage reads
     const uint sampleOffset = tid / push.bodyCount;
     const uint bodyIdx = tid % push.bodyCount;
     const uint slot = (push.firstSlot + sampleOffset) % push.capacity;
@@ -64,7 +49,6 @@ void cs_points(uint tid: SV_DispatchThreadID){
     StructuredBuffer<OrbitPhase> phases = push.phases;
     RWStructuredBuffer<float3> output = push.output;
 
-    // the phase epoch is the instant asked for, so there is no step to walk
     output[tid] = orbitKeplerPosition(
         elements[tid], phases[push.phaseBase + tid], 0
     );

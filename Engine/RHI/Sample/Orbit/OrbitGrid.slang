@@ -1,34 +1,11 @@
 #include "InstanceIndex.slang"
 #include "OrbitCommon.slang"
 
-// The polar grid the trails are read against: concentric rings at a regular AU
-// step and spokes every 30 degrees.
-//
-// Every point goes through orbitLogWarp, the same function the trails use. A
-// ring drawn at a constant screen radius would be a lie the moment the warp
-// changed; routing it through the shared function means it cannot drift.
-//
-// The grid is not frame-interpolated. What alpha subtracts is Earth's position,
-// which lies exactly in the ecliptic - so the plane the rings live in never
-// moves, and they stay the fixed reference the trails deform against.
-//
-// ## Why the grid needs levels of detail
-//
-// Under the warp a ring at R AU lands at log(1 + R), so the screen gap between
-// two rings a step `s` apart is
-//
-//     gap(R) = s * pxPerWarpUnit / (1 + R)
-//
-// which shrinks without bound as R grows. One fixed step is therefore legible
-// only over a band of radii: too coarse near the origin, a solid smear far out.
-//
-// So the grid is drawn at a ladder of steps s * 5^k. Level k covers the band
-// where its own gap reads well and fades out where it does not, and because
-// each level skips the multiples of 5 that the next level up owns, every
-// radius is drawn exactly once. Eight levels span a factor of 5^7 * 20, which
-// puts the outermost ring past the screen corner at every zoom this sample
-// allows - the grid has no edge to run into.
+// Not frame-interpolated: alpha subtracts Earth's position, which lies in the
+// ecliptic, so the rings' plane never moves.
 
+// Rings a step s apart sit s * pxPerWarpUnit / (1 + R) pixels apart at R AU, so
+// the steps form a ladder s * 5^k, each level fading out where its gap shrinks.
 static const uint LEVEL_COUNT = 8;
 static const uint RINGS_PER_LEVEL = 16;
 static const uint RING_SEGMENTS = 192;
@@ -38,10 +15,8 @@ static const uint DRAW_RINGS = 0;
 static const uint DRAW_SPOKES = 1;
 static const uint DRAW_REFERENCE = 2;
 
-// the ring the whole demo turns on: at alpha 0 the Sun's trail sits on it, at
-// alpha 1 Earth's does, and pushing the slider swaps the two over it. It is
-// drawn on its own rather than left to the ladder, which would style it by
-// whatever level 1 AU happened to land on at the current zoom.
+// drawn apart from the ladder, which would style 1 AU by whatever level it
+// lands on at the current zoom
 static const float REFERENCE_RING_AU = 1.0;
 
 struct GridPush{
@@ -56,11 +31,8 @@ struct GridPush{
     float thickAlpha;       // 32
     // step of the finest level, always a power of 5 AU
     float baseStepAU;       // 36
-    // screen pixels per unit of warped radius
     float pxPerWarpUnit;    // 40
-    // spokes run to here: the warped screen corner, turned back into AU
     float spokeRadiusAU;    // 44
-    // a ring is dropped below this screen gap and fully lit above the next
     float minGapPx;         // 48
     float fadeGapPx;        // 52
     float referenceAlpha;   // 56
@@ -85,8 +57,7 @@ float3 circlePoint(float radiusAU, uint step, uint stepCount){
     return float3(radiusAU * cos(theta), radiusAU * sin(theta), 0.0);
 }
 
-// 1,2,3,4, 6,7,8,9, 11,12,13,14, 16,17,18,19 - every multiple of the level's
-// own step up to 20 except the multiples of 5, which belong to the level above
+// 1-4, 6-9, 11-14, 16-19: the multiples of 5 belong to the level above
 uint ringMultiplier(uint slot){
     return slot + 1 + slot / 4;
 }
@@ -103,8 +74,7 @@ VertexOut vs_main(
     float alpha = push.thinAlpha;
 
     if(drawID == DRAW_SPOKES){
-        // a radial line stays radial through a radial warp, so one segment from
-        // the origin out to the corner is the whole spoke
+        // a radial warp keeps a spoke straight, so one segment draws it
         p0 = float3(0.0, 0.0, 0.0);
         p1 = circlePoint(push.spokeRadiusAU, segIdx, SPOKE_COUNT);
     }
@@ -123,12 +93,10 @@ VertexOut vs_main(
         const float step = push.baseStepAU * pow(5.0, float(level));
         const float radiusAU = float(ringMultiplier(slot)) * step;
 
-        // how far this ring sits from its neighbours on screen
         const float gapPx = step * push.pxPerWarpUnit / (1.0 + radiusAU);
 
         alpha *= smoothstep(push.minGapPx, push.fadeGapPx, gapPx);
         if(alpha <= 0.0){
-            // too dense to read here; collapse the quad rather than smear it
             VertexOut culled;
             culled.position = float4(0.0, 0.0, 0.0, 1.0);
             culled.color = float4(0.0, 0.0, 0.0, 0.0);
@@ -136,14 +104,8 @@ VertexOut vs_main(
             return culled;
         }
 
-        // The heavier weight goes to whichever rings are five steps apart
-        // *here*, which is not a fixed level: past the radius where the base
-        // step has faded out, the level above it becomes the fine grid and has
-        // to be drawn thin, or the far field ends up uniformly heavy.
-        //
-        // finestLevel is the lowest level still drawn at this radius - the one
-        // whose gap has not yet fallen under minGapPx - floored at the base,
-        // since nothing finer exists.
+        // Thick goes to levels above the finest one still drawn at this radius,
+        // not above level 0, or the far field ends up uniformly heavy.
         const float finestLevel = max(0.0, ceil(
             log(push.minGapPx * (1.0 + radiusAU) /
                 (push.pxPerWarpUnit * push.baseStepAU)) / log(5.0)
@@ -154,7 +116,6 @@ VertexOut vs_main(
         }
 
         p0 = circlePoint(radiusAU, arcIdx, RING_SEGMENTS);
-        // the last arc closes onto step 0, so the ring has no gap
         p1 = circlePoint(radiusAU, (arcIdx + 1) % RING_SEGMENTS, RING_SEGMENTS);
     }
 

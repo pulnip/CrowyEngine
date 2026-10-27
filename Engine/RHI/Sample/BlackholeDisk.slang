@@ -1,7 +1,6 @@
 struct VertexOut {
     float4 position : SV_Position;
-    // x for radius(0=inner, 1=outer),
-    // y for theta (0=0    , 1=2pi  )
+    // x: radius, 0 inner to 1 outer; y: theta, 0 to 1 for 0 to 2pi
     float2 polarCoord : TEXCOORD0;
 };
 
@@ -94,7 +93,6 @@ float4 fs_main(VertexOut input) : SV_Target {
     float rRatio = diskInner / scaledR;
     float temp = maxTempKelvin * pow(rRatio, 0.75) * pow(max(1.0 - sqrt(rRatio), 0.0), 0.25);
 
-    // blackbody rgb
     float3 baseColor = blackbodyRadiation(temp);
 
     // brightness (Stefan-Boltzmann)
@@ -103,7 +101,6 @@ float4 fs_main(VertexOut input) : SV_Target {
     float peakTemp = maxTempKelvin * pow(xPeak, 0.75) * pow(1.0 - sqrt(xPeak), 0.25);
     float intensity = pow(temp / peakTemp, 4);
 
-    // turbulence
     float2 noiseCoord = float2(12.0 * r, 3.0 * theta);
     float turb = fbm(noiseCoord, 4);
     float turbStrength = lerp(0.4, 0.1, r);

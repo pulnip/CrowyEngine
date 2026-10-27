@@ -1,15 +1,12 @@
 #include "TerrainDensity.slang"
 
-// Evaluates the density field at a list of points for the
-// TerrainDensityCheck sample to hold against the CPU implementation.
-
+// Mirrors PushConstants in TerrainDensityCheck.cpp.
 struct ResourceData {
-    // params leads: two 16-byte rows, so later offsets match C++
-    TerrainParams params;               //  0 .. 31
-    uint pointCount;                    // 32
-    uint _pad0;                         // 36
-    DescriptorHandle<StructuredBuffer<float4>> points;      // 40
-    DescriptorHandle<RWStructuredBuffer<float2>> results;   // 48
+    TerrainParams params;
+    uint pointCount;
+    uint _pad0;
+    DescriptorHandle<StructuredBuffer<float4>> points;
+    DescriptorHandle<RWStructuredBuffer<float2>> results;
 };
 
 [[vk::push_constant]]

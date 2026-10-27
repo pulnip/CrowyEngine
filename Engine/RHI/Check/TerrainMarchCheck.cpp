@@ -12,32 +12,22 @@
 #include "TerrainDensity.hpp"
 #include "TerrainMarch.hpp"
 
-// Runs the density and marching passes once and reads the result back, so the
-// smoke run fails if the GPU mesher stops landing on the isosurface.
-//
-// A marching cubes vertex always sits on a cell edge, which is what makes it
-// checkable without a CPU mesher: the edge can be recovered from the position
-// alone, and the CPU density at its two corners must straddle zero and read
-// zero again at the point the GPU picked.
+// A marching cubes vertex sits on a cell edge, so the edge is recovered from
+// the position and the CPU density must read zero there: no CPU mesher needed.
 
 namespace
 {
     using namespace Crowy;
 
-    // measured at the default parameters; see the count this prints
     constexpr u32 TRIANGLE_CAPACITY = 1'500'000;
-    // how much comes back. The atomic hands out slots in no particular order,
-    // so a prefix is an unbiased sample of the whole mesh. Welding needs the
-    // vertex prefix to cover every vertex an index can name, which it does by
-    // a wide margin - welded vertices number about half the triangles
+    // atomics hand out slots in no fixed order, so a prefix is a fair sample;
+    // welded vertices number about half the triangles, well under the prefix
     constexpr u32 PREFIX_VERTICES = 300'000;
     constexpr u32 PREFIX_INDICES = 300'000;
 
-    // the CPU and GPU density fields agree to about this much
-    // (TerrainDensityCheck measures it); the interpolated residual inherits
-    // that error without amplifying it
+    // CPU and GPU densities agree to about this (see TerrainDensityCheck);
+    // the interpolated residual inherits that error without amplifying it
     constexpr f32 DENSITY_TOLERANCE = 1e-2f;
-    // a coordinate is on a grid line if it is this close to one
     constexpr f32 LATTICE_TOLERANCE = 1e-3f;
     // below this a triangle is too thin for its winding to mean anything
     constexpr f32 MIN_TRIANGLE_AREA =
@@ -60,21 +50,13 @@ namespace
         }
     };
 
-    // Whether the triangles are wound the way the engine expects.
-    //
-    // Per-triangle this is an ill-conditioned question: a sliver's face normal
-    // is mostly rounding error, and a small triangle across a sharp fold can
-    // genuinely disagree with the smooth gradient normals at its corners. A
-    // reversed winding, though, is not a local accident - it would flip the
-    // whole mesh at once. So the verdict rides on the area-weighted total,
-    // which slivers barely move, and the per-triangle rate is reported for
-    // diagnosis rather than judged.
+    // Slivers' face normals are mostly rounding error, but a reversed winding
+    // flips the whole mesh: judge the area-weighted total, report the rate.
     struct Winding {
         u32 tested = 0;
         u32 disagreed = 0;
         // sum of cross(...) . normal, so each triangle counts for its area
         f64 weighted = 0.0;
-        // the disagreeing triangle furthest from agreeing
         f32 worstCosine = 1.0f;
         f32 worstArea = 0.0f;
         Vec3 worstAt{};
@@ -105,9 +87,8 @@ namespace
                p.z <= GRID_MAX_Z + LATTICE_TOLERANCE;
     }
 
-    // the axis the vertex was interpolated along, or 3 if it landed on a
-    // corner (t was 0 or 1, which the noise makes vanishingly rare) - and 4
-    // if two axes are off the lattice, which no edge vertex can be
+    // the axis the vertex was interpolated along; 3 if it sits on a corner,
+    // 4 if two axes are off the lattice, which no edge vertex can be
     u32 InterpolatedAxis(Vec3 p) noexcept {
         u32 found = 3, count = 0;
 
@@ -122,9 +103,8 @@ namespace
         return count > 1 ? 4 : found;
     }
 
-    // The residual of the linear interpolation the shader did, evaluated with
-    // CPU densities. Conditioning does not enter: this asks whether the
-    // reported point reads zero, not where exactly zero was.
+    // The residual of the shader's interpolation under CPU densities: it asks
+    // whether the point reads zero, not where exactly zero was.
     bool OnSurface(
         Vec3 p,
         u32 axis,
@@ -186,8 +166,7 @@ namespace
         return failures;
     }
 
-    // the engine rasterizes the right-hand normal as the front face
-    // (left-handed, frontCounterClockwise = false), so the winding has to
+    // the engine's front face is the right-hand normal, so the winding has to
     // agree with the gradient normals the shader stored
     Winding CheckWinding(std::span<const TerrainVertex> vertices) {
         Winding winding;
@@ -224,9 +203,6 @@ namespace
         return winding;
     }
 
-    // Expands the welded mesh back into a triangle soup so the same geometry
-    // checks apply, and judges the indices on the way through: every one has
-    // to name a vertex that was actually written.
     bool BuildWeldedSoup(
         std::span<const u32> indices,
         std::span<const TerrainVertex> stored,
@@ -250,7 +226,6 @@ namespace
             );
             return false;
         }
-        // welding that saves nothing is welding that did not happen
         if(counter.vertexCount >= triangles * 3) {
             std::println(
                 "  FAIL: {} vertices for {} triangles - no sharing at all, "
@@ -285,8 +260,6 @@ namespace
         return true;
     }
 
-    // The draw arguments the argument kernel wrote. Nothing else ever computes
-    // this on the CPU, so getting it wrong would only show as a mis-sized draw.
     bool ArgsAreRight(
         RHIBuffer& readback,
         const TerrainMarchCounter& counter,
@@ -447,9 +420,6 @@ namespace
 
 namespace
 {
-    // Runs one mode end to end and judges what came back. Both modes mesh the
-    // same field, so the same geometry checks apply to both - the welded one
-    // just has to be dereferenced through its indices first.
     bool CheckMode(
         RHIDevice& device,
         const TerrainParams& params,
@@ -499,12 +469,8 @@ namespace
             "TerrainMarchArgsReadback"
         );
 
-        // A first run, submitted on its own, left the way a frame that drew
-        // the result would leave it. The run that follows then has to wind
-        // every buffer back from a read to a write across a submission
-        // boundary - the hazard auto-rebuild hits on every parameter change,
-        // and the reason this runs twice instead of once. The debug layer is
-        // what actually judges it.
+        // the warm-up leaves buffers as a drawn frame does, so the next run's
+        // write-after-read crosses a submission; the debug layer judges it
         {
             warmupList->Begin();
             marcher.Record(*warmupList, params, mode);

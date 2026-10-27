@@ -24,7 +24,6 @@ namespace Crowy
             "a trail needs two samples to have a segment"
         );
         CROWY_ASSERT(dayPerSample > 0.0);
-        // buffer sizes are u32; 7 MB of ring at the default capacity
         CROWY_ASSERT(capacity <= 0xFFFFFFFFu / ORBIT_SAMPLE_BYTES);
         CROWY_ASSERT(
             capacity <= ORBIT_PHASE_MAX_STEPS,
@@ -53,8 +52,6 @@ namespace Crowy
         accumDays = 0.0;
         pendingSamples = 0;
 
-        // head 0 means the whole ring is one contiguous run starting at slot 0,
-        // so even the biggest write this class ever does is a single copy
         stage(0, capacity, endDay);
     }
 
@@ -65,14 +62,10 @@ namespace Crowy
         stats.copyCount = 0;
         accumDays += deltaSeconds * daysPerSecond;
 
-        // an unrecorded write is still sitting in this frame's staging region -
-        // the prefill on the first frame, normally. The elapsed time is not
-        // lost, it just ticks once the copy has been recorded.
         if(pendingSamples != 0)
             return 0;
 
-        // a tiny ring would otherwise let one frame lap itself, and the copy
-        // below assumes the write wraps at most once
+        // the copy assumes the write wraps at most once
         const auto maxTicks = std::min(ORBIT_MAX_TICKS_PER_FRAME, capacity);
 
         u32 ticks = 0;
@@ -82,9 +75,6 @@ namespace Crowy
         }
 
         if(accumDays >= dayPerSample) {
-            // the remainder is dropped rather than carried: carrying it would
-            // just push the same overrun into the next frame. Sim time slows
-            // down, which the counters make visible instead of mysterious.
             stats.droppedTicks += static_cast<u64>(accumDays / dayPerSample);
             ++stats.overflowFrameCount;
             accumDays = 0.0;
@@ -113,8 +103,6 @@ namespace Crowy
         if(value == dayPerSample)
             return;
 
-        // the stored samples are spaced by the old value, so keeping them would
-        // mean a trail whose segments span two different amounts of sim time
         dayPerSample = value;
         Prefill(newestDay);
     }
@@ -132,14 +120,10 @@ namespace Crowy
             std::min(pendingSamples, capacity - pendingFirstSlot);
         const auto secondRun = pendingSamples - firstRun;
 
-        // the two paths differ only in how the ring is written; the edge either
-        // way carries it from whatever the last submission left behind to
-        // whatever reads it next
         const auto writeAs = pendingGpu ? RHIResourceUsage::StorageCompute
                                         : RHIResourceUsage::CopyDst;
 
-        // the ring keeps its older samples, so this is a partial write and the
-        // acquire must not discard
+        // a partial write: the acquire must not discard
         const auto acquire =
             resting == RHIResourceUsage::Undefined
                 ? makeBarrier(*trail, RHIResourceUsage::Undefined, writeAs)
@@ -152,8 +136,6 @@ namespace Crowy
         if(pendingGpu) {
             cmdList.BeginComputePass({}, acquires);
 
-            // one thread per (sample, body); the wrap is the shader's modulo,
-            // so unlike the copy path there is no second run to issue
             gpuFill->RecordRing(
                 cmdList,
                 *trail,
@@ -184,8 +166,6 @@ namespace Crowy
             static_cast<usize>(firstRun) * ORBIT_SAMPLE_BYTES
         );
         if(secondRun > 0) {
-            // sample-major pays off here: even the wrapped case is two runs,
-            // not one copy per body
             cmdList.Copy(
                 *pendingStaging.buffer,
                 *trail,
@@ -218,10 +198,6 @@ namespace Crowy
         pendingGpu = fillMode == OrbitFillMode::Gpu;
 
         if(pendingGpu) {
-            // nothing to generate here: the epoch is the whole handoff, and
-            // Record turns it into one dispatch. Sample 0 of the run is the
-            // oldest, so the epoch counts back from endDay the same way the
-            // CPU path's day expression does.
             gpuFill->SetEpoch(
                 endDay - (count - 1) * dayPerSample,
                 dayPerSample
@@ -233,10 +209,8 @@ namespace Crowy
         scratch.resize(static_cast<usize>(count) * ORBIT_BODY_COUNT);
 
         for(u32 s = 0; s < count; ++s) {
-            // counted back from endDay, not forward from the start, so this is
-            // the same expression DayForAge uses - the newest batch then
-            // reproduces bit-exactly and a readback check can demand equality
-            // rather than a tolerance
+            // the same expression as DayForAge, so a readback compares
+            // bit-exactly
             const auto day = endDay - (count - 1 - s) * dayPerSample;
 
             std::array<Vec3d, ORBIT_BODY_COUNT> sample;
@@ -248,8 +222,6 @@ namespace Crowy
             }
         }
 
-        // one memcpy into this frame's slice; the GPU only sees it once
-        // Record turns it into a copy
         pendingStaging = device.UploadTransient(
             std::span<const Vec3>(
                 scratch.data(),

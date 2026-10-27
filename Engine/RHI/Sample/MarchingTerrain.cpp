@@ -14,18 +14,13 @@
 
 namespace Crowy
 {
-    // Terrain from marching cubes over the density field, meshed on the GPU.
-    //
-    // How many triangles came out is never known to the CPU: a compute pass
-    // writes the draw arguments and ExecuteIndirect consumes them. The only
-    // thing that comes back is the counter, a few frames late, to drive the
-    // stats and the overflow warning.
+    // The CPU never learns the triangle count: a compute pass writes the draw
+    // arguments for ExecuteIndirect, and only the counter comes back, late.
     class MarchingTerrain: public App {
         using App::App;
 
-        // the defaults mesh ~99k triangles. This leaves room for the cave
-        // sliders without reserving the 1.5M the cell count would permit;
-        // past it the marcher drops cells and says so
+        // the defaults mesh ~99k triangles; this leaves room for cave sliders
+        // without reserving the 1.5M the cell count would permit
         static constexpr u32 TRIANGLE_CAPACITY = 600'000;
 
         static constexpr Color SKY_COLOR{0.52f, 0.68f, 0.86f, 1.0f};
@@ -43,9 +38,7 @@ namespace Crowy
         UIContext ctx;
         RAII<TerrainPanel> panel;
 
-        // nothing can be drawn until the first march has run
         bool rebuildPending = true;
-        // the counter copy is in flight; issuing another would race the read
         bool counterCopyInFlight = false;
         u64 counterCopyFrame = 0;
         TerrainMarchCounter counter{};
@@ -69,9 +62,8 @@ namespace Crowy
             );
         }
 
-        // The copy rides frame counterCopyFrame's batch, so the bytes are
-        // there the moment the GPU reports that frame complete. Reading then
-        // costs no wait, and the stats trail by a few frames.
+        // the copy rides frame counterCopyFrame's batch, so reading once that
+        // frame completes costs no wait; the stats trail by a few frames
         void CollectCounter() {
             if(!counterCopyInFlight)
                 return;
@@ -82,8 +74,6 @@ namespace Crowy
             counterCopyInFlight = false;
 
             ctx.stats.triangleCount = counter.DrawableTriangles();
-            // the soup spends three vertices on every triangle; welding spends
-            // one per crossing edge and says so in the counter
             ctx.stats.vertexCount = mode == TerrainMarchMode::Soup
                                         ? ctx.stats.triangleCount * 3
                                         : counter.vertexCount;
@@ -105,8 +95,6 @@ namespace Crowy
             }
         }
 
-        // bytes the mesh occupies as drawn, so the welding toggle shows its
-        // work rather than being taken on faith
         u32 MeshBytes() const {
             const auto vertexBytes =
                 ctx.stats.vertexCount * static_cast<u32>(sizeof(TerrainVertex));
@@ -238,9 +226,8 @@ namespace Crowy
                     counterCopyFrame = FrameNumber();
                 }
 
-                // the draw reads what the marching pass just wrote; a frame
-                // that skips the rebuild reads the same bytes again and needs
-                // no barrier at all
+                // the draw reads what the march just wrote; a frame
+                // without a rebuild reads the same bytes, barrier-free
                 bufferAcquires = {edges.vertices, edges.args};
                 if(drawnMode == TerrainMarchMode::Welded)
                     bufferAcquires.push_back(edges.indices);
@@ -300,7 +287,6 @@ namespace Crowy
                     )
                 }
             );
-            // how much this draws is only ever known to the GPU
             auto& pipeline = surface->Pipeline(ctx.debug);
             auto& args = marcher->Args(drawnMode);
             if(drawnMode == TerrainMarchMode::Welded) {
@@ -315,7 +301,6 @@ namespace Crowy
                 );
             }
             else {
-                // the soup path emits its triangles unindexed
                 cmdList.ExecuteIndirect(
                     DrawBatch{.pso = &pipeline, .args = &args, .drawCount = 1}
                 );

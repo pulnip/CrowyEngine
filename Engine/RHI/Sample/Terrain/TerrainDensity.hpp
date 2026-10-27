@@ -22,7 +22,6 @@ namespace Crowy
 
         // fades at both ends so caves never breach the floor or the surface
         inline constexpr f32 CaveMask(f32 y, f32 baseHeight) noexcept {
-            // caves fade out within this distance of the floor and the surface
             constexpr f32 TERRAIN_CAVE_FADE = 4.0f;
 
             const f32 bedrockMask =
@@ -37,7 +36,7 @@ namespace Crowy
         }
     }
 
-    // CPU half of Engine/RHI/Sample/Terrain/TerrainDensity.slang.
+    // Mirrors TerrainDensity.slang.
     // density > 0 is solid; the isosurface is density == 0.
 
     inline f32 terrainBaseHeight(
@@ -56,7 +55,6 @@ namespace Crowy
         f32 baseHeight,
         const TerrainParams& params
     ) noexcept {
-        // decorrelates the cave field from the surface fbm
         constexpr u32 CAVE_SEED_MIX = 0x5f356495u;
         const f32 solid = baseHeight - position.y;
 

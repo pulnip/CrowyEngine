@@ -12,10 +12,6 @@ namespace Crowy
         bool wireframe = false;
     };
 
-    // stats both samples report; sample-specific ones are injected into the
-    // panel instead - see TerrainPanel. Build time is not here on purpose:
-    // only the CPU mesher knows how long it took, and a zero next to the GPU
-    // one would read as "instant" rather than "not measured"
     struct TerrainStats {
         u32 vertexCount = 0;
         u32 triangleCount = 0;
@@ -28,9 +24,7 @@ namespace Crowy
         TerrainStats stats;
 
         bool autoRebuild = false;
-        // a parameter control moved since the last build
         bool paramsDirty = false;
-        // the [Rebuild] button; ignores autoRebuild
         bool rebuildRequested = false;
         // a parameter changed outside its widget (Randomize, clamp) - the
         // panel must be rebuilt for the controls to show it
@@ -45,8 +39,8 @@ namespace Crowy
         }
     };
 
-    // The shared parameter panel: a single Column, since UIRenderer::Prepare
-    // renders the whole widget tree into one window.
+    // a single Column, since UIRenderer::Prepare renders the whole widget tree
+    // into one window
     class TerrainPanel {
     private:
         // kept for the rebuild
@@ -54,12 +48,10 @@ namespace Crowy
         Widget widget;
 
     public:
-        // `sampleStats` is appended under the Stats heading.
-        // their getters must capture the UIContext this panel is
-        // driven with - they outlive this call.
+        // the getters in `sampleStats` outlive this call, so they must capture
+        // the UIContext this panel is driven with
         TerrainPanel(UIContext&, std::vector<Widget>&& sampleStats = {});
 
-        // pass to UIRenderer::Prepare once per frame
         Widget& Get(UIContext&);
     };
 }

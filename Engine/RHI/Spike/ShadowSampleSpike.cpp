@@ -5,23 +5,6 @@
 
 namespace Crowy
 {
-    // Can a shader read back the depth a pass wrote with no color attachment
-    // and no fragment stage? Pass 1 draws a triangle and a bar into a 256x128
-    // D32_FLOAT texture, at depths that alternate by frame; pass 2 reads it
-    // through GetReadableID() at the texel a shadow receiver loads
-    // (ClipToTexture.slang), left pane as Texture2D<float>, right pane as
-    // DepthTexture2D.
-    //
-    //   PASS: two identical panes, each a red right triangle in its top-left
-    //         quarter (right angle top-left), a green bar over most of its
-    //         right third, blue elsewhere.
-    //   FAIL: magenta - not this frame's depth (a wrong-typed view, a lost
-    //         bit); yellow - the other frame's depth, so an edge let a write
-    //         and a read overlap; black - a pane pass 2 never drew; all
-    //         blue - pass 1 wrote nothing; the triangle bottom-left - the uv
-    //         y convention differs; a stretched or squashed pane - x and y
-    //         swapped; left pane wrong, right pane right - only
-    //         DepthTexture2D reads the depth format here.
     class ShadowSampleSpike: public App {
         using App::App;
 
@@ -108,7 +91,6 @@ namespace Crowy
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
-            // pass 1 writes, pass 2 reads
             const auto depthEdge = makeBarrier(
                 *depth,
                 RHIResourceUsage::DepthWrite,

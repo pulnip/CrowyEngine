@@ -22,7 +22,6 @@ namespace Crowy
         static constexpr RHIPixelFormat DEPTH_FORMAT =
             RHIPixelFormat::D32_FLOAT;
         static constexpr f32 FLOOR_HALF_SIZE = 10.0f;
-        // 1 maps the grid once across the floor; raise it to tile instead
         static constexpr f32 FLOOR_UV_SCALE = 1.0f;
 
         RHIGraphicsPipelineStateRAII skyPSO, floorPSO;
@@ -30,7 +29,6 @@ namespace Crowy
         // kept so the depth buffer can be rebuilt when the window changes size
         RHIDevice* device = nullptr;
 
-        // the sky is a sphere drawn around the camera, so it is inside out
         RHIBufferRAII skyVertices, skyIndices;
         u32 skyIndexCount = 0;
         RHITextureRAII cubeMap;
@@ -62,7 +60,6 @@ namespace Crowy
 
         static constexpr Vec3 toLight{0.4f, 0.8f, -0.45f};
 
-        // a walker standing on the floor, looking around
         Vec3 eye{0.0f, 1.6f, -4.0f};
         Vec3 moveDir = zeros();
         f32 yaw = 0.0f, pitch = 0.0f;
@@ -248,7 +245,6 @@ namespace Crowy
         void ProcessInput(const InputProvider& input) override {
             // radian per pixel
             constexpr f32 SENSITIVITY = 0.003f;
-            // do not let the camera flip over the poles
             constexpr f32 PITCH_LIMIT = 0.5f * std::numbers::pi_v<f32> - 0.01f;
 
             if(input.IsKeyDown(MouseButton::RButton)) {
@@ -262,7 +258,6 @@ namespace Crowy
                 );
             }
 
-            // move on the ground plane only, so the eye height stays put
             const Vec3 forward{std::sin(yaw), 0.0f, std::cos(yaw)};
             const Vec3 right{std::cos(yaw), 0.0f, -std::sin(yaw)};
 

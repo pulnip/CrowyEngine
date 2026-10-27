@@ -1,12 +1,18 @@
-// Pass 1 writes a 256x128 depth map with no color attachment and no fragment
-// stage. Pass 2 reads it back in two panes, left through Texture2D<float> and
-// right through DepthTexture2D, at the texel a shadow receiver would load.
+// Can a shader read back depth written with no color attachment or fragment
+// stage, as Texture2D<float> (left pane) and as DepthTexture2D (right pane)?
+// PASS: two identical panes, each a red right triangle in its top-left quarter
+// (right angle top-left), a green bar over most of its right third, blue
+// elsewhere.
+// FAIL: magenta - not this frame's depth (a wrong-typed view, a lost bit);
+// yellow - the other frame's depth, an edge let a write and a read overlap;
+// black - a pane never drawn; all blue - pass 1 wrote nothing; the triangle
+// bottom-left - the uv y convention differs; a stretched pane - x and y
+// swapped; only the left pane wrong - only DepthTexture2D reads depth here.
 
 #include "ClipToTexture.slang"
 
 // Depths that need every float32 mantissa bit, so a lower-precision read
-// cannot pass; they alternate by frame, so a read of the other frame's
-// depth shows.
+// cannot pass; they alternate by frame, so a stale read shows.
 static const float TRIANGLE_DEPTH[2] = {0.3, 0.35};
 static const float BAR_DEPTH[2] = {0.7, 0.65};
 
@@ -14,7 +20,6 @@ struct SpikePush {
     // the same texture twice, once per type a receiver could declare
     DescriptorHandle<Texture2D<float>> asTexture;
     DescriptorHandle<DepthTexture2D> asDepthTexture;
-    // the frame number's low bit: which depths pass 1 wrote
     uint parity;
     uint _pad0;
 };
@@ -36,7 +41,6 @@ float4 vs_shapes(uint vertexID : SV_VertexID) : SV_POSITION {
         float2(-0.09765625, 0.90625),
         float2(-0.90625, 0.1015625),
 
-        // a bar over the right third
         float2(0.35, 0.9),
         float2(0.9, 0.9),
         float2(0.35, -0.9),
@@ -54,7 +58,6 @@ float4 vs_shapes(uint vertexID : SV_VertexID) : SV_POSITION {
 
 [shader("vertex")]
 FullscreenOut vs_fullscreen(uint vertexID : SV_VertexID) {
-    // one triangle over the whole viewport
     static const float2 corners[3] = {
         float2(-1.0, -1.0),
         float2(3.0, -1.0),
@@ -72,8 +75,6 @@ bool matches(float value, float expected) {
     return abs(value - expected) < 1e-6;
 }
 
-// red for the triangle, green for the bar, blue for the clear, yellow for the
-// other frame's depth, magenta for anything else
 float4 classify(float depth) {
     const uint parity = push.parity;
     if(matches(depth, TRIANGLE_DEPTH[parity]))

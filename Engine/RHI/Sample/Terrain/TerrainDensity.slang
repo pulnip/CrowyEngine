@@ -2,10 +2,10 @@
 
 #include "Noise.slang"
 
-// GPU half of Engine/RHI/Sample/Terrain/TerrainDensity.hpp.
+// Mirrors TerrainDensity.hpp.
 // density > 0 is solid; the isosurface is density == 0.
 
-// Mirrors TerrainParams in Engine/RHI/Sample/Terrain/Terrain.hpp.
+// Mirrors TerrainParams in Terrain.hpp.
 struct TerrainParams {
     uint seed;
     float freq;
@@ -37,7 +37,6 @@ float terrainSmoothstep(float min, float max, float x) {
 
 // fades at both ends so caves never breach the floor or the surface
 float terrainCaveMask(float y, float baseHeight) {
-    // caves fade out within this distance of the floor and the surface
     static const float TERRAIN_CAVE_FADE = 4.0f;
 
     float bedrockMask = terrainSmoothstep(
@@ -62,7 +61,6 @@ float terrainDensity(
     float baseHeight,
     TerrainParams params
 ) {
-    // decorrelates the cave field from the surface fbm
     static const uint TERRAIN_CAVE_SEED_MIX = 0x5f356495u;
 
     float solid = baseHeight - position.y;

@@ -1,6 +1,5 @@
 #include "Sampler.slang"
 
-// [-1, 1] to Image Plane
 float2 ndc2ip(float2 ndc, float aspect, float tanHalfFov){
     return ndc * float2(aspect, 1.0) * tanHalfFov;
 }
@@ -86,15 +85,10 @@ ConstantBuffer<ResourceData> resource;
 
 static const int PLANET_COUNT = 3;
 cbuffer params : register(b1) {
-    // xyz = black hole position, w = Schwarzschild radius
     float4 bhPos_rs;
-    // xyz = camera position, w = aspect ratio
     float4 camPos_aspect;
-    // xyz = camera right, w = tan(fovY / 2)
     float4 camRight_tanHalfFov;
-    // xyz = camera up, w = disk inner radius
     float4 camUp_diskInner;
-    // xyz = camera forward, w = disk outer radius
     float4 camForward_diskOuter;
     float4 posRadius[PLANET_COUNT];
     float4 planetColor[PLANET_COUNT];
@@ -121,7 +115,6 @@ float3 sampleDiskWithDoppler(
     static const float dir = +1.0;
     float3 orbitalDir = dir * normalize(float3(-hitPos.z, 0, hitPos.x));
 
-    // doppler factor
     float dopplerCosAngle = dot(rayDir, orbitalDir);
     float doppler = 1.0 / (1.0 + v_orb * dopplerCosAngle);
 
@@ -175,7 +168,6 @@ FragmentOut fs_main(VertexOut input) {
             float3 pPos = posRadius[j].xyz;
             float pRad = posRadius[j].w;
             float3 pToRay = prevPos - pPos;
-            // in planet
             if (length(pToRay) <= pRad) {
                 float3 N = normalize(pToRay);
                 float3 L = normalize(camPos - prevPos);
@@ -186,24 +178,19 @@ FragmentOut fs_main(VertexOut input) {
             }
         }
 
-        // in event horizon
         if (r <= rs) {
             output.scene = float4(0, 0, 0, 1);
             return output;
         }
 
-        // far from blackhole
         if (r > far_) {
-            // scene = far_color
             return output;
         }
 
-        // adaptive dl
         float dl = 0.3 + 0.7 * (r / far_);
         rk4(state, dl);
         float3 newPos = state.pos;
 
-        // in disk
         if (prevPos.y * newPos.y < 0.0) {
             float t = abs(prevPos.y) / (abs(prevPos.y) + abs(newPos.y));
             float3 y0Pos = lerp(prevPos, newPos, t);
@@ -211,8 +198,6 @@ FragmentOut fs_main(VertexOut input) {
             float y0r = length(y0Pos);
 
             if (diskInner <= y0r && y0r <= diskOuter) {
-                // float t2 = y0r / diskOuter;
-                // float3 diskColor = float3(1.0, t2, 0.2);
                 float3 diskColor = sampleDiskWithDoppler(
                     y0Pos,
                     elapsedTimeSeconds,

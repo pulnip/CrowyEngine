@@ -7,12 +7,6 @@ namespace Crowy
 {
     class InputProvider;
 
-    // The fly camera both terrain samples look through: hold RButton to look,
-    // WASD to move, Space and Shift for up and down.
-    //
-    // Shared rather than copied because comparing the two samples is the whole
-    // point - they have to frame the same field from the same place, and a
-    // camera that drifted between them would quietly undo that.
     class TerrainCamera {
     private:
         Vec3 position = TERRAIN_CAMERA_START_POS;

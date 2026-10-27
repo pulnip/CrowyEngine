@@ -8,8 +8,7 @@
 
 namespace Crowy
 {
-    // CPU half of Engine/RHI/Sample/Terrain/Noise.slang, laid out in the same
-    // order. TerrainDensityCheck compares both on every smoke run.
+    // Mirrors Noise.slang.
 
     namespace detail
     {
@@ -35,22 +34,18 @@ namespace Crowy
             );
         }
 
-        // 8 unit-length directions: the 4 axes and the 4 diagonals
         inline constexpr f32 grad(u32 h, f32 x, f32 y) noexcept {
             constexpr f32 D = std::numbers::sqrt2_v<f32> / 2;
 
-            // (x, y) dot (dir determined by h)
             switch(h & 7u) {
-            // Axis aligned
             case 0:
-                return x; // dir = ( 1,  0)
+                return x;
             case 1:
-                return -x; // dir = (-1,  0)
+                return -x;
             case 2:
-                return y; // dir = ( 0,  1)
+                return y;
             case 3:
-                return -y; // dir = ( 0, -1)
-            // Diagonal
+                return -y;
             case 4:
                 return D * (x + y);
             case 5:
@@ -84,14 +79,11 @@ namespace Crowy
     inline f32 perlin(f32 x, f32 y, u32 seed) noexcept {
         using namespace detail;
 
-        // (ux) --- (x)  ---  (ux+1)
-        // | <- tx ->| <- 1-tx -> |
-        // Notice. f32 -> u32 is undefined below zero
+        // f32 -> u32 is undefined below zero, hence the i32 step
         const f32 ux = static_cast<u32>(static_cast<i32>(std::floor(x)));
         const f32 uy = static_cast<u32>(static_cast<i32>(std::floor(y)));
         const f32 tx = x - ux, ty = y - uy;
 
-        // gradient (ux + ..., uy + ...) to (x, y)
         const f32 n00 = grad(hash(ux, uy, seed), tx, ty);
         const f32 n10 = grad(hash(ux + 1, uy, seed), tx - 1.0f, ty);
         const f32 n01 = grad(hash(ux, uy + 1, seed), tx, ty - 1.0f);
@@ -156,13 +148,11 @@ namespace Crowy
             sum += amplitude * perlin(px, py, octaveSeed);
             amplitudeSum += amplitude;
 
-            // gain 0.5, lacunarity 2
             amplitude *= 0.5f;
             px *= 2.0f;
             py *= 2.0f;
         }
 
-        // normalize to [-1, 1]
         return sum / amplitudeSum;
     }
 }

@@ -39,7 +39,6 @@ namespace Crowy
         // the gap before a frame - a hold, or OnInit before frame 1 - is not
         // that frame's time
         bool held = true;
-        // let through by a counted run: this frame's time is the fixed step
         bool stepped = false;
         bool quitRequested = false;
 
@@ -100,7 +99,6 @@ namespace Crowy
         ) override final;
 
     protected:
-        // the frame finishes, then the loop leaves through Update()
         void RequestQuit() noexcept { quitRequested = true; }
 
         FrameControl& Control() noexcept { return control; }
@@ -110,9 +108,8 @@ namespace Crowy
         f64 ElapsedSeconds() const noexcept { return timer.GetElapsedTime(); }
     };
 
-    // self-contained backbuffer barriers for the pass drawing to it.
-    // the acquire discards previous contents (fine while the pass clears);
-    // a sample that loads them instead should acquire Present → RenderTarget.
+    // discards previous contents; a pass that loads them acquires
+    // Present → RenderTarget instead
     inline RHITextureBarrier AcquireBackBuffer(
         const RHIColorAttachment& backBuffer
     ) {
@@ -166,8 +163,6 @@ namespace Crowy
         return 0;
     }
 
-    // a sample a run configures from the command line: --config, --hold,
-    // --capture-frame
     template<std::derived_from<App> T>
     int Main(int argc, char** argv, const WindowConfig& windowConfig) {
         RuntimeConfig runtimeConfig{.window = windowConfig};

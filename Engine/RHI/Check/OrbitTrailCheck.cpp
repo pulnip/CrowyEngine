@@ -13,37 +13,23 @@
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 
-// Holds the GPU trail ring against the Kepler solver it was filled from.
-// Nothing is drawn: the ring is copied back and every slot is compared with the
-// position that slot is supposed to hold.
-//
-// The ring lives in a device-local buffer written by staging copies: an
-// incremental append only means anything on top of what earlier appends left,
-// which is exactly what transient storage does not promise.
-
 namespace
 {
     using namespace Crowy;
 
     constexpr f64 START_DAY = 0.0;
-    // a memcpy chain should reproduce the samples exactly; the slack is only
-    // for older batches, whose day was computed against a different endDay and
-    // can differ by an ulp before it is narrowed to f32
+    // older batches computed their day against a different endDay, an ulp off
+    // before it is narrowed to f32
     constexpr f32 TOLERANCE_AU = 1e-4f;
 
-    // deliberately not a power of two, and not a multiple of the tick counts
-    // below: a ring that only ever wraps on nice boundaries hides bugs
+    // not a power of two or a tick-count multiple: nice wraps hide bugs
     constexpr u32 SMALL_CAPACITY = 37;
 
-    // The compute path solves in float where the CPU solves in double, so it
-    // cannot be held to equality. A whole ring of fixed-point phase drifts
-    // 1.6e-5 degrees (see KeplerPhase.ReconstructsMeanAnomaly) and float Newton
-    // plus six trigonometric functions add about a part in a million - at
-    // Neptune that is tens of microns of an AU.
+    // float against double: a ring of fixed-point phase plus float Newton is
+    // tens of microns of an AU at Neptune
     constexpr f32 GPU_TOLERANCE_AU = 1e-4f;
 
-    // every submit here is a frame of its own, drained before the next; the
-    // device counts frames across the whole program, so the count lives here
+    // the device counts frames across the whole program
     void SubmitAndWait(RHIDevice& device, std::span<RHICommandList*> lists) {
         static u64 frame = 0;
         device.Submit(lists, ++frame);
@@ -58,7 +44,6 @@ namespace
         );
     }
 
-    // One frame's worth of work, fully serialized: push, copy, read back, wait.
     class RingProbe {
     private:
         RHIDevice& device;
@@ -87,8 +72,6 @@ namespace
 
             const auto edge = trail.Record(*cmdList);
 
-            // the acquire exists only when something was written; a frame that
-            // pushed nothing leaves the ring resting in CopySrc already
             std::vector<RHIBufferBarrier> acquires;
             if(edge.has_value())
                 acquires.push_back(*edge);
@@ -162,9 +145,6 @@ namespace
         return false;
     }
 
-    // The prefill is one contiguous write of the whole ring, and every sample's
-    // day is the same expression DayForAge reports, so this one has to be
-    // bit-exact - a nonzero worst delta already means something is off.
     bool CheckPrefill(RHIDevice& device) {
         std::println(
             "prefill, full capacity ({} samples)",
@@ -179,8 +159,6 @@ namespace
             static_cast<usize>(ORBIT_TRAIL_CAPACITY) * ORBIT_BODY_COUNT
         );
 
-        // the hitch Step 7 is measured against: 65536 * 9 Kepler solves plus
-        // the memcpy into staging, all on the CPU
         const auto before = std::chrono::steady_clock::now();
         trail.Prefill(START_DAY);
         const auto prefillMs = std::chrono::duration<f64, std::milli>(
@@ -224,13 +202,10 @@ namespace
         return Report("prefill", trail, m);
     }
 
-    // A ring this small wraps every few frames, so the two-run copy and the
-    // modulo indexing both get exercised many times over.
     bool CheckWraparound(RHIDevice& device) {
         constexpr u32 FRAMES = 24;
         constexpr f64 FRAME_SECONDS = 1.0 / 60.0;
-        // 5 ticks a frame against a 37-slot ring: the seam lands on a different
-        // offset every lap
+        // 5 ticks a frame against 37 slots: the seam moves every lap
         constexpr f64 DAYS_PER_SECOND = 5.0 * 60.0;
 
         std::println("wraparound, {} slots, {} frames", SMALL_CAPACITY, FRAMES);
@@ -253,8 +228,6 @@ namespace
             const auto ticks = trail.Advance(FRAME_SECONDS, DAYS_PER_SECOND);
             probe.Flush(trail, ring);
 
-            // sample-major means a tick run is contiguous: one copy, and two
-            // only where it runs off the end of the ring
             const auto expectedCopies =
                 ticks == 0 ? 0u
                            : (headBefore + ticks > SMALL_CAPACITY ? 2u : 1u);
@@ -309,8 +282,6 @@ namespace
         return ok;
     }
 
-    // The sim step is fixed, so the same wall-clock span has to advance sim
-    // time by the same amount however it is chopped into frames.
     bool CheckFixedTimestep(RHIDevice& device) {
         constexpr f64 TOTAL_SECONDS = 2.0;
         constexpr f64 DAYS_PER_SECOND = 37.0;
@@ -350,8 +321,7 @@ namespace
             ticksStuttering
         );
 
-        // the accumulator can be holding a partial tick at the end, so one
-        // tick of disagreement is the floor, not a defect
+        // the accumulator can still hold a partial tick at the end
         if(std::abs(daySteady - dayStuttering) > 1.0) {
             std::println(
                 "  FAIL: frame pacing changed how far sim time advanced"
@@ -363,8 +333,6 @@ namespace
         return true;
     }
 
-    // A timeScale nobody can keep up with must slow sim time down and say so,
-    // not stall the frame trying to catch up.
     bool CheckTickOverflow(RHIDevice& device) {
         std::println("tick overflow");
 
@@ -406,9 +374,6 @@ namespace
         return Report("after overflow", trail, m);
     }
 
-    // Same ring, filled both ways, held against each other rather than against
-    // the solver: this is the only check that can catch the compute path
-    // disagreeing with the CPU it is replacing.
     bool CheckGpuMatchesCpu(RHIDevice& device) {
         constexpr u32 FRAMES = 24;
         constexpr f64 FRAME_SECONDS = 1.0 / 60.0;
@@ -525,8 +490,6 @@ namespace
         return true;
     }
 
-    // What the step is for: the same 65536 * 9 solves, off the CPU. The number
-    // to compare is the CPU prefill printed above.
     bool CheckGpuPrefill(RHIDevice& device) {
         std::println(
             "gpu prefill, full capacity ({} samples)",
@@ -542,8 +505,6 @@ namespace
             static_cast<usize>(ORBIT_TRAIL_CAPACITY) * ORBIT_BODY_COUNT
         );
 
-        // all that is left on this side is nine phase epochs and a 144-byte
-        // upload; Newton and the rotations have gone
         const auto before = std::chrono::steady_clock::now();
         trail.Prefill(START_DAY);
         const auto prefillMs = std::chrono::duration<f64, std::milli>(
@@ -573,11 +534,7 @@ namespace
         return true;
     }
 
-    // The draw arguments the GPU writes for itself, read back and held against
-    // the same formula in double. This is the only thing that can catch the
-    // compute pass and the CPU disagreeing about how long a trail is - the
-    // picture cannot, because a wrong count looks like a slightly shorter
-    // trail and nothing else.
+    // a wrong count only shortens a trail slightly, which no golden would catch
     bool CheckDrawArgs(RHIDevice& device) {
         std::println("indirect draw arguments");
 
@@ -606,7 +563,6 @@ namespace
             u32 enabledMask;
             CStr what;
         };
-        // the ends of every control, plus a mask with holes in it
         const std::array<Case, 6> cases{
             Case{65536, 1.00f, 0x1FFu, "full ring, one turn"},
             Case{
@@ -643,7 +599,6 @@ namespace
             std::array<RHIDrawArgs, ORBIT_BODY_COUNT> got{};
             readback->Download(got.data(), argsBytes);
             for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
-                // the same expression the CPU used to run every frame
                 const auto wanted =
                     static_cast<f64>(c.orbitTurns) * TrailPeriodDays(b);
                 const auto usable = std::min(
@@ -665,8 +620,6 @@ namespace
                     );
                     ok = false;
                 }
-                // baseInstance is the drawID the vertex stage reads as bodyIdx;
-                // getting this wrong recolours every trail
                 if(got[b].baseInstance != b) {
                     std::println(
                         "  FAIL: {} - {} got baseInstance {}, not {}",
@@ -677,11 +630,8 @@ namespace
                     );
                     ok = false;
                 }
-                // The shader works in float where this works in double, so the
-                // truncation to a whole sample could in principle land either
-                // side of a boundary. Over every extreme the panel allows it
-                // never does, so this demands equality: a drifting formula is
-                // worth a failure, not a shrug.
+                // float in the shader, but no panel extreme truncates across a
+                // sample boundary, so this demands equality
                 const auto delta = static_cast<i64>(got[b].instanceCount) -
                                    static_cast<i64>(expected);
                 if(delta != 0) {

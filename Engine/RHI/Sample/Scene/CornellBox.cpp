@@ -8,7 +8,7 @@ namespace Crowy
     namespace
     {
         // the canonical Cornell albedos, which are deliberately dim so that
-        // colour bleeding between the walls stays visible
+        // color bleeding between the walls stays visible
         constexpr Vec3 WHITE{0.73f, 0.73f, 0.73f};
         constexpr Vec3 RED{0.65f, 0.05f, 0.05f};
         constexpr Vec3 GREEN{0.12f, 0.45f, 0.15f};
@@ -54,37 +54,36 @@ namespace Crowy
             {0.0f, -h, 0.0f},
             h,
             WHITE
-        )); // floor
+        ));
         objects.push_back(Wall(
             {0.0f, -1.0f, 0.0f},
             {1.0f, 0.0f, 0.0f},
             {0.0f, h, 0.0f},
             h,
             WHITE
-        )); // ceiling
+        ));
         objects.push_back(Wall(
             {0.0f, 0.0f, -1.0f},
             {1.0f, 0.0f, 0.0f},
             {0.0f, 0.0f, h},
             h,
             WHITE
-        )); // back
+        ));
         objects.push_back(Wall(
             {1.0f, 0.0f, 0.0f},
             {0.0f, 0.0f, 1.0f},
             {-h, 0.0f, 0.0f},
             h,
             RED
-        )); // left
+        ));
         objects.push_back(Wall(
             {-1.0f, 0.0f, 0.0f},
             {0.0f, 0.0f, -1.0f},
             {h, 0.0f, 0.0f},
             h,
             GREEN
-        )); // right
+        ));
 
-        // the spheres rest on the floor, so each sits one radius above it
         const f32 radius = 0.32f * h;
         const f32 y = -h + radius;
 

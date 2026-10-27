@@ -54,8 +54,6 @@ float4 fs_main(VertexOut input) : SV_Target {
 
     // both are linear radiance and may well exceed 1
     float3 color = scene + param.bloomStrength * bloom;
-    // color = linear2srgb(color);
-    // color = tonemapACES(param.exposure * color);
 
     return float4(color, 1);
 }

@@ -33,24 +33,14 @@ namespace Crowy
         }
     }
 
-    // Multi-scale bloom over a mip chain.
-    // The kernel keeps a constant one-texel spacing at every level;
-    // the widening radius comes from each level living
-    // one mip further down:
-    //     accum = up(L0) + 1/2 up(L1) + 1/4 up(L2) + ...
-    // Each level blurs the mip above it, so the chain is progressive and no
-    // pass ever reads the mip it is writing.
+    // Each level blurs the mip above it with a one-texel kernel, so the radius
+    // widens one mip per level and no pass reads the mip it is writing.
     class BloomPass {
-        // separable blur, overwrites its target
         RHIGraphicsPipelineStateRAII blur = nullptr;
-        // point resample, adds into accum
         RHIGraphicsPipelineStateRAII upsampleAccum = nullptr;
 
-        // mip i of both chains holds level i, at source size >> (i + 1)
-        RHITextureRAII temp = nullptr; // horizontal blur result
-        RHITextureRAII blurred =
-            nullptr; // vertical blur result, next level input
-        // full resolution, single mip
+        RHITextureRAII temp = nullptr;
+        RHITextureRAII blurred = nullptr;
         RHITextureRAII accum = nullptr;
         u32 levelCount = 0;
 
@@ -85,8 +75,6 @@ namespace Crowy
                     .srcBlend = RHIBlend::One,
                     .dstBlend = RHIBlend::One,
                     .blendOp = RHIBlendOp::Add,
-                    // only the color accumulates, alpha stays at the clear
-                    // value
                     .writeMask = RHIColorWriteMask::EnableColor
                 }}
             };
@@ -114,8 +102,7 @@ namespace Crowy
                 "bloomAccum"
             );
 
-            // level 0 already runs at half the source,
-            // so the chain starts there rather than at source size.
+            // level 0 already runs at half the source
             const auto width = halve(source.GetWidth());
             const auto height = halve(source.GetHeight());
             levelCount = std::min(levels, MipLevelCount(width, height));
@@ -131,24 +118,19 @@ namespace Crowy
             blurred = device.CreateTexture(chainDesc, "bloomBlurred");
         }
 
-        // the caller's producing pass must have released
-        // `makeBarrier(source, RenderTarget, SampledFragment)` (whole range);
-        // the first horizontal blur closes that edge here. the result stays
-        // released as `makeBarrier(result, RenderTarget, SampledFragment)` -
-        // acquire that same edge in the pass that samples it.
+        // the caller releases source RenderTarget → SampledFragment (whole
+        // range) and acquires that same edge on the result where it samples it
         RHITexture& Execute(RHITexture& source, RHICommandList& cmdList) {
             using enum RHIResourceUsage;
 
             for(u32 i = 0; i < levelCount; ++i) {
-                // level 0 reads the source, deeper levels the mip above them
                 RHITexture& input = i == 0 ? source : *blurred;
                 const u32 inputMip = i == 0 ? 0 : i - 1;
                 const auto inputRange =
                     i == 0 ? RHISubresourceRange{} : MipRange(inputMip);
 
-                // i == 0: closes the caller's source edge (first consumer).
-                // i > 0: second consumer of blurred mip i-1 - the upsample
-                // already closed it, so the backend emits a sync-only barrier
+                // i == 0 closes the caller's source edge; i > 0 is a second
+                // consumer of blurred mip i-1, so the barrier is sync-only
                 const auto inputAcquire = makeBarrier(
                     input,
                     RenderTarget,
@@ -156,8 +138,8 @@ namespace Crowy
                     inputRange
                 );
 
-                // horizontal blur, halving on the way out. the kernel steps in
-                // *input* texels, so 2 of them are 1 texel of the target mip.
+                // the kernel steps in input texels, so a step of 2 is one texel
+                // of the halved target mip
                 {
                     const std::array acquires{
                         inputAcquire,
@@ -192,7 +174,6 @@ namespace Crowy
                     );
                 }
 
-                // vertical blur, already at the target resolution
                 {
                     const std::array acquires{
                         makeBarrier(
@@ -230,9 +211,7 @@ namespace Crowy
                     );
                 }
 
-                // bilinear upsample back to full resolution, added on top of
-                // the coarser levels. a zero step collapses the kernel to a
-                // resample.
+                // a zero step collapses the kernel to a resample
                 {
                     const std::array acquires{
                         makeBarrier(
@@ -267,7 +246,6 @@ namespace Crowy
                         0,
                         Vec2{0, 0},
                         1.0f / static_cast<f32>(1u << i),
-                        // accum must start empty every frame
                         i == 0 ? RHILoadAction::Clear : RHILoadAction::Load,
                         acquires,
                         releases
@@ -310,8 +288,7 @@ namespace Crowy
             cmdList.SetPipelineState(pso);
             cmdList.SetPushGraphicsConstants(
                 BloomParam{// a single-mip view, so Sample and GetDimensions in
-                           // the shader
-                           // both see that mip and nothing else
+                           // the shader see that mip and nothing else
                            .texture = src.GetReadableID(
                                RHITextureViewDesc{
                                    .format = src.GetFormat(),
@@ -332,8 +309,7 @@ namespace Crowy
     class BlackholeSimulation: public App {
         using App::App;
 
-        // linear radiance. the g^3 doppler boost drives the disk well past 1,
-        // which is exactly what an UNORM target used to throw away.
+        // the g^3 doppler boost drives the disk well past 1, which UNORM clips
         static constexpr auto HDR_FORMAT = RHIPixelFormat::RGBA16_FLOAT;
 
         RHIGraphicsPipelineStateRAII diskGenerator = nullptr;
@@ -386,9 +362,8 @@ namespace Crowy
         struct CompositeParam {
             u64 scene;
             u64 bloom;
-            // brightMask carries the whole disk color, not just the excess over
-            // the threshold, so adding it back at full strength would double
-            // the disk
+            // brightMask carries the whole disk color, not the excess over the
+            // threshold, so adding it at full strength would double the disk
             f32 bloomStrength = 0.2f;
             f32 exposure = 1.0f;
         };
@@ -468,7 +443,6 @@ namespace Crowy
             );
         }
 
-        // the caller's first pass that samples the disk acquires `release`
         void recordDisk(
             RHICommandList& cmdList,
             const RHITextureBarrier& release
@@ -532,9 +506,8 @@ namespace Crowy
                 diskRecorded = true;
             }
 
-            // the scene edge skips the whole bloom chain: released by the
-            // simulation pass, acquired only by the composite - the
-            // non-adjacent dependency this barrier model exists for
+            // released by the simulation pass, acquired only by the composite:
+            // the non-adjacent dependency this barrier model exists for
             const auto sceneEdge = makeBarrier(
                 *scene,
                 RHIResourceUsage::RenderTarget,
@@ -587,10 +560,7 @@ namespace Crowy
 
                 cmdList.SetPipelineState(*blackholeSimulator);
                 cmdList.SetPushGraphicsConstants(
-                    PushConstants{
-                        // drawn once, by recordDisk in the first frame
-                        .disk = disk->GetReadableID()
-                    }
+                    PushConstants{.disk = disk->GetReadableID()}
                 );
                 cmdList.SetGraphicsConstantBuffer(simParamBuffer, 0);
                 cmdList.Draw(4);

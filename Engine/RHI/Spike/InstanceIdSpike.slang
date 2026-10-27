@@ -1,17 +1,7 @@
-// Does the engine's instance index restart at 0 in a draw whose baseInstance
-// is not 0?
-//
-// D3D12 says yes: StartInstanceLocation feeds SV_StartInstanceLocation and
-// leaves SV_InstanceID zero-based. Metal's [[instance_id]] instead counts from
-// the base instance, and Slang's Metal target emits it raw - this spike drew
-// the staircase on Metal until zeroBasedInstanceID papered over the gap.
-// It now guards that contract: OrbitFrame builds its whole segment
-// addressing on the zero-based reading, and one segment there is sub-pixel -
-// it could never show this.
-//
-// Row comes from the draw (baseInstance as SV_StartInstanceLocation),
-// column from the zero-based index. The helper working gives a left-aligned
-// block on every backend; a base instance leaking through gives a staircase.
+// Slang's Metal target emits [[instance_id]] raw, counting from the base
+// instance, while D3D12 keeps SV_InstanceID zero-based.
+// PASS: three left-aligned rows of four quads, one row per draw.
+// FAIL: a staircase - row 2 starting at column 2, row 3 at column 3.
 
 #include "InstanceIndex.slang"
 

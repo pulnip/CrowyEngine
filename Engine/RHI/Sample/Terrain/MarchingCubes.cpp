@@ -7,8 +7,6 @@ namespace
 {
     using namespace Crowy;
 
-    // The rows carry only their real edge indices; BuildTable pads each out to
-    // MC_MAX_INDICES with the -1 terminator the shader stops at.
     using Row = std::initializer_list<i32>;
 
     constexpr Row TRI_ROWS[MC_CASE_COUNT]{
@@ -300,14 +298,8 @@ namespace
 
     constexpr auto TRI_TABLE = BuildTriTable();
 
-    // Whole triangles, real edge indices, and the terminator only at the end.
-    //
-    // Note what is deliberately *not* checked here: a case and its complement
-    // do not have to agree on triangle count. Where a face carries two solid
-    // corners diagonally, the surface can separate them or join them, and the
-    // table picks one for the case and the other for its complement - case 5
-    // spends two triangles where case 250 spends four. That asymmetry is the
-    // marching cubes ambiguity, not a transcription slip.
+    // A case and its complement may differ in triangle count (case 5: two,
+    // case 250: four); that is the marching cubes ambiguity, not a slip.
     constexpr bool RowsAreWellFormed() {
         for(usize c = 0; c < MC_CASE_COUNT; ++c) {
             usize count = 0;
@@ -337,7 +329,6 @@ namespace
         "that does not exist, or does not hold whole triangles"
     );
 
-    // every edge a row names must separate a solid corner from an air one
     constexpr bool EdgesCrossTheSurface() {
         for(usize c = 0; c < MC_CASE_COUNT; ++c) {
             for(usize i = 0; i < MC_MAX_INDICES; ++i) {

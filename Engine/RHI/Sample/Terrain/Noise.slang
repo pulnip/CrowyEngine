@@ -1,7 +1,6 @@
 #pragma once
 
-// GPU half of Engine/RHI/Sample/Terrain/Noise.hpp, laid out in the same
-// order. TerrainDensityCheck compares both on every smoke run.
+// Mirrors Noise.hpp.
 
 uint hash(uint x) {
     // Perlin's permutation table, replaced by an integer hash
@@ -31,7 +30,6 @@ uint hash(uint x, uint y, uint z, uint seed) {
     );
 }
 
-// 8 unit-length directions: the 4 axes and the 4 diagonals
 float grad(uint h, float x, float y) {
     const float D = 0.70710678f;
 
@@ -135,12 +133,10 @@ float fbm(float x, float y, uint seed, uint octaves) {
         sum += amplitude * perlin(px, py, octaveSeed);
         amplitudeSum += amplitude;
 
-        // gain 0.5, lacunarity 2
         amplitude *= 0.5f;
         px *= 2.0f;
         py *= 2.0f;
     }
 
-    // normalize to [-1, 1]
     return sum / amplitudeSum;
 }

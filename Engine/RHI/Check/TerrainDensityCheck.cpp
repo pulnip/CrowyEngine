@@ -14,10 +14,8 @@
 #include "Terrain.hpp"
 #include "TerrainDensity.hpp"
 
-// Holds the CPU density field (TerrainDensity.hpp) against the GPU one
-// (TerrainDensity.slang) over the same points, so a change made to one side
-// alone fails the smoke run. Also checks the field is not degenerate: two
-// implementations that both return zero agree perfectly and are useless.
+// Two density fields that both return zero agree perfectly, hence
+// CheckFieldIsAlive.
 
 namespace
 {
@@ -43,9 +41,7 @@ namespace
         u64 points;
         u64 results;
     };
-    // must match ResourceData in
-    // Engine/RHI/Sample/Terrain/TerrainDensityCheck.slang; padding spelled out
-    // on both sides
+    // Mirrors ResourceData in TerrainDensityCheck.slang.
     static_assert(sizeof(PushConstants) == 56);
     static_assert(offsetof(PushConstants, pointCount) == 32);
     static_assert(offsetof(PushConstants, points) == 40);
@@ -101,7 +97,6 @@ namespace
             anySolid |= samples[i].density > 0.0f;
             anyAir |= samples[i].density < 0.0f;
 
-            // below the surface but not solid: only the cave carve does that
             if(points[i].y < samples[i].baseHeight && samples[i].density < 0.0f)
                 ++carvedCount;
         }
@@ -247,8 +242,6 @@ int main(void) {
 
         cmdList->Begin();
 
-        // the compute pass releases the results, the copy pass acquires
-        // them - one edge, same value on both ends
         const auto resultEdge = makeBarrier(
             *resultBuffer,
             RHIResourceUsage::StorageCompute,

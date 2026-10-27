@@ -87,7 +87,6 @@ namespace Crowy
             {
                 const std::array acquires{
                     checkerboardEdge,
-                    // the backbuffer is a copy target here, not a render target
                     makeBarrier(
                         *backBuffer.texture,
                         RHIResourceUsage::Undefined,

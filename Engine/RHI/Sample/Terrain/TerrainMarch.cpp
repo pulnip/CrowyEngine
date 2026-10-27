@@ -17,8 +17,7 @@ namespace
 
     constexpr CStr SHADER_PATH = "Engine/RHI/Sample/Terrain/TerrainMarch.slang";
 
-    // must match ResourceData in Engine/RHI/Sample/Terrain/TerrainMarch.slang;
-    // padding spelled out on both sides
+    // Mirrors ResourceData in TerrainMarch.slang.
     struct PushConstants {
         TerrainParams params;
         u32 cellsX, cellsY, cellsZ;
@@ -222,8 +221,6 @@ namespace Crowy
             .argsIndexed = argsIndexedBuffer->GetWritableID(stride)
         };
 
-        // the density pass releases the field, the marching pass acquires it -
-        // one edge, same value on both ends
         const auto densityEdge = makeBarrier(
             *densityTexture,
             RHIResourceUsage::StorageCompute,

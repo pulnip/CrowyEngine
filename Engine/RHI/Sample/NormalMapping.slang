@@ -4,7 +4,7 @@ struct VertexIn {
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD0;
-    // xyz = tangent direction, w = handedness sign
+    // w = handedness sign
     float4 tangent : TANGENT;
 };
 
@@ -12,9 +12,7 @@ cbuffer uniform : register(b1) {
     // rigid rotation, so it transforms normals and tangents unchanged
     float4x4 model;
     float4x4 viewProj;
-    // xyz = camera position, w = parallax scale
     float4 cameraPos_parallaxScale;
-    // xyz = direction to the light, w = specular power
     float4 toLight_specularPower;
     float ambient;
 };
@@ -23,7 +21,6 @@ struct VertexOut {
     float4 posProj : SV_Position;
     float3 posWorld : POSITION;
     float3 normal : NORMAL;
-    // w carries the handedness sign through unchanged
     float4 tangent : TANGENT;
     float2 texCoord : TEXCOORD0;
 };
@@ -44,13 +41,9 @@ VertexOut vs_main(VertexIn input) {
 
 struct ResourceData {
     DescriptorHandle<Texture2D> diffuse;
-    // BC5_UNORM. only RG is stored, Z is reconstructed.
-    // this is the shading
-    // detail: smooth wide bevels along each plank
+    // BC5_UNORM: only RG is stored
     DescriptorHandle<Texture2D> normal;
-    // BC4_UNORM. height in R.
-    // sharper than the normal map and it carries the frame and the diagonal brace,
-    // so it drives the parallax offset
+    // BC4_UNORM: height in R
     DescriptorHandle<Texture2D> bump;
 };
 
@@ -73,14 +66,12 @@ float4 fs_main(VertexOut input) : SV_Target {
     float3 N = normalize(input.normal);
     float3 T = normalize(input.tangent.xyz - N * dot(N, input.tangent.xyz));
     float3 B = input.tangent.w * cross(N, T);
-    // mul(tbn, v): world -> tangent,
-    // mul(v, tbn): tangent -> world
+    // mul(tbn, v): world -> tangent; mul(v, tbn): tangent -> world
     float3x3 tbn = float3x3(T, B, N);
 
     float3 viewDirW = normalize(cameraPos - input.posWorld);
 
-    // parallax with offset limiting. shifts the uv along the tangent-space view
-    // direction so the height field looks displaced
+    // parallax with offset limiting
     float3 viewDirT = mul(tbn, viewDirW);
     float height = bumpTex.Sample(linearWrap, input.texCoord).r;
     float2 shift = parallaxScale * (height - 0.5) * viewDirT.xy / max(viewDirT.z, 0.1);
@@ -98,7 +89,6 @@ float4 fs_main(VertexOut input) : SV_Target {
     float3 H = normalize(L + viewDirW);
 
     float ndotl = saturate(dot(n, L));
-    // no specular on surfaces facing away from the light
     float spec = ndotl > 0.0 ? pow(saturate(dot(n, H)), specularPower) : 0.0;
 
     float3 color = albedo * (ambient + ndotl) + spec * 0.3;

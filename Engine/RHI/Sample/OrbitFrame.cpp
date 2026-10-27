@@ -22,31 +22,24 @@
 
 namespace Crowy
 {
-    // Every control the sample has, and the stats it shows. The panel writes
-    // straight into this, so a control value lives in exactly one place.
-    //
-    // Named UIContext because Widget.hpp forward-declares that type and
-    // UIRenderer::Prepare takes it, even though this sample drives its panel
-    // with ImGui directly and never reads it from a callback.
+    // Named UIContext because UIRenderer::Prepare takes one; the panel is raw
+    // ImGui.
     struct UIContext {
-        // heliocentricity: 0 geocentric, 1 heliocentric. The point of the demo.
+        // 0 geocentric, 1 heliocentric
         f32 alpha = 0.0f;
-        // how much of Earth's orbital angle to cancel as well
         f32 frameLock = 0.0f;
 
-        f32 timeScale = 120.0f; // sim days per second
-        f32 zoomLog = 1.34f;    // half-height in warped units, logged
+        f32 timeScale = 120.0f;
+        f32 zoomLog = 1.34f;
         f32 orbitTurns = 1.0f;
         f32 thicknessPx = 2.0f;
 
         std::array<bool, ORBIT_BODY_COUNT> bodyEnabled{};
         bool beltEnabled = true;
-        // where every Kepler solve in the frame runs
         bool gpuFill = true;
         f32 beltAlpha = 0.55f;
         bool paused = false;
 
-        // read-only stats
         f32 halfHeight = 1.0f;
         f32 gridStepAU = 1.0f;
         f64 frameTimeMs = 0.0;
@@ -57,25 +50,9 @@ namespace Crowy
         UIContext() { bodyEnabled.fill(true); }
     };
 
-    // Planet trails drawn as screen-space expanded polylines, straight out of
-    // the GPU ring buffer. One draw per body, one instance per segment.
-    //
-    // The origin is interpolated between Earth and the Sun rather than the
-    // camera being moved: the slider is a shader constant, not a view matrix.
-    // Push it to 0 and the heliocentric ellipses come apart into Ptolemy's
-    // epicycles - Mars doubling back on itself, Venus tracing a rose.
-    //
-    // Radius is compressed logarithmically after the interpolation, so the
-    // warp centre follows whatever the current origin is. 30 AU against
-    // 0.39 AU is 77:1 linear and 10:1 through the log.
-    //
-    // Controls sit in the panel and on the keys at once - the input layer has
-    // no scroll wheel, so a zoom slider has to exist, but dragging one is a
-    // poor substitute for holding a key while watching the picture move.
-    //   Up / Down     zoom
-    //   Left / Right  trail length
-    //   Space         pause
-    //   R             reset to J2000
+    // The origin slides between Earth and the Sun in the shader, not the
+    // camera, so at 0 the heliocentric ellipses come apart into Ptolemy's
+    // epicycles.
     class OrbitFrame: public App {
         using App::App;
 
@@ -84,29 +61,21 @@ namespace Crowy
 
         static constexpr Color BACKGROUND{0.02f, 0.02f, 0.05f, 1.0f};
 
-        // Half-heights are in warped units: the whole system reaches
-        // log(1 + 30) = 3.43, and Mercury sits at log(1 + 0.39) = 0.33.
-        // The ends are picked so each extreme frames something: zoomed all the
-        // way out Neptune fills two thirds of the view, all the way in Mercury
-        // fills it.
-        static constexpr f32 ZOOM_LOG_MIN = -1.2f; // half-height 0.30
-        static constexpr f32 ZOOM_LOG_MAX = 1.7f;  // half-height 5.47
+        // zoomed out Neptune fills two thirds of the view, zoomed in Mercury
+        // fills it
+        static constexpr f32 ZOOM_LOG_MIN = -1.2f;
+        static constexpr f32 ZOOM_LOG_MAX = 1.7f;
 
-        // The plan says 3.0, but Venus's rose only closes after 13 Venus years
-        // (8 Earth years), and that is the shape Step 4 asks to see. Anything
-        // that runs past the ring clamps to what is stored, so the ceiling
-        // costs nothing.
+        // Venus's rose closes after 13 Venus years (8 Earth years)
         static constexpr f32 TURNS_MIN = 0.05f, TURNS_MAX = 15.0f;
 
         static constexpr f32 TIME_SCALE_MIN = 1.0f, TIME_SCALE_MAX = 2000.0f;
         static constexpr f32 THICKNESS_MIN = 1.0f, THICKNESS_MAX = 6.0f;
 
-        // the camera sits off the ecliptic looking back down +Z; nothing in the
-        // scene reaches anywhere near these planes
         static constexpr f32 CAMERA_DISTANCE = 100.0f;
         static constexpr f32 NEAR_Z = 1.0f, FAR_Z = 200.0f;
 
-        // mirrors TrailPush in Engine/RHI/Sample/Orbit/OrbitTrail.slang
+        // mirrors TrailPush in OrbitTrail.slang
         struct TrailPush {
             u64 samples;
             u64 bodies;
@@ -123,8 +92,6 @@ namespace Crowy
             f32 beltRadiusPx;
             u64 belt;
             f32 beltAlpha;
-            // dot 0 of this frame's slice; 0 on the GPU path, which owns
-            // its buffer outright
             u32 beltBase = 0;
             u64 segCounts;
         };
@@ -143,7 +110,7 @@ namespace Crowy
         static_assert(offsetof(TrailPush, beltBase) == 76);
         static_assert(offsetof(TrailPush, segCounts) == 80);
 
-        // mirrors GridPush in Engine/RHI/Sample/Orbit/OrbitGrid.slang
+        // mirrors GridPush in OrbitGrid.slang
         struct GridPush {
             f32 viewportX, viewportY;
             f32 thinThicknessPx;
@@ -165,7 +132,7 @@ namespace Crowy
         static_assert(offsetof(GridPush, minGapPx) == 48);
         static_assert(offsetof(GridPush, referenceAlpha) == 56);
 
-        // keep in sync with Engine/RHI/Sample/Orbit/OrbitGrid.slang
+        // mirrors OrbitGrid.slang
         static constexpr u32 GRID_LEVEL_COUNT = 8;
         static constexpr u32 GRID_RINGS_PER_LEVEL = 16;
         static constexpr u32 GRID_RING_SEGMENTS = 192;
@@ -174,10 +141,6 @@ namespace Crowy
         static constexpr u32 GRID_DRAW_SPOKES = 1;
         static constexpr u32 GRID_DRAW_REFERENCE = 2;
 
-        // The finest ring step is a power of five AU, picked so its rings sit
-        // roughly this far apart near the origin. Quantizing to powers of five
-        // is what keeps the step a round number a viewer can name - it walks
-        // 1 AU, 0.2 AU, 0.04 AU as the zoom goes in.
         static constexpr f32 GRID_TARGET_GAP_PX = 100.0f;
         static constexpr f32 GRID_MIN_GAP_PX = 3.5f;
         static constexpr f32 GRID_FADE_GAP_PX = 11.0f;
@@ -189,12 +152,9 @@ namespace Crowy
             Mat4 viewProj;
         };
 
-        // the trail is pulled by index, so the ring's Vec3 packing is the
-        // shader's StructuredBuffer<float3> stride
         static_assert(sizeof(Vec3) == 12);
 
-        // warm hues inward, cold outward, and the Sun deliberately not yellow -
-        // at alpha 0 it takes over Earth's ring and the two want telling apart
+        // the Sun is not yellow: at alpha 0 it takes over Earth's ring
         static constexpr std::array<Vec3, ORBIT_BODY_COUNT> BODY_COLORS{
             Vec3{1.00f, 0.95f, 0.70f}, // Sun
             Vec3{0.78f, 0.72f, 0.66f}, // Mercury
@@ -216,33 +176,26 @@ namespace Crowy
         RHIBufferSlice frameCB;
         RAII<OrbitTrailArgs> trailArgs;
         RHIBufferSlice beltSlice;
-        // the compute path cannot write a CPU-write buffer, so the two fills
-        // own separate destinations and the draw picks one
+        // the compute path cannot write a CPU-write buffer
         RHIBufferRAII beltGpuBuffer;
         RAII<OrbitKeplerFill> beltFill;
         RHIResourceUsage beltResting = RHIResourceUsage::Undefined;
 
         RAII<UIRenderer> uiRenderer;
         UIContext context;
-        // UIRenderer::Prepare always opens its own window and wants a tree to
-        // put in it. This sample draws its panel itself, so it hands over an
-        // empty Column and leaves that window blank.
         Widget emptyPanel = Column({});
 
         f64 pendingSeconds = 0.0;
         f32 viewportWidth = 1.0f, viewportHeight = 1.0f;
 
-        // held between ProcessInput and OnUpdate
         f32 zoomInput = 0.0f, turnsInput = 0.0f;
         bool resetPressed = false;
 
-        static constexpr f32 ZOOM_SPEED = 1.2f;  // log units per second
-        static constexpr f32 TURNS_SPEED = 1.5f; // e-folds per second
+        static constexpr f32 ZOOM_SPEED = 1.2f;
+        static constexpr f32 TURNS_SPEED = 1.5f;
 
-        // Every pass in this sample expands screen-space quads out of nothing:
-        // no vertex buffer, a strip of four, blended, and unculled because an
-        // expanded quad's winding follows whatever direction it was expanded
-        // along.
+        // unculled: an expanded quad's winding follows the direction it was
+        // expanded along
         static RHIGraphicsPipelineStateDesc LineExpansionDesc(
             CStr path,
             CStr vertexEntry,
@@ -269,7 +222,6 @@ namespace Crowy
                     },
                 .renderTargetFormats = {format},
                 .renderTargetCount = 1,
-                // SV_StartInstanceLocation needs it
                 .profile = "sm_6_8"
             };
         }
@@ -283,8 +235,6 @@ namespace Crowy
                 ORBIT_TRAIL_CAPACITY,
                 RHIResourceUsage::SampledVertex
             );
-            // without this the outer planets would take real minutes to draw
-            // themselves in - Neptune's orbit is 60,225 ticks
             trail->SetFillMode(
                 context.gpuFill ? OrbitFillMode::Gpu : OrbitFillMode::Cpu
             );
@@ -327,8 +277,6 @@ namespace Crowy
                 "OrbitBeltPSO"
             );
 
-            // rewritten in full every frame, which is the only safe way to use
-            // a CPUWrite buffer - see OrbitTrail.hpp for why
             beltScratch.resize(belt.Count());
 
             beltGpuBuffer = device.CreateBuffer(
@@ -341,8 +289,6 @@ namespace Crowy
             beltFill =
                 std::make_unique<OrbitKeplerFill>(device, belt.Elements());
 
-            // colour and period only; segCount belongs to the compute pass
-            // from here on, and so do the draw arguments beside it
             std::array<OrbitBodyDraw, ORBIT_BODY_COUNT> table{};
             for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
                 table[b] = OrbitBodyDraw{
@@ -358,16 +304,8 @@ namespace Crowy
                 std::make_unique<UIRenderer>(device, swapchain.GetFormat());
         }
 
-        // The panel is raw ImGui rather than the declarative Widget tree.
-        // Widget's Slider and Checkbox take their value once at build time and
-        // expose no getter, so every control that can also move from outside -
-        // the keys below, a Reset - needs the whole tree rebuilt to show it.
-        // Calling ImGui directly makes each control two-way for free, and
-        // brings real logarithmic sliders with it.
-        //
-        // UIRenderer still gets its own window; this sample just leaves it
-        // empty, because Prepare hardcodes ImGui::Begin("Crowy") and offers no
-        // way to size, place or name it.
+        // Raw ImGui: Widget's Slider and Checkbox take their value once at
+        // build time, and the keys move these controls from outside.
         void DrawPanel() {
             ImGui::SetNextWindowPos(
                 ImVec2(12.0f, 6.0f),
@@ -378,8 +316,8 @@ namespace Crowy
                 ImGuiCond_FirstUseEver
             );
             ImGui::Begin("OrbitFrame");
-            // leave room for the label, which ImGui draws to the right of the
-            // control and happily clips against the window edge
+            // ImGui draws the label right of the control and clips it at the
+            // window edge
             ImGui::PushItemWidth(-132.0f);
 
             ImGui::SliderFloat("heliocentricity", &context.alpha, 0.0f, 1.0f);
@@ -398,8 +336,6 @@ namespace Crowy
             ImGui::Checkbox("paused", &context.paused);
             ImGui::SameLine();
             if(ImGui::Button("Reset to J2000")) {
-                // safe to act on immediately: the panel is drawn before this
-                // frame touches the trail at all
                 trail->Prefill(START_DAY);
                 pendingSeconds = 0.0;
             }
@@ -443,8 +379,6 @@ namespace Crowy
                 if(b % 3 != 0)
                     ImGui::SameLine(static_cast<f32>(b % 3) * 105.0f);
 
-                // the tick takes the body's own trail colour, so the legend and
-                // the picture agree without a separate swatch
                 ImGui::PushStyleColor(
                     ImGuiCol_CheckMark,
                     ImVec4{
@@ -462,19 +396,12 @@ namespace Crowy
             ImGui::TextDisabled("keys  up/dn zoom  l/r turns  space  R");
 
             ImGui::SeparatorText("Grid");
-            // the rings carry no world-space labels: the UI layer draws into
-            // one window and hands out no draw list, so there is nowhere to put
-            // text at an arbitrary screen point. The step is the label instead.
+            // UIRenderer hands out no draw list, so the rings carry no labels
             ImGui::TextUnformatted("thin 1 step, thick 5, plus 1 AU");
             ImGui::Text("step        %.3g AU", context.gridStepAU);
             ImGui::Text("half-height %.3f", context.halfHeight);
 
             ImGui::SeparatorText("Solver");
-            // Both paths write the same positions, so this can be flipped mid
-            // flight and the picture must not move. What changes is where the
-            // Newton solve runs: on the CPU it is 2400 asteroids every frame
-            // plus 65536 * 9 on every reset, on the GPU it is a mean anomaly
-            // each and a dispatch.
             if(ImGui::Checkbox("kepler on gpu", &context.gpuFill)) {
                 trail->SetFillMode(
                     context.gpuFill ? OrbitFillMode::Gpu : OrbitFillMode::Cpu
@@ -503,27 +430,20 @@ namespace Crowy
 
             if(input.IsKeyPressed(KeyCode::Space))
                 context.paused = !context.paused;
-            // the panel reads these live every frame, so a key moving them
-            // needs nothing else - which is the whole reason the panel is not
-            // a Widget tree
             resetPressed = input.IsKeyPressed(KeyCode::R);
         }
 
         void OnUpdate(f64 deltaTime, f64) override {
-            // the sim step is consumed in OnRecord, where the copy that pairs
-            // with it is recorded - OrbitTrail wants exactly one Advance per
-            // Record and this is the only way to guarantee it
+            // OrbitTrail wants exactly one Advance per Record, so OnRecord
+            // takes the step
             pendingSeconds += deltaTime;
 
             const auto dt = static_cast<f32>(deltaTime);
-            // zooming in means a smaller half-height, so Up shrinks it
             context.zoomLog = std::clamp(
                 context.zoomLog - zoomInput * ZOOM_SPEED * dt,
                 ZOOM_LOG_MIN,
                 ZOOM_LOG_MAX
             );
-            // proportional, so the key feels the same at either end of a range
-            // that spans a factor of 300
             context.orbitTurns = std::clamp(
                 context.orbitTurns * std::exp(turnsInput * TURNS_SPEED * dt),
                 TURNS_MIN,
@@ -546,8 +466,6 @@ namespace Crowy
                 NEAR_Z,
                 FAR_Z
             );
-            // straight down the ecliptic normal, no rotation: +X right,
-            // +Y up, and the ecliptic is the screen
             const auto view = viewMat(
                 Vec3{0.0f, 0.0f, -CAMERA_DISTANCE},
                 Vec4{0.0f, 0.0f, 0.0f, 1.0f}
@@ -556,16 +474,8 @@ namespace Crowy
             return proj * view;
         }
 
-        // -frameLock times Earth's unwrapped ecliptic longitude at the newest
-        // sample, reduced to (-pi, pi].
-        //
-        // The unwrapping has to happen here, in double, because the shader only
-        // ever sees a wrapped atan2 and a sim day too big for a float once the
-        // run is a few hours old. Earth's mean longitude is exactly linear in
-        // time and therefore trivially unwrappable; the true longitude is that
-        // plus an equation of centre under two degrees, which comes back out of
-        // a normalize. Reducing the result mod 2*pi costs nothing - a whole
-        // turn is the identity rotation.
+        // Unwrapped here in double: the shader sees a wrapped atan2 and a sim
+        // day a float cannot hold once the run is a few hours old.
         f32 FrameLockBase() const {
             if(context.frameLock <= 0.0f)
                 return 0.0f;
@@ -596,14 +506,10 @@ namespace Crowy
             );
         }
 
-        // screen pixels per unit of warped radius
         f32 PxPerWarpUnit() const {
             return 0.5f * viewportHeight / std::exp(context.zoomLog);
         }
 
-        // The step of the finest ring level, quantized to a power of five AU.
-        // Solving step * pxPerWarp == GRID_TARGET_GAP_PX for the step and
-        // rounding in log-5 keeps it a number worth printing in the panel.
         f32 GridBaseStepAU() const {
             const auto wanted = GRID_TARGET_GAP_PX / PxPerWarpUnit();
             const auto level = std::round(std::log(wanted) / std::log(5.0f));
@@ -614,9 +520,6 @@ namespace Crowy
         GridPush MakeGridPush() const {
             const auto pxPerWarp = PxPerWarpUnit();
 
-            // the screen corner in warped units, turned back into AU, so the
-            // spokes reach past the far corner instead of stopping somewhere
-            // inside the view
             const auto halfHeight = std::exp(context.zoomLog);
             const auto cornerWarped =
                 halfHeight * std::hypot(viewportWidth / viewportHeight, 1.0f);
@@ -640,8 +543,6 @@ namespace Crowy
             };
         }
 
-        // One bit per body, so a toggle flipped in the panel this frame lands
-        // in this frame's draw arguments rather than the next one.
         u32 EnabledMask() const {
             u32 mask = 0;
             for(u32 b = 0; b < ORBIT_BODY_COUNT; ++b) {
@@ -652,8 +553,6 @@ namespace Crowy
             return mask;
         }
 
-        // the GPU path owns its buffer outright, so its rows start at 0;
-        // the CPU path rides a slice of the shared transient storage
         RHIBufferSlice BeltPositions() const {
             if(context.gpuFill) {
                 return RHIBufferSlice{
@@ -666,25 +565,15 @@ namespace Crowy
             return beltSlice;
         }
 
-        // Every asteroid, every frame - the belt keeps no history, so its whole
-        // state is recomputed from the elements each time. That makes it the
-        // clearest case for the compute path: a couple of thousand Newton
-        // solves and six trigonometric functions each, or a couple of thousand
-        // mean anomalies and a dispatch.
         void UpdateBelt() {
             if(context.gpuFill) {
-                // the epoch is the entire handoff; RecordBelt turns it into one
-                // dispatch. Nothing touches the CPU-write buffer this frame,
-                // and nothing hands out its descriptor either
                 beltFill->SetEpoch(trail->NewestDay(), DAY_PER_SAMPLE);
 
                 return;
             }
 
-            // The solve is skipped when the belt is hidden, but the upload is
-            // not: every trail draw carries the buffer's descriptor whether or
-            // not the belt is drawn, and a CPUWrite slot that was never written
-            // in this frame trips a debug assert the moment one is handed out.
+            // Uploaded even when hidden: every trail draw carries the
+            // descriptor, and handing out an unwritten CPUWrite slot asserts.
             if(context.beltEnabled)
                 belt.Sample(trail->NewestDay(), beltScratch);
 
@@ -694,8 +583,7 @@ namespace Crowy
             );
         }
 
-        // Its own compute pass rather than the trail's: the trail only fills on
-        // frames that ticked, and the belt has to move every frame.
+        // not the trail's pass: the trail fills only on frames that ticked
         std::optional<RHIBufferBarrier> RecordBelt(RHICommandList& cmdList) {
             if(!context.gpuFill)
                 return std::nullopt;
@@ -733,9 +621,6 @@ namespace Crowy
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
-            // stats first, then the panel, then everything that reads a
-            // control: drawn this early, a slider dragged this frame lands in
-            // this frame's picture rather than the next one
             context.filled = trail->Filled();
             context.totalTicks = trail->Stats().totalTicks;
             context.simDay = trail->NewestDay();
@@ -756,8 +641,7 @@ namespace Crowy
                 pendingSeconds = 0.0;
             }
 
-            // read off the backbuffer rather than tracked through OnResize:
-            // that event only fires on an actual resize, never at startup
+            // OnResize never fires at startup
             viewportWidth = static_cast<f32>(backBuffer.texture->GetWidth());
             viewportHeight = static_cast<f32>(backBuffer.texture->GetHeight());
 
@@ -766,10 +650,8 @@ namespace Crowy
             frameCB =
                 Device().UploadTransient(FrameUniforms{.viewProj = ViewProj()});
 
-            // outside any pass: the copies are their own blit pass
             const auto trailEdge = trail->Record(cmdList);
             const auto beltEdge = RecordBelt(cmdList);
-            // the counts the draws below run on, written by the GPU for itself
             const auto argsEdges = trailArgs->Record(
                 cmdList,
                 trail->Filled(),
@@ -778,10 +660,7 @@ namespace Crowy
                 EnabledMask()
             );
 
-            // Prepare opens its own window unconditionally, and its saved
-            // position lands right on top of the panel. SetNextWindow* applies
-            // to whatever Begin comes next, so the empty one can still be
-            // pushed into a corner from out here.
+            // pushes the empty window Prepare opens into a corner
             ImGui::SetNextWindowPos(
                 ImVec2(viewportWidth - 168.0f, 8.0f),
                 ImGuiCond_Always
@@ -789,8 +668,6 @@ namespace Crowy
             ImGui::SetNextWindowSize(ImVec2(160.0f, 0.0f), ImGuiCond_Always);
             ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
 
-            // closes out the ImGui frame DrawPanel wrote into and uploads its
-            // geometry
             uiRenderer->Prepare(cmdList, emptyPanel, context);
 
             auto colorAttachment = backBuffer;
@@ -800,18 +677,13 @@ namespace Crowy
             std::vector<RHITextureBarrier> textureAcquires{
                 AcquireBackBuffer(backBuffer)
             };
-            // the pass samples the font atlas Prepare just refreshed
             textureAcquires.append_range(uiRenderer->TextureAcquires());
 
-            // only when something was actually copied; an idle frame leaves the
-            // ring already resting where the vertex stage wants it
             std::vector<RHIBufferBarrier> bufferAcquires;
             if(trailEdge.has_value())
                 bufferAcquires.push_back(*trailEdge);
             if(beltEdge.has_value())
                 bufferAcquires.push_back(*beltEdge);
-            // the counts the vertex stage fades against, and the arguments
-            // the ExecuteIndirect itself reads
             bufferAcquires.push_back(argsEdges.segCounts);
             bufferAcquires.push_back(argsEdges.args);
 
@@ -825,8 +697,7 @@ namespace Crowy
 
             cmdList.SetGraphicsConstantBuffer(frameCB, 0);
 
-            // no depth buffer: order is the layering. Grid behind, trails over
-            // it, markers on top of their own heads.
+            // no depth buffer: draw order is the layering
             cmdList.SetPipelineState(*gridPSO);
             cmdList.SetPushGraphicsConstants(MakeGridPush());
             cmdList.Draw(
@@ -869,13 +740,8 @@ namespace Crowy
                 )
             };
 
-            // Nine draws, no loop and no counts on this side. ExecuteIndirect
-            // binds the PSO itself; the push constants set before it survive,
-            // the root signature being bound once per command list.
-            //
-            // What made the swap free is that the shader already read its body
-            // index off the draw rather than off a uniform - a per-draw push
-            // constant would have made this impossible.
+            // the push constants survive: the root signature is bound once per
+            // command list
             cmdList.SetPushGraphicsConstants(trailPush);
             cmdList.ExecuteIndirect(
                 DrawBatch{
@@ -885,16 +751,12 @@ namespace Crowy
                 }
             );
 
-            // under the markers, over the trails: a couple of thousand dots
-            // should not cover a planet's head
             if(context.beltEnabled) {
                 cmdList.SetPipelineState(*beltPSO);
                 cmdList.SetPushGraphicsConstants(trailPush);
                 cmdList.Draw(4, static_cast<u32>(belt.Count()), 0, 0);
             }
 
-            // one instance per body, so the instance index is the body index -
-            // there is no per-draw table to look up here
             cmdList.SetPipelineState(*markerPSO);
             cmdList.SetPushGraphicsConstants(trailPush);
             cmdList.Draw(4, ORBIT_BODY_COUNT, 0, 0);

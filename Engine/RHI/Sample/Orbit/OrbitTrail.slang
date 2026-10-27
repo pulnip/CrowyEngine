@@ -1,52 +1,31 @@
 #include "InstanceIndex.slang"
 #include "OrbitCommon.slang"
 
-// Orbit trails as screen-space expanded polylines, plus the marker discs that
-// sit on their heads.
-//
-// One draw per body, one instance per segment, four vertices per instance as a
-// triangle strip. bodyIdx arrives as the draw's baseInstance and segIdx as the
-// instance index inside that draw.
-//
-// The nine draws are issued as one ExecuteIndirect over arguments a compute
-// pass writes, and this shader never learned about it: reading the body index
-// off the draw rather than off a uniform is exactly what made that swap free.
-//
-// Mirrors Engine/RHI/Sample/OrbitFrame.cpp; the C++ side asserts the
-// offsets spelled out below.
-
+// Mirrors TrailPush in OrbitFrame.cpp.
 struct TrailPush{
-    // the ring, sample-major: [sampleIdx * BODY_COUNT + bodyIdx]
     DescriptorHandle<StructuredBuffer<float3>> samples;   //  0
     DescriptorHandle<StructuredBuffer<BodyDraw>> bodies;  //  8
     float viewportX;                                      // 16
     float viewportY;                                      // 20
     float thicknessPx;                                    // 24
-    // heliocentricity: 0 geocentric, 1 heliocentric
+    // 0 geocentric, 1 heliocentric
     float alpha;                                          // 28
-    // next slot to be written; the newest sample is at head - 1
     uint head;                                            // 32
     uint capacity;                                        // 36
     float markerRadiusPx;                                 // 40
-    // how much of Earth's orbital angle to cancel: 0 leaves the frame
-    // inertial, 1 makes it co-rotate with Earth
+    // 0 inertial, 1 co-rotating with Earth
     float frameLock;                                      // 44
-    // -frameLock * (Earth's unwrapped ecliptic longitude at the newest
-    // sample), already reduced into (-pi, pi] on the CPU in double. See
-    // frameRotation below for why the unwrapping cannot happen here.
+    // -frameLock * Earth's unwrapped longitude at the newest sample, reduced on
+    // the CPU in double
     float frameLockBase;                                  // 48
-    // Earth's mean motion, radians per day
     float earthRadPerDay;                                 // 52
     float dayPerSample;                                   // 56
     float beltRadiusPx;                                   // 60
-    // heliocentric asteroid positions at the current instant, one per dot
     DescriptorHandle<StructuredBuffer<float3>> belt;      // 64
     float beltAlpha;                                      // 72
-    // dot 0 of this frame's slice inside the shared transient buffer
     uint beltBase;                                        // 76
-    // segments per body, written every frame by cs_trail_args alongside the
-    // indirect arguments, so the fade denominator and the instance count come
-    // out of one pass and cannot drift
+    // written by cs_trail_args with the draw arguments, so the fade and the
+    // instance count cannot drift
     DescriptorHandle<StructuredBuffer<uint>> segCounts;   // 80
 };
 
@@ -73,29 +52,12 @@ float2 viewportSize(){
     return float2(push.viewportX, push.viewportY);
 }
 
-// Newest first, so the segment a body draws never reaches back past its oldest
-// stored sample. The ring seam - oldest joined to newest - is not skipped by a
-// special case anywhere; this indexing simply never asks for it.
 uint slotForAge(uint age){
     return (push.head + push.capacity - 1 - age) % push.capacity;
 }
 
-// The angle the co-rotating frame is turned by for a sample `age` ticks old.
-//
-// It has to be -frameLock * theta(t) with theta CONTINUOUS in t. atan2 alone is
-// not: it jumps by 2*pi every time Earth crosses the -x axis, and multiplying
-// that by a fractional lock turns the jump into a real 2*pi*frameLock break -
-// a straight line torn across the trail once per year. Only frameLock 0 and 1
-// survive it, because a rotation by 2*pi is the identity.
-//
-// So the angle is rebuilt from two pieces that are each well behaved:
-//   - the base, -frameLock * theta(newest), unwrapped and reduced on the CPU
-//     where the sim day is still a double. Reducing it mod 2*pi is free: it is
-//     a whole rotation.
-//   - the angle Earth actually swept between this sample and the newest one,
-//     which is the mean motion times the elapsed days plus a correction under
-//     4 degrees. Taking that correction through wrapToPi recovers the exact
-//     swept angle without ever needing an absolute time in a float.
+// atan2's yearly 2*pi jump times a fractional frameLock tears the trail, so the
+// angle is the CPU's unwrapped base plus the angle swept since that sample.
 float frameRotation(float3 earthThen, float3 earthNow, uint age){
     const float meanSwept = push.earthRadPerDay *
         float(age) * push.dayPerSample;
@@ -107,14 +69,6 @@ float frameRotation(float3 earthThen, float3 earthNow, uint age){
     return push.frameLockBase + push.frameLock * swept;
 }
 
-// Puts a heliocentric position into the frame the panel is asking for:
-// the origin slides from Earth to the Sun with alpha, and the whole thing can
-// be spun with Earth on top of that.
-//
-// Both happen before the warp. For the subtraction that is load-bearing - the
-// warp is not linear, so subtracting after it would not be the same frame. For
-// the rotation it makes no difference (an isotropic radial scale commutes with
-// a rotation); it lives here because it belongs next to the subtraction.
 float3 toFrame(float3 p, float3 earthThen, uint age){
     float3 out = p - (1.0 - push.alpha) * earthThen;
 
@@ -132,10 +86,8 @@ float3 toFrame(float3 p, float3 earthThen, uint age){
     return out;
 }
 
-// The Earth position handed to toFrame is the one from *that sample's instant*,
-// not the current one. Using the current position would slide every orbit
-// sideways and leave the shapes untouched, which is the whole demo gone.
-// Reading both out of the same ring slot is what makes that automatic.
+// Earth from that sample's own instant: the current one would only slide each
+// orbit sideways and leave its shape untouched.
 float3 framePosition(uint age, uint bodyIdx){
     StructuredBuffer<float3> samples = push.samples;
 
@@ -168,7 +120,6 @@ VertexOut vs_main(
     );
     output.color = float4(
         body.colorR, body.colorG, body.colorB,
-        // age fade: segIdx is the segment's age in ticks
         1.0 - float(segIdx) / float(max(segCounts[bodyIdx], 1u))
     );
 
@@ -180,8 +131,7 @@ float4 fs_main(VertexOut input) : SV_Target {
     return input.color;
 }
 
-// One instance per body rather than one draw: there is no per-draw data to
-// index, so the instance index is the body index directly.
+// one instance per body: with no per-draw data, the instance is the body
 [shader("vertex")]
 MarkerOut vs_marker(
     uint vertexID : SV_VertexID,
@@ -191,8 +141,7 @@ MarkerOut vs_marker(
     const BodyDraw body = bodies[bodyIdx];
     StructuredBuffer<uint> segCounts = push.segCounts;
 
-    // a body switched off in the panel draws no segments, and its marker goes
-    // with them
+    // a body switched off in the panel has no segments
     if(segCounts[bodyIdx] == 0){
         MarkerOut culled;
         culled.position = float4(0.0, 0.0, 0.0, 1.0);
@@ -202,8 +151,6 @@ MarkerOut vs_marker(
         return culled;
     }
 
-    // age 0 is the sample pushed last tick, so the marker lands exactly on the
-    // head of the trail rather than near it
     const float3 p = orbitLogWarp(framePosition(0, bodyIdx));
 
     MarkerOut output;
@@ -214,7 +161,6 @@ MarkerOut vs_marker(
         push.markerRadiusPx,
         output.uv
     );
-    // brighter than the trail it caps, but the same hue
     output.color = float4(
         saturate(float3(body.colorR, body.colorG, body.colorB) * 1.35 + 0.12),
         1.0
@@ -223,10 +169,7 @@ MarkerOut vs_marker(
     return output;
 }
 
-// The asteroid belt: current positions only, no trails - a few thousand
-// overlapping ones would be a grey smear. Positions come in already
-// heliocentric, so they take the same frame treatment as everything else and
-// break into epicycles at alpha 0 with the planets.
+// no belt trails: a few thousand overlapping ones would be a grey smear
 [shader("vertex")]
 MarkerOut vs_belt(
     uint vertexID : SV_VertexID,
@@ -260,7 +203,6 @@ float4 fs_marker(MarkerOut input) : SV_Target {
     if(r > 1.0)
         discard;
 
-    // one pixel of falloff at the rim, so the disc does not look stepped
     float4 color = input.color;
     color.a *= saturate((1.0 - r) * push.markerRadiusPx);
 

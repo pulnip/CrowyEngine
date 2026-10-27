@@ -9,11 +9,6 @@
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 
-// Records a copy out of a transient slice, then creates enough initial data
-// to flush and wrap the creation-upload staging before the frame goes out.
-// The slice has to live until the batch that copies it completes, so the copy
-// must read back exactly what was written, whatever the flush did meanwhile.
-
 namespace
 {
     using namespace Crowy;
@@ -21,8 +16,8 @@ namespace
     constexpr u32 PatternWords = 1024;
     constexpr u32 PatternBytes = PatternWords * sizeof(u32);
 
-    // one more of these than the staging holds, so a flush has to happen and
-    // the allocation after it wraps back over offset 0, where the slice sits
+    // one more than the staging holds, so a flush happens and the allocation
+    // after it wraps back over offset 0, where the slice sits
     constexpr u32 FillerBytes = 8u << 20;
     constexpr u32 FillerCount = UploadStagingBytes / FillerBytes + 1;
 

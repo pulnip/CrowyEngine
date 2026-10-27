@@ -7,11 +7,8 @@
 
 namespace
 {
-    // one turn of the 32-bit fixed-point phase
     constexpr Crowy::f64 TURN_FIXED_SCALE = 4294967296.0;
 
-    // wraps into [0, 1) turns first, so the cast never overflows whatever the
-    // caller's absolute angle was
     Crowy::u32 turnsToFixed(Crowy::f64 turns) noexcept {
         const auto frac = turns - std::floor(turns);
 
@@ -21,7 +18,6 @@ namespace
         );
     }
 
-    // "no orbit in this frame" - only the Sun row carries it
     constexpr bool IsDegenerate(const Crowy::OrbitalElements& el) noexcept {
         return el.a <= 0.0;
     }
@@ -57,7 +53,6 @@ namespace Crowy
     f64 TrailPeriodDays(u32 bodyIdx) noexcept {
         CROWY_ASSERT(bodyIdx < ORBIT_BODY_COUNT);
 
-        // the Sun's apparent circle is Earth's orbit seen from the other end
         const auto source =
             bodyIdx == ORBIT_SUN_INDEX ? ORBIT_EARTH_INDEX : bodyIdx;
 
@@ -65,8 +60,6 @@ namespace Crowy
     }
 
     f64 MeanAnomalyDeg(const OrbitalElements& el, f64 day) noexcept {
-        // fmod inside NormalizeDegrees is exact for anything double can hold,
-        // so a large |day| costs accuracy only through n*day itself
         return NormalizeDegrees(
             el.L0 + MeanMotionDegPerDay(el) * day - el.varpi
         );
@@ -75,9 +68,6 @@ namespace Crowy
     EccentricAnomaly SolveEccentricAnomaly(f64 meanAnomaly, f64 e) noexcept {
         CROWY_ASSERT(0.0 <= e && e < 1.0);
 
-        // one step of the standard series ahead of E = M; for the
-        // eccentricities in ORBIT_ELEMENTS this lands close enough that Newton
-        // needs a handful of steps even at Mercury
         f64 E = meanAnomaly + e * std::sin(meanAnomaly);
 
         u32 iterations = 0;
@@ -86,7 +76,6 @@ namespace Crowy
             if(std::abs(residual) < KEPLER_TOLERANCE)
                 break;
 
-            // 1 - e*cos(E) is the derivative and never vanishes for e < 1
             E -= residual / (1.0 - e * std::cos(E));
             ++iterations;
         }
@@ -101,27 +90,22 @@ namespace Crowy
         const auto M = toRadian(MeanAnomalyDeg(el, day));
         const auto E = SolveEccentricAnomaly(M, el.e).value;
 
-        // in the orbital plane, perihelion on +x
         const auto xOrb = el.a * (std::cos(E) - el.e);
         const auto yOrb = el.a * std::sqrt(1.0 - el.e * el.e) * std::sin(E);
 
-        // Rz(Omega) * Rx(i) * Rz(varpi - Omega), applied in that order.
-        // varpi is measured along two different planes by construction, so the
-        // in-plane angle is varpi - Omega, not varpi.
+        // Rz(Omega) * Rx(i) * Rz(varpi - Omega): varpi is measured along two
+        // planes
         const auto omega = toRadian(el.varpi - el.Omega);
         const auto cosOmega = std::cos(omega);
         const auto sinOmega = std::sin(omega);
 
-        // Rz(varpi - Omega)
         const auto xNode = xOrb * cosOmega - yOrb * sinOmega;
         const auto yNode = xOrb * sinOmega + yOrb * cosOmega;
 
-        // Rx(i)
         const auto inc = toRadian(el.i);
         const auto cosInc = yNode * std::cos(inc);
         const auto sinInc = yNode * std::sin(inc);
 
-        // Rz(Omega)
         const auto node = toRadian(el.Omega);
         const auto cosNode = std::cos(node), sinNode = std::sin(node);
 
@@ -182,14 +166,11 @@ namespace Crowy
     }
 
     f64 PhaseToRadians(const OrbitPhaseGPU& phase, u32 index) noexcept {
-        // unsigned overflow is the whole point: it reduces mod a full turn for
-        // free, and it is well defined on both sides
+        // unsigned overflow reduces mod a full turn
         const u32 fixed = phase.phase0 +
                           phase.perBlock * (index >> ORBIT_PHASE_BLOCK_SHIFT) +
                           phase.perStep * (index & (ORBIT_PHASE_BLOCK - 1));
 
-        // reinterpreting as signed lands it in (-0.5, 0.5] turns, which is the
-        // range Newton wants to start from
         const auto turns =
             static_cast<f64>(static_cast<i32>(fixed)) / TURN_FIXED_SCALE;
 

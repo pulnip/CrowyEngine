@@ -1,44 +1,36 @@
 #include "Sampler.slang"
 #include "TerrainDensity.slang"
 
-// Marching cubes over the density field, entirely on the GPU.
-//
-// cs_density fills the corner grid, cs_march reads it back as a texture and
-// emits a triangle soup. Mirrors Engine/RHI/Sample/Terrain/TerrainMarch.hpp;
-// the tables come from MarchingCubes.hpp as a buffer, so the two sides share
+// The triangle table arrives as a buffer from MarchingCubes.cpp, so it has
 // one transcription.
 
-// Mirrors TerrainVertex in Engine/RHI/Sample/Terrain/Terrain.hpp.
+// Mirrors TerrainVertex in Terrain.hpp.
 struct TerrainVertex {
     float3 position;
     float3 normal;
 };
 
-// Mirrors PushConstants in TerrainMarch.cpp; padding spelled out on both
-// sides so the offsets can be asserted there.
+// Mirrors PushConstants in TerrainMarch.cpp.
 struct ResourceData {
-    TerrainParams params;                                          //  0 .. 31
-    uint cellsX;                                                   // 32
-    uint cellsY;                                                   // 36
-    uint cellsZ;                                                   // 40
-    float cellSize;                                                // 44
-    // in triangles; cs_march drops a cell rather than run past it
-    uint triangleCapacity;                                         // 48
-    // in vertices; only the indexed path can run out separately
-    uint vertexCapacity;                                           // 52
-    DescriptorHandle<RWTexture3D<float>> densityWrite;             // 56
-    DescriptorHandle<Texture3D<float>> densityRead;                // 64
-    DescriptorHandle<RWStructuredBuffer<TerrainVertex>> vertices;  // 72
+    TerrainParams params;
+    uint cellsX;
+    uint cellsY;
+    uint cellsZ;
+    float cellSize;
+    uint triangleCapacity;
+    uint vertexCapacity;
+    DescriptorHandle<RWTexture3D<float>> densityWrite;
+    DescriptorHandle<Texture3D<float>> densityRead;
+    DescriptorHandle<RWStructuredBuffer<TerrainVertex>> vertices;
     // see TerrainMarchCounter in TerrainMarch.hpp for the four slots
-    DescriptorHandle<RWStructuredBuffer<uint>> counter;            // 80
-    DescriptorHandle<StructuredBuffer<int>> triTable;              // 88
-    // RHIDrawArgs as four uints; cs_args fills it for ExecuteIndirect
-    DescriptorHandle<RWStructuredBuffer<uint>> args;               // 96
-    // one slot per grid edge, holding the vertex welded onto it
-    DescriptorHandle<RWStructuredBuffer<uint>> edgeVertices;       // 104
-    DescriptorHandle<RWStructuredBuffer<uint>> indices;            // 112
+    DescriptorHandle<RWStructuredBuffer<uint>> counter;
+    DescriptorHandle<StructuredBuffer<int>> triTable;
+    // RHIDrawArgs as four uints
+    DescriptorHandle<RWStructuredBuffer<uint>> args;
+    DescriptorHandle<RWStructuredBuffer<uint>> edgeVertices;
+    DescriptorHandle<RWStructuredBuffer<uint>> indices;
     // RHIDrawIndexedArgs as five uints
-    DescriptorHandle<RWStructuredBuffer<uint>> argsIndexed;        // 120
+    DescriptorHandle<RWStructuredBuffer<uint>> argsIndexed;
 };
 
 [[vk::push_constant]]
@@ -46,7 +38,7 @@ ConstantBuffer<ResourceData> resource;
 
 static const uint MC_MAX_INDICES = 16;
 
-// see MarchingCubes.hpp for the corner numbering these belong to
+// Mirrors MC_CORNER_OFFSET and MC_EDGE_CORNERS in MarchingCubes.hpp.
 static const uint3 MC_CORNER_OFFSET[8] = {
     uint3(0, 0, 0), uint3(1, 0, 0), uint3(1, 0, 1), uint3(0, 0, 1),
     uint3(0, 1, 0), uint3(1, 1, 0), uint3(1, 1, 1), uint3(0, 1, 1)
@@ -80,10 +72,8 @@ uint3 axisStep(uint axis) {
     return uint3(axis == 0 ? 1 : 0, axis == 1 ? 1 : 0, axis == 2 ? 1 : 0);
 }
 
-// Every grid edge belongs to the corner at its low end, which gives each of
-// them exactly one owner and so exactly one vertex. Derived from the corner
-// offsets rather than tabulated: they already say where an edge runs, and a
-// second table would only be a second thing to get wrong.
+// Each grid edge belongs to the corner at its low end, so it has one vertex.
+// Derived from the corner offsets rather than from a second table.
 void edgeOwner(int edge, out uint3 corner, out uint axis) {
     uint2 ends = MC_EDGE_CORNERS[edge];
     int3 a = int3(MC_CORNER_OFFSET[ends.x]);
@@ -106,7 +96,6 @@ void cs_clear() {
 
     counter[0] = 0;
     counter[1] = 0;
-    // no cell has been dropped yet, so every slot is still contiguous
     counter[2] = 0xFFFFFFFFu;
     counter[3] = 0;
 }
@@ -126,7 +115,6 @@ void cs_density(uint3 tid: SV_DispatchThreadID) {
     density[tid] = terrainDensity(position, baseHeight, resource.params);
 }
 
-// the density field between corners, as the hardware interpolates it
 float sampleDensity(Texture3D<float> density, float3 position) {
     float3 texel = position / resource.cellSize + 0.5f;
 
@@ -153,9 +141,8 @@ float3 surfaceNormal(Texture3D<float> density, float3 position) {
     return len > 1e-12f ? -gradient / len : float3(0, 1, 0);
 }
 
-// where the isosurface crosses the edge, by linear interpolation.
-// the table only names edges whose corners disagree, so the two densities
-// straddle zero and the denominator cannot vanish
+// the table only names edges whose corners straddle zero, so the denominator
+// cannot vanish
 float3 edgeVertex(uint3 cell, int edge, float corner[8]) {
     uint a = MC_EDGE_CORNERS[edge].x;
     uint b = MC_EDGE_CORNERS[edge].y;
@@ -186,7 +173,6 @@ void cs_march(uint3 tid: SV_DispatchThreadID) {
             caseIndex |= 1u << i;
     }
 
-    // wholly solid or wholly air: no surface passes through
     if (caseIndex == 0 || caseIndex == 255)
         return;
 
@@ -202,9 +188,8 @@ void cs_march(uint3 tid: SV_DispatchThreadID) {
     uint base;
     InterlockedAdd(counter[0], triCount, base);
 
-    // the reservation stands either way, so the count keeps growing past
-    // capacity. A dropped cell leaves its slots unwritten, so record the
-    // lowest one: below that the soup is still contiguous
+    // the reservation stands, so the count runs past capacity; record the
+    // lowest dropped slot, since the soup is contiguous below it
     if (base + triCount > resource.triangleCapacity) {
         InterlockedOr(counter[1], 1);
         InterlockedMin(counter[2], base);
@@ -224,16 +209,6 @@ void cs_march(uint3 tid: SV_DispatchThreadID) {
     }
 }
 
-// The welded half of the sample. cs_march emits three fresh vertices per
-// triangle; here a vertex is emitted once per crossing edge and referenced by
-// index instead, which is where the memory goes - a closed surface has about
-// half as many vertices as triangles, so 3 vertices per triangle becomes 0.5.
-//
-// The two passes split along that seam: cs_edges owns vertices, cs_indices
-// owns topology, and the edge slots carry one to the other.
-
-// One thread per corner, emitting a vertex on each of the three edges that
-// corner owns and crosses the surface.
 [shader("compute")]
 [numthreads(4, 4, 4)]
 void cs_edges(uint3 tid: SV_DispatchThreadID) {
@@ -251,7 +226,6 @@ void cs_edges(uint3 tid: SV_DispatchThreadID) {
     for (uint axis = 0; axis < 3; ++axis) {
         uint slot = edgeSlot(tid, axis);
 
-        // the last corner on an axis owns no edge along it
         if (tid[axis] >= cells()[axis]) {
             edgeVertices[slot] = NO_VERTEX;
             continue;
@@ -288,7 +262,6 @@ void cs_edges(uint3 tid: SV_DispatchThreadID) {
     }
 }
 
-// One thread per cell, writing indices into the vertices cs_edges welded.
 [shader("compute")]
 [numthreads(4, 4, 4)]
 void cs_indices(uint3 tid: SV_DispatchThreadID) {
@@ -336,24 +309,18 @@ void cs_indices(uint3 tid: SV_DispatchThreadID) {
 
         uint vertex = edgeVertices[edgeSlot(tid + corner, axis)];
 
-        // the table only names edges that cross, so this is only ever
-        // NO_VERTEX when the vertex pass ran out - which is already flagged.
-        // Degenerate beats out of range.
+        // NO_VERTEX only when cs_edges ran out, which is already flagged; a
+        // degenerate triangle beats an out-of-range index
         indices[base * 3 + i] = vertex == NO_VERTEX ? 0 : vertex;
     }
 }
 
-// Turns the count the marching pass accumulated into draw arguments, so the
-// vertex count never has to reach the CPU. One thread, run after cs_march.
 [shader("compute")]
 [numthreads(1, 1, 1)]
 void cs_args() {
     RWStructuredBuffer<uint> counter = resource.counter;
     RWStructuredBuffer<uint> args = resource.args;
 
-    // reservations run past capacity once it overflows, and a dropped cell
-    // leaves its slots unwritten, so the contiguous mesh ends at the earlier
-    // of the two
     uint drawable = min(counter[0], counter[2]);
 
     args[0] = drawable * 3;  // vertexCount
@@ -362,7 +329,6 @@ void cs_args() {
     args[3] = 0;             // baseInstance
 }
 
-// The same, for the indexed path: RHIDrawIndexedArgs is one field longer.
 [shader("compute")]
 [numthreads(1, 1, 1)]
 void cs_args_indexed() {

@@ -49,7 +49,6 @@ namespace
         }
     };
 
-    // The parts of `span` no run in `neighbor` covers.
     // `neighbor` must be sorted and disjoint.
     template<typename Emit>
     void SubtractSpans(
@@ -192,7 +191,6 @@ namespace Crowy
                     }
                 }
 
-                // run cut off by the grid ceiling
                 if(inSpan)
                     spans.push_back(
                         TerrainSpan{.yBottom = yBottom, .yTop = GRID_TOP}
@@ -250,8 +248,6 @@ namespace Crowy
                     if(!options.emitWalls)
                         continue;
 
-                    // a wall stands where this column is solid and the
-                    // neighbour is not: the interval difference of the runs
                     for(const auto& face: NEIGHBORS) {
                         SubtractSpans(
                             span,

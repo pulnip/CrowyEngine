@@ -11,13 +11,13 @@ namespace
     using namespace Crowy;
 
     constexpr u32 BODY_STRIDE = static_cast<u32>(sizeof(OrbitBodyDraw));
-    // RHIDrawArgs as four uints; the shader writes it that way
+    // the shader writes RHIDrawArgs as four uints
     constexpr u32 ARG_STRIDE = static_cast<u32>(sizeof(u32));
     constexpr u32 ARGS_PER_DRAW = 4;
     static_assert(sizeof(RHIDrawArgs) == ARGS_PER_DRAW * sizeof(u32));
 
-    // The first Record has nothing to pair with; later ones wind the resource
-    // back from wherever the previous submission left it.
+    // Cross-submission, except on the first Record, which has no release to
+    // pair with.
     RHIBufferBarrier AcquireForWrite(
         RHIBuffer& buffer,
         RHIResourceUsage resting
@@ -55,9 +55,8 @@ namespace Crowy
         CROWY_ASSERT(count > 0);
         CROWY_ASSERT(count <= 32, "the enabled mask is one bit per body");
 
-        // Read-only from here on, which is what lets it carry initial contents
-        // at all: the creation upload is an access, and a resource that has
-        // been accessed can never be acquired from Undefined again.
+        // The creation upload is an access, and an accessed resource can never
+        // be acquired from Undefined again, so only this table carries one.
         bodies = device.CreateBuffer(
             RHIBufferCreateDesc{
                 .size = count * BODY_STRIDE,

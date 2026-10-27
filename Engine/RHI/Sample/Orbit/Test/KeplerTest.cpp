@@ -13,7 +13,6 @@ using namespace Crowy;
 
 namespace
 {
-    // ecliptic longitude in [-180, 180)
     f64 LongitudeDeg(Vec3d p) {
         return NormalizeDegrees(toDegree(std::atan2(p.y, p.x)));
     }
@@ -22,13 +21,11 @@ namespace
         return norm(lhs - rhs);
     }
 
-    // the day this body last passed perihelion before/after J2000 (M == 0)
     f64 PerihelionDay(const OrbitalElements& el) {
         return (el.varpi - el.L0) / MeanMotionDegPerDay(el);
     }
 
-    // a spread of days that covers both signs and a few centuries either way,
-    // so nothing here can quietly depend on t >= 0
+    // both signs and two centuries either way, so nothing leans on t >= 0
     constexpr std::array<f64, 7>
         SAMPLE_DAYS{-73048.0, -6000.0, -1.5, 0.0, 1.5, 6000.0, 73048.0};
 }
@@ -39,8 +36,7 @@ TEST(Kepler, SunHasNoOrbit) {
     EXPECT_EQ(MeanMotionDegPerDay(sun), 0.0);
     EXPECT_EQ(PeriodDays(sun), 0.0);
 
-    // exactly zero, not nearly: the frame interpolation leans on the Sun's
-    // stored trail being all zeros so no branch is needed for it
+    // exactly zero: the frame interpolation has no branch for the Sun
     for(const auto day: SAMPLE_DAYS) {
         const auto p = OrbitPosition(ORBIT_SUN_INDEX, day);
         EXPECT_EQ(p.x, 0.0);
@@ -50,7 +46,6 @@ TEST(Kepler, SunHasNoOrbit) {
 }
 
 TEST(Kepler, SunBorrowsEarthTrailLength) {
-    // its apparent circle in the geocentric frame is Earth's orbit
     EXPECT_EQ(
         TrailPeriodDays(ORBIT_SUN_INDEX),
         TrailPeriodDays(ORBIT_EARTH_INDEX)
@@ -71,8 +66,7 @@ TEST(Kepler, MeanMotionAndPeriodAgree) {
     }
 }
 
-// the derived periods have to land on the published sidereal ones, or the
-// third-law shortcut is buying self-consistency at the price of being wrong
+// the third-law periods must also land on the published sidereal ones
 TEST(Kepler, DerivedPeriodsMatchPublished) {
     EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[1]), 87.969, 0.05);  // Mercury
     EXPECT_NEAR(PeriodDays(ORBIT_ELEMENTS[2]), 224.701, 0.05); // Venus
@@ -93,8 +87,7 @@ TEST(Kepler, MeanAnomalyStaysNormalized) {
     }
 }
 
-// Mars and Neptune carry negative L0. A wrapped table entry has to be the same
-// orbit - if it is not, some normalization is missing.
+// Mars and Neptune carry a negative L0
 TEST(Kepler, MeanLongitudeWrapsFreely) {
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
         auto plus = ORBIT_ELEMENTS[b];
@@ -141,7 +134,6 @@ TEST(Kepler, NewtonConverges) {
         }
     }
 
-    // Mercury (e = 0.206) is the hard case and it is still single digits;
     // the loop cap exists for bad data, not for these bodies
     EXPECT_LE(worst, 6) << "worst body: " << worstBody;
     std::printf(
@@ -172,8 +164,7 @@ TEST(Kepler, RadiusStaysBetweenPerihelionAndAphelion) {
             EXPECT_LE(r, aphelion + 1e-9) << ORBIT_BODY_NAMES[b];
         }
 
-        // both extremes are actually reached; the sampling misses them by a
-        // term quadratic in the step, hence the relative slack
+        // the sampling misses the extremes by a term quadratic in the step
         EXPECT_NEAR(minR, perihelion, perihelion * 1e-4) << ORBIT_BODY_NAMES[b];
         EXPECT_NEAR(maxR, aphelion, aphelion * 1e-4) << ORBIT_BODY_NAMES[b];
     }
@@ -198,7 +189,7 @@ TEST(Kepler, ClosesAfterOnePeriod) {
 }
 
 TEST(Kepler, InclinationShowsUpInZ) {
-    // Earth defines the ecliptic, so its orbit has no Z component at all
+    // Earth defines the ecliptic
     const auto& earth = ORBIT_ELEMENTS[ORBIT_EARTH_INDEX];
     ASSERT_EQ(earth.i, 0.0);
 
@@ -208,9 +199,7 @@ TEST(Kepler, InclinationShowsUpInZ) {
         EXPECT_EQ(OrbitPosition(earth, earthPeriod * s / STEPS).z, 0.0);
     }
 
-    // everything else stays inside the band its inclination allows, and
-    // actually uses it - a rotation applied in the wrong order would either
-    // flatten the orbit or overshoot
+    // a rotation in the wrong order would flatten the orbit or overshoot
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
         if(b == ORBIT_EARTH_INDEX)
             continue;
@@ -233,10 +222,8 @@ TEST(Kepler, InclinationShowsUpInZ) {
     }
 }
 
-// Saturn's table row has varpi == Omega, which puts its perihelion exactly on
-// its ascending node. That is odd published data rather than a slip on our
-// side, so pin the consequence: if the row is ever corrected this test is the
-// one that fails, and the design doc note next to it explains why.
+// The published row has varpi == Omega for Saturn; this fails if it is ever
+// corrected.
 TEST(Kepler, SaturnPerihelionSitsOnItsNode) {
     const auto& saturn = ORBIT_ELEMENTS[6];
     ASSERT_EQ(saturn.varpi, saturn.Omega);
@@ -244,14 +231,11 @@ TEST(Kepler, SaturnPerihelionSitsOnItsNode) {
     const auto p = OrbitPosition(saturn, PerihelionDay(saturn));
     EXPECT_NEAR(p.z, 0.0, 1e-9);
 
-    // for contrast, an ordinary body's perihelion is well off the ecliptic
     const auto& mercury = ORBIT_ELEMENTS[1];
     const auto q = OrbitPosition(mercury, PerihelionDay(mercury));
     EXPECT_GT(std::abs(q.z), 0.01);
 }
 
-// The end-to-end check: Newton, the three rotations and the angle handling all
-// have to be right at once for a date on the calendar to come out right.
 // At the March 2000 equinox the Sun is at ecliptic longitude 0 as seen from
 // Earth, so Earth is at 180 as seen from the Sun.
 TEST(Kepler, EarthReachesEquinoxOnSchedule) {
@@ -260,18 +244,14 @@ TEST(Kepler, EarthReachesEquinoxOnSchedule) {
 
     const auto earth = OrbitPosition(ORBIT_EARTH_INDEX, MARCH_EQUINOX_2000);
 
-    // the slack covers the equinox instant being defined against the real
-    // perturbed Sun while these are mean elements
+    // the equinox is defined against the real perturbed Sun, not mean elements
     EXPECT_NEAR(std::abs(LongitudeDeg(earth)), 180.0, 0.2);
 
-    // the same fact from the viewer's side: the Sun crosses the vernal point
     const Vec3d sunFromEarth = Vec3d{} - earth;
     EXPECT_NEAR(LongitudeDeg(sunFromEarth), 0.0, 0.2);
 
-    // a quarter year on, Earth has swung a quarter turn - this is the check
-    // that would catch a retrograde orbit. The mean longitude advances exactly
-    // 90 degrees; the true one lags by the change in the equation of centre,
-    // about 1.4 degrees across this arc, which is what the slack is for.
+    // the true longitude lags the mean one by the change in the equation of
+    // centre, about 1.4 degrees across this arc
     const auto june = OrbitPosition(
         ORBIT_EARTH_INDEX,
         MARCH_EQUINOX_2000 + PeriodDays(ORBIT_ELEMENTS[ORBIT_EARTH_INDEX]) / 4
@@ -292,15 +272,9 @@ TEST(Kepler, SampleOrbitsMatchesIndividualCalls) {
     }
 }
 
-// The GPU solve reconstructs its mean anomaly from 32-bit fixed-point turns
-// rather than from a sim day, because a float cannot hold L0 + n*t once t is a
-// few thousand days. Everything about that scheme is integer arithmetic the CPU
-// runs identically, so it can be held to the exact double answer here - no GPU
-// in the room.
+// the fixed-point phase is integer arithmetic the CPU runs exactly as the GPU
 TEST(KeplerPhase, ReconstructsMeanAnomaly) {
     constexpr f64 DAY_PER_SAMPLE = 1.0;
-    // the far end of a full ring, which is the worst case the split is sized
-    // for
     constexpr u32 STEPS = ORBIT_PHASE_MAX_STEPS;
 
     f64 worstDeg = 0.0;
@@ -308,9 +282,7 @@ TEST(KeplerPhase, ReconstructsMeanAnomaly) {
 
     for(u32 b = 1; b < ORBIT_BODY_COUNT; ++b) {
         const auto& el = ORBIT_ELEMENTS[b];
-        // an epoch far enough out that the naive float expression is already
-        // hopeless: Mercury's mean anomaly here is over a quarter million
-        // degrees
+        // far enough out that a float mean anomaly is already hopeless
         const f64 startDay = 60000.0;
         const auto phase = MakePhaseGPU(el, startDay, DAY_PER_SAMPLE);
 
@@ -333,12 +305,10 @@ TEST(KeplerPhase, ReconstructsMeanAnomaly) {
         worstBody
     );
     // half an ulp of perStep per product, two products, never accumulating
-    // further - see the block split in OrbitPhaseGPU
     EXPECT_LT(worstDeg, 1e-4);
 }
 
-// Straight multiplication is what the split exists to avoid; this pins the
-// difference so nobody "simplifies" it away.
+// pins the difference so nobody "simplifies" the split away
 TEST(KeplerPhase, BlockSplitBeatsFlatStepping) {
     const auto& el = ORBIT_ELEMENTS[1]; // Mercury, the fastest phase
     const auto phase = MakePhaseGPU(el, 0.0, 1.0);
@@ -373,8 +343,6 @@ TEST(KeplerPhase, ElementsGPUMatchTheTable) {
         EXPECT_FLOAT_EQ(gpu.a, static_cast<f32>(el.a)) << ORBIT_BODY_NAMES[b];
         EXPECT_FLOAT_EQ(gpu.e, static_cast<f32>(el.e)) << ORBIT_BODY_NAMES[b];
 
-        // the packed sine/cosine pairs have to be unit, or a rotation quietly
-        // became a scale
         EXPECT_NEAR(
             gpu.cosPeri * gpu.cosPeri + gpu.sinPeri * gpu.sinPeri,
             1.0f,

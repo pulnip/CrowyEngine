@@ -62,9 +62,8 @@ namespace Crowy
         }
     }
 
-    // The slice waits for the dispatch rather than riding SetEpoch: a
-    // transient range is only good until the batch it was recorded into
-    // completes, so it has to be taken by whoever records that batch.
+    // Taken at record time, not in SetEpoch: a transient range is only good
+    // until the batch it was recorded into completes.
     void OrbitKeplerFill::uploadPhases() {
         phaseSlice = device.UploadTransient(
             std::span<const OrbitPhaseGPU>(phaseScratch),

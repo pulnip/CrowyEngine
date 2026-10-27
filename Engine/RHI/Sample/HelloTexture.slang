@@ -46,12 +46,11 @@ float4 fs_normal(VertexOut input) : SV_Target {
     Texture2D texture = resource.normal;
 
     float2 rg = texture.Sample(linearWrap, input.uv).rg;
-    // [0, 1] to [-1, 1]
     float2 xy = 2.0 * rg - 1.0;
     float z = sqrt(saturate(1.0 - dot(xy, xy)));
     float3 linear = 0.5 * float3(xy, z) + 0.5;
 
-    // prevent app to display color space conversion
+    // cancels the backbuffer's color space conversion, so the raw value shows
     return float4(srgb2linearApprox(linear), 1.0);
 }
 
