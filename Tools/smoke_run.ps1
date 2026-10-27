@@ -4,36 +4,9 @@
 #
 # usage: smoke_run.ps1 <executable> [capture-image-path]
 #
-# Same contract as Tools/smoke_run.sh:
-#   the program gets --exit-after-frame $env:CROWY_SMOKE_FRAMES (60), or the
-#   capture frame when that is later, and must exit within
-#   $env:CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure.
-#   a capture path falls back to $env:CROWY_SMOKE_CAPTURE_DIR\<sample>.bmp
-#   when that directory variable is set; capture rides on the app's
-#   --capture-frame <frame> <path> argument, frame 60 unless
-#   CROWY_SMOKE_CAPTURE_AT says otherwise.
-#   a .bmp capture becomes a PNG through ImageCompareCheck.exe beside the
-#   executable (the BMP stays when that tool is not built).
-#   when Engine\*\Spike\Golden\<spike>.dx12.png exists, frame 60 is
-#   captured (to %TEMP%\crowy-smoke without a capture directory) and
-#   compared against it on every run, and a difference fails the run with a
-#   heat map beside the capture; the failure prints the Copy-Item that
-#   accepts the new picture. A sample's picture under Sample\Golden is a
-#   baseline to compare a capture with by hand, never a gate.
-#   a run that exited has written its captures; a golden whose capture is
-#   missing fails: a golden never gates on a frame it did not compare.
-#   an exit status of 77 is a skip (the sample's content is missing), and
-#   passes through for ctest's SKIP_RETURN_CODE.
-#   with CROWY_SMOKE_MUST_EXIT=1 (checks) the program gets no arguments
-#   and must exit by itself within the same timeout.
-#
-# Validation errors: the script sets CROWY_D3D_DEBUG_BREAK=1, which makes
-# the engine break on debug-layer errors — without a debugger that aborts
-# the process, which this script reports as a failure. Debug builds only
-# (the debug layer is compiled out of release).
-#
-# Run from the repository root: samples load Engine/Shader and Content
-# by relative path.
+# The contract (frames, timeout, captures, goldens, the 77 skip) is
+# docs/testing.md "Windowed runs and goldens". Run from the repository root:
+# samples load Engine/Shader and Content by relative path.
 param(
     [Parameter(Mandatory = $true)][string]$App,
     [string]$Capture = ""

@@ -81,6 +81,16 @@ which runs it through `Tools/smoke_run.ps1` (macOS: `smoke_run.sh`).
 - Exit 77 is a skip: the program's content is missing (`StageEditor`
   without `../Backlot`).
 
+By hand, `Tools/smoke_run.ps1 <exe> [capture-path]` runs it the same way.
+- A capture path writes one frame there as a BMP; without one,
+  `CROWY_SMOKE_CAPTURE_DIR` collects `<exe>.bmp` per run.
+- The frame is 60 unless `CROWY_SMOKE_CAPTURE_AT` names another, and the
+  run lasts until it. A golden is compared only at frame 60.
+- A `.bmp` capture becomes a PNG through `ImageCompareCheck` beside the
+  executable; the BMP stays when that tool is not built.
+- `CROWY_SMOKE_MUST_EXIT=1`, which a check's entry sets, passes no
+  arguments.
+
 A golden is a spike's frame-60 picture at
 `Engine/*/Spike/Golden/<exe>.<dx12|metal>.png`.
 - When one exists, every run captures frame 60 (the app's

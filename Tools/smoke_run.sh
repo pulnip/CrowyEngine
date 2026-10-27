@@ -5,37 +5,9 @@
 #
 # usage: smoke_run.sh <executable> [capture-image-path]
 #
-# The program gets --exit-after-frame $CROWY_SMOKE_FRAMES (60), or the
-# capture frame when that is later, and must exit within
-# $CROWY_SMOKE_TIMEOUT seconds (60); still running then is a failure.
-#
-# capture saves one rendered frame. Either pass a path as the second
-# argument, or set $CROWY_SMOKE_CAPTURE_DIR to collect <sample>.png per
-# sample:
-#   CROWY_SMOKE_CAPTURE_DIR=captures Tools/smoke_run.sh build/bin/Debug/Playground
-# It rides on the app's --capture-frame <frame> <path> argument, which writes
-# a BMP; the frame is 60 unless $CROWY_SMOKE_CAPTURE_AT says otherwise.
-# A .bmp capture becomes a PNG through ImageCompareCheck beside the
-# executable (the BMP stays when that tool is not built).
-#
-# golden: when Engine/*/Spike/Golden/<spike>.metal.png exists, frame 60 is
-# captured (to $TMPDIR/crowy-smoke without a capture directory) and compared
-# against it on every run with ImageCompareCheck's defaults, and a
-# difference fails the run with a heat map beside the capture. To accept a
-# new picture, copy the capture over the golden; the failure prints the
-# command. A run that exited has written its captures; a golden whose
-# capture is missing fails: a golden never gates on a frame it did not
-# compare. A sample's picture under Sample/Golden is a baseline to compare
-# a capture with by hand, never a gate.
-#
-# An exit status of 77 is a skip (the sample's content is missing) and
-# passes through for ctest's SKIP_RETURN_CODE.
-#
-# With CROWY_SMOKE_MUST_EXIT=1 (checks) the program gets no arguments and
-# must exit by itself within the same timeout.
-#
-# Run from the repository root: samples load Engine/Shader and Content
-# by relative path.
+# The contract (frames, timeout, captures, goldens, the 77 skip) is
+# docs/testing.md "Windowed runs and goldens". Run from the repository root:
+# samples load Engine/Shader and Content by relative path.
 set -u
 
 APP="$1"
@@ -43,7 +15,11 @@ APP="$1"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="$(basename "$APP")"
 TOOL="$(dirname "$APP")/ImageCompareCheck"
-BACKEND=metal
+if [ "$(uname)" = "Darwin" ]; then
+    BACKEND=metal
+else
+    BACKEND=dx12
+fi
 
 CAPTURE="${2:-}"
 if [ -z "$CAPTURE" ] && [ -n "${CROWY_SMOKE_CAPTURE_DIR:-}" ]; then
