@@ -13,7 +13,6 @@
 #include <slang.h>
 
 #include "Assert.hpp"
-#include "HashUtil.hpp"
 #include "LogLocal.hpp"
 #include "PathUtil.hpp"
 #include "ProjectRoot.hpp"
@@ -155,8 +154,6 @@ namespace Crowy
                 auto param = layout.getParameterByIndex(i);
                 auto category = param->getCategory();
 
-                auto raw = param->getName();
-
                 switch(category) {
                 case Mixed: {
                     // Metal legalizes DescriptorHandle<T> members into texture
@@ -184,12 +181,9 @@ namespace Crowy
                             "Mixed param without constant buffer"
                         );
                     }
-                    refl.nameToSlot[raw] =
-                        static_cast<u32>(param->getOffset(ConstantBuffer));
                     break;
                 }
                 case ConstantBuffer:
-                    refl.nameToSlot[raw] = param->getBindingIndex();
                     break;
                 case SamplerState:
                     // use static sampler(index fixed), so skip
@@ -307,7 +301,7 @@ namespace Crowy
         std::span<const std::filesystem::path> linkedModules,
         StrView onlyEntryPoint
     )
-        : path(toUTF8String(filePath)), hash(hashAll(filePath)) {
+        : path(toUTF8String(filePath)) {
         using namespace slang;
         using namespace Slang;
 

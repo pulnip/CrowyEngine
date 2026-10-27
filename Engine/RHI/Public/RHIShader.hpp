@@ -36,7 +36,6 @@ namespace Crowy
         // declared first, so the program is released before its session
         SlangSession session;
         SlangProgram program;
-        std::size_t hash = 0;
 
         RHIProgramReflection reflection;
 
@@ -56,7 +55,6 @@ namespace Crowy
             StrView onlyEntryPoint = {}
         );
 
-        std::size_t Gethash() const noexcept { return hash; }
         Size3D GetThreadGroupSize(StrView entryPoint);
 
         std::span<const RHISamplerUse> GetUsedSamplers(StrView entryPoint);

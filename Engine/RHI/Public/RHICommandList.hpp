@@ -611,10 +611,6 @@ namespace Crowy
 
             CROWY_ASSERT(batch.pso != nullptr);
             CROWY_ASSERT(batch.args != nullptr);
-            CROWY_ASSERT(
-                batch.countBuffer == nullptr,
-                "countBuffer is reserved for GPU-driven compaction"
-            );
 
             CROWY_STAT(indirectBatchCount);
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
@@ -630,10 +626,6 @@ namespace Crowy
             CROWY_ASSERT(batch.pso != nullptr);
             CROWY_ASSERT(batch.args != nullptr);
             detail::validateIndices(batch.indices);
-            CROWY_ASSERT(
-                batch.countBuffer == nullptr,
-                "countBuffer is reserved for GPU-driven compaction"
-            );
 
             CROWY_STAT(indirectBatchCount);
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);

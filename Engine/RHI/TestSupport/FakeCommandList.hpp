@@ -205,15 +205,6 @@ namespace Crowy
                                           : found->second;
         }
 
-        bool Violated(FakeRule rule) const {
-            for(const auto& violation: violations) {
-                if(violation.rule == rule)
-                    return true;
-            }
-
-            return false;
-        }
-
         void Begin() override {
             RHICommandList::Begin();
 

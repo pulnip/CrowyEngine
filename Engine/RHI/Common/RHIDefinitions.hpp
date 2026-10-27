@@ -5,7 +5,6 @@
 #include <limits>
 #include <optional>
 #include <span>
-#include <unordered_map>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -1024,8 +1023,6 @@ namespace Crowy
         RHIBuffer* args = nullptr;
         u64 argsOffset = 0;
         u32 drawCount = 0;
-        // reserved for GPU-driven compaction; must stay null
-        RHIBuffer* countBuffer = nullptr;
     };
 
     struct DrawBatchIndexed {
@@ -1036,8 +1033,6 @@ namespace Crowy
         u32 drawCount = 0;
         // every draw in the batch reads this one
         RHIIndexBufferView indices{};
-        // reserved for GPU-driven compaction; must stay null
-        RHIBuffer* countBuffer = nullptr;
     };
 }
 
@@ -1327,7 +1322,6 @@ namespace Crowy
         std::vector<RHISamplerUse> usedSamplers;
     };
     struct RHIProgramReflection {
-        std::unordered_map<Str, u32> nameToSlot;
         StringHashMap<RHIShaderReflection> shaderRefl;
     };
 }
