@@ -1,6 +1,6 @@
 #include <d3dx12/d3dx12_core.h>
 #include "Assert.hpp"
-#include "DescriptorHeapAllocator.hpp"
+#include "DX12DescriptorHeapAllocator.hpp"
 #include "DX12Buffer.hpp"
 #include "DX12Definitions.hpp"
 #include "DX12Util.hpp"
@@ -44,7 +44,7 @@ namespace Crowy
     DX12Buffer::DX12Buffer(
         DX12Allocator& allocator,
         const RHIBufferCreateDesc& desc,
-        DescriptorHeapAllocator& heap,
+        DX12DescriptorHeapAllocator& heap,
         StrView name
     )
         : size(desc.size)

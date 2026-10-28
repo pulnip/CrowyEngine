@@ -16,9 +16,9 @@ namespace Crowy
         CommandQueue* queue = nullptr;
         bool vsync, allowTearing;
 
-        DescriptorHeapAllocator& cbvsrvuavHeap;
-        DescriptorHeapAllocator& rtvHeap;
-        DescriptorHeapAllocator& dsvHeap;
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap;
+        DX12DescriptorHeapAllocator& rtvHeap;
+        DX12DescriptorHeapAllocator& dsvHeap;
         std::vector<RHITextureRAII> backBuffers;
         UINT currentBackBufferIndex = 0;
 
@@ -27,9 +27,9 @@ namespace Crowy
             CommandQueue&,
             Factory&,
             const RHISwapchainCreateDesc&,
-            DescriptorHeapAllocator& cbvsrvuavHeap,
-            DescriptorHeapAllocator& rtvHeap,
-            DescriptorHeapAllocator& dsvHeap,
+            DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+            DX12DescriptorHeapAllocator& rtvHeap,
+            DX12DescriptorHeapAllocator& dsvHeap,
             StrView name = {}
         );
 

@@ -25,26 +25,26 @@ namespace Crowy
         std::unordered_map<RHITextureViewDesc, UINT> rtvs;
         std::unordered_map<RHITextureViewDesc, UINT> dsvs;
 
-        DescriptorHeapAllocator& cbvsrvuavHeap;
-        DescriptorHeapAllocator& rtvHeap;
-        DescriptorHeapAllocator& dsvHeap;
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap;
+        DX12DescriptorHeapAllocator& rtvHeap;
+        DX12DescriptorHeapAllocator& dsvHeap;
 
     public:
         DX12Texture(
             DX12Allocator&,
             const RHITextureCreateDesc&,
-            DescriptorHeapAllocator& cbvsrvuavHeap,
-            DescriptorHeapAllocator& rtvHeap,
-            DescriptorHeapAllocator& dsvHeap,
+            DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+            DX12DescriptorHeapAllocator& rtvHeap,
+            DX12DescriptorHeapAllocator& dsvHeap,
             StrView name = {}
         );
         DX12Texture(
             Swapchain&,
             RHIPixelFormat logicalFormat,
             UINT bufferIndex,
-            DescriptorHeapAllocator& cbvsrvuavHeap,
-            DescriptorHeapAllocator& rtvHeap,
-            DescriptorHeapAllocator& dsvHeap,
+            DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+            DX12DescriptorHeapAllocator& rtvHeap,
+            DX12DescriptorHeapAllocator& dsvHeap,
             StrView name = {}
         );
 

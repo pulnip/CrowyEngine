@@ -23,13 +23,13 @@ namespace Crowy
 
         DX12Allocator& allocator;
         // CBV, SRV, UAV
-        DescriptorHeapAllocator& heap;
+        DX12DescriptorHeapAllocator& heap;
 
     public:
         DX12Buffer(
             DX12Allocator&,
             const RHIBufferCreateDesc&,
-            DescriptorHeapAllocator&,
+            DX12DescriptorHeapAllocator&,
             StrView name
         );
 

@@ -6,7 +6,7 @@
 
 namespace Crowy
 {
-    class DescriptorHeapAllocator{
+    class DX12DescriptorHeapAllocator{
     private:
         Device& device;
         DescriptorHeapRAII heap;
@@ -23,7 +23,7 @@ namespace Crowy
     #endif
 
     public:
-        DescriptorHeapAllocator(
+        DX12DescriptorHeapAllocator(
             Device& device,
             D3D12_DESCRIPTOR_HEAP_TYPE type,
             UINT capacity,

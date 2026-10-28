@@ -1,12 +1,12 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <d3dx12/d3dx12_core.h>
-#include "DescriptorHeapAllocator.hpp"
+#include "DX12DescriptorHeapAllocator.hpp"
 #include "DX12Util.hpp"
 
 namespace Crowy
 {
-    DescriptorHeapAllocator::DescriptorHeapAllocator(
+    DX12DescriptorHeapAllocator::DX12DescriptorHeapAllocator(
         Device& device,
         D3D12_DESCRIPTOR_HEAP_TYPE type,
         UINT capacity,
@@ -42,7 +42,7 @@ namespace Crowy
             freeIndexes.push_back(i-1);
     }
 
-    UINT DescriptorHeapAllocator::Allocate(
+    UINT DX12DescriptorHeapAllocator::Allocate(
         ID3D12Resource& resource,
         const D3D12_SHADER_RESOURCE_VIEW_DESC& desc
     ){
@@ -56,7 +56,7 @@ namespace Crowy
         return index;
     }
 
-    UINT DescriptorHeapAllocator::Allocate(
+    UINT DX12DescriptorHeapAllocator::Allocate(
         ID3D12Resource& resource,
         const D3D12_RENDER_TARGET_VIEW_DESC& desc
     ){
@@ -70,7 +70,7 @@ namespace Crowy
         return index;
     }
 
-    UINT DescriptorHeapAllocator::Allocate(
+    UINT DX12DescriptorHeapAllocator::Allocate(
         ID3D12Resource& resource,
         const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc
     ){
@@ -85,7 +85,7 @@ namespace Crowy
         return index;
     }
 
-    UINT DescriptorHeapAllocator::Allocate(
+    UINT DX12DescriptorHeapAllocator::Allocate(
         ID3D12Resource& resource,
         const D3D12_DEPTH_STENCIL_VIEW_DESC& desc
     ){
@@ -99,7 +99,7 @@ namespace Crowy
         return index;
     }
 
-    UINT DescriptorHeapAllocator::Allocate(
+    UINT DX12DescriptorHeapAllocator::Allocate(
         const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc
     ){
         auto index = acquireIndex();
@@ -111,7 +111,7 @@ namespace Crowy
         return index;
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapAllocator::GetCPUHandle(UINT index) const{
+    D3D12_CPU_DESCRIPTOR_HANDLE DX12DescriptorHeapAllocator::GetCPUHandle(UINT index) const{
         auto handle = heap->GetCPUDescriptorHandleForHeapStart();
         auto offset = index * descriptorSize;
         handle.ptr += offset;
@@ -119,7 +119,7 @@ namespace Crowy
         return handle;
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapAllocator::GetGPUHandle(UINT index) const{
+    D3D12_GPU_DESCRIPTOR_HANDLE DX12DescriptorHeapAllocator::GetGPUHandle(UINT index) const{
         auto handle = heap->GetGPUDescriptorHandleForHeapStart();
         auto offset = index * descriptorSize;
         handle.ptr += offset;
@@ -127,7 +127,7 @@ namespace Crowy
         return handle;
     }
 
-    UINT DescriptorHeapAllocator::acquireIndex(){
+    UINT DX12DescriptorHeapAllocator::acquireIndex(){
         if(freeIndexes.empty())
             throw std::runtime_error("DescriptorHeap full!");
 
@@ -136,7 +136,7 @@ namespace Crowy
         return index;
     }
 
-    void DescriptorHeapAllocator::Free(UINT index){
+    void DX12DescriptorHeapAllocator::Free(UINT index){
         retireQueue.Defer([this, index]{
         #if defined(_DEBUG) || !defined(NDEBUG)
             if(poisonMode){
@@ -150,7 +150,7 @@ namespace Crowy
     }
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-    void DescriptorHeapAllocator::poisonSlot(UINT index){
+    void DX12DescriptorHeapAllocator::poisonSlot(UINT index){
         // only CBV/SRV/UAV descriptors are ever read as a bindless index
         // from shader code; a null raw-buffer SRV is a safe, format-agnostic
         // overwrite regardless of which of the three previously lived here

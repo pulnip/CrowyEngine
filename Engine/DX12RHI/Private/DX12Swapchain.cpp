@@ -31,9 +31,9 @@ namespace Crowy
         CommandQueue& commandQueue,
         Factory& factory,
         const RHISwapchainCreateDesc& desc,
-        DescriptorHeapAllocator& cbvsrvuavHeap,
-        DescriptorHeapAllocator& rtvHeap,
-        DescriptorHeapAllocator& dsvHeap,
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+        DX12DescriptorHeapAllocator& rtvHeap,
+        DX12DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
         : RHISwapchain(desc.bufferDesc.format)

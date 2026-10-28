@@ -6,7 +6,7 @@
 #include <vector>
 #include <d3dx12/d3dx12_root_signature.h>
 #include <Psapi.h>
-#include "DescriptorHeapAllocator.hpp"
+#include "DX12DescriptorHeapAllocator.hpp"
 #include "DX12Allocator.hpp"
 #include "DX12Buffer.hpp"
 #include "DX12CommandList.hpp"
@@ -477,12 +477,12 @@ namespace Crowy
         f64 timestampFrequency = 0.0;
 
         // descriptor indices retire through here too, so this must outlive
-        // every DescriptorHeapAllocator below
+        // every DX12DescriptorHeapAllocator below
         RHIRetireQueue retireQueue;
 
-        DescriptorHeapAllocatorRAII cbvsrvuavHeap = nullptr;
-        DescriptorHeapAllocatorRAII rtvHeap = nullptr;
-        DescriptorHeapAllocatorRAII dsvHeap = nullptr;
+        DX12DescriptorHeapAllocatorRAII cbvsrvuavHeap = nullptr;
+        DX12DescriptorHeapAllocatorRAII rtvHeap = nullptr;
+        DX12DescriptorHeapAllocatorRAII dsvHeap = nullptr;
 
         RootSignatureRAII globalRootSignature;
         CommandSignatureRAII drawSignature;
@@ -520,19 +520,19 @@ namespace Crowy
             , device(::createDevice(*factory.Get()))
             , commandQueue(::createCommandQueue(*device.Get()))
             , timestampFrequency(::readTimestampFrequency(*commandQueue.Get()))
-            , cbvsrvuavHeap(std::make_unique<DescriptorHeapAllocator>(
+            , cbvsrvuavHeap(std::make_unique<DX12DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
                 UINT(65536),
                 retireQueue
             ))
-            , rtvHeap(std::make_unique<DescriptorHeapAllocator>(
+            , rtvHeap(std::make_unique<DX12DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
                 UINT(64),
                 retireQueue
             ))
-            , dsvHeap(std::make_unique<DescriptorHeapAllocator>(
+            , dsvHeap(std::make_unique<DX12DescriptorHeapAllocator>(
                 *device.Get(),
                 D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
                 UINT(32),

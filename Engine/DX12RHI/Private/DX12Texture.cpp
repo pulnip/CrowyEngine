@@ -1,6 +1,6 @@
 #include <d3dx12/d3dx12_core.h>
 #include "Assert.hpp"
-#include "DescriptorHeapAllocator.hpp"
+#include "DX12DescriptorHeapAllocator.hpp"
 #include "DX12Definitions.hpp"
 #include "EnumUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -53,9 +53,9 @@ namespace Crowy
     DX12Texture::DX12Texture(
         DX12Allocator& allocator,
         const RHITextureCreateDesc& desc,
-        DescriptorHeapAllocator& cbvsrvuavHeap,
-        DescriptorHeapAllocator& rtvHeap,
-        DescriptorHeapAllocator& dsvHeap,
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+        DX12DescriptorHeapAllocator& rtvHeap,
+        DX12DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
         : RHITexture(
@@ -148,9 +148,9 @@ namespace Crowy
         Swapchain& swapchain,
         RHIPixelFormat logicalFormat,
         UINT bufferIndex,
-        DescriptorHeapAllocator& cbvsrvuavHeap,
-        DescriptorHeapAllocator& rtvHeap,
-        DescriptorHeapAllocator& dsvHeap,
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+        DX12DescriptorHeapAllocator& rtvHeap,
+        DX12DescriptorHeapAllocator& dsvHeap,
         StrView name
     )
         // the swapchain hands buffers over in the Present layout

@@ -5,7 +5,7 @@
 #include <winscard.h>
 #include "Assert.hpp"
 #include "DX12Definitions.hpp"
-#include "DescriptorHeapAllocator.hpp"
+#include "DX12DescriptorHeapAllocator.hpp"
 #include "DX12Buffer.hpp"
 #include "DX12CommandList.hpp"
 #include "DX12Fence.hpp"
@@ -41,7 +41,7 @@ namespace{
 
     auto convert(
         Crowy::RHIColorAttachment desc,
-        Crowy::DescriptorHeapAllocator& rtvHeap
+        Crowy::DX12DescriptorHeapAllocator& rtvHeap
     ){
         using namespace Crowy;
 
@@ -73,7 +73,7 @@ namespace{
 
     auto convert(
         Crowy::RHIDepthAttachment desc,
-        Crowy::DescriptorHeapAllocator& dsvHeap
+        Crowy::DX12DescriptorHeapAllocator& dsvHeap
     ){
         using namespace Crowy;
 
@@ -159,9 +159,9 @@ namespace Crowy
         CommandSignature& drawSignature,
         CommandSignature& drawIndexedSignature,
         DX12Fence& serialFence,
-        DescriptorHeapAllocator& cbvsrvuavHeap,
-        DescriptorHeapAllocator& rtvHeap,
-        DescriptorHeapAllocator& dsvHeap
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+        DX12DescriptorHeapAllocator& rtvHeap,
+        DX12DescriptorHeapAllocator& dsvHeap
     )
         : commandQueue(commandQueue)
         , rootSignature(rootSignature)

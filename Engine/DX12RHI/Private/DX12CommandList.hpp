@@ -72,9 +72,9 @@ namespace Crowy
             PendingRelease<RHIBufferBarrier>
         > pendingBufferReleases;
 
-        DescriptorHeapAllocator& cbvsrvuavHeap;
-        DescriptorHeapAllocator& rtvHeap;
-        DescriptorHeapAllocator& dsvHeap;
+        DX12DescriptorHeapAllocator& cbvsrvuavHeap;
+        DX12DescriptorHeapAllocator& rtvHeap;
+        DX12DescriptorHeapAllocator& dsvHeap;
         // TODO. Add REAL bindless api
         DX12GraphicsPipelineState* currentGraphicsPSO = nullptr;
         DX12ComputePipelineState* currentComputePSO = nullptr;
@@ -90,9 +90,9 @@ namespace Crowy
             CommandSignature& drawSignature,
             CommandSignature& drawIndexedSignature,
             DX12Fence& serialFence,
-            DescriptorHeapAllocator& cbvsrvuavHeap,
-            DescriptorHeapAllocator& rtvHeap,
-            DescriptorHeapAllocator& dsvHeap
+            DX12DescriptorHeapAllocator& cbvsrvuavHeap,
+            DX12DescriptorHeapAllocator& rtvHeap,
+            DX12DescriptorHeapAllocator& dsvHeap
         );
         ~DX12CommandList();
 

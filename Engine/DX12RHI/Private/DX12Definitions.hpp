@@ -25,7 +25,7 @@ namespace Crowy
     using Buffer = ID3D12Resource;
     using Texture = ID3D12Resource;
     using DescriptorHeap = ID3D12DescriptorHeap;
-    class DescriptorHeapAllocator;
+    class DX12DescriptorHeapAllocator;
 
     using Blob = ID3DBlob;
     using Fence = ID3D12Fence;
@@ -51,7 +51,7 @@ namespace Crowy
     using BufferRAII = COMRAII<Buffer>;
     using TextureRAII = COMRAII<Texture>;
     using DescriptorHeapRAII = COMRAII<DescriptorHeap>;
-    using DescriptorHeapAllocatorRAII = RAII<DescriptorHeapAllocator>;
+    using DX12DescriptorHeapAllocatorRAII = RAII<DX12DescriptorHeapAllocator>;
     using ResourceState = D3D12_RESOURCE_STATES;
 
 	using BlobRAII = COMRAII<Blob>;
