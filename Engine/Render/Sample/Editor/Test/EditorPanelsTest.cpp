@@ -28,8 +28,7 @@ namespace
             EditorObject{
                 .name = "light/lamp-ne",
                 .group = "Lights · street_lamps",
-                .detail = "spot",
-                .kind = EditorObjectKind::Light
+                .detail = "spot"
             },
         };
     }

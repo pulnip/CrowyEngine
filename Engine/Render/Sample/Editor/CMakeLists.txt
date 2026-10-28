@@ -20,4 +20,6 @@ PUBLIC
     Crowy::Render
     Crowy::UI
     imgui
+TEST_DEPENDS
+    Crowy::RenderTestSupport
 )

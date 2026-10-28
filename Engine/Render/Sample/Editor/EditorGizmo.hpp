@@ -21,7 +21,6 @@ namespace Crowy
     struct GizmoMark;
     struct GizmoScreen;
 
-    inline constexpr usize GizmoHandleCount = 9;
     inline constexpr usize GizmoRingSamples = 64;
     // in arrow lengths
     inline constexpr f32 GizmoRingRadius = 1.25f;
@@ -42,6 +41,23 @@ namespace Crowy
         MoveZ,
         Ring,
     };
+
+    // clang-format off
+    CROWY_ENUM_BEGIN(GizmoHandle)
+        CROWY_ENUM_VALUE(None)
+        CROWY_ENUM_VALUE(ScaleX)
+        CROWY_ENUM_VALUE(ScaleY)
+        CROWY_ENUM_VALUE(ScaleZ)
+        CROWY_ENUM_VALUE(Scale)
+        CROWY_ENUM_VALUE(MoveX)
+        CROWY_ENUM_VALUE(MoveY)
+        CROWY_ENUM_VALUE(MoveZ)
+        CROWY_ENUM_VALUE(Ring)
+    CROWY_ENUM_END()
+    // clang-format on
+
+    inline constexpr usize GizmoHandleCount =
+        EnumTraits<GizmoHandle>::entries.size();
 
     // what an object's gizmo offers on its row's "position", "yaw" and "scale"
     enum class GizmoParts : u8 {
@@ -66,6 +82,27 @@ namespace Crowy
     inline constexpr bool isGizmoArrow(GizmoHandle handle) noexcept {
         return handle == GizmoHandle::MoveX || handle == GizmoHandle::MoveY ||
                handle == GizmoHandle::MoveZ;
+    }
+
+    // an arrow's or a per-axis square's axis; none for Scale and the ring
+    inline constexpr std::optional<usize> gizmoAxisIndex(
+        GizmoHandle handle
+    ) noexcept {
+        using enum GizmoHandle;
+
+        switch(handle) {
+        case MoveX:
+        case ScaleX:
+            return 0;
+        case MoveY:
+        case ScaleY:
+            return 1;
+        case MoveZ:
+        case ScaleZ:
+            return 2;
+        default:
+            return std::nullopt;
+        }
     }
 
     inline constexpr bool isGizmoSquare(GizmoHandle handle) noexcept {
@@ -478,28 +515,15 @@ namespace Crowy
             // never through zero: a mirrored row would turn its fronts away
             factor = snap ? std::max(snapTo(factor, SnapFactor), SnapFactor)
                           : std::max(factor, 0.01f);
-            using enum GizmoHandle;
-            edit.factor = drag.handle == ScaleX   ? Vec3{factor, 1.0f, 1.0f}
-                          : drag.handle == ScaleY ? Vec3{1.0f, factor, 1.0f}
-                          : drag.handle == ScaleZ
-                              ? Vec3{1.0f, 1.0f, factor}
-                              : Vec3{factor, factor, factor};
+            if(const auto axis = gizmoAxisIndex(drag.handle)) {
+                edit.factor = ones();
+                edit.factor[*axis] = factor;
+            }
+            else {
+                edit.factor = Vec3{factor, factor, factor};
+            }
         }
 
         return edit;
     }
-
-    // clang-format off
-    CROWY_ENUM_BEGIN(GizmoHandle)
-        CROWY_ENUM_VALUE(None)
-        CROWY_ENUM_VALUE(ScaleX)
-        CROWY_ENUM_VALUE(ScaleY)
-        CROWY_ENUM_VALUE(ScaleZ)
-        CROWY_ENUM_VALUE(Scale)
-        CROWY_ENUM_VALUE(MoveX)
-        CROWY_ENUM_VALUE(MoveY)
-        CROWY_ENUM_VALUE(MoveZ)
-        CROWY_ENUM_VALUE(Ring)
-    CROWY_ENUM_END()
-    // clang-format on
 }

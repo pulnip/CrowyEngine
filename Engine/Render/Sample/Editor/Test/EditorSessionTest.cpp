@@ -1,29 +1,27 @@
 #include <array>
 #include <cmath>
+#include <expected>
 #include <functional>
 #include <map>
 #include <numbers>
 #include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "ClassRegistry.hpp"
 #include "DOM.hpp"
 #include "EditorSession.hpp"
+#include "ExpectNear.hpp"
 
 using namespace Crowy;
+using testing::HasSubstr;
 
 namespace
 {
     constexpr f32 HalfPi = std::numbers::pi_v<f32> / 2;
     constexpr Vec2 Window{1920.0f, 1080.0f};
-
-    void expectNear(Vec3 actual, Vec3 expected, f32 tolerance) {
-        EXPECT_NEAR(actual.x, expected.x, tolerance);
-        EXPECT_NEAR(actual.y, expected.y, tolerance);
-        EXPECT_NEAR(actual.z, expected.z, tolerance);
-    }
 
     Vec4 project(const Mat4& m, Vec3 p) {
         const auto clip = m * Vec4{p.x, p.y, p.z, 1.0f};
@@ -81,8 +79,7 @@ namespace
             EditorObject{
                 .name = "light/lamp",
                 .group = "Lights",
-                .detail = "spot",
-                .kind = EditorObjectKind::Light
+                .detail = "spot"
             },
         };
         std::optional<LightHandle> lamp;
@@ -150,9 +147,12 @@ namespace
 
             return std::exchange(frame, now) != now;
         }
-        Str ReadScene(StrView file) override {
+        std::expected<void, Str> ReadScene(StrView file) override {
             reads.emplace_back(file);
-            return refusal;
+            if(!refusal.empty())
+                return std::unexpected(refusal);
+
+            return {};
         }
         Str SwapScene() override {
             ++swaps;
@@ -231,7 +231,7 @@ namespace
             session.State().cut = "down";
             session.Sync();
             session.SetViewport(Window);
-            session.Select(object);
+            session.SelectObject(object);
         }
 
         void Write() { port.exposures.at("editor").onDirty(); }
@@ -246,7 +246,7 @@ CROWY_STRUCT(FakeRow)
 CROWY_STRUCT_END(FakeRow)
 // clang-format on
 
-TEST(EditorCamera, PlanCutLooksStraightDownWithNorthUp) {
+TEST(EditorSessionCamera, PlanCutLooksStraightDownWithNorthUp) {
     FakeContent content;
     EditorCamera camera{content.cuts[1]};
 
@@ -263,7 +263,7 @@ TEST(EditorCamera, PlanCutLooksStraightDownWithNorthUp) {
     );
 }
 
-TEST(EditorCamera, PerspectiveCutKeepsItsFieldOfView) {
+TEST(EditorSessionCamera, PerspectiveCutKeepsItsFieldOfView) {
     FakeContent content;
     content.cuts[0].lens.fovY = 40.0f * std::numbers::pi_v<f32> / 180.0f;
     EditorCamera camera{content.cuts[0]};
@@ -294,7 +294,7 @@ TEST(EditorSession, AnUnknownCutIsRevertedWithTheChoices) {
     f.session.Sync();
 
     EXPECT_EQ(f.session.State().cut, "wide");
-    EXPECT_NE(f.session.State().status.find("wide, plan"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("wide, plan"));
     EXPECT_FLOAT_EQ(f.camera.position.y, 10.0f);
 }
 
@@ -387,12 +387,12 @@ TEST(EditorSession, ABareNameSelectsOnlyWhenUnique) {
     f.session.State().selected = "lamp";
     f.session.Sync();
     EXPECT_EQ(f.session.State().selected, "instance/tower");
-    EXPECT_NE(f.session.State().status.find("more than one"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("more than one"));
 }
 
 TEST(EditorSession, AnUnknownNameIsRevertedAndEmptyClears) {
     Fixture f;
-    f.session.Select(0);
+    f.session.SelectObject(0);
     f.session.State().selected = "instance/nope";
     f.session.Sync();
     EXPECT_EQ(f.session.State().selected, "instance/lamp");
@@ -404,7 +404,7 @@ TEST(EditorSession, AnUnknownNameIsRevertedAndEmptyClears) {
 
 TEST(EditorSession, APickOnEmptySpaceClears) {
     Fixture f;
-    f.session.Select(1);
+    f.session.SelectObject(1);
     f.session.Update({1920.0f, 1080.0f});
     f.session.PickAt({960.0f, 540.0f});
 
@@ -417,7 +417,7 @@ TEST(EditorSession, PickAtIsAPulse) {
     Fixture f;
     f.session.Update({1920.0f, 1080.0f});
     for(int write = 0; write < 2; ++write) {
-        f.session.Select(1);
+        f.session.SelectObject(1);
         f.session.State().pickAt = Vec2{960.0f, 540.0f};
         f.port.exposures.at("editor").onDirty();
 
@@ -432,11 +432,11 @@ TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
     Fixture f;
     EXPECT_FALSE(f.port.exposures.contains("selection"));
 
-    f.session.Select(0);
+    f.session.SelectObject(0);
     ASSERT_TRUE(f.port.exposures.contains("selection"));
     EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[0]);
 
-    f.session.Select(1);
+    f.session.SelectObject(1);
     EXPECT_EQ(f.port.exposures.size(), 4u);
     EXPECT_EQ(f.port.exposures.at("selection").target, &f.content.rows[1]);
 
@@ -445,7 +445,7 @@ TEST(EditorSession, TheSelectionIsExposedAndRepointed) {
     EXPECT_EQ(f.content.applies, 1u);
     EXPECT_TRUE(f.session.TakeInspectorDirty());
 
-    f.session.Select(std::nullopt);
+    f.session.SelectObject(std::nullopt);
     EXPECT_FALSE(f.port.exposures.contains("selection"));
 }
 
@@ -460,7 +460,7 @@ TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
         EditorSession
             session{camera, content, scene, chrome, [](Color) {}, port.Bind()};
         session.Start("wide", "day", "launch.json");
-        session.Select(0);
+        session.SelectObject(0);
         EXPECT_EQ(port.exposures.size(), 4u);
     }
     EXPECT_TRUE(port.exposures.empty());
@@ -490,7 +490,7 @@ TEST(EditorSession, AMarkerNearTheClickSelectsItsLight) {
 // a key rewrites rows the inspector may show, so the panel rebuilds
 TEST(EditorSession, AKeyChangeDirtiesTheInspector) {
     Fixture f;
-    f.session.Select(0);
+    f.session.SelectObject(0);
     f.session.TakeInspectorDirty();
 
     f.session.State().key = "night";
@@ -502,7 +502,7 @@ TEST(EditorSession, AKeyChangeDirtiesTheInspector) {
 // panel's widgets and the port can always call it
 TEST(EditorSession, ASectionWithoutApplyIsSafeToWrite) {
     Fixture f;
-    f.session.Select(2);
+    f.session.SelectObject(2);
     ASSERT_EQ(f.session.Inspected().size(), 1u);
     ASSERT_TRUE(static_cast<bool>(f.session.Inspected()[0].apply));
 
@@ -513,7 +513,7 @@ TEST(EditorSession, ASectionWithoutApplyIsSafeToWrite) {
 
 // a port script presses the X arrow where a person sees it and drags it to
 // its reach: one meter, through the selection's apply and the panel's rebuild
-TEST(EditorGizmo, APortGrabAndDragWriteTheRow) {
+TEST(EditorSessionGizmo, APortGrabAndDragWriteTheRow) {
     Fixture f;
     f.Hold(0);
     const auto aim = f.session.Gizmo().moveX;
@@ -540,7 +540,7 @@ TEST(EditorGizmo, APortGrabAndDragWriteTheRow) {
     EXPECT_EQ(f.content.applies, 2u);
 }
 
-TEST(EditorGizmo, TheMouseAndThePortLeaveTheSameRow) {
+TEST(EditorSessionGizmo, TheMouseAndThePortLeaveTheSameRow) {
     const auto perMeter = 81.0f / 0.8660254f;
 
     Fixture hand;
@@ -567,7 +567,7 @@ TEST(EditorGizmo, TheMouseAndThePortLeaveTheSameRow) {
 
 // None lets go where the drag stands; a handle no press took is refused;
 // cancel puts the row back bit for bit
-TEST(EditorGizmo, ReleaseAndCancel) {
+TEST(EditorSessionGizmo, ReleaseAndCancel) {
     Fixture f;
     f.Hold(0);
     const auto aim = f.session.Gizmo().moveX;
@@ -575,7 +575,7 @@ TEST(EditorGizmo, ReleaseAndCancel) {
     f.session.State().handle = GizmoHandle::MoveZ;
     f.Write();
     EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
-    EXPECT_NE(f.session.State().status.find("editor.grab"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("editor.grab"));
 
     ASSERT_TRUE(f.session.Grab(aim.grab));
     f.session.DragTo(aim.reach, false);
@@ -584,7 +584,7 @@ TEST(EditorGizmo, ReleaseAndCancel) {
     f.session.State().drag = aim.reach + Vec2{100.0f, 0.0f};
     f.Write();
     EXPECT_NEAR(f.content.rows[0].position.x, 1.0f, 1e-4f);
-    EXPECT_NE(f.session.State().status.find("editor.grab"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("editor.grab"));
 
     const auto start = f.content.rows[0].position;
     ASSERT_TRUE(f.session.Grab(f.session.Gizmo().moveX.grab));
@@ -597,7 +597,7 @@ TEST(EditorGizmo, ReleaseAndCancel) {
     EXPECT_FALSE(f.session.State().cancel);
 }
 
-TEST(EditorGizmo, TheGizmoLivesWithTheChrome) {
+TEST(EditorSessionGizmo, TheGizmoLivesWithTheChrome) {
     Fixture f;
     f.chrome = false;
     f.Hold(0);
@@ -605,7 +605,7 @@ TEST(EditorGizmo, TheGizmoLivesWithTheChrome) {
     f.session.State().grab = {1041.0f, 540.0f};
     f.Write();
     EXPECT_EQ(f.session.Held(), GizmoHandle::None);
-    EXPECT_NE(f.session.State().status.find("debug.showPanel"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("debug.showPanel"));
 
     f.chrome = true;
     f.session.Update(Window);
@@ -616,11 +616,11 @@ TEST(EditorGizmo, TheGizmoLivesWithTheChrome) {
     EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
 }
 
-TEST(EditorGizmo, AnotherSelectionLetsGo) {
+TEST(EditorSessionGizmo, AnotherSelectionLetsGo) {
     Fixture f;
     f.Hold(0);
     ASSERT_TRUE(f.session.Grab(f.session.Gizmo().moveX.grab));
-    f.session.Select(1);
+    f.session.SelectObject(1);
     EXPECT_EQ(f.session.Held(), GizmoHandle::None);
 
     f.session.State().drag = {1200.0f, 540.0f};
@@ -629,14 +629,14 @@ TEST(EditorGizmo, AnotherSelectionLetsGo) {
     EXPECT_EQ(f.content.rows[1].position, Vec3{});
 }
 
-TEST(EditorGizmo, ALightMovesOnlyAndABoxScalesPerAxis) {
+TEST(EditorSessionGizmo, ALightMovesOnlyAndABoxScalesPerAxis) {
     Fixture f;
     f.Hold(2);
     EXPECT_NE(f.session.Gizmo().moveX.grab, EditorNoPick);
     EXPECT_EQ(f.session.Gizmo().ring.grab, EditorNoPick);
     EXPECT_EQ(f.session.Gizmo().scale.grab, EditorNoPick);
 
-    f.session.Select(1);
+    f.session.SelectObject(1);
     EXPECT_EQ(f.session.Gizmo().scale.grab, EditorNoPick);
     const auto aim = f.session.Gizmo().scaleX;
     ASSERT_NE(aim.grab, EditorNoPick);
@@ -645,7 +645,7 @@ TEST(EditorGizmo, ALightMovesOnlyAndABoxScalesPerAxis) {
     expectNear(f.content.rows[1].scale, {2.0f, 1.0f, 1.0f}, 1e-3f);
 }
 
-TEST(EditorGizmo, TheRingWritesAWrappedYaw) {
+TEST(EditorSessionGizmo, TheRingWritesAWrappedYaw) {
     Fixture f;
     f.content.rows[0].yaw = 300.0f;
     f.Hold(0);
@@ -656,7 +656,7 @@ TEST(EditorGizmo, TheRingWritesAWrappedYaw) {
     EXPECT_NEAR(f.content.rows[0].yaw, 30.0f, 1e-3f);
 }
 
-TEST(EditorGizmo, AWriteToTheGizmoViewIsPutBack) {
+TEST(EditorSessionGizmo, AWriteToTheGizmoViewIsPutBack) {
     Fixture f;
     f.Hold(0);
     auto& exposure = f.port.exposures.at("gizmo");
@@ -668,7 +668,7 @@ TEST(EditorGizmo, AWriteToTheGizmoViewIsPutBack) {
 
 // the chrome hidden by the port, with no frame between, lets go before the
 // next drag can land, and the handle cannot be written back on
-TEST(EditorGizmo, HidingTheChromeLetsGoAtOnce) {
+TEST(EditorSessionGizmo, HidingTheChromeLetsGoAtOnce) {
     Fixture f;
     f.Hold(0);
     const auto aim = f.session.Gizmo().moveX;
@@ -709,7 +709,7 @@ TEST(EditorReload, WaitsForTheNextFrame) {
 
 TEST(EditorReload, KeepsTheSelectionByNameAtItsNewRow) {
     Fixture f;
-    f.session.Select(0);
+    f.session.SelectObject(0);
     const auto* before = f.port.exposures.at("selection").target;
     f.content.nextObjects =
         {f.content.objects[1], f.content.objects[0], f.content.objects[2]};
@@ -730,7 +730,7 @@ TEST(EditorReload, KeepsTheSelectionByNameAtItsNewRow) {
 
 TEST(EditorReload, AGoneSelectionClearsWithAStatus) {
     Fixture f;
-    f.session.Select(0);
+    f.session.SelectObject(0);
     f.content.nextObjects = {f.content.objects[1], f.content.objects[2]};
 
     f.session.Reload();
@@ -738,10 +738,7 @@ TEST(EditorReload, AGoneSelectionClearsWithAStatus) {
     EXPECT_FALSE(f.session.Selection().has_value());
     EXPECT_EQ(f.session.State().selected, "");
     EXPECT_FALSE(f.port.exposures.contains("selection"));
-    EXPECT_NE(
-        f.session.State().status.find("instance/lamp is gone"),
-        Str::npos
-    );
+    EXPECT_THAT(f.session.State().status, HasSubstr("instance/lamp is gone"));
 }
 
 // a file the content refuses leaves the rows, the hold and the port as they
@@ -766,11 +763,10 @@ TEST(EditorReload, ARefusalChangesNothing) {
     EXPECT_EQ(f.port.exposures.at("selection").target, target);
     EXPECT_EQ(f.session.State().scene, "launch.json");
     EXPECT_FALSE(f.session.State().reload);
-    EXPECT_EQ(
-        f.session.State().status.rfind("reload refused, revision 1 stays", 0),
-        0u
+    EXPECT_TRUE(
+        f.session.State().status.starts_with("reload refused, revision 1 stays")
     );
-    EXPECT_NE(f.session.State().status.find("unknown model"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("unknown model"));
 
     f.session.DragTo(aim.reach + Vec2{20.0f, 0.0f}, false);
     EXPECT_GT(f.content.rows[0].position.x, 1.1f);
@@ -789,12 +785,12 @@ TEST(EditorReload, LetsGoOfAHeldHandle) {
     EXPECT_EQ(f.session.Held(), GizmoHandle::None);
     EXPECT_EQ(f.session.State().handle, GizmoHandle::None);
     EXPECT_EQ(f.content.rows[0].position, Vec3{});
-    EXPECT_NE(f.session.State().status.find("let go of MoveX"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("let go of MoveX"));
 
     f.session.State().drag = aim.reach;
     f.Write();
     EXPECT_EQ(f.content.rows[0].position, Vec3{});
-    EXPECT_NE(f.session.State().status.find("editor.grab"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("editor.grab"));
 }
 
 TEST(EditorReload, KeepsTheKeyAndACutThatStillStands) {
@@ -821,7 +817,7 @@ TEST(EditorReload, KeepsTheKeyAndACutThatStillStands) {
     f.session.Advance(0.0);
     EXPECT_EQ(f.content.applied.back(), "day");
     EXPECT_EQ(f.session.State().key, "day");
-    EXPECT_NE(f.session.State().status.find("night is gone"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("night is gone"));
 }
 
 TEST(EditorReload, ReadsTheWrittenScene) {
@@ -863,7 +859,7 @@ TEST(EditorClock, PausedHoldsAndAWriteSeeks) {
     f.session.State().time = -1.0;
     f.Write();
     EXPECT_EQ(f.session.State().time, 0.32);
-    EXPECT_NE(f.session.State().status.find("0 or more"), Str::npos);
+    EXPECT_THAT(f.session.State().status, HasSubstr("0 or more"));
     f.session.State().time = std::nan("");
     f.Write();
     EXPECT_EQ(f.session.State().time, 0.32);

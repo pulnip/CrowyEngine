@@ -12,6 +12,11 @@ PRIVATE
 )
 
 if(CROWY_ENABLE_TEST)
+    crowy_declare_interface(RenderTestSupport
+        DIRECTORY TestSupport
+        DEPENDS Crowy::Render
+    )
+
     crowy_declare_test(Render
         DIRECTORY Test
         DEPENDS

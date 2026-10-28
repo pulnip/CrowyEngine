@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include <vector>
@@ -67,7 +68,7 @@ namespace
 
         PickMeshes Meshes() const {
             return [this](PrimitiveHandle handle) -> MeshList {
-                if(std::ranges::find(quads, handle) != quads.end())
+                if(std::ranges::contains(quads, handle))
                     return quadMeshes;
                 return boxMeshes;
             };

@@ -2,9 +2,10 @@
 
 #include <cmath>
 
+#include "ClassRegistry.hpp"
+
 namespace Crowy
 {
-    static_assert(GizmoHandleCount == EnumTraits<GizmoHandle>::entries.size());
 
     std::optional<GizmoLayout> layoutGizmo(
         const EditorCamera& camera,
@@ -84,4 +85,11 @@ namespace Crowy
 
         return layout;
     }
+
+    // clang-format off
+    CROWY_STRUCT(GizmoAim)
+        .AddProperty("grab", &GizmoAim::grab)
+        .AddProperty("reach", &GizmoAim::reach)
+    CROWY_STRUCT_END(GizmoAim)
+    // clang-format on
 }

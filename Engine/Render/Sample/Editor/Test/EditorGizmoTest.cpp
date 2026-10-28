@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "EditorGizmo.hpp"
+#include "ExpectNear.hpp"
 
 using namespace Crowy;
 
@@ -107,12 +108,6 @@ namespace
             grabGizmo(layout, handle, rayAt(camera, aim.grab)).value();
 
         return dragGizmo(drag, rayAt(camera, pixel), snap);
-    }
-
-    void expectNear(Vec3 actual, Vec3 expected, f32 tolerance) {
-        EXPECT_NEAR(actual.x, expected.x, tolerance);
-        EXPECT_NEAR(actual.y, expected.y, tolerance);
-        EXPECT_NEAR(actual.z, expected.z, tolerance);
     }
 }
 

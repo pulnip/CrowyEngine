@@ -1,5 +1,6 @@
 #pragma once
 
+#include <expected>
 #include <vector>
 
 #include "EditorSession.hpp"
@@ -71,7 +72,7 @@ namespace Crowy
         std::optional<LightHandle> LightOf(usize object) const override;
         MeshList MeshesOf(PrimitiveHandle primitive) const override;
         InspectSections Inspect(usize object) override;
-        Str ReadScene(StrView file) override;
+        std::expected<void, Str> ReadScene(StrView file) override;
         Str SwapScene() override;
         bool ApplyTime(f64 seconds) override;
 

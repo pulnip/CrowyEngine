@@ -174,7 +174,7 @@ namespace Crowy
         );
     }
 
-    Str StageContent::ReadScene(StrView file) {
+    std::expected<void, Str> StageContent::ReadScene(StrView file) {
         auto path = toPath(Str(file).c_str());
         if(path.is_relative())
             path = stage.document.root / path;
@@ -183,7 +183,7 @@ namespace Crowy
         }
         catch(const std::exception& error) {
             next.reset();
-            return error.what();
+            return std::unexpected(error.what());
         }
 
         return {};
@@ -255,8 +255,7 @@ namespace Crowy
                 EditorObject{
                     .name = std::format("instance/{}", instance.name),
                     .group = instance.area,
-                    .detail = instance.model,
-                    .kind = EditorObjectKind::Instance
+                    .detail = instance.model
                 },
                 bindings.instances[i],
                 std::nullopt
@@ -277,8 +276,7 @@ namespace Crowy
                 EditorObject{
                     .name = std::format("quad/{}", quad.name),
                     .group = quad.area,
-                    .detail = std::format("{} {}", quad.material, quad.image),
-                    .kind = EditorObjectKind::Quad
+                    .detail = std::format("{} {}", quad.material, quad.image)
                 },
                 bindings.quads[i],
                 std::nullopt
@@ -292,8 +290,7 @@ namespace Crowy
                     .name = std::format("light/{}", light.name),
                     .group = std::format("Lights · {}", light.group),
                     .detail =
-                        light.kind == StageLightKind::Spot ? "spot" : "point",
-                    .kind = EditorObjectKind::Light
+                        light.kind == StageLightKind::Spot ? "spot" : "point"
                 },
                 std::nullopt,
                 bindings.lights[i]

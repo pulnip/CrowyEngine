@@ -1,5 +1,6 @@
 #pragma once
 
+#include <expected>
 #include <functional>
 #include <optional>
 #include <span>
@@ -21,6 +22,7 @@ namespace Crowy
     struct EditorObject;
     struct EditorPort;
     struct InspectSection;
+    struct MarkedLight;
 
     using ClearColorSink = std::function<void(Color)>;
     using InspectSections = std::vector<InspectSection>;
@@ -29,18 +31,11 @@ namespace Crowy
         std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)>;
     using PortUnexpose = std::function<void(StrView)>;
 
-    enum class EditorObjectKind : u8 {
-        Instance,
-        Quad,
-        Light,
-    };
-
     struct EditorObject {
         // "<kind>/<name>", unique across the content
         Str name;
         Str group;
         Str detail;
-        EditorObjectKind kind = EditorObjectKind::Instance;
     };
 
     // an empty apply means the write lands in the scene's own row
@@ -71,6 +66,11 @@ namespace Crowy
     struct EditorPort {
         PortExpose expose;
         PortUnexpose unexpose;
+    };
+
+    struct MarkedLight {
+        usize object = 0;
+        LightHandle light;
     };
 
     // The panel, the keyboard and the port all write a field and call Sync,
@@ -117,7 +117,7 @@ namespace Crowy
         // the targets stay put until a reload
         virtual InspectSections Inspect(usize object) = 0;
         // changes nothing; SwapScene puts an accepted file in place
-        virtual Str ReadScene(StrView file) = 0;
+        virtual std::expected<void, Str> ReadScene(StrView file) = 0;
         // every target and apply Inspect gave dies; returns a summary line
         virtual Str SwapScene() = 0;
         // whether a row changed
@@ -200,7 +200,7 @@ namespace Crowy
 
         void SelectCut(usize index);
         void SelectKey(usize index);
-        void Select(std::optional<usize> object);
+        void SelectObject(std::optional<usize> object);
         void PickAt(Vec2 pixel);
         // whether a handle is held after it
         bool Grab(Vec2 pixel);
@@ -225,9 +225,12 @@ namespace Crowy
         u32 Revision() const noexcept { return applied.revision; }
         std::optional<GizmoLayout> SelectionGizmo() const;
         Str HeldChange() const;
+        // the lights whose handle the scene still holds, as markers draw them
+        std::vector<MarkedLight> MarkedLights() const;
 
     private:
         void exposeTargets();
+        void select(std::optional<usize> object);
         void leaveCut();
         bool applyCut();
         bool applyKey();
@@ -246,8 +249,6 @@ namespace Crowy
         void refreshGizmo();
         void wroteSection(usize section);
         std::optional<usize> markerAt(Vec2 pixel) const;
-        void report(Str status);
-        void reportSelection();
         void exposeSelection();
         void unexposeSelection();
     };

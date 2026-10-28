@@ -150,8 +150,7 @@ namespace Crowy
                     session->Cancel();
                 }
                 else {
-                    session->State().selected.clear();
-                    session->Sync();
+                    session->SelectObject(std::nullopt);
                 }
             }
             // a press ImGui wanted never arrives here; a look is not a press. A

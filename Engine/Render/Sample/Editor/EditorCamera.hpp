@@ -6,13 +6,6 @@
 
 namespace Crowy
 {
-    struct EditorCut;
-
-    inline constexpr bool sameCut(
-        const EditorCut& a,
-        const EditorCut& b
-    ) noexcept;
-
     struct EditorLens {
         // vertical, radians
         f32 fovY = 1.0f;
@@ -21,6 +14,8 @@ namespace Crowy
         bool orthographic = false;
         // half the vertical extent in meters, for an orthographic lens
         f32 orthoHalfHeight = 10.0f;
+
+        bool operator==(const EditorLens&) const = default;
     };
 
     // yaw clockwise from +Z, positive pitch looks down
@@ -30,20 +25,9 @@ namespace Crowy
         f32 yaw = 0.0f;
         f32 pitch = 0.0f;
         EditorLens lens;
+
+        bool operator==(const EditorCut&) const = default;
     };
-
-    inline constexpr bool sameCut(
-        const EditorCut& a,
-        const EditorCut& b
-    ) noexcept {
-        const auto& x = a.lens;
-        const auto& y = b.lens;
-
-        return a.name == b.name && a.position == b.position && a.yaw == b.yaw &&
-               a.pitch == b.pitch && x.fovY == y.fovY && x.nearZ == y.nearZ &&
-               x.farZ == y.farZ && x.orthographic == y.orthographic &&
-               x.orthoHalfHeight == y.orthoHalfHeight;
-    }
 
     class EditorCamera final: public Camera {
     public:

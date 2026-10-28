@@ -4,25 +4,29 @@
 #include <numbers>
 #include <utility>
 
+#include "ClassRegistry.hpp"
 #include "InputProvider.hpp"
 
 namespace Crowy
 {
+    namespace
+    {
+        constexpr f32 MaxPitch = std::numbers::pi_v<f32> / 2 - 0.01f;
+    }
+
     EditorCamera::EditorCamera(const EditorCut& cut) noexcept {
         Snap(cut);
     }
 
     void EditorCamera::ProcessInput(const InputProvider& input) {
-        constexpr auto HalfPi = std::numbers::pi_v<f32> / 2;
-
         if(input.IsKeyDown(MouseButton::RButton)) {
             const auto delta = input.GetMouseDPos();
             if(delta.x != 0.0f || delta.y != 0.0f) {
                 yaw += delta.x * lookSensitivity;
                 pitch = std::clamp(
                     pitch + delta.y * lookSensitivity,
-                    -HalfPi + 0.01f,
-                    HalfPi - 0.01f
+                    -MaxPitch,
+                    MaxPitch
                 );
                 moved = true;
                 RecomputeView();
@@ -91,4 +95,18 @@ namespace Crowy
     bool EditorCamera::TakeMoved() noexcept {
         return std::exchange(moved, false);
     }
+
+    // clang-format off
+    CROWY_STRUCT(EditorCamera)
+        .AddProperty("position", &EditorCamera::position)
+        .AddProperty("yaw", &EditorCamera::yaw)
+        .AddProperty("pitch", &EditorCamera::pitch)
+        .SetUIRange(-MaxPitch, MaxPitch)
+        .AddProperty("fovY", &EditorCamera::lens, &EditorLens::fovY)
+        .SetUIRange(0.2f, 2.4f)
+        .AddProperty("orthographic", &EditorCamera::lens, &EditorLens::orthographic)
+        .AddProperty("orthoHalfHeight", &EditorCamera::lens, &EditorLens::orthoHalfHeight)
+        .AddProperty("nearZ", &EditorCamera::lens, &EditorLens::nearZ)
+    CROWY_STRUCT_END(EditorCamera)
+    // clang-format on
 }

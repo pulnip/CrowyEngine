@@ -7,12 +7,20 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "PathUtil.hpp"
 #include "PropertyWalker.hpp"
 
 namespace Crowy
 {
     namespace
     {
+        constexpr std::array<ImU32, 3> AxisColors{
+            IM_COL32(235, 70, 70, 255),
+            IM_COL32(90, 205, 90, 255),
+            IM_COL32(80, 130, 245, 255),
+        };
+        constexpr ImU32 HighlightColor = IM_COL32(255, 196, 40, 255);
+
         ImVec2 toScreen(const Vec4& clip, Vec2 viewport) {
             return ImVec2{
                 (clip.x / clip.w + 1.0f) * 0.5f * viewport.x,
@@ -37,10 +45,8 @@ namespace Crowy
             const bool selected = session.Selection() == index;
             const auto label =
                 std::format("{}  ·  {}##{}", object.name, object.detail, index);
-            if(ImGui::Selectable(label.c_str(), selected)) {
-                session.State().selected = object.name;
-                session.Sync();
-            }
+            if(ImGui::Selectable(label.c_str(), selected))
+                session.SelectObject(index);
             if(reveal)
                 ImGui::SetScrollHereY(0.5f);
         }
@@ -102,10 +108,7 @@ namespace Crowy
             if(ImGui::Button(state.reload ? "Reload (next frame)" : "Reload"))
                 session.Reload();
             ImGui::SameLine();
-            const auto slash = state.scene.find_last_of("/\\");
-            const auto file = slash == Str::npos
-                                  ? state.scene
-                                  : state.scene.substr(slash + 1);
+            const auto file = toUTF8String(toPath(state.scene).filename());
             ImGui::Text("revision %u  %s", state.revision, file.c_str());
             if(ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", state.scene.c_str());
@@ -130,13 +133,8 @@ namespace Crowy
         const auto viewProj =
             session.Camera().ViewProj(viewport.x / viewport.y);
         auto* draw = ImGui::GetForegroundDrawList();
-        const auto& content = session.Content();
-        for(usize i = 0; i < content.Objects().size(); ++i) {
-            const auto light = content.LightOf(i);
-            if(!light || !scene.Lights().IsValid(*light))
-                continue;
-
-            const auto& row = scene.Lights().GetRef(*light);
+        for(const auto& [object, light]: session.MarkedLights()) {
+            const auto& row = scene.Lights().GetRef(light);
             if(const auto at =
                    projectToWindow(viewProj, row.position, viewport)) {
                 const ImVec2 center{at->x, at->y};
@@ -170,17 +168,19 @@ namespace Crowy
         const auto viewport = session.Viewport();
         const auto viewProj = camera.ViewProj(viewport.x / viewport.y);
         auto* draw = ImGui::GetForegroundDrawList();
-        const auto color = IM_COL32(255, 196, 40, 255);
 
         if(const auto light = session.Content().LightOf(*selection)) {
+            if(!scene.Lights().IsValid(*light))
+                return;
+
             const auto& row = scene.Lights().GetRef(*light);
             if(const auto at =
                    projectToWindow(viewProj, row.position, viewport)) {
                 const ImVec2 center{at->x, at->y};
-                draw->AddCircle(center, 10.0f, color, 0, 2.0f);
+                draw->AddCircle(center, 10.0f, HighlightColor, 0, 2.0f);
                 draw->AddText(
                     ImVec2(center.x + 12.0f, center.y - 8.0f),
-                    color,
+                    HighlightColor,
                     session.State().selected.c_str()
                 );
             }
@@ -217,7 +217,7 @@ namespace Crowy
                     draw->AddLine(
                         toScreen(from, viewport),
                         toScreen(to, viewport),
-                        color,
+                        HighlightColor,
                         2.0f
                     );
             }
@@ -225,7 +225,7 @@ namespace Crowy
         if(corners[0].z >= 0.0f)
             draw->AddText(
                 toScreen(corners[0], viewport),
-                color,
+                HighlightColor,
                 session.State().selected.c_str()
             );
     }
@@ -244,7 +244,7 @@ namespace Crowy
                          : io.WantCaptureMouse ? None
                                                : hoverGizmo(screen, mouse);
         const auto colorOf = [&](GizmoHandle handle, ImU32 color) {
-            return handle == lit ? IM_COL32(255, 196, 40, 255) : color;
+            return handle == lit ? HighlightColor : color;
         };
         const auto point = [](Vec2 p) {
             return ImVec2{p.x, p.y};
@@ -263,16 +263,13 @@ namespace Crowy
                 2.0f
             );
         }
-        for(const auto [handle, color]: {
-                std::pair{MoveX, IM_COL32(235, 70, 70, 255)},
-                std::pair{MoveY, IM_COL32(90, 205, 90, 255)},
-                std::pair{MoveZ, IM_COL32(80, 130, 245, 255)},
-            }) {
+        for(const auto handle: {MoveX, MoveY, MoveZ}) {
             const auto& mark = screen.marks[static_cast<usize>(handle)];
             if(!mark.shown)
                 continue;
 
-            const auto drawn = colorOf(handle, color);
+            const auto drawn =
+                colorOf(handle, AxisColors[*gizmoAxisIndex(handle)]);
             const auto along = mark.to - screen.pivot;
             const auto length = norm(along);
             draw->AddLine(point(screen.pivot), point(mark.to), drawn, 3.0f);
@@ -294,11 +291,9 @@ namespace Crowy
             if(!mark.shown)
                 continue;
 
-            const auto color = handle == ScaleX   ? IM_COL32(235, 70, 70, 255)
-                               : handle == ScaleY ? IM_COL32(90, 205, 90, 255)
-                               : handle == ScaleZ
-                                   ? IM_COL32(80, 130, 245, 255)
-                                   : IM_COL32(240, 240, 240, 255);
+            const auto axis = gizmoAxisIndex(handle);
+            const auto color =
+                axis ? AxisColors[*axis] : IM_COL32(240, 240, 240, 255);
             const Vec2 half{GizmoSquarePoints, GizmoSquarePoints};
             draw->AddRectFilled(
                 point(mark.from - half),
@@ -310,7 +305,7 @@ namespace Crowy
         if(const auto change = session.HeldChange(); !change.empty())
             draw->AddText(
                 ImVec2{mouse.x + 16.0f, mouse.y + 12.0f},
-                IM_COL32(255, 196, 40, 255),
+                HighlightColor,
                 change.c_str()
             );
     }
