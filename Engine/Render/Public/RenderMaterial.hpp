@@ -8,6 +8,7 @@
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
+#include "RenderEnums.h"
 #include "RenderTexture.hpp"
 #include "ShadingModel.hpp"
 
@@ -61,12 +62,8 @@ namespace Crowy
     static_assert(offsetof(MaterialData, flags) == 104);
     static_assert(std::is_trivially_copyable_v<MaterialData>);
 
-    // MaterialData::flags, mirrored in Engine/Shader/SceneData.slang
-    enum class MaterialFlags : u32 {
-        None = 0,
-        // lights reach the surface unshadowed, as on a painted backdrop
-        NoShadowReceive = 1u << 0,
-    };
+    // MaterialData::flags
+    enum class MaterialFlags : u32 { CROWY_MATERIAL_FLAGS(CROWY_ENUMERATOR) };
 
     // the textures a material samples; the renderer turns them into the
     // row's map IDs each frame, so a removed texture reads as none

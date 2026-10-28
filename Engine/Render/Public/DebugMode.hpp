@@ -2,30 +2,17 @@
 
 #include "EnumUtil.hpp"
 #include "Primitives.hpp"
+#include "RenderEnums.h"
 
 namespace Crowy
 {
     // what a view shows instead of the plain lit picture, carried as
-    // ViewData::debugMode; mirrored by the constants in
-    // Engine/Shader/DebugView.slang
-    enum class DebugMode : u32 {
-        Lit,
-        Unshaded,
-        Normals,
-        Depth,
-        Overdraw,
-        // the lights' shadow term: 1 white, 0 black
-        Shadow,
-    };
+    // ViewData::debugMode
+    enum class DebugMode : u32 { CROWY_DEBUG_MODES(CROWY_ENUMERATOR) };
 
     // clang-format off
     CROWY_ENUM_BEGIN(DebugMode)
-        CROWY_ENUM_VALUE(Lit)
-        CROWY_ENUM_VALUE(Unshaded)
-        CROWY_ENUM_VALUE(Normals)
-        CROWY_ENUM_VALUE(Depth)
-        CROWY_ENUM_VALUE(Overdraw)
-        CROWY_ENUM_VALUE(Shadow)
+        CROWY_DEBUG_MODES(CROWY_ENUM_ENTRY)
     CROWY_ENUM_END()
     // clang-format on
 }

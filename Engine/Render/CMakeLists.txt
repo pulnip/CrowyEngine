@@ -10,6 +10,11 @@ PUBLIC
 PRIVATE
     Crowy::Log
 )
+# RenderEnums.h, which the shaders read too
+target_include_directories(CrowyRender
+PUBLIC
+    ${PROJECT_SOURCE_DIR}/Engine/Shader
+)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_interface(RenderTestSupport

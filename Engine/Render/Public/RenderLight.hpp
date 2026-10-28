@@ -7,6 +7,7 @@
 #include "LinearAlgebra.hpp"
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
+#include "RenderEnums.h"
 
 namespace Crowy
 {
@@ -15,37 +16,22 @@ namespace Crowy
     using LightHandle = GenericHandle<LightSnapshot>;
     using LightTable = PackedTable<LightSnapshot>;
 
-    // no shadow-map slot: the shader skips its lookup
-    inline constexpr u32 NoShadow = ~0u;
+    inline constexpr u32 NoShadow = CROWY_NO_SHADOW;
 
-    // mirrored by the constants in Engine/Shader/Lighting.slang
-    enum class LightKind : u32 {
-        Directional,
-        Point,
-        Spot,
-    };
+    enum class LightKind : u32 { CROWY_LIGHT_KINDS(CROWY_ENUMERATOR) };
 
     // clang-format off
     CROWY_ENUM_BEGIN(LightKind)
-        CROWY_ENUM_VALUE(Directional)
-        CROWY_ENUM_VALUE(Point)
-        CROWY_ENUM_VALUE(Spot)
+        CROWY_LIGHT_KINDS(CROWY_ENUM_ENTRY)
     CROWY_ENUM_END()
     // clang-format on
 
-    // how a receiver reads the shadow map; mirrored by the constants in
-    // Engine/Shader/Lighting.slang
-    enum class ShadowFilter : u32 {
-        // one texel, one compare: exactly 0 or 1
-        Hard,
-        // four compares weighted bilinearly: a soft edge a texel wide
-        Pcf2x2,
-    };
+    // how a receiver reads the shadow map
+    enum class ShadowFilter : u32 { CROWY_SHADOW_FILTERS(CROWY_ENUMERATOR) };
 
     // clang-format off
     CROWY_ENUM_BEGIN(ShadowFilter)
-        CROWY_ENUM_VALUE(Hard)
-        CROWY_ENUM_VALUE(Pcf2x2)
+        CROWY_SHADOW_FILTERS(CROWY_ENUM_ENTRY)
     CROWY_ENUM_END()
     // clang-format on
 

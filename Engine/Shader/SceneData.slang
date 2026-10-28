@@ -41,9 +41,6 @@ struct MaterialData{
     uint _pad;
 };
 
-// MaterialData.flags
-static const uint MaterialFlagNoShadowReceive = 1;
-
 // a row of the frame's texture table; map ID n reads row n - 1
 struct TextureData{
     DescriptorHandle<Texture2D> texture;

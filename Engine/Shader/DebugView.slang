@@ -3,13 +3,7 @@
 // A view uniform branch rather than a material swap, as UE's
 // UnlitViewmodeMask does: a swap would split VS and FS across files.
 
-// mirror of DebugMode in Engine/Render/Public/DebugMode.hpp
-static const uint DebugModeLit = 0;
-static const uint DebugModeUnshaded = 1;
-static const uint DebugModeNormals = 2;
-static const uint DebugModeDepth = 3;
-static const uint DebugModeOverdraw = 4;
-static const uint DebugModeShadow = 5;
+#include "RenderEnums.h"
 
 // Additive saturation turns layer counts into a heat ramp: red saturates at
 // 5 layers, green at 10, blue at 20.

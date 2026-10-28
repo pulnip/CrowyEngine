@@ -4,20 +4,11 @@
 // through sampleLight and never sees the light buffer or the shadow map.
 
 #include "ClipToTexture.slang"
+#include "RenderEnums.h"
 #include "SceneData.slang"
 // LightSample: a module cannot see its importer's includes, so the type a
 // shading model reads lives in the module both import
 import Shading;
-
-// mirror of LightKind and NoShadow in Engine/Render/Public/RenderLight.hpp
-static const uint LightKindDirectional = 0;
-static const uint LightKindPoint = 1;
-static const uint LightKindSpot = 2;
-static const uint NoShadow = 0xFFFFFFFF;
-
-// mirror of ShadowFilter in Engine/Render/Public/RenderLight.hpp
-static const uint ShadowFilterHard = 0;
-static const uint ShadowFilterPcf2x2 = 1;
 
 uint lightCount() {
     return pass.lightCount;
