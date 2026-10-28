@@ -23,7 +23,11 @@ namespace Crowy
 
     // a world point in window points from the top-left, or nothing behind
     // the near plane
-    inline constexpr std::optional<Vec2> projectToWindow(const Mat4& viewProj, Vec3 point, Vec2 viewport) {
+    inline constexpr std::optional<Vec2> projectToWindow(
+        const Mat4& viewProj,
+        Vec3 point,
+        Vec2 viewport
+    ) {
         const auto clip = viewProj * Vec4{point.x, point.y, point.z, 1.0f};
         if(!(clip.z >= 0.0f && clip.w > 0.0f))
             return std::nullopt;
@@ -62,11 +66,19 @@ namespace Crowy
 
     // the ray from a pixel (window points from the top-left) through the
     // camera, either lens; nothing for a viewport without area
-    std::optional<Ray3D> rayThroughPixel(const EditorCamera& camera, Vec2 pixel, Vec2 viewport);
+    std::optional<Ray3D> rayThroughPixel(
+        const EditorCamera& camera,
+        Vec2 pixel,
+        Vec2 viewport
+    );
 
     // the nearest front-facing triangle of a visible primitive along the ray,
     // testing boxes nearest first and stopping past the best hit
-    std::optional<PickHit> pickScene(const RenderScene& scene, const Ray3D& ray, const PickMeshes& meshes);
+    std::optional<PickHit> pickScene(
+        const RenderScene& scene,
+        const Ray3D& ray,
+        const PickMeshes& meshes
+    );
 
     struct PickHit {
         PrimitiveHandle primitive;

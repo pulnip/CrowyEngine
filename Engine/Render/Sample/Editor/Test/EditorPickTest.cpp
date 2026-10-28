@@ -17,15 +17,22 @@ namespace
     constexpr Vec2 Viewport{1920.0f, 1080.0f};
 
     EditorCamera perspectiveCamera() {
-        return EditorCamera{EditorCut{.name = "test", .lens = {.fovY = std::numbers::pi_v<f32> / 3}}};
+        return EditorCamera{EditorCut{
+            .name = "test",
+            .lens = {.fovY = std::numbers::pi_v<f32> / 3}
+        }};
     }
 
     Vec2 projectToPixel(const EditorCamera& camera, Vec3 point) {
-        const auto clip = camera.ViewProj(Viewport.x / Viewport.y) * Vec4{point.x, point.y, point.z, 1.0f};
+        const auto clip = camera.ViewProj(Viewport.x / Viewport.y) *
+                          Vec4{point.x, point.y, point.z, 1.0f};
         const auto ndcX = clip.x / clip.w;
         const auto ndcY = clip.y / clip.w;
 
-        return Vec2{(ndcX + 1.0f) * 0.5f * Viewport.x, (1.0f - ndcY) * 0.5f * Viewport.y};
+        return Vec2{
+            (ndcX + 1.0f) * 0.5f * Viewport.x,
+            (1.0f - ndcY) * 0.5f * Viewport.y
+        };
     }
 
     // primitives of one mesh each, every one drawing `mesh`
@@ -38,13 +45,20 @@ namespace
         MeshPointers quadMeshes{&quad};
         std::vector<PrimitiveHandle> quads;
 
-        PrimitiveHandle Add(const MeshData& mesh, Vec3 position, Vec3 scale = ones()) {
+        PrimitiveHandle Add(
+            const MeshData& mesh,
+            Vec3 position,
+            Vec3 scale = ones()
+        ) {
             const auto handle = scene.Meshes().Add(MeshResource{});
-            const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{
-                .localToWorld = translateMat(position) * scaleMat(scale),
-                .worldBounds = AABB3D{.center = position, .halfScale = 0.5f * scale},
-                .mesh = handle
-            });
+            const auto primitive = scene.Primitives().Add(
+                PrimitiveSnapshot{
+                    .localToWorld = translateMat(position) * scaleMat(scale),
+                    .worldBounds =
+                        AABB3D{.center = position, .halfScale = 0.5f * scale},
+                    .mesh = handle
+                }
+            );
             if(&mesh == &quad)
                 quads.push_back(primitive);
 
@@ -86,16 +100,48 @@ TEST(EditorPick, NoRayThroughAViewportWithoutArea) {
 TEST(EditorPick, TheNearestPointOnScreenWithinTheRadius) {
     const auto camera = perspectiveCamera();
     const auto viewProj = camera.ViewProj(Viewport.x / Viewport.y);
-    const std::vector<Vec3> points{{0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, 10.0f}, {0.1f, 0.0f, 10.0f}};
+    const std::vector<Vec3> points{
+        {0.0f, 0.0f, -5.0f},
+        {0.0f, 0.0f, 10.0f},
+        {0.1f, 0.0f, 10.0f}
+    };
     const auto first = projectToPixel(camera, points[1]);
     const auto second = projectToPixel(camera, points[2]);
     ASSERT_GT(second.x - first.x, 4.0f);
 
-    EXPECT_EQ(nearestOnScreen(viewProj, Viewport, first + Vec2{1.0f, 0.0f}, points, 8.0f), 1u);
-    EXPECT_EQ(nearestOnScreen(viewProj, Viewport, second + Vec2{1.0f, 0.0f}, points, 8.0f), 2u);
-    EXPECT_FALSE(nearestOnScreen(viewProj, Viewport, second + Vec2{40.0f, 0.0f}, points, 8.0f));
-    // the point behind the camera lands on the center when mirrored; it never counts
-    EXPECT_NE(nearestOnScreen(viewProj, Viewport, 0.5f * Viewport, points, 8.0f), 0u);
+    EXPECT_EQ(
+        nearestOnScreen(
+            viewProj,
+            Viewport,
+            first + Vec2{1.0f, 0.0f},
+            points,
+            8.0f
+        ),
+        1u
+    );
+    EXPECT_EQ(
+        nearestOnScreen(
+            viewProj,
+            Viewport,
+            second + Vec2{1.0f, 0.0f},
+            points,
+            8.0f
+        ),
+        2u
+    );
+    EXPECT_FALSE(nearestOnScreen(
+        viewProj,
+        Viewport,
+        second + Vec2{40.0f, 0.0f},
+        points,
+        8.0f
+    ));
+    // the point behind the camera lands on the center when mirrored; it never
+    // counts
+    EXPECT_NE(
+        nearestOnScreen(viewProj, Viewport, 0.5f * Viewport, points, 8.0f),
+        0u
+    );
 }
 
 // a point along the pixel's ray projects back onto the same pixel, either lens
@@ -109,10 +155,14 @@ TEST(EditorPick, RayAndProjectionAgree) {
     for(const auto orthographic: {false, true}) {
         camera.lens.orthographic = orthographic;
         camera.lens.orthoHalfHeight = 8.0f;
-        for(const auto pixel: {Vec2{10.0f, 20.0f}, Vec2{960.0f, 540.0f}, Vec2{1900.0f, 1000.0f}}) {
+        for(const auto pixel:
+            {Vec2{10.0f, 20.0f},
+             Vec2{960.0f, 540.0f},
+             Vec2{1900.0f, 1000.0f}}) {
             const auto ray = rayThroughPixel(camera, pixel, Viewport);
             ASSERT_TRUE(ray.has_value());
-            const auto back = projectToPixel(camera, ray->origin + ray->direction * 12.0f);
+            const auto back =
+                projectToPixel(camera, ray->origin + ray->direction * 12.0f);
             EXPECT_NEAR(back.x, pixel.x, 0.5f) << orthographic;
             EXPECT_NEAR(back.y, pixel.y, 0.5f) << orthographic;
         }
@@ -134,11 +184,18 @@ TEST(EditorPick, TheNearerBoxWins) {
 // the bounds, misses the triangles, and reaches the box behind
 TEST(EditorPick, BoundsHitTrianglesMissFallsThrough) {
     Scene s;
-    const auto plate = s.scene.Primitives().Add(PrimitiveSnapshot{
-        .localToWorld = translateMat({0.0f, 0.0f, 3.0f}) * scaleMat({0.5f, 0.5f, 1.0f}),
-        .worldBounds = AABB3D{.center = {0.0f, 0.0f, 3.0f}, .halfScale = {2.0f, 2.0f, 0.1f}},
-        .mesh = s.scene.Meshes().Add(MeshResource{})
-    });
+    const auto plate = s.scene.Primitives().Add(
+        PrimitiveSnapshot{
+            .localToWorld =
+                translateMat({0.0f, 0.0f, 3.0f}) * scaleMat({0.5f, 0.5f, 1.0f}),
+            .worldBounds =
+                AABB3D{
+                    .center = {0.0f, 0.0f, 3.0f},
+                    .halfScale = {2.0f, 2.0f, 0.1f}
+                },
+            .mesh = s.scene.Meshes().Add(MeshResource{})
+        }
+    );
     s.quads.push_back(plate);
     const auto behind = s.Add(s.box, {1.5f, 0.0f, 8.0f}, {1.0f, 1.0f, 1.0f});
 
@@ -154,7 +211,9 @@ TEST(EditorPick, AQuadIsPickedFromItsFrontOnly) {
     const auto front = s.Pick(Ray3D{.origin = {0.2f, 0.1f, 0.0f}});
     ASSERT_TRUE(front.has_value());
     EXPECT_EQ(front->primitive, quad);
-    EXPECT_FALSE(s.Pick(Ray3D{.origin = {0.2f, 0.1f, 8.0f}, .direction = {0.0f, 0.0f, -1.0f}}));
+    EXPECT_FALSE(s.Pick(
+        Ray3D{.origin = {0.2f, 0.1f, 8.0f}, .direction = {0.0f, 0.0f, -1.0f}}
+    ));
 }
 
 TEST(EditorPick, AHiddenRowIsNotPicked) {
@@ -171,7 +230,8 @@ TEST(EditorPick, AHiddenRowIsNotPicked) {
 // the landmark: a unit box stretched per axis, picked at its analytic depth
 TEST(EditorPick, AStretchedBoxAtItsAnalyticDistance) {
     Scene s;
-    const auto landmark = s.Add(s.box, {18.65f, 17.25f, 18.65f}, {14.7f, 34.2f, 14.7f});
+    const auto landmark =
+        s.Add(s.box, {18.65f, 17.25f, 18.65f}, {14.7f, 34.2f, 14.7f});
 
     const auto hit = s.Pick(Ray3D{.origin = {18.65f, 10.0f, -20.0f}});
     ASSERT_TRUE(hit.has_value());

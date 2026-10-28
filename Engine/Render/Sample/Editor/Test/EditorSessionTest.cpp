@@ -43,14 +43,20 @@ namespace
     class FakeContent final: public EditorContent {
     public:
         std::vector<EditorCut> cuts{
-            EditorCut{.name = "wide", .position = {0.0f, 10.0f, -20.0f}, .yaw = 0.0f, .pitch = 0.3f},
+            EditorCut{
+                .name = "wide",
+                .position = {0.0f, 10.0f, -20.0f},
+                .yaw = 0.0f,
+                .pitch = 0.3f
+            },
             EditorCut{
                 .name = "plan",
                 .position = {0.0f, 120.0f, 0.0f},
                 .pitch = HalfPi,
                 .lens = {.orthographic = true, .orthoHalfHeight = 52.0f}
             },
-            // 30 degrees above the origin at 10 m: an arrow there is 0.8660254 m
+            // 30 degrees above the origin at 10 m: an arrow there is 0.8660254
+            // m
             EditorCut{
                 .name = "down",
                 .position = {0.0f, 5.0f, -8.660254f},
@@ -62,9 +68,22 @@ namespace
         std::vector<Str> applied;
 
         std::vector<EditorObject> objects{
-            EditorObject{.name = "instance/lamp", .group = "Street", .detail = "Lamp"},
-            EditorObject{.name = "instance/tower", .group = "NE", .detail = "Box"},
-            EditorObject{.name = "light/lamp", .group = "Lights", .detail = "spot", .kind = EditorObjectKind::Light},
+            EditorObject{
+                .name = "instance/lamp",
+                .group = "Street",
+                .detail = "Lamp"
+            },
+            EditorObject{
+                .name = "instance/tower",
+                .group = "NE",
+                .detail = "Box"
+            },
+            EditorObject{
+                .name = "light/lamp",
+                .group = "Lights",
+                .detail = "spot",
+                .kind = EditorObjectKind::Light
+            },
         };
         std::optional<LightHandle> lamp;
         // stands in for the content's rows
@@ -87,11 +106,16 @@ namespace
         std::span<const Str> Keys() const override { return keys; }
         Color ApplyKey(StrView key) override {
             applied.emplace_back(key);
-            return key == "day" ? Color{0.5f, 0.6f, 0.7f, 1.0f} : Color{0.0f, 0.0f, 0.1f, 1.0f};
+            return key == "day" ? Color{0.5f, 0.6f, 0.7f, 1.0f}
+                                : Color{0.0f, 0.0f, 0.1f, 1.0f};
         }
         EditorObjects Objects() const override { return objects; }
-        std::optional<usize> ObjectOf(PrimitiveHandle) const override { return std::nullopt; }
-        std::optional<PrimitiveHandle> PrimitiveOf(usize) const override { return std::nullopt; }
+        std::optional<usize> ObjectOf(PrimitiveHandle) const override {
+            return std::nullopt;
+        }
+        std::optional<PrimitiveHandle> PrimitiveOf(usize) const override {
+            return std::nullopt;
+        }
         std::optional<LightHandle> LightOf(usize object) const override {
             return object == 2 ? lamp : std::nullopt;
         }
@@ -99,10 +123,16 @@ namespace
         InspectSections Inspect(usize object) override {
             DirtyCallback apply;
             if(object != 2)
-                apply = [this] { ++applies; };
+                apply = [this] {
+                    ++applies;
+                };
             constexpr std::array Parts{
                 combine(GizmoParts::Move, GizmoParts::Turn, GizmoParts::Scale),
-                combine(GizmoParts::Move, GizmoParts::Turn, GizmoParts::ScaleAxes),
+                combine(
+                    GizmoParts::Move,
+                    GizmoParts::Turn,
+                    GizmoParts::ScaleAxes
+                ),
                 GizmoParts::Move
             };
 
@@ -128,7 +158,8 @@ namespace
             ++swaps;
             if(!nextObjects.empty())
                 objects = std::move(nextObjects);
-            rows = nextRows.empty() ? std::vector<FakeRow>(objects.size()) : std::move(nextRows);
+            rows = nextRows.empty() ? std::vector<FakeRow>(objects.size())
+                                    : std::move(nextRows);
             if(!nextCuts.empty())
                 cuts = std::move(nextCuts);
             if(!nextKeys.empty())
@@ -149,9 +180,21 @@ namespace
 
         EditorPort Bind() {
             return EditorPort{
-                .expose = [this](StrView name, void* target, const TypeDesc&, DirtyCallback onDirty) {
-                    exposures.insert_or_assign(Str(name), Exposure{.target = target, .onDirty = std::move(onDirty)});
-                },
+                .expose =
+                    [this](
+                        StrView name,
+                        void* target,
+                        const TypeDesc&,
+                        DirtyCallback onDirty
+                    ) {
+                        exposures.insert_or_assign(
+                            Str(name),
+                            Exposure{
+                                .target = target,
+                                .onDirty = std::move(onDirty)
+                            }
+                        );
+                    },
                 .unexpose = [this](StrView name) { exposures.erase(Str(name)); }
             };
         }
@@ -168,10 +211,18 @@ namespace
         EditorCamera camera{content.cuts.front()};
         Color clear{};
         bool chrome = true;
-        EditorSession session{camera, content, scene, chrome, [this](Color color) { clear = color; }, port.Bind()};
+        EditorSession session{
+            camera,
+            content,
+            scene,
+            chrome,
+            [this](Color color) { clear = color; },
+            port.Bind()
+        };
 
         Fixture() {
-            content.lamp = scene.Lights().Add(LightSnapshot{.position = LampPosition});
+            content.lamp =
+                scene.Lights().Add(LightSnapshot{.position = LampPosition});
             session.Start("wide", "day", "launch.json");
         }
 
@@ -183,9 +234,7 @@ namespace
             session.Select(object);
         }
 
-        void Write() {
-            port.exposures.at("editor").onDirty();
-        }
+        void Write() { port.exposures.at("editor").onDirty(); }
     };
 }
 
@@ -207,7 +256,11 @@ TEST(EditorCamera, PlanCutLooksStraightDownWithNorthUp) {
     // edge 52 * 16/9 m east
     const auto viewProj = camera.ViewProj(16.0f / 9.0f);
     EXPECT_NEAR(project(viewProj, {0.0f, 0.0f, 52.0f}).y, 1.0f, 1e-4f);
-    EXPECT_NEAR(project(viewProj, {52.0f * 16.0f / 9.0f, 0.0f, 0.0f}).x, 1.0f, 1e-4f);
+    EXPECT_NEAR(
+        project(viewProj, {52.0f * 16.0f / 9.0f, 0.0f, 0.0f}).x,
+        1.0f,
+        1e-4f
+    );
 }
 
 TEST(EditorCamera, PerspectiveCutKeepsItsFieldOfView) {
@@ -216,7 +269,11 @@ TEST(EditorCamera, PerspectiveCutKeepsItsFieldOfView) {
     EditorCamera camera{content.cuts[0]};
 
     const auto projection = camera.Projection(16.0f / 9.0f);
-    EXPECT_NEAR(projection[1][1], 1.0f / std::tan(20.0f * std::numbers::pi_v<f32> / 180.0f), 1e-4f);
+    EXPECT_NEAR(
+        projection[1][1],
+        1.0f / std::tan(20.0f * std::numbers::pi_v<f32> / 180.0f),
+        1e-4f
+    );
     // positive pitch looks down
     EXPECT_LT(camera.Forward().y, 0.0f);
 }
@@ -402,7 +459,8 @@ TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     EditorCamera camera{content.cuts.front()};
     {
         const bool chrome = true;
-        EditorSession session{camera, content, scene, chrome, [](Color) {}, port.Bind()};
+        EditorSession
+            session{camera, content, scene, chrome, [](Color) {}, port.Bind()};
         session.Start("wide", "day", "launch.json");
         session.Select(0);
         EXPECT_EQ(port.exposures.size(), 4u);
@@ -410,14 +468,17 @@ TEST(EditorSession, ItsTargetsLeaveThePortWithIt) {
     EXPECT_TRUE(port.exposures.empty());
 }
 
-
 // a click near a light's marker selects the light ahead of geometry; the
 // viewport set before any frame is the one picks are measured in
 TEST(EditorSession, AMarkerNearTheClickSelectsItsLight) {
     Fixture f;
     const Vec2 viewport{1920.0f, 1080.0f};
     f.session.SetViewport(viewport);
-    const auto marker = projectToWindow(f.camera.ViewProj(viewport.x / viewport.y), Fixture::LampPosition, viewport);
+    const auto marker = projectToWindow(
+        f.camera.ViewProj(viewport.x / viewport.y),
+        Fixture::LampPosition,
+        viewport
+    );
     ASSERT_TRUE(marker.has_value());
 
     f.session.PickAt(*marker + Vec2{5.0f, 3.0f});
@@ -652,8 +713,10 @@ TEST(EditorReload, KeepsTheSelectionByNameAtItsNewRow) {
     Fixture f;
     f.session.Select(0);
     const auto* before = f.port.exposures.at("selection").target;
-    f.content.nextObjects = {f.content.objects[1], f.content.objects[0], f.content.objects[2]};
-    f.content.nextRows = {FakeRow{}, FakeRow{.position = {11.5f, 0.0f, 0.0f}}, FakeRow{}};
+    f.content.nextObjects =
+        {f.content.objects[1], f.content.objects[0], f.content.objects[2]};
+    f.content.nextRows =
+        {FakeRow{}, FakeRow{.position = {11.5f, 0.0f, 0.0f}}, FakeRow{}};
 
     f.session.Reload();
     f.session.Advance(0.0);
@@ -677,10 +740,14 @@ TEST(EditorReload, AGoneSelectionClearsWithAStatus) {
     EXPECT_FALSE(f.session.Selection().has_value());
     EXPECT_EQ(f.session.State().selected, "");
     EXPECT_FALSE(f.port.exposures.contains("selection"));
-    EXPECT_NE(f.session.State().status.find("instance/lamp is gone"), Str::npos);
+    EXPECT_NE(
+        f.session.State().status.find("instance/lamp is gone"),
+        Str::npos
+    );
 }
 
-// a file the content refuses leaves the rows, the hold and the port as they were
+// a file the content refuses leaves the rows, the hold and the port as they
+// were
 TEST(EditorReload, ARefusalChangesNothing) {
     Fixture f;
     f.Hold(0);
@@ -701,7 +768,10 @@ TEST(EditorReload, ARefusalChangesNothing) {
     EXPECT_EQ(f.port.exposures.at("selection").target, target);
     EXPECT_EQ(f.session.State().scene, "launch.json");
     EXPECT_FALSE(f.session.State().reload);
-    EXPECT_EQ(f.session.State().status.rfind("reload refused, revision 1 stays", 0), 0u);
+    EXPECT_EQ(
+        f.session.State().status.rfind("reload refused, revision 1 stays", 0),
+        0u
+    );
     EXPECT_NE(f.session.State().status.find("unknown model"), Str::npos);
 
     f.session.DragTo(aim.reach + Vec2{20.0f, 0.0f}, false);

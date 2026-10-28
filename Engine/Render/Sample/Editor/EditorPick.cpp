@@ -20,12 +20,17 @@ namespace Crowy
             const auto& d = ray.direction;
 
             return Ray3D{
-                .origin = static_cast<Vec3>(toModel * Vec4{o.x, o.y, o.z, 1.0f}),
-                .direction = static_cast<Vec3>(toModel * Vec4{d.x, d.y, d.z, 0.0f})
+                .origin =
+                    static_cast<Vec3>(toModel * Vec4{o.x, o.y, o.z, 1.0f}),
+                .direction =
+                    static_cast<Vec3>(toModel * Vec4{d.x, d.y, d.z, 0.0f})
             };
         }
 
-        std::optional<f32> nearestTriangle(const Ray3D& ray, const MeshData& mesh) {
+        std::optional<f32> nearestTriangle(
+            const Ray3D& ray,
+            const MeshData& mesh
+        ) {
             std::optional<f32> best;
             const auto& v = mesh.vertices;
             for(usize i = 0; i + 2 < mesh.indices.size(); i += 3) {
@@ -43,7 +48,11 @@ namespace Crowy
         }
     }
 
-    std::optional<Ray3D> rayThroughPixel(const EditorCamera& camera, Vec2 pixel, Vec2 viewport) {
+    std::optional<Ray3D> rayThroughPixel(
+        const EditorCamera& camera,
+        Vec2 pixel,
+        Vec2 viewport
+    ) {
         // a minimized window reports no area
         if(!(viewport.x > 0.0f && viewport.y > 0.0f))
             return std::nullopt;
@@ -61,7 +70,8 @@ namespace Crowy
             const auto half = camera.lens.orthoHalfHeight;
 
             return Ray3D{
-                .origin = camera.position + across * (ndcX * half * aspect) + above * (ndcY * half),
+                .origin = camera.position + across * (ndcX * half * aspect) +
+                          above * (ndcY * half),
                 .direction = ahead
             };
         }
@@ -70,11 +80,18 @@ namespace Crowy
 
         return Ray3D{
             .origin = camera.position,
-            .direction = normalize(across * (ndcX * tanHalf * aspect) + above * (ndcY * tanHalf) + ahead)
+            .direction = normalize(
+                across * (ndcX * tanHalf * aspect) + above * (ndcY * tanHalf) +
+                ahead
+            )
         };
     }
 
-    std::optional<PickHit> pickScene(const RenderScene& scene, const Ray3D& ray, const PickMeshes& meshes) {
+    std::optional<PickHit> pickScene(
+        const RenderScene& scene,
+        const Ray3D& ray,
+        const PickMeshes& meshes
+    ) {
         const auto rows = scene.Primitives().All();
 
         std::vector<Candidate> candidates;

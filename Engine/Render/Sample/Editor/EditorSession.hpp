@@ -25,7 +25,8 @@ namespace Crowy
     using ClearColorSink = std::function<void(Color)>;
     using InspectSections = std::vector<InspectSection>;
     using EditorObjects = std::span<const EditorObject>;
-    using PortExpose = std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)>;
+    using PortExpose =
+        std::function<void(StrView, void*, const TypeDesc&, DirtyCallback)>;
     using PortUnexpose = std::function<void(StrView)>;
 
     // what the editor can select: one row of the content, named across kinds
@@ -133,8 +134,12 @@ namespace Crowy
 
         // stable until the content reloads
         virtual EditorObjects Objects() const = 0;
-        virtual std::optional<usize> ObjectOf(PrimitiveHandle primitive) const = 0;
-        virtual std::optional<PrimitiveHandle> PrimitiveOf(usize object) const = 0;
+        virtual std::optional<usize> ObjectOf(
+            PrimitiveHandle primitive
+        ) const = 0;
+        virtual std::optional<PrimitiveHandle> PrimitiveOf(
+            usize object
+        ) const = 0;
         virtual std::optional<LightHandle> LightOf(usize object) const = 0;
         // the primitive's meshes in its model space, for picking
         virtual MeshList MeshesOf(PrimitiveHandle primitive) const = 0;
@@ -259,7 +264,9 @@ namespace Crowy
         bool TakeSelectionChanged() noexcept;
         bool TakeInspectorDirty() noexcept;
         const InspectSections& Inspected() const noexcept { return inspected; }
-        GizmoHandle Held() const noexcept { return hold ? hold->drag.handle : GizmoHandle::None; }
+        GizmoHandle Held() const noexcept {
+            return hold ? hold->drag.handle : GizmoHandle::None;
+        }
         const GizmoView& Gizmo() const noexcept { return gizmoView; }
         // panels built in another revision point at rows a reload freed
         u32 Revision() const noexcept { return applied.revision; }

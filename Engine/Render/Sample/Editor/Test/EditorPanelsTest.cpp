@@ -10,9 +10,21 @@ namespace
 {
     std::vector<EditorObject> streetObjects() {
         return {
-            EditorObject{.name = "instance/lamp-ne", .group = "Street", .detail = "StreetLamp"},
-            EditorObject{.name = "instance/tower", .group = "NE", .detail = "BoxGrey"},
-            EditorObject{.name = "instance/lamp-sw", .group = "Street", .detail = "StreetLamp"},
+            EditorObject{
+                .name = "instance/lamp-ne",
+                .group = "Street",
+                .detail = "StreetLamp"
+            },
+            EditorObject{
+                .name = "instance/tower",
+                .group = "NE",
+                .detail = "BoxGrey"
+            },
+            EditorObject{
+                .name = "instance/lamp-sw",
+                .group = "Street",
+                .detail = "StreetLamp"
+            },
             EditorObject{
                 .name = "light/lamp-ne",
                 .group = "Lights · street_lamps",

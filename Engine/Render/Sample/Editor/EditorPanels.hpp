@@ -18,10 +18,14 @@ namespace Crowy
 
     // the rows whose name or detail holds `filter`, ignoring case; every row
     // for an empty one
-    inline constexpr std::vector<usize> filterObjects(EditorObjects objects, StrView filter) {
+    inline constexpr std::vector<usize> filterObjects(
+        EditorObjects objects,
+        StrView filter
+    ) {
         std::vector<usize> rows;
         for(usize i = 0; i < objects.size(); ++i) {
-            if(containsIgnoringCase(objects[i].name, filter) || containsIgnoringCase(objects[i].detail, filter))
+            if(containsIgnoringCase(objects[i].name, filter) ||
+               containsIgnoringCase(objects[i].detail, filter))
                 rows.push_back(i);
         }
 
@@ -33,10 +37,21 @@ namespace Crowy
 
     // Raw ImGui panels over a session, each in its own window; `hint` names
     // the host's keys. Markers and the highlight draw on the foreground list.
-    void drawEditorToolbar(EditorSession& session, StrView hint, const CaptureRequest& capture);
-    void drawLightMarkers(const EditorSession& session, const RenderScene& scene);
-    void drawSelectionHighlight(const EditorSession& session, const RenderScene& scene);
-    // the selection's handles, the held or hovered one lit, the change beside the cursor
+    void drawEditorToolbar(
+        EditorSession& session,
+        StrView hint,
+        const CaptureRequest& capture
+    );
+    void drawLightMarkers(
+        const EditorSession& session,
+        const RenderScene& scene
+    );
+    void drawSelectionHighlight(
+        const EditorSession& session,
+        const RenderScene& scene
+    );
+    // the selection's handles, the held or hovered one lit, the change beside
+    // the cursor
     void drawGizmo(const EditorSession& session);
 
     struct HierarchyGroup {
@@ -47,7 +62,11 @@ namespace Crowy
     inline constexpr HierarchyGroups groupObjects(EditorObjects objects) {
         HierarchyGroups groups;
         for(usize i = 0; i < objects.size(); ++i) {
-            auto group = std::ranges::find(groups, objects[i].group, &HierarchyGroup::name);
+            auto group = std::ranges::find(
+                groups,
+                objects[i].group,
+                &HierarchyGroup::name
+            );
             if(group == groups.end()) {
                 groups.push_back(HierarchyGroup{.name = objects[i].group});
                 group = groups.end() - 1;

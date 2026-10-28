@@ -9,7 +9,10 @@ namespace Crowy
     struct EditorCut;
 
     // the same pose and lens under the same name
-    inline constexpr bool sameCut(const EditorCut& a, const EditorCut& b) noexcept;
+    inline constexpr bool sameCut(
+        const EditorCut& a,
+        const EditorCut& b
+    ) noexcept;
 
     // what a camera sees through, apart from where it stands
     struct EditorLens {
@@ -32,13 +35,17 @@ namespace Crowy
         EditorLens lens;
     };
 
-    inline constexpr bool sameCut(const EditorCut& a, const EditorCut& b) noexcept {
+    inline constexpr bool sameCut(
+        const EditorCut& a,
+        const EditorCut& b
+    ) noexcept {
         const auto& x = a.lens;
         const auto& y = b.lens;
 
-        return a.name == b.name && a.position == b.position && a.yaw == b.yaw && a.pitch == b.pitch
-            && x.fovY == y.fovY && x.nearZ == y.nearZ && x.farZ == y.farZ
-            && x.orthographic == y.orthographic && x.orthoHalfHeight == y.orthoHalfHeight;
+        return a.name == b.name && a.position == b.position && a.yaw == b.yaw &&
+               a.pitch == b.pitch && x.fovY == y.fovY && x.nearZ == y.nearZ &&
+               x.farZ == y.farZ && x.orthographic == y.orthographic &&
+               x.orthoHalfHeight == y.orthoHalfHeight;
     }
 
     // A fly camera that snaps to cuts and can look through an orthographic

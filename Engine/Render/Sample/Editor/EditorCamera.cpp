@@ -19,16 +19,25 @@ namespace Crowy
             const auto delta = input.GetMouseDPos();
             if(delta.x != 0.0f || delta.y != 0.0f) {
                 yaw += delta.x * lookSensitivity;
-                pitch = std::clamp(pitch + delta.y * lookSensitivity, -HalfPi + 0.01f, HalfPi - 0.01f);
+                pitch = std::clamp(
+                    pitch + delta.y * lookSensitivity,
+                    -HalfPi + 0.01f,
+                    HalfPi - 0.01f
+                );
                 moved = true;
                 RecomputeView();
             }
         }
 
         const auto axis = [&](KeyCode positive, KeyCode negative) {
-            return (input.IsKeyDown(positive) ? 1.0f : 0.0f) - (input.IsKeyDown(negative) ? 1.0f : 0.0f);
+            return (input.IsKeyDown(positive) ? 1.0f : 0.0f) -
+                   (input.IsKeyDown(negative) ? 1.0f : 0.0f);
         };
-        moveInput = Vec3{axis(KeyCode::D, KeyCode::A), axis(KeyCode::E, KeyCode::Q), axis(KeyCode::W, KeyCode::S)};
+        moveInput = Vec3{
+            axis(KeyCode::D, KeyCode::A),
+            axis(KeyCode::E, KeyCode::Q),
+            axis(KeyCode::W, KeyCode::S)
+        };
         fast = input.IsKeyDown(KeyCode::Shift);
     }
 
@@ -39,8 +48,9 @@ namespace Crowy
         const auto rotation = rotateMat(Rotation());
         const auto right = static_cast<Vec3>(rotation[0]);
         const auto forward = static_cast<Vec3>(rotation[2]);
-        const auto direction =
-            normalize(right * moveInput.x + unitY() * moveInput.y + forward * moveInput.z);
+        const auto direction = normalize(
+            right * moveInput.x + unitY() * moveInput.y + forward * moveInput.z
+        );
         const auto speed = moveSpeed * (fast ? 4.0f : 1.0f);
 
         position = position + direction * (speed * static_cast<f32>(deltaTime));

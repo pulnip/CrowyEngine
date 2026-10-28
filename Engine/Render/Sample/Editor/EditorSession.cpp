@@ -23,7 +23,11 @@ namespace Crowy
         }
 
         // a full name, or a bare one that only one object carries
-        std::optional<usize> objectNamed(EditorObjects objects, StrView name, Str& why) {
+        std::optional<usize> objectNamed(
+            EditorObjects objects,
+            StrView name,
+            Str& why
+        ) {
             std::optional<usize> found;
             for(usize i = 0; i < objects.size(); ++i) {
                 const auto& full = objects[i].name;
@@ -31,9 +35,15 @@ namespace Crowy
                     return i;
 
                 const auto slash = full.find('/');
-                if(slash != Str::npos && StrView(full).substr(slash + 1) == name) {
+                if(slash != Str::npos &&
+                   StrView(full).substr(slash + 1) == name) {
                     if(found) {
-                        why = std::format("'{}' names more than one object; write it as <kind>/{}", name, name);
+                        why = std::format(
+                            "'{}' names more than one object; write it as "
+                            "<kind>/{}",
+                            name,
+                            name
+                        );
                         return std::nullopt;
                     }
                     found = i;
@@ -97,7 +107,8 @@ namespace Crowy
         if(state.time != applied.time) {
             if(std::isfinite(state.time) && state.time >= 0.0) {
                 showTime();
-            } else {
+            }
+            else {
                 state.time = applied.time;
                 report("editor.time is scene seconds, 0 or more");
             }
@@ -163,7 +174,8 @@ namespace Crowy
 
     void EditorSession::StepTime(i32 frames) {
         state.paused = true;
-        state.time = std::max(0.0, applied.time + static_cast<f64>(frames) / 60.0);
+        state.time =
+            std::max(0.0, applied.time + static_cast<f64>(frames) / 60.0);
         Sync();
     }
 
@@ -205,7 +217,8 @@ namespace Crowy
         inspected = object ? content.Inspect(*object) : InspectSections{};
         for(auto& section: inspected) {
             if(!section.apply)
-                section.apply = [] {};
+                section.apply = [] {
+                };
         }
         exposeSelection();
         bindGizmo();
@@ -248,7 +261,13 @@ namespace Crowy
 
         const auto yaw = gizmoRow->yaw ? *gizmoRow->yaw : 0.0f;
 
-        return layoutGizmo(camera, viewport, *gizmoRow->position, yaw, gizmoRow->parts);
+        return layoutGizmo(
+            camera,
+            viewport,
+            *gizmoRow->position,
+            yaw,
+            gizmoRow->parts
+        );
     }
 
     bool EditorSession::TakeSelectionChanged() noexcept {
@@ -263,14 +282,18 @@ namespace Crowy
         if(!port.expose)
             return;
 
-        port.expose(StateTarget, &state, *getDesc<EditorState>(), [this] { Sync(); });
+        port.expose(StateTarget, &state, *getDesc<EditorState>(), [this] {
+            Sync();
+        });
         port.expose(CameraTarget, &camera, *getDesc<EditorCamera>(), [this] {
             camera.RecomputeView();
             leaveCut();
             refreshGizmo();
         });
         // read-only: a write is put back
-        port.expose(GizmoTarget, &gizmoView, *getDesc<GizmoView>(), [this] { refreshGizmo(); });
+        port.expose(GizmoTarget, &gizmoView, *getDesc<GizmoView>(), [this] {
+            refreshGizmo();
+        });
     }
 
     void EditorSession::leaveCut() {
@@ -285,12 +308,14 @@ namespace Crowy
         const auto cuts = content.Cuts();
         const auto found = std::ranges::find(cuts, state.cut, &EditorCut::name);
         if(found == cuts.end()) {
-            report(std::format(
-                "no cut '{}'; there are {}, or {}",
-                state.cut,
-                listOf(cuts, [](const EditorCut& cut) { return cut.name; }),
-                FreeCut
-            ));
+            report(
+                std::format(
+                    "no cut '{}'; there are {}, or {}",
+                    state.cut,
+                    listOf(cuts, [](const EditorCut& cut) { return cut.name; }),
+                    FreeCut
+                )
+            );
             return false;
         }
 
@@ -305,7 +330,13 @@ namespace Crowy
     bool EditorSession::applyKey() {
         const auto keys = content.Keys();
         if(std::ranges::find(keys, state.key) == keys.end()) {
-            report(std::format("no key '{}'; there are {}", state.key, listOf(keys, [](const Str& key) { return key; })));
+            report(
+                std::format(
+                    "no key '{}'; there are {}",
+                    state.key,
+                    listOf(keys, [](const Str& key) { return key; })
+                )
+            );
             return false;
         }
 
@@ -357,17 +388,22 @@ namespace Crowy
 
         const auto& drag = hold->drag;
         if(isGizmoArrow(drag.handle))
-            return std::format("{:+.2f} m", dot(*gizmoRow->position - hold->position, drag.axis));
+            return std::format(
+                "{:+.2f} m",
+                dot(*gizmoRow->position - hold->position, drag.axis)
+            );
         if(drag.handle == GizmoHandle::Ring) {
-            const auto turn = wrapDegrees(*gizmoRow->yaw - hold->yaw + 180.0f) - 180.0f;
+            const auto turn =
+                wrapDegrees(*gizmoRow->yaw - hold->yaw + 180.0f) - 180.0f;
             return std::format("{:+.1f} deg", turn);
         }
 
         const auto& now = *gizmoRow->scale;
         const auto& start = hold->scale;
         const auto factor = drag.handle == GizmoHandle::ScaleY ? now.y / start.y
-                          : drag.handle == GizmoHandle::ScaleZ ? now.z / start.z
-                                                               : now.x / start.x;
+                            : drag.handle == GizmoHandle::ScaleZ
+                                ? now.z / start.z
+                                : now.x / start.x;
 
         return std::format("x{:.2f}", factor);
     }
@@ -376,7 +412,13 @@ namespace Crowy
         state.reload = false;
         const auto refusal = content.ReadScene(state.scene);
         if(!refusal.empty()) {
-            report(std::format("reload refused, revision {} stays: {}", applied.revision, refusal));
+            report(
+                std::format(
+                    "reload refused, revision {} stays: {}",
+                    applied.revision,
+                    refusal
+                )
+            );
             state.scene = loadedScene;
             applied = state;
             return;
@@ -387,7 +429,9 @@ namespace Crowy
         std::optional<EditorCut> standing;
         if(state.cut != FreeCut) {
             const auto cuts = content.Cuts();
-            if(const auto found = std::ranges::find(cuts, state.cut, &EditorCut::name); found != cuts.end())
+            if(const auto found =
+                   std::ranges::find(cuts, state.cut, &EditorCut::name);
+               found != cuts.end())
                 standing = *found;
         }
         if(hold) {
@@ -403,7 +447,11 @@ namespace Crowy
 
         const auto keys = content.Keys();
         if(std::ranges::find(keys, state.key) == keys.end()) {
-            notes += std::format("; key {} is gone, showing {}", state.key, keys.front());
+            notes += std::format(
+                "; key {} is gone, showing {}",
+                state.key,
+                keys.front()
+            );
             state.key = keys.front();
         }
         clearColor(content.ApplyKey(state.key));
@@ -413,9 +461,13 @@ namespace Crowy
         // the cut keeps its name only where it still stands; the camera stays
         if(standing) {
             const auto cuts = content.Cuts();
-            const auto found = std::ranges::find(cuts, standing->name, &EditorCut::name);
+            const auto found =
+                std::ranges::find(cuts, standing->name, &EditorCut::name);
             if(found == cuts.end() || !sameCut(*found, *standing)) {
-                notes += std::format("; cut {} changed, the camera stays", standing->name);
+                notes += std::format(
+                    "; cut {} changed, the camera stays",
+                    standing->name
+                );
                 leaveCut();
             }
         }
@@ -432,7 +484,15 @@ namespace Crowy
         loadedScene = state.scene;
         inspectorDirty = true;
         selectionChanged = true;
-        report(std::format("reloaded {}: revision {}, {}{}", state.scene, state.revision, summary, notes));
+        report(
+            std::format(
+                "reloaded {}: revision {}, {}{}",
+                state.scene,
+                state.revision,
+                summary,
+                notes
+            )
+        );
         refreshGizmo();
         applied = state;
     }
@@ -442,13 +502,18 @@ namespace Crowy
         release();
         const auto layout = SelectionGizmo();
         if(!layout) {
-            report(chromeShown ? "nothing selected carries a gizmo in view" : "the gizmo shows with debug.showPanel");
+            report(
+                chromeShown ? "nothing selected carries a gizmo in view"
+                            : "the gizmo shows with debug.showPanel"
+            );
             return;
         }
 
         const auto handle = hoverGizmo(projectGizmo(*layout), pixel);
         const auto ray = rayThroughPixel(camera, pixel, viewport);
-        const auto drag = handle != GizmoHandle::None && ray ? grabGizmo(*layout, handle, *ray) : std::nullopt;
+        const auto drag = handle != GizmoHandle::None && ray
+                              ? grabGizmo(*layout, handle, *ray)
+                              : std::nullopt;
         if(!drag) {
             report(std::format("no handle at {}, {}", pixel.x, pixel.y));
             return;
@@ -473,7 +538,8 @@ namespace Crowy
         }
 
         const auto ray = rayThroughPixel(camera, pixel, viewport);
-        const auto edit = ray ? dragGizmo(hold->drag, *ray, state.snap) : std::nullopt;
+        const auto edit =
+            ray ? dragGizmo(hold->drag, *ray, state.snap) : std::nullopt;
         // a ray that misses the plane leaves the last change standing
         if(!edit)
             return;
@@ -496,7 +562,10 @@ namespace Crowy
         }
         // only a press takes a handle
         state.handle = Held();
-        report("editor.handle names the held handle: write editor.grab to take one, None to let go");
+        report(
+            "editor.handle names the held handle: write editor.grab to take "
+            "one, None to let go"
+        );
     }
 
     void EditorSession::applyCancel() {
@@ -525,21 +594,32 @@ namespace Crowy
             return;
 
         const auto& section = inspected.front();
-        // the accessor a port write goes through, checked for the type it must be
+        // the accessor a port write goes through, checked for the type it must
+        // be
         const auto field = [&](CStr name, const TypeOps* type) {
-            const auto resolved = resolveProperty(section.target, *section.desc, name);
+            const auto resolved =
+                resolveProperty(section.target, *section.desc, name);
             return resolved.type == type ? resolved.member : nullptr;
         };
         GizmoRow row{
-            .position = static_cast<Vec3*>(field("position", getTypeOps<Vec3>())),
+            .position =
+                static_cast<Vec3*>(field("position", getTypeOps<Vec3>())),
             .yaw = static_cast<f32*>(field("yaw", getTypeOps<f32>())),
             .scale = static_cast<Vec3*>(field("scale", getTypeOps<Vec3>())),
             .parts = section.gizmo
         };
-        CROWY_ASSERT(row.position != nullptr, "a section offering a gizmo has a Vec3 position");
-        CROWY_ASSERT(row.yaw != nullptr || !hasFlag(row.parts, GizmoParts::Turn), "the ring needs an f32 yaw");
         CROWY_ASSERT(
-            row.scale != nullptr || !(hasFlag(row.parts, GizmoParts::Scale) || hasFlag(row.parts, GizmoParts::ScaleAxes)),
+            row.position != nullptr,
+            "a section offering a gizmo has a Vec3 position"
+        );
+        CROWY_ASSERT(
+            row.yaw != nullptr || !hasFlag(row.parts, GizmoParts::Turn),
+            "the ring needs an f32 yaw"
+        );
+        CROWY_ASSERT(
+            row.scale != nullptr ||
+                !(hasFlag(row.parts, GizmoParts::Scale) ||
+                  hasFlag(row.parts, GizmoParts::ScaleAxes)),
             "a scale handle needs a Vec3 scale"
         );
         if(row.position != nullptr)
@@ -556,8 +636,12 @@ namespace Crowy
             return;
 
         using enum GizmoHandle;
-        const auto aim = [&](GizmoHandle handle) { return aimGizmo(*layout, handle).value_or(GizmoAim{}); };
-        gizmoView.pivot = projectToWindow(layout->viewProj, layout->pivot, layout->viewport).value_or(EditorNoPick);
+        const auto aim = [&](GizmoHandle handle) {
+            return aimGizmo(*layout, handle).value_or(GizmoAim{});
+        };
+        gizmoView.pivot =
+            projectToWindow(layout->viewProj, layout->pivot, layout->viewport)
+                .value_or(EditorNoPick);
         gizmoView.length = layout->length;
         gizmoView.moveX = aim(MoveX);
         gizmoView.moveY = aim(MoveY);
@@ -580,13 +664,15 @@ namespace Crowy
         std::vector<usize> objects;
         std::vector<Vec3> markers;
         for(usize i = 0; i < content.Objects().size(); ++i) {
-            if(const auto light = content.LightOf(i); light && scene.Lights().IsValid(*light)) {
+            if(const auto light = content.LightOf(i);
+               light && scene.Lights().IsValid(*light)) {
                 objects.push_back(i);
                 markers.push_back(scene.Lights().GetRef(*light).position);
             }
         }
         const auto viewProj = camera.ViewProj(viewport.x / viewport.y);
-        const auto nearest = nearestOnScreen(viewProj, viewport, pixel, markers, MarkerRadius);
+        const auto nearest =
+            nearestOnScreen(viewProj, viewport, pixel, markers, MarkerRadius);
 
         return nearest ? std::optional(objects[*nearest]) : std::nullopt;
     }
@@ -603,8 +689,12 @@ namespace Crowy
 
         for(usize i = 0; i < inspected.size(); ++i) {
             const auto& section = inspected[i];
-            auto name = i == 0 ? Str(SelectionTarget) : std::format("{}.{}", SelectionTarget, section.label);
-            port.expose(name, section.target, *section.desc, [this, i] { wroteSection(i); });
+            auto name =
+                i == 0 ? Str(SelectionTarget)
+                       : std::format("{}.{}", SelectionTarget, section.label);
+            port.expose(name, section.target, *section.desc, [this, i] {
+                wroteSection(i);
+            });
             exposed.push_back(std::move(name));
         }
     }
@@ -618,7 +708,8 @@ namespace Crowy
     }
 
     void EditorSession::reportSelection() {
-        state.status = selection ? std::format("selected {}", state.selected) : Str("nothing selected");
+        state.status = selection ? std::format("selected {}", state.selected)
+                                 : Str("nothing selected");
         applied.status = state.status;
     }
 
