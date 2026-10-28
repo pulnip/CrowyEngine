@@ -43,7 +43,7 @@ namespace Crowy
 
         // everything deferred or allocated since the last batch rides `serial`
         void Stamp(u64 frame, u64 serial, u64 completed) {
-            retireQueue.Tag(serial);
+            retireQueue.OnSubmit(serial);
             uploadRing.OnSubmit(serial);
             transientRing.OnSubmit(serial);
             timeline.OnSubmit(frame, serial, completed);

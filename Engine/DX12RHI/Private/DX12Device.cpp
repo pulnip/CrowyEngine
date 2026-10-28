@@ -669,7 +669,7 @@ namespace Crowy
 
             // all work up to the fresh signal is done, so this drains the
             // queue instead of leaving stragglers for a Submit
-            retireQueue.Tag(serial);
+            retireQueue.OnSubmit(serial);
             retireQueue.Collect(serial);
             harvestGPUTimes(serial);
         }

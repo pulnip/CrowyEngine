@@ -225,7 +225,7 @@ namespace Crowy
 
             // all work up to the fresh signal is done, so this drains the
             // queue instead of leaving stragglers for a Submit
-            retireQueue.Tag(submissionSerial);
+            retireQueue.OnSubmit(submissionSerial);
             retireQueue.Collect(submissionSerial);
 
             // the event can fire before a buffer's status says Completed, and

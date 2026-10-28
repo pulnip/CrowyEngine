@@ -9,7 +9,7 @@
 namespace Crowy
 {
     // a reclaim deferred mid-frame has no batch to wait behind yet, so it waits
-    // in `pending` until the next Tag() attaches it to the next submission
+    // in `pending` until the next OnSubmit() attaches it to the next submission
     class RHIRetireQueue {
     public:
         using Reclaim = std::move_only_function<void()>;
@@ -24,11 +24,11 @@ namespace Crowy
         std::deque<Entry> tagged;
 
     public:
-        // call from anywhere mid-frame; the next Tag() attaches this to
+        // call from anywhere mid-frame; the next OnSubmit() attaches this to
         // the batch about to be submitted
         void Defer(Reclaim reclaim);
 
-        void Tag(u64 value);
+        void OnSubmit(u64 value);
 
         void Collect(u64 completed);
 

@@ -8,7 +8,7 @@ namespace Crowy
         pending.push_back(std::move(reclaim));
     }
 
-    void RHIRetireQueue::Tag(u64 value) {
+    void RHIRetireQueue::OnSubmit(u64 value) {
         for(auto& reclaim: pending) {
             tagged.push_back(
                 Entry{.tag = value, .reclaim = std::move(reclaim)}
@@ -18,8 +18,8 @@ namespace Crowy
     }
 
     void RHIRetireQueue::Collect(u64 completed) {
-        // Tag() appends strictly increasing values, so popping the front until
-        // it outruns `completed` is enough
+        // OnSubmit() appends strictly increasing values, so popping the front
+        // until it outruns `completed` is enough
         while(!tagged.empty() && tagged.front().tag <= completed) {
             tagged.front().reclaim();
             tagged.pop_front();
