@@ -11,9 +11,8 @@
 
 namespace Crowy
 {
-    // One component type's rows, dense in the order they were added, kept
-    // through the type's reflected lifetime operations; a removal moves the
-    // last row into the hole.
+    // one component type's rows, dense through its reflected lifetime
+    // operations; a removal moves the last row into the hole
     class ComponentPool {
     private:
         struct FreeAligned {

@@ -11,9 +11,8 @@ namespace Crowy
 {
     namespace
     {
-        // f32 carries about 7 digits, and a scale that came back from a matrix
-        // decomposition drifts a few of the last ones. Relative to the largest
-        // component, so a large uniform scale is not reported either.
+        // a decomposed scale drifts in f32's last digits; relative to the
+        // largest component, so a large uniform scale passes too
         constexpr f32 SCALE_EPSILON = 1e-5f;
 
         bool isUniform(Vec3 scale) noexcept {
@@ -61,9 +60,7 @@ namespace Crowy
         }
     }
 
-    // A subtree is contiguous, so its last node is also the last of the
-    // parent's children. Later siblings land behind earlier ones, in creation
-    // order.
+    // behind the parent's whole subtree, so siblings stay in creation order
     TransformIndex TransformHierarchy::insertionPointOf(
         TransformSlot parentSlot
     ) const noexcept {
@@ -112,7 +109,7 @@ namespace Crowy
         TransformIndex root,
         TransformIndex candidate
     ) const noexcept {
-        // I2 makes this a range test instead of a walk
+        // a subtree is one range, so this is a range test, not a walk
         return candidate.value >= root.value &&
                candidate.value < root.value + nodes[root.value].subtreeSize;
     }
@@ -271,8 +268,7 @@ namespace Crowy
 
         auto index = indexOf(handle);
 
-        // I2 makes the whole subtree one range, so no descendant guard is
-        // needed
+        // a subtree is one range, so no descendant guard is needed
         std::unordered_set<TransformSlot> doomed;
         std::vector<TransformSlot> committed;
         if(index == PENDING_INDEX) {
@@ -358,9 +354,8 @@ namespace Crowy
             slot.value
         );
 
-        // Measured before anything moves. std::rotate lands the block exactly
-        // where a destination read off the old array points, so the gap the
-        // block leaves behind needs no correction of its own.
+        // measured before anything moves: std::rotate lands the block where
+        // the old array's destination points, with no gap correction
         auto destination = insertionPointOf(newParentSlot);
 
         auto oldParentSlot = node.parentSlot;
@@ -420,9 +415,8 @@ namespace Crowy
     }
 
     void TransformHierarchy::commitCreates() {
-        // A create can name another create from the same batch as its parent,
-        // and SetParent can put that parent behind its own child in the list,
-        // so the list drains over several passes instead of one.
+        // a create may name a later create of the batch as its parent, so the
+        // list drains over several passes
         while(!pendingCreates.empty()) {
             std::vector<PendingCreate> waiting;
 
@@ -456,9 +450,8 @@ namespace Crowy
             return;
         }
 
-        // Destroys first, so a create never has to make room next to a corpse.
-        // Reparents last, so a node can be moved under a parent born in the
-        // very same batch.
+        // destroys first, so no create makes room beside a corpse; reparents
+        // last, so a node can move under a parent born in the same batch
         commitDestroys();
         commitCreates();
         commitReparents();
@@ -498,9 +491,8 @@ namespace Crowy
         dirtySlots.clear();
         std::ranges::sort(starts);
 
-        // By I2 a marked node's subtree is one range, and a marked node inside
-        // a range already recomputed needs nothing more. Parallel note: the
-        // ranges are independent, so a fork-join over them parallelizes as is.
+        // a marked node's subtree is one range, and a marked node inside a
+        // range already recomputed needs nothing more
         usize covered = 0;
         for(auto start: starts) {
             if(start < covered) {
@@ -515,7 +507,7 @@ namespace Crowy
     }
 
     void TransformHierarchy::updateNode(usize index) {
-        // I1 puts every parent in front, so its world is already this frame's
+        // a parent sits in front, so its world is already this frame's
         auto& node = nodes[index];
         const auto local = modelMat(node.local);
         const auto inherited =

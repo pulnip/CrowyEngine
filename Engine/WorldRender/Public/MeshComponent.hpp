@@ -5,10 +5,8 @@
 
 namespace Crowy
 {
-    // A mesh drawn at its actor: the World's side of one RenderScene
-    // primitive row, which lands and leaves with the component at Sync and
-    // is written whole at the Extract after it lands, moves or is written.
-    // The World must provide the RenderScene.
+    // one primitive row of the RenderScene the World provides, landing and
+    // leaving with the component at Sync
     struct MeshComponent {
         MeshHandle mesh;
         PrimitiveFlags flags =

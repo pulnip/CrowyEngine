@@ -23,7 +23,7 @@ namespace Crowy
     inline constexpr usize PhaseCount = 7;
 
     struct FrameTime {
-        // the wall clock's, untouched by pause or scale
+        // the wall clock's
         f64 realSeconds = 0.0;
         // the game's; in a FixedUpdate phase, one fixed tick
         f64 gameSeconds = 0.0;
@@ -46,9 +46,8 @@ namespace Crowy
     using SystemDescs = std::vector<SystemDesc>;
     using PhaseSchedule = std::array<std::vector<SystemFn>, PhaseCount>;
 
-    // each phase's systems, every `after` before its system and ties broken
-    // by name; an unknown name, one in another phase or a cycle stops the
-    // process in every build
+    // every `after` before its system, ties by name; an unknown name, one in
+    // another phase or a cycle stops the process in every build
     PhaseSchedule scheduleSystems(const SystemDescs& systems);
 
     class SystemRegistry {
@@ -79,14 +78,12 @@ namespace Crowy
 }
 
 // clang-format off
-// System registration start macro: NAME is the system's name, which
-// After names; FN is a void(World&, const FrameTime&)
+// NAME is the system's name, which After names; FN is a SystemFn
 #define CROWY_SYSTEM(NAME, PHASE, FN) \
 namespace{ \
     const auto Is##NAME##SystemRegistered = \
         ::Crowy::SystemBuilder(#NAME, ::Crowy::Phase::PHASE, FN)
 
-// System registration end macro
 #define CROWY_SYSTEM_END(NAME) \
         .Build(); \
 }

@@ -399,8 +399,6 @@ TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode) {
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-// found by the seeded fuzz: an uncommitted child of a doomed node would have
-// been left behind, pointing at a parent that no longer exists
 TEST_F(TransformHierarchyTest, DestroySubtreeTakesUncommittedChildrenToo) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);

@@ -1,7 +1,5 @@
-# The World's side of the renderer: the components that draw, and the
-# systems that extract them into a RenderScene every frame. Render does not
-# see the World; this module sees both, and registers from objects nothing
-# references.
+# Render does not see the World; this module sees both, and registers from
+# objects nothing references.
 crowy_declare_module(WorldRender
 WHOLE_ARCHIVE
 PUBLIC

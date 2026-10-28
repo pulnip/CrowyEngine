@@ -21,16 +21,10 @@
 
 namespace Crowy
 {
-    // The runtime the actors live in: their transforms, their components, the
-    // systems run over them in the fixed phases, and the game's clocks.
-    // An actor is its transform node. A structural change (a spawn, a
-    // destroy, a component added or removed) lands at the frame's Sync, never
-    // while a phase iterates; a handle turns valid, or invalid, the moment the
-    // call returns. What changed (a row written, landed or moved) is recorded,
-    // so a frame where nothing changed recomputes and extracts nothing.
+    // The actors, their components and the systems over them. Structure lands
+    // at the frame's Sync; a handle turns valid or invalid as the call returns.
     class World {
     private:
-        // the game clock runs at the real one's rate until a consumer scales it
         static constexpr f64 TimeScale = 1.0;
 
         // one component type: its rows, what Sync still owes them, and what
@@ -202,9 +196,8 @@ namespace Crowy
             }
         }
 
-        // f(const ComponentInfo&, const void* row) for each component the
-        // actor has, in the order this World first met each type: a file
-        // written in that order would not read back in it
+        // f(const ComponentInfo&, const void* row) in the order this World
+        // first met each type, which a file written in it would not read back
         template<typename F>
         void EachComponent(ActorId actor, F&& f) const {
             CROWY_ASSERT(
@@ -234,13 +227,12 @@ namespace Crowy
             return *static_cast<T*>(it->second);
         }
 
-        // Input, the fixed ticks the game clock owes (PreFixedUpdate, Physics,
-        // PostFixedUpdate each), Update, Sync, Extract
+        // runs every Phase in order, the FixedUpdate ones once per fixed tick
+        // the game clock owes
         void Frame(f64 realSeconds);
 
-        // what a reader outside the phases, such as a GPU simulation
-        // recorded after the frame, steps by: the fixed ticks run so far,
-        // and those the last Frame ran
+        // for a reader outside the phases, such as a GPU simulation recorded
+        // after the frame: the fixed ticks so far, and the last Frame's
         u64 Ticks() const noexcept { return ticks; }
         u32 FrameTicks() const noexcept { return frameTicks; }
 

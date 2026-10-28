@@ -235,9 +235,6 @@ TEST_F(ReparentTest, ReparentingAnUncommittedNodeRewritesItsPlan) {
     EXPECT_EQ(hierarchy.GetChildCount(second), 1);
 }
 
-// found by the seeded fuzz: the parent ended up behind its own child in the
-// pending list, so the child was placed against a parent that had no position
-// yet
 TEST_F(ReparentTest, UncommittedParentQueuedBehindItsChild) {
     auto child = hierarchy.CreateNode();
     auto parent = hierarchy.CreateNode();

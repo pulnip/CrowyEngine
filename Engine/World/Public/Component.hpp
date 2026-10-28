@@ -90,14 +90,12 @@ namespace Crowy
 }
 
 // clang-format off
-// Component registration start macro: a Struct the World can pool, which
-// takes AddProperty, OnAdd and OnRemove
+// a Struct the World can pool
 #define CROWY_COMPONENT(TYPE) \
 namespace{ \
     const auto Is##TYPE##Registered = ::Crowy::ComponentBuilder<TYPE>() \
         .SetName(#TYPE)
 
-// Component registration end macro
 #define CROWY_COMPONENT_END(TYPE) \
         .Build(); \
 }

@@ -23,7 +23,6 @@ namespace Crowy
     using TransformIndex = TransformNodeTable::Index;
 
     struct TransformNode {
-        // this node or an ancestor scales unevenly
         static constexpr u32 NON_UNIFORM_IN_CHAIN = 1u << 0;
         // already warned about, so the log stays readable
         static constexpr u32 WARNED_NON_UNIFORM = 1u << 1;
@@ -38,7 +37,6 @@ namespace Crowy
         Vec4 worldRotation = unitQuat();
         u32 flags = 0;
 
-        // reverse mapping
         TransformSlot slot = TransformSlot::Invalid();
         // source of truth for the parent link, stays valid while nodes move
         TransformSlot parentSlot = TransformSlot::Invalid();
@@ -50,27 +48,12 @@ namespace Crowy
         bool IsRoot() const noexcept { return !parentSlot.IsValid(); }
     };
 
-    // Nodes are kept in one preorder array,
-    // so a parent sits in front of its children
-    // and its subtree occupies a contiguous range.
-    //
-    // Structural changes land on CommitStructuralChanges(),
-    // not on the call that asks for them.
-    // Handles and local transforms do not wait for it:
-    //   a handle is valid the moment CreateNode() returns,
-    //   and its local transform reads and writes right away.
-    // Everything else answers as of the last commit.
-    //
-    // A local write, and a commit that places a node, mark it; the next
-    // UpdateWorldTransforms recomputes only the marked subtrees.
-    //
-    // Not thread safe, const methods included: the inverse cache is filled in
-    // on read.
+    // One preorder array, so a subtree is a contiguous range. Structure lands
+    // at CommitStructuralChanges; handles and local transforms do not wait.
     class TransformHierarchy {
     private:
-        // A slot holding a handle to a node that is not in the array yet. Never
-        // a position, but valid, so the handle it was issued for stays valid
-        // too.
+        // a slot whose node is not in the array yet: never a position, but
+        // valid, so its handle is too
         static constexpr TransformIndex PENDING_INDEX{
             TransformIndex::INVALID - 1
         };
@@ -133,7 +116,6 @@ namespace Crowy
         ~TransformHierarchy() = default;
         CROWY_DECLARE_TRANSFERABLE(TransformHierarchy)
 
-        // lifetime
         TransformHandle CreateNode(
             const Transform& local = Transform::Identity()
         );
@@ -141,13 +123,11 @@ namespace Crowy
             TransformHandle parent,
             const Transform& local = Transform::Identity()
         );
-        // Asserts unless every descendant is already destroyed, so a whole
-        // subtree has to go leaf first. No handle but the given one is
-        // invalidated, and an already invalid one is ignored.
+        // asserts unless every descendant is already destroyed; an invalid
+        // handle is ignored
         void DestroyNode(TransformHandle handle);
-        // Notice! This invalidates handles the caller never named. Every one of
-        // them lands in outDestroyed, and the caller is expected to reconcile
-        // whatever it maps them from.
+        // invalidates handles the caller never named; each lands in
+        // outDestroyed
         void DestroySubtree(
             TransformHandle handle,
             std::vector<TransformHandle>& outDestroyed
@@ -170,9 +150,8 @@ namespace Crowy
         TransformHandle GetParent(TransformHandle handle) const noexcept;
         usize GetChildCount(TransformHandle handle) const noexcept;
 
-        // A destroyed node keeps its place in the array until the commit, but
-        // its handle dies right away, the same way a created one lives right
-        // away.
+        // a destroyed node keeps its place until the commit, but its handle
+        // dies at once, as a created one lives at once
         bool IsValid(TransformHandle handle) const noexcept {
             return slots.IsValid(handle) &&
                    !pendingDestroys.contains(
@@ -245,9 +224,8 @@ namespace Crowy
         Vec3 GetWorldPosition(TransformHandle handle) const noexcept {
             return static_cast<Vec3>(nodeOf(handle).world[3]);
         }
-        // The rotation of the TRS chain. Where the chain scales unevenly this
-        // is no longer the rotation of GetWorldMatrix, which carries shear as
-        // well; UpdateWorldTransforms warns about those nodes once.
+        // the rotation of the TRS chain; under an uneven scale it is not
+        // GetWorldMatrix's, which carries shear as well
         Vec4 GetWorldRotation(TransformHandle handle) const noexcept {
             return nodeOf(handle).worldRotation;
         }

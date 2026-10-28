@@ -9,9 +9,8 @@
 
 namespace Crowy
 {
-    // A property that refers to another actor. Inside an ActorRefScope it
-    // reads and writes the id a scene file gives the actor; anywhere else,
-    // as the port and the inspector see it, the live [index, generation].
+    // another actor: the scene file's id inside an ActorRefScope, the live
+    // [index, generation] anywhere else
     struct ActorRef {
         ActorId actor;
 

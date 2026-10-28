@@ -4,11 +4,8 @@
 
 namespace Crowy
 {
-    // A light at its actor: the World's side of one RenderScene light row,
-    // which lands and leaves with the component at Sync. The row's position
-    // is the actor's, and it shines along the actor's +Z. Rows keep the
-    // order the lights landed in, which picks the shadow caster. The World
-    // must provide the RenderScene.
+    // one row of the RenderScene the World provides, landing and leaving with
+    // the component at Sync; it shines along the actor's +Z
     struct LightComponent {
         LightKind kind = LightKind::Directional;
 
