@@ -110,9 +110,6 @@ namespace Crowy
         // (98, 116, 140), 0.4 of a step clear of every rounding edge
         static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
 
-        static constexpr CStr StandardForward =
-            "Engine/Render/Shader/StandardForward.slang";
-
         static constexpr auto PanelToggleKey = KeyCode::P;
         static constexpr auto StatsToggleKey = KeyCode::I;
 
@@ -218,9 +215,6 @@ namespace Crowy
         // the same vertex shader; every material links the default PBR
         static MaterialPipelineDesc basePipeline(CStr file, CStr fragmentEntry);
         static MaterialPipelineDesc gridPipeline();
-        static MaterialPipelineDesc opaquePipeline();
-        static MaterialPipelineDesc doubleSidedPipeline();
-        static MaterialPipelineDesc translucentPipeline();
 
         // an actor drawing the mesh, translated and scaled only
         void addPrimitive(MeshHandle mesh, Vec3 position, Vec3 scale);

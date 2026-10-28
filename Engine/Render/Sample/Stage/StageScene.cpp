@@ -12,6 +12,7 @@
 #include "MeshData.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
+#include "StandardFrame.hpp"
 #include "StringUtil.hpp"
 
 namespace Crowy
@@ -23,32 +24,6 @@ namespace Crowy
 
         f32 radians(f32 degrees) {
             return static_cast<f32>(toRadian(degrees));
-        }
-
-        MaterialPipelineDesc opaquePipeline() {
-            constexpr CStr ForwardShader =
-                "Engine/Render/Shader/StandardForward.slang";
-
-            return MaterialPipelineDesc{
-                .vertexShader =
-                    {.path = ForwardShader, .entryPoint = "vs_main"},
-                .fragmentShader =
-                    {.path = ForwardShader, .entryPoint = "fs_opaque"}
-            };
-        }
-
-        // cut where the atlas's alpha falls below the row's cutoff, in depth
-        // too
-        MaterialPipelineDesc maskedPipeline() {
-            auto pipeline = opaquePipeline();
-            pipeline.fragmentShader.entryPoint = "fs_masked";
-            pipeline.maskShader = {
-                .path = pipeline.fragmentShader.path,
-                .entryPoint = "fs_masked_depth"
-            };
-            pipeline.domain = MaterialDomain::Masked;
-
-            return pipeline;
         }
 
         const StageMaterial& materialNamed(
@@ -161,14 +136,14 @@ namespace Crowy
                                   : static_cast<u32>(
                                         MaterialFlags::NoShadowReceive
                                     )},
-                .pipeline = opaquePipeline(),
+                .pipeline = standardMaterial(MaterialDomain::Opaque),
                 .maps = {.albedo = texture}
             };
             if(!quad.emissiveChannel.empty())
                 material.maps.emissive = texture;
             if(atlas.kind == StageMaterialKind::Masked) {
                 material.data.alphaCutoff = atlas.cutoff;
-                material.pipeline = maskedPipeline();
+                material.pipeline = standardMaterial(MaterialDomain::Masked);
             }
 
             return scene.Materials().Add(std::move(material));
@@ -280,7 +255,7 @@ namespace Crowy
         bindings.palette = scene.Materials().Add(
             MaterialResource{
                 .data = {.albedo = ones(), .roughness = StageRoughness},
-                .pipeline = opaquePipeline(),
+                .pipeline = standardMaterial(MaterialDomain::Opaque),
                 .maps = {.albedo = paletteTexture}
             }
         );
@@ -290,7 +265,7 @@ namespace Crowy
                 scene.Materials().Add(
                     MaterialResource{
                         .data = {.albedo = ones(), .roughness = StageRoughness},
-                        .pipeline = opaquePipeline(),
+                        .pipeline = standardMaterial(MaterialDomain::Opaque),
                         .maps = {
                             .albedo = paletteTexture,
                             .emissive = paletteTexture

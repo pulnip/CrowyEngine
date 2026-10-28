@@ -10,6 +10,7 @@
 #include "MeshGenerator.hpp"
 #include "RHIDevice.hpp"
 #include "RenderApp.hpp"
+#include "StandardFrame.hpp"
 
 namespace Crowy
 {
@@ -101,7 +102,7 @@ namespace Crowy
                 scene,
                 MaterialResource{
                     .data = {.albedo = {0.6f, 0.6f, 0.6f}, .roughness = 0.9f},
-                    .pipeline = opaquePipeline()
+                    .pipeline = standardMaterial(MaterialDomain::Opaque)
                 }
             );
             add(scene,
@@ -114,7 +115,7 @@ namespace Crowy
                 scene,
                 MaterialResource{
                     .data = {.roughness = 0.9f},
-                    .pipeline = opaquePipeline(),
+                    .pipeline = standardMaterial(MaterialDomain::Opaque),
                     .maps = {.albedo = palette}
                 }
             );
@@ -132,7 +133,7 @@ namespace Crowy
                     .data =
                         {.roughness = 0.9f,
                          .uvScaleOffset = {0.5f, 0.5f, 0.25f, 0.25f}},
-                    .pipeline = opaquePipeline(),
+                    .pipeline = standardMaterial(MaterialDomain::Opaque),
                     .maps = {.albedo = grid}
                 }
             );
@@ -150,7 +151,7 @@ namespace Crowy
                               0.0f,
                               1.25f / PaletteSize,
                               2.25f / PaletteSize}},
-                    .pipeline = opaquePipeline(),
+                    .pipeline = standardMaterial(MaterialDomain::Opaque),
                     .maps = {.emissive = palette}
                 }
             );
@@ -175,7 +176,7 @@ namespace Crowy
                 scene,
                 MaterialResource{
                     .data = {.albedo = {0.9f, 0.85f, 0.7f}, .roughness = 0.9f},
-                    .pipeline = opaquePipeline()
+                    .pipeline = standardMaterial(MaterialDomain::Opaque)
                 }
             );
             add(scene,
@@ -192,7 +193,7 @@ namespace Crowy
                          .roughness = 0.9f,
                          .flags =
                              static_cast<u32>(MaterialFlags::NoShadowReceive)},
-                    .pipeline = opaquePipeline()
+                    .pipeline = standardMaterial(MaterialDomain::Opaque)
                 }
             );
             add(scene,
@@ -205,7 +206,7 @@ namespace Crowy
                 scene,
                 MaterialResource{
                     .data = {.roughness = 0.9f},
-                    .pipeline = translucentPipeline(),
+                    .pipeline = standardMaterial(MaterialDomain::Translucent),
                     .maps = {.albedo = strip}
                 }
             );
@@ -221,7 +222,7 @@ namespace Crowy
                 scene,
                 MaterialResource{
                     .data = {.roughness = 0.9f, .alphaCutoff = 0.6f},
-                    .pipeline = maskedPipeline(),
+                    .pipeline = standardMaterial(MaterialDomain::Masked),
                     .maps = {.albedo = frame}
                 }
             );
@@ -253,49 +254,6 @@ namespace Crowy
                 .nearZ = 0.05f,
                 .farZ = 50.0f
             };
-        }
-
-        static MaterialPipelineDesc opaquePipeline() {
-            constexpr CStr StandardForward =
-                "Engine/Render/Shader/StandardForward.slang";
-
-            return MaterialPipelineDesc{
-                .vertexShader =
-                    {.path = StandardForward, .entryPoint = "vs_main"},
-                .fragmentShader =
-                    {.path = StandardForward, .entryPoint = "fs_opaque"}
-            };
-        }
-
-        // blended over the opaque scene by the texel's alpha
-        static MaterialPipelineDesc translucentPipeline() {
-            auto pipeline = opaquePipeline();
-            pipeline.fragmentShader.entryPoint = "fs_translucent";
-            pipeline.domain = MaterialDomain::Translucent;
-
-            RHIBlendState blend{};
-            blend.renderTargets[0] = RHIRenderTargetBlendState{
-                .blendEnable = true,
-                .srcBlend = RHIBlend::SrcAlpha,
-                .dstBlend = RHIBlend::InvSrcAlpha
-            };
-            pipeline.blend = blend;
-
-            return pipeline;
-        }
-
-        // cut where the texel's alpha falls below the row's cutoff, in the
-        // depth passes as in color
-        static MaterialPipelineDesc maskedPipeline() {
-            auto pipeline = opaquePipeline();
-            pipeline.fragmentShader.entryPoint = "fs_masked";
-            pipeline.maskShader = {
-                .path = pipeline.fragmentShader.path,
-                .entryPoint = "fs_masked_depth"
-            };
-            pipeline.domain = MaterialDomain::Masked;
-
-            return pipeline;
         }
 
         // sixteen colors far apart, row-major from the top-left

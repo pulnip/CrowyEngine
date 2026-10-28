@@ -6,6 +6,7 @@
 #include "PostChain.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
+#include "RenderMaterial.hpp"
 
 namespace Crowy
 {
@@ -13,8 +14,16 @@ namespace Crowy
 
     // the extent and the target a scene view draws into
     inline constexpr StrView SceneViewName = "SceneView";
+    inline constexpr CStr StandardForwardShader =
+        "Engine/Render/Shader/StandardForward.slang";
 
     FrameGraphDesc describeStandardFrame(const StandardFrameConfig& config);
+    // StandardForwardShader's entries for one domain; Translucent blends by
+    // the surface's alpha
+    MaterialPipelineDesc standardMaterial(
+        MaterialDomain domain,
+        RHICullMode cull = RHICullMode::Back
+    );
 
     struct StandardFrameConfig {
         RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;

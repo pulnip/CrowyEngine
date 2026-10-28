@@ -200,4 +200,36 @@ namespace Crowy
 
         return desc;
     }
+
+    MaterialPipelineDesc standardMaterial(
+        MaterialDomain domain,
+        RHICullMode cull
+    ) {
+        using enum MaterialDomain;
+
+        MaterialPipelineDesc desc{
+            .vertexShader =
+                {.path = StandardForwardShader, .entryPoint = "vs_main"},
+            .fragmentShader =
+                {.path = StandardForwardShader, .entryPoint = "fs_opaque"},
+            .rasterizer = {.cullMode = cull},
+            .domain = domain
+        };
+        if(domain == Translucent) {
+            desc.fragmentShader.entryPoint = "fs_translucent";
+            RHIBlendState blend{};
+            blend.renderTargets[0] = RHIRenderTargetBlendState{
+                .blendEnable = true,
+                .srcBlend = RHIBlend::SrcAlpha,
+                .dstBlend = RHIBlend::InvSrcAlpha
+            };
+            desc.blend = blend;
+        }
+        else if(domain == Masked) {
+            desc.fragmentShader.entryPoint = "fs_masked";
+            desc.maskShader.path = StandardForwardShader;
+        }
+
+        return desc;
+    }
 }

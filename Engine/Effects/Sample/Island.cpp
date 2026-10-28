@@ -163,7 +163,10 @@ namespace Crowy
                         {.albedo = {0.62f, 0.52f, 0.38f},
                          .emissive = CanvasGlow,
                          .roughness = 0.9f},
-                    .pipeline = opaquePipeline(RHICullMode::None)
+                    .pipeline = standardMaterial(
+                        MaterialDomain::Opaque,
+                        RHICullMode::None
+                    )
                 }
             );
 
@@ -352,26 +355,11 @@ namespace Crowy
             };
         }
 
-        static MaterialPipelineDesc opaquePipeline(
-            RHICullMode cull = RHICullMode::Back
-        ) {
-            constexpr CStr StandardForward =
-                "Engine/Render/Shader/StandardForward.slang";
-
-            return MaterialPipelineDesc{
-                .vertexShader =
-                    {.path = StandardForward, .entryPoint = "vs_main"},
-                .fragmentShader =
-                    {.path = StandardForward, .entryPoint = "fs_opaque"},
-                .rasterizer = {.cullMode = cull}
-            };
-        }
-
         // the sea's own stages: the grid lifted by its waves, shaded per pixel
         static MaterialPipelineDesc oceanPipeline() {
             constexpr CStr Ocean = "Engine/Effects/Sample/Island/Ocean.slang";
 
-            auto desc = opaquePipeline();
+            auto desc = standardMaterial(MaterialDomain::Opaque);
             desc.vertexShader = {.path = Ocean, .entryPoint = "vs_ocean"};
             desc.fragmentShader = {.path = Ocean, .entryPoint = "fs_ocean"};
 
@@ -383,7 +371,10 @@ namespace Crowy
             MaterialData data
         ) {
             return scene.Materials().Add(
-                MaterialResource{.data = data, .pipeline = opaquePipeline()}
+                MaterialResource{
+                    .data = data,
+                    .pipeline = standardMaterial(MaterialDomain::Opaque)
+                }
             );
         }
 

@@ -24,6 +24,7 @@
 #include "PuzzlePins.hpp"
 #include "PuzzleSession.hpp"
 #include "RenderApp.hpp"
+#include "StandardFrame.hpp"
 #include "StatsOverlay.hpp"
 #include "UIRenderer.hpp"
 
@@ -82,21 +83,6 @@ namespace Crowy
                 .vertexShader = {.path = file, .entryPoint = "vs_main"},
                 .fragmentShader = {.path = file, .entryPoint = fragmentEntry}
             };
-        }
-
-        MaterialPipelineDesc translucentPipeline(CStr file) {
-            auto pipeline = basePipeline(file, "fs_translucent");
-            pipeline.domain = MaterialDomain::Translucent;
-
-            RHIBlendState blend{};
-            blend.renderTargets[0] = RHIRenderTargetBlendState{
-                .blendEnable = true,
-                .srcBlend = RHIBlend::SrcAlpha,
-                .dstBlend = RHIBlend::InvSrcAlpha
-            };
-            pipeline.blend = blend;
-
-            return pipeline;
         }
 
         MeshHandle addMeshResource(
@@ -190,8 +176,6 @@ namespace Crowy
         class PhysicsPlayground final: public RenderApp {
         private:
             static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
-            static constexpr CStr StandardForward =
-                "Engine/Render/Shader/StandardForward.slang";
             // every lane in frame, high enough to see into each one
             static constexpr Vec3 PuzzleViewPosition{0.0f, 7.3f, -3.9f};
             static constexpr f32 PuzzleViewPitch = 0.873f;
@@ -424,7 +408,7 @@ namespace Crowy
             void addMaterials(RenderScene& scene) {
                 using enum PieceRole;
 
-                const auto opaque = basePipeline(StandardForward, "fs_opaque");
+                const auto opaque = standardMaterial(MaterialDomain::Opaque);
                 auto add = [&](const MaterialData& data) {
                     return scene.Materials().Add(
                         MaterialResource{.data = data, .pipeline = opaque}
@@ -454,7 +438,8 @@ namespace Crowy
                             {.albedo = {0.25f, 0.50f, 0.85f},
                              .roughness = 0.1f,
                              .opacity = 0.35f},
-                        .pipeline = translucentPipeline(StandardForward)
+                        .pipeline =
+                            standardMaterial(MaterialDomain::Translucent)
                     }
                 );
                 role(Ground) =

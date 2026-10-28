@@ -21,6 +21,7 @@
 #include "PropertyWalker.hpp"
 #include "ShadingModel.hpp"
 #include "SnapshotCamera.hpp"
+#include "StandardFrame.hpp"
 
 namespace Crowy
 {
@@ -186,7 +187,7 @@ namespace Crowy
             materials.emissive[i] = addMaterial(
                 scene,
                 MaterialData{.albedo = zeros(), .emissive = radiance * ones()},
-                opaquePipeline()
+                standardMaterial(MaterialDomain::Opaque)
             );
         }
 
@@ -206,7 +207,7 @@ namespace Crowy
                         .custom0 = toonCustom0(ChartLanes),
                         .custom1 = toonCustom1(ChartLanes)
                     },
-                    opaquePipeline()
+                    standardMaterial(MaterialDomain::Opaque)
                 );
             }
         }
@@ -220,19 +221,19 @@ namespace Crowy
             materials.bars[i] = addMaterial(
                 scene,
                 MaterialData{.albedo = barColors[i]},
-                opaquePipeline()
+                standardMaterial(MaterialDomain::Opaque)
             );
         }
 
         materials.doubleSided = addMaterial(
             scene,
             MaterialData{.albedo = {0.35f, 0.70f, 0.45f}},
-            doubleSidedPipeline()
+            standardMaterial(MaterialDomain::Opaque, RHICullMode::None)
         );
         materials.translucent = addMaterial(
             scene,
             MaterialData{.albedo = {0.35f, 0.55f, 0.95f}, .opacity = 0.45f},
-            translucentPipeline()
+            standardMaterial(MaterialDomain::Translucent)
         );
 
         OnRestyleMaterials(scene, materials, shading);
@@ -602,32 +603,6 @@ namespace Crowy
 
     MaterialPipelineDesc PlaygroundScene::gridPipeline() {
         return basePipeline("Engine/Render/Sample/Playground.slang", "fs_grid");
-    }
-
-    MaterialPipelineDesc PlaygroundScene::opaquePipeline() {
-        return basePipeline(StandardForward, "fs_opaque");
-    }
-
-    MaterialPipelineDesc PlaygroundScene::doubleSidedPipeline() {
-        auto pipeline = opaquePipeline();
-        pipeline.rasterizer.cullMode = RHICullMode::None;
-
-        return pipeline;
-    }
-
-    MaterialPipelineDesc PlaygroundScene::translucentPipeline() {
-        auto pipeline = basePipeline(StandardForward, "fs_translucent");
-        pipeline.domain = MaterialDomain::Translucent;
-
-        RHIBlendState blend{};
-        blend.renderTargets[0] = RHIRenderTargetBlendState{
-            .blendEnable = true,
-            .srcBlend = RHIBlend::SrcAlpha,
-            .dstBlend = RHIBlend::InvSrcAlpha
-        };
-        pipeline.blend = blend;
-
-        return pipeline;
     }
 
     Widget PlaygroundScene::buildPanel() {
