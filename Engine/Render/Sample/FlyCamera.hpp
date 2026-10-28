@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Camera.hpp"
+#include "FlyControl.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 
@@ -23,20 +24,16 @@ namespace Crowy
     public:
         Config config;
         Vec3 position{};
-        f32 yaw = 0.0f, pitch = 0.0f;
+        FlyState fly;
 
     private:
-        Vec3 moveInput{};
-        // the wheel's, on config.moveSpeed
-        f32 speedScale = 1.0f;
         Mat4 view = unitMat();
 
     public:
         explicit FlyCamera(const Config& config) noexcept
             : config(config),
               position(config.position),
-              yaw(config.yaw),
-              pitch(config.pitch) {
+              fly(CameraLook{.yaw = config.yaw, .pitch = config.pitch}) {
             RecomputeView();
         }
 

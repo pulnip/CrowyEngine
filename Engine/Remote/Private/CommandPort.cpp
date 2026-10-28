@@ -865,6 +865,57 @@ namespace Crowy
         impl->Unexpose(name);
     }
 
+    PortExposures::~PortExposures() {
+        unexposeAll();
+    }
+
+    PortExposures::PortExposures(PortExposures&& other) noexcept
+        : port(std::exchange(other.port, nullptr)),
+          names(std::exchange(other.names, {})) {}
+
+    PortExposures& PortExposures::operator=(PortExposures&& other) noexcept {
+        if(this != &other) {
+            unexposeAll();
+            port = std::exchange(other.port, nullptr);
+            names = std::exchange(other.names, {});
+        }
+
+        return *this;
+    }
+
+    void PortExposures::Expose(
+        Str name,
+        PropertyTarget target,
+        DirtyCallback onDirty
+    ) {
+        if(port == nullptr)
+            return;
+
+        port->Expose(name, std::move(target), std::move(onDirty));
+        names.push_back(std::move(name));
+    }
+
+    void PortExposures::Expose(
+        Str name,
+        void* target,
+        const TypeDesc& desc,
+        DirtyCallback onDirty
+    ) {
+        Expose(
+            std::move(name),
+            PropertyTarget::Fixed(target, desc),
+            std::move(onDirty)
+        );
+    }
+
+    void PortExposures::unexposeAll() noexcept {
+        if(port != nullptr) {
+            for(const auto& name: names)
+                port->Unexpose(name);
+        }
+        names.clear();
+    }
+
     void CommandPort::Drain() {
         impl->Drain();
     }

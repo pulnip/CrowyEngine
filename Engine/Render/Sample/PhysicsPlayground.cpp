@@ -210,6 +210,8 @@ namespace Crowy
             RAII<UIRenderer> uiRenderer;
             StatsOverlay statsOverlay;
             bool showLabels = true;
+            // last, so the port lets go of the lanes before they go
+            PortExposures exposures;
 
         public:
             PhysicsPlayground()
@@ -229,15 +231,7 @@ namespace Crowy
                     );
                 }
             }
-            ~PhysicsPlayground() override {
-                if(auto* port = Port()) {
-                    for(const auto& lane: lanes) {
-                        const auto name = enumName(lane.kind);
-                        port->Unexpose(std::format("control.{}", name));
-                        port->Unexpose(std::format("status.{}", name));
-                    }
-                }
-            }
+            ~PhysicsPlayground() override = default;
             CROWY_DECLARE_PINNED(PhysicsPlayground)
 
         protected:
@@ -281,21 +275,20 @@ namespace Crowy
                     lane.status = mirrorOf(*lane.session);
                 }
 
-                if(auto* port = Port()) {
-                    for(auto& lane: lanes) {
-                        port->Expose(
-                            std::format("control.{}", enumName(lane.kind)),
-                            &lane.control,
-                            *getDesc<PuzzleControl>(),
-                            [this, &lane] { restart(lane, lane.control.mode); }
-                        );
-                        port->Expose(
-                            std::format("status.{}", enumName(lane.kind)),
-                            &lane.status,
-                            *getDesc<PuzzleStatusMirror>(),
-                            [&lane] { lane.status = mirrorOf(*lane.session); }
-                        );
-                    }
+                exposures = PortExposures(Port());
+                for(auto& lane: lanes) {
+                    exposures.Expose(
+                        std::format("control.{}", enumName(lane.kind)),
+                        &lane.control,
+                        *getDesc<PuzzleControl>(),
+                        [this, &lane] { restart(lane, lane.control.mode); }
+                    );
+                    exposures.Expose(
+                        std::format("status.{}", enumName(lane.kind)),
+                        &lane.status,
+                        *getDesc<PuzzleStatusMirror>(),
+                        [&lane] { lane.status = mirrorOf(*lane.session); }
+                    );
                 }
             }
 
@@ -407,8 +400,8 @@ namespace Crowy
             void frameThePuzzles() {
                 auto& camera = static_cast<FlyCamera&>(Camera());
                 camera.position = PuzzleViewPosition;
-                camera.yaw = 0.0f;
-                camera.pitch = PuzzleViewPitch;
+                camera.fly.look =
+                    CameraLook{.yaw = 0.0f, .pitch = PuzzleViewPitch};
                 camera.RecomputeView();
             }
 

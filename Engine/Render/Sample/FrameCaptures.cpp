@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <format>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "Log.hpp"
 #include "RHIDevice.hpp"
 #include "RHISwapchain.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -21,20 +23,7 @@ namespace Crowy
 
         // "captures/f-{frame}.bmp" names frame 60 "captures/f-60.bmp"
         Str withFrame(StrView path, u64 frame) {
-            const auto number = std::to_string(frame);
-
-            Str named;
-            usize at = 0;
-            for(auto found = path.find(FramePlaceholder);
-                found != StrView::npos;
-                found = path.find(FramePlaceholder, at)) {
-                named += path.substr(at, found - at);
-                named += number;
-                at = found + FramePlaceholder.size();
-            }
-            named += path.substr(at);
-
-            return named;
+            return replaceAll(path, FramePlaceholder, std::to_string(frame));
         }
     }
 
@@ -118,9 +107,9 @@ namespace Crowy
                 }
 
                 DOM::Table result;
-                result.emplace("frames", DOM::Value(std::move(queuedFrames)));
-                result.emplace("paths", DOM::Value(std::move(queuedPaths)));
-                reply.Ok(DOM::Value(std::move(result)));
+                result.emplace("frames", std::move(queuedFrames));
+                result.emplace("paths", std::move(queuedPaths));
+                reply.Ok(std::move(result));
             }
         );
     }
@@ -128,19 +117,18 @@ namespace Crowy
     Str FrameCaptures::refuseTarget(StrView name) const {
         const auto id = pipeline->FindTarget(name);
         if(!id) {
-            Str names;
-            for(const auto& target: pipeline->Targets()) {
-                if(!pipeline->FindTarget(target.name))
-                    continue;
-                if(!names.empty())
-                    names += ", ";
-                names += target.name;
-            }
+            const auto findable = [this](const FrameTargetDesc& target) {
+                return pipeline->FindTarget(target.name).has_value();
+            };
 
             return std::format(
                 "unknown target '{}' (the pipeline has {})",
                 name,
-                names
+                join(
+                    pipeline->Targets() | std::views::filter(findable),
+                    ", ",
+                    &FrameTargetDesc::name
+                )
             );
         }
         if(!isCapturable(pipeline->Targets()[*id - 1].format)) {

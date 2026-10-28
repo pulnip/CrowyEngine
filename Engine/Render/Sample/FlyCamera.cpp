@@ -1,33 +1,27 @@
 #include "FlyCamera.hpp"
 
-#include "FlyControl.hpp"
-
 namespace Crowy
 {
     void FlyCamera::ProcessInput(const InputProvider& input) {
-        if(flyLook(input, config.lookSensitivity, yaw, pitch))
+        if(fly.ProcessInput(input, config.lookSensitivity))
             RecomputeView();
-
-        moveInput = flyMoveInput(input);
-        speedScale = flySpeedScale(input, speedScale);
     }
 
     void FlyCamera::Update(f64 deltaTime) {
-        if(moveInput == zeros())
+        if(!fly.Moving())
             return;
 
-        position = flyMove(
-            position,
-            Rotation(),
-            moveInput,
-            config.moveSpeed * speedScale,
+        const auto moved = fly.Step(
+            Transform{.position = position},
+            config.moveSpeed,
             deltaTime
         );
+        position = moved.position;
         RecomputeView();
     }
 
     Vec4 FlyCamera::Rotation() const noexcept {
-        return flyRotation(yaw, pitch);
+        return flyRotation(fly.look.yaw, fly.look.pitch);
     }
 
     Mat4 FlyCamera::Projection(f32 aspect) const noexcept {

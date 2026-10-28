@@ -35,6 +35,13 @@ TEST(ConsumePrefix, StripsOnlyAPrefixThatIsThere) {
     }());
 }
 
+TEST(ReplaceAll, ReplacesEveryOccurrenceOnce) {
+    static_assert(replaceAll("f-{n}{n}.bmp", "{n}", "60") == "f-6060.bmp");
+    static_assert(replaceAll("{n}", "{n}", "{n}{n}") == "{n}{n}");
+    static_assert(replaceAll("plain", "{n}", "60") == "plain");
+    static_assert(replaceAll("plain", "", "60") == "plain");
+}
+
 TEST(ParseNumber, TakesOnlyTheWholeText) {
     static_assert(parseNumber<u32>("42") == 42u);
     static_assert(parseNumber<u32>("42x") == std::nullopt);

@@ -27,10 +27,12 @@ namespace
             return looking && button == MouseButton::RButton;
         }
 
-        void Set(std::vector<KeyCode> keys, bool look, Vec2 mouse) {
+        void Set(std::vector<KeyCode> keys, bool look, Vec2 mouse, f32 wheel) {
             held = std::move(keys);
             looking = look;
             SetCurrentMousePos(mouse);
+            ConsumeEdge();
+            AddMouseWheel(wheel);
         }
     };
 
@@ -38,11 +40,12 @@ namespace
         std::vector<KeyCode> keys;
         bool look = false;
         Vec2 mouse;
+        f32 wheel = 0.0f;
     };
 }
 
 // The goldens never move a camera, so this is what holds a camera actor
-// flown by the shared fly functions to the bits of a FlyCamera flown alike.
+// flown as Playground flies it to the bits of a FlyCamera flown alike.
 TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
     const FlyCamera::Config config{
         .position = {0.0f, 1.7f, -5.0f},
@@ -58,12 +61,11 @@ TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
     SnapshotCamera snapshotCamera;
     World world;
     world.Provide(snapshotCamera.Snapshot());
-    auto yaw = config.yaw;
-    auto pitch = config.pitch;
+    FlyState fly(CameraLook{.yaw = config.yaw, .pitch = config.pitch});
     const auto actor = world.Spawn(
         Transform{
             .position = config.position,
-            .rotation = flyRotation(yaw, pitch)
+            .rotation = flyRotation(fly.look.yaw, fly.look.pitch)
         }
     );
     world.Add(
@@ -79,10 +81,10 @@ TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
     using enum KeyCode;
     const std::vector<Step> script{
         {{}, false, {100.0f, 100.0f}},
-        {{W}, false, {100.0f, 100.0f}},
+        {{W}, false, {100.0f, 100.0f}, 2.0f},
         {{W, D}, true, {140.0f, 90.0f}},
         {{}, true, {170.0f, 130.0f}},
-        {{S, Space}, false, {170.0f, 130.0f}},
+        {{S, Space}, false, {170.0f, 130.0f}, -3.0f},
         {{A, Shift, W}, true, {120.0f, 60.0f}},
         {{}, false, {120.0f, 60.0f}},
     };
@@ -93,24 +95,16 @@ TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
     for(usize frame = 0; frame < 30; ++frame) {
         const auto& step = script[frame % script.size()];
         const auto seconds = steps[frame % steps.size()];
-        input.Set(step.keys, step.look, step.mouse);
+        input.Set(step.keys, step.look, step.mouse, step.wheel);
 
         flyCamera.ProcessInput(input);
         flyCamera.Update(seconds);
 
-        const auto turned = flyLook(input, config.lookSensitivity, yaw, pitch);
-        const auto moveInput = flyMoveInput(input);
-        if(turned || moveInput != zeros()) {
+        fly.ProcessInput(input, config.lookSensitivity);
+        if(fly.Moving()) {
             world.SetLocalTransform(
                 actor,
-                flyStep(
-                    world.LocalTransform(actor),
-                    yaw,
-                    pitch,
-                    moveInput,
-                    config.moveSpeed,
-                    seconds
-                )
+                fly.Step(world.LocalTransform(actor), config.moveSpeed, seconds)
             );
         }
         world.Frame(seconds);
@@ -127,6 +121,6 @@ TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
 
     // the script walked and turned, so the frames above compared motion
     EXPECT_NE(flyCamera.Position(), config.position);
-    EXPECT_NE(yaw, config.yaw);
-    EXPECT_NE(pitch, config.pitch);
+    EXPECT_NE(fly.look.yaw, config.yaw);
+    EXPECT_NE(fly.look.pitch, config.pitch);
 }

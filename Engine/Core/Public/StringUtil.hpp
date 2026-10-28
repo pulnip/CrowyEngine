@@ -55,6 +55,23 @@ namespace Crowy
         return true;
     }
 
+    inline constexpr Str replaceAll(StrView text, StrView from, StrView to) {
+        if(from.empty())
+            return Str(text);
+
+        Str replaced;
+        usize at = 0;
+        for(auto found = text.find(from); found != StrView::npos;
+            found = text.find(from, at)) {
+            replaced += text.substr(at, found - at);
+            replaced += to;
+            at = found + from.size();
+        }
+        replaced += text.substr(at);
+
+        return replaced;
+    }
+
     template<Number T>
     inline constexpr std::optional<T> parseNumber(StrView text) {
         T value{};

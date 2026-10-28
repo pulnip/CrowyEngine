@@ -101,4 +101,31 @@ namespace Crowy
             .scale = local.scale
         };
     }
+
+    bool FlyState::ProcessInput(const InputProvider& input, f32 sensitivity) {
+        looked = flyLook(input, sensitivity, look.yaw, look.pitch);
+        moveInput = flyMoveInput(input);
+        speedScale = flySpeedScale(input, speedScale);
+
+        return looked;
+    }
+
+    bool FlyState::Moving() const noexcept {
+        return looked || moveInput != zeros();
+    }
+
+    Transform FlyState::Step(
+        const Transform& local,
+        f32 moveSpeed,
+        f64 seconds
+    ) const {
+        return flyStep(
+            local,
+            look.yaw,
+            look.pitch,
+            moveInput,
+            moveSpeed * speedScale,
+            seconds
+        );
+    }
 }

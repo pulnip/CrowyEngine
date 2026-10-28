@@ -22,6 +22,7 @@
 #include "RHIPipelineState.hpp"
 #include "RHISwapchain.hpp"
 #include "RHITexture.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -182,7 +183,7 @@ namespace Crowy
         content.OnInitUI(device, pipeline->Overlay());
 
         applyDebugFromEnvironment();
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         openCommandPort();
 #endif
 
@@ -208,10 +209,9 @@ namespace Crowy
         // a bench run with a misspelled switch would measure the wrong thing
         if(const auto errors = applyProperties(&debug, parseJsonString(env));
            !errors.empty()) {
-            Str message = "CROWY_DEBUG:";
-            for(const auto& error: errors)
-                message += std::format(" {};", error);
-            throw std::runtime_error(message);
+            throw std::runtime_error(
+                std::format("CROWY_DEBUG: {};", join(errors, "; "))
+            );
         }
         if(debug.sceneView && !config.showsSceneView) {
             throw std::runtime_error(
@@ -275,7 +275,7 @@ namespace Crowy
                     DOM::Value(static_cast<i64>(programs))
                 );
                 result.emplace("ms", DOM::Value(rebuild.milliseconds));
-                reply.Ok(DOM::Value(std::move(result)));
+                reply.Ok(std::move(result));
             }
         );
     }

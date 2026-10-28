@@ -96,4 +96,38 @@ namespace Crowy
         CommandPortStatus Status() const;
         u16 Port() const noexcept;
     };
+
+    // A host's exposures, unexposed together when it goes, so no name
+    // outlives the members its target and callback point at.
+    class PortExposures {
+    private:
+        CommandPort* port = nullptr;
+        std::vector<Str> names;
+
+    public:
+        PortExposures() = default;
+        ~PortExposures();
+        CROWY_DECLARE_NON_COPYABLE(PortExposures)
+        PortExposures(PortExposures&& other) noexcept;
+        PortExposures& operator=(PortExposures&& other) noexcept;
+
+        // nullptr exposes nothing
+        explicit PortExposures(CommandPort* port) noexcept
+            : port(port) {}
+
+        void Expose(
+            Str name,
+            PropertyTarget target,
+            DirtyCallback onDirty = {}
+        );
+        void Expose(
+            Str name,
+            void* target,
+            const TypeDesc& desc,
+            DirtyCallback onDirty = {}
+        );
+
+    private:
+        void unexposeAll() noexcept;
+    };
 }

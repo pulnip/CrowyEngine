@@ -62,9 +62,9 @@ namespace Crowy
                     "barrierEdges",
                     DOM::Value(static_cast<i64>(pass.barrierEdges))
                 );
-                passes.push_back(DOM::Value(std::move(row)));
+                passes.emplace_back(std::move(row));
             }
-            result.emplace("passes", DOM::Value(std::move(passes)));
+            result.emplace("passes", std::move(passes));
 
             DOM::Table cpu;
             for(usize i = 0; i < NUM_FRAME_SECTION; ++i) {
@@ -73,7 +73,7 @@ namespace Crowy
                     DOM::Value(stats.report.seconds[i] * MsPerSecond)
                 );
             }
-            result.emplace("cpu", DOM::Value(std::move(cpu)));
+            result.emplace("cpu", std::move(cpu));
 
             const auto& s = stats.report.rhi;
             DOM::Table rhi;
@@ -130,12 +130,12 @@ namespace Crowy
                 "barrierEdges",
                 DOM::Value(static_cast<i64>(s.barrierEdgeCount))
             );
-            result.emplace("rhi", DOM::Value(std::move(rhi)));
+            result.emplace("rhi", std::move(rhi));
 
             if(!stats.report.gpu) {
                 result.emplace("gpu", DOM::Value());
 
-                return DOM::Value(std::move(result));
+                return result;
             }
 
             const auto& time = *stats.report.gpu;
@@ -157,9 +157,9 @@ namespace Crowy
                     DOM::Value(static_cast<i64>(gpuFrame->triangles))
                 );
             }
-            result.emplace("gpu", DOM::Value(std::move(gpu)));
+            result.emplace("gpu", std::move(gpu));
 
-            return DOM::Value(std::move(result));
+            return result;
         }
     }
 
@@ -245,8 +245,8 @@ namespace Crowy
                 }
 
                 DOM::Table result;
-                result.emplace("frames", DOM::Value(std::move(frames)));
-                reply.Ok(DOM::Value(std::move(result)));
+                result.emplace("frames", std::move(frames));
+                reply.Ok(std::move(result));
             }
         );
     }

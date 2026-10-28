@@ -5,6 +5,7 @@
 #include <span>
 #include <vector>
 
+#include "CommandPort.hpp"
 #include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
@@ -78,13 +79,6 @@ namespace Crowy
         ChartShading chart = ChartShading::PBR;
     };
 
-    // exposed as `camera.look`: the camera's turn, kept apart from its
-    // rotation the way a mouse look keeps it, and written into it
-    struct CameraLook {
-        f32 yaw = 0.0f;
-        f32 pitch = 0.0f;
-    };
-
     struct PlaygroundMaterials {
         MaterialHandle floor{};
         MaterialHandle wall{};
@@ -122,14 +116,13 @@ namespace Crowy
         static constexpr auto PanelToggleKey = KeyCode::P;
         static constexpr auto StatsToggleKey = KeyCode::I;
 
-        struct NamedMaterial {
-            CStr name;
-            MaterialHandle handle;
-        };
-
-        struct NamedLight {
-            CStr name;
-            ActorId actor;
+        // a panel section and a port target at once; the port's write also
+        // rebuilds the panel, whose widgets it went behind
+        struct InspectedTarget {
+            Str portName;
+            Str label;
+            PropertyTarget target;
+            DirtyCallback onChange;
         };
 
         struct CameraPose {
@@ -153,30 +146,24 @@ namespace Crowy
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
         Widget panel = Column({});
-        // the panel's light and material sections, and the port's targets
-        // besides `camera` and `environment`
-        std::vector<NamedLight> exposedLights;
-        std::vector<NamedMaterial> exposedMaterials;
+        std::vector<InspectedTarget> inspected;
         // what the panel's debug section was built from
         RenderDebug shownDebug;
         CameraBookmarks bookmarks;
         PlaygroundShading shading;
         // the actor the map is seen through, flown by the mouse and the keys
         ActorId cameraActor;
-        CameraLook look;
-        bool looked = false;
-        Vec3 moveInput{};
-        // the wheel's, on the camera's move speed
-        f32 speedScale = 1.0f;
+        FlyState fly;
         PlaygroundMaterials materials;
 
         // shown by debug.showStats, hidden by default like the panel so the
         // smoke capture matches the panel-less one
         StatsOverlay statsOverlay;
+        // last, so the port lets go of the members above before they go
+        PortExposures exposures;
 
     public:
-        // the port outlives these members, and its callbacks point at them
-        ~PlaygroundScene() override;
+        ~PlaygroundScene() override = default;
         CROWY_DECLARE_PINNED(PlaygroundScene)
 
         explicit PlaygroundScene(const Config& config = MakeConfig());
@@ -241,15 +228,9 @@ namespace Crowy
         Widget buildPanel();
         // the row's data by its handle, for the panel and the port alike
         PropertyTarget materialTarget(MaterialHandle handle);
-        Widget materialSection(CStr label, MaterialHandle handle);
-        // the light, then its actor's transform
-        Widget lightSection(const NamedLight& light);
-        Widget environmentSection(RenderScene& scene);
         Widget debugSection();
-        Widget shadingSection();
-        Widget bookmarksSection();
-        // the camera, then its actor's transform and its look
-        Widget cameraSection();
+        // the panel's sections after debug, which are the port's targets
+        void inspect(RenderScene& scene, ActorId sun, ActorId lamp);
         void linkChartShading();
         // a snap changes the camera section too, so the panel rebuilds; from
         // inside the panel's own submit this only raises the flag

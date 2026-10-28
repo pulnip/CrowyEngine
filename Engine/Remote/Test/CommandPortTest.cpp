@@ -575,6 +575,24 @@ TEST_F(CommandPortTest, ListObjectsNamesEachExposure) {
     EXPECT_EQ(gone.json.at("result.objects")->asArray()->size(), 0u);
 }
 
+TEST_F(CommandPortTest, PortExposuresUnexposeEveryNameWhenTheyGo) {
+    PortProbe probe;
+    {
+        PortExposures exposures(&port);
+        exposures.Expose("probe", &probe, *getDesc<PortProbe>());
+        auto moved = std::move(exposures);
+        moved.Expose("probe.again", &probe, *getDesc<PortProbe>());
+
+        auto both = exchange(post(R"({"cmd":"list_objects"})"));
+        ASSERT_TRUE(both.ok()) << both.body;
+        EXPECT_EQ(both.json.at("result.objects")->asArray()->size(), 2u);
+    }
+
+    auto gone = exchange(post(R"({"cmd":"list_objects"})"));
+    ASSERT_TRUE(gone.ok()) << gone.body;
+    EXPECT_EQ(gone.json.at("result.objects")->asArray()->size(), 0u);
+}
+
 TEST_F(CommandPortTest, DescribeCarriesMetadataInBand) {
     PortProbe probe;
     port.Expose("probe", &probe, *getDesc<PortProbe>());

@@ -36,4 +36,40 @@ namespace Crowy
         f32 speed,
         f64 seconds
     );
+
+    // the turn a mouse look keeps apart from the rotation it writes
+    struct CameraLook {
+        f32 yaw = 0.0f;
+        f32 pitch = 0.0f;
+    };
+
+    // a flown camera's input between ProcessInput and Step, apart from what
+    // holds its transform
+    class FlyState {
+    public:
+        CameraLook look;
+
+    private:
+        Vec3 moveInput{};
+        // the wheel's, on Step's moveSpeed
+        f32 speedScale = 1.0f;
+        bool looked = false;
+
+    public:
+        FlyState() = default;
+
+        explicit FlyState(CameraLook look) noexcept
+            : look(look) {}
+
+        // true when it turned
+        bool ProcessInput(const InputProvider& input, f32 sensitivity);
+
+        // a turn or a walk: Step changes the transform
+        bool Moving() const noexcept;
+        Transform Step(
+            const Transform& local,
+            f32 moveSpeed,
+            f64 seconds
+        ) const;
+    };
 }

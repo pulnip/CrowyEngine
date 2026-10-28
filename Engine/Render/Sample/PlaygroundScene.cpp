@@ -54,23 +54,6 @@ namespace Crowy
         }
     }
 
-    PlaygroundScene::~PlaygroundScene() {
-        if(auto* port = Port()) {
-            port->Unexpose("bookmarks");
-            port->Unexpose("shading");
-            port->Unexpose("camera");
-            port->Unexpose("camera.transform");
-            port->Unexpose("camera.look");
-            port->Unexpose("environment");
-            for(const auto& light: exposedLights) {
-                port->Unexpose(std::format("light.{}", light.name));
-                port->Unexpose(std::format("light.{}.transform", light.name));
-            }
-            for(const auto& material: exposedMaterials)
-                port->Unexpose(std::format("material.{}", material.name));
-        }
-    }
-
     PlaygroundScene::PlaygroundScene(const Config& config)
         : RenderApp(config, std::make_unique<SnapshotCamera>()) {}
 
@@ -127,11 +110,11 @@ namespace Crowy
         world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
 
         const auto start = MakeCamera();
-        look = CameraLook{.yaw = start.yaw, .pitch = start.pitch};
+        fly = FlyState(CameraLook{.yaw = start.yaw, .pitch = start.pitch});
         cameraActor = world.Spawn(
             Transform{
                 .position = start.position,
-                .rotation = flyRotation(look.yaw, look.pitch)
+                .rotation = flyRotation(fly.look.yaw, fly.look.pitch)
             }
         );
         world.Add(
@@ -386,84 +369,9 @@ namespace Crowy
         // the actors' rows land, so the panel and the port find them
         world.Frame(0.0);
 
-        exposedLights = {NamedLight{"sun", sun}, NamedLight{"lamp", lamp}};
-
-        constexpr auto Last = ChartColumns - 1;
-        exposedMaterials = {
-            NamedMaterial{"floor", materials.floor},
-            NamedMaterial{"smooth-dielectric", materials.chart[0]},
-            NamedMaterial{"rough-dielectric", materials.chart[Last]},
-            NamedMaterial{"smooth-metal", materials.chart[ChartColumns]},
-            NamedMaterial{"rough-metal", materials.chart[ChartColumns + Last]},
-            NamedMaterial{"double-sided", materials.doubleSided},
-            NamedMaterial{"translucent", materials.translucent},
-            // the middle panel, at 4
-            NamedMaterial{"emissive", materials.emissive[1]}
-        };
-
+        inspect(scene, sun, lamp);
         shownDebug = Debug();
         panel = buildPanel();
-
-        // the port's targets are the panel's, under the same rule; a
-        // port write lands behind the panel's widgets, so it rebuilds them
-        if(auto* port = Port()) {
-            port->Expose(
-                "bookmarks",
-                &bookmarks,
-                *getDesc<CameraBookmarks>(),
-                [this] { snapCamera(); }
-            );
-            port->Expose(
-                "shading",
-                &shading,
-                *getDesc<PlaygroundShading>(),
-                [this] {
-                    linkChartShading();
-                    uiContext.panelDirty = true;
-                }
-            );
-            port->Expose(
-                "camera",
-                world.Target<CameraComponent>(cameraActor),
-                [this] { uiContext.panelDirty = true; }
-            );
-            // a rotation written here lasts until the next mouse look, which
-            // turns from `camera.look`
-            port->Expose(
-                "camera.transform",
-                world.TransformTarget(cameraActor),
-                [this] { uiContext.panelDirty = true; }
-            );
-            port->Expose("camera.look", &look, *getDesc<CameraLook>(), [this] {
-                applyLook();
-                uiContext.panelDirty = true;
-            });
-            for(const auto& light: exposedLights) {
-                port->Expose(
-                    std::format("light.{}", light.name),
-                    world.Target<LightComponent>(light.actor),
-                    [this] { uiContext.panelDirty = true; }
-                );
-                port->Expose(
-                    std::format("light.{}.transform", light.name),
-                    world.TransformTarget(light.actor),
-                    [this] { uiContext.panelDirty = true; }
-                );
-            }
-            port->Expose(
-                "environment",
-                &scene.Environment(),
-                *getDesc<EnvironmentSnapshot>(),
-                [this] { uiContext.panelDirty = true; }
-            );
-            for(const auto& material: exposedMaterials) {
-                port->Expose(
-                    std::format("material.{}", material.name),
-                    materialTarget(material.handle),
-                    [this] { uiContext.panelDirty = true; }
-                );
-            }
-        }
     }
 
     void PlaygroundScene::OnProcessInput(const InputProvider& input) {
@@ -475,26 +383,19 @@ namespace Crowy
             debug.showStats = !debug.showStats;
         }
 
-        const auto fly = MakeCamera();
-        looked = flyLook(input, fly.lookSensitivity, look.yaw, look.pitch);
         // the cursor hides while it turns, so a look never meets a screen edge
-        if(looked)
+        if(fly.ProcessInput(input, MakeCamera().lookSensitivity))
             RequestRelativeMouse();
-        moveInput = flyMoveInput(input);
-        speedScale = flySpeedScale(input, speedScale);
     }
 
     void PlaygroundScene::OnUpdateScene(f64 seconds) {
         // a still camera writes nothing, so nothing is extracted for it
-        if(looked || moveInput != zeros()) {
+        if(fly.Moving()) {
             world.SetLocalTransform(
                 cameraActor,
-                flyStep(
+                fly.Step(
                     world.LocalTransform(cameraActor),
-                    look.yaw,
-                    look.pitch,
-                    moveInput,
-                    MakeCamera().moveSpeed * speedScale,
+                    MakeCamera().moveSpeed,
                     seconds
                 )
             );
@@ -730,52 +631,16 @@ namespace Crowy
     }
 
     Widget PlaygroundScene::buildPanel() {
-        std::vector<Widget> sections{
-            debugSection(),
-            shadingSection(),
-            bookmarksSection(),
-            cameraSection()
-        };
-        for(const auto& light: exposedLights) {
-            sections.push_back(lightSection(light));
-        }
-        sections.push_back(environmentSection(Scene()));
-        for(const auto& material: exposedMaterials) {
-            sections.push_back(materialSection(material.name, material.handle));
+        std::vector<Widget> sections{debugSection()};
+        for(const auto& target: inspected) {
+            sections.push_back(buildPropertyTree(
+                target.label.c_str(),
+                target.target,
+                target.onChange
+            ));
         }
 
         return Column(std::move(sections));
-    }
-
-    Widget PlaygroundScene::materialSection(CStr label, MaterialHandle handle) {
-        // the draw lists re-read the table every frame; no dirty consumer
-        return buildPropertyTree(label, materialTarget(handle), [] {});
-    }
-
-    Widget PlaygroundScene::lightSection(const NamedLight& light) {
-        // the World extracts what changed; no dirty consumer
-        return Column(
-            {buildPropertyTree(
-                 light.name,
-                 world.Target<LightComponent>(light.actor),
-                 [] {}
-             ),
-             buildPropertyTree(
-                 std::format("{} transform", light.name).c_str(),
-                 world.TransformTarget(light.actor),
-                 [] {}
-             )}
-        );
-    }
-
-    Widget PlaygroundScene::environmentSection(RenderScene& scene) {
-        // BeginFrame copies it into every view each frame
-        return buildPropertyTree(
-            "environment",
-            &scene.Environment(),
-            *getDesc<EnvironmentSnapshot>(),
-            [] {}
-        );
     }
 
     Widget PlaygroundScene::debugSection() {
@@ -788,46 +653,113 @@ namespace Crowy
         );
     }
 
-    Widget PlaygroundScene::shadingSection() {
-        // the draw lists resolve every material's pipeline each frame,
-        // so the next frame links the new model
-        return buildPropertyTree(
-            "shading",
-            &shading,
-            *getDesc<PlaygroundShading>(),
-            [this] { linkChartShading(); }
-        );
-    }
+    void PlaygroundScene::inspect(
+        RenderScene& scene,
+        ActorId sun,
+        ActorId lamp
+    ) {
+        constexpr auto Columns = PlaygroundChartColumns;
+        constexpr auto Last = Columns - 1;
+        // the World extracts what changed, and the draw lists and BeginFrame
+        // re-read the rest every frame
+        const DirtyCallback none = [] {
+        };
 
-    Widget PlaygroundScene::bookmarksSection() {
-        return buildPropertyTree(
-            "bookmarks",
-            &bookmarks,
-            *getDesc<CameraBookmarks>(),
-            [this] { snapCamera(); }
+        inspected = {
+            InspectedTarget{
+                "shading",
+                "shading",
+                PropertyTarget::Fixed(&shading, *getDesc<PlaygroundShading>()),
+                [this] { linkChartShading(); }
+            },
+            InspectedTarget{
+                "bookmarks",
+                "bookmarks",
+                PropertyTarget::Fixed(&bookmarks, *getDesc<CameraBookmarks>()),
+                [this] { snapCamera(); }
+            },
+            InspectedTarget{
+                "camera",
+                "camera",
+                world.Target<CameraComponent>(cameraActor),
+                none
+            },
+            // a rotation written here lasts until the next mouse look, which
+            // turns from `camera.look`
+            InspectedTarget{
+                "camera.transform",
+                "camera transform",
+                world.TransformTarget(cameraActor),
+                none
+            },
+            InspectedTarget{
+                "camera.look",
+                "camera look",
+                PropertyTarget::Fixed(&fly.look, *getDesc<CameraLook>()),
+                [this] { applyLook(); }
+            },
+        };
+        for(const auto [name, actor]:
+            {std::pair{"sun", sun}, std::pair{"lamp", lamp}}) {
+            inspected.push_back(
+                InspectedTarget{
+                    std::format("light.{}", name),
+                    name,
+                    world.Target<LightComponent>(actor),
+                    none
+                }
+            );
+            inspected.push_back(
+                InspectedTarget{
+                    std::format("light.{}.transform", name),
+                    std::format("{} transform", name),
+                    world.TransformTarget(actor),
+                    none
+                }
+            );
+        }
+        inspected.push_back(
+            InspectedTarget{
+                "environment",
+                "environment",
+                PropertyTarget::Fixed(
+                    &scene.Environment(),
+                    *getDesc<EnvironmentSnapshot>()
+                ),
+                none
+            }
         );
-    }
+        for(const auto [name, handle]:
+            {std::pair{"floor", materials.floor},
+             std::pair{"smooth-dielectric", materials.chart[0]},
+             std::pair{"rough-dielectric", materials.chart[Last]},
+             std::pair{"smooth-metal", materials.chart[Columns]},
+             std::pair{"rough-metal", materials.chart[Columns + Last]},
+             std::pair{"double-sided", materials.doubleSided},
+             std::pair{"translucent", materials.translucent},
+             // the middle panel, at 4
+             std::pair{"emissive", materials.emissive[1]}}) {
+            inspected.push_back(
+                InspectedTarget{
+                    std::format("material.{}", name),
+                    name,
+                    materialTarget(handle),
+                    none
+                }
+            );
+        }
 
-    Widget PlaygroundScene::cameraSection() {
-        // the World extracts what changed; only the look writes through
-        return Column(
-            {buildPropertyTree(
-                 "camera",
-                 world.Target<CameraComponent>(cameraActor),
-                 [] {}
-             ),
-             buildPropertyTree(
-                 "camera transform",
-                 world.TransformTarget(cameraActor),
-                 [] {}
-             ),
-             buildPropertyTree(
-                 "camera look",
-                 &look,
-                 *getDesc<CameraLook>(),
-                 [this] { applyLook(); }
-             )}
-        );
+        exposures = PortExposures(Port());
+        for(const auto& target: inspected) {
+            exposures.Expose(
+                target.portName,
+                target.target,
+                [this, onChange = target.onChange] {
+                    onChange();
+                    uiContext.panelDirty = true;
+                }
+            );
+        }
     }
 
     void PlaygroundScene::linkChartShading() {
@@ -842,12 +774,12 @@ namespace Crowy
         if(!pose)
             return;
 
-        look = CameraLook{.yaw = pose->yaw, .pitch = pose->pitch};
+        fly.look = CameraLook{.yaw = pose->yaw, .pitch = pose->pitch};
         world.SetLocalTransform(
             cameraActor,
             Transform{
                 .position = pose->position,
-                .rotation = flyRotation(look.yaw, look.pitch)
+                .rotation = flyRotation(fly.look.yaw, fly.look.pitch)
             }
         );
         uiContext.panelDirty = true;
@@ -855,7 +787,7 @@ namespace Crowy
 
     void PlaygroundScene::applyLook() {
         auto local = world.LocalTransform(cameraActor);
-        local.rotation = flyRotation(look.yaw, look.pitch);
+        local.rotation = flyRotation(fly.look.yaw, fly.look.pitch);
         world.SetLocalTransform(cameraActor, local);
     }
 

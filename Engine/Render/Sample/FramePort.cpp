@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cstdlib>
 #include <expected>
 #include <format>
@@ -16,6 +15,7 @@
 #include "EnumUtil.hpp"
 #include "FrameSelector.hpp"
 #include "Log.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -40,7 +40,7 @@ namespace Crowy
             xy.emplace_back(static_cast<f64>(point.x));
             xy.emplace_back(static_cast<f64>(point.y));
 
-            return DOM::Value(std::move(xy));
+            return xy;
         }
 
         // the error reads after the event's place in the list
@@ -63,7 +63,7 @@ namespace Crowy
             }
             if(kinds.size() != 1)
                 return std::unexpected(
-                    "takes one of key, button, move, moveTo, wheel"
+                    std::format("takes one of {}", join(Kinds, ", "))
                 );
 
             const auto kind = kinds.front();
@@ -143,10 +143,8 @@ namespace Crowy
         CommandPortConfig portConfig;
         if(const char* env = std::getenv("CROWY_COMMAND_PORT")) {
             const StrView text = env;
-            u16 forced = 0;
-            const auto [ptr, ec] =
-                std::from_chars(text.data(), text.data() + text.size(), forced);
-            if(ec != std::errc{} || ptr != text.data() + text.size()) {
+            const auto forced = parseNumber<u16>(text);
+            if(!forced) {
                 LOG_WARN(
                     "RenderApp",
                     "CROWY_COMMAND_PORT='{}' is not a port number; using the "
@@ -154,11 +152,11 @@ namespace Crowy
                     text
                 );
             }
-            else if(forced == 0) {
+            else if(*forced == 0) {
                 return;
             }
             else {
-                portConfig.port = forced;
+                portConfig.port = *forced;
                 portConfig.portRetries = 0;
             }
         }
@@ -180,7 +178,7 @@ namespace Crowy
                 "captureFailures",
                 DOM::Value(static_cast<i64>(captures.Failures()))
             );
-            reply.Ok(DOM::Value(std::move(result)));
+            reply.Ok(std::move(result));
         });
         port->RegisterVerb("quit", {}, [this](const DOM::Value&, Reply reply) {
             loop.requestQuit();
@@ -314,7 +312,7 @@ namespace Crowy
                     "queuedFor",
                     DOM::Value(static_cast<i64>(loop.frame() + 1))
                 );
-                reply.Ok(DOM::Value(std::move(result)));
+                reply.Ok(std::move(result));
             }
         );
         // the last frame's input as the app saw it: what the UI took reads up
@@ -390,8 +388,8 @@ namespace Crowy
         DOM::Table report;
         report.emplace("frame", DOM::Value(static_cast<i64>(loop.frame())));
         report.emplace("relativeMouse", DOM::Value(inputStatus.relativeMouse));
-        report.emplace("ui", DOM::Value(std::move(ui)));
-        report.emplace("mouse", DOM::Value(std::move(mouse)));
+        report.emplace("ui", std::move(ui));
+        report.emplace("mouse", std::move(mouse));
         report.emplace("held", DOM::Value(namesWhere([&](auto code) {
                            return input.IsKeyDown(code);
                        })));
