@@ -36,8 +36,7 @@ namespace Crowy
     }
 
     FieldPass::FieldPass(RHICommandList& cmdList, FieldKernels& kernels)
-        : cmdList(cmdList),
-          kernels(kernels) {}
+        : cmdList(cmdList), kernels(kernels) {}
 
     void FieldPass::Begin(FieldBuffers fields) {
         CROWY_ASSERT(!open, "a field pass ends before it begins again");

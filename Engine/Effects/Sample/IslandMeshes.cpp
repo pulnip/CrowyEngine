@@ -92,8 +92,8 @@ namespace Crowy
 
         MeshData mesh;
         const auto around = [&](u32 i) {
-            const auto angle = TwoPi * static_cast<f32>(i) /
-                               static_cast<f32>(segments);
+            const auto angle =
+                TwoPi * static_cast<f32>(i) / static_cast<f32>(segments);
             return Vec3{std::sin(angle), 0.0f, std::cos(angle)};
         };
         for(u32 i = 0; i < segments; ++i) {

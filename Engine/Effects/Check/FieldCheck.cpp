@@ -245,7 +245,8 @@ int main() {
         std::println("FieldCheck: {} of {} passed", passed, results.size());
 
         return static_cast<usize>(passed) == results.size() ? 0 : 1;
-    } catch(const std::exception& e) {
+    }
+    catch(const std::exception& e) {
         std::println(stderr, "FieldCheck: {}", e.what());
 
         return 1;

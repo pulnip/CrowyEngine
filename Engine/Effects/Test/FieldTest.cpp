@@ -159,15 +159,15 @@ TEST(FieldPass, AFreshFieldIsClearedThenSteppedThenReleased) {
     EXPECT_FALSE(recorded.bufferAcquires[0].crossSubmission);
     EXPECT_EQ(
         recorded.log,
-        (Log{
-            "pipeline",
-            "push",
-            "dispatch",
-            "barrier",
-            "pipeline",
-            "push",
-            "dispatch"
-        })
+        (
+            Log{"pipeline",
+                "push",
+                "dispatch",
+                "barrier",
+                "pipeline",
+                "push",
+                "dispatch"}
+        )
     );
 
     ASSERT_EQ(recorded.dispatches.size(), 2u);
@@ -291,4 +291,3 @@ TEST(FieldPass, AClearStaysInsideTheDispatchLimit) {
     EXPECT_EQ(count, 262144u * 16u);
     EXPECT_EQ(stride, MaxDispatchThreads);
 }
-

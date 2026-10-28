@@ -23,7 +23,8 @@ namespace Crowy
             if(blend == EffectBlend::Additive) {
                 target.srcBlend = RHIBlend::One;
                 target.dstBlend = RHIBlend::One;
-            } else {
+            }
+            else {
                 target.srcBlend = RHIBlend::SrcAlpha;
                 target.dstBlend = RHIBlend::InvSrcAlpha;
             }
@@ -45,8 +46,7 @@ namespace Crowy
                         .path = effect.shader,
                         .entryPoint = "vs_" + draw.entry
                     },
-                .rasterizer =
-                    RHIRasterizerState{.cullMode = RHICullMode::None},
+                .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader =
                     RHIShaderDesc{
                         .path = effect.shader,
@@ -103,9 +103,7 @@ namespace Crowy
     EffectSystem::~EffectSystem() = default;
 
     EffectSystem::EffectSystem(RHIDevice& device, RHIResourceUsage reader)
-        : device(device),
-          kernels(device),
-          reader(reader) {}
+        : device(device), kernels(device), reader(reader) {}
 
     void EffectSystem::Add(ParticleEffectDesc desc) {
         if(desc.name.empty())
@@ -195,11 +193,9 @@ namespace Crowy
             auto push = pushOf(*effect);
             push.step = effect->next - 1;
             for(const auto& draw: desc.draws) {
-                cmdList.SetPipelineState(
-                    pipelines.Resolve(
-                        drawPipelineDesc(desc, draw, context.formats)
-                    )
-                );
+                cmdList.SetPipelineState(pipelines.Resolve(
+                    drawPipelineDesc(desc, draw, context.formats)
+                ));
                 cmdList.SetPushGraphicsConstants(push);
                 cmdList.Draw(draw.verticesPerInstance, desc.count);
                 ++draws;

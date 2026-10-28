@@ -12,8 +12,8 @@
 namespace Crowy
 {
     inline constexpr Vec3 IslandRadii{ISLAND_RADII};
-    inline constexpr f32 TipiFacetAngle = 2.0f * std::numbers::pi_v<f32> /
-                                          static_cast<f32>(ISLAND_TIPI_FACETS);
+    inline constexpr f32 TipiFacetAngle =
+        2.0f * std::numbers::pi_v<f32> / static_cast<f32>(ISLAND_TIPI_FACETS);
 
     // the sand's height, or the ellipsoid's center where it does not reach
     inline f32 islandCrown(Vec2 xz) {
@@ -28,9 +28,8 @@ namespace Crowy
 
     // facet k's outward direction across the ground
     inline Vec2 tipiFacetNormal(u32 k) {
-        const auto azimuth =
-            ISLAND_TIPI_FIRST_POLE +
-            (static_cast<f32>(k) + 0.5f) * TipiFacetAngle;
+        const auto azimuth = ISLAND_TIPI_FIRST_POLE +
+                             (static_cast<f32>(k) + 0.5f) * TipiFacetAngle;
 
         return Vec2{std::sin(azimuth), std::cos(azimuth)};
     }

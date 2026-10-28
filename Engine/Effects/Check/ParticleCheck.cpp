@@ -44,8 +44,7 @@ namespace
     }
 
     bool same(const EffectParticle& gpu, const EffectParticle& cpu) {
-        return gpu.ageSteps == cpu.ageSteps &&
-               gpu.lifeSteps == cpu.lifeSteps &&
+        return gpu.ageSteps == cpu.ageSteps && gpu.lifeSteps == cpu.lifeSteps &&
                gpu.generation == cpu.generation &&
                gpu.position.x == cpu.position.x &&
                gpu.position.y == cpu.position.y &&
@@ -122,7 +121,8 @@ int main() {
         std::println("ParticleCheck: {} of 1 passed", passed ? 1 : 0);
 
         return passed ? 0 : 1;
-    } catch(const std::exception& e) {
+    }
+    catch(const std::exception& e) {
         std::println(stderr, "ParticleCheck: {}", e.what());
 
         return 1;

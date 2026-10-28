@@ -2,8 +2,8 @@
 
 #include "Primitives.hpp"
 
-// The CPU twin of Engine/Effects/Shader/Random.slang, bit for bit, so a check can
-// hold the GPU's draws against it.
+// The CPU twin of Engine/Effects/Shader/Random.slang, bit for bit, so a check
+// can hold the GPU's draws against it.
 namespace Crowy
 {
     // PCG's output permutation over 32 bits (Jarzynski and Olano, 2020)

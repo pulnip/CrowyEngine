@@ -162,11 +162,9 @@ namespace Crowy
             );
             const auto coals = addMaterial(
                 scene,
-                {
-                    .albedo = {0.1f, 0.05f, 0.02f},
-                    .emissive = {6.0f, 2.2f, 0.5f},
-                    .roughness = 0.9f
-                }
+                {.albedo = {0.1f, 0.05f, 0.02f},
+                 .emissive = {6.0f, 2.2f, 0.5f},
+                 .roughness = 0.9f}
             );
             // both sides: moonlit outside, firelit inside
             canvasMaterial = scene.Materials().Add(
@@ -273,10 +271,11 @@ namespace Crowy
                         .target = desc.sceneColor,
                         .load = RHILoadAction::Load
                     }},
-                    .depth = DepthTargetUse{
-                        .target = sceneDepth,
-                        .load = RHILoadAction::Load
-                    },
+                    .depth =
+                        DepthTargetUse{
+                            .target = sceneDepth,
+                            .load = RHILoadAction::Load
+                        },
                     .kind = HookPassDesc{.hook = EffectsHook}
                 }
             );
@@ -323,14 +322,14 @@ namespace Crowy
                 worldStep(),
                 world.FrameTicks()
             );
-            hooks.push_back(PassHook{
-                .name = EffectsHook,
-                .bufferAcquires = releases,
-                .record =
-                    [this](
-                        RHICommandList& cmdList,
-                        const HookPassContext& context
-                    ) {
+            hooks.push_back(
+                PassHook{
+                    .name = EffectsHook,
+                    .bufferAcquires = releases,
+                    .record = [this](
+                                  RHICommandList& cmdList,
+                                  const HookPassContext& context
+                              ) {
                         drawSky(cmdList, context);
                         return 1 + effects->Draw(
                                        cmdList,
@@ -338,7 +337,8 @@ namespace Crowy
                                        Renderer().Pipelines()
                                    );
                     }
-            });
+                }
+            );
 
             return hooks;
         }
@@ -378,8 +378,7 @@ namespace Crowy
                     {.path = StandardForward, .entryPoint = "vs_main"},
                 .fragmentShader =
                     {.path = StandardForward, .entryPoint = "fs_opaque"},
-                .rasterizer =
-                    {.cullMode = cull, .frontCounterClockwise = false}
+                .rasterizer = {.cullMode = cull, .frontCounterClockwise = false}
             };
         }
 
@@ -436,12 +435,8 @@ namespace Crowy
             RHIGraphicsPipelineStateDesc desc{
                 .topology = RHIPrimitiveTopology::TriangleList,
                 .vertexShader =
-                    RHIShaderDesc{
-                        .path = SkyShader,
-                        .entryPoint = "vs_sky"
-                    },
-                .rasterizer =
-                    RHIRasterizerState{.cullMode = RHICullMode::None},
+                    RHIShaderDesc{.path = SkyShader, .entryPoint = "vs_sky"},
+                .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader =
                     RHIShaderDesc{.path = SkyShader, .entryPoint = "fs_sky"},
                 .renderTargetCount = formats.colors.size(),
