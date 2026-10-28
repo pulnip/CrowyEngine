@@ -153,6 +153,19 @@ namespace
             throw std::runtime_error("Enhanced Barrier not supported");
         }
 
+        D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21{};
+        CHECK_HRESULT(
+            device.CheckFeatureSupport(
+                D3D12_FEATURE_D3D12_OPTIONS21,
+                &options21,
+                sizeof(options21)
+            ),
+            "Unable to check feature options21"
+        );
+        if(!options21.ExtendedCommandInfoSupported) {
+            throw std::runtime_error("Extended Command Info not supported");
+        }
+
         D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16{};
         auto hr = device.CheckFeatureSupport(
             D3D12_FEATURE_D3D12_OPTIONS16,
