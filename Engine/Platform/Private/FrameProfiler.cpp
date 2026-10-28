@@ -56,7 +56,6 @@ namespace Crowy
             CounterColumn{"pso_sets", &RHIFrameStats::pipelineSetCount},
             CounterColumn{"cb_sets", &RHIFrameStats::constantBufferSetCount},
             CounterColumn{"push_sets", &RHIFrameStats::pushConstantSetCount},
-            CounterColumn{"vb_sets", &RHIFrameStats::vertexBufferSetCount},
             CounterColumn{"barrier_edges", &RHIFrameStats::barrierEdgeCount}
         };
         static_assert(

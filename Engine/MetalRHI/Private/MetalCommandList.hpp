@@ -187,13 +187,6 @@ namespace Crowy
 
         void SetPipelineState(RHIGraphicsPipelineState&) RHI_OVERRIDE;
 
-        void SetVertexBuffer(
-            RHIBuffer&,
-            u32 slot,
-            u32 stride,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
         void SetPushGraphicsConstants(const void* data, u32 size) RHI_OVERRIDE;
 
         void SetGraphicsConstantBuffer(

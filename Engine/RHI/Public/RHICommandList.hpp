@@ -494,21 +494,6 @@ namespace Crowy
             CROWY_STAT(pipelineSetCount);
         }
 
-        virtual void SetVertexBuffer(
-            RHIBuffer&,
-            u32 slot,
-            u32 stride,
-            u32 offset = 0
-        ) {
-            CROWY_ASSERT(
-                passState == PassKind::Render,
-                "Not in a render pass. Did you call "
-                "RHICommandList::BeginRenderPass()?"
-            );
-
-            CROWY_STAT(vertexBufferSetCount);
-        }
-
         virtual void SetPushGraphicsConstants(const void* data, u32 size) {
             CROWY_ASSERT(
                 passState == PassKind::Render,

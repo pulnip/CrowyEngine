@@ -417,29 +417,6 @@ namespace Crowy
         state->cbDirtyMask = CB_ALL_CLEAN;
     }
 
-    void MetalCommandList::SetVertexBuffer(
-        RHIBuffer& buffer,
-        u32 slot,
-        u32 stride,
-        u32 offset
-    ) {
-        Super::SetVertexBuffer(buffer, slot, stride, offset);
-
-        auto state = std::get_if<RenderPassState>(&passState);
-        CROWY_ASSERT(
-            state != nullptr,
-            "Did you call RHICommandList::BeginRenderPass()?"
-        );
-        CROWY_ASSERT(slot < MaxVertexBufferSlots);
-
-        bindVertexBuffer(
-            *state,
-            static_cast<MetalBuffer&>(buffer).Get(),
-            offset,
-            toVertexBufferIndex(slot)
-        );
-    }
-
     void MetalCommandList::applyPipeline(
         RenderPassState& state,
         const MetalGraphicsPipelineState& pso

@@ -1,6 +1,5 @@
 #include "MetalPipelineState.hpp"
 
-#include <array>
 #include <utility>
 
 #include <Metal/MTLArgument.hpp>
@@ -8,7 +7,6 @@
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLLibrary.hpp>
 #include <Metal/MTLRenderPipeline.hpp>
-#include <Metal/MTLVertexDescriptor.hpp>
 #include <dispatch/dispatch.h>
 
 #include "Assert.hpp"
@@ -37,45 +35,6 @@ namespace Crowy
                 return MTL::PrimitiveTypeTriangle;
             case TriangleStrip:
                 return MTL::PrimitiveTypeTriangleStrip;
-            default:
-                std::unreachable();
-            }
-        }
-
-        inline auto convertVertexFormat(RHIPixelFormat format) {
-            using enum RHIPixelFormat;
-
-            switch(format) {
-            case R32_FLOAT:
-                return MTL::VertexFormatFloat;
-            case RG32_FLOAT:
-                return MTL::VertexFormatFloat2;
-            case RGB32_FLOAT:
-                return MTL::VertexFormatFloat3;
-            case RGBA32_FLOAT:
-                return MTL::VertexFormatFloat4;
-            case R32_SINT:
-                return MTL::VertexFormatInt;
-            case RG32_SINT:
-                return MTL::VertexFormatInt2;
-            case RGBA32_SINT:
-                return MTL::VertexFormatInt4;
-            case R32_UINT:
-                return MTL::VertexFormatUInt;
-            case RG32_UINT:
-                return MTL::VertexFormatUInt2;
-            case RGBA32_UINT:
-                return MTL::VertexFormatUInt4;
-            case R16_FLOAT:
-                return MTL::VertexFormatHalf;
-            case RG16_FLOAT:
-                return MTL::VertexFormatHalf2;
-            case RGBA16_FLOAT:
-                return MTL::VertexFormatHalf4;
-            case RGBA8_UNORM:
-                return MTL::VertexFormatUChar4Normalized;
-            case RGBA8_UINT:
-                return MTL::VertexFormatUChar4;
             default:
                 std::unreachable();
             }
@@ -267,41 +226,6 @@ namespace Crowy
         auto pipelineDesc =
             NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
         topology = convert(desc.topology);
-
-        if(desc.vertexLayout.has_value()) {
-            const auto& vertexLayout = desc.vertexLayout.value();
-            auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
-            std::array<NS::UInteger, MaxVertexBufferSlots> strides{};
-
-            for(usize i = 0; i < vertexLayout.size(); ++i) {
-                const auto& elem = vertexLayout[i];
-                CROWY_ASSERT(elem.inputSlot < MaxVertexBufferSlots);
-                auto attr = vertexDesc->attributes()->object(i);
-
-                attr->setFormat(convertVertexFormat(elem.format));
-                attr->setOffset(elem.alignedByteOffset);
-                attr->setBufferIndex(toVertexBufferIndex(elem.inputSlot));
-
-                auto elemSize = detail::getBytesPerPixel(elem.format);
-                auto elemEnd = elem.alignedByteOffset + elemSize;
-                if(elemEnd > strides[elem.inputSlot]) {
-                    strides[elem.inputSlot] = elemEnd;
-                }
-            }
-
-            for(u32 slot = 0; slot < MaxVertexBufferSlots; ++slot) {
-                if(strides[slot] == 0)
-                    continue;
-
-                auto layout =
-                    vertexDesc->layouts()->object(toVertexBufferIndex(slot));
-                layout->setStride(strides[slot]);
-                layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
-            }
-
-            pipelineDesc->setVertexDescriptor(vertexDesc);
-            vertexDesc->release();
-        }
 
         NS::SharedPtr<MTL::Library> library;
         {

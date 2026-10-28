@@ -564,53 +564,6 @@ namespace Crowy
         i32 right, bottom;
     };
 
-    enum class RHIInputClassification : u8 {
-        PerVertex,
-        PerInstance,
-    };
-
-    struct RHIVertexElement {
-        CStr semanticName = nullptr;
-        u32 semanticIndex;
-        RHIPixelFormat format;
-        u32 inputSlot;
-        u32 alignedByteOffset;
-        RHIInputClassification classification;
-        u32 instanceDataStepRate;
-
-        friend bool operator==(
-            const RHIVertexElement& lhs,
-            const RHIVertexElement& rhs
-        ) noexcept {
-            return sameCStr(lhs.semanticName, rhs.semanticName) &&
-                   lhs.semanticIndex == rhs.semanticIndex &&
-                   lhs.format == rhs.format && lhs.inputSlot == rhs.inputSlot &&
-                   lhs.alignedByteOffset == rhs.alignedByteOffset &&
-                   lhs.classification == rhs.classification &&
-                   lhs.instanceDataStepRate == rhs.instanceDataStepRate;
-        }
-    };
-}
-
-template<>
-struct std::hash<Crowy::RHIVertexElement> {
-    std::size_t operator()(const Crowy::RHIVertexElement& elm) const noexcept {
-        using namespace Crowy;
-
-        return hashAll(
-            elm.semanticName ? StrView{elm.semanticName} : StrView{},
-            elm.semanticIndex,
-            elm.format,
-            elm.inputSlot,
-            elm.alignedByteOffset,
-            elm.classification,
-            elm.instanceDataStepRate
-        );
-    }
-};
-
-namespace Crowy
-{
     struct RHIShaderDesc {
         std::filesystem::path path;
         Str entryPoint = "main";
@@ -886,8 +839,6 @@ namespace Crowy
     inline constexpr CStr ShaderProfile = "sm_6_8";
 
     struct RHIGraphicsPipelineStateDesc {
-        std::optional<std::span<const RHIVertexElement>> vertexLayout =
-            std::nullopt;
         RHIPrimitiveTopology topology = RHIPrimitiveTopology::TriangleList;
         RHIShaderDesc vertexShader{.entryPoint = "vs_main"};
 
@@ -921,12 +872,6 @@ namespace Crowy
                     return false;
             }
 
-            if(lhs.vertexLayout.has_value() != rhs.vertexLayout.has_value())
-                return false;
-            if(lhs.vertexLayout.has_value() &&
-               !std::ranges::equal(*lhs.vertexLayout, *rhs.vertexLayout))
-                return false;
-
             return lhs.topology == rhs.topology &&
                    lhs.vertexShader == rhs.vertexShader &&
                    lhs.rasterizer == rhs.rasterizer &&
@@ -950,14 +895,7 @@ struct std::hash<Crowy::RHIGraphicsPipelineStateDesc> {
     ) const noexcept {
         using namespace Crowy;
 
-        std::size_t h = 0;
-        if(desc.vertexLayout.has_value()) {
-            for(const auto& elm: *desc.vertexLayout) {
-                h = hashAll(h, elm);
-            }
-        }
-        h = hashAll(
-            h,
+        std::size_t h = hashAll(
             desc.topology,
             desc.vertexShader,
             desc.rasterizer,

@@ -328,24 +328,6 @@ namespace Crowy
         dxPso.Bind(*commandList.Get());
     }
 
-    void DX12CommandList::SetVertexBuffer(
-        RHIBuffer& buffer,
-        u32 slot,
-        u32 stride,
-        u32 offset
-    ) {
-        Super::SetVertexBuffer(buffer, slot, stride, offset);
-
-        auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
-        const std::array vbViews{D3D12_VERTEX_BUFFER_VIEW{
-            .BufferLocation = dxBuffer.GetGPUAddress() + offset,
-            .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - offset),
-            .StrideInBytes = stride
-        }};
-
-        commandList->IASetVertexBuffers(slot, vbViews.size(), vbViews.data());
-    }
-
     void DX12CommandList::SetPushGraphicsConstants(const void* data, u32 size) {
         Super::SetPushGraphicsConstants(data, size);
 

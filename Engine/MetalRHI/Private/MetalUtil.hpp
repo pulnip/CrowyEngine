@@ -9,16 +9,8 @@
 
 namespace Crowy
 {
-    // Metal's buffer argument table has 31 entries and slang fills it upward
-    // from 0, so vertex buffers bind downward from the top
     inline constexpr u32 MaxBufferArguments = 31;
     inline constexpr u32 MaxSamplerArguments = 16;
-    inline constexpr u32 MaxVertexBufferSlots = 8;
-
-    inline constexpr NS::UInteger toVertexBufferIndex(u32 slot) {
-        constexpr NS::UInteger top = MaxBufferArguments - 1;
-        return top - slot;
-    }
 
     NS::String* toNSString(StrView);
 

@@ -127,10 +127,6 @@ namespace Crowy
                 DOM::Value(static_cast<i64>(s.pushConstantSetCount))
             );
             rhi.emplace(
-                "vertexBufferSets",
-                DOM::Value(static_cast<i64>(s.vertexBufferSetCount))
-            );
-            rhi.emplace(
                 "barrierEdges",
                 DOM::Value(static_cast<i64>(s.barrierEdgeCount))
             );

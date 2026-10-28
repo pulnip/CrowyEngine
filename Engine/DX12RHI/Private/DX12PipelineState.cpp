@@ -238,29 +238,6 @@ namespace Crowy
 
         primitiveTopology = ::convert(desc.topology);
 
-        std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
-        if(desc.vertexLayout.has_value()) {
-            primitiveTopology = ::convert(desc.topology);
-            const auto& vertexLayout = desc.vertexLayout.value();
-
-            elements.resize(vertexLayout.size());
-            for(usize i = 0; i < vertexLayout.size(); ++i) {
-                const auto& src = vertexLayout[i];
-                auto& dst = elements[i];
-
-                dst.SemanticName = src.semanticName;
-                dst.SemanticIndex = src.semanticIndex;
-                dst.Format = convert(src.format);
-                dst.InputSlot = src.inputSlot;
-                dst.AlignedByteOffset = src.alignedByteOffset;
-                dst.InputSlotClass =
-                    src.classification == RHIInputClassification::PerVertex
-                        ? D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA
-                        : D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-                dst.InstanceDataStepRate = src.instanceDataStepRate;
-            }
-        }
-
         RHIShader shaderProgram{
             desc.vertexShader.path,
             RHIBackend::DirectX12,
@@ -378,9 +355,6 @@ namespace Crowy
             .SampleMask = UINT_MAX,
             .RasterizerState = rsDesc,
             .DepthStencilState = dsDesc,
-            .InputLayout =
-                {.pInputElementDescs = elements.data(),
-                 .NumElements = static_cast<UINT>(elements.size())},
             .PrimitiveTopologyType = ::topologyType(primitiveTopology),
             .NumRenderTargets = static_cast<UINT>(desc.renderTargetCount),
             .DSVFormat = desc.depthStencil.has_value()
