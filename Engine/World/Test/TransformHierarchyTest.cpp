@@ -51,7 +51,7 @@ protected:
 };
 
 TEST_F(TransformHierarchyTest, EmptyHierarchy) {
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
     EXPECT_FALSE(hierarchy.HasPendingChanges());
     EXPECT_FALSE(hierarchy.IsValid(TransformHandle::InvalidHandle()));
 }
@@ -59,7 +59,7 @@ TEST_F(TransformHierarchyTest, EmptyHierarchy) {
 TEST_F(TransformHierarchyTest, CommitOnEmptyHierarchy) {
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
     EXPECT_FALSE(hierarchy.HasPendingChanges());
 }
 
@@ -98,7 +98,6 @@ TEST_F(TransformHierarchyTest, ReadsThroughAConstReference) {
 
     EXPECT_TRUE(readOnly.IsValid(committed));
     expectSameTransform(readOnly.GetLocalTransform(committed), makeLocal(1.0f));
-    EXPECT_EQ(readOnly.GetLocalScale(committed), makeLocal(1.0f).scale);
     // pending nodes read through the same door
     expectSameTransform(
         readOnly.GetLocalTransform(uncommitted),
@@ -108,24 +107,13 @@ TEST_F(TransformHierarchyTest, ReadsThroughAConstReference) {
     Commit();
 }
 
-TEST_F(TransformHierarchyTest, SetLocalComponents) {
-    auto handle = commitedNode();
-    auto local = makeLocal(3.0f);
-
-    hierarchy.SetLocalPosition(handle, local.position);
-    hierarchy.SetLocalRotation(handle, local.rotation);
-    hierarchy.SetLocalScale(handle, local.scale);
-
-    expectSameTransform(hierarchy.GetLocalTransform(handle), local);
-}
-
 TEST_F(TransformHierarchyTest, CreationIsDeferredButHandleIsValid) {
     auto handle = hierarchy.CreateNode(makeLocal(1.0f));
 
     EXPECT_TRUE(hierarchy.IsValid(handle));
     EXPECT_TRUE(hierarchy.HasPendingChanges());
     // the array has not moved yet
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 
     Commit();
 
@@ -248,7 +236,7 @@ TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut) {
 
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformHierarchyTest, DestructionIsDeferredButHandleDiesNow) {
@@ -265,7 +253,7 @@ TEST_F(TransformHierarchyTest, DestructionIsDeferredButHandleDiesNow) {
 
     EXPECT_FALSE(hierarchy.IsValid(handle));
     EXPECT_FALSE(hierarchy.HasPendingChanges());
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformHierarchyTest, SubtreeGoesLeafFirstInOneCommit) {
@@ -283,7 +271,7 @@ TEST_F(TransformHierarchyTest, SubtreeGoesLeafFirstInOneCommit) {
 
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
     EXPECT_FALSE(hierarchy.IsValid(root));
     EXPECT_FALSE(hierarchy.IsValid(leaf));
 }
@@ -381,7 +369,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeReportsInPreorder) {
 
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode) {
@@ -396,7 +384,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode) {
 
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformHierarchyTest, DestroySubtreeTakesUncommittedChildrenToo) {
@@ -433,7 +421,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeOfAnUncommittedParent) {
 
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformHierarchyTest, DestroyingAnAlreadyDeadHandleIsIgnored) {
@@ -454,7 +442,7 @@ TEST_F(TransformHierarchyTest, DestroyingAnAlreadyDeadHandleIsIgnored) {
 
     Commit();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle) {
@@ -534,5 +522,5 @@ TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals) {
         }
     }
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }

@@ -130,7 +130,7 @@ TEST_F(WorldAccessorTest, ChainClearsWhenTheParentTurnsEvenAgain) {
     hierarchy.UpdateWorldTransforms();
     ASSERT_TRUE(HasUnevenChain(FlagsAt(1)));
 
-    hierarchy.SetLocalScale(root, Vec3{3.0f, 3.0f, 3.0f});
+    hierarchy.WriteLocalTransform(root).scale = Vec3{3.0f, 3.0f, 3.0f};
     hierarchy.UpdateWorldTransforms();
 
     EXPECT_FALSE(HasUnevenChain(FlagsAt(0)));
@@ -188,59 +188,4 @@ TEST_F(WorldAccessorTest, RotationSurvivesAMirroringScale) {
     auto expected =
         Vec4{0.0f, 0.0f, std::sin(QUARTER / 2), std::cos(QUARTER / 2)};
     EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
-}
-
-TEST_F(WorldAccessorTest, InverseUndoesTheWorldMatrix) {
-    auto local = rotationZ(std::numbers::pi_v<f32> / 3);
-    local.position = Vec3{2.0f, -1.0f, 4.0f};
-    local.scale = Vec3{2.0f, 2.0f, 2.0f};
-
-    auto root = Create(local);
-    auto child = Create(root, Transform{.position = Vec3{1.0f, 1.0f, 1.0f}});
-    hierarchy.UpdateWorldTransforms();
-
-    expectNearMatrix(
-        hierarchy.GetWorldMatrix(child) * hierarchy.GetWorldInverse(child),
-        unitMat()
-    );
-}
-
-TEST_F(WorldAccessorTest, InverseHandlesUnevenScale) {
-    auto root = Create(scaled(Vec3{2.0f, 4.0f, 0.5f}));
-    hierarchy.UpdateWorldTransforms();
-
-    expectNearMatrix(
-        hierarchy.GetWorldMatrix(root) * hierarchy.GetWorldInverse(root),
-        unitMat()
-    );
-}
-
-TEST_F(WorldAccessorTest, InverseFollowsTheNextUpdate) {
-    auto root = Create(Transform{.position = Vec3{1.0f, 0.0f, 0.0f}});
-    hierarchy.UpdateWorldTransforms();
-    auto first = hierarchy.GetWorldInverse(root);
-
-    hierarchy.SetLocalPosition(root, Vec3{5.0f, 0.0f, 0.0f});
-    hierarchy.UpdateWorldTransforms();
-
-    EXPECT_NEAR(first[3][0], -1.0f, EPSILON);
-    EXPECT_NEAR(hierarchy.GetWorldInverse(root)[3][0], -5.0f, EPSILON);
-}
-
-TEST_F(WorldAccessorTest, InverseFollowsAStructuralChange) {
-    auto doomed =
-        hierarchy.CreateNode(Transform{.position = Vec3{1.0f, 0.0f, 0.0f}});
-    auto keeper =
-        hierarchy.CreateNode(Transform{.position = Vec3{9.0f, 0.0f, 0.0f}});
-    hierarchy.CommitStructuralChanges();
-    hierarchy.UpdateWorldTransforms();
-
-    // caches both, so a stale entry would answer for the wrong array position
-    ASSERT_NEAR(hierarchy.GetWorldInverse(doomed)[3][0], -1.0f, EPSILON);
-    ASSERT_NEAR(hierarchy.GetWorldInverse(keeper)[3][0], -9.0f, EPSILON);
-
-    hierarchy.DestroyNode(doomed);
-    hierarchy.CommitStructuralChanges();
-
-    EXPECT_NEAR(hierarchy.GetWorldInverse(keeper)[3][0], -9.0f, EPSILON);
 }

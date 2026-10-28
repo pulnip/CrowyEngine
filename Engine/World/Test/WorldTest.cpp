@@ -124,6 +124,22 @@ TEST(World, AChildIsPlacedUnderItsParent) {
     EXPECT_EQ(world.WorldMatrix(child)[3], (Vec4{1.0f, 2.0f, 0.0f, 1.0f}));
 }
 
+TEST(World, AReparentLandsAtSync) {
+    World world;
+    const auto parent = world.Spawn(at({1.0f, 0.0f, 0.0f}));
+    const auto child = world.Spawn(at({0.0f, 2.0f, 0.0f}));
+    world.Frame(0.0);
+
+    world.SetParent(child, parent);
+    EXPECT_EQ(world.WorldMatrix(child)[3], (Vec4{0.0f, 2.0f, 0.0f, 1.0f}));
+    world.Frame(0.0);
+    EXPECT_EQ(world.WorldMatrix(child)[3], (Vec4{1.0f, 2.0f, 0.0f, 1.0f}));
+
+    world.SetParent(child, ActorId::InvalidHandle());
+    world.Frame(0.0);
+    EXPECT_EQ(world.WorldMatrix(child)[3], (Vec4{0.0f, 2.0f, 0.0f, 1.0f}));
+}
+
 TEST(World, ADestroyTakesTheSubtreeAtOnce) {
     World world;
     const auto parent = world.Spawn();

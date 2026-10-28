@@ -36,6 +36,16 @@ namespace Crowy
             dyingActors.push_back(actorOf(node));
     }
 
+    void World::SetParent(ActorId actor, ActorId parent) {
+        CROWY_ASSERT(!applyingStructure, "a reparent inside Sync");
+        CROWY_ASSERT(IsValid(actor), "reparenting an actor that is not alive");
+
+        hierarchy.SetParent(
+            nodeOf(actor),
+            parent.IsValid() ? nodeOf(parent) : TransformHandle::InvalidHandle()
+        );
+    }
+
     bool World::IsValid(ActorId actor) const noexcept {
         return hierarchy.IsValid(nodeOf(actor));
     }

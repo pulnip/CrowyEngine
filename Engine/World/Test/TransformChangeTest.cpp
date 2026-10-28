@@ -49,7 +49,7 @@ TEST(TransformChange, ALocalWriteUpdatesItsSubtreeAndNothingElse) {
     const auto other = hierarchy.CreateNode(at({5.0f, 0.0f, 0.0f}));
     commitAndUpdate(hierarchy);
 
-    hierarchy.SetLocalPosition(moved, {2.0f, 0.0f, 0.0f});
+    hierarchy.WriteLocalTransform(moved).position = {2.0f, 0.0f, 0.0f};
     hierarchy.UpdateWorldTransforms();
 
     EXPECT_EQ(updatedNodes(hierarchy), (Handles{moved, child}));
@@ -89,8 +89,8 @@ TEST(TransformChange, AMarkedNodeInsideAMarkedSubtreeIsUpdatedOnce) {
     commitAndUpdate(hierarchy);
 
     // marked child first, it still updates once, after its root
-    hierarchy.SetLocalScale(child, {2.0f, 2.0f, 2.0f});
-    hierarchy.SetLocalRotation(root, unitQuat());
+    hierarchy.WriteLocalTransform(child).scale = {2.0f, 2.0f, 2.0f};
+    hierarchy.WriteLocalTransform(root).rotation = unitQuat();
     hierarchy.UpdateWorldTransforms();
 
     EXPECT_EQ(updatedNodes(hierarchy), (Handles{root, child}));
@@ -116,7 +116,7 @@ TEST(TransformChange, AMarkedNodeDestroyedBeforeTheUpdateIsSkipped) {
     const auto destroyed = hierarchy.CreateNode();
     commitAndUpdate(hierarchy);
 
-    hierarchy.SetLocalPosition(destroyed, {1.0f, 0.0f, 0.0f});
+    hierarchy.WriteLocalTransform(destroyed).position = {1.0f, 0.0f, 0.0f};
     hierarchy.DestroyNode(destroyed);
     hierarchy.CommitStructuralChanges();
     // the freed slot goes to a node still waiting for its commit
@@ -137,7 +137,7 @@ TEST(TransformChange, AMarkedNodeDestroyedBeforeTheUpdateIsSkipped) {
 TEST(TransformChange, AWriteToAPendingNodeLandsWithItsCommit) {
     TransformHierarchy hierarchy;
     const auto node = hierarchy.CreateNode();
-    hierarchy.SetLocalPosition(node, {0.0f, 0.0f, 4.0f});
+    hierarchy.WriteLocalTransform(node).position = {0.0f, 0.0f, 4.0f};
 
     commitAndUpdate(hierarchy);
     EXPECT_EQ(updatedNodes(hierarchy), (Handles{node}));

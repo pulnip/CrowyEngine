@@ -445,7 +445,7 @@ namespace Crowy
     }
 
     void TransformHierarchy::CommitStructuralChanges() {
-        // nothing moves, so the parent indexes and the inverses still hold
+        // nothing moves, so the parent indexes still hold
         if(!HasPendingChanges()) {
             return;
         }
@@ -457,9 +457,6 @@ namespace Crowy
         commitReparents();
 
         rebuildParentIndexes();
-        // positions moved, so a cached inverse would answer for another node
-        // now
-        invalidateInverses();
     }
 
     void TransformHierarchy::markDirty(TransformHandle handle) noexcept {
@@ -536,44 +533,7 @@ namespace Crowy
         if(inherited)
             warnOnNonUniformChain(node);
 
-        inverseValid[index] = 0;
         updated.push_back(slots.HandleOf(node.slot));
-    }
-
-    Mat4 TransformHierarchy::ComputeWorldMatrixNow(
-        TransformHandle handle
-    ) const noexcept {
-        const auto& node = nodeOf(handle);
-        auto world = modelMat(node.local);
-
-        for(auto index = node.parentIndex; index.IsValid();) {
-            const auto& ancestor = nodes[index.value];
-            world = modelMat(ancestor.local) * world;
-            index = ancestor.parentIndex;
-        }
-
-        return world;
-    }
-
-    void TransformHierarchy::invalidateInverses() const noexcept {
-        worldInverses.resize(nodes.size());
-        inverseValid.assign(nodes.size(), 0);
-    }
-
-    const Mat4& TransformHierarchy::GetWorldInverse(
-        TransformHandle handle
-    ) const noexcept {
-        auto index = indexOf(handle);
-        CROWY_ASSERT(index != PENDING_INDEX);
-        CROWY_ASSERT(index.value < inverseValid.size());
-
-        if(!inverseValid[index.value]) {
-            worldInverses[index.value] =
-                inverseAffine(nodes[index.value].world);
-            inverseValid[index.value] = 1;
-        }
-
-        return worldInverses[index.value];
     }
 
     TransformHandle TransformHierarchy::GetParent(

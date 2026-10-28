@@ -92,6 +92,8 @@ namespace Crowy
         );
         // the actor and every actor below it
         void Destroy(ActorId actor);
+        // an invalid parent makes the actor a root
+        void SetParent(ActorId actor, ActorId parent);
         bool IsValid(ActorId actor) const noexcept;
 
         // what the actor is shown as, empty until set; two actors may share

@@ -83,12 +83,6 @@ namespace Crowy
         // what the last update recomputed, in preorder
         std::vector<TransformHandle> updated;
 
-        // Kept out of TransformNode on purpose: another 64 bytes per node would
-        // slow the sequential pass in UpdateWorldTransforms down for the few
-        // nodes that ever get asked for an inverse.
-        mutable std::vector<Mat4> worldInverses;
-        mutable std::vector<u8> inverseValid;
-
     private:
         TransformIndex indexOf(TransformHandle handle) const noexcept {
             CROWY_ASSERT(IsValid(handle));
@@ -136,9 +130,6 @@ namespace Crowy
         // An invalid parent promotes to root. Asserts on a parent that sits
         // inside the moved subtree.
         void SetParent(TransformHandle handle, TransformHandle newParent);
-        void PromoteToRoot(TransformHandle handle) {
-            SetParent(handle, TransformHandle::InvalidHandle());
-        }
 
         void CommitStructuralChanges();
         bool HasPendingChanges() const noexcept {
@@ -178,34 +169,6 @@ namespace Crowy
             markDirty(handle);
         }
 
-        Vec3 GetLocalPosition(TransformHandle handle) const noexcept {
-            return localTransform(handle).position;
-        }
-        Vec4 GetLocalRotation(TransformHandle handle) const noexcept {
-            return localTransform(handle).rotation;
-        }
-        Vec3 GetLocalScale(TransformHandle handle) const noexcept {
-            return localTransform(handle).scale;
-        }
-        void SetLocalPosition(
-            TransformHandle handle,
-            const Vec3& position
-        ) noexcept {
-            localTransform(handle).position = position;
-            markDirty(handle);
-        }
-        void SetLocalRotation(
-            TransformHandle handle,
-            const Vec4& rotation
-        ) noexcept {
-            localTransform(handle).rotation = rotation;
-            markDirty(handle);
-        }
-        void SetLocalScale(TransformHandle handle, const Vec3& scale) noexcept {
-            localTransform(handle).scale = scale;
-            markDirty(handle);
-        }
-
         // world transform: the marked subtrees only
         void UpdateWorldTransforms();
         // the nodes the last UpdateWorldTransforms recomputed, in preorder,
@@ -217,10 +180,6 @@ namespace Crowy
         const Mat4& GetWorldMatrix(TransformHandle handle) const noexcept {
             return nodeOf(handle).world;
         }
-        // Walks the ancestor chain instead of reading the cache, and leaves the
-        // cache alone
-        Mat4 ComputeWorldMatrixNow(TransformHandle handle) const noexcept;
-
         Vec3 GetWorldPosition(TransformHandle handle) const noexcept {
             return static_cast<Vec3>(nodeOf(handle).world[3]);
         }
@@ -229,11 +188,9 @@ namespace Crowy
         Vec4 GetWorldRotation(TransformHandle handle) const noexcept {
             return nodeOf(handle).worldRotation;
         }
-        const Mat4& GetWorldInverse(TransformHandle handle) const noexcept;
 
         // committed nodes only
         usize Size() const noexcept { return nodes.size(); }
-        bool IsEmpty() const noexcept { return Size() == 0; }
         // committed nodes in preorder, so a parent comes before its children
         TransformHandle HandleAt(usize index) const noexcept {
             CROWY_ASSERT(index < nodes.size());
@@ -269,7 +226,6 @@ namespace Crowy
         // The only place allowed to write parentIndex
         void rebuildParentIndexes() noexcept;
 
-        void invalidateInverses() const noexcept;
         // a pending node needs none: its commit marks it
         void markDirty(TransformHandle handle) noexcept;
         void markDirty(TransformNode& node);

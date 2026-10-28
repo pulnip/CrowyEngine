@@ -65,7 +65,7 @@ protected:
 TEST_F(TransformWorldTest, UpdateOnEmptyHierarchy) {
     hierarchy.UpdateWorldTransforms();
 
-    EXPECT_TRUE(hierarchy.IsEmpty());
+    EXPECT_EQ(hierarchy.Size(), 0u);
 }
 
 TEST_F(TransformWorldTest, RootWorldIsItsOwnLocal) {
@@ -146,44 +146,6 @@ TEST_F(TransformWorldTest, DeepChainNeedsNoRecursion) {
             static_cast<f32>(i + 1)
         );
     }
-    expectNearMatrix(
-        hierarchy.ComputeWorldMatrixNow(chain.back()),
-        hierarchy.GetWorldMatrix(chain.back())
-    );
-}
-
-TEST_F(TransformWorldTest, ComputeNowAgreesWithTheCache) {
-    auto root = Create(translation(Vec3{1.0f, 0.0f, 0.0f}));
-    auto branch = Create(root, rotationZ(std::numbers::pi_v<f32> / 3));
-    auto leaf = Create(branch, translation(Vec3{0.0f, 2.0f, 1.0f}));
-
-    hierarchy.UpdateWorldTransforms();
-
-    expectNearMatrix(
-        hierarchy.ComputeWorldMatrixNow(leaf),
-        hierarchy.GetWorldMatrix(leaf)
-    );
-}
-
-TEST_F(TransformWorldTest, ComputeNowLeavesTheCacheAlone) {
-    auto root = Create(translation(Vec3{1.0f, 0.0f, 0.0f}));
-    auto child = Create(root, translation(Vec3{1.0f, 0.0f, 0.0f}));
-    hierarchy.UpdateWorldTransforms();
-
-    auto cached = hierarchy.GetWorldMatrix(child);
-    hierarchy.SetLocalPosition(child, Vec3{5.0f, 0.0f, 0.0f});
-
-    // the fresh answer moved, the cache did not
-    EXPECT_NEAR(
-        positionOf(hierarchy.ComputeWorldMatrixNow(child)).x,
-        6.0f,
-        EPSILON
-    );
-    expectNearMatrix(hierarchy.GetWorldMatrix(child), cached);
-
-    hierarchy.UpdateWorldTransforms();
-
-    EXPECT_NEAR(positionOf(hierarchy.GetWorldMatrix(child)).x, 6.0f, EPSILON);
 }
 
 TEST_F(TransformWorldTest, WorldFollowsAStructuralChange) {
