@@ -1,9 +1,10 @@
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
-#include "MetalDevice.hpp"
-
 #include <algorithm>
+#include <functional>
+#include <optional>
+#include <span>
 #include <vector>
 
 #include <Metal/MTLFence.hpp>
@@ -22,6 +23,7 @@
 #include "MetalSwapchain.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
+#include "RHIDevice.hpp"
 #include "RHIFrameTimeline.hpp"
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
@@ -31,11 +33,7 @@
 
 namespace Crowy
 {
-    RHIDeviceRAII createMetalDevice() {
-        return std::make_unique<MetalDevice>();
-    }
-
-    class MetalDevice::Impl {
+    class MetalDevice final: public RHIDevice {
     private:
         // a submitted frame's command buffers, held past their lists' next
         // Begin until the frame completes and its GPU time is read back
@@ -86,40 +84,7 @@ namespace Crowy
         RHIGPUTimeHistory gpuTimes;
 
     public:
-        auto CreateCommandList() {
-            return std::make_unique<MetalCommandList>(
-                commandQueue.get(),
-                submissionEvent.get(),
-                submissionSerial,
-                handoffSerial
-            );
-        }
-
-        auto CreateBuffer(const RHIBufferCreateDesc& desc, StrView name) {
-            CROWY_ASSERT(desc.size % 4 == 0);
-
-            auto buffer = std::make_unique<MetalBuffer>(allocator, desc, name);
-
-            if(desc.initialData != nullptr &&
-               desc.memory == RHIMemoryType::GPUOnly) {
-                ensureUploadBegin();
-
-                uploadGPUOnlyBuffer(
-                    uploadCmdList,
-                    uploadRing,
-                    4,
-                    *buffer,
-                    RHISubresourceData{
-                        .data = desc.initialData,
-                        .rowPitch = desc.size
-                    }
-                );
-            }
-
-            return buffer;
-        }
-
-        Impl()
+        MetalDevice()
             : device(NS::TransferPtr(MTL::CreateSystemDefaultDevice())),
               commandQueue(NS::TransferPtr(device->newCommandQueue())),
               submissionEvent(NS::TransferPtr(device->newEvent())),
@@ -190,11 +155,166 @@ namespace Crowy
                 UploadRing(*serialFence, std::move(transientBuffer));
         }
 
-        ~Impl() { retireQueue.CollectAll(); }
+        ~MetalDevice() { retireQueue.CollectAll(); }
 
-        auto CreateFrameScope() { return std::make_unique<MetalFrameScope>(); }
+        RHIFrameScopeRAII CreateFrameScope() override {
+            return std::make_unique<MetalFrameScope>();
+        }
 
-        auto CreateTexture(const RHITextureCreateDesc& desc, StrView name) {
+        RHIGraphicsPipelineStateRAII CreatePipelineState(
+            const RHIGraphicsPipelineStateDesc& desc,
+            StrView name = {}
+        ) override {
+            return std::make_unique<MetalGraphicsPipelineState>(
+                *device.get(),
+                samplers,
+                desc,
+                name
+            );
+        }
+
+        RHIComputePipelineStateRAII CreatePipelineState(
+            const RHIComputePipelineStateDesc& desc,
+            StrView name = {}
+        ) override {
+            return std::make_unique<MetalComputePipelineState>(
+                *device.get(),
+                samplers,
+                desc,
+                name
+            );
+        }
+
+        RHISwapchainRAII CreateSwapchain(
+            const RHISwapchainCreateDesc& desc,
+            StrView = {}
+        ) override {
+            return std::make_unique<MetalSwapchain>(*device.get(), desc);
+        }
+
+        RHICommandListRAII CreateCommandList() override {
+            return std::make_unique<MetalCommandList>(
+                commandQueue.get(),
+                submissionEvent.get(),
+                submissionSerial,
+                handoffSerial
+            );
+        }
+
+        u64 GetCompletedFrame() const noexcept override {
+            return timeline.CompletedFrame(serialFence->GetValue());
+        }
+
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept override {
+            if(const auto* seconds = gpuTimes.Find(frame))
+                return *seconds;
+
+            return std::nullopt;
+        }
+
+        void WaitFrame(u64 frame) override {
+            if(const auto serial = timeline.SerialOf(frame))
+                serialFence->WaitCPU(*serial, 0);
+        }
+
+        void WaitIdle() override {
+            // signal fresh so this also waits on any GPU work queued
+            // after the last per-frame signal (e.g. swapchain Present)
+            signalSerial();
+            serialFence->WaitCPU(submissionSerial, 0);
+
+            // all work up to the fresh signal is done, so this drains the
+            // queue instead of leaving stragglers for a Submit
+            retireQueue.Tag(submissionSerial);
+            retireQueue.Collect(submissionSerial);
+
+            // the event can fire before a buffer's status says Completed, and
+            // nothing after the loop's last WaitIdle would read them again
+            for(const auto& held: untimedFrames) {
+                for(const auto& cmdBuffer: held.cmdBuffers)
+                    cmdBuffer->waitUntilCompleted();
+            }
+            harvestGPUTimes();
+        }
+
+        void DeferRetire(std::move_only_function<void()> reclaim) override {
+            retireQueue.Defer(std::move(reclaim));
+        }
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align) override {
+            const auto alloc = transientRing.Allocate(size, align);
+
+            return RHIBufferSlice{
+                .buffer = &alloc.buffer,
+                .offset = static_cast<u32>(alloc.offset),
+                .size = size,
+                .cpuPtr = alloc.cpuPtr
+            };
+        }
+
+        RHICapabilities GetCapabilities() const noexcept override {
+            return {
+                .flipTextureV = true,
+                .clipSpaceMinZ = 0.0f,
+                // maximum pixel/block size of All RHIPixelFormat
+                .textureRowPitchAlign = 16,
+                .textureOffsetAlign = 16,
+            };
+        }
+
+    private:
+        void submit(std::span<RHICommandList*> cmdLists, u64 frame) override {
+            submitFrame(cmdLists, frame, [](MTL::CommandBuffer&) {});
+        }
+
+        void submitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            RHISwapchain& swapchain,
+            u64 frame
+        ) override {
+            submitFrame(
+                cmdLists,
+                frame,
+                [&](MTL::CommandBuffer& lastCmdBuffer) {
+                    static_cast<MetalSwapchain&>(swapchain).Present(
+                        lastCmdBuffer,
+                        frame
+                    );
+                }
+            );
+        }
+
+        RHIBufferRAII createBuffer(
+            const RHIBufferCreateDesc& desc,
+            StrView name
+        ) override {
+            CROWY_ASSERT(desc.size % 4 == 0);
+
+            auto buffer = std::make_unique<MetalBuffer>(allocator, desc, name);
+
+            if(desc.initialData != nullptr &&
+               desc.memory == RHIMemoryType::GPUOnly) {
+                ensureUploadBegin();
+
+                uploadGPUOnlyBuffer(
+                    uploadCmdList,
+                    uploadRing,
+                    4,
+                    *buffer,
+                    RHISubresourceData{
+                        .data = desc.initialData,
+                        .rowPitch = desc.size
+                    }
+                );
+            }
+
+            return buffer;
+        }
+
+        RHITextureRAII createTexture(
+            const RHITextureCreateDesc& desc,
+            StrView name
+        ) override {
             auto texDesc = convert(desc);
             auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
 
@@ -215,7 +335,7 @@ namespace Crowy
                 CROWY_ASSERT(desc.initialData.size() == n);
 
                 std::vector<RHISubresourceLayout> layouts(n);
-                const auto totalBytes = QueryUploadLayout(desc, layouts);
+                const auto totalBytes = queryUploadLayout(desc, layouts);
                 uploadTexture(
                     uploadCmdList,
                     uploadRing,
@@ -230,110 +350,9 @@ namespace Crowy
             return texture;
         }
 
-        auto CreateSampler(const RHISamplerState& desc) {
-            return std::make_unique<MetalSampler>(*device.get(), desc);
-        }
-
-        auto CreatePipelineState(
-            const RHIGraphicsPipelineStateDesc& desc,
-            StrView name
-        ) {
-            return std::make_unique<MetalGraphicsPipelineState>(
-                *device.get(),
-                samplers,
-                desc,
-                name
-            );
-        }
-
-        auto CreatePipelineState(
-            const RHIComputePipelineStateDesc& desc,
-            StrView name
-        ) {
-            return std::make_unique<MetalComputePipelineState>(
-                *device.get(),
-                samplers,
-                desc,
-                name
-            );
-        }
-
-        auto CreateSwapchain(const RHISwapchainCreateDesc& desc) {
-            return std::make_unique<MetalSwapchain>(*device.get(), desc);
-        }
-
-        void Submit(std::span<RHICommandList*> cmdLists, u64 frame) {
-            submitFrame(cmdLists, frame, [](MTL::CommandBuffer&) {});
-        }
-
-        void SubmitAndPresent(
-            std::span<RHICommandList*> cmdLists,
-            MetalSwapchain& swapchain,
-            u64 frame
-        ) {
-            submitFrame(
-                cmdLists,
-                frame,
-                [&](MTL::CommandBuffer& lastCmdBuffer) {
-                    swapchain.Present(lastCmdBuffer, frame);
-                }
-            );
-        }
-
-        u64 GetCompletedFrame() const noexcept {
-            return timeline.CompletedFrame(serialFence->GetValue());
-        }
-
-        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept {
-            if(const auto* seconds = gpuTimes.Find(frame))
-                return *seconds;
-
-            return std::nullopt;
-        }
-
-        void WaitFrame(u64 frame) {
-            if(const auto serial = timeline.SerialOf(frame))
-                serialFence->WaitCPU(*serial, 0);
-        }
-
-        void WaitIdle() {
-            // signal fresh so this also waits on any GPU work queued
-            // after the last per-frame signal (e.g. swapchain Present)
-            signalSerial();
-            serialFence->WaitCPU(submissionSerial, 0);
-
-            // all work up to the fresh signal is done, so this drains the
-            // queue instead of leaving stragglers for a Submit
-            retireQueue.Tag(submissionSerial);
-            retireQueue.Collect(submissionSerial);
-
-            // the event can fire before a buffer's status says Completed, and
-            // nothing after the loop's last WaitIdle would read them again
-            for(const auto& held: untimedFrames) {
-                for(const auto& cmdBuffer: held.cmdBuffers)
-                    cmdBuffer->waitUntilCompleted();
-            }
-            harvestGPUTimes();
-        }
-
-        void DeferRetire(std::move_only_function<void()> reclaim) {
-            retireQueue.Defer(std::move(reclaim));
-        }
-
-        RHIBufferSlice AllocateTransient(u32 size, u32 align) {
-            const auto alloc = transientRing.Allocate(size, align);
-
-            return RHIBufferSlice{
-                .buffer = &alloc.buffer,
-                .offset = static_cast<u32>(alloc.offset),
-                .size = size,
-                .cpuPtr = alloc.cpuPtr
-            };
-        }
-
         // Metal has no GetCopyableFootprints equivalent,
         // so compute the staging-buffer footprint by hand.
-        u64 QueryUploadLayout(
+        u64 queryUploadLayout(
             const RHITextureCreateDesc& desc,
             std::span<RHISubresourceLayout> out
         ) {
@@ -366,7 +385,6 @@ namespace Crowy
             return totalBytes;
         }
 
-    private:
         template<typename Present>
         void submitFrame(
             std::span<RHICommandList*> cmdLists,
@@ -516,99 +534,7 @@ namespace Crowy
         }
     };
 
-    MetalDevice::MetalDevice() = default;
-
-    MetalDevice::~MetalDevice() = default;
-
-    RHIFrameScopeRAII MetalDevice::CreateFrameScope() {
-        return impl->CreateFrameScope();
-    }
-
-    RHIBufferRAII MetalDevice::createBuffer(
-        const RHIBufferCreateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreateBuffer(desc, name);
-    }
-
-    RHITextureRAII MetalDevice::createTexture(
-        const RHITextureCreateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreateTexture(desc, name);
-    }
-
-    RHIGraphicsPipelineStateRAII MetalDevice::CreatePipelineState(
-        const RHIGraphicsPipelineStateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreatePipelineState(desc, name);
-    }
-
-    RHIComputePipelineStateRAII MetalDevice::CreatePipelineState(
-        const RHIComputePipelineStateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreatePipelineState(desc, name);
-    }
-
-    RHISwapchainRAII MetalDevice::CreateSwapchain(
-        const RHISwapchainCreateDesc& desc,
-        StrView
-    ) {
-        return impl->CreateSwapchain(desc);
-    }
-
-    RHICommandListRAII MetalDevice::CreateCommandList() {
-        return impl->CreateCommandList();
-    }
-    RHICapabilities MetalDevice::GetCapabilities() const noexcept {
-        return {
-            .flipTextureV = true,
-            .clipSpaceMinZ = 0.0f,
-            // maximum pixel/block size of All RHIPixelFormat
-            .textureRowPitchAlign = 16,
-            .textureOffsetAlign = 16,
-        };
-    }
-
-    void MetalDevice::submit(std::span<RHICommandList*> cmdLists, u64 frame) {
-        impl->Submit(cmdLists, frame);
-    }
-
-    void MetalDevice::submitAndPresent(
-        std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain,
-        u64 frame
-    ) {
-        impl->SubmitAndPresent(
-            cmdLists,
-            static_cast<MetalSwapchain&>(swapchain),
-            frame
-        );
-    }
-
-    u64 MetalDevice::GetCompletedFrame() const noexcept {
-        return impl->GetCompletedFrame();
-    }
-
-    std::optional<f64> MetalDevice::GetGPUFrameTime(u64 frame) const noexcept {
-        return impl->GetGPUFrameTime(frame);
-    }
-
-    void MetalDevice::WaitFrame(u64 frame) {
-        impl->WaitFrame(frame);
-    }
-
-    void MetalDevice::WaitIdle() {
-        impl->WaitIdle();
-    }
-
-    void MetalDevice::DeferRetire(std::move_only_function<void()> reclaim) {
-        impl->DeferRetire(std::move(reclaim));
-    }
-
-    RHIBufferSlice MetalDevice::AllocateTransient(u32 size, u32 align) {
-        return impl->AllocateTransient(size, align);
+    RHIDeviceRAII createMetalDevice() {
+        return std::make_unique<MetalDevice>();
     }
 }
