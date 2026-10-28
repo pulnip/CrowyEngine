@@ -163,7 +163,7 @@ namespace Crowy
             if(store == nullptr)
                 return;
 
-            for(usize i = 0; i < store->rows.Count(); ++i){
+            for(usize i = 0; i < store->rows.Count(); ++i) {
                 auto id = store->rows.OwnerAt(i);
                 auto row = static_cast<const T*>(store->rows.At(i));
 

@@ -1,50 +1,54 @@
 #include <cmath>
 #include <numbers>
 #include <vector>
+
 #include <gtest/gtest.h>
+
 #include "PairedHierarchy.hpp"
 #include "Primitives.hpp"
 
 using namespace Crowy;
 
-namespace{
-    Transform localOf(f32 seed){
+namespace
+{
+    Transform localOf(f32 seed) {
         auto angle = seed * std::numbers::pi_v<f32> / 8;
 
         return Transform{
             .position = Vec3{seed, -seed, seed / 2},
-            .rotation = Vec4{0.0f, 0.0f, std::sin(angle/2), std::cos(angle/2)},
+            .rotation =
+                Vec4{0.0f, 0.0f, std::sin(angle / 2), std::cos(angle / 2)},
             .scale = Vec3{1.0f, 1.0f, 1.0f}
         };
     }
 }
 
-class ReferenceComparisonTest: public ::testing::Test{
+class ReferenceComparisonTest: public ::testing::Test {
 protected:
     PairedHierarchy paired;
 };
 
-TEST_F(ReferenceComparisonTest, EmptyHierarchy){
+TEST_F(ReferenceComparisonTest, EmptyHierarchy) {
     paired.ExpectAgreement();
 
     EXPECT_EQ(paired.LivingCount(), 0);
 }
 
-TEST_F(ReferenceComparisonTest, SingleRoot){
+TEST_F(ReferenceComparisonTest, SingleRoot) {
     paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
 
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, ManyRoots){
-    for(usize i=0; i<8; ++i){
+TEST_F(ReferenceComparisonTest, ManyRoots) {
+    for(usize i = 0; i < 8; ++i) {
         paired.Create(PairedHierarchy::NO_PARENT, localOf(static_cast<f32>(i)));
     }
 
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, MultiLevelTree){
+TEST_F(ReferenceComparisonTest, MultiLevelTree) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
     auto left = paired.Create(root, localOf(2.0f));
     auto right = paired.Create(root, localOf(3.0f));
@@ -55,7 +59,7 @@ TEST_F(ReferenceComparisonTest, MultiLevelTree){
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, TreeGrowsAcrossSeveralCommits){
+TEST_F(ReferenceComparisonTest, TreeGrowsAcrossSeveralCommits) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
     paired.ExpectAgreement();
 
@@ -67,7 +71,7 @@ TEST_F(ReferenceComparisonTest, TreeGrowsAcrossSeveralCommits){
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, LocalWrittenAfterCommit){
+TEST_F(ReferenceComparisonTest, LocalWrittenAfterCommit) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
     auto child = paired.Create(root, localOf(2.0f));
     paired.ExpectAgreement();
@@ -78,7 +82,7 @@ TEST_F(ReferenceComparisonTest, LocalWrittenAfterCommit){
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, LocalWrittenBeforeTheFirstCommit){
+TEST_F(ReferenceComparisonTest, LocalWrittenBeforeTheFirstCommit) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT);
     auto child = paired.Create(root);
 
@@ -88,7 +92,7 @@ TEST_F(ReferenceComparisonTest, LocalWrittenBeforeTheFirstCommit){
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, DestroyedLeafLeavesTheRestAlone){
+TEST_F(ReferenceComparisonTest, DestroyedLeafLeavesTheRestAlone) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
     auto doomed = paired.Create(root, localOf(2.0f));
     auto keeper = paired.Create(root, localOf(3.0f));
@@ -100,7 +104,7 @@ TEST_F(ReferenceComparisonTest, DestroyedLeafLeavesTheRestAlone){
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, SubtreeDestroyedLeafFirst){
+TEST_F(ReferenceComparisonTest, SubtreeDestroyedLeafFirst) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
     auto branch = paired.Create(root, localOf(2.0f));
     auto leaf = paired.Create(branch, localOf(3.0f));
@@ -115,7 +119,7 @@ TEST_F(ReferenceComparisonTest, SubtreeDestroyedLeafFirst){
     EXPECT_TRUE(paired.IsLeaf(keeper));
 }
 
-TEST_F(ReferenceComparisonTest, CreateAndDestroyShareOneBatch){
+TEST_F(ReferenceComparisonTest, CreateAndDestroyShareOneBatch) {
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
     auto doomed = paired.Create(root, localOf(2.0f));
     paired.ExpectAgreement();
@@ -127,11 +131,11 @@ TEST_F(ReferenceComparisonTest, CreateAndDestroyShareOneBatch){
     paired.ExpectAgreement();
 }
 
-TEST_F(ReferenceComparisonTest, WideFanout){
+TEST_F(ReferenceComparisonTest, WideFanout) {
     constexpr usize WIDTH = 1000;
 
     auto root = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
-    for(usize i=0; i<WIDTH; ++i){
+    for(usize i = 0; i < WIDTH; ++i) {
         paired.Create(root, localOf(static_cast<f32>(i % 8)));
     }
 
@@ -139,11 +143,11 @@ TEST_F(ReferenceComparisonTest, WideFanout){
     EXPECT_EQ(paired.LivingCount(), WIDTH + 1);
 }
 
-TEST_F(ReferenceComparisonTest, DeepChain){
+TEST_F(ReferenceComparisonTest, DeepChain) {
     constexpr usize DEPTH = 500;
 
     auto current = paired.Create(PairedHierarchy::NO_PARENT, localOf(1.0f));
-    for(usize i=1; i<DEPTH; ++i){
+    for(usize i = 1; i < DEPTH; ++i) {
         current = paired.Create(current, localOf(static_cast<f32>(i % 8)));
     }
 

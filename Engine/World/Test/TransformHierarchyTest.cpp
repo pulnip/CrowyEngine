@@ -1,12 +1,15 @@
 #include <vector>
+
 #include <gtest/gtest.h>
+
 #include "Primitives.hpp"
 #include "TransformHierarchyInspect.hpp"
 
 using namespace Crowy;
 
-namespace{
-    Transform makeLocal(f32 seed){
+namespace
+{
+    Transform makeLocal(f32 seed) {
         return Transform{
             .position = Vec3{seed, seed + 1.0f, seed + 2.0f},
             .rotation = unitQuat(),
@@ -14,30 +17,32 @@ namespace{
         };
     }
 
-    void expectSameTransform(const Transform& lhs, const Transform& rhs){
+    void expectSameTransform(const Transform& lhs, const Transform& rhs) {
         EXPECT_EQ(lhs.position, rhs.position);
         EXPECT_EQ(lhs.rotation, rhs.rotation);
         EXPECT_EQ(lhs.scale, rhs.scale);
     }
 }
 
-class TransformHierarchyTest: public ::testing::Test{
+class TransformHierarchyTest: public ::testing::Test {
 protected:
     TransformHierarchy hierarchy;
 
-    void TearDown() override{
+    void TearDown() override {
         Str error;
         EXPECT_TRUE(CheckInvariants(hierarchy, &error)) << error;
     }
 
-    void Commit(){
+    void Commit() {
         hierarchy.CommitStructuralChanges();
 
         Str error;
         ASSERT_TRUE(CheckInvariants(hierarchy, &error)) << error;
     }
 
-    TransformHandle commitedNode(const Transform& local = Transform::Identity()){
+    TransformHandle commitedNode(
+        const Transform& local = Transform::Identity()
+    ) {
         auto handle = hierarchy.CreateNode(local);
         Commit();
 
@@ -45,35 +50,38 @@ protected:
     }
 };
 
-TEST_F(TransformHierarchyTest, EmptyHierarchy){
+TEST_F(TransformHierarchyTest, EmptyHierarchy) {
     EXPECT_TRUE(hierarchy.IsEmpty());
     EXPECT_FALSE(hierarchy.HasPendingChanges());
     EXPECT_FALSE(hierarchy.IsValid(TransformHandle::InvalidHandle()));
 }
 
-TEST_F(TransformHierarchyTest, CommitOnEmptyHierarchy){
+TEST_F(TransformHierarchyTest, CommitOnEmptyHierarchy) {
     Commit();
 
     EXPECT_TRUE(hierarchy.IsEmpty());
     EXPECT_FALSE(hierarchy.HasPendingChanges());
 }
 
-TEST_F(TransformHierarchyTest, CreateNodeDefaultsToIdentity){
+TEST_F(TransformHierarchyTest, CreateNodeDefaultsToIdentity) {
     auto handle = commitedNode();
 
     EXPECT_TRUE(hierarchy.IsValid(handle));
     EXPECT_EQ(hierarchy.Size(), 1);
-    expectSameTransform(hierarchy.GetLocalTransform(handle), Transform::Identity());
+    expectSameTransform(
+        hierarchy.GetLocalTransform(handle),
+        Transform::Identity()
+    );
 }
 
-TEST_F(TransformHierarchyTest, CreateNodeKeepsGivenLocal){
+TEST_F(TransformHierarchyTest, CreateNodeKeepsGivenLocal) {
     auto local = makeLocal(1.0f);
     auto handle = commitedNode(local);
 
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
-TEST_F(TransformHierarchyTest, SetLocalTransform){
+TEST_F(TransformHierarchyTest, SetLocalTransform) {
     auto handle = commitedNode();
     auto local = makeLocal(2.0f);
 
@@ -82,7 +90,7 @@ TEST_F(TransformHierarchyTest, SetLocalTransform){
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
-TEST_F(TransformHierarchyTest, ReadsThroughAConstReference){
+TEST_F(TransformHierarchyTest, ReadsThroughAConstReference) {
     auto committed = commitedNode(makeLocal(1.0f));
     auto uncommitted = hierarchy.CreateNode(makeLocal(2.0f));
 
@@ -92,12 +100,15 @@ TEST_F(TransformHierarchyTest, ReadsThroughAConstReference){
     expectSameTransform(readOnly.GetLocalTransform(committed), makeLocal(1.0f));
     EXPECT_EQ(readOnly.GetLocalScale(committed), makeLocal(1.0f).scale);
     // pending nodes read through the same door
-    expectSameTransform(readOnly.GetLocalTransform(uncommitted), makeLocal(2.0f));
+    expectSameTransform(
+        readOnly.GetLocalTransform(uncommitted),
+        makeLocal(2.0f)
+    );
 
     Commit();
 }
 
-TEST_F(TransformHierarchyTest, SetLocalComponents){
+TEST_F(TransformHierarchyTest, SetLocalComponents) {
     auto handle = commitedNode();
     auto local = makeLocal(3.0f);
 
@@ -108,7 +119,7 @@ TEST_F(TransformHierarchyTest, SetLocalComponents){
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
-TEST_F(TransformHierarchyTest, CreationIsDeferredButHandleIsValid){
+TEST_F(TransformHierarchyTest, CreationIsDeferredButHandleIsValid) {
     auto handle = hierarchy.CreateNode(makeLocal(1.0f));
 
     EXPECT_TRUE(hierarchy.IsValid(handle));
@@ -123,7 +134,7 @@ TEST_F(TransformHierarchyTest, CreationIsDeferredButHandleIsValid){
     EXPECT_EQ(hierarchy.Size(), 1);
 }
 
-TEST_F(TransformHierarchyTest, LocalTransformWrittenBeforeCommitSurvivesIt){
+TEST_F(TransformHierarchyTest, LocalTransformWrittenBeforeCommitSurvivesIt) {
     auto handle = hierarchy.CreateNode();
     auto local = makeLocal(4.0f);
 
@@ -135,7 +146,7 @@ TEST_F(TransformHierarchyTest, LocalTransformWrittenBeforeCommitSurvivesIt){
     expectSameTransform(hierarchy.GetLocalTransform(handle), local);
 }
 
-TEST_F(TransformHierarchyTest, ChildAttachesToParent){
+TEST_F(TransformHierarchyTest, ChildAttachesToParent) {
     auto parent = commitedNode();
     auto child = hierarchy.CreateNode(parent);
 
@@ -151,7 +162,7 @@ TEST_F(TransformHierarchyTest, ChildAttachesToParent){
     EXPECT_FALSE(hierarchy.GetParent(parent).IsValid());
 }
 
-TEST_F(TransformHierarchyTest, ParentCreatedInTheSameCommit){
+TEST_F(TransformHierarchyTest, ParentCreatedInTheSameCommit) {
     auto parent = hierarchy.CreateNode();
     auto child = hierarchy.CreateNode(parent);
 
@@ -162,7 +173,7 @@ TEST_F(TransformHierarchyTest, ParentCreatedInTheSameCommit){
     EXPECT_EQ(hierarchy.GetChildCount(parent), 1);
 }
 
-TEST_F(TransformHierarchyTest, SiblingsShareOneParent){
+TEST_F(TransformHierarchyTest, SiblingsShareOneParent) {
     auto parent = hierarchy.CreateNode();
     auto first = hierarchy.CreateNode(parent);
     auto second = hierarchy.CreateNode(parent);
@@ -177,7 +188,7 @@ TEST_F(TransformHierarchyTest, SiblingsShareOneParent){
 }
 
 // world transforms cannot see sibling order, so the array itself has to say it
-TEST_F(TransformHierarchyTest, SiblingsKeepCreationOrderInTheArray){
+TEST_F(TransformHierarchyTest, SiblingsKeepCreationOrderInTheArray) {
     auto parent = hierarchy.CreateNode();
     auto first = hierarchy.CreateNode(parent);
     auto second = hierarchy.CreateNode(parent);
@@ -192,7 +203,7 @@ TEST_F(TransformHierarchyTest, SiblingsKeepCreationOrderInTheArray){
     EXPECT_EQ(nodes[3].slot, TransformNodeTable::SlotOf(third));
 }
 
-TEST_F(TransformHierarchyTest, ChildLandsBehindAnExistingDeepSubtree){
+TEST_F(TransformHierarchyTest, ChildLandsBehindAnExistingDeepSubtree) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
@@ -209,25 +220,25 @@ TEST_F(TransformHierarchyTest, ChildLandsBehindAnExistingDeepSubtree){
     EXPECT_EQ(hierarchy.GetParent(late), root);
 }
 
-TEST_F(TransformHierarchyTest, DeepChainKeepsEveryLink){
+TEST_F(TransformHierarchyTest, DeepChainKeepsEveryLink) {
     constexpr usize DEPTH = 1000;
 
     std::vector<TransformHandle> chain;
     chain.reserve(DEPTH);
     chain.push_back(hierarchy.CreateNode());
-    for(usize i=1; i<DEPTH; ++i){
+    for(usize i = 1; i < DEPTH; ++i) {
         chain.push_back(hierarchy.CreateNode(chain.back()));
     }
     Commit();
 
     EXPECT_EQ(hierarchy.Size(), DEPTH);
-    for(usize i=1; i<DEPTH; ++i){
-        ASSERT_EQ(hierarchy.GetParent(chain[i]), chain[i-1]);
+    for(usize i = 1; i < DEPTH; ++i) {
+        ASSERT_EQ(hierarchy.GetParent(chain[i]), chain[i - 1]);
     }
     EXPECT_EQ(hierarchy.GetChildCount(chain.back()), 0);
 }
 
-TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut){
+TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut) {
     auto handle = hierarchy.CreateNode(makeLocal(1.0f));
 
     hierarchy.DestroyNode(handle);
@@ -240,7 +251,7 @@ TEST_F(TransformHierarchyTest, CreateThenDestroyBeforeCommitCancelsOut){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-TEST_F(TransformHierarchyTest, DestructionIsDeferredButHandleDiesNow){
+TEST_F(TransformHierarchyTest, DestructionIsDeferredButHandleDiesNow) {
     auto handle = commitedNode();
 
     hierarchy.DestroyNode(handle);
@@ -257,7 +268,7 @@ TEST_F(TransformHierarchyTest, DestructionIsDeferredButHandleDiesNow){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-TEST_F(TransformHierarchyTest, SubtreeGoesLeafFirstInOneCommit){
+TEST_F(TransformHierarchyTest, SubtreeGoesLeafFirstInOneCommit) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
@@ -277,7 +288,7 @@ TEST_F(TransformHierarchyTest, SubtreeGoesLeafFirstInOneCommit){
     EXPECT_FALSE(hierarchy.IsValid(leaf));
 }
 
-TEST_F(TransformHierarchyTest, TwoDestroysUnderOneAncestorEachCountOnce){
+TEST_F(TransformHierarchyTest, TwoDestroysUnderOneAncestorEachCountOnce) {
     auto root = hierarchy.CreateNode();
     auto left = hierarchy.CreateNode(root);
     auto leftFirst = hierarchy.CreateNode(left);
@@ -297,7 +308,7 @@ TEST_F(TransformHierarchyTest, TwoDestroysUnderOneAncestorEachCountOnce){
     EXPECT_EQ(hierarchy.GetParent(rightOnly), right);
 }
 
-TEST_F(TransformHierarchyTest, DestroyAndCreateShareOneCommit){
+TEST_F(TransformHierarchyTest, DestroyAndCreateShareOneCommit) {
     auto root = hierarchy.CreateNode();
     auto doomed = hierarchy.CreateNode(root);
     Commit();
@@ -312,7 +323,7 @@ TEST_F(TransformHierarchyTest, DestroyAndCreateShareOneCommit){
     EXPECT_EQ(hierarchy.GetParent(fresh), root);
 }
 
-TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
+TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
@@ -334,7 +345,7 @@ TEST_F(TransformHierarchyTest, DestroyingLeafShrinksItsAncestors){
     EXPECT_EQ(hierarchy.GetParent(late), root);
 }
 
-TEST_F(TransformHierarchyTest, DestroySubtreeTakesEveryDescendant){
+TEST_F(TransformHierarchyTest, DestroySubtreeTakesEveryDescendant) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
@@ -357,7 +368,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeTakesEveryDescendant){
     EXPECT_EQ(hierarchy.GetParent(tail), root);
 }
 
-TEST_F(TransformHierarchyTest, DestroySubtreeReportsInPreorder){
+TEST_F(TransformHierarchyTest, DestroySubtreeReportsInPreorder) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     auto leaf = hierarchy.CreateNode(branch);
@@ -373,7 +384,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeReportsInPreorder){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode){
+TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode) {
     auto fresh = hierarchy.CreateNode();
 
     std::vector<TransformHandle> destroyed;
@@ -388,9 +399,9 @@ TEST_F(TransformHierarchyTest, DestroySubtreeOnAnUncommittedNode){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-// found by the seeded fuzz: an uncommitted child of a doomed node would have been
-// left behind, pointing at a parent that no longer exists
-TEST_F(TransformHierarchyTest, DestroySubtreeTakesUncommittedChildrenToo){
+// found by the seeded fuzz: an uncommitted child of a doomed node would have
+// been left behind, pointing at a parent that no longer exists
+TEST_F(TransformHierarchyTest, DestroySubtreeTakesUncommittedChildrenToo) {
     auto root = hierarchy.CreateNode();
     auto branch = hierarchy.CreateNode(root);
     Commit();
@@ -411,7 +422,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeTakesUncommittedChildrenToo){
     EXPECT_EQ(hierarchy.GetChildCount(root), 0);
 }
 
-TEST_F(TransformHierarchyTest, DestroySubtreeOfAnUncommittedParent){
+TEST_F(TransformHierarchyTest, DestroySubtreeOfAnUncommittedParent) {
     auto parent = hierarchy.CreateNode();
     auto child = hierarchy.CreateNode(parent);
 
@@ -427,7 +438,7 @@ TEST_F(TransformHierarchyTest, DestroySubtreeOfAnUncommittedParent){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-TEST_F(TransformHierarchyTest, DestroyingAnAlreadyDeadHandleIsIgnored){
+TEST_F(TransformHierarchyTest, DestroyingAnAlreadyDeadHandleIsIgnored) {
     auto root = hierarchy.CreateNode();
     auto leaf = hierarchy.CreateNode(root);
     Commit();
@@ -448,7 +459,7 @@ TEST_F(TransformHierarchyTest, DestroyingAnAlreadyDeadHandleIsIgnored){
     EXPECT_TRUE(hierarchy.IsEmpty());
 }
 
-TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
+TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle) {
     auto first = hierarchy.CreateNode(makeLocal(1.0f));
     auto second = hierarchy.CreateNode(makeLocal(2.0f));
     auto third = hierarchy.CreateNode(makeLocal(3.0f));
@@ -467,7 +478,7 @@ TEST_F(TransformHierarchyTest, DestroyNodeInvalidatesOnlyItsHandle){
     expectSameTransform(hierarchy.GetLocalTransform(third), makeLocal(3.0f));
 }
 
-TEST_F(TransformHierarchyTest, DestroyedSlotIsReusedWithNewGeneration){
+TEST_F(TransformHierarchyTest, DestroyedSlotIsReusedWithNewGeneration) {
     auto old = commitedNode(makeLocal(1.0f));
     hierarchy.DestroyNode(old);
     Commit();
@@ -481,18 +492,18 @@ TEST_F(TransformHierarchyTest, DestroyedSlotIsReusedWithNewGeneration){
     expectSameTransform(hierarchy.GetLocalTransform(fresh), makeLocal(2.0f));
 }
 
-TEST_F(TransformHierarchyTest, SlotTableGrowthKeepsHandlesValid){
+TEST_F(TransformHierarchyTest, SlotTableGrowthKeepsHandlesValid) {
     constexpr usize COUNT = 1024;
 
     std::vector<TransformHandle> handles;
     handles.reserve(COUNT);
-    for(usize i=0; i<COUNT; ++i){
+    for(usize i = 0; i < COUNT; ++i) {
         handles.push_back(hierarchy.CreateNode(makeLocal(static_cast<f32>(i))));
     }
     Commit();
 
     EXPECT_EQ(hierarchy.Size(), COUNT);
-    for(usize i=0; i<COUNT; ++i){
+    for(usize i = 0; i < COUNT; ++i) {
         ASSERT_TRUE(hierarchy.IsValid(handles[i]));
         expectSameTransform(
             hierarchy.GetLocalTransform(handles[i]),
@@ -501,22 +512,22 @@ TEST_F(TransformHierarchyTest, SlotTableGrowthKeepsHandlesValid){
     }
 }
 
-TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals){
+TEST_F(TransformHierarchyTest, DestroyFromFrontKeepsRemainingLocals) {
     constexpr usize COUNT = 16;
 
     std::vector<TransformHandle> handles;
     handles.reserve(COUNT);
-    for(usize i=0; i<COUNT; ++i){
+    for(usize i = 0; i < COUNT; ++i) {
         handles.push_back(hierarchy.CreateNode(makeLocal(static_cast<f32>(i))));
     }
     Commit();
 
-    for(usize i=0; i<COUNT; ++i){
+    for(usize i = 0; i < COUNT; ++i) {
         hierarchy.DestroyNode(handles[i]);
         Commit();
 
         EXPECT_EQ(hierarchy.Size(), COUNT - i - 1);
-        for(usize j=i+1; j<COUNT; ++j){
+        for(usize j = i + 1; j < COUNT; ++j) {
             ASSERT_TRUE(hierarchy.IsValid(handles[j]));
             expectSameTransform(
                 hierarchy.GetLocalTransform(handles[j]),

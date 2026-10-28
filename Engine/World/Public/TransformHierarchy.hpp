@@ -22,7 +22,7 @@ namespace Crowy
     using TransformSlot = TransformNodeTable::Slot;
     using TransformIndex = TransformNodeTable::Index;
 
-    struct TransformNode{
+    struct TransformNode {
         // this node or an ancestor scales unevenly
         static constexpr u32 NON_UNIFORM_IN_CHAIN = 1u << 0;
         // already warned about, so the log stays readable
@@ -33,8 +33,8 @@ namespace Crowy
         Transform local = Transform::Identity();
         // caches, refreshed by UpdateWorldTransforms
         Mat4 world = unitMat();
-        // composed along the chain instead of read back out of world, which would
-        // divide by a zero scale and read a mirrored basis as a rotation
+        // composed along the chain instead of read back out of world, which
+        // would divide by a zero scale and read a mirrored basis as a rotation
         Vec4 worldRotation = unitQuat();
         u32 flags = 0;
 
@@ -47,9 +47,7 @@ namespace Crowy
         // subtree node count, including this node
         usize subtreeSize = 1;
 
-        bool IsRoot() const noexcept{
-            return !parentSlot.IsValid();
-        }
+        bool IsRoot() const noexcept { return !parentSlot.IsValid(); }
     };
 
     // Nodes are kept in one preorder array,
@@ -68,19 +66,22 @@ namespace Crowy
     //
     // Not thread safe, const methods included: the inverse cache is filled in
     // on read.
-    class TransformHierarchy{
+    class TransformHierarchy {
     private:
-        // A slot holding a handle to a node that is not in the array yet. Never a
-        // position, but valid, so the handle it was issued for stays valid too.
-        static constexpr TransformIndex PENDING_INDEX{TransformIndex::INVALID - 1};
+        // A slot holding a handle to a node that is not in the array yet. Never
+        // a position, but valid, so the handle it was issued for stays valid
+        // too.
+        static constexpr TransformIndex PENDING_INDEX{
+            TransformIndex::INVALID - 1
+        };
 
-        struct PendingCreate{
+        struct PendingCreate {
             TransformSlot slot;
             TransformSlot parentSlot;
         };
         // Slots, not indexes: every command before this one moves nodes around,
         // so the position has to be looked up when the turn comes.
-        struct PendingReparent{
+        struct PendingReparent {
             TransformSlot slot;
             TransformSlot parentSlot;
         };
@@ -100,29 +101,31 @@ namespace Crowy
         std::vector<TransformHandle> updated;
 
         // Kept out of TransformNode on purpose: another 64 bytes per node would
-        // slow the sequential pass in UpdateWorldTransforms down for the few nodes
-        // that ever get asked for an inverse.
+        // slow the sequential pass in UpdateWorldTransforms down for the few
+        // nodes that ever get asked for an inverse.
         mutable std::vector<Mat4> worldInverses;
         mutable std::vector<u8> inverseValid;
 
     private:
-        TransformIndex indexOf(TransformHandle handle) const noexcept{
+        TransformIndex indexOf(TransformHandle handle) const noexcept {
             CROWY_ASSERT(IsValid(handle));
 
             return slots.IndexOf(handle);
         }
-        auto& nodeOf(this auto& self, TransformHandle handle) noexcept{
+        auto& nodeOf(this auto& self, TransformHandle handle) noexcept {
             auto index = self.indexOf(handle);
             CROWY_ASSERT(index != PENDING_INDEX);
 
             return self.nodes[index.value];
         }
-        auto& localTransform(this auto& self, TransformHandle handle) noexcept{
+        auto& localTransform(this auto& self, TransformHandle handle) noexcept {
             auto index = self.indexOf(handle);
 
-            return index == PENDING_INDEX ?
-                self.pendingLocals.at(TransformNodeTable::SlotOf(handle)) :
-                self.nodes[index.value].local;
+            return index == PENDING_INDEX
+                       ? self.pendingLocals.at(
+                             TransformNodeTable::SlotOf(handle)
+                         )
+                       : self.nodes[index.value].local;
         }
 
     public:
@@ -131,14 +134,16 @@ namespace Crowy
         CROWY_DECLARE_TRANSFERABLE(TransformHierarchy)
 
         // lifetime
-        TransformHandle CreateNode(const Transform& local = Transform::Identity());
+        TransformHandle CreateNode(
+            const Transform& local = Transform::Identity()
+        );
         TransformHandle CreateNode(
             TransformHandle parent,
             const Transform& local = Transform::Identity()
         );
-        // Asserts unless every descendant is already destroyed, so a whole subtree
-        // has to go leaf first. No handle but the given one is invalidated, and an
-        // already invalid one is ignored.
+        // Asserts unless every descendant is already destroyed, so a whole
+        // subtree has to go leaf first. No handle but the given one is
+        // invalidated, and an already invalid one is ignored.
         void DestroyNode(TransformHandle handle);
         // Notice! This invalidates handles the caller never named. Every one of
         // them lands in outDestroyed, and the caller is expected to reconcile
@@ -148,29 +153,31 @@ namespace Crowy
             std::vector<TransformHandle>& outDestroyed
         );
 
-        // An invalid parent promotes to root. Asserts on a parent that sits inside
-        // the moved subtree.
+        // An invalid parent promotes to root. Asserts on a parent that sits
+        // inside the moved subtree.
         void SetParent(TransformHandle handle, TransformHandle newParent);
-        void PromoteToRoot(TransformHandle handle){
+        void PromoteToRoot(TransformHandle handle) {
             SetParent(handle, TransformHandle::InvalidHandle());
         }
 
         void CommitStructuralChanges();
-        bool HasPendingChanges() const noexcept{
-            return !pendingCreates.empty() ||
-                !pendingReparents.empty() ||
-                !pendingDestroys.empty();
+        bool HasPendingChanges() const noexcept {
+            return !pendingCreates.empty() || !pendingReparents.empty() ||
+                   !pendingDestroys.empty();
         }
 
         // hierarchy, as of the last commit
         TransformHandle GetParent(TransformHandle handle) const noexcept;
         usize GetChildCount(TransformHandle handle) const noexcept;
 
-        // A destroyed node keeps its place in the array until the commit, but its
-        // handle dies right away, the same way a created one lives right away.
-        bool IsValid(TransformHandle handle) const noexcept{
+        // A destroyed node keeps its place in the array until the commit, but
+        // its handle dies right away, the same way a created one lives right
+        // away.
+        bool IsValid(TransformHandle handle) const noexcept {
             return slots.IsValid(handle) &&
-                !pendingDestroys.contains(TransformNodeTable::SlotOf(handle));
+                   !pendingDestroys.contains(
+                       TransformNodeTable::SlotOf(handle)
+                   );
         }
 
         const Transform& GetLocalTransform(
@@ -184,29 +191,38 @@ namespace Crowy
             markDirty(handle);
             return localTransform(handle);
         }
-        void SetLocalTransform(TransformHandle handle, const Transform& transform) noexcept{
+        void SetLocalTransform(
+            TransformHandle handle,
+            const Transform& transform
+        ) noexcept {
             localTransform(handle) = transform;
             markDirty(handle);
         }
 
-        Vec3 GetLocalPosition(TransformHandle handle) const noexcept{
+        Vec3 GetLocalPosition(TransformHandle handle) const noexcept {
             return localTransform(handle).position;
         }
-        Vec4 GetLocalRotation(TransformHandle handle) const noexcept{
+        Vec4 GetLocalRotation(TransformHandle handle) const noexcept {
             return localTransform(handle).rotation;
         }
-        Vec3 GetLocalScale(TransformHandle handle) const noexcept{
+        Vec3 GetLocalScale(TransformHandle handle) const noexcept {
             return localTransform(handle).scale;
         }
-        void SetLocalPosition(TransformHandle handle, const Vec3& position) noexcept{
+        void SetLocalPosition(
+            TransformHandle handle,
+            const Vec3& position
+        ) noexcept {
             localTransform(handle).position = position;
             markDirty(handle);
         }
-        void SetLocalRotation(TransformHandle handle, const Vec4& rotation) noexcept{
+        void SetLocalRotation(
+            TransformHandle handle,
+            const Vec4& rotation
+        ) noexcept {
             localTransform(handle).rotation = rotation;
             markDirty(handle);
         }
-        void SetLocalScale(TransformHandle handle, const Vec3& scale) noexcept{
+        void SetLocalScale(TransformHandle handle, const Vec3& scale) noexcept {
             localTransform(handle).scale = scale;
             markDirty(handle);
         }
@@ -219,31 +235,27 @@ namespace Crowy
             return updated;
         }
 
-        const Mat4& GetWorldMatrix(TransformHandle handle) const noexcept{
+        const Mat4& GetWorldMatrix(TransformHandle handle) const noexcept {
             return nodeOf(handle).world;
         }
         // Walks the ancestor chain instead of reading the cache, and leaves the
         // cache alone
         Mat4 ComputeWorldMatrixNow(TransformHandle handle) const noexcept;
 
-        Vec3 GetWorldPosition(TransformHandle handle) const noexcept{
+        Vec3 GetWorldPosition(TransformHandle handle) const noexcept {
             return static_cast<Vec3>(nodeOf(handle).world[3]);
         }
-        // The rotation of the TRS chain. Where the chain scales unevenly this is
-        // no longer the rotation of GetWorldMatrix, which carries shear as well;
-        // UpdateWorldTransforms warns about those nodes once.
-        Vec4 GetWorldRotation(TransformHandle handle) const noexcept{
+        // The rotation of the TRS chain. Where the chain scales unevenly this
+        // is no longer the rotation of GetWorldMatrix, which carries shear as
+        // well; UpdateWorldTransforms warns about those nodes once.
+        Vec4 GetWorldRotation(TransformHandle handle) const noexcept {
             return nodeOf(handle).worldRotation;
         }
         const Mat4& GetWorldInverse(TransformHandle handle) const noexcept;
 
         // committed nodes only
-        usize Size() const noexcept{
-            return nodes.size();
-        }
-        bool IsEmpty() const noexcept{
-            return Size() == 0;
-        }
+        usize Size() const noexcept { return nodes.size(); }
+        bool IsEmpty() const noexcept { return Size() == 0; }
         // committed nodes in preorder, so a parent comes before its children
         TransformHandle HandleAt(usize index) const noexcept {
             CROWY_ASSERT(index < nodes.size());
@@ -259,14 +271,22 @@ namespace Crowy
         void reparent(TransformSlot slot, TransformSlot newParentSlot);
 
         bool everyDescendantIsDestroyed(TransformIndex index) const noexcept;
-        bool isInSubtree(TransformIndex root, TransformIndex candidate) const noexcept;
-        TransformIndex insertionPointOf(TransformSlot parentSlot) const noexcept;
+        bool isInSubtree(
+            TransformIndex root,
+            TransformIndex candidate
+        ) const noexcept;
+        TransformIndex insertionPointOf(
+            TransformSlot parentSlot
+        ) const noexcept;
         void insertNode(TransformIndex at, TransformNode node);
         void moveBlock(TransformIndex from, usize size, TransformIndex to);
         // Keeps the slot table pointing at nodes that a shift moved
         void rebindFrom(TransformIndex from) noexcept;
         void growAncestors(TransformSlot parentSlot, usize count = 1) noexcept;
-        void shrinkAncestors(TransformSlot parentSlot, usize count = 1) noexcept;
+        void shrinkAncestors(
+            TransformSlot parentSlot,
+            usize count = 1
+        ) noexcept;
 
         // The only place allowed to write parentIndex
         void rebuildParentIndexes() noexcept;

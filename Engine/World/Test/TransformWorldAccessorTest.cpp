@@ -1,28 +1,32 @@
 #include <cmath>
 #include <numbers>
+
 #include <gtest/gtest.h>
+
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 #include "TransformHierarchyInspect.hpp"
 
 using namespace Crowy;
 
-namespace{
+namespace
+{
     constexpr f32 EPSILON = 1e-5f;
 
-    Transform scaled(Vec3 scale){
+    Transform scaled(Vec3 scale) {
         return Transform{.scale = scale};
     }
 
-    Transform rotationZ(f32 radian){
+    Transform rotationZ(f32 radian) {
         return Transform{
-            .rotation = Vec4{0.0f, 0.0f, std::sin(radian/2), std::cos(radian/2)}
+            .rotation =
+                Vec4{0.0f, 0.0f, std::sin(radian / 2), std::cos(radian / 2)}
         };
     }
 
-    void expectNearMatrix(const Mat4& lhs, const Mat4& rhs){
-        for(usize column=0; column<4; ++column){
-            for(usize row=0; row<4; ++row){
+    void expectNearMatrix(const Mat4& lhs, const Mat4& rhs) {
+        for(usize column = 0; column < 4; ++column) {
+            for(usize row = 0; row < 4; ++row) {
                 EXPECT_NEAR(lhs[column][row], rhs[column][row], EPSILON)
                     << "at column " << column << ", row " << row;
             }
@@ -30,35 +34,35 @@ namespace{
     }
 }
 
-class WorldAccessorTest: public ::testing::Test{
+class WorldAccessorTest: public ::testing::Test {
 protected:
     TransformHierarchy hierarchy;
 
-    TransformHandle Create(const Transform& local){
+    TransformHandle Create(const Transform& local) {
         auto handle = hierarchy.CreateNode(local);
         hierarchy.CommitStructuralChanges();
 
         return handle;
     }
-    TransformHandle Create(TransformHandle parent, const Transform& local){
+    TransformHandle Create(TransformHandle parent, const Transform& local) {
         auto handle = hierarchy.CreateNode(parent, local);
         hierarchy.CommitStructuralChanges();
 
         return handle;
     }
 
-    u32 FlagsAt(usize index) const{
+    u32 FlagsAt(usize index) const {
         return MakeView(hierarchy).nodes[index].flags;
     }
-    static bool HasUnevenChain(u32 flags){
+    static bool HasUnevenChain(u32 flags) {
         return (flags & TransformNode::NON_UNIFORM_IN_CHAIN) != 0;
     }
-    static bool HasWarned(u32 flags){
+    static bool HasWarned(u32 flags) {
         return (flags & TransformNode::WARNED_NON_UNIFORM) != 0;
     }
 };
 
-TEST_F(WorldAccessorTest, WorldPosition){
+TEST_F(WorldAccessorTest, WorldPosition) {
     auto root = Create(Transform{.position = Vec3{1.0f, 2.0f, 3.0f}});
     auto child = Create(root, Transform{.position = Vec3{0.0f, 1.0f, 0.0f}});
 
@@ -70,7 +74,7 @@ TEST_F(WorldAccessorTest, WorldPosition){
     EXPECT_NEAR(position.z, 3.0f, EPSILON);
 }
 
-TEST_F(WorldAccessorTest, WorldRotationComposesTheChain){
+TEST_F(WorldAccessorTest, WorldRotationComposesTheChain) {
     constexpr f32 QUARTER = std::numbers::pi_v<f32> / 2;
 
     auto root = Create(rotationZ(QUARTER));
@@ -84,7 +88,7 @@ TEST_F(WorldAccessorTest, WorldRotationComposesTheChain){
     EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
 }
 
-TEST_F(WorldAccessorTest, UniformScaleDoesNotDisturbTheRotation){
+TEST_F(WorldAccessorTest, UniformScaleDoesNotDisturbTheRotation) {
     constexpr f32 QUARTER = std::numbers::pi_v<f32> / 2;
 
     auto local = rotationZ(QUARTER);
@@ -94,12 +98,13 @@ TEST_F(WorldAccessorTest, UniformScaleDoesNotDisturbTheRotation){
     hierarchy.UpdateWorldTransforms();
 
     auto rotation = hierarchy.GetWorldRotation(root);
-    auto expected = Vec4{0.0f, 0.0f, std::sin(QUARTER/2), std::cos(QUARTER/2)};
+    auto expected =
+        Vec4{0.0f, 0.0f, std::sin(QUARTER / 2), std::cos(QUARTER / 2)};
     EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
     EXPECT_FALSE(HasUnevenChain(FlagsAt(0)));
 }
 
-TEST_F(WorldAccessorTest, UnevenScalePropagatesToDescendants){
+TEST_F(WorldAccessorTest, UnevenScalePropagatesToDescendants) {
     auto root = Create(scaled(Vec3{1.0f, 2.0f, 1.0f}));
     Create(root, Transform::Identity());
 
@@ -109,7 +114,7 @@ TEST_F(WorldAccessorTest, UnevenScalePropagatesToDescendants){
     EXPECT_TRUE(HasUnevenChain(FlagsAt(1)));
 }
 
-TEST_F(WorldAccessorTest, EvenScaleLeavesTheChainClean){
+TEST_F(WorldAccessorTest, EvenScaleLeavesTheChainClean) {
     auto root = Create(scaled(Vec3{2.0f, 2.0f, 2.0f}));
     Create(root, scaled(Vec3{0.5f, 0.5f, 0.5f}));
 
@@ -119,7 +124,7 @@ TEST_F(WorldAccessorTest, EvenScaleLeavesTheChainClean){
     EXPECT_FALSE(HasUnevenChain(FlagsAt(1)));
 }
 
-TEST_F(WorldAccessorTest, ChainClearsWhenTheParentTurnsEvenAgain){
+TEST_F(WorldAccessorTest, ChainClearsWhenTheParentTurnsEvenAgain) {
     auto root = Create(scaled(Vec3{1.0f, 2.0f, 1.0f}));
     auto child = Create(root, Transform::Identity());
     hierarchy.UpdateWorldTransforms();
@@ -153,7 +158,7 @@ TEST_F(WorldAccessorTest, UpdateWarnsOnceAndOnlyBelowAnUnevenScale) {
     EXPECT_FALSE(HasWarned(FlagsAt(2)));
 }
 
-TEST_F(WorldAccessorTest, RotationSurvivesAZeroScale){
+TEST_F(WorldAccessorTest, RotationSurvivesAZeroScale) {
     constexpr f32 QUARTER = std::numbers::pi_v<f32> / 2;
 
     auto local = rotationZ(QUARTER);
@@ -169,7 +174,7 @@ TEST_F(WorldAccessorTest, RotationSurvivesAZeroScale){
     EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
 }
 
-TEST_F(WorldAccessorTest, RotationSurvivesAMirroringScale){
+TEST_F(WorldAccessorTest, RotationSurvivesAMirroringScale) {
     constexpr f32 QUARTER = std::numbers::pi_v<f32> / 2;
 
     auto local = rotationZ(QUARTER);
@@ -180,11 +185,12 @@ TEST_F(WorldAccessorTest, RotationSurvivesAMirroringScale){
 
     // the mirror stays in the scale, it does not leak into the rotation
     auto rotation = hierarchy.GetWorldRotation(mirrored);
-    auto expected = Vec4{0.0f, 0.0f, std::sin(QUARTER/2), std::cos(QUARTER/2)};
+    auto expected =
+        Vec4{0.0f, 0.0f, std::sin(QUARTER / 2), std::cos(QUARTER / 2)};
     EXPECT_NEAR(std::abs(dot(rotation, expected)), 1.0f, EPSILON);
 }
 
-TEST_F(WorldAccessorTest, InverseUndoesTheWorldMatrix){
+TEST_F(WorldAccessorTest, InverseUndoesTheWorldMatrix) {
     auto local = rotationZ(std::numbers::pi_v<f32> / 3);
     local.position = Vec3{2.0f, -1.0f, 4.0f};
     local.scale = Vec3{2.0f, 2.0f, 2.0f};
@@ -199,7 +205,7 @@ TEST_F(WorldAccessorTest, InverseUndoesTheWorldMatrix){
     );
 }
 
-TEST_F(WorldAccessorTest, InverseHandlesUnevenScale){
+TEST_F(WorldAccessorTest, InverseHandlesUnevenScale) {
     auto root = Create(scaled(Vec3{2.0f, 4.0f, 0.5f}));
     hierarchy.UpdateWorldTransforms();
 
@@ -209,7 +215,7 @@ TEST_F(WorldAccessorTest, InverseHandlesUnevenScale){
     );
 }
 
-TEST_F(WorldAccessorTest, InverseFollowsTheNextUpdate){
+TEST_F(WorldAccessorTest, InverseFollowsTheNextUpdate) {
     auto root = Create(Transform{.position = Vec3{1.0f, 0.0f, 0.0f}});
     hierarchy.UpdateWorldTransforms();
     auto first = hierarchy.GetWorldInverse(root);
@@ -221,9 +227,11 @@ TEST_F(WorldAccessorTest, InverseFollowsTheNextUpdate){
     EXPECT_NEAR(hierarchy.GetWorldInverse(root)[3][0], -5.0f, EPSILON);
 }
 
-TEST_F(WorldAccessorTest, InverseFollowsAStructuralChange){
-    auto doomed = hierarchy.CreateNode(Transform{.position = Vec3{1.0f, 0.0f, 0.0f}});
-    auto keeper = hierarchy.CreateNode(Transform{.position = Vec3{9.0f, 0.0f, 0.0f}});
+TEST_F(WorldAccessorTest, InverseFollowsAStructuralChange) {
+    auto doomed =
+        hierarchy.CreateNode(Transform{.position = Vec3{1.0f, 0.0f, 0.0f}});
+    auto keeper =
+        hierarchy.CreateNode(Transform{.position = Vec3{9.0f, 0.0f, 0.0f}});
     hierarchy.CommitStructuralChanges();
     hierarchy.UpdateWorldTransforms();
 

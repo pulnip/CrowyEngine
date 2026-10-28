@@ -106,7 +106,7 @@ namespace Crowy
         }
 
         PhaseSchedule schedule;
-        for(usize i = 0; i < PhaseCount; ++i){
+        for(usize i = 0; i < PhaseCount; ++i) {
             const auto phase = static_cast<Phase>(i);
 
             schedule[i] = schedulePhase(systems, phase);
