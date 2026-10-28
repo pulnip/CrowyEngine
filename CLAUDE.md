@@ -31,10 +31,8 @@ These override the global CLAUDE.md where they differ.
   visible from here. One line, two at most. Never what a test shows, what
   the next line does, a plan, a date or a step. A protocol or format
   someone outside the repo reads goes in docs/, not in a header.
-- Format: a module listed in Tools/formatted.txt is formatted whole
-  (`clang-format -i`), and `Tools/format_check.ps1` fails on drift; a
-  new file is formatted whole and its module added to the list. Elsewhere
-  `git clang-format` on changed lines only.
+- Format: every file is formatted whole (`clang-format -i`), new files
+  too; `Tools/format_check.ps1` fails on drift anywhere under `Engine/`.
 - Shared text and range helpers live in Core: StringUtil.hpp (join,
   parseNumber, case), PathUtil.hpp, FileUtil.hpp, RangeUtil.hpp (stray,
   firstRepeat). Look there before writing a loop.
