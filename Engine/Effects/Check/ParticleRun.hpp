@@ -56,8 +56,7 @@ namespace Crowy
         static u64 submitted = 0;
         ParticleSnapshots snapshots;
         for(u32 frame = 1; frame <= copies.back(); ++frame) {
-            const bool copied =
-                std::ranges::find(copies, frame) != copies.end();
+            const bool copied = std::ranges::contains(copies, frame);
             cmdList->Begin();
             const auto releases =
                 effects.Simulate(*cmdList, EffectView{}, worldBase + frame, 1);

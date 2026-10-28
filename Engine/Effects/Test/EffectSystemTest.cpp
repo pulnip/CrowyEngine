@@ -321,9 +321,8 @@ TEST(EffectSystem, AReloadSwapsEveryKernelOrNone) {
     const auto* before =
         f.cmdList.computePasses.at(0).dispatches.at(0).pipeline;
 
-    // the clear, two steps and the draws' pipeline were creates 1 to 4; the
-    // second rebuild, create 6, fails and the first is thrown away unused
-    f.device.failAt = 6;
+    // the second rebuild fails and the first is thrown away unused
+    f.device.failAt = f.device.creates + 2;
     EXPECT_THROW(f.effects.ReloadKernels(), std::runtime_error);
     EXPECT_TRUE(f.device.deferred.empty());
     EXPECT_EQ(f.device.computeDestroyed, 1u);

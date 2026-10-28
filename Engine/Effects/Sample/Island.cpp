@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "CameraComponent.hpp"
+#include "CommandPort.hpp"
 #include "EffectComponent.hpp"
 #include "EffectSystem.hpp"
 #include "EnumUtil.hpp"
@@ -66,22 +67,13 @@ namespace Crowy
         World world;
         // what the fire's bed, logs, light and effects ride
         ActorId fire;
-        // flown: the mouse's turn, kept apart from the actor's rotation, and
-        // this frame's look and walk
         ActorId cameraActor;
-        f32 yaw = 0.0f;
-        f32 pitch = 0.0f;
-        bool looked = false;
-        Vec3 moveInput{};
+        FlyState fly;
+        // last, so the port lets go of the members above before they go
+        PortExposures exposures;
 
     public:
-        ~Island() override {
-            if(auto* port = Port()) {
-                port->Unexpose("camera");
-                port->Unexpose("camera.transform");
-                port->Unexpose("fire.transform");
-            }
-        }
+        ~Island() override = default;
         CROWY_DECLARE_PINNED(Island)
 
         Island()
@@ -113,12 +105,11 @@ namespace Crowy
             world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
 
             const auto start = makeCamera();
-            yaw = start.yaw;
-            pitch = start.pitch;
+            fly = FlyState(CameraLook{.yaw = start.yaw, .pitch = start.pitch});
             cameraActor = world.Spawn(
                 Transform{
                     .position = start.position,
-                    .rotation = flyRotation(yaw, pitch)
+                    .rotation = flyRotation(fly.look.yaw, fly.look.pitch)
                 }
             );
             world.Add(
@@ -223,19 +214,18 @@ namespace Crowy
             // the actors' rows land before the first frame records, so the
             // port finds them
             world.Frame(0.0);
-            if(auto* port = Port()) {
-                port->Expose(
-                    "camera",
-                    world.Target<CameraComponent>(cameraActor)
-                );
-                // a rotation written here lasts until the next mouse look
-                port->Expose(
-                    "camera.transform",
-                    world.TransformTarget(cameraActor)
-                );
-                // the embers keep to the tipi wherever the fire goes
-                port->Expose("fire.transform", world.TransformTarget(fire));
-            }
+            exposures = PortExposures(Port());
+            exposures.Expose(
+                "camera",
+                world.Target<CameraComponent>(cameraActor)
+            );
+            // a rotation written here lasts until the next mouse look
+            exposures.Expose(
+                "camera.transform",
+                world.TransformTarget(cameraActor)
+            );
+            // the embers keep to the tipi wherever the fire goes
+            exposures.Expose("fire.transform", world.TransformTarget(fire));
         }
 
         FrameGraphDesc DescribePipeline(
@@ -282,20 +272,17 @@ namespace Crowy
         }
 
         void OnProcessInput(const InputProvider& input) override {
-            looked = flyLook(input, makeCamera().lookSensitivity, yaw, pitch);
-            moveInput = flyMoveInput(input);
+            if(fly.ProcessInput(input, makeCamera().lookSensitivity))
+                RequestRelativeMouse();
         }
 
         void OnUpdateScene(f64 deltaTime) override {
             // a still camera writes nothing, so nothing is extracted for it
-            if(looked || moveInput != zeros()) {
+            if(fly.Moving()) {
                 world.SetLocalTransform(
                     cameraActor,
-                    flyStep(
+                    fly.Step(
                         world.LocalTransform(cameraActor),
-                        yaw,
-                        pitch,
-                        moveInput,
                         makeCamera().moveSpeed,
                         deltaTime
                     )
@@ -376,7 +363,7 @@ namespace Crowy
                     {.path = StandardForward, .entryPoint = "vs_main"},
                 .fragmentShader =
                     {.path = StandardForward, .entryPoint = "fs_opaque"},
-                .rasterizer = {.cullMode = cull, .frontCounterClockwise = false}
+                .rasterizer = {.cullMode = cull}
             };
         }
 
@@ -435,8 +422,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader =
                     RHIShaderDesc{.path = SkyShader, .entryPoint = "fs_sky"},
-                .renderTargetCount = formats.colors.size(),
-                .profile = "sm_6_8"
+                .renderTargetCount = formats.colors.size()
             };
             std::ranges::copy(formats.colors, desc.renderTargetFormats.begin());
             desc.depthStencil = RHIDepthStencilState{

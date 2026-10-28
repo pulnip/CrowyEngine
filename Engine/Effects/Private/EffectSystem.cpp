@@ -14,6 +14,10 @@ namespace Crowy
 
     namespace
     {
+        constexpr auto nameOf = [](const auto& effect) {
+            return StrView{effect->desc.name};
+        };
+
         RHIBlendState blendOf(EffectBlend blend) {
             RHIBlendState state{};
             auto& target = state.renderTargets[0];
@@ -51,8 +55,7 @@ namespace Crowy
                         .entryPoint = "fs_" + draw.entry
                     },
                 .blend = blendOf(draw.blend),
-                .renderTargetCount = formats.colors.size(),
-                .profile = "sm_6_8"
+                .renderTargetCount = formats.colors.size()
             };
             std::ranges::copy(formats.colors, desc.renderTargetFormats.begin());
             if(formats.depth != RHIPixelFormat::Unknown) {
@@ -116,10 +119,7 @@ namespace Crowy
                 )
             );
         }
-        const auto named = [&](const auto& effect) {
-            return effect->desc.name == desc.name;
-        };
-        if(std::ranges::any_of(effects, named))
+        if(std::ranges::contains(effects, desc.name, nameOf))
             refuse(desc.name, "two effects have this name");
         for(const auto& draw: desc.draws) {
             if(draw.entry.empty())
@@ -253,10 +253,7 @@ namespace Crowy
     }
 
     EffectSystem::Effect& EffectSystem::find(StrView name) const {
-        const auto found =
-            std::ranges::find(effects, name, [](const auto& effect) {
-                return StrView{effect->desc.name};
-            });
+        const auto found = std::ranges::find(effects, name, nameOf);
         if(found == effects.end())
             refuse(name, "no effect has this name");
 
