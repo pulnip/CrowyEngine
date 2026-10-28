@@ -18,3 +18,4 @@ Engine/Physics
 Engine/World
 Engine/WorldRender
 Engine/WorldEffects
+Engine/Scene
