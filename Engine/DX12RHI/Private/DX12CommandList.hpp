@@ -3,10 +3,12 @@
 #include <array>
 #include <unordered_map>
 #include <vector>
+
 #include <d3dx12/d3dx12_barriers.h>
+
+#include "DX12Definitions.hpp"
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
-#include "DX12Definitions.hpp"
 
 namespace Crowy
 {
@@ -16,12 +18,12 @@ namespace Crowy
     class DX12GraphicsPipelineState;
     class DX12ComputePipelineState;
 
-    class DX12CommandList: public RHICommandList{
+    class DX12CommandList: public RHICommandList {
     public:
         // where a submitted recording leaves its two GPU timestamps, begin
         // at 2 * slot and end at 2 * slot + 1. It holds the buffer, so the
         // device can read it after the list itself is gone
-        struct TimestampSlot{
+        struct TimestampSlot {
             BufferRAII readback;
             u32 slot = 0;
         };
@@ -34,7 +36,7 @@ namespace Crowy
         // state tracking. it stays commandlist-local so parallel recording
         // keeps working; the GPU ordering comes only from recorded barriers.
         template<typename Barrier>
-        struct PendingRelease{
+        struct PendingRelease {
             Barrier barrier;
             // at least one acquire already fused this edge (multi-consumer)
             bool consumed = false;
@@ -47,7 +49,7 @@ namespace Crowy
         // Begin() takes the next allocator in the ring. Each carries the
         // serial of the batch that last ran its commands, so reuse waits on
         // exactly that and nothing here needs to know which frame it is
-        struct AllocatorSlot{
+        struct AllocatorSlot {
             CommandAllocatorRAII allocator;
             u64 serial = 0;
         };
@@ -65,12 +67,10 @@ namespace Crowy
         // matched pair into one Enhanced Barrier recorded before the consumer
         std::unordered_map<
             const RHITexture*,
-            std::vector<PendingRelease<RHITextureBarrier>>
-        > pendingTextureReleases;
-        std::unordered_map<
-            const RHIBuffer*,
-            PendingRelease<RHIBufferBarrier>
-        > pendingBufferReleases;
+            std::vector<PendingRelease<RHITextureBarrier>>>
+            pendingTextureReleases;
+        std::unordered_map<const RHIBuffer*, PendingRelease<RHIBufferBarrier>>
+            pendingBufferReleases;
 
         DX12DescriptorHeapAllocator& cbvsrvuavHeap;
         DX12DescriptorHeapAllocator& rtvHeap;
@@ -118,10 +118,7 @@ namespace Crowy
             u32 offset
         ) RHI_OVERRIDE;
 
-        void SetPushGraphicsConstants(
-            const void* data,
-            u32 size
-        ) RHI_OVERRIDE;
+        void SetPushGraphicsConstants(const void* data, u32 size) RHI_OVERRIDE;
 
         void SetGraphicsConstantBuffer(
             RHIBuffer& buffer,
@@ -162,10 +159,7 @@ namespace Crowy
 
         void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
 
-        void SetPushComputeConstants(
-            const void* data,
-            u32 size
-        ) RHI_OVERRIDE;
+        void SetPushComputeConstants(const void* data, u32 size) RHI_OVERRIDE;
 
         void SetComputeConstantBuffer(
             RHIBuffer& buffer,
@@ -197,14 +191,11 @@ namespace Crowy
             usize size
         ) RHI_OVERRIDE;
 
-        void Copy(
-            RHITexture& src,
-            RHITexture& dst
-        ) RHI_OVERRIDE;
+        void Copy(RHITexture& src, RHITexture& dst) RHI_OVERRIDE;
 
         void Copy(
             RHIBuffer& src,
-            u64 srcOffset,   // align 512 (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT)
+            u64 srcOffset, // align 512 (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT)
             u32 srcRowPitch, // align 256 (D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
             RHITexture& dst,
             const RHITextureRegion& region,
@@ -215,7 +206,7 @@ namespace Crowy
         void Copy(
             RHITexture& src,
             RHIBuffer& dst,
-            u64 dstOffset,   // align 512 (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT)
+            u64 dstOffset, // align 512 (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT)
             u32 dstRowPitch, // align 256 (D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
             const RHITextureRegion& region,
             u32 mipLevel = 0,
@@ -228,14 +219,18 @@ namespace Crowy
         void EndEvent() RHI_OVERRIDE;
         void SetMarker(CStr name) RHI_OVERRIDE;
 
-        CommandList* Get() noexcept{ return commandList.Get(); }
+        CommandList* Get() noexcept { return commandList.Get(); }
 
         // the device stamps the recording as it executes it: `serial` is what
         // the batch signals once these commands have run
-        void MarkSubmitted(u64 serial) noexcept{ allocators[cursor].serial = serial; }
+        void MarkSubmitted(u64 serial) noexcept {
+            allocators[cursor].serial = serial;
+        }
         // the timestamps of the recording just submitted, readable once its
         // batch's serial has completed
-        TimestampSlot SubmittedTimestamps() const{ return {timestampReadback, cursor}; }
+        TimestampSlot SubmittedTimestamps() const {
+            return {timestampReadback, cursor};
+        }
 
     private:
         // record the whole edge as one Enhanced Barrier into the scratch

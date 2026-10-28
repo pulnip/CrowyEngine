@@ -1,15 +1,16 @@
 #pragma once
 
 #include <functional>
+
 #include "FastPimpl.hpp"
 #include "RHIAPI.hpp"
-#include "RHIFWD.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
-    class DX12Device: public RHIDevice{
+    class DX12Device: public RHIDevice {
     private:
         class Impl;
         static constexpr usize implSize = 832;
@@ -46,7 +47,9 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
-        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept RHI_OVERRIDE;
+        std::optional<f64> GetGPUFrameTime(
+            u64 frame
+        ) const noexcept RHI_OVERRIDE;
         void WaitFrame(u64 frame) RHI_OVERRIDE;
         void WaitIdle() RHI_OVERRIDE;
 

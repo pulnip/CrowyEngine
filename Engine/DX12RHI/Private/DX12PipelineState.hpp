@@ -6,11 +6,12 @@
 
 namespace Crowy
 {
-    class DX12GraphicsPipelineState: public RHIGraphicsPipelineState{
+    class DX12GraphicsPipelineState: public RHIGraphicsPipelineState {
     private:
         PipelineStateRAII pipeline = nullptr;
 
-        D3D_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+        D3D_PRIMITIVE_TOPOLOGY primitiveTopology =
+            D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
     public:
         DX12GraphicsPipelineState(
@@ -25,7 +26,7 @@ namespace Crowy
         void Bind(CommandList&) const;
     };
 
-    class DX12ComputePipelineState: public RHIComputePipelineState{
+    class DX12ComputePipelineState: public RHIComputePipelineState {
     private:
         PipelineStateRAII pipeline = nullptr;
 
@@ -43,8 +44,6 @@ namespace Crowy
 
         void Bind(CommandList&) const;
 
-        Size3D getThreadGroupSize() const{
-            return threadGroupSize;
-        }
+        Size3D getThreadGroupSize() const { return threadGroupSize; }
     };
 }

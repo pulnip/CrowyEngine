@@ -4,7 +4,7 @@
 
 namespace Crowy
 {
-    class DX12FrameScope final: public RHIFrameScope{
+    class DX12FrameScope final: public RHIFrameScope {
     public:
         DX12FrameScope() = default;
         ~DX12FrameScope() = default;

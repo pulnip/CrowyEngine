@@ -1,14 +1,15 @@
 #pragma once
 
 #include <vector>
+
+#include "DX12Definitions.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHISwapchain.hpp"
-#include "DX12Definitions.hpp"
 
 namespace Crowy
 {
-    class DX12Swapchain: public RHISwapchain{
+    class DX12Swapchain: public RHISwapchain {
     private:
         SwapchainRAII swapchain = nullptr;
         // owned by DX12Device, which outlives the swapchain;
@@ -42,7 +43,7 @@ namespace Crowy
         u32 GetWidth() const noexcept RHI_OVERRIDE;
         u32 GetHeight() const noexcept RHI_OVERRIDE;
 
-        RHITexture& GetCurrentTexture() RHI_OVERRIDE{
+        RHITexture& GetCurrentTexture() RHI_OVERRIDE {
             return *backBuffers[currentBackBufferIndex];
         }
 

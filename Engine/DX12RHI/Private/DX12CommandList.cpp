@@ -1,13 +1,16 @@
+#include "DX12CommandList.hpp"
+
 #include <array>
 #include <utility>
-#include <pix.h>
+
 #include <d3dx12/d3dx12_barriers.h>
+#include <pix.h>
 #include <winscard.h>
+
 #include "Assert.hpp"
+#include "DX12Buffer.hpp"
 #include "DX12Definitions.hpp"
 #include "DX12DescriptorHeapAllocator.hpp"
-#include "DX12Buffer.hpp"
-#include "DX12CommandList.hpp"
 #include "DX12Fence.hpp"
 #include "DX12PipelineState.hpp"
 #include "DX12Texture.hpp"
@@ -15,25 +18,33 @@
 #include "IntMath.hpp"
 #include "RHIDefinitions.hpp"
 
-namespace{
-    D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE convert(Crowy::RHILoadAction action){
+namespace
+{
+    D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE convert(
+        Crowy::RHILoadAction action
+    ) {
         using enum Crowy::RHILoadAction;
 
-        switch(action){
-        case Load:     return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
-        case Clear:    return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-        case DontCare: return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+        switch(action) {
+        case Load:
+            return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+        case Clear:
+            return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+        case DontCare:
+            return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
         default:
             std::unreachable();
         }
     }
 
-    D3D12_RENDER_PASS_ENDING_ACCESS_TYPE convert(Crowy::RHIStoreAction action){
+    D3D12_RENDER_PASS_ENDING_ACCESS_TYPE convert(Crowy::RHIStoreAction action) {
         using enum Crowy::RHIStoreAction;
 
-        switch(action){
-        case Store:    return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-        case DontCare: return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+        switch(action) {
+        case Store:
+            return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        case DontCare:
+            return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
         default:
             std::unreachable();
         }
@@ -42,39 +53,32 @@ namespace{
     auto convert(
         Crowy::RHIColorAttachment desc,
         Crowy::DX12DescriptorHeapAllocator& rtvHeap
-    ){
+    ) {
         using namespace Crowy;
 
         auto tex = static_cast<DX12Texture*>(desc.texture);
 
         return D3D12_RENDER_PASS_RENDER_TARGET_DESC{
-            .cpuDescriptor = rtvHeap.GetCPUHandle(
-                tex->GetOrCreateRTV(desc.mipLevel)
-            ),
-            .BeginningAccess = {
-                .Type = convert(desc.loadAction),
-                .Clear = {
-                    .ClearValue = {
-                        .Format = convert(tex->GetFormat()),
-                        .Color = {
-                            desc.clearColor.x,
-                            desc.clearColor.y,
-                            desc.clearColor.z,
-                            desc.clearColor.w
-                        }
-                    }
-                }
-            },
-            .EndingAccess = {
-                .Type = convert(desc.storeAction)
-            }
+            .cpuDescriptor =
+                rtvHeap.GetCPUHandle(tex->GetOrCreateRTV(desc.mipLevel)),
+            .BeginningAccess =
+                {.Type = convert(desc.loadAction),
+                 .Clear =
+                     {.ClearValue =
+                          {.Format = convert(tex->GetFormat()),
+                           .Color =
+                               {desc.clearColor.x,
+                                desc.clearColor.y,
+                                desc.clearColor.z,
+                                desc.clearColor.w}}}},
+            .EndingAccess = {.Type = convert(desc.storeAction)}
         };
     }
 
     auto convert(
         Crowy::RHIDepthAttachment desc,
         Crowy::DX12DescriptorHeapAllocator& dsvHeap
-    ){
+    ) {
         using namespace Crowy;
 
         auto tex = static_cast<DX12Texture*>(desc.texture);
@@ -106,27 +110,28 @@ namespace{
         const bool hasStencil = Crowy::hasStencil(format);
 
         return D3D12_RENDER_PASS_DEPTH_STENCIL_DESC{
-            .cpuDescriptor = dsvHeap.GetCPUHandle(
-                tex->GetOrCreateDSV(desc.mipLevel)
-            ),
+            .cpuDescriptor =
+                dsvHeap.GetCPUHandle(tex->GetOrCreateDSV(desc.mipLevel)),
             .DepthBeginningAccess = beginningAccess,
-            .StencilBeginningAccess = hasStencil ? beginningAccess : noBeginningAccess,
+            .StencilBeginningAccess =
+                hasStencil ? beginningAccess : noBeginningAccess,
             .DepthEndingAccess = endingAccess,
             .StencilEndingAccess = hasStencil ? endingAccess : noEndingAccess
         };
     }
 
-    D3D12_INDEX_BUFFER_VIEW convert(const Crowy::RHIIndexBufferView& indices){
+    D3D12_INDEX_BUFFER_VIEW convert(const Crowy::RHIIndexBufferView& indices) {
         using namespace Crowy;
 
         auto& dxBuffer = static_cast<DX12Buffer&>(*indices.buffer);
 
         return D3D12_INDEX_BUFFER_VIEW{
             .BufferLocation = dxBuffer.GetGPUAddress() + indices.offset,
-            .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - indices.offset),
-            .Format = RHIIndexFormat::UInt32 == indices.format ?
-                DXGI_FORMAT_R32_UINT :
-                DXGI_FORMAT_R16_UINT
+            .SizeInBytes =
+                static_cast<UINT>(dxBuffer.GetSize() - indices.offset),
+            .Format = RHIIndexFormat::UInt32 == indices.format
+                          ? DXGI_FORMAT_R32_UINT
+                          : DXGI_FORMAT_R16_UINT
         };
     }
 }
@@ -135,9 +140,10 @@ namespace Crowy
 {
     // stateless §5 rules live in the RHICommandList base now;
     // this backend only keeps what its pending maps can see
-    namespace{
-        inline auto convert(const RHISubresourceRange& range){
-            if(range.numMips == 0){
+    namespace
+    {
+        inline auto convert(const RHISubresourceRange& range) {
+            if(range.numMips == 0) {
                 // flat subresource index, AllSubresources for everything
                 return CD3DX12_BARRIER_SUBRESOURCE_RANGE(range.firstMip);
             }
@@ -163,28 +169,33 @@ namespace Crowy
         DX12DescriptorHeapAllocator& rtvHeap,
         DX12DescriptorHeapAllocator& dsvHeap
     )
-        : commandQueue(commandQueue)
-        , rootSignature(rootSignature)
-        , drawSignature(drawSignature)
-        , drawIndexedSignature(drawIndexedSignature)
-        , serialFence(serialFence)
-        , cbvsrvuavHeap(cbvsrvuavHeap)
-        , rtvHeap(rtvHeap)
-        , dsvHeap(dsvHeap)
-    {
-        for(auto& slot: allocators){
-            CHECK_HRESULT(device.CreateCommandAllocator(
-                D3D12_COMMAND_LIST_TYPE_DIRECT,
-                IID_PPV_ARGS(&slot.allocator)
-            ), "Failed to create command allocator");
+        : commandQueue(commandQueue),
+          rootSignature(rootSignature),
+          drawSignature(drawSignature),
+          drawIndexedSignature(drawIndexedSignature),
+          serialFence(serialFence),
+          cbvsrvuavHeap(cbvsrvuavHeap),
+          rtvHeap(rtvHeap),
+          dsvHeap(dsvHeap) {
+        for(auto& slot: allocators) {
+            CHECK_HRESULT(
+                device.CreateCommandAllocator(
+                    D3D12_COMMAND_LIST_TYPE_DIRECT,
+                    IID_PPV_ARGS(&slot.allocator)
+                ),
+                "Failed to create command allocator"
+            );
         }
 
-        CHECK_HRESULT(device.CreateCommandList1(
-            0,
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            D3D12_COMMAND_LIST_FLAG_NONE,
-            IID_PPV_ARGS(&commandList)
-        ), "Failed to create command list");
+        CHECK_HRESULT(
+            device.CreateCommandList1(
+                0,
+                D3D12_COMMAND_LIST_TYPE_DIRECT,
+                D3D12_COMMAND_LIST_FLAG_NONE,
+                IID_PPV_ARGS(&commandList)
+            ),
+            "Failed to create command list"
+        );
 
         constexpr UINT TimestampCount = 2 * FramesInFlight;
 
@@ -193,10 +204,10 @@ namespace Crowy
             .Count = TimestampCount,
             .NodeMask = 0
         };
-        CHECK_HRESULT(device.CreateQueryHeap(
-            &queryDesc,
-            IID_PPV_ARGS(&timestamps)
-        ), "Failed to create timestamp query heap");
+        CHECK_HRESULT(
+            device.CreateQueryHeap(&queryDesc, IID_PPV_ARGS(&timestamps)),
+            "Failed to create timestamp query heap"
+        );
 
         const D3D12_HEAP_PROPERTIES readbackHeap{
             .Type = D3D12_HEAP_TYPE_READBACK
@@ -215,19 +226,22 @@ namespace Crowy
         };
         // a readback buffer stays in COPY_DEST for good, which is what
         // ResolveQueryData writes into
-        CHECK_HRESULT(device.CreateCommittedResource(
-            &readbackHeap,
-            D3D12_HEAP_FLAG_NONE,
-            &readbackDesc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&timestampReadback)
-        ), "Failed to create timestamp readback buffer");
+        CHECK_HRESULT(
+            device.CreateCommittedResource(
+                &readbackHeap,
+                D3D12_HEAP_FLAG_NONE,
+                &readbackDesc,
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                nullptr,
+                IID_PPV_ARGS(&timestampReadback)
+            ),
+            "Failed to create timestamp readback buffer"
+        );
     }
 
     DX12CommandList::~DX12CommandList() = default;
 
-    void DX12CommandList::Begin(){
+    void DX12CommandList::Begin() {
         Super::Begin();
 
         cursor = (cursor + 1) % FramesInFlight;
@@ -237,11 +251,14 @@ namespace Crowy
         if(serialFence.GetValue() < slot.serial)
             serialFence.WaitCPU(slot.serial, 0);
 
-        CHECK_HRESULT(slot.allocator->Reset(), "Failed to reset command allocator");
-        CHECK_HRESULT(commandList->Reset(
-            slot.allocator.Get(),
-            nullptr
-        ), "Failed to reset command list");
+        CHECK_HRESULT(
+            slot.allocator->Reset(),
+            "Failed to reset command allocator"
+        );
+        CHECK_HRESULT(
+            commandList->Reset(slot.allocator.Get(), nullptr),
+            "Failed to reset command list"
+        );
         commandList->EndQuery(
             timestamps.Get(),
             D3D12_QUERY_TYPE_TIMESTAMP,
@@ -252,27 +269,21 @@ namespace Crowy
         pendingBufferReleases.clear();
 
         std::array heaps{cbvsrvuavHeap.Get()};
-        commandList->SetDescriptorHeaps(
-            heaps.size(),
-            heaps.data()
-        );
+        commandList->SetDescriptorHeaps(heaps.size(), heaps.data());
 
         commandList->SetGraphicsRootSignature(&rootSignature);
         commandList->SetComputeRootSignature(&rootSignature);
     }
 
-    void DX12CommandList::Close(){
+    void DX12CommandList::Close() {
         Super::Close();
 
         flushPendingReleases();
 
         // after the last command, so the span covers all of them
         const UINT first = 2 * cursor;
-        commandList->EndQuery(
-            timestamps.Get(),
-            D3D12_QUERY_TYPE_TIMESTAMP,
-            first + 1
-        );
+        commandList
+            ->EndQuery(timestamps.Get(), D3D12_QUERY_TYPE_TIMESTAMP, first + 1);
         commandList->ResolveQueryData(
             timestamps.Get(),
             D3D12_QUERY_TYPE_TIMESTAMP,
@@ -282,16 +293,14 @@ namespace Crowy
             first * sizeof(u64)
         );
 
-        CHECK_HRESULT(commandList->Close(),
-            "Failed to close command list"
-        );
+        CHECK_HRESULT(commandList->Close(), "Failed to close command list");
     }
 
     void DX12CommandList::BeginRenderPass(
         const RHIRenderPassDesc& desc,
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
-    ){
+    ) {
         Super::BeginRenderPass(desc, textureAcquires, bufferAcquires);
 
         // barriers are illegal inside a D3D12 render pass,
@@ -299,7 +308,7 @@ namespace Crowy
         applyAcquires(textureAcquires, bufferAcquires);
 
         std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, MaxRenderTargets> rts;
-        for(usize i=0; i<desc.colorAttachments.size(); ++i)
+        for(usize i = 0; i < desc.colorAttachments.size(); ++i)
             rts[i] = ::convert(desc.colorAttachments[i], rtvHeap);
 
         D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dt;
@@ -309,9 +318,7 @@ namespace Crowy
         commandList->BeginRenderPass(
             desc.colorAttachments.size(),
             rts.data(),
-            desc.depthAttachment.has_value() ?
-                &dt :
-                nullptr,
+            desc.depthAttachment.has_value() ? &dt : nullptr,
             D3D12_RENDER_PASS_FLAG_NONE
         );
     }
@@ -319,7 +326,7 @@ namespace Crowy
     void DX12CommandList::EndRenderPass(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
-    ){
+    ) {
         Super::EndRenderPass(textureReleases, bufferReleases);
 
         commandList->EndRenderPass();
@@ -327,7 +334,7 @@ namespace Crowy
         queueReleases(textureReleases, bufferReleases);
     }
 
-    void DX12CommandList::SetPipelineState(RHIGraphicsPipelineState& pso){
+    void DX12CommandList::SetPipelineState(RHIGraphicsPipelineState& pso) {
         Super::SetPipelineState(pso);
 
         auto& dxPso = static_cast<DX12GraphicsPipelineState&>(pso);
@@ -341,44 +348,31 @@ namespace Crowy
         u32 slot,
         u32 stride,
         u32 offset
-    ){
+    ) {
         Super::SetVertexBuffer(buffer, slot, stride, offset);
 
         auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
-        const std::array vbViews{
-            D3D12_VERTEX_BUFFER_VIEW{
-                .BufferLocation = dxBuffer.GetGPUAddress() + offset,
-                .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - offset),
-                .StrideInBytes = stride
-            }
-        };
+        const std::array vbViews{D3D12_VERTEX_BUFFER_VIEW{
+            .BufferLocation = dxBuffer.GetGPUAddress() + offset,
+            .SizeInBytes = static_cast<UINT>(dxBuffer.GetSize() - offset),
+            .StrideInBytes = stride
+        }};
 
-        commandList->IASetVertexBuffers(
-            slot,
-            vbViews.size(),
-            vbViews.data()
-        );
+        commandList->IASetVertexBuffers(slot, vbViews.size(), vbViews.data());
     }
 
-    void DX12CommandList::SetPushGraphicsConstants(
-        const void* data,
-        u32 size
-    ){
+    void DX12CommandList::SetPushGraphicsConstants(const void* data, u32 size) {
         Super::SetPushGraphicsConstants(data, size);
 
-        commandList->SetGraphicsRoot32BitConstants(
-            RootParamPush,
-            size / 4,
-            data,
-            0
-        );
+        commandList
+            ->SetGraphicsRoot32BitConstants(RootParamPush, size / 4, data, 0);
     }
 
     void DX12CommandList::SetGraphicsConstantBuffer(
         RHIBuffer& buffer,
         u32 slot,
         u32 offset
-    ){
+    ) {
         Super::SetGraphicsConstantBuffer(buffer, slot, offset);
 
         auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
@@ -390,40 +384,30 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::SetViewport(const RHIViewport& viewport){
+    void DX12CommandList::SetViewport(const RHIViewport& viewport) {
         Super::SetViewport(viewport);
 
-        const std::array vps{
-            D3D12_VIEWPORT{
-                .TopLeftX = viewport.x,
-                .TopLeftY = viewport.y,
-                .Width = viewport.width,
-                .Height = viewport.height,
-                .MinDepth = viewport.minDepth,
-                .MaxDepth = viewport.maxDepth
-            }
-        };
-        commandList->RSSetViewports(
-            vps.size(),
-            vps.data()
-        );
+        const std::array vps{D3D12_VIEWPORT{
+            .TopLeftX = viewport.x,
+            .TopLeftY = viewport.y,
+            .Width = viewport.width,
+            .Height = viewport.height,
+            .MinDepth = viewport.minDepth,
+            .MaxDepth = viewport.maxDepth
+        }};
+        commandList->RSSetViewports(vps.size(), vps.data());
     }
 
-    void DX12CommandList::SetScissorRect(const RHIScissorRect& scissor){
+    void DX12CommandList::SetScissorRect(const RHIScissorRect& scissor) {
         Super::SetScissorRect(scissor);
 
-        const std::array rects{
-            D3D12_RECT{
-                .left = scissor.left,
-                .top = scissor.top,
-                .right = scissor.right,
-                .bottom = scissor.bottom
-            }
-        };
-        commandList->RSSetScissorRects(
-            rects.size(),
-            rects.data()
-        );
+        const std::array rects{D3D12_RECT{
+            .left = scissor.left,
+            .top = scissor.top,
+            .right = scissor.right,
+            .bottom = scissor.bottom
+        }};
+        commandList->RSSetScissorRects(rects.size(), rects.data());
     }
 
     void DX12CommandList::Draw(
@@ -431,7 +415,7 @@ namespace Crowy
         u32 instanceCount,
         u32 startVertex,
         u32 startInstance
-    ){
+    ) {
         Super::Draw(vertexCount, instanceCount, startVertex, startInstance);
 
         commandList->DrawInstanced(
@@ -449,8 +433,15 @@ namespace Crowy
         u32 startIndex,
         i32 baseVertex,
         u32 startInstance
-    ){
-        Super::DrawIndexed(indices, indexCount, instanceCount, startIndex, baseVertex, startInstance);
+    ) {
+        Super::DrawIndexed(
+            indices,
+            indexCount,
+            instanceCount,
+            startIndex,
+            baseVertex,
+            startInstance
+        );
 
         const auto ibView = ::convert(indices);
         commandList->IASetIndexBuffer(&ibView);
@@ -466,12 +457,24 @@ namespace Crowy
 
     // the args buffer is reinterpreted as D3D12_DRAW_ARGUMENTS[]
     static_assert(sizeof(RHIDrawArgs) == sizeof(D3D12_DRAW_ARGUMENTS));
-    static_assert(offsetof(RHIDrawArgs, vertexCount)   == offsetof(D3D12_DRAW_ARGUMENTS, VertexCountPerInstance));
-    static_assert(offsetof(RHIDrawArgs, instanceCount) == offsetof(D3D12_DRAW_ARGUMENTS, InstanceCount));
-    static_assert(offsetof(RHIDrawArgs, firstVertex)   == offsetof(D3D12_DRAW_ARGUMENTS, StartVertexLocation));
-    static_assert(offsetof(RHIDrawArgs, baseInstance)  == offsetof(D3D12_DRAW_ARGUMENTS, StartInstanceLocation));
+    static_assert(
+        offsetof(RHIDrawArgs, vertexCount) ==
+        offsetof(D3D12_DRAW_ARGUMENTS, VertexCountPerInstance)
+    );
+    static_assert(
+        offsetof(RHIDrawArgs, instanceCount) ==
+        offsetof(D3D12_DRAW_ARGUMENTS, InstanceCount)
+    );
+    static_assert(
+        offsetof(RHIDrawArgs, firstVertex) ==
+        offsetof(D3D12_DRAW_ARGUMENTS, StartVertexLocation)
+    );
+    static_assert(
+        offsetof(RHIDrawArgs, baseInstance) ==
+        offsetof(D3D12_DRAW_ARGUMENTS, StartInstanceLocation)
+    );
 
-    void DX12CommandList::ExecuteIndirect(const DrawBatch& batch){
+    void DX12CommandList::ExecuteIndirect(const DrawBatch& batch) {
         Super::ExecuteIndirect(batch);
 
         SetPipelineState(*batch.pso);
@@ -488,14 +491,33 @@ namespace Crowy
     }
 
     // the args buffer is reinterpreted as D3D12_DRAW_INDEXED_ARGUMENTS[]
-    static_assert(sizeof(RHIDrawIndexedArgs) == sizeof(D3D12_DRAW_INDEXED_ARGUMENTS));
-    static_assert(offsetof(RHIDrawIndexedArgs, indexCount)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, IndexCountPerInstance));
-    static_assert(offsetof(RHIDrawIndexedArgs, instanceCount) == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, InstanceCount));
-    static_assert(offsetof(RHIDrawIndexedArgs, firstIndex)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartIndexLocation));
-    static_assert(offsetof(RHIDrawIndexedArgs, baseVertex)    == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, BaseVertexLocation));
-    static_assert(offsetof(RHIDrawIndexedArgs, baseInstance)  == offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartInstanceLocation));
+    static_assert(
+        sizeof(RHIDrawIndexedArgs) == sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)
+    );
+    static_assert(
+        offsetof(RHIDrawIndexedArgs, indexCount) ==
+        offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, IndexCountPerInstance)
+    );
+    static_assert(
+        offsetof(RHIDrawIndexedArgs, instanceCount) ==
+        offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, InstanceCount)
+    );
+    static_assert(
+        offsetof(RHIDrawIndexedArgs, firstIndex) ==
+        offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartIndexLocation)
+    );
+    static_assert(
+        offsetof(RHIDrawIndexedArgs, baseVertex) ==
+        offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, BaseVertexLocation)
+    );
+    static_assert(
+        offsetof(RHIDrawIndexedArgs, baseInstance) ==
+        offsetof(D3D12_DRAW_INDEXED_ARGUMENTS, StartInstanceLocation)
+    );
 
-    void DX12CommandList::ExecuteIndirectIndexed(const DrawBatchIndexed& batch){
+    void DX12CommandList::ExecuteIndirectIndexed(
+        const DrawBatchIndexed& batch
+    ) {
         Super::ExecuteIndirectIndexed(batch);
 
         SetPipelineState(*batch.pso);
@@ -517,7 +539,7 @@ namespace Crowy
     void DX12CommandList::BeginComputePass(
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
-    ){
+    ) {
         Super::BeginComputePass(textureAcquires, bufferAcquires);
 
         applyAcquires(textureAcquires, bufferAcquires);
@@ -528,13 +550,13 @@ namespace Crowy
     void DX12CommandList::EndComputePass(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
-    ){
+    ) {
         Super::EndComputePass(textureReleases, bufferReleases);
 
         queueReleases(textureReleases, bufferReleases);
     }
 
-    void DX12CommandList::SetPipelineState(RHIComputePipelineState& pso){
+    void DX12CommandList::SetPipelineState(RHIComputePipelineState& pso) {
         Super::SetPipelineState(pso);
 
         auto& dxPso = static_cast<DX12ComputePipelineState&>(pso);
@@ -543,25 +565,18 @@ namespace Crowy
         currentComputePSO = &dxPso;
     }
 
-    void DX12CommandList::SetPushComputeConstants(
-        const void* data,
-        u32 size
-    ){
+    void DX12CommandList::SetPushComputeConstants(const void* data, u32 size) {
         Super::SetPushComputeConstants(data, size);
 
-        commandList->SetComputeRoot32BitConstants(
-            RootParamPush,
-            size / 4,
-            data,
-            0
-        );
+        commandList
+            ->SetComputeRoot32BitConstants(RootParamPush, size / 4, data, 0);
     }
 
     void DX12CommandList::SetComputeConstantBuffer(
         RHIBuffer& buffer,
         u32 slot,
         u32 offset
-    ){
+    ) {
         Super::SetComputeConstantBuffer(buffer, slot, offset);
 
         auto& dxBuffer = static_cast<DX12Buffer&>(buffer);
@@ -573,10 +588,11 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::Dispatch(Size3D gridSize){
+    void DX12CommandList::Dispatch(Size3D gridSize) {
         Super::Dispatch(gridSize);
 
-        CROWY_ASSERT(currentComputePSO != nullptr,
+        CROWY_ASSERT(
+            currentComputePSO != nullptr,
             "Did you call RHICommandList::SetPipelineState(ComputePSO)?"
         );
         auto threadGroupSize = currentComputePSO->getThreadGroupSize();
@@ -591,7 +607,7 @@ namespace Crowy
     void DX12CommandList::BeginBlitPass(
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
-    ){
+    ) {
         Super::BeginBlitPass(textureAcquires, bufferAcquires);
 
         applyAcquires(textureAcquires, bufferAcquires);
@@ -600,7 +616,7 @@ namespace Crowy
     void DX12CommandList::EndBlitPass(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
-    ){
+    ) {
         Super::EndBlitPass(textureReleases, bufferReleases);
 
         queueReleases(textureReleases, bufferReleases);
@@ -609,13 +625,13 @@ namespace Crowy
     void DX12CommandList::DispatchBarrier(
         std::span<const RHITextureBarrier> textureBarriers,
         std::span<const RHIBufferBarrier> bufferBarriers
-    ){
+    ) {
         Super::DispatchBarrier(textureBarriers, bufferBarriers);
 
-        for(const auto& barrier: textureBarriers){
+        for(const auto& barrier: textureBarriers) {
             pushFused(barrier);
         }
-        for(const auto& barrier: bufferBarriers){
+        for(const auto& barrier: bufferBarriers) {
             pushFused(barrier);
         }
 
@@ -628,7 +644,7 @@ namespace Crowy
         usize srcOffset,
         usize dstOffset,
         usize size
-    ){
+    ) {
         Super::Copy(src, dst, srcOffset, dstOffset, size);
 
         auto& dxSrc = static_cast<DX12Buffer&>(src);
@@ -643,10 +659,7 @@ namespace Crowy
         );
     }
 
-    void DX12CommandList::Copy(
-        RHITexture& src,
-        RHITexture& dst
-    ){
+    void DX12CommandList::Copy(RHITexture& src, RHITexture& dst) {
         Super::Copy(src, dst);
 
         commandList->CopyResource(
@@ -663,8 +676,16 @@ namespace Crowy
         const RHITextureRegion& region,
         u32 mipLevel,
         u32 arraySlice
-    ){
-        Super::Copy(src, srcOffset, srcRowPitch, dst, region, mipLevel, arraySlice);
+    ) {
+        Super::Copy(
+            src,
+            srcOffset,
+            srcRowPitch,
+            dst,
+            region,
+            mipLevel,
+            arraySlice
+        );
 
         auto& dxSrc = static_cast<DX12Buffer&>(src);
         auto& dxDst = static_cast<DX12Texture&>(dst);
@@ -680,7 +701,7 @@ namespace Crowy
 
         CROWY_ASSERT(
             region.x + region.width <= dxDst.GetWidth(mipLevel) &&
-            region.y + region.height <= dxDst.GetHeight(mipLevel),
+                region.y + region.height <= dxDst.GetHeight(mipLevel),
             "copy region reaches past the mip"
         );
 
@@ -700,7 +721,9 @@ namespace Crowy
 
         commandList->CopyTextureRegion(
             &dstLoc,
-            region.x, region.y, 0,
+            region.x,
+            region.y,
+            0,
             &srcLoc,
             nullptr
         );
@@ -714,13 +737,23 @@ namespace Crowy
         const RHITextureRegion& region,
         u32 mipLevel,
         u32 arraySlice
-    ){
-        Super::Copy(src, dst, dstOffset, dstRowPitch, region, mipLevel, arraySlice);
+    ) {
+        Super::Copy(
+            src,
+            dst,
+            dstOffset,
+            dstRowPitch,
+            region,
+            mipLevel,
+            arraySlice
+        );
 
-        CROWY_ASSERT(dstOffset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT == 0,
+        CROWY_ASSERT(
+            dstOffset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT == 0,
             "a readback footprint starts on a 512-byte boundary"
         );
-        CROWY_ASSERT(dstRowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0,
+        CROWY_ASSERT(
+            dstRowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0,
             "a readback row pitch is a multiple of 256 bytes"
         );
 
@@ -746,7 +779,9 @@ namespace Crowy
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT copyable{};
         device->GetCopyableFootprints(
             &desc,
-            subresource, 1, 0,
+            subresource,
+            1,
+            0,
             &copyable,
             nullptr,
             nullptr,
@@ -770,11 +805,9 @@ namespace Crowy
         // a depth subresource copies whole, with no box
         const bool whole = isDepthFormat(src.GetFormat());
         CROWY_ASSERT(
-            !whole || (
-                region.x == 0 && region.y == 0 &&
-                region.width == src.GetWidth(mipLevel) &&
-                region.height == src.GetHeight(mipLevel)
-            ),
+            !whole || (region.x == 0 && region.y == 0 &&
+                       region.width == src.GetWidth(mipLevel) &&
+                       region.height == src.GetHeight(mipLevel)),
             "a depth texture is copied whole"
         );
         const D3D12_BOX box{
@@ -788,13 +821,15 @@ namespace Crowy
 
         commandList->CopyTextureRegion(
             &dstLoc,
-            0, 0, 0,
+            0,
+            0,
+            0,
             &srcLoc,
             whole ? nullptr : &box
         );
     }
 
-    void DX12CommandList::pushFused(const RHITextureBarrier& barrier){
+    void DX12CommandList::pushFused(const RHITextureBarrier& barrier) {
         textureBarrierScratch.push_back(CD3DX12_TEXTURE_BARRIER(
             convert(barrier.syncBefore),
             convert(barrier.syncAfter),
@@ -804,13 +839,12 @@ namespace Crowy
             convert(barrier.layoutAfter),
             static_cast<DX12Texture*>(barrier.texture)->Get(),
             convert(barrier.range),
-            barrier.discard ?
-                D3D12_TEXTURE_BARRIER_FLAG_DISCARD :
-                D3D12_TEXTURE_BARRIER_FLAG_NONE
+            barrier.discard ? D3D12_TEXTURE_BARRIER_FLAG_DISCARD
+                            : D3D12_TEXTURE_BARRIER_FLAG_NONE
         ));
     }
 
-    void DX12CommandList::pushFused(const RHIBufferBarrier& barrier){
+    void DX12CommandList::pushFused(const RHIBufferBarrier& barrier) {
         bufferBarrierScratch.push_back(CD3DX12_BUFFER_BARRIER(
             convert(barrier.syncBefore),
             convert(barrier.syncAfter),
@@ -820,36 +854,33 @@ namespace Crowy
         ));
     }
 
-    void DX12CommandList::flushBarrierScratch(){
-        if(textureBarrierScratch.empty() && bufferBarrierScratch.empty()){
+    void DX12CommandList::flushBarrierScratch() {
+        if(textureBarrierScratch.empty() && bufferBarrierScratch.empty()) {
             return;
         }
 
         std::array<D3D12_BARRIER_GROUP, 2> barrierGroups;
         u32 groupCount = 0;
-        if(!textureBarrierScratch.empty()){
+        if(!textureBarrierScratch.empty()) {
             barrierGroups[groupCount++] = CD3DX12_BARRIER_GROUP(
                 textureBarrierScratch.size(),
                 textureBarrierScratch.data()
             );
         }
-        if(!bufferBarrierScratch.empty()){
+        if(!bufferBarrierScratch.empty()) {
             barrierGroups[groupCount++] = CD3DX12_BARRIER_GROUP(
                 bufferBarrierScratch.size(),
                 bufferBarrierScratch.data()
             );
         }
-        commandList->Barrier(
-            groupCount,
-            barrierGroups.data()
-        );
+        commandList->Barrier(groupCount, barrierGroups.data());
 
         textureBarrierScratch.clear();
         bufferBarrierScratch.clear();
     }
 
-    void DX12CommandList::queueRelease(const RHITextureBarrier& barrier){
-        if(barrier.syncAfter == RHIBarrierSync::None){
+    void DX12CommandList::queueRelease(const RHITextureBarrier& barrier) {
+        if(barrier.syncAfter == RHIBarrierSync::None) {
             // self-contained release (e.g. RenderTarget → Present):
             // what follows is guaranteed elsewhere, so fuse on the spot
             pushFused(barrier);
@@ -857,12 +888,12 @@ namespace Crowy
         }
 
         auto& pending = pendingTextureReleases[barrier.texture];
-        for(auto& entry: pending){
-            if(entry.barrier.range == barrier.range){
+        for(auto& entry: pending) {
+            if(entry.barrier.range == barrier.range) {
                 // re-release of the same range = new producer. if the old edge
                 // was never acquired its transition is still unrecorded, so
                 // complete it here to keep the layout timeline coherent
-                if(!entry.consumed){
+                if(!entry.consumed) {
                     pushFused(entry.barrier);
                 }
                 entry = {.barrier = barrier};
@@ -872,8 +903,8 @@ namespace Crowy
         pending.push_back({.barrier = barrier});
     }
 
-    void DX12CommandList::queueRelease(const RHIBufferBarrier& barrier){
-        if(barrier.syncAfter == RHIBarrierSync::None){
+    void DX12CommandList::queueRelease(const RHIBufferBarrier& barrier) {
+        if(barrier.syncAfter == RHIBarrierSync::None) {
             pushFused(barrier);
             return;
         }
@@ -882,8 +913,8 @@ namespace Crowy
             barrier.buffer,
             PendingRelease<RHIBufferBarrier>{.barrier = barrier}
         );
-        if(!inserted){
-            if(!it->second.consumed){
+        if(!inserted) {
+            if(!it->second.consumed) {
                 pushFused(it->second.barrier);
             }
             it->second = {.barrier = barrier};
@@ -893,32 +924,31 @@ namespace Crowy
     void DX12CommandList::queueReleases(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
-    ){
-        for(const auto& release: textureReleases){
+    ) {
+        for(const auto& release: textureReleases) {
             queueRelease(release);
         }
-        for(const auto& release: bufferReleases){
+        for(const auto& release: bufferReleases) {
             queueRelease(release);
         }
         // self-contained releases recorded above land here
         flushBarrierScratch();
     }
 
-    void DX12CommandList::applyAcquire(const RHITextureBarrier& barrier){
+    void DX12CommandList::applyAcquire(const RHITextureBarrier& barrier) {
         if(const auto it = pendingTextureReleases.find(barrier.texture);
-            it != pendingTextureReleases.end()
-        ){
-            for(auto& entry: it->second){
+           it != pendingTextureReleases.end()) {
+            for(auto& entry: it->second) {
                 // full-edge equality doubles as the §5 cross validation:
                 // both halves carried the same value or they do not pair
-                if(entry.barrier == barrier){
+                if(entry.barrier == barrier) {
                     // extra consumers of an identical edge need no barrier in
                     // the fuse strategy: sync scopes are queue-global, so the
                     // first fused barrier already orders every later command
                     // in the edge's consumer stages, and it also finished the
                     // access flush and layout transition. equality matching
                     // guarantees this consumer's stages are the same.
-                    if(!entry.consumed){
+                    if(!entry.consumed) {
                         entry.consumed = true;
                         pushFused(barrier);
                     }
@@ -928,7 +958,8 @@ namespace Crowy
         }
 
         CROWY_ASSERT(
-            barrier.syncBefore == RHIBarrierSync::None || barrier.crossSubmission,
+            barrier.syncBefore == RHIBarrierSync::None ||
+                barrier.crossSubmission,
             "acquire with real before-sync has no matching release in this "
             "command list; producers in earlier submissions need the "
             "crossSubmission flag (makeCrossSubmissionBarrier)"
@@ -936,14 +967,13 @@ namespace Crowy
         pushFused(barrier);
     }
 
-    void DX12CommandList::applyAcquire(const RHIBufferBarrier& barrier){
+    void DX12CommandList::applyAcquire(const RHIBufferBarrier& barrier) {
         if(const auto it = pendingBufferReleases.find(barrier.buffer);
-            it != pendingBufferReleases.end() && it->second.barrier == barrier
-        ){
+           it != pendingBufferReleases.end() && it->second.barrier == barrier) {
             // see the texture path: identical extra consumers ride the first
             // fused barrier's queue-global sync scope
             auto& entry = it->second;
-            if(!entry.consumed){
+            if(!entry.consumed) {
                 entry.consumed = true;
                 pushFused(barrier);
             }
@@ -951,7 +981,8 @@ namespace Crowy
         }
 
         CROWY_ASSERT(
-            barrier.syncBefore == RHIBarrierSync::None || barrier.crossSubmission,
+            barrier.syncBefore == RHIBarrierSync::None ||
+                barrier.crossSubmission,
             "acquire with real before-sync has no matching release in this "
             "command list; producers in earlier submissions need the "
             "crossSubmission flag (makeCrossSubmissionBarrier)"
@@ -962,31 +993,31 @@ namespace Crowy
     void DX12CommandList::applyAcquires(
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
-    ){
-        for(const auto& acquire: textureAcquires){
+    ) {
+        for(const auto& acquire: textureAcquires) {
             applyAcquire(acquire);
         }
-        for(const auto& acquire: bufferAcquires){
+        for(const auto& acquire: bufferAcquires) {
             applyAcquire(acquire);
         }
         flushBarrierScratch();
     }
 
-    void DX12CommandList::flushPendingReleases(){
+    void DX12CommandList::flushPendingReleases() {
         // releases nobody acquired complete here as single barriers - the
         // hand-off point for consumers living in later submissions
         // (e.g. resources uploaded at creation time).
         // ordering across submissions is queue-level,
         // so finishing the transition at Close is enough.
-        for(auto& [_, entries]: pendingTextureReleases){
-            for(auto& entry: entries){
-                if(!entry.consumed){
+        for(auto& [_, entries]: pendingTextureReleases) {
+            for(auto& entry: entries) {
+                if(!entry.consumed) {
                     pushFused(entry.barrier);
                 }
             }
         }
-        for(auto& [_, entry]: pendingBufferReleases){
-            if(!entry.consumed){
+        for(auto& [_, entry]: pendingBufferReleases) {
+            if(!entry.consumed) {
                 pushFused(entry.barrier);
             }
         }
@@ -996,25 +1027,15 @@ namespace Crowy
         flushBarrierScratch();
     }
 
-    void DX12CommandList::BeginEvent(CStr name){
-        PIXBeginEvent(
-            commandList.Get(),
-            PIX_COLOR(0xFF, 0, 0),
-            name
-        );
+    void DX12CommandList::BeginEvent(CStr name) {
+        PIXBeginEvent(commandList.Get(), PIX_COLOR(0xFF, 0, 0), name);
     }
 
-    void DX12CommandList::EndEvent(){
-        PIXEndEvent(
-            commandList.Get()
-        );
+    void DX12CommandList::EndEvent() {
+        PIXEndEvent(commandList.Get());
     }
 
-    void DX12CommandList::SetMarker(CStr name){
-        PIXSetMarker(
-            commandList.Get(),
-            PIX_COLOR(0xFF, 0, 0),
-            name
-        );
+    void DX12CommandList::SetMarker(CStr name) {
+        PIXSetMarker(commandList.Get(), PIX_COLOR(0xFF, 0, 0), name);
     }
 }

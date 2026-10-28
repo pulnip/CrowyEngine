@@ -6,16 +6,13 @@
 
 namespace Crowy
 {
-    class DX12Fence: public RHIFence{
+    class DX12Fence: public RHIFence {
     private:
         FenceRAII fence = nullptr;
         HANDLE fenceEvent = nullptr;
 
     public:
-        DX12Fence(
-            Device& device,
-            u64 initialValue
-        );
+        DX12Fence(Device& device, u64 initialValue);
 
         ~DX12Fence();
 
@@ -25,6 +22,6 @@ namespace Crowy
 
         bool IsComplete(u64 value) const RHI_OVERRIDE;
 
-        Fence* Get() noexcept{ return fence.Get(); }
+        Fence* Get() noexcept { return fence.Get(); }
     };
 }

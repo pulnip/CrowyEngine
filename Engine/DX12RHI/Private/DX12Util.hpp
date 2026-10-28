@@ -2,8 +2,10 @@
 
 #include <format>
 #include <stdexcept>
-#include <dxgiformat.h>
+
 #include <d3d12.h>
+#include <dxgiformat.h>
+
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -23,11 +25,11 @@ namespace Crowy
     Str HResultToString(HRESULT hr);
 }
 
-#define CHECK_HRESULT(expr, msg) \
-    do{ \
-        if(const HRESULT hr = (expr); FAILED(hr)) [[unlikely]]{ \
-            throw std::runtime_error(std::format( \
-                "{}: {}", msg, ::Crowy::HResultToString(hr) \
-            )); \
-        } \
+#define CHECK_HRESULT(expr, msg)                                               \
+    do {                                                                       \
+        if(const HRESULT hr = (expr); FAILED(hr)) [[unlikely]] {               \
+            throw std::runtime_error(                                          \
+                std::format("{}: {}", msg, ::Crowy::HResultToString(hr))       \
+            );                                                                 \
+        }                                                                      \
     } while(false)

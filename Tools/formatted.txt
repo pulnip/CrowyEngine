@@ -9,3 +9,4 @@ Engine/Serialization
 Engine/Content
 Engine/RHI
 Engine/UI
+Engine/DX12RHI

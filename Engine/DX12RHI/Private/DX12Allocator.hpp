@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+
 #include "DX12Definitions.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -33,10 +34,7 @@ namespace Crowy
         std::unordered_map<Buffer*, COMRAII<Buffer>> live;
 
     public:
-        DX12Allocator(
-            Device& device,
-            const DX12Capabilities& capabilities
-        );
+        DX12Allocator(Device& device, const DX12Capabilities& capabilities);
         ~DX12Allocator();
         CROWY_DECLARE_PINNED(DX12Allocator)
 

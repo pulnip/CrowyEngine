@@ -8,19 +8,13 @@
 
 namespace Crowy
 {
-    bool DumpFrame(
-        CommandQueue& queue,
-        Texture& backBuffer,
-        const Str& path
-    ){
+    bool DumpFrame(CommandQueue& queue, Texture& backBuffer, const Str& path) {
         const auto desc = backBuffer.GetDesc();
-        const bool bgra =
-            desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
-            desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-        const bool rgba =
-            desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
-            desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-        if(!bgra && !rgba){
+        const bool bgra = desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
+                          desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        const bool rgba = desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
+                          desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        if(!bgra && !rgba) {
             LOG_WARN(
                 "frame dump skipped: "
                 "back buffer format ({}) is not 8-bit RGBA/BGRA",
@@ -30,7 +24,7 @@ namespace Crowy
         }
 
         DeviceRAII device;
-        if(FAILED(queue.GetDevice(IID_PPV_ARGS(&device)))){
+        if(FAILED(queue.GetDevice(IID_PPV_ARGS(&device)))) {
             LOG_WARN("frame dump skipped: cannot query device");
             return false;
         }
@@ -40,16 +34,16 @@ namespace Crowy
         UINT64 totalBytes = 0;
         device->GetCopyableFootprints(
             &desc,
-            0, 1, 0,
+            0,
+            1,
+            0,
             &footprint,
             nullptr,
             nullptr,
             &totalBytes
         );
 
-        const D3D12_HEAP_PROPERTIES heapProps{
-            .Type = D3D12_HEAP_TYPE_READBACK
-        };
+        const D3D12_HEAP_PROPERTIES heapProps{.Type = D3D12_HEAP_TYPE_READBACK};
         const D3D12_RESOURCE_DESC readbackDesc{
             .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
             .Alignment = 0,
@@ -64,13 +58,13 @@ namespace Crowy
         };
         BufferRAII readback;
         if(FAILED(device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &readbackDesc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&readback)
-        ))){
+               &heapProps,
+               D3D12_HEAP_FLAG_NONE,
+               &readbackDesc,
+               D3D12_RESOURCE_STATE_COPY_DEST,
+               nullptr,
+               IID_PPV_ARGS(&readback)
+           ))) {
             LOG_WARN("frame dump skipped: cannot create readback buffer");
             return false;
         }
@@ -78,15 +72,16 @@ namespace Crowy
         CommandAllocatorRAII allocator;
         CommandListRAII cmdList;
         if(FAILED(device->CreateCommandAllocator(
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            IID_PPV_ARGS(&allocator)
-        )) || FAILED(device->CreateCommandList(
-            0,
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            allocator.Get(),
-            nullptr,
-            IID_PPV_ARGS(&cmdList)
-        ))){
+               D3D12_COMMAND_LIST_TYPE_DIRECT,
+               IID_PPV_ARGS(&allocator)
+           )) ||
+           FAILED(device->CreateCommandList(
+               0,
+               D3D12_COMMAND_LIST_TYPE_DIRECT,
+               allocator.Get(),
+               nullptr,
+               IID_PPV_ARGS(&cmdList)
+           ))) {
             LOG_WARN("frame dump skipped: cannot create command list");
             return false;
         }
@@ -107,44 +102,43 @@ namespace Crowy
             .PlacedFootprint = footprint
         };
         cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
-        if(FAILED(cmdList->Close())){
+        if(FAILED(cmdList->Close())) {
             LOG_WARN("frame dump skipped: cannot close command list");
             return false;
         }
 
-        ID3D12CommandList* lists[] = { cmdList.Get() };
+        ID3D12CommandList* lists[] = {cmdList.Get()};
         queue.ExecuteCommandLists(1, lists);
 
         FenceRAII fence;
         if(FAILED(device->CreateFence(
-            0,
-            D3D12_FENCE_FLAG_NONE,
-            IID_PPV_ARGS(&fence)
-        )) || FAILED(queue.Signal(fence.Get(), 1))){
+               0,
+               D3D12_FENCE_FLAG_NONE,
+               IID_PPV_ARGS(&fence)
+           )) ||
+           FAILED(queue.Signal(fence.Get(), 1))) {
             LOG_WARN("frame dump skipped: cannot signal fence");
             return false;
         }
 
         HANDLE event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-        if(event == nullptr){
+        if(event == nullptr) {
             LOG_WARN("frame dump skipped: cannot create fence event");
             return false;
         }
         fence->SetEventOnCompletion(1, event);
         const auto waited = WaitForSingleObject(event, 5000);
         CloseHandle(event);
-        if(waited != WAIT_OBJECT_0){
+        if(waited != WAIT_OBJECT_0) {
             LOG_WARN("frame dump skipped: copy did not complete");
             return false;
         }
 
         u8* mapped = nullptr;
         const D3D12_RANGE readRange{0, static_cast<SIZE_T>(totalBytes)};
-        if(FAILED(readback->Map(
-            0,
-            &readRange,
-            reinterpret_cast<void**>(&mapped)
-        ))){
+        if(FAILED(
+               readback->Map(0, &readRange, reinterpret_cast<void**>(&mapped))
+           )) {
             LOG_WARN("frame dump skipped: cannot map readback buffer");
             return false;
         }
@@ -170,7 +164,9 @@ namespace Crowy
         if(written) {
             LOG_INFO(
                 "frame dump: wrote {}x{} frame to '{}'",
-                width, desc.Height, path
+                width,
+                desc.Height,
+                path
             );
         }
 

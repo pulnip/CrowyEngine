@@ -1,15 +1,16 @@
 #pragma once
 
 #include <unordered_map>
-#include "RHIAPI.hpp"
-#include "RHIDefinitions.hpp"
-#include "RHIBuffer.hpp"
+
 #include "DX12Allocator.hpp"
 #include "DX12Definitions.hpp"
+#include "RHIAPI.hpp"
+#include "RHIBuffer.hpp"
+#include "RHIDefinitions.hpp"
 
 namespace Crowy
 {
-    class DX12Buffer: public RHIBuffer{
+    class DX12Buffer: public RHIBuffer {
     private:
         RHIAllocation allocation{};
         // what the caller asked for, before any alignment padding
@@ -35,13 +36,13 @@ namespace Crowy
 
         ~DX12Buffer();
 
-        u32 GetSize() const noexcept RHI_OVERRIDE{ return size; }
+        u32 GetSize() const noexcept RHI_OVERRIDE { return size; }
 
-        void* GetMappedPtr() noexcept RHI_OVERRIDE{ return mapped; }
+        void* GetMappedPtr() noexcept RHI_OVERRIDE { return mapped; }
 
-        Buffer* Get() noexcept{ return allocation.resource; }
+        Buffer* Get() noexcept { return allocation.resource; }
 
-        D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress() const noexcept{
+        D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress() const noexcept {
             return allocation.resource->GetGPUVirtualAddress();
         }
 

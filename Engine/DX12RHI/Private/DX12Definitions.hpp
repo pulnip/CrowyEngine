@@ -4,6 +4,7 @@
 #include <d3d12shader.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
+
 #include "Primitives.hpp"
 
 namespace Crowy
@@ -54,7 +55,7 @@ namespace Crowy
     using DX12DescriptorHeapAllocatorRAII = RAII<DX12DescriptorHeapAllocator>;
     using ResourceState = D3D12_RESOURCE_STATES;
 
-	using BlobRAII = COMRAII<Blob>;
+    using BlobRAII = COMRAII<Blob>;
     using FenceRAII = COMRAII<Fence>;
     using ShaderReflectionRAII = COMRAII<ShaderReflection>;
     using QueryHeapRAII = COMRAII<QueryHeap>;
@@ -63,7 +64,7 @@ namespace Crowy
     inline constexpr UINT RootParamCBBase = 1;
 
     // TODO. merge to RHICapabilities
-    struct DX12Capabilities{
+    struct DX12Capabilities {
         bool gpuUploadHeap = false;
         // both required by SV_StartInstanceLocation
         bool shaderModel6_8 = false;
