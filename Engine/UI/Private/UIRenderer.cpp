@@ -25,35 +25,10 @@ namespace
 {
     using namespace Crowy;
 
-    inline constexpr std::array UI_VERTEX_LAYOUT = {
-        RHIVertexElement{
-            .semanticName = "POSITION",
-            .semanticIndex = 0,
-            .format = RHIPixelFormat::RG32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = static_cast<u32>(offsetof(ImDrawVert, pos)),
-            .classification = RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        },
-        RHIVertexElement{
-            .semanticName = "TEXCOORD",
-            .semanticIndex = 0,
-            .format = RHIPixelFormat::RG32_FLOAT,
-            .inputSlot = 0,
-            .alignedByteOffset = static_cast<u32>(offsetof(ImDrawVert, uv)),
-            .classification = RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        },
-        RHIVertexElement{
-            .semanticName = "COLOR",
-            .semanticIndex = 0,
-            .format = RHIPixelFormat::RGBA8_UNORM,
-            .inputSlot = 0,
-            .alignedByteOffset = static_cast<u32>(offsetof(ImDrawVert, col)),
-            .classification = RHIInputClassification::PerVertex,
-            .instanceDataStepRate = 0
-        }
-    };
+    static_assert(sizeof(ImDrawVert) == 20);
+    static_assert(offsetof(ImDrawVert, pos) == 0);
+    static_assert(offsetof(ImDrawVert, uv) == 8);
+    static_assert(offsetof(ImDrawVert, col) == 16);
 
     inline constexpr auto UI_INDEX_FORMAT = sizeof(ImDrawIdx) == 2
                                                 ? RHIIndexFormat::UInt16
@@ -75,10 +50,11 @@ namespace
 
     struct PushConstants {
         u64 texture = 0;
+        u64 vertices = 0;
         Vec2 scale;
         Vec2 translate;
         u32 srgbTarget = 0;
-        u32 padding = 0;
+        u32 vertexBase = 0;
     };
 
     bool clip(
@@ -152,7 +128,6 @@ namespace Crowy
 
         pso = device.CreatePipelineState(
             RHIGraphicsPipelineStateDesc{
-                .vertexLayout = UI_VERTEX_LAYOUT,
                 .topology = RHIPrimitiveTopology::TriangleList,
                 .vertexShader =
                     {.path = "Engine/Shader/UI.slang", .entryPoint = "vs_main"},
@@ -254,7 +229,12 @@ namespace Crowy
             "Did you call UIRenderer::Prepare() with this frame's draw data?"
         );
 
+        constexpr auto vertexStride = static_cast<u32>(sizeof(ImDrawVert));
+
+        // one descriptor spans the whole transient buffer; the vertex base is
+        // what points the shader at this frame's rows inside it
         PushConstants pushConstants{
+            .vertices = vertices.buffer->GetReadableID(vertexStride),
             .scale =
                 {2.0f / drawData.DisplaySize.x, -2.0f / drawData.DisplaySize.y},
             .srgbTarget = srgbTarget
@@ -274,6 +254,8 @@ namespace Crowy
             .offset = indices.offset
         };
 
+        const u32 vertexRow = vertices.offset / vertexStride;
+
         // the lists share one pair of buffers, so their offsets accumulate
         u32 globalVertexOffset = 0, globalIndexOffset = 0;
         for(const ImDrawList* list: drawData.CmdLists) {
@@ -291,6 +273,8 @@ namespace Crowy
                     continue;
 
                 pushConstants.texture = cmd.GetTexID();
+                pushConstants.vertexBase =
+                    vertexRow + cmd.VtxOffset + globalVertexOffset;
                 cmdList.SetPushGraphicsConstants(pushConstants);
 
                 cmdList.DrawIndexed(
@@ -298,7 +282,7 @@ namespace Crowy
                     cmd.ElemCount,
                     1,
                     cmd.IdxOffset + globalIndexOffset,
-                    static_cast<i32>(cmd.VtxOffset + globalVertexOffset)
+                    0
                 );
             }
 
@@ -323,12 +307,6 @@ namespace Crowy
         );
 
         cmdList.SetPipelineState(*pso);
-        cmdList.SetVertexBuffer(
-            *vertices.buffer,
-            0,
-            static_cast<u32>(sizeof(ImDrawVert)),
-            vertices.offset
-        );
     }
 
     void UIRenderer::updateTextures(RHICommandList& cmdList) {

@@ -1,20 +1,25 @@
 #include "Sampler.slang"
 #include "SRGB.slang"
 
-struct VertexIn {
-    float2 position : POSITION;
-    float2 uv : TEXCOORD;
-    float4 color : COLOR;
+// keep in sync with ImDrawVert; col packs RGBA8 with R in the lowest byte
+struct ImDrawVert {
+    float2 pos;
+    float2 uv;
+    uint col;
 };
 
 struct UIParam {
     DescriptorHandle<Texture2D> texture;
+    DescriptorHandle<StructuredBuffer<ImDrawVert>> vertices;
     // maps the screen-space vertex positions ImGui emits onto clip space
     float2 scale;
     float2 translate;
     // ImGui hands out sRGB-encoded colors, so a render target that encodes on
     // write needs them decoded first or the whole UI washes out
     uint srgbTarget;
+    // SV_VertexID leaves out baseVertex on D3D12 and folds it in on Metal, so
+    // draws pass baseVertex 0 and the list's first row travels here
+    uint vertexBase;
 };
 [[vk::push_constant]]
 ConstantBuffer<UIParam> param;
@@ -26,13 +31,17 @@ struct VertexOut{
 };
 
 [shader("vertex")]
-VertexOut vs_main(VertexIn input) {
-    float2 pos = input.position * param.scale + param.translate;
+VertexOut vs_main(uint vertexID : SV_VertexID) {
+    StructuredBuffer<ImDrawVert> vertices = param.vertices;
+    ImDrawVert input = vertices[param.vertexBase + vertexID];
+
+    float2 pos = input.pos * param.scale + param.translate;
+    uint4 bytes = (input.col >> uint4(0, 8, 16, 24)) & 0xFF;
 
     VertexOut output;
     output.position = float4(pos, 0, 1);
     output.uv = input.uv;
-    output.color = input.color;
+    output.color = float4(bytes) / 255.0;
 
     if(param.srgbTarget != 0) {
         output.color.rgb = srgb2linear(output.color.rgb);
