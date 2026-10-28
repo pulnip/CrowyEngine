@@ -214,9 +214,10 @@ namespace Crowy
                 .vertexShader =
                     {.path = "Engine/Render/Sample/CornellRoom.slang",
                      .entryPoint = "vs_main"},
-                .fragmentShader =
-                    {.path = "Engine/Render/Sample/CornellRoom.slang",
-                     .entryPoint = "fs_main"}
+                .fragmentShader = {
+                    .path = "Engine/Render/Sample/CornellRoom.slang",
+                    .entryPoint = "fs_main"
+                }
             };
         }
     };

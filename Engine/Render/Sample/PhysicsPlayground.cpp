@@ -333,8 +333,8 @@ namespace Crowy
                 constexpr Vec3 GoalGlow{0.3f, 1.6f, 0.45f};
 
                 const auto ticks = FrameNumber() > LeadInFrames
-                    ? clock.Advance(toNanoseconds(seconds))
-                    : 0u;
+                                       ? clock.Advance(toNanoseconds(seconds))
+                                       : 0u;
                 for(u32 tick = 0; tick < ticks; ++tick) {
                     for(auto& lane: lanes)
                         tickLane(lane);
@@ -461,11 +461,10 @@ namespace Crowy
                     add({.albedo = {0.20f, 0.20f, 0.22f}, .roughness = 0.6f});
                 materials.water = scene.Materials().Add(
                     MaterialResource{
-                        .data = {
-                            .albedo = {0.25f, 0.50f, 0.85f},
-                            .roughness = 0.1f,
-                            .opacity = 0.35f
-                        },
+                        .data =
+                            {.albedo = {0.25f, 0.50f, 0.85f},
+                             .roughness = 0.1f,
+                             .opacity = 0.35f},
                         .pipeline = translucentPipeline(StandardForward)
                     }
                 );
@@ -507,12 +506,21 @@ namespace Crowy
                 scene.Primitives().Add(
                     PrimitiveSnapshot{
                         .localToWorld = translateMat(FloorCenter),
-                        .worldBounds = AABB3D{
-                            .center = FloorCenter +
-                                Vec3{0.0f, 0.5f * (PuzzleHeight - Sink), 0.0f},
-                            .halfScale = FloorHalf +
-                                Vec3{0.0f, 0.5f * (PuzzleHeight + Sink), 0.0f}
-                        },
+                        .worldBounds =
+                            AABB3D{
+                                .center = FloorCenter +
+                                          Vec3{
+                                              0.0f,
+                                              0.5f * (PuzzleHeight - Sink),
+                                              0.0f
+                                          },
+                                .halfScale = FloorHalf +
+                                             Vec3{
+                                                 0.0f,
+                                                 0.5f * (PuzzleHeight + Sink),
+                                                 0.0f
+                                             }
+                            },
                         .mesh = mesh
                     }
                 );
@@ -530,9 +538,10 @@ namespace Crowy
                 addStatic(
                     scene,
                     mesh,
-                    translateMat(center) * scaleMat(
-                        {2.0f * halfExtent.x, 1.0f, 2.0f * halfExtent.y}
-                    ),
+                    translateMat(center) *
+                        scaleMat(
+                            {2.0f * halfExtent.x, 1.0f, 2.0f * halfExtent.y}
+                        ),
                     combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow)
                 );
             }
@@ -594,9 +603,10 @@ namespace Crowy
             // a compound draws a box per part
             void addBody(RenderScene& scene, PuzzleLane& lane, u32 index) {
                 const auto& body = lane.session->GetPuzzle().bodies[index];
-                const auto material = body.role == PieceRole::Goal
-                    ? lane.goalMaterial
-                    : materials.roles[static_cast<usize>(body.role)];
+                const auto material =
+                    body.role == PieceRole::Goal
+                        ? lane.goalMaterial
+                        : materials.roles[static_cast<usize>(body.role)];
                 const auto& shape = body.desc.shape;
                 if(const auto* compound = std::get_if<CompoundShape>(&shape)) {
                     for(const auto& part: compound->parts) {
@@ -655,11 +665,8 @@ namespace Crowy
             // a new session; both modes build the same bodies in the same
             // order, so the primitives stay and only the bindings change
             void restart(PuzzleLane& lane, PuzzleMode mode) {
-                lane.session = std::make_unique<PuzzleSession>(
-                    runtime,
-                    lane.kind,
-                    mode
-                );
+                lane.session =
+                    std::make_unique<PuzzleSession>(runtime, lane.kind, mode);
                 lane.control.mode = mode;
                 lane.restTicks = 0;
                 bindBodies(lane);
@@ -685,15 +692,18 @@ namespace Crowy
                 auto* drawList = ImGui::GetBackgroundDrawList();
 
                 for(const auto& lane: lanes) {
-                    const auto anchor = lane.origin +
+                    const auto anchor =
+                        lane.origin +
                         Vec3{0.0f, 0.0f, -PuzzleHalfWidth - 0.15f};
                     const auto clip = viewProj * toVec4(anchor, 1.0f);
                     if(clip.w <= 0.0f)
                         continue;
 
-                    const auto x = viewport->Pos.x +
+                    const auto x =
+                        viewport->Pos.x +
                         (clip.x / clip.w * 0.5f + 0.5f) * viewport->Size.x;
-                    const auto y = viewport->Pos.y +
+                    const auto y =
+                        viewport->Pos.y +
                         (0.5f - clip.y / clip.w * 0.5f) * viewport->Size.y;
                     const auto& status = lane.session->GetStatus();
                     const auto isSolution =
@@ -740,9 +750,10 @@ namespace Crowy
                         IM_COL32(220, 220, 220, 255),
                         task.c_str()
                     );
-                    const auto progressColor = status.checkpointsMissed > 0
-                        ? IM_COL32(255, 110, 110, 255)
-                        : IM_COL32(180, 180, 180, 255);
+                    const auto progressColor =
+                        status.checkpointsMissed > 0
+                            ? IM_COL32(255, 110, 110, 255)
+                            : IM_COL32(180, 180, 180, 255);
                     drawList->AddText(
                         {corner.x, corner.y + 2.0f * lineHeight},
                         progressColor,

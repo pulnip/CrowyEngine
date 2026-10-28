@@ -33,7 +33,8 @@ namespace Crowy
 
         // what the stage needs on disk; empty when it is all there
         Str missingContent() {
-            for(const auto* relative: {StageScenePath, "Unity/Assets/Art/Textures/Palette.png"}) {
+            for(const auto* relative:
+                {StageScenePath, "Unity/Assets/Art/Textures/Palette.png"}) {
                 const auto file = backlotRoot() / relative;
                 if(!std::filesystem::exists(file) || isLfsPointer(file))
                     return toUTF8String(file);
@@ -71,7 +72,9 @@ namespace Crowy
         explicit StageEditor(LoadedStage stage)
             : RenderApp(
                   makeConfig(stage),
-                  std::make_unique<EditorCamera>(editorCutOf(makeStageCuts(stage).front()))
+                  std::make_unique<EditorCamera>(
+                      editorCutOf(makeStageCuts(stage).front())
+                  )
               ),
               stage(std::move(stage)) {}
 
@@ -91,19 +94,40 @@ namespace Crowy
                 [this](Color color) { SetClearColor(color); },
                 editorPort()
             );
-            const auto file = (backlotRoot() / StageScenePath).lexically_normal();
-            session->Start(content->Cuts().front().name, stage.document.defaultKey, toUTF8String(file));
+            const auto file =
+                (backlotRoot() / StageScenePath).lexically_normal();
+            session->Start(
+                content->Cuts().front().name,
+                stage.document.defaultKey,
+                toUTF8String(file)
+            );
             // a port pick may come before the first frame measures the window
             const auto& window = Runtime().window;
-            session->SetViewport(Vec2{static_cast<f32>(window.width), static_cast<f32>(window.height)});
+            session->SetViewport(
+                Vec2{
+                    static_cast<f32>(window.width),
+                    static_cast<f32>(window.height)
+                }
+            );
         }
 
         void OnProcessInput(const InputProvider& input) override {
             constexpr std::array CutKeys{
-                KeyCode::Num1, KeyCode::Num2, KeyCode::Num3, KeyCode::Num4,
-                KeyCode::Num5, KeyCode::Num6, KeyCode::Num7, KeyCode::Num8,
+                KeyCode::Num1,
+                KeyCode::Num2,
+                KeyCode::Num3,
+                KeyCode::Num4,
+                KeyCode::Num5,
+                KeyCode::Num6,
+                KeyCode::Num7,
+                KeyCode::Num8,
             };
-            constexpr std::array LightingKeys{KeyCode::F1, KeyCode::F2, KeyCode::F3, KeyCode::F4};
+            constexpr std::array LightingKeys{
+                KeyCode::F1,
+                KeyCode::F2,
+                KeyCode::F3,
+                KeyCode::F4
+            };
 
             // past the captured frame, the chrome comes back as it was
             if(chromeBackAt && FrameNumber() > *chromeBackAt) {
@@ -126,7 +150,8 @@ namespace Crowy
             if(input.IsKeyPressed(KeyCode::Escape)) {
                 if(session->Held() != GizmoHandle::None) {
                     session->Cancel();
-                } else {
+                }
+                else {
                     session->State().selected.clear();
                     session->Sync();
                 }
@@ -134,17 +159,21 @@ namespace Crowy
             // a press ImGui wanted never arrives here; a look is not a press. A
             // press on a handle takes it, elsewhere it picks
             const auto mouse = input.GetMousePos();
-            if(input.IsKeyPressed(MouseButton::LButton) && !input.IsKeyDown(MouseButton::RButton)) {
+            if(input.IsKeyPressed(MouseButton::LButton) &&
+               !input.IsKeyDown(MouseButton::RButton)) {
                 mouseHolds = session->Grab(mouse);
                 if(!mouseHolds)
                     session->PickAt(mouse);
-            } else if(mouseHolds) {
+            }
+            else if(mouseHolds) {
                 // the port, Esc or another selection may have let go already
                 if(session->Held() == GizmoHandle::None) {
                     mouseHolds = false;
-                } else if(input.IsKeyDown(MouseButton::LButton)) {
+                }
+                else if(input.IsKeyDown(MouseButton::LButton)) {
                     session->DragTo(mouse, input.IsKeyDown(KeyCode::Ctrl));
-                } else {
+                }
+                else {
                     session->Release();
                     mouseHolds = false;
                 }
@@ -159,26 +188,35 @@ namespace Crowy
             }
         }
 
-        void OnUpdateScene(f64 seconds) override {
-            session->Advance(seconds);
-        }
+        void OnUpdateScene(f64 seconds) override { session->Advance(seconds); }
 
         void OnUpdateFrameData() override {
             const auto& io = ImGui::GetIO();
             session->Update(Vec2{io.DisplaySize.x, io.DisplaySize.y});
         }
 
-        void OnInitUI(RHIDevice& device, const OverlayFormats& formats) override {
+        void OnInitUI(
+            RHIDevice& device,
+            const OverlayFormats& formats
+        ) override {
             // its own file, so no other sample's windows leak in or out
             constexpr CStr ImGuiSettings = "StageEditor.imgui.ini";
 
-            uiRenderer = std::make_unique<UIRenderer>(device, formats.color, formats.depth);
+            uiRenderer = std::make_unique<UIRenderer>(
+                device,
+                formats.color,
+                formats.depth
+            );
             ImGui::GetIO().IniFilename = ImGuiSettings;
         }
 
-        std::span<const RHITextureBarrier> OnPrepareUI(RHICommandList& cmdList) override {
+        std::span<const RHITextureBarrier> OnPrepareUI(
+            RHICommandList& cmdList
+        ) override {
             constexpr CStr ToolbarHint =
-                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left Ctrl snaps), Esc undoes or clears, Space plays, arrows step, F5 reloads, C captures, P hides";
+                "1-8 cuts, F1-F4 keys, click to select, drag a handle (left "
+                "Ctrl snaps), Esc undoes or clears, Space plays, arrows step, "
+                "F5 reloads, C captures, P hides";
 
             // the chrome stays out of every capture unless asked for
             if(Debug().showPanel) {
@@ -203,11 +241,17 @@ namespace Crowy
     private:
         static Config makeConfig(const LoadedStage& loaded) {
             const auto& document = loaded.document;
-            const auto& key = document.lightingKeys[stageKeyIndex(document, document.defaultKey)];
+            const auto& key =
+                document
+                    .lightingKeys[stageKeyIndex(document, document.defaultKey)];
             const auto& capacities = loaded.capacities;
 
             return Config{
-                .clearColor = {key.skyHorizon.x, key.skyHorizon.y, key.skyHorizon.z, 1.0f},
+                .clearColor =
+                    {key.skyHorizon.x,
+                     key.skyHorizon.y,
+                     key.skyHorizon.z,
+                     1.0f},
                 .drawCapacity = capacities.draws,
                 .materialCapacity = capacities.materials,
                 // the fit spans the whole set and its 128 m grid
@@ -223,9 +267,20 @@ namespace Crowy
                 return {};
 
             return EditorPort{
-                .expose = [port](StrView name, void* target, const TypeDesc& desc, DirtyCallback onDirty) {
-                    port->Expose(Str(name), target, desc, std::move(onDirty));
-                },
+                .expose =
+                    [port](
+                        StrView name,
+                        void* target,
+                        const TypeDesc& desc,
+                        DirtyCallback onDirty
+                    ) {
+                        port->Expose(
+                            Str(name),
+                            target,
+                            desc,
+                            std::move(onDirty)
+                        );
+                    },
                 .unexpose = [port](StrView name) { port->Unexpose(name); }
             };
         }
@@ -235,10 +290,15 @@ namespace Crowy
         void capture() {
             const auto& state = session->State();
             const auto frame = FrameNumber() + 1;
-            const auto folder = std::filesystem::absolute("captures/StageEditor");
+            const auto folder =
+                std::filesystem::absolute("captures/StageEditor");
             std::filesystem::create_directories(folder);
-            const auto file = toUTF8String(folder / std::format("{}@{}-f{}.bmp", state.cut, state.key, frame));
-            if(const auto refusal = RequestCapture(file, frame); !refusal.empty()) {
+            const auto file = toUTF8String(
+                folder /
+                std::format("{}@{}-f{}.bmp", state.cut, state.key, frame)
+            );
+            if(const auto refusal = RequestCapture(file, frame);
+               !refusal.empty()) {
                 session->Report(refusal);
                 return;
             }
@@ -247,7 +307,9 @@ namespace Crowy
                 chromeWasShown = Debug().showPanel;
             Debug().showPanel = false;
             chromeBackAt = frame;
-            session->Report(std::format("capturing frame {} to {}", frame, file));
+            session->Report(
+                std::format("capturing frame {} to {}", frame, file)
+            );
         }
 
         EditorCamera& camera() noexcept {

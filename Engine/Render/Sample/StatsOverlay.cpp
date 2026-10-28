@@ -125,11 +125,7 @@ namespace Crowy
             ImGui::TableNextColumn();
             ImGui::TextUnformatted("Runs");
             ImGui::TableNextColumn();
-            ImGui::Text(
-                "%zu over %zu pipelines",
-                stats.runs,
-                stats.pipelines
-            );
+            ImGui::Text("%zu over %zu pipelines", stats.runs, stats.pipelines);
 
             ImGui::TableNextRow();
             ImGui::TableNextColumn();

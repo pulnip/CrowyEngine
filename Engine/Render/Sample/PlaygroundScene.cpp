@@ -577,7 +577,8 @@ namespace Crowy
             ImGui::SetNextWindowCollapsed(false, ImGuiCond_Appearing);
 
             uiRenderer->Prepare(cmdList, panel, uiContext);
-        } else {
+        }
+        else {
             uiRenderer->Prepare(cmdList);
         }
 

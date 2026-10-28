@@ -63,11 +63,14 @@ namespace Crowy
                 MaterialResource{
                     .pipeline = MaterialPipelineDesc{
                         .vertexShader =
-                            {.path = "Engine/Render/Sample/TenThousandBlocks.slang",
+                            {.path =
+                                 "Engine/Render/Sample/TenThousandBlocks.slang",
                              .entryPoint = "vs_main"},
-                        .fragmentShader =
-                            {.path = "Engine/Render/Sample/TenThousandBlocks.slang",
-                             .entryPoint = "fs_main"}
+                        .fragmentShader = {
+                            .path =
+                                "Engine/Render/Sample/TenThousandBlocks.slang",
+                            .entryPoint = "fs_main"
+                        }
                     }
                 }
             );

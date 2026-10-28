@@ -71,7 +71,8 @@ namespace Crowy
 
         if(!processing || status.server == BindFailed) {
             ImGui::TextColored(Gray, "%s", text);
-        } else {
+        }
+        else {
             // one character lit at a time, stepping with the drain
             const auto lit = static_cast<usize>(
                 (status.drainCount - status.lastVerbDrain) %

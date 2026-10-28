@@ -37,10 +37,7 @@ namespace Crowy
         const StageGeometry& geometry,
         const StageTextureHandles& textures
     )
-        : scene(scene),
-          stage(stage),
-          geometry(geometry),
-          textures(textures) {
+        : scene(scene), stage(stage), geometry(geometry), textures(textures) {
         build();
     }
 
@@ -50,7 +47,9 @@ namespace Crowy
         return applyStageKey(scene, bindings, stage.document, currentKey);
     }
 
-    std::optional<usize> StageContent::ObjectOf(PrimitiveHandle primitive) const {
+    std::optional<usize> StageContent::ObjectOf(
+        PrimitiveHandle primitive
+    ) const {
         const auto slot = primitive.GetIndex();
         if(slot >= objectOfSlot.size() || objectOfSlot[slot] == NoObject)
             return std::nullopt;
@@ -62,7 +61,9 @@ namespace Crowy
         return object;
     }
 
-    std::optional<PrimitiveHandle> StageContent::PrimitiveOf(usize object) const {
+    std::optional<PrimitiveHandle> StageContent::PrimitiveOf(
+        usize object
+    ) const {
         return object < primitives.size() ? primitives[object] : std::nullopt;
     }
 
@@ -83,7 +84,9 @@ namespace Crowy
 
         if(object < instances) {
             const auto& row = document.instances[object];
-            const auto box = std::ranges::find(document.models, row.model, &StageModel::id)->box;
+            const auto box =
+                std::ranges::find(document.models, row.model, &StageModel::id)
+                    ->box;
 
             return {InspectSection{
                 .label = "transform",
@@ -91,7 +94,11 @@ namespace Crowy
                 .desc = getDesc<StageInstance>(),
                 .apply = [this, object] { ApplyInstance(object); },
                 // only the unit box is scaled per axis
-                .gizmo = combine(GizmoParts::Move, GizmoParts::Turn, box ? GizmoParts::ScaleAxes : GizmoParts::Scale)
+                .gizmo = combine(
+                    GizmoParts::Move,
+                    GizmoParts::Turn,
+                    box ? GizmoParts::ScaleAxes : GizmoParts::Scale
+                )
             }};
         }
         if(object < instances + quads) {
@@ -105,11 +112,13 @@ namespace Crowy
                     // width and height stay with the inspector
                     .gizmo = combine(GizmoParts::Move, GizmoParts::Turn)
                 },
-                // the rect follows the row's uv0, uv1 and the clock: a write to it
-                // is drawn over at once
+                // the rect follows the row's uv0, uv1 and the clock: a write to
+                // it is drawn over at once
                 InspectSection{
                     .label = "material",
-                    .target = &scene.Materials().GetRef(bindings.quadMaterials[quad]).data,
+                    .target = &scene.Materials()
+                                   .GetRef(bindings.quadMaterials[quad])
+                                   .data,
                     .desc = getDesc<MaterialData>(),
                     .apply = [this, quad] { ApplyQuad(quad); }
                 }
@@ -129,26 +138,41 @@ namespace Crowy
 
     void StageContent::ApplyInstance(usize instance) {
         const auto& row = stage.document.instances[instance];
-        const auto model = std::ranges::find(stage.document.models, row.model, &StageModel::id) - stage.document.models.begin();
-        auto& primitive = scene.Primitives().GetRef(bindings.instances[instance]);
+        const auto model = std::ranges::find(
+                               stage.document.models,
+                               row.model,
+                               &StageModel::id
+                           ) -
+                           stage.document.models.begin();
+        auto& primitive =
+            scene.Primitives().GetRef(bindings.instances[instance]);
         primitive.localToWorld = instanceToWorld(row);
-        primitive.worldBounds = transformAABB3D(primitive.localToWorld, stage.models[static_cast<usize>(model)].bounds);
+        primitive.worldBounds = transformAABB3D(
+            primitive.localToWorld,
+            stage.models[static_cast<usize>(model)].bounds
+        );
     }
 
     void StageContent::ApplyQuad(usize quad) {
         const auto& row = stage.document.quads[quad];
         auto& primitive = scene.Primitives().GetRef(bindings.quads[quad]);
         primitive.localToWorld = quadToWorld(row);
-        primitive.worldBounds =
-            transformAABB3D(primitive.localToWorld, scene.Meshes().GetRef(primitive.mesh).localBounds);
+        primitive.worldBounds = transformAABB3D(
+            primitive.localToWorld,
+            scene.Meshes().GetRef(primitive.mesh).localBounds
+        );
         // at the time the scene shows, so an edit never resets a flipbook
-        scene.Materials().GetRef(bindings.quadMaterials[quad]).data.uvScaleOffset =
+        scene.Materials()
+            .GetRef(bindings.quadMaterials[quad])
+            .data.uvScaleOffset =
             stageQuadRect(row, stage.sprites, sceneSeconds);
     }
 
     void StageContent::ApplyLight(usize light) {
-        scene.Lights().GetRef(bindings.lights[light]) =
-            stageLightSnapshot(stage.document.lights[light], stage.document.lightingKeys[currentKey]);
+        scene.Lights().GetRef(bindings.lights[light]) = stageLightSnapshot(
+            stage.document.lights[light],
+            stage.document.lightingKeys[currentKey]
+        );
     }
 
     Str StageContent::ReadScene(StrView file) {
@@ -188,8 +212,13 @@ namespace Crowy
         sceneSeconds = seconds;
         bool changed = false;
         for(const auto quad: flipbooks) {
-            const auto rect = stageQuadRect(stage.document.quads[quad], stage.sprites, seconds);
-            auto& data = scene.Materials().GetRef(bindings.quadMaterials[quad]).data;
+            const auto rect = stageQuadRect(
+                stage.document.quads[quad],
+                stage.sprites,
+                seconds
+            );
+            auto& data =
+                scene.Materials().GetRef(bindings.quadMaterials[quad]).data;
             if(data.uvScaleOffset != rect) {
                 data.uvScaleOffset = rect;
                 changed = true;
@@ -233,7 +262,12 @@ namespace Crowy
                 bindings.instances[i],
                 std::nullopt
             );
-            const auto model = std::ranges::find(document.models, instance.model, &StageModel::id) - document.models.begin();
+            const auto model = std::ranges::find(
+                                   document.models,
+                                   instance.model,
+                                   &StageModel::id
+                               ) -
+                               document.models.begin();
             auto& list = meshes.back();
             for(const auto& slot: stage.models[static_cast<usize>(model)].slots)
                 list.push_back(&slot.mesh);
@@ -258,7 +292,8 @@ namespace Crowy
                 EditorObject{
                     .name = std::format("light/{}", light.name),
                     .group = std::format("Lights · {}", light.group),
-                    .detail = light.kind == StageLightKind::Spot ? "spot" : "point",
+                    .detail =
+                        light.kind == StageLightKind::Spot ? "spot" : "point",
                     .kind = EditorObjectKind::Light
                 },
                 std::nullopt,

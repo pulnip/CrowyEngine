@@ -89,6 +89,10 @@ namespace Crowy
         // the rows and every table over them, from the stage as it stands
         void build();
         void addObjects();
-        void addObject(EditorObject object, std::optional<PrimitiveHandle> primitive, std::optional<LightHandle> light);
+        void addObject(
+            EditorObject object,
+            std::optional<PrimitiveHandle> primitive,
+            std::optional<LightHandle> light
+        );
     };
 }
