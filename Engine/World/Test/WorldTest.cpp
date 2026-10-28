@@ -19,7 +19,7 @@ namespace
     };
 
     struct WorldOwned {
-        std::unique_ptr<i32> value;
+        RAII<i32> value;
     };
 
     struct WorldCounted {

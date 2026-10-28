@@ -169,7 +169,7 @@ TEST(PackedTable, ClearThenAddKeepsOldHandlesDead) {
 }
 
 TEST(PackedTable, HoldsMoveOnlyRows) {
-    PackedTable<std::unique_ptr<int>> table;
+    PackedTable<RAII<int>> table;
 
     const auto a = table.Add(std::make_unique<int>(1));
     const auto b = table.Add(std::make_unique<int>(2));

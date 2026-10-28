@@ -23,7 +23,7 @@ namespace Crowy
         friend class PhysicsWorld;
 
     private:
-        std::unique_ptr<Impl> impl;
+        RAII<Impl> impl;
 
     public:
         ~PhysicsRuntime();

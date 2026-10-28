@@ -25,7 +25,7 @@ namespace Crowy
         public:
             ParticleEffectDesc desc;
             FieldBuffer particles;
-            std::unique_ptr<ComputeKernel> step;
+            RAII<ComputeKernel> step;
             // its next step, counted from 0
             u32 next = 0;
 
@@ -37,10 +37,10 @@ namespace Crowy
             );
         };
 
-        using Effects = std::vector<std::unique_ptr<Effect>>;
+        using Effects = std::vector<RAII<Effect>>;
         using Fields = std::vector<FieldBuffer*>;
         using Barriers = std::vector<RHIBufferBarrier>;
-        using Kernels = std::vector<std::unique_ptr<ComputeKernel>>;
+        using Kernels = std::vector<RAII<ComputeKernel>>;
 
     private:
         RHIDevice& device;

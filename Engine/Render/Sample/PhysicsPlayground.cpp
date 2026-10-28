@@ -152,7 +152,7 @@ namespace Crowy
         struct PuzzleLane {
             PuzzleKind kind = PuzzleKind::KickerJump;
             Vec3 origin = zeros();
-            std::unique_ptr<PuzzleSession> session;
+            RAII<PuzzleSession> session;
             BodyPrimitiveSync sync{zeros()};
             std::vector<LaneBody> bodies;
             std::vector<LaneTether> tethers;

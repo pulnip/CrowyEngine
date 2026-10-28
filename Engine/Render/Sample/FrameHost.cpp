@@ -116,7 +116,7 @@ namespace Crowy
     )
         : content(content), config(config), camera(std::move(camera)) {}
 
-    FrameGraphPtr FrameHost::describePipeline() {
+    FrameGraphRAII FrameHost::describePipeline() {
         return std::make_unique<FrameGraph>(
             *device,
             content.DescribePipeline(pipelineConfig),

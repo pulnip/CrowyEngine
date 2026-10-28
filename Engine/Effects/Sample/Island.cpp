@@ -63,7 +63,7 @@ namespace Crowy
         GeometryAllocation pole{};
         GeometryAllocation log{};
         MaterialHandle canvasMaterial{};
-        std::unique_ptr<EffectSystem> effects;
+        RAII<EffectSystem> effects;
         World world;
         // what the fire's bed, logs, light and effects ride
         ActorId fire;

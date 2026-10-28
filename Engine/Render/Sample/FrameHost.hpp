@@ -28,12 +28,12 @@
 
 namespace Crowy
 {
-    using FrameGraphPtr = RAII<FrameGraph>;
-    using GeometryPoolPtr = RAII<GeometryPool>;
-    using MeshStorePtr = RAII<MeshStore>;
-    using SceneRendererPtr = RAII<SceneRenderer>;
-    using FrameCapturesPtr = RAII<FrameCaptures>;
-    using FramePortPtr = RAII<FramePort>;
+    using FrameGraphRAII = RAII<FrameGraph>;
+    using GeometryPoolRAII = RAII<GeometryPool>;
+    using MeshStoreRAII = RAII<MeshStore>;
+    using SceneRendererRAII = RAII<SceneRenderer>;
+    using FrameCapturesRAII = RAII<FrameCaptures>;
+    using FramePortRAII = RAII<FramePort>;
 
     struct RenderDebug {
         DebugMode mode = DebugMode::Lit;
@@ -98,14 +98,14 @@ namespace Crowy
         // buffer's
         Size2D sceneViewSize;
 
-        GeometryPoolPtr geometryPool;
+        GeometryPoolRAII geometryPool;
         // after the pool it frees into, before the scene whose rows hold it
-        MeshStorePtr meshes;
-        SceneRendererPtr renderer;
+        MeshStoreRAII meshes;
+        SceneRendererRAII renderer;
         // what DescribePipeline was last asked for, from config and the debug
         // view; a change rebuilds it
         StandardFrameConfig pipelineConfig;
-        FrameGraphPtr pipeline;
+        FrameGraphRAII pipeline;
         // bindMeshPass and recordOverlay are set once; the rest, hooks
         // included, is refilled every frame
         FrameInputs frameInputs;
@@ -115,9 +115,9 @@ namespace Crowy
         RenderDebug debug;
 
         FrameStatsLog stats;
-        FrameCapturesPtr captures;
+        FrameCapturesRAII captures;
         // its port opens in debug builds only; last, so its verbs go first
-        FramePortPtr framePort;
+        FramePortRAII framePort;
         // OnRecordSimulation's, alive until the walker has recorded
         std::vector<PassHook> frameHooks;
 
@@ -195,7 +195,7 @@ namespace Crowy
         }
 
     private:
-        FrameGraphPtr describePipeline();
+        FrameGraphRAII describePipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();
         // a port write of debug.sceneView where nothing draws the view

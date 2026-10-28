@@ -21,7 +21,7 @@ namespace Crowy
 
     class ReferenceHierarchy {
     private:
-        std::vector<std::unique_ptr<RefNode>> owned;
+        std::vector<RAII<RefNode>> owned;
 
     public:
         RefNode* CreateNode(RefNode* parent, const Transform& local) {

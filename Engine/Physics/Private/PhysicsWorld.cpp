@@ -211,8 +211,7 @@ namespace Crowy
         using BodyRows = PackedTable<BodyRow>;
         using HingeRows = PackedTable<HingeRow>;
         using BodyRowHandles = std::vector<BodyRows::Handle>;
-        using LayerVsBroadPhase =
-            std::unique_ptr<JPH::ObjectVsBroadPhaseLayerFilterTable>;
+        using LayerVsBroadPhase = RAII<JPH::ObjectVsBroadPhaseLayerFilterTable>;
 
     public:
         PhysicsRuntime::Impl& runtime;

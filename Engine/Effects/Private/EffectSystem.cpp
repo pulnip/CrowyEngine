@@ -69,7 +69,7 @@ namespace Crowy
             return desc;
         }
 
-        std::unique_ptr<ComputeKernel> stepKernel(
+        RAII<ComputeKernel> stepKernel(
             RHIDevice& device,
             const ParticleEffectDesc& desc
         ) {

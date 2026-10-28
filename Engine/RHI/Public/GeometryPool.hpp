@@ -76,8 +76,7 @@ namespace Crowy
 
         RHIDevice& device;
         RHIBufferRAII vertexBuffer, indexBuffer;
-        std::unique_ptr<OffsetAllocator::Allocator> vertexAllocator,
-            indexAllocator;
+        RAII<OffsetAllocator::Allocator> vertexAllocator, indexAllocator;
         u32 vertexCapacity = 0, indexCapacity = 0;
         // what the draws read the vertex buffer as, between uploads
         RHIResourceUsage vertexRead = RHIResourceUsage::SampledVertex;

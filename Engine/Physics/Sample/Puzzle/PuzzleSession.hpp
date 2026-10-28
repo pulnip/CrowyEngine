@@ -35,7 +35,7 @@ namespace Crowy
     // path; a restart is a new session
     class PuzzleSession {
     private:
-        std::unique_ptr<PhysicsWorld> world;
+        RAII<PhysicsWorld> world;
         Puzzle puzzle;
         PuzzleMode mode = PuzzleMode::Solution;
         BodyHandles bodies;

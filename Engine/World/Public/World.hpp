@@ -45,7 +45,7 @@ namespace Crowy
                 : info(info), rows(ops), pendingAdds(ops) {}
         };
 
-        using Stores = std::vector<std::unique_ptr<ComponentStore>>;
+        using Stores = std::vector<RAII<ComponentStore>>;
         using StoreOfType =
             std::unordered_map<const TypeDesc*, ComponentStore*>;
         using Services = std::unordered_map<std::type_index, void*>;

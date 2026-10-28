@@ -17,7 +17,7 @@ namespace Crowy
     class OS {
     private:
         class Impl;
-        std::unique_ptr<Impl> impl;
+        RAII<Impl> impl;
 
         static OS* singleton;
 

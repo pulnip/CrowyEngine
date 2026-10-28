@@ -17,7 +17,7 @@ namespace Crowy
     // anything else allocates through them and torn down last
     class JoltGlobals {
     private:
-        std::unique_ptr<JPH::Factory> factory;
+        RAII<JPH::Factory> factory;
 
     public:
         JoltGlobals();
