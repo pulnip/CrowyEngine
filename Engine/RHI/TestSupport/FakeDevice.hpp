@@ -210,16 +210,6 @@ namespace Crowy
         }
         RHICommandListRAII CreateCommandList() override { std::terminate(); }
 
-        void Submit(std::span<RHICommandList*>, u64) override {
-            std::terminate();
-        }
-        void SubmitAndPresent(
-            std::span<RHICommandList*>,
-            RHISwapchain&,
-            u64
-        ) override {
-            std::terminate();
-        }
         u64 GetCompletedFrame() const noexcept override {
             return completedFrame;
         }
@@ -256,6 +246,17 @@ namespace Crowy
         }
 
     private:
+        void submit(std::span<RHICommandList*>, u64) override {
+            std::terminate();
+        }
+        void submitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            u64
+        ) override {
+            std::terminate();
+        }
+
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             StrView

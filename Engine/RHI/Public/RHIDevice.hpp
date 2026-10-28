@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "Assert.hpp"
 #include "Function.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -40,12 +41,26 @@ namespace Crowy
 
         // the batch is frame `frame`'s; frames arrive contiguously from 1, and
         // frame N only once frame N - FramesInFlight has completed
-        virtual void Submit(std::span<RHICommandList*>, u64 frame) = 0;
-        virtual void SubmitAndPresent(
-            std::span<RHICommandList*>,
-            RHISwapchain&,
+        void Submit(std::span<RHICommandList*> cmdLists, u64 frame) {
+            CROWY_ASSERT(
+                !cmdLists.empty(),
+                "a frame submits at least one command list"
+            );
+
+            submit(cmdLists, frame);
+        }
+        void SubmitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            RHISwapchain& swapchain,
             u64 frame
-        ) = 0;
+        ) {
+            CROWY_ASSERT(
+                !cmdLists.empty(),
+                "a frame submits at least one command list"
+            );
+
+            submitAndPresent(cmdLists, swapchain, frame);
+        }
 
         // the newest frame whose submission the GPU has finished; 0 before
         // the first
@@ -113,6 +128,13 @@ namespace Crowy
         }
 
     private:
+        virtual void submit(std::span<RHICommandList*>, u64 frame) = 0;
+        virtual void submitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            u64 frame
+        ) = 0;
+
         virtual RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             StrView name

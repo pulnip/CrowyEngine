@@ -30,6 +30,7 @@
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
+#include "RHISubmitLedger.hpp"
 #include "UploadRing.hpp"
 
 namespace
@@ -503,6 +504,7 @@ namespace Crowy
         // out-of-band signal (WaitIdle) takes the next value
         u64 serial = 0;
         RHIFrameTimeline timeline;
+        RHISubmitLedger ledger;
 
         // in submission order; the upload list is never among them
         std::vector<UntimedFrame> untimedFrames;
@@ -543,7 +545,14 @@ namespace Crowy
               drawIndexedSignature(::createDrawIndexedSignature(*device.Get())),
               dx12Capabilities(::queryCapabilities(*device.Get())),
               allocator(*device.Get(), dx12Capabilities),
-              serialFence(std::make_unique<DX12Fence>(*device.Get(), 0)) {
+              serialFence(std::make_unique<DX12Fence>(*device.Get(), 0)),
+              ledger(
+                  *serialFence,
+                  retireQueue,
+                  uploadRing,
+                  transientRing,
+                  timeline
+              ) {
             setupValidationBreak(*device.Get());
             logD3D12CorePath();
             initGlobalSession();
@@ -624,46 +633,6 @@ namespace Crowy
             return createCommandList();
         }
 
-        void Submit(
-            std::span<RHICommandList*> cmdLists,
-            u64 frame
-        ) RHI_OVERRIDE {
-            // completed-as-of-entry, before this batch's own tag exists
-            const auto completed = serialFence->GetValue();
-            retireQueue.Collect(completed);
-            harvestGPUTimes(completed);
-
-            executeCommandLists(cmdLists, serial + 1);
-
-            signalSerial();
-            retireQueue.Tag(serial);
-            uploadRing.OnSubmit(serial);
-            transientRing.OnSubmit(serial);
-            timeline.OnSubmit(frame, serial, completed);
-            holdForGPUTime(cmdLists, frame);
-        }
-
-        void SubmitAndPresent(
-            std::span<RHICommandList*> cmdLists,
-            RHISwapchain& swapchain,
-            u64 frame
-        ) RHI_OVERRIDE {
-            const auto completed = serialFence->GetValue();
-            retireQueue.Collect(completed);
-            harvestGPUTimes(completed);
-
-            executeCommandLists(cmdLists, serial + 1);
-
-            static_cast<DX12Swapchain&>(swapchain).Present(frame);
-
-            signalSerial();
-            retireQueue.Tag(serial);
-            uploadRing.OnSubmit(serial);
-            transientRing.OnSubmit(serial);
-            timeline.OnSubmit(frame, serial, completed);
-            holdForGPUTime(cmdLists, frame);
-        }
-
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE {
             return timeline.CompletedFrame(serialFence->GetValue());
         }
@@ -720,6 +689,23 @@ namespace Crowy
         }
 
     private:
+        void submit(
+            std::span<RHICommandList*> cmdLists,
+            u64 frame
+        ) RHI_OVERRIDE {
+            submitFrame(cmdLists, frame, [] {});
+        }
+
+        void submitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            RHISwapchain& swapchain,
+            u64 frame
+        ) RHI_OVERRIDE {
+            submitFrame(cmdLists, frame, [&] {
+                static_cast<DX12Swapchain&>(swapchain).Present(frame);
+            });
+        }
+
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             StrView name
@@ -829,6 +815,23 @@ namespace Crowy
             }
 
             return totalBytes;
+        }
+
+        template<typename Present>
+        void submitFrame(
+            std::span<RHICommandList*> cmdLists,
+            u64 frame,
+            Present present
+        ) {
+            const auto completed = ledger.Collect();
+            harvestGPUTimes(completed);
+
+            executeCommandLists(cmdLists, serial + 1);
+            present();
+
+            signalSerial();
+            ledger.Stamp(frame, serial, completed);
+            holdForGPUTime(cmdLists, frame);
         }
 
         void holdForGPUTime(std::span<RHICommandList*> cmdLists, u64 frame) {

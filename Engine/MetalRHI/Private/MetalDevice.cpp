@@ -25,6 +25,7 @@
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
 #include "RHIShader.hpp"
+#include "RHISubmitLedger.hpp"
 #include "UploadRing.hpp"
 
 namespace Crowy
@@ -77,6 +78,7 @@ namespace Crowy
         RAII<MetalFence> serialFence;
         RHIFrameTimeline timeline;
         RHIRetireQueue retireQueue;
+        RHISubmitLedger ledger;
 
         // in submission order; the upload list is never among them
         std::vector<UntimedFrame> untimedFrames;
@@ -142,7 +144,14 @@ namespace Crowy
                   submissionSerial,
                   handoffSerial
               ),
-              serialFence(std::make_unique<MetalFence>(*device.get(), 0)) {
+              serialFence(std::make_unique<MetalFence>(*device.get(), 0)),
+              ledger(
+                  *serialFence,
+                  retireQueue,
+                  uploadRing,
+                  transientRing,
+                  timeline
+              ) {
             CROWY_ASSERT(device, "No GPU Available");
             CROWY_ASSERT(commandQueue, "Failed to create command queue");
 
@@ -253,35 +262,7 @@ namespace Crowy
         }
 
         void Submit(std::span<RHICommandList*> cmdLists, u64 frame) {
-            // completed-as-of-entry, before this batch's own tag exists
-            const auto completed = serialFence->GetValue();
-            retireQueue.Collect(completed);
-            harvestGPUTimes();
-
-            ensureUploadCommit();
-
-            auto lastCmdBuffer =
-                static_cast<MetalCommandList*>(cmdLists.back())->Get();
-            serialFence->Encode(*lastCmdBuffer, ++submissionSerial);
-            // close the wave: later recordings that depend on it
-            // (lazy gates) wait on this value
-            lastCmdBuffer->encodeSignalEvent(
-                submissionEvent.get(),
-                submissionSerial
-            );
-            retireQueue.Tag(submissionSerial);
-            uploadRing.OnSubmit(submissionSerial);
-            transientRing.OnSubmit(submissionSerial);
-            timeline.OnSubmit(frame, submissionSerial, completed);
-
-            trackHandoffs(cmdLists);
-
-            for(auto cmdList: cmdLists) {
-                auto mtlCmdList =
-                    static_cast<MetalCommandList*>(cmdList)->Get();
-                mtlCmdList->commit();
-            }
-            holdForGPUTime(cmdLists, frame);
+            submitFrame(cmdLists, frame, [](MTL::CommandBuffer&) {});
         }
 
         void SubmitAndPresent(
@@ -289,33 +270,13 @@ namespace Crowy
             MetalSwapchain& swapchain,
             u64 frame
         ) {
-            const auto completed = serialFence->GetValue();
-            retireQueue.Collect(completed);
-            harvestGPUTimes();
-
-            ensureUploadCommit();
-
-            auto lastCmdBuffer =
-                static_cast<MetalCommandList&>(*cmdLists.back()).Get();
-            swapchain.Present(*lastCmdBuffer, frame);
-            serialFence->Encode(*lastCmdBuffer, ++submissionSerial);
-            lastCmdBuffer->encodeSignalEvent(
-                submissionEvent.get(),
-                submissionSerial
+            submitFrame(
+                cmdLists,
+                frame,
+                [&](MTL::CommandBuffer& lastCmdBuffer) {
+                    swapchain.Present(lastCmdBuffer, frame);
+                }
             );
-            retireQueue.Tag(submissionSerial);
-            uploadRing.OnSubmit(submissionSerial);
-            transientRing.OnSubmit(submissionSerial);
-            timeline.OnSubmit(frame, submissionSerial, completed);
-
-            trackHandoffs(cmdLists);
-
-            for(auto cmdList: cmdLists) {
-                auto mtlCmdList =
-                    static_cast<MetalCommandList*>(cmdList)->Get();
-                mtlCmdList->commit();
-            }
-            holdForGPUTime(cmdLists, frame);
         }
 
         u64 GetCompletedFrame() const noexcept {
@@ -405,6 +366,39 @@ namespace Crowy
         }
 
     private:
+        template<typename Present>
+        void submitFrame(
+            std::span<RHICommandList*> cmdLists,
+            u64 frame,
+            Present present
+        ) {
+            const auto completed = ledger.Collect();
+            harvestGPUTimes();
+
+            ensureUploadCommit();
+
+            auto lastCmdBuffer =
+                static_cast<MetalCommandList*>(cmdLists.back())->Get();
+            present(*lastCmdBuffer);
+            serialFence->Encode(*lastCmdBuffer, ++submissionSerial);
+            // close the wave: later recordings that depend on it
+            // (lazy gates) wait on this value
+            lastCmdBuffer->encodeSignalEvent(
+                submissionEvent.get(),
+                submissionSerial
+            );
+            ledger.Stamp(frame, submissionSerial, completed);
+
+            trackHandoffs(cmdLists);
+
+            for(auto cmdList: cmdLists) {
+                auto mtlCmdList =
+                    static_cast<MetalCommandList*>(cmdList)->Get();
+                mtlCmdList->commit();
+            }
+            holdForGPUTime(cmdLists, frame);
+        }
+
         void holdForGPUTime(std::span<RHICommandList*> cmdLists, u64 frame) {
             UntimedFrame held{.frame = frame};
             held.cmdBuffers.reserve(cmdLists.size());
@@ -577,11 +571,11 @@ namespace Crowy
         };
     }
 
-    void MetalDevice::Submit(std::span<RHICommandList*> cmdLists, u64 frame) {
+    void MetalDevice::submit(std::span<RHICommandList*> cmdLists, u64 frame) {
         impl->Submit(cmdLists, frame);
     }
 
-    void MetalDevice::SubmitAndPresent(
+    void MetalDevice::submitAndPresent(
         std::span<RHICommandList*> cmdLists,
         RHISwapchain& swapchain,
         u64 frame

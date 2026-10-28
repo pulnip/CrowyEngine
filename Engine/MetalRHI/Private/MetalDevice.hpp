@@ -12,7 +12,7 @@ namespace Crowy
     class MetalDevice final: public RHIDevice {
     private:
         class Impl;
-        FastPimpl<Impl, 2968, 8> impl;
+        FastPimpl<Impl, 3008, 8> impl;
 
     public:
         MetalDevice();
@@ -36,13 +36,6 @@ namespace Crowy
 
         RHICommandListRAII CreateCommandList() RHI_OVERRIDE;
 
-        void Submit(std::span<RHICommandList*>, u64 frame) RHI_OVERRIDE;
-        void SubmitAndPresent(
-            std::span<RHICommandList*>,
-            RHISwapchain&,
-            u64 frame
-        ) RHI_OVERRIDE;
-
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
         std::optional<f64> GetGPUFrameTime(
             u64 frame
@@ -57,6 +50,13 @@ namespace Crowy
         RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
 
     private:
+        void submit(std::span<RHICommandList*>, u64 frame) RHI_OVERRIDE;
+        void submitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            u64 frame
+        ) RHI_OVERRIDE;
+
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             StrView name

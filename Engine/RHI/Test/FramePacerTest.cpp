@@ -1,8 +1,10 @@
+#include <array>
 #include <span>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "FakeCommandList.hpp"
 #include "FakeSwapchain.hpp"
 #include "FramePacer.hpp"
 #include "RHIBuffer.hpp"
@@ -47,17 +49,6 @@ namespace
         }
         RHICommandListRAII CreateCommandList() override { return nullptr; }
 
-        void Submit(std::span<RHICommandList*>, u64 frame) override {
-            submits.push_back(frame);
-        }
-        void SubmitAndPresent(
-            std::span<RHICommandList*>,
-            RHISwapchain&,
-            u64 frame
-        ) override {
-            submits.push_back(frame);
-        }
-
         u64 GetCompletedFrame() const noexcept override {
             return submits.empty() ? 0 : submits.back();
         }
@@ -69,6 +60,17 @@ namespace
         RHICapabilities GetCapabilities() const noexcept override { return {}; }
 
     private:
+        void submit(std::span<RHICommandList*>, u64 frame) override {
+            submits.push_back(frame);
+        }
+        void submitAndPresent(
+            std::span<RHICommandList*>,
+            RHISwapchain&,
+            u64 frame
+        ) override {
+            submits.push_back(frame);
+        }
+
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             StrView
@@ -83,10 +85,17 @@ namespace
         }
     };
 
+    // a batch the device never records into
+    void endFrame(FramePacer& pacer, FakeSwapchain& swapchain) {
+        FakeCommandList cmdList;
+        std::array<RHICommandList*, 1> cmdLists{&cmdList};
+        pacer.EndFrame(cmdLists, swapchain);
+    }
+
     void runFrames(FramePacer& pacer, FakeSwapchain& swapchain, u64 count) {
         for(u64 i = 0; i < count; ++i) {
             pacer.BeginFrame();
-            pacer.EndFrame({}, swapchain);
+            endFrame(pacer, swapchain);
         }
     }
 }
@@ -99,7 +108,7 @@ TEST(FramePacer, FramesCountFromOne) {
     EXPECT_EQ(pacer.CurrentFrame(), 0u);
     EXPECT_EQ(pacer.BeginFrame(), 1u);
     EXPECT_EQ(pacer.CurrentFrame(), 1u);
-    pacer.EndFrame({}, swapchain);
+    endFrame(pacer, swapchain);
     EXPECT_EQ(pacer.BeginFrame(), 2u);
 }
 
