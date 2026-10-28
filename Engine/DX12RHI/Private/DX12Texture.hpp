@@ -19,7 +19,7 @@ namespace Crowy
         // null for a swapchain back buffer: that memory belongs to the
         // swapchain, so nothing here allocated it and nothing frees it
         DX12Allocator* allocator = nullptr;
-        RHIAllocation allocation{};
+        DX12Allocation allocation{};
         // descriptor heap index
         std::unordered_map<RHITextureViewDesc, UINT> srvs;
         std::unordered_map<RHITextureViewDesc, UINT> uavs;

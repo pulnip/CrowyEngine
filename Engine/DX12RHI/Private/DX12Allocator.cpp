@@ -48,7 +48,7 @@ namespace Crowy
         );
     }
 
-    RHIAllocation DX12Allocator::Allocate(
+    DX12Allocation DX12Allocator::Allocate(
         const D3D12_RESOURCE_DESC1& desc,
         RHIMemoryType memory,
         const D3D12_CLEAR_VALUE* clearValue,
@@ -78,17 +78,7 @@ namespace Crowy
 
         setDebugName(*resource.Get(), name);
 
-        const RHIAllocation allocation{
-            .resource = resource.Get(),
-            .heapOffset = 0,
-            // Width is already the byte count for a buffer; for anything
-            // else only the driver knows what the layout costs
-            .size =
-                desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER
-                    ? desc.Width
-                    : device.GetResourceAllocationInfo2(0, 1, &desc, nullptr)
-                          .SizeInBytes
-        };
+        const DX12Allocation allocation{.resource = resource.Get()};
 
         const auto [_, inserted] =
             live.emplace(allocation.resource, std::move(resource));
@@ -97,7 +87,7 @@ namespace Crowy
         return allocation;
     }
 
-    void DX12Allocator::Free(const RHIAllocation& allocation) {
+    void DX12Allocator::Free(const DX12Allocation& allocation) {
         if(allocation.resource == nullptr)
             return;
 

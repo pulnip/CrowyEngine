@@ -118,7 +118,8 @@ namespace
         CHECK_HRESULT(
             device.CheckFeatureSupport(
                 D3D12_FEATURE_SHADER_MODEL,
-                BYTES(shaderModel)
+                &shaderModel,
+                sizeof(shaderModel)
             ),
             "Unable to check shader model"
         );
@@ -130,7 +131,8 @@ namespace
         CHECK_HRESULT(
             device.CheckFeatureSupport(
                 D3D12_FEATURE_D3D12_OPTIONS,
-                BYTES(options)
+                &options,
+                sizeof(options)
             ),
             "Unable to check feature options"
         );
@@ -142,7 +144,8 @@ namespace
         CHECK_HRESULT(
             device.CheckFeatureSupport(
                 D3D12_FEATURE_D3D12_OPTIONS12,
-                BYTES(options12)
+                &options12,
+                sizeof(options12)
             ),
             "Unable to check feature options12"
         );
@@ -153,7 +156,8 @@ namespace
         D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16{};
         auto hr = device.CheckFeatureSupport(
             D3D12_FEATURE_D3D12_OPTIONS16,
-            BYTES(options16)
+            &options16,
+            sizeof(options16)
         );
         return Crowy::DX12Capabilities{
             .gpuUploadHeap = SUCCEEDED(hr) && options16.GPUUploadHeapSupported

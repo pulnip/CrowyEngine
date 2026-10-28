@@ -43,19 +43,8 @@ namespace Crowy
             &totalBytes
         );
 
-        const D3D12_HEAP_PROPERTIES heapProps{.Type = D3D12_HEAP_TYPE_READBACK};
-        const D3D12_RESOURCE_DESC readbackDesc{
-            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-            .Alignment = 0,
-            .Width = totalBytes,
-            .Height = 1,
-            .DepthOrArraySize = 1,
-            .MipLevels = 1,
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .SampleDesc = {1, 0},
-            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            .Flags = D3D12_RESOURCE_FLAG_NONE
-        };
+        const CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_READBACK);
+        const auto readbackDesc = CD3DX12_RESOURCE_DESC::Buffer(totalBytes);
         BufferRAII readback;
         if(FAILED(device->CreateCommittedResource(
                &heapProps,

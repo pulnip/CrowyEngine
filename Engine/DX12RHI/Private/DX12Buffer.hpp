@@ -12,7 +12,7 @@ namespace Crowy
 {
     class DX12Buffer: public RHIBuffer {
     private:
-        RHIAllocation allocation{};
+        DX12Allocation allocation{};
         // what the caller asked for, before any alignment padding
         u32 size = 0;
         void* mapped = nullptr;

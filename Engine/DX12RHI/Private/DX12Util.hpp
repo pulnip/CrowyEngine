@@ -9,8 +9,6 @@
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 
-#define BYTES(x) &(x), sizeof(x)
-
 namespace Crowy
 {
     template<typename T>

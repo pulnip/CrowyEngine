@@ -208,21 +208,9 @@ namespace Crowy
             "Failed to create timestamp query heap"
         );
 
-        const D3D12_HEAP_PROPERTIES readbackHeap{
-            .Type = D3D12_HEAP_TYPE_READBACK
-        };
-        const D3D12_RESOURCE_DESC readbackDesc{
-            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-            .Alignment = 0,
-            .Width = TimestampCount * sizeof(u64),
-            .Height = 1,
-            .DepthOrArraySize = 1,
-            .MipLevels = 1,
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .SampleDesc = {1, 0},
-            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            .Flags = D3D12_RESOURCE_FLAG_NONE
-        };
+        const CD3DX12_HEAP_PROPERTIES readbackHeap(D3D12_HEAP_TYPE_READBACK);
+        const auto readbackDesc =
+            CD3DX12_RESOURCE_DESC::Buffer(TimestampCount * sizeof(u64));
         // a readback buffer stays in COPY_DEST for good, which is what
         // ResolveQueryData writes into
         CHECK_HRESULT(
@@ -739,11 +727,11 @@ namespace Crowy
 
         CROWY_ASSERT(
             dstOffset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT == 0,
-            "a readback footprint starts on a 512-byte boundary"
+            "a readback footprint starts on a placement boundary"
         );
         CROWY_ASSERT(
             dstRowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0,
-            "a readback row pitch is a multiple of 256 bytes"
+            "a readback row pitch is pitch-aligned"
         );
 
         auto& dxSrc = static_cast<DX12Texture&>(src);

@@ -330,8 +330,10 @@ namespace Crowy
             .IndependentBlendEnable = blend.independentBlendEnable
         };
 
-        constexpr auto MAX_RENDER_TARGETS = std::min(MaxRenderTargets, 8u);
-        for(u32 i = 0; i < MAX_RENDER_TARGETS; ++i) {
+        static_assert(
+            MaxRenderTargets <= D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT
+        );
+        for(u32 i = 0; i < MaxRenderTargets; ++i) {
             const auto& src = blend.renderTargets[i];
             auto& dst = bsDesc.RenderTarget[i];
 

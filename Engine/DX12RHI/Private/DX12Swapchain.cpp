@@ -49,7 +49,8 @@ namespace Crowy
             BOOL supported = FALSE;
             allowTearing = SUCCEEDED(factory.CheckFeatureSupport(
                                DXGI_FEATURE_PRESENT_ALLOW_TEARING,
-                               BYTES(supported)
+                               &supported,
+                               sizeof(supported)
                            )) &&
                            supported != FALSE;
         }
