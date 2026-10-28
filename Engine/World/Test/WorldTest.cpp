@@ -499,7 +499,7 @@ TEST(World, AProvidedServiceIsFoundByItsType) {
     EXPECT_EQ(&world.Service<i32>(), &counter);
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(WorldDeathTest, AStructThatIsNotAComponentStops) {
     World world;
     const auto actor = world.Spawn();

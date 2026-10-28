@@ -20,7 +20,7 @@ namespace Crowy
         Extract,
     };
 
-    inline constexpr usize PhaseCount = 7;
+    inline constexpr usize PhaseCount = static_cast<usize>(Phase::Extract) + 1;
 
     struct FrameTime {
         // the wall clock's

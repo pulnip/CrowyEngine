@@ -1,5 +1,6 @@
 #include "System.hpp"
 
+#include <algorithm>
 #include <format>
 #include <set>
 #include <source_location>
@@ -66,10 +67,9 @@ namespace Crowy
                         stuck.insert(name);
                 }
 
-                Str names;
-                for(const auto& name: stuck)
-                    names += names.empty() ? name : ", " + name;
-                refuse(std::format("systems in a cycle: {}", names));
+                refuse(
+                    std::format("systems in a cycle: {}", join(stuck, ", "))
+                );
             }
 
             return order;
@@ -87,9 +87,11 @@ namespace Crowy
                 if(it == byName.end()) {
                     refuse(
                         std::format(
-                            "'{}' runs after '{}', which is no system",
+                            "'{}' runs after '{}', which is no system; the "
+                            "systems are {}",
                             system.name,
-                            before
+                            before,
+                            join(systems, ", ", &SystemDesc::name)
                         )
                     );
                 }
@@ -123,11 +125,8 @@ namespace Crowy
     void SystemRegistry::Add(SystemDesc system) {
         CROWY_ASSERT(system.run != nullptr, "a system needs a function");
 
-        for(const auto& existing: systems) {
-            if(existing.name == system.name) {
-                refuse(std::format("two systems are named '{}'", system.name));
-            }
-        }
+        if(std::ranges::contains(systems, system.name, &SystemDesc::name))
+            refuse(std::format("two systems are named '{}'", system.name));
 
         systems.push_back(std::move(system));
     }

@@ -15,8 +15,8 @@ namespace Crowy
     {
         // FullscreenPush carries the source and three more reads
         constexpr usize MaxPostInputs = 3;
-        // Scene and Display
-        constexpr usize OutputClassCount = 2;
+        constexpr usize OutputClassCount =
+            static_cast<usize>(PostOutput::Display) + 1;
         constexpr usize IntermediatesPerClass = 2;
 
         using Reads = std::vector<FrameTargetID>;

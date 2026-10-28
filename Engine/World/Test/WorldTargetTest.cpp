@@ -103,6 +103,7 @@ TEST(WorldTarget, IsGoneOnceItsActorOrItsComponentIs) {
     // the row stays until Sync, but the actor is gone already
     world.Destroy(destroyed);
     EXPECT_EQ(destroyedTarget.Read(), nullptr);
+    EXPECT_EQ(world.Get<TargetMarker>(destroyed), nullptr);
     EXPECT_EQ(destroyedTarget.Write(), nullptr);
 
     world.Remove<TargetMarker>(stripped);
@@ -216,7 +217,7 @@ TEST(WorldTarget, ARootsWorldPoseIsItsLocalPose) {
     EXPECT_EQ(world.WorldRotation(child), quat(rotation, turn));
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(WorldTargetDeathTest, AWriteAccessInsideExtractStops) {
     SystemRegistry registry;
     registry.Add(

@@ -8,12 +8,10 @@ namespace Crowy
 {
     namespace
     {
-        // a row outlives its actor until Sync; the actor's script does not
         void runScripts(World& world, const FrameTime& time) {
             world.Each<ScriptComponent>([&](ActorId actor,
                                             const ScriptComponent& script) {
-                if(world.IsValid(actor))
-                    script.run(world, actor, time);
+                script.run(world, actor, time);
             });
         }
     }

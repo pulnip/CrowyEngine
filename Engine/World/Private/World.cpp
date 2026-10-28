@@ -100,16 +100,13 @@ namespace Crowy
             "a type that is not a component"
         );
 
-        // a destroyed actor keeps its rows until Sync, so validity comes first
         return PropertyTarget(
             [this, actor, &desc]() -> const void* {
-                return IsValid(actor) ? findRow(desc, actor) : nullptr;
+                return findRow(desc, actor);
             },
             [this, actor, &desc]() -> void* {
-                if(!IsValid(actor) || findRow(desc, actor) == nullptr)
-                    return nullptr;
-
-                return writeRow(desc, actor);
+                return findRow(desc, actor) == nullptr ? nullptr
+                                                       : writeRow(desc, actor);
             },
             desc
         );
@@ -247,15 +244,20 @@ namespace Crowy
         const TypeDesc& desc,
         ActorId actor
     ) const noexcept {
-        const auto* store = findStore(desc);
-        if(store == nullptr)
+        // a destroyed actor keeps its rows until Sync
+        if(!IsValid(actor))
             return nullptr;
 
-        auto row = store->rows.Find(actor);
-        return row;
+        const auto* store = findStore(desc);
+        return store == nullptr ? nullptr : store->rows.Find(actor);
     }
 
     void* World::writeRow(const TypeDesc& desc, ActorId actor) noexcept {
+        CROWY_ASSERT(
+            IsValid(actor),
+            "writing a component of an actor not alive"
+        );
+
         auto store = findStore(desc);
         if(store == nullptr)
             return nullptr;

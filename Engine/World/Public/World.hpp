@@ -138,7 +138,7 @@ namespace Crowy
             removeComponent(*getDesc<T>(), actor);
         }
 
-        // nullptr until the component's Sync, and after it is removed
+        // nullptr until the component's Sync, and once it or its actor is gone
         template<typename T>
         const T* Get(ActorId actor) const noexcept {
             return static_cast<const T*>(findRow(*getDesc<T>(), actor));
@@ -159,9 +159,10 @@ namespace Crowy
 
             for(usize i = 0; i < store->rows.Count(); ++i) {
                 auto id = store->rows.OwnerAt(i);
-                auto row = static_cast<const T*>(store->rows.At(i));
+                if(!IsValid(id))
+                    continue;
 
-                f(id, *row);
+                f(id, *static_cast<const T*>(store->rows.At(i)));
             }
         }
 
