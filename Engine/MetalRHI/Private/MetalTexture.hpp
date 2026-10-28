@@ -6,7 +6,6 @@
 #include <QuartzCore/CAMetalDrawable.hpp>
 
 #include "MetalAllocator.hpp"
-#include "RHIAPI.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
@@ -36,11 +35,9 @@ namespace Crowy
 
         CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(MetalTexture)
 
-        u32 GetWidth() const noexcept RHI_OVERRIDE { return texture->width(); }
-        u32 GetHeight() const noexcept RHI_OVERRIDE {
-            return texture->height();
-        }
-        u32 GetDepth() const noexcept RHI_OVERRIDE { return texture->depth(); }
+        u32 GetWidth() const noexcept override { return texture->width(); }
+        u32 GetHeight() const noexcept override { return texture->height(); }
+        u32 GetDepth() const noexcept override { return texture->depth(); }
         // the overrides above would otherwise hide the per-mip overloads
         using RHITexture::GetDepth;
         using RHITexture::GetHeight;
@@ -48,17 +45,17 @@ namespace Crowy
 
         auto Get() { return texture.get(); }
 
-        virtual void* GetNative() noexcept RHI_OVERRIDE { return Get(); }
+        virtual void* GetNative() noexcept override { return Get(); }
 
     private:
-        u64 readableIDOf(const RHITextureViewDesc& view) RHI_OVERRIDE {
+        u64 readableIDOf(const RHITextureViewDesc& view) override {
             CROWY_ASSERT(
                 !isDepthFormat(GetFormat()) || view.format == GetFormat(),
                 "a depth texture is read through a view of its own depth format"
             );
             return getResourceID(view);
         }
-        u64 writableIDOf(const RHITextureViewDesc& view) RHI_OVERRIDE {
+        u64 writableIDOf(const RHITextureViewDesc& view) override {
             return getResourceID(view);
         }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DX12Definitions.hpp"
-#include "RHIAPI.hpp"
 #include "RHIFence.hpp"
 
 namespace Crowy
@@ -16,11 +15,11 @@ namespace Crowy
 
         ~DX12Fence();
 
-        void WaitCPU(u64 waitValue, u64 timeoutMs) RHI_OVERRIDE;
+        void WaitCPU(u64 waitValue, u64 timeoutMs) override;
 
-        u64 GetValue() const RHI_OVERRIDE;
+        u64 GetValue() const override;
 
-        bool IsComplete(u64 value) const RHI_OVERRIDE;
+        bool IsComplete(u64 value) const override;
 
         Fence* Get() noexcept { return fence.Get(); }
     };

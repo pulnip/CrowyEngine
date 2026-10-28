@@ -3,7 +3,6 @@
 #include <functional>
 
 #include "FastPimpl.hpp"
-#include "RHIAPI.hpp"
 #include "RHIDevice.hpp"
 #include "RHIFWD.hpp"
 
@@ -18,52 +17,50 @@ namespace Crowy
         MetalDevice();
         ~MetalDevice();
 
-        RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE;
+        RHIFrameScopeRAII CreateFrameScope() override;
 
         RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc&,
             StrView name = {}
-        ) RHI_OVERRIDE;
+        ) override;
         RHIComputePipelineStateRAII CreatePipelineState(
             const RHIComputePipelineStateDesc&,
             StrView name = {}
-        ) RHI_OVERRIDE;
+        ) override;
 
         RHISwapchainRAII CreateSwapchain(
             const RHISwapchainCreateDesc&,
             StrView name = {}
-        ) RHI_OVERRIDE;
+        ) override;
 
-        RHICommandListRAII CreateCommandList() RHI_OVERRIDE;
+        RHICommandListRAII CreateCommandList() override;
 
-        u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
-        std::optional<f64> GetGPUFrameTime(
-            u64 frame
-        ) const noexcept RHI_OVERRIDE;
-        void WaitFrame(u64 frame) RHI_OVERRIDE;
-        void WaitIdle() RHI_OVERRIDE;
+        u64 GetCompletedFrame() const noexcept override;
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept override;
+        void WaitFrame(u64 frame) override;
+        void WaitIdle() override;
 
-        void DeferRetire(std::move_only_function<void()> reclaim) RHI_OVERRIDE;
+        void DeferRetire(std::move_only_function<void()> reclaim) override;
 
-        RHIBufferSlice AllocateTransient(u32 size, u32 align) RHI_OVERRIDE;
+        RHIBufferSlice AllocateTransient(u32 size, u32 align) override;
 
-        RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE;
+        RHICapabilities GetCapabilities() const noexcept override;
 
     private:
-        void submit(std::span<RHICommandList*>, u64 frame) RHI_OVERRIDE;
+        void submit(std::span<RHICommandList*>, u64 frame) override;
         void submitAndPresent(
             std::span<RHICommandList*>,
             RHISwapchain&,
             u64 frame
-        ) RHI_OVERRIDE;
+        ) override;
 
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc&,
             StrView name
-        ) RHI_OVERRIDE;
+        ) override;
         RHITextureRAII createTexture(
             const RHITextureCreateDesc&,
             StrView name
-        ) RHI_OVERRIDE;
+        ) override;
     };
 }

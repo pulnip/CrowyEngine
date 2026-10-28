@@ -4,7 +4,6 @@
 
 #include "DX12Allocator.hpp"
 #include "DX12Definitions.hpp"
-#include "RHIAPI.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -34,9 +33,9 @@ namespace Crowy
 
         ~DX12Buffer();
 
-        u32 GetSize() const noexcept RHI_OVERRIDE { return size; }
+        u32 GetSize() const noexcept override { return size; }
 
-        void* GetMappedPtr() noexcept RHI_OVERRIDE { return mapped; }
+        void* GetMappedPtr() noexcept override { return mapped; }
 
         Buffer* Get() noexcept { return allocation.resource; }
 
@@ -45,8 +44,8 @@ namespace Crowy
         }
 
     private:
-        u64 readableIDOf(const RHIBufferViewDesc&) RHI_OVERRIDE;
-        u64 writableIDOf(const RHIBufferViewDesc&) RHI_OVERRIDE;
+        u64 readableIDOf(const RHIBufferViewDesc&) override;
+        u64 writableIDOf(const RHIBufferViewDesc&) override;
 
         UINT createView(
             const RHIBufferViewDesc&,

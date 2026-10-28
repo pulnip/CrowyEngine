@@ -4,7 +4,6 @@
 #include <Metal/MTLDevice.hpp>
 
 #include "MetalAllocator.hpp"
-#include "RHIAPI.hpp"
 #include "RHIBuffer.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -28,17 +27,17 @@ namespace Crowy
         );
         ~MetalBuffer();
 
-        u32 GetSize() const noexcept RHI_OVERRIDE { return size; }
+        u32 GetSize() const noexcept override { return size; }
 
-        void* GetMappedPtr() noexcept RHI_OVERRIDE { return mapped; }
+        void* GetMappedPtr() noexcept override { return mapped; }
 
         MTL::Buffer* Get() noexcept { return buffer; }
 
     private:
-        u64 readableIDOf(const RHIBufferViewDesc& view) RHI_OVERRIDE {
+        u64 readableIDOf(const RHIBufferViewDesc& view) override {
             return getResourceID(view);
         }
-        u64 writableIDOf(const RHIBufferViewDesc& view) RHI_OVERRIDE {
+        u64 writableIDOf(const RHIBufferViewDesc& view) override {
             return getResourceID(view);
         }
 

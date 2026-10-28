@@ -4,7 +4,6 @@
 
 #include "DX12Allocator.hpp"
 #include "DX12Definitions.hpp"
-#include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHITexture.hpp"
 
@@ -51,15 +50,15 @@ namespace Crowy
 
         ~DX12Texture();
 
-        u32 GetWidth() const noexcept RHI_OVERRIDE;
-        u32 GetHeight() const noexcept RHI_OVERRIDE;
-        u32 GetDepth() const noexcept RHI_OVERRIDE;
+        u32 GetWidth() const noexcept override;
+        u32 GetHeight() const noexcept override;
+        u32 GetDepth() const noexcept override;
         // the overrides above would otherwise hide the per-mip overloads
         using RHITexture::GetDepth;
         using RHITexture::GetHeight;
         using RHITexture::GetWidth;
 
-        void* GetNative() noexcept RHI_OVERRIDE { return Get(); }
+        void* GetNative() noexcept override { return Get(); }
 
         Texture* Get() noexcept { return texture; }
 
@@ -87,7 +86,7 @@ namespace Crowy
         }
 
     private:
-        u64 readableIDOf(const RHITextureViewDesc&) RHI_OVERRIDE;
-        u64 writableIDOf(const RHITextureViewDesc&) RHI_OVERRIDE;
+        u64 readableIDOf(const RHITextureViewDesc&) override;
+        u64 writableIDOf(const RHITextureViewDesc&) override;
     };
 }

@@ -7,7 +7,6 @@
 
 #include "MetalTexture.hpp"
 #include "Primitives.hpp"
-#include "RHIAPI.hpp"
 #include "RHISwapchain.hpp"
 
 namespace Crowy
@@ -27,20 +26,20 @@ namespace Crowy
 
         ~MetalSwapchain();
 
-        bool AcquireNextImage() noexcept RHI_OVERRIDE;
+        bool AcquireNextImage() noexcept override;
 
-        void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
+        void Resize(u32 newWidth, u32 newHeight) override;
 
         // read from the layer, not the backbuffer;
         // the backbuffer is empty until the first AcquireNextImage.
-        u32 GetWidth() const noexcept RHI_OVERRIDE {
+        u32 GetWidth() const noexcept override {
             return static_cast<u32>(metalLayer->drawableSize().width);
         }
-        u32 GetHeight() const noexcept RHI_OVERRIDE {
+        u32 GetHeight() const noexcept override {
             return static_cast<u32>(metalLayer->drawableSize().height);
         }
 
-        RHITexture& GetCurrentTexture() RHI_OVERRIDE { return backBuffer; }
+        RHITexture& GetCurrentTexture() override { return backBuffer; }
 
         // `frame` is the loop frame this present belongs to
         void Present(MTL::CommandBuffer&, u64 frame);

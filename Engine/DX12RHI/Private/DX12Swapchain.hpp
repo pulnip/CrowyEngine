@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "DX12Definitions.hpp"
-#include "RHIAPI.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHISwapchain.hpp"
 
@@ -36,14 +35,14 @@ namespace Crowy
 
         ~DX12Swapchain();
 
-        bool AcquireNextImage() noexcept RHI_OVERRIDE;
+        bool AcquireNextImage() noexcept override;
 
-        void Resize(u32 newWidth, u32 newHeight) RHI_OVERRIDE;
+        void Resize(u32 newWidth, u32 newHeight) override;
 
-        u32 GetWidth() const noexcept RHI_OVERRIDE;
-        u32 GetHeight() const noexcept RHI_OVERRIDE;
+        u32 GetWidth() const noexcept override;
+        u32 GetHeight() const noexcept override;
 
-        RHITexture& GetCurrentTexture() RHI_OVERRIDE {
+        RHITexture& GetCurrentTexture() override {
             return *backBuffers[currentBackBufferIndex];
         }
 

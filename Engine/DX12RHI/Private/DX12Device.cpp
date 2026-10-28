@@ -23,7 +23,6 @@
 #include "DX12Util.hpp"
 #include "LogLocal.hpp"
 #include "PathUtil.hpp"
-#include "RHIAPI.hpp"
 #include "RHIDevice.hpp"
 #include "RHIFrameScope.hpp"
 #include "RHIFrameTimeline.hpp"
@@ -586,14 +585,14 @@ namespace Crowy
 
         ~DX12Device() { retireQueue.CollectAll(); }
 
-        RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE {
+        RHIFrameScopeRAII CreateFrameScope() override {
             return std::make_unique<RHIFrameScope>();
         }
 
         RHIGraphicsPipelineStateRAII CreatePipelineState(
             const RHIGraphicsPipelineStateDesc& desc,
             StrView name = {}
-        ) RHI_OVERRIDE {
+        ) override {
             return std::make_unique<DX12GraphicsPipelineState>(
                 *device.Get(),
                 desc,
@@ -605,7 +604,7 @@ namespace Crowy
         RHIComputePipelineStateRAII CreatePipelineState(
             const RHIComputePipelineStateDesc& desc,
             StrView name = {}
-        ) RHI_OVERRIDE {
+        ) override {
             return std::make_unique<DX12ComputePipelineState>(
                 *device.Get(),
                 desc,
@@ -617,7 +616,7 @@ namespace Crowy
         RHISwapchainRAII CreateSwapchain(
             const RHISwapchainCreateDesc& desc,
             StrView name = {}
-        ) RHI_OVERRIDE {
+        ) override {
             return std::make_unique<DX12Swapchain>(
                 *commandQueue.Get(),
                 *factory.Get(),
@@ -629,29 +628,27 @@ namespace Crowy
             );
         }
 
-        RHICommandListRAII CreateCommandList() RHI_OVERRIDE {
+        RHICommandListRAII CreateCommandList() override {
             return createCommandList();
         }
 
-        u64 GetCompletedFrame() const noexcept RHI_OVERRIDE {
+        u64 GetCompletedFrame() const noexcept override {
             return timeline.CompletedFrame(serialFence->GetValue());
         }
 
-        std::optional<f64> GetGPUFrameTime(
-            u64 frame
-        ) const noexcept RHI_OVERRIDE {
+        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept override {
             if(const auto* seconds = gpuTimes.Find(frame))
                 return *seconds;
 
             return std::nullopt;
         }
 
-        void WaitFrame(u64 frame) RHI_OVERRIDE {
+        void WaitFrame(u64 frame) override {
             if(const auto frameSerial = timeline.SerialOf(frame))
                 serialFence->WaitCPU(*frameSerial, 0);
         }
 
-        void WaitIdle() RHI_OVERRIDE {
+        void WaitIdle() override {
             // signal fresh so this also waits on any GPU work queued
             // after the last per-frame signal (e.g. swapchain Present)
             signalSerial();
@@ -664,11 +661,11 @@ namespace Crowy
             harvestGPUTimes(serial);
         }
 
-        void DeferRetire(std::move_only_function<void()> reclaim) RHI_OVERRIDE {
+        void DeferRetire(std::move_only_function<void()> reclaim) override {
             retireQueue.Defer(std::move(reclaim));
         }
 
-        RHIBufferSlice AllocateTransient(u32 size, u32 align) RHI_OVERRIDE {
+        RHIBufferSlice AllocateTransient(u32 size, u32 align) override {
             const auto alloc = transientRing.Allocate(size, align);
 
             return RHIBufferSlice{
@@ -679,7 +676,7 @@ namespace Crowy
             };
         }
 
-        RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE {
+        RHICapabilities GetCapabilities() const noexcept override {
             return {
                 .flipTextureV = true,
                 .clipSpaceMinZ = 0.0f,
@@ -689,10 +686,7 @@ namespace Crowy
         }
 
     private:
-        void submit(
-            std::span<RHICommandList*> cmdLists,
-            u64 frame
-        ) RHI_OVERRIDE {
+        void submit(std::span<RHICommandList*> cmdLists, u64 frame) override {
             submitFrame(cmdLists, frame, [] {});
         }
 
@@ -700,7 +694,7 @@ namespace Crowy
             std::span<RHICommandList*> cmdLists,
             RHISwapchain& swapchain,
             u64 frame
-        ) RHI_OVERRIDE {
+        ) override {
             submitFrame(cmdLists, frame, [&] {
                 static_cast<DX12Swapchain&>(swapchain).Present(frame);
             });
@@ -709,7 +703,7 @@ namespace Crowy
         RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             StrView name
-        ) RHI_OVERRIDE {
+        ) override {
             auto buffer = std::make_unique<DX12Buffer>(
                 allocator,
                 desc,
@@ -739,7 +733,7 @@ namespace Crowy
         RHITextureRAII createTexture(
             const RHITextureCreateDesc& desc,
             StrView name
-        ) RHI_OVERRIDE {
+        ) override {
             auto texture = std::make_unique<DX12Texture>(
                 allocator,
                 desc,

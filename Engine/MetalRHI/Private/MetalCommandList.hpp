@@ -18,7 +18,6 @@ namespace MTL
 
 #include "MetalPipelineState.hpp"
 #include "MetalUtil.hpp"
-#include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
 #include "RHIReleaseLedger.hpp"
 
@@ -162,38 +161,38 @@ namespace Crowy
         bool HasUnconsumedReleases() const noexcept;
 
     private:
-        void begin() RHI_OVERRIDE;
-        void close() RHI_OVERRIDE;
+        void begin() override;
+        void close() override;
 
         void beginRenderPass(
             const RHIRenderPassDesc&,
             std::span<const RHITextureBarrier> textureAcquires,
             std::span<const RHIBufferBarrier> bufferAcquires
-        ) RHI_OVERRIDE;
+        ) override;
         void endRenderPass(
             std::span<const RHITextureBarrier> textureReleases,
             std::span<const RHIBufferBarrier> bufferReleases
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void setGraphicsPipelineState(RHIGraphicsPipelineState&) RHI_OVERRIDE;
+        void setGraphicsPipelineState(RHIGraphicsPipelineState&) override;
 
-        void setPushGraphicsConstants(const void* data, u32 size) RHI_OVERRIDE;
+        void setPushGraphicsConstants(const void* data, u32 size) override;
 
         void setGraphicsConstantBuffer(
             RHIBuffer&,
             u32 slot,
             u32 offset
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void setViewport(const RHIViewport& viewport) RHI_OVERRIDE;
-        void setScissorRect(const RHIScissorRect& scissor) RHI_OVERRIDE;
+        void setViewport(const RHIViewport& viewport) override;
+        void setScissorRect(const RHIScissorRect& scissor) override;
 
         void draw(
             u32 vertexCount,
             u32 instanceCount,
             u32 startVertex,
             u32 startInstance
-        ) RHI_OVERRIDE;
+        ) override;
 
         void drawIndexed(
             const RHIIndexBufferView& indices,
@@ -202,45 +201,45 @@ namespace Crowy
             u32 startIndex,
             i32 baseVertex,
             u32 startInstance
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void executeIndirect(const DrawBatch&) RHI_OVERRIDE;
-        void executeIndirectIndexed(const DrawBatchIndexed&) RHI_OVERRIDE;
+        void executeIndirect(const DrawBatch&) override;
+        void executeIndirectIndexed(const DrawBatchIndexed&) override;
 
         void beginComputePass(
             std::span<const RHITextureBarrier> textureAcquires,
             std::span<const RHIBufferBarrier> bufferAcquires
-        ) RHI_OVERRIDE;
+        ) override;
         void endComputePass(
             std::span<const RHITextureBarrier> textureReleases,
             std::span<const RHIBufferBarrier> bufferReleases
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void setComputePipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
+        void setComputePipelineState(RHIComputePipelineState& pso) override;
 
-        void setPushComputeConstants(const void* data, u32 size) RHI_OVERRIDE;
+        void setPushComputeConstants(const void* data, u32 size) override;
 
         void setComputeConstantBuffer(
             RHIBuffer&,
             u32 slot,
             u32 offset
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void dispatch(Size3D gridSize) RHI_OVERRIDE;
+        void dispatch(Size3D gridSize) override;
 
         void dispatchBarrier(
             std::span<const RHITextureBarrier> textureBarriers,
             std::span<const RHIBufferBarrier> bufferBarriers
-        ) RHI_OVERRIDE;
+        ) override;
 
         void beginBlitPass(
             std::span<const RHITextureBarrier> textureAcquires,
             std::span<const RHIBufferBarrier> bufferAcquires
-        ) RHI_OVERRIDE;
+        ) override;
         void endBlitPass(
             std::span<const RHITextureBarrier> textureReleases,
             std::span<const RHIBufferBarrier> bufferReleases
-        ) RHI_OVERRIDE;
+        ) override;
 
         void copyBuffer(
             RHIBuffer& src,
@@ -248,9 +247,9 @@ namespace Crowy
             usize srcOffset,
             usize dstOffset,
             usize size
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void copyTexture(RHITexture& src, RHITexture& dst) RHI_OVERRIDE;
+        void copyTexture(RHITexture& src, RHITexture& dst) override;
 
         void copyBufferToTexture(
             RHIBuffer& src,
@@ -260,7 +259,7 @@ namespace Crowy
             const RHITextureRegion& region,
             u32 mipLevel,
             u32 arraySlice
-        ) RHI_OVERRIDE;
+        ) override;
 
         void copyTextureToBuffer(
             RHITexture& src,
@@ -270,12 +269,12 @@ namespace Crowy
             const RHITextureRegion& region,
             u32 mipLevel,
             u32 arraySlice
-        ) RHI_OVERRIDE;
+        ) override;
 
-        void beginEvent(CStr name) RHI_OVERRIDE;
-        void endEvent() RHI_OVERRIDE;
+        void beginEvent(CStr name) override;
+        void endEvent() override;
 
-        void setMarker(CStr name) RHI_OVERRIDE;
+        void setMarker(CStr name) override;
 
         MTL::Fence* acquireFence();
 
