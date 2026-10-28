@@ -29,30 +29,33 @@ namespace Crowy
         AllPuzzleKinds.size() == EnumTraits<PuzzleKind>::entries.size()
     );
     // by PuzzleKind: every body, those that move, and the hinges
-    inline constexpr std::array<usize, 6> PuzzleBodyCounts{
+    inline constexpr auto PuzzleBodyCounts = std::to_array<usize>({
         9,
         8,
         6,
         9,
         10,
         12,
-    };
-    inline constexpr std::array<usize, 6> PuzzleMovingCounts{
+    });
+    static_assert(PuzzleBodyCounts.size() == AllPuzzleKinds.size());
+    inline constexpr auto PuzzleMovingCounts = std::to_array<usize>({
         3,
         2,
         2,
         1,
         4,
         2,
-    };
-    inline constexpr std::array<usize, 6> PuzzleHingeCounts{
+    });
+    static_assert(PuzzleMovingCounts.size() == AllPuzzleKinds.size());
+    inline constexpr auto PuzzleHingeCounts = std::to_array<usize>({
         0,
         0,
         0,
         1,
         1,
         0,
-    };
+    });
+    static_assert(PuzzleHingeCounts.size() == AllPuzzleKinds.size());
 
     inline constexpr usize indexOf(PuzzleKind kind) {
         return static_cast<usize>(kind);

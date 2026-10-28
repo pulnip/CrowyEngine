@@ -11,7 +11,8 @@ namespace Crowy
     struct PuzzlePin;
 
     // tick 0 pins the build itself; the rest pin the run
-    inline constexpr std::array<u64, 6> PinTicks{0, 1, 10, 60, 240, 600};
+    inline constexpr std::array<u64, 6>
+        PinTicks{0, 1, 10, 60, 240, PuzzleHorizon};
 
     std::span<const PuzzlePin> puzzlePins();
     // null when the puzzle and mode have no row

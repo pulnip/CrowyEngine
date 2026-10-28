@@ -1047,7 +1047,7 @@ TEST(Handle, ScopedToItsWorld) {
     EXPECT_EQ(other.TickCount(), 0u);
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(PhysicsDeathTest, SecondRuntime) {
     EXPECT_DEATH(
         {
