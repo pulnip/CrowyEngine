@@ -189,14 +189,9 @@ TEST(Light, TheEnvironmentReachesEveryView) {
     f.renderer.BeginFrame(f.scene);
 
     for(u32 i = 0; i < f.renderer.ViewCount(); ++i) {
-        EXPECT_EQ(
-            static_cast<Vec3>(f.renderer.View(i).skyAmbient),
-            Sky
-        ) << i;
-        EXPECT_EQ(
-            static_cast<Vec3>(f.renderer.View(i).groundAmbient),
-            Ground
-        ) << i;
+        EXPECT_EQ(static_cast<Vec3>(f.renderer.View(i).skyAmbient), Sky) << i;
+        EXPECT_EQ(static_cast<Vec3>(f.renderer.View(i).groundAmbient), Ground)
+            << i;
     }
 }
 
@@ -210,9 +205,8 @@ TEST(Light, AZeroDirectionFallsBackToDown) {
 TEST(Light, ANonPositiveRangeIsFlooredAtAMillimetre) {
     for(const auto range: {0.0f, -1.0f}) {
         Fixture f;
-        const auto& row = f.PackOne(
-            LightSnapshot{.kind = LightKind::Point, .range = range}
-        );
+        const auto& row =
+            f.PackOne(LightSnapshot{.kind = LightKind::Point, .range = range});
 
         EXPECT_TRUE(std::isfinite(row.invRange)) << range;
         EXPECT_FLOAT_EQ(row.invRange, 1000.0f) << range;

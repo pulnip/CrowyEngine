@@ -163,10 +163,7 @@ namespace
             };
         }
 
-        void Prepare(
-            FrameGraph& pipeline,
-            const MeshPassOverride& debug = {}
-        ) {
+        void Prepare(FrameGraph& pipeline, const MeshPassOverride& debug = {}) {
             renderer.BeginFrame(scene);
             pipeline.Prepare(renderer, scene, debug);
             renderer.Upload();
@@ -226,7 +223,8 @@ namespace
                 Height
             );
             ADD_FAILURE() << "accepted a desc that should say: " << expected;
-        } catch(const std::invalid_argument& e) {
+        }
+        catch(const std::invalid_argument& e) {
             EXPECT_TRUE(StrView{e.what()}.contains(expected))
                 << e.what() << "\nexpected: " << expected;
         }
@@ -294,9 +292,8 @@ TEST(FrameGraph, StandardFrameIsPrepassOpaqueTranslucent) {
 }
 
 TEST(FrameGraph, StandardFrameWithoutPrepassWritesDepthInOpaque) {
-    const auto desc = describeStandardFrame(
-        {.depthPrepass = false, .shadowMapSize = 0}
-    );
+    const auto desc =
+        describeStandardFrame({.depthPrepass = false, .shadowMapSize = 0});
 
     ASSERT_EQ(desc.passes.size(), 3u);
     const auto& opaque = desc.passes[0];
@@ -439,19 +436,16 @@ TEST(FrameGraph, TheStandardDescEndsInTonemapWithTheUI) {
 TEST(FrameGraph, ADisplayReadyDescEndsInPresent) {
     constexpr FrameTargetID SceneColor = 2;
 
-    const auto desc = describeStandardFrame({
-        .sceneColorFormat = RHIPixelFormat::RGBA8_UNORM,
-        .clearColor = Colors::Magenta,
-        .shadowMapSize = 0,
-        .post = {presentPass()}
-    });
+    const auto desc = describeStandardFrame(
+        {.sceneColorFormat = RHIPixelFormat::RGBA8_UNORM,
+         .clearColor = Colors::Magenta,
+         .shadowMapSize = 0,
+         .post = {presentPass()}}
+    );
 
     // one Display entry: no intermediate
     ASSERT_EQ(desc.targets.size(), 2u);
-    EXPECT_EQ(
-        desc.targets[SceneColor - 1].format,
-        RHIPixelFormat::RGBA8_UNORM
-    );
+    EXPECT_EQ(desc.targets[SceneColor - 1].format, RHIPixelFormat::RGBA8_UNORM);
     EXPECT_EQ(desc.targets[SceneColor - 1].clearColor, Colors::Magenta);
     ASSERT_EQ(desc.passes.size(), 4u);
     const auto& present = desc.passes[3];
@@ -857,10 +851,7 @@ TEST(FrameGraph, ResizeRecreatesOnlySwapchainSizedTargets) {
         EXPECT_EQ(f.device.textureCreates[i].height, 96u) << i;
     }
     EXPECT_EQ(f.device.textureCreates[3].format, RHIPixelFormat::D32_FLOAT);
-    EXPECT_EQ(
-        f.device.textureCreates[4].format,
-        RHIPixelFormat::RGBA16_FLOAT
-    );
+    EXPECT_EQ(f.device.textureCreates[4].format, RHIPixelFormat::RGBA16_FLOAT);
     // a frame in flight may still read the old ones
     EXPECT_EQ(f.device.deferred.size(), 2u);
     EXPECT_EQ(f.device.texturesDestroyed, 0u);
@@ -1988,11 +1979,8 @@ namespace
     // loads scene color and depth and keeps both
     FrameGraphDesc HookShaped() {
         auto desc = describeStandardFrame({.shadowMapSize = 0});
-        const auto translucent = std::ranges::find(
-            desc.passes,
-            "Translucent",
-            &PassDesc::name
-        );
+        const auto translucent =
+            std::ranges::find(desc.passes, "Translucent", &PassDesc::name);
         desc.passes.insert(
             translucent,
             PassDesc{
@@ -2024,13 +2012,8 @@ namespace
 TEST(FrameGraph, AHookPassDrawsWhatItsBindingRecords) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FrameGraph pipeline(
-        f.device,
-        HookShaped(),
-        BackBufferFormat,
-        Width,
-        Height
-    );
+    FrameGraph
+        pipeline(f.device, HookShaped(), BackBufferFormat, Width, Height);
     FakeBuffer field{64, 0xB100};
     const std::array fresh{makeBarrier(
         field,
@@ -2047,17 +2030,19 @@ TEST(FrameGraph, AHookPassDrawsWhatItsBindingRecords) {
     HookPassContext seen;
     std::vector<RHIPixelFormat> seenColors;
     std::vector<PassHook> hooks;
-    hooks.push_back(PassHook{
-        .name = "effects",
-        .bufferAcquires = released,
-        .record =
-            [&](RHICommandList& cmdList, const HookPassContext& context) {
+    hooks.push_back(
+        PassHook{
+            .name = "effects",
+            .bufferAcquires = released,
+            .record = [&](RHICommandList& cmdList,
+                          const HookPassContext& context) {
                 ++calls;
                 seen = context;
                 seenColors.assign_range(context.formats.colors);
                 return DrawOnce(cmdList, context);
             }
-    });
+        }
+    );
     auto inputs = f.Inputs();
     inputs.hooks = hooks;
 
@@ -2117,24 +2102,21 @@ TEST(FrameGraph, AHookPassSeesItsReads) {
     auto& effects = *std::ranges::find(desc.passes, "Effects", &PassDesc::name);
     effects.depth.reset();
     effects.reads = {1};
-    FrameGraph pipeline(
-        f.device,
-        std::move(desc),
-        BackBufferFormat,
-        Width,
-        Height
-    );
+    FrameGraph
+        pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
 
     std::vector<u64> reads;
     std::vector<PassHook> hooks;
-    hooks.push_back(PassHook{
-        .name = "effects",
-        .record =
-            [&](RHICommandList& cmdList, const HookPassContext& context) {
+    hooks.push_back(
+        PassHook{
+            .name = "effects",
+            .record = [&](RHICommandList& cmdList,
+                          const HookPassContext& context) {
                 reads.assign_range(context.reads);
                 return DrawOnce(cmdList, context);
             }
-    });
+        }
+    );
     auto inputs = f.Inputs();
     inputs.hooks = hooks;
     f.Frame(pipeline, inputs);
@@ -2165,7 +2147,8 @@ TEST(FrameGraph, AHookPassNeedsAColorTargetAndItsOwnHook) {
     auto unnamed = HookShaped();
     std::get<HookPassDesc>(
         std::ranges::find(unnamed.passes, "Effects", &PassDesc::name)->kind
-    ).hook.clear();
+    )
+        .hook.clear();
     ExpectRefused(std::move(unnamed), "a hook pass names its hook");
 
     auto twice = HookShaped();
@@ -2185,13 +2168,8 @@ TEST(FrameGraph, AHookPassNeedsAColorTargetAndItsOwnHook) {
 TEST(FrameGraph, HookBindingsMatchTheListOrRecordNothing) {
     const auto expectThrow = [](std::vector<PassHook> hooks, StrView expected) {
         Fixture f;
-        FrameGraph pipeline(
-            f.device,
-            HookShaped(),
-            BackBufferFormat,
-            Width,
-            Height
-        );
+        FrameGraph
+            pipeline(f.device, HookShaped(), BackBufferFormat, Width, Height);
         auto inputs = f.Inputs();
         inputs.hooks = hooks;
         f.Prepare(pipeline);
@@ -2199,7 +2177,8 @@ TEST(FrameGraph, HookBindingsMatchTheListOrRecordNothing) {
         try {
             pipeline.Record(f.cmdList, f.renderer, inputs);
             ADD_FAILURE() << "recorded a frame that should say: " << expected;
-        } catch(const std::invalid_argument& e) {
+        }
+        catch(const std::invalid_argument& e) {
             EXPECT_TRUE(StrView{e.what()}.contains(expected))
                 << e.what() << "\nexpected: " << expected;
         }
@@ -2234,13 +2213,8 @@ TEST(FrameGraph, HookBindingsMatchTheListOrRecordNothing) {
 TEST(FrameGraph, AHookPassCarriesItsTextureAcquires) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FrameGraph pipeline(
-        f.device,
-        HookShaped(),
-        BackBufferFormat,
-        Width,
-        Height
-    );
+    FrameGraph
+        pipeline(f.device, HookShaped(), BackBufferFormat, Width, Height);
     FakeTexture grid{RHIPixelFormat::R32_FLOAT, 8, 8, 0x61D};
     const std::array fresh{makeBarrier(
         grid,
@@ -2253,11 +2227,13 @@ TEST(FrameGraph, AHookPassCarriesItsTextureAcquires) {
         RHIResourceUsage::SampledFragment
     )};
     std::vector<PassHook> hooks;
-    hooks.push_back(PassHook{
-        .name = "effects",
-        .textureAcquires = released,
-        .record = DrawOnce
-    });
+    hooks.push_back(
+        PassHook{
+            .name = "effects",
+            .textureAcquires = released,
+            .record = DrawOnce
+        }
+    );
     auto inputs = f.Inputs();
     inputs.hooks = hooks;
 
@@ -2269,13 +2245,14 @@ TEST(FrameGraph, AHookPassCarriesItsTextureAcquires) {
     f.cmdList.Close();
 
     EXPECT_TRUE(f.cmdList.violations.empty());
-    EXPECT_TRUE(std::ranges::none_of(
-        f.cmdList.unconsumedAtClose,
-        [&](const RHITextureBarrier& half) { return half.texture == &grid; }
-    ));
+    EXPECT_TRUE(
+        std::ranges::none_of(
+            f.cmdList.unconsumedAtClose,
+            [&](const RHITextureBarrier& half) { return half.texture == &grid; }
+        )
+    );
     for(const auto& pass: f.cmdList.passes) {
         const bool carries = std::ranges::contains(pass.acquires, released[0]);
         EXPECT_EQ(carries, pass.event == "Effects") << pass.event;
     }
 }
-

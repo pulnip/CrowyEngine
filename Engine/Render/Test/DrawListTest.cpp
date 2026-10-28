@@ -79,11 +79,10 @@ namespace
             const auto mesh = scene.Meshes().Add(
                 MeshResource{
                     .subMeshes = {SubMesh{
-                        .geometry = {
-                            .firstIndex = 6,
-                            .indexCount = 3,
-                            .baseVertex = baseVertex
-                        }
+                        .geometry =
+                            {.firstIndex = 6,
+                             .indexCount = 3,
+                             .baseVertex = baseVertex}
                     }},
                     .materials = {material}
                 }
@@ -131,11 +130,9 @@ namespace
 
             Rows rows;
             for(u32 i = 0; i < list.DrawCount(); ++i) {
-                rows.push_back(
-                    device.transient.Read<DrawData>(
-                        (push.drawBase + i) * static_cast<u32>(sizeof(DrawData))
-                    )
-                );
+                rows.push_back(device.transient.Read<DrawData>(
+                    (push.drawBase + i) * static_cast<u32>(sizeof(DrawData))
+                ));
             }
 
             return rows;
@@ -153,9 +150,8 @@ namespace
 
 TEST(DrawList, OrderedKeepsFloatOrder) {
     constexpr auto Infinity = std::numeric_limits<f32>::infinity();
-    constexpr std::array values = {
-        -Infinity, -2.5f, -1e-30f, 0.0f, 1e-30f, 0.5f, 2.5f, Infinity
-    };
+    constexpr std::array values =
+        {-Infinity, -2.5f, -1e-30f, 0.0f, 1e-30f, 0.5f, 2.5f, Infinity};
 
     for(usize i = 1; i < values.size(); ++i) {
         EXPECT_LT(ordered(values[i - 1]), ordered(values[i]))
@@ -302,11 +298,8 @@ TEST(DrawList, AlternatingPipelinesMakeThreeRuns) {
     const auto middleB = f.AddPrimitive(b);
     const auto nearA = f.AddPrimitive(a);
     const VisibleSet visible{
-        .draws = {
-            f.Draw(nearA, 1.0f),
-            f.Draw(middleB, 2.0f),
-            f.Draw(farA, 3.0f)
-        }
+        .draws =
+            {f.Draw(nearA, 1.0f), f.Draw(middleB, 2.0f), f.Draw(farA, 3.0f)}
     };
 
     f.Build(
@@ -436,13 +429,12 @@ TEST(DrawList, TranslucentOrderSurvivesARemove) {
 
         std::vector<u32> materials;
         for(u32 i = 0; i < list.DrawCount(); ++i) {
-            materials.push_back(
-                device.transient
-                    .Read<DrawData>(
-                        (push.drawBase + i) * static_cast<u32>(sizeof(DrawData))
-                    )
-                    .materialIndex
-            );
+            materials.push_back(device.transient
+                                    .Read<DrawData>(
+                                        (push.drawBase + i) *
+                                        static_cast<u32>(sizeof(DrawData))
+                                    )
+                                    .materialIndex);
         }
 
         return materials;

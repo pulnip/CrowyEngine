@@ -156,7 +156,8 @@ namespace Crowy
         for(const auto& [desc, _]: states) {
             try {
                 rebuilt.emplace(desc, device.CreatePipelineState(desc));
-            } catch(const std::exception& e) {
+            }
+            catch(const std::exception& e) {
                 throw std::runtime_error(
                     std::format("{}: {}", describeShaders(desc), e.what())
                 );

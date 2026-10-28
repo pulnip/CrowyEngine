@@ -49,9 +49,7 @@ namespace Crowy
         std::vector<Str> inputs;
         Vec4 params{};
 
-        friend bool operator==(
-            const PostPassDesc&,
-            const PostPassDesc&
-        ) = default;
+        friend bool operator==(const PostPassDesc&, const PostPassDesc&) =
+            default;
     };
 }

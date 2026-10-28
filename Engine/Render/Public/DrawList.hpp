@@ -40,7 +40,8 @@ namespace Crowy
         f32 depth,
         u32 identity
     ) noexcept {
-        return u64{run} << 48 | u64{ordered(depth)} << 16 | (identity & 0xFFFFu);
+        return u64{run} << 48 | u64{ordered(depth)} << 16 |
+               (identity & 0xFFFFu);
     }
 
     // far first, whatever the pipeline

@@ -270,10 +270,7 @@ TEST(FakeCommandList, AComputeReleaseFeedsARenderPass) {
     EXPECT_EQ(pass.dispatches[0].pipeline, &kernel);
     EXPECT_EQ(pass.dispatches[0].threads, (Size3D{1000, 1, 1}));
     EXPECT_EQ(pass.dispatches[0].push.size(), sizeof(push));
-    EXPECT_EQ(
-        pass.log,
-        (FakeCommandList::Log{"pipeline", "push", "dispatch"})
-    );
+    EXPECT_EQ(pass.log, (FakeCommandList::Log{"pipeline", "push", "dispatch"}));
     EXPECT_EQ(pass.bufferReleases.size(), 1u);
 }
 
@@ -351,21 +348,10 @@ TEST(FakeDevice, ComputePipelinesAndWritableBuffers) {
     EXPECT_EQ(device.computeDestroyed, 1u);
 
     const auto plain = device.CreateBuffer({.size = 16}, "plain");
-    const auto first = device.CreateBuffer(
-        {.size = 16, .shaderWrite = true},
-        "first"
-    );
-    const auto second = device.CreateBuffer(
-        {.size = 16, .shaderWrite = true},
-        "second"
-    );
-    EXPECT_EQ(
-        first->GetWritableID(4u),
-        FakeDevice::FirstWritableBufferID + 1
-    );
-    EXPECT_EQ(
-        second->GetWritableID(4u),
-        FakeDevice::FirstWritableBufferID + 2
-    );
+    const auto first =
+        device.CreateBuffer({.size = 16, .shaderWrite = true}, "first");
+    const auto second =
+        device.CreateBuffer({.size = 16, .shaderWrite = true}, "second");
+    EXPECT_EQ(first->GetWritableID(4u), FakeDevice::FirstWritableBufferID + 1);
+    EXPECT_EQ(second->GetWritableID(4u), FakeDevice::FirstWritableBufferID + 2);
 }
-

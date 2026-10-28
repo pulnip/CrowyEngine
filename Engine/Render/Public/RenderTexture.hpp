@@ -27,7 +27,8 @@ namespace Crowy
         NearestBorder,
     };
     static_assert(
-        static_cast<usize>(TextureSampler::NearestBorder) + 1 == StaticSamplers.size()
+        static_cast<usize>(TextureSampler::NearestBorder) + 1 ==
+        StaticSamplers.size()
     );
 
     // an uploaded texture and its sampler: one decision with its mips, since

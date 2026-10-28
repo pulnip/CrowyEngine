@@ -15,13 +15,15 @@ namespace
         RenderScene scene;
 
         TextureHandle AddTexture(TextureSampler sampler) {
-            return scene.Textures().Add(TextureResource{
-                .texture = device.CreateTexture(
-                    RHITextureCreateDesc{.width = 4, .height = 4},
-                    "fake"
-                ),
-                .sampler = sampler
-            });
+            return scene.Textures().Add(
+                TextureResource{
+                    .texture = device.CreateTexture(
+                        RHITextureCreateDesc{.width = 4, .height = 4},
+                        "fake"
+                    ),
+                    .sampler = sampler
+                }
+            );
         }
 
         MaterialHandle AddMaterial(MaterialMaps maps) {
@@ -36,8 +38,12 @@ namespace
             return renderer.FramePush();
         }
 
-        MaterialData MaterialRow(const ScenePush& push, MaterialHandle handle) const {
-            const auto row = push.materialBase + scene.Materials().IndexOf(handle);
+        MaterialData MaterialRow(
+            const ScenePush& push,
+            MaterialHandle handle
+        ) const {
+            const auto row =
+                push.materialBase + scene.Materials().IndexOf(handle);
 
             return device.transient.Read<MaterialData>(
                 static_cast<u32>(row * sizeof(MaterialData))
@@ -45,9 +51,9 @@ namespace
         }
 
         TextureData TextureRow(const ScenePush& push, u32 mapID) const {
-            return device.transient.Read<TextureData>(
-                static_cast<u32>((push.textureBase + mapID - 1) * sizeof(TextureData))
-            );
+            return device.transient.Read<TextureData>(static_cast<u32>(
+                (push.textureBase + mapID - 1) * sizeof(TextureData)
+            ));
         }
     };
 }

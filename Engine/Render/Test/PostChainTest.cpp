@@ -64,7 +64,8 @@ namespace
         return PostPassDesc{
             .name = name,
             .fragmentShader =
-                {.path = "Engine/Render/Test/Post.slang", .entryPoint = "fs_main"},
+                {.path = "Engine/Render/Test/Post.slang",
+                 .entryPoint = "fs_main"},
             .output = output,
             .inputs = std::move(inputs)
         };
@@ -92,7 +93,8 @@ namespace
                     .depth = RHIPixelFormat::Unknown
                 })
             );
-        } catch(const std::invalid_argument& e) {
+        }
+        catch(const std::invalid_argument& e) {
             ADD_FAILURE() << "the walker refused the chain: " << e.what();
         }
     }
@@ -102,7 +104,8 @@ namespace
         try {
             appendPostChain(desc, SceneColor, post);
             ADD_FAILURE() << "accepted a list that should say: " << expected;
-        } catch(const std::invalid_argument& e) {
+        }
+        catch(const std::invalid_argument& e) {
             EXPECT_TRUE(StrView{e.what()}.contains(expected))
                 << e.what() << "\nexpected: " << expected;
         }
@@ -302,7 +305,8 @@ TEST(PostChain, AnOutputSizedApartFromSceneColorIsRefused) {
     try {
         appendPostChain(desc, SceneColor, post, View);
         ADD_FAILURE() << "accepted an output that should say: " << Expected;
-    } catch(const std::invalid_argument& e) {
+    }
+    catch(const std::invalid_argument& e) {
         EXPECT_TRUE(StrView{e.what()}.contains(Expected))
             << e.what() << "\nexpected: " << Expected;
     }

@@ -76,13 +76,14 @@ namespace Crowy
             if(topology == RHIPrimitiveTopology::TriangleList)
                 triangleCount += draw.geometry.indexCount / 3;
 
-            const auto key = order == DrawOrder::PipelineThenNearFirst ?
-                opaqueSortKey(
-                    runOfMaterial[draw.materialIndex],
-                    draw.depth,
-                    draw.identity
-                ) :
-                translucentSortKey(draw.depth, draw.identity);
+            const auto key =
+                order == DrawOrder::PipelineThenNearFirst
+                    ? opaqueSortKey(
+                          runOfMaterial[draw.materialIndex],
+                          draw.depth,
+                          draw.identity
+                      )
+                    : translucentSortKey(draw.depth, draw.identity);
             sorted.emplace_back(key, i);
         }
         std::ranges::sort(sorted);
@@ -149,9 +150,8 @@ namespace Crowy
 
         // one descriptor spans the whole transient buffer; the base index is
         // what points the shader at this list's rows inside it
-        frame.draws = rows.empty() ?
-            0 :
-            rowSlice.buffer->GetReadableID(drawStride);
+        frame.draws =
+            rows.empty() ? 0 : rowSlice.buffer->GetReadableID(drawStride);
         frame.drawBase = rows.empty() ? 0 : rowSlice.offset / drawStride;
 
         return frame;
@@ -172,7 +172,7 @@ namespace Crowy
                     .pso = run.pso,
                     .args = argsSlice.buffer,
                     .argsOffset = argsSlice.offset +
-                        run.firstDraw * sizeof(RHIDrawIndexedArgs),
+                                  run.firstDraw * sizeof(RHIDrawIndexedArgs),
                     .drawCount = run.drawCount,
                     .indices = indices
                 }

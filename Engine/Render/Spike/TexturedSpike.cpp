@@ -21,7 +21,8 @@ namespace Crowy
     //   - a quad sampling the middle quarter of a 256 x 256 gradient grid
     //     through the material's UV scale and offset, linearly filtered
     //   - a black quad whose emission is one palette cell
-    //   - two floor tiles in a floating plate's shadow: the left receives it and
+    //   - two floor tiles in a floating plate's shadow: the left receives it
+    //   and
     //     goes dark, the right refuses it (MaterialFlags::NoShadowReceive)
     //     and stays as lit as the floor in the sun
     //   - a translucent card whose texel alpha steps 1/4, 1/2, 3/4, 1: four
@@ -52,7 +53,10 @@ namespace Crowy
 
     public:
         TexturedSpike()
-            : RenderApp(makeConfig(), std::make_unique<FlyCamera>(makeCamera())) {}
+            : RenderApp(
+                  makeConfig(),
+                  std::make_unique<FlyCamera>(makeCamera())
+              ) {}
 
     protected:
         void OnBuildGeometry(GeometryPool& pool) override {
@@ -110,76 +114,140 @@ namespace Crowy
                 }
             );
 
-            const auto plain = addMaterial(scene, MaterialResource{
-                .data = {.albedo = {0.6f, 0.6f, 0.6f}, .roughness = 0.9f},
-                .pipeline = opaquePipeline()
-            });
-            add(scene, plain, floorPlane, {0.0f, 0.0f, 2.0f}, {4.0f, 0.001f, 4.0f});
+            const auto plain = addMaterial(
+                scene,
+                MaterialResource{
+                    .data = {.albedo = {0.6f, 0.6f, 0.6f}, .roughness = 0.9f},
+                    .pipeline = opaquePipeline()
+                }
+            );
+            add(scene,
+                plain,
+                floorPlane,
+                {0.0f, 0.0f, 2.0f},
+                {4.0f, 0.001f, 4.0f});
 
-            const auto paletteBox = addMaterial(scene, MaterialResource{
-                .data = {.roughness = 0.9f},
-                .pipeline = opaquePipeline(),
-                .maps = {.albedo = palette}
-            });
-            add(scene, paletteBox, box, {-1.6f, 0.5f, 1.0f}, ones() * 0.5f, 1.0f);
+            const auto paletteBox = addMaterial(
+                scene,
+                MaterialResource{
+                    .data = {.roughness = 0.9f},
+                    .pipeline = opaquePipeline(),
+                    .maps = {.albedo = palette}
+                }
+            );
+            add(scene,
+                paletteBox,
+                box,
+                {-1.6f, 0.5f, 1.0f},
+                ones() * 0.5f,
+                1.0f);
 
             // the grid's middle quarter
-            const auto atlas = addMaterial(scene, MaterialResource{
-                .data = {
-                    .roughness = 0.9f,
-                    .uvScaleOffset = {0.5f, 0.5f, 0.25f, 0.25f}
-                },
-                .pipeline = opaquePipeline(),
-                .maps = {.albedo = grid}
-            });
+            const auto atlas = addMaterial(
+                scene,
+                MaterialResource{
+                    .data =
+                        {.roughness = 0.9f,
+                         .uvScaleOffset = {0.5f, 0.5f, 0.25f, 0.25f}},
+                    .pipeline = opaquePipeline(),
+                    .maps = {.albedo = grid}
+                }
+            );
             add(scene, atlas, card, {1.5f, 1.2f, 1.6f}, {0.5f, 0.5f, 0.0f});
 
             // the palette's cell (1, 2), lit by nothing but itself
-            const auto glow = addMaterial(scene, MaterialResource{
-                .data = {
-                    .albedo = zeros(),
-                    .emissive = ones(),
-                    .uvScaleOffset = {0.0f, 0.0f, 1.25f / PaletteSize, 2.25f / PaletteSize}
-                },
-                .pipeline = opaquePipeline(),
-                .maps = {.emissive = palette}
-            });
-            add(scene, glow, card, {0.0f, 1.55f, 2.6f}, {0.5f, 0.5f, 0.0f}, 0.6f);
+            const auto glow = addMaterial(
+                scene,
+                MaterialResource{
+                    .data =
+                        {.albedo = zeros(),
+                         .emissive = ones(),
+                         .uvScaleOffset =
+                             {0.0f,
+                              0.0f,
+                              1.25f / PaletteSize,
+                              2.25f / PaletteSize}},
+                    .pipeline = opaquePipeline(),
+                    .maps = {.emissive = palette}
+                }
+            );
+            add(scene,
+                glow,
+                card,
+                {0.0f, 1.55f, 2.6f},
+                {0.5f, 0.5f, 0.0f},
+                0.6f);
 
             // the plate whose shadow covers both tiles, high enough for the
             // camera to look under it
-            add(scene, plain, box, {0.0f, 1.2f, 1.0f}, {0.5f, 0.5f, 0.5f}, 1.0f, {1.6f, 0.05f, 0.8f});
+            add(scene,
+                plain,
+                box,
+                {0.0f, 1.2f, 1.0f},
+                {0.5f, 0.5f, 0.5f},
+                1.0f,
+                {1.6f, 0.05f, 0.8f});
 
-            const auto receives = addMaterial(scene, MaterialResource{
-                .data = {.albedo = {0.9f, 0.85f, 0.7f}, .roughness = 0.9f},
-                .pipeline = opaquePipeline()
-            });
-            add(scene, receives, tile, {-0.35f, 0.002f, 1.7f}, {0.25f, 0.001f, 0.25f});
+            const auto receives = addMaterial(
+                scene,
+                MaterialResource{
+                    .data = {.albedo = {0.9f, 0.85f, 0.7f}, .roughness = 0.9f},
+                    .pipeline = opaquePipeline()
+                }
+            );
+            add(scene,
+                receives,
+                tile,
+                {-0.35f, 0.002f, 1.7f},
+                {0.25f, 0.001f, 0.25f});
 
-            const auto refuses = addMaterial(scene, MaterialResource{
-                .data = {
-                    .albedo = {0.9f, 0.85f, 0.7f},
-                    .roughness = 0.9f,
-                    .flags = static_cast<u32>(MaterialFlags::NoShadowReceive)
-                },
-                .pipeline = opaquePipeline()
-            });
-            add(scene, refuses, tile, {0.35f, 0.002f, 1.7f}, {0.25f, 0.001f, 0.25f});
+            const auto refuses = addMaterial(
+                scene,
+                MaterialResource{
+                    .data =
+                        {.albedo = {0.9f, 0.85f, 0.7f},
+                         .roughness = 0.9f,
+                         .flags =
+                             static_cast<u32>(MaterialFlags::NoShadowReceive)},
+                    .pipeline = opaquePipeline()
+                }
+            );
+            add(scene,
+                refuses,
+                tile,
+                {0.35f, 0.002f, 1.7f},
+                {0.25f, 0.001f, 0.25f});
 
-            const auto veil = addMaterial(scene, MaterialResource{
-                .data = {.roughness = 0.9f},
-                .pipeline = translucentPipeline(),
-                .maps = {.albedo = strip}
-            });
-            add(scene, veil, card, {0.7f, 0.3f, 0.4f}, {0.5f, 0.5f, 0.0f}, 0.5f);
+            const auto veil = addMaterial(
+                scene,
+                MaterialResource{
+                    .data = {.roughness = 0.9f},
+                    .pipeline = translucentPipeline(),
+                    .maps = {.albedo = strip}
+                }
+            );
+            add(scene,
+                veil,
+                card,
+                {0.7f, 0.3f, 0.4f},
+                {0.5f, 0.5f, 0.0f},
+                0.5f);
 
             // the middle's alpha of 1/2 is cut only because the row says 0.6
-            const auto stencil = addMaterial(scene, MaterialResource{
-                .data = {.roughness = 0.9f, .alphaCutoff = 0.6f},
-                .pipeline = maskedPipeline(),
-                .maps = {.albedo = frame}
-            });
-            add(scene, stencil, card, {0.9f, 0.55f, -0.4f}, {0.5f, 0.5f, 0.0f}, 0.4f);
+            const auto stencil = addMaterial(
+                scene,
+                MaterialResource{
+                    .data = {.roughness = 0.9f, .alphaCutoff = 0.6f},
+                    .pipeline = maskedPipeline(),
+                    .maps = {.albedo = frame}
+                }
+            );
+            add(scene,
+                stencil,
+                card,
+                {0.9f, 0.55f, -0.4f},
+                {0.5f, 0.5f, 0.0f},
+                0.4f);
         }
 
     private:
@@ -205,11 +273,14 @@ namespace Crowy
         }
 
         static MaterialPipelineDesc opaquePipeline() {
-            constexpr CStr StandardForward = "Engine/Render/Shader/StandardForward.slang";
+            constexpr CStr StandardForward =
+                "Engine/Render/Shader/StandardForward.slang";
 
             return MaterialPipelineDesc{
-                .vertexShader = {.path = StandardForward, .entryPoint = "vs_main"},
-                .fragmentShader = {.path = StandardForward, .entryPoint = "fs_opaque"},
+                .vertexShader =
+                    {.path = StandardForward, .entryPoint = "vs_main"},
+                .fragmentShader =
+                    {.path = StandardForward, .entryPoint = "fs_opaque"},
                 .rasterizer = {.frontCounterClockwise = false},
                 .profile = "sm_6_8"
             };
@@ -237,7 +308,10 @@ namespace Crowy
         static MaterialPipelineDesc maskedPipeline() {
             auto pipeline = opaquePipeline();
             pipeline.fragmentShader.entryPoint = "fs_masked";
-            pipeline.maskShader = {.path = pipeline.fragmentShader.path, .entryPoint = "fs_masked_depth"};
+            pipeline.maskShader = {
+                .path = pipeline.fragmentShader.path,
+                .entryPoint = "fs_masked_depth"
+            };
             pipeline.domain = MaterialDomain::Masked;
 
             return pipeline;
@@ -245,12 +319,25 @@ namespace Crowy
 
         // sixteen colors far apart, row-major from the top-left
         static std::vector<Texel> paletteTexels() {
-            static constexpr std::array<Texel, PaletteSize * PaletteSize> Colors{{
-                {230, 25, 75}, {60, 180, 75}, {255, 225, 25}, {0, 130, 200},
-                {245, 130, 48}, {145, 30, 180}, {70, 240, 240}, {240, 50, 230},
-                {210, 245, 60}, {250, 190, 212}, {0, 128, 128}, {220, 190, 255},
-                {170, 110, 40}, {255, 250, 200}, {128, 0, 0}, {255, 255, 255},
-            }};
+            static constexpr std::array<Texel, PaletteSize * PaletteSize>
+                Colors{{
+                    {230, 25, 75},
+                    {60, 180, 75},
+                    {255, 225, 25},
+                    {0, 130, 200},
+                    {245, 130, 48},
+                    {145, 30, 180},
+                    {70, 240, 240},
+                    {240, 50, 230},
+                    {210, 245, 60},
+                    {250, 190, 212},
+                    {0, 128, 128},
+                    {220, 190, 255},
+                    {170, 110, 40},
+                    {255, 250, 200},
+                    {128, 0, 0},
+                    {255, 255, 255},
+                }};
 
             return {Colors.begin(), Colors.end()};
         }
@@ -262,7 +349,8 @@ namespace Crowy
             std::vector<Texel> texels(GridSize * GridSize);
             for(u32 y = 0; y < GridSize; ++y) {
                 for(u32 x = 0; x < GridSize; ++x) {
-                    const bool dark = ((x / GridCell) + (y / GridCell)) % 2 == 1;
+                    const bool dark =
+                        ((x / GridCell) + (y / GridCell)) % 2 == 1;
                     const auto shade = dark ? 0.5f : 1.0f;
                     texels[y * GridSize + x] = Texel{
                         .r = static_cast<u8>(shade * static_cast<f32>(x)),
@@ -279,7 +367,14 @@ namespace Crowy
         static std::vector<Texel> stripTexels() {
             std::vector<Texel> texels;
             for(u32 i = 1; i <= StripSize; ++i)
-                texels.push_back(Texel{.r = 230, .g = 25, .b = 75, .a = static_cast<u8>(i * 255 / StripSize)});
+                texels.push_back(
+                    Texel{
+                        .r = 230,
+                        .g = 25,
+                        .b = 75,
+                        .a = static_cast<u8>(i * 255 / StripSize)
+                    }
+                );
 
             return texels;
         }
@@ -291,14 +386,29 @@ namespace Crowy
             constexpr Texel Half{.r = 255, .g = 0, .b = 255, .a = 128};
 
             return {
-                Frame, Frame, Frame, Frame,
-                Frame, Gone, Half, Frame,
-                Frame, Half, Gone, Frame,
-                Frame, Frame, Frame, Frame,
+                Frame,
+                Frame,
+                Frame,
+                Frame,
+                Frame,
+                Gone,
+                Half,
+                Frame,
+                Frame,
+                Half,
+                Gone,
+                Frame,
+                Frame,
+                Frame,
+                Frame,
+                Frame,
             };
         }
 
-        static MaterialHandle addMaterial(RenderScene& scene, MaterialResource material) {
+        static MaterialHandle addMaterial(
+            RenderScene& scene,
+            MaterialResource material
+        ) {
             return scene.Materials().Add(std::move(material));
         }
 
@@ -316,7 +426,8 @@ namespace Crowy
             const AABB3D local{.center = zeros(), .halfScale = localHalf};
             const auto mesh = scene.Meshes().Add(
                 MeshResource{
-                    .subMeshes = {SubMesh{.geometry = geometry, .localBounds = local}},
+                    .subMeshes =
+                        {SubMesh{.geometry = geometry, .localBounds = local}},
                     .materials = {material},
                     .localBounds = local
                 }
@@ -348,13 +459,21 @@ namespace Crowy
             scene.Primitives().Add(
                 PrimitiveSnapshot{
                     .localToWorld = translateMat(position) * scaleMat(stretch),
-                    .worldBounds = AABB3D{.center = position, .halfScale = localHalf * stretch},
+                    .worldBounds =
+                        AABB3D{
+                            .center = position,
+                            .halfScale = localHalf * stretch
+                        },
                     .mesh = mesh
                 }
             );
         }
 
-        RHITextureRAII makeTexture(const std::vector<Texel>& texels, u32 width, u32 height = 0) {
+        RHITextureRAII makeTexture(
+            const std::vector<Texel>& texels,
+            u32 width,
+            u32 height = 0
+        ) {
             const std::array initial{RHISubresourceData{
                 .data = texels.data(),
                 .rowPitch = width * sizeof(Texel)

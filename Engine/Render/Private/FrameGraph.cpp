@@ -35,10 +35,7 @@ namespace Crowy
         // FullscreenPush's handles: source, then input0..2
         constexpr usize FullscreenReadCount = 4;
 
-        FrameTargetSize sizeOf(
-            const FrameGraphDesc& desc,
-            FrameTargetID id
-        ) {
+        FrameTargetSize sizeOf(const FrameGraphDesc& desc, FrameTargetID id) {
             if(id == BackBufferTarget)
                 return BackBufferExtent;
 
@@ -481,12 +478,13 @@ namespace Crowy
                     mesh->drawCapacity
                 );
                 viewCount = std::max(viewCount, mesh->view + 1);
-            } else if(const auto* fullscreen =
-                          std::get_if<FullscreenPassDesc>(&pass.kind)) {
-                compiled.fullscreenDesc = fullscreenPipelineDesc(
-                    *fullscreen,
-                    compiled.colorFormats
-                );
+            }
+            else if(
+                const auto* fullscreen =
+                    std::get_if<FullscreenPassDesc>(&pass.kind)
+            ) {
+                compiled.fullscreenDesc =
+                    fullscreenPipelineDesc(*fullscreen, compiled.colorFormats);
             }
 
             stats[i].name = pass.name;
@@ -534,7 +532,8 @@ namespace Crowy
                         .after = RHIResourceUsage::Present
                     }
                 );
-            } else {
+            }
+            else {
                 passes[first.pass].acquires.push_back(
                     CompiledBarrier{
                         .target = id,
@@ -582,11 +581,7 @@ namespace Crowy
         ResizeExtent(BackBufferExtent, width, height);
     }
 
-    void FrameGraph::ResizeExtent(
-        FrameExtentID extent,
-        u32 width,
-        u32 height
-    ) {
+    void FrameGraph::ResizeExtent(FrameExtentID extent, u32 width, u32 height) {
         CROWY_ASSERT(extent < extentSizes.size(), "the extent is known");
         auto& size = extentSizes[extent];
         if(size.x == width && size.y == height)
@@ -814,7 +809,8 @@ namespace Crowy
                 else
                     cmdList.SetPushGraphicsConstants(push);
                 list.Submit(cmdList, inputs.indices);
-            } else if(hook != nullptr) {
+            }
+            else if(hook != nullptr) {
                 renderer.BindView(cmdList, ViewConstantBufferSlot, 0);
                 readScratch.clear();
                 for(const auto read: pass.reads) {
@@ -834,7 +830,8 @@ namespace Crowy
                         .reads = readScratch
                     }
                 );
-            } else if(
+            }
+            else if(
                 const auto* fullscreen =
                     std::get_if<FullscreenPassDesc>(&pass.kind)
             ) {

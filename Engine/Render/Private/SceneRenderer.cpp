@@ -32,8 +32,8 @@ namespace Crowy
             LightData row{
                 .position = light.position,
                 .direction = normSquared(light.direction) < MinDirectionSquared
-                    ? -unitY()
-                    : normalize(light.direction),
+                                 ? -unitY()
+                                 : normalize(light.direction),
                 .kind = light.kind,
                 .color = light.intensity * light.color
             };
@@ -113,8 +113,8 @@ namespace Crowy
         // 1 + the texture's row this frame, 0 for none or a removed one
         const auto mapID = [&](TextureHandle handle) {
             return textures.IsValid(handle)
-                ? static_cast<u32>(textures.IndexOf(handle) + 1)
-                : 0u;
+                       ? static_cast<u32>(textures.IndexOf(handle) + 1)
+                       : 0u;
         };
 
         materialScratch.clear();
@@ -126,10 +126,12 @@ namespace Crowy
 
         textureScratch.clear();
         for(const auto& texture: textures.All()) {
-            textureScratch.push_back(TextureData{
-                .texture = texture.texture->GetReadableID(),
-                .sampler = static_cast<u32>(texture.sampler)
-            });
+            textureScratch.push_back(
+                TextureData{
+                    .texture = texture.texture->GetReadableID(),
+                    .sampler = static_cast<u32>(texture.sampler)
+                }
+            );
         }
 
         // the first enabled directional light that casts, if any
@@ -144,7 +146,8 @@ namespace Crowy
                 if(caster == nullptr && light.kind == LightKind::Directional) {
                     caster = &light;
                     casterRow = lightScratch.size();
-                } else if(!loggedUnservedShadow) {
+                }
+                else if(!loggedUnservedShadow) {
                     loggedUnservedShadow = true;
                     LOG_WARN(
                         "only the first shadow-casting directional light "
@@ -290,10 +293,8 @@ namespace Crowy
                 static_cast<u32>(sizeof(LightData))
             );
         }
-        viewSlice = device.UploadTransient(
-            std::span<const ViewData>(views),
-            CbAlign
-        );
+        viewSlice =
+            device.UploadTransient(std::span<const ViewData>(views), CbAlign);
 
         uploaded = true;
     }
@@ -311,25 +312,24 @@ namespace Crowy
         // one descriptor spans the whole transient buffer; the base index is
         // what points the shader at this frame's rows inside it
         return ScenePush{
-            .materials = materialScratch.empty() ?
-                0 :
-                materialSlice.buffer->GetReadableID(materialStride),
-            .materialBase = materialScratch.empty() ?
-                0 :
-                materialSlice.offset / materialStride,
-            .lights = lightScratch.empty() ?
-                0 :
-                lightSlice.buffer->GetReadableID(lightStride),
-            .lightBase = lightScratch.empty() ?
-                0 :
-                lightSlice.offset / lightStride,
+            .materials =
+                materialScratch.empty()
+                    ? 0
+                    : materialSlice.buffer->GetReadableID(materialStride),
+            .materialBase = materialScratch.empty()
+                                ? 0
+                                : materialSlice.offset / materialStride,
+            .lights = lightScratch.empty()
+                          ? 0
+                          : lightSlice.buffer->GetReadableID(lightStride),
+            .lightBase =
+                lightScratch.empty() ? 0 : lightSlice.offset / lightStride,
             .lightCount = static_cast<u32>(lightScratch.size()),
-            .textures = textureScratch.empty() ?
-                0 :
-                textureSlice.buffer->GetReadableID(textureStride),
-            .textureBase = textureScratch.empty() ?
-                0 :
-                textureSlice.offset / textureStride
+            .textures = textureScratch.empty()
+                            ? 0
+                            : textureSlice.buffer->GetReadableID(textureStride),
+            .textureBase =
+                textureScratch.empty() ? 0 : textureSlice.offset / textureStride
         };
     }
 

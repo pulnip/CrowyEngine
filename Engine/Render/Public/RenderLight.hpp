@@ -76,8 +76,9 @@ namespace Crowy
         Vec3 groundAmbient = zeros();
     };
 
-    // One light as the shaders read it, mirrored in Engine/Shader/SceneData.slang.
-    // Each Vec3 is followed by a 4-byte scalar, as in MaterialData.
+    // One light as the shaders read it, mirrored in
+    // Engine/Shader/SceneData.slang. Each Vec3 is followed by a 4-byte scalar,
+    // as in MaterialData.
     struct LightData {
         // world to the shadow view's clip space; identity when unshadowed
         Mat4 worldToShadow = unitMat();

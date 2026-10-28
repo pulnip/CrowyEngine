@@ -7,9 +7,7 @@
 
 namespace Crowy
 {
-    FrameGraphDesc describeStandardFrame(
-        const StandardFrameConfig& config
-    ) {
+    FrameGraphDesc describeStandardFrame(const StandardFrameConfig& config) {
         // targets[i] is ID i + 1: SceneDepth stays 1, which VertexPullSpike
         // names
         constexpr FrameTargetID SceneDepth = 1;
@@ -194,7 +192,7 @@ namespace Crowy
                 .renderTargets = {RHIRenderTargetBlendState{
                     .writeMask = RHIColorWriteMask::EnableColor
                 }}
-        };
+            };
         desc.passes.push_back(
             PassDesc{
                 .name = "UI",

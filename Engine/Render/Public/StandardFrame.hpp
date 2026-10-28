@@ -15,9 +15,7 @@ namespace Crowy
     // the extent and the target a scene view draws into
     inline constexpr StrView SceneViewName = "SceneView";
 
-    FrameGraphDesc describeStandardFrame(
-        const StandardFrameConfig& config
-    );
+    FrameGraphDesc describeStandardFrame(const StandardFrameConfig& config);
 
     struct StandardFrameConfig {
         RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;

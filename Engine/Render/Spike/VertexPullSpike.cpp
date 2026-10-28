@@ -13,8 +13,8 @@
 namespace Crowy
 {
     // Regression check for the shared-pool vertex pulling contract, described
-    // in full in Engine/Render/Spike/VertexPullSpike.slang: a mesh's pool offset
-    // reaches the shader through DrawData::vbIndex, because SV_VertexID
+    // in full in Engine/Render/Spike/VertexPullSpike.slang: a mesh's pool
+    // offset reaches the shader through DrawData::vbIndex, because SV_VertexID
     // carries the draw's baseVertex on Metal and not on D3D12.
     //
     // Four polygons of 3, 4, 5 and 6 sides, so only the first allocation
@@ -210,8 +210,7 @@ namespace Crowy
         }
 
         static constexpr Vec3 slotPosition(u32 slot) {
-            const auto offset =
-                static_cast<f32>(slot) - (SlotCount - 1) * 0.5f;
+            const auto offset = static_cast<f32>(slot) - (SlotCount - 1) * 0.5f;
 
             return Vec3{offset * SlotSpacing, 0.0f, 0.0f};
         }

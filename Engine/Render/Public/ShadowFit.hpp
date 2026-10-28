@@ -46,7 +46,8 @@ namespace Crowy
                 (corner & 4u) != 0 ? 1.0f : -1.0f
             };
             const auto p = static_cast<Vec3>(
-                lightView * toVec4(bounds.center + side * bounds.halfScale, 1.0f)
+                lightView *
+                toVec4(bounds.center + side * bounds.halfScale, 1.0f)
             );
             for(usize i = 0; i < 3; ++i) {
                 low[i] = std::min(low[i], p[i]);
@@ -66,7 +67,8 @@ namespace Crowy
 
         return DirectionalShadowFit{
             .worldToShadow = orthographic(extent, extent, nearZ, farZ) *
-                translateMat({-centre.x, -centre.y, 0.0f}) * lightView,
+                             translateMat({-centre.x, -centre.y, 0.0f}) *
+                             lightView,
             .texelSize = texelSize,
             .nearZ = nearZ,
             .farZ = farZ

@@ -85,10 +85,12 @@ TEST(PipelineCache, RebuildKeepsTheOldStatesWhenOneFails) {
     try {
         cache.Rebuild();
         FAIL() << "Rebuild did not throw";
-    } catch(const std::runtime_error& e) {
+    }
+    catch(const std::runtime_error& e) {
         EXPECT_STREQ(
             e.what(),
-            "Engine/Shader/X.slang (vs_main, fs_main) + Engine/Shader/PBR.slang: "
+            "Engine/Shader/X.slang (vs_main, fs_main) + "
+            "Engine/Shader/PBR.slang: "
             "fake compile error"
         );
     }
@@ -228,7 +230,8 @@ TEST(PipelineCache, RebuildNamesTheLinkedModule) {
     try {
         cache.Rebuild();
         FAIL() << "Rebuild did not throw";
-    } catch(const std::runtime_error& e) {
+    }
+    catch(const std::runtime_error& e) {
         EXPECT_STREQ(
             e.what(),
             "Engine/Shader/X.slang (vs_main, fs_main) + "
