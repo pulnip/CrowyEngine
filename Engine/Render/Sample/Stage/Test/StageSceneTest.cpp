@@ -303,6 +303,15 @@ TEST(StageReload, AFileTheSwapCannotBuildNeedsARestart) {
     moreQuads.quads.push_back(moreQuads.quads.front());
     moreQuads.quads.back().name = "sign-b";
     expectRestart(stage, moreQuads, {"reserved"});
+
+    auto strayedSlot = stage;
+    strayedSlot.models[1].slots[0].material = "Chalk";
+    EXPECT_THAT(
+        [&] { checkStageReload(strayedSlot, strayedSlot.document); },
+        testing::ThrowsMessage<std::runtime_error>(
+            testing::HasSubstr("'Chalk', which the file does not hold")
+        )
+    );
 }
 
 TEST(StageReload, ModelsLeftOutOrReorderedPass) {

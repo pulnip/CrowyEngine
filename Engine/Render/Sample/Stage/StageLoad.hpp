@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <map>
 #include <optional>
+#include <set>
 #include <vector>
 
 #include "ImageLoader.hpp"
@@ -13,6 +14,7 @@
 namespace Crowy
 {
     struct LoadedStage;
+    struct StageMaterialPlan;
     struct StageReload;
 
     using StageImages = std::map<Str, ImageData>;
@@ -52,11 +54,27 @@ namespace Crowy
     );
 
     // the palette, the emissive palette per channel in use, one per quad
+    // throws std::runtime_error when a model draws with a material the file
+    // does not hold, or with none that does not glow
+    StageMaterialPlan planStageMaterials(
+        const StageDocument& document,
+        const StageModels& table,
+        const StageModelData& models
+    );
     u32 countStageMaterials(const LoadedStage& stage);
     u32 countStageDraws(const LoadedStage& stage);
     // a unit square facing +Z, u along -X and v down: the contract's corner
     // for (u0, v0) is its front's top-left
     MeshData makeStageUnitQuad();
+
+    // the palette, then an emissive palette per channel
+    struct StageMaterialPlan {
+        const StageMaterial* palette = nullptr;
+        // parallel to the model table
+        std::vector<bool> glowingModels;
+        // the channels a glowing model's instances name
+        std::set<Str> channels;
+    };
 
     // what the renderer must reserve before the stage is built
     struct StageCapacities {

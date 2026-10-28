@@ -55,28 +55,20 @@ namespace Crowy
             const StageDocument& document,
             StrView id
         ) {
-            return *std::ranges::find(
-                document.materials,
-                id,
-                &StageMaterial::id
-            );
+            const auto found =
+                std::ranges::find(document.materials, id, &StageMaterial::id);
+            if(found == document.materials.end())
+                throw std::runtime_error(
+                    std::format("stage: no material '{}' in the file", id)
+                );
+
+            return *found;
         }
 
         usize modelIndex(const StageDocument& document, StrView id) {
             return static_cast<usize>(
                 std::ranges::find(document.models, id, &StageModel::id) -
                 document.models.begin()
-            );
-        }
-
-        // whether a slot draws with a material that glows
-        bool glows(const LoadedStage& stage, usize model) {
-            return std::ranges::any_of(
-                stage.models[model].slots,
-                [&](const ModelSlot& slot) {
-                    return materialNamed(stage.document, slot.material)
-                        .emissive;
-                }
             );
         }
 
@@ -116,6 +108,7 @@ namespace Crowy
             const LoadedStage& stage,
             const StageGeometry& geometry,
             const StageBindings& bindings,
+            const StageMaterialPlan& plan,
             MeshCache& cache,
             usize model,
             StrView channel
@@ -123,7 +116,7 @@ namespace Crowy
             const auto& data = stage.models[model];
             const MeshKey key{
                 model,
-                glows(stage, model) ? Str(channel) : Str{}
+                plan.glowingModels[model] ? Str(channel) : Str{}
             };
             if(const auto found = cache.find(key); found != cache.end())
                 return found->second;
@@ -280,21 +273,10 @@ namespace Crowy
         const auto& document = stage.document;
         StageBindings bindings;
 
-        // every material row before any mesh names one; the palette is the
-        // models' material that does not glow
-        const StageMaterial* paletteRow = nullptr;
-        for(const auto& model: document.models) {
-            for(const auto& id: model.materials) {
-                const auto& row = materialNamed(document, id);
-                if(!row.emissive && paletteRow == nullptr)
-                    paletteRow = &row;
-            }
-        }
-        if(paletteRow == nullptr)
-            throw std::runtime_error(
-                "stage: no model draws with a material that does not glow"
-            );
-        const auto paletteTexture = textures.at(paletteRow->texture);
+        // every material row before any mesh names one
+        const auto plan =
+            planStageMaterials(document, document.models, stage.models);
+        const auto paletteTexture = textures.at(plan.palette->texture);
         bindings.palette = scene.Materials().Add(
             MaterialResource{
                 .data = {.albedo = ones(), .roughness = StageRoughness},
@@ -302,14 +284,9 @@ namespace Crowy
                 .maps = {.albedo = paletteTexture}
             }
         );
-        // a row per channel a glowing model's instance names, as
-        // countStageMaterials counts
-        for(const auto& instance: document.instances) {
-            if(!glows(stage, modelIndex(document, instance.model)) ||
-               bindings.emissivePalettes.contains(instance.emissiveChannel))
-                continue;
+        for(const auto& channel: plan.channels) {
             bindings.emissivePalettes.emplace(
-                instance.emissiveChannel,
+                channel,
                 scene.Materials().Add(
                     MaterialResource{
                         .data = {.albedo = ones(), .roughness = StageRoughness},
@@ -335,6 +312,7 @@ namespace Crowy
                 stage,
                 geometry,
                 bindings,
+                plan,
                 meshes,
                 model,
                 instance.emissiveChannel

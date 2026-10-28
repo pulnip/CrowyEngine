@@ -54,30 +54,10 @@ namespace Crowy
 
         u32 countMaterials(
             const StageDocument& document,
-            const StageModels& table,
-            const StageModelData& models
+            const StageMaterialPlan& plan
         ) {
-            const auto emissive = [&](const ModelSlot& slot) {
-                const auto material = std::ranges::find(
-                    document.materials,
-                    slot.material,
-                    &StageMaterial::id
-                );
-                return material != document.materials.end() &&
-                       material->emissive;
-            };
-
-            std::set<Str> channels;
-            for(const auto& instance: document.instances) {
-                if(std::ranges::any_of(
-                       modelOf(table, models, instance.model).slots,
-                       emissive
-                   ))
-                    channels.insert(instance.emissiveChannel);
-            }
-
             return static_cast<u32>(
-                1 + channels.size() + document.quads.size()
+                1 + plan.channels.size() + document.quads.size()
             );
         }
 
@@ -262,36 +242,10 @@ namespace Crowy
             }
         }
 
-        // the swap populates the file over the launch's model table: every
-        // material that table names, a palette, and what the launch reserved
-        bool palette = false;
-        for(const auto& row: models) {
-            for(const auto& id: row.materials) {
-                const auto material = std::ranges::find(
-                    document.materials,
-                    id,
-                    &StageMaterial::id
-                );
-                if(material == document.materials.end()) {
-                    throw std::runtime_error(
-                        std::format(
-                            "stage: model '{}' draws with material '{}', which "
-                            "the file no longer holds; a restart loads it",
-                            row.id,
-                            id
-                        )
-                    );
-                }
-                palette = palette || !material->emissive;
-            }
-        }
-        if(!palette)
-            throw std::runtime_error(
-                "stage: no model draws with a material that does not glow"
-            );
-
-        const auto materials =
-            countMaterials(document, models, launched.models);
+        // the swap populates the file over the launch's model table, within
+        // what the launch reserved
+        const auto plan = planStageMaterials(document, models, launched.models);
+        const auto materials = countMaterials(document, plan);
         const auto draws = countDraws(document, models, launched.models);
         const auto& reserved = launched.capacities;
         if(materials > reserved.materials || draws > reserved.draws) {
@@ -327,11 +281,78 @@ namespace Crowy
         };
     }
 
+    StageMaterialPlan planStageMaterials(
+        const StageDocument& document,
+        const StageModels& table,
+        const StageModelData& models
+    ) {
+        const auto materialNamed = [&](StrView id) {
+            return std::ranges::find(
+                document.materials,
+                id,
+                &StageMaterial::id
+            );
+        };
+
+        StageMaterialPlan plan;
+        for(const auto& row: table) {
+            for(const auto& id: row.materials) {
+                const auto material = materialNamed(id);
+                if(material == document.materials.end()) {
+                    throw std::runtime_error(
+                        std::format(
+                            "stage: model '{}' draws with material '{}', which "
+                            "the file no longer holds; a restart loads it",
+                            row.id,
+                            id
+                        )
+                    );
+                }
+                if(!material->emissive && plan.palette == nullptr)
+                    plan.palette = &*material;
+            }
+        }
+        if(plan.palette == nullptr)
+            throw std::runtime_error(
+                "stage: no model draws with a material that does not glow"
+            );
+
+        for(usize i = 0; i < table.size(); ++i) {
+            bool glows = false;
+            for(const auto& slot: models[i].slots) {
+                const auto material = materialNamed(slot.material);
+                if(material == document.materials.end()) {
+                    throw std::runtime_error(
+                        std::format(
+                            "stage: model '{}' has a slot drawing with "
+                            "material '{}', which the file does not hold",
+                            table[i].id,
+                            slot.material
+                        )
+                    );
+                }
+                glows = glows || material->emissive;
+            }
+            plan.glowingModels.push_back(glows);
+        }
+        for(const auto& instance: document.instances) {
+            const auto row =
+                std::ranges::find(table, instance.model, &StageModel::id);
+            if(plan.glowingModels[static_cast<usize>(row - table.begin())])
+                plan.channels.insert(instance.emissiveChannel);
+        }
+
+        return plan;
+    }
+
     u32 countStageMaterials(const LoadedStage& stage) {
         return countMaterials(
             stage.document,
-            stage.document.models,
-            stage.models
+            planStageMaterials(
+                stage.document,
+                stage.document.models,
+                stage.models
+            )
         );
     }
 
