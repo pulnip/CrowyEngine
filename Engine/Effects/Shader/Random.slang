@@ -16,7 +16,6 @@ uint effectHash(uint seed, uint slot, uint generation, uint k) {
     return pcgHash(seed ^ pcgHash(slot ^ pcgHash(generation ^ pcgHash(k))));
 }
 
-// effectHash's top 24 bits as a uniform in [0, 1)
 float effectRandom(uint seed, uint slot, uint generation, uint k) {
     return float(effectHash(seed, slot, generation, k) >> 8u) *
            (1.0 / 16777216.0);

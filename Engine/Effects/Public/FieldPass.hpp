@@ -18,7 +18,6 @@ namespace Crowy
     // groups of FieldClear's 64
     inline constexpr u32 MaxDispatchThreads = 65535u * 64u;
 
-    // the kernels every field pass shares
     class FieldKernels {
     private:
         ComputeKernel clear;
@@ -58,7 +57,6 @@ namespace Crowy
 
         // opens the pass; every field is written in it
         void Begin(FieldBuffers fields);
-        // zeroes every word of a field of this pass
         void Clear(FieldBuffer& field);
         // `touches`: the fields of this pass the kernel reads or writes
         template<typename Push>

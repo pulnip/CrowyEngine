@@ -32,8 +32,6 @@ namespace Crowy
             return state;
         }
 
-        // a strip per particle, depth-tested against the scene and never
-        // writing it
         RHIGraphicsPipelineStateDesc drawPipelineDesc(
             const ParticleEffectDesc& effect,
             const EffectDrawDesc& draw,

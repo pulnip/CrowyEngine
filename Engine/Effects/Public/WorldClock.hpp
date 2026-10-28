@@ -4,8 +4,8 @@
 
 #include "Primitives.hpp"
 
-// The CPU twin of Engine/Effects/Shader/WorldClock.slang: the world's steps of
-// 1/60 s, every periodic thing looping over LoopSteps.
+// The CPU twin of WorldClock.slang: the world's steps of 1/60 s, every
+// periodic thing looping over LoopSteps.
 namespace Crowy
 {
     // divides 2^32, so a step wrapped below 0 lands on the same phase

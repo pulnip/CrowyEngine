@@ -33,8 +33,7 @@
 namespace Crowy
 {
     // A night island whose effects draw in a hook pass before the glass,
-    // stepped by the World's fixed ticks; a frame capture runs a tick a
-    // frame, so frame 60 repeats.
+    // stepped by the World's fixed ticks.
     class Island final: public RenderApp {
         // the sky's draw: the camera's basis scaled to the frame, the moon
         struct SkyPush {
@@ -192,7 +191,6 @@ namespace Crowy
                     Transform{},
                     {282.0f, 0.4f, 282.0f},
                     PrimitiveFlags::Visible);
-            // the sea moves on the world's loop
             world.Add(
                 seaActor,
                 ScriptComponent{[seaMaterial](
@@ -425,8 +423,6 @@ namespace Crowy
             return axisAngle(axis, std::acos(dot(from, to)));
         }
 
-        // a triangle over the screen at the far plane, tested against the
-        // scene's depth and writing none
         static RHIGraphicsPipelineStateDesc skyPipelineDesc(
             const HookPassFormats& formats
         ) {
@@ -478,8 +474,6 @@ namespace Crowy
             return actor;
         }
 
-        // a cylinder mesh from `from` along `direction`, `length` long, under
-        // `parent`
         void addRod(
             RenderScene& scene,
             MaterialHandle material,
@@ -503,8 +497,6 @@ namespace Crowy
                 parent);
         }
 
-        // the unit box at `position` under `parent`, stretched along its
-        // faces by `scale`
         void addBox(
             RenderScene& scene,
             MaterialHandle material,

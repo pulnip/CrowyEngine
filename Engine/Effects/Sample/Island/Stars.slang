@@ -4,7 +4,6 @@
 #include "Effect.slang"
 #include "IslandScene.h"
 
-// what the desc's origin, size and params mean here
 float domeRadius() { return effect.size; }
 float lowestSine() { return effect.params[0].x; }
 float halfPixels() { return effect.params[0].y; }

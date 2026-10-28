@@ -5,7 +5,6 @@
 #include "IslandShapes.slang"
 #include "Weather.slang"
 
-// what the desc's origin, size and params mean here
 float3 discCenter() { return effect.origin.xyz; }
 float discRadius() { return effect.size; }
 float riseMin() { return effect.params[0].x; }

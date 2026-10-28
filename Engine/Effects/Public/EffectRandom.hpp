@@ -2,8 +2,8 @@
 
 #include "Primitives.hpp"
 
-// The CPU twin of Engine/Effects/Shader/Random.slang, bit for bit, so a check
-// can hold the GPU's draws against it.
+// The CPU twin of Random.slang, bit for bit, so a check can hold the GPU's
+// draws against it.
 namespace Crowy
 {
     // PCG's output permutation over 32 bits (Jarzynski and Olano, 2020)
@@ -21,7 +21,6 @@ namespace Crowy
         return pcgHash(seed ^ pcgHash(slot ^ pcgHash(generation ^ pcgHash(k))));
     }
 
-    // effectHash's top 24 bits as a uniform in [0, 1)
     inline constexpr f32 effectRandom(
         u32 seed,
         u32 slot,

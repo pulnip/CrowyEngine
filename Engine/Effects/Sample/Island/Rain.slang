@@ -6,7 +6,6 @@
 #include "Sea.slang"
 #include "Weather.slang"
 
-// what the desc's origin, size and params mean here
 float3 boxCenter() { return effect.origin.xyz; }
 float boxHalfHeight() { return effect.size; }
 float2 boxHalfExtent() { return effect.params[0].xy; }

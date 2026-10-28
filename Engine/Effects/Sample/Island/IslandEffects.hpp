@@ -88,8 +88,8 @@ namespace Crowy
         };
     }
 
-    // sparks off the flames' top, up the chimney and out of the smoke hole,
-    // two to five seconds each; the prewarm outlasts the longest
+    // sparks off the flames' top, up the chimney and out of the smoke hole;
+    // the prewarm outlasts the longest
     inline ParticleEffectDesc embersDesc() {
         return ParticleEffectDesc{
             .name = "embers",

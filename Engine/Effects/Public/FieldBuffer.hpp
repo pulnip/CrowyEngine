@@ -24,8 +24,6 @@ namespace Crowy
         ~FieldBuffer();
         CROWY_DECLARE_PINNED(FieldBuffer)
 
-        // throws std::invalid_argument for no elements, a stride that is not
-        // whole 32-bit words, or 4 GiB or more
         FieldBuffer(
             RHIDevice& device,
             u32 count,

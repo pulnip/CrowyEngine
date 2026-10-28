@@ -7,7 +7,6 @@
 
 namespace Crowy
 {
-    // one compute entry and its pipeline
     class ComputeKernel {
     private:
         RHIShaderDesc shader;

@@ -10,7 +10,7 @@
 #include "Primitives.hpp"
 
 // A particle effect is one .slang file and one ParticleEffectDesc; what the
-// GPU reads is mirrored from Engine/Effects/Shader/Effect.slang.
+// GPU reads is mirrored from Effect.slang.
 namespace Crowy
 {
     struct EffectDrawDesc;
@@ -19,7 +19,6 @@ namespace Crowy
 
     // the draw ParticleKernel.slang's first step staggers ages with
     inline constexpr u32 ParticleStaggerDraw = 0xA6E;
-    // one step of every effect's clock, in seconds
     inline constexpr f32 EffectStep = 1.0f / 60.0f;
 
     enum class EffectBlend : u8 {

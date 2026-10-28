@@ -21,12 +21,10 @@ namespace Crowy
     // step N of an effect depends only on N, its seed and its desc.
     class EffectSystem {
     private:
-        // one effect's description, its particles and its kernel
         class Effect {
         public:
             ParticleEffectDesc desc;
             FieldBuffer particles;
-            // replaced whole by a reload
             std::unique_ptr<ComputeKernel> step;
             // its next step, counted from 0
             u32 next = 0;
@@ -68,8 +66,6 @@ namespace Crowy
             RHIResourceUsage reader = RHIResourceUsage::SampledVertex
         );
 
-        // throws std::invalid_argument for no name, no particles or more than
-        // a dispatch reaches, a name taken, or a draw without an entry
         void Add(ParticleEffectDesc desc);
 
         // `steps` steps of each effect up to worldStep, a new one its prewarm
@@ -93,13 +89,10 @@ namespace Crowy
 
         void SetPaused(bool paused) noexcept { this->paused = paused; }
         bool Paused() const noexcept { return paused; }
-        // the effect of that name's particles, for a check to copy out
         FieldBuffer& Particles(StrView name);
-        // the steps the effect of that name has run
         u32 Steps(StrView name) const;
         // where the effect of that name sits; a move reaches its next step
         // and draw, while the particles already born stay put
-
         Vec3 Origin(StrView name) const;
         void SetOrigin(StrView name, Vec3 origin);
 

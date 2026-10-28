@@ -11,7 +11,6 @@ struct CheckPush {
 [[vk::push_constant]]
 ConstantBuffer<CheckPush> check;
 
-// every word to the value
 [shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_fill(uint id: SV_DispatchThreadID) {
@@ -21,7 +20,6 @@ void cs_fill(uint id: SV_DispatchThreadID) {
     check.words[id] = check.value;
 }
 
-// every word plus the value
 [shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_add(uint id: SV_DispatchThreadID) {

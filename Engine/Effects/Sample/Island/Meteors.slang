@@ -32,7 +32,6 @@ float3 skyDirection(float azimuth, float elevation) {
     );
 }
 
-// what the desc's origin, size and params mean here
 float3 radiant() {
     return skyDirection(effect.params[3].x, effect.params[3].y);
 }
