@@ -1,7 +1,5 @@
 #include <filesystem>
 #include <format>
-#include <fstream>
-#include <iterator>
 #include <stdexcept>
 #include <vector>
 
@@ -10,6 +8,7 @@
 #include "ActorRef.hpp"
 #include "ClassRegistry.hpp"
 #include "Component.hpp"
+#include "FileUtil.hpp"
 #include "JsonLoader.hpp"
 #include "Scene.hpp"
 #include "World.hpp"
@@ -212,7 +211,9 @@ TEST(Scene, ABrokenSceneLandsNoActor) {
         {R"({"id":1,"parent":2},{"id":2})",
          "actor 1: the parent is no actor before it"},
         {R"({"id":1},{"id":1})", "actors[1]: id 1 is given twice"},
-        {R"({"id":1,"colour":[1,0,0]})", "actors[0] has no key 'colour'"},
+        {R"({"id":1,"colour":[1,0,0]})",
+         "actors[0]: unknown key 'colour'; the keys are id, name, parent, "
+         "transform, components"},
     };
 
     for(const auto& [actors, message]: cases) {
@@ -250,13 +251,10 @@ TEST(Scene, AFileReadsBackAsTheSameScene) {
         std::filesystem::temp_directory_path() / "CrowySceneTest.scene.json";
     saveSceneFile(world, path);
 
-    std::ifstream file(path, std::ios::binary);
-    const Str text{
-        std::istreambuf_iterator<char>(file),
-        std::istreambuf_iterator<char>()
-    };
-    file.close();
-    EXPECT_EQ(text, emitJson(saveScene(world), JsonStyle::Pretty) + "\n");
+    EXPECT_EQ(
+        readFileAsString(path),
+        emitJson(saveScene(world), JsonStyle::Pretty) + "\n"
+    );
 
     World loaded;
     loadSceneFile(loaded, path);

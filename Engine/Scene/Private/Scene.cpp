@@ -17,7 +17,9 @@
 #include "Component.hpp"
 #include "ErasedValue.hpp"
 #include "JsonLoader.hpp"
+#include "PathUtil.hpp"
 #include "RangeUtil.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -30,21 +32,10 @@ namespace Crowy
         // shares a component's table with its properties
         constexpr CStr TypeKey = "type";
 
-        bool hasProperties(const TypeDesc& desc) {
-            for(const auto* chain = &desc; chain != nullptr;
-                chain = chain->parent) {
-                if(!chain->properties.empty())
-                    return true;
-            }
-            return false;
-        }
-
         [[noreturn]] void throwErrors(StrView what, const Errors& errors) {
-            auto message = Str(what);
-            for(const auto& error: errors)
-                message += std::format("\n{}", error);
-
-            throw std::runtime_error(message);
+            throw std::runtime_error(
+                std::format("{}\n{}", what, join(errors, "\n"))
+            );
         }
 
         void checkKeys(
@@ -53,8 +44,16 @@ namespace Crowy
             StrView where,
             Errors& errors
         ) {
-            for(const auto& key: stray(table.keys(), known))
-                errors.push_back(std::format("{} has no key '{}'", where, key));
+            for(const auto& key: stray(table.keys(), known)) {
+                errors.push_back(
+                    std::format(
+                        "{}: unknown key '{}'; the keys are {}",
+                        where,
+                        key,
+                        join(known, ", ")
+                    )
+                );
+            }
         }
 
         DOM::Array saveComponents(
@@ -76,7 +75,7 @@ namespace Crowy
                         return;
 
                     const auto& desc = *info.desc;
-                    if(!hasProperties(desc)) {
+                    if(!desc.HasProperties()) {
                         errors.push_back(
                             std::format(
                                 "actor {}: '{}' has no properties to save; "
@@ -448,7 +447,7 @@ namespace Crowy
         file << text;
         if(!file) {
             throw std::runtime_error(
-                std::format("cannot write scene file: {}", path.string())
+                std::format("cannot write scene file: {}", toUTF8String(path))
             );
         }
     }
