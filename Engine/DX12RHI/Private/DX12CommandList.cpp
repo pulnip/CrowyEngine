@@ -658,7 +658,7 @@ namespace Crowy
 
         // the footprint takes the plane's copyable format: a sampled depth
         // texture is R32_TYPELESS, a render-only one D32_FLOAT
-        DeviceRAII device;
+        RefPtr<Device> device;
         CHECK_HRESULT(
             dxSrc.Get()->GetDevice(IID_PPV_ARGS(&device)),
             "Failed to query the device of a copy source"

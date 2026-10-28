@@ -3,7 +3,6 @@
 #include <mutex>
 #include <vector>
 
-#include <Foundation/NSSharedPtr.hpp>
 #include <Foundation/NSTypes.hpp>
 #include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLDevice.hpp>
@@ -12,6 +11,7 @@
 #include <Metal/MTLResource.hpp>
 #include <Metal/MTLTexture.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
@@ -38,9 +38,9 @@ namespace Crowy
     private:
         MTL::Device* device = nullptr;
         // Metal 4 explicit residency
-        NS::SharedPtr<MTL::ResidencySet> residencySet;
+        RefPtr<MTL::ResidencySet> residencySet;
 
-        std::vector<NS::SharedPtr<MTL::Heap>> heaps;
+        std::vector<RefPtr<MTL::Heap>> heaps;
         MetalHeapPoolDesc desc{};
 
         mutable std::mutex mutex;

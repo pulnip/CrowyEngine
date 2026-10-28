@@ -227,7 +227,7 @@ namespace Crowy
             NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
         topology = convert(desc.topology);
 
-        NS::SharedPtr<MTL::Library> library;
+        RefPtr<MTL::Library> library;
         {
             const auto& filePath = desc.vertexShader.path;
             const auto& entryPoint = desc.vertexShader.entryPoint;

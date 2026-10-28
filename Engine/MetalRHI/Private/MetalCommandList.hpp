@@ -16,6 +16,7 @@ namespace MTL
 #include <Metal/MTLStageInputOutputDescriptor.hpp>
 #include <Metal/MTLTypes.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "MetalPipelineState.hpp"
 #include "MetalUtil.hpp"
 #include "RHICommandList.hpp"
@@ -93,7 +94,7 @@ namespace Crowy
         // serial of the last wave that left un-acquired hand-offs; 0 = none
         const u64& handoffSerial;
 
-        NS::SharedPtr<MTL::CommandBuffer> commandBuffer;
+        RefPtr<MTL::CommandBuffer> commandBuffer;
 
         std::variant<
             RenderPassState,
@@ -109,7 +110,7 @@ namespace Crowy
 
         // one fence per End*Pass release batch (fences are encoder-grained);
         // reuse is safe: a stale update only adds a satisfied edge
-        std::vector<NS::SharedPtr<MTL::Fence>> fencePool;
+        std::vector<RefPtr<MTL::Fence>> fencePool;
         usize fenceCursor = 0;
 
         // each fence is updated by its producer's encoder and waited on by

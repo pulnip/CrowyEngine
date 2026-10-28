@@ -10,7 +10,7 @@ namespace Crowy
 {
     class DX12Swapchain: public RHISwapchain {
     private:
-        SwapchainRAII swapchain = nullptr;
+        RefPtr<Swapchain> swapchain = nullptr;
         // owned by DX12Device, which outlives the swapchain;
         // kept for the frame dump readback copy
         CommandQueue* queue = nullptr;

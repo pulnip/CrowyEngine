@@ -7,7 +7,7 @@ namespace Crowy
 {
     class DX12Fence: public RHIFence {
     private:
-        FenceRAII fence = nullptr;
+        RefPtr<Fence> fence = nullptr;
         HANDLE fenceEvent = nullptr;
 
     public:

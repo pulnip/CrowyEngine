@@ -30,28 +30,9 @@ namespace Crowy
     using QueryHeap = ID3D12QueryHeap;
 
     template<typename T>
-    using COMRAII = Microsoft::WRL::ComPtr<T>;
+    using RefPtr = Microsoft::WRL::ComPtr<T>;
 
-    using DeviceRAII = COMRAII<Device>;
-    using CommandQueueRAII = COMRAII<CommandQueue>;
-    using CommandAllocatorRAII = COMRAII<CommandAllocator>;
-    using CommandListRAII = COMRAII<CommandList>;
-    using FactoryRAII = COMRAII<Factory>;
-    using AdapterRAII = COMRAII<Adapter>;
-    using SwapchainRAII = COMRAII<Swapchain>;
-
-    using PipelineStateRAII = COMRAII<PipelineState>;
-    using RootSignatureRAII = COMRAII<RootSignature>;
-    using CommandSignatureRAII = COMRAII<CommandSignature>;
-
-    using BufferRAII = COMRAII<Buffer>;
-    using TextureRAII = COMRAII<Texture>;
-    using DescriptorHeapRAII = COMRAII<DescriptorHeap>;
     using DX12DescriptorHeapAllocatorRAII = RAII<DX12DescriptorHeapAllocator>;
-
-    using BlobRAII = COMRAII<Blob>;
-    using FenceRAII = COMRAII<Fence>;
-    using QueryHeapRAII = COMRAII<QueryHeap>;
 
     inline constexpr UINT RootParamPush = 0;
     inline constexpr UINT RootParamCBBase = 1;

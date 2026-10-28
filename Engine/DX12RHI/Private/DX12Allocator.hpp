@@ -25,7 +25,7 @@ namespace Crowy
         // committed resources carry no block table of their own, so this
         // stands in for one - and it is the seam a heap-backed
         // implementation replaces
-        std::unordered_map<Buffer*, COMRAII<Buffer>> live;
+        std::unordered_map<Buffer*, RefPtr<Buffer>> live;
 
     public:
         DX12Allocator(Device& device, const DX12Capabilities& capabilities);

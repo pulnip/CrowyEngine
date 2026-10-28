@@ -23,7 +23,7 @@ namespace Crowy
             return false;
         }
 
-        DeviceRAII device;
+        RefPtr<Device> device;
         if(FAILED(queue.GetDevice(IID_PPV_ARGS(&device)))) {
             LOG_WARN("frame dump skipped: cannot query device");
             return false;
@@ -45,7 +45,7 @@ namespace Crowy
 
         const CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_READBACK);
         const auto readbackDesc = CD3DX12_RESOURCE_DESC::Buffer(totalBytes);
-        BufferRAII readback;
+        RefPtr<Buffer> readback;
         if(FAILED(device->CreateCommittedResource(
                &heapProps,
                D3D12_HEAP_FLAG_NONE,
@@ -58,8 +58,8 @@ namespace Crowy
             return false;
         }
 
-        CommandAllocatorRAII allocator;
-        CommandListRAII cmdList;
+        RefPtr<CommandAllocator> allocator;
+        RefPtr<CommandList> cmdList;
         if(FAILED(device->CreateCommandAllocator(
                D3D12_COMMAND_LIST_TYPE_DIRECT,
                IID_PPV_ARGS(&allocator)
@@ -96,7 +96,7 @@ namespace Crowy
         ID3D12CommandList* lists[] = {cmdList.Get()};
         queue.ExecuteCommandLists(1, lists);
 
-        FenceRAII fence;
+        RefPtr<Fence> fence;
         if(FAILED(device->CreateFence(
                0,
                D3D12_FENCE_FLAG_NONE,

@@ -23,7 +23,7 @@ namespace Crowy
         // begin at 2 * slot, end at 2 * slot + 1; holds the buffer so the
         // device can read it after the list is gone
         struct TimestampSlot {
-            BufferRAII readback;
+            RefPtr<Buffer> readback;
             u32 slot = 0;
         };
 
@@ -35,16 +35,16 @@ namespace Crowy
         // each allocator carries the serial of the batch that last ran its
         // commands, so reuse waits on exactly that
         struct AllocatorSlot {
-            CommandAllocatorRAII allocator;
+            RefPtr<CommandAllocator> allocator;
             u64 serial = 0;
         };
         std::array<AllocatorSlot, FramesInFlight> allocators;
         u32 cursor = 0;
         DX12Fence& serialFence;
-        QueryHeapRAII timestamps;
-        BufferRAII timestampReadback;
+        RefPtr<QueryHeap> timestamps;
+        RefPtr<Buffer> timestampReadback;
 
-        CommandListRAII commandList = nullptr;
+        RefPtr<CommandList> commandList = nullptr;
 
         // releases park here and each acquire fuses its matched pair into one
         // Enhanced Barrier recorded before the consumer

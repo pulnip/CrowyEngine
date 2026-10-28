@@ -12,7 +12,7 @@ namespace Crowy
         static constexpr UINT InvalidIndex = 0;
 
         Device& device;
-        DescriptorHeapRAII heap;
+        RefPtr<DescriptorHeap> heap;
         const UINT descriptorSize;
         const D3D12_DESCRIPTOR_HEAP_TYPE type;
         RHIRetireQueue& retireQueue;

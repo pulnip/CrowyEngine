@@ -1,15 +1,15 @@
 #pragma once
 
 #include <Foundation/NSAutoreleasePool.hpp>
-#include <Foundation/NSSharedPtr.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
     class AutoreleasePoolScope {
     private:
-        NS::SharedPtr<NS::AutoreleasePool> pool;
+        RefPtr<NS::AutoreleasePool> pool;
 
     public:
         AutoreleasePoolScope()

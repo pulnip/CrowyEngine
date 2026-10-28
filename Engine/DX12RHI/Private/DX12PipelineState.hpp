@@ -8,7 +8,7 @@ namespace Crowy
 {
     class DX12GraphicsPipelineState: public RHIGraphicsPipelineState {
     private:
-        PipelineStateRAII pipeline = nullptr;
+        RefPtr<PipelineState> pipeline = nullptr;
 
         D3D_PRIMITIVE_TOPOLOGY primitiveTopology =
             D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
@@ -28,7 +28,7 @@ namespace Crowy
 
     class DX12ComputePipelineState: public RHIComputePipelineState {
     private:
-        PipelineStateRAII pipeline = nullptr;
+        RefPtr<PipelineState> pipeline = nullptr;
 
         Size3D threadGroupSize = {0, 0, 0};
 

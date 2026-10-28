@@ -75,7 +75,7 @@ namespace Crowy
             SDL_PROP_WINDOW_WIN32_HWND_POINTER,
             nullptr
         );
-        COMRAII<IDXGISwapChain1> swapchain1 = nullptr;
+        RefPtr<IDXGISwapChain1> swapchain1 = nullptr;
         CHECK_HRESULT(
             factory.CreateSwapChainForHwnd(
                 &commandQueue,

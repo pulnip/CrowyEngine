@@ -6,21 +6,21 @@
 #include <QuartzCore/CAMetalDrawable.hpp>
 
 #include "MetalAllocator.hpp"
+#include "MetalDefinitions.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
 {
     class MetalTexture final: public RHITexture {
     private:
-        NS::SharedPtr<MTL::Texture> texture;
+        RefPtr<MTL::Texture> texture;
         // null for a drawable-backed texture: that memory belongs to the
         // layer, so nothing here allocated it and nothing frees it
         MetalAllocator* allocator = nullptr;
         RHIAllocation allocation{};
         // views alias the base texture's heap allocation,
         // so the heap's residency set covers them too
-        std::unordered_map<RHITextureViewDesc, NS::SharedPtr<MTL::Texture>>
-            views;
+        std::unordered_map<RHITextureViewDesc, RefPtr<MTL::Texture>> views;
 
     public:
         MetalTexture() = default;

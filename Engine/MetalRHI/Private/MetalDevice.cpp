@@ -13,6 +13,7 @@
 #include "MetalAllocator.hpp"
 #include "MetalBuffer.hpp"
 #include "MetalCommandList.hpp"
+#include "MetalDefinitions.hpp"
 #include "MetalFence.hpp"
 #include "MetalFrameScope.hpp"
 #include "MetalHeapPool.hpp"
@@ -40,14 +41,14 @@ namespace Crowy
         // Begin until the frame completes and its GPU time is read back
         struct UntimedFrame {
             u64 frame = 0;
-            std::vector<NS::SharedPtr<MTL::CommandBuffer>> cmdBuffers;
+            std::vector<RefPtr<MTL::CommandBuffer>> cmdBuffers;
         };
 
-        NS::SharedPtr<MTL::Device> device;
-        NS::SharedPtr<MTL::CommandQueue> commandQueue;
+        RefPtr<MTL::Device> device;
+        RefPtr<MTL::CommandQueue> commandQueue;
         // every wave's last command buffer signals here; a recording that
         // depends on prior waves waits on it, restoring queue-global sync
-        NS::SharedPtr<MTL::Event> submissionEvent;
+        RefPtr<MTL::Event> submissionEvent;
 
         MetalReservedSamplers samplers;
 
@@ -420,7 +421,7 @@ namespace Crowy
             for(const auto& held: untimedFrames) {
                 const bool completed = std::ranges::all_of(
                     held.cmdBuffers,
-                    [](const NS::SharedPtr<MTL::CommandBuffer>& cmdBuffer) {
+                    [](const RefPtr<MTL::CommandBuffer>& cmdBuffer) {
                         return cmdBuffer->status() >=
                                MTL::CommandBufferStatusCompleted;
                     }

@@ -4,6 +4,7 @@
 
 #include <Metal/MTLSampler.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "RHIDefinitions.hpp"
 #include "Semantics.hpp"
 
@@ -12,7 +13,7 @@ namespace Crowy
 
     class MetalSampler final {
     private:
-        NS::SharedPtr<MTL::SamplerState> sampler;
+        RefPtr<MTL::SamplerState> sampler;
 
     public:
         MetalSampler(MTL::Device& device, const RHISamplerState& desc);

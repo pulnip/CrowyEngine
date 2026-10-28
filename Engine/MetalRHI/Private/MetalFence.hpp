@@ -3,6 +3,7 @@
 #include <Metal/MTLCommandBuffer.hpp>
 #include <Metal/MTLDevice.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "RHIFWD.hpp"
 #include "RHIFence.hpp"
 
@@ -10,7 +11,7 @@ namespace Crowy
 {
     class MetalFence final: public RHIFence {
     private:
-        NS::SharedPtr<MTL::SharedEvent> sharedEvent;
+        RefPtr<MTL::SharedEvent> sharedEvent;
 
     public:
         MetalFence(MTL::Device& device, u64 initialValue);

@@ -38,17 +38,17 @@ namespace
         using namespace Crowy;
 
         UINT dxgiFactoryFlags = 0;
-        FactoryRAII factory = nullptr;
+        RefPtr<Factory> factory = nullptr;
 
 #if CROWY_DEBUG_BUILD
-        COMRAII<ID3D12Debug> debugController;
+        RefPtr<ID3D12Debug> debugController;
         if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
             debugController->EnableDebugLayer();
             dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 
             // validates descriptor-heap indexing and indirect argument reads
             if(std::getenv("CROWY_D3D_GBV") != nullptr) {
-                COMRAII<ID3D12Debug5> debug5;
+                RefPtr<ID3D12Debug5> debug5;
                 if(SUCCEEDED(debugController.As(&debug5))) {
                     debug5->SetEnableGPUBasedValidation(TRUE);
                     debug5->SetEnableAutoName(TRUE);
@@ -68,7 +68,7 @@ namespace
     auto createDevice(Crowy::Factory& factory) {
         using namespace Crowy;
 
-        AdapterRAII adapter, selectedAdapter;
+        RefPtr<Adapter> adapter, selectedAdapter;
         SIZE_T maxDedicatedMemory = 0;
 
         for(UINT i = 0;
@@ -98,7 +98,7 @@ namespace
             throw std::runtime_error("No compatible DX12 adapter found");
         }
 
-        DeviceRAII device = nullptr;
+        RefPtr<Device> device = nullptr;
         CHECK_HRESULT(
             D3D12CreateDevice(
                 selectedAdapter.Get(),
@@ -187,7 +187,7 @@ namespace
         if(std::getenv("CROWY_D3D_DEBUG_BREAK") == nullptr)
             return;
 
-        COMRAII<ID3D12InfoQueue> infoQueue;
+        RefPtr<ID3D12InfoQueue> infoQueue;
         if(FAILED(device.QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
             std::println(
                 stderr,
@@ -199,7 +199,7 @@ namespace
         infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
         infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
 
-        COMRAII<ID3D12InfoQueue1> infoQueue1;
+        RefPtr<ID3D12InfoQueue1> infoQueue1;
         if(SUCCEEDED(infoQueue.As(&infoQueue1))) {
             DWORD cookie = 0;
             infoQueue1->RegisterMessageCallback(
@@ -237,7 +237,7 @@ namespace
             .NodeMask = 0
         };
 
-        CommandQueueRAII commandQueue = nullptr;
+        RefPtr<CommandQueue> commandQueue = nullptr;
         CHECK_HRESULT(
             device.CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue)),
             "Failed to create command queue"
@@ -271,7 +271,7 @@ namespace
             .NodeMask = 0
         };
 
-        CommandSignatureRAII signature = nullptr;
+        RefPtr<CommandSignature> signature = nullptr;
         CHECK_HRESULT(
             device.CreateCommandSignature(
                 &desc,
@@ -297,7 +297,7 @@ namespace
             .NodeMask = 0
         };
 
-        CommandSignatureRAII signature = nullptr;
+        RefPtr<CommandSignature> signature = nullptr;
         CHECK_HRESULT(
             device.CreateCommandSignature(
                 &desc,
@@ -427,7 +427,7 @@ namespace
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
                 D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED
         );
-        BlobRAII blob = nullptr, errorBlob = nullptr;
+        RefPtr<Blob> blob = nullptr, errorBlob = nullptr;
         if(FAILED(D3DX12SerializeVersionedRootSignature(
                &desc,
                D3D_ROOT_SIGNATURE_VERSION_1_1,
@@ -440,7 +440,7 @@ namespace
             );
         }
 
-        RootSignatureRAII rootSignature = nullptr;
+        RefPtr<RootSignature> rootSignature = nullptr;
         CHECK_HRESULT(
             device.CreateRootSignature(
                 0,
@@ -467,9 +467,9 @@ namespace Crowy
             std::vector<DX12CommandList::TimestampSlot> stamps;
         };
 
-        FactoryRAII factory = nullptr;
-        DeviceRAII device = nullptr;
-        CommandQueueRAII commandQueue = nullptr;
+        RefPtr<Factory> factory = nullptr;
+        RefPtr<Device> device = nullptr;
+        RefPtr<CommandQueue> commandQueue = nullptr;
         f64 timestampFrequency = 0.0;
 
         // descriptor indices retire through here too, so this must outlive
@@ -480,9 +480,9 @@ namespace Crowy
         DX12DescriptorHeapAllocatorRAII rtvHeap = nullptr;
         DX12DescriptorHeapAllocatorRAII dsvHeap = nullptr;
 
-        RootSignatureRAII globalRootSignature;
-        CommandSignatureRAII drawSignature;
-        CommandSignatureRAII drawIndexedSignature;
+        RefPtr<RootSignature> globalRootSignature;
+        RefPtr<CommandSignature> drawSignature;
+        RefPtr<CommandSignature> drawIndexedSignature;
         const DX12Capabilities dx12Capabilities;
 
         // every resource below is allocated through this, so it has to

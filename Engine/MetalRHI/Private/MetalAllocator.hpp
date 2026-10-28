@@ -2,11 +2,11 @@
 
 #include <unordered_map>
 
-#include <Foundation/NSSharedPtr.hpp>
 #include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLResource.hpp>
 #include <Metal/MTLTexture.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "MetalHeapPool.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -32,7 +32,7 @@ namespace Crowy
     private:
         MetalHeapPool& privateHeap;
         MetalHeapPool& sharedHeap;
-        std::unordered_map<MTL::Resource*, NS::SharedPtr<MTL::Resource>> live;
+        std::unordered_map<MTL::Resource*, RefPtr<MTL::Resource>> live;
 
     public:
         MetalAllocator(MetalHeapPool& privateHeap, MetalHeapPool& sharedHeap);

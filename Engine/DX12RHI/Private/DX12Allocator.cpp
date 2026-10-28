@@ -57,7 +57,7 @@ namespace Crowy
         const auto heapProp =
             CD3DX12_HEAP_PROPERTIES(::toHeapType(memory, capabilities));
 
-        COMRAII<Buffer> resource;
+        RefPtr<Buffer> resource;
         CHECK_HRESULT(
             device.CreateCommittedResource3(
                 &heapProp,

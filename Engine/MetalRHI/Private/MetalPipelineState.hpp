@@ -7,6 +7,7 @@
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLSampler.hpp>
 
+#include "MetalDefinitions.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -36,11 +37,11 @@ namespace Crowy
 
     class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState {
     private:
-        NS::SharedPtr<MTL::RenderPipelineState> pipeline;
+        RefPtr<MTL::RenderPipelineState> pipeline;
         MetalRasterState rasterState{};
         // null for a pipeline with no depth attachment format, which only a
         // pass without depth can use
-        NS::SharedPtr<MTL::DepthStencilState> depthStencilState;
+        RefPtr<MTL::DepthStencilState> depthStencilState;
 
         MTL::PrimitiveType topology =
             MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
@@ -97,7 +98,7 @@ namespace Crowy
 
     class MetalComputePipelineState final: public RHIComputePipelineState {
     private:
-        NS::SharedPtr<MTL::ComputePipelineState> pipeline;
+        RefPtr<MTL::ComputePipelineState> pipeline;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
         std::vector<MetalSamplerBinding> samplers;
