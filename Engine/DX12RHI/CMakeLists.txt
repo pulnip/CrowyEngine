@@ -6,9 +6,6 @@ PRIVATE
     d3d12.lib
     dxgi.lib
     dxguid.lib
-    # Process Status API
-    # for Check DirectX Agility SDK
-    psapi.lib
     SDL3::SDL3
     Crowy::Content
     Crowy::Log

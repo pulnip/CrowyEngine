@@ -11,6 +11,7 @@ namespace Crowy
     Str toUTF8String(const std::filesystem::path& path);
 #ifdef _WIN32
     std::wstring toUTF16String(StrView utf8Str);
+    Str fromUTF16String(std::wstring_view utf16Str);
 #endif
 
     std::filesystem::path toPath(StrView utf8Str);

@@ -7,7 +7,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include <Psapi.h>
 #include <d3dx12/d3dx12_root_signature.h>
 
 #include "DX12Allocator.hpp"
@@ -21,6 +20,8 @@
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
 #include "DX12Util.hpp"
+#include "LogLocal.hpp"
+#include "PathUtil.hpp"
 #include "RHIFrameTimeline.hpp"
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
@@ -220,29 +221,20 @@ namespace
         }
     }
 
-    void checkAgilitySDK() {
-        using namespace Crowy;
+    void logD3D12CorePath() {
+        const auto module = GetModuleHandleW(L"D3D12Core.dll");
+        if(module == nullptr)
+            return;
 
-        HMODULE hMods[1024];
-        DWORD cbNeeded;
-        HANDLE hProcess = GetCurrentProcess();
+        wchar_t path[MAX_PATH];
+        const auto length = GetModuleFileNameW(module, path, MAX_PATH);
+        if(length == 0)
+            return;
 
-        if(EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
-            for(usize i = 0; i < (cbNeeded / sizeof(HMODULE)); ++i) {
-                char szModName[MAX_PATH];
-                if(GetModuleFileNameExA(
-                       hProcess,
-                       hMods[i],
-                       szModName,
-                       sizeof(szModName)
-                   )) {
-                    Str path(szModName);
-                    if(path.find("D3D12Core.dll") != std::string::npos) {
-                        std::println("D3D12Core.dll loaded from: {}", path);
-                    }
-                }
-            }
-        }
+        LOG_INFO(
+            "D3D12Core.dll loaded from: {}",
+            Crowy::fromUTF16String(std::wstring_view(path, length))
+        );
     }
 
     auto createCommandQueue(Crowy::Device& device) {
@@ -569,7 +561,7 @@ namespace Crowy
               allocator(*device.Get(), dx12Capabilities),
               serialFence(std::make_unique<DX12Fence>(*device.Get(), 0)) {
             setupValidationBreak(*device.Get());
-            checkAgilitySDK();
+            logD3D12CorePath();
             checkDeviceFeature(*device.Get(), dx12Capabilities);
             initGlobalSession();
 

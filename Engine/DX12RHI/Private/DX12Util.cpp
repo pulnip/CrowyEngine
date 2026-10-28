@@ -1,9 +1,8 @@
 #include "DX12Util.hpp"
 
-#include <comdef.h>
-
 #include "Assert.hpp"
 #include "EnumUtil.hpp"
+#include "PathUtil.hpp"
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
@@ -409,7 +408,25 @@ namespace Crowy
     }
 
     Str HResultToString(HRESULT hr) {
-        _com_error err(hr);
-        return static_cast<const char*>(err.ErrorMessage());
+        wchar_t* message = nullptr;
+        const auto length = FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr,
+            static_cast<DWORD>(hr),
+            0,
+            reinterpret_cast<wchar_t*>(&message),
+            0,
+            nullptr
+        );
+        if(length == 0)
+            return std::format("HRESULT 0x{:08X}", static_cast<u32>(hr));
+
+        auto text = fromUTF16String(std::wstring_view(message, length));
+        LocalFree(message);
+        while(!text.empty() && (text.back() == '\n' || text.back() == '\r'))
+            text.pop_back();
+
+        return text;
     }
 }

@@ -44,6 +44,33 @@ namespace Crowy
 
         return utf16Str;
     }
+
+    Str fromUTF16String(std::wstring_view utf16Str) {
+        const auto length = WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            utf16Str.data(),
+            static_cast<int>(utf16Str.size()),
+            nullptr,
+            0,
+            nullptr,
+            nullptr
+        );
+        Str utf8Str(length, '\0');
+
+        WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            utf16Str.data(),
+            static_cast<int>(utf16Str.size()),
+            utf8Str.data(),
+            length,
+            nullptr,
+            nullptr
+        );
+
+        return utf8Str;
+    }
 #endif
 
     std::filesystem::path toPath(StrView utf8Str) {
