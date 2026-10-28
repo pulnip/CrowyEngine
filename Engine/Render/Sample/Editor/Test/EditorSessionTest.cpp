@@ -55,8 +55,8 @@ namespace
                 .pitch = HalfPi,
                 .lens = {.orthographic = true, .orthoHalfHeight = 52.0f}
             },
-            // 30 degrees above the origin at 10 m: an arrow there is 0.8660254
-            // m
+            // 30 degrees above the origin at 10 m: an arrow there is
+            // 0.8660254 m
             EditorCut{
                 .name = "down",
                 .position = {0.0f, 5.0f, -8.660254f},
@@ -342,7 +342,6 @@ TEST(EditorSession, ThePortsWriteBehavesAsADirectOne) {
     EXPECT_FLOAT_EQ(f.camera.position.y, 120.0f);
 }
 
-// choosing the cut the camera already left snaps it back
 TEST(EditorSession, TheSameCutAgainSnapsBack) {
     Fixture f;
     f.camera.position.y = 50.0f;
@@ -403,7 +402,6 @@ TEST(EditorSession, AnUnknownNameIsRevertedAndEmptyClears) {
     EXPECT_FALSE(f.session.Selection().has_value());
 }
 
-// a pick that hits nothing clears the selection, from the port as from a click
 TEST(EditorSession, APickOnEmptySpaceClears) {
     Fixture f;
     f.session.Select(1);

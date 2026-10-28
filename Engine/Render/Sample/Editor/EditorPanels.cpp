@@ -13,7 +13,6 @@ namespace Crowy
 {
     namespace
     {
-        // window points of a world point already in clip space
         ImVec2 toScreen(const Vec4& clip, Vec2 viewport) {
             return ImVec2{
                 (clip.x / clip.w + 1.0f) * 0.5f * viewport.x,
@@ -85,7 +84,6 @@ namespace Crowy
                 }
                 ImGui::EndCombo();
             }
-            // scene time: play or pause, a sixtieth back or on
             if(ImGui::Button(state.paused ? "Play" : "Pause"))
                 session.TogglePause();
             ImGui::SameLine();
@@ -278,8 +276,7 @@ namespace Crowy
             const auto along = mark.to - screen.pivot;
             const auto length = norm(along);
             draw->AddLine(point(screen.pivot), point(mark.to), drawn, 3.0f);
-            // the head straddles the tip, inside the 6 points a press takes it
-            // at
+            // the head straddles the tip, inside the 6 points a press takes
             if(length > 1.0f) {
                 const auto way = along / length;
                 const Vec2 across{-way.y, way.x};

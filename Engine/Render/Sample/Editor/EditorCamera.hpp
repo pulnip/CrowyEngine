@@ -8,13 +8,11 @@ namespace Crowy
 {
     struct EditorCut;
 
-    // the same pose and lens under the same name
     inline constexpr bool sameCut(
         const EditorCut& a,
         const EditorCut& b
     ) noexcept;
 
-    // what a camera sees through, apart from where it stands
     struct EditorLens {
         // vertical, radians
         f32 fovY = 1.0f;
@@ -25,8 +23,7 @@ namespace Crowy
         f32 orthoHalfHeight = 10.0f;
     };
 
-    // a named pose and lens, in the engine's signs: yaw clockwise from +Z,
-    // positive pitch looks down
+    // yaw clockwise from +Z, positive pitch looks down
     struct EditorCut {
         Str name;
         Vec3 position{};
@@ -48,11 +45,8 @@ namespace Crowy
                x.orthoHalfHeight == y.orthoHalfHeight;
     }
 
-    // A fly camera that snaps to cuts and can look through an orthographic
-    // lens.
     class EditorCamera final: public Camera {
     public:
-        // public so the pose can be registered as reflected properties
         Vec3 position{};
         f32 yaw = 0.0f;
         f32 pitch = 0.0f;
@@ -79,9 +73,7 @@ namespace Crowy
         void Snap(const EditorCut& cut) noexcept;
         void RecomputeView() noexcept;
         Vec4 Rotation() const noexcept;
-        // unit, the way the camera looks
         Vec3 Forward() const noexcept;
-        // whether input moved or turned the camera since the last call
         bool TakeMoved() noexcept;
     };
 }

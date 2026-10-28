@@ -21,11 +21,9 @@ namespace Crowy
     struct GizmoMark;
     struct GizmoScreen;
 
-    // GizmoHandle's enumerators, None included
     inline constexpr usize GizmoHandleCount = 9;
     inline constexpr usize GizmoRingSamples = 64;
-    // in arrow lengths: the ring's radius, and how far out the uniform and
-    // the per-axis squares sit
+    // in arrow lengths
     inline constexpr f32 GizmoRingRadius = 1.25f;
     inline constexpr f32 GizmoScaleOffset = 0.7f;
     inline constexpr f32 GizmoAxisScaleOffset = 0.6f;
@@ -51,11 +49,9 @@ namespace Crowy
         Move = 1 << 0,
         Turn = 1 << 1,
         Scale = 1 << 2,
-        // a square per local axis, for a row scaled per axis
         ScaleAxes = 1 << 3,
     };
 
-    // the nearest multiple of `step`
     inline f32 snapTo(f32 value, f32 step) noexcept {
         return std::round(value / step) * step;
     }
@@ -77,7 +73,6 @@ namespace Crowy
                !isGizmoArrow(handle);
     }
 
-    // window points from `p` to the segment a-b
     inline f32 distanceToSegment(Vec2 p, Vec2 a, Vec2 b) noexcept {
         const auto along = b - a;
         const auto length = dot(along, along);
@@ -89,8 +84,6 @@ namespace Crowy
         return std::sqrt(dot(offset, offset));
     }
 
-    // the gizmo of a row at `pivot` seen through `camera`; nothing when the
-    // pivot is behind the eye or the ring would reach the near plane
     std::optional<GizmoLayout> layoutGizmo(
         const EditorCamera& camera,
         Vec2 viewport,
@@ -98,36 +91,26 @@ namespace Crowy
         f32 yawDegrees,
         GizmoParts parts
     );
-    // an arrow's or a square's way from the pivot; zero for the ring
     inline constexpr Vec3 gizmoAxis(
         const GizmoLayout& layout,
         GizmoHandle handle
     ) noexcept;
     inline GizmoScreen projectGizmo(const GizmoLayout& layout);
-    // the shown square or arrow tip nearest `pixel` within 6 points, else
-    // the nearest shaft or ring; None past them all
     inline GizmoHandle hoverGizmo(const GizmoScreen& screen, Vec2 pixel);
-    // where a press takes the handle, and where dragging it makes one unit:
-    // 1 m, +90 degrees, x2; nothing for a hidden handle
+    // reach is where a drag makes one unit: 1 m, +90 degrees, x2
     inline constexpr std::optional<GizmoAim> aimGizmo(
         const GizmoLayout& layout,
         GizmoHandle handle
     );
-    // the handle held from a press along `press`; nothing when it misses the
-    // handle's plane or lands where the handle cannot measure from
     inline std::optional<GizmoDrag> grabGizmo(
         const GizmoLayout& layout,
         GizmoHandle handle,
         const Ray3D& press
     );
-    // where the cursor's ray meets the held handle's plane, near enough to mean
-    // it
     inline std::optional<Vec3> meetGizmo(
         const GizmoDrag& drag,
         const Ray3D& ray
     );
-    // the change since the grab with the cursor's ray at `ray`; nothing when
-    // the ray misses the plane, so the last change stands
     inline std::optional<GizmoEdit> dragGizmo(
         const GizmoDrag& drag,
         const Ray3D& ray,
@@ -138,7 +121,7 @@ namespace Crowy
         Vec3 pivot{};
         // meters an unforeshortened arrow spans; the rest are multiples of it
         f32 length = 0.0f;
-        // by GizmoHandle; an arrow seen end-on is not shown
+        // by GizmoHandle
         std::array<bool, GizmoHandleCount> shown{};
         // unit: the row's local axes turned by its yaw
         std::array<Vec3, 3> axes{};
@@ -175,7 +158,6 @@ namespace Crowy
         Vec2 reach = EditorNoPick;
     };
 
-    // a held handle: its plane and where the press met it, fixed until release
     struct GizmoDrag {
         GizmoHandle handle = GizmoHandle::None;
         Vec3 pivot{};
@@ -191,7 +173,6 @@ namespace Crowy
         f32 reach = 0.0f;
     };
 
-    // what a drag makes of the row as the grab found it
     struct GizmoEdit {
         // meters, added to the grabbed position
         Vec3 offset{};
@@ -278,8 +259,6 @@ namespace Crowy
     }
 
     inline GizmoHandle hoverGizmo(const GizmoScreen& screen, Vec2 pixel) {
-        // a handle this many window points from the cursor, or nearer, is under
-        // it
         constexpr auto HoverPoints = 6.0f;
 
         // squares and arrow tips first: overlapping arrows are told apart by
@@ -457,7 +436,6 @@ namespace Crowy
         const Ray3D& ray,
         bool snap
     ) {
-        // Ctrl's steps: meters on an arrow, degrees on the ring, a scale factor
         constexpr auto SnapMeters = 0.25f;
         constexpr auto SnapDegrees = 15.0f;
         constexpr auto SnapFactor = 0.1f;

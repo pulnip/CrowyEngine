@@ -525,7 +525,6 @@ TEST(GizmoMath, YawWrapsAndSnaps) {
     EXPECT_FLOAT_EQ(snapTo(0.9f, 0.25f), 1.0f);
 }
 
-// turned a half or a quarter, a box's per-axis squares stay off the arrows
 TEST(GizmoHover, ATurnedBoxsSquaresLeaveTheShaftsFree) {
     const auto corner = cornerCamera();
     for(const auto yaw: {0.0f, 90.0f, 180.0f, 270.0f}) {

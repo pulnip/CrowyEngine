@@ -28,7 +28,7 @@ namespace Crowy
         const auto rotation = camera.Rotation();
         const auto ahead = forward(rotation);
         const auto& lens = camera.lens;
-        // depth, not distance, so the size holds off-centre too
+        // depth, not distance, so the size holds off-center too
         const auto depth = dot(pivot - camera.position, ahead);
         const auto length =
             ScreenShare * (lens.orthographic

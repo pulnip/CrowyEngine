@@ -22,7 +22,6 @@ namespace Crowy
             return list;
         }
 
-        // a full name, or a bare one that only one object carries
         std::optional<usize> objectNamed(
             EditorObjects objects,
             StrView name,
@@ -97,7 +96,6 @@ namespace Crowy
             state.status = applied.status;
         if(state.revision != applied.revision)
             state.revision = applied.revision;
-        // once asked for, a reload waits for the next frame
         if(applied.reload)
             state.reload = true;
         if(state.scene.empty()) {
@@ -659,7 +657,6 @@ namespace Crowy
         refreshGizmo();
     }
 
-    // the light whose marker is drawn nearest the pixel
     std::optional<usize> EditorSession::markerAt(Vec2 pixel) const {
         std::vector<usize> objects;
         std::vector<Vec3> markers;
@@ -682,7 +679,6 @@ namespace Crowy
         applied.status = state.status;
     }
 
-    // a port write applies like a panel edit, and the panel rebuilds
     void EditorSession::exposeSelection() {
         if(!port.expose)
             return;

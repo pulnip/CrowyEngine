@@ -14,15 +14,12 @@ namespace Crowy
     struct PickHit;
 
     using MeshList = std::span<const MeshData* const>;
-    // the meshes a primitive draws, in its model space; empty for one the
-    // content does not let the editor pick
+    // in model space; empty for a primitive the content keeps from picking
     using PickMeshes = std::function<MeshList(PrimitiveHandle)>;
 
-    // a pixel field that holds none: no pick pending, a handle not shown
     inline constexpr Vec2 EditorNoPick{-1.0f, -1.0f};
 
-    // a world point in window points from the top-left, or nothing behind
-    // the near plane
+    // window points from the top-left
     inline constexpr std::optional<Vec2> projectToWindow(
         const Mat4& viewProj,
         Vec3 point,
@@ -38,7 +35,6 @@ namespace Crowy
         };
     }
 
-    // the point drawn nearest `pixel`, within `radius` window points
     inline constexpr std::optional<usize> nearestOnScreen(
         const Mat4& viewProj,
         Vec2 viewport,
@@ -64,16 +60,12 @@ namespace Crowy
         return nearest;
     }
 
-    // the ray from a pixel (window points from the top-left) through the
-    // camera, either lens; nothing for a viewport without area
     std::optional<Ray3D> rayThroughPixel(
         const EditorCamera& camera,
         Vec2 pixel,
         Vec2 viewport
     );
 
-    // the nearest front-facing triangle of a visible primitive along the ray,
-    // testing boxes nearest first and stopping past the best hit
     std::optional<PickHit> pickScene(
         const RenderScene& scene,
         const Ray3D& ray,

@@ -88,7 +88,6 @@ TEST(EditorPick, CenterPixelLooksForward) {
     EXPECT_NEAR(ray->direction.x, 0.0f, 1e-5f);
 }
 
-// a minimized window reports a viewport with no area
 TEST(EditorPick, NoRayThroughAViewportWithoutArea) {
     const auto camera = perspectiveCamera();
 
@@ -96,7 +95,6 @@ TEST(EditorPick, NoRayThroughAViewportWithoutArea) {
     EXPECT_FALSE(rayThroughPixel(camera, {10.0f, 10.0f}, {1920.0f, 0.0f}));
 }
 
-// the nearest marker within the radius, none past it or behind the camera
 TEST(EditorPick, TheNearestPointOnScreenWithinTheRadius) {
     const auto camera = perspectiveCamera();
     const auto viewProj = camera.ViewProj(Viewport.x / Viewport.y);
@@ -144,7 +142,6 @@ TEST(EditorPick, TheNearestPointOnScreenWithinTheRadius) {
     );
 }
 
-// a point along the pixel's ray projects back onto the same pixel, either lens
 TEST(EditorPick, RayAndProjectionAgree) {
     auto camera = perspectiveCamera();
     camera.yaw = 0.4f;
@@ -227,7 +224,6 @@ TEST(EditorPick, AHiddenRowIsNotPicked) {
     EXPECT_EQ(hit->primitive, behind);
 }
 
-// the landmark: a unit box stretched per axis, picked at its analytic depth
 TEST(EditorPick, AStretchedBoxAtItsAnalyticDistance) {
     Scene s;
     const auto landmark =
