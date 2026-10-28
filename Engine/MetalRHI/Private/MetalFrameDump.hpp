@@ -9,12 +9,8 @@
 
 namespace Crowy
 {
-    // Debug frame capture for the Metal backend: writes the drawable to
-    // path as a BMP once the GPU finishes the command buffer, then reports
-    // through onDone - from the completion handler's thread.
-    //
-    // Reading the drawable back requires the swapchain layer to keep
-    // framebufferOnly disabled, and an 8-bit RGBA/BGRA drawable format.
+    // writes the 8-bit RGBA/BGRA drawable to path as a BMP once the GPU is
+    // done, then reports through onDone from the completion handler's thread
     void DumpFrame(
         MTL::CommandBuffer&,
         CA::MetalDrawable&,

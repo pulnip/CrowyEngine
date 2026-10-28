@@ -1,8 +1,3 @@
-extern "C" {
-// Debug AutoreleasePool
-void _objc_autoreleasePoolPrint(void);
-}
-
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
@@ -49,20 +44,14 @@ namespace Crowy
 
         NS::SharedPtr<MTL::Device> device;
         NS::SharedPtr<MTL::CommandQueue> commandQueue;
-        // cross-submission ordering:
-        // the last command buffer of every submitted wave signals here, and
-        // recordings that depend on prior waves (cross-submission acquires,
-        // the hand-off hangover window) lazily wait on the last signaled
-        // value. this restores the queue-global sync scope the barrier
-        // contract assumes, without giving up inter-wave GPU overlap
-        // for recordings that declare no such dependency.
+        // every wave's last command buffer signals here; a recording that
+        // depends on prior waves waits on it, restoring queue-global sync
         NS::SharedPtr<MTL::Event> submissionEvent;
 
         MetalReservedSamplers samplers;
 
         MetalHeapPool privateHeap;
         MetalHeapPool sharedHeap;
-        // MetalHeapPool memorylessHeap;
 
         // every resource below is allocated through this, so it has to
         // outlive them - the staging buffer inside uploadRing included
@@ -191,10 +180,7 @@ namespace Crowy
                 UploadRing(*serialFence, std::move(transientBuffer));
         }
 
-        ~Impl() {
-            retireQueue.CollectAll();
-            // _objc_autoreleasePoolPrint();
-        }
+        ~Impl() { retireQueue.CollectAll(); }
 
         auto CreateFrameScope() { return std::make_unique<MetalFrameScope>(); }
 
@@ -354,9 +340,8 @@ namespace Crowy
             signalSerial();
             serialFence->WaitCPU(submissionSerial, 0);
 
-            // everything up to and including the fresh signal is now done,
-            // so this drains the queue rather than leaving stragglers for
-            // a Submit that may never come
+            // all work up to the fresh signal is done, so this drains the
+            // queue instead of leaving stragglers for a Submit
             retireQueue.Tag(submissionSerial);
             retireQueue.Collect(submissionSerial);
 
@@ -390,9 +375,8 @@ namespace Crowy
             const RHITextureCreateDesc& desc,
             std::span<RHISubresourceLayout> out
         ) {
-            // copyFromBuffer requires sourceOffset to be a multiple of
-            // the pixel size (block size for compressed formats);
-            // 256 covers every format.
+            // copyFromBuffer needs sourceOffset on a pixel or block size
+            // multiple; 256 covers every format
             constexpr u64 offsetAlign = 256;
             const u32 blockDim = getBlockDim(desc.format);
 
@@ -435,9 +419,8 @@ namespace Crowy
             untimedFrames.push_back(std::move(held));
         }
 
-        // no completion handler: the times are read here, on the submitting
-        // thread, once every command buffer of a frame reports completion.
-        // A frame that failed on the GPU gets no time rather than a wrong one
+        // read here, on the submitting thread, once every command buffer of a
+        // frame completes; a frame that failed on the GPU gets no time
         void harvestGPUTimes() {
             usize harvested = 0;
             for(const auto& held: untimedFrames) {
@@ -490,12 +473,8 @@ namespace Crowy
             cmdBuffer->commit();
         }
 
-        // a wave that leaves un-acquired hand-off releases gates the
-        // recordings that may share the GPU with it
-        // (hangover window in MetalCommandList::Begin).
-        // the upload list is not scanned
-        // - its hand-offs are already closed by the CPU wait in
-        // ensureUploadCommit
+        // a wave that leaves unacquired hand-offs gates recordings that may
+        // overlap it; the upload list's are closed by ensureUploadCommit's wait
         void trackHandoffs(std::span<RHICommandList*> cmdLists) {
             for(auto cmdList: cmdLists) {
                 if(static_cast<MetalCommandList*>(cmdList)
@@ -519,25 +498,16 @@ namespace Crowy
 
                 auto mtlCmdList = uploadCmdList.Get();
                 mtlCmdList->commit();
-                // the upload's hand-off releases are consumed by
-                // command buffers of this very wave,
-                // but those were recorded before this buffer existed,
-                // so the submission event cannot order them behind it.
-                // CPU-wait instead: creation uploads are load-time work
+                // the wave's consumers were recorded before this buffer, so the
+                // event cannot order them; this is load-time work, so CPU-wait
                 mtlCmdList->waitUntilCompleted();
 
                 uploadRecorded = false;
             }
         }
 
-        // The upload ring's escape hatch: the copies holding its space are
-        // still sitting in uploadCmdList. ensureUploadCommit already
-        // CPU-waits them out, so the fresh signal only exists to give the
-        // ring a serial it can retire against.
-        //
-        // Called from inside UploadRing::Allocate, which runs before its
-        // caller records anything - so what goes out here is strictly the
-        // uploads that came before, and the caller still needs an open list.
+        // the upload ring's escape hatch, called inside UploadRing::Allocate
+        // before its caller records; the fresh signal gives the ring a serial
         void flushUploads() {
             if(!uploadRecorded)
                 return;

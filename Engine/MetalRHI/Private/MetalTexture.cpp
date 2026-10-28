@@ -33,10 +33,8 @@ namespace Crowy
           texture(NS::RetainPtr(drawable->texture())) {}
 
     MetalTexture::~MetalTexture() {
-        // this type is movable, and the defaulted move copies both the
-        // allocator pointer and the allocation. `texture` is what tells the
-        // two apart: NS::SharedPtr nulls the source it was moved out of, so
-        // only the object still holding the reference does the freeing
+        // the defaulted move copies the allocator and the allocation, but
+        // NS::SharedPtr nulls a moved-from texture, so only the holder frees
         if(allocator == nullptr || !texture)
             return;
 

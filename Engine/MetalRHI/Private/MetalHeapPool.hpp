@@ -23,7 +23,6 @@ namespace Crowy
         // bindless + explicit barrier
         MTL::HazardTrackingMode hazardTracking =
             MTL::HazardTrackingModeUntracked;
-        // default 128 MiB
         NS::UInteger heapSize = 128ull << 20;
     };
 
@@ -63,7 +62,7 @@ namespace Crowy
         );
 
         MTL::Buffer* NewBuffer(NS::UInteger length);
-        // Notice. override storageMode / cpuCacheMode / hazardTrackingMode
+        // forces the pool's storage, cache and hazard modes on the descriptor
         MTL::Texture* NewTexture(MTL::TextureDescriptor*);
 
         void ReleaseEmptyHeaps();

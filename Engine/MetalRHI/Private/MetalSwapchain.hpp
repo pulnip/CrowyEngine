@@ -17,7 +17,6 @@ namespace Crowy
     class MetalSwapchain final: public RHISwapchain {
     private:
         SDL_MetalView view = nullptr;
-        // Cache MetalLayer
         CA::MetalLayer* metalLayer = nullptr;
         CA::MetalDrawable* currentDrawable = nullptr;
 

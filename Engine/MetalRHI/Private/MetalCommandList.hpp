@@ -37,12 +37,10 @@ namespace Crowy
             u32 vsUsedBufferMask = 0;
             u32 fsUsedBufferMask = 0;
 
-            // cache for lazy binding of PushConstant
             std::array<u8, PushConstantBytes> pushConstants;
             u32 pushConstantSize = 0;
             bool pushDirty = false;
 
-            // cache for lazy binding of ConstantBuffer
             struct ConstantBufferBinding {
                 MTL::Buffer* buffer = nullptr;
                 u32 offset = 0;
@@ -80,10 +78,8 @@ namespace Crowy
             MTL::BlitCommandEncoder* encoder = nullptr;
         };
 
-        // record-time CPU bookkeeping for pairing barrier halves
-        // - NOT GPU state tracking.
-        // it stays commandlist-local so parallel recording keeps working;
-        // the GPU ordering comes only from the fence edges.
+        // record-time CPU bookkeeping for pairing barrier halves, not GPU state
+        // tracking: list-local, so parallel recording keeps working
         template<typename Barrier>
         struct PendingRelease {
             Barrier barrier;
@@ -104,22 +100,13 @@ namespace Crowy
 
     private:
         MTL::CommandQueue* commandQueue = nullptr;
-        // cross-submission acquires and un-acquired hand-off releases record no
-        // fence at all
-        // - they rely on the queue-global sync scope D3D12 barriers get for
-        // free. the device signals this event once per submitted wave; a lazy
-        // wait on the last signaled value restores that scope exactly where a
-        // recording depends on it, so passes before that point keep overlapping
-        // the previous wave on the GPU:
-        //  - before the first pass carrying a cross-submission acquire
-        //  - at Begin, while a hand-off wave may still be on the GPU
-        //    (the hangover window below)
+        // cross-submission edges record no fence; the device signals this per
+        // wave, and a lazy wait on the last value restores queue-global scope
         MTL::Event* submissionEvent = nullptr;
         // the device's serial; every advance of it is also signaled on the
         // event, so a gate never waits on a value nothing signals
         const u64& submissionSerial;
-        // serial of the last wave that left un-acquired hand-off releases;
-        // 0 = none yet
+        // serial of the last wave that left un-acquired hand-offs; 0 = none
         const u64& handoffSerial;
 
         NS::SharedPtr<MTL::CommandBuffer> commandBuffer;
@@ -136,9 +123,8 @@ namespace Crowy
         // encoded after it is ordered behind the prior waves
         bool submissionWaitEncoded = false;
 
-        // one fence per End*Pass release batch (fences are encoder-grained,
-        // not resource-grained). reused across recordings: a stale update
-        // seen by a later wait only adds an already-satisfied edge.
+        // one fence per End*Pass release batch (fences are encoder-grained);
+        // reuse is safe: a stale update only adds a satisfied edge
         std::vector<NS::SharedPtr<MTL::Fence>> fencePool;
         usize fenceCursor = 0;
 
@@ -312,9 +298,8 @@ namespace Crowy
 
         auto Get() const noexcept { return commandBuffer.get(); }
 
-        // any release parked in this recording that no acquire matched -
-        // its consumers live in later submissions, which the device must
-        // gate while this wave may still be on the GPU
+        // a parked release no acquire matched: its consumers are in later
+        // submissions, which the device gates while this wave may run
         bool HasUnconsumedReleases() const noexcept;
 
     private:
@@ -324,10 +309,8 @@ namespace Crowy
         // legal only between encoders
         void encodeSubmissionWait();
 
-        // Begin*Pass halves: match acquires against the pending maps and
-        // fill waitScratch, one entry per distinct producer fence - this is
-        // where a non-adjacent A-B-C dependency picks A's fence, not B's.
-        // pending entries stay: extra consumers wait on the same fence.
+        // Begin*Pass halves: one wait per distinct producer fence, so a
+        // non-adjacent A-B-C dependency picks A's fence; entries stay parked
         MTL::Fence* findPending(const RHITextureBarrier&);
         MTL::Fence* findPending(const RHIBufferBarrier&);
         void gatherWaits(
@@ -335,11 +318,8 @@ namespace Crowy
             std::span<const RHIBufferBarrier>
         );
 
-        // End*Pass halves: park real edges in the pending maps, all tagged
-        // with one fresh fence the caller must update behind the producer.
-        // returns nullptr when every release was self-contained
-        // (syncAfter == None - later ordering is guaranteed elsewhere and
-        // layout is a Metal no-op, so nothing records at all).
+        // End*Pass halves: park real edges under one fresh fence the caller
+        // updates; self-contained releases (syncAfter None) record nothing
         void parkRelease(const RHITextureBarrier&, MTL::Fence*);
         void parkRelease(const RHIBufferBarrier&, MTL::Fence*);
         MTL::Fence* parkReleases(

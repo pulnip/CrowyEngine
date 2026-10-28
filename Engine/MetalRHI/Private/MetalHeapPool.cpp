@@ -63,7 +63,6 @@ namespace Crowy
     MTL::Texture* MetalHeapPool::NewTexture(MTL::TextureDescriptor* texDesc) {
         std::lock_guard lock(mutex);
 
-        // forced settings
         texDesc->setStorageMode(desc.storageMode);
         texDesc->setCpuCacheMode(desc.cpuCacheMode);
         texDesc->setHazardTrackingMode(desc.hazardTracking);

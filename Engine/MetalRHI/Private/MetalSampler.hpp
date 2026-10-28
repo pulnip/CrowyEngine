@@ -23,10 +23,8 @@ namespace Crowy
         auto Get() { return sampler.get(); }
     };
 
-    // the StaticSamplers table;
-    // slang cannot express Metal static samplers,
-    // so bound per encoder at the fixed
-    // indices assigned to the Sampler.slang globals
+    // slang cannot express Metal static samplers, so the StaticSamplers table
+    // is bound per encoder at the indices of the Sampler.slang globals
     class MetalReservedSamplers final {
     private:
         std::vector<MetalSampler> samplers;

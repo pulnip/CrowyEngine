@@ -30,7 +30,7 @@ namespace Crowy
             CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height)
         );
 
-        // NOTE. discard desc.debugName, desc.vsync
+        // desc.debugName and desc.vsync are not applied
     }
 
     MetalSwapchain::~MetalSwapchain() {

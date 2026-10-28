@@ -66,9 +66,8 @@ namespace Crowy
                    a.height == b.height;
         }
 
-        // sync → fence stage. the two directions round differently:
-        // a producer signals after its latest stage,
-        // a consumer waits before its earliest.
+        // sync to fence stage, rounded per direction: a producer signals after
+        // its latest stage, a consumer waits before its earliest
         MTL::RenderStages lastStage(RHIBarrierSync sync) {
             constexpr auto fragish = combine(
                 RHIBarrierSync::All,
@@ -104,7 +103,6 @@ namespace Crowy
           handoffSerial(handoffSerial) {}
 
     MetalCommandList::~MetalCommandList() {
-        // end whatever pass is still open
         std::visit(
             [](auto& state) {
                 if constexpr(requires { state.encoder; }) {
@@ -150,10 +148,8 @@ namespace Crowy
 
         CROWY_ASSERT(isRecording, "Did you call RHICommandList::Begin()?");
 
-        // un-acquired pending releases are the cross-submission hand-off:
-        // their fences are already updated behind the producers, and later
-        // submissions order against them through the submission event,
-        // so nothing records here (unlike DX12's Close-flush).
+        // un-acquired releases are the cross-submission hand-off: their fences
+        // are updated and later waves order through the submission event
         isRecording = false;
     }
 
@@ -201,8 +197,8 @@ namespace Crowy
         if(const auto it = pendingTextureReleases.find(acquire.texture);
            it != pendingTextureReleases.end()) {
             for(auto& entry: it->second) {
-                // full-edge equality doubles as the §5 cross validation:
-                // both halves carried the same value or they do not pair
+                // full-edge equality doubles as the cross validation: both
+                // halves carried the same value or they do not pair
                 if(entry.barrier == acquire) {
                     entry.consumed = true;
                     return entry.fence;
@@ -248,10 +244,8 @@ namespace Crowy
                 "the crossSubmission flag (makeCrossSubmissionBarrier)"
             );
             if(acquire.crossSubmission) {
-                // lazy gate: passes before the first cross-submission
-                // acquire keep overlapping the previous wave; from this
-                // pass on, the queue-global ordering the acquire relies
-                // on is restored
+                // lazy gate: earlier passes keep overlapping the prior wave;
+                // from here on the queue-global order the acquire needs holds
                 encodeSubmissionWait();
             }
             // plain self-contained acquires wait on nothing:
@@ -272,9 +266,8 @@ namespace Crowy
         auto& pending = pendingTextureReleases[release.texture];
         for(auto& entry: pending) {
             if(entry.barrier.range == release.range) {
-                // re-release of the same range = new producer. the old edge
-                // just goes stale - layout is a no-op here, so unlike DX12
-                // there is no transition left to complete
+                // a re-release is a new producer; the old edge goes stale:
+                // layout is a no-op, so no transition is left to complete
                 entry = {.barrier = release, .fence = fence};
                 return;
             }
@@ -302,9 +295,8 @@ namespace Crowy
 
         const auto park = [&, this](const auto& release) {
             if(release.syncAfter == RHIBarrierSync::None) {
-                // self-contained release (e.g. RenderTarget → Present):
-                // what follows is guaranteed elsewhere and layout is a
-                // Metal no-op, so nothing records at all
+                // a self-contained release is ordered elsewhere and layout
+                // is a Metal no-op, so nothing records at all
                 return;
             }
             if(fence == nullptr) {
@@ -333,7 +325,6 @@ namespace Crowy
 
         auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
 
-        // Color Attachment
         for(usize i = 0; i < desc.colorAttachments.size(); ++i) {
             auto& attachment = desc.colorAttachments[i];
             auto& mtlAttach = *passDesc->colorAttachments()->object(i);
@@ -353,7 +344,6 @@ namespace Crowy
             );
         }
 
-        // Depth Attachment
         if(desc.depthAttachment.has_value()) {
             auto& attachment = *desc.depthAttachment;
             auto& mtlAttach = *passDesc->depthAttachment();
@@ -753,8 +743,6 @@ namespace Crowy
         );
     }
 
-    // the args buffer is reinterpreted as
-    // MTL::DrawPrimitivesIndirectArguments[]
     static_assert(
         sizeof(RHIDrawArgs) == sizeof(MTL::DrawPrimitivesIndirectArguments)
     );
@@ -798,8 +786,6 @@ namespace Crowy
         }
     }
 
-    // the args buffer is reinterpreted as
-    // MTL::DrawIndexedPrimitivesIndirectArguments[]
     static_assert(
         sizeof(RHIDrawIndexedArgs) ==
         sizeof(MTL::DrawIndexedPrimitivesIndirectArguments)

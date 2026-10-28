@@ -268,7 +268,6 @@ namespace Crowy
             NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
         topology = convert(desc.topology);
 
-        // Vertex Layout
         if(desc.vertexLayout.has_value()) {
             const auto& vertexLayout = desc.vertexLayout.value();
             auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
@@ -305,7 +304,6 @@ namespace Crowy
         }
 
         NS::SharedPtr<MTL::Library> library;
-        // Vertex Shader
         {
             const auto& filePath = desc.vertexShader.path;
             const auto& entryPoint = desc.vertexShader.entryPoint;
@@ -368,7 +366,6 @@ namespace Crowy
                                  : MTL::DepthClipModeClamp
         };
 
-        // Fragment Shader
         if(desc.fragmentShader &&
            desc.fragmentShader->path != desc.vertexShader.path) {
             const auto& filePath = desc.fragmentShader->path;
@@ -410,10 +407,8 @@ namespace Crowy
         }
 
         if(desc.depthStencil.has_value()) {
-            // Depth Stencil State
             createDepthStencilState(device, desc.depthStencil.value());
 
-            // Depth Stencil Format
             auto depthStencilFormat = desc.depthStencil->format;
             CROWY_ASSERT(depthStencilFormat != RHIPixelFormat::Unknown);
 
@@ -422,7 +417,6 @@ namespace Crowy
             );
         }
 
-        // Blend State
         const auto blend = desc.blend.value_or(RHIBlendState{});
         pipelineDesc->setAlphaToCoverageEnabled(blend.alphaToCoverageEnable);
 
@@ -467,7 +461,6 @@ namespace Crowy
             }
         }
 
-        // Render Target Formats
         for(usize i = 0; i < desc.renderTargetCount; ++i) {
             auto colorAttach = pipelineDesc->colorAttachments()->object(i);
 
@@ -594,7 +587,6 @@ namespace Crowy
     void MetalComputePipelineState::Bind(MTL::ComputeCommandEncoder& encoder) {
         encoder.setComputePipelineState(pipeline.get());
 
-        // bind sampler to reserved slot
         for(const auto& binding: samplers) {
             encoder.setSamplerState(binding.sampler, binding.slot);
         }
