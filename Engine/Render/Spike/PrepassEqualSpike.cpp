@@ -121,11 +121,10 @@ namespace Crowy
                 .vertexShader =
                     {.path = "Engine/Render/Spike/PrepassEqualSpike.slang",
                      .entryPoint = "vs_main"},
-                .fragmentShader =
-                    {.path = "Engine/Render/Spike/PrepassEqualSpike.slang",
-                     .entryPoint = "fs_main"},
-                .rasterizer = {.frontCounterClockwise = false},
-                .profile = "sm_6_8"
+                .fragmentShader = {
+                    .path = "Engine/Render/Spike/PrepassEqualSpike.slang",
+                    .entryPoint = "fs_main"
+                }
             };
         }
 

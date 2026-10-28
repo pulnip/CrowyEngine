@@ -28,9 +28,7 @@ namespace Crowy
 
             return MaterialPipelineDesc{
                 .vertexShader = {.path = ForwardShader, .entryPoint = "vs_main"},
-                .fragmentShader = {.path = ForwardShader, .entryPoint = "fs_opaque"},
-                .rasterizer = {.frontCounterClockwise = false},
-                .profile = "sm_6_8"
+                .fragmentShader = {.path = ForwardShader, .entryPoint = "fs_opaque"}
             };
         }
 

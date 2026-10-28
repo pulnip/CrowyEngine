@@ -67,10 +67,7 @@ namespace Crowy
                              .entryPoint = "vs_main"},
                         .fragmentShader =
                             {.path = "Engine/Render/Sample/TenThousandBlocks.slang",
-                             .entryPoint = "fs_main"},
-                        .rasterizer = {.frontCounterClockwise = false},
-                        // SV_StartInstanceLocation carries the draw ID
-                        .profile = "sm_6_8"
+                             .entryPoint = "fs_main"}
                     }
                 }
             );

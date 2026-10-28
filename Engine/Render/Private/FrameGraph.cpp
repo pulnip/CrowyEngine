@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <format>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -13,6 +14,7 @@
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
 #include "RHITexture.hpp"
+#include "RangeUtil.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
 
@@ -63,59 +65,41 @@ namespace Crowy
         }
 
         void refuseDuplicateNames(const FrameGraphDesc& desc) {
-            for(usize i = 0; i < desc.extents.size(); ++i) {
-                for(usize j = i + 1; j < desc.extents.size(); ++j) {
-                    if(desc.extents[i].name == desc.extents[j].name) {
-                        throw std::invalid_argument(
-                            std::format(
-                                "two extents are named '{}'",
-                                desc.extents[i].name
-                            )
-                        );
-                    }
-                }
+            if(const auto extent =
+                   firstRepeat(desc.extents, &FrameExtentDesc::name);
+               extent != desc.extents.end()) {
+                throw std::invalid_argument(
+                    std::format("two extents are named '{}'", extent->name)
+                );
             }
-            for(usize i = 0; i < desc.targets.size(); ++i) {
-                for(usize j = i + 1; j < desc.targets.size(); ++j) {
-                    if(desc.targets[i].name == desc.targets[j].name) {
-                        throw std::invalid_argument(
-                            std::format(
-                                "two targets are named '{}'",
-                                desc.targets[i].name
-                            )
-                        );
-                    }
-                }
+            if(const auto target =
+                   firstRepeat(desc.targets, &FrameTargetDesc::name);
+               target != desc.targets.end()) {
+                throw std::invalid_argument(
+                    std::format("two targets are named '{}'", target->name)
+                );
             }
-            for(usize i = 0; i < desc.passes.size(); ++i) {
-                for(usize j = i + 1; j < desc.passes.size(); ++j) {
-                    if(desc.passes[i].name == desc.passes[j].name)
-                        refuse(
-                            desc.passes[i].name,
-                            "two passes have this name"
-                        );
-                }
-            }
+            if(const auto pass = firstRepeat(desc.passes, &PassDesc::name);
+               pass != desc.passes.end())
+                refuse(pass->name, "two passes have this name");
             // a binding goes to one pass, so a second pass naming its hook
             // would never be bound
-            for(usize i = 0; i < desc.passes.size(); ++i) {
-                const auto* hook =
-                    std::get_if<HookPassDesc>(&desc.passes[i].kind);
-                if(hook == nullptr)
-                    continue;
-                for(usize j = i + 1; j < desc.passes.size(); ++j) {
-                    const auto* other =
-                        std::get_if<HookPassDesc>(&desc.passes[j].kind);
-                    if(other != nullptr && other->hook == hook->hook) {
-                        refuse(
-                            desc.passes[j].name,
-                            std::format(
-                                "hook '{}' is named by an earlier pass",
-                                hook->hook
-                            )
-                        );
-                    }
-                }
+            auto hookPasses =
+                desc.passes | std::views::filter([](const auto& pass) {
+                    return std::holds_alternative<HookPassDesc>(pass.kind);
+                });
+            const auto hookOf = [](const PassDesc& pass) -> const Str& {
+                return std::get<HookPassDesc>(pass.kind).hook;
+            };
+            if(const auto pass = firstRepeat(hookPasses, hookOf);
+               pass != hookPasses.end()) {
+                refuse(
+                    pass->name,
+                    std::format(
+                        "hook '{}' is named by an earlier pass",
+                        hookOf(*pass)
+                    )
+                );
             }
         }
 
@@ -303,8 +287,7 @@ namespace Crowy
                 .rasterizer = RHIRasterizerState{.cullMode = RHICullMode::None},
                 .fragmentShader = fullscreen.fragmentShader,
                 .blend = fullscreen.blend,
-                .renderTargetCount = formats.size(),
-                .profile = "sm_6_8"
+                .renderTargetCount = formats.size()
             };
             std::ranges::copy(formats, desc.renderTargetFormats.begin());
 
@@ -759,7 +742,7 @@ namespace Crowy
                     }
                 };
             }
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             passDesc.debugName = pass.name;
 #endif
 
@@ -770,24 +753,8 @@ namespace Crowy
             const auto& sized = colorScratch.empty()
                                     ? *passDesc.depthAttachment->texture
                                     : *colorScratch.front().texture;
-            cmdList.SetViewport(
-                RHIViewport{
-                    .x = 0,
-                    .y = 0,
-                    .width = static_cast<f32>(sized.GetWidth()),
-                    .height = static_cast<f32>(sized.GetHeight()),
-                    .minDepth = 0,
-                    .maxDepth = 1
-                }
-            );
-            cmdList.SetScissorRect(
-                RHIScissorRect{
-                    .left = 0,
-                    .top = 0,
-                    .right = static_cast<i32>(sized.GetWidth()),
-                    .bottom = static_cast<i32>(sized.GetHeight())
-                }
-            );
+            cmdList.SetViewport(fullViewport(sized));
+            cmdList.SetScissorRect(fullScissorRect(sized));
 
             if(mesh != nullptr) {
                 const auto& list = *compiled.drawList;

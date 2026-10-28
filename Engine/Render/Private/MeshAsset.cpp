@@ -1,29 +1,48 @@
 #include "MeshAsset.hpp"
 
+#include <algorithm>
+#include <array>
 #include <exception>
 #include <format>
 #include <utility>
 
 #include "MeshGenerator.hpp"
 #include "ModelLoader.hpp"
+#include "StringUtil.hpp"
 
 namespace
 {
     constexpr Crowy::StrView BuiltinFolder = "Builtin/";
+
+    struct BuiltinMesh {
+        Crowy::StrView name;
+        Crowy::MeshData (*make)();
+    };
+
+    constexpr std::array<BuiltinMesh, 3> BuiltinMeshes{{
+        {"Box", [] { return Crowy::MakeBox(0.5f); }},
+        {"Sphere", [] { return Crowy::MakeSphere(0.5f, 32, 16); }},
+        {"Plane", [] { return Crowy::MakePlane(Crowy::Vec2{0.5f, 0.5f}); }},
+    }};
 
     std::expected<Crowy::MeshData, Crowy::Str> builtinMesh(
         Crowy::StrView name
     ) {
         using namespace Crowy;
 
-        if(name == "Box")
-            return MakeBox(0.5f);
-        if(name == "Sphere")
-            return MakeSphere(0.5f, 32, 16);
-        if(name == "Plane")
-            return MakePlane(Vec2{0.5f, 0.5f});
+        const auto found =
+            std::ranges::find(BuiltinMeshes, name, &BuiltinMesh::name);
+        if(found == BuiltinMeshes.end()) {
+            return std::unexpected(
+                std::format(
+                    "no built-in mesh '{}'; the built-ins are {}",
+                    name,
+                    join(BuiltinMeshes, ", ", &BuiltinMesh::name)
+                )
+            );
+        }
 
-        return std::unexpected(std::format("no built-in mesh '{}'", name));
+        return found->make();
     }
 
     std::expected<Crowy::ModelData, Crowy::Str> readModel(
@@ -32,10 +51,10 @@ namespace
     ) {
         using namespace Crowy;
 
-        const StrView path = ref.Path();
+        StrView path = ref.Path();
         if(ref.Mount() == AssetMount::Engine &&
-           path.starts_with(BuiltinFolder)) {
-            auto mesh = builtinMesh(path.substr(BuiltinFolder.size()));
+           consumePrefix(path, BuiltinFolder)) {
+            auto mesh = builtinMesh(path);
             if(!mesh)
                 return std::unexpected(std::move(mesh).error());
 

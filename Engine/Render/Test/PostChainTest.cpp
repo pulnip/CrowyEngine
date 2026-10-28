@@ -4,6 +4,7 @@
 #include <variant>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "FakeDevice.hpp"
@@ -101,14 +102,12 @@ namespace
 
     void ExpectRefused(const Posts& post, StrView expected) {
         auto desc = SceneShaped();
-        try {
-            appendPostChain(desc, SceneColor, post);
-            ADD_FAILURE() << "accepted a list that should say: " << expected;
-        }
-        catch(const std::invalid_argument& e) {
-            EXPECT_TRUE(StrView{e.what()}.contains(expected))
-                << e.what() << "\nexpected: " << expected;
-        }
+        EXPECT_THAT(
+            [&] { appendPostChain(desc, SceneColor, post); },
+            testing::ThrowsMessage<std::invalid_argument>(
+                testing::HasSubstr(Str(expected))
+            )
+        );
         // a refused list adds nothing
         EXPECT_EQ(desc.targets.size(), 3u) << expected;
         EXPECT_EQ(desc.passes.size(), 1u) << expected;
@@ -302,14 +301,12 @@ TEST(PostChain, AnOutputSizedApartFromSceneColorIsRefused) {
 
     auto desc = ViewShaped(BackBufferExtent);
     const std::array post{tonemapPass()};
-    try {
-        appendPostChain(desc, SceneColor, post, View);
-        ADD_FAILURE() << "accepted an output that should say: " << Expected;
-    }
-    catch(const std::invalid_argument& e) {
-        EXPECT_TRUE(StrView{e.what()}.contains(Expected))
-            << e.what() << "\nexpected: " << Expected;
-    }
+    EXPECT_THAT(
+        [&] { appendPostChain(desc, SceneColor, post, View); },
+        testing::ThrowsMessage<std::invalid_argument>(
+            testing::HasSubstr(Str(Expected))
+        )
+    );
     // a refused output adds nothing
     EXPECT_EQ(desc.targets.size(), 4u);
     EXPECT_EQ(desc.passes.size(), 1u);
@@ -340,7 +337,7 @@ TEST(PostChain, InvalidListsAreRefused) {
     );
 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
 TEST(PostChainDeathTest, SceneColorAndOutputAreTargetsOfTheDesc) {
     const std::array post{tonemapPass()};
 

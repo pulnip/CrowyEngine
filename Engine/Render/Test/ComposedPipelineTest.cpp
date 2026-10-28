@@ -166,8 +166,7 @@ namespace
                     .fragmentShader =
                         {.path = "Engine/Shader/X.slang",
                          .entryPoint = "fs_main"},
-                    .domain = domain,
-                    .profile = "sm_6_8"
+                    .domain = domain
                 }
             }
         );

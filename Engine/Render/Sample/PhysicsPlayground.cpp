@@ -80,9 +80,7 @@ namespace Crowy
         MaterialPipelineDesc basePipeline(CStr file, CStr fragmentEntry) {
             return MaterialPipelineDesc{
                 .vertexShader = {.path = file, .entryPoint = "vs_main"},
-                .fragmentShader = {.path = file, .entryPoint = fragmentEntry},
-                .rasterizer = {.frontCounterClockwise = false},
-                .profile = "sm_6_8"
+                .fragmentShader = {.path = file, .entryPoint = fragmentEntry}
             };
         }
 
@@ -452,7 +450,7 @@ namespace Crowy
                         .data =
                             {.albedo = {0.5f, 0.5f, 0.5f}, .roughness = 0.8f},
                         .pipeline = basePipeline(
-                            "Engine/Render/Sample/PhysicsPlayground.slang",
+                            "Engine/Render/Sample/Playground.slang",
                             "fs_grid"
                         )
                     }

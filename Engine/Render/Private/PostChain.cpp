@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Assert.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -27,14 +28,9 @@ namespace Crowy
         }
 
         Str targetNames(const FrameGraphDesc& desc) {
-            Str names;
-            for(const auto& target: desc.targets) {
-                if(!names.empty())
-                    names += ", ";
-                names += "'" + target.name + "'";
-            }
-
-            return names;
+            return join(desc.targets, ", ", [](const FrameTargetDesc& target) {
+                return std::format("'{}'", target.name);
+            });
         }
 
         std::vector<Reads> resolveInputs(

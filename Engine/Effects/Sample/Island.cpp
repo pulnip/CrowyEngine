@@ -379,8 +379,7 @@ namespace Crowy
                 .fragmentShader =
                     {.path = StandardForward, .entryPoint = "fs_opaque"},
                 .rasterizer =
-                    {.cullMode = cull, .frontCounterClockwise = false},
-                .profile = "sm_6_8"
+                    {.cullMode = cull, .frontCounterClockwise = false}
             };
         }
 

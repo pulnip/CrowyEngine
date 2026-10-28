@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "FakeDevice.hpp"
@@ -21,8 +22,7 @@ namespace
             .vertexShader =
                 {.path = "Engine/Shader/X.slang", .entryPoint = "vs_main"},
             .fragmentShader =
-                {.path = "Engine/Shader/X.slang", .entryPoint = "fs_main"},
-            .profile = "sm_6_8"
+                {.path = "Engine/Shader/X.slang", .entryPoint = "fs_main"}
         };
     }
 
@@ -82,18 +82,14 @@ TEST(PipelineCache, RebuildKeepsTheOldStatesWhenOneFails) {
     // the rebuild's second create
     device.failAt = device.creates + 2;
 
-    try {
-        cache.Rebuild();
-        FAIL() << "Rebuild did not throw";
-    }
-    catch(const std::runtime_error& e) {
-        EXPECT_STREQ(
-            e.what(),
+    EXPECT_THAT(
+        [&] { cache.Rebuild(); },
+        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(
             "Engine/Shader/X.slang (vs_main, fs_main) + "
             "Engine/Shader/PBR.slang: "
             "fake compile error"
-        );
-    }
+        ))
+    );
     const auto after = ResolveAll(cache);
 
     EXPECT_EQ(cache.Count(), 3u);
@@ -227,17 +223,13 @@ TEST(PipelineCache, RebuildNamesTheLinkedModule) {
     // the rebuild's first create
     device.failAt = device.creates + 1;
 
-    try {
-        cache.Rebuild();
-        FAIL() << "Rebuild did not throw";
-    }
-    catch(const std::runtime_error& e) {
-        EXPECT_STREQ(
-            e.what(),
+    EXPECT_THAT(
+        [&] { cache.Rebuild(); },
+        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(
             "Engine/Shader/X.slang (vs_main, fs_main) + "
             "Engine/Shader/Toon.slang: fake compile error"
-        );
-    }
+        ))
+    );
 }
 
 // Every model shares the prepass's and the shadow's pipeline, and each keys

@@ -95,7 +95,6 @@ namespace Crowy
         RHIRasterizerState rasterizer{};
         std::optional<RHIBlendState> blend = std::nullopt;
         MaterialDomain domain = MaterialDomain::Opaque;
-        CStr profile = "sm_6_8";
     };
 
     struct MaterialResource {

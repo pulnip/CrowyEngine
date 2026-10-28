@@ -48,8 +48,7 @@ namespace
             .maskShader =
                 {.path = "Engine/Shader/X.slang",
                  .entryPoint = "fs_masked_depth"},
-            .domain = domain,
-            .profile = "sm_6_8"
+            .domain = domain
         };
     }
 

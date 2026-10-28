@@ -155,8 +155,7 @@ namespace Crowy
                 .fragmentShader =
                     {.path = "Engine/Render/Spike/VertexPullSpike.slang",
                      .entryPoint = "fs_main"},
-                .rasterizer = {.cullMode = RHICullMode::None},
-                .profile = "sm_6_8"
+                .rasterizer = {.cullMode = RHICullMode::None}
             };
         }
 

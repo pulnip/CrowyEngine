@@ -18,8 +18,7 @@ namespace
             .vertexShader =
                 {.path = "Engine/Shader/X.slang", .entryPoint = "vs_main"},
             .fragmentShader =
-                {.path = "Engine/Shader/X.slang", .entryPoint = "fs_main"},
-            .profile = "sm_6_8"
+                {.path = "Engine/Shader/X.slang", .entryPoint = "fs_main"}
         };
     }
 
@@ -42,44 +41,6 @@ TEST(PipelineKey, SameMaterialAndPassCompareEqual) {
         std::hash<RHIGraphicsPipelineStateDesc>{}(lhs),
         std::hash<RHIGraphicsPipelineStateDesc>{}(rhs)
     );
-}
-
-// `profile` is a CStr, so a defaulted comparison would compile the same
-// pipeline twice for two "sm_6_8" literals at different addresses.
-TEST(PipelineKey, ProfileComparesByValueNotAddress) {
-    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
-
-    auto material = OpaqueMaterial();
-    // a separate array, so the compiler cannot pool it with the literal above
-    static char otherProfile[] = "sm_6_8";
-    material.profile = otherProfile;
-
-    const auto lhs = Compose(OpaqueMaterial(), BasePass(formats));
-    const auto rhs = Compose(material, BasePass(formats));
-
-    ASSERT_NE(OpaqueMaterial().profile, material.profile);
-    EXPECT_EQ(lhs, rhs);
-}
-
-// The cache compares only inside a bucket, so equal keys must also hash alike.
-// A null profile is a key too: RHIShader reads it as "no profile".
-TEST(PipelineKey, ProfileHashesByValueNotAddress) {
-    const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
-    const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
-
-    auto material = OpaqueMaterial();
-    static char otherProfile[] = "sm_6_8";
-    material.profile = otherProfile;
-
-    auto lhs = Compose(OpaqueMaterial(), BasePass(formats));
-    auto rhs = Compose(material, BasePass(formats));
-
-    ASSERT_NE(lhs.profile, rhs.profile);
-    EXPECT_EQ(hash(lhs), hash(rhs));
-
-    lhs.profile = nullptr;
-    rhs.profile = nullptr;
-    EXPECT_EQ(hash(lhs), hash(rhs));
 }
 
 // The reason MaterialPipelineDesc carries no render target state: the same

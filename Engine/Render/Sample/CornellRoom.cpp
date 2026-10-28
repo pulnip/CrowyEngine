@@ -216,9 +216,7 @@ namespace Crowy
                      .entryPoint = "vs_main"},
                 .fragmentShader =
                     {.path = "Engine/Render/Sample/CornellRoom.slang",
-                     .entryPoint = "fs_main"},
-                .rasterizer = {.frontCounterClockwise = false},
-                .profile = "sm_6_8"
+                     .entryPoint = "fs_main"}
             };
         }
     };

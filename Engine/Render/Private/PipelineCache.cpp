@@ -12,6 +12,7 @@
 #include "PathUtil.hpp"
 #include "RHIDevice.hpp"
 #include "RHIPipelineState.hpp"
+#include "StringUtil.hpp"
 
 namespace
 {
@@ -45,8 +46,8 @@ namespace
                                  toUTF8String(fragment.path),
                                  fragment.entryPoint
                              );
-        for(const auto& module: desc.linkedModules)
-            shaders += " + " + toUTF8String(module);
+        if(!desc.linkedModules.empty())
+            shaders += " + " + join(desc.linkedModules, " + ", toUTF8String);
 
         return shaders;
     }
@@ -81,8 +82,7 @@ namespace Crowy
                     .depthWriteEnable = state.depthWrite,
                     .depthFunc = state.depthFunc
                 },
-            .renderTargetCount = pass.renderTargetFormats.size(),
-            .profile = material.profile
+            .renderTargetCount = pass.renderTargetFormats.size()
         };
         if(state.depthBias) {
             desc.rasterizer.depthBias = state.depthBias->depthBias;

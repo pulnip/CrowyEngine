@@ -67,7 +67,10 @@ TEST_F(MeshAssetTest, AnUnknownBuiltInIsAnError) {
         loadMeshAsset(pool, roots, parsed("engine:Builtin/Cone"));
 
     ASSERT_FALSE(asset.has_value());
-    EXPECT_EQ(asset.error(), "no built-in mesh 'Cone'");
+    EXPECT_EQ(
+        asset.error(),
+        "no built-in mesh 'Cone'; the built-ins are Box, Sphere, Plane"
+    );
 }
 
 // the Builtin folder is reserved under the engine mount only

@@ -699,9 +699,7 @@ namespace Crowy
     ) {
         return MaterialPipelineDesc{
             .vertexShader = {.path = file, .entryPoint = "vs_main"},
-            .fragmentShader = {.path = file, .entryPoint = fragmentEntry},
-            .rasterizer = {.frontCounterClockwise = false},
-            .profile = "sm_6_8"
+            .fragmentShader = {.path = file, .entryPoint = fragmentEntry}
         };
     }
 

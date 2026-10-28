@@ -263,9 +263,7 @@ namespace Crowy
                 .vertexShader =
                     {.path = StandardForward, .entryPoint = "vs_main"},
                 .fragmentShader =
-                    {.path = StandardForward, .entryPoint = "fs_opaque"},
-                .rasterizer = {.frontCounterClockwise = false},
-                .profile = "sm_6_8"
+                    {.path = StandardForward, .entryPoint = "fs_opaque"}
             };
         }
 

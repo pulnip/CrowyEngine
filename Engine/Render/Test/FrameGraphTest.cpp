@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "EnumUtil.hpp"
@@ -44,8 +45,7 @@ namespace
             .maskShader =
                 {.path = "Engine/Shader/X.slang",
                  .entryPoint = "fs_masked_depth"},
-            .domain = domain,
-            .profile = "sm_6_8"
+            .domain = domain
         };
     }
 
@@ -214,20 +214,20 @@ namespace
 
     void ExpectRefused(FrameGraphDesc desc, StrView expected) {
         FakeDevice device;
-        try {
-            FrameGraph pipeline(
-                device,
-                std::move(desc),
-                BackBufferFormat,
-                Width,
-                Height
-            );
-            ADD_FAILURE() << "accepted a desc that should say: " << expected;
-        }
-        catch(const std::invalid_argument& e) {
-            EXPECT_TRUE(StrView{e.what()}.contains(expected))
-                << e.what() << "\nexpected: " << expected;
-        }
+        EXPECT_THAT(
+            [&] {
+                FrameGraph pipeline(
+                    device,
+                    std::move(desc),
+                    BackBufferFormat,
+                    Width,
+                    Height
+                );
+            },
+            testing::ThrowsMessage<std::invalid_argument>(
+                testing::HasSubstr(Str(expected))
+            )
+        );
     }
 }
 
@@ -2173,14 +2173,12 @@ TEST(FrameGraph, HookBindingsMatchTheListOrRecordNothing) {
         inputs.hooks = hooks;
         f.Prepare(pipeline);
         f.cmdList.Begin();
-        try {
-            pipeline.Record(f.cmdList, f.renderer, inputs);
-            ADD_FAILURE() << "recorded a frame that should say: " << expected;
-        }
-        catch(const std::invalid_argument& e) {
-            EXPECT_TRUE(StrView{e.what()}.contains(expected))
-                << e.what() << "\nexpected: " << expected;
-        }
+        EXPECT_THAT(
+            [&] { pipeline.Record(f.cmdList, f.renderer, inputs); },
+            testing::ThrowsMessage<std::invalid_argument>(
+                testing::HasSubstr(Str(expected))
+            )
+        );
         EXPECT_TRUE(f.cmdList.passes.empty());
     };
     const auto binding = [](CStr name) {
