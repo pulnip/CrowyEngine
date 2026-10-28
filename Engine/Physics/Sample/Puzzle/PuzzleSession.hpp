@@ -59,7 +59,6 @@ namespace Crowy
         // kind's
         PuzzleSession(PhysicsRuntime& runtime, Puzzle puzzle, PuzzleMode mode);
 
-        // the due releases, the tracks, one Step, the goal, the checkpoint
         void Tick();
 
         const Puzzle& GetPuzzle() const noexcept { return puzzle; }

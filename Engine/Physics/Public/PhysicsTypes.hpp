@@ -16,7 +16,6 @@ namespace Crowy
     struct SphereShape;
     struct CompoundShape;
 
-    // valid only in the world that made it
     using BodyHandle = GenericHandle<BodyTag>;
     using HingeHandle = GenericHandle<HingeTag>;
     using BodyHandles = std::vector<BodyHandle>;

@@ -43,7 +43,6 @@ namespace Crowy
     };
 
     enum class PuzzleMode : u8 {
-        // the scripted solution
         Solution,
         // the solution without the move that works the mechanism
         Control,
