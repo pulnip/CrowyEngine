@@ -24,6 +24,7 @@ namespace Crowy
             u64 diffuse;
             u64 normal;
             u64 bump;
+            u64 vertices;
         };
 
         Vec4 boxRot = unitQuat();
@@ -49,7 +50,6 @@ namespace Crowy
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
             pso = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
-                    .vertexLayout = VertexInputLayout,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/NormalMapping.slang",
@@ -173,12 +173,12 @@ namespace Crowy
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*pso);
-            cmdList.SetVertexBuffer(*vertices, 0, sizeof(Vertex));
             cmdList.SetPushGraphicsConstants(
                 PushConstants{
                     .diffuse = diffuse->GetReadableID(),
                     .normal = normal->GetReadableID(),
-                    .bump = bump->GetReadableID()
+                    .bump = bump->GetReadableID(),
+                    .vertices = vertices->GetReadableID(sizeof(Vertex))
                 }
             );
             cmdList.SetGraphicsConstantBuffer(frameCB, 0);

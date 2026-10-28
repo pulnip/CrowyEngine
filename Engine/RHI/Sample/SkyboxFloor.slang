@@ -1,10 +1,11 @@
 #include "Sampler.slang"
 
-struct VertexIn {
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD0;
-    float4 tangent : TANGENT;
+// keep in sync with Engine/RHI/Common/Vertex.hpp
+struct Vertex {
+    float3 position;
+    float3 normal;
+    float2 texCoord;
+    float4 tangent;
 };
 
 cbuffer frame : register(b1) {
@@ -19,8 +20,19 @@ struct VertexOut {
     float2 texCoord : TEXCOORD0;
 };
 
+struct ResourceData {
+    DescriptorHandle<Texture2D> albedo;
+    DescriptorHandle<StructuredBuffer<Vertex>> vertices;
+};
+
+[[vk::push_constant]]
+ConstantBuffer<ResourceData> resource : register(b0);
+
 [shader("vertex")]
-VertexOut vs_main(VertexIn input) {
+VertexOut vs_main(uint vertexID : SV_VertexID) {
+    StructuredBuffer<Vertex> vertices = resource.vertices;
+    Vertex input = vertices[vertexID];
+
     float4 posWorld = mul(model, float4(input.position, 1.0));
 
     VertexOut output;
@@ -30,13 +42,6 @@ VertexOut vs_main(VertexIn input) {
 
     return output;
 }
-
-struct ResourceData {
-    DescriptorHandle<Texture2D> albedo;
-};
-
-[[vk::push_constant]]
-ConstantBuffer<ResourceData> resource : register(b0);
 
 [shader("fragment")]
 float4 fs_main(VertexOut input) : SV_Target {

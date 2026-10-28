@@ -1,11 +1,12 @@
 #include "Sampler.slang"
 
-struct VertexIn {
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD0;
+// keep in sync with Engine/RHI/Common/Vertex.hpp
+struct Vertex {
+    float3 position;
+    float3 normal;
+    float2 texCoord;
     // w = handedness sign
-    float4 tangent : TANGENT;
+    float4 tangent;
 };
 
 cbuffer uniform : register(b1) {
@@ -25,8 +26,23 @@ struct VertexOut {
     float2 texCoord : TEXCOORD0;
 };
 
+struct ResourceData {
+    DescriptorHandle<Texture2D> diffuse;
+    // BC5_UNORM: only RG is stored
+    DescriptorHandle<Texture2D> normal;
+    // BC4_UNORM: height in R
+    DescriptorHandle<Texture2D> bump;
+    DescriptorHandle<StructuredBuffer<Vertex>> vertices;
+};
+
+[[vk::push_constant]]
+ConstantBuffer<ResourceData> resource : register(b0);
+
 [shader("vertex")]
-VertexOut vs_main(VertexIn input) {
+VertexOut vs_main(uint vertexID : SV_VertexID) {
+    StructuredBuffer<Vertex> vertices = resource.vertices;
+    Vertex input = vertices[vertexID];
+
     float4 posWorld = mul(model, float4(input.position, 1.0));
 
     VertexOut output;
@@ -38,17 +54,6 @@ VertexOut vs_main(VertexIn input) {
 
     return output;
 }
-
-struct ResourceData {
-    DescriptorHandle<Texture2D> diffuse;
-    // BC5_UNORM: only RG is stored
-    DescriptorHandle<Texture2D> normal;
-    // BC4_UNORM: height in R
-    DescriptorHandle<Texture2D> bump;
-};
-
-[[vk::push_constant]]
-ConstantBuffer<ResourceData> resource : register(b0);
 
 [shader("fragment")]
 float4 fs_main(VertexOut input) : SV_Target {

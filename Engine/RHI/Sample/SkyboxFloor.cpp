@@ -39,9 +39,11 @@ namespace Crowy
 
         struct SkyPushConstants {
             u64 texture;
+            u64 vertices;
         };
         struct FloorPushConstants {
             u64 albedo;
+            u64 vertices;
         };
 
         struct SkyUniforms {
@@ -111,7 +113,6 @@ namespace Crowy
             // regardless of how the sphere and the plane happen to overlap
             skyPSO = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
-                    .vertexLayout = VertexInputLayout,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/Skybox.slang",
@@ -134,7 +135,6 @@ namespace Crowy
 
             floorPSO = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
-                    .vertexLayout = VertexInputLayout,
                     .topology = RHIPrimitiveTopology::TriangleList,
                     .vertexShader =
                         {.path = "Engine/RHI/Sample/SkyboxFloor.slang",
@@ -327,7 +327,6 @@ namespace Crowy
             cmdList.SetScissorRect(fullScissorRect(*backBuffer.texture));
 
             cmdList.SetPipelineState(*skyPSO);
-            cmdList.SetVertexBuffer(*skyVertices, 0, sizeof(Vertex));
             cmdList.SetPushGraphicsConstants(
                 SkyPushConstants{
                     .texture = cubeMap->GetReadableID(
@@ -335,7 +334,8 @@ namespace Crowy
                             .format = cubeMap->GetFormat(),
                             .config = RHITextureViewDesc::TexCube{}
                         }
-                    )
+                    ),
+                    .vertices = skyVertices->GetReadableID(sizeof(Vertex))
                 }
             );
             cmdList.SetGraphicsConstantBuffer(skyCB, 0);
@@ -345,9 +345,11 @@ namespace Crowy
             );
 
             cmdList.SetPipelineState(*floorPSO);
-            cmdList.SetVertexBuffer(*floorVertices, 0, sizeof(Vertex));
             cmdList.SetPushGraphicsConstants(
-                FloorPushConstants{.albedo = floorAlbedo->GetReadableID()}
+                FloorPushConstants{
+                    .albedo = floorAlbedo->GetReadableID(),
+                    .vertices = floorVertices->GetReadableID(sizeof(Vertex))
+                }
             );
             cmdList.SetGraphicsConstantBuffer(floorCB, 0);
             cmdList.DrawIndexed(
