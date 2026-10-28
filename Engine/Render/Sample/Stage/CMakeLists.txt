@@ -1,5 +1,4 @@
 # Backlot's film set, read from its scene file and placed into a RenderScene.
-# Everything that knows Backlot's contract lives here, outside the engine.
 crowy_declare_sample_library(Stage
     # StageInspect only registers the rows
     WHOLE_ARCHIVE

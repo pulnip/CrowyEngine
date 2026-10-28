@@ -1,5 +1,4 @@
-# A physics world written one way into render primitives. It knows no
-# sample, so it can move out of the samples as it is.
+# A physics world written one way into render primitives; it knows no sample.
 crowy_declare_sample_library(PhysicsSync
     # its tests repeat the library's arithmetic and compare bit for bit
     FP_CONTRACT_OFF

@@ -9,8 +9,8 @@
 #include "DomTraits.hpp"
 #include "Primitives.hpp"
 
-// Backlot's scene file (its docs/scene-format.md, metadata version 1), read
-// as written: metres and degrees, colors decoded to linear light.
+// Backlot's scene file (its docs/scene-format.md), read as written: meters
+// and degrees, colors decoded to linear light.
 namespace Crowy
 {
     struct StageCamera;

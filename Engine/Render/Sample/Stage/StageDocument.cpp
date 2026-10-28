@@ -12,7 +12,6 @@ namespace Crowy
 {
     namespace
     {
-        // where a row sits, for a message that names it
         struct RowRef {
             StrView section;
             usize index = 0;

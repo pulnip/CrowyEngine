@@ -11,8 +11,7 @@
 #include "RenderScene.hpp"
 #include "StageLoad.hpp"
 
-// The loaded stage as RenderScene rows: every Backlot rule the engine draws
-// with lives here, never under Engine/.
+// The loaded stage as RenderScene rows.
 namespace Crowy
 {
     struct StageBindings;
@@ -115,7 +114,7 @@ namespace Crowy
         };
     }
 
-    // queues every model slot and the unit quad; call from OnBuildGeometry
+    // queues every model slot and the unit quad in the pool
     StageGeometry addStageGeometry(
         GeometryPool& pool,
         const LoadedStage& stage
@@ -126,16 +125,14 @@ namespace Crowy
         RHIDevice& device,
         const LoadedStage& stage
     );
-    // the rows: materials, meshes, primitives, lights and the sun, all off
-    // until a key is applied
+    // the rows, all off until a key is applied
     StageBindings populateStage(
         RenderScene& scene,
         const LoadedStage& stage,
         const StageGeometry& geometry,
         const StageTextureHandles& textures
     );
-    // a lighting key, switched: the sun, the ambient pair, light groups,
-    // emissive channels and keyed rows; returns the key's clear color
+    // a lighting key switched on across the rows; returns the key's clear color
     Color applyStageKey(
         RenderScene& scene,
         const StageBindings& bindings,

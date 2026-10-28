@@ -6,7 +6,6 @@
 
 namespace Crowy
 {
-    // the checkout the suite reads; the binary exits 77 before any test
-    // runs when it is missing or holds Git LFS pointers
+    // the checkout the suite reads
     std::filesystem::path backlotRoot();
 }

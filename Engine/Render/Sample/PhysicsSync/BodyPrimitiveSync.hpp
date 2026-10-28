@@ -18,7 +18,7 @@ namespace Crowy
     using BodyBindings = std::vector<BodyBinding>;
     using TetherBindings = std::vector<TetherBinding>;
 
-    // MakeBox(0.5f) and MakeSphere(0.5f): a shape's scale stretches them
+    // the builtin Box and Sphere, unit-sized: a shape's scale stretches them
     inline constexpr AABB3D UnitMeshBounds{.halfScale = {0.5f, 0.5f, 0.5f}};
 
     // a compound's parts carry their own scale

@@ -93,8 +93,6 @@ namespace
         for(const auto& material: stage.document.materials)
             stage.samplers.emplace(material.texture, material.sampler);
         stage.unitQuad = makeStageUnitQuad();
-        // what loadStage reserves: three materials, two draws for the lamp,
-        // one for the box, one for the quad
         stage.capacities.materials = countStageMaterials(stage);
         stage.capacities.draws = 4;
 

@@ -22,8 +22,8 @@ namespace Crowy
 
     bool isLfsPointer(const std::filesystem::path& file);
 
-    // everything the scene file names, on the CPU; throws naming a missing
-    // file, a Git LFS pointer, or geometry past GeometryStagingBudget
+    // everything the scene file names, on the CPU; throws std::runtime_error
+    // naming the file or row it cannot use
     LoadedStage loadStage(const std::filesystem::path& root);
     LoadedStage loadStage(
         const std::filesystem::path& root,
@@ -52,7 +52,7 @@ namespace Crowy
     // for (u0, v0) is its front's top-left
     MeshData makeStageUnitQuad();
 
-    // what RenderApp::Config must reserve before the stage is built
+    // what the renderer must reserve before the stage is built
     struct StageCapacities {
         // GeometryPool elements, with the slack its allocator needs
         u32 vertices = 0;
@@ -86,7 +86,7 @@ namespace Crowy
         StageLoadTimings timings;
     };
 
-    // what a reload replaces; the models, images, samplers and unit quad stay
+    // what a reload replaces; the rest of LoadedStage stays
     struct StageReload {
         StageDocument document;
         StageSprites sprites;

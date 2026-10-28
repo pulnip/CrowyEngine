@@ -63,8 +63,6 @@ namespace Crowy
             return models[static_cast<usize>(row - table.begin())];
         }
 
-        // the palette, an emissive palette per channel a glowing model's
-        // instance names, one per quad
         u32 materialsOf(
             const StageDocument& document,
             const StageModels& table,
@@ -94,7 +92,6 @@ namespace Crowy
             );
         }
 
-        // one per drawn submesh, every keyed row counted
         u64 drawsOf(
             const StageDocument& document,
             const StageModels& table,
