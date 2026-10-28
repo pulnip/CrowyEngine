@@ -13,6 +13,19 @@
 
 namespace Crowy
 {
+    template<typename T>
+    inline void setDebugName(T& object, [[maybe_unused]] StrView name) {
+#if CROWY_DEBUG_BUILD
+        if(!name.empty()) {
+            object.SetPrivateData(
+                WKPDID_D3DDebugObjectName,
+                static_cast<UINT>(name.size()),
+                name.data()
+            );
+        }
+#endif
+    }
+
     DXGI_FORMAT convert(RHIPixelFormat);
     RHIPixelFormat convert(DXGI_FORMAT);
 

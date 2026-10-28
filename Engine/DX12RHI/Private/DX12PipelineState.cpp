@@ -400,15 +400,7 @@ namespace Crowy
             "Failed to create graphics pipeline state"
         );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()) {
-            pipeline->SetPrivateData(
-                WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(name.length()),
-                name.data()
-            );
-        }
-#endif
+        setDebugName(*pipeline.Get(), name);
     }
 
     DX12GraphicsPipelineState::~DX12GraphicsPipelineState() = default;
@@ -452,15 +444,7 @@ namespace Crowy
             "Failed to create compute pipeline state"
         );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()) {
-            pipeline->SetPrivateData(
-                WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(name.length()),
-                name.data()
-            );
-        }
-#endif
+        setDebugName(*pipeline.Get(), name);
     }
 
     DX12ComputePipelineState::~DX12ComputePipelineState() = default;

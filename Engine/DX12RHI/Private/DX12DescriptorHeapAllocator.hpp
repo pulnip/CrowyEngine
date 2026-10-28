@@ -18,7 +18,7 @@ namespace Crowy
         RHIRetireQueue& retireQueue;
         std::vector<UINT> freeIndexes;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         // isolates a retired index under a null view; opt-in, since it
         // never gives an index back and a long run can exhaust the heap
         bool poisonMode = false;
@@ -66,7 +66,7 @@ namespace Crowy
     private:
         UINT acquireIndex();
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         void poisonSlot(UINT index);
 #endif
     };

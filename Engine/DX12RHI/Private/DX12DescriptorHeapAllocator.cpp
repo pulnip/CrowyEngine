@@ -19,7 +19,7 @@ namespace Crowy
           descriptorSize(device.GetDescriptorHandleIncrementSize(type)),
           type(type),
           retireQueue(retireQueue)
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
           ,
           poisonMode(std::getenv("CROWY_RHI_POISON") != nullptr)
 #endif
@@ -128,7 +128,7 @@ namespace Crowy
 
     void DX12DescriptorHeapAllocator::Free(UINT index) {
         retireQueue.Defer([this, index] {
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             if(poisonMode) {
                 poisonSlot(index);
                 return;
@@ -139,7 +139,7 @@ namespace Crowy
         });
     }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
     void DX12DescriptorHeapAllocator::poisonSlot(UINT index) {
         // only CBV/SRV/UAV descriptors are ever read as a bindless index
         // from shader code; a null raw-buffer SRV is a safe, format-agnostic

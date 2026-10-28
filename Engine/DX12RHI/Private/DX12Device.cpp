@@ -35,7 +35,7 @@ namespace
         UINT dxgiFactoryFlags = 0;
         FactoryRAII factory = nullptr;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         COMRAII<ID3D12Debug> debugController;
         if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
             debugController->EnableDebugLayer();

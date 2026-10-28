@@ -175,15 +175,7 @@ namespace Crowy
         );
         texture = backBufferOwner.Get();
 
-#if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()) {
-            texture->SetPrivateData(
-                WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(name.length()),
-                name.data()
-            );
-        }
-#endif
+        setDebugName(*texture, name);
     }
 
     DX12Texture::~DX12Texture() {

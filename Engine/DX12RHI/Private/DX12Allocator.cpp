@@ -76,15 +76,7 @@ namespace Crowy
             "Failed to allocate DX12 resource"
         );
 
-#if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()) {
-            resource->SetPrivateData(
-                WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(name.length()),
-                name.data()
-            );
-        }
-#endif
+        setDebugName(*resource.Get(), name);
 
         const RHIAllocation allocation{
             .resource = resource.Get(),

@@ -92,15 +92,7 @@ namespace Crowy
         );
         createBackBuffers(desc.bufferCount);
 
-#if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()) {
-            swapchain->SetPrivateData(
-                WKPDID_D3DDebugObjectName,
-                static_cast<UINT>(name.length()),
-                name.data()
-            );
-        }
-#endif
+        setDebugName(*swapchain.Get(), name);
     }
 
     DX12Swapchain::~DX12Swapchain() = default;
