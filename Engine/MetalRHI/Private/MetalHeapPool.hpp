@@ -2,6 +2,8 @@
 
 #include <mutex>
 #include <vector>
+
+#include <Foundation/NSSharedPtr.hpp>
 #include <Foundation/NSTypes.hpp>
 #include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLDevice.hpp>
@@ -9,28 +11,29 @@
 #include <Metal/MTLResidencySet.hpp>
 #include <Metal/MTLResource.hpp>
 #include <Metal/MTLTexture.hpp>
-#include <Foundation/NSSharedPtr.hpp>
+
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    struct MetalHeapPoolDesc{
+    struct MetalHeapPoolDesc {
         MTL::StorageMode storageMode = MTL::StorageModePrivate;
         MTL::CPUCacheMode cpuCacheMode = MTL::CPUCacheModeDefaultCache;
         // bindless + explicit barrier
-        MTL::HazardTrackingMode hazardTracking = MTL::HazardTrackingModeUntracked;
+        MTL::HazardTrackingMode hazardTracking =
+            MTL::HazardTrackingModeUntracked;
         // default 128 MiB
         NS::UInteger heapSize = 128ull << 20;
     };
 
     // for Persistent Resource
-    class MetalHeapPool{
+    class MetalHeapPool {
     public:
-        struct Stats{
+        struct Stats {
             usize heapCount = 0;
             usize totalSize = 0;
-            usize usedSize  = 0;
+            usize usedSize = 0;
         };
 
     private:
@@ -42,11 +45,11 @@ namespace Crowy
         MetalHeapPoolDesc desc{};
 
         mutable std::mutex mutex;
-        u32 heapCounter  = 0;
+        u32 heapCounter = 0;
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         Str debugName;
-    #endif
+#endif
 
     public:
         MetalHeapPool() = default;
@@ -67,9 +70,7 @@ namespace Crowy
 
         Stats GetStats() const;
 
-        auto ResidencySet(){
-            return residencySet.get();
-        }
+        auto ResidencySet() { return residencySet.get(); }
 
     private:
         MTL::Heap* addHeapLocked(NS::UInteger minSize);

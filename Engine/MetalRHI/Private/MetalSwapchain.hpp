@@ -4,6 +4,7 @@
 #include <QuartzCore/CAMetalDrawable.hpp>
 #include <QuartzCore/CAMetalLayer.hpp>
 #include <SDL3/SDL_metal.h>
+
 #include "MetalTexture.hpp"
 #include "Primitives.hpp"
 #include "RHIAPI.hpp"
@@ -13,7 +14,7 @@ namespace Crowy
 {
     class MetalCommandList;
 
-    class MetalSwapchain final: public RHISwapchain{
+    class MetalSwapchain final: public RHISwapchain {
     private:
         SDL_MetalView view = nullptr;
         // Cache MetalLayer
@@ -23,10 +24,7 @@ namespace Crowy
         MetalTexture backBuffer;
 
     public:
-        MetalSwapchain(
-            MTL::Device&,
-            const RHISwapchainCreateDesc&
-        );
+        MetalSwapchain(MTL::Device&, const RHISwapchainCreateDesc&);
 
         ~MetalSwapchain();
 
@@ -36,16 +34,14 @@ namespace Crowy
 
         // read from the layer, not the backbuffer;
         // the backbuffer is empty until the first AcquireNextImage.
-        u32 GetWidth() const noexcept RHI_OVERRIDE{
+        u32 GetWidth() const noexcept RHI_OVERRIDE {
             return static_cast<u32>(metalLayer->drawableSize().width);
         }
-        u32 GetHeight() const noexcept RHI_OVERRIDE{
+        u32 GetHeight() const noexcept RHI_OVERRIDE {
             return static_cast<u32>(metalLayer->drawableSize().height);
         }
 
-        RHITexture& GetCurrentTexture() RHI_OVERRIDE{
-            return backBuffer;
-        }
+        RHITexture& GetCurrentTexture() RHI_OVERRIDE { return backBuffer; }
 
         // `frame` is the loop frame this present belongs to
         void Present(MTL::CommandBuffer&, u64 frame);

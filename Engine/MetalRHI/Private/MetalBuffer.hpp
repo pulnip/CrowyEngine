@@ -1,7 +1,8 @@
 #pragma once
 
-#include <Metal/MTLDevice.hpp>
 #include <Metal/MTLBuffer.hpp>
+#include <Metal/MTLDevice.hpp>
+
 #include "MetalAllocator.hpp"
 #include "RHIAPI.hpp"
 #include "RHIBuffer.hpp"
@@ -9,7 +10,7 @@
 
 namespace Crowy
 {
-    class MetalBuffer final: public RHIBuffer{
+    class MetalBuffer final: public RHIBuffer {
     private:
         RHIAllocation allocation{};
         MTL::Buffer* buffer = nullptr;
@@ -27,9 +28,9 @@ namespace Crowy
         );
         ~MetalBuffer();
 
-        u32 GetSize() const noexcept RHI_OVERRIDE{ return size; }
+        u32 GetSize() const noexcept RHI_OVERRIDE { return size; }
 
-        void* GetMappedPtr() noexcept RHI_OVERRIDE{ return mapped; }
+        void* GetMappedPtr() noexcept RHI_OVERRIDE { return mapped; }
 
         MTL::Buffer* Get() noexcept { return buffer; }
 

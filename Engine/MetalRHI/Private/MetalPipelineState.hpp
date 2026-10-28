@@ -2,9 +2,11 @@
 
 #include <span>
 #include <vector>
-#include <Metal/MTLRenderCommandEncoder.hpp>
+
 #include <Metal/MTLComputeCommandEncoder.hpp>
+#include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLSampler.hpp>
+
 #include "RHIDefinitions.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -13,7 +15,7 @@ namespace Crowy
     class MetalReservedSamplers;
 
     // a sampler resolved to its encoder slot
-    struct MetalSamplerBinding{
+    struct MetalSamplerBinding {
         NS::UInteger slot;
         // owned by MetalDevice's sampler table,
         // which outlives every pipeline state
@@ -22,7 +24,7 @@ namespace Crowy
 
     // the render state Metal keeps on the encoder instead of in the
     // pipeline object; the command list sets only the fields that change
-    struct MetalRasterState{
+    struct MetalRasterState {
         MTL::CullMode cullMode = MTL::CullModeNone;
         MTL::Winding winding = MTL::WindingClockwise;
         MTL::TriangleFillMode fillMode = MTL::TriangleFillModeFill;
@@ -32,7 +34,7 @@ namespace Crowy
         MTL::DepthClipMode depthClipMode = MTL::DepthClipModeClip;
     };
 
-    class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState{
+    class MetalGraphicsPipelineState final: public RHIGraphicsPipelineState {
     private:
         NS::SharedPtr<MTL::RenderPipelineState> pipeline;
         MetalRasterState rasterState{};
@@ -40,7 +42,8 @@ namespace Crowy
         // pass without depth can use
         NS::SharedPtr<MTL::DepthStencilState> depthStencilState;
 
-        MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
+        MTL::PrimitiveType topology =
+            MTL::PrimitiveType::PrimitiveTypeTriangleStrip;
 
         std::vector<MetalSamplerBinding> vsSamplers;
         std::vector<MetalSamplerBinding> fsSamplers;
@@ -50,9 +53,9 @@ namespace Crowy
         u32 vsUsedBuffers = 0;
         u32 fsUsedBuffers = 0;
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
-    #endif
+#endif
 
     public:
         MetalGraphicsPipelineState(
@@ -66,26 +69,24 @@ namespace Crowy
 
         // what the command list sets on the encoder, each only when it differs
         // from what the encoder holds
-        auto GetNative() const noexcept{ return pipeline.get(); }
-        std::span<const MetalSamplerBinding> GetVSSamplers() const noexcept{
+        auto GetNative() const noexcept { return pipeline.get(); }
+        std::span<const MetalSamplerBinding> GetVSSamplers() const noexcept {
             return vsSamplers;
         }
-        std::span<const MetalSamplerBinding> GetFSSamplers() const noexcept{
+        std::span<const MetalSamplerBinding> GetFSSamplers() const noexcept {
             return fsSamplers;
         }
-        const MetalRasterState& GetRasterState() const noexcept{
+        const MetalRasterState& GetRasterState() const noexcept {
             return rasterState;
         }
-        auto GetDepthStencilState() const noexcept{
+        auto GetDepthStencilState() const noexcept {
             return depthStencilState.get();
         }
 
-        MTL::PrimitiveType GetTopology() const noexcept{
-            return topology;
-        }
+        MTL::PrimitiveType GetTopology() const noexcept { return topology; }
 
-        u32 GetVSUsedBufferMask() const noexcept{ return vsUsedBuffers; }
-        u32 GetFSUsedBufferMask() const noexcept{ return fsUsedBuffers; }
+        u32 GetVSUsedBufferMask() const noexcept { return vsUsedBuffers; }
+        u32 GetFSUsedBufferMask() const noexcept { return fsUsedBuffers; }
 
     private:
         void createDepthStencilState(
@@ -94,16 +95,16 @@ namespace Crowy
         );
     };
 
-    class MetalComputePipelineState final: public RHIComputePipelineState{
+    class MetalComputePipelineState final: public RHIComputePipelineState {
     private:
         NS::SharedPtr<MTL::ComputePipelineState> pipeline;
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
         std::vector<MetalSamplerBinding> samplers;
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         const Str debugName;
-    #endif
+#endif
 
     public:
         MetalComputePipelineState(
@@ -117,7 +118,7 @@ namespace Crowy
 
         void Bind(MTL::ComputeCommandEncoder&);
 
-        MTL::Size GetThreadsPerThreadgroup() const{
+        MTL::Size GetThreadsPerThreadgroup() const {
             return threadsPerThreadgroup;
         }
     };

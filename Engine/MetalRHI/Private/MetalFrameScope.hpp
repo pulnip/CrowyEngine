@@ -1,11 +1,11 @@
 #pragma once
 
-#include "RHIFrameScope.hpp"
 #include "AutoreleasePoolScope.hpp"
+#include "RHIFrameScope.hpp"
 
 namespace Crowy
 {
-    class MetalFrameScope final: public RHIFrameScope{
+    class MetalFrameScope final: public RHIFrameScope {
     private:
         AutoreleasePoolScope autoreleasePool;
 

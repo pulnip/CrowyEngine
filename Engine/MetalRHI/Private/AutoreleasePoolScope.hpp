@@ -2,20 +2,18 @@
 
 #include <Foundation/NSAutoreleasePool.hpp>
 #include <Foundation/NSSharedPtr.hpp>
+
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    class AutoreleasePoolScope{
+    class AutoreleasePoolScope {
     private:
         NS::SharedPtr<NS::AutoreleasePool> pool;
 
     public:
         AutoreleasePoolScope()
-            : pool(NS::TransferPtr(
-                NS::AutoreleasePool::alloc()->init()
-            ))
-        {}
+            : pool(NS::TransferPtr(NS::AutoreleasePool::alloc()->init())) {}
 
         ~AutoreleasePoolScope() = default;
 

@@ -1,15 +1,17 @@
 #pragma once
 
 #include <unordered_map>
+
 #include <Metal/MTLTexture.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
+
 #include "MetalAllocator.hpp"
 #include "RHIAPI.hpp"
 #include "RHITexture.hpp"
 
 namespace Crowy
 {
-    class MetalTexture final: public RHITexture{
+    class MetalTexture final: public RHITexture {
     private:
         NS::SharedPtr<MTL::Texture> texture;
         // null for a drawable-backed texture: that memory belongs to the
@@ -18,10 +20,8 @@ namespace Crowy
         RHIAllocation allocation{};
         // views alias the base texture's heap allocation,
         // so the heap's residency set covers them too
-        std::unordered_map<
-            RHITextureViewDesc,
-            NS::SharedPtr<MTL::Texture>
-        > views;
+        std::unordered_map<RHITextureViewDesc, NS::SharedPtr<MTL::Texture>>
+            views;
 
     public:
         MetalTexture() = default;
@@ -31,26 +31,20 @@ namespace Crowy
             MTL::TextureDescriptor*,
             StrView name = {}
         );
-        MetalTexture(
-            CA::MetalDrawable*
-        );
+        MetalTexture(CA::MetalDrawable*);
         ~MetalTexture();
 
         CROWY_DECLARE_MOVE_ONLY_NOEXCEPT(MetalTexture)
 
-        u32 GetWidth() const noexcept RHI_OVERRIDE{
-            return texture->width();
-        }
-        u32 GetHeight() const noexcept RHI_OVERRIDE{
+        u32 GetWidth() const noexcept RHI_OVERRIDE { return texture->width(); }
+        u32 GetHeight() const noexcept RHI_OVERRIDE {
             return texture->height();
         }
-        u32 GetDepth() const noexcept RHI_OVERRIDE{
-            return texture->depth();
-        }
+        u32 GetDepth() const noexcept RHI_OVERRIDE { return texture->depth(); }
         // the overrides above would otherwise hide the per-mip overloads
-        using RHITexture::GetWidth;
-        using RHITexture::GetHeight;
         using RHITexture::GetDepth;
+        using RHITexture::GetHeight;
+        using RHITexture::GetWidth;
 
         auto Get() { return texture.get(); }
 
@@ -58,7 +52,8 @@ namespace Crowy
 
     private:
         u64 readableIDOf(const RHITextureViewDesc& view) RHI_OVERRIDE {
-            CROWY_ASSERT(!isDepthFormat(GetFormat()) || view.format == GetFormat(),
+            CROWY_ASSERT(
+                !isDepthFormat(GetFormat()) || view.format == GetFormat(),
                 "a depth texture is read through a view of its own depth format"
             );
             return getResourceID(view);

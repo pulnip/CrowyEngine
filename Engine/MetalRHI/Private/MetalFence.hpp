@@ -1,22 +1,20 @@
 #pragma once
 
-#include <Metal/MTLDevice.hpp>
 #include <Metal/MTLCommandBuffer.hpp>
+#include <Metal/MTLDevice.hpp>
+
 #include "RHIAPI.hpp"
 #include "RHIFWD.hpp"
 #include "RHIFence.hpp"
 
 namespace Crowy
 {
-    class MetalFence final: public RHIFence{
+    class MetalFence final: public RHIFence {
     private:
         NS::SharedPtr<MTL::SharedEvent> sharedEvent;
 
     public:
-        MetalFence(
-            MTL::Device& device,
-            u64 initialValue
-        );
+        MetalFence(MTL::Device& device, u64 initialValue);
 
         ~MetalFence();
 

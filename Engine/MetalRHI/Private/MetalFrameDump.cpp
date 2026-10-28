@@ -13,16 +13,15 @@
 
 namespace Crowy
 {
-    namespace{
+    namespace
+    {
         bool writeFrame(MTL::Texture& texture, const Str& path) {
             const auto format = texture.pixelFormat();
-            const bool bgra =
-                format == MTL::PixelFormatBGRA8Unorm ||
-                format == MTL::PixelFormatBGRA8Unorm_sRGB;
-            const bool rgba =
-                format == MTL::PixelFormatRGBA8Unorm ||
-                format == MTL::PixelFormatRGBA8Unorm_sRGB;
-            if(!bgra && !rgba){
+            const bool bgra = format == MTL::PixelFormatBGRA8Unorm ||
+                              format == MTL::PixelFormatBGRA8Unorm_sRGB;
+            const bool rgba = format == MTL::PixelFormatRGBA8Unorm ||
+                              format == MTL::PixelFormatRGBA8Unorm_sRGB;
+            if(!bgra && !rgba) {
                 LOG_WARN(
                     "frame dump skipped: "
                     "drawable format ({}) is not 8-bit RGBA/BGRA",
@@ -59,7 +58,12 @@ namespace Crowy
                 return false;
             }
 
-            LOG_INFO("frame dump: wrote {}x{} frame to '{}'", width, height, path);
+            LOG_INFO(
+                "frame dump: wrote {}x{} frame to '{}'",
+                width,
+                height,
+                path
+            );
             return true;
         }
     }
@@ -69,9 +73,9 @@ namespace Crowy
         CA::MetalDrawable& drawable,
         Str path,
         std::function<void(bool)> onDone
-    ){
+    ) {
         auto* texture = drawable.texture();
-        if(texture->storageMode() == MTL::StorageModePrivate){
+        if(texture->storageMode() == MTL::StorageModePrivate) {
             LOG_WARN("frame dump skipped: drawable is not CPU-readable");
             onDone(false);
             return;

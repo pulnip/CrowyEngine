@@ -1,16 +1,19 @@
+#include "MetalPipelineState.hpp"
+
 #include <array>
 #include <utility>
-#include <dispatch/dispatch.h>
+
 #include <Metal/MTLArgument.hpp>
 #include <Metal/MTLComputePipeline.hpp>
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLLibrary.hpp>
 #include <Metal/MTLRenderPipeline.hpp>
 #include <Metal/MTLVertexDescriptor.hpp>
+#include <dispatch/dispatch.h>
+
 #include "Assert.hpp"
 #include "AutoreleasePoolScope.hpp"
 #include "EnumUtil.hpp"
-#include "MetalPipelineState.hpp"
 #include "MetalSampler.hpp"
 #include "MetalUtil.hpp"
 #include "PathUtil.hpp"
@@ -18,105 +21,155 @@
 
 namespace Crowy
 {
-    namespace{
-        auto convert(RHIPrimitiveTopology topology){
+    namespace
+    {
+        auto convert(RHIPrimitiveTopology topology) {
             using enum RHIPrimitiveTopology;
 
-            switch(topology){
-            case PointList:     return MTL::PrimitiveTypePoint;
-            case LineList:      return MTL::PrimitiveTypeLine;
-            case LineStrip:     return MTL::PrimitiveTypeLineStrip;
-            case TriangleList:  return MTL::PrimitiveTypeTriangle;
-            case TriangleStrip: return MTL::PrimitiveTypeTriangleStrip;
+            switch(topology) {
+            case PointList:
+                return MTL::PrimitiveTypePoint;
+            case LineList:
+                return MTL::PrimitiveTypeLine;
+            case LineStrip:
+                return MTL::PrimitiveTypeLineStrip;
+            case TriangleList:
+                return MTL::PrimitiveTypeTriangle;
+            case TriangleStrip:
+                return MTL::PrimitiveTypeTriangleStrip;
             default:
                 std::unreachable();
             }
         }
 
-        inline auto convertVertexFormat(RHIPixelFormat format){
+        inline auto convertVertexFormat(RHIPixelFormat format) {
             using enum RHIPixelFormat;
 
-            switch(format){
-            case R32_FLOAT:    return MTL::VertexFormatFloat;
-            case RG32_FLOAT:   return MTL::VertexFormatFloat2;
-            case RGB32_FLOAT:  return MTL::VertexFormatFloat3;
-            case RGBA32_FLOAT: return MTL::VertexFormatFloat4;
-            case R32_SINT:     return MTL::VertexFormatInt;
-            case RG32_SINT:    return MTL::VertexFormatInt2;
-            case RGBA32_SINT:  return MTL::VertexFormatInt4;
-            case R32_UINT:     return MTL::VertexFormatUInt;
-            case RG32_UINT:    return MTL::VertexFormatUInt2;
-            case RGBA32_UINT:  return MTL::VertexFormatUInt4;
-            case R16_FLOAT:    return MTL::VertexFormatHalf;
-            case RG16_FLOAT:   return MTL::VertexFormatHalf2;
-            case RGBA16_FLOAT: return MTL::VertexFormatHalf4;
-            case RGBA8_UNORM:  return MTL::VertexFormatUChar4Normalized;
-            case RGBA8_UINT:   return MTL::VertexFormatUChar4;
+            switch(format) {
+            case R32_FLOAT:
+                return MTL::VertexFormatFloat;
+            case RG32_FLOAT:
+                return MTL::VertexFormatFloat2;
+            case RGB32_FLOAT:
+                return MTL::VertexFormatFloat3;
+            case RGBA32_FLOAT:
+                return MTL::VertexFormatFloat4;
+            case R32_SINT:
+                return MTL::VertexFormatInt;
+            case RG32_SINT:
+                return MTL::VertexFormatInt2;
+            case RGBA32_SINT:
+                return MTL::VertexFormatInt4;
+            case R32_UINT:
+                return MTL::VertexFormatUInt;
+            case RG32_UINT:
+                return MTL::VertexFormatUInt2;
+            case RGBA32_UINT:
+                return MTL::VertexFormatUInt4;
+            case R16_FLOAT:
+                return MTL::VertexFormatHalf;
+            case RG16_FLOAT:
+                return MTL::VertexFormatHalf2;
+            case RGBA16_FLOAT:
+                return MTL::VertexFormatHalf4;
+            case RGBA8_UNORM:
+                return MTL::VertexFormatUChar4Normalized;
+            case RGBA8_UINT:
+                return MTL::VertexFormatUChar4;
             default:
                 std::unreachable();
             }
         }
 
-        auto convert(RHIStencilOp op){
+        auto convert(RHIStencilOp op) {
             using enum RHIStencilOp;
 
-            switch(op){
-            case Keep:      return MTL::StencilOperationKeep;
-            case Zero:      return MTL::StencilOperationZero;
-            case Replace:   return MTL::StencilOperationReplace;
-            case IncrSat:   return MTL::StencilOperationIncrementClamp;
-            case DecrSat:   return MTL::StencilOperationDecrementClamp;
-            case Invert:    return MTL::StencilOperationInvert;
-            case IncrWrap:  return MTL::StencilOperationIncrementWrap;
-            case DecrWrap:  return MTL::StencilOperationDecrementWrap;
+            switch(op) {
+            case Keep:
+                return MTL::StencilOperationKeep;
+            case Zero:
+                return MTL::StencilOperationZero;
+            case Replace:
+                return MTL::StencilOperationReplace;
+            case IncrSat:
+                return MTL::StencilOperationIncrementClamp;
+            case DecrSat:
+                return MTL::StencilOperationDecrementClamp;
+            case Invert:
+                return MTL::StencilOperationInvert;
+            case IncrWrap:
+                return MTL::StencilOperationIncrementWrap;
+            case DecrWrap:
+                return MTL::StencilOperationDecrementWrap;
             default:
                 std::unreachable();
             }
         }
 
-        auto convert(RHIBlend blend){
+        auto convert(RHIBlend blend) {
             using enum RHIBlend;
 
-            switch(blend){
-            case Zero:           return MTL::BlendFactorZero;
-            case One:            return MTL::BlendFactorOne;
-            case SrcColor:       return MTL::BlendFactorSourceColor;
-            case InvSrcColor:    return MTL::BlendFactorOneMinusSourceColor;
-            case SrcAlpha:       return MTL::BlendFactorSourceAlpha;
-            case InvSrcAlpha:    return MTL::BlendFactorOneMinusSourceAlpha;
-            case DstAlpha:       return MTL::BlendFactorDestinationAlpha;
-            case InvDstAlpha:    return MTL::BlendFactorOneMinusDestinationAlpha;
-            case DstColor:       return MTL::BlendFactorDestinationColor;
-            case InvDstColor:    return MTL::BlendFactorOneMinusDestinationColor;
-            case SrcAlphaSat:    return MTL::BlendFactorSourceAlphaSaturated;
-            case BlendFactor:    return MTL::BlendFactorBlendColor;
-            case InvBlendFactor: return MTL::BlendFactorOneMinusBlendColor;
+            switch(blend) {
+            case Zero:
+                return MTL::BlendFactorZero;
+            case One:
+                return MTL::BlendFactorOne;
+            case SrcColor:
+                return MTL::BlendFactorSourceColor;
+            case InvSrcColor:
+                return MTL::BlendFactorOneMinusSourceColor;
+            case SrcAlpha:
+                return MTL::BlendFactorSourceAlpha;
+            case InvSrcAlpha:
+                return MTL::BlendFactorOneMinusSourceAlpha;
+            case DstAlpha:
+                return MTL::BlendFactorDestinationAlpha;
+            case InvDstAlpha:
+                return MTL::BlendFactorOneMinusDestinationAlpha;
+            case DstColor:
+                return MTL::BlendFactorDestinationColor;
+            case InvDstColor:
+                return MTL::BlendFactorOneMinusDestinationColor;
+            case SrcAlphaSat:
+                return MTL::BlendFactorSourceAlphaSaturated;
+            case BlendFactor:
+                return MTL::BlendFactorBlendColor;
+            case InvBlendFactor:
+                return MTL::BlendFactorOneMinusBlendColor;
             default:
                 std::unreachable();
             }
         }
 
-        auto convert(RHIBlendOp op){
+        auto convert(RHIBlendOp op) {
             using enum RHIBlendOp;
 
-            switch(op){
-            case Add:             return MTL::BlendOperationAdd;
-            case Subtract:        return MTL::BlendOperationSubtract;
-            case ReverseSubtract: return MTL::BlendOperationReverseSubtract;
-            case Min:             return MTL::BlendOperationMin;
-            case Max:             return MTL::BlendOperationMax;
+            switch(op) {
+            case Add:
+                return MTL::BlendOperationAdd;
+            case Subtract:
+                return MTL::BlendOperationSubtract;
+            case ReverseSubtract:
+                return MTL::BlendOperationReverseSubtract;
+            case Min:
+                return MTL::BlendOperationMin;
+            case Max:
+                return MTL::BlendOperationMax;
             default:
                 std::unreachable();
             }
         }
 
-        auto convert(RHICullMode mode){
+        auto convert(RHICullMode mode) {
             using enum RHICullMode;
 
-            switch(mode){
-            case None:     return MTL::CullModeNone;
-            case Front:    return MTL::CullModeFront;
-            case Back:     return MTL::CullModeBack;
+            switch(mode) {
+            case None:
+                return MTL::CullModeNone;
+            case Front:
+                return MTL::CullModeFront;
+            case Back:
+                return MTL::CullModeBack;
             default:
                 std::unreachable();
             }
@@ -125,7 +178,7 @@ namespace Crowy
         void configureStencil(
             MTL::StencilDescriptor& desc,
             const RHIStencilOpDesc& op
-        ){
+        ) {
             desc.setStencilCompareFunction(convert(op.func));
             desc.setStencilFailureOperation(convert(op.stencilFailOp));
             desc.setDepthFailureOperation(convert(op.depthFailOp));
@@ -135,30 +188,33 @@ namespace Crowy
         auto resolveSamplers(
             MetalReservedSamplers& samplers,
             std::span<const RHISamplerUse> uses
-        ){
+        ) {
             std::vector<MetalSamplerBinding> bindings;
             bindings.reserve(uses.size());
 
-            for(const auto& use: uses){
-                CROWY_ASSERT(use.slot < MaxSamplerArguments,
+            for(const auto& use: uses) {
+                CROWY_ASSERT(
+                    use.slot < MaxSamplerArguments,
                     "a sampler slot past Metal's sampler argument table"
                 );
-                bindings.push_back(MetalSamplerBinding{
-                    .slot = use.slot,
-                    .sampler = samplers.Get(use.samplerIndex)
-                });
+                bindings.push_back(
+                    MetalSamplerBinding{
+                        .slot = use.slot,
+                        .sampler = samplers.Get(use.samplerIndex)
+                    }
+                );
             }
 
             return bindings;
         }
 
-        u32 collectUsedBuffers(NS::Array* bindings){
+        u32 collectUsedBuffers(NS::Array* bindings) {
             u32 mask = 0;
-            if(bindings == nullptr){
+            if(bindings == nullptr) {
                 return mask;
             }
 
-            for(NS::UInteger i=0; i<bindings->count(); ++i){
+            for(NS::UInteger i = 0; i < bindings->count(); ++i) {
                 auto binding = bindings->object<MTL::Binding>(i);
                 if(binding->type() != MTL::BindingTypeBuffer)
                     continue;
@@ -172,10 +228,7 @@ namespace Crowy
             return mask;
         }
 
-        auto makeLibrary(
-            MTL::Device& device,
-            RHIShader& shader
-        ){
+        auto makeLibrary(MTL::Device& device, RHIShader& shader) {
             auto bytecode = shader.GetTargetCode();
             dispatch_data_t data = dispatch_data_create(
                 bytecode.data(),
@@ -185,13 +238,10 @@ namespace Crowy
             );
 
             NS::Error* error = nullptr;
-            MTL::Library* library = device.newLibrary(
-                data,
-                &error
-            );
+            MTL::Library* library = device.newLibrary(data, &error);
             dispatch_release(data);
 
-            if(library == nullptr){
+            if(library == nullptr) {
                 auto msg = error->localizedDescription()->utf8String();
                 throw std::runtime_error(msg);
             }
@@ -206,26 +256,25 @@ namespace Crowy
         const RHIGraphicsPipelineStateDesc& desc,
         StrView name
     )
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         : debugName(name)
-    #endif
+#endif
     {
         validateGraphicsPipelineDesc(desc);
 
         AutoreleasePoolScope _;
 
-        auto pipelineDesc = NS::TransferPtr(
-            MTL::RenderPipelineDescriptor::alloc()->init()
-        );
+        auto pipelineDesc =
+            NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
         topology = convert(desc.topology);
 
         // Vertex Layout
-        if(desc.vertexLayout.has_value()){
+        if(desc.vertexLayout.has_value()) {
             const auto& vertexLayout = desc.vertexLayout.value();
             auto vertexDesc = MTL::VertexDescriptor::alloc()->init();
             std::array<NS::UInteger, MaxVertexBufferSlots> strides{};
 
-            for(usize i = 0; i < vertexLayout.size(); ++i){
+            for(usize i = 0; i < vertexLayout.size(); ++i) {
                 const auto& elem = vertexLayout[i];
                 CROWY_ASSERT(elem.inputSlot < MaxVertexBufferSlots);
                 auto attr = vertexDesc->attributes()->object(i);
@@ -236,17 +285,17 @@ namespace Crowy
 
                 auto elemSize = detail::getBytesPerPixel(elem.format);
                 auto elemEnd = elem.alignedByteOffset + elemSize;
-                if(elemEnd > strides[elem.inputSlot]){
+                if(elemEnd > strides[elem.inputSlot]) {
                     strides[elem.inputSlot] = elemEnd;
                 }
             }
 
-            for(u32 slot = 0; slot < MaxVertexBufferSlots; ++slot){
-                if(strides[slot] == 0) continue;
+            for(u32 slot = 0; slot < MaxVertexBufferSlots; ++slot) {
+                if(strides[slot] == 0)
+                    continue;
 
-                auto layout = vertexDesc->layouts()->object(
-                    toVertexBufferIndex(slot)
-                );
+                auto layout =
+                    vertexDesc->layouts()->object(toVertexBufferIndex(slot));
                 layout->setStride(strides[slot]);
                 layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
             }
@@ -268,22 +317,21 @@ namespace Crowy
                 desc.linkedModules
             };
             library = NS::TransferPtr(makeLibrary(device, shaderProgram));
-        #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
             library->setLabel(toNSString(toUTF8String(filePath)));
-        #endif
+#endif
 
-            auto func = NS::TransferPtr(
-                library->newFunction(toNSString(entryPoint))
-            );
-            if(!func){
-                throw std::runtime_error(std::format(
-                    "no function '{}' in {}", entryPoint, filePath
-                ));
+            auto func =
+                NS::TransferPtr(library->newFunction(toNSString(entryPoint)));
+            if(!func) {
+                throw std::runtime_error(
+                    std::format("no function '{}' in {}", entryPoint, filePath)
+                );
             }
-        #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
             auto identifier = std::format("{}_{}", filePath, entryPoint);
             func->setLabel(toNSString(identifier));
-        #endif
+#endif
 
             pipelineDesc->setVertexFunction(func.get());
 
@@ -293,7 +341,7 @@ namespace Crowy
             );
 
             // fragment entry point lives in the same program
-            if(desc.fragmentShader && desc.fragmentShader->path == filePath){
+            if(desc.fragmentShader && desc.fragmentShader->path == filePath) {
                 fsSamplers = resolveSamplers(
                     samplers,
                     shaderProgram.GetUsedSamplers(
@@ -306,24 +354,23 @@ namespace Crowy
         const auto& rasterizer = desc.rasterizer;
         rasterState = MetalRasterState{
             .cullMode = convert(rasterizer.cullMode),
-            .winding = rasterizer.frontCounterClockwise ?
-                MTL::WindingCounterClockwise :
-                MTL::WindingClockwise,
-            .fillMode = rasterizer.fillMode == RHIFillMode::Wireframe ?
-                MTL::TriangleFillModeLines :
-                MTL::TriangleFillModeFill,
+            .winding = rasterizer.frontCounterClockwise
+                           ? MTL::WindingCounterClockwise
+                           : MTL::WindingClockwise,
+            .fillMode = rasterizer.fillMode == RHIFillMode::Wireframe
+                            ? MTL::TriangleFillModeLines
+                            : MTL::TriangleFillModeFill,
             .depthBias = static_cast<float>(rasterizer.depthBias),
             .slopeScaledDepthBias = rasterizer.slopeScaledDepthBias,
             .depthBiasClamp = rasterizer.depthBiasClamp,
-            .depthClipMode = rasterizer.depthClipEnable ?
-                MTL::DepthClipModeClip :
-                MTL::DepthClipModeClamp
+            .depthClipMode = rasterizer.depthClipEnable
+                                 ? MTL::DepthClipModeClip
+                                 : MTL::DepthClipModeClamp
         };
 
         // Fragment Shader
         if(desc.fragmentShader &&
-            desc.fragmentShader->path != desc.vertexShader.path
-        ){
+           desc.fragmentShader->path != desc.vertexShader.path) {
             const auto& filePath = desc.fragmentShader->path;
 
             RHIShader shaderProgram{
@@ -333,39 +380,36 @@ namespace Crowy
                 desc.linkedModules
             };
             library = NS::TransferPtr(makeLibrary(device, shaderProgram));
-        #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
             library->setLabel(toNSString(toUTF8String(filePath)));
-        #endif
+#endif
 
             fsSamplers = resolveSamplers(
                 samplers,
-                shaderProgram.GetUsedSamplers(
-                    desc.fragmentShader->entryPoint
-                )
+                shaderProgram.GetUsedSamplers(desc.fragmentShader->entryPoint)
             );
         }
 
-        if(desc.fragmentShader){
+        if(desc.fragmentShader) {
             const auto& filePath = desc.fragmentShader->path;
             const auto& entryPoint = desc.fragmentShader->entryPoint;
 
-            auto func = NS::TransferPtr(
-                library->newFunction(toNSString(entryPoint))
-            );
-            if(!func){
-                throw std::runtime_error(std::format(
-                    "no function '{}' in {}", entryPoint, filePath
-                ));
+            auto func =
+                NS::TransferPtr(library->newFunction(toNSString(entryPoint)));
+            if(!func) {
+                throw std::runtime_error(
+                    std::format("no function '{}' in {}", entryPoint, filePath)
+                );
             }
-        #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
             auto identifier = std::format("{}_{}", filePath, entryPoint);
             func->setLabel(toNSString(identifier));
-        #endif
+#endif
 
             pipelineDesc->setFragmentFunction(func.get());
         }
 
-        if(desc.depthStencil.has_value()){
+        if(desc.depthStencil.has_value()) {
             // Depth Stencil State
             createDepthStencilState(device, desc.depthStencil.value());
 
@@ -380,29 +424,23 @@ namespace Crowy
 
         // Blend State
         const auto blend = desc.blend.value_or(RHIBlendState{});
-        pipelineDesc->setAlphaToCoverageEnabled(
-            blend.alphaToCoverageEnable
-        );
+        pipelineDesc->setAlphaToCoverageEnabled(blend.alphaToCoverageEnable);
 
-        for(usize i = 0; i < desc.renderTargetCount; ++i){
-            const auto& rtBlend = blend.renderTargets[
-                blend.independentBlendEnable ? i : 0
-            ];
+        for(usize i = 0; i < desc.renderTargetCount; ++i) {
+            const auto& rtBlend =
+                blend.renderTargets[blend.independentBlendEnable ? i : 0];
             auto colorAttach = pipelineDesc->colorAttachments()->object(i);
 
-            const auto blendEnabled = !blend.independentBlendEnable || rtBlend.blendEnable;
+            const auto blendEnabled =
+                !blend.independentBlendEnable || rtBlend.blendEnable;
             colorAttach->setBlendingEnabled(blendEnabled);
 
-            if(blendEnabled){
-                colorAttach->setSourceRGBBlendFactor(
-                    convert(rtBlend.srcBlend)
-                );
+            if(blendEnabled) {
+                colorAttach->setSourceRGBBlendFactor(convert(rtBlend.srcBlend));
                 colorAttach->setDestinationRGBBlendFactor(
                     convert(rtBlend.dstBlend)
                 );
-                colorAttach->setRgbBlendOperation(
-                    convert(rtBlend.blendOp)
-                );
+                colorAttach->setRgbBlendOperation(convert(rtBlend.blendOp));
                 colorAttach->setSourceAlphaBlendFactor(
                     convert(rtBlend.srcBlendAlpha)
                 );
@@ -430,12 +468,10 @@ namespace Crowy
         }
 
         // Render Target Formats
-        for(usize i = 0; i < desc.renderTargetCount; ++i){
+        for(usize i = 0; i < desc.renderTargetCount; ++i) {
             auto colorAttach = pipelineDesc->colorAttachments()->object(i);
 
-            colorAttach->setPixelFormat(
-                convert(desc.renderTargetFormats[i])
-            );
+            colorAttach->setPixelFormat(convert(desc.renderTargetFormats[i]));
         }
 
         MTL::AutoreleasedRenderPipelineReflection refl = nullptr;
@@ -447,7 +483,7 @@ namespace Crowy
             &error
         ));
 
-        if(!pipeline){
+        if(!pipeline) {
             auto msg = error->localizedDescription()->utf8String();
             throw std::runtime_error(msg);
         }
@@ -463,15 +499,13 @@ namespace Crowy
     void MetalGraphicsPipelineState::createDepthStencilState(
         MTL::Device& device,
         const RHIDepthStencilState& desc
-    ){
+    ) {
         auto dsDesc = MTL::DepthStencilDescriptor::alloc()->init();
 
         dsDesc->setDepthWriteEnabled(desc.depthWriteEnable);
-        dsDesc->setDepthCompareFunction(
-            convert(desc.depthFunc)
-        );
+        dsDesc->setDepthCompareFunction(convert(desc.depthFunc));
 
-        if(desc.stencil.has_value()){
+        if(desc.stencil.has_value()) {
             auto mtlDesc = MTL::StencilDescriptor::alloc()->init();
             mtlDesc->setReadMask(desc.stencil->readMask);
             mtlDesc->setWriteMask(desc.stencil->writeMask);
@@ -485,7 +519,8 @@ namespace Crowy
             mtlDesc->release();
         }
 
-        depthStencilState = NS::TransferPtr(device.newDepthStencilState(dsDesc));
+        depthStencilState =
+            NS::TransferPtr(device.newDepthStencilState(dsDesc));
         dsDesc->release();
     }
 
@@ -495,48 +530,41 @@ namespace Crowy
         const RHIComputePipelineStateDesc& desc,
         StrView name
     )
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         : debugName(name)
-    #endif
+#endif
     {
         AutoreleasePoolScope _;
 
         const auto& filePath = desc.computeShader.path;
         const auto& entryPoint = desc.computeShader.entryPoint;
 
-        RHIShader shaderProgram{
-            filePath,
-            RHIBackend::Metal,
-            nullptr,
-            {},
-            entryPoint
-        };
+        RHIShader
+            shaderProgram{filePath, RHIBackend::Metal, nullptr, {}, entryPoint};
         auto library = NS::TransferPtr(makeLibrary(device, shaderProgram));
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         library->setLabel(toNSString(toUTF8String(filePath)));
-    #endif
+#endif
 
-        auto func = NS::TransferPtr(
-            library->newFunction(toNSString(entryPoint))
-        );
-        if(!func){
-            throw std::runtime_error(std::format(
-                "no function '{}' in {}", entryPoint, filePath
-            ));
+        auto func =
+            NS::TransferPtr(library->newFunction(toNSString(entryPoint)));
+        if(!func) {
+            throw std::runtime_error(
+                std::format("no function '{}' in {}", entryPoint, filePath)
+            );
         }
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         auto identifier = std::format("{}_{}", filePath, entryPoint);
         func->setLabel(toNSString(identifier));
-    #endif
+#endif
 
         this->samplers = resolveSamplers(
             samplers,
             shaderProgram.GetUsedSamplers(entryPoint)
         );
 
-        auto pipelineDesc = NS::TransferPtr(
-            MTL::ComputePipelineDescriptor::alloc()->init()
-        );
+        auto pipelineDesc =
+            NS::TransferPtr(MTL::ComputePipelineDescriptor::alloc()->init());
         pipelineDesc->setComputeFunction(func.get());
 
         MTL::AutoreleasedComputePipelineReflection refl = nullptr;
@@ -548,11 +576,12 @@ namespace Crowy
             &error
         ));
 
-        if(!pipeline){
+        if(!pipeline) {
             throw std::runtime_error("Failed to create compute pipeline state");
         }
 
-        const auto threadGroupSize = shaderProgram.GetThreadGroupSize(entryPoint);
+        const auto threadGroupSize =
+            shaderProgram.GetThreadGroupSize(entryPoint);
         threadsPerThreadgroup = MTL::Size::Make(
             threadGroupSize.x,
             threadGroupSize.y,
@@ -562,11 +591,11 @@ namespace Crowy
 
     MetalComputePipelineState::~MetalComputePipelineState() = default;
 
-    void MetalComputePipelineState::Bind(MTL::ComputeCommandEncoder& encoder){
+    void MetalComputePipelineState::Bind(MTL::ComputeCommandEncoder& encoder) {
         encoder.setComputePipelineState(pipeline.get());
 
         // bind sampler to reserved slot
-        for(const auto& binding: samplers){
+        for(const auto& binding: samplers) {
             encoder.setSamplerState(binding.sampler, binding.slot);
         }
     }

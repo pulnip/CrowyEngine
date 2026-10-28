@@ -1,9 +1,12 @@
+#include "MetalBuffer.hpp"
+
 #include <cstring>
+
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
+
 #include "Assert.hpp"
 #include "IntMath.hpp"
-#include "MetalBuffer.hpp"
 #include "MetalUtil.hpp"
 #include "PtrUtil.hpp"
 #include "RHIDefinitions.hpp"
@@ -15,15 +18,15 @@ namespace Crowy
         const RHIBufferCreateDesc& desc,
         StrView name
     )
-        : size(desc.size)
-        , allocator(allocator)
-    {
+        : size(desc.size), allocator(allocator) {
         using enum RHIMemoryType;
 
-        CROWY_ASSERT(desc.memory != Transient,
+        CROWY_ASSERT(
+            desc.memory != Transient,
             "tile memory holds render targets, not buffers"
         );
-        CROWY_ASSERT(desc.memory == GPUOnly || !desc.shaderWrite,
+        CROWY_ASSERT(
+            desc.memory == GPUOnly || !desc.shaderWrite,
             "a shader cannot write CPU-visible memory"
         );
 
@@ -34,22 +37,22 @@ namespace Crowy
         );
         buffer = static_cast<MTL::Buffer*>(allocation.resource);
 
-        if(desc.memory != GPUOnly){
+        if(desc.memory != GPUOnly) {
             mapped = buffer->contents();
         }
 
-        if(desc.initialData != nullptr && desc.memory == CPUWrite){
+        if(desc.initialData != nullptr && desc.memory == CPUWrite) {
             Upload(desc.initialData, desc.size);
         }
     }
 
-    MetalBuffer::~MetalBuffer(){
+    MetalBuffer::~MetalBuffer() {
         buffer = nullptr;
         mapped = nullptr;
         allocator.Free(allocation);
     }
 
-    u64 MetalBuffer::getResourceID(const RHIBufferViewDesc& view){
+    u64 MetalBuffer::getResourceID(const RHIBufferViewDesc& view) {
         // a Metal resource ID is the address itself, so a sub-range view is
         // just that address moved forward
         return buffer->gpuAddress() + view.offset;

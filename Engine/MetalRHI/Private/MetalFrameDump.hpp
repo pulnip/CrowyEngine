@@ -1,8 +1,10 @@
 #pragma once
 
 #include <functional>
+
 #include <Metal/MTLCommandBuffer.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
+
 #include "Primitives.hpp"
 
 namespace Crowy

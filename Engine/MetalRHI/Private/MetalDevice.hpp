@@ -1,14 +1,15 @@
 #pragma once
 
 #include <functional>
+
 #include "FastPimpl.hpp"
 #include "RHIAPI.hpp"
-#include "RHIFWD.hpp"
 #include "RHIDevice.hpp"
+#include "RHIFWD.hpp"
 
 namespace Crowy
 {
-    class MetalDevice final: public RHIDevice{
+    class MetalDevice final: public RHIDevice {
     private:
         class Impl;
         FastPimpl<Impl, 2968, 8> impl;
@@ -43,7 +44,9 @@ namespace Crowy
         ) RHI_OVERRIDE;
 
         u64 GetCompletedFrame() const noexcept RHI_OVERRIDE;
-        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept RHI_OVERRIDE;
+        std::optional<f64> GetGPUFrameTime(
+            u64 frame
+        ) const noexcept RHI_OVERRIDE;
         void WaitFrame(u64 frame) RHI_OVERRIDE;
         void WaitIdle() RHI_OVERRIDE;
 

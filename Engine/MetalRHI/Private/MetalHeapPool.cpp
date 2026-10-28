@@ -1,7 +1,9 @@
+#include "MetalHeapPool.hpp"
+
 #include <algorithm>
 #include <format>
 #include <stdexcept>
-#include "MetalHeapPool.hpp"
+
 #include "MetalUtil.hpp"
 
 namespace Crowy
@@ -11,35 +13,34 @@ namespace Crowy
         const MetalHeapPoolDesc& desc,
         StrView name
     )
-        : device(&device)
-        , desc(desc)
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        , debugName(name)
-    #endif
+        : device(&device),
+          desc(desc)
+#if defined(_DEBUG) || !defined(NDEBUG)
+          ,
+          debugName(name)
+#endif
     {
         auto rsDesc = MTL::ResidencySetDescriptor::alloc()->init();
         rsDesc->setInitialCapacity(8);
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
-        if(!name.empty()){
+#if defined(_DEBUG) || !defined(NDEBUG)
+        if(!name.empty()) {
             rsDesc->setLabel(toNSString(name));
         }
-    #endif
+#endif
 
         NS::Error* error = nullptr;
 
-        residencySet = NS::TransferPtr(
-            device.newResidencySet(rsDesc, &error)
-        );
+        residencySet = NS::TransferPtr(device.newResidencySet(rsDesc, &error));
 
         rsDesc->release();
 
-        if(!residencySet){
+        if(!residencySet) {
             throw std::runtime_error("Failed to create ResidencySet");
         }
     }
 
-    MetalHeapPool::~MetalHeapPool(){
+    MetalHeapPool::~MetalHeapPool() {
         std::lock_guard lock(mutex);
         device = nullptr;
 
@@ -48,19 +49,18 @@ namespace Crowy
         residencySet.reset();
     }
 
-    MTL::Buffer* MetalHeapPool::NewBuffer(NS::UInteger length){
+    MTL::Buffer* MetalHeapPool::NewBuffer(NS::UInteger length) {
         std::lock_guard lock(mutex);
 
         const MTL::ResourceOptions options = resourceOptions();
-        const MTL::SizeAndAlign sizeAlign = device->heapBufferSizeAndAlign(length, options);
+        const MTL::SizeAndAlign sizeAlign =
+            device->heapBufferSizeAndAlign(length, options);
         auto heap = acquireHeap(sizeAlign);
 
-        return heap != nullptr ?
-            heap->newBuffer(length, options) :
-            nullptr;
+        return heap != nullptr ? heap->newBuffer(length, options) : nullptr;
     }
 
-    MTL::Texture* MetalHeapPool::NewTexture(MTL::TextureDescriptor* texDesc){
+    MTL::Texture* MetalHeapPool::NewTexture(MTL::TextureDescriptor* texDesc) {
         std::lock_guard lock(mutex);
 
         // forced settings
@@ -68,55 +68,51 @@ namespace Crowy
         texDesc->setCpuCacheMode(desc.cpuCacheMode);
         texDesc->setHazardTrackingMode(desc.hazardTracking);
 
-        const MTL::SizeAndAlign sizeAlign = device->heapTextureSizeAndAlign(texDesc);
+        const MTL::SizeAndAlign sizeAlign =
+            device->heapTextureSizeAndAlign(texDesc);
         auto heap = acquireHeap(sizeAlign);
 
-        return heap != nullptr ?
-            heap->newTexture(texDesc) :
-            nullptr;
+        return heap != nullptr ? heap->newTexture(texDesc) : nullptr;
     }
 
-    void MetalHeapPool::ReleaseEmptyHeaps(){
+    void MetalHeapPool::ReleaseEmptyHeaps() {
         std::lock_guard lock(mutex);
 
         bool changed = false;
-        for(auto it = heaps.begin(); it != heaps.end();){
+        for(auto it = heaps.begin(); it != heaps.end();) {
             auto heap = it->get();
-            if(heap->usedSize() == 0){
-                if(residencySet){
+            if(heap->usedSize() == 0) {
+                if(residencySet) {
                     residencySet->removeAllocation(heap);
                     changed = true;
                 }
                 it = heaps.erase(it);
             }
-            else{
+            else {
                 ++it;
             }
         }
 
-        if (changed)
+        if(changed)
             residencySet->commit();
     }
 
-    MetalHeapPool::Stats MetalHeapPool::GetStats() const{
+    MetalHeapPool::Stats MetalHeapPool::GetStats() const {
         std::lock_guard lock(mutex);
 
-        Stats stats{
-            .heapCount = heaps.size(),
-            .totalSize = 0,
-            .usedSize = 0
-        };
+        Stats stats{.heapCount = heaps.size(), .totalSize = 0, .usedSize = 0};
 
-        for(auto& heap: heaps){
+        for(auto& heap: heaps) {
             stats.totalSize += heap->size();
-            stats.usedSize  += heap->usedSize();
+            stats.usedSize += heap->usedSize();
         }
 
         return stats;
     }
 
-    MTL::Heap* MetalHeapPool::addHeapLocked(NS::UInteger minSize){
-        const NS::UInteger size = std::max<NS::UInteger>(minSize, desc.heapSize);
+    MTL::Heap* MetalHeapPool::addHeapLocked(NS::UInteger minSize) {
+        const NS::UInteger size =
+            std::max<NS::UInteger>(minSize, desc.heapSize);
 
         auto heapDesc = MTL::HeapDescriptor::alloc()->init();
         heapDesc->setType(MTL::HeapTypeAutomatic);
@@ -131,18 +127,20 @@ namespace Crowy
         if(heap == nullptr)
             return nullptr;
 
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
         heap->setLabel(toNSString(
-            std::format("{}.heap{} ({:.2f}MiB)",
-                debugName, heapCounter++,
+            std::format(
+                "{}.heap{} ({:.2f}MiB)",
+                debugName,
+                heapCounter++,
                 static_cast<f32>(size) / 1024 / 1024
             )
         ));
-    #endif
+#endif
 
         heaps.push_back(NS::TransferPtr(heap));
 
-        if(residencySet){
+        if(residencySet) {
             residencySet->addAllocation(heap);
             residencySet->commit();
         }
@@ -150,17 +148,17 @@ namespace Crowy
         return heap;
     }
 
-    MTL::Heap* MetalHeapPool::acquireHeap(MTL::SizeAndAlign sizeAlign){
+    MTL::Heap* MetalHeapPool::acquireHeap(MTL::SizeAndAlign sizeAlign) {
         MTL::Heap* acquired = nullptr;
 
-        for(auto& heap: heaps){
-            if(sizeAlign.size <= heap->maxAvailableSize(sizeAlign.align)){
+        for(auto& heap: heaps) {
+            if(sizeAlign.size <= heap->maxAvailableSize(sizeAlign.align)) {
                 acquired = heap.get();
                 break;
             }
         }
 
-        if(acquired == nullptr){
+        if(acquired == nullptr) {
             // dedicated heap
             acquired = addHeapLocked(sizeAlign.size);
         }
@@ -168,11 +166,10 @@ namespace Crowy
         return acquired;
     }
 
-
-    MTL::ResourceOptions MetalHeapPool::resourceOptions() const{
+    MTL::ResourceOptions MetalHeapPool::resourceOptions() const {
         MTL::ResourceOptions options = 0;
 
-        switch (desc.storageMode){
+        switch(desc.storageMode) {
         case MTL::StorageModeShared:
             options |= MTL::ResourceStorageModeShared;
             break;
@@ -186,7 +183,7 @@ namespace Crowy
             break;
         }
 
-        switch (desc.hazardTracking){
+        switch(desc.hazardTracking) {
         case MTL::HazardTrackingModeUntracked:
             options |= MTL::ResourceHazardTrackingModeUntracked;
             break;

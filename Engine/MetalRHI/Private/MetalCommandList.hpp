@@ -5,8 +5,10 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+
 #include <Metal/MTLCommandBuffer.hpp>
-namespace MTL{
+namespace MTL
+{
     class SharedEvent;
 }
 #include <Metal/MTLEvent.hpp>
@@ -14,6 +16,7 @@ namespace MTL{
 #include <Metal/MTLRenderCommandEncoder.hpp>
 #include <Metal/MTLStageInputOutputDescriptor.hpp>
 #include <Metal/MTLTypes.hpp>
+
 #include "MetalPipelineState.hpp"
 #include "MetalUtil.hpp"
 #include "RHIAPI.hpp"
@@ -21,15 +24,16 @@ namespace MTL{
 
 namespace Crowy
 {
-    class MetalCommandList final: public RHICommandList{
+    class MetalCommandList final: public RHICommandList {
     private:
         using Super = RHICommandList;
 
-        struct RenderPassState{
+        struct RenderPassState {
             MTL::RenderCommandEncoder* encoder = nullptr;
 
             // snapshotted from the PSO at SetPipelineState
-            MTL::PrimitiveType topology = MTL::PrimitiveType::PrimitiveTypeTriangle;
+            MTL::PrimitiveType topology =
+                MTL::PrimitiveType::PrimitiveTypeTriangle;
             u32 vsUsedBufferMask = 0;
             u32 fsUsedBufferMask = 0;
 
@@ -39,7 +43,7 @@ namespace Crowy
             bool pushDirty = false;
 
             // cache for lazy binding of ConstantBuffer
-            struct ConstantBufferBinding{
+            struct ConstantBufferBinding {
                 MTL::Buffer* buffer = nullptr;
                 u32 offset = 0;
             };
@@ -48,7 +52,7 @@ namespace Crowy
 
             // what this encoder already holds, so a pipeline switch or a
             // repeated binding sets only what changed; empty until first set
-            struct BufferArgument{
+            struct BufferArgument {
                 MTL::Buffer* buffer = nullptr;
                 NS::UInteger offset = 0;
             };
@@ -60,17 +64,19 @@ namespace Crowy
             // indexed like the buffer and sampler argument tables
             std::array<BufferArgument, MaxBufferArguments> boundVSBuffers{};
             std::array<BufferArgument, MaxBufferArguments> boundFSBuffers{};
-            std::array<MTL::SamplerState*, MaxSamplerArguments> boundVSSamplers{};
-            std::array<MTL::SamplerState*, MaxSamplerArguments> boundFSSamplers{};
+            std::array<MTL::SamplerState*, MaxSamplerArguments>
+                boundVSSamplers{};
+            std::array<MTL::SamplerState*, MaxSamplerArguments>
+                boundFSSamplers{};
         };
 
-        struct ComputePassState{
+        struct ComputePassState {
             MTL::ComputeCommandEncoder* encoder = nullptr;
 
             MTL::Size threadsPerThreadgroup = {0, 0, 0};
         };
 
-        struct BlitPassState{
+        struct BlitPassState {
             MTL::BlitCommandEncoder* encoder = nullptr;
         };
 
@@ -79,7 +85,7 @@ namespace Crowy
         // it stays commandlist-local so parallel recording keeps working;
         // the GPU ordering comes only from the fence edges.
         template<typename Barrier>
-        struct PendingRelease{
+        struct PendingRelease {
             Barrier barrier;
             // updated by the producer's encoder; every acquire waits on it
             // (multi-consumer means several waits on one fence - legal)
@@ -91,19 +97,20 @@ namespace Crowy
 
         // one wait per producer fence at Begin*Pass, syncAfter unioned
         // across the acquires that share it
-        struct FenceWait{
+        struct FenceWait {
             MTL::Fence* fence;
             RHIBarrierSync syncAfter;
         };
 
     private:
         MTL::CommandQueue* commandQueue = nullptr;
-        // cross-submission acquires and un-acquired hand-off releases record no fence at all
-        // - they rely on the queue-global sync scope D3D12 barriers get for free.
-        // the device signals this event once per submitted wave;
-        // a lazy wait on the last signaled value restores that scope
-        // exactly where a recording depends on it,
-        // so passes before that point keep overlapping the previous wave on the GPU:
+        // cross-submission acquires and un-acquired hand-off releases record no
+        // fence at all
+        // - they rely on the queue-global sync scope D3D12 barriers get for
+        // free. the device signals this event once per submitted wave; a lazy
+        // wait on the last signaled value restores that scope exactly where a
+        // recording depends on it, so passes before that point keep overlapping
+        // the previous wave on the GPU:
         //  - before the first pass carrying a cross-submission acquire
         //  - at Begin, while a hand-off wave may still be on the GPU
         //    (the hangover window below)
@@ -121,8 +128,8 @@ namespace Crowy
             RenderPassState,
             ComputePassState,
             BlitPassState,
-            std::monostate
-        > passState = std::monostate{};
+            std::monostate>
+            passState = std::monostate{};
 
         bool isRecording = false;
         // at most one submission-event wait per recording; everything
@@ -137,12 +144,10 @@ namespace Crowy
 
         std::unordered_map<
             const RHITexture*,
-            std::vector<PendingRelease<RHITextureBarrier>>
-        > pendingTextureReleases;
-        std::unordered_map<
-            const RHIBuffer*,
-            PendingRelease<RHIBufferBarrier>
-        > pendingBufferReleases;
+            std::vector<PendingRelease<RHITextureBarrier>>>
+            pendingTextureReleases;
+        std::unordered_map<const RHIBuffer*, PendingRelease<RHIBufferBarrier>>
+            pendingBufferReleases;
 
         std::vector<FenceWait> waitScratch;
 
@@ -203,10 +208,7 @@ namespace Crowy
             u32 offset = 0
         ) RHI_OVERRIDE;
 
-        void SetPushGraphicsConstants(
-            const void* data,
-            u32 size
-        ) RHI_OVERRIDE;
+        void SetPushGraphicsConstants(const void* data, u32 size) RHI_OVERRIDE;
 
         void SetGraphicsConstantBuffer(
             RHIBuffer&,
@@ -247,10 +249,7 @@ namespace Crowy
 
         void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
 
-        void SetPushComputeConstants(
-            const void* data,
-            u32 size
-        ) RHI_OVERRIDE;
+        void SetPushComputeConstants(const void* data, u32 size) RHI_OVERRIDE;
 
         void SetComputeConstantBuffer(
             RHIBuffer&,
@@ -282,10 +281,7 @@ namespace Crowy
             usize size
         ) RHI_OVERRIDE;
 
-        void Copy(
-            RHITexture& src,
-            RHITexture& dst
-        ) RHI_OVERRIDE;
+        void Copy(RHITexture& src, RHITexture& dst) RHI_OVERRIDE;
 
         void Copy(
             RHIBuffer& src,
@@ -314,7 +310,7 @@ namespace Crowy
 
         void SetMarker(CStr name) RHI_OVERRIDE;
 
-        auto Get() const noexcept{ return commandBuffer.get(); }
+        auto Get() const noexcept { return commandBuffer.get(); }
 
         // any release parked in this recording that no acquire matched -
         // its consumers live in later submissions, which the device must

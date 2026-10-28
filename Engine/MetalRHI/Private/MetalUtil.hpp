@@ -1,9 +1,10 @@
 #pragma once
 
 #include <Foundation/NSString.hpp>
-#include <Metal/MTLPixelFormat.hpp>
 #include <Metal/MTLDepthStencil.hpp>
+#include <Metal/MTLPixelFormat.hpp>
 #include <Metal/MTLTexture.hpp>
+
 #include "RHIDefinitions.hpp"
 
 namespace Crowy
@@ -15,7 +16,7 @@ namespace Crowy
     inline constexpr u32 MaxSamplerArguments = 16;
     inline constexpr u32 MaxVertexBufferSlots = 8;
 
-    inline constexpr NS::UInteger toVertexBufferIndex(u32 slot){
+    inline constexpr NS::UInteger toVertexBufferIndex(u32 slot) {
         constexpr NS::UInteger top = MaxBufferArguments - 1;
         return top - slot;
     }
