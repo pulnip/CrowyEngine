@@ -98,7 +98,7 @@ float4 fs_read_texture(FullscreenOut input) : SV_Target {
     uint height;
     map.GetDimensions(width, height);
     const int2 texel =
-        TextureUVToTexel(ClipToTextureUV(input.ndc), uint2(width, height));
+        textureUVToTexel(clipToTextureUV(input.ndc), uint2(width, height));
 
     return classify(map.Load(int3(texel, 0)));
 }
@@ -110,7 +110,7 @@ float4 fs_read_depth_texture(FullscreenOut input) : SV_Target {
     uint height;
     map.GetDimensions(width, height);
     const int2 texel =
-        TextureUVToTexel(ClipToTextureUV(input.ndc), uint2(width, height));
+        textureUVToTexel(clipToTextureUV(input.ndc), uint2(width, height));
 
     return classify(map.Load(int3(texel, 0)));
 }

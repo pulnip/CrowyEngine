@@ -19,7 +19,7 @@ static const float3 OverdrawLayer = float3(0.2, 0.1, 0.05);
 // radiance, which the post list tone maps; the other views are data, which
 // the frame copies to the screen untouched.
 // shadow is the lights' shadow term, 1 lit and 0 shadowed.
-float3 ApplyDebugView(
+float3 applyDebugView(
     uint mode,
     float3 lit,
     float3 unshaded,

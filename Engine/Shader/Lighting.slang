@@ -1,7 +1,7 @@
 #pragma once
 
-// The engine's light loop pieces: a shader walks LightCount() lights
-// through SampleLight and never sees the light buffer or the shadow map.
+// The engine's light loop pieces: a shader walks lightCount() lights
+// through sampleLight and never sees the light buffer or the shadow map.
 
 #include "ClipToTexture.slang"
 #include "SceneData.slang"
@@ -19,11 +19,11 @@ static const uint NoShadow = 0xFFFFFFFF;
 static const uint ShadowFilterHard = 0;
 static const uint ShadowFilterPcf2x2 = 1;
 
-uint LightCount() {
+uint lightCount() {
     return pass.lightCount;
 }
 
-LightData LoadLight(uint i) {
+LightData loadLight(uint i) {
     StructuredBuffer<LightData> lights = pass.lights;
 
     return lights[pass.lightBase + i];
@@ -32,7 +32,7 @@ LightData LoadLight(uint i) {
 // the four texels around uv compared, and the results weighted by where uv
 // falls between their centres: a comparison sampler's bilinear filter, by
 // hand
-float ShadowPcf2x2(Texture2D<float> map, uint2 size, float2 uv, float depth) {
+float shadowPcf2x2(Texture2D<float> map, uint2 size, float2 uv, float depth) {
     float2 texel = uv * float2(size) - 0.5;
     int2 base = int2(floor(texel));
     float2 weight = texel - float2(base);
@@ -54,13 +54,13 @@ float ShadowPcf2x2(Texture2D<float> map, uint2 size, float2 uv, float depth) {
 
 // one map texel in world metres: the fit's clip x spans 2 across the map's
 // width, and its first row is the light's right scaled by 2 / extent
-float ShadowTexelSize(LightData light, uint width) {
+float shadowTexelSize(LightData light, uint width) {
     return 2.0 / (length(light.worldToShadow[0].xyz) * float(width));
 }
 
 // 1 where the light reaches posWorld, 0 where the map holds a nearer
 // caster; under the hard filter one Load and one compare, exactly 0 or 1
-float ShadowVisibility(LightData light, float3 posWorld, float3 geoNormal) {
+float shadowVisibility(LightData light, float3 posWorld, float3 geoNormal) {
     Texture2D<float> map = pass.shadowMap;
     uint width;
     uint height;
@@ -73,7 +73,7 @@ float ShadowVisibility(LightData light, float3 posWorld, float3 geoNormal) {
     // so the normal offset does too
     float normalBias = light.shadowNormalBias;
     if(pcf)
-        normalBias += ShadowTexelSize(light, width);
+        normalBias += shadowTexelSize(light, width);
     // toward the light by a constant, along the normal by more as the
     // surface turns from the light
     float NoL = saturate(dot(geoNormal, L));
@@ -83,7 +83,7 @@ float ShadowVisibility(LightData light, float3 posWorld, float3 geoNormal) {
     // orthographic, so w is 1
     float4 clip = mul(light.worldToShadow, float4(p, 1.0));
     // ShadowSampleSpike pins ClipToTexture.slang's convention per backend
-    float2 uv = ClipToTextureUV(clip.xy);
+    float2 uv = clipToTextureUV(clip.xy);
     if(any(uv < 0.0) || any(uv >= 1.0))
         return 1.0;
     // the fit holds the casters alone: a receiver deeper than all of them
@@ -91,15 +91,15 @@ float ShadowVisibility(LightData light, float3 posWorld, float3 geoNormal) {
     float depth = min(clip.z, 1.0);
 
     if(pcf)
-        return ShadowPcf2x2(map, uint2(width, height), uv, depth);
+        return shadowPcf2x2(map, uint2(width, height), uv, depth);
 
-    float stored = map.Load(int3(TextureUVToTexel(uv, uint2(width, height)), 0));
+    float stored = map.Load(int3(textureUVToTexel(uv, uint2(width, height)), 0));
 
     return depth <= stored ? 1.0 : 0.0;
 }
 
 // direction, radiance and falloff, before any shadow
-LightSample EvaluateLight(LightData light, float3 posWorld) {
+LightSample evaluateLight(LightData light, float3 posWorld) {
     LightSample s;
     s.radiance = light.color;
     s.shadow = 1.0;
@@ -127,27 +127,27 @@ LightSample EvaluateLight(LightData light, float3 posWorld) {
 
 // geoNormal is the surface's geometric normal, which a shadow lookup
 // offsets along
-LightSample SampleLight(uint i, float3 posWorld, float3 geoNormal) {
-    LightData light = LoadLight(i);
-    LightSample s = EvaluateLight(light, posWorld);
+LightSample sampleLight(uint i, float3 posWorld, float3 geoNormal) {
+    LightData light = loadLight(i);
+    LightSample s = evaluateLight(light, posWorld);
     // an if, not ?:, so an unshadowed light never reads the map
     if(light.shadowIndex != NoShadow)
-        s.shadow = ShadowVisibility(light, posWorld, geoNormal);
+        s.shadow = shadowVisibility(light, posWorld, geoNormal);
     s.attenuation *= s.shadow;
 
     return s;
 }
 
 // every light's shadow term multiplied: a second walk, for a debug view
-float ShadowTerm(float3 posWorld, float3 geoNormal) {
+float shadowTerm(float3 posWorld, float3 geoNormal) {
     float shadow = 1.0;
-    for(uint i = 0; i < LightCount(); ++i)
-        shadow *= SampleLight(i, posWorld, geoNormal).shadow;
+    for(uint i = 0; i < lightCount(); ++i)
+        shadow *= sampleLight(i, posWorld, geoNormal).shadow;
 
     return shadow;
 }
 
 // the hemisphere: ground colour facing down, sky colour facing up
-float3 AmbientIrradiance(float3 N) {
+float3 ambientIrradiance(float3 N) {
     return lerp(groundAmbient.xyz, skyAmbient.xyz, N.y * 0.5 + 0.5);
 }

@@ -15,7 +15,7 @@ namespace Crowy
     using TextureHandle = GenericHandle<TextureResource>;
     using TextureTable = PackedTable<TextureResource>;
 
-    // one of StaticSamplers, in its order; SampleMap mirrors it
+    // one of StaticSamplers, in its order; sampleMap mirrors it
     enum class TextureSampler : u32 {
         LinearWrap,
         LinearClamp,

@@ -5,7 +5,7 @@
 
 [shader("fragment")]
 float4 fs_grid(VertexOut v, bool frontFace : SV_IsFrontFace) : SV_Target {
-    Surface s = loadSurface(v, frontFace);
+    Surface s = makeSurface(v, frontFace);
     s.albedo *= 1.0 - gridDarkening(v.posWorld, s.normal);
 
     return float4(sceneColor(s, v), 1.0);

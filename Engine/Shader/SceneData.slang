@@ -91,7 +91,7 @@ ConstantBuffer<ScenePush> pass : register(b0);
 
 #include "View.slang"
 
-DrawData LoadDraw(uint drawID){
+DrawData loadDraw(uint drawID){
     StructuredBuffer<DrawData> draws = pass.draws;
 
     return draws[pass.drawBase + drawID];
@@ -100,20 +100,20 @@ DrawData LoadDraw(uint drawID){
 // SV_VertexID is the raw index value: Metal folds the draw's baseVertex into
 // it and D3D12 does not, so the pool row comes from the draw instead.
 // VertexPullSpike is the regression check for this contract.
-Vertex LoadVertex(DrawData draw, uint vertexID){
+Vertex loadVertex(DrawData draw, uint vertexID){
     StructuredBuffer<Vertex> vertices = pass.vertices;
 
     return vertices[draw.vbIndex + vertexID];
 }
 
-MaterialData LoadMaterial(uint materialIndex){
+MaterialData loadMaterial(uint materialIndex){
     StructuredBuffer<MaterialData> materials = pass.materials;
 
     return materials[pass.materialBase + materialIndex];
 }
 
 // a map ID's row; 0 names no texture and is never loaded
-TextureData LoadTexture(uint mapID){
+TextureData loadTexture(uint mapID){
     StructuredBuffer<TextureData> textures = pass.textures;
 
     return textures[pass.textureBase + mapID - 1];

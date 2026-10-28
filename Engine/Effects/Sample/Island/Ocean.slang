@@ -31,9 +31,9 @@ VertexOut vs_ocean(
     uint vertexID : SV_VertexID,
     uint drawID : SV_StartInstanceLocation
 ){
-    DrawData d = LoadDraw(drawID);
-    Vertex input = LoadVertex(d, vertexID);
-    MaterialData m = LoadMaterial(d.materialIndex);
+    DrawData d = loadDraw(drawID);
+    Vertex input = loadVertex(d, vertexID);
+    MaterialData m = loadMaterial(d.materialIndex);
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
     posWorld.y +=
@@ -51,9 +51,9 @@ VertexOut vs_ocean(
 
 [shader("fragment")]
 float4 fs_ocean(VertexOut v, bool frontFace : SV_IsFrontFace) : SV_Target {
-    MaterialData m = LoadMaterial(v.materialIndex);
+    MaterialData m = loadMaterial(v.materialIndex);
     uint step = seaStep(m);
-    Surface s = loadSurface(v, frontFace);
+    Surface s = makeSurface(v, frontFace);
 
     float3 toCamera = cameraPosition.xyz - v.posWorld;
     float away = length(toCamera);

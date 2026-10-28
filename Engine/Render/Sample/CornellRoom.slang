@@ -24,8 +24,8 @@ VertexOut vs_main(
     uint vertexID : SV_VertexID,
     uint drawID : SV_StartInstanceLocation
 ){
-    DrawData d = LoadDraw(drawID);
-    Vertex input = LoadVertex(d, vertexID);
+    DrawData d = loadDraw(drawID);
+    Vertex input = loadVertex(d, vertexID);
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 
@@ -71,7 +71,7 @@ float4 fs_main(VertexOut input) : SV_Target {
     float3 lightRadiance = lightRadiance_ambient.xyz;
     float ambient = lightRadiance_ambient.w;
 
-    MaterialData m = LoadMaterial(input.materialIndex);
+    MaterialData m = loadMaterial(input.materialIndex);
 
     float3 albedo = m.albedo;
     float metallic = m.metallic;

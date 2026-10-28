@@ -33,15 +33,15 @@ VertexOut vs_main(
     uint vertexID : SV_VertexID,
     uint drawID : SV_StartInstanceLocation
 ){
-    DrawData d = LoadDraw(drawID);
-    Vertex input = LoadVertex(d, vertexID);
+    DrawData d = loadDraw(drawID);
+    Vertex input = loadVertex(d, vertexID);
 
     // Playground's position path: to world, then to clip, in two steps
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 
     VertexOut output;
     output.posProj = mul(viewProj, posWorld);
-    output.color = LoadMaterial(d.materialIndex).albedo;
+    output.color = loadMaterial(d.materialIndex).albedo;
 
     return output;
 }

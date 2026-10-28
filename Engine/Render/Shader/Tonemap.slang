@@ -11,7 +11,7 @@ float3 toDisplay(float3 color) {
 
 [shader("fragment")]
 float4 fs_main(FullscreenVertexOut input) : SV_Target {
-    float4 radiance = LoadTexel(fullscreen.source, input.position);
+    float4 radiance = loadTexel(fullscreen.source, input.position);
 
     // alpha passes through, so a blended surface keeps its coverage
     return float4(toDisplay(radiance.rgb), radiance.a);

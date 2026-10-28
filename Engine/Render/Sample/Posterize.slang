@@ -4,7 +4,7 @@
 
 [shader("fragment")]
 float4 fs_main(FullscreenVertexOut input) : SV_Target {
-    float4 color = LoadTexel(fullscreen.source, input.position);
+    float4 color = loadTexel(fullscreen.source, input.position);
     float steps = max(fullscreen.params.x, 2.0) - 1.0;
 
     return float4(floor(color.rgb * steps + 0.5) / steps, color.a);

@@ -5,5 +5,5 @@
 
 [shader("fragment")]
 float4 fs_main(FullscreenVertexOut input) : SV_Target {
-    return LoadTexel(fullscreen.source, input.position);
+    return loadTexel(fullscreen.source, input.position);
 }

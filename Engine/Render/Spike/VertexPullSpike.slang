@@ -15,7 +15,7 @@
 //   FAIL: any other shape. Every draw but the first read the pool from row 0,
 //         which is what putting the offset back into baseVertex does on D3D12.
 //
-// Every Render shader pulls through LoadVertex (Engine/Shader/SceneData.slang),
+// Every Render shader pulls through loadVertex (Engine/Shader/SceneData.slang),
 // and so does this spike. Before the contract was fixed, each sample lost every
 // mesh but the first on D3D12.
 
@@ -41,10 +41,10 @@ VertexOut vs_main(
         float3(0.95, 0.85, 0.25)
     };
 
-    DrawData d = LoadDraw(drawID);
+    DrawData d = loadDraw(drawID);
     // the whole point of this spike: the pool offset travels in the draw row,
     // never in the args' baseVertex
-    Vertex input = LoadVertex(d, vertexID);
+    Vertex input = loadVertex(d, vertexID);
 
     VertexOut output;
     output.posProj = mul(viewProj, mul(d.world, float4(input.position, 1.0)));

@@ -28,8 +28,8 @@ VertexOut vs_main(
     uint vertexID : SV_VertexID,
     uint drawID : SV_StartInstanceLocation
 ){
-    DrawData d = LoadDraw(drawID);
-    Vertex input = LoadVertex(d, vertexID);
+    DrawData d = loadDraw(drawID);
+    Vertex input = loadVertex(d, vertexID);
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 
@@ -47,8 +47,8 @@ VertexOut vs_main(
 
 // a map's texel with the sampler its table row names; the row is one
 // material's, so the branch is uniform across the draw
-float4 SampleMap(uint mapID, float2 uv) {
-    TextureData row = LoadTexture(mapID);
+float4 sampleMap(uint mapID, float2 uv) {
+    TextureData row = loadTexture(mapID);
     Texture2D map = row.texture;
 
     switch(row.sampler) {
@@ -64,8 +64,8 @@ float4 SampleMap(uint mapID, float2 uv) {
 }
 
 // the material row under this fragment, its maps sampled, facing the viewer
-Surface loadSurface(VertexOut v, bool frontFace) {
-    MaterialData m = LoadMaterial(v.materialIndex);
+Surface makeSurface(VertexOut v, bool frontFace) {
+    MaterialData m = loadMaterial(v.materialIndex);
 
     Surface s;
     s.albedo = m.albedo;
@@ -76,12 +76,12 @@ Surface loadSurface(VertexOut v, bool frontFace) {
 
     float2 uv = v.texCoord * m.uvScaleOffset.xy + m.uvScaleOffset.zw;
     if(m.albedoMapID != 0) {
-        float4 texel = SampleMap(m.albedoMapID, uv);
+        float4 texel = sampleMap(m.albedoMapID, uv);
         s.albedo *= texel.rgb;
         s.opacity *= texel.a;
     }
     if(m.emissiveMapID != 0)
-        s.emissive *= SampleMap(m.emissiveMapID, uv).rgb;
+        s.emissive *= sampleMap(m.emissiveMapID, uv).rgb;
 
     s.normal = normalize(v.normal);
     // a double-sided material lights its back as a front; a single-sided
@@ -96,7 +96,7 @@ Surface loadSurface(VertexOut v, bool frontFace) {
 
 // a Masked surface keeps a texel whose opacity reaches the row's cutoff
 void cutMasked(Surface s, uint materialIndex) {
-    if(s.opacity < LoadMaterial(materialIndex).alphaCutoff)
+    if(s.opacity < loadMaterial(materialIndex).alphaCutoff)
         discard;
 }
 
@@ -107,17 +107,17 @@ float3 shadeSurface(Surface s, float3 posWorld, bool receivesShadow) {
 
     LightSum sum = {};
     // never early-outs: a model may tint what the shadow darkens
-    for(uint i = 0; i < LightCount(); ++i) {
+    for(uint i = 0; i < lightCount(); ++i) {
         LightSample light = receivesShadow
-            ? SampleLight(i, posWorld, s.normal)
-            : EvaluateLight(LoadLight(i), posWorld);
+            ? sampleLight(i, posWorld, s.normal)
+            : evaluateLight(loadLight(i), posWorld);
         MaterialShading.accumulate(s, light, V, sum);
     }
 
     return MaterialShading.compose(
         s,
         sum,
-        MaterialShading.ambient(s, V, AmbientIrradiance(s.normal))
+        MaterialShading.ambient(s, V, ambientIrradiance(s.normal))
     );
 }
 
@@ -125,14 +125,14 @@ float3 shadeSurface(Surface s, float3 posWorld, bool receivesShadow) {
 // post list takes both to the screen
 float3 sceneColor(Surface s, VertexOut v) {
     bool receivesShadow =
-        (LoadMaterial(v.materialIndex).flags & MaterialFlagNoShadowReceive) == 0;
+        (loadMaterial(v.materialIndex).flags & MaterialFlagNoShadowReceive) == 0;
 
     // the view is uniform, so only the Shadow view walks the lights twice
     float shadow = 1.0;
     if(debugMode == DebugModeShadow && receivesShadow)
-        shadow = ShadowTerm(v.posWorld, s.normal);
+        shadow = shadowTerm(v.posWorld, s.normal);
 
-    return ApplyDebugView(
+    return applyDebugView(
         debugMode,
         shadeSurface(s, v.posWorld, receivesShadow),
         s.albedo + s.emissive,

@@ -22,8 +22,8 @@ VertexOut vs_main(
     uint vertexID : SV_VertexID,
     uint drawID : SV_StartInstanceLocation
 ){
-    DrawData d = LoadDraw(drawID);
-    Vertex input = LoadVertex(d, vertexID);
+    DrawData d = loadDraw(drawID);
+    Vertex input = loadVertex(d, vertexID);
 
     float4 posWorld = mul(d.world, float4(input.position, 1.0));
 

@@ -38,6 +38,6 @@ FullscreenVertexOut vs_main(uint vertexID : SV_VertexID){
 }
 
 // the texel under the pixel, one to one: no sampler, no flip
-float4 LoadTexel(Texture2D texture, float4 position){
+float4 loadTexel(Texture2D texture, float4 position){
     return texture.Load(int3(int2(position.xy), 0));
 }
