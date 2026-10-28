@@ -5,7 +5,6 @@
 
 #include <d3dx12/d3dx12_barriers.h>
 #include <pix.h>
-#include <winscard.h>
 
 #include "Assert.hpp"
 #include "DX12Buffer.hpp"
@@ -339,8 +338,6 @@ namespace Crowy
 
         auto& dxPso = static_cast<DX12GraphicsPipelineState&>(pso);
         dxPso.Bind(*commandList.Get());
-
-        currentGraphicsPSO = &dxPso;
     }
 
     void DX12CommandList::SetVertexBuffer(

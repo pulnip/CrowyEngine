@@ -21,8 +21,6 @@ PRIVATE
     <d3d12.h>
     <dxgiformat.h>
     <d3dcommon.h>
-    <d3d12shader.h>
-    <dxcapi.h>
     <dxgi1_6.h>
     <d3dx12/d3dx12_core.h>
     <d3dx12/d3dx12_root_signature.h>

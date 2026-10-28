@@ -17,7 +17,6 @@
 #include "DX12Definitions.hpp"
 #include "DX12DescriptorHeapAllocator.hpp"
 #include "DX12Fence.hpp"
-#include "DX12FrameScope.hpp"
 #include "DX12PipelineState.hpp"
 #include "DX12Swapchain.hpp"
 #include "DX12Texture.hpp"
@@ -26,6 +25,7 @@
 #include "PathUtil.hpp"
 #include "RHIAPI.hpp"
 #include "RHIDevice.hpp"
+#include "RHIFrameScope.hpp"
 #include "RHIFrameTimeline.hpp"
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
@@ -574,7 +574,7 @@ namespace Crowy
         ~DX12Device() { retireQueue.CollectAll(); }
 
         RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE {
-            return std::make_unique<DX12FrameScope>();
+            return std::make_unique<RHIFrameScope>();
         }
 
         RHIGraphicsPipelineStateRAII CreatePipelineState(

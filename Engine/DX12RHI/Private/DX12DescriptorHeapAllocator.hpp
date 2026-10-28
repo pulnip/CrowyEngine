@@ -52,14 +52,11 @@ namespace Crowy
             const D3D12_DEPTH_STENCIL_VIEW_DESC& desc
         );
 
-        UINT Allocate(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc);
-
         // safe from a destructor: the index comes back (never, in poison mode)
         // once the retire queue confirms the GPU is done with it
         void Free(UINT index);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(UINT index) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(UINT index) const;
 
         DescriptorHeap* Get() noexcept { return heap.Get(); }
 

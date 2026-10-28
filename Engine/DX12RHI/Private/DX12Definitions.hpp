@@ -1,7 +1,6 @@
 #pragma once
 
 #include <d3d12.h>
-#include <d3d12shader.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
@@ -28,7 +27,6 @@ namespace Crowy
 
     using Blob = ID3DBlob;
     using Fence = ID3D12Fence;
-    using ShaderReflection = ID3D12ShaderReflection;
     using QueryHeap = ID3D12QueryHeap;
 
     template<typename T>
@@ -50,11 +48,9 @@ namespace Crowy
     using TextureRAII = COMRAII<Texture>;
     using DescriptorHeapRAII = COMRAII<DescriptorHeap>;
     using DX12DescriptorHeapAllocatorRAII = RAII<DX12DescriptorHeapAllocator>;
-    using ResourceState = D3D12_RESOURCE_STATES;
 
     using BlobRAII = COMRAII<Blob>;
     using FenceRAII = COMRAII<Fence>;
-    using ShaderReflectionRAII = COMRAII<ShaderReflection>;
     using QueryHeapRAII = COMRAII<QueryHeap>;
 
     inline constexpr UINT RootParamPush = 0;

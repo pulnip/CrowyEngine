@@ -27,7 +27,6 @@ namespace Crowy
     }
 
     DXGI_FORMAT convert(RHIPixelFormat);
-    RHIPixelFormat convert(DXGI_FORMAT);
 
     D3D12_COMPARISON_FUNC convert(RHIComparisonFunc);
 

@@ -17,8 +17,6 @@ namespace Crowy
         u32 size = 0;
         void* mapped = nullptr;
 
-        // descriptor heap index
-        std::unordered_map<RHIBufferViewDesc, UINT> cbvs;
         std::unordered_map<RHIBufferViewDesc, UINT> srvs;
         std::unordered_map<RHIBufferViewDesc, UINT> uavs;
 

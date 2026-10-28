@@ -69,7 +69,6 @@ namespace Crowy
         DX12DescriptorHeapAllocator& cbvsrvuavHeap;
         DX12DescriptorHeapAllocator& rtvHeap;
         DX12DescriptorHeapAllocator& dsvHeap;
-        DX12GraphicsPipelineState* currentGraphicsPSO = nullptr;
         DX12ComputePipelineState* currentComputePSO = nullptr;
 
         std::vector<CD3DX12_TEXTURE_BARRIER> textureBarrierScratch;

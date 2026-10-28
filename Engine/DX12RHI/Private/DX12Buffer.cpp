@@ -79,9 +79,6 @@ namespace Crowy
             mapped = nullptr;
         }
 
-        for(const auto& [_, idx]: cbvs) {
-            heap.Free(idx);
-        }
         for(const auto& [_, idx]: srvs) {
             heap.Free(idx);
         }

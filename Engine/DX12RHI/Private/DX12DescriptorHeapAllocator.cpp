@@ -88,29 +88,10 @@ namespace Crowy
         return index;
     }
 
-    UINT DX12DescriptorHeapAllocator::Allocate(
-        const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc
-    ) {
-        auto index = acquireIndex();
-        device.CreateConstantBufferView(&desc, GetCPUHandle(index));
-
-        return index;
-    }
-
     D3D12_CPU_DESCRIPTOR_HANDLE DX12DescriptorHeapAllocator::GetCPUHandle(
         UINT index
     ) const {
         auto handle = heap->GetCPUDescriptorHandleForHeapStart();
-        auto offset = index * descriptorSize;
-        handle.ptr += offset;
-
-        return handle;
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE DX12DescriptorHeapAllocator::GetGPUHandle(
-        UINT index
-    ) const {
-        auto handle = heap->GetGPUDescriptorHandleForHeapStart();
         auto offset = index * descriptorSize;
         handle.ptr += offset;
 
