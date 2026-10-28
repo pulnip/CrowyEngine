@@ -19,9 +19,20 @@ TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
     EXPECT_EQ(stage.sprites.size(), 1u);
     EXPECT_EQ(stage.unitQuad.indices.size(), 6u);
     // linear-sampled atlases carry mips, the point-sampled ones one level
-    EXPECT_EQ(stage.images.at("Unity/Assets/Art/Textures/Posters/PosterAtlas.png").mipLevels, 12u);
-    EXPECT_EQ(stage.images.at("Unity/Assets/Art/Textures/Signs/SignAtlas.png").mipLevels, 1u);
-    EXPECT_EQ(stage.images.at("Unity/Assets/Art/Textures/Palette.png").mipLevels, 1u);
+    EXPECT_EQ(
+        stage.images.at("Unity/Assets/Art/Textures/Posters/PosterAtlas.png")
+            .mipLevels,
+        12u
+    );
+    EXPECT_EQ(
+        stage.images.at("Unity/Assets/Art/Textures/Signs/SignAtlas.png")
+            .mipLevels,
+        1u
+    );
+    EXPECT_EQ(
+        stage.images.at("Unity/Assets/Art/Textures/Palette.png").mipLevels,
+        1u
+    );
 
     u64 vertices = 0;
     u64 indices = 0;
@@ -43,7 +54,8 @@ TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
 
     const auto& timings = stage.timings;
     std::cout << std::format(
-        "stage: {} model vertices, {} indices ({} triangles), staging {:.1f} MiB, "
+        "stage: {} model vertices, {} indices ({} triangles), staging {:.1f} "
+        "MiB, "
         "{} materials, {} draws per pass; loaded in {:.2f} s "
         "(document {:.2f}, models {:.2f}, images {:.2f})\n",
         vertices,

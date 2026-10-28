@@ -42,7 +42,8 @@ namespace
     // the model's size standing on the ground
     LoadedStage miniStage() {
         // a glowing lamp, a night-keyed box naming a channel nothing glowing
-        // uses, a glowing quad, a light off by day, cameras far, near and between
+        // uses, a glowing quad, a light off by day, cameras far, near and
+        // between
         constexpr CStr MiniScene = R"({
             "metadata": {"version": 1, "name": "Mini", "type": "scene"},
             "models": [
@@ -80,9 +81,14 @@ namespace
         LoadedStage stage{.document = loadJson<StageDocument>(Str(MiniScene))};
         for(const auto& model: stage.document.models) {
             auto& data = stage.models.emplace_back();
-            data.bounds = AABB3D{.center = {0.0f, model.size.y * 0.5f, 0.0f}, .halfScale = model.size * 0.5f};
+            data.bounds = AABB3D{
+                .center = {0.0f, model.size.y * 0.5f, 0.0f},
+                .halfScale = model.size * 0.5f
+            };
             for(const auto& material: model.materials)
-                data.slots.push_back(ModelSlot{.material = material, .bounds = data.bounds});
+                data.slots.push_back(
+                    ModelSlot{.material = material, .bounds = data.bounds}
+                );
         }
         for(const auto& material: stage.document.materials)
             stage.samplers.emplace(material.texture, material.sampler);
@@ -114,12 +120,18 @@ namespace
     }
 
     // the check throws, and its message names every one of `words`
-    void expectRestart(const LoadedStage& launched, const StageDocument& document, std::vector<Str> words) {
+    void expectRestart(
+        const LoadedStage& launched,
+        const StageDocument& document,
+        std::vector<Str> words
+    ) {
         words.push_back("restart");
         for(const auto& word: words) {
             EXPECT_THAT(
                 [&] { checkStageReload(launched, document); },
-                testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(word))
+                testing::ThrowsMessage<std::runtime_error>(
+                    testing::HasSubstr(word)
+                )
             );
         }
     }
@@ -128,14 +140,18 @@ namespace
     public:
         LoadedStage stage = miniStage();
         RenderScene scene;
-        StageBindings bindings = populateStage(scene, stage, geometryOf(stage), texturesOf(stage));
+        StageBindings bindings =
+            populateStage(scene, stage, geometryOf(stage), texturesOf(stage));
 
         void ApplyKey(usize key) {
             applyStageKey(scene, bindings, stage.document, key);
         }
 
         bool Visible(PrimitiveHandle primitive) const {
-            return hasFlag(scene.Primitives().GetRef(primitive).flags, PrimitiveFlags::Visible);
+            return hasFlag(
+                scene.Primitives().GetRef(primitive).flags,
+                PrimitiveFlags::Visible
+            );
         }
 
         Vec3 Emissive(MaterialHandle material) const {
@@ -145,7 +161,11 @@ namespace
 }
 
 TEST(StageScene, AnInstanceIsScaledThenYawedThenMoved) {
-    const StageInstance row{.position = {1.0f, 0.0f, 2.0f}, .yaw = 90.0f, .scale = {2.0f, 1.0f, 3.0f}};
+    const StageInstance row{
+        .position = {1.0f, 0.0f, 2.0f},
+        .yaw = 90.0f,
+        .scale = {2.0f, 1.0f, 3.0f}
+    };
     const auto toWorld = instanceToWorld(row);
 
     // a yaw of 90 turns +Z to +X and +X to -Z
@@ -167,11 +187,19 @@ TEST(StageScene, AQuadsFrontTopLeftTakesItsFirstUV) {
     for(const auto& vertex: f.stage.unitQuad.vertices) {
         const auto across = quad.width * (vertex.texCoord.x - 0.5f);
         const auto down = quad.height * (vertex.texCoord.y - 0.5f);
-        expectNear(transformPoint(toWorld, vertex.position), quad.position + right * across - unitY() * down);
-        expectNear(normalize(transformDirection(toWorld, vertex.normal)), front);
+        expectNear(
+            transformPoint(toWorld, vertex.position),
+            quad.position + right * across - unitY() * down
+        );
+        expectNear(
+            normalize(transformDirection(toWorld, vertex.normal)),
+            front
+        );
     }
 
-    const auto rect = f.scene.Materials().GetRef(f.bindings.quadMaterials[0]).data.uvScaleOffset;
+    const auto rect = f.scene.Materials()
+                          .GetRef(f.bindings.quadMaterials[0])
+                          .data.uvScaleOffset;
     EXPECT_FLOAT_EQ(rect.x, 0.25f);
     EXPECT_FLOAT_EQ(rect.y, 0.25f);
     EXPECT_FLOAT_EQ(rect.z, 0.25f);
@@ -182,25 +210,36 @@ TEST(StageScene, AQuadsFrontTopLeftTakesItsFirstUV) {
 // palette stay opaque
 TEST(StageScene, AMaskedRowCutsItsQuadsAtItsCutoff) {
     const Fixture f;
-    const auto& opaque = f.scene.Materials().GetRef(f.bindings.quadMaterials[0]);
+    const auto& opaque =
+        f.scene.Materials().GetRef(f.bindings.quadMaterials[0]);
     EXPECT_EQ(opaque.pipeline.domain, MaterialDomain::Opaque);
     EXPECT_EQ(opaque.pipeline.fragmentShader.entryPoint, "fs_opaque");
 
     auto stage = miniStage();
-    auto& signs = *std::ranges::find(stage.document.materials, "Signs", &StageMaterial::id);
+    auto& signs = *std::ranges::find(
+        stage.document.materials,
+        "Signs",
+        &StageMaterial::id
+    );
     signs.kind = StageMaterialKind::Masked;
     signs.cutoff = 0.25f;
     RenderScene scene;
-    const auto bindings = populateStage(scene, stage, geometryOf(stage), texturesOf(stage));
+    const auto bindings =
+        populateStage(scene, stage, geometryOf(stage), texturesOf(stage));
 
     const auto& masked = scene.Materials().GetRef(bindings.quadMaterials[0]);
     EXPECT_EQ(masked.pipeline.domain, MaterialDomain::Masked);
     EXPECT_EQ(masked.data.alphaCutoff, 0.25f);
     EXPECT_EQ(masked.pipeline.fragmentShader.entryPoint, "fs_masked");
     EXPECT_EQ(masked.pipeline.maskShader.entryPoint, "fs_masked_depth");
-    EXPECT_TRUE(masked.pipeline.maskShader.path == masked.pipeline.fragmentShader.path);
+    EXPECT_TRUE(
+        masked.pipeline.maskShader.path == masked.pipeline.fragmentShader.path
+    );
     EXPECT_EQ(masked.data.uvScaleOffset, opaque.data.uvScaleOffset);
-    EXPECT_EQ(scene.Materials().GetRef(bindings.palette).pipeline.domain, MaterialDomain::Opaque);
+    EXPECT_EQ(
+        scene.Materials().GetRef(bindings.palette).pipeline.domain,
+        MaterialDomain::Opaque
+    );
 }
 
 TEST(StageScene, AKeyShowsItsRowsAndScalesItsLightGroups) {
@@ -277,7 +316,13 @@ TEST(StageReload, WhatLaunchDidNotLoadNeedsARestart) {
     expectRestart(stage, otherFile, {"Lamp", "Models/Other.fbx"});
 
     auto added = stage.document;
-    added.models.push_back(StageModel{.id = "Bench", .path = "Models/Bench.fbx", .materials = {"Palette"}});
+    added.models.push_back(
+        StageModel{
+            .id = "Bench",
+            .path = "Models/Bench.fbx",
+            .materials = {"Palette"}
+        }
+    );
     expectRestart(stage, added, {"Bench"});
 
     auto otherSlots = stage.document;
@@ -304,18 +349,23 @@ TEST(StageReload, WhatLaunchDidNotLoadNeedsARestart) {
 TEST(StageReload, AFileTheSwapCannotBuildNeedsARestart) {
     const auto stage = miniStage();
 
-    // the lamp and its glow dropped: the launch's table still names PaletteEmissive
+    // the lamp and its glow dropped: the launch's table still names
+    // PaletteEmissive
     auto dropped = stage.document;
     dropped.models.erase(dropped.models.begin());
     dropped.instances.erase(dropped.instances.begin());
-    std::erase_if(dropped.materials, [](const StageMaterial& row) { return row.id == "PaletteEmissive"; });
+    std::erase_if(dropped.materials, [](const StageMaterial& row) {
+        return row.id == "PaletteEmissive";
+    });
     expectRestart(stage, dropped, {"PaletteEmissive"});
 
     auto allGlow = stage.document;
     allGlow.materials[0].emissive = true;
     EXPECT_THAT(
         [&] { checkStageReload(stage, allGlow); },
-        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("does not glow"))
+        testing::ThrowsMessage<std::runtime_error>(
+            testing::HasSubstr("does not glow")
+        )
     );
 
     auto moreQuads = stage.document;
@@ -340,16 +390,30 @@ TEST(StageReload, ModelsLeftOutOrReorderedPass) {
 TEST(StageScene, AClearedSceneFillsAgainAsBefore) {
     Fixture f;
     f.ApplyKey(1);
-    const auto primitives = std::vector(f.scene.Primitives().All().begin(), f.scene.Primitives().All().end());
-    const auto materials = std::vector(f.scene.Materials().All().begin(), f.scene.Materials().All().end());
-    const auto lights = std::vector(f.scene.Lights().All().begin(), f.scene.Lights().All().end());
+    const auto primitives = std::vector(
+        f.scene.Primitives().All().begin(),
+        f.scene.Primitives().All().end()
+    );
+    const auto materials = std::vector(
+        f.scene.Materials().All().begin(),
+        f.scene.Materials().All().end()
+    );
+    const auto lights = std::vector(
+        f.scene.Lights().All().begin(),
+        f.scene.Lights().All().end()
+    );
     std::vector<usize> meshIndices;
     for(const auto& row: primitives)
         meshIndices.push_back(f.scene.Meshes().IndexOf(row.mesh));
     const auto oldLamp = f.bindings.instances[0];
 
     f.scene.Clear();
-    f.bindings = populateStage(f.scene, f.stage, geometryOf(f.stage), texturesOf(f.stage));
+    f.bindings = populateStage(
+        f.scene,
+        f.stage,
+        geometryOf(f.stage),
+        texturesOf(f.stage)
+    );
     f.ApplyKey(1);
 
     EXPECT_FALSE(f.scene.Primitives().IsValid(oldLamp));
@@ -359,13 +423,34 @@ TEST(StageScene, AClearedSceneFillsAgainAsBefore) {
     for(usize i = 0; i < primitives.size(); ++i) {
         const auto& row = f.scene.Primitives().All()[i];
         EXPECT_EQ(f.scene.Primitives().HandleAt(i).GetIndex(), i);
-        EXPECT_EQ(std::memcmp(&row.localToWorld, &primitives[i].localToWorld, sizeof(Mat4)), 0) << i;
-        EXPECT_EQ(std::memcmp(&row.worldBounds, &primitives[i].worldBounds, sizeof(AABB3D)), 0) << i;
+        EXPECT_EQ(
+            std::memcmp(
+                &row.localToWorld,
+                &primitives[i].localToWorld,
+                sizeof(Mat4)
+            ),
+            0
+        ) << i;
+        EXPECT_EQ(
+            std::memcmp(
+                &row.worldBounds,
+                &primitives[i].worldBounds,
+                sizeof(AABB3D)
+            ),
+            0
+        ) << i;
         EXPECT_EQ(row.flags, primitives[i].flags) << i;
         EXPECT_EQ(f.scene.Meshes().IndexOf(row.mesh), meshIndices[i]) << i;
     }
     for(usize i = 0; i < materials.size(); ++i)
-        EXPECT_EQ(std::memcmp(&f.scene.Materials().All()[i].data, &materials[i].data, sizeof(MaterialData)), 0) << i;
+        EXPECT_EQ(
+            std::memcmp(
+                &f.scene.Materials().All()[i].data,
+                &materials[i].data,
+                sizeof(MaterialData)
+            ),
+            0
+        ) << i;
     for(usize i = 0; i < lights.size(); ++i) {
         const auto& row = f.scene.Lights().All()[i];
         EXPECT_EQ(row.enabled, lights[i].enabled) << i;
@@ -376,20 +461,36 @@ TEST(StageScene, AClearedSceneFillsAgainAsBefore) {
 
 // a 4 x 2 sheet of 8 frames, 160 ms each, from the top-left cell
 TEST(StageScene, AFlipbookMovesItsRectByWholeCells) {
-    const StageSprites sprites{{
-        "screen.json",
-        StageSprite{
-            .image = "Screen.png",
-            .rows = 4,
-            .columns = 2,
-            .animations = {
-                StageSpriteAnimation{.name = "loop", .frameCount = 8, .frameDurationMs = 160},
-                StageSpriteAnimation{.name = "late", .startRow = 1, .startColumn = 1, .frameCount = 3, .frameDurationMs = 100},
-            }
-        }
-    }};
-    StageQuad quad{.uv0 = {0.0f, 0.0f}, .uv1 = {0.5f, 0.25f}, .flipbook = StageFlipbook{.sprite = "screen.json", .animation = "loop"}};
-    const auto at = [&](f64 seconds) { return stageQuadRect(quad, sprites, seconds); };
+    const StageSprites sprites{
+        {"screen.json",
+         StageSprite{
+             .image = "Screen.png",
+             .rows = 4,
+             .columns = 2,
+             .animations = {
+                 StageSpriteAnimation{
+                     .name = "loop",
+                     .frameCount = 8,
+                     .frameDurationMs = 160
+                 },
+                 StageSpriteAnimation{
+                     .name = "late",
+                     .startRow = 1,
+                     .startColumn = 1,
+                     .frameCount = 3,
+                     .frameDurationMs = 100
+                 },
+             }
+         }}
+    };
+    StageQuad quad{
+        .uv0 = {0.0f, 0.0f},
+        .uv1 = {0.5f, 0.25f},
+        .flipbook = StageFlipbook{.sprite = "screen.json", .animation = "loop"}
+    };
+    const auto at = [&](f64 seconds) {
+        return stageQuadRect(quad, sprites, seconds);
+    };
 
     EXPECT_EQ(at(0.0), (Vec4{0.5f, 0.25f, 0.0f, 0.0f}));
     EXPECT_EQ(at(0.159), (Vec4{0.5f, 0.25f, 0.0f, 0.0f}));

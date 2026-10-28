@@ -18,8 +18,8 @@ namespace
         std::string_view totalsInstances = "2",
         std::string_view version = "1"
     ) {
-        return std::string(R"({"metadata": {"version": )") + std::string(version)
-            + R"(, "name": "Mini", "type": "scene"},
+        return std::string(R"({"metadata": {"version": )") +
+               std::string(version) + R"(, "name": "Mini", "type": "scene"},
             "models": [
                 {"id": "Lamp", "path": "Models/Lamp.fbx", "size": [0.5, 4.0, 0.5], "materials": ["Palette", "PaletteEmissive"]},
                 {"id": "BoxGrey", "path": "Models/Box.fbx", "size": [1, 1, 1], "materials": ["Palette"], "box": true}
@@ -30,8 +30,8 @@ namespace
                 {"id": "Signs", "kind": "masked", "texture": "Signs.png", "sampler": "linear", "emissive": false, "cutoff": 0.5, "receives_shadows": false, "fallback": "#000000", "brand_new_key": 3}
             ],
             "instances": [
-                {"name": "lamp-a", "area": "Street", "model": "Lamp", "x": 1, "y": 0, "z": 2, "yaw": 90, "sx": 1, "sy": 1, "sz": 1)"
-            + std::string(instanceExtra) + R"(},
+                {"name": "lamp-a", "area": "Street", "model": "Lamp", "x": 1, "y": 0, "z": 2, "yaw": 90, "sx": 1, "sy": 1, "sz": 1)" +
+               std::string(instanceExtra) + R"(},
                 {"name": "tower", "area": "NE", "model": "BoxGrey", "x": 0, "y": 0, "z": 0, "yaw": 0, "sx": 2, "sy": 8, "sz": 2, "keys": ["night"]}
             ],
             "quads": [
@@ -48,9 +48,9 @@ namespace
                 {"name": "night", "time": 21, "sun_direction": [0, -1, 0], "sun_color": "#8080FF", "sun_intensity": 0.3, "ambient_sky": "#202040", "ambient_ground": "#000000", "ambient_intensity": 0.5, "sky_zenith": "#000010", "sky_horizon": "#202040", "sky_haze": "#000010", "light_groups": [{"group": "street_lamps", "scale": 1.2}], "emissive_channels": [{"channel": "fixtures", "scale": 2.6}, {"channel": "signs", "scale": 1}]}
             ],
             "default_key": "day",
-            "totals": {"models": 2, "materials": 3, "instances": )"
-            + std::string(totalsInstances)
-            + R"(, "quads": 1, "lights": 1, "cameras": 1, "lighting_keys": 2}
+            "totals": {"models": 2, "materials": 3, "instances": )" +
+               std::string(totalsInstances) +
+               R"(, "quads": 1, "lights": 1, "cameras": 1, "lighting_keys": 2}
         })";
     }
 
@@ -72,7 +72,9 @@ namespace
     void expectRefusal(const std::string& json, StrView reason) {
         EXPECT_THAT(
             [&] { parse(json); },
-            testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(Str(reason)))
+            testing::ThrowsMessage<std::runtime_error>(
+                testing::HasSubstr(Str(reason))
+            )
         );
     }
 }
@@ -145,35 +147,74 @@ TEST(StageDocument, PerAxisScaleOnlyOnTheBox) {
 }
 
 TEST(StageDocument, UnknownModelThrows) {
-    expectRefusal(edited(R"("model": "Lamp")", R"("model": "Lamq")"), "unknown model 'Lamq'");
+    expectRefusal(
+        edited(R"("model": "Lamp")", R"("model": "Lamq")"),
+        "unknown model 'Lamq'"
+    );
 }
 
 TEST(StageDocument, ModelWithUnknownMaterialThrows) {
-    expectRefusal(edited(R"("materials": ["Palette"], "box")", R"("materials": ["Paint"], "box")"), "unknown material 'Paint'");
+    expectRefusal(
+        edited(
+            R"("materials": ["Palette"], "box")",
+            R"("materials": ["Paint"], "box")"
+        ),
+        "unknown material 'Paint'"
+    );
 }
 
 TEST(StageDocument, ModelWithoutMaterialsThrows) {
-    expectRefusal(edited(R"("materials": ["Palette"], "box")", R"("materials": [], "box")"), "names no material");
+    expectRefusal(
+        edited(
+            R"("materials": ["Palette"], "box")",
+            R"("materials": [], "box")"
+        ),
+        "names no material"
+    );
 }
 
 TEST(StageDocument, QuadWithUnknownMaterialThrows) {
-    expectRefusal(edited(R"("material": "Signs")", R"("material": "Sings")"), "unknown material 'Sings'");
+    expectRefusal(
+        edited(R"("material": "Signs")", R"("material": "Sings")"),
+        "unknown material 'Sings'"
+    );
 }
 
 TEST(StageDocument, QuadShowingUnknownCutThrows) {
-    expectRefusal(edited(R"("emissive_channel": "signs"})", R"("emissive_channel": "signs", "camera": "cameraZ"})"), "unknown cut 'cameraZ'");
+    expectRefusal(
+        edited(
+            R"("emissive_channel": "signs"})",
+            R"("emissive_channel": "signs", "camera": "cameraZ"})"
+        ),
+        "unknown cut 'cameraZ'"
+    );
 }
 
 TEST(StageDocument, InstanceChannelMissingFromAKeyThrows) {
-    expectRefusal(miniScene(R"(, "emissive_channel": "neon")"), "glows on 'neon'");
+    expectRefusal(
+        miniScene(R"(, "emissive_channel": "neon")"),
+        "glows on 'neon'"
+    );
 }
 
 TEST(StageDocument, QuadChannelMissingFromAKeyThrows) {
-    expectRefusal(edited(R"("emissive_channel": "signs"})", R"("emissive_channel": "game"})"), "glows on 'game'");
+    expectRefusal(
+        edited(
+            R"("emissive_channel": "signs"})",
+            R"("emissive_channel": "game"})"
+        ),
+        "glows on 'game'"
+    );
 }
 
 TEST(StageDocument, LightGroupMissingFromAKeyThrows) {
-    expectRefusal(edited(R"("group": "street_lamps", "kind")", R"("group": "set_lights", "kind")"), "group 'set_lights'");
+    expectRefusal(
+        edited(
+            R"("group": "street_lamps", "kind")",
+            R"("group": "set_lights", "kind")"
+        ),
+        "group 'set_lights'"
+    );
 }
 
 TEST(StageDocument, UnknownKeyNameThrows) {
@@ -189,23 +230,44 @@ TEST(StageDocument, KeysThatAreNotAListThrow) {
 }
 
 TEST(StageDocument, UnknownDefaultKeyThrows) {
-    expectRefusal(edited(R"("default_key": "day")", R"("default_key": "noon")"), "default_key 'noon'");
+    expectRefusal(
+        edited(R"("default_key": "day")", R"("default_key": "noon")"),
+        "default_key 'noon'"
+    );
 }
 
 TEST(StageDocument, ATextureWithTwoSamplersThrows) {
-    expectRefusal(edited(R"("texture": "Signs.png", "sampler": "linear")", R"("texture": "Palette.png", "sampler": "linear")"), "unlike");
+    expectRefusal(
+        edited(
+            R"("texture": "Signs.png", "sampler": "linear")",
+            R"("texture": "Palette.png", "sampler": "linear")"
+        ),
+        "unlike"
+    );
 }
 
 TEST(StageDocument, BadKindOrSamplerThrows) {
-    expectRefusal(edited(R"("kind": "masked")", R"("kind": "cutout")"), "kind 'cutout'");
-    expectRefusal(edited(R"("sampler": "linear")", R"("sampler": "cubic")"), "sampler 'cubic'");
-    expectRefusal(edited(R"("kind": "spot")", R"("kind": "area")"), "kind 'area'");
+    expectRefusal(
+        edited(R"("kind": "masked")", R"("kind": "cutout")"),
+        "kind 'cutout'"
+    );
+    expectRefusal(
+        edited(R"("sampler": "linear")", R"("sampler": "cubic")"),
+        "sampler 'cubic'"
+    );
+    expectRefusal(
+        edited(R"("kind": "spot")", R"("kind": "area")"),
+        "kind 'area'"
+    );
 }
 
 // a key that is present must read; only an absent one takes the default
 TEST(StageDocument, OptionalKeyOfTheWrongTypeThrows) {
     expectRefusal(edited(R"("shadow": 1})", R"("shadow": 1.5})"), "'shadow'");
-    expectRefusal(edited(R"("receives_shadows": false)", R"("receives_shadows": 0)"), "'receives_shadows'");
+    expectRefusal(
+        edited(R"("receives_shadows": false)", R"("receives_shadows": 0)"),
+        "'receives_shadows'"
+    );
 }
 
 TEST(StageSprite, ReadsTheSheetAndItsAnimations) {
@@ -224,7 +286,9 @@ TEST(StageSprite, ReadsTheSheetAndItsAnimations) {
 
 TEST(StageSprite, WrongTypeThrows) {
     EXPECT_THROW(
-        loadJson<StageSprite>(R"({"metadata": {"version": 1, "name": "x", "type": "scene"}, "sheet": {"image": "a", "rows": 1, "columns": 1}})"),
+        loadJson<StageSprite>(
+            R"({"metadata": {"version": 1, "name": "x", "type": "scene"}, "sheet": {"image": "a", "rows": 1, "columns": 1}})"
+        ),
         std::runtime_error
     );
 }
@@ -232,27 +296,51 @@ TEST(StageSprite, WrongTypeThrows) {
 TEST(StageSprite, EmptyGridThrows) {
     EXPECT_THAT(
         [] {
-            loadJson<StageSprite>(R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 0, "columns": 2}, "animations": []})");
+            loadJson<StageSprite>(
+                R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 0, "columns": 2}, "animations": []})"
+            );
         },
-        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("empty grid"))
+        testing::ThrowsMessage<std::runtime_error>(
+            testing::HasSubstr("empty grid")
+        )
     );
 }
 
 TEST(StageSprite, AnAnimationMustPlayInsideItsSheet) {
     const auto sprite = [](std::string animation) {
-        return std::string(R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 2, "columns": 2}, "animations": [)")
-            + animation + "]}";
+        return std::string(
+                   R"({"metadata": {"version": 1, "name": "x", "type": "sprite"}, "sheet": {"image": "a", "rows": 2, "columns": 2}, "animations": [)"
+               ) +
+               animation + "]}";
     };
     const auto refused = [&](std::string animation, StrView reason) {
         EXPECT_THAT(
             [&] { loadJson<StageSprite>(sprite(animation)); },
-            testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr(Str(reason)))
+            testing::ThrowsMessage<std::runtime_error>(
+                testing::HasSubstr(Str(reason))
+            )
         );
     };
 
-    refused(R"({"name": "still", "frame_count": 0, "frame_duration_ms": 100})", "plays no frames");
-    refused(R"({"name": "frozen", "frame_count": 2, "frame_duration_ms": 0})", "plays no frames");
-    refused(R"({"name": "long", "start_row": 1, "frame_count": 3, "frame_duration_ms": 100})", "runs past");
-    refused(R"({"name": "wide", "start_col": 2, "frame_count": 1, "frame_duration_ms": 100})", "runs past");
-    EXPECT_NO_THROW(loadJson<StageSprite>(sprite(R"({"name": "all", "frame_count": 4, "frame_duration_ms": 100})")));
+    refused(
+        R"({"name": "still", "frame_count": 0, "frame_duration_ms": 100})",
+        "plays no frames"
+    );
+    refused(
+        R"({"name": "frozen", "frame_count": 2, "frame_duration_ms": 0})",
+        "plays no frames"
+    );
+    refused(
+        R"({"name": "long", "start_row": 1, "frame_count": 3, "frame_duration_ms": 100})",
+        "runs past"
+    );
+    refused(
+        R"({"name": "wide", "start_col": 2, "frame_count": 1, "frame_duration_ms": 100})",
+        "runs past"
+    );
+    EXPECT_NO_THROW(
+        loadJson<StageSprite>(sprite(
+            R"({"name": "all", "frame_count": 4, "frame_duration_ms": 100})"
+        ))
+    );
 }

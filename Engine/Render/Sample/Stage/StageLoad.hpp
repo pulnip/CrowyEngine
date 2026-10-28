@@ -34,11 +34,17 @@ namespace Crowy
     StageSprites loadStageSprites(const StageDocument& document);
     // throws std::runtime_error naming a model or a texture `document` needs
     // that `launched` did not load, which only a restart loads
-    void checkStageReload(const LoadedStage& launched, const StageDocument& document);
+    void checkStageReload(
+        const LoadedStage& launched,
+        const StageDocument& document
+    );
     // the scene file read again beside what `launched` holds: its paths under
     // the launch's root, its model table the launch's, which the geometry
     // follows; throws as loading and checkStageReload do
-    StageReload reloadStageDocument(const LoadedStage& launched, const std::filesystem::path& sceneFile);
+    StageReload reloadStageDocument(
+        const LoadedStage& launched,
+        const std::filesystem::path& sceneFile
+    );
 
     // the palette, the emissive palette per channel in use, one per quad
     u32 countStageMaterials(const LoadedStage& stage);

@@ -21,7 +21,8 @@ namespace
         return stage;
     }
 
-    // Backlot's scene file with `from` replaced by `to` once, in a temporary file
+    // Backlot's scene file with `from` replaced by `to` once, in a temporary
+    // file
     std::filesystem::path editedScene(StrView name, StrView from, StrView to) {
         std::ifstream in(backlotRoot() / StageScenePath, std::ios::binary);
         std::stringstream text;
@@ -63,10 +64,30 @@ namespace
 // the rows each key shows, without a device
 TEST(BacklotScene, EachKeyShowsItsInventory) {
     constexpr std::array Inventory{
-        KeyInventory{.key = "day", .instances = 1328, .triangles = 466462, .lights = 0},
-        KeyInventory{.key = "evening", .instances = 1439, .triangles = 469102, .lights = 31},
-        KeyInventory{.key = "sunset", .instances = 1439, .triangles = 469102, .lights = 31},
-        KeyInventory{.key = "night", .instances = 1488, .triangles = 470566, .lights = 31},
+        KeyInventory{
+            .key = "day",
+            .instances = 1328,
+            .triangles = 466462,
+            .lights = 0
+        },
+        KeyInventory{
+            .key = "evening",
+            .instances = 1439,
+            .triangles = 469102,
+            .lights = 31
+        },
+        KeyInventory{
+            .key = "sunset",
+            .instances = 1439,
+            .triangles = 469102,
+            .lights = 31
+        },
+        KeyInventory{
+            .key = "night",
+            .instances = 1488,
+            .triangles = 470566,
+            .lights = 31
+        },
     };
 
     const auto& stage = backlotStage();
@@ -76,10 +97,18 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
     EXPECT_EQ(scene.Materials().Count(), countStageMaterials(stage));
 
     const auto visible = [&](PrimitiveHandle primitive) {
-        return hasFlag(scene.Primitives().GetRef(primitive).flags, PrimitiveFlags::Visible);
+        return hasFlag(
+            scene.Primitives().GetRef(primitive).flags,
+            PrimitiveFlags::Visible
+        );
     };
     for(const auto& expected: Inventory) {
-        applyStageKey(scene, bindings, document, stageKeyIndex(document, expected.key));
+        applyStageKey(
+            scene,
+            bindings,
+            document,
+            stageKeyIndex(document, expected.key)
+        );
 
         usize instances = 0;
         u64 triangles = 0;
@@ -87,14 +116,22 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
             if(!visible(bindings.instances[i]))
                 continue;
             ++instances;
-            const auto model = std::ranges::find(document.models, document.instances[i].model, &StageModel::id);
-            for(const auto& slot: stage.models[static_cast<usize>(model - document.models.begin())].slots)
+            const auto model = std::ranges::find(
+                document.models,
+                document.instances[i].model,
+                &StageModel::id
+            );
+            for(const auto& slot:
+                stage
+                    .models[static_cast<usize>(model - document.models.begin())]
+                    .slots)
                 triangles += slot.mesh.indices.size() / 3;
         }
         const auto quads = std::ranges::count_if(bindings.quads, visible);
-        const auto lights = std::ranges::count_if(bindings.lights, [&](LightHandle light) {
-            return scene.Lights().GetRef(light).enabled;
-        });
+        const auto lights =
+            std::ranges::count_if(bindings.lights, [&](LightHandle light) {
+                return scene.Lights().GetRef(light).enabled;
+            });
 
         EXPECT_EQ(instances, expected.instances) << expected.key;
         EXPECT_EQ(triangles, expected.triangles) << expected.key;
@@ -109,13 +146,21 @@ TEST(BacklotScene, TheSignAndGameAtlasesAreMasked) {
     const auto bindings = populateBacklot(scene);
     ASSERT_EQ(bindings.quadMaterials.size(), 179u);
 
-    const auto masked = std::ranges::count_if(bindings.quadMaterials, [&](MaterialHandle handle) {
-        const auto& material = scene.Materials().GetRef(handle);
-        return material.pipeline.domain == MaterialDomain::Masked && material.data.alphaCutoff == 0.5f;
-    });
-    const auto opaque = std::ranges::count_if(bindings.quadMaterials, [&](MaterialHandle handle) {
-        return scene.Materials().GetRef(handle).pipeline.domain == MaterialDomain::Opaque;
-    });
+    const auto masked = std::ranges::count_if(
+        bindings.quadMaterials,
+        [&](MaterialHandle handle) {
+            const auto& material = scene.Materials().GetRef(handle);
+            return material.pipeline.domain == MaterialDomain::Masked &&
+                   material.data.alphaCutoff == 0.5f;
+        }
+    );
+    const auto opaque = std::ranges::count_if(
+        bindings.quadMaterials,
+        [&](MaterialHandle handle) {
+            return scene.Materials().GetRef(handle).pipeline.domain ==
+                   MaterialDomain::Opaque;
+        }
+    );
     EXPECT_EQ(masked, 130);
     EXPECT_EQ(opaque, 49);
 }
@@ -145,7 +190,8 @@ TEST(BacklotScene, CutsTakeTheEnginesSignsAndFittedNearPlanes) {
 // its models and textures under the Backlot root
 TEST(BacklotScene, TheSceneFileReloadsOverTheLaunch) {
     const auto& launched = backlotStage();
-    const auto again = reloadStageDocument(launched, backlotRoot() / StageScenePath);
+    const auto again =
+        reloadStageDocument(launched, backlotRoot() / StageScenePath);
     EXPECT_EQ(again.document.instances.size(), 1488u);
     EXPECT_EQ(again.document.quads.size(), 179u);
     EXPECT_EQ(again.document.lights.size(), 31u);
@@ -159,7 +205,11 @@ TEST(BacklotScene, TheSceneFileReloadsOverTheLaunch) {
         R"("name": "lamp-ne", "area": "Street", "model": "StreetLamp", "x": 11.5,)"
     );
     const auto scratch = reloadStageDocument(launched, moved);
-    const auto lamp = std::ranges::find(scratch.document.instances, "lamp-ne", &StageInstance::name);
+    const auto lamp = std::ranges::find(
+        scratch.document.instances,
+        "lamp-ne",
+        &StageInstance::name
+    );
     ASSERT_NE(lamp, scratch.document.instances.end());
     EXPECT_FLOAT_EQ(lamp->position.x, 11.5f);
     EXPECT_EQ(scratch.document.root, launched.document.root);

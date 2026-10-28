@@ -31,12 +31,17 @@ namespace Crowy
 
         void requireContent(const std::filesystem::path& file) {
             if(!std::filesystem::exists(file))
-                throw std::runtime_error(std::format("stage: no file {}", file));
+                throw std::runtime_error(
+                    std::format("stage: no file {}", file)
+                );
             if(isLfsPointer(file)) {
-                throw std::runtime_error(std::format(
-                    "stage: {} is a Git LFS pointer; run git lfs pull in the content repository",
-                    file
-                ));
+                throw std::runtime_error(
+                    std::format(
+                        "stage: {} is a Git LFS pointer; run git lfs pull in "
+                        "the content repository",
+                        file
+                    )
+                );
             }
         }
 
@@ -48,7 +53,11 @@ namespace Crowy
         }
 
         // the model `id` names in `table`, which `models` is parallel to
-        const ModelData& modelOf(const StageModels& table, const StageModelData& models, StrView id) {
+        const ModelData& modelOf(
+            const StageModels& table,
+            const StageModelData& models,
+            StrView id
+        ) {
             const auto row = std::ranges::find(table, id, &StageModel::id);
 
             return models[static_cast<usize>(row - table.begin())];
@@ -56,23 +65,41 @@ namespace Crowy
 
         // the palette, an emissive palette per channel a glowing model's
         // instance names, one per quad
-        u32 materialsOf(const StageDocument& document, const StageModels& table, const StageModelData& models) {
+        u32 materialsOf(
+            const StageDocument& document,
+            const StageModels& table,
+            const StageModelData& models
+        ) {
             const auto emissive = [&](const ModelSlot& slot) {
-                const auto material = std::ranges::find(document.materials, slot.material, &StageMaterial::id);
-                return material != document.materials.end() && material->emissive;
+                const auto material = std::ranges::find(
+                    document.materials,
+                    slot.material,
+                    &StageMaterial::id
+                );
+                return material != document.materials.end() &&
+                       material->emissive;
             };
 
             std::set<Str> channels;
             for(const auto& instance: document.instances) {
-                if(std::ranges::any_of(modelOf(table, models, instance.model).slots, emissive))
+                if(std::ranges::any_of(
+                       modelOf(table, models, instance.model).slots,
+                       emissive
+                   ))
                     channels.insert(instance.emissiveChannel);
             }
 
-            return static_cast<u32>(1 + channels.size() + document.quads.size());
+            return static_cast<u32>(
+                1 + channels.size() + document.quads.size()
+            );
         }
 
         // one per drawn submesh, every keyed row counted
-        u64 drawsOf(const StageDocument& document, const StageModels& table, const StageModelData& models) {
+        u64 drawsOf(
+            const StageDocument& document,
+            const StageModels& table,
+            const StageModelData& models
+        ) {
             u64 draws = document.quads.size();
             for(const auto& instance: document.instances)
                 draws += modelOf(table, models, instance.model).slots.size();
@@ -92,7 +119,8 @@ namespace Crowy
                 }
             }
 
-            const auto draws = drawsOf(stage.document, stage.document.models, stage.models);
+            const auto draws =
+                drawsOf(stage.document, stage.document.models, stage.models);
 
             return StageCapacities{
                 .vertices = withPoolSlack(vertices),
@@ -111,8 +139,9 @@ namespace Crowy
         std::string head(Signature.size(), '\0');
         stream.read(head.data(), static_cast<std::streamsize>(head.size()));
 
-        return stream.gcount() == static_cast<std::streamsize>(Signature.size())
-            && head == Signature;
+        return stream.gcount() ==
+                   static_cast<std::streamsize>(Signature.size()) &&
+               head == Signature;
     }
 
     LoadedStage loadStage(const std::filesystem::path& root) {
@@ -146,7 +175,8 @@ namespace Crowy
                 continue;
 
             stage.samplers.emplace(material.texture, material.sampler);
-            const auto file = resolveStagePath(stage.document, material.texture);
+            const auto file =
+                resolveStagePath(stage.document, material.texture);
             requireContent(file);
             auto image = LoadImage(file);
             // a nearest sampler still walks mips a texture has
@@ -178,45 +208,68 @@ namespace Crowy
             if(!quad.flipbook)
                 continue;
             if(!sprites.contains(quad.flipbook->sprite))
-                sprites.emplace(quad.flipbook->sprite, loadStageSprite(document, quad.flipbook->sprite));
+                sprites.emplace(
+                    quad.flipbook->sprite,
+                    loadStageSprite(document, quad.flipbook->sprite)
+                );
 
-            const auto& animations = sprites.at(quad.flipbook->sprite).animations;
-            if(std::ranges::find(animations, quad.flipbook->animation, &StageSpriteAnimation::name) == animations.end()) {
-                throw std::runtime_error(std::format(
-                    "stage: quad '{}' plays '{}', which {} does not hold",
-                    quad.name,
-                    quad.flipbook->animation,
-                    quad.flipbook->sprite
-                ));
+            const auto& animations =
+                sprites.at(quad.flipbook->sprite).animations;
+            if(std::ranges::find(
+                   animations,
+                   quad.flipbook->animation,
+                   &StageSpriteAnimation::name
+               ) == animations.end()) {
+                throw std::runtime_error(
+                    std::format(
+                        "stage: quad '{}' plays '{}', which {} does not hold",
+                        quad.name,
+                        quad.flipbook->animation,
+                        quad.flipbook->sprite
+                    )
+                );
             }
         }
 
         return sprites;
     }
 
-    void checkStageReload(const LoadedStage& launched, const StageDocument& document) {
+    void checkStageReload(
+        const LoadedStage& launched,
+        const StageDocument& document
+    ) {
         const auto& models = launched.document.models;
         for(const auto& row: document.models) {
-            const auto launch = std::ranges::find(models, row.id, &StageModel::id);
-            const bool same = launch != models.end() && launch->path == row.path
-                && launch->materials == row.materials && launch->box == row.box;
+            const auto launch =
+                std::ranges::find(models, row.id, &StageModel::id);
+            const bool same =
+                launch != models.end() && launch->path == row.path &&
+                launch->materials == row.materials && launch->box == row.box;
             if(!same) {
-                throw std::runtime_error(std::format(
-                    "stage: model '{}' reads {}, which the editor did not load at launch; a restart loads it",
-                    row.id,
-                    row.path
-                ));
+                throw std::runtime_error(
+                    std::format(
+                        "stage: model '{}' reads {}, which the editor did not "
+                        "load at launch; a restart loads it",
+                        row.id,
+                        row.path
+                    )
+                );
             }
         }
         for(const auto& material: document.materials) {
             const auto loaded = launched.samplers.find(material.texture);
-            if(loaded == launched.samplers.end() || loaded->second != material.sampler) {
-                throw std::runtime_error(std::format(
-                    "stage: material '{}' samples {} {}, which the editor did not upload so at launch; a restart loads it",
-                    material.id,
-                    material.texture,
-                    material.sampler == StageSampler::Point ? "point" : "linear"
-                ));
+            if(loaded == launched.samplers.end() ||
+               loaded->second != material.sampler) {
+                throw std::runtime_error(
+                    std::format(
+                        "stage: material '{}' samples {} {}, which the editor "
+                        "did not upload so at launch; a restart loads it",
+                        material.id,
+                        material.texture,
+                        material.sampler == StageSampler::Point ? "point"
+                                                                : "linear"
+                    )
+                );
             }
         }
 
@@ -225,35 +278,51 @@ namespace Crowy
         bool palette = false;
         for(const auto& row: models) {
             for(const auto& id: row.materials) {
-                const auto material = std::ranges::find(document.materials, id, &StageMaterial::id);
+                const auto material = std::ranges::find(
+                    document.materials,
+                    id,
+                    &StageMaterial::id
+                );
                 if(material == document.materials.end()) {
-                    throw std::runtime_error(std::format(
-                        "stage: model '{}' draws with material '{}', which the file no longer holds; a restart loads it",
-                        row.id,
-                        id
-                    ));
+                    throw std::runtime_error(
+                        std::format(
+                            "stage: model '{}' draws with material '{}', which "
+                            "the file no longer holds; a restart loads it",
+                            row.id,
+                            id
+                        )
+                    );
                 }
                 palette = palette || !material->emissive;
             }
         }
         if(!palette)
-            throw std::runtime_error("stage: no model draws with a material that does not glow");
+            throw std::runtime_error(
+                "stage: no model draws with a material that does not glow"
+            );
 
         const auto materials = materialsOf(document, models, launched.models);
         const auto draws = drawsOf(document, models, launched.models);
         const auto& reserved = launched.capacities;
         if(materials > reserved.materials || draws > reserved.draws) {
-            throw std::runtime_error(std::format(
-                "stage: the file needs {} materials and {} draws a pass, past the {} and {} the launch reserved; a restart reserves them",
-                materials,
-                draws,
-                reserved.materials,
-                reserved.draws
-            ));
+            throw std::runtime_error(
+                std::format(
+                    "stage: the file needs {} materials and {} draws a pass, "
+                    "past the {} and {} the launch reserved; a restart "
+                    "reserves them",
+                    materials,
+                    draws,
+                    reserved.materials,
+                    reserved.draws
+                )
+            );
         }
     }
 
-    StageReload reloadStageDocument(const LoadedStage& launched, const std::filesystem::path& sceneFile) {
+    StageReload reloadStageDocument(
+        const LoadedStage& launched,
+        const std::filesystem::path& sceneFile
+    ) {
         requireContent(sceneFile);
         auto document = loadStageDocument(launched.document.root, sceneFile);
         checkStageReload(launched, document);
@@ -262,7 +331,10 @@ namespace Crowy
         // follows, serves a file that drops or reorders rows
         document.models = launched.document.models;
 
-        return StageReload{.document = std::move(document), .sprites = std::move(sprites)};
+        return StageReload{
+            .document = std::move(document),
+            .sprites = std::move(sprites)
+        };
     }
 
     u32 countStageMaterials(const LoadedStage& stage) {

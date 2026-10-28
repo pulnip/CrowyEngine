@@ -43,7 +43,9 @@ namespace Crowy
     // "#RRGGBB", 0..1 per channel and still sRGB-encoded
     inline constexpr Vec3 parseHexColor(StrView text) {
         const auto malformed = [text] {
-            return std::runtime_error(std::format("'{}' is not a #RRGGBB color", text));
+            return std::runtime_error(
+                std::format("'{}' is not a #RRGGBB color", text)
+            );
         };
         if(text.size() != 7 || text[0] != '#')
             throw malformed();
@@ -72,8 +74,14 @@ namespace Crowy
         const std::filesystem::path& sceneFile
     );
     StageDocument loadStageDocument(const std::filesystem::path& root);
-    StageSprite loadStageSprite(const StageDocument& document, StrView relative);
-    std::filesystem::path resolveStagePath(const StageDocument& document, StrView relative);
+    StageSprite loadStageSprite(
+        const StageDocument& document,
+        StrView relative
+    );
+    std::filesystem::path resolveStagePath(
+        const StageDocument& document,
+        StrView relative
+    );
 
     enum class StageMaterialKind : u8 {
         Opaque,
@@ -257,11 +265,17 @@ namespace Crowy
     // throws std::runtime_error naming the row and what it got wrong
     template<>
     struct DomTraits<StageDocument> {
-        static StageDocument from(const DOM::Value& root, const DocMetadata& metadata);
+        static StageDocument from(
+            const DOM::Value& root,
+            const DocMetadata& metadata
+        );
     };
 
     template<>
     struct DomTraits<StageSprite> {
-        static StageSprite from(const DOM::Value& root, const DocMetadata& metadata);
+        static StageSprite from(
+            const DOM::Value& root,
+            const DocMetadata& metadata
+        );
     };
 }

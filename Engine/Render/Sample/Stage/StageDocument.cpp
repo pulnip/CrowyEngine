@@ -20,7 +20,12 @@ namespace Crowy
 
         [[noreturn]] void refuse(RowRef where, StrView what) {
             throw std::runtime_error(
-                std::format("scene file: {}[{}] {}", where.section, where.index, what)
+                std::format(
+                    "scene file: {}[{}] {}",
+                    where.section,
+                    where.index,
+                    what
+                )
             );
         }
 
@@ -34,7 +39,12 @@ namespace Crowy
 
         // the fallback only for an absent key: a present one must read
         template<typename T>
-        T optional(const DOM::Value& row, StrView key, T fallback, RowRef where) {
+        T optional(
+            const DOM::Value& row,
+            StrView key,
+            T fallback,
+            RowRef where
+        ) {
             if(row.at(key) == nullptr)
                 return fallback;
 
@@ -43,12 +53,15 @@ namespace Crowy
 
         template<typename T, typename F>
         std::vector<T> rows(const DOM::Value& root, StrView section, F&& read) {
-            if(root.at(section) == nullptr || root.at(section)->asArray() == nullptr)
+            if(root.at(section) == nullptr ||
+               root.at(section)->asArray() == nullptr)
                 refuse(RowRef{section, 0}, "is not a list");
 
             std::vector<T> values;
             root.enumerate(section, [&](isize index, const DOM::Value& row) {
-                values.push_back(read(row, RowRef{section, static_cast<usize>(index)}));
+                values.push_back(
+                    read(row, RowRef{section, static_cast<usize>(index)})
+                );
             });
 
             return values;
@@ -56,7 +69,9 @@ namespace Crowy
 
         template<typename T, typename Key>
         bool contains(const std::vector<T>& values, StrView value, Key key) {
-            return std::ranges::any_of(values, [&](const T& row) { return row.*key == value; });
+            return std::ranges::any_of(values, [&](const T& row) {
+                return row.*key == value;
+            });
         }
 
         Vec3 requiredColor(const DOM::Value& row, StrView key, RowRef where) {
@@ -69,13 +84,19 @@ namespace Crowy
             if(list == nullptr)
                 return {};
             if(list->asArray() == nullptr)
-                refuse(where, std::format("has a '{}' that is not a list", key));
+                refuse(
+                    where,
+                    std::format("has a '{}' that is not a list", key)
+                );
 
             StageNames values;
             list->forEach([&](const DOM::Value& item) {
                 const auto* text = item.asString();
                 if(text == nullptr)
-                    refuse(where, std::format("has a '{}' entry that is not a name", key));
+                    refuse(
+                        where,
+                        std::format("has a '{}' entry that is not a name", key)
+                    );
                 values.push_back(*text);
             });
 
@@ -91,13 +112,20 @@ namespace Crowy
             return keys;
         }
 
-        StageScales scales(const DOM::Value& row, StrView key, StrView nameKey, RowRef where) {
+        StageScales scales(
+            const DOM::Value& row,
+            StrView key,
+            StrView nameKey,
+            RowRef where
+        ) {
             StageScales values;
             row.forEach(key, [&](const DOM::Value& item) {
-                values.push_back(StageScale{
-                    .name = required<Str>(item, nameKey, where),
-                    .scale = required<f32>(item, "scale", where)
-                });
+                values.push_back(
+                    StageScale{
+                        .name = required<Str>(item, nameKey, where),
+                        .scale = required<f32>(item, "scale", where)
+                    }
+                );
             });
 
             return values;
@@ -135,19 +163,23 @@ namespace Crowy
 
             StageMaterial material{
                 .id = required<Str>(row, "id", where),
-                .kind = kind == "masked" ? StageMaterialKind::Masked : StageMaterialKind::Opaque,
+                .kind = kind == "masked" ? StageMaterialKind::Masked
+                                         : StageMaterialKind::Opaque,
                 .texture = required<Str>(row, "texture", where),
-                .sampler = sampler == "point" ? StageSampler::Point : StageSampler::Linear,
+                .sampler = sampler == "point" ? StageSampler::Point
+                                              : StageSampler::Linear,
                 .emissive = optional(row, "emissive", false, where),
                 .cutoff = optional(row, "cutoff", 0.0f, where),
-                .receivesShadows = optional(row, "receives_shadows", true, where),
+                .receivesShadows =
+                    optional(row, "receives_shadows", true, where),
                 .fallback = requiredColor(row, "fallback", where)
             };
             if(const auto* detail = row.at("detail")) {
                 material.detail = StageDetail{
                     .normal = required<Str>(*detail, "normal", where),
                     .mask = required<Str>(*detail, "mask", where),
-                    .metersPerTile = required<f32>(*detail, "metres_per_tile", where),
+                    .metersPerTile =
+                        required<f32>(*detail, "metres_per_tile", where),
                     .strength = required<f32>(*detail, "strength", where)
                 };
             }
@@ -162,13 +194,18 @@ namespace Crowy
                 .model = required<Str>(row, "model", where),
                 .position = positionOf(row, where),
                 .yaw = required<f32>(row, "yaw", where),
-                .scale = Vec3{
-                    optional(row, "sx", 1.0f, where),
-                    optional(row, "sy", 1.0f, where),
-                    optional(row, "sz", 1.0f, where)
-                },
-                .emissiveChannel =
-                    optional(row, "emissive_channel", Str(DefaultEmissiveChannel), where),
+                .scale =
+                    Vec3{
+                        optional(row, "sx", 1.0f, where),
+                        optional(row, "sy", 1.0f, where),
+                        optional(row, "sz", 1.0f, where)
+                    },
+                .emissiveChannel = optional(
+                    row,
+                    "emissive_channel",
+                    Str(DefaultEmissiveChannel),
+                    where
+                ),
                 .keys = keyList(row, where)
             };
         }
@@ -183,10 +220,19 @@ namespace Crowy
                 .yaw = required<f32>(row, "yaw", where),
                 .width = required<f32>(row, "width", where),
                 .height = required<f32>(row, "height", where),
-                .uv0 = Vec2{required<f32>(row, "u0", where), required<f32>(row, "v0", where)},
-                .uv1 = Vec2{required<f32>(row, "u1", where), required<f32>(row, "v1", where)},
+                .uv0 =
+                    Vec2{
+                        required<f32>(row, "u0", where),
+                        required<f32>(row, "v0", where)
+                    },
+                .uv1 =
+                    Vec2{
+                        required<f32>(row, "u1", where),
+                        required<f32>(row, "v1", where)
+                    },
                 .fallback = requiredColor(row, "fallback", where),
-                .emissiveChannel = optional(row, "emissive_channel", Str{}, where),
+                .emissiveChannel =
+                    optional(row, "emissive_channel", Str{}, where),
                 .keys = keyList(row, where),
                 .camera = optional(row, "camera", Str{}, where)
             };
@@ -208,13 +254,15 @@ namespace Crowy
             return StageLight{
                 .name = required<Str>(row, "name", where),
                 .group = required<Str>(row, "group", where),
-                .kind = kind == "spot" ? StageLightKind::Spot : StageLightKind::Point,
+                .kind = kind == "spot" ? StageLightKind::Spot
+                                       : StageLightKind::Point,
                 .position = positionOf(row, where),
-                .direction = Vec3{
-                    required<f32>(row, "dx", where),
-                    required<f32>(row, "dy", where),
-                    required<f32>(row, "dz", where)
-                },
+                .direction =
+                    Vec3{
+                        required<f32>(row, "dx", where),
+                        required<f32>(row, "dy", where),
+                        required<f32>(row, "dz", where)
+                    },
                 .color = requiredColor(row, "color", where),
                 .intensity = required<f32>(row, "intensity", where),
                 .range = required<f32>(row, "range", where),
@@ -246,37 +294,70 @@ namespace Crowy
                 .sunShadows = optional(row, "sun_shadows", true, where),
                 .ambientSky = requiredColor(row, "ambient_sky", where),
                 .ambientGround = requiredColor(row, "ambient_ground", where),
-                .ambientIntensity = required<f32>(row, "ambient_intensity", where),
+                .ambientIntensity =
+                    required<f32>(row, "ambient_intensity", where),
                 .skyZenith = requiredColor(row, "sky_zenith", where),
                 .skyHorizon = requiredColor(row, "sky_horizon", where),
                 .skyHaze = requiredColor(row, "sky_haze", where),
                 .emissiveScale = optional(row, "emissive_scale", 1.0f, where),
                 .lightGroups = scales(row, "light_groups", "group", where),
-                .emissiveChannels = scales(row, "emissive_channels", "channel", where)
+                .emissiveChannels =
+                    scales(row, "emissive_channels", "channel", where)
             };
         }
 
         void checkTotal(const DOM::Value& root, StrView section, usize count) {
-            const auto total = required<usize>(root, std::format("totals.{}", section), RowRef{"totals", 0});
+            const auto total = required<usize>(
+                root,
+                std::format("totals.{}", section),
+                RowRef{"totals", 0}
+            );
             if(total != count) {
-                throw std::runtime_error(std::format(
-                    "scene file: '{}' has {} rows, totals says {}", section, count, total
-                ));
+                throw std::runtime_error(
+                    std::format(
+                        "scene file: '{}' has {} rows, totals says {}",
+                        section,
+                        count,
+                        total
+                    )
+                );
             }
         }
 
-        void checkKeys(const StageNames& keys, const StageDocument& document, RowRef where) {
+        void checkKeys(
+            const StageNames& keys,
+            const StageDocument& document,
+            RowRef where
+        ) {
             for(const auto& key: keys) {
-                if(!contains(document.lightingKeys, key, &StageLightingKey::name))
-                    refuse(where, std::format("shows in unknown key '{}'", key));
+                if(!contains(
+                       document.lightingKeys,
+                       key,
+                       &StageLightingKey::name
+                   ))
+                    refuse(
+                        where,
+                        std::format("shows in unknown key '{}'", key)
+                    );
             }
         }
 
         // every key scales the channel a row glows on
-        void checkChannel(StrView channel, const StageDocument& document, RowRef where) {
+        void checkChannel(
+            StrView channel,
+            const StageDocument& document,
+            RowRef where
+        ) {
             for(const auto& key: document.lightingKeys) {
                 if(!contains(key.emissiveChannels, channel, &StageScale::name))
-                    refuse(where, std::format("glows on '{}', which key '{}' leaves out", channel, key.name));
+                    refuse(
+                        where,
+                        std::format(
+                            "glows on '{}', which key '{}' leaves out",
+                            channel,
+                            key.name
+                        )
+                    );
             }
         }
 
@@ -287,23 +368,44 @@ namespace Crowy
                     const auto& a = document.materials[i];
                     const auto& b = document.materials[j];
                     if(a.texture == b.texture && a.sampler != b.sampler)
-                        refuse(RowRef{"materials", i}, std::format("samples '{}' unlike '{}' does", a.texture, b.id));
+                        refuse(
+                            RowRef{"materials", i},
+                            std::format(
+                                "samples '{}' unlike '{}' does",
+                                a.texture,
+                                b.id
+                            )
+                        );
                 }
             }
 
             for(usize i = 0; i < document.models.size(); ++i) {
                 for(const auto& material: document.models[i].materials) {
-                    if(!contains(document.materials, material, &StageMaterial::id))
-                        refuse(RowRef{"models", i}, std::format("names unknown material '{}'", material));
+                    if(!contains(
+                           document.materials,
+                           material,
+                           &StageMaterial::id
+                       ))
+                        refuse(
+                            RowRef{"models", i},
+                            std::format("names unknown material '{}'", material)
+                        );
                 }
             }
 
             for(usize i = 0; i < document.instances.size(); ++i) {
                 const RowRef where{"instances", i};
                 const auto& instance = document.instances[i];
-                const auto model = std::ranges::find(document.models, instance.model, &StageModel::id);
+                const auto model = std::ranges::find(
+                    document.models,
+                    instance.model,
+                    &StageModel::id
+                );
                 if(model == document.models.end())
-                    refuse(where, std::format("places unknown model '{}'", instance.model));
+                    refuse(
+                        where,
+                        std::format("places unknown model '{}'", instance.model)
+                    );
 
                 const auto& s = instance.scale;
                 if(!model->box && (s.x != s.y || s.y != s.z))
@@ -315,10 +417,21 @@ namespace Crowy
             for(usize i = 0; i < document.quads.size(); ++i) {
                 const RowRef where{"quads", i};
                 const auto& quad = document.quads[i];
-                if(!contains(document.materials, quad.material, &StageMaterial::id))
-                    refuse(where, std::format("uses unknown material '{}'", quad.material));
-                if(!quad.camera.empty() && !contains(document.cameras, quad.camera, &StageCamera::name))
-                    refuse(where, std::format("shows unknown cut '{}'", quad.camera));
+                if(!contains(
+                       document.materials,
+                       quad.material,
+                       &StageMaterial::id
+                   ))
+                    refuse(
+                        where,
+                        std::format("uses unknown material '{}'", quad.material)
+                    );
+                if(!quad.camera.empty() &&
+                   !contains(document.cameras, quad.camera, &StageCamera::name))
+                    refuse(
+                        where,
+                        std::format("shows unknown cut '{}'", quad.camera)
+                    );
                 checkKeys(quad.keys, document, where);
                 if(!quad.emissiveChannel.empty())
                     checkChannel(quad.emissiveChannel, document, where);
@@ -327,29 +440,48 @@ namespace Crowy
             for(usize i = 0; i < document.lights.size(); ++i) {
                 const auto& light = document.lights[i];
                 for(const auto& key: document.lightingKeys) {
-                    if(!contains(key.lightGroups, light.group, &StageScale::name)) {
+                    if(!contains(
+                           key.lightGroups,
+                           light.group,
+                           &StageScale::name
+                       )) {
                         refuse(
                             RowRef{"lights", i},
-                            std::format("is in group '{}', which key '{}' leaves out", light.group, key.name)
+                            std::format(
+                                "is in group '{}', which key '{}' leaves out",
+                                light.group,
+                                key.name
+                            )
                         );
                     }
                 }
             }
 
-            if(!contains(document.lightingKeys, document.defaultKey, &StageLightingKey::name)) {
-                throw std::runtime_error(std::format(
-                    "scene file: default_key '{}' names no lighting key", document.defaultKey
-                ));
+            if(!contains(
+                   document.lightingKeys,
+                   document.defaultKey,
+                   &StageLightingKey::name
+               )) {
+                throw std::runtime_error(
+                    std::format(
+                        "scene file: default_key '{}' names no lighting key",
+                        document.defaultKey
+                    )
+                );
             }
         }
 
-        StageSpriteAnimation readAnimation(const DOM::Value& row, RowRef where) {
+        StageSpriteAnimation readAnimation(
+            const DOM::Value& row,
+            RowRef where
+        ) {
             return StageSpriteAnimation{
                 .name = required<Str>(row, "name", where),
                 .startRow = optional(row, "start_row", u32{0}, where),
                 .startColumn = optional(row, "start_col", u32{0}, where),
                 .frameCount = required<u32>(row, "frame_count", where),
-                .frameDurationMs = required<u32>(row, "frame_duration_ms", where)
+                .frameDurationMs =
+                    required<u32>(row, "frame_duration_ms", where)
             };
         }
     }
@@ -359,14 +491,20 @@ namespace Crowy
         const DocMetadata& metadata
     ) {
         if(metadata.type != "scene") {
-            throw std::runtime_error(std::format(
-                "expected a \"scene\" document, got \"{}\"", metadata.type
-            ));
+            throw std::runtime_error(
+                std::format(
+                    "expected a \"scene\" document, got \"{}\"",
+                    metadata.type
+                )
+            );
         }
         if(metadata.version != 1) {
-            throw std::runtime_error(std::format(
-                "scene file version {} is not the 1 this reader knows", metadata.version
-            ));
+            throw std::runtime_error(
+                std::format(
+                    "scene file version {} is not the 1 this reader knows",
+                    metadata.version
+                )
+            );
         }
 
         StageDocument document{
@@ -378,8 +516,10 @@ namespace Crowy
             .quads = rows<StageQuad>(root, "quads", readQuad),
             .lights = rows<StageLight>(root, "lights", readLight),
             .cameras = rows<StageCamera>(root, "cameras", readCamera),
-            .lightingKeys = rows<StageLightingKey>(root, "lighting_keys", readLightingKey),
-            .defaultKey = required<Str>(root, "default_key", RowRef{"default_key", 0})
+            .lightingKeys =
+                rows<StageLightingKey>(root, "lighting_keys", readLightingKey),
+            .defaultKey =
+                required<Str>(root, "default_key", RowRef{"default_key", 0})
         };
 
         checkTotal(root, "models", document.models.size());
@@ -399,9 +539,12 @@ namespace Crowy
         const DocMetadata& metadata
     ) {
         if(metadata.type != "sprite") {
-            throw std::runtime_error(std::format(
-                "expected a \"sprite\" document, got \"{}\"", metadata.type
-            ));
+            throw std::runtime_error(
+                std::format(
+                    "expected a \"sprite\" document, got \"{}\"",
+                    metadata.type
+                )
+            );
         }
 
         const RowRef sheet{"sheet", 0};
@@ -409,7 +552,8 @@ namespace Crowy
             .image = required<Str>(root, "sheet.image", sheet),
             .rows = required<u32>(root, "sheet.rows", sheet),
             .columns = required<u32>(root, "sheet.columns", sheet),
-            .animations = rows<StageSpriteAnimation>(root, "animations", readAnimation)
+            .animations =
+                rows<StageSpriteAnimation>(root, "animations", readAnimation)
         };
         if(sprite.rows == 0 || sprite.columns == 0)
             refuse(sheet, "has an empty grid");
@@ -417,12 +561,28 @@ namespace Crowy
             const auto& animation = sprite.animations[i];
             const RowRef where{"animations", i};
             if(animation.frameCount == 0 || animation.frameDurationMs == 0)
-                refuse(where, std::format("'{}' plays no frames or holds each for no time", animation.name));
+                refuse(
+                    where,
+                    std::format(
+                        "'{}' plays no frames or holds each for no time",
+                        animation.name
+                    )
+                );
             // u64: no row or count a file writes can wrap the sum
-            const auto first = u64{animation.startRow} * sprite.columns + animation.startColumn;
+            const auto first = u64{animation.startRow} * sprite.columns +
+                               animation.startColumn;
             const auto cells = u64{sprite.rows} * sprite.columns;
-            if(animation.startColumn >= sprite.columns || first + animation.frameCount > cells)
-                refuse(where, std::format("'{}' runs past the {} x {} sheet", animation.name, sprite.rows, sprite.columns));
+            if(animation.startColumn >= sprite.columns ||
+               first + animation.frameCount > cells)
+                refuse(
+                    where,
+                    std::format(
+                        "'{}' runs past the {} x {} sheet",
+                        animation.name,
+                        sprite.rows,
+                        sprite.columns
+                    )
+                );
         }
 
         return sprite;
@@ -442,11 +602,17 @@ namespace Crowy
         return loadStageDocument(root, root / StageScenePath);
     }
 
-    StageSprite loadStageSprite(const StageDocument& document, StrView relative) {
+    StageSprite loadStageSprite(
+        const StageDocument& document,
+        StrView relative
+    ) {
         return loadJsonFile<StageSprite>(resolveStagePath(document, relative));
     }
 
-    std::filesystem::path resolveStagePath(const StageDocument& document, StrView relative) {
+    std::filesystem::path resolveStagePath(
+        const StageDocument& document,
+        StrView relative
+    ) {
         return document.root / toPath(Str(relative).c_str());
     }
 }

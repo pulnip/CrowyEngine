@@ -37,7 +37,6 @@ namespace
 }
 
 TEST(BacklotDocument, SectionsMatchTheirTotals) {
-
     const auto& stage = document();
     EXPECT_EQ(stage.version, 1u);
     EXPECT_EQ(stage.models.size(), 124u);
@@ -103,8 +102,14 @@ TEST(BacklotDocument, KnownRowsReadAsWritten) {
     ASSERT_EQ(sprite.animations.size(), 1u);
     EXPECT_EQ(sprite.animations[0].frameCount, 8u);
     EXPECT_EQ(sprite.animations[0].frameDurationMs, 160u);
-    EXPECT_FLOAT_EQ(1.0f / static_cast<f32>(sprite.columns), screen->uv1.x - screen->uv0.x);
-    EXPECT_FLOAT_EQ(1.0f / static_cast<f32>(sprite.rows), screen->uv1.y - screen->uv0.y);
+    EXPECT_FLOAT_EQ(
+        1.0f / static_cast<f32>(sprite.columns),
+        screen->uv1.x - screen->uv0.x
+    );
+    EXPECT_FLOAT_EQ(
+        1.0f / static_cast<f32>(sprite.rows),
+        screen->uv1.y - screen->uv0.y
+    );
 
     const auto& day = stage.lightingKeys.front();
     EXPECT_EQ(day.lightGroups.size(), 6u);
@@ -133,15 +138,20 @@ TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
         return keys.empty() || std::ranges::find(keys, key) != keys.end();
     };
     const std::vector<std::pair<Str, usize>> expected{
-        {"day", 1328}, {"evening", 1439}, {"sunset", 1439}, {"night", 1488}
+        {"day", 1328},
+        {"evening", 1439},
+        {"sunset", 1439},
+        {"night", 1488}
     };
     for(const auto& [key, count]: expected) {
-        const auto instances = std::ranges::count_if(stage.instances, [&](const StageInstance& row) {
-            return shows(row.keys, key);
-        });
-        const auto quads = std::ranges::count_if(stage.quads, [&](const StageQuad& row) {
-            return shows(row.keys, key);
-        });
+        const auto instances = std::ranges::count_if(
+            stage.instances,
+            [&](const StageInstance& row) { return shows(row.keys, key); }
+        );
+        const auto quads =
+            std::ranges::count_if(stage.quads, [&](const StageQuad& row) {
+                return shows(row.keys, key);
+            });
         EXPECT_EQ(static_cast<usize>(instances), count) << key;
         EXPECT_EQ(quads, 161) << key;
     }
@@ -149,7 +159,8 @@ TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
 
 // the engine's loader test reads a copy of this probe
 TEST(BacklotDocument, EngineFixtureIsBacklotsProbe) {
-    const auto probe = backlotRoot() / "Unity/Assets/Art/Models/Probe/AxisProbe.fbx";
+    const auto probe =
+        backlotRoot() / "Unity/Assets/Art/Models/Probe/AxisProbe.fbx";
     const auto read = [](const std::filesystem::path& file) {
         std::ifstream stream(file, std::ios::binary);
         return std::string(std::istreambuf_iterator<char>(stream), {});
@@ -182,25 +193,38 @@ TEST(BacklotDocument, EveryModelImportsAtItsSize) {
     for(const auto& row: stage.models) {
         const auto model = loadModel(resolveStagePath(stage, row.path));
         const auto size = 2.0f * model.bounds.halfScale;
-        EXPECT_TRUE(near(size.x, row.size.x)) << row.id << " x " << size.x << " vs " << row.size.x;
-        EXPECT_TRUE(near(size.y, row.size.y)) << row.id << " y " << size.y << " vs " << row.size.y;
-        EXPECT_TRUE(near(size.z, row.size.z)) << row.id << " z " << size.z << " vs " << row.size.z;
+        EXPECT_TRUE(near(size.x, row.size.x))
+            << row.id << " x " << size.x << " vs " << row.size.x;
+        EXPECT_TRUE(near(size.y, row.size.y))
+            << row.id << " y " << size.y << " vs " << row.size.y;
+        EXPECT_TRUE(near(size.z, row.size.z))
+            << row.id << " z " << size.z << " vs " << row.size.z;
 
         // where x and z differ enough to tell apart, the import fits its
         // row better than the same import with x and z swapped would
-        if(std::abs(row.size.x - row.size.z) > 0.2f * std::max(row.size.x, row.size.z)) {
-            const auto fit = std::abs(size.x - row.size.x) + std::abs(size.z - row.size.z);
-            const auto swapped = std::abs(size.z - row.size.x) + std::abs(size.x - row.size.z);
+        if(std::abs(row.size.x - row.size.z) >
+           0.2f * std::max(row.size.x, row.size.z)) {
+            const auto fit =
+                std::abs(size.x - row.size.x) + std::abs(size.z - row.size.z);
+            const auto swapped =
+                std::abs(size.z - row.size.x) + std::abs(size.x - row.size.z);
             EXPECT_LT(fit, swapped) << row.id;
         }
 
         // grounded: the lowest point at y = 0
-        EXPECT_NEAR(model.bounds.center.y - model.bounds.halfScale.y, 0.0f, 0.005f) << row.id;
+        EXPECT_NEAR(
+            model.bounds.center.y - model.bounds.halfScale.y,
+            0.0f,
+            0.005f
+        ) << row.id;
 
         // a material the file declares but no face uses has no slot
         ASSERT_FALSE(model.slots.empty()) << row.id;
         for(const auto& slot: model.slots)
-            EXPECT_NE(std::ranges::find(row.materials, slot.material), row.materials.end())
-                << row.id << " draws with '" << slot.material << "'";
+            EXPECT_NE(
+                std::ranges::find(row.materials, slot.material),
+                row.materials.end()
+            ) << row.id
+              << " draws with '" << slot.material << "'";
     }
 }

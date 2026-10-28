@@ -24,43 +24,63 @@ namespace Crowy
         }
 
         MaterialPipelineDesc opaquePipeline() {
-            constexpr CStr ForwardShader = "Engine/Render/Shader/StandardForward.slang";
+            constexpr CStr ForwardShader =
+                "Engine/Render/Shader/StandardForward.slang";
 
             return MaterialPipelineDesc{
-                .vertexShader = {.path = ForwardShader, .entryPoint = "vs_main"},
-                .fragmentShader = {.path = ForwardShader, .entryPoint = "fs_opaque"}
+                .vertexShader =
+                    {.path = ForwardShader, .entryPoint = "vs_main"},
+                .fragmentShader =
+                    {.path = ForwardShader, .entryPoint = "fs_opaque"}
             };
         }
 
-        // cut where the atlas's alpha falls below the row's cutoff, in depth too
+        // cut where the atlas's alpha falls below the row's cutoff, in depth
+        // too
         MaterialPipelineDesc maskedPipeline() {
             auto pipeline = opaquePipeline();
             pipeline.fragmentShader.entryPoint = "fs_masked";
-            pipeline.maskShader = {.path = pipeline.fragmentShader.path, .entryPoint = "fs_masked_depth"};
+            pipeline.maskShader = {
+                .path = pipeline.fragmentShader.path,
+                .entryPoint = "fs_masked_depth"
+            };
             pipeline.domain = MaterialDomain::Masked;
 
             return pipeline;
         }
 
-        const StageMaterial& materialNamed(const StageDocument& document, StrView id) {
-            return *std::ranges::find(document.materials, id, &StageMaterial::id);
+        const StageMaterial& materialNamed(
+            const StageDocument& document,
+            StrView id
+        ) {
+            return *std::ranges::find(
+                document.materials,
+                id,
+                &StageMaterial::id
+            );
         }
 
         usize modelIndex(const StageDocument& document, StrView id) {
-            return static_cast<usize>(std::ranges::find(document.models, id, &StageModel::id) - document.models.begin());
+            return static_cast<usize>(
+                std::ranges::find(document.models, id, &StageModel::id) -
+                document.models.begin()
+            );
         }
 
         // whether a slot draws with a material that glows
         bool glows(const LoadedStage& stage, usize model) {
-            return std::ranges::any_of(stage.models[model].slots, [&](const ModelSlot& slot) {
-                return materialNamed(stage.document, slot.material).emissive;
-            });
+            return std::ranges::any_of(
+                stage.models[model].slots,
+                [&](const ModelSlot& slot) {
+                    return materialNamed(stage.document, slot.material)
+                        .emissive;
+                }
+            );
         }
 
         TextureSampler samplerOf(StageSampler sampler) {
-            return sampler == StageSampler::Point
-                ? TextureSampler::NearestClamp
-                : TextureSampler::LinearClamp;
+            return sampler == StageSampler::Point ? TextureSampler::NearestClamp
+                                                  : TextureSampler::LinearClamp;
         }
 
         bool showsIn(const StageNames& keys, StrView key) {
@@ -68,18 +88,23 @@ namespace Crowy
         }
 
         f32 scaleNamed(const StageScales& scales, StrView name) {
-            const auto found = std::ranges::find(scales, name, &StageScale::name);
+            const auto found =
+                std::ranges::find(scales, name, &StageScale::name);
 
             return found == scales.end() ? 0.0f : found->scale;
         }
 
-        void setVisible(RenderScene& scene, PrimitiveHandle handle, bool visible) {
+        void setVisible(
+            RenderScene& scene,
+            PrimitiveHandle handle,
+            bool visible
+        ) {
             auto& flags = scene.Primitives().GetRef(handle).flags;
-            flags = visible
-                ? combine(flags, PrimitiveFlags::Visible)
-                : static_cast<PrimitiveFlags>(
-                      static_cast<u32>(flags) & ~static_cast<u32>(PrimitiveFlags::Visible)
-                  );
+            flags = visible ? combine(flags, PrimitiveFlags::Visible)
+                            : static_cast<PrimitiveFlags>(
+                                  static_cast<u32>(flags) &
+                                  ~static_cast<u32>(PrimitiveFlags::Visible)
+                              );
         }
 
         // one mesh per model, or per model and channel when it glows: the
@@ -94,21 +119,29 @@ namespace Crowy
             StrView channel
         ) {
             const auto& data = stage.models[model];
-            const MeshKey key{model, glows(stage, model) ? Str(channel) : Str{}};
+            const MeshKey key{
+                model,
+                glows(stage, model) ? Str(channel) : Str{}
+            };
             if(const auto found = cache.find(key); found != cache.end())
                 return found->second;
 
             MeshResource mesh{.localBounds = data.bounds};
             for(usize slot = 0; slot < data.slots.size(); ++slot) {
-                const auto& material = materialNamed(stage.document, data.slots[slot].material);
+                const auto& material =
+                    materialNamed(stage.document, data.slots[slot].material);
                 mesh.materials.push_back(
-                    material.emissive ? bindings.emissivePalettes.at(Str(channel)) : bindings.palette
+                    material.emissive
+                        ? bindings.emissivePalettes.at(Str(channel))
+                        : bindings.palette
                 );
-                mesh.subMeshes.push_back(SubMesh{
-                    .geometry = geometry.models[model][slot],
-                    .localBounds = data.slots[slot].bounds,
-                    .materialSlot = static_cast<u32>(slot)
-                });
+                mesh.subMeshes.push_back(
+                    SubMesh{
+                        .geometry = geometry.models[model][slot],
+                        .localBounds = data.slots[slot].bounds,
+                        .materialSlot = static_cast<u32>(slot)
+                    }
+                );
             }
 
             return cache[key] = scene.Meshes().Add(std::move(mesh));
@@ -124,14 +157,15 @@ namespace Crowy
             const auto texture = textures.at(atlas.texture);
 
             MaterialResource material{
-                .data = {
-                    .albedo = ones(),
-                    .roughness = StageRoughness,
-                    .uvScaleOffset = stageQuadRect(quad, stage.sprites, 0.0),
-                    .flags = atlas.receivesShadows
-                        ? 0u
-                        : static_cast<u32>(MaterialFlags::NoShadowReceive)
-                },
+                .data =
+                    {.albedo = ones(),
+                     .roughness = StageRoughness,
+                     .uvScaleOffset = stageQuadRect(quad, stage.sprites, 0.0),
+                     .flags = atlas.receivesShadows
+                                  ? 0u
+                                  : static_cast<u32>(
+                                        MaterialFlags::NoShadowReceive
+                                    )},
                 .pipeline = opaquePipeline(),
                 .maps = {.albedo = texture}
             };
@@ -150,12 +184,23 @@ namespace Crowy
             auto nearest = 1e30f;
             const auto& document = stage.document;
             for(const auto& instance: document.instances) {
-                const auto& local = stage.models[modelIndex(document, instance.model)].bounds;
-                const auto box = transformAABB3D(instanceToWorld(instance), local);
+                const auto& local =
+                    stage.models[modelIndex(document, instance.model)].bounds;
+                const auto box =
+                    transformAABB3D(instanceToWorld(instance), local);
                 const auto outside = Vec3{
-                    std::max(0.0f, std::abs(point.x - box.center.x) - box.halfScale.x),
-                    std::max(0.0f, std::abs(point.y - box.center.y) - box.halfScale.y),
-                    std::max(0.0f, std::abs(point.z - box.center.z) - box.halfScale.z)
+                    std::max(
+                        0.0f,
+                        std::abs(point.x - box.center.x) - box.halfScale.x
+                    ),
+                    std::max(
+                        0.0f,
+                        std::abs(point.y - box.center.y) - box.halfScale.y
+                    ),
+                    std::max(
+                        0.0f,
+                        std::abs(point.z - box.center.z) - box.halfScale.z
+                    )
                 };
                 nearest = std::min(nearest, norm(outside));
             }
@@ -164,7 +209,10 @@ namespace Crowy
         }
     }
 
-    StageGeometry addStageGeometry(GeometryPool& pool, const LoadedStage& stage) {
+    StageGeometry addStageGeometry(
+        GeometryPool& pool,
+        const LoadedStage& stage
+    ) {
         StageGeometry geometry;
         geometry.models.reserve(stage.models.size());
         for(const auto& model: stage.models) {
@@ -194,20 +242,22 @@ namespace Crowy
             const auto& image = stage.images.at(material.texture);
             textures.emplace(
                 material.texture,
-                scene.Textures().Add(TextureResource{
-                    .texture = device.CreateTexture(
-                        RHITextureCreateDesc{
-                            .width = image.width,
-                            .height = image.height,
-                            .mipLevels = image.mipLevels,
-                            .format = image.format,
-                            .usage = RHITextureUsage::ShaderRead,
-                            .initialData = image.subs
-                        },
-                        material.id
-                    ),
-                    .sampler = samplerOf(material.sampler)
-                })
+                scene.Textures().Add(
+                    TextureResource{
+                        .texture = device.CreateTexture(
+                            RHITextureCreateDesc{
+                                .width = image.width,
+                                .height = image.height,
+                                .mipLevels = image.mipLevels,
+                                .format = image.format,
+                                .usage = RHITextureUsage::ShaderRead,
+                                .initialData = image.subs
+                            },
+                            material.id
+                        ),
+                        .sampler = samplerOf(material.sampler)
+                    }
+                )
             );
         }
 
@@ -240,58 +290,93 @@ namespace Crowy
             }
         }
         if(paletteRow == nullptr)
-            throw std::runtime_error("stage: no model draws with a material that does not glow");
+            throw std::runtime_error(
+                "stage: no model draws with a material that does not glow"
+            );
         const auto paletteTexture = textures.at(paletteRow->texture);
-        bindings.palette = scene.Materials().Add(MaterialResource{
-            .data = {.albedo = ones(), .roughness = StageRoughness},
-            .pipeline = opaquePipeline(),
-            .maps = {.albedo = paletteTexture}
-        });
-        // a row per channel a glowing model's instance names, as countStageMaterials counts
+        bindings.palette = scene.Materials().Add(
+            MaterialResource{
+                .data = {.albedo = ones(), .roughness = StageRoughness},
+                .pipeline = opaquePipeline(),
+                .maps = {.albedo = paletteTexture}
+            }
+        );
+        // a row per channel a glowing model's instance names, as
+        // countStageMaterials counts
         for(const auto& instance: document.instances) {
-            if(!glows(stage, modelIndex(document, instance.model))
-               || bindings.emissivePalettes.contains(instance.emissiveChannel))
+            if(!glows(stage, modelIndex(document, instance.model)) ||
+               bindings.emissivePalettes.contains(instance.emissiveChannel))
                 continue;
             bindings.emissivePalettes.emplace(
                 instance.emissiveChannel,
-                scene.Materials().Add(MaterialResource{
-                    .data = {.albedo = ones(), .roughness = StageRoughness},
-                    .pipeline = opaquePipeline(),
-                    .maps = {.albedo = paletteTexture, .emissive = paletteTexture}
-                })
+                scene.Materials().Add(
+                    MaterialResource{
+                        .data = {.albedo = ones(), .roughness = StageRoughness},
+                        .pipeline = opaquePipeline(),
+                        .maps = {
+                            .albedo = paletteTexture,
+                            .emissive = paletteTexture
+                        }
+                    }
+                )
             );
         }
         for(const auto& quad: document.quads)
-            bindings.quadMaterials.push_back(addQuadMaterial(scene, stage, quad, textures));
+            bindings.quadMaterials.push_back(
+                addQuadMaterial(scene, stage, quad, textures)
+            );
 
         MeshCache meshes;
         for(const auto& instance: document.instances) {
             const auto model = modelIndex(document, instance.model);
-            const auto mesh = meshOf(scene, stage, geometry, bindings, meshes, model, instance.emissiveChannel);
+            const auto mesh = meshOf(
+                scene,
+                stage,
+                geometry,
+                bindings,
+                meshes,
+                model,
+                instance.emissiveChannel
+            );
             const auto localToWorld = instanceToWorld(instance);
-            bindings.instances.push_back(scene.Primitives().Add(PrimitiveSnapshot{
-                .localToWorld = localToWorld,
-                .worldBounds = transformAABB3D(localToWorld, stage.models[model].bounds),
-                .mesh = mesh
-            }));
+            bindings.instances.push_back(scene.Primitives().Add(
+                PrimitiveSnapshot{
+                    .localToWorld = localToWorld,
+                    .worldBounds = transformAABB3D(
+                        localToWorld,
+                        stage.models[model].bounds
+                    ),
+                    .mesh = mesh
+                }
+            ));
         }
 
         for(usize i = 0; i < document.quads.size(); ++i) {
-            const auto mesh = scene.Meshes().Add(MeshResource{
-                .subMeshes = {SubMesh{.geometry = geometry.unitQuad, .localBounds = UnitQuadBounds}},
-                .materials = {bindings.quadMaterials[i]},
-                .localBounds = UnitQuadBounds
-            });
+            const auto mesh = scene.Meshes().Add(
+                MeshResource{
+                    .subMeshes = {SubMesh{
+                        .geometry = geometry.unitQuad,
+                        .localBounds = UnitQuadBounds
+                    }},
+                    .materials = {bindings.quadMaterials[i]},
+                    .localBounds = UnitQuadBounds
+                }
+            );
             const auto localToWorld = quadToWorld(document.quads[i]);
-            bindings.quads.push_back(scene.Primitives().Add(PrimitiveSnapshot{
-                .localToWorld = localToWorld,
-                .worldBounds = transformAABB3D(localToWorld, UnitQuadBounds),
-                .mesh = mesh
-            }));
+            bindings.quads.push_back(scene.Primitives().Add(
+                PrimitiveSnapshot{
+                    .localToWorld = localToWorld,
+                    .worldBounds =
+                        transformAABB3D(localToWorld, UnitQuadBounds),
+                    .mesh = mesh
+                }
+            ));
         }
 
         for(const auto& light: document.lights)
-            bindings.lights.push_back(scene.Lights().Add(stageLightSnapshot(light, StageLightingKey{})));
+            bindings.lights.push_back(scene.Lights().Add(
+                stageLightSnapshot(light, StageLightingKey{})
+            ));
         bindings.sun = scene.Lights().Add(LightSnapshot{.enabled = false});
 
         return bindings;
@@ -318,21 +403,33 @@ namespace Crowy
         };
 
         for(usize i = 0; i < document.lights.size(); ++i)
-            scene.Lights().GetRef(bindings.lights[i]) = stageLightSnapshot(document.lights[i], lighting);
+            scene.Lights().GetRef(bindings.lights[i]) =
+                stageLightSnapshot(document.lights[i], lighting);
 
         const auto glow = [&](StrView channel) {
-            return lighting.emissiveScale * scaleNamed(lighting.emissiveChannels, channel) * ones();
+            return lighting.emissiveScale *
+                   scaleNamed(lighting.emissiveChannels, channel) * ones();
         };
         for(const auto& [channel, material]: bindings.emissivePalettes)
             scene.Materials().GetRef(material).data.emissive = glow(channel);
         for(usize i = 0; i < document.quads.size(); ++i) {
             const auto& quad = document.quads[i];
             if(!quad.emissiveChannel.empty())
-                scene.Materials().GetRef(bindings.quadMaterials[i]).data.emissive = glow(quad.emissiveChannel);
-            setVisible(scene, bindings.quads[i], showsIn(quad.keys, lighting.name));
+                scene.Materials()
+                    .GetRef(bindings.quadMaterials[i])
+                    .data.emissive = glow(quad.emissiveChannel);
+            setVisible(
+                scene,
+                bindings.quads[i],
+                showsIn(quad.keys, lighting.name)
+            );
         }
         for(usize i = 0; i < document.instances.size(); ++i)
-            setVisible(scene, bindings.instances[i], showsIn(document.instances[i].keys, lighting.name));
+            setVisible(
+                scene,
+                bindings.instances[i],
+                showsIn(document.instances[i].keys, lighting.name)
+            );
 
         const auto sky = lighting.skyHorizon;
 
@@ -340,12 +437,18 @@ namespace Crowy
     }
 
     usize stageKeyIndex(const StageDocument& document, StrView name) {
-        const auto found = std::ranges::find(document.lightingKeys, name, &StageLightingKey::name);
+        const auto found = std::ranges::find(
+            document.lightingKeys,
+            name,
+            &StageLightingKey::name
+        );
         if(found == document.lightingKeys.end()) {
             Str names;
             for(const auto& key: document.lightingKeys)
                 names += names.empty() ? key.name : ", " + key.name;
-            throw std::runtime_error(std::format("no lighting key '{}'; there are {}", name, names));
+            throw std::runtime_error(
+                std::format("no lighting key '{}'; there are {}", name, names)
+            );
         }
 
         return static_cast<usize>(found - document.lightingKeys.begin());
@@ -356,17 +459,23 @@ namespace Crowy
         for(const auto& camera: stage.document.cameras) {
             // half the gap to the nearest thing, within Unity's 0.3 and a
             // 1 m that keeps 5 mm layers apart at the establishing distance
-            const auto nearZ = std::clamp(0.5f * nearestDistance(stage, camera.position), 0.3f, 1.0f);
-            cuts.push_back(StageCut{
-                .name = camera.name,
-                .position = camera.position,
-                .yaw = radians(camera.yaw),
-                .pitch = -radians(camera.pitch),
-                .fovY = radians(camera.fov),
-                .orthographic = camera.orthographic,
-                .orthoHalfHeight = camera.orthoSize,
-                .nearZ = nearZ
-            });
+            const auto nearZ = std::clamp(
+                0.5f * nearestDistance(stage, camera.position),
+                0.3f,
+                1.0f
+            );
+            cuts.push_back(
+                StageCut{
+                    .name = camera.name,
+                    .position = camera.position,
+                    .yaw = radians(camera.yaw),
+                    .pitch = -radians(camera.pitch),
+                    .fovY = radians(camera.fov),
+                    .orthographic = camera.orthographic,
+                    .orthoHalfHeight = camera.orthoSize,
+                    .nearZ = nearZ
+                }
+            );
         }
 
         return cuts;

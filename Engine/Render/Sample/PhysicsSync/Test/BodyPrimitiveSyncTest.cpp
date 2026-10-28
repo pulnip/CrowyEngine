@@ -35,18 +35,22 @@ namespace
 
     // a bob hung off center from a pivot, turning about z
     Pendulum hangPendulum(PhysicsWorld& world, Vec3 pivot) {
-        const auto bob = world.CreateBody(BodyDesc{
-            .shape = SphereShape{0.1f},
-            .pose = BodyPose{.position = pivot + Vec3{0.6f, -0.8f, 0.0f}},
-            .motion = BodyMotion::Dynamic,
-            .mass = 1.0f,
-        });
-        const auto hinge = world.CreateHinge(HingeDesc{
-            .body = bob,
-            .pivot = pivot,
-            .axis = unitZ(),
-            .normal = unitX(),
-        });
+        const auto bob = world.CreateBody(
+            BodyDesc{
+                .shape = SphereShape{0.1f},
+                .pose = BodyPose{.position = pivot + Vec3{0.6f, -0.8f, 0.0f}},
+                .motion = BodyMotion::Dynamic,
+                .mass = 1.0f,
+            }
+        );
+        const auto hinge = world.CreateHinge(
+            HingeDesc{
+                .body = bob,
+                .pivot = pivot,
+                .axis = unitZ(),
+                .normal = unitX(),
+            }
+        );
 
         return Pendulum{.bob = bob, .hinge = hinge};
     }
@@ -56,11 +60,14 @@ TEST(BodyPrimitiveSync, WritesThePoseThroughThePlacement) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
     RenderScene scene;
-    const auto body = world.CreateBody(BodyDesc{
-        .shape = BoxShape{{0.2f, 0.3f, 0.4f}},
-        .pose = BodyPose{.position = {0.5f, 0.75f, -0.25f}, .rotation = Tilted},
-        .motion = BodyMotion::Static,
-    });
+    const auto body = world.CreateBody(
+        BodyDesc{
+            .shape = BoxShape{{0.2f, 0.3f, 0.4f}},
+            .pose =
+                BodyPose{.position = {0.5f, 0.75f, -0.25f}, .rotation = Tilted},
+            .motion = BodyMotion::Static,
+        }
+    );
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
     // off center, so bounds that ignored the binding's would show
@@ -73,7 +80,8 @@ TEST(BodyPrimitiveSync, WritesThePoseThroughThePlacement) {
 
     sync.Sync(world, scene);
     const auto pose = world.PoseOf(body);
-    const auto expected = translateMat(Placement) *
+    const auto expected =
+        translateMat(Placement) *
         modelMat(pose.position, pose.rotation, Vec3{0.4f, 0.6f, 0.8f});
     const auto& written = scene.Primitives().GetRef(primitive);
     for(usize column = 0; column < 4; ++column)
@@ -95,14 +103,17 @@ TEST(BodyPrimitiveSync, QuarterTurnSwapsTheBoundsAxes) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
     RenderScene scene;
-    const auto body = world.CreateBody(BodyDesc{
-        .shape = BoxShape{{1.0f, 0.5f, 0.25f}},
-        .pose = BodyPose{
-            .position = {2.0f, 1.0f, 3.0f},
-            .rotation = {0.0f, 0.70710677f, 0.0f, 0.70710677f},
-        },
-        .motion = BodyMotion::Static,
-    });
+    const auto body = world.CreateBody(
+        BodyDesc{
+            .shape = BoxShape{{1.0f, 0.5f, 0.25f}},
+            .pose =
+                BodyPose{
+                    .position = {2.0f, 1.0f, 3.0f},
+                    .rotation = {0.0f, 0.70710677f, 0.0f, 0.70710677f},
+                },
+            .motion = BodyMotion::Static,
+        }
+    );
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(zeros());
     sync.Bind(bindingOf(world, body, primitive));
@@ -150,14 +161,17 @@ TEST(BodyPrimitiveSync, SphereBoundsDoNotTurn) {
     PhysicsWorld world(runtime);
     RenderScene scene;
     // an eighth of a turn about z, which would grow a box's bounds by 1.41
-    const auto ball = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.15f},
-        .pose = BodyPose{
-            .position = {1.0f, 0.15f, 2.0f},
-            .rotation = {0.0f, 0.0f, 0.38268343f, 0.92387953f},
-        },
-        .motion = BodyMotion::Static,
-    });
+    const auto ball = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.15f},
+            .pose =
+                BodyPose{
+                    .position = {1.0f, 0.15f, 2.0f},
+                    .rotation = {0.0f, 0.0f, 0.38268343f, 0.92387953f},
+                },
+            .motion = BodyMotion::Static,
+        }
+    );
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
     sync.Bind(bindingOf(world, ball, primitive));
@@ -174,10 +188,12 @@ TEST(BodyPrimitiveSync, FollowsAFallingBody) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
     RenderScene scene;
-    const auto ball = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.15f},
-        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
-    });
+    const auto ball = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.15f},
+            .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
+        }
+    );
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
     sync.Bind(bindingOf(world, ball, primitive));
@@ -204,29 +220,34 @@ TEST(BodyPrimitiveSync, CompoundPartsFollowTheirBody) {
         .halfExtent = {0.4f, 0.05f, 0.2f},
         .pose = BodyPose{.position = {0.5f, 0.25f, 0.0f}},
     };
-    const auto body = world.CreateBody(BodyDesc{
-        .shape = CompoundShape{{part}},
-        .pose = BodyPose{.position = {1.0f, 2.0f, 3.0f}, .rotation = Tilted},
-        .motion = BodyMotion::Static,
-    });
+    const auto body = world.CreateBody(
+        BodyDesc{
+            .shape = CompoundShape{{part}},
+            .pose =
+                BodyPose{.position = {1.0f, 2.0f, 3.0f}, .rotation = Tilted},
+            .motion = BodyMotion::Static,
+        }
+    );
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
-    sync.Bind(BodyBinding{
-        .body = body,
-        .primitive = primitive,
-        .part = part.pose,
-        .meshScale = 2.0f * part.halfExtent,
-    });
+    sync.Bind(
+        BodyBinding{
+            .body = body,
+            .primitive = primitive,
+            .part = part.pose,
+            .meshScale = 2.0f * part.halfExtent,
+        }
+    );
 
     sync.Sync(world, scene);
     const auto pose = world.PoseOf(body);
     const auto expected = translateMat(Placement) *
-        modelMat(pose.position, pose.rotation, ones()) *
-        modelMat(
-            part.pose.position,
-            part.pose.rotation,
-            2.0f * part.halfExtent
-        );
+                          modelMat(pose.position, pose.rotation, ones()) *
+                          modelMat(
+                              part.pose.position,
+                              part.pose.rotation,
+                              2.0f * part.halfExtent
+                          );
     const auto& written = scene.Primitives().GetRef(primitive);
     for(usize column = 0; column < 4; ++column)
         EXPECT_EQ(written.localToWorld[column], expected[column]);
@@ -247,14 +268,16 @@ TEST(BodyPrimitiveSync, TetherSpansAnchorToBody) {
     const auto [bob, hinge] = hangPendulum(world, Pivot);
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
-    sync.Bind(TetherBinding{
-        .hinge = hinge,
-        .body = bob,
-        .primitive = primitive,
-        .anchor = Pivot,
-        .axis = unitZ(),
-        .thickness = 0.03f,
-    });
+    sync.Bind(
+        TetherBinding{
+            .hinge = hinge,
+            .body = bob,
+            .primitive = primitive,
+            .anchor = Pivot,
+            .axis = unitZ(),
+            .thickness = 0.03f,
+        }
+    );
 
     for(int i = 0; i < 20; ++i)
         world.Step();
@@ -296,12 +319,14 @@ TEST(BodyPrimitiveSync, TetherHidesOnRelease) {
     const auto [bob, hinge] = hangPendulum(world, Vec3{0.0f, 2.0f, 0.0f});
     const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
     BodyPrimitiveSync sync(Placement);
-    sync.Bind(TetherBinding{
-        .hinge = hinge,
-        .body = bob,
-        .primitive = primitive,
-        .anchor = {0.0f, 2.0f, 0.0f},
-    });
+    sync.Bind(
+        TetherBinding{
+            .hinge = hinge,
+            .body = bob,
+            .primitive = primitive,
+            .anchor = {0.0f, 2.0f, 0.0f},
+        }
+    );
     world.Step();
     sync.Sync(world, scene);
     const auto held = scene.Primitives().GetRef(primitive).localToWorld;
@@ -354,11 +379,13 @@ TEST(BodyPrimitiveSyncDeathTest, OneWriterAcrossTethers) {
             const auto primitive = scene.Primitives().Add(PrimitiveSnapshot{});
             BodyPrimitiveSync sync(zeros());
             sync.Bind(bindingOf(world, pendulum.bob, primitive));
-            sync.Bind(TetherBinding{
-                .hinge = pendulum.hinge,
-                .body = pendulum.bob,
-                .primitive = primitive,
-            });
+            sync.Bind(
+                TetherBinding{
+                    .hinge = pendulum.hinge,
+                    .body = pendulum.bob,
+                    .primitive = primitive,
+                }
+            );
         },
         "one writer"
     );
