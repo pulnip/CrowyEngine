@@ -1,9 +1,11 @@
-#include "DX12Device.hpp"
 
 #include <array>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
+#include <optional>
 #include <print>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -22,6 +24,8 @@
 #include "DX12Util.hpp"
 #include "LogLocal.hpp"
 #include "PathUtil.hpp"
+#include "RHIAPI.hpp"
+#include "RHIDevice.hpp"
 #include "RHIFrameTimeline.hpp"
 #include "RHIGPUTime.hpp"
 #include "RHIRetireQueue.hpp"
@@ -467,11 +471,7 @@ namespace
 
 namespace Crowy
 {
-    RHIDeviceRAII createDX12Device() {
-        return std::make_unique<DX12Device>();
-    }
-
-    class DX12Device::Impl {
+    class DX12Device final: public RHIDevice {
     private:
         // a submitted frame's lists, kept as the timestamp slots they left:
         // readable once `serial` completes, whether or not the lists live on
@@ -523,7 +523,7 @@ namespace Crowy
         RHIGPUTimeHistory gpuTimes;
 
     public:
-        Impl()
+        DX12Device()
             : factory(::createFactory()),
               device(::createDevice(*factory.Get())),
               commandQueue(::createCommandQueue(*device.Get())),
@@ -566,7 +566,7 @@ namespace Crowy
             initGlobalSession();
 
             // for prevent dx12Capabilities side-effect
-            uploadCmdList = CreateCommandList();
+            uploadCmdList = createCommandList();
 
             auto stagingBuffer = CreateBuffer(
                 RHIBufferCreateDesc{
@@ -593,16 +593,155 @@ namespace Crowy
                 UploadRing(*serialFence, std::move(transientBuffer));
         }
 
-        ~Impl() { retireQueue.CollectAll(); }
+        ~DX12Device() { retireQueue.CollectAll(); }
 
-        auto CreateFrameScope() noexcept {
+        RHIFrameScopeRAII CreateFrameScope() RHI_OVERRIDE {
             return std::make_unique<DX12FrameScope>();
         }
 
-        RAII<DX12Buffer> CreateBuffer(
+        RHIGraphicsPipelineStateRAII CreatePipelineState(
+            const RHIGraphicsPipelineStateDesc& desc,
+            StrView name = {}
+        ) RHI_OVERRIDE {
+            return std::make_unique<DX12GraphicsPipelineState>(
+                *device.Get(),
+                desc,
+                *globalRootSignature.Get(),
+                name
+            );
+        }
+
+        RHIComputePipelineStateRAII CreatePipelineState(
+            const RHIComputePipelineStateDesc& desc,
+            StrView name = {}
+        ) RHI_OVERRIDE {
+            return std::make_unique<DX12ComputePipelineState>(
+                *device.Get(),
+                desc,
+                *globalRootSignature.Get(),
+                name
+            );
+        }
+
+        RHISwapchainRAII CreateSwapchain(
+            const RHISwapchainCreateDesc& desc,
+            StrView name = {}
+        ) RHI_OVERRIDE {
+            return std::make_unique<DX12Swapchain>(
+                *commandQueue.Get(),
+                *factory.Get(),
+                desc,
+                *cbvsrvuavHeap,
+                *rtvHeap,
+                *dsvHeap,
+                name
+            );
+        }
+
+        RHICommandListRAII CreateCommandList() RHI_OVERRIDE {
+            return createCommandList();
+        }
+
+        void Submit(
+            std::span<RHICommandList*> cmdLists,
+            u64 frame
+        ) RHI_OVERRIDE {
+            // completed-as-of-entry, before this batch's own tag exists
+            const auto completed = serialFence->GetValue();
+            retireQueue.Collect(completed);
+            harvestGPUTimes(completed);
+
+            executeCommandLists(cmdLists, serial + 1);
+
+            signalSerial();
+            retireQueue.Tag(serial);
+            uploadRing.OnSubmit(serial);
+            transientRing.OnSubmit(serial);
+            timeline.OnSubmit(frame, serial, completed);
+            holdForGPUTime(cmdLists, frame);
+        }
+
+        void SubmitAndPresent(
+            std::span<RHICommandList*> cmdLists,
+            RHISwapchain& swapchain,
+            u64 frame
+        ) RHI_OVERRIDE {
+            const auto completed = serialFence->GetValue();
+            retireQueue.Collect(completed);
+            harvestGPUTimes(completed);
+
+            executeCommandLists(cmdLists, serial + 1);
+
+            static_cast<DX12Swapchain&>(swapchain).Present(frame);
+
+            signalSerial();
+            retireQueue.Tag(serial);
+            uploadRing.OnSubmit(serial);
+            transientRing.OnSubmit(serial);
+            timeline.OnSubmit(frame, serial, completed);
+            holdForGPUTime(cmdLists, frame);
+        }
+
+        u64 GetCompletedFrame() const noexcept RHI_OVERRIDE {
+            return timeline.CompletedFrame(serialFence->GetValue());
+        }
+
+        std::optional<f64> GetGPUFrameTime(
+            u64 frame
+        ) const noexcept RHI_OVERRIDE {
+            if(const auto* seconds = gpuTimes.Find(frame))
+                return *seconds;
+
+            return std::nullopt;
+        }
+
+        void WaitFrame(u64 frame) RHI_OVERRIDE {
+            if(const auto frameSerial = timeline.SerialOf(frame))
+                serialFence->WaitCPU(*frameSerial, 0);
+        }
+
+        void WaitIdle() RHI_OVERRIDE {
+            // signal fresh so this also waits on any GPU work queued
+            // after the last per-frame signal (e.g. swapchain Present)
+            signalSerial();
+            serialFence->WaitCPU(serial, 0);
+
+            // all work up to the fresh signal is done, so this drains the
+            // queue instead of leaving stragglers for a Submit
+            retireQueue.Tag(serial);
+            retireQueue.Collect(serial);
+            harvestGPUTimes(serial);
+        }
+
+        void DeferRetire(std::move_only_function<void()> reclaim) RHI_OVERRIDE {
+            retireQueue.Defer(std::move(reclaim));
+        }
+
+        RHIBufferSlice AllocateTransient(u32 size, u32 align) RHI_OVERRIDE {
+            const auto alloc = transientRing.Allocate(size, align);
+
+            return RHIBufferSlice{
+                .buffer = &alloc.buffer,
+                .offset = static_cast<u32>(alloc.offset),
+                .size = size,
+                .cpuPtr = alloc.cpuPtr
+            };
+        }
+
+        RHICapabilities GetCapabilities() const noexcept RHI_OVERRIDE {
+            return {
+                .flipTextureV = true,
+                .clipSpaceMinZ = 0.0f,
+                .textureRowPitchAlign = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
+                .textureOffsetAlign = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT
+            };
+        }
+
+    private:
+        RHIBufferRAII createBuffer(
             const RHIBufferCreateDesc& desc,
             StrView name
-        ) {
+        ) RHI_OVERRIDE {
             auto buffer = std::make_unique<DX12Buffer>(
                 allocator,
                 desc,
@@ -629,7 +768,10 @@ namespace Crowy
             return buffer;
         }
 
-        auto CreateTexture(const RHITextureCreateDesc& desc, StrView name) {
+        RHITextureRAII createTexture(
+            const RHITextureCreateDesc& desc,
+            StrView name
+        ) RHI_OVERRIDE {
             using enum RHIMemoryType;
 
             CROWY_ASSERT(
@@ -658,7 +800,7 @@ namespace Crowy
                 CROWY_ASSERT(desc.initialData.size() == n);
 
                 std::vector<RHISubresourceLayout> layouts(n);
-                const auto totalBytes = QueryUploadLayout(*texture, layouts);
+                const auto totalBytes = queryUploadLayout(*texture, layouts);
                 uploadTexture(
                     *uploadCmdList,
                     uploadRing,
@@ -673,46 +815,7 @@ namespace Crowy
             return texture;
         }
 
-        RAII<DX12GraphicsPipelineState> CreatePipelineState(
-            const RHIGraphicsPipelineStateDesc& desc,
-            StrView name
-        ) {
-            return std::make_unique<DX12GraphicsPipelineState>(
-                *device.Get(),
-                desc,
-                *globalRootSignature.Get(),
-                name
-            );
-        }
-
-        RAII<DX12ComputePipelineState> CreatePipelineState(
-            const RHIComputePipelineStateDesc& desc,
-            StrView name
-        ) {
-            return std::make_unique<DX12ComputePipelineState>(
-                *device.Get(),
-                desc,
-                *globalRootSignature.Get(),
-                name
-            );
-        }
-
-        RAII<DX12Swapchain> CreateSwapchain(
-            const RHISwapchainCreateDesc& desc,
-            StrView name
-        ) {
-            return std::make_unique<DX12Swapchain>(
-                *commandQueue.Get(),
-                *factory.Get(),
-                desc,
-                *cbvsrvuavHeap,
-                *rtvHeap,
-                *dsvHeap,
-                name
-            );
-        }
-
-        RAII<DX12CommandList> CreateCommandList() {
+        RAII<DX12CommandList> createCommandList() {
             return std::make_unique<DX12CommandList>(
                 *device.Get(),
                 *commandQueue.Get(),
@@ -726,87 +829,7 @@ namespace Crowy
             );
         }
 
-        void Submit(std::span<RHICommandList*> cmdLists, u64 frame) {
-            // completed-as-of-entry, before this batch's own tag exists
-            const auto completed = serialFence->GetValue();
-            retireQueue.Collect(completed);
-            harvestGPUTimes(completed);
-
-            executeCommandLists(cmdLists, serial + 1);
-
-            signalSerial();
-            retireQueue.Tag(serial);
-            uploadRing.OnSubmit(serial);
-            transientRing.OnSubmit(serial);
-            timeline.OnSubmit(frame, serial, completed);
-            holdForGPUTime(cmdLists, frame);
-        }
-
-        void SubmitAndPresent(
-            std::span<RHICommandList*> cmdLists,
-            RHISwapchain& swapchain,
-            u64 frame
-        ) {
-            const auto completed = serialFence->GetValue();
-            retireQueue.Collect(completed);
-            harvestGPUTimes(completed);
-
-            executeCommandLists(cmdLists, serial + 1);
-
-            static_cast<DX12Swapchain&>(swapchain).Present(frame);
-
-            signalSerial();
-            retireQueue.Tag(serial);
-            uploadRing.OnSubmit(serial);
-            transientRing.OnSubmit(serial);
-            timeline.OnSubmit(frame, serial, completed);
-            holdForGPUTime(cmdLists, frame);
-        }
-
-        u64 GetCompletedFrame() const noexcept {
-            return timeline.CompletedFrame(serialFence->GetValue());
-        }
-
-        std::optional<f64> GetGPUFrameTime(u64 frame) const noexcept {
-            if(const auto* seconds = gpuTimes.Find(frame))
-                return *seconds;
-
-            return std::nullopt;
-        }
-
-        void WaitFrame(u64 frame) {
-            if(const auto frameSerial = timeline.SerialOf(frame))
-                serialFence->WaitCPU(*frameSerial, 0);
-        }
-
-        void WaitIdle() {
-            // signal fresh so this also waits on any GPU work queued
-            // after the last per-frame signal (e.g. swapchain Present)
-            signalSerial();
-            serialFence->WaitCPU(serial, 0);
-
-            // all work up to the fresh signal is done, so this drains the
-            // queue instead of leaving stragglers for a Submit
-            retireQueue.Tag(serial);
-            retireQueue.Collect(serial);
-            harvestGPUTimes(serial);
-        }
-
-        void DeferRetire(std::move_only_function<void()> reclaim) {
-            retireQueue.Defer(std::move(reclaim));
-        }
-
-        RHIBufferSlice AllocateTransient(u32 size, u32 align) {
-            const auto alloc = transientRing.Allocate(size, align);
-
-            return RHIBufferSlice{
-                .buffer = &alloc.buffer,
-                .offset = static_cast<u32>(alloc.offset),
-                .size = size,
-                .cpuPtr = alloc.cpuPtr
-            };
-        }
-        UINT64 QueryUploadLayout(
+        UINT64 queryUploadLayout(
             DX12Texture& texture,
             std::span<RHISubresourceLayout> out
         ) {
@@ -840,7 +863,6 @@ namespace Crowy
             return totalBytes;
         }
 
-    private:
         void holdForGPUTime(std::span<RHICommandList*> cmdLists, u64 frame) {
             UntimedFrame held{.frame = frame, .serial = serial};
             held.stamps.reserve(cmdLists.size());
@@ -974,101 +996,7 @@ namespace Crowy
         }
     };
 
-    DX12Device::DX12Device() = default;
-
-    DX12Device::~DX12Device() = default;
-
-    RHIFrameScopeRAII DX12Device::CreateFrameScope() {
-        return impl->CreateFrameScope();
-    }
-
-    RHIBufferRAII DX12Device::createBuffer(
-        const RHIBufferCreateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreateBuffer(desc, name);
-    }
-
-    RHITextureRAII DX12Device::createTexture(
-        const RHITextureCreateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreateTexture(desc, name);
-    }
-
-    RAII<RHIGraphicsPipelineState> DX12Device::CreatePipelineState(
-        const RHIGraphicsPipelineStateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreatePipelineState(desc, name);
-    }
-
-    RAII<RHIComputePipelineState> DX12Device::CreatePipelineState(
-        const RHIComputePipelineStateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreatePipelineState(desc, name);
-    }
-
-    RAII<RHISwapchain> DX12Device::CreateSwapchain(
-        const RHISwapchainCreateDesc& desc,
-        StrView name
-    ) {
-        return impl->CreateSwapchain(desc, name);
-    }
-
-    RAII<RHICommandList> DX12Device::CreateCommandList() {
-        return impl->CreateCommandList();
-    }
-
-    void DX12Device::Submit(std::span<RHICommandList*> cmdLists, u64 frame) {
-        impl->Submit(cmdLists, frame);
-    }
-
-    void DX12Device::SubmitAndPresent(
-        std::span<RHICommandList*> cmdLists,
-        RHISwapchain& swapchain,
-        u64 frame
-    ) {
-        impl->SubmitAndPresent(cmdLists, swapchain, frame);
-    }
-
-    u64 DX12Device::GetCompletedFrame() const noexcept {
-        return impl->GetCompletedFrame();
-    }
-
-    std::optional<f64> DX12Device::GetGPUFrameTime(u64 frame) const noexcept {
-        return impl->GetGPUFrameTime(frame);
-    }
-
-    void DX12Device::WaitFrame(u64 frame) {
-        impl->WaitFrame(frame);
-    }
-
-    void DX12Device::WaitIdle() {
-        impl->WaitIdle();
-    }
-
-    void DX12Device::DeferRetire(std::move_only_function<void()> reclaim) {
-        impl->DeferRetire(std::move(reclaim));
-    }
-
-    RHIBufferSlice DX12Device::AllocateTransient(u32 size, u32 align) {
-        return impl->AllocateTransient(size, align);
-    }
-    RHICapabilities DX12Device::GetCapabilities() const noexcept {
-        return {
-            .flipTextureV = true,
-            .clipSpaceMinZ = 0.0f,
-            .textureRowPitchAlign = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
-            .textureOffsetAlign = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT
-        };
-    }
-
-    UINT64 DX12Device::QueryUploadLayout(
-        RHITexture& texture,
-        std::span<RHISubresourceLayout> out
-    ) {
-        return impl->QueryUploadLayout(static_cast<DX12Texture&>(texture), out);
+    RHIDeviceRAII createDX12Device() {
+        return std::make_unique<DX12Device>();
     }
 }
