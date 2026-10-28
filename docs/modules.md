@@ -63,7 +63,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 
 | Looking for | Where |
 |---|---|
-| A port verb | `RegisterVerb` calls in five files: `Remote/Private/CommandPort.cpp` (the reflection verbs, whose bodies are in `ReflectionVerbs.cpp`) and, in `Render/Sample/`, `FramePort.cpp` (`FramePort::RegisterVerbs`, the frame-loop verbs), `FrameHost.cpp`, `FrameCaptures.cpp`, `FrameStatsLog.cpp`. A running app's `GET /` lists every verb with its keys (`CommandPortImpl::info`); a key outside a verb's `VerbKeys` is refused. |
+| A port verb | `RegisterVerb` calls in five files: `Remote/Private/CommandPort.cpp` (the reflection verbs, whose bodies are in `ReflectionVerbs.cpp`) and, in `Render/Sample/`, `FramePort.cpp` (`FramePort::RegisterVerbs`, the frame-loop verbs), `FrameHost.cpp`, `FrameCaptures.cpp`, `FrameStatsLog.cpp`. A running app's `GET /` lists every verb with its keys (`CommandPortImpl::listVerbs`); a key outside a verb's `VerbKeys` is refused. |
 | A command-line flag | `applyCommandLine` in `Platform/Private/RuntimeConfig.cpp` parses them into `RuntimeConfig`, and its usage string lists them; the loop reads its own in `Platform/Private/OS.cpp`. |
 | A struct on the port | `CROWY_STRUCT` (`Reflection/Public/ClassRegistry.hpp`) registers it, `CommandPort::Expose` puts an instance on the port; `Remote/Sample/HelloCommandPort.cpp` does both. |
 | The other registrations | `CROWY_COMPONENT` in `World/Public/Component.hpp`, `CROWY_SYSTEM` in `World/Public/System.hpp`, `CROWY_ENUM_BEGIN` in `Core/Public/EnumUtil.hpp`. |

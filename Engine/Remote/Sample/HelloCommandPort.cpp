@@ -8,7 +8,7 @@
 #include "DOM.hpp"
 
 // The network HelloWorld: one port, two verbs, one exposed struct, a bare
-// loop standing in for the frame. docs/verification.md shows the requests.
+// loop standing in for the frame. docs/verification.md has the request shape.
 
 enum class HelloBlend : Crowy::u8 { Opaque, Additive };
 

@@ -34,12 +34,14 @@ These override the global CLAUDE.md where they differ.
 - Format: every file is formatted whole (`clang-format -i`), new files
   too; `Tools/format_check.ps1` fails on drift anywhere under `Engine/`.
 - Shared text and range helpers live in Core: StringUtil.hpp (join,
-  parseNumber, case), PathUtil.hpp, FileUtil.hpp, RangeUtil.hpp (stray,
-  firstRepeat). Look there before writing a loop.
+  parseNumber, replaceAll, consumePrefix, lower, equalsIgnoringCase,
+  containsIgnoringCase, StringHashMap), PathUtil.hpp, FileUtil.hpp,
+  RangeUtil.hpp (stray, firstRepeat). Look there before writing a loop.
 - Anything that advances per frame is paced by time (the owner's display is
   120 Hz); goldens stay deterministic by counted frames.
 - A registration (`CROWY_STRUCT` from `ClassRegistry.hpp`,
-  `CROWY_COMPONENT`, `CROWY_ENUM_BEGIN`, ...) sits between
+  `CROWY_COMPONENT` from `Component.hpp`, `CROWY_ENUM_BEGIN` from
+  `EnumUtil.hpp`, ...) sits between
   `// clang-format off` and `// clang-format on`. A registered struct
   reaches the port through `CommandPort::Expose`;
   `Remote/Sample/HelloCommandPort.cpp` shows both ends.
