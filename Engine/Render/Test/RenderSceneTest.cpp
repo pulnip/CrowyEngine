@@ -44,8 +44,8 @@ TEST(RenderScene, MaterialRowFollowsARemoval) {
     EXPECT_EQ(scene.Materials().At(1).data.albedo.z, 1.0f);
 }
 
-// the inspector's write-back path
-// a row edited in place is what the next frame's BeginFrame reads
+// a row edited in place, as the inspector writes back, is what the next
+// frame's BeginFrame reads
 TEST(RenderScene, EditedMaterialRowIsWhatTheTableReads) {
     RenderScene scene;
 

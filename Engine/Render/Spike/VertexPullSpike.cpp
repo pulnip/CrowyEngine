@@ -12,20 +12,6 @@
 
 namespace Crowy
 {
-    // Regression check for the shared-pool vertex pulling contract, described
-    // in full in Engine/Render/Spike/VertexPullSpike.slang: a mesh's pool
-    // offset reaches the shader through DrawData::vbIndex, because SV_VertexID
-    // carries the draw's baseVertex on Metal and not on D3D12.
-    //
-    // Four polygons of 3, 4, 5 and 6 sides, so only the first allocation
-    // starts at pool row 0 and each draw needs its own offset to look right.
-    //
-    //   PASS: 3, 4, 5, 6 sides left to right - red, green, blue, yellow.
-    //   FAIL: any other shape.
-    //
-    // The three RenderApp samples pull the same way and all of them lost every
-    // mesh but the first on D3D12, so this is deliberately the smallest scene
-    // that still shows it.
     class VertexPullSpike: public RenderApp {
         // keep in sync with VertexPullSpike.slang
         static constexpr u32 SlotCount = 4;
@@ -57,7 +43,7 @@ namespace Crowy
         }
 
         void ExtractScene(RenderScene& scene) override {
-            // the shader colours by objectID, so one row covers every slot
+            // the shader colors by objectID, so one row covers every slot
             const auto material = scene.Materials().Add(
                 MaterialResource{.pipeline = makePipeline()}
             );
@@ -91,10 +77,8 @@ namespace Crowy
             }
         }
 
-        // A fullscreen pass that loads a target on a GPU: between the opaque
-        // and translucent passes one reads depth and blends an alpha of 0
-        // onto the scene colour, which Present then copies to the back
-        // buffer - five passes, the same bytes.
+        // a fullscreen pass between opaque and translucent that reads depth and
+        // blends alpha 0 must leave the same bytes (FullscreenProof.slang)
         FrameGraphDesc DescribePipeline(
             const StandardFrameConfig& config
         ) override {

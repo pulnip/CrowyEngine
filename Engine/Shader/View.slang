@@ -11,9 +11,8 @@ cbuffer view : register(b1) {
     uint shadowFilter;
     uint _pad1;
     uint _pad2;
-    // xyz = camera position, w unused
     float4 cameraPosition;
-    // xyz, w unused; equal colours are a flat ambient
+    // equal colors are a flat ambient
     float4 skyAmbient;
     float4 groundAmbient;
 };

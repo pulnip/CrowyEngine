@@ -241,7 +241,7 @@ TEST(PipelineCache, RebuildNamesTheLinkedModule) {
 }
 
 // Every model shares the prepass's and the shadow's pipeline, and each keys
-// its own in a colour pass.
+// its own in a color pass.
 TEST(PipelineCache, ModelsShareTheDepthOnlyPipeline) {
     FakeDevice device;
     PipelineCache cache(device);

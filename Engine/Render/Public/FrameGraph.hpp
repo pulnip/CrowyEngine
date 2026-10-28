@@ -35,7 +35,6 @@ namespace Crowy
 
     // imported each frame: the swapchain image App::Render hands OnRecord
     inline constexpr FrameTargetID BackBufferTarget = 0;
-    // the swapchain's size, following Resize
     inline constexpr FrameExtentID BackBufferExtent = 0;
 
     struct FixedSize {
@@ -45,8 +44,7 @@ namespace Crowy
         friend bool operator==(const FixedSize&, const FixedSize&) = default;
     };
 
-    // extents[i] is ID i + 1: a size the host sets with ResizeExtent, which
-    // starts at the back buffer's
+    // extents[i] is ID i + 1
     struct FrameExtentDesc {
         Str name;
     };
@@ -75,7 +73,6 @@ namespace Crowy
     struct MeshPassDesc {
         // the ViewData row
         u32 view = 0;
-        // domains and required PrimitiveFlags
         DrawFilter filter;
         DrawOrder order = DrawOrder::PipelineThenNearFirst;
         MeshPassState state;
@@ -137,13 +134,11 @@ namespace Crowy
             default;
     };
 
-    // the formats of a hook pass's attachments
     struct HookPassFormats {
         std::span<const RHIPixelFormat> colors;
         RHIPixelFormat depth = RHIPixelFormat::Unknown;
     };
 
-    // what a hook's record sees inside its pass
     struct HookPassContext {
         StrView pass;
         HookPassFormats formats;
@@ -209,12 +204,9 @@ namespace Crowy
         std::span<const RHITextureBarrier> overlayAcquires;
         // inside the overlay pass, after its draws
         std::move_only_function<void(RHICommandList&)> recordOverlay;
-        // one per hook pass in the list, and no other
         std::span<PassHook> hooks;
         // the frame Record runs in, as Submit numbers it
         u64 frame = 0;
-        // one per target, each copied out after its last use in a blit pass
-        // that ends the frame
         std::span<TargetReadback> captures;
     };
 
@@ -228,7 +220,6 @@ namespace Crowy
             FrameTargetID target = BackBufferTarget;
             RHIResourceUsage before = RHIResourceUsage::Undefined;
             RHIResourceUsage after = RHIResourceUsage::Undefined;
-            // the first use, against the frame before's last one
             bool crossSubmission = false;
         };
 
@@ -283,7 +274,6 @@ namespace Crowy
         LastUses lastUses;
         CompiledPasses passes;
         PassStatsList stats;
-        // the last pass writing the back buffer: the UI rides it
         usize overlayPass = 0;
         // the largest mesh pass view + 1
         u32 viewCount = 1;
@@ -299,8 +289,6 @@ namespace Crowy
         ~FrameGraph();
         CROWY_DECLARE_PINNED(FrameGraph)
 
-        // throws std::invalid_argument naming the pass and the rule a desc
-        // breaks
         FrameGraph(
             RHIDevice& device,
             FrameGraphDesc desc,
@@ -309,10 +297,7 @@ namespace Crowy
             u32 height
         );
 
-        // the swapchain-sized targets anew; the old ones retire
         void Resize(u32 width, u32 height);
-        // the targets of `extent` anew at that size, when it changed; the old
-        // ones retire
         void ResizeExtent(FrameExtentID extent, u32 width, u32 height);
         // per mesh pass: its view's cull, then its list built and uploaded;
         // per fullscreen pass: its pipeline resolved
@@ -321,8 +306,6 @@ namespace Crowy
             const RenderScene& scene,
             const MeshPassOverride& debug
         );
-        // throws std::invalid_argument, before any pass, when inputs.hooks
-        // does not bind each hook pass exactly once and nothing else
         void Record(
             RHICommandList& cmdList,
             const SceneRenderer& renderer,
@@ -340,7 +323,6 @@ namespace Crowy
         u32 ShadowMapSize() const noexcept;
         // the target of that name, if some pass uses it
         std::optional<FrameTargetID> FindTarget(StrView name) const noexcept;
-        // targets[i] is ID i + 1
         std::span<const FrameTargetDesc> Targets() const noexcept {
             return desc.targets;
         }

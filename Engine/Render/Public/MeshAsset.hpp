@@ -20,20 +20,15 @@ namespace Crowy
     using MeshAssetHandle = AssetHandle<MeshAsset>;
     using MeshAssetSlots = std::vector<MeshAssetSlot>;
 
-    // engine:Builtin/Box, Sphere and Plane come from code, never from disk;
-    // any other ref is a model file under its mount
     std::expected<MeshAsset, Str> loadMeshAsset(
         GeometryPool& pool,
         const AssetRoots& roots,
         const AssetRef& ref
     );
-    // a decoded model's slots into the pool; when one does not fit, the ones
-    // that did go back
     std::expected<MeshAsset, Str> uploadMeshAsset(
         GeometryPool& pool,
         ModelData model
     );
-    // the ranges come back once the GPU is done with them
     void releaseMeshAsset(GeometryPool& pool, MeshAsset asset);
 
     // the triangles of one material, in the pool and on the CPU

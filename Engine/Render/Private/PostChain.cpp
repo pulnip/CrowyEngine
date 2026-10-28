@@ -16,7 +16,6 @@ namespace Crowy
         constexpr usize MaxPostInputs = 3;
         // Scene and Display
         constexpr usize OutputClassCount = 2;
-        // ping and pong
         constexpr usize IntermediatesPerClass = 2;
 
         using Reads = std::vector<FrameTargetID>;
@@ -38,7 +37,6 @@ namespace Crowy
             return names;
         }
 
-        // every entry's inputs as IDs, after the rules the list keeps
         std::vector<Reads> resolveInputs(
             const FrameGraphDesc& desc,
             std::span<const PostPassDesc> post

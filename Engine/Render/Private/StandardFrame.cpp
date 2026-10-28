@@ -12,7 +12,6 @@ namespace Crowy
         // names
         constexpr FrameTargetID SceneDepth = 1;
 
-        // what writes depth
         const auto solid =
             combine(MaterialDomain::Opaque, MaterialDomain::Masked);
         const DrawFilter opaque{.domains = solid};
@@ -31,7 +30,6 @@ namespace Crowy
         if(config.sceneView)
             desc.extents.push_back(FrameExtentDesc{.name = Str{SceneViewName}});
 
-        // what the color passes sample: the map, when there is one
         std::vector<FrameTargetID> shadowReads;
         if(config.shadowMapSize > 0) {
             desc.targets.push_back(
@@ -139,7 +137,6 @@ namespace Crowy
             }
         );
 
-        // blended over the opaque scene in scene colour, before the post list
         desc.passes.push_back(
             PassDesc{
                 .name = "Translucent",
@@ -170,7 +167,6 @@ namespace Crowy
         );
 
         if(!config.sceneView) {
-            // the last entry writes the back buffer, so the UI rides it
             appendPostChain(desc, desc.sceneColor, config.post);
 
             return desc;

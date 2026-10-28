@@ -116,7 +116,6 @@ namespace Crowy
                     // the pool offset rides in vbIndex instead, because
                     // SV_VertexID picks this up on Metal but not on D3D12
                     .baseVertex = 0,
-                    // the row index inside this list's slice
                     .baseInstance = slot
                 }
             );

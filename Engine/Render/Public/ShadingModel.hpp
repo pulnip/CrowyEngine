@@ -3,7 +3,7 @@
 #include "Primitives.hpp"
 
 // The engine's shading models: Slang modules a material links into its
-// colour passes, each exporting MaterialShading for ForwardShading.slang.
+// color passes, each exporting MaterialShading for ForwardShading.slang.
 namespace Crowy
 {
     struct ToonLanes;
@@ -12,7 +12,7 @@ namespace Crowy
     inline constexpr CStr PBRShadingModule = "Engine/Shader/PBR.slang";
     // cel shading: a terminator band, a hard highlight, a rim
     inline constexpr CStr ToonShadingModule = "Engine/Shader/Toon.slang";
-    // the surface's own colour, no light
+    // the surface's own color, no light
     inline constexpr CStr UnlitShadingModule = "Engine/Shader/Unlit.slang";
 
     // Toon.slang's reading of the lanes, custom0 then custom1

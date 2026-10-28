@@ -27,7 +27,7 @@ namespace
     // the first intermediate a chain adds
     constexpr FrameTargetID FirstAdded = 4;
 
-    // one pass writing scene colour and normals over depth; the chain
+    // one pass writing scene color and normals over depth; the chain
     // supplies the back buffer's writer
     FrameGraphDesc SceneShaped() {
         return FrameGraphDesc{
@@ -215,7 +215,7 @@ TEST(PostChain, ThreeSceneEntriesPingPong) {
 
     appendPostChain(desc, SceneColor, post);
 
-    // two in scene colour's format, and none of the display class
+    // two in scene color's format, and none of the display class
     ASSERT_EQ(desc.targets.size(), 5u);
     EXPECT_EQ(desc.targets[PostScene0 - 1].name, "PostScene0");
     EXPECT_EQ(desc.targets[PostScene1 - 1].name, "PostScene1");
@@ -274,7 +274,7 @@ TEST(PostChain, ALastEntryWritesTheOutputAndIntermediatesFollowSceneColor) {
 
     appendPostChain(desc, SceneColor, post, View);
 
-    // scene colour's extent, so a texel load lands on its pixel
+    // scene color's extent, so a texel load lands on its pixel
     ASSERT_EQ(desc.targets.size(), 5u);
     EXPECT_EQ(desc.targets[PostScene0 - 1].name, "PostScene0");
     EXPECT_EQ(desc.targets[PostScene0 - 1].size, FrameTargetSize{1u});

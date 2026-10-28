@@ -119,7 +119,6 @@ namespace Crowy
             }
         }
 
-        // every pass's uses, per target, after the rules a single pass keeps
         TargetUses collectUses(const FrameGraphDesc& desc) {
             const auto targetCount = desc.targets.size();
             const auto known = [targetCount](FrameTargetID id) {
@@ -312,7 +311,6 @@ namespace Crowy
             return desc;
         }
 
-        // the rules that follow one target through the list
         void refuseBrokenUses(
             const FrameGraphDesc& desc,
             const TargetUses& uses
@@ -884,9 +882,8 @@ namespace Crowy
             recordCaptures(cmdList, inputs);
     }
 
-    // after the overlay pass, whose back-buffer release pairs with nothing;
-    // each target's release is left unpaired, so D3D12 completes it at Close
-    // back into the layout and sync the next frame's first acquire names
+    // after the overlay pass; each release stays unpaired, so D3D12 completes
+    // it at Close into the layout and sync the next frame's first acquire names
     void FrameGraph::recordCaptures(
         RHICommandList& cmdList,
         FrameInputs& inputs

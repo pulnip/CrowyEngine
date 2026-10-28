@@ -58,8 +58,8 @@ namespace Crowy
         MeshAssetHandle source;
     };
 
-    // What extraction writes and the only thing the renderer reads.
-    // Note. View-independent
+    // what extraction writes and the only thing the renderer reads;
+    // view-independent
     struct PrimitiveSnapshot {
         Mat4 localToWorld = unitMat();
         // local bounds pushed through localToWorld at extract time
@@ -93,8 +93,6 @@ namespace Crowy
         auto& Lights(this auto& self) noexcept { return self.lights; }
         auto& Environment(this auto& self) noexcept { return self.environment; }
 
-        // every extracted row; the textures stay, since frames in flight
-        // may still read them
         void Clear() {
             environment = EnvironmentSnapshot{};
             lights.Clear();
@@ -103,8 +101,6 @@ namespace Crowy
             materials.Clear();
         }
 
-        // hands every texture to the device, which frees each once no frame
-        // in flight reads it
         void RetireTextures(RHIDevice& device);
     };
 }

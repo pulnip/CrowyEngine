@@ -389,7 +389,7 @@ TEST(FrameGraph, TheStandardDescEndsInTonemapWithTheUI) {
 
     auto desc = describeStandardFrame({.clearColor = Sky});
 
-    // swapchain-sized, after the map, cleared with the config's colour
+    // swapchain-sized, after the map, cleared with the config's color
     ASSERT_EQ(desc.targets.size(), 3u);
     const auto& color = desc.targets[SceneColor - 1];
     EXPECT_EQ(color.name, "SceneColor");
@@ -425,7 +425,7 @@ TEST(FrameGraph, TheStandardDescEndsInTonemapWithTheUI) {
     inputs.sceneClear = Sky;
     f.Frame(pipeline, inputs);
 
-    // the scene colour is cleared with the colour it was created with
+    // the scene color is cleared with the color it was created with
     ASSERT_EQ(f.device.textureCreates.size(), 3u);
     EXPECT_EQ(f.device.textureCreates[SceneColor - 1].clearColor, Sky);
     EXPECT_EQ(f.Pass("Opaque").colors[0].clearColor, Sky);
@@ -560,7 +560,7 @@ TEST(FrameGraph, BackBufferIsAcquiredUndefinedAndReleasedToPresent) {
 
     f.Frame(pipeline, inputs);
 
-    // the scene clear lands on scene colour; the back buffer, which only the
+    // the scene clear lands on scene color; the back buffer, which only the
     // post pass writes, clears black
     const auto& opaque = f.Pass("Opaque");
     ASSERT_EQ(opaque.colors.size(), 1u);
@@ -844,7 +844,7 @@ TEST(FrameGraph, ResizeRecreatesOnlySwapchainSizedTargets) {
 
     pipeline.Resize(128, 96);
 
-    // the depth and the scene colour, not the map
+    // the depth and the scene color, not the map
     ASSERT_EQ(f.device.textureCreates.size(), 5u);
     for(usize i = 3; i < 5; ++i) {
         EXPECT_EQ(f.device.textureCreates[i].width, 128u) << i;
@@ -876,7 +876,7 @@ TEST(FrameGraph, ResizeExtentRecreatesOnlyItsTargets) {
     ASSERT_TRUE(extent.has_value());
     EXPECT_FALSE(pipeline.FindExtent("Missing").has_value());
 
-    // the depth, the map, the scene colour and the view; an extent starts at
+    // the depth, the map, the scene color and the view; an extent starts at
     // the back buffer's size
     ASSERT_EQ(f.device.textureCreates.size(), 4u);
     EXPECT_EQ(f.device.textureCreates[SceneView - 1].width, Width);
@@ -1176,7 +1176,7 @@ TEST(FrameGraph, APassNotInTheListCostsNothing) {
         return std::pair{f.cmdList.passes.size(), f.renderer.PipelineCount()};
     };
 
-    // a depth-only key beside the two colour keys and the tone map's
+    // a depth-only key beside the two color keys and the tone map's
     EXPECT_EQ(frameWith(true), (std::pair<usize, usize>{4, 4}));
     EXPECT_EQ(frameWith(false), (std::pair<usize, usize>{3, 3}));
 }
@@ -1803,7 +1803,7 @@ TEST(FrameGraph, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
         const auto& blit = f.cmdList.blitPasses[0];
         EXPECT_EQ(blit.after, f.cmdList.passes.size());
         EXPECT_EQ(blit.event, "Capture");
-        // Tonemap samples the colour last, Translucent attaches the depth last
+        // Tonemap samples the color last, Translucent attaches the depth last
         EXPECT_EQ(
             blit.acquires,
             (TextureBarriers{
@@ -2164,7 +2164,6 @@ TEST(FrameGraph, AHookPassNeedsAColorTargetAndItsOwnHook) {
     );
 }
 
-// a binding that does not match the list throws before any pass records
 TEST(FrameGraph, HookBindingsMatchTheListOrRecordNothing) {
     const auto expectThrow = [](std::vector<PassHook> hooks, StrView expected) {
         Fixture f;

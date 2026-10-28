@@ -19,7 +19,7 @@ struct Surface {
 struct LightSample {
     // unit, surface to light
     float3 direction;
-    // colour x intensity: before attenuation, before any cosine
+    // color x intensity: before attenuation, before any cosine
     float3 radiance;
     // falloff x shadow, >= 0, never thresholded by the engine
     float attenuation;
@@ -44,7 +44,7 @@ interface IShadingModel {
 }
 
 // What a program that links no module resolves to: a depth-only pipeline
-// runs none of it, and a colour pass that forgot its module draws magenta.
+// runs none of it, and a color pass that forgot its module draws magenta.
 struct UnlinkedShading : IShadingModel {
     static void accumulate(Surface s, LightSample light, float3 toViewer, inout LightSum sum) {}
     static float3 ambient(Surface s, float3 toViewer, float3 irradiance) {

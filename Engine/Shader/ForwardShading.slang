@@ -21,7 +21,7 @@ struct VertexOut {
     nointerpolation uint materialIndex : MATERIALINDEX;
 };
 
-// the one position function every colour and depth program shares, which
+// the one position function every color and depth program shares, which
 // Equal behind the prepass rests on
 [shader("vertex")]
 VertexOut vs_main(

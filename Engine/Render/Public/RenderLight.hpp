@@ -70,7 +70,7 @@ namespace Crowy
         f32 shadowNormalBias = 1.0f;
     };
 
-    // equal colours are a flat ambient
+    // equal colors are a flat ambient
     struct EnvironmentSnapshot {
         Vec3 skyAmbient = zeros();
         Vec3 groundAmbient = zeros();
@@ -88,7 +88,7 @@ namespace Crowy
         // unit, the way the light travels
         Vec3 direction = -unitY();
         LightKind kind = LightKind::Directional;
-        // colour x intensity
+        // color x intensity
         Vec3 color = zeros();
         u32 shadowIndex = NoShadow;
         // glTF's cone as scale and offset on cos; (0, 1) leaves every

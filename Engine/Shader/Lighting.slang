@@ -29,9 +29,8 @@ LightData loadLight(uint i) {
     return lights[pass.lightBase + i];
 }
 
-// the four texels around uv compared, and the results weighted by where uv
-// falls between their centres: a comparison sampler's bilinear filter, by
-// hand
+// the four texels around uv compared and weighted by where uv falls
+// between their centers: a comparison sampler's bilinear filter, by hand
 float shadowPcf2x2(Texture2D<float> map, uint2 size, float2 uv, float depth) {
     float2 texel = uv * float2(size) - 0.5;
     int2 base = int2(floor(texel));
@@ -147,7 +146,7 @@ float shadowTerm(float3 posWorld, float3 geoNormal) {
     return shadow;
 }
 
-// the hemisphere: ground colour facing down, sky colour facing up
+// the hemisphere: ground color facing down, sky color facing up
 float3 ambientIrradiance(float3 N) {
     return lerp(groundAmbient.xyz, skyAmbient.xyz, N.y * 0.5 + 0.5);
 }

@@ -1,24 +1,7 @@
-// Does the opaque pass, testing Equal, find exactly the depth the prepass
-// wrote with the same vertex shader in another pipeline?
-//
-// RenderApp draws a depth-only prepass (Less, write) and then the opaque
-// round at Equal without writing. The two pipelines run this file's vs_main
-// separately; if any position differs by a bit between them, Equal fails
-// there and the magenta clear shows through. Metal promises that invariance
-// only under [[invariant]]; on either backend it is measured, not assumed.
-//
-// The scene stresses it: interpenetrating pairs, dense spheres, rotated and
-// non-uniformly scaled boxes, a floor seen at grazing angles, and objects
-// near the far plane, where D32 depths are coarsest. A floor and a far wall
-// cover every pixel no object covers, and each group has its own flat
-// color from its material row.
-//
-//   PASS: no magenta anywhere; the picture equals the one drawn with
-//         debug.depthPrepass off, which is the golden.
-//   FAIL: magenta pixels are Equal misses - drift between the pipelines.
-//         Another group's color on a contact line would be a tie, which
-//         this scene rules out: a pair shares one group and nothing else
-//         touches.
+// Metal promises the same position from two pipelines only under
+// [[invariant]]; the opaque pass's Equal against the prepass measures it.
+// PASS: no magenta; the picture equals the golden, drawn with depthPrepass off.
+// FAIL: magenta pixels, where Equal missed - drift between the pipelines.
 
 #include "SceneData.slang"
 

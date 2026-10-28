@@ -283,9 +283,8 @@ TEST(Light, AVisibleNonCasterStaysOutsideTheFit) {
     EXPECT_EQ(row.worldToShadow, fit.worldToShadow);
 }
 
-// With a map but nothing to fit, row 1 is identity and its set is empty
-// without a cull: the box sits inside identity's clip space, so a cull
-// would keep it
+// with a map but nothing to fit, row 1 is identity and its set is empty:
+// the box sits inside identity's clip space, so a cull would have kept it
 TEST(Light, AnUnfittedShadowViewIsEmptyWithoutACull) {
     {
         // a casting sun, and nothing Visible to fit

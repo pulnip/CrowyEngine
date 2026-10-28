@@ -63,7 +63,6 @@ TEST(ShadowFit, EverySceneCornerIsInsideClipSpace) {
         }
     }
 
-    // the numbers the task file derived for Playground's sun
     const auto fit = fitDirectionalShadow(Sun, Room, MapSize);
     EXPECT_NEAR(fit.texelSize * MapSize, 27.87f, 0.01f);
     EXPECT_NEAR(fit.texelSize * 100.0f, 1.36f, 0.01f);

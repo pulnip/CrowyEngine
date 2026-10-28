@@ -44,9 +44,8 @@ TEST(PipelineKey, SameMaterialAndPassCompareEqual) {
     );
 }
 
-// The trap the handoff names: `profile` is a CStr, so a defaulted comparison
-// would compile the same pipeline twice for two "sm_6_8" literals that landed
-// at different addresses.
+// `profile` is a CStr, so a defaulted comparison would compile the same
+// pipeline twice for two "sm_6_8" literals at different addresses.
 TEST(PipelineKey, ProfileComparesByValueNotAddress) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
 
@@ -244,9 +243,8 @@ TEST(PipelineKey, OneMaterialKeysApartInTwoPasses) {
     EXPECT_TRUE(opaqueDesc.fragmentShader.has_value());
 }
 
-// Playground's grid and opaque materials differ only in fragment entry, and
-// an opaque material may set a blend: a depth-only pass keys neither, and
-// ignores a debug override.
+// materials differing only in fragment entry or blend, as Playground's: a
+// depth-only pass keys neither, and ignores a debug override
 TEST(PipelineKey, APassWithoutTargetsHasNoFragmentStage) {
     const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
 
@@ -284,7 +282,7 @@ TEST(PipelineKey, APassFragmentShaderReplacesTheMaterials) {
     EXPECT_NE(desc, Compose(OpaqueMaterial(), BasePass(formats)));
 }
 
-// the ladder's second rung and the shadow pass's bias, in either kind of pass
+// the shadow pass's bias, in either kind of pass
 TEST(PipelineKey, PassDepthBiasReplacesTheMaterialsBias) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
 
@@ -305,9 +303,8 @@ TEST(PipelineKey, PassDepthBiasReplacesTheMaterialsBias) {
     }
 }
 
-// The model is a path compared by value, like the shader paths: a material
-// naming the default links what one naming nothing new links, and another
-// model keys apart.
+// the model path compares by value: naming the default links what naming
+// nothing links, and another model keys apart
 TEST(PipelineKey, ShadingModuleKeysByValue) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};
     const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
@@ -350,7 +347,7 @@ TEST(PipelineKey, ADepthOnlyPassDropsTheModule) {
     EXPECT_EQ(hash(pbrDesc), hash(toonDesc));
 }
 
-// an empty path links nothing, and neither does a colour pass whose fragment
+// an empty path links nothing, and neither does a color pass whose fragment
 // override never calls the model, as a normals prepass's
 TEST(PipelineKey, AMaterialWithoutAModuleLinksNothing) {
     const std::array formats = {RHIPixelFormat::RGBA8_UNORM};

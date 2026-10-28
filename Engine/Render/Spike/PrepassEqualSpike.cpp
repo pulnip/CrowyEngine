@@ -11,17 +11,8 @@
 
 namespace Crowy
 {
-    // Regression check for position invariance between the depth prepass and
-    // the opaque pass that tests Equal against it, described in full in
-    // Engine/Render/Spike/PrepassEqualSpike.slang.
-    //
-    //   PASS: no magenta; the default picture equals the golden, which is
-    //         the picture with debug.depthPrepass off.
-    //   FAIL: magenta anywhere, where Equal missed.
-    //
-    // Every group is one material row with its own color. The layout keeps
-    // every group apart, a pair's two members aside, and everything off the
-    // floor, so no two groups can tie on a contact line.
+    // groups never touch, a pair's members aside, and nothing touches the
+    // floor, so no two groups can tie on a contact line
     class PrepassEqualSpike: public RenderApp {
         static constexpr u32 PairCount = 6;
         static constexpr u32 DenseSphereCount = 8;
@@ -113,9 +104,8 @@ namespace Crowy
             };
         }
 
-        // the pose the scene was projected from: every object within the
-        // frame, and the whole backdrop nearer than the far plane, since a
-        // fragment on it passes Equal against the clear but not Less
+        // every object in frame and the whole backdrop nearer than the far
+        // plane, where a fragment passes Equal against the clear but not Less
         static FlyCamera::Config makeCamera() {
             return FlyCamera::Config{
                 .position = {0.0f, 2.0f, -6.0f},

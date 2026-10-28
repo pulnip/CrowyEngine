@@ -21,7 +21,6 @@ namespace Crowy
         std::optional<bool> depthWrite;
     };
 
-    // replaces the rasterizer bias of every material in the pass
     struct PassDepthBias {
         i32 depthBias = 0;
         f32 depthBiasClamp = 0.0f;
@@ -32,8 +31,6 @@ namespace Crowy
     struct MeshPassState {
         RHIComparisonFunc depthFunc = RHIComparisonFunc::Less;
         bool depthWrite = true;
-        // replaces the material's, a Masked one's cut included; a pass with
-        // no color target has none
         std::optional<RHIShaderDesc> fragmentShader;
         // false for a fragment stage that never calls the shading model, so
         // every material's model shares its pipeline
@@ -61,7 +58,6 @@ namespace Crowy
         RHIGraphicsPipelineStateDesc,
         RHIGraphicsPipelineStateRAII>;
 
-    // what one Rebuild did
     struct PipelineRebuild {
         usize pipelines = 0;
         f64 milliseconds = 0.0;
@@ -83,17 +79,13 @@ namespace Crowy
             const MaterialPipelineDesc& material,
             const PassPipelineDesc& pass
         );
-        // a desc no material and pass composed, as a fullscreen pass's; keyed
-        // and rebuilt like a composed one
+        // a desc no material and pass composed, as a fullscreen pass's
         RHIGraphicsPipelineState& Resolve(
             const RHIGraphicsPipelineStateDesc& desc
         );
 
         usize Count() const noexcept { return states.size(); }
 
-        // recompiles every stored key into new states and swaps only when
-        // all of them built; a failure leaves the old states live and
-        // rethrows with the key's shaders named
         PipelineRebuild Rebuild();
     };
 }

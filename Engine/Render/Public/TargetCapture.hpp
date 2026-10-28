@@ -39,7 +39,6 @@ namespace Crowy
         }
     }
 
-    // IEEE binary16 to binary32, subnormals, infinities and NaN included
     inline constexpr f32 halfToFloat(u16 bits) {
         const u32 sign = static_cast<u32>(bits & 0x8000u) << 16;
         const u32 exponent = (bits >> 10) & 0x1Fu;
@@ -58,7 +57,7 @@ namespace Crowy
         return sign != 0 ? -magnitude : magnitude;
     }
 
-    // tight RGBA8 rows, top-down; false for a format it cannot convert
+    // tight RGBA8 rows, top-down
     bool convertCapture(
         RHIPixelFormat format,
         std::span<const u8> bytes,
@@ -87,21 +86,16 @@ namespace Crowy
 
         explicit TargetCaptureQueue(RHIDevice& device);
 
-        // whether that frame's target or that path is already taken; an
-        // empty target asks about the path alone
         bool IsQueued(u64 frame, StrView target, StrView path) const noexcept;
         // the caller checks IsQueued and MaxFrameDumps first
         void Request(TargetCaptureRequest request);
         // requests, copies in flight and outcomes not yet taken: 0 only once
         // every outcome is in hand
         usize Pending() const noexcept;
-        // every request due at or before `frame`, in frame order
         TargetCaptureRequests TakeDue(u64 frame);
         // an outcome that was never written, logged with why
         void Fail(const TargetCaptureRequest& request, StrView why);
         void AddInFlight(TargetReadback readback);
-        // downloads, converts and writes every copy whose frame has
-        // completed, and retires its buffer
         void Collect(u64 completedFrame);
         // the captures that finished since the last call, oldest first
         FrameDumpOutcomes TakeOutcomes();

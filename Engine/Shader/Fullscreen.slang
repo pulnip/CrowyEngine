@@ -1,9 +1,7 @@
 #pragma once
 
-// What a fullscreen pass's shader includes: the push FrameGraph fills,
-// mirrored from FullscreenPush in RenderSceneData.hpp, and the vertex stage
-// the pass's pipeline takes from the including file. It declares no `view`:
-// SceneData.slang's push sits at b0 too, so the two never meet in one file.
+// mirror of FullscreenPush in RenderSceneData.hpp; no `view`, since
+// SceneData.slang's push also sits at b0, so the two never meet in one file
 
 struct FullscreenPush{
     // the pass's reads in order; a depth target reads as .r

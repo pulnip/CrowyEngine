@@ -27,14 +27,12 @@ namespace Crowy
     using SortedDraws = std::vector<std::pair<u64, u32>>;
     using VisibleDraws = std::vector<VisibleDraw>;
 
-    // unsigned order of the result is the float order of the argument
     inline constexpr u32 ordered(f32 value) noexcept {
         const auto bits = std::bit_cast<u32>(value);
 
         return (bits & 0x8000'0000u) != 0 ? ~bits : bits | 0x8000'0000u;
     }
 
-    // pipeline first, then near first
     inline constexpr u64 opaqueSortKey(
         u32 run,
         f32 depth,
@@ -44,7 +42,6 @@ namespace Crowy
                (identity & 0xFFFFu);
     }
 
-    // far first, whatever the pipeline
     inline constexpr u64 translucentSortKey(f32 depth, u32 identity) noexcept {
         return u64{~ordered(depth)} << 32 | identity;
     }
@@ -57,7 +54,6 @@ namespace Crowy
     struct DrawFilter {
         // a mask of MaterialDomain bits
         MaterialDomain domains = MaterialDomain::Opaque;
-        // every one of these set on the primitive
         PrimitiveFlags required = PrimitiveFlags::None;
     };
 
@@ -125,7 +121,7 @@ namespace Crowy
             const DrawFilter& filter,
             DrawOrder order
         );
-        // fresh slices each call; an empty list allocates nothing
+        // fresh slices each call
         void Upload();
         // the frame's push with this list's rows
         ScenePush Push(ScenePush frame) const;

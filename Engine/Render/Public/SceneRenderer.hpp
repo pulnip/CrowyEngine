@@ -84,18 +84,12 @@ namespace Crowy
             return static_cast<u32>(views.size());
         }
         usize PipelineCount() const noexcept { return pipelines.Count(); }
-        // every cached pipeline, recompiled from disk (PipelineCache::Rebuild)
         PipelineRebuild ReloadPipelines() { return pipelines.Rebuild(); }
-        // the cache every draw list resolves through
         auto& Pipelines(this auto& self) noexcept { return self.pipelines; }
 
-        // every material, texture and enabled light row once for every
-        // list, each material's map IDs resolved from its handles, the
-        // environment into every view; given a map size, the first
-        // shadow-casting directional light fitted into row ShadowView, which
-        // is otherwise left empty and unculled; forgets last frame's culls
+        // packs every row once for all lists and, given a map size, fits the
+        // shadow into row ShadowView; forgets last frame's culls
         void BeginFrame(const RenderScene& scene, u32 shadowMapSize = 0);
-        // culled on the view's first request of the frame
         const VisibleSet& Visible(u32 viewIndex);
         // the materials, the textures, the lights and the views
         void Upload();

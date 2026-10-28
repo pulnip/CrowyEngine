@@ -8,25 +8,21 @@
 #include "RHIDefinitions.hpp"
 
 // The fullscreen entries after the scene passes, as data: each reads the
-// colour the chain has so far, and the last one writes the output.
+// color the chain has so far, and the last one writes the output.
 namespace Crowy
 {
     struct PostPassDesc;
 
     // which side of the tone map an entry's output lies on
     enum class PostOutput : u8 {
-        // linear radiance, in scene colour's format
+        // linear radiance, in scene color's format
         Scene,
         // display values, RGBA8_UNORM
         Display,
     };
 
-    // One fullscreen pass per entry: entry i reads the previous output
-    // (scene colour for the first) and its inputs, and writes `output` if
-    // last, else a lazily added intermediate of its class, sized as scene
-    // colour, that is not its source. sceneColor names a target of desc and
-    // output the back buffer or another one. Throws std::invalid_argument
-    // naming the entry and the rule a list breaks, leaving desc as it was.
+    // entry i reads the previous output, or scene color, and writes `output`
+    // if last; a refused list throws and leaves desc as it was
     void appendPostChain(
         FrameGraphDesc& desc,
         FrameTargetID sceneColor,
@@ -45,7 +41,6 @@ namespace Crowy
         // the VS is Fullscreen.slang's
         RHIShaderDesc fragmentShader;
         PostOutput output = PostOutput::Display;
-        // further named targets, bound in order after the source
         std::vector<Str> inputs;
         Vec4 params{};
 

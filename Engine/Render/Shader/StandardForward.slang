@@ -1,6 +1,3 @@
-// The standard passes' fragment entries: a material's surface, shaded by
-// the model it links, and a Masked one's cut.
-
 #include "ForwardShading.slang"
 
 [shader("fragment")]

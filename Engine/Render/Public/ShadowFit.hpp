@@ -8,27 +8,24 @@
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 
-// The directional shadow's view, device-free. The struct comes before the
-// function because the function returns it.
+// device-free; the struct precedes the function that returns it
 namespace Crowy
 {
     struct DirectionalShadowFit {
         // world to the shadow view's clip space; view row 1's viewProj
         Mat4 worldToShadow = unitMat();
-        // world metres per texel, the same along both axes
+        // world metres per texel
         f32 texelSize = 0.0f;
         // the light-space depths clip z 0 and 1 stand for
         f32 nearZ = 0.0f;
         f32 farZ = 0.0f;
     };
 
-    // an orthographic view down `travel` holding `bounds` whole, square texels
     inline DirectionalShadowFit fitDirectionalShadow(
         Vec3 travel,
         const AABB3D& bounds,
         u32 mapSize
     ) {
-        // a point-sized scene still gets a map with a size
         constexpr f32 MinExtent = 0.01f;
         constexpr f32 Infinity = std::numeric_limits<f32>::infinity();
 

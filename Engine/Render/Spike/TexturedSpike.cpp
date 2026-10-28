@@ -13,25 +13,8 @@
 
 namespace Crowy
 {
-    // Regression check for textures through the standard pipeline, with
-    // textures written by code so it needs no content:
-    //
-    //   - a box sampling a 4 x 4 palette with the nearest sampler: sixteen
-    //     flat cells per face, hard edges, no blend between cells
-    //   - a quad sampling the middle quarter of a 256 x 256 gradient grid
-    //     through the material's UV scale and offset, linearly filtered
-    //   - a black quad whose emission is one palette cell
-    //   - two floor tiles in a floating plate's shadow: the left receives it
-    //   and
-    //     goes dark, the right refuses it (MaterialFlags::NoShadowReceive)
-    //     and stays as lit as the floor in the sun
-    //   - a translucent card whose texel alpha steps 1/4, 1/2, 3/4, 1: four
-    //     bands of red over the floor, the last one solid
-    //   - a masked card, a green frame cut at its row's 0.6: the magenta
-    //     middle (alpha 0 and 1/2) shows the floor, in its shadow too
-    //
-    //   PASS: the picture equals the golden, and the one drawn with
-    //   debug.depthPrepass off.
+    // textures written by code, so it needs no content; PASS: the picture
+    // equals the golden, and the one drawn with debug.depthPrepass off
     class TexturedSpike: public RenderApp {
         static constexpr u32 PaletteSize = 4;
         static constexpr u32 GridSize = 256;

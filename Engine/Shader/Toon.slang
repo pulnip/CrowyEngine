@@ -1,6 +1,5 @@
 // Cel shading after Godot's DIFFUSE_TOON: a terminator band as wide as the
 // roughness, a hard highlight disc and a rim, over a flat shade tint.
-//
 // custom0 = (shadowThreshold, highlightSize, rimStrength, rimWidth)
 // custom1 = (shadeTint.rgb, unused); ToonLanes in ShadingModel.hpp mirrors it
 import Shading;
@@ -13,9 +12,8 @@ struct ToonShading : IShadingModel {
         float NoL = dot(s.normal, light.direction);
         float w = max(s.roughness, 0.01);
 
-        // Inside the band the shadow map's own terminator would land mid-ramp
-        // as texel stairs, so there the band alone shades. A light in full
-        // shadow is the directional one, whose falloff is 1.
+        // in the band the map's terminator lands mid-ramp as texel stairs, so
+        // the band alone shades; a fully shadowed light is directional, falloff 1
         float unshadowed = light.shadow > 0.0 ? light.attenuation / light.shadow : 1.0;
         // the engine never thresholds attenuation; this model does
         float lit = step(s.custom0.x, NoL < w ? unshadowed : light.attenuation);

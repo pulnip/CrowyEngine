@@ -21,7 +21,6 @@ namespace Crowy
         // mirror of the depth view's curve, DebugView.slang
         constexpr f32 DepthViewExponent = 100.0f;
 
-        // calls convert(texel, out) on every texel, row by row
         template<typename Convert>
         void eachTexel(
             std::span<const u8> bytes,
@@ -44,7 +43,6 @@ namespace Crowy
             }
         }
 
-        // [0, 1] to 0..255, rounded to nearest; NaN is 0
         constexpr u8 unorm8(f32 value) {
             if(!(value > 0.0f))
                 return 0;

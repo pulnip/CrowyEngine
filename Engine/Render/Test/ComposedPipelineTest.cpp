@@ -13,8 +13,7 @@
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
 
-// A second pipeline composed from Engine/Render/Public alone: the round's
-// neutrality rule checked before any style exists.
+// a second pipeline composed from Engine/Render/Public alone
 using namespace Crowy;
 
 namespace

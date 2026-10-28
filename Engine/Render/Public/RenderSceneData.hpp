@@ -7,7 +7,6 @@
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 
-// Everything the GPU reads.
 namespace Crowy
 {
     // the RHI slot a pass binds its ViewData row at: `view`, `b1`
@@ -19,7 +18,6 @@ namespace Crowy
         Mat4 world = unitMat();
         u32 materialIndex = 0;
         // survives culling, unlike drawID
-        // drawID와 달리 컬링 후에도 살아남는 식별자
         u32 objectID = 0;
         // first pool row of this mesh's vertices: the draws pass baseVertex 0,
         // because SV_VertexID adds it on Metal but not on D3D12
@@ -41,10 +39,9 @@ namespace Crowy
         // a ShadowFilter
         u32 shadowFilter = 0;
         u32 _pad0[2]{};
-        // xyz = camera position, w unused
         Vec4 cameraPosition{};
-        // xyz, w unused: the scene's hemisphere, sky facing up and ground
-        // facing down; equal colours are a flat ambient
+        // the scene's hemisphere, sky facing up and ground facing down; equal
+        // colors are a flat ambient
         Vec4 skyAmbient{};
         Vec4 groundAmbient{};
 

@@ -1,5 +1,5 @@
 // VertexPullSpike's proof of a fullscreen pass that loads a target on a GPU:
-// one that reads the depth target and blends nothing onto the scene colour
+// one that reads the depth target and blends nothing onto the scene color
 // must leave the picture Present copies out byte for byte.
 
 #include "Fullscreen.slang"

@@ -59,7 +59,7 @@ struct LightData{
     // unit, the way the light travels
     float3 direction;
     uint kind;
-    // colour x intensity
+    // color x intensity
     float3 color;
     uint shadowIndex;
     float coneScale;
@@ -97,9 +97,8 @@ DrawData loadDraw(uint drawID){
     return draws[pass.drawBase + drawID];
 }
 
-// SV_VertexID is the raw index value: Metal folds the draw's baseVertex into
-// it and D3D12 does not, so the pool row comes from the draw instead.
-// VertexPullSpike is the regression check for this contract.
+// Metal folds the draw's baseVertex into SV_VertexID and D3D12 does not,
+// so the pool row comes from the draw (VertexPullSpike checks it)
 Vertex loadVertex(DrawData draw, uint vertexID){
     StructuredBuffer<Vertex> vertices = pass.vertices;
 

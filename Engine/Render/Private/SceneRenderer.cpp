@@ -53,7 +53,6 @@ namespace Crowy
             return row;
         }
 
-        // the union of every visible caster's bounds; none, no bounds
         std::optional<AABB3D> casterBounds(const PrimitiveTable& primitives) {
             constexpr auto VisibleCaster =
                 combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow);
@@ -134,7 +133,6 @@ namespace Crowy
             );
         }
 
-        // the first enabled directional light that casts, if any
         const LightSnapshot* caster = nullptr;
         usize casterRow = 0;
         lightScratch.clear();

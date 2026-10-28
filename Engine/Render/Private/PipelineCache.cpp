@@ -90,8 +90,6 @@ namespace Crowy
             desc.rasterizer.slopeScaledDepthBias =
                 state.depthBias->slopeScaledDepthBias;
         }
-        // no blend, and no fragment stage but a Masked material's cut:
-        // materials that rasterize alike share one depth-only pipeline
         if(depthOnly) {
             if(material.domain == MaterialDomain::Masked) {
                 CROWY_ASSERT(
@@ -118,8 +116,6 @@ namespace Crowy
             pass.renderTargetFormats,
             desc.renderTargetFormats.begin()
         );
-        // after the depth-only return: a depth program, cut or not, calls no
-        // model, so every model shares its pipeline
         if(state.linksShading && !material.shadingModule.empty())
             desc.linkedModules.push_back(material.shadingModule);
 

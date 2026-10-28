@@ -1,4 +1,4 @@
-// The surface's own colour and its emission; the light loop compiles to
+// The surface's own color and its emission; the light loop compiles to
 // nothing once this is linked.
 import Shading;
 
