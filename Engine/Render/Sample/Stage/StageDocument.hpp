@@ -7,7 +7,9 @@
 #include <vector>
 
 #include "DomTraits.hpp"
+#include "EnumUtil.hpp"
 #include "Primitives.hpp"
+#include "StringUtil.hpp"
 
 // Backlot's scene file (its docs/scene-format.md), read as written: meters
 // and degrees, colors decoded to linear light.
@@ -97,6 +99,29 @@ namespace Crowy
         Point,
         Spot,
     };
+
+    // clang-format off
+    CROWY_ENUM_BEGIN(StageMaterialKind)
+        CROWY_ENUM_VALUE(Opaque)
+        CROWY_ENUM_VALUE(Masked)
+    CROWY_ENUM_END()
+
+    CROWY_ENUM_BEGIN(StageSampler)
+        CROWY_ENUM_VALUE(Point)
+        CROWY_ENUM_VALUE(Linear)
+    CROWY_ENUM_END()
+
+    CROWY_ENUM_BEGIN(StageLightKind)
+        CROWY_ENUM_VALUE(Point)
+        CROWY_ENUM_VALUE(Spot)
+    CROWY_ENUM_END()
+    // clang-format on
+
+    // the scene file's spelling
+    template<EnumType E>
+    inline Str stageName(E value) {
+        return lower(enumName(value));
+    }
 
     struct StageModel {
         Str id;

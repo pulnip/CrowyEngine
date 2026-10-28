@@ -62,12 +62,16 @@ namespace Crowy
     }
 
     bool BodyPrimitiveSync::isBound(PrimitiveHandle primitive) const {
-        const auto holds = [&](const auto& list, auto member) {
-            return std::ranges::find(list, primitive, member) != list.end();
-        };
-
-        return holds(bindings, &BodyBinding::primitive) ||
-               holds(tethers, &TetherBinding::primitive);
+        return std::ranges::contains(
+                   bindings,
+                   primitive,
+                   &BodyBinding::primitive
+               ) ||
+               std::ranges::contains(
+                   tethers,
+                   primitive,
+                   &TetherBinding::primitive
+               );
     }
 
     // released, it hides where it last stood

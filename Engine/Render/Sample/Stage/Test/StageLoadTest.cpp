@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "StageLoad.hpp"
@@ -32,17 +33,15 @@ TEST(StageLoad, RecognizesAnLfsPointer) {
 }
 
 TEST(StageLoad, MissingRootThrowsNamingTheFile) {
-    try {
-        loadStage(
-            std::filesystem::temp_directory_path() /
-            "StageLoadTest_no_such_root"
-        );
-        FAIL() << "expected a throw";
-    }
-    catch(const std::runtime_error& error) {
-        EXPECT_NE(
-            std::string_view(error.what()).find("scene.json"),
-            std::string_view::npos
-        );
-    }
+    EXPECT_THAT(
+        [] {
+            loadStage(
+                std::filesystem::temp_directory_path() /
+                "StageLoadTest_no_such_root"
+            );
+        },
+        testing::ThrowsMessage<std::runtime_error>(
+            testing::HasSubstr("scene.json")
+        )
+    );
 }

@@ -1,13 +1,14 @@
 #include "StageLoad.hpp"
 
 #include <algorithm>
-#include <chrono>
 #include <format>
 #include <fstream>
 #include <set>
 #include <stdexcept>
 #include <string>
 
+#include "EnumUtil.hpp"
+#include "GeometryPool.hpp"
 #include "LinearAlgebra.hpp"
 #include "MeshGenerator.hpp"
 #include "MipChain.hpp"
@@ -17,18 +18,6 @@ namespace Crowy
 {
     namespace
     {
-        using Clock = std::chrono::steady_clock;
-
-        // the OffsetAllocator rounds a request up to its bin but files a free
-        // region rounded down, so an exact capacity can still refuse
-        constexpr u32 withPoolSlack(u64 elements) noexcept {
-            return static_cast<u32>(elements + elements / 8 + 1024);
-        }
-
-        f64 secondsSince(Clock::time_point start) {
-            return std::chrono::duration<f64>(Clock::now() - start).count();
-        }
-
         void requireContent(const std::filesystem::path& file) {
             if(!std::filesystem::exists(file))
                 throw std::runtime_error(
@@ -63,7 +52,7 @@ namespace Crowy
             return models[static_cast<usize>(row - table.begin())];
         }
 
-        u32 materialsOf(
+        u32 countMaterials(
             const StageDocument& document,
             const StageModels& table,
             const StageModelData& models
@@ -92,7 +81,7 @@ namespace Crowy
             );
         }
 
-        u64 drawsOf(
+        u64 countDraws(
             const StageDocument& document,
             const StageModels& table,
             const StageModelData& models
@@ -116,14 +105,11 @@ namespace Crowy
                 }
             }
 
-            const auto draws =
-                drawsOf(stage.document, stage.document.models, stage.models);
-
             return StageCapacities{
-                .vertices = withPoolSlack(vertices),
-                .indices = withPoolSlack(indices),
+                .vertices = geometryPoolCapacityFor(vertices),
+                .indices = geometryPoolCapacityFor(indices),
                 .materials = countStageMaterials(stage),
-                .draws = static_cast<u32>(draws),
+                .draws = countStageDraws(stage),
                 .stagingBytes = staging
             };
         }
@@ -141,6 +127,19 @@ namespace Crowy
                head == Signature;
     }
 
+    std::optional<std::filesystem::path> missingStageContent(
+        const std::filesystem::path& root
+    ) {
+        if(const auto scene = root / StageScenePath;
+           !std::filesystem::exists(scene))
+            return scene;
+        if(const auto palette = root / "Unity/Assets/Art/Textures/Palette.png";
+           std::filesystem::exists(palette) && isLfsPointer(palette))
+            return palette;
+
+        return std::nullopt;
+    }
+
     LoadedStage loadStage(const std::filesystem::path& root) {
         return loadStage(root, root / StageScenePath);
     }
@@ -151,22 +150,17 @@ namespace Crowy
     ) {
         LoadedStage stage;
 
-        auto start = Clock::now();
         requireContent(sceneFile);
         stage.document = loadStageDocument(root, sceneFile);
         stage.sprites = loadStageSprites(stage.document);
-        stage.timings.documentSeconds = secondsSince(start);
 
-        start = Clock::now();
         stage.models.reserve(stage.document.models.size());
         for(const auto& row: stage.document.models) {
             const auto file = resolveStagePath(stage.document, row.path);
             requireContent(file);
             stage.models.push_back(loadModel(file));
         }
-        stage.timings.modelSeconds = secondsSince(start);
 
-        start = Clock::now();
         for(const auto& material: stage.document.materials) {
             if(stage.images.contains(material.texture))
                 continue;
@@ -181,7 +175,6 @@ namespace Crowy
                 generateMipChain(image);
             stage.images.emplace(material.texture, std::move(image));
         }
-        stage.timings.imageSeconds = secondsSince(start);
 
         stage.unitQuad = makeStageUnitQuad();
         stage.capacities = capacitiesOf(stage);
@@ -212,11 +205,11 @@ namespace Crowy
 
             const auto& animations =
                 sprites.at(quad.flipbook->sprite).animations;
-            if(std::ranges::find(
+            if(!std::ranges::contains(
                    animations,
                    quad.flipbook->animation,
                    &StageSpriteAnimation::name
-               ) == animations.end()) {
+               )) {
                 throw std::runtime_error(
                     std::format(
                         "stage: quad '{}' plays '{}', which {} does not hold",
@@ -263,8 +256,7 @@ namespace Crowy
                         "did not upload so at launch; a restart loads it",
                         material.id,
                         material.texture,
-                        material.sampler == StageSampler::Point ? "point"
-                                                                : "linear"
+                        stageName(material.sampler)
                     )
                 );
             }
@@ -298,8 +290,9 @@ namespace Crowy
                 "stage: no model draws with a material that does not glow"
             );
 
-        const auto materials = materialsOf(document, models, launched.models);
-        const auto draws = drawsOf(document, models, launched.models);
+        const auto materials =
+            countMaterials(document, models, launched.models);
+        const auto draws = countDraws(document, models, launched.models);
         const auto& reserved = launched.capacities;
         if(materials > reserved.materials || draws > reserved.draws) {
             throw std::runtime_error(
@@ -335,7 +328,17 @@ namespace Crowy
     }
 
     u32 countStageMaterials(const LoadedStage& stage) {
-        return materialsOf(stage.document, stage.document.models, stage.models);
+        return countMaterials(
+            stage.document,
+            stage.document.models,
+            stage.models
+        );
+    }
+
+    u32 countStageDraws(const LoadedStage& stage) {
+        return static_cast<u32>(
+            countDraws(stage.document, stage.document.models, stage.models)
+        );
     }
 
     MeshData makeStageUnitQuad() {

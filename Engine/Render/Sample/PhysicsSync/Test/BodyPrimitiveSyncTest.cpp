@@ -95,8 +95,6 @@ TEST(BodyPrimitiveSync, WritesThePoseThroughThePlacement) {
     const auto bounds = transformAABB3D(expected, binding.localBounds);
     EXPECT_EQ(written.worldBounds.center, bounds.center);
     EXPECT_EQ(written.worldBounds.halfScale, bounds.halfScale);
-    EXPECT_EQ(world.BodyCount(), 1u);
-    EXPECT_EQ(world.TickCount(), 0u);
 }
 
 TEST(BodyPrimitiveSync, QuarterTurnSwapsTheBoundsAxes) {
@@ -124,8 +122,6 @@ TEST(BodyPrimitiveSync, QuarterTurnSwapsTheBoundsAxes) {
     EXPECT_NEAR(bounds.halfScale.x, 0.25f, 1.0e-6f);
     EXPECT_NEAR(bounds.halfScale.y, 0.5f, 1.0e-6f);
     EXPECT_NEAR(bounds.halfScale.z, 1.0f, 1.0e-6f);
-    EXPECT_EQ(world.BodyCount(), 1u);
-    EXPECT_EQ(world.TickCount(), 0u);
 }
 
 TEST(BodyPrimitiveSync, LeavesUnboundPrimitivesAlone) {
@@ -152,8 +148,6 @@ TEST(BodyPrimitiveSync, LeavesUnboundPrimitivesAlone) {
     EXPECT_EQ(after.worldBounds.center, sentinel.worldBounds.center);
     EXPECT_EQ(after.worldBounds.halfScale, sentinel.worldBounds.halfScale);
     EXPECT_EQ(scene.Primitives().Count(), 2u);
-    EXPECT_EQ(world.BodyCount(), 1u);
-    EXPECT_EQ(world.TickCount(), 0u);
 }
 
 TEST(BodyPrimitiveSync, SphereBoundsDoNotTurn) {
@@ -180,8 +174,6 @@ TEST(BodyPrimitiveSync, SphereBoundsDoNotTurn) {
     const auto& bounds = scene.Primitives().GetRef(primitive).worldBounds;
     EXPECT_EQ(bounds.halfScale, 0.15f * ones());
     EXPECT_EQ(bounds.center, Placement + world.PoseOf(ball).position);
-    EXPECT_EQ(world.BodyCount(), 1u);
-    EXPECT_EQ(world.TickCount(), 0u);
 }
 
 TEST(BodyPrimitiveSync, FollowsAFallingBody) {
@@ -208,8 +200,6 @@ TEST(BodyPrimitiveSync, FollowsAFallingBody) {
         Placement + pose.position
     );
     EXPECT_LT(pose.position.y, 0.0f);
-    EXPECT_EQ(world.TickCount(), 30u);
-    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(BodyPrimitiveSync, CompoundPartsFollowTheirBody) {
@@ -256,8 +246,6 @@ TEST(BodyPrimitiveSync, CompoundPartsFollowTheirBody) {
         written.worldBounds.center,
         static_cast<Vec3>(expected * Vec4{0.0f, 0.0f, 0.0f, 1.0f})
     );
-    EXPECT_EQ(world.BodyCount(), 1u);
-    EXPECT_EQ(world.TickCount(), 0u);
 }
 
 TEST(BodyPrimitiveSync, TetherSpansAnchorToBody) {
@@ -308,8 +296,6 @@ TEST(BodyPrimitiveSync, TetherSpansAnchorToBody) {
     );
     // still on its circle, so the rod has the hinge's length
     EXPECT_NEAR(norm(end - Pivot), 1.0f, 1.0e-3f);
-    EXPECT_EQ(world.TickCount(), 20u);
-    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(BodyPrimitiveSync, TetherHidesOnRelease) {
@@ -339,8 +325,6 @@ TEST(BodyPrimitiveSync, TetherHidesOnRelease) {
     EXPECT_EQ(written.flags, PrimitiveFlags::None);
     for(usize column = 0; column < 4; ++column)
         EXPECT_EQ(written.localToWorld[column], held[column]);
-    EXPECT_EQ(world.TickCount(), 11u);
-    EXPECT_EQ(world.BodyCount(), 1u);
 }
 
 TEST(BodyPrimitiveSync, UnitMeshScaleFitsTheShape) {

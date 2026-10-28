@@ -29,6 +29,12 @@ namespace Crowy
     inline constexpr u64 GeometryStagingBudget = 24ull << 20;
     static_assert(GeometryStagingBudget < TransientStagingBytes);
 
+    // the OffsetAllocator rounds a request up to its bin but files a free
+    // region rounded down, so an exact capacity can still refuse
+    inline constexpr u32 geometryPoolCapacityFor(u64 elements) noexcept {
+        return static_cast<u32>(elements + elements / 8 + 1024);
+    }
+
     // what one mesh takes of a frame's staging
     inline constexpr u64 geometryStagingBytes(
         usize vertexCount,

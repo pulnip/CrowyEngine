@@ -5,6 +5,7 @@
 #include <numbers>
 #include <sstream>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "BacklotContent.hpp"
@@ -51,45 +52,10 @@ namespace
 
         return populateStage(scene, stage, geometry, textures);
     }
-
-    // Backlot's inventory per lighting key
-    struct KeyInventory {
-        CStr key = "";
-        usize instances = 0;
-        u64 triangles = 0;
-        usize lights = 0;
-    };
 }
 
 // the rows each key shows, without a device
 TEST(BacklotScene, EachKeyShowsItsInventory) {
-    constexpr std::array Inventory{
-        KeyInventory{
-            .key = "day",
-            .instances = 1328,
-            .triangles = 466462,
-            .lights = 0
-        },
-        KeyInventory{
-            .key = "evening",
-            .instances = 1439,
-            .triangles = 469102,
-            .lights = 31
-        },
-        KeyInventory{
-            .key = "sunset",
-            .instances = 1439,
-            .triangles = 469102,
-            .lights = 31
-        },
-        KeyInventory{
-            .key = "night",
-            .instances = 1488,
-            .triangles = 470566,
-            .lights = 31
-        },
-    };
-
     const auto& stage = backlotStage();
     const auto& document = stage.document;
     RenderScene scene;
@@ -102,7 +68,7 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
             PrimitiveFlags::Visible
         );
     };
-    for(const auto& expected: Inventory) {
+    for(const auto& expected: BacklotKeys) {
         applyStageKey(
             scene,
             bindings,
@@ -135,7 +101,7 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
 
         EXPECT_EQ(instances, expected.instances) << expected.key;
         EXPECT_EQ(triangles, expected.triangles) << expected.key;
-        EXPECT_EQ(quads, 161) << expected.key;
+        EXPECT_EQ(static_cast<usize>(quads), BacklotKeyedQuads) << expected.key;
         EXPECT_EQ(static_cast<usize>(lights), expected.lights) << expected.key;
     }
 }
@@ -144,7 +110,7 @@ TEST(BacklotScene, EachKeyShowsItsInventory) {
 TEST(BacklotScene, TheSignAndGameAtlasesAreMasked) {
     RenderScene scene;
     const auto bindings = populateBacklot(scene);
-    ASSERT_EQ(bindings.quadMaterials.size(), 179u);
+    ASSERT_EQ(bindings.quadMaterials.size(), BacklotQuads);
 
     const auto masked = std::ranges::count_if(
         bindings.quadMaterials,
@@ -170,7 +136,7 @@ TEST(BacklotScene, CutsTakeTheEnginesSignsAndFittedNearPlanes) {
     const auto named = [&](StrView name) -> const StageCut& {
         return *std::ranges::find(cuts, name, &StageCut::name);
     };
-    ASSERT_EQ(cuts.size(), 8u);
+    ASSERT_EQ(cuts.size(), backlotStage().document.cameras.size());
 
     const auto& establishing = named("establishing");
     EXPECT_NEAR(establishing.yaw, std::numbers::pi_v<f32> / 4, 1e-4f);
@@ -220,14 +186,12 @@ TEST(BacklotScene, TheSceneFileReloadsOverTheLaunch) {
         "Models/Street/StreetLamp.fbx",
         "Models/Street/StreetLampMoved.fbx"
     );
-    try {
-        reloadStageDocument(launched, otherModel);
-        ADD_FAILURE() << "a model the launch did not load was accepted";
-    }
-    catch(const std::runtime_error& error) {
-        const StrView message = error.what();
-        EXPECT_NE(message.find("StreetLamp"), StrView::npos) << message;
-        EXPECT_NE(message.find("restart"), StrView::npos) << message;
-    }
+    EXPECT_THAT(
+        [&] { reloadStageDocument(launched, otherModel); },
+        testing::ThrowsMessage<std::runtime_error>(testing::AllOf(
+            testing::HasSubstr("StreetLamp"),
+            testing::HasSubstr("restart")
+        ))
+    );
     std::filesystem::remove(otherModel);
 }

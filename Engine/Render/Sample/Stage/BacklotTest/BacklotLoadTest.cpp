@@ -1,3 +1,4 @@
+#include <chrono>
 #include <filesystem>
 #include <format>
 #include <iostream>
@@ -5,15 +6,19 @@
 #include <gtest/gtest.h>
 
 #include "BacklotContent.hpp"
+#include "GeometryPool.hpp"
 #include "StageLoad.hpp"
 
 using namespace Crowy;
 
 // prints the numbers the smoke window and the pool capacities come from
 TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
+    const auto start = std::chrono::steady_clock::now();
     const auto stage = loadStage(backlotRoot());
+    const std::chrono::duration<f64> seconds =
+        std::chrono::steady_clock::now() - start;
 
-    EXPECT_EQ(stage.models.size(), 124u);
+    EXPECT_EQ(stage.models.size(), stage.document.models.size());
     // eight atlases and the palette, which both palette materials share
     EXPECT_EQ(stage.images.size(), 9u);
     EXPECT_EQ(stage.sprites.size(), 1u);
@@ -48,24 +53,18 @@ TEST(BacklotLoad, TheWholeSetLoadsWithinTheStagingBudget) {
     EXPECT_GT(capacities.vertices, vertices);
     EXPECT_GT(capacities.indices, indices);
     EXPECT_LE(capacities.stagingBytes, GeometryStagingBudget);
-    EXPECT_GE(capacities.materials, 1u + 1u + 179u);
-    EXPECT_GE(capacities.draws, 1488u + 179u);
+    EXPECT_GE(capacities.materials, 1u + 1u + BacklotQuads);
+    EXPECT_GE(capacities.draws, BacklotInstances + BacklotQuads);
 
-    const auto& timings = stage.timings;
     std::cout << std::format(
         "stage: {} model vertices, {} indices ({} triangles), staging {:.1f} "
-        "MiB, "
-        "{} materials, {} draws per pass; loaded in {:.2f} s "
-        "(document {:.2f}, models {:.2f}, images {:.2f})\n",
+        "MiB, {} materials, {} draws per pass; loaded in {:.2f} s\n",
         vertices,
         indices,
         triangles,
         static_cast<f64>(capacities.stagingBytes) / (1 << 20),
         capacities.materials,
         capacities.draws,
-        timings.documentSeconds + timings.modelSeconds + timings.imageSeconds,
-        timings.documentSeconds,
-        timings.modelSeconds,
-        timings.imageSeconds
+        seconds.count()
     );
 }

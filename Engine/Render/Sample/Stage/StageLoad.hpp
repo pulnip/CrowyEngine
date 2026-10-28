@@ -2,9 +2,9 @@
 
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <vector>
 
-#include "GeometryPool.hpp"
 #include "ImageLoader.hpp"
 #include "MeshData.hpp"
 #include "ModelLoader.hpp"
@@ -21,6 +21,11 @@ namespace Crowy
     using StageSprites = std::map<Str, StageSprite>;
 
     bool isLfsPointer(const std::filesystem::path& file);
+    // the file that keeps the checkout at `root` from loading at all: no scene
+    // file, or a palette still a Git LFS pointer
+    std::optional<std::filesystem::path> missingStageContent(
+        const std::filesystem::path& root
+    );
 
     // everything the scene file names, on the CPU; throws std::runtime_error
     // naming the file or row it cannot use
@@ -48,6 +53,7 @@ namespace Crowy
 
     // the palette, the emissive palette per channel in use, one per quad
     u32 countStageMaterials(const LoadedStage& stage);
+    u32 countStageDraws(const LoadedStage& stage);
     // a unit square facing +Z, u along -X and v down: the contract's corner
     // for (u0, v0) is its front's top-left
     MeshData makeStageUnitQuad();
@@ -64,12 +70,6 @@ namespace Crowy
         u64 stagingBytes = 0;
     };
 
-    struct StageLoadTimings {
-        f64 documentSeconds = 0.0;
-        f64 modelSeconds = 0.0;
-        f64 imageSeconds = 0.0;
-    };
-
     struct LoadedStage {
         StageDocument document;
         // parallel to document.models, kept after upload for picking
@@ -83,7 +83,6 @@ namespace Crowy
         // makeStageUnitQuad's, shared by every quad
         MeshData unitQuad;
         StageCapacities capacities;
-        StageLoadTimings timings;
     };
 
     // what a reload replaces; the rest of LoadedStage stays

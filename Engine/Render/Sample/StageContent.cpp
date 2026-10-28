@@ -175,7 +175,7 @@ namespace Crowy
     }
 
     std::expected<void, Str> StageContent::ReadScene(StrView file) {
-        auto path = toPath(Str(file).c_str());
+        auto path = toPath(file);
         if(path.is_relative())
             path = stage.document.root / path;
         try {
@@ -289,8 +289,7 @@ namespace Crowy
                 EditorObject{
                     .name = std::format("light/{}", light.name),
                     .group = std::format("Lights · {}", light.group),
-                    .detail =
-                        light.kind == StageLightKind::Spot ? "spot" : "point"
+                    .detail = stageName(light.kind)
                 },
                 std::nullopt,
                 bindings.lights[i]

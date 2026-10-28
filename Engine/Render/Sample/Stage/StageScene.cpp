@@ -9,8 +9,10 @@
 #include "EnumUtil.hpp"
 #include "Expected.hpp"
 #include "Geometry/Overlap3D.hpp"
+#include "MeshData.hpp"
 #include "RHIDevice.hpp"
 #include "RHITexture.hpp"
+#include "StringUtil.hpp"
 
 namespace Crowy
 {
@@ -84,7 +86,7 @@ namespace Crowy
         }
 
         bool showsIn(const StageNames& keys, StrView key) {
-            return keys.empty() || std::ranges::find(keys, key) != keys.end();
+            return keys.empty() || std::ranges::contains(keys, key);
         }
 
         f32 scaleNamed(const StageScales& scales, StrView name) {
@@ -109,7 +111,7 @@ namespace Crowy
 
         // one mesh per model, or per model and channel when it glows: the
         // emissive slot draws with that channel's material
-        MeshHandle meshOf(
+        MeshHandle findOrAddMesh(
             RenderScene& scene,
             const LoadedStage& stage,
             const StageGeometry& geometry,
@@ -271,10 +273,9 @@ namespace Crowy
         const StageTextureHandles& textures
     ) {
         // the unit quad is a plane; a sliver of depth keeps its box whole
-        constexpr AABB3D UnitQuadBounds{
-            .center = {0.0f, 0.0f, 0.0f},
-            .halfScale = {0.5f, 0.5f, 0.001f}
-        };
+        auto unitQuadBounds = boundsOf(stage.unitQuad.vertices);
+        unitQuadBounds.halfScale.z =
+            std::max(unitQuadBounds.halfScale.z, 0.001f);
 
         const auto& document = stage.document;
         StageBindings bindings;
@@ -329,7 +330,7 @@ namespace Crowy
         MeshCache meshes;
         for(const auto& instance: document.instances) {
             const auto model = modelIndex(document, instance.model);
-            const auto mesh = meshOf(
+            const auto mesh = findOrAddMesh(
                 scene,
                 stage,
                 geometry,
@@ -356,10 +357,10 @@ namespace Crowy
                 MeshResource{
                     .subMeshes = {SubMesh{
                         .geometry = geometry.unitQuad,
-                        .localBounds = UnitQuadBounds
+                        .localBounds = unitQuadBounds
                     }},
                     .materials = {bindings.quadMaterials[i]},
-                    .localBounds = UnitQuadBounds
+                    .localBounds = unitQuadBounds
                 }
             );
             const auto localToWorld = quadToWorld(document.quads[i]);
@@ -367,7 +368,7 @@ namespace Crowy
                 PrimitiveSnapshot{
                     .localToWorld = localToWorld,
                     .worldBounds =
-                        transformAABB3D(localToWorld, UnitQuadBounds),
+                        transformAABB3D(localToWorld, unitQuadBounds),
                     .mesh = mesh
                 }
             ));
@@ -443,11 +444,12 @@ namespace Crowy
             &StageLightingKey::name
         );
         if(found == document.lightingKeys.end()) {
-            Str names;
-            for(const auto& key: document.lightingKeys)
-                names += names.empty() ? key.name : ", " + key.name;
             throw std::runtime_error(
-                std::format("no lighting key '{}'; there are {}", name, names)
+                std::format(
+                    "no lighting key '{}'; there are {}",
+                    name,
+                    join(document.lightingKeys, ", ", &StageLightingKey::name)
+                )
             );
         }
 

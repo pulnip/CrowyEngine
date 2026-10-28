@@ -249,15 +249,15 @@ TEST(StageDocument, ATextureWithTwoSamplersThrows) {
 TEST(StageDocument, BadKindOrSamplerThrows) {
     expectRefusal(
         edited(R"("kind": "masked")", R"("kind": "cutout")"),
-        "kind 'cutout'"
+        "kind 'cutout'; the kinds are opaque, masked"
     );
     expectRefusal(
         edited(R"("sampler": "linear")", R"("sampler": "cubic")"),
-        "sampler 'cubic'"
+        "sampler 'cubic'; the samplers are point, linear"
     );
     expectRefusal(
         edited(R"("kind": "spot")", R"("kind": "area")"),
-        "kind 'area'"
+        "kind 'area'; the kinds are point, spot"
     );
 }
 

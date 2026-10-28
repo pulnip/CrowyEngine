@@ -15,6 +15,8 @@ PUBLIC
     Crowy::Reflection
     Crowy::Render
     Crowy::Serialization
+TEST_DEPENDS
+    Crowy::RenderTestSupport
 )
 
 if(CROWY_ENABLE_TEST)

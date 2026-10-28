@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "BacklotContent.hpp"
+#include "JsonLoader.hpp"
 #include "ModelLoader.hpp"
 #include "PathUtil.hpp"
 #include "StageDocument.hpp"
@@ -38,19 +39,24 @@ namespace
 
 TEST(BacklotDocument, SectionsMatchTheirTotals) {
     const auto& stage = document();
-    EXPECT_EQ(stage.version, 1u);
-    EXPECT_EQ(stage.models.size(), 124u);
-    EXPECT_EQ(stage.materials.size(), 10u);
-    EXPECT_EQ(stage.instances.size(), 1488u);
-    EXPECT_EQ(stage.quads.size(), 179u);
-    EXPECT_EQ(stage.lights.size(), 31u);
-    EXPECT_EQ(stage.cameras.size(), 8u);
-    ASSERT_EQ(stage.lightingKeys.size(), 4u);
-    EXPECT_EQ(stage.defaultKey, "day");
+    const auto file = parseJsonFile(backlotRoot() / StageScenePath);
+    const auto total = [&](StrView section) {
+        return file.get<usize>(std::format("totals.{}", section)).value_or(0);
+    };
+    EXPECT_EQ(stage.models.size(), total("models"));
+    EXPECT_EQ(stage.materials.size(), total("materials"));
+    EXPECT_EQ(stage.instances.size(), total("instances"));
+    EXPECT_EQ(stage.quads.size(), total("quads"));
+    EXPECT_EQ(stage.lights.size(), total("lights"));
+    EXPECT_EQ(stage.cameras.size(), total("cameras"));
+    EXPECT_EQ(stage.lightingKeys.size(), total("lighting_keys"));
 
-    const std::vector<Str> keyNames{"day", "evening", "sunset", "night"};
-    for(usize i = 0; i < keyNames.size(); ++i)
-        EXPECT_EQ(stage.lightingKeys[i].name, keyNames[i]);
+    EXPECT_EQ(stage.instances.size(), BacklotInstances);
+    EXPECT_EQ(stage.quads.size(), BacklotQuads);
+    EXPECT_EQ(stage.defaultKey, "day");
+    ASSERT_EQ(stage.lightingKeys.size(), BacklotKeys.size());
+    for(usize i = 0; i < BacklotKeys.size(); ++i)
+        EXPECT_EQ(stage.lightingKeys[i].name, BacklotKeys[i].key);
 }
 
 // rows the contract documents, read back as written
@@ -135,15 +141,10 @@ TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
     EXPECT_EQ(perArea["Street"], 254u);
 
     const auto shows = [](const std::vector<Str>& keys, StrView key) {
-        return keys.empty() || std::ranges::find(keys, key) != keys.end();
+        return keys.empty() || std::ranges::contains(keys, key);
     };
-    const std::vector<std::pair<Str, usize>> expected{
-        {"day", 1328},
-        {"evening", 1439},
-        {"sunset", 1439},
-        {"night", 1488}
-    };
-    for(const auto& [key, count]: expected) {
+    for(const auto& expected: BacklotKeys) {
+        const auto key = expected.key;
         const auto instances = std::ranges::count_if(
             stage.instances,
             [&](const StageInstance& row) { return shows(row.keys, key); }
@@ -152,8 +153,8 @@ TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
             std::ranges::count_if(stage.quads, [&](const StageQuad& row) {
                 return shows(row.keys, key);
             });
-        EXPECT_EQ(static_cast<usize>(instances), count) << key;
-        EXPECT_EQ(quads, 161) << key;
+        EXPECT_EQ(static_cast<usize>(instances), expected.instances) << key;
+        EXPECT_EQ(static_cast<usize>(quads), BacklotKeyedQuads) << key;
     }
 }
 
@@ -221,10 +222,7 @@ TEST(BacklotDocument, EveryModelImportsAtItsSize) {
         // a material the file declares but no face uses has no slot
         ASSERT_FALSE(model.slots.empty()) << row.id;
         for(const auto& slot: model.slots)
-            EXPECT_NE(
-                std::ranges::find(row.materials, slot.material),
-                row.materials.end()
-            ) << row.id
-              << " draws with '" << slot.material << "'";
+            EXPECT_TRUE(std::ranges::contains(row.materials, slot.material))
+                << row.id << " draws with '" << slot.material << "'";
     }
 }

@@ -31,17 +31,6 @@ namespace Crowy
             return toPath(CROWY_BACKLOT_DIR);
         }
 
-        // what the stage needs on disk; empty when it is all there
-        Str missingContent() {
-            for(const auto* relative:
-                {StageScenePath, "Unity/Assets/Art/Textures/Palette.png"}) {
-                const auto file = backlotRoot() / relative;
-                if(!std::filesystem::exists(file) || isLfsPointer(file))
-                    return toUTF8String(file);
-            }
-
-            return {};
-        }
     }
 
     // Backlot's film set under the editor; loaded before RenderApp exists,
@@ -319,11 +308,11 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     // the content is another repository: without it there is nothing to show
-    if(const auto missing = missingContent(); !missing.empty()) {
+    if(const auto missing = missingStageContent(backlotRoot())) {
         std::printf(
             "skipped: %s is missing or a Git LFS pointer (clone Backlot beside "
             "this repository and git lfs pull, or set CROWY_BACKLOT_DIR)\n",
-            missing.c_str()
+            toUTF8String(*missing).c_str()
         );
         return 77;
     }
