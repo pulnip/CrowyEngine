@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include <d3dx12/d3dx12_barriers.h>
@@ -9,6 +9,7 @@
 #include "DX12Definitions.hpp"
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
+#include "RHIReleaseLedger.hpp"
 
 namespace Crowy
 {
@@ -28,14 +29,6 @@ namespace Crowy
         };
 
     private:
-        // record-time CPU bookkeeping for pairing barrier halves, not GPU state
-        // tracking: list-local, so parallel recording keeps working
-        template<typename Barrier>
-        struct PendingRelease {
-            Barrier barrier;
-            bool consumed = false;
-        };
-
         CommandQueue& commandQueue;
         RootSignature& rootSignature;
         CommandSignature& drawSignature;
@@ -56,12 +49,7 @@ namespace Crowy
 
         // releases park here and each acquire fuses its matched pair into one
         // Enhanced Barrier recorded before the consumer
-        std::unordered_map<
-            const RHITexture*,
-            std::vector<PendingRelease<RHITextureBarrier>>>
-            pendingTextureReleases;
-        std::unordered_map<const RHIBuffer*, PendingRelease<RHIBufferBarrier>>
-            pendingBufferReleases;
+        RHIReleaseLedger<std::monostate> releases;
 
         DX12DescriptorHeapAllocator& cbvsrvuavHeap;
         DX12DescriptorHeapAllocator& rtvHeap;

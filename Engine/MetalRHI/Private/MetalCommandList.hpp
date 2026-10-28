@@ -2,7 +2,6 @@
 
 #include <array>
 #include <optional>
-#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -21,6 +20,7 @@ namespace MTL
 #include "MetalUtil.hpp"
 #include "RHIAPI.hpp"
 #include "RHICommandList.hpp"
+#include "RHIReleaseLedger.hpp"
 
 namespace Crowy
 {
@@ -76,19 +76,6 @@ namespace Crowy
             MTL::BlitCommandEncoder* encoder = nullptr;
         };
 
-        // record-time CPU bookkeeping for pairing barrier halves, not GPU state
-        // tracking: list-local, so parallel recording keeps working
-        template<typename Barrier>
-        struct PendingRelease {
-            Barrier barrier;
-            // updated by the producer's encoder; every acquire waits on it
-            // (multi-consumer means several waits on one fence - legal)
-            MTL::Fence* fence;
-            // an entry no acquire ever matched is a cross-submission
-            // hand-off - the device gates the following waves on it
-            bool consumed = false;
-        };
-
         // one wait per producer fence at Begin*Pass, syncAfter unioned
         // across the acquires that share it
         struct FenceWait {
@@ -126,12 +113,10 @@ namespace Crowy
         std::vector<NS::SharedPtr<MTL::Fence>> fencePool;
         usize fenceCursor = 0;
 
-        std::unordered_map<
-            const RHITexture*,
-            std::vector<PendingRelease<RHITextureBarrier>>>
-            pendingTextureReleases;
-        std::unordered_map<const RHIBuffer*, PendingRelease<RHIBufferBarrier>>
-            pendingBufferReleases;
+        // each fence is updated by its producer's encoder and waited on by
+        // every acquire (several waits on one fence are legal); an entry no
+        // acquire matched is a cross-submission hand-off the device gates on
+        RHIReleaseLedger<MTL::Fence*> releases;
 
         std::vector<FenceWait> waitScratch;
 
@@ -300,8 +285,6 @@ namespace Crowy
 
         // Begin*Pass halves: one wait per distinct producer fence, so a
         // non-adjacent A-B-C dependency picks A's fence; entries stay parked
-        MTL::Fence* findPending(const RHITextureBarrier&);
-        MTL::Fence* findPending(const RHIBufferBarrier&);
         void gatherWaits(
             std::span<const RHITextureBarrier>,
             std::span<const RHIBufferBarrier>
@@ -309,8 +292,6 @@ namespace Crowy
 
         // End*Pass halves: park real edges under one fresh fence the caller
         // updates; self-contained releases (syncAfter None) record nothing
-        void parkRelease(const RHITextureBarrier&, MTL::Fence*);
-        void parkRelease(const RHIBufferBarrier&, MTL::Fence*);
         MTL::Fence* parkReleases(
             std::span<const RHITextureBarrier>,
             std::span<const RHIBufferBarrier>,

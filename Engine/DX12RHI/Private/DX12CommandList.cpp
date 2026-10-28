@@ -250,8 +250,7 @@ namespace Crowy
             2 * cursor
         );
 
-        pendingTextureReleases.clear();
-        pendingBufferReleases.clear();
+        releases.Clear();
 
         std::array heaps{cbvsrvuavHeap.Get()};
         commandList->SetDescriptorHeaps(heaps.size(), heaps.data());
@@ -775,19 +774,10 @@ namespace Crowy
             return;
         }
 
-        auto& pending = pendingTextureReleases[barrier.texture];
-        for(auto& entry: pending) {
-            if(entry.barrier.range == barrier.range) {
-                // a re-release is a new producer; an old edge nobody acquired
-                // is still unrecorded, so complete it here
-                if(!entry.consumed) {
-                    pushFused(entry.barrier);
-                }
-                entry = {.barrier = barrier};
-                return;
-            }
-        }
-        pending.push_back({.barrier = barrier});
+        // a re-release is a new producer; an old edge nobody acquired is
+        // still unrecorded, so complete it here
+        if(const auto stale = releases.Park(barrier, {}))
+            pushFused(stale->barrier);
     }
 
     void DX12CommandList::queueRelease(const RHIBufferBarrier& barrier) {
@@ -796,16 +786,8 @@ namespace Crowy
             return;
         }
 
-        const auto [it, inserted] = pendingBufferReleases.try_emplace(
-            barrier.buffer,
-            PendingRelease<RHIBufferBarrier>{.barrier = barrier}
-        );
-        if(!inserted) {
-            if(!it->second.consumed) {
-                pushFused(it->second.barrier);
-            }
-            it->second = {.barrier = barrier};
-        }
+        if(const auto stale = releases.Park(barrier, {}))
+            pushFused(stale->barrier);
     }
 
     void DX12CommandList::queueReleases(
@@ -822,21 +804,14 @@ namespace Crowy
     }
 
     void DX12CommandList::applyAcquire(const RHITextureBarrier& barrier) {
-        if(const auto it = pendingTextureReleases.find(barrier.texture);
-           it != pendingTextureReleases.end()) {
-            for(auto& entry: it->second) {
-                // full-edge equality doubles as the cross validation: both
-                // halves carried the same value or they do not pair
-                if(entry.barrier == barrier) {
-                    // identical extra consumers need no barrier: sync scopes
-                    // are queue-global, so the first fused one ordered them
-                    if(!entry.consumed) {
-                        entry.consumed = true;
-                        pushFused(barrier);
-                    }
-                    return;
-                }
+        if(auto* entry = releases.Match(barrier)) {
+            // identical extra consumers need no barrier: sync scopes are
+            // queue-global, so the first fused one ordered them
+            if(!entry->consumed) {
+                entry->consumed = true;
+                pushFused(barrier);
             }
+            return;
         }
 
         CROWY_ASSERT(
@@ -850,13 +825,11 @@ namespace Crowy
     }
 
     void DX12CommandList::applyAcquire(const RHIBufferBarrier& barrier) {
-        if(const auto it = pendingBufferReleases.find(barrier.buffer);
-           it != pendingBufferReleases.end() && it->second.barrier == barrier) {
+        if(auto* entry = releases.Match(barrier)) {
             // see the texture path: identical extra consumers ride the first
             // fused barrier's queue-global sync scope
-            auto& entry = it->second;
-            if(!entry.consumed) {
-                entry.consumed = true;
+            if(!entry->consumed) {
+                entry->consumed = true;
                 pushFused(barrier);
             }
             return;
@@ -888,20 +861,10 @@ namespace Crowy
     void DX12CommandList::flushPendingReleases() {
         // releases nobody acquired complete here, the hand-off to consumers
         // in later submissions; ordering across submissions is queue-level
-        for(auto& [_, entries]: pendingTextureReleases) {
-            for(auto& entry: entries) {
-                if(!entry.consumed) {
-                    pushFused(entry.barrier);
-                }
-            }
-        }
-        for(auto& [_, entry]: pendingBufferReleases) {
-            if(!entry.consumed) {
-                pushFused(entry.barrier);
-            }
-        }
-        pendingTextureReleases.clear();
-        pendingBufferReleases.clear();
+        releases.ForEachUnconsumed([this](const auto& entry) {
+            pushFused(entry.barrier);
+        });
+        releases.Clear();
 
         flushBarrierScratch();
     }

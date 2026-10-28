@@ -124,8 +124,7 @@ namespace Crowy
 
         submissionWaitEncoded = false;
         fenceCursor = 0;
-        pendingTextureReleases.clear();
-        pendingBufferReleases.clear();
+        releases.Clear();
 
         // hangover gate: acquire-less consumption of a hand-off release rides
         // queue order, so a recording that may share the GPU with the hand-off
@@ -161,19 +160,10 @@ namespace Crowy
     }
 
     bool MetalCommandList::HasUnconsumedReleases() const noexcept {
-        for(const auto& [_, entries]: pendingTextureReleases) {
-            for(const auto& entry: entries) {
-                if(!entry.consumed) {
-                    return true;
-                }
-            }
-        }
-        for(const auto& [_, entry]: pendingBufferReleases) {
-            if(!entry.consumed) {
-                return true;
-            }
-        }
-        return false;
+        bool unconsumed = false;
+        releases.ForEachUnconsumed([&](const auto&) { unconsumed = true; });
+
+        return unconsumed;
     }
 
     MTL::Fence* MetalCommandList::acquireFence() {
@@ -187,32 +177,6 @@ namespace Crowy
         return fencePool[fenceCursor++].get();
     }
 
-    MTL::Fence* MetalCommandList::findPending(
-        const RHITextureBarrier& acquire
-    ) {
-        if(const auto it = pendingTextureReleases.find(acquire.texture);
-           it != pendingTextureReleases.end()) {
-            for(auto& entry: it->second) {
-                // full-edge equality doubles as the cross validation: both
-                // halves carried the same value or they do not pair
-                if(entry.barrier == acquire) {
-                    entry.consumed = true;
-                    return entry.fence;
-                }
-            }
-        }
-        return nullptr;
-    }
-
-    MTL::Fence* MetalCommandList::findPending(const RHIBufferBarrier& acquire) {
-        if(const auto it = pendingBufferReleases.find(acquire.buffer);
-           it != pendingBufferReleases.end() && it->second.barrier == acquire) {
-            it->second.consumed = true;
-            return it->second.fence;
-        }
-        return nullptr;
-    }
-
     void MetalCommandList::gatherWaits(
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
@@ -220,7 +184,9 @@ namespace Crowy
         waitScratch.clear();
 
         const auto gather = [this](const auto& acquire) {
-            if(const auto fence = findPending(acquire)) {
+            if(auto* entry = releases.Match(acquire)) {
+                entry->consumed = true;
+                const auto fence = entry->payload;
                 for(auto& wait: waitScratch) {
                     if(wait.fence == fence) {
                         wait.syncAfter =
@@ -255,32 +221,6 @@ namespace Crowy
         }
     }
 
-    void MetalCommandList::parkRelease(
-        const RHITextureBarrier& release,
-        MTL::Fence* fence
-    ) {
-        auto& pending = pendingTextureReleases[release.texture];
-        for(auto& entry: pending) {
-            if(entry.barrier.range == release.range) {
-                // a re-release is a new producer; the old edge goes stale:
-                // layout is a no-op, so no transition is left to complete
-                entry = {.barrier = release, .fence = fence};
-                return;
-            }
-        }
-        pending.push_back({.barrier = release, .fence = fence});
-    }
-
-    void MetalCommandList::parkRelease(
-        const RHIBufferBarrier& release,
-        MTL::Fence* fence
-    ) {
-        pendingBufferReleases.insert_or_assign(
-            release.buffer,
-            PendingRelease<RHIBufferBarrier>{.barrier = release, .fence = fence}
-        );
-    }
-
     MTL::Fence* MetalCommandList::parkReleases(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases,
@@ -299,7 +239,9 @@ namespace Crowy
                 fence = acquireFence();
             }
             syncBeforeUnion = combine(syncBeforeUnion, release.syncBefore);
-            parkRelease(release, fence);
+            // a re-release is a new producer; the old edge goes stale: layout
+            // is a no-op, so no transition is left to complete
+            releases.Park(release, fence);
         };
         for(const auto& release: textureReleases) {
             park(release);
