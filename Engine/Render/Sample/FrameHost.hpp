@@ -11,7 +11,7 @@
 #include "EnumUtil.hpp"
 #include "FrameCaptures.hpp"
 #include "FrameContent.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "FramePort.hpp"
 #include "FrameProfiler.hpp"
 #include "FrameStatsLog.hpp"
@@ -24,11 +24,11 @@
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
 #include "Semantics.hpp"
-#include "StandardPipeline.hpp"
+#include "StandardFrame.hpp"
 
 namespace Crowy
 {
-    using FramePipelinePtr = RAII<FramePipeline>;
+    using FrameGraphPtr = RAII<FrameGraph>;
     using GeometryPoolPtr = RAII<GeometryPool>;
     using MeshStorePtr = RAII<MeshStore>;
     using SceneRendererPtr = RAII<SceneRenderer>;
@@ -109,8 +109,8 @@ namespace Crowy
         SceneRendererPtr renderer;
         // what DescribePipeline was last asked for, from config and the debug
         // view; a change rebuilds it
-        StandardPipelineConfig pipelineConfig;
-        FramePipelinePtr pipeline;
+        StandardFrameConfig pipelineConfig;
+        FrameGraphPtr pipeline;
         // bindMeshPass and recordOverlay are set once; the rest, hooks
         // included, is refilled every frame
         FrameInputs frameInputs;
@@ -201,7 +201,7 @@ namespace Crowy
 
     private:
         // a new walker from DescribePipeline(pipelineConfig)
-        FramePipelinePtr describePipeline();
+        FrameGraphPtr describePipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();
         // a port write of debug.sceneView where nothing draws the view

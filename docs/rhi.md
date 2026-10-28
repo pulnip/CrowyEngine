@@ -48,7 +48,7 @@ cmdList.BeginRenderPass(compositeDesc, std::array{sceneEdge, bloomEdge});
 - D3D12: 실제 `D3D12_BARRIER_GROUP`으로 나간다.
 - Metal: release는 producer 인코더가 마지막 스테이지 뒤에 fence를 update하고 acquire는 consumer 인코더가 첫 스테이지 전에 그 fence를 wait한다([MetalCommandList.cpp](../Engine/MetalRHI/Private/MetalCommandList.cpp)).
 
-패스는 render, compute, blit 세 종류로 나뉘고, 렌더러 쪽 `FramePipeline`은 각 패스의 입출력을 보고 이 edge들을 계산한다([FramePipeline.hpp](../Engine/Render/Public/FramePipeline.hpp)).
+패스는 render, compute, blit 세 종류로 나뉘고, 렌더러 쪽 `FrameGraph`는 각 패스의 입출력을 보고 이 edge들을 계산한다([FrameGraph.hpp](../Engine/Render/Public/FrameGraph.hpp)).
 
 ## Bindless
 

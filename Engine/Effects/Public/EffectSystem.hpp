@@ -7,7 +7,7 @@
 #include "ComputeKernel.hpp"
 #include "FieldBuffer.hpp"
 #include "FieldPass.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "ParticleEffects.hpp"
 #include "PipelineCache.hpp"
 #include "Primitives.hpp"

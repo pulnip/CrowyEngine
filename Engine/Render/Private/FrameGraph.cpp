@@ -1,4 +1,4 @@
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 
 #include <algorithm>
 #include <array>
@@ -36,7 +36,7 @@ namespace Crowy
         constexpr usize FullscreenReadCount = 4;
 
         FrameTargetSize sizeOf(
-            const FramePipelineDesc& desc,
+            const FrameGraphDesc& desc,
             FrameTargetID id
         ) {
             if(id == BackBufferTarget)
@@ -65,7 +65,7 @@ namespace Crowy
             }
         }
 
-        void refuseDuplicateNames(const FramePipelineDesc& desc) {
+        void refuseDuplicateNames(const FrameGraphDesc& desc) {
             for(usize i = 0; i < desc.extents.size(); ++i) {
                 for(usize j = i + 1; j < desc.extents.size(); ++j) {
                     if(desc.extents[i].name == desc.extents[j].name) {
@@ -123,7 +123,7 @@ namespace Crowy
         }
 
         // every pass's uses, per target, after the rules a single pass keeps
-        TargetUses collectUses(const FramePipelineDesc& desc) {
+        TargetUses collectUses(const FrameGraphDesc& desc) {
             const auto targetCount = desc.targets.size();
             const auto known = [targetCount](FrameTargetID id) {
                 return id <= targetCount;
@@ -317,7 +317,7 @@ namespace Crowy
 
         // the rules that follow one target through the list
         void refuseBrokenUses(
-            const FramePipelineDesc& desc,
+            const FrameGraphDesc& desc,
             const TargetUses& uses
         ) {
             const auto nameOf = [&desc](FrameTargetID id) -> Str {
@@ -365,14 +365,14 @@ namespace Crowy
         }
     }
 
-    FramePipeline::~FramePipeline() {
+    FrameGraph::~FrameGraph() {
         for(auto& texture: textures)
             device.Retire(std::move(texture));
     }
 
-    FramePipeline::FramePipeline(
+    FrameGraph::FrameGraph(
         RHIDevice& device,
-        FramePipelineDesc desc,
+        FrameGraphDesc desc,
         RHIPixelFormat backBufferFormat,
         u32 width,
         u32 height
@@ -550,7 +550,7 @@ namespace Crowy
         createTargets(std::nullopt);
     }
 
-    void FramePipeline::createTargets(std::optional<FrameExtentID> only) {
+    void FrameGraph::createTargets(std::optional<FrameExtentID> only) {
         const auto& targets = desc.targets;
         for(FrameTargetID id = 1; id <= targets.size(); ++id) {
             const auto& target = targets[id - 1];
@@ -578,11 +578,11 @@ namespace Crowy
         }
     }
 
-    void FramePipeline::Resize(u32 width, u32 height) {
+    void FrameGraph::Resize(u32 width, u32 height) {
         ResizeExtent(BackBufferExtent, width, height);
     }
 
-    void FramePipeline::ResizeExtent(
+    void FrameGraph::ResizeExtent(
         FrameExtentID extent,
         u32 width,
         u32 height
@@ -596,7 +596,7 @@ namespace Crowy
         createTargets(extent);
     }
 
-    void FramePipeline::Prepare(
+    void FrameGraph::Prepare(
         SceneRenderer& renderer,
         const RenderScene& scene,
         const MeshPassOverride& debug
@@ -636,7 +636,7 @@ namespace Crowy
         }
     }
 
-    RHITexture& FramePipeline::texture(
+    RHITexture& FrameGraph::texture(
         FrameTargetID id,
         const FrameInputs& inputs
     ) const {
@@ -653,7 +653,7 @@ namespace Crowy
         return *textures[id];
     }
 
-    RHITextureBarrier FramePipeline::resolveBarrier(
+    RHITextureBarrier FrameGraph::resolveBarrier(
         const CompiledBarrier& half,
         const FrameInputs& inputs
     ) const {
@@ -670,7 +670,7 @@ namespace Crowy
         return makeBarrier(target, half.before, half.after);
     }
 
-    bool FramePipeline::capturedAfter(
+    bool FrameGraph::capturedAfter(
         usize pass,
         FrameTargetID id,
         const FrameInputs& inputs
@@ -685,7 +685,7 @@ namespace Crowy
         );
     }
 
-    void FramePipeline::Record(
+    void FrameGraph::Record(
         RHICommandList& cmdList,
         const SceneRenderer& renderer,
         FrameInputs& inputs
@@ -890,7 +890,7 @@ namespace Crowy
     // after the overlay pass, whose back-buffer release pairs with nothing;
     // each target's release is left unpaired, so D3D12 completes it at Close
     // back into the layout and sync the next frame's first acquire names
-    void FramePipeline::recordCaptures(
+    void FrameGraph::recordCaptures(
         RHICommandList& cmdList,
         FrameInputs& inputs
     ) {
@@ -933,14 +933,14 @@ namespace Crowy
         cmdList.EndBlitPass(releaseScratch);
     }
 
-    u32 FramePipeline::ShadowMapSize() const noexcept {
+    u32 FrameGraph::ShadowMapSize() const noexcept {
         if(desc.shadowMap == 0)
             return 0;
 
         return TargetSize(desc.shadowMap).x;
     }
 
-    std::optional<FrameTargetID> FramePipeline::FindTarget(
+    std::optional<FrameTargetID> FrameGraph::FindTarget(
         StrView name
     ) const noexcept {
         for(FrameTargetID id = 1; id <= desc.targets.size(); ++id) {
@@ -955,7 +955,7 @@ namespace Crowy
         return std::nullopt;
     }
 
-    std::optional<FrameExtentID> FramePipeline::FindExtent(
+    std::optional<FrameExtentID> FrameGraph::FindExtent(
         StrView name
     ) const noexcept {
         for(FrameExtentID id = 1; id <= desc.extents.size(); ++id) {
@@ -966,7 +966,7 @@ namespace Crowy
         return std::nullopt;
     }
 
-    Size2D FramePipeline::TargetSize(FrameTargetID id) const noexcept {
+    Size2D FrameGraph::TargetSize(FrameTargetID id) const noexcept {
         const auto size = sizeOf(desc, id);
         if(const auto* fixed = std::get_if<FixedSize>(&size))
             return Size2D{fixed->width, fixed->height};
@@ -974,7 +974,7 @@ namespace Crowy
         return extentSizes[std::get<FrameExtentID>(size)];
     }
 
-    u64 FramePipeline::OverlayReadableID(FrameTargetID id) const {
+    u64 FrameGraph::OverlayReadableID(FrameTargetID id) const {
         // the overlay pass's read is the edge that orders the UI's sampling
         CROWY_ASSERT(
             std::ranges::contains(desc.passes[overlayPass].reads, id),
@@ -984,14 +984,14 @@ namespace Crowy
         return textures[id]->GetReadableID();
     }
 
-    OverlayFormats FramePipeline::Overlay() const noexcept {
+    OverlayFormats FrameGraph::Overlay() const noexcept {
         return OverlayFormats{
             .color = backBufferFormat,
             .depth = passes[overlayPass].depthFormat
         };
     }
 
-    std::optional<HookPassFormats> FramePipeline::FindHook(
+    std::optional<HookPassFormats> FrameGraph::FindHook(
         StrView hook
     ) const noexcept {
         for(usize i = 0; i < passes.size(); ++i) {
@@ -1007,7 +1007,7 @@ namespace Crowy
         return std::nullopt;
     }
 
-    void FramePipeline::bindHooks(FrameInputs& inputs) {
+    void FrameGraph::bindHooks(FrameInputs& inputs) {
         std::ranges::fill(hookBindings, nullptr);
         for(auto& binding: inputs.hooks) {
             const auto found =

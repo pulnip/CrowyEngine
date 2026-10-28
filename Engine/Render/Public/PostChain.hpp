@@ -3,7 +3,7 @@
 #include <span>
 #include <vector>
 
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 
@@ -28,7 +28,7 @@ namespace Crowy
     // output the back buffer or another one. Throws std::invalid_argument
     // naming the entry and the rule a list breaks, leaving desc as it was.
     void appendPostChain(
-        FramePipelineDesc& desc,
+        FrameGraphDesc& desc,
         FrameTargetID sceneColor,
         std::span<const PostPassDesc> post,
         FrameTargetID output = BackBufferTarget

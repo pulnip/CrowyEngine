@@ -10,12 +10,12 @@
 #include "EnumUtil.hpp"
 #include "FakeCommandList.hpp"
 #include "FakeDevice.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "LinearAlgebra.hpp"
 #include "RHICommandList.hpp"
 #include "RenderScene.hpp"
 #include "SceneRenderer.hpp"
-#include "StandardPipeline.hpp"
+#include "StandardFrame.hpp"
 
 using namespace Crowy;
 
@@ -59,8 +59,8 @@ namespace
 
     // the standard list with a small map, its Shadow pass biased: a
     // fixed-size depth-only pass on view 1 drawing casters only
-    FramePipelineDesc ShadowShaped(const PassDepthBias& bias) {
-        auto desc = makeStandardPipeline({.shadowMapSize = 64});
+    FrameGraphDesc ShadowShaped(const PassDepthBias& bias) {
+        auto desc = describeStandardFrame({.shadowMapSize = 64});
         Mesh(desc.passes[0]).state.depthBias = bias;
 
         return desc;
@@ -74,11 +74,11 @@ namespace
 
     // a mesh pass into an offscreen color and depth, which one fullscreen
     // pass reads onto the back buffer
-    FramePipelineDesc CompositeShaped() {
+    FrameGraphDesc CompositeShaped() {
         constexpr FrameTargetID SceneDepth = 1;
         constexpr FrameTargetID SceneColor = 2;
 
-        return FramePipelineDesc{
+        return FrameGraphDesc{
             .targets =
                 {FrameTargetDesc{
                      .name = "SceneDepth",
@@ -164,7 +164,7 @@ namespace
         }
 
         void Prepare(
-            FramePipeline& pipeline,
+            FrameGraph& pipeline,
             const MeshPassOverride& debug = {}
         ) {
             renderer.BeginFrame(scene);
@@ -172,7 +172,7 @@ namespace
             renderer.Upload();
         }
 
-        void Frame(FramePipeline& pipeline, FrameInputs& inputs) {
+        void Frame(FrameGraph& pipeline, FrameInputs& inputs) {
             Prepare(pipeline);
             cmdList.Begin();
             pipeline.Record(cmdList, renderer, inputs);
@@ -215,10 +215,10 @@ namespace
         }
     };
 
-    void ExpectRefused(FramePipelineDesc desc, StrView expected) {
+    void ExpectRefused(FrameGraphDesc desc, StrView expected) {
         FakeDevice device;
         try {
-            FramePipeline pipeline(
+            FrameGraph pipeline(
                 device,
                 std::move(desc),
                 BackBufferFormat,
@@ -233,10 +233,10 @@ namespace
     }
 }
 
-TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
+TEST(FrameGraph, StandardFrameIsPrepassOpaqueTranslucent) {
     constexpr FrameTargetID SceneColor = 2;
 
-    const auto desc = makeStandardPipeline({.shadowMapSize = 0});
+    const auto desc = describeStandardFrame({.shadowMapSize = 0});
 
     ASSERT_EQ(desc.targets.size(), 2u);
     EXPECT_EQ(desc.targets[0].name, "SceneDepth");
@@ -293,8 +293,8 @@ TEST(FramePipeline, StandardPipelineIsPrepassOpaqueTranslucent) {
     EXPECT_EQ(desc.passes[3].name, "Tonemap");
 }
 
-TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
-    const auto desc = makeStandardPipeline(
+TEST(FrameGraph, StandardFrameWithoutPrepassWritesDepthInOpaque) {
+    const auto desc = describeStandardFrame(
         {.depthPrepass = false, .shadowMapSize = 0}
     );
 
@@ -310,11 +310,11 @@ TEST(FramePipeline, StandardPipelineWithoutPrepassWritesDepthInOpaque) {
     EXPECT_EQ(desc.passes[2].name, "Tonemap");
 }
 
-TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
+TEST(FrameGraph, TheStandardDescOpensWithTheShadowPass) {
     constexpr FrameTargetID ShadowMap = 2;
     constexpr FrameTargetID SceneColor = 3;
 
-    auto desc = makeStandardPipeline({});
+    auto desc = describeStandardFrame({});
 
     ASSERT_EQ(desc.targets.size(), 3u);
     EXPECT_EQ(desc.targets[0].name, "SceneDepth");
@@ -358,14 +358,14 @@ TEST(FramePipeline, TheStandardDescOpensWithTheShadowPass) {
     EXPECT_EQ(desc.passes[4].reads, std::vector<FrameTargetID>{SceneColor});
 
     FakeDevice device;
-    FramePipeline
+    FrameGraph
         pipeline(device, std::move(desc), BackBufferFormat, Width, Height);
     EXPECT_EQ(pipeline.ViewCount(), 2u);
     EXPECT_EQ(pipeline.ShadowMapSize(), 2048u);
 }
 
-TEST(FramePipeline, AZeroShadowMapSizeDropsThePassAndTheTarget) {
-    auto desc = makeStandardPipeline({.shadowMapSize = 0});
+TEST(FrameGraph, AZeroShadowMapSizeDropsThePassAndTheTarget) {
+    auto desc = describeStandardFrame({.shadowMapSize = 0});
 
     ASSERT_EQ(desc.targets.size(), 2u);
     EXPECT_EQ(desc.shadowMap, 0u);
@@ -379,18 +379,18 @@ TEST(FramePipeline, AZeroShadowMapSizeDropsThePassAndTheTarget) {
     }
 
     FakeDevice device;
-    FramePipeline
+    FrameGraph
         pipeline(device, std::move(desc), BackBufferFormat, Width, Height);
     EXPECT_EQ(pipeline.ViewCount(), 1u);
     EXPECT_EQ(pipeline.ShadowMapSize(), 0u);
     EXPECT_EQ(device.textureCreates.size(), 2u);
 }
 
-TEST(FramePipeline, TheStandardDescEndsInTonemapWithTheUI) {
+TEST(FrameGraph, TheStandardDescEndsInTonemapWithTheUI) {
     constexpr FrameTargetID SceneColor = 3;
     constexpr Color Sky{0.139f, 0.212f, 0.356f, 1.0f};
 
-    auto desc = makeStandardPipeline({.clearColor = Sky});
+    auto desc = describeStandardFrame({.clearColor = Sky});
 
     // swapchain-sized, after the map, cleared with the config's colour
     ASSERT_EQ(desc.targets.size(), 3u);
@@ -414,7 +414,7 @@ TEST(FramePipeline, TheStandardDescEndsInTonemapWithTheUI) {
 
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline
+    FrameGraph
         pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
     // the UI rides the post pass, which has no depth
     EXPECT_EQ(
@@ -436,10 +436,10 @@ TEST(FramePipeline, TheStandardDescEndsInTonemapWithTheUI) {
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
 
-TEST(FramePipeline, ADisplayReadyDescEndsInPresent) {
+TEST(FrameGraph, ADisplayReadyDescEndsInPresent) {
     constexpr FrameTargetID SceneColor = 2;
 
-    const auto desc = makeStandardPipeline({
+    const auto desc = describeStandardFrame({
         .sceneColorFormat = RHIPixelFormat::RGBA8_UNORM,
         .clearColor = Colors::Magenta,
         .shadowMapSize = 0,
@@ -466,15 +466,15 @@ TEST(FramePipeline, ADisplayReadyDescEndsInPresent) {
 }
 
 // every half as the edge rule gives it, two frames running
-TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
+TEST(FrameGraph, WalkRecordsEveryEdgeOfTheStandardFrame) {
     using enum RHIResourceUsage;
 
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -551,12 +551,12 @@ TEST(FramePipeline, WalkRecordsEveryEdgeOfTheStandardPipeline) {
     }
 }
 
-TEST(FramePipeline, BackBufferIsAcquiredUndefinedAndReleasedToPresent) {
+TEST(FrameGraph, BackBufferIsAcquiredUndefinedAndReleasedToPresent) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -590,12 +590,12 @@ TEST(FramePipeline, BackBufferIsAcquiredUndefinedAndReleasedToPresent) {
 }
 
 // a fresh texture, the frame before's last use, and a texture a Resize made
-TEST(FramePipeline, FirstUseAcquiresAcrossSubmissionsAndDiscards) {
+TEST(FrameGraph, FirstUseAcquiresAcrossSubmissionsAndDiscards) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -630,14 +630,14 @@ TEST(FramePipeline, FirstUseAcquiresAcrossSubmissionsAndDiscards) {
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
 
-TEST(FramePipeline, EveryMeshPassRebindsItsViewAndPush) {
+TEST(FrameGraph, EveryMeshPassRebindsItsViewAndPush) {
     Fixture f;
     const auto opaque = f.AddPrimitive(f.AddMaterial("fs_opaque"));
     const auto glass =
         f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -674,11 +674,11 @@ TEST(FramePipeline, EveryMeshPassRebindsItsViewAndPush) {
 }
 
 // the pass that writes the map, and one before it, push none
-TEST(FramePipeline, APassThatReadsTheShadowMapGetsItsID) {
+TEST(FrameGraph, APassThatReadsTheShadowMapGetsItsID) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
         ShadowShaped(PassDepthBias{}),
         BackBufferFormat,
@@ -708,9 +708,9 @@ TEST(FramePipeline, APassThatReadsTheShadowMapGetsItsID) {
     // no mesh pass of a list with no map pushes one
     Fixture g;
     g.AddPrimitive(g.AddMaterial("fs_opaque"));
-    FramePipeline plain(
+    FrameGraph plain(
         g.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -728,12 +728,12 @@ TEST(FramePipeline, APassThatReadsTheShadowMapGetsItsID) {
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
 
-TEST(FramePipeline, GeometryAcquiresRideEveryMeshPass) {
+TEST(FrameGraph, GeometryAcquiresRideEveryMeshPass) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -781,13 +781,13 @@ TEST(FramePipeline, GeometryAcquiresRideEveryMeshPass) {
     EXPECT_EQ(stats[3].barrierEdges, 3u);
 }
 
-TEST(FramePipeline, OverlayRidesTheLastBackBufferPass) {
+TEST(FrameGraph, OverlayRidesTheLastBackBufferPass) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -829,9 +829,9 @@ TEST(FramePipeline, OverlayRidesTheLastBackBufferPass) {
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
 
-TEST(FramePipeline, ResizeRecreatesOnlySwapchainSizedTargets) {
+TEST(FrameGraph, ResizeRecreatesOnlySwapchainSizedTargets) {
     Fixture f;
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
         ShadowShaped(PassDepthBias{}),
         BackBufferFormat,
@@ -869,14 +869,14 @@ TEST(FramePipeline, ResizeRecreatesOnlySwapchainSizedTargets) {
     EXPECT_EQ(f.device.texturesDestroyed, 2u);
 }
 
-TEST(FramePipeline, ResizeExtentRecreatesOnlyItsTargets) {
+TEST(FrameGraph, ResizeExtentRecreatesOnlyItsTargets) {
     constexpr FrameTargetID ShadowMap = 2;
     constexpr FrameTargetID SceneView = 4;
 
     Fixture f;
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 64, .sceneView = true}),
+        describeStandardFrame({.shadowMapSize = 64, .sceneView = true}),
         BackBufferFormat,
         Width,
         Height
@@ -916,13 +916,13 @@ TEST(FramePipeline, ResizeExtentRecreatesOnlyItsTargets) {
     EXPECT_EQ(f.device.textureCreates.size(), 7u);
 }
 
-TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
+TEST(FrameGraph, AnOverlayPassCarriesTheUIOverTheSceneView) {
     using enum RHIResourceUsage;
     constexpr FrameTargetID SceneDepth = 1;
     constexpr FrameTargetID SceneColor = 2;
     constexpr FrameTargetID SceneView = 3;
 
-    auto desc = makeStandardPipeline(
+    auto desc = describeStandardFrame(
         {.shadowMapSize = 0,
          .sceneView = true,
          .sceneViewFormat = RHIPixelFormat::BGRA8_UNORM}
@@ -955,7 +955,7 @@ TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
 
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline
+    FrameGraph
         pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
     // the same as the standard list's, so a host's UI keeps its formats
     EXPECT_EQ(
@@ -1026,9 +1026,9 @@ TEST(FramePipeline, AnOverlayPassCarriesTheUIOverTheSceneView) {
     }
 }
 
-TEST(FramePipeline, InvalidExtentDescsAreRefused) {
+TEST(FrameGraph, InvalidExtentDescsAreRefused) {
     const auto sceneView = [] {
-        return makeStandardPipeline({.shadowMapSize = 64, .sceneView = true});
+        return describeStandardFrame({.shadowMapSize = 64, .sceneView = true});
     };
     constexpr FrameTargetID ShadowMap = 2;
     constexpr FrameTargetID SceneColor = 3;
@@ -1074,13 +1074,13 @@ TEST(FramePipeline, InvalidExtentDescsAreRefused) {
     }
 }
 
-TEST(FramePipeline, InvalidOverlayPassDescsAreRefused) {
+TEST(FrameGraph, InvalidOverlayPassDescsAreRefused) {
     constexpr FrameTargetID SceneDepth = 1;
     constexpr FrameTargetID SceneColor = 3;
 
     {
         auto desc =
-            makeStandardPipeline({.shadowMapSize = 64, .sceneView = true});
+            describeStandardFrame({.shadowMapSize = 64, .sceneView = true});
         desc.passes.back().colors[0].target = SceneColor;
         ExpectRefused(
             std::move(desc),
@@ -1088,7 +1088,7 @@ TEST(FramePipeline, InvalidOverlayPassDescsAreRefused) {
         );
     }
     {
-        auto desc = makeStandardPipeline({.shadowMapSize = 0});
+        auto desc = describeStandardFrame({.shadowMapSize = 0});
         desc.passes.push_back(
             PassDesc{
                 .name = "UI",
@@ -1103,7 +1103,7 @@ TEST(FramePipeline, InvalidOverlayPassDescsAreRefused) {
         );
     }
     {
-        auto desc = makeStandardPipeline({.shadowMapSize = 0});
+        auto desc = describeStandardFrame({.shadowMapSize = 0});
         desc.passes.insert(
             desc.passes.end() - 1,
             PassDesc{
@@ -1120,13 +1120,13 @@ TEST(FramePipeline, InvalidOverlayPassDescsAreRefused) {
     }
 }
 
-TEST(FramePipeline, AShadowShapedPassDrawsCastersFromViewOne) {
+TEST(FrameGraph, AShadowShapedPassDrawsCastersFromViewOne) {
     Fixture f;
     const auto material = f.AddMaterial("fs_opaque");
     const auto caster = f.AddPrimitive(material);
     const auto receiver = f.AddPrimitive(material, PrimitiveFlags::Visible);
     const PassDepthBias bias{.depthBias = 2, .slopeScaledDepthBias = 1.5f};
-    FramePipeline
+    FrameGraph
         pipeline(f.device, ShadowShaped(bias), BackBufferFormat, Width, Height);
     auto inputs = f.Inputs();
 
@@ -1162,14 +1162,14 @@ TEST(FramePipeline, AShadowShapedPassDrawsCastersFromViewOne) {
     EXPECT_TRUE(f.cmdList.violations.empty());
 }
 
-TEST(FramePipeline, APassNotInTheListCostsNothing) {
+TEST(FrameGraph, APassNotInTheListCostsNothing) {
     const auto frameWith = [](bool depthPrepass) {
         Fixture f;
         f.AddPrimitive(f.AddMaterial("fs_opaque"));
         f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-        FramePipeline pipeline(
+        FrameGraph pipeline(
             f.device,
-            makeStandardPipeline(
+            describeStandardFrame(
                 {.depthPrepass = depthPrepass, .shadowMapSize = 0}
             ),
             BackBufferFormat,
@@ -1192,14 +1192,14 @@ TEST(FramePipeline, APassNotInTheListCostsNothing) {
 
 // a Masked primitive draws in every pass that writes depth, its cut sharing
 // one depth pipeline between the shadow map and the prepass
-TEST(FramePipeline, AMaskedMaterialCutsInEveryPassThatWritesDepth) {
+TEST(FrameGraph, AMaskedMaterialCutsInEveryPassThatWritesDepth) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_masked", MaterialDomain::Masked));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 64}),
+        describeStandardFrame({.shadowMapSize = 64}),
         BackBufferFormat,
         Width,
         Height
@@ -1221,11 +1221,11 @@ TEST(FramePipeline, AMaskedMaterialCutsInEveryPassThatWritesDepth) {
     EXPECT_EQ(cuts, 1);
 }
 
-TEST(FramePipeline, DestroyedPipelineRetiresItsTargets) {
+TEST(FrameGraph, DestroyedPipelineRetiresItsTargets) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     {
-        FramePipeline pipeline(
+        FrameGraph pipeline(
             f.device,
             ShadowShaped(PassDepthBias{}),
             BackBufferFormat,
@@ -1242,14 +1242,14 @@ TEST(FramePipeline, DestroyedPipelineRetiresItsTargets) {
     EXPECT_EQ(f.device.texturesDestroyed, 3u);
 }
 
-TEST(FramePipeline, PassStatsCountEachPass) {
+TEST(FrameGraph, PassStatsCountEachPass) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_a"));
     f.AddPrimitive(f.AddMaterial("fs_b"));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -1284,9 +1284,9 @@ TEST(FramePipeline, PassStatsCountEachPass) {
     EXPECT_EQ(stats[3].barrierEdges, 3u);
 }
 
-TEST(FramePipeline, InvalidDescsAreRefused) {
+TEST(FrameGraph, InvalidDescsAreRefused) {
     const auto standard = [] {
-        return makeStandardPipeline({.shadowMapSize = 0});
+        return describeStandardFrame({.shadowMapSize = 0});
     };
 
     {
@@ -1433,10 +1433,10 @@ TEST(FramePipeline, InvalidDescsAreRefused) {
 }
 
 // a mesh pass leaves color and depth, and one fullscreen pass reads both
-TEST(FramePipeline, FullscreenPassPushesItsReadsInOrder) {
+TEST(FrameGraph, FullscreenPassPushesItsReadsInOrder) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline
+    FrameGraph
         pipeline(f.device, CompositeShaped(), BackBufferFormat, Width, Height);
     auto inputs = f.Inputs();
     inputs.sceneClear = Color{0.25f, 0.5f, 0.75f, 1.0f};
@@ -1491,7 +1491,7 @@ TEST(FramePipeline, FullscreenPassPushesItsReadsInOrder) {
 
 // read after read is an edge too: only a chain keeps the next writer behind
 // every reader on Metal
-TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
+TEST(FrameGraph, ReadsCompileIntoAChainOfEdges) {
     using enum RHIResourceUsage;
 
     const auto halvesOf = [](const TextureBarriers& barriers, RHITexture* t) {
@@ -1517,9 +1517,9 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
         };
 
         Fixture f;
-        FramePipeline pipeline(
+        FrameGraph pipeline(
             f.device,
-            FramePipelineDesc{
+            FrameGraphDesc{
                 .targets =
                     {FrameTargetDesc{
                          .name = "Chained",
@@ -1616,7 +1616,7 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
     {
         Fixture f;
         f.AddPrimitive(f.AddMaterial("fs_opaque"));
-        FramePipeline pipeline(
+        FrameGraph pipeline(
             f.device,
             ShadowShaped(PassDepthBias{}),
             BackBufferFormat,
@@ -1672,7 +1672,7 @@ TEST(FramePipeline, ReadsCompileIntoAChainOfEdges) {
     }
 }
 
-TEST(FramePipeline, InvalidFullscreenDescsAreRefused) {
+TEST(FrameGraph, InvalidFullscreenDescsAreRefused) {
     constexpr FrameTargetID SceneDepth = 1;
     constexpr FrameTargetID SceneColor = 2;
 
@@ -1766,7 +1766,7 @@ TEST(FramePipeline, InvalidFullscreenDescsAreRefused) {
 }
 
 // after the overlay pass, the list's last; and again after a Resize
-TEST(FramePipeline, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
+TEST(FrameGraph, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
     using enum RHIResourceUsage;
     constexpr FrameTargetID SceneDepth = 1;
     constexpr FrameTargetID SceneColor = 3;
@@ -1775,11 +1775,11 @@ TEST(FramePipeline, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    auto desc = makeStandardPipeline({.shadowMapSize = 64});
+    auto desc = describeStandardFrame({.shadowMapSize = 64});
     desc.targets.push_back(
         FrameTargetDesc{.name = "Unused", .format = RHIPixelFormat::RGBA8_UNORM}
     );
-    FramePipeline
+    FrameGraph
         pipeline(f.device, std::move(desc), BackBufferFormat, Width, Height);
 
     EXPECT_EQ(pipeline.FindTarget("SceneColor"), SceneColor);
@@ -1868,16 +1868,16 @@ TEST(FramePipeline, ACaptureAppendsOneBlitPassAtTheEndOfTheFrame) {
     }
 }
 
-TEST(FramePipeline, ACaptureStoresTheLastWriterThatFrameOnly) {
+TEST(FrameGraph, ACaptureStoresTheLastWriterThatFrameOnly) {
     using enum RHIResourceUsage;
     constexpr FrameTargetID SceneDepth = 1;
     constexpr usize Translucent = 2;
 
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 0}),
+        describeStandardFrame({.shadowMapSize = 0}),
         BackBufferFormat,
         Width,
         Height
@@ -1919,7 +1919,7 @@ TEST(FramePipeline, ACaptureStoresTheLastWriterThatFrameOnly) {
         << f.cmdList.violations.front().what;
 }
 
-TEST(FramePipeline, TheFrameAfterACaptureRecordsTheSameEdges) {
+TEST(FrameGraph, TheFrameAfterACaptureRecordsTheSameEdges) {
     using Layouts = std::vector<RHITextureLayout>;
     constexpr FrameTargetID SceneDepth = 1;
     constexpr FrameTargetID ShadowMap = 2;
@@ -1928,9 +1928,9 @@ TEST(FramePipeline, TheFrameAfterACaptureRecordsTheSameEdges) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     f.AddPrimitive(f.AddMaterial("fs_glass", MaterialDomain::Translucent));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
-        makeStandardPipeline({.shadowMapSize = 64}),
+        describeStandardFrame({.shadowMapSize = 64}),
         BackBufferFormat,
         Width,
         Height
@@ -1986,8 +1986,8 @@ namespace
 {
     // the standard list with an Effects hook pass before Translucent: it
     // loads scene color and depth and keeps both
-    FramePipelineDesc HookShaped() {
-        auto desc = makeStandardPipeline({.shadowMapSize = 0});
+    FrameGraphDesc HookShaped() {
+        auto desc = describeStandardFrame({.shadowMapSize = 0});
         const auto translucent = std::ranges::find(
             desc.passes,
             "Translucent",
@@ -2021,10 +2021,10 @@ namespace
 
 // a hook pass opens like a mesh pass, binds view 0, carries the buffers the
 // sample's compute released, and counts the draws its record made
-TEST(FramePipeline, AHookPassDrawsWhatItsBindingRecords) {
+TEST(FrameGraph, AHookPassDrawsWhatItsBindingRecords) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
         HookShaped(),
         BackBufferFormat,
@@ -2110,14 +2110,14 @@ TEST(FramePipeline, AHookPassDrawsWhatItsBindingRecords) {
 }
 
 // a hook pass that only reads depth sees the target's readable id
-TEST(FramePipeline, AHookPassSeesItsReads) {
+TEST(FrameGraph, AHookPassSeesItsReads) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
     auto desc = HookShaped();
     auto& effects = *std::ranges::find(desc.passes, "Effects", &PassDesc::name);
     effects.depth.reset();
     effects.reads = {1};
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
         std::move(desc),
         BackBufferFormat,
@@ -2156,7 +2156,7 @@ TEST(FramePipeline, AHookPassSeesItsReads) {
     );
 }
 
-TEST(FramePipeline, AHookPassNeedsAColorTargetAndItsOwnHook) {
+TEST(FrameGraph, AHookPassNeedsAColorTargetAndItsOwnHook) {
     auto noColor = HookShaped();
     std::ranges::find(noColor.passes, "Effects", &PassDesc::name)
         ->colors.clear();
@@ -2182,10 +2182,10 @@ TEST(FramePipeline, AHookPassNeedsAColorTargetAndItsOwnHook) {
 }
 
 // a binding that does not match the list throws before any pass records
-TEST(FramePipeline, HookBindingsMatchTheListOrRecordNothing) {
+TEST(FrameGraph, HookBindingsMatchTheListOrRecordNothing) {
     const auto expectThrow = [](std::vector<PassHook> hooks, StrView expected) {
         Fixture f;
-        FramePipeline pipeline(
+        FrameGraph pipeline(
             f.device,
             HookShaped(),
             BackBufferFormat,
@@ -2231,10 +2231,10 @@ TEST(FramePipeline, HookBindingsMatchTheListOrRecordNothing) {
 
 // a texture the sample's compute released rides the hook pass's begin, and
 // no other pass's
-TEST(FramePipeline, AHookPassCarriesItsTextureAcquires) {
+TEST(FrameGraph, AHookPassCarriesItsTextureAcquires) {
     Fixture f;
     f.AddPrimitive(f.AddMaterial("fs_opaque"));
-    FramePipeline pipeline(
+    FrameGraph pipeline(
         f.device,
         HookShaped(),
         BackBufferFormat,

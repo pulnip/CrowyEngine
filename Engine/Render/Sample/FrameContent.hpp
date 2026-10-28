@@ -3,7 +3,7 @@
 #include <span>
 #include <vector>
 
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "GeometryPool.hpp"
 #include "InputProvider.hpp"
 #include "Primitives.hpp"
@@ -11,7 +11,7 @@
 #include "RHIFWD.hpp"
 #include "RenderScene.hpp"
 #include "Semantics.hpp"
-#include "StandardPipeline.hpp"
+#include "StandardFrame.hpp"
 
 namespace Crowy
 {
@@ -39,10 +39,10 @@ namespace Crowy
         // and again whenever the config changes, as a debug view does. An
         // override that builds its own desc clears scene colour with
         // config.clearColor and ends with appendPostChain(config.post).
-        virtual FramePipelineDesc DescribePipeline(
-            const StandardPipelineConfig& config
+        virtual FrameGraphDesc DescribePipeline(
+            const StandardFrameConfig& config
         ) {
-            return makeStandardPipeline(config);
+            return describeStandardFrame(config);
         }
 
         // Override to push a struct starting with the same members

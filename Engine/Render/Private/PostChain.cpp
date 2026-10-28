@@ -27,7 +27,7 @@ namespace Crowy
             );
         }
 
-        Str targetNames(const FramePipelineDesc& desc) {
+        Str targetNames(const FrameGraphDesc& desc) {
             Str names;
             for(const auto& target: desc.targets) {
                 if(!names.empty())
@@ -40,7 +40,7 @@ namespace Crowy
 
         // every entry's inputs as IDs, after the rules the list keeps
         std::vector<Reads> resolveInputs(
-            const FramePipelineDesc& desc,
+            const FrameGraphDesc& desc,
             std::span<const PostPassDesc> post
         ) {
             std::vector<Reads> inputs;
@@ -112,7 +112,7 @@ namespace Crowy
     }
 
     void appendPostChain(
-        FramePipelineDesc& desc,
+        FrameGraphDesc& desc,
         FrameTargetID sceneColor,
         std::span<const PostPassDesc> post,
         FrameTargetID output

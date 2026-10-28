@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "PostChain.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -10,16 +10,16 @@
 // The leaf that is only data: the pass list the engine draws untouched.
 namespace Crowy
 {
-    struct StandardPipelineConfig;
+    struct StandardFrameConfig;
 
     // the extent and the target a scene view draws into
     inline constexpr StrView SceneViewName = "SceneView";
 
-    FramePipelineDesc makeStandardPipeline(
-        const StandardPipelineConfig& config
+    FrameGraphDesc describeStandardFrame(
+        const StandardFrameConfig& config
     );
 
-    struct StandardPipelineConfig {
+    struct StandardFrameConfig {
         RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
         // what the colour passes write; RGBA8_UNORM for a scene already in
         // display values
@@ -45,8 +45,8 @@ namespace Crowy
         RHIPixelFormat sceneViewFormat = RHIPixelFormat::RGBA8_UNORM;
 
         friend bool operator==(
-            const StandardPipelineConfig&,
-            const StandardPipelineConfig&
+            const StandardFrameConfig&,
+            const StandardFrameConfig&
         ) = default;
     };
 }

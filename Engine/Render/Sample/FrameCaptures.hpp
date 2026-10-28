@@ -4,7 +4,7 @@
 #include <span>
 
 #include "CommandPort.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "Primitives.hpp"
 #include "RHIFWD.hpp"
 #include "Semantics.hpp"
@@ -22,7 +22,7 @@ namespace Crowy
         RHIDevice& device;
         RHISwapchain& swapchain;
         // the owner's, which a rebuild replaces
-        const RAII<FramePipeline>& pipeline;
+        const RAII<FrameGraph>& pipeline;
         LastFrame lastFrame;
         TargetCaptureQueue targets;
         // this frame's, filled by the walker and then handed to the queue
@@ -37,7 +37,7 @@ namespace Crowy
         FrameCaptures(
             RHIDevice& device,
             RHISwapchain& swapchain,
-            const RAII<FramePipeline>& pipeline,
+            const RAII<FrameGraph>& pipeline,
             LastFrame lastFrame
         );
 

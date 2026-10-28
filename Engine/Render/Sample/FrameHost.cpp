@@ -81,12 +81,12 @@ namespace Crowy
 
         // the lit views take the sample's clear and post list; the data views
         // copy through Present over a scene colour cleared black
-        StandardPipelineConfig standardConfig(
+        StandardFrameConfig standardConfig(
             const FrameHost::Config& config,
             const RenderDebug& debug,
             RHIPixelFormat backBufferFormat
         ) {
-            StandardPipelineConfig standard{
+            StandardFrameConfig standard{
                 .depthFormat = config.depthFormat,
                 .sceneColorFormat = config.sceneColorFormat,
                 .clearColor = config.clearColor,
@@ -116,8 +116,8 @@ namespace Crowy
     )
         : content(content), config(config), camera(std::move(camera)) {}
 
-    FramePipelinePtr FrameHost::describePipeline() {
-        return std::make_unique<FramePipeline>(
+    FrameGraphPtr FrameHost::describePipeline() {
+        return std::make_unique<FrameGraph>(
             *device,
             content.DescribePipeline(pipelineConfig),
             swapchain->GetFormat(),

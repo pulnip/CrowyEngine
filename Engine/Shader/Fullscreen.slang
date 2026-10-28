@@ -1,6 +1,6 @@
 #pragma once
 
-// What a fullscreen pass's shader includes: the push FramePipeline fills,
+// What a fullscreen pass's shader includes: the push FrameGraph fills,
 // mirrored from FullscreenPush in RenderSceneData.hpp, and the vertex stage
 // the pass's pipeline takes from the including file. It declares no `view`:
 // SceneData.slang's push sits at b0 too, so the two never meet in one file.

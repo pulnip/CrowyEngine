@@ -117,7 +117,7 @@ namespace Crowy
             kind;
     };
 
-    struct FramePipelineDesc {
+    struct FrameGraphDesc {
         FrameTargetDescs targets;
         PassDescs passes;
         // the target whose clear a debug view edits
@@ -220,7 +220,7 @@ namespace Crowy
 
     // Walks a pass list in order; every barrier between two passes is
     // compiled from what each pass declares it attaches and reads.
-    class FramePipeline {
+    class FrameGraph {
     private:
         // one half of an edge; the texture resolves at Record, because the
         // back buffer changes every frame and a target on Resize
@@ -268,7 +268,7 @@ namespace Crowy
 
     private:
         RHIDevice& device;
-        FramePipelineDesc desc;
+        FrameGraphDesc desc;
         RHIPixelFormat backBufferFormat = RHIPixelFormat::Unknown;
         // indexed by FrameExtentID
         ExtentSizes extentSizes;
@@ -296,14 +296,14 @@ namespace Crowy
         ReadIDs readScratch;
 
     public:
-        ~FramePipeline();
-        CROWY_DECLARE_PINNED(FramePipeline)
+        ~FrameGraph();
+        CROWY_DECLARE_PINNED(FrameGraph)
 
         // throws std::invalid_argument naming the pass and the rule a desc
         // breaks
-        FramePipeline(
+        FrameGraph(
             RHIDevice& device,
-            FramePipelineDesc desc,
+            FrameGraphDesc desc,
             RHIPixelFormat backBufferFormat,
             u32 width,
             u32 height

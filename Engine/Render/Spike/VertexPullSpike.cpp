@@ -95,13 +95,13 @@ namespace Crowy
         // and translucent passes one reads depth and blends an alpha of 0
         // onto the scene colour, which Present then copies to the back
         // buffer - five passes, the same bytes.
-        FramePipelineDesc DescribePipeline(
-            const StandardPipelineConfig& config
+        FrameGraphDesc DescribePipeline(
+            const StandardFrameConfig& config
         ) override {
             constexpr FrameTargetID SceneDepth = 1;
             constexpr CStr Proof = "Engine/Render/Spike/FullscreenProof.slang";
 
-            auto desc = makeStandardPipeline(config);
+            auto desc = describeStandardFrame(config);
 
             // every destination channel kept, alpha included
             RHIBlendState keep{};

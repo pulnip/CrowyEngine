@@ -1,4 +1,4 @@
-#include "StandardPipeline.hpp"
+#include "StandardFrame.hpp"
 
 #include <vector>
 
@@ -7,8 +7,8 @@
 
 namespace Crowy
 {
-    FramePipelineDesc makeStandardPipeline(
-        const StandardPipelineConfig& config
+    FrameGraphDesc describeStandardFrame(
+        const StandardFrameConfig& config
     ) {
         // targets[i] is ID i + 1: SceneDepth stays 1, which VertexPullSpike
         // names
@@ -22,7 +22,7 @@ namespace Crowy
         const auto sceneExtent =
             config.sceneView ? FrameExtentID{1} : BackBufferExtent;
 
-        FramePipelineDesc desc{
+        FrameGraphDesc desc{
             .targets = {FrameTargetDesc{
                 .name = "SceneDepth",
                 .format = config.depthFormat,

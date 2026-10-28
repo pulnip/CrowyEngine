@@ -7,7 +7,7 @@
 
 #include "PlaygroundScene.hpp"
 #include "ShadingModel.hpp"
-#include "StandardPipeline.hpp"
+#include "StandardFrame.hpp"
 
 namespace Crowy
 {
@@ -25,7 +25,7 @@ namespace Crowy
         // the steps each display channel snaps to
         constexpr f32 PosterizeLevels = 6.0f;
 
-        FrameTargetID targetNamed(const FramePipelineDesc& desc, StrView name) {
+        FrameTargetID targetNamed(const FrameGraphDesc& desc, StrView name) {
             const auto found =
                 std::ranges::find(desc.targets, name, &FrameTargetDesc::name);
             if(found == desc.targets.end()) {
@@ -38,7 +38,7 @@ namespace Crowy
             return static_cast<FrameTargetID>(found - desc.targets.begin() + 1);
         }
 
-        PassDescs::iterator passNamed(FramePipelineDesc& desc, StrView name) {
+        PassDescs::iterator passNamed(FrameGraphDesc& desc, StrView name) {
             const auto found =
                 std::ranges::find(desc.passes, name, &PassDesc::name);
             if(found == desc.passes.end()) {
@@ -131,10 +131,10 @@ namespace Crowy
             : PlaygroundScene(makeConfig()) {}
 
     protected:
-        FramePipelineDesc DescribePipeline(
-            const StandardPipelineConfig& config
+        FrameGraphDesc DescribePipeline(
+            const StandardFrameConfig& config
         ) override {
-            auto desc = makeStandardPipeline(config);
+            auto desc = describeStandardFrame(config);
             // a data view, a wireframe, Overdraw or debug.depthPrepass off:
             // the standard list, as Playground draws it
             if(!config.depthPrepass || config.post != toonPost())

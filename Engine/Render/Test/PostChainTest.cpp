@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "FakeDevice.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "PostChain.hpp"
 
 using namespace Crowy;
@@ -29,8 +29,8 @@ namespace
 
     // one pass writing scene colour and normals over depth; the chain
     // supplies the back buffer's writer
-    FramePipelineDesc SceneShaped() {
-        return FramePipelineDesc{
+    FrameGraphDesc SceneShaped() {
+        return FrameGraphDesc{
             .targets =
                 {FrameTargetDesc{
                      .name = "SceneDepth",
@@ -75,10 +75,10 @@ namespace
     }
 
     // the walker takes what the chain made: every read follows its write
-    void ExpectWalkable(FramePipelineDesc desc) {
+    void ExpectWalkable(FrameGraphDesc desc) {
         FakeDevice device;
         try {
-            FramePipeline pipeline(
+            FrameGraph pipeline(
                 device,
                 std::move(desc),
                 BackBufferFormat,
@@ -112,7 +112,7 @@ namespace
     }
 
     // the scene's targets at extent 1, and a display target there or not
-    FramePipelineDesc ViewShaped(FrameExtentID viewExtent) {
+    FrameGraphDesc ViewShaped(FrameExtentID viewExtent) {
         auto desc = SceneShaped();
         desc.extents.push_back(FrameExtentDesc{.name = "View"});
         for(auto& target: desc.targets)

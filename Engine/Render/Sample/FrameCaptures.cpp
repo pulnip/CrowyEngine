@@ -41,7 +41,7 @@ namespace Crowy
     FrameCaptures::FrameCaptures(
         RHIDevice& device,
         RHISwapchain& swapchain,
-        const RAII<FramePipeline>& pipeline,
+        const RAII<FrameGraph>& pipeline,
         LastFrame lastFrame
     )
         : device(device),

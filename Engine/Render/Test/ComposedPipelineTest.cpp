@@ -7,7 +7,7 @@
 #include "EnumUtil.hpp"
 #include "FakeCommandList.hpp"
 #include "FakeDevice.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "PostChain.hpp"
 #include "RHICommandList.hpp"
 #include "RenderScene.hpp"
@@ -60,8 +60,8 @@ namespace
 
     // normals beside depth, an outline between the opaque and translucent
     // passes, then two post passes, the last carrying the UI
-    FramePipelineDesc ToonShaped() {
-        FramePipelineDesc desc{
+    FrameGraphDesc ToonShaped() {
+        FrameGraphDesc desc{
             .targets =
                 {FrameTargetDesc{
                      .name = "SceneDepth",
@@ -198,7 +198,7 @@ namespace
         FakeCommandList cmdList;
         FakeTexture backBuffer{BackBufferFormat, Width, Height, 0xBB};
         FakeBuffer indexBuffer{64};
-        FramePipeline
+        FrameGraph
             pipeline{device, ToonShaped(), BackBufferFormat, Width, Height};
 
         Fixture() {

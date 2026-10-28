@@ -6,7 +6,7 @@
 
 #include "CommandPort.hpp"
 #include "FrameHistory.hpp"
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "FrameProfiler.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"

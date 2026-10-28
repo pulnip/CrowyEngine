@@ -26,7 +26,7 @@
 #include "RenderApp.hpp"
 #include "ScriptComponent.hpp"
 #include "SnapshotCamera.hpp"
-#include "StandardPipeline.hpp"
+#include "StandardFrame.hpp"
 #include "World.hpp"
 #include "WorldClock.hpp"
 
@@ -242,10 +242,10 @@ namespace Crowy
             }
         }
 
-        FramePipelineDesc DescribePipeline(
-            const StandardPipelineConfig& config
+        FrameGraphDesc DescribePipeline(
+            const StandardFrameConfig& config
         ) override {
-            auto desc = makeStandardPipeline(config);
+            auto desc = describeStandardFrame(config);
             // a data view is the standard list: it shows the scene's data
             // alone, and FindHook then records no simulation
             if(config.post != std::vector<PostPassDesc>{tonemapPass()})

@@ -4,7 +4,7 @@
 #include <span>
 #include <vector>
 
-#include "FramePipeline.hpp"
+#include "FrameGraph.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
