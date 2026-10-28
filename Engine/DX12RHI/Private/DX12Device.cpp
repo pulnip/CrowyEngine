@@ -111,10 +111,7 @@ namespace
         return device;
     }
 
-    void checkDeviceFeature(
-        Crowy::Device& device,
-        Crowy::DX12Capabilities& capabilities
-    ) {
+    Crowy::DX12Capabilities queryCapabilities(Crowy::Device& device) {
         D3D12_FEATURE_DATA_SHADER_MODEL shaderModel{
             .HighestShaderModel = D3D_SHADER_MODEL_6_8
         };
@@ -125,25 +122,9 @@ namespace
             ),
             "Unable to check shader model"
         );
-        if(shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_6) {
-            throw std::runtime_error("Shader Model 6.6 not supported");
+        if(shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_8) {
+            throw std::runtime_error("Shader Model 6.8 not supported");
         }
-        capabilities.shaderModel6_8 =
-            shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_8;
-
-        D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21{};
-        capabilities.extendedCommandInfo =
-            SUCCEEDED(device.CheckFeatureSupport(
-                D3D12_FEATURE_D3D12_OPTIONS21,
-                BYTES(options21)
-            )) &&
-            options21.ExtendedCommandInfoSupported;
-
-        std::println(
-            "Shader Model 6.8: {}, Extended command info: {}",
-            capabilities.shaderModel6_8,
-            capabilities.extendedCommandInfo
-        );
 
         D3D12_FEATURE_DATA_D3D12_OPTIONS options{};
         CHECK_HRESULT(
@@ -174,8 +155,9 @@ namespace
             D3D12_FEATURE_D3D12_OPTIONS16,
             BYTES(options16)
         );
-        capabilities.gpuUploadHeap =
-            SUCCEEDED(hr) && options16.GPUUploadHeapSupported;
+        return Crowy::DX12Capabilities{
+            .gpuUploadHeap = SUCCEEDED(hr) && options16.GPUUploadHeapSupported
+        };
     }
 
     // mirrors debug-layer messages to stderr so a headless run
@@ -497,7 +479,7 @@ namespace Crowy
         RootSignatureRAII globalRootSignature;
         CommandSignatureRAII drawSignature;
         CommandSignatureRAII drawIndexedSignature;
-        DX12Capabilities dx12Capabilities{.gpuUploadHeap = false};
+        const DX12Capabilities dx12Capabilities;
 
         // every resource below is allocated through this, so it has to
         // outlive them - the staging buffer inside uploadRing included
@@ -554,18 +536,14 @@ namespace Crowy
               ),
               globalRootSignature(::createGlobalRootSignature(*device.Get())),
               drawSignature(::createDrawSignature(*device.Get())),
-              drawIndexedSignature(::createDrawIndexedSignature(*device.Get()))
-              // capabilities are still zeroed here; the allocator only reads
-              // them when it allocates, which is after checkDeviceFeature
-              ,
+              drawIndexedSignature(::createDrawIndexedSignature(*device.Get())),
+              dx12Capabilities(::queryCapabilities(*device.Get())),
               allocator(*device.Get(), dx12Capabilities),
               serialFence(std::make_unique<DX12Fence>(*device.Get(), 0)) {
             setupValidationBreak(*device.Get());
             logD3D12CorePath();
-            checkDeviceFeature(*device.Get(), dx12Capabilities);
             initGlobalSession();
 
-            // for prevent dx12Capabilities side-effect
             uploadCmdList = createCommandList();
 
             auto stagingBuffer = CreateBuffer(
