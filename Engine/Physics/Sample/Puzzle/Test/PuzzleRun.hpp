@@ -30,13 +30,28 @@ namespace Crowy
     );
     // by PuzzleKind: every body, those that move, and the hinges
     inline constexpr std::array<usize, 6> PuzzleBodyCounts{
-        9, 8, 6, 9, 10, 12,
+        9,
+        8,
+        6,
+        9,
+        10,
+        12,
     };
     inline constexpr std::array<usize, 6> PuzzleMovingCounts{
-        3, 2, 2, 1, 4, 2,
+        3,
+        2,
+        2,
+        1,
+        4,
+        2,
     };
     inline constexpr std::array<usize, 6> PuzzleHingeCounts{
-        0, 0, 0, 1, 1, 0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
     };
 
     inline constexpr usize indexOf(PuzzleKind kind) {

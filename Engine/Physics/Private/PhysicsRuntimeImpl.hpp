@@ -3,7 +3,6 @@
 #include <memory>
 
 #include <Jolt/Jolt.h>
-
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>

@@ -95,10 +95,9 @@ TEST(PuzzleBuild, InsideFootprint) {
             // a floor reaches below the origin; everything else stands on it
             const auto lowestY =
                 body.role == PieceRole::Ground ? -0.5f : -1.0e-4f;
-            EXPECT_TRUE(isInside(
-                boundsOf(body.desc.shape, body.desc.pose),
-                lowestY
-            ));
+            EXPECT_TRUE(
+                isInside(boundsOf(body.desc.shape, body.desc.pose), lowestY)
+            );
         }
         for(const auto& zone: puzzle.zones) {
             SCOPED_TRACE(zone.name);
@@ -122,7 +121,8 @@ TEST(PuzzleBuild, InsideFootprint) {
                     EXPECT_LT(key.tick, PuzzleHorizon);
                     EXPECT_TRUE(
                         isInside(boundsOf(body.desc.shape, key.pose), 0.0f)
-                    ) << "key at tick " << key.tick;
+                    ) << "key at tick "
+                      << key.tick;
                 }
             }
             for(const auto& release: script.releases) {
@@ -153,8 +153,8 @@ TEST(PuzzleRun, StaysInFootprint) {
                     ASSERT_TRUE(isInside(
                         worldBoundsOf(session.GetWorld(), session.HandleOf(i)),
                         -0.05f
-                    )) << puzzle.bodies[i].name << " at tick "
-                       << session.GetStatus().tick;
+                    )) << puzzle.bodies[i].name
+                       << " at tick " << session.GetStatus().tick;
                 }
             }
             const auto moving = PuzzleMovingCounts[indexOf(kind)];

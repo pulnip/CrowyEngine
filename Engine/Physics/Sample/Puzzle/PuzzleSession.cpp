@@ -84,8 +84,8 @@ namespace Crowy
     void PuzzleSession::applyReleases() {
         const auto& releases = scriptOf(puzzle, mode).releases;
         const auto tick = world->TickCount();
-        for(; nextRelease < releases.size() &&
-              releases[nextRelease].tick == tick;
+        for(;
+            nextRelease < releases.size() && releases[nextRelease].tick == tick;
             ++nextRelease) {
             world->ReleaseHinge(HingeHandleOf(releases[nextRelease].hinge));
             ++status.eventsApplied;

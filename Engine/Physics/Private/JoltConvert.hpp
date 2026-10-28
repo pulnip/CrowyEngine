@@ -2,7 +2,6 @@
 
 // Jolt.h comes before every other Jolt header, in every file
 #include <Jolt/Jolt.h>
-
 #include <Jolt/Math/Quat.h>
 #include <Jolt/Math/Vec3.h>
 

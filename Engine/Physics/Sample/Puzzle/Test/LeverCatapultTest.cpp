@@ -33,10 +33,8 @@ namespace
         auto run = Throw{};
         while(session.GetStatus().tick < PuzzleHorizon) {
             session.Tick();
-            run.weightSpeed = std::max(
-                run.weightSpeed,
-                norm(world.LinearVelocityOf(weight))
-            );
+            run.weightSpeed =
+                std::max(run.weightSpeed, norm(world.LinearVelocityOf(weight)));
             run.cubeSpeed =
                 std::max(run.cubeSpeed, norm(world.LinearVelocityOf(cube)));
             run.apex = std::max(run.apex, world.PoseOf(cube).position.y);

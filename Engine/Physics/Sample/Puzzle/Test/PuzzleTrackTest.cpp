@@ -94,10 +94,11 @@ TEST(PuzzleTrack, TurnsHalfwayAtHalfTime) {
         .keys = {
             PoseKey{
                 .tick = 8,
-                .pose = BodyPose{
-                    .position = Start.position,
-                    .rotation = quarterTurn,
-                },
+                .pose =
+                    BodyPose{
+                        .position = Start.position,
+                        .rotation = quarterTurn,
+                    },
                 .easing = Easing::Linear,
             },
         },
@@ -135,10 +136,11 @@ TEST(PuzzleTrack, TakesTheShorterWay) {
         .keys = {
             PoseKey{
                 .tick = 8,
-                .pose = BodyPose{
-                    .position = Start.position,
-                    .rotation = {0.0f, 0.0f, 0.0f, -1.0f},
-                },
+                .pose =
+                    BodyPose{
+                        .position = Start.position,
+                        .rotation = {0.0f, 0.0f, 0.0f, -1.0f},
+                    },
                 .easing = Easing::Linear,
             },
         },

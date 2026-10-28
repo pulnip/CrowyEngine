@@ -60,8 +60,8 @@ TEST(PuzzlePins, MatchTheTable) {
 
             const auto* pinned = session.GetPin();
             if(pinned == nullptr) {
-                ADD_FAILURE() << "[" << enumName(kind) << " "
-                              << enumName(mode) << "] unpinned";
+                ADD_FAILURE() << "[" << enumName(kind) << " " << enumName(mode)
+                              << "] unpinned";
                 continue;
             }
             const auto divergence =

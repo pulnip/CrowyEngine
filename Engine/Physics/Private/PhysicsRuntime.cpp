@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <Jolt/Jolt.h>
-
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/IssueReporting.h>
 #include <Jolt/Core/Memory.h>

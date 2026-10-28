@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <Jolt/Jolt.h>
-
 #include <Jolt/Core/HashCombine.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
@@ -162,11 +161,11 @@ namespace
                             "a part's friction is not negative"
                         );
                         // the shape holds its material by reference count
-                        const auto material = part.friction
-                            ? JPH::RefConst<JPH::PhysicsMaterial>(
-                                  new PartMaterial(*part.friction)
-                              )
-                            : nullptr;
+                        const auto material =
+                            part.friction ? JPH::RefConst<JPH::PhysicsMaterial>(
+                                                new PartMaterial(*part.friction)
+                                            )
+                                          : nullptr;
                         const auto box =
                             makeBox(part.halfExtent, material.GetPtr());
                         CROWY_ASSERT(
@@ -331,8 +330,8 @@ namespace Crowy
         };
     }
 
-    std::optional<PhysicsWorld::Impl::BodyRows::Handle>
-    PhysicsWorld::Impl::RowHandle(BodyHandle body) const {
+    std::optional<PhysicsWorld::Impl::BodyRows::Handle> PhysicsWorld::Impl::
+        RowHandle(BodyHandle body) const {
         if(body.GetGeneration() >> 32 != tag)
             return std::nullopt;
 
@@ -346,8 +345,8 @@ namespace Crowy
         return handle;
     }
 
-    std::optional<PhysicsWorld::Impl::HingeRows::Handle>
-    PhysicsWorld::Impl::RowHandle(HingeHandle hinge) const {
+    std::optional<PhysicsWorld::Impl::HingeRows::Handle> PhysicsWorld::Impl::
+        RowHandle(HingeHandle hinge) const {
         if(hinge.GetGeneration() >> 32 != tag)
             return std::nullopt;
 
@@ -442,14 +441,17 @@ namespace Crowy
             return BodyHandle{};
         }
 
-        const auto handle = impl->bodies.Add(BodyRow{
-            .id = id,
-            .serial = serial,
-            .motion = desc.motion,
-            .shape = desc.shape,
-            .mass = desc.motion == Dynamic ? settings.GetMassProperties().mMass
-                                           : 0.0f,
-        });
+        const auto handle = impl->bodies.Add(
+            BodyRow{
+                .id = id,
+                .serial = serial,
+                .motion = desc.motion,
+                .shape = desc.shape,
+                .mass = desc.motion == Dynamic
+                            ? settings.GetMassProperties().mMass
+                            : 0.0f,
+            }
+        );
         impl->rowBySerial.push_back(handle);
 
         return impl->PublicHandle(handle);
@@ -497,10 +499,9 @@ namespace Crowy
         );
         CROWY_ASSERT(lock.Succeeded());
         // Jolt is built without RTTI, and a hinge's settings make a hinge
-        HingeConstraintRef constraint =
-            static_cast<JPH::HingeConstraint*>(
-                settings.Create(JPH::Body::sFixedToWorld, lock.GetBody())
-            );
+        HingeConstraintRef constraint = static_cast<JPH::HingeConstraint*>(
+            settings.Create(JPH::Body::sFixedToWorld, lock.GetBody())
+        );
         lock.ReleaseLock();
         impl->system.AddConstraint(constraint.GetPtr());
 
@@ -656,11 +657,8 @@ namespace Crowy
     BodyPose PhysicsWorld::PoseOf(BodyHandle body) const {
         JPH::RVec3 position;
         JPH::Quat rotation;
-        impl->Bodies().GetPositionAndRotation(
-            impl->Row(body).id,
-            position,
-            rotation
-        );
+        impl->Bodies()
+            .GetPositionAndRotation(impl->Row(body).id, position, rotation);
 
         return BodyPose{toVec3(position), toVec4(rotation)};
     }

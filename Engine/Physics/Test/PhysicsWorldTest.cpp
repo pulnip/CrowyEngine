@@ -19,19 +19,23 @@ namespace
 
     // top face at y = 0
     BodyHandle addFloor(PhysicsWorld& world) {
-        return world.CreateBody(BodyDesc{
-            .shape = BoxShape{{10.0f, 0.5f, 10.0f}},
-            .pose = BodyPose{.position = {0.0f, -0.5f, 0.0f}},
-            .motion = BodyMotion::Static,
-        });
+        return world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{{10.0f, 0.5f, 10.0f}},
+                .pose = BodyPose{.position = {0.0f, -0.5f, 0.0f}},
+                .motion = BodyMotion::Static,
+            }
+        );
     }
 
     BodyHandle addBox(PhysicsWorld& world, Vec3 position, f32 mass = 0.0f) {
-        return world.CreateBody(BodyDesc{
-            .shape = BoxShape{},
-            .pose = BodyPose{.position = position},
-            .mass = mass,
-        });
+        return world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{},
+                .pose = BodyPose{.position = position},
+                .mass = mass,
+            }
+        );
     }
 
     void stepTimes(PhysicsWorld& world, u32 ticks) {
@@ -46,30 +50,38 @@ namespace
         addBox(world, {0.1f, 1.6f, 0.0f});
         addBox(world, {-0.1f, topBoxY, 0.0f});
 
-        const auto plank = world.CreateBody(BodyDesc{
-            .shape = BoxShape{{0.5f, 0.05f, 0.05f}},
-            .pose = BodyPose{.position = {3.5f, 1.0f, 0.0f}},
-        });
-        world.CreateHinge(HingeDesc{
-            .body = plank,
-            .pivot = {3.0f, 1.0f, 0.0f},
-            .axis = unitZ(),
-            .normal = unitX(),
-            .minAngle = -0.5f,
-            .maxAngle = 0.5f,
-        });
+        const auto plank = world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{{0.5f, 0.05f, 0.05f}},
+                .pose = BodyPose{.position = {3.5f, 1.0f, 0.0f}},
+            }
+        );
+        world.CreateHinge(
+            HingeDesc{
+                .body = plank,
+                .pivot = {3.0f, 1.0f, 0.0f},
+                .axis = unitZ(),
+                .normal = unitX(),
+                .minAngle = -0.5f,
+                .maxAngle = 0.5f,
+            }
+        );
 
-        const auto mover = world.CreateBody(BodyDesc{
-            .shape = BoxShape{{0.5f, 0.1f, 0.5f}},
-            .pose = BodyPose{.position = {-3.0f, 0.1f, 0.0f}},
-            .motion = BodyMotion::Kinematic,
-        });
+        const auto mover = world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{{0.5f, 0.1f, 0.5f}},
+                .pose = BodyPose{.position = {-3.0f, 0.1f, 0.0f}},
+                .motion = BodyMotion::Kinematic,
+            }
+        );
         world.MoveKinematic(mover, BodyPose{.position = {-3.0f, 1.1f, 0.0f}});
 
-        const auto ball = world.CreateBody(BodyDesc{
-            .shape = SphereShape{0.25f},
-            .pose = BodyPose{.position = {0.0f, 0.25f, -3.0f}},
-        });
+        const auto ball = world.CreateBody(
+            BodyDesc{
+                .shape = SphereShape{0.25f},
+                .pose = BodyPose{.position = {0.0f, 0.25f, -3.0f}},
+            }
+        );
         world.AddImpulse(ball, {0.0f, 0.0f, 40.0f});
     }
 
@@ -144,11 +156,13 @@ TEST(Body, StaticPoseReadsBackBitForBit) {
         // every component non-zero, so a swapped or negated slot shows
         .rotation = {0.1f, 0.2f, 0.3f, 0.92736185f},
     };
-    const auto body = world.CreateBody(BodyDesc{
-        .shape = BoxShape{{0.5f, 0.25f, 1.0f}},
-        .pose = pose,
-        .motion = BodyMotion::Static,
-    });
+    const auto body = world.CreateBody(
+        BodyDesc{
+            .shape = BoxShape{{0.5f, 0.25f, 1.0f}},
+            .pose = pose,
+            .motion = BodyMotion::Static,
+        }
+    );
 
     for(const auto ticks: {0u, 10u}) {
         stepTimes(world, ticks);
@@ -165,11 +179,13 @@ TEST(Body, StaticPoseReadsBackBitForBit) {
 TEST(Body, FreeFallFollowsGravity) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
-    const auto ball = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.5f},
-        .pose = BodyPose{.position = {0.0f, 10.0f, 0.0f}},
-        .linearDamping = 0.0f,
-    });
+    const auto ball = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.5f},
+            .pose = BodyPose{.position = {0.0f, 10.0f, 0.0f}},
+            .linearDamping = 0.0f,
+        }
+    );
 
     stepTimes(world, 60);
     // sixty float additions of dt * g, each off by under 5e-7
@@ -186,10 +202,12 @@ TEST(Body, MassFromShapeOrDesc) {
     PhysicsWorld world(runtime);
     const auto cube = addBox(world, {0.0f, 0.0f, 0.0f});
     const auto heavy = addBox(world, {3.0f, 0.0f, 0.0f}, 2.0f);
-    const auto ball = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.5f},
-        .pose = BodyPose{.position = {-3.0f, 0.0f, 0.0f}},
-    });
+    const auto ball = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.5f},
+            .pose = BodyPose{.position = {-3.0f, 0.0f, 0.0f}},
+        }
+    );
 
     EXPECT_EQ(world.MassOf(cube), 1000.0f);
     EXPECT_EQ(world.MassOf(heavy), 2.0f);
@@ -244,11 +262,13 @@ TEST(Body, MaterialReachesJolt) {
     auto highestRise = [&](f32 restitution) {
         PhysicsWorld world(runtime);
         addFloor(world);
-        const auto ball = world.CreateBody(BodyDesc{
-            .shape = SphereShape{0.25f},
-            .pose = BodyPose{.position = {0.0f, 2.0f, 0.0f}},
-            .restitution = restitution,
-        });
+        const auto ball = world.CreateBody(
+            BodyDesc{
+                .shape = SphereShape{0.25f},
+                .pose = BodyPose{.position = {0.0f, 2.0f, 0.0f}},
+                .restitution = restitution,
+            }
+        );
         f32 rise = 0.0f;
         for(u32 tick = 0; tick < 120; ++tick) {
             world.Step();
@@ -265,13 +285,15 @@ TEST(Body, MaterialReachesJolt) {
     auto speedAfterSliding = [&](f32 friction) {
         PhysicsWorld world(runtime);
         addFloor(world);
-        const auto box = world.CreateBody(BodyDesc{
-            .shape = BoxShape{},
-            .pose = BodyPose{.position = {-5.0f, 0.5f, 0.0f}},
-            .mass = 1.0f,
-            .friction = friction,
-            .linearDamping = 0.0f,
-        });
+        const auto box = world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{},
+                .pose = BodyPose{.position = {-5.0f, 0.5f, 0.0f}},
+                .mass = 1.0f,
+                .friction = friction,
+                .linearDamping = 0.0f,
+            }
+        );
         world.AddImpulse(box, {2.0f, 0.0f, 0.0f});
         stepTimes(world, 60);
         EXPECT_EQ(world.BodyCount(), 2u);
@@ -284,10 +306,12 @@ TEST(Body, MaterialReachesJolt) {
 
     auto turnedAngle = [&](f32 angularDamping) {
         PhysicsWorld world(runtime, PhysicsWorldDesc{.gravity = zeros()});
-        const auto ball = world.CreateBody(BodyDesc{
-            .shape = SphereShape{0.5f},
-            .angularDamping = angularDamping,
-        });
+        const auto ball = world.CreateBody(
+            BodyDesc{
+                .shape = SphereShape{0.5f},
+                .angularDamping = angularDamping,
+            }
+        );
         world.AddImpulseAt(ball, {0.0f, 0.0f, 100.0f}, {0.5f, 0.0f, 0.0f});
         stepTimes(world, 60);
         EXPECT_EQ(world.TickCount(), 60u);
@@ -333,15 +357,17 @@ TEST(Hinge, StopsAtLimit) {
         .pose = BodyPose{.position = {0.5f, 1.0f, 0.0f}},
     };
     auto hingeAt = [&](PhysicsWorld& world, f32 limit, f32 friction) {
-        return world.CreateHinge(HingeDesc{
-            .body = world.CreateBody(plank),
-            .pivot = {0.0f, 1.0f, 0.0f},
-            .axis = unitZ(),
-            .normal = unitX(),
-            .minAngle = -limit,
-            .maxAngle = limit,
-            .maxFrictionTorque = friction,
-        });
+        return world.CreateHinge(
+            HingeDesc{
+                .body = world.CreateBody(plank),
+                .pivot = {0.0f, 1.0f, 0.0f},
+                .axis = unitZ(),
+                .normal = unitX(),
+                .minAngle = -limit,
+                .maxAngle = limit,
+                .maxFrictionTorque = friction,
+            }
+        );
     };
 
     PhysicsWorld limited(runtime);
@@ -413,20 +439,26 @@ namespace
 TEST(Compound, CupHoldsABallAndWeighsItsBoxes) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
-    const auto cup = world.CreateBody(BodyDesc{
-        .shape = openBox(0.5f, 0.3f),
-        .motion = BodyMotion::Static,
-    });
-    const auto ball = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.1f},
-        .pose = BodyPose{.position = {0.2f, 1.0f, -0.1f}},
-    });
+    const auto cup = world.CreateBody(
+        BodyDesc{
+            .shape = openBox(0.5f, 0.3f),
+            .motion = BodyMotion::Static,
+        }
+    );
+    const auto ball = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.1f},
+            .pose = BodyPose{.position = {0.2f, 1.0f, -0.1f}},
+        }
+    );
     // the same boxes, dynamic: 1000 kg/m^3 over their summed volume
-    const auto heavy = world.CreateBody(BodyDesc{
-        .shape = openBox(0.5f, 0.3f),
-        .pose = BodyPose{.position = {5.0f, 0.0f, 0.0f}},
-        .motion = BodyMotion::Dynamic,
-    });
+    const auto heavy = world.CreateBody(
+        BodyDesc{
+            .shape = openBox(0.5f, 0.3f),
+            .pose = BodyPose{.position = {5.0f, 0.0f, 0.0f}},
+            .motion = BodyMotion::Dynamic,
+        }
+    );
 
     stepTimes(world, 120);
     const auto rest = world.PoseOf(ball).position;
@@ -439,7 +471,8 @@ TEST(Compound, CupHoldsABallAndWeighsItsBoxes) {
     ASSERT_TRUE(std::holds_alternative<CompoundShape>(world.ShapeOf(cup)));
     EXPECT_EQ(std::get<CompoundShape>(world.ShapeOf(cup)).parts.size(), 5u);
     const auto volume = 2.0f * 0.05f * 1.0f * 1.0f +
-        2.0f * (0.1f * 0.3f * 1.0f) + 2.0f * (1.0f * 0.3f * 0.1f);
+                        2.0f * (0.1f * 0.3f * 1.0f) +
+                        2.0f * (1.0f * 0.3f * 0.1f);
     EXPECT_NEAR(world.MassOf(heavy), 1000.0f * volume, 0.5f);
     EXPECT_EQ(world.TickCount(), 120u);
     EXPECT_EQ(world.BodyCount(), 3u);
@@ -449,15 +482,19 @@ TEST(Compound, CupHoldsABallAndWeighsItsBoxes) {
 TEST(Compound, MovedTrayCarriesTheBall) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
-    const auto tray = world.CreateBody(BodyDesc{
-        .shape = openBox(0.4f, 0.2f),
-        .motion = BodyMotion::Kinematic,
-    });
-    const auto ball = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.08f},
-        .pose = BodyPose{.position = {0.0f, 0.15f, 0.0f}},
-        .friction = 0.5f,
-    });
+    const auto tray = world.CreateBody(
+        BodyDesc{
+            .shape = openBox(0.4f, 0.2f),
+            .motion = BodyMotion::Kinematic,
+        }
+    );
+    const auto ball = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.08f},
+            .pose = BodyPose{.position = {0.0f, 0.15f, 0.0f}},
+            .friction = 0.5f,
+        }
+    );
 
     stepTimes(world, 30);
     // 0.5 m along x over 2 s, in literal steps of 1/240 m a tick
@@ -481,16 +518,20 @@ TEST(Compound, MovedTrayCarriesTheBall) {
 TEST(Hinge, ReleaseWakesASleeper) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
-    const auto bob = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.1f},
-        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
-    });
-    const auto hinge = world.CreateHinge(HingeDesc{
-        .body = bob,
-        .pivot = {0.0f, 2.0f, 0.0f},
-        .axis = unitZ(),
-        .normal = unitX(),
-    });
+    const auto bob = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.1f},
+            .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
+        }
+    );
+    const auto hinge = world.CreateHinge(
+        HingeDesc{
+            .body = bob,
+            .pivot = {0.0f, 2.0f, 0.0f},
+            .axis = unitZ(),
+            .normal = unitX(),
+        }
+    );
 
     // hanging straight down, it falls asleep
     u32 ticks = 0;
@@ -511,17 +552,21 @@ TEST(Hinge, ReleaseWakesASleeper) {
 TEST(Hinge, ReleaseFreesTheBody) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
-    const auto bob = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.1f},
-        .pose = BodyPose{.position = {1.0f, 2.0f, 0.0f}},
-        .linearDamping = 0.0f,
-    });
-    const auto hinge = world.CreateHinge(HingeDesc{
-        .body = bob,
-        .pivot = {0.0f, 2.0f, 0.0f},
-        .axis = unitZ(),
-        .normal = unitX(),
-    });
+    const auto bob = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.1f},
+            .pose = BodyPose{.position = {1.0f, 2.0f, 0.0f}},
+            .linearDamping = 0.0f,
+        }
+    );
+    const auto hinge = world.CreateHinge(
+        HingeDesc{
+            .body = bob,
+            .pivot = {0.0f, 2.0f, 0.0f},
+            .axis = unitZ(),
+            .normal = unitX(),
+        }
+    );
 
     // held, the bob stays one arm's length from the pivot
     stepTimes(world, 30);
@@ -543,15 +588,19 @@ TEST(Hinge, ReleaseFreesTheBody) {
 TEST(Hinge, ReleaseShowsInTheHash) {
     PhysicsRuntime runtime;
     auto pendulum = [](PhysicsWorld& world) {
-        return world.CreateHinge(HingeDesc{
-            .body = world.CreateBody(BodyDesc{
-                .shape = SphereShape{0.1f},
-                .pose = BodyPose{.position = {1.0f, 2.0f, 0.0f}},
-            }),
-            .pivot = {0.0f, 2.0f, 0.0f},
-            .axis = unitZ(),
-            .normal = unitX(),
-        });
+        return world.CreateHinge(
+            HingeDesc{
+                .body = world.CreateBody(
+                    BodyDesc{
+                        .shape = SphereShape{0.1f},
+                        .pose = BodyPose{.position = {1.0f, 2.0f, 0.0f}},
+                    }
+                ),
+                .pivot = {0.0f, 2.0f, 0.0f},
+                .axis = unitZ(),
+                .normal = unitX(),
+            }
+        );
     };
     PhysicsWorld held(runtime);
     PhysicsWorld released(runtime);
@@ -576,13 +625,15 @@ TEST(Compound, OnePartKeepsItsOffset) {
     PhysicsWorld world(runtime);
     addFloor(world);
     // one part becomes a rotated-translated shape in Jolt
-    world.CreateBody(BodyDesc{
-        .shape = CompoundShape{{CompoundPart{
-            .halfExtent = {0.3f, 0.1f, 0.3f},
-            .pose = BodyPose{.position = {0.5f, 1.0f, 0.0f}},
-        }}},
-        .motion = BodyMotion::Static,
-    });
+    world.CreateBody(
+        BodyDesc{
+            .shape = CompoundShape{{CompoundPart{
+                .halfExtent = {0.3f, 0.1f, 0.3f},
+                .pose = BodyPose{.position = {0.5f, 1.0f, 0.0f}},
+            }}},
+            .motion = BodyMotion::Static,
+        }
+    );
     const auto onPart = addBox(world, {0.5f, 2.0f, 0.0f});
     const auto offPart = addBox(world, {-0.5f, 2.0f, 0.0f});
 
@@ -597,14 +648,16 @@ TEST(Compound, OnePartKeepsItsOffset) {
 TEST(Compound, TurnsAboutItsOrigin) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime, PhysicsWorldDesc{.gravity = zeros()});
-    const auto arm = world.CreateBody(BodyDesc{
-        .shape = CompoundShape{{CompoundPart{
-            .halfExtent = {0.2f, 0.05f, 0.05f},
-            .pose = BodyPose{.position = {1.0f, 0.0f, 0.0f}},
-        }}},
-        .pose = BodyPose{.position = {2.0f, 1.0f, 3.0f}},
-        .motion = BodyMotion::Kinematic,
-    });
+    const auto arm = world.CreateBody(
+        BodyDesc{
+            .shape = CompoundShape{{CompoundPart{
+                .halfExtent = {0.2f, 0.05f, 0.05f},
+                .pose = BodyPose{.position = {1.0f, 0.0f, 0.0f}},
+            }}},
+            .pose = BodyPose{.position = {2.0f, 1.0f, 3.0f}},
+            .motion = BodyMotion::Kinematic,
+        }
+    );
 
     // a quarter turn about y
     world.MoveKinematic(
@@ -634,32 +687,37 @@ TEST(Compound, PartsKeepTheirFriction) {
 
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
-    world.CreateBody(BodyDesc{
-        .shape = CompoundShape{{
-            CompoundPart{
-                .halfExtent = {1.0f, 0.05f, 0.25f},
-                .pose = BodyPose{.position = {0.0f, 0.0f, -0.3f}},
-            },
-            CompoundPart{
-                .halfExtent = {1.0f, 0.05f, 0.25f},
-                .pose = BodyPose{.position = {0.0f, 0.0f, 0.3f}},
-                .friction = 0.0f,
-            },
-        }},
-        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}, .rotation = Slope},
-        .motion = BodyMotion::Static,
-        .friction = 1.0f,
-    });
+    world.CreateBody(
+        BodyDesc{
+            .shape = CompoundShape{{
+                CompoundPart{
+                    .halfExtent = {1.0f, 0.05f, 0.25f},
+                    .pose = BodyPose{.position = {0.0f, 0.0f, -0.3f}},
+                },
+                CompoundPart{
+                    .halfExtent = {1.0f, 0.05f, 0.25f},
+                    .pose = BodyPose{.position = {0.0f, 0.0f, 0.3f}},
+                    .friction = 0.0f,
+                },
+            }},
+            .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}, .rotation = Slope},
+            .motion = BodyMotion::Static,
+            .friction = 1.0f,
+        }
+    );
     // resting on the slope, 0.15 m along its normal
     auto blockOn = [&](f32 z) {
-        return world.CreateBody(BodyDesc{
-            .shape = BoxShape{{0.1f, 0.1f, 0.1f}},
-            .pose = BodyPose{
-                .position = {-0.15f * Sin, 1.0f + 0.15f * Cos, z},
-                .rotation = Slope,
-            },
-            .friction = 1.0f,
-        });
+        return world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{{0.1f, 0.1f, 0.1f}},
+                .pose =
+                    BodyPose{
+                        .position = {-0.15f * Sin, 1.0f + 0.15f * Cos, z},
+                        .rotation = Slope,
+                    },
+                .friction = 1.0f,
+            }
+        );
     };
     const auto held = blockOn(-0.3f);
     const auto slid = blockOn(0.3f);
@@ -698,21 +756,27 @@ TEST(Compound, ASeamFeelsBothParts) {
             .halfExtent = {1.0f, 0.05f, 0.25f},
             .pose = BodyPose{.position = {0.0f, 0.0f, 0.25f}},
         };
-        world.CreateBody(BodyDesc{
-            .shape = frictionlessFirst ? CompoundShape{{slick, rough}}
-                                       : CompoundShape{{rough, slick}},
-            .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}, .rotation = Slope},
-            .motion = BodyMotion::Static,
-            .friction = 1.0f,
-        });
-        const auto block = world.CreateBody(BodyDesc{
-            .shape = BoxShape{{0.1f, 0.1f, 0.1f}},
-            .pose = BodyPose{
-                .position = {-0.15f * Sin, 1.0f + 0.15f * Cos, 0.0f},
-                .rotation = Slope,
-            },
-            .friction = 1.0f,
-        });
+        world.CreateBody(
+            BodyDesc{
+                .shape = frictionlessFirst ? CompoundShape{{slick, rough}}
+                                           : CompoundShape{{rough, slick}},
+                .pose =
+                    BodyPose{.position = {0.0f, 1.0f, 0.0f}, .rotation = Slope},
+                .motion = BodyMotion::Static,
+                .friction = 1.0f,
+            }
+        );
+        const auto block = world.CreateBody(
+            BodyDesc{
+                .shape = BoxShape{{0.1f, 0.1f, 0.1f}},
+                .pose =
+                    BodyPose{
+                        .position = {-0.15f * Sin, 1.0f + 0.15f * Cos, 0.0f},
+                        .rotation = Slope,
+                    },
+                .friction = 1.0f,
+            }
+        );
         const auto start = world.PoseOf(block).position;
 
         stepTimes(world, 30);
@@ -731,17 +795,21 @@ TEST(Water, LightFloatsHeavySinks) {
     PhysicsWorld world(runtime);
     addFloor(world);
     // surface at y = 2
-    world.AddWater(WaterDesc{
-        .center = {0.0f, 1.0f, 0.0f},
-        .halfExtent = {3.0f, 1.0f, 3.0f},
-    });
+    world.AddWater(
+        WaterDesc{
+            .center = {0.0f, 1.0f, 0.0f},
+            .halfExtent = {3.0f, 1.0f, 3.0f},
+        }
+    );
     // 0.2 m spheres at 300 and 3000 kg/m^3 (the volume is 0.0335 m^3)
     const auto ballAt = [&](f32 x, f32 mass) {
-        return world.CreateBody(BodyDesc{
-            .shape = SphereShape{0.2f},
-            .pose = BodyPose{.position = {x, 1.0f, 0.0f}},
-            .mass = mass,
-        });
+        return world.CreateBody(
+            BodyDesc{
+                .shape = SphereShape{0.2f},
+                .pose = BodyPose{.position = {x, 1.0f, 0.0f}},
+                .mass = mass,
+            }
+        );
     };
     const auto light = ballAt(-1.0f, 10.053f);
     const auto heavy = ballAt(1.0f, 100.53f);
@@ -762,15 +830,19 @@ TEST(Water, DeeperRisesHigher) {
     auto peakFrom = [&](f32 depth) {
         PhysicsWorld world(runtime);
         addFloor(world);
-        world.AddWater(WaterDesc{
-            .center = {0.0f, 1.0f, 0.0f},
-            .halfExtent = {3.0f, 1.0f, 3.0f},
-        });
-        const auto buoy = world.CreateBody(BodyDesc{
-            .shape = SphereShape{0.2f},
-            .pose = BodyPose{.position = {0.0f, 2.0f - depth, 0.0f}},
-            .mass = 10.053f,
-        });
+        world.AddWater(
+            WaterDesc{
+                .center = {0.0f, 1.0f, 0.0f},
+                .halfExtent = {3.0f, 1.0f, 3.0f},
+            }
+        );
+        const auto buoy = world.CreateBody(
+            BodyDesc{
+                .shape = SphereShape{0.2f},
+                .pose = BodyPose{.position = {0.0f, 2.0f - depth, 0.0f}},
+                .mass = 10.053f,
+            }
+        );
         f32 peak = 0.0f;
         for(u32 tick = 0; tick < 120; ++tick) {
             world.Step();
@@ -787,16 +859,20 @@ TEST(Water, OnlyInsideTheBox) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
     addFloor(world);
-    world.AddWater(WaterDesc{
-        .center = {0.0f, 1.0f, 0.0f},
-        .halfExtent = {1.0f, 1.0f, 1.0f},
-    });
+    world.AddWater(
+        WaterDesc{
+            .center = {0.0f, 1.0f, 0.0f},
+            .halfExtent = {1.0f, 1.0f, 1.0f},
+        }
+    );
     // below the surface's height, beside the water
-    const auto outside = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.2f},
-        .pose = BodyPose{.position = {3.0f, 1.0f, 0.0f}},
-        .mass = 10.053f,
-    });
+    const auto outside = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.2f},
+            .pose = BodyPose{.position = {3.0f, 1.0f, 0.0f}},
+            .mass = 10.053f,
+        }
+    );
 
     stepTimes(world, 120);
     EXPECT_NEAR(world.PoseOf(outside).position.y, 0.2f, 0.03f);
@@ -813,10 +889,12 @@ TEST(Water, InertWithoutBodies) {
         addBox(*world, {0.0f, 2.0f, 0.0f});
     }
     // nothing ever enters it
-    wet.AddWater(WaterDesc{
-        .center = {5.0f, 1.0f, 0.0f},
-        .halfExtent = {1.0f, 1.0f, 1.0f},
-    });
+    wet.AddWater(
+        WaterDesc{
+            .center = {5.0f, 1.0f, 0.0f},
+            .halfExtent = {1.0f, 1.0f, 1.0f},
+        }
+    );
 
     for(u32 tick = 0; tick < 60; ++tick) {
         dry.Step();
@@ -835,11 +913,13 @@ TEST(Query, OverlapSeesSleepersSkipsStatics) {
     const auto right = addBox(world, {2.0f, 0.5f, 0.0f});
     const auto left = addBox(world, {-2.0f, 0.5f, 0.0f});
     const auto middle = addBox(world, {0.0f, 0.5f, 0.0f});
-    const auto mover = world.CreateBody(BodyDesc{
-        .shape = BoxShape{},
-        .pose = BodyPose{.position = {4.0f, 0.5f, 0.0f}},
-        .motion = BodyMotion::Kinematic,
-    });
+    const auto mover = world.CreateBody(
+        BodyDesc{
+            .shape = BoxShape{},
+            .pose = BodyPose{.position = {4.0f, 0.5f, 0.0f}},
+            .motion = BodyMotion::Kinematic,
+        }
+    );
 
     stepTimes(world, 120);
     for(const auto body: {right, left, middle})
@@ -954,9 +1034,9 @@ TEST(Handle, ScopedToItsWorld) {
     EXPECT_FALSE(other.IsValid(hinge));
     EXPECT_TRUE(other.IsValid(theirHinge));
     EXPECT_FALSE(one.IsValid(theirHinge));
-    EXPECT_FALSE(one.IsValid(
-        BodyHandle{mine.GetIndex(), mine.GetGeneration() + 1}
-    ));
+    EXPECT_FALSE(
+        one.IsValid(BodyHandle{mine.GetIndex(), mine.GetGeneration() + 1})
+    );
 
     EXPECT_EQ(one.MotionOf(mine), BodyMotion::Kinematic);
     ASSERT_TRUE(std::holds_alternative<SphereShape>(one.ShapeOf(mine)));
@@ -1029,10 +1109,12 @@ TEST(PhysicsDeathTest, HingeLimitOutsideRange) {
         {
             PhysicsRuntime runtime;
             PhysicsWorld world(runtime);
-            world.CreateHinge(HingeDesc{
-                .body = world.CreateBody(BodyDesc{}),
-                .minAngle = 0.7f,
-            });
+            world.CreateHinge(
+                HingeDesc{
+                    .body = world.CreateBody(BodyDesc{}),
+                    .minAngle = 0.7f,
+                }
+            );
         },
         "minAngle"
     );
@@ -1053,16 +1135,20 @@ TEST(Water, RestingBodiesSleep) {
     PhysicsRuntime runtime;
     PhysicsWorld world(runtime);
     addFloor(world);
-    world.AddWater(WaterDesc{
-        .center = {0.0f, 1.0f, 0.0f},
-        .halfExtent = {1.0f, 1.0f, 1.0f},
-    });
+    world.AddWater(
+        WaterDesc{
+            .center = {0.0f, 1.0f, 0.0f},
+            .halfExtent = {1.0f, 1.0f, 1.0f},
+        }
+    );
     // three times the water's density: it sinks to the floor and rests
-    const auto stone = world.CreateBody(BodyDesc{
-        .shape = SphereShape{0.2f},
-        .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
-        .mass = 3000.0f * 4.0f / 3.0f * 3.1415927f * 0.008f,
-    });
+    const auto stone = world.CreateBody(
+        BodyDesc{
+            .shape = SphereShape{0.2f},
+            .pose = BodyPose{.position = {0.0f, 1.0f, 0.0f}},
+            .mass = 3000.0f * 4.0f / 3.0f * 3.1415927f * 0.008f,
+        }
+    );
 
     stepTimes(world, 300);
     EXPECT_NEAR(world.PoseOf(stone).position.y, 0.2f, 0.025f);
@@ -1076,9 +1162,11 @@ TEST(PhysicsDeathTest, NegativePartFriction) {
         {
             PhysicsRuntime runtime;
             PhysicsWorld world(runtime);
-            world.CreateBody(BodyDesc{
-                .shape = CompoundShape{{CompoundPart{.friction = -0.1f}}},
-            });
+            world.CreateBody(
+                BodyDesc{
+                    .shape = CompoundShape{{CompoundPart{.friction = -0.1f}}},
+                }
+            );
         },
         "a part's friction is not negative"
     );

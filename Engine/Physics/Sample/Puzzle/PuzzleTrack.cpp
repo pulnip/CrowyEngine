@@ -1,8 +1,7 @@
-#include "Puzzle.hpp"
-
 #include <cmath>
 
 #include "Assert.hpp"
+#include "Puzzle.hpp"
 
 // Explicit arithmetic in a contraction-off TU: an inline Core helper would
 // take the flags of whichever file the linker kept it from.
@@ -66,7 +65,7 @@ namespace Crowy
                 return from.pose;
 
             const auto u = static_cast<f32>(tick - from.tick) /
-                static_cast<f32>(key.tick - from.tick);
+                           static_cast<f32>(key.tick - from.tick);
             const auto s = eased(key.easing, u);
 
             // a hold keeps its rotation exactly: nlerp would round it anew
@@ -75,8 +74,8 @@ namespace Crowy
             return BodyPose{
                 .position = lerp(from.pose.position, key.pose.position, s),
                 .rotation = rotation == key.pose.rotation
-                    ? rotation
-                    : nlerp(rotation, key.pose.rotation, s),
+                                ? rotation
+                                : nlerp(rotation, key.pose.rotation, s),
             };
         }
 
