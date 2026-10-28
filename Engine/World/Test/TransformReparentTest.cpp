@@ -4,7 +4,7 @@
 
 #include "PairedHierarchy.hpp"
 #include "Primitives.hpp"
-#include "TransformHierarchyInspect.hpp"
+#include "TransformHierarchyInvariants.hpp"
 
 using namespace Crowy;
 

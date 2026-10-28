@@ -12,10 +12,23 @@
 #include <gtest/gtest.h>
 
 #include "ReferenceHierarchy.hpp"
-#include "TransformHierarchyInspect.hpp"
+#include "TransformHierarchyInvariants.hpp"
 
 namespace Crowy
 {
+    inline void expectNearMatrix(
+        const Mat4& actual,
+        const Mat4& expected,
+        f32 epsilon
+    ) {
+        for(usize column = 0; column < 4; ++column) {
+            for(usize row = 0; row < 4; ++row) {
+                EXPECT_NEAR(actual[column][row], expected[column][row], epsilon)
+                    << "at column " << column << ", row " << row;
+            }
+        }
+    }
+
     class PairedHierarchy {
     public:
         static constexpr usize NO_PARENT = std::numeric_limits<usize>::max();
@@ -161,10 +174,11 @@ namespace Crowy
                     continue;
                 }
 
+                SCOPED_TRACE(testing::Message() << "node " << pair.node);
                 expectNearMatrix(
                     real.GetWorldMatrix(pair.handle),
                     pair.node->world,
-                    pair.node
+                    EPSILON
                 );
                 // a quaternion and its negation are the same rotation
                 EXPECT_NEAR(
@@ -228,20 +242,6 @@ namespace Crowy
 
             return found == indexOfNode.end() ? TransformHandle::InvalidHandle()
                                               : pairs[found->second].handle;
-        }
-
-        static void expectNearMatrix(
-            const Mat4& lhs,
-            const Mat4& rhs,
-            const RefNode* node
-        ) {
-            for(usize column = 0; column < 4; ++column) {
-                for(usize row = 0; row < 4; ++row) {
-                    EXPECT_NEAR(lhs[column][row], rhs[column][row], EPSILON)
-                        << "node " << node << " at column " << column
-                        << ", row " << row;
-                }
-            }
         }
     };
 }

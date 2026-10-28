@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "LinearAlgebra.hpp"
+#include "PairedHierarchy.hpp"
 #include "Primitives.hpp"
 #include "TransformHierarchy.hpp"
 
@@ -28,15 +29,6 @@ namespace
             .rotation =
                 Vec4{0.0f, 0.0f, std::sin(radian / 2), std::cos(radian / 2)}
         };
-    }
-
-    void expectNearMatrix(const Mat4& lhs, const Mat4& rhs) {
-        for(usize column = 0; column < 4; ++column) {
-            for(usize row = 0; row < 4; ++row) {
-                EXPECT_NEAR(lhs[column][row], rhs[column][row], EPSILON)
-                    << "at column " << column << ", row " << row;
-            }
-        }
     }
 
     Vec3 positionOf(const Mat4& world) {
@@ -74,7 +66,7 @@ TEST_F(TransformWorldTest, RootWorldIsItsOwnLocal) {
 
     hierarchy.UpdateWorldTransforms();
 
-    expectNearMatrix(hierarchy.GetWorldMatrix(root), modelMat(local));
+    expectNearMatrix(hierarchy.GetWorldMatrix(root), modelMat(local), EPSILON);
 }
 
 TEST_F(TransformWorldTest, ChildIsParentTimesLocal) {
@@ -88,7 +80,8 @@ TEST_F(TransformWorldTest, ChildIsParentTimesLocal) {
 
     expectNearMatrix(
         hierarchy.GetWorldMatrix(child),
-        modelMat(parentLocal) * modelMat(childLocal)
+        modelMat(parentLocal) * modelMat(childLocal),
+        EPSILON
     );
     EXPECT_NEAR(positionOf(hierarchy.GetWorldMatrix(child)).x, 1.0f, EPSILON);
     EXPECT_NEAR(positionOf(hierarchy.GetWorldMatrix(child)).y, 2.0f, EPSILON);

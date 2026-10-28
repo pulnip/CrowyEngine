@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "Primitives.hpp"
-#include "TransformHierarchyInspect.hpp"
+#include "TransformHierarchyInvariants.hpp"
 
 using namespace Crowy;
 

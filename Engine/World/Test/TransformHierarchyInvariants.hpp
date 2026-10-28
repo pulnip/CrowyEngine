@@ -1,7 +1,5 @@
 #pragma once
 
-// Test and debug only. Production code must not include this.
-
 #include <format>
 #include <span>
 

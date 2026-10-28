@@ -4,8 +4,9 @@
 #include <gtest/gtest.h>
 
 #include "LinearAlgebra.hpp"
+#include "PairedHierarchy.hpp"
 #include "Primitives.hpp"
-#include "TransformHierarchyInspect.hpp"
+#include "TransformHierarchyInvariants.hpp"
 
 using namespace Crowy;
 
@@ -24,14 +25,6 @@ namespace
         };
     }
 
-    void expectNearMatrix(const Mat4& lhs, const Mat4& rhs) {
-        for(usize column = 0; column < 4; ++column) {
-            for(usize row = 0; row < 4; ++row) {
-                EXPECT_NEAR(lhs[column][row], rhs[column][row], EPSILON)
-                    << "at column " << column << ", row " << row;
-            }
-        }
-    }
 }
 
 class WorldAccessorTest: public ::testing::Test {
