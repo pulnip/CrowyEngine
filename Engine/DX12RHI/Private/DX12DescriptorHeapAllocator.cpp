@@ -38,10 +38,9 @@ namespace Crowy
             "Failed to create DescriptorHeap"
         );
 
-        // reserve id = 0 for invalid
         freeIndexes.reserve(capacity);
-        for(UINT i = capacity; i > 1; --i)
-            freeIndexes.push_back(i - 1);
+        for(UINT i = capacity - 1; i > InvalidIndex; --i)
+            freeIndexes.push_back(i);
     }
 
     UINT DX12DescriptorHeapAllocator::Allocate(

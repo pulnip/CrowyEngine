@@ -238,7 +238,6 @@ namespace Crowy
 
         primitiveTopology = ::convert(desc.topology);
 
-        // Input Layout
         std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
         if(desc.vertexLayout.has_value()) {
             primitiveTopology = ::convert(desc.topology);
@@ -262,7 +261,6 @@ namespace Crowy
             }
         }
 
-        // Vertex Shader
         RHIShader shaderProgram{
             desc.vertexShader.path,
             RHIBackend::DirectX12,
@@ -272,7 +270,6 @@ namespace Crowy
         auto vertexShader =
             shaderProgram.GetEntryPointCode(desc.vertexShader.entryPoint);
 
-        // RasterizerState
         D3D12_RASTERIZER_DESC rsDesc{
             .FillMode = ::convert(desc.rasterizer.fillMode),
             .CullMode = ::convert(desc.rasterizer.cullMode),
@@ -287,7 +284,6 @@ namespace Crowy
             .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
         };
 
-        // Pixel Shader
         std::vector<u8> pixelShader;
         if(desc.fragmentShader.has_value()) {
             const auto& fragmentShader = desc.fragmentShader.value();
@@ -304,7 +300,6 @@ namespace Crowy
                 shaderProgram.GetEntryPointCode(fragmentShader.entryPoint);
         }
 
-        // DepthStencilState
         D3D12_DEPTH_STENCIL_DESC dsDesc{
             .DepthEnable = FALSE,
             .StencilEnable = FALSE
@@ -329,7 +324,6 @@ namespace Crowy
             }
         }
 
-        // BlendState
         const auto blend = desc.blend.value_or(RHIBlendState{});
         D3D12_BLEND_DESC bsDesc{
             .AlphaToCoverageEnable = blend.alphaToCoverageEnable,
@@ -396,7 +390,6 @@ namespace Crowy
             .Flags = D3D12_PIPELINE_STATE_FLAG_NONE
         };
 
-        // Render target formats
         for(usize i = 0; i < desc.renderTargetCount; ++i) {
             dxDesc.RTVFormats[i] = convert(desc.renderTargetFormats[i]);
         }

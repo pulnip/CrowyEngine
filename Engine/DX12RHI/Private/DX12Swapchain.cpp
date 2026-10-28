@@ -59,7 +59,6 @@ namespace Crowy
             .Height = desc.bufferDesc.height,
             .Format = toPhysicalFormat(GetFormat()),
             .Stereo = FALSE,
-            // No MSAA for swapchain
             .SampleDesc = {1, 0},
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
             .BufferCount = desc.bufferCount,
@@ -153,7 +152,6 @@ namespace Crowy
             "Failed to resize Swapchain buffer"
         );
 
-        // recreate back buffer resource
         createBackBuffers(desc.BufferCount);
     }
 

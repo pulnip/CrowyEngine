@@ -5,9 +5,7 @@
 
 namespace Crowy
 {
-    // Debug frame capture for the DX12 backend: copies the back buffer
-    // back, waits for the copy, and writes path as a BMP. Call right
-    // before IDXGISwapChain::Present, while the back buffer still holds
-    // the frame. Returns whether the file was written.
+    // copies the back buffer back, waits, and writes path as a BMP; call
+    // right before Present, while the back buffer still holds the frame
     bool DumpFrame(CommandQueue& queue, Texture& backBuffer, const Str& path);
 }

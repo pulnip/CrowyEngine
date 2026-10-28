@@ -17,12 +17,10 @@ namespace Crowy
     using Adapter = IDXGIAdapter1;
     using Swapchain = IDXGISwapChain3;
 
-    // Pipeline state types
     using PipelineState = ID3D12PipelineState;
     using RootSignature = ID3D12RootSignature;
     using CommandSignature = ID3D12CommandSignature;
 
-    // Resource types
     using Buffer = ID3D12Resource;
     using Texture = ID3D12Resource;
     using DescriptorHeap = ID3D12DescriptorHeap;
@@ -33,7 +31,6 @@ namespace Crowy
     using ShaderReflection = ID3D12ShaderReflection;
     using QueryHeap = ID3D12QueryHeap;
 
-    // RAII wrappers for COM interfaces
     template<typename T>
     using COMRAII = Microsoft::WRL::ComPtr<T>;
 
@@ -63,7 +60,6 @@ namespace Crowy
     inline constexpr UINT RootParamPush = 0;
     inline constexpr UINT RootParamCBBase = 1;
 
-    // TODO. merge to RHICapabilities
     struct DX12Capabilities {
         bool gpuUploadHeap = false;
         // both required by SV_StartInstanceLocation

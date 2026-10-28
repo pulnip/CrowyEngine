@@ -36,7 +36,6 @@ namespace
         FactoryRAII factory = nullptr;
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-        // Enable debug layer
         COMRAII<ID3D12Debug> debugController;
         if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
             debugController->EnableDebugLayer();
@@ -124,11 +123,9 @@ namespace
         if(shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_6) {
             throw std::runtime_error("Shader Model 6.6 not supported");
         }
-        // required for SV_StartInstanceLocation
         capabilities.shaderModel6_8 =
             shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_8;
 
-        // required for SV_StartInstanceLocation
         D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21{};
         capabilities.extendedCommandInfo =
             SUCCEEDED(device.CheckFeatureSupport(
@@ -143,7 +140,6 @@ namespace
             capabilities.extendedCommandInfo
         );
 
-        // Resource Binding Tier 3 Support
         D3D12_FEATURE_DATA_D3D12_OPTIONS options{};
         CHECK_HRESULT(
             device.CheckFeatureSupport(
@@ -156,7 +152,6 @@ namespace
             throw std::runtime_error("Resource Binding Tier 3 not supported");
         }
 
-        // Enhanced Resource Barrier Support
         D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12{};
         CHECK_HRESULT(
             device.CheckFeatureSupport(
@@ -169,7 +164,6 @@ namespace
             throw std::runtime_error("Enhanced Barrier not supported");
         }
 
-        // ResizableBAR Support
         D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16{};
         auto hr = device.CheckFeatureSupport(
             D3D12_FEATURE_D3D12_OPTIONS16,
@@ -194,11 +188,8 @@ namespace
         std::println(stderr, "{}: {}", label, description);
     }
 
-    // With CROWY_D3D_DEBUG_BREAK set, validation errors raise a debug
-    // break; without a debugger attached that aborts the process, so a
-    // smoke run turns validation errors into a nonzero exit code - the
-    // same contract as Metal's MTL_DEBUG_LAYER assert mode.
-    // Needs the debug layer, so it only works in debug builds.
+    // with CROWY_D3D_DEBUG_BREAK, a validation error breaks, and without a
+    // debugger that aborts, so a smoke run exits nonzero like MTL_DEBUG_LAYER
     void setupValidationBreak(Crowy::Device& device) {
         using namespace Crowy;
 
@@ -273,7 +264,6 @@ namespace
         return commandQueue;
     }
 
-    // ticks per second of the timestamps this queue's lists write
     Crowy::f64 readTimestampFrequency(Crowy::CommandQueue& commandQueue) {
         UINT64 frequency = 0;
         CHECK_HRESULT(
@@ -284,9 +274,8 @@ namespace
         return static_cast<Crowy::f64>(frequency);
     }
 
-    // the two command signatures every DrawBatch goes through: a single draw
-    // argument each, so no root signature is needed at creation and no root
-    // arguments change per draw
+    // one draw argument per signature, so creation needs no root signature
+    // and no root argument changes per draw
     auto createDrawSignature(Crowy::Device& device) {
         using namespace Crowy;
 
@@ -407,7 +396,7 @@ namespace
             .MipLODBias = desc.mipLODBias,
             .MaxAnisotropy = desc.maxAnisotropy,
             .ComparisonFunc = convert(desc.compareFunc),
-            // Notice. discard RHISamplerState::borderColor
+            // a static sampler has fixed border colors: borderColor is dropped
             .BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
             .MinLOD = desc.minLOD,
             .MaxLOD = desc.maxLOD,
@@ -454,7 +443,7 @@ namespace
             static_cast<UINT>(samplers.size()),
             samplers.data(),
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-                D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED // bindless
+                D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED
         );
         BlobRAII blob = nullptr, errorBlob = nullptr;
         if(FAILED(D3DX12SerializeVersionedRootSignature(
@@ -804,9 +793,8 @@ namespace Crowy
             signalSerial();
             serialFence->WaitCPU(serial, 0);
 
-            // everything up to and including the fresh signal is now done,
-            // so this drains the queue rather than leaving stragglers for
-            // a Submit that may never come
+            // all work up to the fresh signal is done, so this drains the
+            // queue instead of leaving stragglers for a Submit
             retireQueue.Tag(serial);
             retireQueue.Collect(serial);
             harvestGPUTimes(serial);
@@ -833,7 +821,6 @@ namespace Crowy
             const auto desc = texture.Get()->GetDesc();
             const usize n = out.size();
 
-            // Look-up footprint
             std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> fp(n);
             std::vector<UINT> numRows(n);
             std::vector<UINT64> rowBytes(n);
@@ -936,13 +923,8 @@ namespace Crowy
             }
         }
 
-        // The upload ring's escape hatch: the copies holding its space are
-        // still sitting in uploadCmdList, so give them a batch of their own
-        // and the serial that comes with it.
-        //
-        // Called from inside UploadRing::Allocate, which runs before its
-        // caller records anything - so what goes out here is strictly the
-        // uploads that came before, and the caller still needs an open list.
+        // the upload ring's escape hatch, called inside UploadRing::Allocate
+        // before its caller records: earlier uploads go out, the list reopens
         void flushUploads() {
             if(!uploadRecorded)
                 return;
@@ -991,7 +973,6 @@ namespace Crowy
             );
         }
 
-        // takes the next serial and signals it behind everything queued so far
         void signalSerial() {
             ++serial;
             CHECK_HRESULT(

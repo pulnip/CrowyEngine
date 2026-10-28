@@ -9,6 +9,8 @@ namespace Crowy
 {
     class DX12DescriptorHeapAllocator {
     private:
+        static constexpr UINT InvalidIndex = 0;
+
         Device& device;
         DescriptorHeapRAII heap;
         const UINT descriptorSize;
@@ -17,9 +19,8 @@ namespace Crowy
         std::vector<UINT> freeIndexes;
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-        // isolates a retired index instead of recycling it, and stamps a
-        // null view over it - opt-in, since it never gives an index back
-        // and a long debug run can exhaust the heap
+        // isolates a retired index under a null view; opt-in, since it
+        // never gives an index back and a long run can exhaust the heap
         bool poisonMode = false;
 #endif
 
@@ -53,9 +54,8 @@ namespace Crowy
 
         UINT Allocate(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc);
 
-        // safe to call from a destructor - the index only becomes available
-        // again (or, in poison mode, never does) once the retire queue
-        // confirms the GPU is done with whatever last read it
+        // safe from a destructor: the index comes back (never, in poison mode)
+        // once the retire queue confirms the GPU is done with it
         void Free(UINT index);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(UINT index) const;

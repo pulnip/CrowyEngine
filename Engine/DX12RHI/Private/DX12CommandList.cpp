@@ -138,8 +138,8 @@ namespace
 
 namespace Crowy
 {
-    // stateless §5 rules live in the RHICommandList base now;
-    // this backend only keeps what its pending maps can see
+    // stateless rules live in the RHICommandList base; this backend only
+    // keeps what its pending maps can see
     namespace
     {
         inline auto convert(const RHISubresourceRange& range) {
@@ -455,7 +455,6 @@ namespace Crowy
         );
     }
 
-    // the args buffer is reinterpreted as D3D12_DRAW_ARGUMENTS[]
     static_assert(sizeof(RHIDrawArgs) == sizeof(D3D12_DRAW_ARGUMENTS));
     static_assert(
         offsetof(RHIDrawArgs, vertexCount) ==
@@ -490,7 +489,6 @@ namespace Crowy
         );
     }
 
-    // the args buffer is reinterpreted as D3D12_DRAW_INDEXED_ARGUMENTS[]
     static_assert(
         sizeof(RHIDrawIndexedArgs) == sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)
     );
@@ -890,9 +888,8 @@ namespace Crowy
         auto& pending = pendingTextureReleases[barrier.texture];
         for(auto& entry: pending) {
             if(entry.barrier.range == barrier.range) {
-                // re-release of the same range = new producer. if the old edge
-                // was never acquired its transition is still unrecorded, so
-                // complete it here to keep the layout timeline coherent
+                // a re-release is a new producer; an old edge nobody acquired
+                // is still unrecorded, so complete it here
                 if(!entry.consumed) {
                     pushFused(entry.barrier);
                 }
@@ -931,7 +928,6 @@ namespace Crowy
         for(const auto& release: bufferReleases) {
             queueRelease(release);
         }
-        // self-contained releases recorded above land here
         flushBarrierScratch();
     }
 
@@ -939,15 +935,11 @@ namespace Crowy
         if(const auto it = pendingTextureReleases.find(barrier.texture);
            it != pendingTextureReleases.end()) {
             for(auto& entry: it->second) {
-                // full-edge equality doubles as the §5 cross validation:
-                // both halves carried the same value or they do not pair
+                // full-edge equality doubles as the cross validation: both
+                // halves carried the same value or they do not pair
                 if(entry.barrier == barrier) {
-                    // extra consumers of an identical edge need no barrier in
-                    // the fuse strategy: sync scopes are queue-global, so the
-                    // first fused barrier already orders every later command
-                    // in the edge's consumer stages, and it also finished the
-                    // access flush and layout transition. equality matching
-                    // guarantees this consumer's stages are the same.
+                    // identical extra consumers need no barrier: sync scopes
+                    // are queue-global, so the first fused one ordered them
                     if(!entry.consumed) {
                         entry.consumed = true;
                         pushFused(barrier);
@@ -1004,11 +996,8 @@ namespace Crowy
     }
 
     void DX12CommandList::flushPendingReleases() {
-        // releases nobody acquired complete here as single barriers - the
-        // hand-off point for consumers living in later submissions
-        // (e.g. resources uploaded at creation time).
-        // ordering across submissions is queue-level,
-        // so finishing the transition at Close is enough.
+        // releases nobody acquired complete here, the hand-off to consumers
+        // in later submissions; ordering across submissions is queue-level
         for(auto& [_, entries]: pendingTextureReleases) {
             for(auto& entry: entries) {
                 if(!entry.consumed) {

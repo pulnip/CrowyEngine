@@ -29,7 +29,7 @@ namespace Crowy
             return false;
         }
 
-        // readback layout of subresource 0 (row pitch is 256-aligned)
+        // readback layout of subresource 0
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
         UINT64 totalBytes = 0;
         device->GetCopyableFootprints(
@@ -86,11 +86,8 @@ namespace Crowy
             return false;
         }
 
-        // the back buffer sits in PRESENT (= COMMON) layout here, so the
-        // copy relies on implicit COMMON -> COPY_SOURCE promotion and the
-        // read-only promotion decays back to COMMON after execution;
-        // no explicit barrier, which also avoids mixing legacy barriers
-        // into an enhanced-barrier codebase
+        // PRESENT is COMMON, so the copy relies on implicit promotion to
+        // COPY_SOURCE and its decay back, and mixes in no legacy barrier
         const D3D12_TEXTURE_COPY_LOCATION src{
             .pResource = &backBuffer,
             .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
