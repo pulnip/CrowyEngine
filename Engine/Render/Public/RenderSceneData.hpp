@@ -97,7 +97,6 @@ namespace Crowy
     static_assert(std::is_trivially_copyable_v<ScenePush>);
 
     // Every fullscreen pass's push: its reads in order, then params.
-    // Mirrored in Engine/Shader/Fullscreen.slang.
     struct FullscreenPush {
         // DescriptorHandle<Texture2D> each; 0 for a read the pass lacks
         u64 source = 0;

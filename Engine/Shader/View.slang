@@ -1,7 +1,7 @@
 #pragma once
 
-// The view a pass binds at b1, mirrored from ViewData in
-// RenderSceneData.hpp: what SceneData.slang and the effects both read.
+// The view a pass binds at b1, ViewData on the C++ side: what SceneData.slang
+// and the effects both read.
 
 // scalars and float4 only, so HLSL and Metal lay it out alike
 cbuffer view : register(b1) {

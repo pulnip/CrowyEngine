@@ -38,8 +38,7 @@ namespace Crowy
         TextureSampler sampler = TextureSampler::LinearClamp;
     };
 
-    // One table row as the forward program reads it, mirrored in
-    // Engine/Shader/SceneData.slang.
+    // One table row as the forward program reads it.
     struct TextureData {
         // DescriptorHandle<Texture2D>
         u64 texture = 0;

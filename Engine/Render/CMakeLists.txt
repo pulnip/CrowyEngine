@@ -27,6 +27,8 @@ if(CROWY_ENABLE_TEST)
         DEPENDS
             Crowy::Render
             Crowy::RHITestSupport
+            # ShaderLayoutTest reflects the shader library's structs
+            Slang::Slang
         LABELS "unit"
     )
     # a model file the mesh asset tests load in place

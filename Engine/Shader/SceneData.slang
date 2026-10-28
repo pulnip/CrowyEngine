@@ -1,9 +1,6 @@
 #pragma once
 
-// What every Render shader reads, mirrored from the C++ side: DrawData,
-// ViewData and ScenePush in RenderSceneData.hpp, MaterialData in
-// RenderMaterial.hpp, LightData in RenderLight.hpp, Vertex in
-// Engine/RHI/Common/Vertex.hpp.
+// What every Render shader reads; each struct has a C++ twin of the same name.
 
 #include "Vertex.slang"
 

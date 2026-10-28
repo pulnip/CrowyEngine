@@ -1,7 +1,7 @@
 #pragma once
 
-// mirror of FullscreenPush in RenderSceneData.hpp; no `view`, since
-// SceneData.slang's push also sits at b0, so the two never meet in one file
+// no `view`: SceneData.slang's push also sits at b0, so the two never meet in
+// one file
 
 struct FullscreenPush{
     // the pass's reads in order; a depth target reads as .r
