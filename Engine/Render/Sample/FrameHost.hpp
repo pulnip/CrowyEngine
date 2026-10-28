@@ -35,7 +35,6 @@ namespace Crowy
     using FrameCapturesPtr = RAII<FrameCaptures>;
     using FramePortPtr = RAII<FramePort>;
 
-    // what the frame shows instead of the plain lit picture, exposed as `debug`
     struct RenderDebug {
         DebugMode mode = DebugMode::Lit;
         bool wireframe = false;
@@ -55,18 +54,14 @@ namespace Crowy
             default;
     };
 
-    // Owns the frame and its order: the geometry, the renderer and its
-    // pipeline, the scene, the port with its verbs, the captures and the
-    // stats. What a scene adds comes through its FrameContent.
     class FrameHost {
     public:
-        // the sample's statement of what its capture is taken against
         struct Config {
             RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
-            // what the colour passes write; RGBA8_UNORM for a scene already
+            // what the color passes write; RGBA8_UNORM for a scene already
             // in display values
             RHIPixelFormat sceneColorFormat = RHIPixelFormat::RGBA16_FLOAT;
-            // the lit views' scene colour; the data views clear black
+            // the lit views' scene color; the data views clear black
             Color clearColor = Colors::Black;
             // the lit views' post list; the data views copy through Present
             std::vector<PostPassDesc> post{tonemapPass()};
@@ -200,7 +195,6 @@ namespace Crowy
         }
 
     private:
-        // a new walker from DescribePipeline(pipelineConfig)
         FrameGraphPtr describePipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();

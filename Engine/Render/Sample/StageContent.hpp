@@ -8,7 +8,6 @@
 
 namespace Crowy
 {
-    // the cut as the editor takes it
     inline constexpr EditorCut editorCutOf(const StageCut& cut) {
         return EditorCut{
             .name = cut.name,
@@ -25,8 +24,6 @@ namespace Crowy
         };
     }
 
-    // The loaded stage as the editor sees it: cuts, keys, named objects by
-    // area and each primitive's meshes to pick. Owns nothing the scene owns.
     class StageContent final: public EditorContent {
     private:
         using MeshLists = std::vector<std::vector<const MeshData*>>;

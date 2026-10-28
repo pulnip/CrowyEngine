@@ -85,7 +85,6 @@ namespace Crowy
         f32 pitch = 0.0f;
     };
 
-    // the map's material rows by station
     struct PlaygroundMaterials {
         MaterialHandle floor{};
         MaterialHandle wall{};
@@ -102,26 +101,21 @@ namespace Crowy
         MaterialHandle translucent{};
     };
 
-    // The prototyping map, in metres: a row of test stations across the
-    // back of a walled floor, each testing one thing, fronts on one line,
-    // every box face on the 0.25 m grid the floor draws. Nothing floats.
-    // Each pass's draw list orders its own draws: opaque ones by pipeline,
-    // then near first, the glass far first.
+    // in metres, every box face on the 0.25 m grid the floor draws; nothing
+    // floats
     class PlaygroundScene: public RenderApp {
     private:
         // the line every station's front stands on
         static constexpr f32 FrontZ = 3.5f;
         static constexpr f32 SphereRadius = 0.25f;
-        // one colour for both rows, so metallic is all that differs; an
+        // one color for both rows, so metallic is all that differs; an
         // orange, which a metal's highlight takes
         static constexpr Vec3 ChartAlbedo{0.85f, 0.55f, 0.30f};
 
-        // Godot's editor-preview sky as radiance: the tone map takes it back
-        // to the bytes (98, 116, 140) it was written as, 0.4 of a step clear
-        // of every rounding edge
+        // Godot's editor-preview sky; the tone map gives back its bytes
+        // (98, 116, 140), 0.4 of a step clear of every rounding edge
         static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
 
-        // the engine's own colour passes, by path
         static constexpr CStr StandardForward =
             "Engine/Render/Shader/StandardForward.slang";
 
@@ -233,10 +227,9 @@ namespace Crowy
             const MeshAssetHandle& asset,
             MaterialHandle material
         );
-        // both stages from one file, so the prepass and the colour pass run
+        // both stages from one file, so the prepass and the color pass run
         // the same vertex shader; every material links the default PBR
         static MaterialPipelineDesc basePipeline(CStr file, CStr fragmentEntry);
-        // the map's own surface: the standard loop plus the grid
         static MaterialPipelineDesc gridPipeline();
         static MaterialPipelineDesc opaquePipeline();
         static MaterialPipelineDesc doubleSidedPipeline();

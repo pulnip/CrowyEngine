@@ -1,12 +1,10 @@
-// Lines where depth or the normal jumps between neighbouring pixels,
-// multiplied into the scene colour so they keep the hue under them.
+// lines multiply the scene color so they keep the hue under them
 // params = (depthThreshold, normalThreshold, near, far)
 #include "Fullscreen.slang"
 
-// what a line multiplies the colour under it by
 static const float LineDarkness = 0.35;
 
-// the encoded normal back to a vector; a cleared texel decodes to zero
+// a cleared texel decodes to zero
 float3 decodeNormal(float4 texel) {
     return texel.xyz * 2.0 - 1.0;
 }

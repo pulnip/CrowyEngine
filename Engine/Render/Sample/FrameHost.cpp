@@ -27,7 +27,6 @@ namespace Crowy
 {
     namespace
     {
-        // what a debug view overrides in every material of the color passes
         MeshPassOverride meshPassOverride(const RenderDebug& debug) {
             MeshPassOverride overrides;
             if(debug.wireframe)
@@ -80,7 +79,7 @@ namespace Crowy
         }
 
         // the lit views take the sample's clear and post list; the data views
-        // copy through Present over a scene colour cleared black
+        // copy through Present over a scene color cleared black
         StandardFrameConfig standardConfig(
             const FrameHost::Config& config,
             const RenderDebug& debug,
@@ -164,7 +163,6 @@ namespace Crowy
             frameNumber
         );
         framePort = std::make_unique<FramePort>(std::move(loop), *captures);
-        // as many view rows as the pass list names
         renderer = std::make_unique<SceneRenderer>(
             device,
             SceneRendererDesc{
@@ -304,7 +302,6 @@ namespace Crowy
         meshes->Collect();
     }
 
-    // does not prove the culling did anything.
     void FrameHost::reportCullStatsOnce() {
         if(reportedCullStats)
             return;
@@ -331,13 +328,12 @@ namespace Crowy
         const auto frameDebug = debug;
         const auto overrides = meshPassOverride(frameDebug);
 
-        // the prepass and the post list are passes in the list, so turning
-        // either over is a new list; frames in flight keep reading the old
-        // walker's targets
+        // turning the prepass or the post list over is a new list; frames in
+        // flight keep reading the old walker's targets
         auto wanted =
             standardConfig(config, frameDebug, swapchain->GetFormat());
         // the walker clears with this every frame; the list only keeps the
-        // value its scene colour was created with
+        // value its scene color was created with
         const auto sceneClear = wanted.clearColor;
         wanted.clearColor = pipelineConfig.clearColor;
         if(wanted != pipelineConfig) {

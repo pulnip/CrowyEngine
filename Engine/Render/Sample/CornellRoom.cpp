@@ -68,10 +68,6 @@ namespace Crowy
                 light.radiance = source.radiance;
             }
 
-            // Every wall shares one primitive and one identity transform,
-            // so the room needs its own material list
-            // and each wall names a slot in it.
-            // Three distinct wall materials, five submeshes.
             MeshResource room{.localBounds = roomBounds()};
             for(u32 i = 0; i < WallCount; ++i) {
                 room.subMeshes.push_back(
@@ -87,7 +83,6 @@ namespace Crowy
                 PrimitiveSnapshot{.worldBounds = roomBounds(), .mesh = roomMesh}
             );
 
-            // the spheres and the light quad keep one submesh each
             for(usize i = WallCount; i < source.objects.size(); ++i) {
                 const auto& object = source.objects[i];
                 const auto bounds = boundsOf(object);
@@ -192,9 +187,8 @@ namespace Crowy
             );
         }
 
-        // Floor, ceiling and back wall share an albedo,
-        // so the room's material list holds three entries
-        // and five submeshes point into it.
+        // floor, ceiling and back wall share an albedo: three materials
+        // under five submeshes
         u32 slotOfWall(MeshResource& room, RenderScene& scene, u32 wall) {
             const auto& material = source.objects[wall].material;
 

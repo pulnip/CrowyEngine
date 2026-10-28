@@ -14,7 +14,6 @@ using namespace Crowy;
 
 namespace
 {
-    // input played back from a script: the keys held and where the mouse is
     class ScriptedInput final: public InputProvider {
     private:
         std::vector<KeyCode> held;

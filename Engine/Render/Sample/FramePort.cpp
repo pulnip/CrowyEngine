@@ -43,10 +43,7 @@ namespace Crowy
             return DOM::Value(std::move(xy));
         }
 
-        // one of push_input's events: {"key": "W", "down": true},
-        // {"button": "RButton", "down": true}, {"move": [dx, dy]},
-        // {"moveTo": [x, y]} or {"wheel": notches}; the error reads after
-        // the event's place in the list
+        // the error reads after the event's place in the list
         std::expected<InputEvent, Str> parseInputEvent(const DOM::Value& node) {
             constexpr std::array<StrView, 5>
                 Kinds{"key", "button", "move", "moveTo", "wheel"};
@@ -122,7 +119,6 @@ namespace Crowy
             return MoveToInput{.at = *point};
         }
 
-        // every key, then every button, that `test` holds for, by name
         DOM::Array namesWhere(const auto& test) {
             DOM::Array names;
             for(const auto& entry: EnumTraits<KeyCode>::entries) {

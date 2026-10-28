@@ -8,7 +8,6 @@ namespace Crowy
 {
     class FlyCamera: public Camera {
     public:
-        // start pose, for frame capture comparable and reproducible
         struct Config {
             Vec3 position{};
             f32 yaw = 0.0f, pitch = 0.0f;
@@ -30,7 +29,6 @@ namespace Crowy
         Vec3 moveInput{};
         // the wheel's, on config.moveSpeed
         f32 speedScale = 1.0f;
-        // cached; call RecomputeView() if dirty
         Mat4 view = unitMat();
 
     public:

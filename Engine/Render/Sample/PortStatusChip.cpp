@@ -73,7 +73,6 @@ namespace Crowy
             ImGui::TextColored(Gray, "%s", text);
         }
         else {
-            // one character lit at a time, stepping with the drain
             const auto lit = static_cast<usize>(
                 (status.drainCount - status.lastVerbDrain) %
                 status.lastVerb.size()

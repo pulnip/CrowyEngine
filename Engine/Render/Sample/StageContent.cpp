@@ -93,7 +93,6 @@ namespace Crowy
                 .target = &stage.document.instances[object],
                 .desc = getDesc<StageInstance>(),
                 .apply = [this, object] { ApplyInstance(object); },
-                // only the unit box is scaled per axis
                 .gizmo = combine(
                     GizmoParts::Move,
                     GizmoParts::Turn,

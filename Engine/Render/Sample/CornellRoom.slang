@@ -2,13 +2,9 @@
 #include "SceneData.slang"
 
 cbuffer light : register(b2) {
-    // xyz = camera position, w unused
     float4 cameraPos_;
-    // xyz = light center, w = light area
     float4 lightCenter_lightArea;
-    // xyz = light normal, w unused
     float4 lightNormal_;
-    // xyz = light radiance, w = ambient strength
     float4 lightRadiance_ambient;
 };
 
@@ -60,11 +56,8 @@ float4 fs_main(VertexOut input) : SV_Target {
     float3 N = normalize(input.normal);
     float3 V = normalize(cameraPos - input.posWorld);
 
-    // the area light is collapsed to its center and weighted by its area.
-    // that is wrong close to the light and close enough further away,
-    // which is all a rasterized sample needs.
-    // a ground truth version of this scene
-    // wants a path tracer, and this is deliberately not one
+    // the area light collapses to its center, weighted by its area: wrong only
+    // close to the light, and deliberately not a path tracer
     float3 toLight = lightCenter - input.posWorld;
     float dist2 = max(dot(toLight, toLight), 1e-4);
     float3 L = toLight * rsqrt(dist2);

@@ -129,7 +129,6 @@ namespace Crowy
                 KeyCode::F4
             };
 
-            // past the captured frame, the chrome comes back as it was
             if(chromeBackAt && FrameNumber() > *chromeBackAt) {
                 Debug().showPanel = chromeWasShown;
                 chromeBackAt.reset();
@@ -146,7 +145,6 @@ namespace Crowy
                 session->StepTime(-1);
             if(input.IsKeyPressed(KeyCode::Right))
                 session->StepTime(1);
-            // Esc undoes a held drag, else lets go of the selection
             if(input.IsKeyPressed(KeyCode::Escape)) {
                 if(session->Held() != GizmoHandle::None) {
                     session->Cancel();

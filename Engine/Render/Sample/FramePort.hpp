@@ -16,7 +16,6 @@ namespace Crowy
 {
     using CommandPortPtr = RAII<CommandPort>;
 
-    // The loop the port's control verbs drive; App's for a RenderApp.
     struct FrameLoop {
         FrameControl& control;
         // the last frame that ended
@@ -32,12 +31,8 @@ namespace Crowy
         std::function<void(const InputEvent&)> pushInput;
     };
 
-    // The command port and the verbs that drive the loop: ping, quit, run,
-    // hold, step and wait_frame, and the input's push_input and read_input.
-    // Every control verb answers with where the loop stands afterwards.
     class FramePort {
     private:
-        // a wait_frame reply, held until its frame has ended
         struct PendingWait {
             u64 frame = 0;
             Reply reply;

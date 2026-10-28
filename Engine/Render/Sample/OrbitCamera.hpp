@@ -6,7 +6,6 @@
 
 namespace Crowy
 {
-    // Looks at a fixed target from a fixed distance; drag to swing around it.
     class OrbitCamera: public Camera {
     public:
         struct Config {

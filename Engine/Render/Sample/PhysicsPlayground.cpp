@@ -163,8 +163,6 @@ namespace Crowy
             PrimitiveHandle primitive;
         };
 
-        // One puzzle on the floor: its session, the glue that draws it, and
-        // what the port sees of it.
         struct PuzzleLane {
             PuzzleKind kind = PuzzleKind::KickerJump;
             Vec3 origin = zeros();
@@ -189,8 +187,6 @@ namespace Crowy
             RoleMaterials roles{};
         };
 
-        // Every puzzle of the library in its own lane at real time, on a bare
-        // floor under one sun, drawn one way through BodyPrimitiveSync.
         class PhysicsPlayground final: public RenderApp {
         private:
             static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
@@ -526,7 +522,6 @@ namespace Crowy
                 );
             }
 
-            // a flat mark on a surface, a unit quad stretched in x and z
             void addMark(
                 RenderScene& scene,
                 MaterialHandle material,
@@ -600,7 +595,6 @@ namespace Crowy
                 }
             }
 
-            // a compound draws a box per part
             void addBody(RenderScene& scene, PuzzleLane& lane, u32 index) {
                 const auto& body = lane.session->GetPuzzle().bodies[index];
                 const auto material =

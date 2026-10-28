@@ -27,7 +27,6 @@ namespace Crowy
         std::vector<PassStats> passes;
     };
 
-    // The frames that ended, as read_stats and the overlays read them.
     class FrameStatsLog {
     public:
         using LastFrame = std::function<u64()>;

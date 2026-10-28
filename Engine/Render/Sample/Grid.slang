@@ -1,5 +1,3 @@
-// A world-aligned grid for the sample surfaces that darken their albedo
-// with it.
 #pragma once
 
 static const float GridMajor = 1.0;
@@ -19,9 +17,8 @@ float gridLine(float2 coord, float2 footprint, float spacing) {
 // How much a world-aligned grid darkens the albedo here, drawn in the plane
 // facing the normal's dominant axis, so floors and walls both carry it
 float gridDarkening(float3 posWorld, float3 N) {
-    // derivatives first, in uniform control flow: inside a branch the
-    // neighboring pixels might not take, they are undefined. Scalar fwidth,
-    // because the vector overload does not target Metal
+    // derivatives are undefined in a branch neighbors might not take; scalar
+    // fwidth, because the vector overload does not target Metal
     float3 footprint = float3(
         fwidth(posWorld.x),
         fwidth(posWorld.y),

@@ -15,7 +15,6 @@
 
 namespace Crowy
 {
-    // Each block is an actor with a mesh, and the World extracts the rows.
     class TenThousandBlocks: public RenderApp {
         // keep in sync with TenThousandBlocks.slang
         static constexpr u32 GridX = 20, GridY = 20, GridZ = 25;
@@ -57,7 +56,7 @@ namespace Crowy
         }
 
         void ExtractScene(RenderScene& scene) override {
-            // the shader colours by objectID and ignores the material,
+            // the shader colors by objectID and ignores the material,
             // so one row covers the whole lattice
             material = scene.Materials().Add(
                 MaterialResource{
@@ -90,7 +89,7 @@ namespace Crowy
                 );
             }
 
-            // the shader colours by row, so the rows land in lattice order
+            // the shader colors by row, so the rows land in lattice order
             world.Provide(scene);
             for(u32 i = 0; i < BlockCount; ++i) {
                 world.Add(

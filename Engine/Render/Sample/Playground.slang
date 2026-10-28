@@ -1,5 +1,3 @@
-// The prototyping map's own surface: the engine's forward loop, with a
-// world-aligned grid darkening the albedo of the floor, walls and blocks.
 #include "ForwardShading.slang"
 #include "Grid.slang"
 

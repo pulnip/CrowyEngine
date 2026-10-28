@@ -5,8 +5,6 @@
 
 namespace Crowy
 {
-    // A camera posed by whatever writes its snapshot, a World's camera
-    // extraction above all; it takes no input of its own.
     class SnapshotCamera: public Camera {
     private:
         CameraSnapshot snapshot;

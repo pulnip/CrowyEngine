@@ -143,9 +143,8 @@ namespace Crowy
             }
         );
 
-        // Godot's editor-preview sun: 60 degrees up, 30 degrees east of
-        // north, with north behind the start camera, so it lights the
-        // map from the front: pitched 60 degrees down, turned 30 to -x
+        // Godot's editor-preview sun, north behind the start camera: pitched
+        // 60 degrees down, turned 30 to -x
         constexpr auto Pi = std::numbers::pi_v<f32>;
         const auto sunRotation = quat(rotateY(-Pi / 6), rotateX(Pi / 3));
         const auto sun = world.Spawn(Transform{.rotation = sunRotation});
@@ -157,9 +156,8 @@ namespace Crowy
                 .intensity = 3.0f
             }
         );
-        // off until the port or the panel turns it on, so the golden
-        // never sees it; aimed down at the chart, half a metre down per
-        // metre forward, for when it is a spot
+        // off, so the golden never sees it; aimed at the chart half a metre
+        // down per metre forward, for when it is a spot
         const auto lamp = world.Spawn(
             Transform{
                 .position = {0.0f, 1.5f, 2.5f},
@@ -176,7 +174,7 @@ namespace Crowy
                 .range = 4.0f
             }
         );
-        // the same preview's sky and ground colours, decoded to linear
+        // the same preview's sky and ground colors, decoded to linear
         scene.Environment() = EnvironmentSnapshot{
             .skyAmbient = {0.123f, 0.174f, 0.262f},
             .groundAmbient = {0.033f, 0.024f, 0.016f}
@@ -230,7 +228,6 @@ namespace Crowy
             }
         }
 
-        // red, green and blue behind the glass
         const std::array barColors{
             Vec3{0.8f, 0.1f, 0.1f},
             Vec3{0.1f, 0.6f, 0.15f},
@@ -257,8 +254,6 @@ namespace Crowy
 
         OnRestyleMaterials(scene, materials, shading);
 
-        // grid: the floor, three walls leaving the camera side open, the
-        // scale blocks and the chart's step
         const auto blockMesh = addMesh(scene, unitBox, materials.block);
         addPrimitive(
             addMesh(scene, floorPlane, materials.floor, {10.0f, 0.0f, 10.0f}),
@@ -272,7 +267,6 @@ namespace Crowy
         // walls, and Equal behind the prepass keeps it on the corner seams
         addPrimitive(wallMesh, {0.0f, 2.0f, 10.1f}, {20.4f, 4.0f, 0.2f});
 
-        // scale: blocks of 1, 0.5 and 0.25 m, left faces at these x
         for(const auto [left, edge]:
             {std::pair{-8.25f, 1.0f},
              std::pair{-7.0f, 0.5f},
@@ -289,35 +283,38 @@ namespace Crowy
         // front row from eye height
         addPrimitive(blockMesh, {0.0f, 0.5f, 4.25f}, {5.0f, 1.0f, 0.5f});
 
-        // opaque. emissive: three 0.5 m panels at the back of a niche
-        // 2.5 m wide and 0.5 m deep, whose roof shades the whole band
-        // they hang in, so they read against a shadow rather than dark
-        // paint; wide enough that the start camera sees every panel whole
+        // the roof shades the panels' band, so they read against a shadow
+        // rather than dark paint
+        constexpr f32 NicheX = -4.25f;
+        constexpr f32 NicheWidth = 2.5f;
+        constexpr f32 NicheHeight = 2.0f;
+        constexpr f32 NicheWall = 0.25f;
         constexpr f32 NicheDepth = 0.5f;
         constexpr f32 NicheZ = FrontZ + 0.5f * NicheDepth;
         // the back, then the two sides, the roof and the sill
         addPrimitive(
             blockMesh,
-            {-4.25f, 1.0f, FrontZ + NicheDepth + 0.125f},
-            {3.0f, 2.0f, 0.25f}
+            {NicheX, 1.0f, FrontZ + NicheDepth + 0.125f},
+            {3.0f, NicheHeight, NicheWall}
         );
         for(const auto x: {-5.625f, -2.875f}) {
             addPrimitive(
                 blockMesh,
                 {x, 1.0f, NicheZ},
-                {0.25f, 2.0f, NicheDepth}
+                {NicheWall, NicheHeight, NicheDepth}
             );
         }
         addPrimitive(
             blockMesh,
-            {-4.25f, 1.875f, NicheZ},
-            {2.5f, 0.25f, NicheDepth}
+            {NicheX, 1.875f, NicheZ},
+            {NicheWidth, NicheWall, NicheDepth}
         );
         addPrimitive(
             blockMesh,
-            {-4.25f, 0.375f, NicheZ},
-            {2.5f, 0.75f, NicheDepth}
+            {NicheX, 0.375f, NicheZ},
+            {NicheWidth, 0.75f, NicheDepth}
         );
+        constexpr f32 PanelSize = 0.5f;
         for(u32 i = 0; i < materials.emissive.size(); ++i) {
             const auto x = -5.0f + 0.75f * static_cast<f32>(i);
 
@@ -329,7 +326,7 @@ namespace Crowy
                     QuadHalf
                 ),
                 {x, 1.25f, FrontZ + NicheDepth - 0.01f},
-                {0.5f, 0.5f, 1.0f}
+                {PanelSize, PanelSize, 1.0f}
             );
         }
 
@@ -357,8 +354,8 @@ namespace Crowy
             }
         }
 
-        // glass: bars 1 m behind the pane, their tops above it, so each
-        // colour shows both through the glass and bare
+        // bars 1 m behind the pane and taller than it, so each color shows
+        // both through the glass and bare
         for(u32 i = 0; i < materials.bars.size(); ++i) {
             addPrimitive(
                 addMesh(scene, unitBox, materials.bars[i]),
@@ -367,8 +364,7 @@ namespace Crowy
             );
         }
 
-        // double-sided: a pane facing the camera beside one showing its
-        // back, which shows only because nothing is culled; the two
+        // the back-facing pane shows only because nothing is culled; the two
         // should look alike
         addPrimitive(
             addMesh(scene, quadFacingCamera, materials.doubleSided, QuadHalf),
@@ -381,7 +377,6 @@ namespace Crowy
             {1.0f, 1.5f, 1.0f}
         );
 
-        // translucent, last: the pane in front of the bars
         addPrimitive(
             addMesh(scene, quadFacingCamera, materials.translucent, QuadHalf),
             {4.25f, 0.75f, FrontZ},

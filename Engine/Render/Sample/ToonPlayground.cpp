@@ -64,9 +64,8 @@ namespace Crowy
             };
         }
 
-        // Multiplies its lines into the scene colour, so a line keeps the
-        // hue under it and the pass never reads what it writes; the
-        // destination's alpha is kept.
+        // multiplied into scene color: a line keeps the hue under it, the pass
+        // never reads what it writes, and the destination's alpha is kept
         PassDesc outlinePass(
             FrameTargetID sceneColor,
             FrameTargetID sceneDepth,
@@ -121,10 +120,7 @@ namespace Crowy
         }
     }
 
-    // Playground's map under a second pipeline, composed here from the
-    // engine's public pieces: a prepass that also writes normals, Toon and
-    // Unlit materials, an outline between the opaque and the translucent
-    // pass, and a posterize after the tone map.
+    // composed from the engine's public pieces only
     class ToonPlayground final: public PlaygroundScene {
     public:
         ToonPlayground()
@@ -181,7 +177,6 @@ namespace Crowy
             return desc;
         }
 
-        // every material Toon but the emissive panels, which are Unlit
         void OnRestyleMaterials(
             RenderScene& scene,
             const PlaygroundMaterials& materials,
@@ -213,9 +208,8 @@ namespace Crowy
                     UnlitShadingModule;
             }
 
-            // the chart keeps its roughness row, so the band widens from
-            // left to right; the metals carry a larger disc and a stronger
-            // rim over a hue-shifted shade
+            // the band widens along the chart's roughness row; metals get a
+            // larger disc and a stronger rim over a hue-shifted shade
             constexpr ToonLanes Dielectric{
                 .highlightSize = 0.06f,
                 .rimStrength = 0.3f,
@@ -250,7 +244,6 @@ namespace Crowy
                     0.2f
                 );
             }
-            // a rim on the glass
             restyle(
                 scene,
                 materials.translucent,

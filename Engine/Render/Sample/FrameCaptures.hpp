@@ -12,8 +12,6 @@
 
 namespace Crowy
 {
-    // Every capture a frame owes, by its two routes: the back buffer through
-    // the swapchain's dump, a named target through the walker's readback.
     class FrameCaptures {
     public:
         using LastFrame = std::function<u64()>;

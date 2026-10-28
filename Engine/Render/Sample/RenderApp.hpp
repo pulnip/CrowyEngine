@@ -10,8 +10,6 @@
 
 namespace Crowy
 {
-    // Sample framework for Engine/Render: an App whose frame a FrameHost runs
-    // in an order it seals; a sample overrides the FrameContent hooks
     class RenderApp: public App, public FrameContent {
     public:
         using Config = FrameHost::Config;

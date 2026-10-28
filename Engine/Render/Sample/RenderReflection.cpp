@@ -2,8 +2,6 @@
 #include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
 
-// The render scene's rows as reflected types, for every sample that shows
-// them in a panel or to the port.
 namespace Crowy
 {
     // clang-format off

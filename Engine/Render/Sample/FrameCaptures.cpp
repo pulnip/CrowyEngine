@@ -101,7 +101,7 @@ namespace Crowy
                 paths.reserve(frames.size());
                 for(const auto frame: frames)
                     paths.push_back(withFrame(*path, frame));
-                // all or none: every frame is checked before any is queued
+                // all or none
                 if(auto refusal = refuse(target, frames, paths);
                    !refusal.empty()) {
                     reply.Error(std::move(refusal));

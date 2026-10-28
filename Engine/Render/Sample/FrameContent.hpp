@@ -17,8 +17,6 @@ namespace Crowy
 {
     class FrameHost;
 
-    // What a scene adds to the frame a FrameHost runs: its geometry and rows,
-    // its pass list and per-pass work, and its UI.
     class FrameContent {
     private:
         friend class FrameHost;
@@ -35,10 +33,8 @@ namespace Crowy
         // world and what the renderer stores about it.
         virtual void ExtractScene(RenderScene& scene) = 0;
 
-        // The pass list; the default is the standard one. Called at init
-        // and again whenever the config changes, as a debug view does. An
-        // override that builds its own desc clears scene colour with
-        // config.clearColor and ends with appendPostChain(config.post).
+        // called again on every config change; an own desc clears scene color
+        // with config.clearColor and ends with appendPostChain(config.post)
         virtual FrameGraphDesc DescribePipeline(
             const StandardFrameConfig& config
         ) {
@@ -61,15 +57,12 @@ namespace Crowy
         // input a sample reads beyond the camera's
         virtual void OnProcessInput(const InputProvider&) {}
 
-        // after the camera, on every frame the loop runs: the frame's time,
-        // the fixed 1/60 step on a frame a counted run lets through, and on
-        // every frame of a frame capture's run
+        // after the camera: the frame's time, or the fixed 1/60 step in a
+        // counted run and a frame capture's run
         virtual void OnUpdateScene(f64) {}
 
         // the formats of the pass the UI rides, frozen for the app's life
-        virtual void OnInitUI(RHIDevice&, const OverlayFormats&) {
-            // default no-op so a sample without UI is unchanged
-        }
+        virtual void OnInitUI(RHIDevice&, const OverlayFormats&) {}
 
         // runs before the first pass; the acquires ride the overlay pass
         virtual std::span<const RHITextureBarrier> OnPrepareUI(
