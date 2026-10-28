@@ -191,13 +191,6 @@ namespace Crowy
         bool viewSet = false;
 
     public:
-        using RHICommandList::Copy;
-        using RHICommandList::SetComputeConstantBuffer;
-        using RHICommandList::SetGraphicsConstantBuffer;
-        using RHICommandList::SetPipelineState;
-        using RHICommandList::SetPushComputeConstants;
-        using RHICommandList::SetPushGraphicsConstants;
-
         RHITextureLayout LayoutOf(RHITexture* texture) const {
             const auto found = layouts.find(texture);
 
@@ -205,9 +198,8 @@ namespace Crowy
                                           : found->second;
         }
 
-        void Begin() override {
-            RHICommandList::Begin();
-
+    private:
+        void begin() override {
             passes.clear();
             blitPasses.clear();
             computePasses.clear();
@@ -216,9 +208,7 @@ namespace Crowy
             lastAttached.clear();
         }
 
-        void Close() override {
-            RHICommandList::Close();
-
+        void close() override {
             // D3D12 completes each at Close; Metal parks it for the next
             // submission, which only a cross-submission acquire waits on
             unconsumedAtClose.clear();
@@ -239,10 +229,10 @@ namespace Crowy
             parkedBuffers.clear();
         }
 
-        void BeginRenderPass(
+        void beginRenderPass(
             const RHIRenderPassDesc& desc,
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
         ) override {
             auto& pass = passes.emplace_back();
             pass.event = openEvent;
@@ -272,30 +262,22 @@ namespace Crowy
                     textureAcquires
                 );
             }
-
-            RHICommandList::BeginRenderPass(
-                desc,
-                textureAcquires,
-                bufferAcquires
-            );
         }
 
-        void EndRenderPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
+        void endRenderPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
         ) override {
             auto& pass = passes.back();
             pass.releases.assign_range(textureReleases);
             pass.bufferReleases.assign_range(bufferReleases);
 
             release(textureReleases, bufferReleases);
-
-            RHICommandList::EndRenderPass(textureReleases, bufferReleases);
         }
 
-        void BeginBlitPass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        void beginBlitPass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
         ) override {
             auto& pass = blitPasses.emplace_back();
             pass.after = passes.size();
@@ -304,13 +286,11 @@ namespace Crowy
             inBlitPass = true;
 
             acquire(textureAcquires, bufferAcquires);
-
-            RHICommandList::BeginBlitPass(textureAcquires, bufferAcquires);
         }
 
-        void EndBlitPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
+        void endBlitPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
         ) override {
             auto& pass = blitPasses.back();
             pass.releases.assign_range(textureReleases);
@@ -318,13 +298,11 @@ namespace Crowy
             inBlitPass = false;
 
             release(textureReleases, bufferReleases);
-
-            RHICommandList::EndBlitPass(textureReleases, bufferReleases);
         }
 
-        void BeginComputePass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
+        void beginComputePass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
         ) override {
             auto& pass = computePasses.emplace_back();
             pass.event = openEvent;
@@ -335,52 +313,44 @@ namespace Crowy
             computePush.clear();
 
             acquire(textureAcquires, bufferAcquires);
-
-            RHICommandList::BeginComputePass(textureAcquires, bufferAcquires);
         }
 
-        void EndComputePass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
+        void endComputePass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
         ) override {
             auto& pass = computePasses.back();
             pass.releases.assign_range(textureReleases);
             pass.bufferReleases.assign_range(bufferReleases);
 
             release(textureReleases, bufferReleases);
-
-            RHICommandList::EndComputePass(textureReleases, bufferReleases);
         }
 
-        void SetPipelineState(RHIComputePipelineState& pipeline) override {
+        void setComputePipelineState(
+            RHIComputePipelineState& pipeline
+        ) override {
             computePipeline = &pipeline;
             if(!computePasses.empty())
                 computePasses.back().log.push_back("pipeline");
-
-            RHICommandList::SetPipelineState(pipeline);
         }
 
-        void SetPushComputeConstants(const void* data, u32 size) override {
+        void setPushComputeConstants(const void* data, u32 size) override {
             computePush.resize(size);
             std::memcpy(computePush.data(), data, size);
             if(!computePasses.empty())
                 computePasses.back().log.push_back("push");
-
-            RHICommandList::SetPushComputeConstants(data, size);
         }
 
-        void SetComputeConstantBuffer(
+        void setComputeConstantBuffer(
             RHIBuffer& buffer,
             u32 slot,
-            u32 offset = 0
+            u32 offset
         ) override {
             if(!computePasses.empty())
                 computePasses.back().log.push_back(std::format("cb {}", slot));
-
-            RHICommandList::SetComputeConstantBuffer(buffer, slot, offset);
         }
 
-        void Dispatch(Size3D threads) override {
+        void dispatch(Size3D threads) override {
             if(!computePasses.empty()) {
                 auto& pass = computePasses.back();
                 pass.dispatches.push_back(
@@ -392,13 +362,11 @@ namespace Crowy
                 );
                 pass.log.push_back("dispatch");
             }
-
-            RHICommandList::Dispatch(threads);
         }
 
-        void DispatchBarrier(
-            std::span<const RHITextureBarrier> textureBarriers = {},
-            std::span<const RHIBufferBarrier> bufferBarriers = {}
+        void dispatchBarrier(
+            std::span<const RHITextureBarrier> textureBarriers,
+            std::span<const RHIBufferBarrier> bufferBarriers
         ) override {
             if(!computePasses.empty()) {
                 auto& pass = computePasses.back();
@@ -407,11 +375,9 @@ namespace Crowy
                 );
                 pass.log.push_back("barrier");
             }
-
-            RHICommandList::DispatchBarrier(textureBarriers, bufferBarriers);
         }
 
-        void Copy(
+        void copyBuffer(
             RHIBuffer& src,
             RHIBuffer& dst,
             usize srcOffset,
@@ -429,18 +395,16 @@ namespace Crowy
                     }
                 );
             }
-
-            RHICommandList::Copy(src, dst, srcOffset, dstOffset, size);
         }
 
-        void Copy(
+        void copyTextureToBuffer(
             RHITexture& src,
             RHIBuffer& dst,
             u64 dstOffset,
             u32 dstRowPitch,
             const RHITextureRegion& region,
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
+            u32 mipLevel,
+            u32 arraySlice
         ) override {
             if(LayoutOf(&src) != RHITextureLayout::CopySrc) {
                 violate(
@@ -459,19 +423,9 @@ namespace Crowy
                     }
                 );
             }
-
-            RHICommandList::Copy(
-                src,
-                dst,
-                dstOffset,
-                dstRowPitch,
-                region,
-                mipLevel,
-                arraySlice
-            );
         }
 
-        void SetPushGraphicsConstants(const void* data, u32 size) override {
+        void setPushGraphicsConstants(const void* data, u32 size) override {
             if(!passes.empty()) {
                 auto& pass = passes.back();
                 auto& bytes = pass.pushes.emplace_back(size);
@@ -479,14 +433,12 @@ namespace Crowy
                 pass.log.push_back("push");
             }
             pushSet = true;
-
-            RHICommandList::SetPushGraphicsConstants(data, size);
         }
 
-        void SetGraphicsConstantBuffer(
+        void setGraphicsConstantBuffer(
             RHIBuffer& buffer,
             u32 slot,
-            u32 offset = 0
+            u32 offset
         ) override {
             if(!passes.empty()) {
                 auto& pass = passes.back();
@@ -501,66 +453,50 @@ namespace Crowy
             }
             if(slot == 0)
                 viewSet = true;
-
-            RHICommandList::SetGraphicsConstantBuffer(buffer, slot, offset);
         }
 
-        void SetViewport(const RHIViewport& viewport) override {
+        void setViewport(const RHIViewport& viewport) override {
             if(!passes.empty())
                 passes.back().viewport = viewport;
-
-            RHICommandList::SetViewport(viewport);
         }
 
-        void SetScissorRect(const RHIScissorRect& scissor) override {
+        void setScissorRect(const RHIScissorRect& scissor) override {
             if(!passes.empty())
                 passes.back().scissor = scissor;
-
-            RHICommandList::SetScissorRect(scissor);
         }
 
-        void Draw(
+        void draw(
             u32 vertexCount,
-            u32 instanceCount = 1,
-            u32 startVertex = 0,
-            u32 startInstance = 0
+            u32 instanceCount,
+            u32 startVertex,
+            u32 startInstance
         ) override {
             checkBindings();
             if(!passes.empty()) {
                 ++passes.back().directDraws;
                 passes.back().log.push_back("draw");
             }
-
-            RHICommandList::Draw(
-                vertexCount,
-                instanceCount,
-                startVertex,
-                startInstance
-            );
         }
 
-        void ExecuteIndirectIndexed(const DrawBatchIndexed& batch) override {
+        void executeIndirectIndexed(const DrawBatchIndexed& batch) override {
             checkBindings();
             if(!passes.empty()) {
                 passes.back().batches.push_back(batch);
                 passes.back().log.push_back("draw");
             }
-
-            RHICommandList::ExecuteIndirectIndexed(batch);
         }
 
-        void BeginEvent(CStr name) override {
+        void beginEvent(CStr name) override {
             openEvent = name;
             if(inBlitPass)
                 blitPasses.back().event = name;
         }
-        void EndEvent() override { openEvent.clear(); }
-        void SetMarker(CStr name) override {
+        void endEvent() override { openEvent.clear(); }
+        void setMarker(CStr name) override {
             if(!passes.empty())
                 passes.back().log.push_back(std::format("marker {}", name));
         }
 
-    private:
         // a blit pass counts as the render pass before it
         usize currentPass() const {
             return passes.empty() ? 0 : passes.size() - 1;

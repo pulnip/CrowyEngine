@@ -8,10 +8,10 @@ namespace
 {
     // the base class holds every pass rule; nothing stands behind it
     class BareCommandList final: public RHICommandList {
-    public:
-        void BeginEvent(CStr) override {}
-        void EndEvent() override {}
-        void SetMarker(CStr) override {}
+    private:
+        void beginEvent(CStr) override {}
+        void endEvent() override {}
+        void setMarker(CStr) override {}
     };
 }
 

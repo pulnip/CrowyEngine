@@ -12,9 +12,8 @@ D3D12와 Metal의 호출을 단일한 gfx api로 가능하게 만들었다.
   CMake가 Windows에선 DX12RHI를, macOS에선 MetalRHI를 링크하고 `createDevice()`의 기본값도 `#if`로 갈린다([RHIDevice.hpp](../Engine/RHI/Public/RHIDevice.hpp)).
   한 플랫폼 내에서 두 백엔드가 가능한 상황이 없으므로 런타임에 백엔드를 바꾸는 건 현재 지원하지 않는다.
 - **디버그 빌드에서는 base 클래스가 검증을 한다.**
-  `RHICommandList`의 가상 함수 기본 구현이 패스 상태를 검사한다. 패스 안에서 패스를 열었는지, 짝이 안 맞는 End인지, 배리어 형식이 맞는지.
-  통계도 센다.
-  따라서, 각 백엔드(RHI 구현체)는 이걸 먼저 부르고 자기 일을 한다.
+  `RHICommandList`의 public 함수는 가상이 아니다. 패스 상태를 검사하고(패스 안에서 패스를 열었는지, 짝이 안 맞는 End인지, 배리어 형식이 맞는지) 통계를 센 뒤, 같은 이름의 private 가상 함수(`Draw` → `draw`)를 부른다.
+  각 백엔드(RHI 구현체)는 private 가상 함수만 override해서 자기 일을 한다. 오버로드가 있는 `SetPipelineState`와 `Copy`는 `setGraphicsPipelineState`, `copyTextureToBuffer`처럼 이름이 갈린다.
 - **프레임 3개 in flight.**
   `FramePacer`, `CommandListPool`, transient 업로드 링(`AllocateTransient` / `UploadTransient`)이 공통이다.
   지운 리소스는 `DeferRetire`로 GPU가 다 쓴 뒤에 회수한다.

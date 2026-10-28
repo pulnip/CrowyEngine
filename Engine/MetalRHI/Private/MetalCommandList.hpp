@@ -26,8 +26,6 @@ namespace Crowy
 {
     class MetalCommandList final: public RHICommandList {
     private:
-        using Super = RHICommandList;
-
         struct RenderPassState {
             MTL::RenderCommandEncoder* encoder = nullptr;
 
@@ -172,123 +170,6 @@ namespace Crowy
         );
         ~MetalCommandList();
 
-        void Begin() RHI_OVERRIDE;
-        void Close() RHI_OVERRIDE;
-
-        void BeginRenderPass(
-            const RHIRenderPassDesc&,
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
-        ) RHI_OVERRIDE;
-        void EndRenderPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
-        ) RHI_OVERRIDE;
-
-        void SetPipelineState(RHIGraphicsPipelineState&) RHI_OVERRIDE;
-
-        void SetPushGraphicsConstants(const void* data, u32 size) RHI_OVERRIDE;
-
-        void SetGraphicsConstantBuffer(
-            RHIBuffer&,
-            u32 slot,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
-        void SetViewport(const RHIViewport& viewport) RHI_OVERRIDE;
-        void SetScissorRect(const RHIScissorRect& scissor) RHI_OVERRIDE;
-
-        void Draw(
-            u32 vertexCount,
-            u32 instanceCount = 1,
-            u32 startVertex = 0,
-            u32 startInstance = 0
-        ) RHI_OVERRIDE;
-
-        void DrawIndexed(
-            const RHIIndexBufferView& indices,
-            u32 indexCount,
-            u32 instanceCount = 1,
-            u32 startIndex = 0,
-            i32 baseVertex = 0,
-            u32 startInstance = 0
-        ) RHI_OVERRIDE;
-
-        void ExecuteIndirect(const DrawBatch&) RHI_OVERRIDE;
-        void ExecuteIndirectIndexed(const DrawBatchIndexed&) RHI_OVERRIDE;
-
-        void BeginComputePass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
-        ) RHI_OVERRIDE;
-        void EndComputePass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
-        ) RHI_OVERRIDE;
-
-        void SetPipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
-
-        void SetPushComputeConstants(const void* data, u32 size) RHI_OVERRIDE;
-
-        void SetComputeConstantBuffer(
-            RHIBuffer&,
-            u32 slot,
-            u32 offset = 0
-        ) RHI_OVERRIDE;
-
-        void Dispatch(Size3D gridSize) RHI_OVERRIDE;
-
-        void DispatchBarrier(
-            std::span<const RHITextureBarrier> textureBarriers = {},
-            std::span<const RHIBufferBarrier> bufferBarriers = {}
-        ) RHI_OVERRIDE;
-
-        void BeginBlitPass(
-            std::span<const RHITextureBarrier> textureAcquires = {},
-            std::span<const RHIBufferBarrier> bufferAcquires = {}
-        ) RHI_OVERRIDE;
-        void EndBlitPass(
-            std::span<const RHITextureBarrier> textureReleases = {},
-            std::span<const RHIBufferBarrier> bufferReleases = {}
-        ) RHI_OVERRIDE;
-
-        void Copy(
-            RHIBuffer& src,
-            RHIBuffer& dst,
-            usize srcOffset,
-            usize dstOffset,
-            usize size
-        ) RHI_OVERRIDE;
-
-        void Copy(RHITexture& src, RHITexture& dst) RHI_OVERRIDE;
-
-        void Copy(
-            RHIBuffer& src,
-            u64 srcOffset,
-            u32 srcRowPitch,
-            RHITexture& dst,
-            const RHITextureRegion& region,
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ) RHI_OVERRIDE;
-
-        void Copy(
-            RHITexture& src,
-            RHIBuffer& dst,
-            u64 dstOffset,
-            u32 dstRowPitch,
-            const RHITextureRegion& region,
-            u32 mipLevel = 0,
-            u32 arraySlice = 0
-        ) RHI_OVERRIDE;
-
-        using RHICommandList::Copy;
-
-        void BeginEvent(CStr name) RHI_OVERRIDE;
-        void EndEvent() RHI_OVERRIDE;
-
-        void SetMarker(CStr name) RHI_OVERRIDE;
-
         auto Get() const noexcept { return commandBuffer.get(); }
 
         // a parked release no acquire matched: its consumers are in later
@@ -296,6 +177,121 @@ namespace Crowy
         bool HasUnconsumedReleases() const noexcept;
 
     private:
+        void begin() RHI_OVERRIDE;
+        void close() RHI_OVERRIDE;
+
+        void beginRenderPass(
+            const RHIRenderPassDesc&,
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ) RHI_OVERRIDE;
+        void endRenderPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
+        ) RHI_OVERRIDE;
+
+        void setGraphicsPipelineState(RHIGraphicsPipelineState&) RHI_OVERRIDE;
+
+        void setPushGraphicsConstants(const void* data, u32 size) RHI_OVERRIDE;
+
+        void setGraphicsConstantBuffer(
+            RHIBuffer&,
+            u32 slot,
+            u32 offset
+        ) RHI_OVERRIDE;
+
+        void setViewport(const RHIViewport& viewport) RHI_OVERRIDE;
+        void setScissorRect(const RHIScissorRect& scissor) RHI_OVERRIDE;
+
+        void draw(
+            u32 vertexCount,
+            u32 instanceCount,
+            u32 startVertex,
+            u32 startInstance
+        ) RHI_OVERRIDE;
+
+        void drawIndexed(
+            const RHIIndexBufferView& indices,
+            u32 indexCount,
+            u32 instanceCount,
+            u32 startIndex,
+            i32 baseVertex,
+            u32 startInstance
+        ) RHI_OVERRIDE;
+
+        void executeIndirect(const DrawBatch&) RHI_OVERRIDE;
+        void executeIndirectIndexed(const DrawBatchIndexed&) RHI_OVERRIDE;
+
+        void beginComputePass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ) RHI_OVERRIDE;
+        void endComputePass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
+        ) RHI_OVERRIDE;
+
+        void setComputePipelineState(RHIComputePipelineState& pso) RHI_OVERRIDE;
+
+        void setPushComputeConstants(const void* data, u32 size) RHI_OVERRIDE;
+
+        void setComputeConstantBuffer(
+            RHIBuffer&,
+            u32 slot,
+            u32 offset
+        ) RHI_OVERRIDE;
+
+        void dispatch(Size3D gridSize) RHI_OVERRIDE;
+
+        void dispatchBarrier(
+            std::span<const RHITextureBarrier> textureBarriers,
+            std::span<const RHIBufferBarrier> bufferBarriers
+        ) RHI_OVERRIDE;
+
+        void beginBlitPass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ) RHI_OVERRIDE;
+        void endBlitPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
+        ) RHI_OVERRIDE;
+
+        void copyBuffer(
+            RHIBuffer& src,
+            RHIBuffer& dst,
+            usize srcOffset,
+            usize dstOffset,
+            usize size
+        ) RHI_OVERRIDE;
+
+        void copyTexture(RHITexture& src, RHITexture& dst) RHI_OVERRIDE;
+
+        void copyBufferToTexture(
+            RHIBuffer& src,
+            u64 srcOffset,
+            u32 srcRowPitch,
+            RHITexture& dst,
+            const RHITextureRegion& region,
+            u32 mipLevel,
+            u32 arraySlice
+        ) RHI_OVERRIDE;
+
+        void copyTextureToBuffer(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,
+            u32 dstRowPitch,
+            const RHITextureRegion& region,
+            u32 mipLevel,
+            u32 arraySlice
+        ) RHI_OVERRIDE;
+
+        void beginEvent(CStr name) RHI_OVERRIDE;
+        void endEvent() RHI_OVERRIDE;
+
+        void setMarker(CStr name) RHI_OVERRIDE;
+
         MTL::Fence* acquireFence();
 
         // encode the lazy submission-event wait (once per recording);

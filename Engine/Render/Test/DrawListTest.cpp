@@ -27,10 +27,11 @@ namespace
     public:
         Batches batches;
 
-        void BeginEvent(CStr) override {}
-        void EndEvent() override {}
-        void SetMarker(CStr) override {}
-        void ExecuteIndirectIndexed(const DrawBatchIndexed& batch) override {
+    private:
+        void beginEvent(CStr) override {}
+        void endEvent() override {}
+        void setMarker(CStr) override {}
+        void executeIndirectIndexed(const DrawBatchIndexed& batch) override {
             batches.push_back(batch);
         }
     };
@@ -120,6 +121,18 @@ namespace
             DrawOrder order
         ) {
             list.Build(scene, visible, cache, ColorPass(), filter, order);
+        }
+
+        // the indices are never read; the base checks only that they exist
+        void Submit(RHICommandList& cmdList) {
+            cmdList.BeginRenderPass(
+                RHIRenderPassDesc{.depthAttachment = RHIDepthAttachment{}}
+            );
+            list.Submit(
+                cmdList,
+                RHIIndexBufferView{.buffer = &device.transient}
+            );
+            cmdList.EndRenderPass();
         }
 
         // the list's rows as the GPU would read them
@@ -308,7 +321,7 @@ TEST(DrawList, AlternatingPipelinesMakeThreeRuns) {
     );
     f.list.Upload();
     RecordingCommandList cmdList;
-    f.list.Submit(cmdList, RHIIndexBufferView{});
+    f.Submit(cmdList);
 
     EXPECT_EQ(f.list.RunCount(), 3u);
     ASSERT_EQ(cmdList.batches.size(), 3u);
@@ -342,7 +355,7 @@ TEST(DrawList, RowsAndArgsAddressTheListSlice) {
         ScenePush{.materials = 7, .vertices = 9, .materialBase = 5}
     );
     RecordingCommandList cmdList;
-    f.list.Submit(cmdList, RHIIndexBufferView{});
+    f.Submit(cmdList);
 
     EXPECT_EQ(push.draws, FakeBuffer::ReadableID);
     EXPECT_NE(push.drawBase, 0u);
@@ -458,7 +471,7 @@ TEST(DrawList, AnEmptyListAllocatesNothing) {
     );
     f.list.Upload();
     RecordingCommandList cmdList;
-    f.list.Submit(cmdList, RHIIndexBufferView{});
+    f.Submit(cmdList);
 
     EXPECT_EQ(f.device.transientAllocations, allocations);
     EXPECT_EQ(f.list.DrawCount(), 0u);

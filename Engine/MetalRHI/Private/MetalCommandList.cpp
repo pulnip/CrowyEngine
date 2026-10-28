@@ -116,9 +116,7 @@ namespace Crowy
         passState = std::monostate{};
     }
 
-    void MetalCommandList::Begin() {
-        Super::Begin();
-
+    void MetalCommandList::begin() {
         CROWY_ASSERT(!isRecording, "Did you call RHICommandList::Close()?");
 
         commandBuffer = NS::RetainPtr(commandQueue->commandBuffer());
@@ -143,9 +141,7 @@ namespace Crowy
         isRecording = true;
     }
 
-    void MetalCommandList::Close() {
-        Super::Close();
-
+    void MetalCommandList::close() {
         CROWY_ASSERT(isRecording, "Did you call RHICommandList::Begin()?");
 
         // un-acquired releases are the cross-submission hand-off: their fences
@@ -314,13 +310,11 @@ namespace Crowy
         return fence;
     }
 
-    void MetalCommandList::BeginRenderPass(
+    void MetalCommandList::beginRenderPass(
         const RHIRenderPassDesc& desc,
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
     ) {
-        Super::BeginRenderPass(desc, textureAcquires, bufferAcquires);
-
         gatherWaits(textureAcquires, bufferAcquires);
 
         auto passDesc = MTL::RenderPassDescriptor::alloc()->init();
@@ -374,12 +368,10 @@ namespace Crowy
         passState = RenderPassState{.encoder = encoder};
     }
 
-    void MetalCommandList::EndRenderPass(
+    void MetalCommandList::endRenderPass(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
     ) {
-        Super::EndRenderPass(textureReleases, bufferReleases);
-
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -396,9 +388,9 @@ namespace Crowy
         passState = std::monostate{};
     }
 
-    void MetalCommandList::SetPipelineState(RHIGraphicsPipelineState& pso) {
-        Super::SetPipelineState(pso);
-
+    void MetalCommandList::setGraphicsPipelineState(
+        RHIGraphicsPipelineState& pso
+    ) {
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -518,12 +510,10 @@ namespace Crowy
     inline constexpr NS::UInteger PushConstantSlot = 0;
     inline constexpr NS::UInteger ConstantBufferSlotBase = 1;
 
-    void MetalCommandList::SetPushGraphicsConstants(
+    void MetalCommandList::setPushGraphicsConstants(
         const void* data,
         u32 size
     ) {
-        Super::SetPushGraphicsConstants(data, size);
-
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -559,13 +549,11 @@ namespace Crowy
         }
     }
 
-    void MetalCommandList::SetGraphicsConstantBuffer(
+    void MetalCommandList::setGraphicsConstantBuffer(
         RHIBuffer& buffer,
         u32 slot,
         u32 offset
     ) {
-        Super::SetGraphicsConstantBuffer(buffer, slot, offset);
-
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -610,9 +598,7 @@ namespace Crowy
         state.cbDirtyMask = 0;
     }
 
-    void MetalCommandList::SetViewport(const RHIViewport& viewport) {
-        Super::SetViewport(viewport);
-
+    void MetalCommandList::setViewport(const RHIViewport& viewport) {
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -634,9 +620,7 @@ namespace Crowy
         state->boundViewport = vp;
     }
 
-    void MetalCommandList::SetScissorRect(const RHIScissorRect& scissor) {
-        Super::SetScissorRect(scissor);
-
+    void MetalCommandList::setScissorRect(const RHIScissorRect& scissor) {
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -656,14 +640,12 @@ namespace Crowy
         state->boundScissor = rect;
     }
 
-    void MetalCommandList::Draw(
+    void MetalCommandList::draw(
         u32 vertexCount,
         u32 instanceCount,
         u32 startVertex,
         u32 startInstance
     ) {
-        Super::Draw(vertexCount, instanceCount, startVertex, startInstance);
-
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -680,7 +662,7 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::DrawIndexed(
+    void MetalCommandList::drawIndexed(
         const RHIIndexBufferView& indices,
         u32 indexCount,
         u32 instanceCount,
@@ -688,15 +670,6 @@ namespace Crowy
         i32 baseVertex,
         u32 startInstance
     ) {
-        Super::DrawIndexed(
-            indices,
-            indexCount,
-            instanceCount,
-            startIndex,
-            baseVertex,
-            startInstance
-        );
-
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -740,9 +713,7 @@ namespace Crowy
         offsetof(MTL::DrawPrimitivesIndirectArguments, baseInstance)
     );
 
-    void MetalCommandList::ExecuteIndirect(const DrawBatch& batch) {
-        Super::ExecuteIndirect(batch);
-
+    void MetalCommandList::executeIndirect(const DrawBatch& batch) {
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -788,11 +759,9 @@ namespace Crowy
         offsetof(MTL::DrawIndexedPrimitivesIndirectArguments, baseInstance)
     );
 
-    void MetalCommandList::ExecuteIndirectIndexed(
+    void MetalCommandList::executeIndirectIndexed(
         const DrawBatchIndexed& batch
     ) {
-        Super::ExecuteIndirectIndexed(batch);
-
         auto state = std::get_if<RenderPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -818,12 +787,10 @@ namespace Crowy
         }
     }
 
-    void MetalCommandList::BeginComputePass(
+    void MetalCommandList::beginComputePass(
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
     ) {
-        Super::BeginComputePass(textureAcquires, bufferAcquires);
-
         gatherWaits(textureAcquires, bufferAcquires);
 
         auto encoder = commandBuffer->computeCommandEncoder();
@@ -834,12 +801,10 @@ namespace Crowy
         passState = ComputePassState{.encoder = encoder};
     }
 
-    void MetalCommandList::EndComputePass(
+    void MetalCommandList::endComputePass(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
     ) {
-        Super::EndComputePass(textureReleases, bufferReleases);
-
         auto state = std::get_if<ComputePassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -856,9 +821,9 @@ namespace Crowy
         passState = std::monostate{};
     }
 
-    void MetalCommandList::SetPipelineState(RHIComputePipelineState& pso) {
-        Super::SetPipelineState(pso);
-
+    void MetalCommandList::setComputePipelineState(
+        RHIComputePipelineState& pso
+    ) {
         auto state = std::get_if<ComputePassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -871,9 +836,7 @@ namespace Crowy
         state->threadsPerThreadgroup = metalPSO.GetThreadsPerThreadgroup();
     }
 
-    void MetalCommandList::SetPushComputeConstants(const void* data, u32 size) {
-        Super::SetPushComputeConstants(data, size);
-
+    void MetalCommandList::setPushComputeConstants(const void* data, u32 size) {
         auto state = std::get_if<ComputePassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -883,13 +846,11 @@ namespace Crowy
         state->encoder->setBytes(data, size, PushConstantSlot);
     }
 
-    void MetalCommandList::SetComputeConstantBuffer(
+    void MetalCommandList::setComputeConstantBuffer(
         RHIBuffer& buffer,
         u32 slot,
         u32 offset
     ) {
-        Super::SetComputeConstantBuffer(buffer, slot, offset);
-
         auto state = std::get_if<ComputePassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -901,9 +862,7 @@ namespace Crowy
             ->setBuffer(mtlBuffer, offset, ConstantBufferSlotBase + slot);
     }
 
-    void MetalCommandList::Dispatch(Size3D gridSize) {
-        Super::Dispatch(gridSize);
-
+    void MetalCommandList::dispatch(Size3D gridSize) {
         auto state = std::get_if<ComputePassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -919,12 +878,10 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::DispatchBarrier(
+    void MetalCommandList::dispatchBarrier(
         std::span<const RHITextureBarrier> textureBarriers,
         std::span<const RHIBufferBarrier> bufferBarriers
     ) {
-        Super::DispatchBarrier(textureBarriers, bufferBarriers);
-
         auto state = std::get_if<ComputePassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -943,12 +900,10 @@ namespace Crowy
         }
     }
 
-    void MetalCommandList::BeginBlitPass(
+    void MetalCommandList::beginBlitPass(
         std::span<const RHITextureBarrier> textureAcquires,
         std::span<const RHIBufferBarrier> bufferAcquires
     ) {
-        Super::BeginBlitPass(textureAcquires, bufferAcquires);
-
         gatherWaits(textureAcquires, bufferAcquires);
 
         auto encoder = commandBuffer->blitCommandEncoder();
@@ -959,12 +914,10 @@ namespace Crowy
         passState = BlitPassState{.encoder = encoder};
     }
 
-    void MetalCommandList::EndBlitPass(
+    void MetalCommandList::endBlitPass(
         std::span<const RHITextureBarrier> textureReleases,
         std::span<const RHIBufferBarrier> bufferReleases
     ) {
-        Super::EndBlitPass(textureReleases, bufferReleases);
-
         auto state = std::get_if<BlitPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -981,15 +934,13 @@ namespace Crowy
         passState = std::monostate{};
     }
 
-    void MetalCommandList::Copy(
+    void MetalCommandList::copyBuffer(
         RHIBuffer& src,
         RHIBuffer& dst,
         usize srcOffset,
         usize dstOffset,
         usize size
     ) {
-        Super::Copy(src, dst, srcOffset, dstOffset, size);
-
         auto state = std::get_if<BlitPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -1002,9 +953,7 @@ namespace Crowy
             ->copyFromBuffer(srcBuf, srcOffset, dstBuf, dstOffset, size);
     }
 
-    void MetalCommandList::Copy(RHITexture& src, RHITexture& dst) {
-        Super::Copy(src, dst);
-
+    void MetalCommandList::copyTexture(RHITexture& src, RHITexture& dst) {
         auto state = std::get_if<BlitPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -1016,7 +965,7 @@ namespace Crowy
         state->encoder->copyFromTexture(srcTex, dstTex);
     }
 
-    void MetalCommandList::Copy(
+    void MetalCommandList::copyBufferToTexture(
         RHIBuffer& src,
         u64 srcOffset,
         u32 srcRowPitch,
@@ -1025,16 +974,6 @@ namespace Crowy
         u32 mipLevel,
         u32 arraySlice
     ) {
-        Super::Copy(
-            src,
-            srcOffset,
-            srcRowPitch,
-            dst,
-            region,
-            mipLevel,
-            arraySlice
-        );
-
         auto state = std::get_if<BlitPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -1067,7 +1006,7 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::Copy(
+    void MetalCommandList::copyTextureToBuffer(
         RHITexture& src,
         RHIBuffer& dst,
         u64 dstOffset,
@@ -1076,16 +1015,6 @@ namespace Crowy
         u32 mipLevel,
         u32 arraySlice
     ) {
-        Super::Copy(
-            src,
-            dst,
-            dstOffset,
-            dstRowPitch,
-            region,
-            mipLevel,
-            arraySlice
-        );
-
         auto state = std::get_if<BlitPassState>(&passState);
         CROWY_ASSERT(
             state != nullptr,
@@ -1118,7 +1047,7 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::BeginEvent(CStr name) {
+    void MetalCommandList::beginEvent(CStr name) {
         auto str = toNSString(name);
         std::visit(
             [str](auto& state) {
@@ -1130,7 +1059,7 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::EndEvent() {
+    void MetalCommandList::endEvent() {
         std::visit(
             [](auto& state) {
                 if constexpr(requires { state.encoder; }) {
@@ -1141,7 +1070,7 @@ namespace Crowy
         );
     }
 
-    void MetalCommandList::SetMarker(CStr name) {
+    void MetalCommandList::setMarker(CStr name) {
         auto str = toNSString(name);
         std::visit(
             [str](auto& state) {

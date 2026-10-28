@@ -415,7 +415,7 @@ namespace Crowy
         }
 #endif
 
-        virtual void Begin() {
+        void Begin() {
             CROWY_ASSERT(
                 passState == PassKind::None,
                 "Begin inside a pass. Did you call the matching End*Pass()?"
@@ -425,15 +425,19 @@ namespace Crowy
             stats = RHIFrameStats{};
 #endif
             CROWY_STAT(commandListBeginCount);
+
+            begin();
         }
-        virtual void Close() {
+        void Close() {
             CROWY_ASSERT(
                 passState == PassKind::None,
                 "Close inside a pass. Did you call the matching End*Pass()?"
             );
+
+            close();
         }
 
-        virtual void BeginRenderPass(
+        void BeginRenderPass(
             const RHIRenderPassDesc& desc,
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
@@ -458,8 +462,10 @@ namespace Crowy
 #if CROWY_DEBUG_BUILD
             passState = PassKind::Render;
 #endif
+
+            beginRenderPass(desc, textureAcquires, bufferAcquires);
         }
-        virtual void EndRenderPass(
+        void EndRenderPass(
             std::span<const RHITextureBarrier> textureReleases = {},
             std::span<const RHIBufferBarrier> bufferReleases = {}
         ) {
@@ -482,9 +488,11 @@ namespace Crowy
 #if CROWY_DEBUG_BUILD
             passState = PassKind::None;
 #endif
+
+            endRenderPass(textureReleases, bufferReleases);
         }
 
-        virtual void SetPipelineState(RHIGraphicsPipelineState&) {
+        void SetPipelineState(RHIGraphicsPipelineState& pso) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
                 "Not in a render pass. Did you call "
@@ -492,9 +500,11 @@ namespace Crowy
             );
 
             CROWY_STAT(pipelineSetCount);
+
+            setGraphicsPipelineState(pso);
         }
 
-        virtual void SetPushGraphicsConstants(const void* data, u32 size) {
+        void SetPushGraphicsConstants(const void* data, u32 size) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
                 "Not in a render pass. Did you call "
@@ -504,6 +514,8 @@ namespace Crowy
             CROWY_ASSERT(size % 4 == 0 && size <= PushConstantBytes);
 
             CROWY_STAT(pushConstantSetCount);
+
+            setPushGraphicsConstants(data, size);
         }
 
         template<typename T>
@@ -512,7 +524,7 @@ namespace Crowy
             SetPushGraphicsConstants(&t, sizeof(T));
         }
 
-        virtual void SetGraphicsConstantBuffer(
+        void SetGraphicsConstantBuffer(
             RHIBuffer& buffer,
             u32 slot,
             u32 offset = 0
@@ -529,6 +541,8 @@ namespace Crowy
             CROWY_ASSERT(offset % CbAlign == 0);
 
             CROWY_STAT(constantBufferSetCount);
+
+            setGraphicsConstantBuffer(buffer, slot, offset);
         }
 
         void SetGraphicsConstantBuffer(const RHIBufferSlice& slice, u32 slot) {
@@ -537,22 +551,26 @@ namespace Crowy
             SetGraphicsConstantBuffer(*slice.buffer, slot, slice.offset);
         }
 
-        virtual void SetViewport(const RHIViewport&) {
+        void SetViewport(const RHIViewport& viewport) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
                 "Not in a render pass. Did you call "
                 "RHICommandList::BeginRenderPass()?"
             );
+
+            setViewport(viewport);
         }
-        virtual void SetScissorRect(const RHIScissorRect&) {
+        void SetScissorRect(const RHIScissorRect& scissor) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
                 "Not in a render pass. Did you call "
                 "RHICommandList::BeginRenderPass()?"
             );
+
+            setScissorRect(scissor);
         }
 
-        virtual void Draw(
+        void Draw(
             u32 vertexCount,
             u32 instanceCount = 1,
             u32 startVertex = 0,
@@ -565,9 +583,11 @@ namespace Crowy
             );
 
             CROWY_STAT(drawCount);
+
+            draw(vertexCount, instanceCount, startVertex, startInstance);
         }
 
-        virtual void DrawIndexed(
+        void DrawIndexed(
             const RHIIndexBufferView& indices,
             u32 indexCount,
             u32 instanceCount = 1,
@@ -583,11 +603,20 @@ namespace Crowy
             detail::validateIndices(indices);
 
             CROWY_STAT(drawCount);
+
+            drawIndexed(
+                indices,
+                indexCount,
+                instanceCount,
+                startIndex,
+                baseVertex,
+                startInstance
+            );
         }
 
         // binds batch.pso, then issues batch.drawCount
         // indirect draws from batch.args (RHIDrawArgs[])
-        virtual void ExecuteIndirect(const DrawBatch& batch) {
+        void ExecuteIndirect(const DrawBatch& batch) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
                 "Not in a render pass. Did you call "
@@ -599,9 +628,11 @@ namespace Crowy
 
             CROWY_STAT(indirectBatchCount);
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
+
+            executeIndirect(batch);
         }
 
-        virtual void ExecuteIndirectIndexed(const DrawBatchIndexed& batch) {
+        void ExecuteIndirectIndexed(const DrawBatchIndexed& batch) {
             CROWY_ASSERT(
                 passState == PassKind::Render,
                 "Not in a render pass. Did you call "
@@ -614,9 +645,11 @@ namespace Crowy
 
             CROWY_STAT(indirectBatchCount);
             CROWY_STAT_ADD(indirectDrawCount, batch.drawCount);
+
+            executeIndirectIndexed(batch);
         }
 
-        virtual void BeginComputePass(
+        void BeginComputePass(
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
         ) {
@@ -635,8 +668,10 @@ namespace Crowy
 #if CROWY_DEBUG_BUILD
             passState = PassKind::Compute;
 #endif
+
+            beginComputePass(textureAcquires, bufferAcquires);
         }
-        virtual void EndComputePass(
+        void EndComputePass(
             std::span<const RHITextureBarrier> textureReleases = {},
             std::span<const RHIBufferBarrier> bufferReleases = {}
         ) {
@@ -659,9 +694,11 @@ namespace Crowy
 #if CROWY_DEBUG_BUILD
             passState = PassKind::None;
 #endif
+
+            endComputePass(textureReleases, bufferReleases);
         }
 
-        virtual void SetPipelineState(RHIComputePipelineState&) {
+        void SetPipelineState(RHIComputePipelineState& pso) {
             CROWY_ASSERT(
                 passState == PassKind::Compute,
                 "Not in a compute pass. Did you call "
@@ -669,9 +706,11 @@ namespace Crowy
             );
 
             CROWY_STAT(pipelineSetCount);
+
+            setComputePipelineState(pso);
         }
 
-        virtual void SetPushComputeConstants(const void* data, u32 size) {
+        void SetPushComputeConstants(const void* data, u32 size) {
             CROWY_ASSERT(
                 passState == PassKind::Compute,
                 "Not in a compute pass. Did you call "
@@ -681,6 +720,8 @@ namespace Crowy
             CROWY_ASSERT(size % 4 == 0 && size <= PushConstantBytes);
 
             CROWY_STAT(pushConstantSetCount);
+
+            setPushComputeConstants(data, size);
         }
 
         template<typename T>
@@ -689,7 +730,7 @@ namespace Crowy
             SetPushComputeConstants(&t, sizeof(T));
         }
 
-        virtual void SetComputeConstantBuffer(
+        void SetComputeConstantBuffer(
             RHIBuffer& buffer,
             u32 slot,
             u32 offset = 0
@@ -706,6 +747,8 @@ namespace Crowy
             CROWY_ASSERT(offset % CbAlign == 0);
 
             CROWY_STAT(constantBufferSetCount);
+
+            setComputeConstantBuffer(buffer, slot, offset);
         }
 
         void SetComputeConstantBuffer(const RHIBufferSlice& slice, u32 slot) {
@@ -714,7 +757,7 @@ namespace Crowy
             SetComputeConstantBuffer(*slice.buffer, slot, slice.offset);
         }
 
-        virtual void Dispatch(Size3D gridSize) {
+        void Dispatch(Size3D gridSize) {
             CROWY_ASSERT(
                 passState == PassKind::Compute,
                 "Not in a compute pass. Did you call "
@@ -722,11 +765,13 @@ namespace Crowy
             );
 
             CROWY_STAT(dispatchCount);
+
+            dispatch(gridSize);
         }
 
         // hazards between dispatches *inside* one compute pass
         // (encoder-internal barrier); illegal anywhere else
-        virtual void DispatchBarrier(
+        void DispatchBarrier(
             std::span<const RHITextureBarrier> textureBarriers = {},
             std::span<const RHIBufferBarrier> bufferBarriers = {}
         ) {
@@ -768,9 +813,11 @@ namespace Crowy
                     "anything else is a pass boundary"
                 );
             }
+
+            dispatchBarrier(textureBarriers, bufferBarriers);
         }
 
-        virtual void BeginBlitPass(
+        void BeginBlitPass(
             std::span<const RHITextureBarrier> textureAcquires = {},
             std::span<const RHIBufferBarrier> bufferAcquires = {}
         ) {
@@ -789,8 +836,10 @@ namespace Crowy
 #if CROWY_DEBUG_BUILD
             passState = PassKind::Blit;
 #endif
+
+            beginBlitPass(textureAcquires, bufferAcquires);
         }
-        virtual void EndBlitPass(
+        void EndBlitPass(
             std::span<const RHITextureBarrier> textureReleases = {},
             std::span<const RHIBufferBarrier> bufferReleases = {}
         ) {
@@ -813,9 +862,11 @@ namespace Crowy
 #if CROWY_DEBUG_BUILD
             passState = PassKind::None;
 #endif
+
+            endBlitPass(textureReleases, bufferReleases);
         }
 
-        virtual void Copy(
+        void Copy(
             RHIBuffer& src,
             RHIBuffer& dst,
             usize srcOffset,
@@ -829,9 +880,11 @@ namespace Crowy
             );
 
             CROWY_STAT(copyCount);
+
+            copyBuffer(src, dst, srcOffset, dstOffset, size);
         }
 
-        virtual void Copy(RHITexture& src, RHITexture& dst) {
+        void Copy(RHITexture& src, RHITexture& dst) {
             CROWY_ASSERT(
                 passState == PassKind::Blit,
                 "Not in a blit pass. Did you call "
@@ -839,6 +892,8 @@ namespace Crowy
             );
 
             CROWY_STAT(copyCount);
+
+            copyTexture(src, dst);
         }
 
         void Copy(RHITexture& src, RHISwapchain& dst) {
@@ -846,7 +901,7 @@ namespace Crowy
             Copy(src, backBuffer);
         }
 
-        virtual void Copy(
+        void Copy(
             RHIBuffer& src,
             u64 srcOffset,
             u32 srcRowPitch,
@@ -871,6 +926,16 @@ namespace Crowy
             );
 
             CROWY_STAT(copyCount);
+
+            copyBufferToTexture(
+                src,
+                srcOffset,
+                srcRowPitch,
+                dst,
+                region,
+                mipLevel,
+                arraySlice
+            );
         }
 
         void Copy(
@@ -898,7 +963,7 @@ namespace Crowy
         }
 
         // the region's rows land dstRowPitch bytes apart, starting at dstOffset
-        virtual void Copy(
+        void Copy(
             RHITexture& src,
             RHIBuffer& dst,
             u64 dstOffset,
@@ -941,6 +1006,16 @@ namespace Crowy
             );
 
             CROWY_STAT(copyCount);
+
+            copyTextureToBuffer(
+                src,
+                dst,
+                dstOffset,
+                dstRowPitch,
+                region,
+                mipLevel,
+                arraySlice
+            );
         }
 
         void Copy(
@@ -967,8 +1042,111 @@ namespace Crowy
             );
         }
 
-        virtual void BeginEvent(CStr name) = 0;
-        virtual void EndEvent() = 0;
-        virtual void SetMarker(CStr name) = 0;
+        void BeginEvent(CStr name) { beginEvent(name); }
+        void EndEvent() { endEvent(); }
+        void SetMarker(CStr name) { setMarker(name); }
+
+    private:
+        virtual void begin() {}
+        virtual void close() {}
+
+        virtual void beginRenderPass(
+            const RHIRenderPassDesc&,
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ) {}
+        virtual void endRenderPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
+        ) {}
+
+        virtual void setGraphicsPipelineState(RHIGraphicsPipelineState&) {}
+        virtual void setPushGraphicsConstants(const void* data, u32 size) {}
+        virtual void setGraphicsConstantBuffer(
+            RHIBuffer&,
+            u32 slot,
+            u32 offset
+        ) {}
+        virtual void setViewport(const RHIViewport&) {}
+        virtual void setScissorRect(const RHIScissorRect&) {}
+
+        virtual void draw(
+            u32 vertexCount,
+            u32 instanceCount,
+            u32 startVertex,
+            u32 startInstance
+        ) {}
+        virtual void drawIndexed(
+            const RHIIndexBufferView&,
+            u32 indexCount,
+            u32 instanceCount,
+            u32 startIndex,
+            i32 baseVertex,
+            u32 startInstance
+        ) {}
+        virtual void executeIndirect(const DrawBatch&) {}
+        virtual void executeIndirectIndexed(const DrawBatchIndexed&) {}
+
+        virtual void beginComputePass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ) {}
+        virtual void endComputePass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
+        ) {}
+
+        virtual void setComputePipelineState(RHIComputePipelineState&) {}
+        virtual void setPushComputeConstants(const void* data, u32 size) {}
+        virtual void setComputeConstantBuffer(
+            RHIBuffer&,
+            u32 slot,
+            u32 offset
+        ) {}
+        virtual void dispatch(Size3D gridSize) {}
+        virtual void dispatchBarrier(
+            std::span<const RHITextureBarrier> textureBarriers,
+            std::span<const RHIBufferBarrier> bufferBarriers
+        ) {}
+
+        virtual void beginBlitPass(
+            std::span<const RHITextureBarrier> textureAcquires,
+            std::span<const RHIBufferBarrier> bufferAcquires
+        ) {}
+        virtual void endBlitPass(
+            std::span<const RHITextureBarrier> textureReleases,
+            std::span<const RHIBufferBarrier> bufferReleases
+        ) {}
+
+        virtual void copyBuffer(
+            RHIBuffer& src,
+            RHIBuffer& dst,
+            usize srcOffset,
+            usize dstOffset,
+            usize size
+        ) {}
+        virtual void copyTexture(RHITexture& src, RHITexture& dst) {}
+        virtual void copyBufferToTexture(
+            RHIBuffer& src,
+            u64 srcOffset,
+            u32 srcRowPitch,
+            RHITexture& dst,
+            const RHITextureRegion& region,
+            u32 mipLevel,
+            u32 arraySlice
+        ) {}
+        virtual void copyTextureToBuffer(
+            RHITexture& src,
+            RHIBuffer& dst,
+            u64 dstOffset,
+            u32 dstRowPitch,
+            const RHITextureRegion& region,
+            u32 mipLevel,
+            u32 arraySlice
+        ) {}
+
+        virtual void beginEvent(CStr name) = 0;
+        virtual void endEvent() = 0;
+        virtual void setMarker(CStr name) = 0;
     };
 }
