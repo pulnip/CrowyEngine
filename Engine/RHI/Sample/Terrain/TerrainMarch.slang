@@ -1,3 +1,4 @@
+#include "MarchingCubes.h"
 #include "Sampler.slang"
 #include "TerrainDensity.slang"
 
@@ -36,19 +37,8 @@ struct ResourceData {
 [[vk::push_constant]]
 ConstantBuffer<ResourceData> resource;
 
-static const uint MC_MAX_INDICES = 16;
-
-// Mirrors MC_CORNER_OFFSET and MC_EDGE_CORNERS in MarchingCubes.hpp.
-static const uint3 MC_CORNER_OFFSET[8] = {
-    uint3(0, 0, 0), uint3(1, 0, 0), uint3(1, 0, 1), uint3(0, 0, 1),
-    uint3(0, 1, 0), uint3(1, 1, 0), uint3(1, 1, 1), uint3(0, 1, 1)
-};
-
-static const uint2 MC_EDGE_CORNERS[12] = {
-    uint2(0, 1), uint2(1, 2), uint2(2, 3), uint2(3, 0),
-    uint2(4, 5), uint2(5, 6), uint2(6, 7), uint2(7, 4),
-    uint2(0, 4), uint2(1, 5), uint2(2, 6), uint2(3, 7)
-};
+static const uint3 MC_CORNER_OFFSET[8] = {MC_CORNER_OFFSETS};
+static const uint2 MC_EDGE_CORNERS[12] = {MC_EDGE_ENDS};
 
 uint3 cells() {
     return uint3(resource.cellsX, resource.cellsY, resource.cellsZ);

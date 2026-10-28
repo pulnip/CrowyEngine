@@ -1,12 +1,5 @@
 #include "Sampler.slang"
-
-// keep in sync with Engine/RHI/Common/Vertex.hpp
-struct Vertex {
-    float3 position;
-    float3 normal;
-    float2 texCoord;
-    float4 tangent;
-};
+#include "Vertex.slang"
 
 cbuffer uniform : register(b1) {
     float4x4 viewProj;

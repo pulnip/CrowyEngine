@@ -5,13 +5,7 @@
 // RenderMaterial.hpp, LightData in RenderLight.hpp, Vertex in
 // Engine/RHI/Common/Vertex.hpp.
 
-// a structured buffer packs tightly
-struct Vertex{
-    float3 position;
-    float3 normal;
-    float2 texCoord;
-    float4 tangent;
-};
+#include "Vertex.slang"
 
 struct DrawData{
     float4x4 world;

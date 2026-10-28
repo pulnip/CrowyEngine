@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ComputeKernel.hpp"
+#include "EffectConstants.h"
 #include "FieldBuffer.hpp"
 #include "Primitives.hpp"
 #include "RHICommandList.hpp"
@@ -15,8 +16,8 @@ namespace Crowy
     using FieldBuffers = std::span<FieldBuffer* const>;
 
     // the most threads one dimension of a dispatch reaches on D3D12: 65535
-    // groups of FieldClear's 64
-    inline constexpr u32 MaxDispatchThreads = 65535u * 64u;
+    // groups
+    inline constexpr u32 MaxDispatchThreads = 65535u * CROWY_EFFECT_GROUP_WIDTH;
 
     class FieldKernels {
     private:

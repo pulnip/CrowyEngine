@@ -2,14 +2,14 @@
 
 #include <bit>
 
+#include "EffectConstants.h"
 #include "Primitives.hpp"
 
 // The CPU twin of WorldClock.slang: the world's steps of 1/60 s, every
 // periodic thing looping over LoopSteps.
 namespace Crowy
 {
-    // divides 2^32, so a step wrapped below 0 lands on the same phase
-    inline constexpr u32 LoopSteps = 4096;
+    inline constexpr u32 LoopSteps = CROWY_EFFECT_LOOP_STEPS;
 
     // how far through its cycle a thing turning `cycles` times a loop is
     inline constexpr f32 loopPhase(u32 step, u32 cycles) {

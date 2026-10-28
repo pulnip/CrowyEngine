@@ -3,6 +3,7 @@
 // What an effect's file includes first: the particle, the push its kernel
 // and draws share (one push a module, for Metal), and the draws' helpers.
 
+#include "EffectConstants.h"
 #include "Random.slang"
 #include "View.slang"
 #include "WorldClock.slang"
@@ -46,9 +47,7 @@ struct EffectPush {
 [[vk::push_constant]]
 ConstantBuffer<EffectPush> effect : register(b0);
 
-// the draw the first step staggers ages with; an effect's own draws keep
-// to small k
-static const uint ParticleStaggerDraw = 0xA6Eu;
+static const uint ParticleStaggerDraw = CROWY_EFFECT_STAGGER_DRAW;
 // a life no age reaches: the effect's update rebirths the particle on an
 // event, and the first step leaves its age at 0
 static const uint EventLife = 0xFFFFFFFFu;

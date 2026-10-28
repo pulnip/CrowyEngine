@@ -1,3 +1,5 @@
+#include "TenThousandBlocks.h"
+
 #include <array>
 #include <memory>
 #include <numbers>
@@ -16,8 +18,9 @@
 namespace Crowy
 {
     class TenThousandBlocks: public RenderApp {
-        // keep in sync with TenThousandBlocks.slang
-        static constexpr u32 GridX = 20, GridY = 20, GridZ = 25;
+        static constexpr u32 GridX = BLOCK_GRID_X;
+        static constexpr u32 GridY = BLOCK_GRID_Y;
+        static constexpr u32 GridZ = BLOCK_GRID_Z;
         static constexpr u32 BlockCount = GridX * GridY * GridZ;
         static constexpr f32 BlockSpacing = 5.0f;
         static constexpr f32 BlockHalfSize = 0.5f;

@@ -6,6 +6,11 @@ PUBLIC
     Crowy::RHI
     Crowy::Render
 )
+# EffectConstants.h, which the shaders read too
+target_include_directories(CrowyEffects
+PUBLIC
+    ${PROJECT_SOURCE_DIR}/Engine/Effects/Shader
+)
 
 if(CROWY_ENABLE_TEST)
     crowy_declare_test(Effects

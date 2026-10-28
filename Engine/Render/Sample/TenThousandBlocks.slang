@@ -1,12 +1,12 @@
 #include "SceneData.slang"
+#include "TenThousandBlocks.h"
 
 struct VertexOut{
     float4 posProj : SV_Position;
     float4 color : COLOR0;
 };
 
-// keep in sync with TenThousandBlocks.cpp
-static const uint3 GRID = uint3(20, 20, 25);
+static const uint3 GRID = uint3(BLOCK_GRID_X, BLOCK_GRID_Y, BLOCK_GRID_Z);
 
 // Minecraft-style fixed brightness per face direction;
 // keep constants so the capture check can predict exact pixel values

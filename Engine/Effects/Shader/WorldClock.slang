@@ -1,9 +1,11 @@
 #pragma once
 
 // The world's clock in steps of 1/60 s; every periodic thing loops over
-// LoopSteps, which divides 2^32, so a step wrapped below 0 still agrees.
+// LoopSteps.
 
-static const uint LoopSteps = 4096u;
+#include "EffectConstants.h"
+
+static const uint LoopSteps = CROWY_EFFECT_LOOP_STEPS;
 
 // how far through its cycle a thing turning `cycles` times a loop is
 float loopPhase(uint step, uint cycles) {

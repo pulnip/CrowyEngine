@@ -1,13 +1,5 @@
 #include "Sampler.slang"
-
-// keep in sync with Engine/RHI/Common/Vertex.hpp
-struct Vertex {
-    float3 position;
-    float3 normal;
-    float2 texCoord;
-    // w = handedness sign
-    float4 tangent;
-};
+#include "Vertex.slang"
 
 cbuffer uniform : register(b1) {
     // rigid rotation, so it transforms normals and tangents unchanged

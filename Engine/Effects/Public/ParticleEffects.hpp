@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "EffectConstants.h"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 
@@ -17,8 +18,7 @@ namespace Crowy
 
     using EffectDrawDescs = std::vector<EffectDrawDesc>;
 
-    // the draw ParticleKernel.slang's first step staggers ages with
-    inline constexpr u32 ParticleStaggerDraw = 0xA6E;
+    inline constexpr u32 ParticleStaggerDraw = CROWY_EFFECT_STAGGER_DRAW;
     inline constexpr f32 EffectStep = 1.0f / 60.0f;
 
     enum class EffectBlend : u8 {

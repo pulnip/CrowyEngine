@@ -2,7 +2,7 @@
 // after its spawn(slot, generation) and update(inout p, slot).
 
 [shader("compute")]
-[numthreads(64, 1, 1)]
+[numthreads(CROWY_EFFECT_GROUP_WIDTH, 1, 1)]
 void cs_step(uint slot: SV_DispatchThreadID) {
     if(slot >= effect.count)
         return;
