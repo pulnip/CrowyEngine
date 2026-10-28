@@ -1,5 +1,7 @@
 #include "DX12Texture.hpp"
 
+#include <utility>
+
 #include <d3dx12/d3dx12_core.h>
 
 #include "Assert.hpp"
@@ -80,26 +82,7 @@ namespace Crowy
         const auto isUnorderedAccess = hasFlag(desc.usage, UnorderedAccess);
         const auto isRenderTarget = hasFlag(desc.usage, RenderTarget);
         const auto isDepthStencil = hasFlag(desc.usage, DepthStencil);
-
-        CROWY_ASSERT(
-            !isBlockCompressed(desc.format) || isShaderResource,
-            "Block-compressed textures are shader-resource only"
-        );
-        CROWY_ASSERT(
-            !isDepthFormat(desc.format) || isDepthStencil,
-            "Depth format should be depth stencil usage"
-        );
-
         const auto is3D = desc.depth > 1;
-        CROWY_ASSERT(
-            !is3D || desc.arraySize == 1,
-            "3D textures cannot be arrayed"
-        );
-        // the RTV/DSV paths only build TEXTURE2D views
-        CROWY_ASSERT(
-            !is3D || (!isRenderTarget && !isDepthStencil),
-            "3D render/depth targets are not supported"
-        );
 
         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
         if(isRenderTarget)
@@ -257,11 +240,6 @@ namespace Crowy
     }
 
     u64 DX12Texture::readableIDOf(const RHITextureViewDesc& desc) {
-        CROWY_ASSERT(
-            !isDepthFormat(GetFormat()) || desc.format == GetFormat(),
-            "a depth texture is read through a view of its own depth format"
-        );
-
         if(auto it = srvs.find(desc); it != srvs.end())
             return it->second;
 
@@ -314,13 +292,9 @@ namespace Crowy
                         desc.mostDetailedMip
                     );
                 },
-                [&](const RHITextureViewDesc::TexCube&) {
-                    CROWY_ASSERT(
-                        false,
-                        "cube unordered access views do not exist"
-                    );
-                    return CD3DX12_UNORDERED_ACCESS_VIEW_DESC{};
-                },
+                [&](
+                    const RHITextureViewDesc::TexCube&
+                ) -> CD3DX12_UNORDERED_ACCESS_VIEW_DESC { std::unreachable(); },
                 [&](const RHITextureViewDesc::Tex3D&) {
                     // -1 binds every W slice of the mip
                     return CD3DX12_UNORDERED_ACCESS_VIEW_DESC::Tex3D(

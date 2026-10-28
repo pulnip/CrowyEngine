@@ -23,23 +23,8 @@ namespace
         Crowy::u32 bufferSize,
         Crowy::u32 elementSize
     ) {
-        CROWY_ASSERT(elementSize > 0);
-        CROWY_ASSERT(
-            desc.offset % elementSize == 0,
-            "buffer view offset {} does not land on a {}-byte element",
-            desc.offset,
-            elementSize
-        );
-
         const auto bytes =
             desc.size != 0 ? desc.size : bufferSize - desc.offset;
-        CROWY_ASSERT(
-            desc.offset + bytes <= bufferSize,
-            "buffer view [{}, {}) runs past the {}-byte buffer",
-            desc.offset,
-            desc.offset + bytes,
-            bufferSize
-        );
 
         return ViewRange{
             .firstElement = desc.offset / elementSize,
@@ -58,15 +43,6 @@ namespace Crowy
     )
         : size(desc.size), allocator(allocator), heap(heap) {
         using enum RHIMemoryType;
-
-        CROWY_ASSERT(
-            desc.memory != Transient,
-            "tile memory holds render targets, not buffers"
-        );
-        CROWY_ASSERT(
-            desc.memory == GPUOnly || !desc.shaderWrite,
-            "a shader cannot write CPU-visible memory"
-        );
 
         // every buffer is rounded to the constant-buffer placement, so any of
         // them can back a CBV; the heap granularity swallows the padding

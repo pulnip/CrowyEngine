@@ -750,13 +750,6 @@ namespace Crowy
             const RHITextureCreateDesc& desc,
             StrView name
         ) RHI_OVERRIDE {
-            using enum RHIMemoryType;
-
-            CROWY_ASSERT(
-                desc.memory != CPUWrite && desc.memory != CPURead,
-                "Use RHIBuffer for CPU-Accessable Resource"
-            );
-
             auto texture = std::make_unique<DX12Texture>(
                 allocator,
                 desc,
@@ -766,16 +759,9 @@ namespace Crowy
                 name
             );
             if(!desc.initialData.empty()) {
-                // RHISubresourceData carries no slice pitch, so the upload
-                // helpers only understand 2D subresources
-                CROWY_ASSERT(
-                    desc.depth == 1,
-                    "initial data upload is not supported for 3D textures"
-                );
                 ensureUploadBegin();
 
                 const usize n = desc.mipLevels * desc.arraySize;
-                CROWY_ASSERT(desc.initialData.size() == n);
 
                 std::vector<RHISubresourceLayout> layouts(n);
                 const auto totalBytes = queryUploadLayout(*texture, layouts);

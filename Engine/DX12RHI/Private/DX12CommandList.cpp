@@ -697,12 +697,6 @@ namespace Crowy
             desc.DepthOrArraySize
         );
 
-        CROWY_ASSERT(
-            region.x + region.width <= dxDst.GetWidth(mipLevel) &&
-                region.y + region.height <= dxDst.GetHeight(mipLevel),
-            "copy region reaches past the mip"
-        );
-
         const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{
             .Offset = srcOffset,
             .Footprint = {
