@@ -215,7 +215,7 @@ namespace Crowy
         const RHIGraphicsPipelineStateDesc& desc,
         StrView name
     )
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         : debugName(name)
 #endif
     {
@@ -239,7 +239,7 @@ namespace Crowy
                 desc.linkedModules
             };
             library = NS::TransferPtr(makeLibrary(device, shaderProgram));
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             library->setLabel(toNSString(toUTF8String(filePath)));
 #endif
 
@@ -250,7 +250,7 @@ namespace Crowy
                     std::format("no function '{}' in {}", entryPoint, filePath)
                 );
             }
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             auto identifier = std::format("{}_{}", filePath, entryPoint);
             func->setLabel(toNSString(identifier));
 #endif
@@ -301,7 +301,7 @@ namespace Crowy
                 desc.linkedModules
             };
             library = NS::TransferPtr(makeLibrary(device, shaderProgram));
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             library->setLabel(toNSString(toUTF8String(filePath)));
 #endif
 
@@ -322,7 +322,7 @@ namespace Crowy
                     std::format("no function '{}' in {}", entryPoint, filePath)
                 );
             }
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             auto identifier = std::format("{}_{}", filePath, entryPoint);
             func->setLabel(toNSString(identifier));
 #endif
@@ -447,7 +447,7 @@ namespace Crowy
         const RHIComputePipelineStateDesc& desc,
         StrView name
     )
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         : debugName(name)
 #endif
     {
@@ -459,7 +459,7 @@ namespace Crowy
         RHIShader
             shaderProgram{filePath, RHIBackend::Metal, nullptr, {}, entryPoint};
         auto library = NS::TransferPtr(makeLibrary(device, shaderProgram));
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         library->setLabel(toNSString(toUTF8String(filePath)));
 #endif
 
@@ -470,7 +470,7 @@ namespace Crowy
                 std::format("no function '{}' in {}", entryPoint, filePath)
             );
         }
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         auto identifier = std::format("{}_{}", filePath, entryPoint);
         func->setLabel(toNSString(identifier));
 #endif

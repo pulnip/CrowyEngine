@@ -35,7 +35,7 @@ namespace Crowy
     ) {
         CROWY_ASSERT(resource != nullptr, "heap pool is out of memory");
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         if(!name.empty()) {
             resource->setLabel(toNSString(name));
         }

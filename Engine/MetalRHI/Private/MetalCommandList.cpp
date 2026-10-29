@@ -169,7 +169,7 @@ namespace Crowy
     MTL::Fence* MetalCommandList::acquireFence() {
         if(fenceCursor == fencePool.size()) {
             auto fence = NS::TransferPtr(commandQueue->device()->newFence());
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             fence->setLabel(toNSString("Crowy Edge Fence"));
 #endif
             fencePool.push_back(std::move(fence));
@@ -293,7 +293,7 @@ namespace Crowy
         }
 
         auto encoder = commandBuffer->renderCommandEncoder(passDesc);
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         if(!desc.debugName.empty()) {
             encoder->setLabel(toNSString(desc.debugName));
         }

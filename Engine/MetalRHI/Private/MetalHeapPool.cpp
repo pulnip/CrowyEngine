@@ -15,7 +15,7 @@ namespace Crowy
     )
         : device(&device),
           desc(desc)
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
           ,
           debugName(name)
 #endif
@@ -23,7 +23,7 @@ namespace Crowy
         auto rsDesc = MTL::ResidencySetDescriptor::alloc()->init();
         rsDesc->setInitialCapacity(8);
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         if(!name.empty()) {
             rsDesc->setLabel(toNSString(name));
         }
@@ -126,7 +126,7 @@ namespace Crowy
         if(heap == nullptr)
             return nullptr;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         heap->setLabel(toNSString(
             std::format(
                 "{}.heap{} ({:.2f}MiB)",

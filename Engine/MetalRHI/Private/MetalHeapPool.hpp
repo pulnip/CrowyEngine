@@ -46,7 +46,7 @@ namespace Crowy
         mutable std::mutex mutex;
         u32 heapCounter = 0;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         Str debugName;
 #endif
 

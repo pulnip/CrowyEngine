@@ -121,7 +121,7 @@ namespace Crowy
             CROWY_ASSERT(device, "No GPU Available");
             CROWY_ASSERT(commandQueue, "Failed to create command queue");
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
             submissionEvent->setLabel(toNSString("Crowy Submission Event"));
 #endif
 

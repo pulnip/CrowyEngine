@@ -54,7 +54,7 @@ namespace Crowy
         u32 vsUsedBuffers = 0;
         u32 fsUsedBuffers = 0;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         const Str debugName;
 #endif
 
@@ -103,7 +103,7 @@ namespace Crowy
 
         std::vector<MetalSamplerBinding> samplers;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if CROWY_DEBUG_BUILD
         const Str debugName;
 #endif
 
