@@ -5,27 +5,6 @@
 namespace Crowy
 {
     // clang-format off
-    CROWY_STRUCT(LightSnapshot)
-        .AddProperty("kind", &LightSnapshot::kind)
-        .AddProperty("enabled", &LightSnapshot::enabled)
-        .AddProperty("castShadow", &LightSnapshot::castShadow)
-        .AddProperty("color", &LightSnapshot::color)
-        .AddProperty("intensity", &LightSnapshot::intensity)
-        .SetUIRange(0.0f, 16.0f)
-        .AddProperty("position", &LightSnapshot::position)
-        .AddProperty("direction", &LightSnapshot::direction)
-        .AddProperty("range", &LightSnapshot::range)
-        .SetUIRange(0.0f, 20.0f)
-        .AddProperty("innerConeAngle", &LightSnapshot::innerConeAngle)
-        .SetUIRange(0.0f, 1.57f)
-        .AddProperty("outerConeAngle", &LightSnapshot::outerConeAngle)
-        .SetUIRange(0.0f, 1.57f)
-        .AddProperty("shadowBias", &LightSnapshot::shadowBias)
-        .SetUIRange(0.0f, 0.1f)
-        .AddProperty("shadowNormalBias", &LightSnapshot::shadowNormalBias)
-        .SetUIRange(0.0f, 4.0f)
-    CROWY_STRUCT_END(LightSnapshot)
-
     CROWY_STRUCT(EnvironmentSnapshot)
         .AddProperty("skyAmbient", &EnvironmentSnapshot::skyAmbient)
         .AddProperty("groundAmbient", &EnvironmentSnapshot::groundAmbient)

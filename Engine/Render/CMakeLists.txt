@@ -1,17 +1,20 @@
 # No Crowy::World, deliberately:
 # a transform arrives here as a Mat4 and a bounding box.
 # Extraction lives with its caller.
+# Whole, since its reflected rows register from objects nothing references.
 crowy_declare_module(Render
+WHOLE_ARCHIVE
 PUBLIC
     Crowy::Asset
     Crowy::Content
     Crowy::Core
+    Crowy::Reflection
     Crowy::RHI
 PRIVATE
     Crowy::Log
 )
 # RenderEnums.h, which the shaders read too
-target_include_directories(CrowyRender
+target_include_directories(CrowyRenderArchive
 PUBLIC
     ${PROJECT_SOURCE_DIR}/Engine/Shader
 )

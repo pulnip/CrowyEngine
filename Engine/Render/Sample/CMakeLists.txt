@@ -36,16 +36,6 @@ TEST_DEPENDS
     Crowy::WorldRender
 )
 
-# the render scene's rows as reflected types; registrations only
-crowy_declare_sample_library(RenderReflection
-    WHOLE_ARCHIVE
-SOURCES
-    RenderReflection.cpp
-PUBLIC
-    Crowy::Reflection
-    Crowy::Render
-)
-
 # the ImGui overlays, apart so samples without a UI skip ImGui
 crowy_declare_sample_library(RenderOverlay
 SOURCES
@@ -81,7 +71,6 @@ DEPENDS
     Crowy::Reflection
     Crowy::WorldRender
     Crowy::SampleRenderOverlay
-    Crowy::SampleRenderReflection
 )
 
 crowy_declare_example(ToonPlayground
@@ -92,7 +81,6 @@ DEPENDS
     Crowy::Reflection
     Crowy::WorldRender
     Crowy::SampleRenderOverlay
-    Crowy::SampleRenderReflection
 )
 
 if(CROWY_ENABLE_PHYSICS)
@@ -123,7 +111,6 @@ DEPENDS
     Crowy::Reflection
     Crowy::SampleEditor
     Crowy::SampleRenderOverlay
-    Crowy::SampleRenderReflection
     Crowy::SampleStage
 )
 set_source_files_properties(StageEditor.cpp
