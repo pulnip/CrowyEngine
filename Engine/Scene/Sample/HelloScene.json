@@ -1,0 +1,211 @@
+{
+    "metadata": {
+        "version": 1,
+        "type": "scene"
+    },
+    "actors": [
+        {
+            "id": 1,
+            "name": "camera",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    1.5,
+                    -5.0
+                ],
+                "rotation": [
+                    0.099833414,
+                    0.0,
+                    0.0,
+                    0.9950042
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "CameraComponent",
+                    "fovY": 1.0471976,
+                    "nearZ": 0.1,
+                    "farZ": 100.0
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "name": "sun",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.5,
+                    0.0,
+                    0.0,
+                    0.8660254
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "LightComponent",
+                    "kind": "Directional",
+                    "enabled": true,
+                    "castShadow": true,
+                    "color": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "intensity": 3.0,
+                    "range": 10.0,
+                    "innerConeAngle": 0.0,
+                    "outerConeAngle": 0.785,
+                    "shadowBias": 0.02,
+                    "shadowNormalBias": 1.0
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "floor",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    10.0,
+                    1.0,
+                    10.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Plane",
+                    "materials": [],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "name": "box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -1.5,
+                    0.5,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "name": "cap",
+            "parent": 4,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.75,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "name": "glass",
+            "parent": null,
+            "transform": {
+                "position": [
+                    1.5,
+                    0.5,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Builtin/Translucent"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        }
+    ]
+}

@@ -17,6 +17,7 @@
 #include "FrameStatsLog.hpp"
 #include "GeometryPool.hpp"
 #include "InputProvider.hpp"
+#include "MaterialAsset.hpp"
 #include "MeshAsset.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -30,6 +31,7 @@ namespace Crowy
 {
     using FrameGraphRAII = RAII<FrameGraph>;
     using GeometryPoolRAII = RAII<GeometryPool>;
+    using MaterialStoreRAII = RAII<MaterialStore>;
     using MeshStoreRAII = RAII<MeshStore>;
     using SceneRendererRAII = RAII<SceneRenderer>;
     using FrameCapturesRAII = RAII<FrameCaptures>;
@@ -110,6 +112,8 @@ namespace Crowy
         // included, is refilled every frame
         FrameInputs frameInputs;
         RenderScene scene;
+        // after the scene whose material rows it removes
+        MaterialStoreRAII materials;
         CameraRAII camera;
         // declared before the port, which points at it, so it outlives it
         RenderDebug debug;
@@ -174,6 +178,7 @@ namespace Crowy
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
         auto& Meshes() noexcept { return *meshes; }
+        auto& Materials() noexcept { return *materials; }
         auto& Scene() noexcept { return scene; }
         auto& Renderer() noexcept { return *renderer; }
         const auto& Camera() const noexcept { return *camera; }

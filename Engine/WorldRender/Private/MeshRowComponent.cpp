@@ -1,7 +1,7 @@
 #include "MeshRowComponent.hpp"
 
 #include "Component.hpp"
-#include "Geometry/Overlap3D.hpp"
+#include "PrimitiveRow.hpp"
 #include "System.hpp"
 #include "World.hpp"
 
@@ -25,7 +25,7 @@ namespace Crowy
             prims.Remove(mesh.row);
         }
 
-        void extractMeshes(World& world, const FrameTime&) {
+        void extractMeshRows(World& world, const FrameTime&) {
             // asked for on the first mesh, so a World without one needs no
             // RenderScene
             RenderScene* scene = nullptr;
@@ -33,17 +33,15 @@ namespace Crowy
                 [&](ActorId actor, const MeshRowComponent& mesh) {
                     if(scene == nullptr)
                         scene = &world.Service<RenderScene>();
-                    auto& prims = scene->Primitives();
-                    auto& meshes = scene->Meshes();
 
-                    auto& row = prims.GetRef(mesh.row);
-                    row.localToWorld = world.WorldMatrix(actor);
-                    row.worldBounds = transformAABB3D(
-                        row.localToWorld,
-                        meshes.GetRef(mesh.mesh).localBounds
+                    writePrimitiveRow(
+                        world,
+                        actor,
+                        *scene,
+                        mesh.row,
+                        mesh.mesh,
+                        mesh.flags
                     );
-                    row.mesh = mesh.mesh;
-                    row.flags = mesh.flags;
                 }
             );
         }
@@ -55,7 +53,7 @@ namespace Crowy
         .OnRemove(&removeRow)
     CROWY_COMPONENT_END(MeshRowComponent)
 
-    CROWY_SYSTEM(ExtractMeshes, Extract, &extractMeshes)
-    CROWY_SYSTEM_END(ExtractMeshes)
+    CROWY_SYSTEM(ExtractMeshRows, Extract, &extractMeshRows)
+    CROWY_SYSTEM_END(ExtractMeshRows)
     // clang-format on
 }

@@ -62,6 +62,7 @@ namespace Crowy
         auto& Device() noexcept { return host.Device(); }
         auto& Geometry() noexcept { return host.Geometry(); }
         auto& Meshes() noexcept { return host.Meshes(); }
+        auto& Materials() noexcept { return host.Materials(); }
         auto& Scene() noexcept { return host.Scene(); }
         auto& Renderer() noexcept { return host.Renderer(); }
         const auto& Camera() const noexcept { return host.Camera(); }

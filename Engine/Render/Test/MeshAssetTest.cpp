@@ -44,6 +44,7 @@ TEST_F(MeshAssetTest, TheBuiltInsComeFromCode) {
         {"engine:Builtin/Box", MakeBox(0.5f)},
         {"engine:Builtin/Sphere", MakeSphere(0.5f, 32, 16)},
         {"engine:Builtin/Plane", MakePlane(Vec2{0.5f, 0.5f})},
+        {"engine:Builtin/Missing", MakeBox(0.5f)},
     };
 
     for(const auto& [text, expected]: builtins) {
@@ -69,7 +70,7 @@ TEST_F(MeshAssetTest, AnUnknownBuiltInIsAnError) {
     ASSERT_FALSE(asset.has_value());
     EXPECT_EQ(
         asset.error(),
-        "no built-in mesh 'Cone'; the built-ins are Box, Sphere, Plane"
+        "no built-in mesh 'Cone'; the built-ins are Box, Sphere, Plane, Missing"
     );
 }
 

@@ -19,10 +19,12 @@ namespace
         Crowy::MeshData (*make)();
     };
 
-    constexpr std::array<BuiltinMesh, 3> BuiltinMeshes{{
+    constexpr std::array<BuiltinMesh, 4> BuiltinMeshes{{
         {"Box", [] { return Crowy::MakeBox(0.5f); }},
         {"Sphere", [] { return Crowy::MakeSphere(0.5f, 32, 16); }},
         {"Plane", [] { return Crowy::MakePlane(Crowy::Vec2{0.5f, 0.5f}); }},
+        // what a reference that fails to load draws instead
+        {"Missing", [] { return Crowy::MakeBox(0.5f); }},
     }};
 
     std::expected<Crowy::MeshData, Crowy::Str> builtinMesh(

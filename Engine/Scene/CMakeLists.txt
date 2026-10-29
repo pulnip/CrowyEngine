@@ -11,4 +11,6 @@ if(CROWY_ENABLE_TEST)
             Crowy::Scene
         LABELS "unit"
     )
+
+    add_subdirectory(Sample)
 endif()

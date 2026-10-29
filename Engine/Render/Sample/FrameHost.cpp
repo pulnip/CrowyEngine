@@ -155,6 +155,14 @@ namespace Crowy
                 releaseMeshAsset(*geometryPool, std::move(asset));
             }
         );
+        materials = std::make_unique<MaterialStore>(
+            [this](const AssetRef& ref) {
+                return loadMaterialAsset(scene.Materials(), ref);
+            },
+            [this](MaterialAsset asset) {
+                releaseMaterialAsset(scene.Materials(), asset);
+            }
+        );
         pipelineConfig = standardConfig(config, debug, swapchain.GetFormat());
         pipeline = describePipeline();
         captures = std::make_unique<FrameCaptures>(
@@ -300,6 +308,7 @@ namespace Crowy
         content.OnUpdateScene(deltaTime);
         // after the scene's own Sync, so what it let go leaves this frame
         meshes->Collect();
+        materials->Collect();
     }
 
     void FrameHost::reportCullStatsOnce() {
