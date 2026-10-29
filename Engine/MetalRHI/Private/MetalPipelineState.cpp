@@ -168,6 +168,8 @@ namespace Crowy
         }
 
         u32 collectUsedBuffers(NS::Array* bindings) {
+            static_assert(MaxBufferArguments <= 32, "the mask is a u32");
+
             u32 mask = 0;
             if(bindings == nullptr) {
                 return mask;
@@ -180,7 +182,7 @@ namespace Crowy
                 if(!binding->used())
                     continue;
 
-                CROWY_ASSERT(binding->index() < 32);
+                CROWY_ASSERT(binding->index() < MaxBufferArguments);
                 mask |= 1u << binding->index();
             }
 
