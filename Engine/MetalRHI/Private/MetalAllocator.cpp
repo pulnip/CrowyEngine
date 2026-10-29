@@ -28,9 +28,8 @@ namespace Crowy
                                                         : sharedHeap;
     }
 
-    RHIAllocation MetalAllocator::track(
+    MetalAllocation MetalAllocator::track(
         MTL::Resource* resource,
-        u64 size,
         StrView name
     ) {
         CROWY_ASSERT(resource != nullptr, "heap pool is out of memory");
@@ -41,11 +40,7 @@ namespace Crowy
         }
 #endif
 
-        const RHIAllocation allocation{
-            .resource = resource,
-            .heapOffset = 0,
-            .size = size
-        };
+        const MetalAllocation allocation{.resource = resource};
 
         const auto [_, inserted] =
             live.emplace(resource, NS::TransferPtr(resource));
@@ -54,30 +49,23 @@ namespace Crowy
         return allocation;
     }
 
-    RHIAllocation MetalAllocator::AllocateBuffer(
+    MetalAllocation MetalAllocator::AllocateBuffer(
         u64 length,
         RHIMemoryType memory,
         StrView name
     ) {
-        return track(poolFor(memory).NewBuffer(length), length, name);
+        return track(poolFor(memory).NewBuffer(length), name);
     }
 
-    RHIAllocation MetalAllocator::AllocateTexture(
+    MetalAllocation MetalAllocator::AllocateTexture(
         MTL::TextureDescriptor* desc,
         RHIMemoryType memory,
         StrView name
     ) {
-        auto& pool = poolFor(memory);
-        auto* texture = pool.NewTexture(desc);
-
-        return track(
-            texture,
-            texture != nullptr ? texture->allocatedSize() : 0,
-            name
-        );
+        return track(poolFor(memory).NewTexture(desc), name);
     }
 
-    void MetalAllocator::Free(const RHIAllocation& allocation) {
+    void MetalAllocator::Free(const MetalAllocation& allocation) {
         if(allocation.resource == nullptr)
             return;
 

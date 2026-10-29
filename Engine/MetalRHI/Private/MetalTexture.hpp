@@ -17,7 +17,7 @@ namespace Crowy
         // null for a drawable-backed texture: that memory belongs to the
         // layer, so nothing here allocated it and nothing frees it
         MetalAllocator* allocator = nullptr;
-        RHIAllocation allocation{};
+        MetalAllocation allocation{};
         // views alias the base texture's heap allocation,
         // so the heap's residency set covers them too
         std::unordered_map<RHITextureViewDesc, RefPtr<MTL::Texture>> views;

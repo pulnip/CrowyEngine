@@ -11,7 +11,7 @@ namespace Crowy
 {
     class MetalBuffer final: public RHIBuffer {
     private:
-        RHIAllocation allocation{};
+        MetalAllocation allocation{};
         MTL::Buffer* buffer = nullptr;
         // what the caller asked for, before any alignment padding
         u32 size = 0;
