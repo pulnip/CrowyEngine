@@ -8,8 +8,8 @@
 #include "FlyCamera.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
-#include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
+#include "MeshRowComponent.hpp"
 #include "Primitives.hpp"
 #include "RHIPipelineState.hpp"
 #include "RenderApp.hpp"
@@ -97,7 +97,7 @@ namespace Crowy
             for(u32 i = 0; i < BlockCount; ++i) {
                 world.Add(
                     world.Spawn(Transform{.position = blockPosition(i)}),
-                    MeshComponent{meshes[i % MeshTypeCount]}
+                    MeshRowComponent{meshes[i % MeshTypeCount]}
                 );
             }
         }

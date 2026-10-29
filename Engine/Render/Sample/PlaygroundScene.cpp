@@ -15,8 +15,8 @@
 #include "FlyControl.hpp"
 #include "LightComponent.hpp"
 #include "Log.hpp"
-#include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
+#include "MeshRowComponent.hpp"
 #include "PortStatusChip.hpp"
 #include "PropertyWalker.hpp"
 #include "ShadingModel.hpp"
@@ -587,7 +587,7 @@ namespace Crowy
     ) {
         world.Add(
             world.Spawn(Transform{.position = position, .scale = scale}),
-            MeshComponent{.mesh = mesh}
+            MeshRowComponent{.mesh = mesh}
         );
     }
 

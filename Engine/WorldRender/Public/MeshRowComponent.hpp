@@ -5,9 +5,9 @@
 
 namespace Crowy
 {
-    // one primitive row of the RenderScene the World provides, landing and
-    // leaving with the component at Sync
-    struct MeshComponent {
+    // one primitive row drawing a mesh row the code added to the RenderScene
+    // itself, landing and leaving with the component at Sync
+    struct MeshRowComponent {
         MeshHandle mesh;
         PrimitiveFlags flags =
             combine(PrimitiveFlags::Visible, PrimitiveFlags::CastShadow);

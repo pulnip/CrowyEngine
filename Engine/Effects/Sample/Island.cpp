@@ -20,8 +20,8 @@
 #include "IslandMeshes.hpp"
 #include "LightComponent.hpp"
 #include "LinearAlgebra.hpp"
-#include "MeshComponent.hpp"
 #include "MeshGenerator.hpp"
+#include "MeshRowComponent.hpp"
 #include "ParticleEffects.hpp"
 #include "PipelineCache.hpp"
 #include "RenderApp.hpp"
@@ -446,7 +446,7 @@ namespace Crowy
                 }
             );
             const auto actor = world.Spawn(local, parent);
-            world.Add(actor, MeshComponent{.mesh = mesh, .flags = flags});
+            world.Add(actor, MeshRowComponent{.mesh = mesh, .flags = flags});
 
             return actor;
         }

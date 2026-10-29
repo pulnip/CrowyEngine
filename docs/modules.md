@@ -38,7 +38,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `Effects` | GPU fields, compute kernels and particle effects | `EffectSystem.hpp`, `ParticleEffects.hpp`, `FieldPass.hpp`, [writing-an-effect.md](writing-an-effect.md) | Test; Sample: `Island`; Check |
 | `Physics` | Jolt behind a deterministic world | `PhysicsWorld.hpp`, `PhysicsRuntime.hpp` | Test; `Sample/Puzzle` |
 | `World` | actors, components, systems, the fixed phases and clocks, the transform hierarchy, `ScriptComponent` | `World.hpp`, `Component.hpp` (`CROWY_COMPONENT`), `System.hpp` (`CROWY_SYSTEM`) | Test |
-| `WorldRender` | mesh, light and camera components, extracted into a `RenderScene` and a `CameraSnapshot` | `MeshComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp` | Test |
+| `WorldRender` | mesh, light and camera components, extracted into a `RenderScene` and a `CameraSnapshot` | `MeshRowComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp` | Test |
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
 | `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |

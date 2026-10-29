@@ -5,7 +5,7 @@
 #include "ClassRegistry.hpp"
 #include "Component.hpp"
 #include "LinearAlgebra.hpp"
-#include "MeshComponent.hpp"
+#include "MeshRowComponent.hpp"
 #include "World.hpp"
 
 using namespace Crowy;
@@ -23,22 +23,25 @@ namespace
     }
 }
 
-// nothing here names a symbol of MeshComponent.cpp, so only linking the
+// nothing here names a symbol of MeshRowComponent.cpp, so only linking the
 // module whole keeps its component and its extraction
-TEST(MeshComponent, RegistersWithoutAReference) {
-    const auto* desc = ClassRegistry::FindType("MeshComponent");
+TEST(MeshRowComponent, RegistersWithoutAReference) {
+    const auto* desc = ClassRegistry::FindType("MeshRowComponent");
     ASSERT_TRUE(desc != nullptr);
     EXPECT_TRUE(ComponentRegistry::Get().Find(*desc) != nullptr);
 }
 
-TEST(MeshComponent, RowsLandAtSyncInTheOrderTheMeshesWereAdded) {
+TEST(MeshRowComponent, RowsLandAtSyncInTheOrderTheMeshesWereAdded) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
 
     for(i32 i = 0; i < 3; ++i)
-        world.Add(world.Spawn(at({f32(i), 0.0f, 0.0f})), MeshComponent{mesh});
+        world.Add(
+            world.Spawn(at({f32(i), 0.0f, 0.0f})),
+            MeshRowComponent{mesh}
+        );
     EXPECT_EQ(scene.Primitives().Count(), 0u);
 
     world.Frame(0.0);
@@ -51,13 +54,13 @@ TEST(MeshComponent, RowsLandAtSyncInTheOrderTheMeshesWereAdded) {
     }
 }
 
-TEST(MeshComponent, TheExtractAfterAMoveWritesTheRowFromTheActor) {
+TEST(MeshRowComponent, TheExtractAfterAMoveWritesTheRowFromTheActor) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
     const auto actor = world.Spawn();
-    world.Add(actor, MeshComponent{mesh});
+    world.Add(actor, MeshRowComponent{mesh});
     world.Frame(0.0);
 
     world.SetLocalTransform(actor, at({0.0f, 4.0f, 0.0f}));
@@ -68,21 +71,21 @@ TEST(MeshComponent, TheExtractAfterAMoveWritesTheRowFromTheActor) {
     );
 }
 
-TEST(MeshComponent, FlagsReachTheRow) {
+TEST(MeshRowComponent, FlagsReachTheRow) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
     world.Add(
         world.Spawn(),
-        MeshComponent{.mesh = mesh, .flags = PrimitiveFlags::Visible}
+        MeshRowComponent{.mesh = mesh, .flags = PrimitiveFlags::Visible}
     );
 
     world.Frame(0.0);
     EXPECT_EQ(scene.Primitives().At(0).flags, PrimitiveFlags::Visible);
 }
 
-TEST(MeshComponent, ADestroyedActorTakesItsRow) {
+TEST(MeshRowComponent, ADestroyedActorTakesItsRow) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
@@ -90,7 +93,7 @@ TEST(MeshComponent, ADestroyedActorTakesItsRow) {
     std::vector<ActorId> actors;
     for(i32 i = 0; i < 3; ++i) {
         actors.push_back(world.Spawn());
-        world.Add(actors.back(), MeshComponent{mesh});
+        world.Add(actors.back(), MeshRowComponent{mesh});
     }
     world.Frame(0.0);
 
@@ -100,13 +103,13 @@ TEST(MeshComponent, ADestroyedActorTakesItsRow) {
 }
 
 // what a sample that placed its rows by hand wrote, to the bit
-TEST(MeshComponent, ATranslatedActorWritesTheRowATranslationWould) {
+TEST(MeshRowComponent, ATranslatedActorWritesTheRowATranslationWould) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
     const Vec3 position{45.0f, 95.0f, 120.0f};
-    world.Add(world.Spawn(at(position)), MeshComponent{mesh});
+    world.Add(world.Spawn(at(position)), MeshRowComponent{mesh});
 
     world.Frame(0.0);
     const auto& row = scene.Primitives().At(0);
@@ -129,12 +132,12 @@ namespace
     }
 }
 
-TEST(MeshComponent, AFrameWhereNothingChangedWritesNoRow) {
+TEST(MeshRowComponent, AFrameWhereNothingChangedWritesNoRow) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
-    world.Add(world.Spawn(), MeshComponent{mesh});
+    world.Add(world.Spawn(), MeshRowComponent{mesh});
     world.Frame(0.0);
 
     poison(scene, 0);
@@ -142,15 +145,18 @@ TEST(MeshComponent, AFrameWhereNothingChangedWritesNoRow) {
     EXPECT_TRUE(isPoisoned(scene, 0));
 }
 
-TEST(MeshComponent, AMovedActorRewritesItsRowAndThoseBelowItOnly) {
+TEST(MeshRowComponent, AMovedActorRewritesItsRowAndThoseBelowItOnly) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
     const auto parent = world.Spawn();
-    world.Add(parent, MeshComponent{mesh});
-    world.Add(world.Spawn(Transform::Identity(), parent), MeshComponent{mesh});
-    world.Add(world.Spawn(), MeshComponent{mesh});
+    world.Add(parent, MeshRowComponent{mesh});
+    world.Add(
+        world.Spawn(Transform::Identity(), parent),
+        MeshRowComponent{mesh}
+    );
+    world.Add(world.Spawn(), MeshRowComponent{mesh});
     world.Frame(0.0);
 
     for(u32 i = 0; i < 3; ++i)
@@ -167,16 +173,16 @@ TEST(MeshComponent, AMovedActorRewritesItsRowAndThoseBelowItOnly) {
     );
 }
 
-TEST(MeshComponent, AWrittenComponentRewritesItsRow) {
+TEST(MeshRowComponent, AWrittenComponentRewritesItsRow) {
     RenderScene scene;
     const auto mesh = addUnitMesh(scene);
     World world;
     world.Provide(scene);
     const auto actor = world.Spawn();
-    world.Add(actor, MeshComponent{mesh});
+    world.Add(actor, MeshRowComponent{mesh});
     world.Frame(0.0);
 
-    world.Write<MeshComponent>(actor)->flags = PrimitiveFlags::CastShadow;
+    world.Write<MeshRowComponent>(actor)->flags = PrimitiveFlags::CastShadow;
     world.Frame(0.0);
     EXPECT_EQ(scene.Primitives().At(0).flags, PrimitiveFlags::CastShadow);
 }
