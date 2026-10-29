@@ -4,7 +4,6 @@
 #include <thread>
 
 #include <Metal/Metal.hpp>
-#include <dispatch/dispatch.h>
 
 namespace Crowy
 {
