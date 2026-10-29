@@ -17,9 +17,11 @@ if(CROWY_ENABLE_TEST)
             Crowy::WorldRender
         LABELS "unit"
     )
-    # the sample's scene file, which the round-trip test reads in place
+    # the sample's scene file, which the round-trip test reads in place, and
+    # the engine: mount its material files load from
     target_compile_definitions(CrowyWorldRenderTest
     PRIVATE
         CROWY_HELLO_SCENE_FILE="${PROJECT_SOURCE_DIR}/Engine/Scene/Sample/HelloScene.json"
+        CROWY_ENGINE_ROOT="${PROJECT_SOURCE_DIR}/Engine"
     )
 endif()

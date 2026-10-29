@@ -46,7 +46,11 @@ namespace
         CameraSnapshot camera;
         MaterialStore materials{
             [this](const AssetRef& ref) {
-                return loadMaterialAsset(scene.Materials(), AssetRoots{}, ref);
+                return loadMaterialAsset(
+                    scene.Materials(),
+                    AssetRoots{.engine = toPath(CROWY_ENGINE_ROOT)},
+                    ref
+                );
             },
             [this](MaterialAsset asset) {
                 releaseMaterialAsset(scene.Materials(), asset);
