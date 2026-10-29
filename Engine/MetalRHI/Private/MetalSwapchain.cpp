@@ -5,11 +5,27 @@
 #include <CoreGraphics/CGGeometry.h>
 #include <Metal/MTLCommandBuffer.hpp>
 #include <QuartzCore/CAMetalLayer.hpp>
+#include <objc/message.h>
+#include <objc/runtime.h>
 
 #include "Assert.hpp"
 #include "MetalFrameDump.hpp"
 #include "MetalTexture.hpp"
 #include "MetalUtil.hpp"
+
+namespace
+{
+    // metal-cpp wraps neither displaySyncEnabled nor maximumDrawableCount
+    template<typename T>
+    void setLayerProperty(CA::MetalLayer* layer, const char* setter, T value) {
+        using Setter = void (*)(void*, SEL, T);
+        reinterpret_cast<Setter>(&objc_msgSend)(
+            layer,
+            sel_registerName(setter),
+            value
+        );
+    }
+}
 
 namespace Crowy
 {
@@ -30,7 +46,16 @@ namespace Crowy
             CGSizeMake(desc.bufferDesc.width, desc.bufferDesc.height)
         );
 
-        // desc.debugName and desc.vsync are not applied
+        CROWY_ASSERT(
+            desc.bufferCount == 2 || desc.bufferCount == 3,
+            "a Metal layer keeps 2 or 3 drawables"
+        );
+        setLayerProperty(metalLayer, "setDisplaySyncEnabled:", desc.vsync);
+        setLayerProperty(
+            metalLayer,
+            "setMaximumDrawableCount:",
+            NS::UInteger{desc.bufferCount}
+        );
     }
 
     MetalSwapchain::~MetalSwapchain() {
