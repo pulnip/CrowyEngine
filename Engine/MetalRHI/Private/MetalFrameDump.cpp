@@ -6,6 +6,7 @@
 
 #include <Metal/MTLTexture.hpp>
 
+#include "Assert.hpp"
 #include "ImageWriter.hpp"
 #include "LogLocal.hpp"
 #include "PathUtil.hpp"
@@ -75,6 +76,10 @@ namespace Crowy
         std::function<void(bool)> onDone
     ) {
         auto* texture = drawable.texture();
+        CROWY_ASSERT(
+            !texture->framebufferOnly(),
+            "a dumped drawable must not be framebufferOnly"
+        );
         if(texture->storageMode() == MTL::StorageModePrivate) {
             LOG_WARN("frame dump skipped: drawable is not CPU-readable");
             onDone(false);
