@@ -54,10 +54,6 @@ namespace Crowy
         u32 vsUsedBuffers = 0;
         u32 fsUsedBuffers = 0;
 
-#if CROWY_DEBUG_BUILD
-        const Str debugName;
-#endif
-
     public:
         MetalGraphicsPipelineState(
             MTL::Device&,
@@ -102,10 +98,6 @@ namespace Crowy
         MTL::Size threadsPerThreadgroup = {0, 0, 0};
 
         std::vector<MetalSamplerBinding> samplers;
-
-#if CROWY_DEBUG_BUILD
-        const Str debugName;
-#endif
 
     public:
         MetalComputePipelineState(

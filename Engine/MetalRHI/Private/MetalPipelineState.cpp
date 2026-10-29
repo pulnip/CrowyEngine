@@ -216,17 +216,18 @@ namespace Crowy
         MetalReservedSamplers& samplers,
         const RHIGraphicsPipelineStateDesc& desc,
         StrView name
-    )
-#if CROWY_DEBUG_BUILD
-        : debugName(name)
-#endif
-    {
+    ) {
         validateGraphicsPipelineDesc(desc);
 
         AutoreleasePoolScope _;
 
         auto pipelineDesc =
             NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
+#if CROWY_DEBUG_BUILD
+        if(!name.empty()) {
+            pipelineDesc->setLabel(toNSString(name));
+        }
+#endif
         topology = convert(desc.topology);
 
         RefPtr<MTL::Library> library;
@@ -453,11 +454,7 @@ namespace Crowy
         MetalReservedSamplers& samplers,
         const RHIComputePipelineStateDesc& desc,
         StrView name
-    )
-#if CROWY_DEBUG_BUILD
-        : debugName(name)
-#endif
-    {
+    ) {
         AutoreleasePoolScope _;
 
         const auto& filePath = desc.computeShader.path;
@@ -490,6 +487,11 @@ namespace Crowy
         auto pipelineDesc =
             NS::TransferPtr(MTL::ComputePipelineDescriptor::alloc()->init());
         pipelineDesc->setComputeFunction(func.get());
+#if CROWY_DEBUG_BUILD
+        if(!name.empty()) {
+            pipelineDesc->setLabel(toNSString(name));
+        }
+#endif
 
         MTL::AutoreleasedComputePipelineReflection refl = nullptr;
         NS::Error* error = nullptr;
