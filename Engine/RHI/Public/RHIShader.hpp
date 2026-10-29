@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <span>
 #include <vector>
@@ -8,6 +9,7 @@
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "Semantics.hpp"
+#include "StringUtil.hpp"
 
 namespace slang
 {
@@ -19,6 +21,24 @@ namespace Crowy
 {
     // call once in whole program-lifetime
     void initGlobalSession();
+
+    struct RHISamplerUse {
+        // backend binding index ([[sampler(n)]] on Metal)
+        u32 slot = 0;
+        // index into StaticSamplers
+        u32 samplerIndex = 0;
+    };
+
+    struct RHIShaderReflection {
+        u64 entryPointIndex = std::numeric_limits<u64>::max();
+        // for compute pipeline, (0, 0, 0) for others.
+        Size3D threadGroupSize{0, 0, 0};
+
+        std::vector<RHISamplerUse> usedSamplers;
+    };
+    struct RHIProgramReflection {
+        StringHashMap<RHIShaderReflection> shaderRefl;
+    };
 
     class RHIShader {
     private:

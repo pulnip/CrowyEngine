@@ -1245,27 +1245,6 @@ struct std::hash<Crowy::RHITextureViewDesc> {
 
 namespace Crowy
 {
-    struct RHISamplerUse {
-        // backend binding index ([[sampler(n)]] on Metal)
-        u32 slot = 0;
-        // index into StaticSamplers
-        u32 samplerIndex = 0;
-    };
-
-    struct RHIShaderReflection {
-        u64 entryPointIndex = std::numeric_limits<u64>::max();
-        // for compute pipeline, (0, 0, 0) for others.
-        Size3D threadGroupSize{0, 0, 0};
-
-        std::vector<RHISamplerUse> usedSamplers;
-    };
-    struct RHIProgramReflection {
-        StringHashMap<RHIShaderReflection> shaderRefl;
-    };
-}
-
-namespace Crowy
-{
     // bindless rendering api
     inline constexpr u32 DirectCbCount = 3;
     // D3D12's root signature holds 64 DWORDs: a root constant costs one per
