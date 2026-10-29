@@ -9,7 +9,8 @@
 namespace Crowy
 {
     NS::String* toNSString(StrView str) {
-        return NS::String::string(str.data(), NS::UTF8StringEncoding);
+        const Str terminated(str);
+        return NS::String::string(terminated.c_str(), NS::UTF8StringEncoding);
     }
 
     MTL::PixelFormat convert(RHIPixelFormat format) {
