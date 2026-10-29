@@ -282,14 +282,24 @@ namespace Crowy
 
         if(desc.depthAttachment.has_value()) {
             auto& attachment = *desc.depthAttachment;
-            auto& mtlAttach = *passDesc->depthAttachment();
-            mtlAttach.setTexture(
-                static_cast<MetalTexture*>(attachment.texture)->Get()
-            );
-            mtlAttach.setLevel(attachment.mipLevel);
-            mtlAttach.setLoadAction(convert(attachment.loadAction));
-            mtlAttach.setStoreAction(convert(attachment.storeAction));
-            mtlAttach.setClearDepth(attachment.clearDepthStencil.depth);
+            auto* texture =
+                static_cast<MetalTexture*>(attachment.texture)->Get();
+
+            auto& depth = *passDesc->depthAttachment();
+            depth.setTexture(texture);
+            depth.setLevel(attachment.mipLevel);
+            depth.setLoadAction(convert(attachment.loadAction));
+            depth.setStoreAction(convert(attachment.storeAction));
+            depth.setClearDepth(attachment.clearDepthStencil.depth);
+
+            if(hasStencil(attachment.texture->GetFormat())) {
+                auto& stencil = *passDesc->stencilAttachment();
+                stencil.setTexture(texture);
+                stencil.setLevel(attachment.mipLevel);
+                stencil.setLoadAction(convert(attachment.loadAction));
+                stencil.setStoreAction(convert(attachment.storeAction));
+                stencil.setClearStencil(attachment.clearDepthStencil.stencil);
+            }
         }
 
         auto encoder = commandBuffer->renderCommandEncoder(passDesc);

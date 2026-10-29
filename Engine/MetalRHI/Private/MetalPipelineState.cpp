@@ -339,6 +339,11 @@ namespace Crowy
             pipelineDesc->setDepthAttachmentPixelFormat(
                 convert(depthStencilFormat)
             );
+            if(hasStencil(depthStencilFormat)) {
+                pipelineDesc->setStencilAttachmentPixelFormat(
+                    convert(depthStencilFormat)
+                );
+            }
         }
 
         const auto blend = desc.blend.value_or(RHIBlendState{});
