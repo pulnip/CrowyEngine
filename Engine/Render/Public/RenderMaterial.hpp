@@ -5,6 +5,7 @@
 #include <optional>
 #include <type_traits>
 
+#include "EnumUtil.hpp"
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -80,6 +81,14 @@ namespace Crowy
         // too, where the depth-only passes run its maskShader
         Masked = 1u << 2,
     };
+
+    // clang-format off
+    CROWY_ENUM_BEGIN(MaterialDomain)
+        CROWY_ENUM_VALUE(Opaque)
+        CROWY_ENUM_VALUE(Translucent)
+        CROWY_ENUM_VALUE(Masked)
+    CROWY_ENUM_END()
+    // clang-format on
 
     // The slice of a pipeline state a material owns. Depth state is the pass's.
     struct MaterialPipelineDesc {

@@ -225,35 +225,6 @@ namespace Crowy
                 world.Add(loaded.actor, value);
             }
         }
-
-        void checkHeader(const DOM::Value& scene) {
-            const auto* root = scene.asTable();
-            if(root == nullptr)
-                throw std::runtime_error("a scene is a table");
-
-            // another format altogether: nothing below would read right
-            const auto type = scene.get<Str>("metadata.type");
-            if(type != SceneType) {
-                throw std::runtime_error(
-                    std::format(
-                        "expected a \"{}\" document, got \"{}\"",
-                        SceneType,
-                        type.value_or("")
-                    )
-                );
-            }
-            const auto version = scene.get<i64>("metadata.version");
-            if(version != SceneVersion) {
-                throw std::runtime_error(
-                    std::format(
-                        "a scene of version {} cannot be read; this reads "
-                        "version {}",
-                        version.value_or(0),
-                        SceneVersion
-                    )
-                );
-            }
-        }
     }
 
     DOM::Value saveScene(const World& world) {
@@ -308,18 +279,13 @@ namespace Crowy
         world.EachActor([&](ActorId, ActorId) { empty = false; });
         CROWY_ASSERT(empty, "a scene loads into an empty World");
 
-        checkHeader(scene);
+        if(const auto header = checkDocMetadata(scene, SceneType, SceneVersion);
+           !header.empty())
+            throw std::runtime_error(join(header, "\n"));
         auto& root = *scene.asTable();
 
         Errors errors;
         checkKeys(root, {"metadata", "actors"}, "the scene", errors);
-        // the header check found its type, so the metadata is a table
-        checkKeys(
-            *root.find("metadata")->second.asTable(),
-            {"version", "type", "name"},
-            "the scene's metadata",
-            errors
-        );
 
         const auto actorsEntry = root.find("actors");
         auto* actors =

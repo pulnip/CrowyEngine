@@ -1,4 +1,5 @@
 #include "ClassRegistry.hpp"
+#include "MaterialAsset.hpp"
 #include "RenderLight.hpp"
 #include "RenderMaterial.hpp"
 
@@ -25,5 +26,14 @@ namespace Crowy
         .AddProperty("alphaCutoff", &MaterialData::alphaCutoff)
         .SetUIRange(0.0f, 1.0f)
     CROWY_STRUCT_END(MaterialData)
+
+    CROWY_STRUCT(MaterialDesc)
+        .AddProperty("domain", &MaterialDesc::domain)
+        .AddProperty("shader", &MaterialDesc::shader)
+        .AddProperty("shadingModule", &MaterialDesc::shadingModule)
+        .AddProperty("doubleSided", &MaterialDesc::doubleSided)
+        .AddProperty("receiveShadow", &MaterialDesc::receiveShadow)
+        .AddProperty("data", &MaterialDesc::data)
+    CROWY_STRUCT_END(MaterialDesc)
     // clang-format on
 }

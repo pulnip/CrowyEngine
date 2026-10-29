@@ -34,10 +34,12 @@ if(CROWY_ENABLE_TEST)
             Slang::Slang
         LABELS "unit"
     )
-    # a model file the mesh asset tests load in place
+    # a model file the mesh asset tests load in place, and the engine: mount
+    # the sample materials load from
     target_compile_definitions(CrowyRenderTest
     PRIVATE
         CROWY_MODEL_TEST_DATA="${PROJECT_SOURCE_DIR}/Engine/Content/Test/Data"
+        CROWY_ENGINE_ROOT="${PROJECT_SOURCE_DIR}/Engine"
     )
 
     add_subdirectory(Sample)

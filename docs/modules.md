@@ -34,13 +34,13 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `RHI` | the device, command lists, resources, barriers and shaders over D3D12 and Metal; `Common/` the shared definitions, `TestSupport/` the recording fakes | `RHIDevice.hpp`, `RHICommandList.hpp`, `Common/RHIDefinitions.hpp`, [rhi.md](rhi.md) | Test; Sample, which also holds `AppFramework` (`App`, `Main<T>`) that every windowed executable compiles; Spike; Check |
 | `DX12RHI`, `MetalRHI` | the two backends, one per platform, chosen at build time | `Private/` only: `DX12Device.cpp`, `MetalDevice.cpp` | through RHI's |
 | `Shader` | the shared Slang root: scene data, view, lighting, fullscreen | the `.slang` files | |
-| `Render` | the render scene, the frame graph of passes, materials and pipelines, shadows, post, mesh and material assets | `SceneRenderer.hpp`, `RenderScene.hpp`, `FrameGraph.hpp`, `StandardFrame.hpp` | Test; Sample: the renderer host (`RenderApp`, `FrameHost`), `Editor/`, `Stage/`, `PhysicsSync/` and the examples, `Playground` first; Spike |
+| `Render` | the render scene, the frame graph of passes, materials and pipelines, shadows, post, mesh and material assets, material files (`MaterialDesc`) | `SceneRenderer.hpp`, `RenderScene.hpp`, `FrameGraph.hpp`, `StandardFrame.hpp` | Test; Sample: the renderer host (`RenderApp`, `FrameHost`), `Editor/`, `Stage/`, `PhysicsSync/` and the examples, `Playground` first; Spike |
 | `Effects` | GPU fields, compute kernels and particle effects | `EffectSystem.hpp`, `ParticleEffects.hpp`, `FieldPass.hpp`, [writing-an-effect.md](writing-an-effect.md) | Test; Sample: `Island`; Check |
 | `Physics` | Jolt behind a deterministic world | `PhysicsWorld.hpp`, `PhysicsRuntime.hpp` | Test; `Sample/Puzzle` |
 | `World` | actors, components, systems, the fixed phases and clocks, the transform hierarchy, `ScriptComponent` | `World.hpp`, `Component.hpp` (`CROWY_COMPONENT`), `System.hpp` (`CROWY_SYSTEM`) | Test |
 | `WorldRender` | mesh, light and camera components, extracted into a `RenderScene` and a `CameraSnapshot`; `MeshComponent` names its assets, `MeshRowComponent` draws a row the code built | `MeshComponent.hpp`, `MeshRowComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp` | Test |
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
-| `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in assets opened and drawn |
+| `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in meshes and two material files opened and drawn |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |
 | `Content` | image, mip, mesh and model (FBX) loading, image writing and comparison | `ImageLoader.hpp`, `MeshData.hpp`, `ModelLoader.hpp`, `ImageCompare.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
 
@@ -55,8 +55,9 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 - A scene save leaves out a component marked `Transient`, and a component
   with no reflected properties stops the save.
 - An `AssetStore` releases an asset at the `Collect` after its last handle
-  goes. Render's `MeshStore` is one; `engine:Builtin/*` meshes come from
-  code.
+  goes. Render's `MeshStore` and `MaterialStore` are two;
+  `engine:Builtin/*` meshes and materials come from code, and any other
+  material ref is a JSON file of one `MaterialDesc`.
 - Physics and the code that feeds it compile with `crowy_fp_contract_off`.
 
 ## Where is it

@@ -156,8 +156,8 @@ namespace Crowy
             }
         );
         materials = std::make_unique<MaterialStore>(
-            [this](const AssetRef& ref) {
-                return loadMaterialAsset(scene.Materials(), ref);
+            [this, roots](const AssetRef& ref) {
+                return loadMaterialAsset(scene.Materials(), roots, ref);
             },
             [this](MaterialAsset asset) {
                 releaseMaterialAsset(scene.Materials(), asset);
