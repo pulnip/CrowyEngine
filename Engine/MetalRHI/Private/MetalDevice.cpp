@@ -89,15 +89,10 @@ namespace Crowy
               commandQueue(NS::TransferPtr(device->newCommandQueue())),
               submissionEvent(NS::TransferPtr(device->newEvent())),
               samplers(*device.get()),
-              privateHeap(
-                  *device.get(),
-                  {.heapSize = 128ull << 20},
-                  "PrivateHeap"
-              ),
+              privateHeap(*device.get(), {}, "PrivateHeap"),
               sharedHeap(
                   *device.get(),
-                  {.storageMode = MTL::StorageModeShared,
-                   .heapSize = 128ull << 20},
+                  {.storageMode = MTL::StorageModeShared},
                   "SharedHeap"
               ),
               allocator(privateHeap, sharedHeap)
