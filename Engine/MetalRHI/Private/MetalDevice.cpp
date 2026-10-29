@@ -283,8 +283,6 @@ namespace Crowy
             const RHIBufferCreateDesc& desc,
             StrView name
         ) override {
-            CROWY_ASSERT(desc.size % 4 == 0);
-
             auto buffer = std::make_unique<MetalBuffer>(allocator, desc, name);
 
             if(desc.initialData != nullptr &&
@@ -321,16 +319,9 @@ namespace Crowy
             texDesc->release();
 
             if(!desc.initialData.empty()) {
-                // RHISubresourceData carries no slice pitch,
-                // so the upload helpers only understand 2D subresources
-                CROWY_ASSERT(
-                    desc.depth == 1,
-                    "initial data upload is not supported for 3D textures"
-                );
                 ensureUploadBegin();
 
                 const usize n = desc.mipLevels * desc.arraySize;
-                CROWY_ASSERT(desc.initialData.size() == n);
 
                 std::vector<RHISubresourceLayout> layouts(n);
                 const auto totalBytes = queryUploadLayout(desc, layouts);

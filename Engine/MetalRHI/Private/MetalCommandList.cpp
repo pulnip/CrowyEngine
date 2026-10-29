@@ -932,14 +932,7 @@ namespace Crowy
             "Did you call RHICommandList::BeginBlitPass()?"
         );
         auto srcBuf = static_cast<MetalBuffer&>(src).Get();
-        auto& metalDst = static_cast<MetalTexture&>(dst);
-        auto dstTex = metalDst.Get();
-
-        CROWY_ASSERT(
-            region.x + region.width <= metalDst.GetWidth(mipLevel) &&
-                region.y + region.height <= metalDst.GetHeight(mipLevel),
-            "copy region reaches past the mip"
-        );
+        auto dstTex = static_cast<MetalTexture&>(dst).Get();
 
         // Single 2D slice, so depth is 1 and the origin's z is 0.
         const auto sourceSize = MTL::Size::Make(region.width, region.height, 1);

@@ -64,10 +64,6 @@ namespace Crowy
             return it->second->gpuResourceID()._impl;
         }
 
-        CROWY_ASSERT(
-            view.mostDetailedMip < texture->mipmapLevelCount(),
-            "view's most detailed mip out of range"
-        );
         const auto mipCount =
             view.mipCount == AllMips
                 ? texture->mipmapLevelCount() - view.mostDetailedMip

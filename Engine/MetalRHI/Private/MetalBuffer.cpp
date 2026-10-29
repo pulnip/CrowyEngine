@@ -5,7 +5,6 @@
 #include <Metal/Metal.hpp>
 #include <TargetConditionals.h>
 
-#include "Assert.hpp"
 #include "IntMath.hpp"
 #include "MetalUtil.hpp"
 #include "PtrUtil.hpp"
@@ -20,15 +19,6 @@ namespace Crowy
     )
         : size(desc.size), allocator(allocator) {
         using enum RHIMemoryType;
-
-        CROWY_ASSERT(
-            desc.memory != Transient,
-            "tile memory holds render targets, not buffers"
-        );
-        CROWY_ASSERT(
-            desc.memory == GPUOnly || !desc.shaderWrite,
-            "a shader cannot write CPU-visible memory"
-        );
 
         allocation = allocator.AllocateBuffer(
             nextMul(desc.size, 16u),

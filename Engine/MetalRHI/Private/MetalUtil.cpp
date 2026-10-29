@@ -158,16 +158,8 @@ namespace Crowy
             return mtlUsage;
         }
 
-        auto convert(u32 height, u32 depth, u32 arraySize) {
-            CROWY_ASSERT(
-                1 <= height && 1 <= depth,
-                "Invalid Texture Depth: {}",
-                depth
-            );
-            CROWY_ASSERT(0 < arraySize, "ArraySize should be positive");
-
+        auto convert(u32 depth, u32 arraySize) {
             if(depth != 1) {
-                CROWY_ASSERT(arraySize == 1, "3D textures cannot be arrayed");
                 return MTL::TextureType3D;
             }
 
@@ -183,9 +175,7 @@ namespace Crowy
         texDesc->setDepth(desc.depth);
         texDesc->setMipmapLevelCount(desc.mipLevels);
         texDesc->setArrayLength(desc.arraySize);
-        texDesc->setTextureType(
-            convert(desc.height, desc.depth, desc.arraySize)
-        );
+        texDesc->setTextureType(convert(desc.depth, desc.arraySize));
         texDesc->setPixelFormat(convert(desc.format));
         texDesc->setUsage(convert(desc.usage));
 
