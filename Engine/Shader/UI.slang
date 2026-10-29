@@ -36,12 +36,11 @@ VertexOut vs_main(uint vertexID : SV_VertexID) {
     ImDrawVert input = vertices[param.vertexBase + vertexID];
 
     float2 pos = input.pos * param.scale + param.translate;
-    uint4 bytes = (input.col >> uint4(0, 8, 16, 24)) & 0xFF;
 
     VertexOut output;
     output.position = float4(pos, 0, 1);
     output.uv = input.uv;
-    output.color = float4(bytes) / 255.0;
+    output.color = unpackUnorm4x8ToFloat(input.col);
 
     if(param.srgbTarget != 0) {
         output.color.rgb = srgb2linear(output.color.rgb);
