@@ -13,6 +13,7 @@ namespace Crowy
     MetalTexture::MetalTexture(
         MetalAllocator& allocator,
         MTL::TextureDescriptor* desc,
+        RHIMemoryType memory,
         StrView name
     )
         : RHITexture(
@@ -21,9 +22,7 @@ namespace Crowy
               desc->arrayLength()
           ),
           allocator(&allocator),
-          allocation(
-              allocator.AllocateTexture(desc, RHIMemoryType::GPUOnly, name)
-          ) {
+          allocation(allocator.AllocateTexture(desc, memory, name)) {
         texture =
             NS::RetainPtr(static_cast<MTL::Texture*>(allocation.resource));
     }

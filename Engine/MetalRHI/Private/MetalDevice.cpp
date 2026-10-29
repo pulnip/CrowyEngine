@@ -316,10 +316,13 @@ namespace Crowy
             StrView name
         ) override {
             auto texDesc = convert(desc);
-            auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
-
-            auto texture =
-                std::make_unique<MetalTexture>(allocator, texDesc, name);
+            auto texture = std::make_unique<MetalTexture>(
+                allocator,
+                texDesc,
+                desc.memory,
+                name
+            );
+            const auto sizeAlign = device->heapTextureSizeAndAlign(texDesc);
             texDesc->release();
 
             if(!desc.initialData.empty()) {

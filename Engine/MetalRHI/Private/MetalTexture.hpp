@@ -28,6 +28,7 @@ namespace Crowy
         MetalTexture(
             MetalAllocator&,
             MTL::TextureDescriptor*,
+            RHIMemoryType,
             StrView name = {}
         );
         MetalTexture(CA::MetalDrawable*);
