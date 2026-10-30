@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -65,6 +66,13 @@ namespace
             world.Provide(materials);
         }
 
+        Str savedBack(const std::filesystem::path& path) {
+            loadSceneFile(world, path);
+            world.Frame(0.0);
+
+            return emitJson(saveScene(world), JsonStyle::Pretty) + "\n";
+        }
+
         const AssetRef& drawnMesh(u32 primitive) const {
             const auto mesh = scene.Primitives().At(primitive).mesh;
             return scene.Meshes().GetRef(mesh).source.Ref();
@@ -75,13 +83,31 @@ namespace
 // the components a scene file names, written back without one byte changed
 TEST_F(MeshComponentTest, TheSampleSceneSavesBackAsItReads) {
     const auto path = toPath(CROWY_HELLO_SCENE_FILE);
-    loadSceneFile(world, path);
+
+    EXPECT_EQ(savedBack(path), readFileAsString(path));
+}
+
+TEST_F(MeshComponentTest, ThePlaygroundSavesBackAsItReads) {
+    const auto path = toPath(CROWY_PLAYGROUND_SCENE_FILE);
+
+    EXPECT_EQ(savedBack(path), readFileAsString(path));
+}
+
+// a ref that names no file draws Missing, which only the picture shows
+TEST_F(MeshComponentTest, EveryMaterialThePlaygroundNamesLoads) {
+    loadSceneFile(world, toPath(CROWY_PLAYGROUND_SCENE_FILE));
     world.Frame(0.0);
 
-    EXPECT_EQ(
-        emitJson(saveScene(world), JsonStyle::Pretty) + "\n",
-        readFileAsString(path)
-    );
+    world.Each<MeshComponent>([&](ActorId actor, const MeshComponent& mesh) {
+        SCOPED_TRACE(world.Name(actor));
+        ASSERT_EQ(mesh.materialAssets.size(), mesh.materials.size());
+        for(usize slot = 0; slot < mesh.materials.size(); ++slot) {
+            EXPECT_EQ(
+                mesh.materialAssets[slot].Ref().ToString(),
+                mesh.materials[slot].ToString()
+            );
+        }
+    });
 }
 
 TEST_F(MeshComponentTest, AnAssetThatFailsDrawsMissingAndKeepsItsRef) {

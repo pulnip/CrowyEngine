@@ -1,0 +1,45 @@
+{
+    "metadata": {
+        "version": 1,
+        "type": "material"
+    },
+    "domain": "Opaque",
+    "shader": null,
+    "shadingModule": null,
+    "doubleSided": false,
+    "receiveShadow": true,
+    "data": {
+        "albedo": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "metallic": 0.0,
+        "emissive": [
+            16.0,
+            16.0,
+            16.0
+        ],
+        "roughness": 0.5,
+        "opacity": 1.0,
+        "custom0": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "custom1": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "uvScaleOffset": [
+            1.0,
+            1.0,
+            0.0,
+            0.0
+        ],
+        "alphaCutoff": 0.5
+    }
+}

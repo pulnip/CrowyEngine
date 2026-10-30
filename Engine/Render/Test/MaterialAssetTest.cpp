@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -106,10 +108,22 @@ TEST_F(MaterialAssetTest, AFilesValuesReachItsRow) {
 }
 
 TEST_F(MaterialAssetTest, TheSampleFilesSaveBackAsTheyRead) {
-    for(const auto* name: {"Brass.json", "Chalk.json"}) {
-        SCOPED_TRACE(name);
-        const auto path = engineRoot / "Scene/Sample" / name;
-        const auto desc = parseMaterialDesc(parseJsonFile(path));
+    std::vector<std::filesystem::path> paths{
+        engineRoot / "Scene/Sample/Brass.json",
+        engineRoot / "Scene/Sample/Chalk.json"
+    };
+    for(const auto& entry: std::filesystem::directory_iterator(
+            engineRoot / "Render/Sample/Playground"
+        ))
+        paths.push_back(entry.path());
+
+    for(const auto& path: paths) {
+        SCOPED_TRACE(toUTF8String(path));
+        auto document = parseJsonFile(path);
+        if(document.get<Str>("metadata.type") != "material")
+            continue;
+
+        const auto desc = parseMaterialDesc(std::move(document));
         ASSERT_TRUE(desc.has_value()) << desc.error();
 
         EXPECT_EQ(

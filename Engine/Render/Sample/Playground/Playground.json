@@ -1,0 +1,1551 @@
+{
+    "metadata": {
+        "version": 1,
+        "type": "scene"
+    },
+    "actors": [
+        {
+            "id": 1,
+            "name": "camera",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    1.7,
+                    -5.0
+                ],
+                "rotation": [
+                    0.04997917,
+                    0.0,
+                    0.0,
+                    0.99875027
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "CameraComponent",
+                    "fovY": 1.0471976,
+                    "nearZ": 0.05,
+                    "farZ": 100.0
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "name": "sun",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.4829629,
+                    -0.22414386,
+                    0.12940952,
+                    0.83651626
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "LightComponent",
+                    "kind": "Directional",
+                    "enabled": true,
+                    "castShadow": true,
+                    "color": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "intensity": 3.0,
+                    "range": 10.0,
+                    "innerConeAngle": 0.0,
+                    "outerConeAngle": 0.785,
+                    "shadowBias": 0.02,
+                    "shadowNormalBias": 1.0
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "lamp",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    1.5,
+                    2.5
+                ],
+                "rotation": [
+                    0.22975291,
+                    0.0,
+                    0.0,
+                    0.973249
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "LightComponent",
+                    "kind": "Point",
+                    "enabled": false,
+                    "castShadow": false,
+                    "color": [
+                        1.0,
+                        0.8,
+                        0.6
+                    ],
+                    "intensity": 4.0,
+                    "range": 4.0,
+                    "innerConeAngle": 0.0,
+                    "outerConeAngle": 0.785,
+                    "shadowBias": 0.02,
+                    "shadowNormalBias": 1.0
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "name": "floor",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    20.0,
+                    1.0,
+                    20.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Plane",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Floor.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "name": "wall-left",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -10.1,
+                    2.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.2,
+                    4.0,
+                    20.4
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Wall.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "name": "wall-right",
+            "parent": null,
+            "transform": {
+                "position": [
+                    10.1,
+                    2.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.2,
+                    4.0,
+                    20.4
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Wall.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 7,
+            "name": "wall-back",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    2.0,
+                    10.1
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    20.4,
+                    4.0,
+                    0.2
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Wall.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 8,
+            "name": "scale-1m",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -7.75,
+                    0.5,
+                    4.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "name": "scale-50cm",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -6.75,
+                    0.25,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "name": "scale-25cm",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -6.125,
+                    0.125,
+                    3.625
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.25,
+                    0.25,
+                    0.25
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 11,
+            "name": "chart-step",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.5,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    5.0,
+                    1.0,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 12,
+            "name": "niche-back",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -4.25,
+                    1.0,
+                    4.125
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    3.0,
+                    2.0,
+                    0.25
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 13,
+            "name": "niche-left",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -5.625,
+                    1.0,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.25,
+                    2.0,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 14,
+            "name": "niche-right",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -2.875,
+                    1.0,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.25,
+                    2.0,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 15,
+            "name": "niche-roof",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -4.25,
+                    1.875,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    2.5,
+                    0.25,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 16,
+            "name": "niche-sill",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -4.25,
+                    0.375,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    2.5,
+                    0.75,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Block.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 17,
+            "name": "emissive-1",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -5.0,
+                    1.25,
+                    3.99
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Quad",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Emissive1.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 18,
+            "name": "emissive-4",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -4.25,
+                    1.25,
+                    3.99
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Quad",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Emissive4.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 19,
+            "name": "emissive-16",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -3.5,
+                    1.25,
+                    3.99
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Quad",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Emissive16.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 20,
+            "name": "dielectric-0-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -2.0,
+                    0.25,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric0.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 21,
+            "name": "dielectric-0-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -2.0,
+                    0.75,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric0.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 22,
+            "name": "dielectric-1-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -1.0,
+                    0.25,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric1.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 23,
+            "name": "dielectric-1-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -1.0,
+                    0.75,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric1.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 24,
+            "name": "dielectric-2-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.25,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric2.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 25,
+            "name": "dielectric-2-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    0.75,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric2.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 26,
+            "name": "dielectric-3-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    1.0,
+                    0.25,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric3.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 27,
+            "name": "dielectric-3-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    1.0,
+                    0.75,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric3.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 28,
+            "name": "dielectric-4-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    2.0,
+                    0.25,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric4.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 29,
+            "name": "dielectric-4-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    2.0,
+                    0.75,
+                    3.75
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Dielectric4.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 30,
+            "name": "metal-0-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -2.0,
+                    1.25,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal0.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 31,
+            "name": "metal-0-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -2.0,
+                    1.75,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal0.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 32,
+            "name": "metal-1-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -1.0,
+                    1.25,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal1.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 33,
+            "name": "metal-1-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    -1.0,
+                    1.75,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal1.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 34,
+            "name": "metal-2-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    1.25,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal2.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 35,
+            "name": "metal-2-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    0.0,
+                    1.75,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal2.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 36,
+            "name": "metal-3-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    1.0,
+                    1.25,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal3.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 37,
+            "name": "metal-3-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    1.0,
+                    1.75,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal3.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 38,
+            "name": "metal-4-box",
+            "parent": null,
+            "transform": {
+                "position": [
+                    2.0,
+                    1.25,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal4.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 39,
+            "name": "metal-4-sphere",
+            "parent": null,
+            "transform": {
+                "position": [
+                    2.0,
+                    1.75,
+                    4.25
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Sphere",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Metal4.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 40,
+            "name": "bar-red",
+            "parent": null,
+            "transform": {
+                "position": [
+                    3.5,
+                    1.0,
+                    4.625
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    2.0,
+                    0.25
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/BarRed.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 41,
+            "name": "bar-green",
+            "parent": null,
+            "transform": {
+                "position": [
+                    4.25,
+                    1.0,
+                    4.625
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    2.0,
+                    0.25
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/BarGreen.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 42,
+            "name": "bar-blue",
+            "parent": null,
+            "transform": {
+                "position": [
+                    5.0,
+                    1.0,
+                    4.625
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    0.5,
+                    2.0,
+                    0.25
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Box",
+                    "materials": [
+                        "engine:Render/Sample/Playground/BarBlue.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 43,
+            "name": "double-sided-front",
+            "parent": null,
+            "transform": {
+                "position": [
+                    6.5,
+                    0.75,
+                    3.5
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.5,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Quad",
+                    "materials": [
+                        "engine:Render/Sample/Playground/DoubleSided.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 44,
+            "name": "double-sided-back",
+            "parent": null,
+            "transform": {
+                "position": [
+                    7.75,
+                    0.75,
+                    3.5
+                ],
+                "rotation": [
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.5,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Quad",
+                    "materials": [
+                        "engine:Render/Sample/Playground/DoubleSided.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        },
+        {
+            "id": 45,
+            "name": "glass",
+            "parent": null,
+            "transform": {
+                "position": [
+                    4.25,
+                    0.75,
+                    3.5
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    2.5,
+                    1.5,
+                    1.0
+                ]
+            },
+            "components": [
+                {
+                    "type": "MeshComponent",
+                    "mesh": "engine:Builtin/Quad",
+                    "materials": [
+                        "engine:Render/Sample/Playground/Glass.json"
+                    ],
+                    "visible": true,
+                    "castShadow": true
+                }
+            ]
+        }
+    ]
+}
