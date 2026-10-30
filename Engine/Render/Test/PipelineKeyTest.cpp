@@ -204,13 +204,13 @@ TEST(PipelineKey, OneMaterialKeysApartInTwoPasses) {
     EXPECT_TRUE(opaqueDesc.fragmentShader.has_value());
 }
 
-// materials differing only in fragment entry or blend, as Playground's: a
+// materials differing only in fragment shader or blend, as Playground's: a
 // depth-only pass keys neither, and ignores a debug override
 TEST(PipelineKey, APassWithoutTargetsHasNoFragmentStage) {
     const auto hash = std::hash<RHIGraphicsPipelineStateDesc>{};
 
     auto grid = OpaqueMaterial();
-    grid.fragmentShader.entryPoint = "fs_grid";
+    grid.fragmentShader.path = "Engine/Render/Sample/Playground.slang";
     grid.blend = RHIBlendState{};
 
     auto prepass = BasePass({});

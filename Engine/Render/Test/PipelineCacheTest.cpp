@@ -139,7 +139,7 @@ TEST(PipelineCache, ADepthOnlyPassSharesKeysAcrossFragmentShaders) {
     PipelineCache cache(device);
 
     auto grid = OpaqueMaterial();
-    grid.fragmentShader.entryPoint = "fs_grid";
+    grid.fragmentShader.path = "Engine/Render/Sample/Playground.slang";
     auto doubleSided = OpaqueMaterial();
     doubleSided.rasterizer.cullMode = RHICullMode::None;
 

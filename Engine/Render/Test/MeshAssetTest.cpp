@@ -42,8 +42,9 @@ namespace
 TEST_F(MeshAssetTest, TheBuiltInsComeFromCode) {
     const std::vector<std::pair<StrView, MeshData>> builtins{
         {"engine:Builtin/Box", MakeBox(0.5f)},
-        {"engine:Builtin/Sphere", MakeSphere(0.5f, 32, 16)},
+        {"engine:Builtin/Sphere", MakeSphere(0.5f, 48, 24)},
         {"engine:Builtin/Plane", MakePlane(Vec2{0.5f, 0.5f})},
+        {"engine:Builtin/Quad", MakePlane(-unitZ(), unitX(), 0.5f)},
         {"engine:Builtin/Missing", MakeBox(0.5f)},
     };
 
@@ -70,7 +71,8 @@ TEST_F(MeshAssetTest, AnUnknownBuiltInIsAnError) {
     ASSERT_FALSE(asset.has_value());
     EXPECT_EQ(
         asset.error(),
-        "no built-in mesh 'Cone'; the built-ins are Box, Sphere, Plane, Missing"
+        "no built-in mesh 'Cone'; the built-ins are Box, Sphere, Plane, Quad, "
+        "Missing"
     );
 }
 

@@ -602,7 +602,7 @@ namespace Crowy
     }
 
     MaterialPipelineDesc PlaygroundScene::gridPipeline() {
-        return basePipeline("Engine/Render/Sample/Playground.slang", "fs_grid");
+        return basePipeline("Engine/Render/Sample/Playground.slang", "fs_main");
     }
 
     Widget PlaygroundScene::buildPanel() {

@@ -56,8 +56,10 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
   with no reflected properties stops the save.
 - An `AssetStore` releases an asset at the `Collect` after its last handle
   goes. Render's `MeshStore` and `MaterialStore` are two;
-  `engine:Builtin/*` meshes and materials come from code, and any other
-  material ref is a JSON file of one `MaterialDesc`.
+  `engine:Builtin/*` meshes (`Box`, `Sphere`, `Plane` facing +Y, `Quad`
+  facing -Z, `Missing`) and materials (`Opaque`, `Translucent`, `Masked`,
+  `Missing`) come from code, and any other material ref is a JSON file of
+  one `MaterialDesc`.
 - Physics and the code that feeds it compile with `crowy_fp_contract_off`.
 
 ## Where is it

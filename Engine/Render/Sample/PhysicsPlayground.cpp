@@ -424,7 +424,7 @@ namespace Crowy
                             {.albedo = {0.5f, 0.5f, 0.5f}, .roughness = 0.8f},
                         .pipeline = basePipeline(
                             "Engine/Render/Sample/Playground.slang",
-                            "fs_grid"
+                            "fs_main"
                         )
                     }
                 );
