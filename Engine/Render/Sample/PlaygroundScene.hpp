@@ -10,6 +10,7 @@
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
+#include "MaterialAsset.hpp"
 #include "Primitives.hpp"
 #include "RenderApp.hpp"
 #include "StatsOverlay.hpp"
@@ -79,33 +80,31 @@ namespace Crowy
         ChartShading chart = ChartShading::PBR;
     };
 
+    // the scene file's materials, held so the panel, the port and a restyle
+    // reach the rows every mesh of that file draws
     struct PlaygroundMaterials {
-        MaterialHandle floor{};
-        MaterialHandle wall{};
+        MaterialAssetHandle floor;
+        MaterialAssetHandle wall;
         // the scale blocks, the chart's step and the emissive niche
-        MaterialHandle block{};
+        MaterialAssetHandle block;
         // 1, 4 and 16
-        std::array<MaterialHandle, 3> emissive{};
-        // front row then back row, roughness rising left to right
-        std::array<MaterialHandle, PlaygroundChartRows * PlaygroundChartColumns>
-            chart{};
+        std::array<MaterialAssetHandle, 3> emissive;
+        // front row then back row, roughness rising left to right; the lanes
+        // carry Toon's defaults, which PBR ignores
+        std::array<
+            MaterialAssetHandle,
+            PlaygroundChartRows * PlaygroundChartColumns>
+            chart;
         // red, green and blue behind the glass
-        std::array<MaterialHandle, 3> bars{};
-        MaterialHandle doubleSided{};
-        MaterialHandle translucent{};
+        std::array<MaterialAssetHandle, 3> bars;
+        MaterialAssetHandle doubleSided;
+        MaterialAssetHandle translucent;
     };
 
     // in metres, every box face on the 0.25 m grid the floor draws; nothing
     // floats
     class PlaygroundScene: public RenderApp {
     private:
-        // the line every station's front stands on
-        static constexpr f32 FrontZ = 3.5f;
-        static constexpr f32 SphereRadius = 0.25f;
-        // one color for both rows, so metallic is all that differs; an
-        // orange, which a metal's highlight takes
-        static constexpr Vec3 ChartAlbedo{0.85f, 0.55f, 0.30f};
-
         // Godot's editor-preview sky; the tone map gives back its bytes
         // (98, 116, 140), 0.4 of a step clear of every rounding edge
         static constexpr Color SkyRadiance{0.139f, 0.212f, 0.356f, 1.0f};
@@ -131,14 +130,6 @@ namespace Crowy
     private:
         // the map's primitives as actors; the RenderScene rows are its
         World world;
-
-        GeometryAllocation sphere{};
-        // stretched into walls, boards and bars, scaled into blocks
-        MeshAssetHandle unitBox;
-        GeometryAllocation floorPlane{};
-        // unit quads; the one facing away only shows where nothing is culled
-        GeometryAllocation quadFacingCamera{};
-        GeometryAllocation quadFacingAway{};
 
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
@@ -170,15 +161,15 @@ namespace Crowy
         // the start pose is the overview bookmark, which `current` starts on
         static FlyCamera::Config MakeCamera();
 
-        // after every material row is added; `shading` is what the toggle
-        // starts on
+        // after the scene file loads, before its rows land; `shading` is what
+        // the toggle starts on
         virtual void OnRestyleMaterials(
             RenderScene&,
             const PlaygroundMaterials&,
             PlaygroundShading&
         ) {}
 
-        void OnBuildGeometry(GeometryPool& pool) override;
+        void OnBuildGeometry(GeometryPool&) override {}
         void ExtractScene(RenderScene& scene) override;
         void OnProcessInput(const InputProvider& input) override;
         void OnUpdateScene(f64 seconds) override;
@@ -195,29 +186,6 @@ namespace Crowy
         static CStr moduleOf(ChartShading chart);
         // each close-up frames its station at eye height
         static std::optional<CameraPose> poseOf(CameraBookmark bookmark);
-        static MaterialHandle addMaterial(
-            RenderScene& scene,
-            const MaterialData& data,
-            const MaterialPipelineDesc& pipeline
-        );
-        static MeshHandle addMesh(
-            RenderScene& scene,
-            const GeometryAllocation& geometry,
-            MaterialHandle material,
-            Vec3 halfScale
-        );
-        static MeshHandle addMesh(
-            RenderScene& scene,
-            const MeshAssetHandle& asset,
-            MaterialHandle material
-        );
-        // both stages from one file, so the prepass and the color pass run
-        // the same vertex shader; every material links the default PBR
-        static MaterialPipelineDesc basePipeline(CStr file, CStr fragmentEntry);
-        static MaterialPipelineDesc gridPipeline();
-
-        // an actor drawing the mesh, translated and scaled only
-        void addPrimitive(MeshHandle mesh, Vec3 position, Vec3 scale);
 
         Widget buildPanel();
         // the row's data by its handle, for the panel and the port alike

@@ -69,6 +69,7 @@ SOURCES
     Playground.cpp
 DEPENDS
     Crowy::Reflection
+    Crowy::Scene
     Crowy::WorldRender
     Crowy::SampleRenderOverlay
 )
@@ -79,6 +80,7 @@ SOURCES
     ToonPlayground.cpp
 DEPENDS
     Crowy::Reflection
+    Crowy::Scene
     Crowy::WorldRender
     Crowy::SampleRenderOverlay
 )

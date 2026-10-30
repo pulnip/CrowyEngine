@@ -107,11 +107,11 @@ namespace Crowy
         // the roughness, so a hard terminator is a low roughness
         void restyle(
             RenderScene& scene,
-            MaterialHandle handle,
+            const MaterialAssetHandle& handle,
             const ToonLanes& lanes,
             std::optional<f32> roughness = std::nullopt
         ) {
-            auto& material = scene.Materials().GetRef(handle);
+            auto& material = scene.Materials().GetRef(handle->row);
             material.pipeline.shadingModule = ToonShadingModule;
             material.data.custom0 = toonCustom0(lanes);
             material.data.custom1 = toonCustom1(lanes);
@@ -203,8 +203,8 @@ namespace Crowy
                 0.15f
             );
 
-            for(const auto panel: materials.emissive) {
-                scene.Materials().GetRef(panel).pipeline.shadingModule =
+            for(const auto& panel: materials.emissive) {
+                scene.Materials().GetRef(panel->row).pipeline.shadingModule =
                     UnlitShadingModule;
             }
 
@@ -231,7 +231,7 @@ namespace Crowy
             }
             shading.chart = ChartShading::Toon;
 
-            for(const auto bar: materials.bars) {
+            for(const auto& bar: materials.bars) {
                 restyle(
                     scene,
                     bar,

@@ -1,24 +1,25 @@
 #include "PlaygroundScene.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <format>
 #include <memory>
 #include <numbers>
+#include <stdexcept>
 #include <utility>
 
 #include <imgui.h>
 
+#include "Assert.hpp"
 #include "CameraComponent.hpp"
 #include "ClassRegistry.hpp"
 #include "Expected.hpp"
 #include "FlyControl.hpp"
 #include "LightComponent.hpp"
 #include "Log.hpp"
-#include "MeshGenerator.hpp"
-#include "MeshRowComponent.hpp"
 #include "PortStatusChip.hpp"
+#include "ProjectRoot.hpp"
 #include "PropertyWalker.hpp"
+#include "Scene.hpp"
 #include "ShadingModel.hpp"
 #include "SnapshotCamera.hpp"
 #include "StandardFrame.hpp"
@@ -27,6 +28,65 @@ namespace Crowy
 {
     namespace
     {
+        constexpr StrView MaterialFolder = "engine:Render/Sample/Playground/";
+
+        MaterialAssetHandle loadMaterial(MaterialStore& store, StrView name) {
+            const auto ref =
+                AssetRef::Parse(std::format("{}{}.json", MaterialFolder, name));
+
+            return valueOrThrow(store.Load(ref.value()));
+        }
+
+        PlaygroundMaterials loadMaterials(MaterialStore& store) {
+            const auto load = [&](StrView name) {
+                return loadMaterial(store, name);
+            };
+            const auto chart = [&] {
+                constexpr auto Columns = PlaygroundChartColumns;
+
+                decltype(PlaygroundMaterials::chart) handles;
+                for(u32 i = 0; i < handles.size(); ++i) {
+                    handles[i] = load(
+                        std::format(
+                            "{}{}",
+                            i < Columns ? "Dielectric" : "Metal",
+                            i % Columns
+                        )
+                    );
+                }
+                return handles;
+            };
+
+            return PlaygroundMaterials{
+                .floor = load("Floor"),
+                .wall = load("Wall"),
+                .block = load("Block"),
+                .emissive =
+                    {load("Emissive1"), load("Emissive4"), load("Emissive16")},
+                .chart = chart(),
+                .bars = {load("BarRed"), load("BarGreen"), load("BarBlue")},
+                .doubleSided = load("DoubleSided"),
+                .translucent = load("Glass")
+            };
+        }
+
+        // the first actor of that name; the file names each one the code
+        // reaches
+        ActorId findActor(const World& world, StrView name) {
+            auto found = ActorId::InvalidHandle();
+            world.EachActor([&](ActorId actor, ActorId) {
+                if(!found.IsValid() && world.Name(actor) == name)
+                    found = actor;
+            });
+            if(!found.IsValid()) {
+                throw std::runtime_error(
+                    std::format("the Playground scene has no actor '{}'", name)
+                );
+            }
+
+            return found;
+        }
+
         // the scene as a button the size of the image, so a drag on it turns
         // the camera instead of moving the window
         void drawSceneView(u64 sceneView, ImVec2 size) {
@@ -83,294 +143,45 @@ namespace Crowy
         };
     }
 
-    void PlaygroundScene::OnBuildGeometry(GeometryPool& pool) {
-        const auto sphereMesh = MakeSphere(SphereRadius, 48, 24);
-        const auto floorMesh = MakePlane(Vec2{10.0f, 10.0f});
-        const auto towardMesh = MakePlane(-unitZ(), unitX(), 0.5f);
-        const auto awayMesh = MakePlane(unitZ(), unitX(), 0.5f);
-
-        sphere =
-            valueOrThrow(pool.Add(sphereMesh.vertices, sphereMesh.indices));
-        unitBox = valueOrThrow(
-            Meshes().Load(AssetRef::Parse("engine:Builtin/Box").value())
-        );
-        floorPlane =
-            valueOrThrow(pool.Add(floorMesh.vertices, floorMesh.indices));
-        quadFacingCamera =
-            valueOrThrow(pool.Add(towardMesh.vertices, towardMesh.indices));
-        quadFacingAway =
-            valueOrThrow(pool.Add(awayMesh.vertices, awayMesh.indices));
-    }
-
     void PlaygroundScene::ExtractScene(RenderScene& scene) {
-        constexpr auto ChartRows = PlaygroundChartRows;
-        constexpr auto ChartColumns = PlaygroundChartColumns;
-        constexpr Vec3 QuadHalf{0.5f, 0.5f, 0.0f};
-
         world.Provide(scene);
+        world.Provide(Meshes());
+        world.Provide(Materials());
         world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
-
-        const auto start = MakeCamera();
-        fly = FlyState(CameraLook{.yaw = start.yaw, .pitch = start.pitch});
-        cameraActor = world.Spawn(
-            Transform{
-                .position = start.position,
-                .rotation = flyRotation(fly.look.yaw, fly.look.pitch)
-            }
-        );
-        world.Add(
-            cameraActor,
-            CameraComponent{
-                .fovY = start.fovY,
-                .nearZ = start.nearZ,
-                .farZ = start.farZ
-            }
-        );
-
-        // Godot's editor-preview sun, north behind the start camera: pitched
-        // 60 degrees down, turned 30 to -x
-        constexpr auto Pi = std::numbers::pi_v<f32>;
-        const auto sunRotation = quat(rotateY(-Pi / 6), rotateX(Pi / 3));
-        const auto sun = world.Spawn(Transform{.rotation = sunRotation});
-        world.Add(
-            sun,
-            LightComponent{
-                .castShadow = true,
-                .color = ones(),
-                .intensity = 3.0f
-            }
-        );
-        // off, so the golden never sees it; aimed at the chart half a metre
-        // down per metre forward, for when it is a spot
-        const auto lamp = world.Spawn(
-            Transform{
-                .position = {0.0f, 1.5f, 2.5f},
-                .rotation = rotateX(std::atan(0.5f))
-            }
-        );
-        world.Add(
-            lamp,
-            LightComponent{
-                .kind = LightKind::Point,
-                .enabled = false,
-                .color = {1.0f, 0.8f, 0.6f},
-                .intensity = 4.0f,
-                .range = 4.0f
-            }
-        );
-        // the same preview's sky and ground colors, decoded to linear
+        // Godot's editor-preview sky and ground colors, decoded to linear
         scene.Environment() = EnvironmentSnapshot{
             .skyAmbient = {0.123f, 0.174f, 0.262f},
             .groundAmbient = {0.033f, 0.024f, 0.016f}
         };
 
-        materials.floor = addMaterial(
-            scene,
-            MaterialData{.albedo = {0.5f, 0.5f, 0.5f}, .roughness = 0.8f},
-            gridPipeline()
+        loadSceneFile(
+            world,
+            resolveProjectPath(
+                "Engine/Render/Sample/Playground/Playground.json"
+            )
         );
-        materials.wall = addMaterial(
-            scene,
-            MaterialData{.albedo = {0.62f, 0.62f, 0.6f}, .roughness = 0.8f},
-            gridPipeline()
-        );
-        // the scale blocks and the chart's step
-        materials.block = addMaterial(
-            scene,
-            MaterialData{.albedo = {0.55f, 0.62f, 0.72f}, .roughness = 0.6f},
-            gridPipeline()
-        );
-        // 1, 4 and 16, so the tone mapper's compression shows
-        for(u32 i = 0; i < materials.emissive.size(); ++i) {
-            const auto radiance = static_cast<f32>(1u << (2 * i));
-
-            materials.emissive[i] = addMaterial(
-                scene,
-                MaterialData{.albedo = zeros(), .emissive = radiance * ones()},
-                standardMaterial(MaterialDomain::Opaque)
-            );
-        }
-
-        // the lanes carry Toon's defaults, which PBR ignores, so a switch
-        // to Toon never meets a zero threshold or a black tint
-        constexpr ToonLanes ChartLanes{};
-        for(u32 row = 0; row < ChartRows; ++row) {
-            for(u32 column = 0; column < ChartColumns; ++column) {
-                constexpr auto Step = 1.0f / (ChartColumns - 1);
-
-                materials.chart[row * ChartColumns + column] = addMaterial(
-                    scene,
-                    MaterialData{
-                        .albedo = ChartAlbedo,
-                        .metallic = static_cast<f32>(row),
-                        .roughness = static_cast<f32>(column) * Step,
-                        .custom0 = toonCustom0(ChartLanes),
-                        .custom1 = toonCustom1(ChartLanes)
-                    },
-                    standardMaterial(MaterialDomain::Opaque)
-                );
-            }
-        }
-
-        const std::array barColors{
-            Vec3{0.8f, 0.1f, 0.1f},
-            Vec3{0.1f, 0.6f, 0.15f},
-            Vec3{0.1f, 0.2f, 0.8f}
-        };
-        for(u32 i = 0; i < materials.bars.size(); ++i) {
-            materials.bars[i] = addMaterial(
-                scene,
-                MaterialData{.albedo = barColors[i]},
-                standardMaterial(MaterialDomain::Opaque)
-            );
-        }
-
-        materials.doubleSided = addMaterial(
-            scene,
-            MaterialData{.albedo = {0.35f, 0.70f, 0.45f}},
-            standardMaterial(MaterialDomain::Opaque, RHICullMode::None)
-        );
-        materials.translucent = addMaterial(
-            scene,
-            MaterialData{.albedo = {0.35f, 0.55f, 0.95f}, .opacity = 0.45f},
-            standardMaterial(MaterialDomain::Translucent)
-        );
-
+        materials = loadMaterials(Materials());
         OnRestyleMaterials(scene, materials, shading);
-
-        const auto blockMesh = addMesh(scene, unitBox, materials.block);
-        addPrimitive(
-            addMesh(scene, floorPlane, materials.floor, {10.0f, 0.0f, 10.0f}),
-            zeros(),
-            ones()
-        );
-        const auto wallMesh = addMesh(scene, unitBox, materials.wall);
-        addPrimitive(wallMesh, {-10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
-        addPrimitive(wallMesh, {10.1f, 2.0f, 0.0f}, {0.2f, 4.0f, 20.4f});
-        // nearer centres draw first, so the back wall draws after the side
-        // walls, and Equal behind the prepass keeps it on the corner seams
-        addPrimitive(wallMesh, {0.0f, 2.0f, 10.1f}, {20.4f, 4.0f, 0.2f});
-
-        for(const auto [left, edge]:
-            {std::pair{-8.25f, 1.0f},
-             std::pair{-7.0f, 0.5f},
-             std::pair{-6.25f, 0.25f}}) {
-            const auto half = 0.5f * edge;
-
-            addPrimitive(
-                blockMesh,
-                {left + half, half, FrontZ + half},
-                edge * ones()
-            );
-        }
-        // the chart's back row stands a metre up, so it clears the
-        // front row from eye height
-        addPrimitive(blockMesh, {0.0f, 0.5f, 4.25f}, {5.0f, 1.0f, 0.5f});
-
-        // the roof shades the panels' band, so they read against a shadow
-        // rather than dark paint
-        constexpr f32 NicheX = -4.25f;
-        constexpr f32 NicheWidth = 2.5f;
-        constexpr f32 NicheHeight = 2.0f;
-        constexpr f32 NicheWall = 0.25f;
-        constexpr f32 NicheDepth = 0.5f;
-        constexpr f32 NicheZ = FrontZ + 0.5f * NicheDepth;
-        // the back, then the two sides, the roof and the sill
-        addPrimitive(
-            blockMesh,
-            {NicheX, 1.0f, FrontZ + NicheDepth + 0.125f},
-            {3.0f, NicheHeight, NicheWall}
-        );
-        for(const auto x: {-5.625f, -2.875f}) {
-            addPrimitive(
-                blockMesh,
-                {x, 1.0f, NicheZ},
-                {NicheWall, NicheHeight, NicheDepth}
-            );
-        }
-        addPrimitive(
-            blockMesh,
-            {NicheX, 1.875f, NicheZ},
-            {NicheWidth, NicheWall, NicheDepth}
-        );
-        addPrimitive(
-            blockMesh,
-            {NicheX, 0.375f, NicheZ},
-            {NicheWidth, 0.75f, NicheDepth}
-        );
-        constexpr f32 PanelSize = 0.5f;
-        for(u32 i = 0; i < materials.emissive.size(); ++i) {
-            const auto x = -5.0f + 0.75f * static_cast<f32>(i);
-
-            addPrimitive(
-                addMesh(
-                    scene,
-                    quadFacingCamera,
-                    materials.emissive[i],
-                    QuadHalf
-                ),
-                {x, 1.25f, FrontZ + NicheDepth - 0.01f},
-                {PanelSize, PanelSize, 1.0f}
-            );
-        }
-
-        // the chart: in each cell a 0.5 m cube carrying a sphere of the
-        // same material, so a flat and a curved face show one material
-        for(u32 row = 0; row < ChartRows; ++row) {
-            const auto base = static_cast<f32>(row);
-            const auto z = FrontZ + 0.25f + 0.5f * static_cast<f32>(row);
-
-            for(u32 column = 0; column < ChartColumns; ++column) {
-                const auto material =
-                    materials.chart[row * ChartColumns + column];
-                const auto x = static_cast<f32>(column) - 2.0f;
-
-                addPrimitive(
-                    addMesh(scene, unitBox, material),
-                    {x, base + 0.25f, z},
-                    0.5f * ones()
-                );
-                addPrimitive(
-                    addMesh(scene, sphere, material, SphereRadius * ones()),
-                    {x, base + 0.5f + SphereRadius, z},
-                    ones()
-                );
-            }
-        }
-
-        // bars 1 m behind the pane and taller than it, so each color shows
-        // both through the glass and bare
-        for(u32 i = 0; i < materials.bars.size(); ++i) {
-            addPrimitive(
-                addMesh(scene, unitBox, materials.bars[i]),
-                {3.5f + 0.75f * static_cast<f32>(i), 1.0f, FrontZ + 1.125f},
-                {0.5f, 2.0f, 0.25f}
-            );
-        }
-
-        // the back-facing pane shows only because nothing is culled; the two
-        // should look alike
-        addPrimitive(
-            addMesh(scene, quadFacingCamera, materials.doubleSided, QuadHalf),
-            {6.5f, 0.75f, FrontZ},
-            {1.0f, 1.5f, 1.0f}
-        );
-        addPrimitive(
-            addMesh(scene, quadFacingAway, materials.doubleSided, QuadHalf),
-            {7.75f, 0.75f, FrontZ},
-            {1.0f, 1.5f, 1.0f}
-        );
-
-        addPrimitive(
-            addMesh(scene, quadFacingCamera, materials.translucent, QuadHalf),
-            {4.25f, 0.75f, FrontZ},
-            {2.5f, 1.5f, 1.0f}
-        );
-
         // the actors' rows land, so the panel and the port find them
         world.Frame(0.0);
 
-        inspect(scene, sun, lamp);
+        const auto start = MakeCamera();
+        fly = FlyState(CameraLook{.yaw = start.yaw, .pitch = start.pitch});
+        cameraActor = findActor(world, "camera");
+        [[maybe_unused]] const auto& lens =
+            *world.Get<CameraComponent>(cameraActor);
+        CROWY_ASSERT(
+            lens.nearZ == start.nearZ && lens.farZ == start.farZ,
+            "the file's depth range is the one DescribePipeline read"
+        );
+        CROWY_ASSERT(
+            world.LocalTransform(cameraActor).rotation ==
+                flyRotation(fly.look.yaw, fly.look.pitch),
+            "the file's camera looks where the fly look starts"
+        );
+
+        // the lamp is off in the file, so the baseline never sees it
+        inspect(scene, findActor(world, "sun"), findActor(world, "lamp"));
         shownDebug = Debug();
         panel = buildPanel();
     }
@@ -544,67 +355,6 @@ namespace Crowy
         return std::nullopt;
     }
 
-    MaterialHandle PlaygroundScene::addMaterial(
-        RenderScene& scene,
-        const MaterialData& data,
-        const MaterialPipelineDesc& pipeline
-    ) {
-        return scene.Materials().Add(
-            MaterialResource{.data = data, .pipeline = pipeline}
-        );
-    }
-
-    MeshHandle PlaygroundScene::addMesh(
-        RenderScene& scene,
-        const GeometryAllocation& geometry,
-        MaterialHandle material,
-        Vec3 halfScale
-    ) {
-        const auto bounds = AABB3D{.center = zeros(), .halfScale = halfScale};
-
-        return scene.Meshes().Add(
-            MeshResource{
-                .subMeshes =
-                    {SubMesh{.geometry = geometry, .localBounds = bounds}},
-                .materials = {material},
-                .localBounds = bounds
-            }
-        );
-    }
-
-    MeshHandle PlaygroundScene::addMesh(
-        RenderScene& scene,
-        const MeshAssetHandle& asset,
-        MaterialHandle material
-    ) {
-        return scene.Meshes().Add(meshResourceOf(asset, {material}));
-    }
-
-    void PlaygroundScene::addPrimitive(
-        MeshHandle mesh,
-        Vec3 position,
-        Vec3 scale
-    ) {
-        world.Add(
-            world.Spawn(Transform{.position = position, .scale = scale}),
-            MeshRowComponent{.mesh = mesh}
-        );
-    }
-
-    MaterialPipelineDesc PlaygroundScene::basePipeline(
-        CStr file,
-        CStr fragmentEntry
-    ) {
-        return MaterialPipelineDesc{
-            .vertexShader = {.path = file, .entryPoint = "vs_main"},
-            .fragmentShader = {.path = file, .entryPoint = fragmentEntry}
-        };
-    }
-
-    MaterialPipelineDesc PlaygroundScene::gridPipeline() {
-        return basePipeline("Engine/Render/Sample/Playground.slang", "fs_main");
-    }
-
     Widget PlaygroundScene::buildPanel() {
         std::vector<Widget> sections{debugSection()};
         for(const auto& target: inspected) {
@@ -705,15 +455,15 @@ namespace Crowy
             }
         );
         for(const auto [name, handle]:
-            {std::pair{"floor", materials.floor},
-             std::pair{"smooth-dielectric", materials.chart[0]},
-             std::pair{"rough-dielectric", materials.chart[Last]},
-             std::pair{"smooth-metal", materials.chart[Columns]},
-             std::pair{"rough-metal", materials.chart[Columns + Last]},
-             std::pair{"double-sided", materials.doubleSided},
-             std::pair{"translucent", materials.translucent},
+            {std::pair{"floor", materials.floor->row},
+             std::pair{"smooth-dielectric", materials.chart[0]->row},
+             std::pair{"rough-dielectric", materials.chart[Last]->row},
+             std::pair{"smooth-metal", materials.chart[Columns]->row},
+             std::pair{"rough-metal", materials.chart[Columns + Last]->row},
+             std::pair{"double-sided", materials.doubleSided->row},
+             std::pair{"translucent", materials.translucent->row},
              // the middle panel, at 4
-             std::pair{"emissive", materials.emissive[1]}}) {
+             std::pair{"emissive", materials.emissive[1]->row}}) {
             inspected.push_back(
                 InspectedTarget{
                     std::format("material.{}", name),
@@ -738,8 +488,8 @@ namespace Crowy
     }
 
     void PlaygroundScene::linkChartShading() {
-        for(const auto handle: materials.chart) {
-            Scene().Materials().GetRef(handle).pipeline.shadingModule =
+        for(const auto& handle: materials.chart) {
+            Scene().Materials().GetRef(handle->row).pipeline.shadingModule =
                 moduleOf(shading.chart);
         }
     }
