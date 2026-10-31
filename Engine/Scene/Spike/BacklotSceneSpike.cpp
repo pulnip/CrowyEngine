@@ -1,17 +1,16 @@
 #include <memory>
 
+#include "GameSession.hpp"
 #include "ProjectRoot.hpp"
 #include "RenderApp.hpp"
-#include "Scene.hpp"
 #include "SnapshotCamera.hpp"
-#include "World.hpp"
 
 namespace Crowy
 {
     // Backlot's film set as ImportBacklot wrote it: nothing here knows
     // Backlot, and the checkout it came from need not exist
     class BacklotSceneSpike: public RenderApp {
-        World world;
+        RAII<GameSession> session;
 
     public:
         BacklotSceneSpike()
@@ -26,22 +25,33 @@ namespace Crowy
               ) {}
 
     protected:
-        void OnBuildGeometry(GeometryPool&) override {}
+        RenderSession& OnOpenSession(
+            RHIDevice& device,
+            GeometryPool& pool,
+            const AssetRoots& roots
+        ) override {
+            session = std::make_unique<GameSession>(device, pool, roots);
 
-        void ExtractScene(RenderScene& scene) override {
-            world.Provide(scene);
-            world.Provide(Meshes());
-            world.Provide(Materials());
-            world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
-
-            loadSceneFile(
-                world,
-                resolveProjectPath("Content/Backlot/Backlot.json")
-            );
-            world.Frame(0.0);
+            return session->Render();
         }
 
-        void OnUpdateScene(f64 seconds) override { world.Frame(seconds); }
+        void OnBuildGeometry(GeometryPool&) override {}
+
+        void ExtractScene(RenderScene&) override {
+            session->Load(resolveProjectPath("Content/Backlot/Backlot.json"));
+            showSceneCamera();
+        }
+
+        void OnUpdateScene(f64 seconds) override {
+            session->Frame(seconds);
+            showSceneCamera();
+        }
+
+    private:
+        void showSceneCamera() {
+            static_cast<SnapshotCamera&>(Camera()).Snapshot() =
+                session->Camera();
+        }
     };
 }
 

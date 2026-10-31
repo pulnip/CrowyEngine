@@ -42,9 +42,18 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `WorldRender` | mesh, light, camera and environment components, extracted into a `RenderScene` and a `CameraSnapshot`; `EnvironmentComponent` (one per World, its sun a `LightComponent` on the same actor) holds the ambient and the sky colour the frame clears to; a World may hold many cameras and the lowest `FileId` is the one seen; `MeshComponent` names its assets, `MeshRowComponent` draws a row the code built; `PrimitiveActors`, when the World provides it, names the actor each row draws | `MeshComponent.hpp`, `MeshRowComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp`, `EnvironmentComponent.hpp`, `PrimitiveActors.hpp` | Test |
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
 | `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in meshes, two material files and its own environment opened and drawn; `Backlot/` (`BacklotImport.hpp`), the headless `ImportBacklot`, which reads Backlot's `scene.json` through Stage and writes the default lighting key as a scene file, material files, the models and images they name and a copy of the source scene under one content folder (`--backlot`, `--out`; default `Content/Backlot`), the only code in Scene that sees the Stage reader; Test, and a `content` test of the real set; Spike: `BacklotSceneSpike`, the imported `Content/Backlot/Backlot.json` opened and drawn |
+| `Session` | `WorldSession`: a World with the `RenderSession` it draws into and the services it asks for (`RenderScene`, the mesh and material stores, `PrimitiveActors`, a `CameraSnapshot`), built from a registry it is given, loading one scene from a file or a DOM, destroyed together (the World first); `GameSession`: that on every system, plus the game clock (real time times a scale, nothing while paused) the World is advanced by | `WorldSession.hpp`, `GameSession.hpp` | Test; Spike: `BacklotSceneSpike` runs on a `GameSession` |
 | `Editor` | editing a World: the session that selects actors by `ActorId` and moves them, the camera outside the World, picking against a `RenderScene`, the gizmo's layout, hover and drag | `WorldEditor.hpp`, `EulerInspector.hpp`, `EditorGizmo.hpp`, `EditorPick.hpp`, `EditorCamera.hpp` | Test |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |
 | `Content` | image, mip, mesh and model (FBX) loading, image writing and comparison | `ImageLoader.hpp`, `MeshData.hpp`, `ModelLoader.hpp`, `ImageCompare.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
+
+## Runtime
+
+`Runtime/`, beside `Engine/`, holds the roots a user runs: `Game`, which opens
+the scene file named on its command line and shows it through the scene's
+start camera on a `GameSession`, and (next) `Editor`. They are products: built whether or not `CROWY_ENABLE_TEST` is on, declared with
+`crowy_declare_runtime`, with no ctest entry. A root knows `App` and
+`Session`; the two do not know each other.
 
 ## What a module promises
 
@@ -82,7 +91,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | Looking for | Where |
 |---|---|
 | A port verb | `RegisterVerb` calls in five files: `Remote/Private/CommandPort.cpp` (the reflection verbs, whose bodies are in `ReflectionVerbs.cpp`) and, in `App/Private/`, `FramePort.cpp` (`FramePort::RegisterVerbs`, the frame-loop verbs, with `push_input` and `read_input` read and written by `InputCodec.cpp`), `FrameHost.cpp`, `FrameCaptures.cpp`, `FrameStatsLog.cpp`. A running app's `GET /` lists every verb with its keys (`CommandPortImpl::listVerbs`); a key outside a verb's `VerbKeys` is refused. |
-| A command-line flag | `applyCommandLine` in `Platform/Private/RuntimeConfig.cpp` parses them into `RuntimeConfig`, and its usage string lists them; the loop reads its own in `Platform/Private/OS.cpp`. |
+| A command-line flag | `applyCommandLine` in `Platform/Private/RuntimeConfig.cpp` parses them into `RuntimeConfig`, and its usage string lists them; the loop reads its own in `Platform/Private/OS.cpp`. An app that opens a scene file declares `static constexpr bool OpensScene = true`: `Main<T>` then takes exactly one positional argument into `RuntimeConfig::scene` and refuses its absence; any other app refuses a positional as an unknown argument. |
 | A struct on the port | `CROWY_STRUCT` (`Reflection/Public/ClassRegistry.hpp`) registers it, `CommandPort::Expose` puts an instance on the port; `Remote/Sample/HelloCommandPort.cpp` does both. |
 | The other registrations | `CROWY_COMPONENT` in `World/Public/Component.hpp`, `CROWY_SYSTEM` in `World/Public/System.hpp`, `CROWY_ENUM_BEGIN` in `Core/Public/EnumUtil.hpp`. |
 | Whether a held key counts while ImGui has the keyboard | `SDLInputProvider::IsKeyDown` checks the `InputGate` (`Platform/Private/SDLInputProvider.hpp`), which `OS::Impl::ProcessEvents` in `Platform/Private/OS.cpp` sets every frame from ImGui; a sample can lift it for a frame with `ImGui::SetNextFrameWantCaptureKeyboard(false)` (`Render/Sample/PlaygroundScene.cpp`). |

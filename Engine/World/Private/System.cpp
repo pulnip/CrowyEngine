@@ -131,11 +131,27 @@ namespace Crowy
         systems.push_back(std::move(system));
     }
 
+    SystemRegistry SystemRegistry::WithoutGameplay() const {
+        SystemRegistry editing;
+        for(const auto& system: systems) {
+            if(!system.gameplay)
+                editing.Add(system);
+        }
+
+        return editing;
+    }
+
     SystemBuilder::SystemBuilder(CStr name, Phase phase, SystemFn run)
         : system{.name = name, .phase = phase, .run = run} {}
 
     SystemBuilder& SystemBuilder::After(CStr name) {
         system.after.emplace_back(name);
+
+        return *this;
+    }
+
+    SystemBuilder& SystemBuilder::Gameplay() {
+        system.gameplay = true;
 
         return *this;
     }

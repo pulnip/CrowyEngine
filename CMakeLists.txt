@@ -22,3 +22,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(config)
 
 add_subdirectory(Engine)
+
+# the products: built whether or not CROWY_ENABLE_TEST is on
+add_subdirectory(Runtime)

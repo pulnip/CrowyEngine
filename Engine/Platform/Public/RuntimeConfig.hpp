@@ -78,6 +78,9 @@ namespace Crowy
         // argv only: --project <folder> stands in for the project root found
         // above the executable
         std::optional<std::filesystem::path> project;
+        // argv only: the one positional argument of an app that opens a scene
+        // file, as given
+        std::optional<std::filesystem::path> scene;
     };
 
     template<>
@@ -86,7 +89,18 @@ namespace Crowy
         static RuntimeConfig from(const DOM::Value&, const DocMetadata&);
     };
 
+    // whether the command line carries a scene file as its one positional
+    // argument; without one, any positional argument is refused
+    enum class SceneArgument : u8 {
+        None,
+        Required,
+    };
+
     // The arguments after the program name, as Usage lists them; a --config
     // app document replaces the sample's benchmark and window.vsync.
-    void applyCommandLine(RuntimeConfig&, std::span<char* const> args);
+    void applyCommandLine(
+        RuntimeConfig&,
+        std::span<char* const> args,
+        SceneArgument scene = SceneArgument::None
+    );
 }

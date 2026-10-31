@@ -1,9 +1,11 @@
-# Executable taxonomy. Every executable in the tree is one of three kinds,
+# Executable taxonomy. Every executable in the tree is one of four kinds,
 # legible from its folder and its name:
 #
 #   Example  no suffix   windowed, shows something
 #   Spike    *Spike      cross-backend semantics pinned by its picture
 #   Check    *Check      headless, exits nonzero on a wrong number
+#   Runtime  Runtime/*   a product: built with or without CROWY_ENABLE_TEST,
+#                        and declares no TEST label
 #
 # An executable gets a ctest entry only when its declaration names a label
 # with TEST (docs/testing.md): gpu for a check, render for a spike, app for
@@ -133,6 +135,20 @@ function(crowy_declare_spike NAME)
     crowy_declare_executable(${NAME}
         TEST ${ARG_TEST}
         FRAMES ${ARG_FRAMES}
+        FRAMEWORK
+    SOURCES
+        ${ARG_SOURCES}
+    DEPENDS
+        ${ARG_DEPENDS}
+    )
+endfunction()
+
+# windowed; a root a user runs. It takes the same host as the samples and so
+# the same Agility exports, and has no ctest entry.
+function(crowy_declare_runtime NAME)
+    cmake_parse_arguments(ARG "" "" "SOURCES;DEPENDS" ${ARGN})
+
+    crowy_declare_executable(${NAME}
         FRAMEWORK
     SOURCES
         ${ARG_SOURCES}

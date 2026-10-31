@@ -188,3 +188,72 @@ TEST(RuntimeConfig, CommandLineTakesTheProjectFolder) {
         std::runtime_error
     );
 }
+
+TEST(RuntimeConfig, CommandLineTakesOneSceneWhenTheAppOpensOne) {
+    static char scene[] = "Content/Backlot/Backlot.json";
+    static char captureFlag[] = "--capture-frame";
+    static char sixty[] = "60";
+    static char path[] = "a.bmp";
+
+    RuntimeConfig config;
+    applyCommandLine(
+        config,
+        std::array{captureFlag, sixty, path, scene},
+        SceneArgument::Required
+    );
+    ASSERT_TRUE(config.scene);
+    EXPECT_EQ(*config.scene, std::filesystem::path(scene));
+    EXPECT_EQ(config.captures.size(), 1u);
+
+    RuntimeConfig first;
+    applyCommandLine(
+        first,
+        std::array{scene, captureFlag, sixty, path},
+        SceneArgument::Required
+    );
+    EXPECT_TRUE(first.scene);
+}
+
+TEST(RuntimeConfig, CommandLineRefusesASceneItCannotTake) {
+    static char scene[] = "a.json";
+    static char other[] = "b.json";
+    static char misspelled[] = "--scen";
+
+    RuntimeConfig none;
+    EXPECT_THROW(
+        applyCommandLine(none, std::array<char*, 0>{}, SceneArgument::Required),
+        std::runtime_error
+    );
+    RuntimeConfig two;
+    EXPECT_THROW(
+        applyCommandLine(
+            two,
+            std::array{scene, other},
+            SceneArgument::Required
+        ),
+        std::runtime_error
+    );
+    RuntimeConfig typo;
+    EXPECT_THROW(
+        applyCommandLine(
+            typo,
+            std::array{scene, misspelled},
+            SceneArgument::Required
+        ),
+        std::runtime_error
+    );
+}
+
+TEST(RuntimeConfig, AnAppWithoutAScenePlaceRefusesAStrayPositional) {
+    static char stray[] = "a.json";
+
+    RuntimeConfig config;
+    try {
+        applyCommandLine(config, std::array{stray});
+        FAIL() << "a stray positional was taken";
+    }
+    catch(const std::runtime_error& e) {
+        EXPECT_NE(Str(e.what()).find("unknown argument 'a.json'"), Str::npos);
+    }
+    EXPECT_FALSE(config.scene);
+}

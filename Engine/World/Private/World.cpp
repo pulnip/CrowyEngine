@@ -142,8 +142,7 @@ namespace Crowy
         );
     }
 
-    void World::Frame(f64 realSeconds) {
-        const auto gameSeconds = realSeconds * TimeScale;
+    void World::Frame(f64 realSeconds, f64 gameSeconds) {
         const FrameTime frame{
             .realSeconds = realSeconds,
             .gameSeconds = gameSeconds,

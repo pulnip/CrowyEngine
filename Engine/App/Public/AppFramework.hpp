@@ -135,6 +135,10 @@ namespace Crowy
         );
     }
 
+    // an app that opens the scene file named on its command line says so
+    template<typename T>
+    concept SceneOpener = requires { requires T::OpensScene; };
+
     template<std::derived_from<App> T>
     int Main(const RuntimeConfig& runtimeConfig) {
         try {
@@ -176,7 +180,8 @@ namespace Crowy
                 std::span<char* const>(argv, static_cast<usize>(argc));
             applyCommandLine(
                 runtimeConfig,
-                args.empty() ? args : args.subspan(1)
+                args.empty() ? args : args.subspan(1),
+                SceneOpener<T> ? SceneArgument::Required : SceneArgument::None
             );
         }
         catch(const std::exception& e) {

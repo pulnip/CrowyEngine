@@ -22,6 +22,7 @@ namespace Crowy
     CROWY_COMPONENT_END(ScriptComponent)
 
     CROWY_SYSTEM(RunScripts, Update, &runScripts)
+        .Gameplay()
     CROWY_SYSTEM_END(RunScripts)
     // clang-format on
 }

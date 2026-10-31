@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -12,6 +13,7 @@ namespace
 {
     std::vector<Str> ran;
     std::vector<u64> ticksSeen;
+    std::vector<FrameTime> frameTimes;
     i32 globalRuns = 0;
 
     // one exact fixed tick, as a counted frame is given
@@ -163,6 +165,64 @@ TEST(WorldSystems, ASystemRegisteredByTheMacroRunsInADefaultWorld) {
     world.Frame(0.0);
 
     EXPECT_EQ(globalRuns, 1);
+}
+
+TEST(WorldSystems, ARegistryWithoutGameplayRunsEverySystemButThose) {
+    ran.clear();
+    SystemRegistry registry;
+    registry.Add(describe("input", Phase::Input, RECORD("input")));
+    registry.Add(
+        SystemDesc{
+            .name = "script",
+            .phase = Phase::Update,
+            .run = RECORD("script"),
+            .gameplay = true
+        }
+    );
+    registry.Add(describe("sync", Phase::Sync, RECORD("sync")));
+    registry.Add(describe("extract", Phase::Extract, RECORD("extract")));
+
+    World editing(registry.WithoutGameplay());
+    editing.Frame(0.0);
+    EXPECT_EQ(ran, (std::vector<Str>{"input", "sync", "extract"}));
+
+    ran.clear();
+    World playing(registry);
+    playing.Frame(0.0);
+    EXPECT_EQ(ran, (std::vector<Str>{"input", "script", "sync", "extract"}));
+}
+
+TEST(WorldSystems, TheMacroMarksGameplayAndTheScriptsAreGameplay) {
+    const auto editing = SystemRegistry::Global().WithoutGameplay();
+    const auto named = [](const SystemRegistry& registry, StrView name) {
+        return std::ranges::contains(registry.All(), name, &SystemDesc::name);
+    };
+
+    EXPECT_TRUE(named(SystemRegistry::Global(), "RunScripts"));
+    EXPECT_FALSE(named(editing, "RunScripts"));
+    EXPECT_TRUE(named(editing, "WorldTestCounter"));
+}
+
+TEST(WorldSystems, TheGameClockIsTheCallersAndTheWallClockStaysItsOwn) {
+    frameTimes.clear();
+    SystemRegistry registry;
+    registry.Add(describe(
+        "update",
+        Phase::Update,
+        +[](World&, const FrameTime& time) { frameTimes.push_back(time); }
+    ));
+    World world(registry);
+
+    world.Frame(0.5);
+    world.Frame(0.5, 0.25);
+    world.Frame(0.5, 0.0);
+
+    ASSERT_EQ(frameTimes.size(), 3u);
+    EXPECT_EQ(frameTimes[0].gameSeconds, 0.5);
+    EXPECT_EQ(frameTimes[1].gameSeconds, 0.25);
+    EXPECT_EQ(frameTimes[2].gameSeconds, 0.0);
+    for(const auto& time: frameTimes)
+        EXPECT_EQ(time.realSeconds, 0.5);
 }
 
 TEST(WorldSystemsDeathTest, ACycleStops) {

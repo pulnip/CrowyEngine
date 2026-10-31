@@ -85,16 +85,24 @@ namespace Crowy
         };
     }
 
-    void applyCommandLine(RuntimeConfig& config, std::span<char* const> args) {
-        constexpr auto Usage = "usage: <app> [--config <path>] [--hold] "
-                               "[--capture-frame <frame> <path>]... "
-                               "[--exit-after-frame <frame>] "
-                               "[--port-input] [--project <folder>]";
+    void applyCommandLine(
+        RuntimeConfig& config,
+        std::span<char* const> args,
+        SceneArgument sceneArgument
+    ) {
+        const auto takesScene = sceneArgument == SceneArgument::Required;
+        const auto usage = std::format(
+            "usage: <app>{} [--config <path>] [--hold] "
+            "[--capture-frame <frame> <path>]... "
+            "[--exit-after-frame <frame>] "
+            "[--port-input] [--project <folder>]",
+            takesScene ? " <scene>" : ""
+        );
 
         const auto valueOf = [&](usize& i, StrView flag) {
             if(i + 1 == args.size()) {
                 throw std::runtime_error(
-                    std::format("'{}' needs a value\n{}", flag, Usage)
+                    std::format("'{}' needs a value\n{}", flag, usage)
                 );
             }
             return args[++i];
@@ -108,7 +116,7 @@ namespace Crowy
                         "'{}' needs a frame from 1, not '{}'\n{}",
                         flag,
                         text,
-                        Usage
+                        usage
                     )
                 );
             }
@@ -140,9 +148,23 @@ namespace Crowy
                 config.project = toPath(valueOf(i, arg));
                 continue;
             }
+            if(takesScene && !arg.starts_with("--")) {
+                if(config.scene) {
+                    throw std::runtime_error(
+                        std::format(
+                            "a second scene '{}' after '{}'\n{}",
+                            arg,
+                            config.scene->string(),
+                            usage
+                        )
+                    );
+                }
+                config.scene = toPath(arg);
+                continue;
+            }
             if(arg != "--config") {
                 throw std::runtime_error(
-                    std::format("unknown argument '{}'\n{}", arg, Usage)
+                    std::format("unknown argument '{}'\n{}", arg, usage)
                 );
             }
 
@@ -152,6 +174,12 @@ namespace Crowy
             config.window.vsync = loaded.window.vsync;
         }
 
+        if(takesScene && !config.scene) {
+            throw std::runtime_error(
+                std::format("a scene file is needed\n{}", usage)
+            );
+        }
+
         // what the swapchain would refuse, refused before the window opens
         const auto& captures = config.captures;
         if(captures.size() > MaxFrameDumps) {
@@ -159,7 +187,7 @@ namespace Crowy
                 std::format(
                     "more than {} '--capture-frame'\n{}",
                     MaxFrameDumps,
-                    Usage
+                    usage
                 )
             );
         }
@@ -173,7 +201,7 @@ namespace Crowy
                     "two '--capture-frame' share frame {} or '{}'\n{}",
                     repeat->frame,
                     repeat->path,
-                    Usage
+                    usage
                 )
             );
         }
@@ -187,7 +215,7 @@ namespace Crowy
                             "frame {}\n{}",
                             capture.frame,
                             *exit,
-                            Usage
+                            usage
                         )
                     );
                 }
