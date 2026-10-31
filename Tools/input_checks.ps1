@@ -72,8 +72,12 @@ function Click-Key([string]$Key) {
     Step-Frames 1
 }
 
+# what a look and a walk move, the game camera until the Scene View runs
+$script:lookTarget = "camera.look"
+$script:walkTarget = "camera.transform"
+
 function Read-Yaw {
-    return [double](Get-PortProperty camera.look yaw)
+    return [double](Get-PortProperty $script:lookTarget yaw)
 }
 
 # a right-button drag by `Dx` points: press, move, release, each its own frame
@@ -90,12 +94,12 @@ function Drag-Look([int]$Dx) {
 
 # meters walked with W held for `Frames` counted frames
 function Walk([int]$Frames = 12) {
-    $before = Get-PortProperty camera.transform position
+    $before = Get-PortProperty $script:walkTarget position
     Push-Input @(@{ key = "W"; down = $true })
     Step-Frames $Frames
     Push-Input @(@{ key = "W"; down = $false })
     Step-Frames 1
-    $after = Get-PortProperty camera.transform position
+    $after = Get-PortProperty $script:walkTarget position
     $sum = 0.0
     for ($i = 0; $i -lt 3; ++$i) {
         $sum += [math]::Pow([double]$after[$i] - [double]$before[$i], 2)
@@ -224,7 +228,10 @@ try {
     $process = $null
 
     # 5. the Scene View's image gives its presses to the scene
+    $script:lookTarget = "sceneCamera"
+    $script:walkTarget = "sceneCamera"
     $process = Start-Playground '{"sceneView":true}'
+    $gameCamera = (Get-PortProperty camera.transform position) -join ","
     Step-Frames 2
     Move-Mouse $imagePoint
     Assert-That (-not [bool](Invoke-Port read_input).ui.mouse) "the image under the mouse leaves it to the scene"
@@ -235,6 +242,7 @@ try {
     Step-Frames 3
     Assert-That (-not [bool](Invoke-Port read_input).ui.keyboard) "a press held on the image leaves the keyboard to the scene"
     Assert-That ((Walk) -gt 0.5) "W walks while it does"
+    Assert-That (((Get-PortProperty camera.transform position) -join ",") -eq $gameCamera) "the game camera stays where it stands"
     Push-Input @(@{ button = "LButton"; down = $false })
     Step-Frames 1
     $yaw = Read-Yaw

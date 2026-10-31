@@ -6,16 +6,19 @@
 #include <vector>
 
 #include "CommandPort.hpp"
+#include "EditorCamera.hpp"
 #include "EnumUtil.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
 #include "MaterialAsset.hpp"
+#include "PrimitiveActors.hpp"
 #include "Primitives.hpp"
 #include "RenderApp.hpp"
 #include "StatsOverlay.hpp"
 #include "UIRenderer.hpp"
 #include "World.hpp"
+#include "WorldEditor.hpp"
 
 namespace Crowy
 {
@@ -101,6 +104,12 @@ namespace Crowy
         MaterialAssetHandle translucent;
     };
 
+    // the Scene View's image, window points
+    struct SceneImage {
+        Vec2 origin;
+        Vec2 size;
+    };
+
     // in metres, every box face on the 0.25 m grid the floor draws; nothing
     // floats
     class PlaygroundScene: public RenderApp {
@@ -128,8 +137,16 @@ namespace Crowy
         };
 
     private:
+        // a service of the World below
+        PrimitiveActors primitiveActors;
         // the map's primitives as actors; the RenderScene rows are its
         World world;
+        // outside the World: the Scene View looks through it and edits with it
+        EditorCamera sceneCamera{MakeSceneCut()};
+        std::optional<WorldEditor> editor;
+        std::optional<SceneImage> sceneImage;
+        // a hold the mouse took, which only the mouse drags and lets go
+        bool mouseHolds = false;
 
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
@@ -160,6 +177,9 @@ namespace Crowy
         static Config MakeConfig();
         // the start pose is the overview bookmark, which `current` starts on
         static FlyCamera::Config MakeCamera();
+        // where the Scene View's camera starts, with the depth range
+        // DescribePipeline read
+        static EditorCut MakeSceneCut();
 
         // after the scene file loads, before its rows land; `shading` is what
         // the toggle starts on

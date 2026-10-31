@@ -135,6 +135,9 @@ Run it by hand when the Stage loader or Backlot changes.
 `Tools/stage_task.ps1` performs the owner's hand task over the port and
 asserts each step. The `content` label covers Backlot's import itself.
 
+`Tools/playground_edit.ps1` does the same for Playground's Scene View: a
+pick, the gizmo, then a fresh run held against the baseline at tolerance 0.
+
 ## The input
 
 `Tools/input_checks.ps1` (and `.sh`) runs Playground held with

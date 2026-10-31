@@ -68,6 +68,7 @@ SOURCES
     PlaygroundScene.cpp
     Playground.cpp
 DEPENDS
+    Crowy::Editor
     Crowy::Reflection
     Crowy::Scene
     Crowy::WorldRender
@@ -79,6 +80,7 @@ SOURCES
     PlaygroundScene.cpp
     ToonPlayground.cpp
 DEPENDS
+    Crowy::Editor
     Crowy::Reflection
     Crowy::Scene
     Crowy::WorldRender

@@ -6,6 +6,7 @@ PUBLIC
     Crowy::Reflection
     Crowy::Remote
     Crowy::Render
+    Crowy::UI
     Crowy::World
     Crowy::WorldRender
 )

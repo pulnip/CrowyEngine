@@ -41,6 +41,9 @@ cd "$REPO_ROOT" || exit 1
 # Playground's fly camera: radians per mouse point, meters per second; a
 # step is one fixed tick of 1/60 s
 LOOK=0.003
+# what a look and a walk move, the game camera until the Scene View runs
+LOOK_TARGET=camera.look
+WALK_TARGET=camera.transform
 SPEED=5.0
 
 # window points in a 1280 x 720 run with no saved layout: the scene, the
@@ -99,7 +102,7 @@ press() {
 }
 
 read_yaw() {
-    port_get camera.look yaw
+    port_get "$LOOK_TARGET" yaw
 }
 
 read_input() {
@@ -120,12 +123,12 @@ drag_look() {
 
 # walk [frames]: WALKED is the meters walked with W held that many frames
 walk() {
-    BEFORE=$(port_get camera.transform position)
+    BEFORE=$(port_get "$WALK_TARGET" position)
     push_input '[{"key":"W","down":true}]'
     step_frames "${1:-12}"
     push_input '[{"key":"W","down":false}]'
     step_frames 1
-    AFTER=$(port_get camera.transform position)
+    AFTER=$(port_get "$WALK_TARGET" position)
     WALKED=$(python3 -c 'import json, math, sys; a, b = json.loads(sys.argv[1]), json.loads(sys.argv[2]); print(math.dist(a, b))' "$BEFORE" "$AFTER")
 }
 
@@ -231,8 +234,12 @@ click_key P
 playground_stop
 trap - EXIT
 
-# 5. the Scene View's image gives its presses to the scene
+# 5. the Scene View's image gives its presses to the scene, whose camera is
+#    the editor's: the game camera stays where it stands
+LOOK_TARGET=sceneCamera
+WALK_TARGET=sceneCamera
 playground_start '{"sceneView":true}'
+GAME_CAMERA=$(port_get camera.transform position)
 move_mouse "$IMAGE"
 check "'$(json_value "$(read_input)" 'j["ui"]["mouse"]')' == 'false'" "the image under the mouse leaves it to the scene"
 YAW=$(read_yaw)
@@ -243,6 +250,7 @@ step_frames 3
 check "'$(json_value "$(read_input)" 'j["ui"]["keyboard"]')' == 'false'" "a press held on the image leaves the keyboard to the scene"
 walk
 check "$WALKED > 0.5" "W walks while it does"
+check "'$(port_get camera.transform position)' == '$GAME_CAMERA'" "the game camera stays where it stands"
 press LButton false
 step_frames 1
 YAW=$(read_yaw)

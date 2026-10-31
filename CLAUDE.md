@@ -91,8 +91,8 @@ powershell -NoProfile -File Tools/build.ps1 -Status
   relative path). Set `CROWY_WINDOW_DISPLAY=1` for every window you open.
 - `Tools/smoke_run.ps1 <exe>` runs one executable the way ctest does.
 - The command port (Debug only) listens on 27500; `StageEditor`'s scripts
-  use 27520, `Tools/input_checks.ps1` 27530; `CROWY_COMMAND_PORT` overrides
-  (0 disables). A second worktree
+  use 27520, `Tools/input_checks.ps1` 27530, `Tools/playground_edit.ps1`
+  27540; `CROWY_COMMAND_PORT` overrides (0 disables). A second worktree
   running at the same time needs its own port. `--hold` starts paused.
   `--capture-frame <frame> <path>` (any build, repeatable) writes that
   frame as a BMP and runs every frame as a fixed step; the spikes' goldens
