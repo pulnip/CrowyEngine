@@ -33,7 +33,7 @@ namespace Crowy
 
         static constexpr Vec3 eye{0.0f, 0.0f, -4.0f};
 
-        static constexpr f32 fovY = static_cast<f32>(toRadian(60.0));
+        static constexpr f32 fovY = radiansOf(60.0f);
         f32 aspect = 1.0f;
         static constexpr f32 nearZ = 0.1f, farZ = 100.0f;
 

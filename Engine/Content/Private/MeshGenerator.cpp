@@ -53,7 +53,7 @@ namespace Crowy
                             halfSize * normal + su * tangent + sv * bitangent,
                         .normal = normal,
                         .texCoord = uv,
-                        .tangent = Vec4{tangent.x, tangent.y, tangent.z, 1.0f}
+                        .tangent = toVec4(tangent, 1.0f)
                     }
                 );
             }
@@ -98,7 +98,7 @@ namespace Crowy
                     .normal = normal,
                     .texCoord =
                         Vec2{uvScale.x * corner.x, uvScale.y * corner.y},
-                    .tangent = Vec4{tangent.x, tangent.y, tangent.z, 1.0f}
+                    .tangent = toVec4(tangent, 1.0f)
                 }
             );
         }

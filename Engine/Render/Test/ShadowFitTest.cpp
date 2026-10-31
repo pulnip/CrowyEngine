@@ -47,12 +47,7 @@ TEST(ShadowFit, EverySceneCornerIsInsideClipSpace) {
         const auto fit = fitDirectionalShadow(travel, Room, MapSize);
 
         for(u32 corner = 0; corner < 8; ++corner) {
-            const Vec3 side{
-                (corner & 1u) != 0 ? 1.0f : -1.0f,
-                (corner & 2u) != 0 ? 1.0f : -1.0f,
-                (corner & 4u) != 0 ? 1.0f : -1.0f
-            };
-            const auto clip = Clip(fit, Room.center + side * Room.halfScale);
+            const auto clip = Clip(fit, cornerOf(Room, corner));
 
             EXPECT_EQ(clip.w, 1.0f);
             EXPECT_LE(std::abs(clip.x), 1.0f + Slack) << corner;

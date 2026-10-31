@@ -23,7 +23,7 @@ namespace
         const auto toTray =
             inverseRigid(modelMat(tray.position, tray.rotation, ones()));
 
-        return static_cast<Vec3>(toTray * toVec4(marble, 1.0f));
+        return transformPoint(toTray, marble);
     }
 
     // the first tick at which `reached` holds, if any

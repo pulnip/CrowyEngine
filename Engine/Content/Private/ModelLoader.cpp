@@ -234,7 +234,7 @@ namespace Crowy
                 auto& vertex = vertices[i];
                 const auto normal = vertex.normal;
 
-                auto tangent = alongU[i] - normal * dot(normal, alongU[i]);
+                auto tangent = projectOntoPlane(alongU[i], normal);
                 if(normSquared(tangent) < 1e-12f) {
                     // no usable UV gradient: any axis orthogonal to the normal
                     const auto axis =

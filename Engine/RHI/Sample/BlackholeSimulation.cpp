@@ -332,8 +332,7 @@ namespace Crowy
             Vec3 camPos{30.0f, 5.0f, 0.0f};
             f32 aspect;
             Vec3 camRight = unitX();
-            f32 tanHalfFov =
-                std::tanf(0.5f * static_cast<f32>(toRadian(45.0f)));
+            f32 tanHalfFov = std::tanf(0.5f * radiansOf(45.0f));
             Vec3 camUp = unitY();
             f32 diskInner = 3.0f;
             Vec3 camForward = unitZ();

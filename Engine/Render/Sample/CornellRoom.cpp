@@ -137,7 +137,7 @@ namespace Crowy
         static OrbitCamera::Config makeCamera() {
             return OrbitCamera::Config{
                 .distance = 4.0f,
-                .fovY = static_cast<f32>(toRadian(60.0)),
+                .fovY = radiansOf(60.0f),
                 .nearZ = 0.05f,
                 .farZ = 100.0f
             };

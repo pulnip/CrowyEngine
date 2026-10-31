@@ -37,15 +37,7 @@ namespace Crowy
         Vec3 low{Infinity, Infinity, Infinity};
         Vec3 high{-Infinity, -Infinity, -Infinity};
         for(u32 corner = 0; corner < 8; ++corner) {
-            const Vec3 side{
-                (corner & 1u) != 0 ? 1.0f : -1.0f,
-                (corner & 2u) != 0 ? 1.0f : -1.0f,
-                (corner & 4u) != 0 ? 1.0f : -1.0f
-            };
-            const auto p = static_cast<Vec3>(
-                lightView *
-                toVec4(bounds.center + side * bounds.halfScale, 1.0f)
-            );
+            const auto p = transformPoint(lightView, cornerOf(bounds, corner));
             for(usize i = 0; i < 3; ++i) {
                 low[i] = std::min(low[i], p[i]);
                 high[i] = std::max(high[i], p[i]);

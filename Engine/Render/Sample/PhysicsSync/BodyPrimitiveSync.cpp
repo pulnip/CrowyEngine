@@ -45,10 +45,11 @@ namespace Crowy
             // never reaches below the floor and moves the shadow fit
             const auto shape = world.ShapeOf(binding.body);
             if(std::holds_alternative<SphereShape>(shape)) {
-                const auto center = primitive.localToWorld *
-                                    toVec4(binding.localBounds.center, 1.0f);
                 primitive.worldBounds = AABB3D{
-                    .center = static_cast<Vec3>(center),
+                    .center = transformPoint(
+                        primitive.localToWorld,
+                        binding.localBounds.center
+                    ),
                     .halfScale =
                         binding.localBounds.halfScale * binding.meshScale,
                 };

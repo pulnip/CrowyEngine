@@ -79,7 +79,7 @@ namespace Crowy
             vertex.position = unit * radii;
             vertex.normal = normal;
             vertex.tangent = toVec4(
-                normalize(tangent - normal * dot(normal, tangent)),
+                normalize(projectOntoPlane(tangent, normal)),
                 vertex.tangent.w
             );
         }

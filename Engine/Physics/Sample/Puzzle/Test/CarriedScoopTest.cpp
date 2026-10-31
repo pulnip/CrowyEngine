@@ -28,7 +28,7 @@ namespace
         const auto toScoop =
             inverseRigid(modelMat(scoop.position, scoop.rotation, ones()));
 
-        return static_cast<Vec3>(toScoop * toVec4(ball, 1.0f));
+        return transformPoint(toScoop, ball);
     }
 
     // one tick, and how much it changed the scoop's velocity
