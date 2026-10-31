@@ -163,6 +163,12 @@ namespace Crowy
                 continue;
             }
 
+            // a drained ring holds nothing, the end it just skipped included
+            if(tail == head) {
+                tail = newHead;
+                break;
+            }
+
             // nothing is in flight and the ring is full: copies in a command
             // list nobody submitted hold the space, and no serial will ever
             // free it
