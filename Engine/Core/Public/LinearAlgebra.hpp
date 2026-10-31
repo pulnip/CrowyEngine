@@ -171,6 +171,15 @@ namespace Crowy
         return Vec3{pitch, std::atan2(m02, m22), std::atan2(m10, m11)};
     }
 
+    // turns +Z to the unit `direction` with no roll: the fly camera's yaw and
+    // pitch, pitch positive looking down
+    inline Vec4 lookRotation(Vec3 direction) noexcept {
+        const auto yaw = std::atan2(direction.x, direction.z);
+        const auto pitch = std::asin(std::clamp(-direction.y, -1.0f, 1.0f));
+
+        return quatOf(Vec3{pitch, yaw, 0.0f});
+    }
+
     inline constexpr auto right(Vec4 q) noexcept {
         auto e_x = Vec4{1.0f, 0.0f, 0.0f, 0.0f};
         auto r = rotate(e_x, q);

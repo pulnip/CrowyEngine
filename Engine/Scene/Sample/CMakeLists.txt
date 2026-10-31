@@ -9,3 +9,5 @@ DEPENDS
     Crowy::WorldRender
     Crowy::SampleRenderApp
 )
+
+add_subdirectory(Backlot)
