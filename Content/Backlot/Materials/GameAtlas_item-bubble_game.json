@@ -1,0 +1,53 @@
+{
+    "metadata": {
+        "version": 2,
+        "type": "material"
+    },
+    "domain": "Masked",
+    "shader": null,
+    "shadingModule": null,
+    "doubleSided": false,
+    "receiveShadow": true,
+    "data": {
+        "albedo": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "metallic": 0.0,
+        "emissive": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.9,
+        "opacity": 1.0,
+        "custom0": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "custom1": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "uvScaleOffset": [
+            0.0625,
+            0.10156202,
+            0.34375,
+            0.742188
+        ],
+        "alphaCutoff": 0.5
+    },
+    "albedoMap": {
+        "texture": "Backlot/Textures/Game/GameAtlas.png",
+        "sampler": "NearestClamp"
+    },
+    "emissiveMap": {
+        "texture": "Backlot/Textures/Game/GameAtlas.png",
+        "sampler": "NearestClamp"
+    }
+}

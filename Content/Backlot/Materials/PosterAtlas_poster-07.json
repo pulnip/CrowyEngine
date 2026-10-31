@@ -1,0 +1,53 @@
+{
+    "metadata": {
+        "version": 2,
+        "type": "material"
+    },
+    "domain": "Opaque",
+    "shader": null,
+    "shadingModule": null,
+    "doubleSided": false,
+    "receiveShadow": true,
+    "data": {
+        "albedo": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "metallic": 0.0,
+        "emissive": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.9,
+        "opacity": 1.0,
+        "custom0": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "custom1": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "uvScaleOffset": [
+            0.18749999,
+            0.28125,
+            0.199219,
+            0.292969
+        ],
+        "alphaCutoff": 0.5
+    },
+    "albedoMap": {
+        "texture": "Backlot/Textures/Posters/PosterAtlas.png",
+        "sampler": "LinearClamp"
+    },
+    "emissiveMap": {
+        "texture": null,
+        "sampler": "LinearWrap"
+    }
+}

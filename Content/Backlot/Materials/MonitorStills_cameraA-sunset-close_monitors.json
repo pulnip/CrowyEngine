@@ -1,0 +1,53 @@
+{
+    "metadata": {
+        "version": 2,
+        "type": "material"
+    },
+    "domain": "Opaque",
+    "shader": null,
+    "shadingModule": null,
+    "doubleSided": false,
+    "receiveShadow": false,
+    "data": {
+        "albedo": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "metallic": 0.0,
+        "emissive": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "roughness": 0.9,
+        "opacity": 1.0,
+        "custom0": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "custom1": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "uvScaleOffset": [
+            0.5,
+            0.25,
+            0.5,
+            0.5
+        ],
+        "alphaCutoff": 0.5
+    },
+    "albedoMap": {
+        "texture": "Backlot/Textures/Screens/MonitorStills.png",
+        "sampler": "LinearClamp"
+    },
+    "emissiveMap": {
+        "texture": "Backlot/Textures/Screens/MonitorStills.png",
+        "sampler": "LinearClamp"
+    }
+}

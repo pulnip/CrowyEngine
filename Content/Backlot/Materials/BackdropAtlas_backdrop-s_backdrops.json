@@ -1,0 +1,53 @@
+{
+    "metadata": {
+        "version": 2,
+        "type": "material"
+    },
+    "domain": "Opaque",
+    "shader": null,
+    "shadingModule": null,
+    "doubleSided": false,
+    "receiveShadow": false,
+    "data": {
+        "albedo": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "metallic": 0.0,
+        "emissive": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.9,
+        "opacity": 1.0,
+        "custom0": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "custom1": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "uvScaleOffset": [
+            0.43945298,
+            0.23974702,
+            0.003906,
+            0.499023
+        ],
+        "alphaCutoff": 0.5
+    },
+    "albedoMap": {
+        "texture": "Backlot/Textures/Backdrops/BackdropAtlas.png",
+        "sampler": "LinearClamp"
+    },
+    "emissiveMap": {
+        "texture": "Backlot/Textures/Backdrops/BackdropAtlas.png",
+        "sampler": "LinearClamp"
+    }
+}

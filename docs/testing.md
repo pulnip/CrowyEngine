@@ -16,7 +16,7 @@ a change adds is the Verification table in `CLAUDE.md`.
 | `render` | a window | `*Spike`: one backend semantic pinned by its frame-60 golden |
 | `app` | a window and content | a host starts, runs its frames and shuts down by itself, with no assert or debug-layer error |
 | `scenario` | CPU, long simulations | sample content behaves: the puzzles solve, their pinned hashes hold |
-| `content` | `../Backlot` | the external set imports at its pinned commit; skipped without it |
+| `content` | `../Backlot`, or `Content/Backlot` alone | the external set imports at its pinned commit, skipped without it; the imported set against its source copy, which needs no checkout |
 
 Outside ctest:
 - An example whose declaration names no `TEST` is built only.
