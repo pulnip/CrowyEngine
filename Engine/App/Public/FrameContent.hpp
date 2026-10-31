@@ -3,6 +3,7 @@
 #include <span>
 #include <vector>
 
+#include "AssetRoots.hpp"
 #include "FrameGraph.hpp"
 #include "GeometryPool.hpp"
 #include "InputProvider.hpp"
@@ -10,6 +11,7 @@
 #include "RHICommandList.hpp"
 #include "RHIFWD.hpp"
 #include "RenderScene.hpp"
+#include "RenderSession.hpp"
 #include "Semantics.hpp"
 #include "StandardFrame.hpp"
 
@@ -25,6 +27,15 @@ namespace Crowy
         CROWY_DECLARE_INTERFACE(FrameContent)
 
     protected:
+        // once, from OnInit, with the device and the pool made and before
+        // OnBuildGeometry: the session the host draws. The caller owns it and
+        // destroys it before the host does.
+        virtual RenderSession& OnOpenSession(
+            RHIDevice& device,
+            GeometryPool& pool,
+            const AssetRoots& roots
+        ) = 0;
+
         // once, from OnInit; the pool queues the copies and the first frame
         // records them
         virtual void OnBuildGeometry(GeometryPool& pool) = 0;

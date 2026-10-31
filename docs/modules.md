@@ -34,7 +34,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `RHI` | the device, command lists, resources, barriers and shaders over D3D12 and Metal; `Common/` the shared definitions, `TestSupport/` the recording fakes | `RHIDevice.hpp`, `RHICommandList.hpp`, `Common/RHIDefinitions.hpp`, [rhi.md](rhi.md) | Test; Sample; Spike; Check |
 | `DX12RHI`, `MetalRHI` | the two backends, one per platform, chosen at build time | `Private/` only: `DX12Device.cpp`, `MetalDevice.cpp` | through RHI's |
 | `Shader` | the shared Slang root: scene data, view, lighting, fullscreen | the `.slang` files | |
-| `Render` | the render scene, the frame graph of passes, materials and pipelines, shadows, post, mesh and material assets, material files (`MaterialDesc`) | `SceneRenderer.hpp`, `RenderScene.hpp`, `FrameGraph.hpp`, `StandardFrame.hpp` | Test; Sample: `Editor/` (StageEditor's session, frozen until the real editor replaces it), `Stage/`, `PhysicsSync/` and the examples, `Playground` first, which opens the scene file `Playground/Playground.json` of built-in meshes and material files; Spike |
+| `Render` | the render scene, `RenderSession` (a scene with the mesh, texture and material stores that fill it, destroyed together; the app that draws owns it), the frame graph of passes, materials and pipelines, shadows, post, mesh and material assets, material files (`MaterialDesc`) | `SceneRenderer.hpp`, `RenderScene.hpp`, `FrameGraph.hpp`, `StandardFrame.hpp` | Test; Sample: `Editor/` (StageEditor's session, frozen until the real editor replaces it), `Stage/`, `PhysicsSync/` and the examples, `Playground` first, which opens the scene file `Playground/Playground.json` of built-in meshes and material files; Spike |
 | `App` | the windowed host every window executable links: `App` and `Main<T>` (timer, hold and step, the fixed step of a counted run, device and OS setup), the renderer host `RenderApp` over `FrameHost` (frame order, the `FrameContent` hooks, port, captures, stats), the sample cameras and the overlays; `Entry/D3D12Exports.cpp` is compiled into each executable, since the Agility SDK loader reads the exports from the executable itself | `AppFramework.hpp`, `RenderApp.hpp`, `FrameHost.hpp`, `FrameContent.hpp` | Test |
 | `Effects` | GPU fields, compute kernels and particle effects | `EffectSystem.hpp`, `ParticleEffects.hpp`, `FieldPass.hpp`, [writing-an-effect.md](writing-an-effect.md) | Test; Sample: `Island`; Check |
 | `Physics` | Jolt behind a deterministic world | `PhysicsWorld.hpp`, `PhysicsRuntime.hpp` | Test; `Sample/Puzzle` |
@@ -62,7 +62,8 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 - A scene save leaves out a component marked `Transient`, and a component
   with no reflected properties stops the save.
 - An `AssetStore` releases an asset at the `Collect` after its last handle
-  goes. Render's `MeshStore`, `TextureStore` and `MaterialStore` are three;
+  goes. Render's `MeshStore`, `TextureStore` and `MaterialStore` are three,
+  owned by a `RenderSession` with the `RenderScene`;
   `engine:Builtin/*` meshes (`Box`, `Sphere`, `Plane` facing +Y, `Quad`
   facing -Z, `Missing`), textures (`White`, `FlatNormal`, `Missing`) and
   materials (`Opaque`, `Translucent`, `Masked`, `Missing`) come from code,

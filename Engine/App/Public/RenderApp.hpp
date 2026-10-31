@@ -19,6 +19,7 @@ namespace Crowy
 
     private:
         FrameHost host;
+        RAII<RenderSession> ownSession;
 
     public:
         ~RenderApp() override;
@@ -39,6 +40,14 @@ namespace Crowy
         void OnResize(u32 width, u32 height) override final;
 
     protected:
+        // an app that owns a session of its own overrides this and returns
+        // it; the default one lives as long as the app
+        RenderSession& OnOpenSession(
+            RHIDevice& device,
+            GeometryPool& pool,
+            const AssetRoots& roots
+        ) override;
+
         // the lit views' clear, as a lighting key's sky, from the next frame;
         // the pipeline stays as it is
         void SetClearColor(Color color) noexcept { host.SetClearColor(color); }

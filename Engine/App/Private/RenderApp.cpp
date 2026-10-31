@@ -34,6 +34,15 @@ namespace Crowy
         );
     }
 
+    RenderSession& RenderApp::OnOpenSession(
+        RHIDevice& device,
+        GeometryPool& pool,
+        const AssetRoots& roots
+    ) {
+        ownSession = std::make_unique<RenderSession>(device, pool, roots);
+        return *ownSession;
+    }
+
     void RenderApp::NewFrame() {
         host.NewFrame();
     }
