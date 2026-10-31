@@ -2,6 +2,7 @@
 
 #include <type_traits>
 
+#include "EnumUtil.hpp"
 #include "PackedTable.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
@@ -31,11 +32,31 @@ namespace Crowy
         StaticSamplers.size()
     );
 
-    // an uploaded texture and its sampler: one decision with its mips, since
-    // a nearest sampler still walks mips a texture has
+    // clang-format off
+    CROWY_ENUM_BEGIN(TextureSampler)
+        CROWY_ENUM_VALUE(LinearWrap)
+        CROWY_ENUM_VALUE(LinearClamp)
+        CROWY_ENUM_VALUE(LinearMirror)
+        CROWY_ENUM_VALUE(LinearBorder)
+        CROWY_ENUM_VALUE(NearestWrap)
+        CROWY_ENUM_VALUE(NearestClamp)
+        CROWY_ENUM_VALUE(NearestMirror)
+        CROWY_ENUM_VALUE(NearestBorder)
+    CROWY_ENUM_END()
+    // clang-format on
+
+    // a nearest sampler still walks the mips it is given
+    [[nodiscard]] inline constexpr bool isNearest(TextureSampler sampler) {
+        return sampler >= TextureSampler::NearestWrap;
+    }
+
+    // One table row: a texture as one slot reads it. A caller that owns the
+    // texture puts it in `texture`; a slot of an asset's texture leaves
+    // that empty and gives the id of its view in `readable`.
     struct TextureResource {
         RHITextureRAII texture;
         TextureSampler sampler = TextureSampler::LinearClamp;
+        u64 readable = 0;
     };
 
     // One table row as the forward program reads it.

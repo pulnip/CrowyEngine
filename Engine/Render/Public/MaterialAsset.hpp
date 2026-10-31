@@ -8,6 +8,9 @@
 #include "DOM.hpp"
 #include "Primitives.hpp"
 #include "RenderMaterial.hpp"
+#include "RenderScene.hpp"
+#include "RenderTexture.hpp"
+#include "TextureAsset.hpp"
 
 namespace Crowy
 {
@@ -27,13 +30,21 @@ namespace Crowy
     );
 
     // engine:Builtin/ holds Opaque, Translucent, Masked and Missing; any
-    // other ref is a material file
+    // other ref is a material file. A texture it names that fails to load is
+    // told and sampled as engine:Builtin/Missing.
     std::expected<MaterialAsset, Str> loadMaterialAsset(
-        MaterialTable& materials,
+        RenderScene& scene,
+        TextureStore& textures,
         const AssetRoots& roots,
         const AssetRef& ref
     );
-    void releaseMaterialAsset(MaterialTable& materials, MaterialAsset asset);
+    void releaseMaterialAsset(RenderScene& scene, MaterialAsset asset);
+
+    // a texture a slot samples, and how; colors are read as sRGB
+    struct MaterialTexture {
+        AssetRef texture;
+        TextureSampler sampler = TextureSampler::LinearWrap;
+    };
 
     // a material file: the pipeline a row draws with and the values it carries
     struct MaterialDesc {
@@ -46,10 +57,20 @@ namespace Crowy
         bool doubleSided = false;
         bool receiveShadow = true;
         MaterialData data{};
+        MaterialTexture albedoMap;
+        MaterialTexture emissiveMap;
+    };
+
+    // a slot's texture, held, and its row in the scene's texture table
+    struct MaterialTextureAsset {
+        TextureAssetHandle asset;
+        TextureHandle row;
     };
 
     // one row of the material table, shared by every mesh that draws it
     struct MaterialAsset {
         MaterialHandle row;
+        MaterialTextureAsset albedo;
+        MaterialTextureAsset emissive;
     };
 }

@@ -155,12 +155,20 @@ namespace Crowy
                 releaseMeshAsset(*geometryPool, std::move(asset));
             }
         );
+        textures = std::make_unique<TextureStore>(
+            [this, roots](const AssetRef& ref) {
+                return loadTextureAsset(*this->device, roots, ref);
+            },
+            [this](TextureAsset asset) {
+                releaseTextureAsset(*this->device, std::move(asset));
+            }
+        );
         materials = std::make_unique<MaterialStore>(
             [this, roots](const AssetRef& ref) {
-                return loadMaterialAsset(scene.Materials(), roots, ref);
+                return loadMaterialAsset(scene, *textures, roots, ref);
             },
             [this](MaterialAsset asset) {
-                releaseMaterialAsset(scene.Materials(), asset);
+                releaseMaterialAsset(scene, std::move(asset));
             }
         );
         pipelineConfig = standardConfig(config, debug, swapchain.GetFormat());
@@ -309,6 +317,7 @@ namespace Crowy
         // after the scene's own Sync, so what it let go leaves this frame
         meshes->Collect();
         materials->Collect();
+        textures->Collect();
     }
 
     void FrameHost::reportCullStatsOnce() {

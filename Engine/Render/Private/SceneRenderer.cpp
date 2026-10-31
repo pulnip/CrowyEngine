@@ -127,7 +127,9 @@ namespace Crowy
         for(const auto& texture: textures.All()) {
             textureScratch.push_back(
                 TextureData{
-                    .texture = texture.texture->GetReadableID(),
+                    .texture = texture.texture != nullptr
+                                   ? texture.texture->GetReadableID()
+                                   : texture.readable,
                     .sampler = static_cast<u32>(texture.sampler)
                 }
             );

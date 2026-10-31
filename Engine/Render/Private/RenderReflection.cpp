@@ -27,6 +27,11 @@ namespace Crowy
         .SetUIRange(0.0f, 1.0f)
     CROWY_STRUCT_END(MaterialData)
 
+    CROWY_STRUCT(MaterialTexture)
+        .AddProperty("texture", &MaterialTexture::texture)
+        .AddProperty("sampler", &MaterialTexture::sampler)
+    CROWY_STRUCT_END(MaterialTexture)
+
     CROWY_STRUCT(MaterialDesc)
         .AddProperty("domain", &MaterialDesc::domain)
         .AddProperty("shader", &MaterialDesc::shader)
@@ -34,6 +39,8 @@ namespace Crowy
         .AddProperty("doubleSided", &MaterialDesc::doubleSided)
         .AddProperty("receiveShadow", &MaterialDesc::receiveShadow)
         .AddProperty("data", &MaterialDesc::data)
+        .AddProperty("albedoMap", &MaterialDesc::albedoMap)
+        .AddProperty("emissiveMap", &MaterialDesc::emissiveMap)
     CROWY_STRUCT_END(MaterialDesc)
     // clang-format on
 }

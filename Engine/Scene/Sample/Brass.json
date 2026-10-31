@@ -1,6 +1,6 @@
 {
     "metadata": {
-        "version": 1,
+        "version": 2,
         "type": "material"
     },
     "domain": "Opaque",
@@ -41,5 +41,13 @@
             0.0
         ],
         "alphaCutoff": 0.5
+    },
+    "albedoMap": {
+        "texture": null,
+        "sampler": "LinearWrap"
+    },
+    "emissiveMap": {
+        "texture": null,
+        "sampler": "LinearWrap"
     }
 }

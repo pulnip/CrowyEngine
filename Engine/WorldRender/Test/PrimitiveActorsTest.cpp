@@ -31,20 +31,26 @@ namespace
         };
     }
 
+    TextureStore::Loaded loadNoTexture(const AssetRef&) {
+        return std::unexpected(Str("no device"));
+    }
+
     class PrimitiveActorsTest: public testing::Test {
     protected:
         MeshStore meshes{&loadFakeMesh};
+        TextureStore textures{&loadNoTexture};
         RenderScene scene;
         MaterialStore materials{
             [this](const AssetRef& ref) {
                 return loadMaterialAsset(
-                    scene.Materials(),
+                    scene,
+                    textures,
                     AssetRoots{.engine = toPath(CROWY_ENGINE_ROOT)},
                     ref
                 );
             },
             [this](MaterialAsset asset) {
-                releaseMaterialAsset(scene.Materials(), asset);
+                releaseMaterialAsset(scene, std::move(asset));
             }
         };
         PrimitiveActors actors;

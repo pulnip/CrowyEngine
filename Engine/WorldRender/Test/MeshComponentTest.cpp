@@ -38,23 +38,29 @@ namespace
         };
     }
 
+    TextureStore::Loaded loadNoTexture(const AssetRef&) {
+        return std::unexpected(Str("no device"));
+    }
+
     // FrameHost's order: the scene's mesh rows hold mesh assets, a released
     // material leaves the scene, and the World lets go of everything first
     class MeshComponentTest: public testing::Test {
     protected:
         MeshStore meshes{&loadFakeMesh};
+        TextureStore textures{&loadNoTexture};
         RenderScene scene;
         CameraSnapshot camera;
         MaterialStore materials{
             [this](const AssetRef& ref) {
                 return loadMaterialAsset(
-                    scene.Materials(),
+                    scene,
+                    textures,
                     AssetRoots{.engine = toPath(CROWY_ENGINE_ROOT)},
                     ref
                 );
             },
             [this](MaterialAsset asset) {
-                releaseMaterialAsset(scene.Materials(), asset);
+                releaseMaterialAsset(scene, std::move(asset));
             }
         };
         World world;

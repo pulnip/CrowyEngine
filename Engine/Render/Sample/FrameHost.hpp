@@ -26,6 +26,7 @@
 #include "SceneRenderer.hpp"
 #include "Semantics.hpp"
 #include "StandardFrame.hpp"
+#include "TextureAsset.hpp"
 
 namespace Crowy
 {
@@ -33,6 +34,7 @@ namespace Crowy
     using GeometryPoolRAII = RAII<GeometryPool>;
     using MaterialStoreRAII = RAII<MaterialStore>;
     using MeshStoreRAII = RAII<MeshStore>;
+    using TextureStoreRAII = RAII<TextureStore>;
     using SceneRendererRAII = RAII<SceneRenderer>;
     using FrameCapturesRAII = RAII<FrameCaptures>;
     using FramePortRAII = RAII<FramePort>;
@@ -103,6 +105,8 @@ namespace Crowy
         GeometryPoolRAII geometryPool;
         // after the pool it frees into, before the scene whose rows hold it
         MeshStoreRAII meshes;
+        // after the device it retires into, before the materials that hold it
+        TextureStoreRAII textures;
         SceneRendererRAII renderer;
         // what DescribePipeline was last asked for, from config and the debug
         // view; a change rebuilds it
@@ -178,6 +182,7 @@ namespace Crowy
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
         auto& Meshes() noexcept { return *meshes; }
+        auto& Textures() noexcept { return *textures; }
         auto& Materials() noexcept { return *materials; }
         auto& Scene() noexcept { return scene; }
         auto& Renderer() noexcept { return *renderer; }

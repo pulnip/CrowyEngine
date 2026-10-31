@@ -102,6 +102,9 @@ namespace Crowy
         u32* destroyed = nullptr;
 
     public:
+        // every view a readable id was asked of, in order
+        std::vector<RHITextureViewDesc> viewsRead;
+
         ~FakeTexture() override {
             if(destroyed != nullptr)
                 ++*destroyed;
@@ -127,7 +130,8 @@ namespace Crowy
         void* GetNative() noexcept override { return nullptr; }
 
     private:
-        u64 readableIDOf(const RHITextureViewDesc&) override {
+        u64 readableIDOf(const RHITextureViewDesc& view) override {
+            viewsRead.push_back(view);
             return readableID;
         }
         u64 writableIDOf(const RHITextureViewDesc&) override {

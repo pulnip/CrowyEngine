@@ -146,3 +146,27 @@ TEST(TextureTable, ClearKeepsTexturesAndRetireDefersTheirRelease) {
     f.device.RunDeferred();
     EXPECT_EQ(f.device.texturesDestroyed, 2u);
 }
+
+// a slot of an asset's texture owns nothing and carries its view's id
+TEST(TextureTable, ARowThatOwnsNothingNamesItsViewsID) {
+    Fixture f;
+    const auto slot = f.scene.Textures().Add(
+        TextureResource{
+            .sampler = TextureSampler::NearestWrap,
+            .readable = 0xABCD
+        }
+    );
+    const auto material = f.AddMaterial({.albedo = slot});
+
+    const auto push = f.Frame();
+    const auto mapID = f.MaterialRow(push, material).albedoMapID;
+    EXPECT_EQ(f.TextureRow(push, mapID).texture, 0xABCDu);
+    EXPECT_EQ(
+        f.TextureRow(push, mapID).sampler,
+        static_cast<u32>(TextureSampler::NearestWrap)
+    );
+
+    f.scene.RetireTextures(f.device);
+    EXPECT_TRUE(f.scene.Textures().IsEmpty());
+    EXPECT_TRUE(f.device.deferred.empty());
+}

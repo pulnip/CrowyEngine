@@ -56,11 +56,18 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 - A scene save leaves out a component marked `Transient`, and a component
   with no reflected properties stops the save.
 - An `AssetStore` releases an asset at the `Collect` after its last handle
-  goes. Render's `MeshStore` and `MaterialStore` are two;
+  goes. Render's `MeshStore`, `TextureStore` and `MaterialStore` are three;
   `engine:Builtin/*` meshes (`Box`, `Sphere`, `Plane` facing +Y, `Quad`
-  facing -Z, `Missing`) and materials (`Opaque`, `Translucent`, `Masked`,
-  `Missing`) come from code, and any other material ref is a JSON file of
-  one `MaterialDesc`.
+  facing -Z, `Missing`), textures (`White`, `FlatNormal`, `Missing`) and
+  materials (`Opaque`, `Translucent`, `Masked`, `Missing`) come from code,
+  and any other material ref is a JSON file of one `MaterialDesc`.
+- A texture is one asset per path, always with mips (a PNG gets the CPU
+  chain, a KTX2 keeps its own). The material's slot (`albedoMap`,
+  `emissiveMap`) names the sampler and reads the texture as sRGB; a nearest
+  sampler reads one mip. A texture ref that fails to load is told and
+  sampled as `engine:Builtin/Missing`, and the file keeps the path. A
+  material holds its textures, so `MaterialStore` collects before
+  `TextureStore`.
 - Physics and the code that feeds it compile with `crowy_fp_contract_off`.
 
 ## Where is it

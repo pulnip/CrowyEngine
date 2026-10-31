@@ -9,7 +9,9 @@
 
 #include "Assert.hpp"
 #include "ClassRegistry.hpp"
+#include "Expected.hpp"
 #include "JsonLoader.hpp"
+#include "LogLocal.hpp"
 #include "PathUtil.hpp"
 #include "StandardFrame.hpp"
 #include "StringUtil.hpp"
@@ -17,7 +19,7 @@
 namespace
 {
     constexpr Crowy::StrView BuiltinFolder = "Builtin/";
-    constexpr Crowy::i64 MaterialVersion = 1;
+    constexpr Crowy::i64 MaterialVersion = 2;
     constexpr Crowy::CStr MaterialType = "material";
     constexpr Crowy::CStr MetadataKey = "metadata";
 
@@ -85,6 +87,50 @@ namespace
         catch(const std::exception& error) {
             return std::unexpected(Str(error.what()));
         }
+    }
+
+    const Crowy::AssetRef& missingTexture() {
+        static const auto ref =
+            Crowy::AssetRef::Parse("engine:Builtin/Missing").value();
+        return ref;
+    }
+
+    // a ref the data wrote: a failure is told and sampled as Missing
+    Crowy::MaterialTextureAsset loadSlot(
+        Crowy::RenderScene& scene,
+        Crowy::TextureStore& textures,
+        const Crowy::MaterialTexture& slot,
+        Crowy::TextureColorSpace space,
+        const Crowy::AssetRef& material
+    ) {
+        using namespace Crowy;
+
+        if(slot.texture.IsNone())
+            return {};
+
+        auto loaded = textures.Load(slot.texture);
+        if(!loaded) {
+            LOG_ERROR(
+                "material {}: {}; sampling {} in its place",
+                material.ToString(),
+                loaded.error(),
+                missingTexture().ToString()
+            );
+            loaded = textures.Load(missingTexture());
+        }
+
+        auto asset = valueOrThrow(std::move(loaded));
+        auto& texture = *asset->texture;
+        const auto row = scene.Textures().Add(
+            TextureResource{
+                .sampler = slot.sampler,
+                .readable = texture.GetReadableID(
+                    readViewOf(texture.GetFormat(), space, slot.sampler)
+                )
+            }
+        );
+
+        return {.asset = std::move(asset), .row = row};
     }
 
     std::expected<std::filesystem::path, Crowy::Str> fileOf(
@@ -188,7 +234,8 @@ namespace Crowy
     }
 
     std::expected<MaterialAsset, Str> loadMaterialAsset(
-        MaterialTable& materials,
+        RenderScene& scene,
+        TextureStore& textures,
         const AssetRoots& roots,
         const AssetRef& ref
     ) {
@@ -200,15 +247,32 @@ namespace Crowy
         if(!material)
             return std::unexpected(std::move(material).error());
 
-        return MaterialAsset{.row = materials.Add(std::move(*material))};
+        using enum TextureColorSpace;
+        MaterialAsset asset{
+            .albedo = loadSlot(scene, textures, desc->albedoMap, Srgb, ref),
+            .emissive = loadSlot(scene, textures, desc->emissiveMap, Srgb, ref)
+        };
+        material->maps = {
+            .albedo = asset.albedo.row,
+            .emissive = asset.emissive.row
+        };
+        asset.row = scene.Materials().Add(std::move(*material));
+
+        return asset;
     }
 
-    void releaseMaterialAsset(MaterialTable& materials, MaterialAsset asset) {
+    void releaseMaterialAsset(RenderScene& scene, MaterialAsset asset) {
         CROWY_ASSERT(
-            materials.IsValid(asset.row),
+            scene.Materials().IsValid(asset.row),
             "a material row left behind its store's back, as by "
             "RenderScene::Clear"
         );
-        materials.Remove(asset.row);
+        scene.Materials().Remove(asset.row);
+
+        // a retire of the textures may have taken the rows already
+        for(const auto row: {asset.albedo.row, asset.emissive.row}) {
+            if(scene.Textures().IsValid(row))
+                scene.Textures().Remove(row);
+        }
     }
 }
