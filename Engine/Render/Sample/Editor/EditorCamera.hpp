@@ -1,30 +1,19 @@
 #pragma once
 
 #include "Camera.hpp"
+#include "Geometry/Projection.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
 
 namespace Crowy
 {
-    struct EditorLens {
-        // vertical, radians
-        f32 fovY = 1.0f;
-        f32 nearZ = 0.3f;
-        f32 farZ = 1000.0f;
-        bool orthographic = false;
-        // half the vertical extent in meters, for an orthographic lens
-        f32 orthoHalfHeight = 10.0f;
-
-        bool operator==(const EditorLens&) const = default;
-    };
-
     // yaw clockwise from +Z, positive pitch looks down
     struct EditorCut {
         Str name;
         Vec3 position{};
         f32 yaw = 0.0f;
         f32 pitch = 0.0f;
-        EditorLens lens;
+        CameraLens lens;
 
         bool operator==(const EditorCut&) const = default;
     };
@@ -34,7 +23,7 @@ namespace Crowy
         Vec3 position{};
         f32 yaw = 0.0f;
         f32 pitch = 0.0f;
-        EditorLens lens;
+        CameraLens lens;
         f32 moveSpeed = 15.0f;
         f32 lookSensitivity = 0.003f;
 

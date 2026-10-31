@@ -504,22 +504,6 @@ TEST(GizmoDrag, EveryAimMakesOneUnit) {
     EXPECT_FALSE(aimGizmo(light, GizmoHandle::Scale));
 }
 
-TEST(GizmoMath, YawWrapsAndSnaps) {
-    EXPECT_FLOAT_EQ(wrapDegrees(370.0f), 10.0f);
-    EXPECT_FLOAT_EQ(wrapDegrees(-90.0f), 270.0f);
-    EXPECT_FLOAT_EQ(wrapDegrees(360.0f), 0.0f);
-    EXPECT_FLOAT_EQ(wrapDegrees(-360.0f), 0.0f);
-    EXPECT_FLOAT_EQ(wrapDegrees(270.0f), 270.0f);
-    const auto hair = wrapDegrees(-1e-6f);
-    EXPECT_GE(hair, 0.0f);
-    EXPECT_LT(hair, 360.0f);
-
-    EXPECT_FLOAT_EQ(snapTo(22.0f, 15.0f), 15.0f);
-    EXPECT_FLOAT_EQ(snapTo(-8.0f, 15.0f), -15.0f);
-    EXPECT_FLOAT_EQ(snapTo(7.0f, 15.0f), 0.0f);
-    EXPECT_FLOAT_EQ(snapTo(0.9f, 0.25f), 1.0f);
-}
-
 TEST(GizmoHover, ATurnedBoxsSquaresLeaveTheShaftsFree) {
     const auto corner = cornerCamera();
     for(const auto yaw: {0.0f, 90.0f, 180.0f, 270.0f}) {

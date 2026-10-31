@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <concepts>
 #include <type_traits>
 
@@ -30,5 +31,15 @@ namespace Crowy
     template<>
     constexpr Vec4 abs<Vec4>(Vec4 v) noexcept {
         return Vec4{.x = abs(v.x), .y = abs(v.y), .z = abs(v.z), .w = abs(v.w)};
+    }
+
+    inline f32 distanceToSegment(Vec2 p, Vec2 a, Vec2 b) noexcept {
+        const auto along = b - a;
+        const auto length = normSquared(along);
+        const auto t = length > 0.0f
+                           ? std::clamp(dot(p - a, along) / length, 0.0f, 1.0f)
+                           : 0.0f;
+
+        return norm(p - (a + along * t));
     }
 }

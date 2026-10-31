@@ -20,18 +20,6 @@ namespace
         return degrees * std::numbers::pi_v<f32> / 180.0f;
     }
 
-    Vec3 transformPoint(const Mat4& m, Vec3 p) {
-        const auto world = m * Vec4{p.x, p.y, p.z, 1.0f};
-
-        return Vec3{world.x, world.y, world.z};
-    }
-
-    Vec3 transformDirection(const Mat4& m, Vec3 d) {
-        const auto world = m * Vec4{d.x, d.y, d.z, 0.0f};
-
-        return Vec3{world.x, world.y, world.z};
-    }
-
     // empty allocations stand in for the pool's
     StageGeometry geometryOf(const LoadedStage& stage) {
         StageGeometry geometry;

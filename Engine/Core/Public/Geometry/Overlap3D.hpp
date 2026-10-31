@@ -10,6 +10,17 @@ namespace Crowy
         Vec3 halfScale = 0.5f * ones();
     };
 
+    // bits 0, 1 and 2 pick the +x, +y and +z sides
+    inline constexpr Vec3 cornerOf(const AABB3D& box, u32 corner) noexcept {
+        const Vec3 side{
+            (corner & 1u) != 0 ? 1.0f : -1.0f,
+            (corner & 2u) != 0 ? 1.0f : -1.0f,
+            (corner & 4u) != 0 ? 1.0f : -1.0f
+        };
+
+        return box.center + side * box.halfScale;
+    }
+
     // the box around `box` carried by an affine matrix (Arvo): the centre
     // moves with the matrix, each half extent sums the |columns| it spans
     inline constexpr AABB3D transformAABB3D(
@@ -27,11 +38,9 @@ namespace Crowy
                               magnitude(column.z)
                           };
         };
-        const auto center =
-            m * Vec4{box.center.x, box.center.y, box.center.z, 1.0f};
 
         return AABB3D{
-            .center = Vec3{center.x, center.y, center.z},
+            .center = transformPoint(m, box.center),
             .halfScale = reach(m[0], box.halfScale.x) +
                          reach(m[1], box.halfScale.y) +
                          reach(m[2], box.halfScale.z)

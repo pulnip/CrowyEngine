@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <numbers>
 #include <type_traits>
 
@@ -63,6 +65,13 @@ namespace Crowy
             lhs.z * rhs.x - lhs.x * rhs.z,
             lhs.x * rhs.y - lhs.y * rhs.x
         };
+    }
+    inline constexpr Vec3 projectOntoPlane(Vec3 v, Vec3 unitNormal) noexcept {
+        return v - unitNormal * dot(unitNormal, v);
+    }
+    // radians from `from` to `to`, both across `axis`, signed by it
+    inline f32 signedAngle(Vec3 from, Vec3 to, Vec3 axis) noexcept {
+        return std::atan2(dot(axis, cross(from, to)), dot(from, to));
     }
 
     inline constexpr f32 dot(Vec4 lhs, Vec4 rhs) noexcept {
@@ -137,14 +146,38 @@ namespace Crowy
         return Vec4{axis.x * s, axis.y * s, axis.z * s, std::cos(half)};
     }
 
+    // radians, x pitch, y yaw, z roll, composed as the fly camera's look:
+    // rotateY(y) * rotateX(x) * rotateZ(z)
+    inline Vec4 quatOf(Vec3 euler) noexcept {
+        return quat(rotateY(euler.y), quat(rotateX(euler.x), rotateZ(euler.z)));
+    }
+
+    // quatOf's inverse; the pitch stays within +-pi/2, and at either end the
+    // roll folds into the yaw
+    inline Vec3 eulerOf(Vec4 q) noexcept {
+        const auto m12 = 2.0f * (q.y * q.z - q.w * q.x);
+        const auto pitch = std::asin(std::clamp(-m12, -1.0f, 1.0f));
+        if(std::abs(m12) > 1.0f - 1e-6f) {
+            const auto m00 = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
+            const auto m20 = 2.0f * (q.x * q.z - q.w * q.y);
+            return Vec3{pitch, std::atan2(-m20, m00), 0.0f};
+        }
+
+        const auto m02 = 2.0f * (q.x * q.z + q.w * q.y);
+        const auto m22 = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
+        const auto m10 = 2.0f * (q.x * q.y + q.w * q.z);
+        const auto m11 = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
+
+        return Vec3{pitch, std::atan2(m02, m22), std::atan2(m10, m11)};
+    }
+
     inline constexpr auto right(Vec4 q) noexcept {
         auto e_x = Vec4{1.0f, 0.0f, 0.0f, 0.0f};
         auto r = rotate(e_x, q);
         return static_cast<Vec3>(r);
     }
     inline constexpr auto groundRight(Vec4 quat) noexcept {
-        auto f = right(quat);
-        return f - dot(f, unitY()) * unitY();
+        return projectOntoPlane(right(quat), unitY());
     }
     inline constexpr auto up(Vec4 q) noexcept {
         auto e_y = Vec4{0.0f, 1.0f, 0.0f, 0.0f};
@@ -157,8 +190,7 @@ namespace Crowy
         return static_cast<Vec3>(r);
     }
     inline constexpr auto groundForward(Vec4 quat) noexcept {
-        auto f = forward(quat);
-        return f - dot(f, unitY()) * unitY();
+        return projectOntoPlane(forward(quat), unitY());
     }
 
     inline constexpr Mat4 unitMat() noexcept {
@@ -227,6 +259,14 @@ namespace Crowy
         return Mat4{lhs * rhs[0], lhs * rhs[1], lhs * rhs[2], lhs * rhs[3]};
     }
 
+    // affine matrices only: both drop the w
+    inline constexpr Vec3 transformPoint(const Mat4& m, Vec3 p) noexcept {
+        return static_cast<Vec3>(m * toVec4(p, 1.0f));
+    }
+    inline constexpr Vec3 transformDirection(const Mat4& m, Vec3 d) noexcept {
+        return static_cast<Vec3>(m * toVec4(d, 0.0f));
+    }
+
     // left-handed
     inline auto lookAt(Vec3 eye, Vec3 target, Vec3 up) noexcept {
         auto f = normalize(target - eye);
@@ -278,7 +318,7 @@ namespace Crowy
             Vec4{1.0f, 0.0f, 0.0f, 0.0f},
             Vec4{0.0f, 1.0f, 0.0f, 0.0f},
             Vec4{0.0f, 0.0f, 1.0f, 0.0f},
-            Vec4{t.x, t.y, t.z, 1.0f}
+            toVec4(t, 1.0f)
         };
     }
 
@@ -379,5 +419,24 @@ namespace Crowy
 
     inline constexpr f64 toDegree(f64 radian) noexcept {
         return radian * (180.0 / std::numbers::pi);
+    }
+
+    // through f64: a multiply in f32 rounds differently
+    inline constexpr f32 radiansOf(f32 degrees) noexcept {
+        return static_cast<f32>(toRadian(degrees));
+    }
+    inline constexpr f32 degreesOf(f32 radians) noexcept {
+        return static_cast<f32>(toDegree(radians));
+    }
+
+    inline f32 snapTo(f32 value, f32 step) noexcept {
+        return std::round(value / step) * step;
+    }
+
+    // into [0, 360); a hair under 360 lands on 0, never on 360
+    inline f32 wrapDegrees(f32 degrees) noexcept {
+        const auto wrapped = degrees - 360.0f * std::floor(degrees / 360.0f);
+
+        return wrapped >= 360.0f ? 0.0f : wrapped;
     }
 }

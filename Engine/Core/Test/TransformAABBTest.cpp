@@ -16,17 +16,7 @@ namespace
         Vec3 low{1e30f, 1e30f, 1e30f};
         Vec3 high{-1e30f, -1e30f, -1e30f};
         for(u32 corner = 0; corner < 8; ++corner) {
-            const Vec3 sign{
-                corner & 1 ? 1.0f : -1.0f,
-                corner & 2 ? 1.0f : -1.0f,
-                corner & 4 ? 1.0f : -1.0f
-            };
-            const auto local = box.center + Vec3{
-                                                sign.x * box.halfScale.x,
-                                                sign.y * box.halfScale.y,
-                                                sign.z * box.halfScale.z
-                                            };
-            const auto world = m * Vec4{local.x, local.y, local.z, 1.0f};
+            const auto world = transformPoint(m, cornerOf(box, corner));
             low = Vec3{
                 std::min(low.x, world.x),
                 std::min(low.y, world.y),

@@ -63,12 +63,7 @@ namespace Crowy
     }
 
     Mat4 EditorCamera::Projection(f32 aspect) const noexcept {
-        if(lens.orthographic) {
-            const auto height = 2.0f * lens.orthoHalfHeight;
-            return orthographic(height * aspect, height, lens.nearZ, lens.farZ);
-        }
-
-        return perspective(lens.fovY, aspect, lens.nearZ, lens.farZ);
+        return projectionOf(lens, aspect);
     }
 
     void EditorCamera::Snap(const EditorCut& cut) noexcept {
@@ -102,11 +97,11 @@ namespace Crowy
         .AddProperty("yaw", &EditorCamera::yaw)
         .AddProperty("pitch", &EditorCamera::pitch)
         .SetUIRange(-MaxPitch, MaxPitch)
-        .AddProperty("fovY", &EditorCamera::lens, &EditorLens::fovY)
+        .AddProperty("fovY", &EditorCamera::lens, &CameraLens::fovY)
         .SetUIRange(0.2f, 2.4f)
-        .AddProperty("orthographic", &EditorCamera::lens, &EditorLens::orthographic)
-        .AddProperty("orthoHalfHeight", &EditorCamera::lens, &EditorLens::orthoHalfHeight)
-        .AddProperty("nearZ", &EditorCamera::lens, &EditorLens::nearZ)
+        .AddProperty("orthographic", &EditorCamera::lens, &CameraLens::orthographic)
+        .AddProperty("orthoHalfHeight", &EditorCamera::lens, &CameraLens::orthoHalfHeight)
+        .AddProperty("nearZ", &EditorCamera::lens, &CameraLens::nearZ)
     CROWY_STRUCT_END(EditorCamera)
     // clang-format on
 }

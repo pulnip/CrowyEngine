@@ -124,3 +124,15 @@ TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
     EXPECT_NE(fly.look.yaw, config.yaw);
     EXPECT_NE(fly.look.pitch, config.pitch);
 }
+
+// the inspector's pitch and yaw are camera.look's: one composition order
+TEST(FlyControl, YawPitchMatchesFlyRotation) {
+    for(const auto yaw: {-2.5f, -0.4f, 0.0f, 1.1f, 3.0f}) {
+        for(const auto pitch: {-1.5f, -0.3f, 0.0f, 0.1f, 1.2f}) {
+            const auto fly = flyRotation(yaw, pitch);
+            const auto euler = quatOf({pitch, yaw, 0.0f});
+            for(usize i = 0; i < 4; ++i)
+                EXPECT_NEAR(euler[i], fly[i], 1e-6f) << yaw << " " << pitch;
+        }
+    }
+}

@@ -33,10 +33,19 @@ These override the global CLAUDE.md where they differ.
   someone outside the repo reads goes in docs/, not in a header.
 - Format: every file is formatted whole (`clang-format -i`), new files
   too; `Tools/format_check.ps1` fails on drift anywhere under `Engine/`.
-- Shared text and range helpers live in Core: StringUtil.hpp (join,
+- Shared text, range and math helpers live in Core: StringUtil.hpp (join,
   parseNumber, replaceAll, consumePrefix, lower, equalsIgnoringCase,
   containsIgnoringCase, StringHashMap), PathUtil.hpp, FileUtil.hpp,
-  RangeUtil.hpp (stray, firstRepeat). Look there before writing a loop.
+  RangeUtil.hpp (stray, firstRepeat), HandleMap.hpp, LinearAlgebra.hpp
+  (radiansOf, degreesOf, wrapDegrees, snapTo, quatOf, eulerOf, signedAngle,
+  projectOntoPlane, transformPoint, transformDirection), Geometry/
+  (Projection.hpp, cornerOf, distanceToSegment). Look there before writing a
+  loop or an angle, quaternion or projection formula.
+- A helper that names no domain type and holds no caller's decision goes in
+  Core on first use. Split one that qualifies only in part: a caller's
+  rounding, units and formats stay with the caller.
+- Code handles what a data file or a caller reaches today; a case nothing
+  reaches is a note for the step that brings it, not a guard.
 - Anything that advances per frame is paced by time (the owner's display is
   120 Hz); goldens stay deterministic by counted frames.
 - A registration (`CROWY_STRUCT` from `ClassRegistry.hpp`,

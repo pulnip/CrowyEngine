@@ -9,6 +9,7 @@
 #include "EditorCamera.hpp"
 #include "EditorPick.hpp"
 #include "EnumUtil.hpp"
+#include "Geometry/GeoUtil.hpp"
 #include "Geometry/Ray3D.hpp"
 #include "LinearAlgebra.hpp"
 
@@ -68,17 +69,6 @@ namespace Crowy
         ScaleAxes = 1 << 3,
     };
 
-    inline f32 snapTo(f32 value, f32 step) noexcept {
-        return std::round(value / step) * step;
-    }
-
-    // into [0, 360); a hair under 360 lands on 0, never on 360
-    inline f32 wrapDegrees(f32 degrees) noexcept {
-        const auto wrapped = degrees - 360.0f * std::floor(degrees / 360.0f);
-
-        return wrapped >= 360.0f ? 0.0f : wrapped;
-    }
-
     inline constexpr bool isGizmoArrow(GizmoHandle handle) noexcept {
         return handle == GizmoHandle::MoveX || handle == GizmoHandle::MoveY ||
                handle == GizmoHandle::MoveZ;
@@ -108,17 +98,6 @@ namespace Crowy
     inline constexpr bool isGizmoSquare(GizmoHandle handle) noexcept {
         return handle != GizmoHandle::None && handle != GizmoHandle::Ring &&
                !isGizmoArrow(handle);
-    }
-
-    inline f32 distanceToSegment(Vec2 p, Vec2 a, Vec2 b) noexcept {
-        const auto along = b - a;
-        const auto length = dot(along, along);
-        const auto t = length > 0.0f
-                           ? std::clamp(dot(p - a, along) / length, 0.0f, 1.0f)
-                           : 0.0f;
-        const auto offset = p - (a + along * t);
-
-        return std::sqrt(dot(offset, offset));
     }
 
     std::optional<GizmoLayout> layoutGizmo(
