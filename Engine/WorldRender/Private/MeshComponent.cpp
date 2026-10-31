@@ -6,6 +6,7 @@
 #include "Expected.hpp"
 #include "Log.hpp"
 #include "MeshAsset.hpp"
+#include "PrimitiveActors.hpp"
 #include "PrimitiveRow.hpp"
 #include "System.hpp"
 #include "World.hpp"
@@ -67,8 +68,11 @@ namespace Crowy
             mesh.row = {};
         }
 
-        void releaseRows(RenderScene& scene, MeshComponent& mesh) {
+        void releaseRows(World& world, MeshComponent& mesh) {
             if(mesh.row.IsValid()) {
+                auto& scene = world.Service<RenderScene>();
+                if(auto* actors = world.FindService<PrimitiveActors>())
+                    actors->Unbind(mesh.row);
                 scene.Primitives().Remove(mesh.row);
                 scene.Meshes().Remove(mesh.resource);
             }
@@ -77,7 +81,7 @@ namespace Crowy
 
         void buildRows(World& world, ActorId actor, MeshComponent& mesh) {
             auto& scene = world.Service<RenderScene>();
-            releaseRows(scene, mesh);
+            releaseRows(world, mesh);
 
             mesh.builtMesh = mesh.mesh;
             mesh.builtMaterials = mesh.materials;
@@ -126,6 +130,8 @@ namespace Crowy
             mesh.row = scene.Primitives().Add(
                 PrimitiveSnapshot{.mesh = mesh.resource, .flags = flagsOf(mesh)}
             );
+            if(auto* actors = world.FindService<PrimitiveActors>())
+                actors->Bind(mesh.row, actor);
         }
 
         // a copy of a built component would share its rows
@@ -134,7 +140,7 @@ namespace Crowy
         }
 
         void removeRows(World& world, ActorId, MeshComponent& mesh) {
-            releaseRows(world.Service<RenderScene>(), mesh);
+            releaseRows(world, mesh);
         }
 
         void buildMeshes(World& world, const FrameTime&) {

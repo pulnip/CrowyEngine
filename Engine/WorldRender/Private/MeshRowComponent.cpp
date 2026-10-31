@@ -1,6 +1,7 @@
 #include "MeshRowComponent.hpp"
 
 #include "Component.hpp"
+#include "PrimitiveActors.hpp"
 #include "PrimitiveRow.hpp"
 #include "System.hpp"
 #include "World.hpp"
@@ -9,19 +10,23 @@ namespace Crowy
 {
     namespace
     {
-        void addRow(World& world, ActorId, MeshRowComponent& mesh) {
+        void addRow(World& world, ActorId actor, MeshRowComponent& mesh) {
             auto& scene = world.Service<RenderScene>();
             auto& prims = scene.Primitives();
 
             mesh.row = prims.Add(
                 PrimitiveSnapshot{.mesh = mesh.mesh, .flags = mesh.flags}
             );
+            if(auto* actors = world.FindService<PrimitiveActors>())
+                actors->Bind(mesh.row, actor);
         }
 
         void removeRow(World& world, ActorId, MeshRowComponent& mesh) {
             auto& scene = world.Service<RenderScene>();
             auto& prims = scene.Primitives();
 
+            if(auto* actors = world.FindService<PrimitiveActors>())
+                actors->Unbind(mesh.row);
             prims.Remove(mesh.row);
         }
 

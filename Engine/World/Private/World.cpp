@@ -46,6 +46,10 @@ namespace Crowy
         );
     }
 
+    ActorId World::Parent(ActorId actor) const noexcept {
+        return actorOf(hierarchy.GetParent(nodeOf(actor)));
+    }
+
     bool World::IsValid(ActorId actor) const noexcept {
         return hierarchy.IsValid(nodeOf(actor));
     }

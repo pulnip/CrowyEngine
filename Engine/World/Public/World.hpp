@@ -94,6 +94,8 @@ namespace Crowy
         void Destroy(ActorId actor);
         // an invalid parent makes the actor a root
         void SetParent(ActorId actor, ActorId parent);
+        // invalid for a root
+        ActorId Parent(ActorId actor) const noexcept;
         bool IsValid(ActorId actor) const noexcept;
 
         // what the actor is shown as, empty until set; two actors may share
@@ -228,6 +230,14 @@ namespace Crowy
             CROWY_ASSERT(it != services.end(), "no such service was provided");
 
             return *static_cast<T*>(it->second);
+        }
+
+        // nullptr when none was provided
+        template<typename T>
+        T* FindService() const noexcept {
+            const auto it = services.find(std::type_index(typeid(T)));
+
+            return it == services.end() ? nullptr : static_cast<T*>(it->second);
         }
 
         // runs every Phase in order, the FixedUpdate ones once per fixed tick

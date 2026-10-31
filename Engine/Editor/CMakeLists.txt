@@ -4,7 +4,10 @@ PUBLIC
     Crowy::Core
     Crowy::Platform
     Crowy::Reflection
+    Crowy::Remote
     Crowy::Render
+    Crowy::World
+    Crowy::WorldRender
 )
 
 if(CROWY_ENABLE_TEST)
