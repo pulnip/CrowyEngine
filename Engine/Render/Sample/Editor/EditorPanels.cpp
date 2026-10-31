@@ -254,7 +254,7 @@ namespace Crowy
         if(screen.marks[static_cast<usize>(Ring)].shown) {
             std::array<ImVec2, GizmoRingSamples> ring;
             for(usize i = 0; i < ring.size(); ++i)
-                ring[i] = point(screen.ring[i]);
+                ring[i] = point(screen.rings[*gizmoRingIndex(Ring)][i]);
             draw->AddPolyline(
                 ring.data(),
                 static_cast<int>(ring.size()),

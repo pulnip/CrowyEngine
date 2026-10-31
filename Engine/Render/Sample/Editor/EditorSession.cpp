@@ -23,7 +23,8 @@ namespace Crowy
             GizmoAim GizmoView::* aim = nullptr;
         };
 
-        constexpr std::array<GizmoViewAim, GizmoHandleCount - 1> GizmoViewAims{{
+        // a Stage row turns about Y alone, so the X and Z rings have no aim
+        constexpr std::array<GizmoViewAim, GizmoHandleCount - 3> GizmoViewAims{{
             {GizmoHandle::MoveX, "moveX", &GizmoView::moveX},
             {GizmoHandle::MoveY, "moveY", &GizmoView::moveY},
             {GizmoHandle::MoveZ, "moveZ", &GizmoView::moveZ},
@@ -36,11 +37,15 @@ namespace Crowy
         static_assert(std::ranges::all_of(
             std::views::iota(usize{1}, GizmoHandleCount),
             [](usize handle) {
-                return std::ranges::contains(
-                    GizmoViewAims,
-                    static_cast<GizmoHandle>(handle),
-                    &GizmoViewAim::handle
-                );
+                const auto named = static_cast<GizmoHandle>(handle);
+
+                return named == GizmoHandle::RingX ||
+                       named == GizmoHandle::RingZ ||
+                       std::ranges::contains(
+                           GizmoViewAims,
+                           named,
+                           &GizmoViewAim::handle
+                       );
             }
         ));
 
@@ -298,7 +303,7 @@ namespace Crowy
             camera,
             viewport,
             *gizmoRow->position,
-            yaw,
+            rotateY(radiansOf(yaw)),
             gizmoRow->parts
         );
     }

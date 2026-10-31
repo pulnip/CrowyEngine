@@ -16,20 +16,32 @@ namespace Crowy
         // the ray in the primitive's model space; t keeps its world meaning
         Ray3D intoModel(const Ray3D& ray, const Mat4& localToWorld) {
             const auto toModel = inverseAffine(localToWorld);
-            const auto& o = ray.origin;
-            const auto& d = ray.direction;
 
             return Ray3D{
-                .origin =
-                    static_cast<Vec3>(toModel * Vec4{o.x, o.y, o.z, 1.0f}),
-                .direction =
-                    static_cast<Vec3>(toModel * Vec4{d.x, d.y, d.z, 0.0f})
+                .origin = transformPoint(toModel, ray.origin),
+                .direction = transformDirection(toModel, ray.direction)
             };
+        }
+
+        // a material that culls nothing shows its back faces, so they pick
+        bool pickFrontOnly(
+            const RenderScene& scene,
+            const MeshResource& mesh,
+            usize slot
+        ) {
+            if(slot >= mesh.materials.size())
+                return true;
+
+            const auto& material =
+                scene.Materials().GetRef(mesh.materials[slot]);
+
+            return material.pipeline.rasterizer.cullMode != RHICullMode::None;
         }
 
         std::optional<f32> nearestTriangle(
             const Ray3D& ray,
-            const MeshData& mesh
+            const MeshData& mesh,
+            bool frontOnly
         ) {
             std::optional<f32> best;
             const auto& v = mesh.vertices;
@@ -38,7 +50,8 @@ namespace Crowy
                     ray,
                     v[mesh.indices[i]].position,
                     v[mesh.indices[i + 1]].position,
-                    v[mesh.indices[i + 2]].position
+                    v[mesh.indices[i + 2]].position,
+                    frontOnly
                 );
                 if(t && (!best || *t < *best))
                     best = t;
@@ -110,8 +123,14 @@ namespace Crowy
 
             const auto handle = scene.Primitives().HandleAt(row);
             const auto modelRay = intoModel(ray, rows[row].localToWorld);
-            for(const auto* mesh: meshes(handle)) {
-                const auto t = nearestTriangle(modelRay, *mesh);
+            const auto& resource = scene.Meshes().GetRef(rows[row].mesh);
+            const auto slots = meshes(handle);
+            for(usize slot = 0; slot < slots.size(); ++slot) {
+                const auto t = nearestTriangle(
+                    modelRay,
+                    *slots[slot],
+                    pickFrontOnly(scene, resource, slot)
+                );
                 if(t && (!best || *t < best->distance))
                     best = PickHit{.primitive = handle, .distance = *t};
             }

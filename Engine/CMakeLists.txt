@@ -33,3 +33,5 @@ add_subdirectory(WorldRender)
 add_subdirectory(WorldEffects)
 # 3-3) the World saved as a scene file
 add_subdirectory(Scene)
+# 3-4) the editor's camera, picking and gizmo
+add_subdirectory(Editor)

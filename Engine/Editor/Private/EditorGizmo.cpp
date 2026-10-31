@@ -1,5 +1,6 @@
 #include "EditorGizmo.hpp"
 
+#include <array>
 #include <cmath>
 
 #include "ClassRegistry.hpp"
@@ -11,7 +12,7 @@ namespace Crowy
         const EditorCamera& camera,
         Vec2 viewport,
         Vec3 pivot,
-        f32 yawDegrees,
+        Vec4 rotation,
         GizmoParts parts
     ) {
         // an unforeshortened arrow spans this share of the viewport's half
@@ -20,14 +21,14 @@ namespace Crowy
         // |view . axis| above it: the axis points at the eye and its arrow
         // hides
         constexpr auto EndOn = 0.99f;
-        // |view . up| below it: the ring is seen within 10 degrees of edge-on
+        // |view . axis| below it: a ring is seen within 10 degrees of edge-on
         constexpr auto EdgeOn = 0.17f;
 
         if(!(viewport.x > 0.0f && viewport.y > 0.0f))
             return std::nullopt;
 
-        const auto rotation = camera.Rotation();
-        const auto ahead = forward(rotation);
+        const auto eye = camera.Rotation();
+        const auto ahead = forward(eye);
         const auto& lens = camera.lens;
         // depth, not distance, so the size holds off-center too
         const auto depth = dot(pivot - camera.position, ahead);
@@ -46,24 +47,22 @@ namespace Crowy
             .viewProj = camera.ViewProj(viewport.x / viewport.y),
             .viewport = viewport
         };
-        const auto yaw = static_cast<f32>(toRadian(yawDegrees));
-        layout.axes = {
-            Vec3{std::cos(yaw), 0.0f, -std::sin(yaw)},
-            unitY(),
-            Vec3{std::sin(yaw), 0.0f, std::cos(yaw)}
-        };
+        layout.axes = {right(rotation), up(rotation), forward(rotation)};
         layout.view =
             lens.orthographic ? ahead : normalize(pivot - camera.position);
 
-        // straight down or up the level cross vanishes; the screen's left
+        // looking along a ring's axis its cross vanishes; the screen's left
         // stands in
-        const auto across = cross(layout.view, unitY());
-        layout.side =
-            normSquared(across) > 1e-6f ? normalize(across) : -right(rotation);
-        const auto upRight = right(rotation) + up(rotation);
-        layout.diagonal =
-            normalize(upRight - layout.view * dot(upRight, layout.view));
-        layout.ringEdgeOn = std::abs(layout.view.y) < EdgeOn;
+        const std::array<Vec3, 3> worldAxes{unitX(), unitY(), unitZ()};
+        for(usize i = 0; i < worldAxes.size(); ++i) {
+            const auto across = cross(layout.view, worldAxes[i]);
+            layout.ringSides[i] =
+                normSquared(across) > 1e-6f ? normalize(across) : -right(eye);
+            layout.ringEdgeOn[i] =
+                std::abs(dot(layout.view, worldAxes[i])) < EdgeOn;
+        }
+        const auto upRight = right(eye) + up(eye);
+        layout.diagonal = normalize(projectOntoPlane(upRight, layout.view));
 
         using enum GizmoHandle;
         const auto show = [&](GizmoHandle handle, bool shown) {
@@ -78,6 +77,8 @@ namespace Crowy
         show(MoveY, moves && faces(unitY()));
         show(MoveZ, moves && faces(unitZ()));
         show(Ring, hasFlag(parts, GizmoParts::Turn));
+        show(RingX, hasFlag(parts, GizmoParts::TurnX));
+        show(RingZ, hasFlag(parts, GizmoParts::TurnZ));
         show(Scale, hasFlag(parts, GizmoParts::Scale));
         show(ScaleX, perAxis && faces(layout.axes[0]));
         show(ScaleY, perAxis && faces(layout.axes[1]));

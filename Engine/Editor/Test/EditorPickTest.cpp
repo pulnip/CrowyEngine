@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include "EditorCamera.hpp"
 #include "EditorPick.hpp"
 #include "MeshGenerator.hpp"
 
@@ -25,8 +26,8 @@ namespace
     }
 
     Vec2 projectToPixel(const EditorCamera& camera, Vec3 point) {
-        const auto clip = camera.ViewProj(Viewport.x / Viewport.y) *
-                          Vec4{point.x, point.y, point.z, 1.0f};
+        const auto clip =
+            camera.ViewProj(Viewport.x / Viewport.y) * toVec4(point, 1.0f);
         const auto ndcX = clip.x / clip.w;
         const auto ndcY = clip.y / clip.w;
 
@@ -64,6 +65,14 @@ namespace
                 quads.push_back(primitive);
 
             return primitive;
+        }
+
+        void MakeDoubleSided(PrimitiveHandle primitive) {
+            MaterialResource material;
+            material.pipeline.rasterizer.cullMode = RHICullMode::None;
+            scene.Meshes()
+                .GetRef(scene.Primitives().GetRef(primitive).mesh)
+                .materials = {scene.Materials().Add(std::move(material))};
         }
 
         PickMeshes Meshes() const {
@@ -212,6 +221,18 @@ TEST(EditorPick, AQuadIsPickedFromItsFrontOnly) {
     EXPECT_FALSE(s.Pick(
         Ray3D{.origin = {0.2f, 0.1f, 8.0f}, .direction = {0.0f, 0.0f, -1.0f}}
     ));
+}
+
+TEST(EditorPick, ADoubleSidedQuadIsPickedFromBehindToo) {
+    Scene s;
+    const auto quad = s.Add(s.quad, {0.0f, 0.0f, 4.0f}, {2.0f, 2.0f, 1.0f});
+    s.MakeDoubleSided(quad);
+
+    const auto back = s.Pick(
+        Ray3D{.origin = {0.2f, 0.1f, 8.0f}, .direction = {0.0f, 0.0f, -1.0f}}
+    );
+    ASSERT_TRUE(back.has_value());
+    EXPECT_EQ(back->primitive, quad);
 }
 
 TEST(EditorPick, AHiddenRowIsNotPicked) {

@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include "EditorCamera.hpp"
 #include "EditorGizmo.hpp"
 #include "ExpectNear.hpp"
 
@@ -20,6 +21,7 @@ namespace
         combine(GizmoParts::Move, GizmoParts::Turn, GizmoParts::Scale);
     constexpr auto BoxParts =
         combine(GizmoParts::Move, GizmoParts::Turn, GizmoParts::ScaleAxes);
+    constexpr auto RingParts = combine(GizmoParts::Move, GizmoParts::Turns);
 
     usize at(GizmoHandle handle) {
         return static_cast<usize>(handle);
@@ -84,7 +86,14 @@ namespace
         f32 yaw = 0.0f,
         GizmoParts parts = AllParts
     ) {
-        return layoutGizmo(camera, Viewport, pivot, yaw, parts).value();
+        return layoutGizmo(
+                   camera,
+                   Viewport,
+                   pivot,
+                   rotateY(radians(yaw)),
+                   parts
+        )
+            .value();
     }
 
     Vec2 pixelOf(const GizmoLayout& layout, Vec3 point) {
@@ -163,24 +172,39 @@ TEST(GizmoLayout, AnArrowSeenEndOnIsHidden) {
 TEST(GizmoLayout, NoneBehindTheEyeOrAtTheNearPlane) {
     const auto level = levelCamera();
     EXPECT_FALSE(
-        layoutGizmo(level, Viewport, {0.0f, 0.0f, -5.0f}, 0.0f, AllParts)
+        layoutGizmo(level, Viewport, {0.0f, 0.0f, -5.0f}, unitQuat(), AllParts)
     );
     EXPECT_FALSE(
-        layoutGizmo(level, Viewport, {0.0f, 0.0f, 0.33f}, 0.0f, AllParts)
+        layoutGizmo(level, Viewport, {0.0f, 0.0f, 0.33f}, unitQuat(), AllParts)
     );
     EXPECT_TRUE(
-        layoutGizmo(level, Viewport, {0.0f, 0.0f, 0.34f}, 0.0f, AllParts)
+        layoutGizmo(level, Viewport, {0.0f, 0.0f, 0.34f}, unitQuat(), AllParts)
     );
     EXPECT_FALSE(layoutGizmo(
         planCamera(),
         Viewport,
         {0.0f, 130.0f, 0.0f},
-        0.0f,
+        unitQuat(),
         AllParts
     ));
-    EXPECT_FALSE(
-        layoutGizmo(level, {0.0f, 0.0f}, {0.0f, 0.0f, 10.0f}, 0.0f, AllParts)
-    );
+    EXPECT_FALSE(layoutGizmo(
+        level,
+        {0.0f, 0.0f},
+        {0.0f, 0.0f, 10.0f},
+        unitQuat(),
+        AllParts
+    ));
+}
+
+// the squares measure along the rotation's own axes, not only a yaw's
+TEST(GizmoLayout, AxesFollowAnArbitraryRotation) {
+    const auto q =
+        normalize(quat(rotateY(0.7f), quat(rotateX(-0.4f), rotateZ(1.1f))));
+    const auto layout =
+        layoutGizmo(downCamera(), Viewport, {}, q, BoxParts).value();
+    const auto columns = rotateMat(q);
+    for(usize i = 0; i < 3; ++i)
+        expectNear(layout.axes[i], static_cast<Vec3>(columns[i]), 1e-5f);
 }
 
 TEST(GizmoHover, TheNearestHandleWithinSixPoints) {
@@ -273,7 +297,7 @@ TEST(GizmoDrag, AnAxisDragMovesByTheAnalyticDistance) {
 TEST(GizmoDrag, AQuarterOfTheRingIsNinetyDegrees) {
     const auto down = downCamera();
     const auto layout = layoutOf(down, {0.0f, 0.0f, 0.0f});
-    ASSERT_FALSE(layout.ringEdgeOn);
+    ASSERT_FALSE(layout.ringEdgeOn[1]);
     const auto radius = GizmoRingRadius * layout.length;
     // grabbed at +X: the front (-Z) is a quarter turn clockwise seen from above
     const auto ring = [&](f32 degrees) {
@@ -307,12 +331,66 @@ TEST(GizmoDrag, AQuarterOfTheRingIsNinetyDegrees) {
     );
 }
 
+// grabbed at +Y, a quarter turn about +X carries it to +Z
+TEST(GizmoDrag, AQuarterOfTheXRingIsNinetyDegrees) {
+    const auto corner = cornerCamera();
+    const auto layout = layoutOf(corner, {}, 0.0f, GizmoParts::Turns);
+    ASSERT_FALSE(layout.ringEdgeOn[0]);
+    const auto radius = GizmoRingRadius * layout.length;
+    const auto turn = [&](Vec3 from, Vec3 to) {
+        const auto drag = grabGizmo(
+                              layout,
+                              GizmoHandle::RingX,
+                              rayAt(corner, pixelOf(layout, from * radius))
+        )
+                              .value();
+        return dragGizmo(
+                   drag,
+                   rayAt(corner, pixelOf(layout, to * radius)),
+                   false
+        )
+            .value()
+            .turn;
+    };
+
+    EXPECT_NEAR(turn(unitY(), unitZ()), 90.0f, 0.01f);
+    EXPECT_NEAR(turn(unitY(), -unitZ()), -90.0f, 0.01f);
+    EXPECT_NEAR(turn(unitZ(), -unitY()), 90.0f, 0.01f);
+}
+
+// grabbed at +X, a quarter turn about +Z carries it to +Y
+TEST(GizmoDrag, AQuarterOfTheZRingIsNinetyDegrees) {
+    const auto corner = cornerCamera();
+    const auto layout = layoutOf(corner, {}, 0.0f, GizmoParts::Turns);
+    ASSERT_FALSE(layout.ringEdgeOn[2]);
+    const auto radius = GizmoRingRadius * layout.length;
+    const auto turn = [&](Vec3 from, Vec3 to) {
+        const auto drag = grabGizmo(
+                              layout,
+                              GizmoHandle::RingZ,
+                              rayAt(corner, pixelOf(layout, from * radius))
+        )
+                              .value();
+        return dragGizmo(
+                   drag,
+                   rayAt(corner, pixelOf(layout, to * radius)),
+                   false
+        )
+            .value()
+            .turn;
+    };
+
+    EXPECT_NEAR(turn(unitX(), unitY()), 90.0f, 0.01f);
+    EXPECT_NEAR(turn(unitX(), -unitY()), -90.0f, 0.01f);
+    EXPECT_NEAR(turn(unitY(), -unitX()), 90.0f, 0.01f);
+}
+
 // seen within 10 degrees of its plane the ring turns 90 degrees per radius
 TEST(GizmoDrag, AnEdgeOnRingTurnsByTheDragsLength) {
     const auto level = levelCamera();
     const Vec3 pivot{0.0f, 0.0f, 10.0f};
     const auto layout = layoutOf(level, pivot);
-    ASSERT_TRUE(layout.ringEdgeOn);
+    ASSERT_TRUE(layout.ringEdgeOn[1]);
     const auto radius = GizmoRingRadius * layout.length;
 
     EXPECT_NEAR(
@@ -349,7 +427,7 @@ TEST(GizmoDrag, AnEdgeOnRingTurnsByTheDragsLength) {
 
     // lamp-ne from the street cut sits 3.3 degrees below the eye
     EXPECT_TRUE(
-        layoutOf(streetCamera(), {10.5f, 0.15f, 7.0f}, 180.0f).ringEdgeOn
+        layoutOf(streetCamera(), {10.5f, 0.15f, 7.0f}, 180.0f).ringEdgeOn[1]
     );
 }
 
@@ -451,6 +529,8 @@ TEST(GizmoDrag, EveryAimMakesOneUnit) {
         {levelCamera, {0.0f, 0.0f, 10.0f}, 0.0f, AllParts},
         {streetCamera, {10.5f, 0.15f, 7.0f}, 180.0f, AllParts},
         {downCamera, {0.0f, 0.0f, 0.0f}, 0.0f, GizmoParts::Move},
+        {cornerCamera, {0.0f, 0.0f, 0.0f}, 0.0f, RingParts},
+        {cornerCamera, {1.0f, 0.5f, 2.0f}, 0.0f, RingParts},
     };
 
     for(usize c = 0; c < cases.size(); ++c) {
@@ -475,8 +555,9 @@ TEST(GizmoDrag, EveryAimMakesOneUnit) {
             if(isGizmoArrow(handle)) {
                 expectNear(edit->offset, gizmoAxis(layout, handle), 1e-3f);
             }
-            else if(handle == GizmoHandle::Ring) {
-                EXPECT_NEAR(edit->turn, 90.0f, 0.01f) << "case " << c;
+            else if(isGizmoRing(handle)) {
+                EXPECT_NEAR(edit->turn, 90.0f, 0.01f)
+                    << "case " << c << " handle " << i;
             }
             else {
                 const auto& f = edit->factor;
@@ -502,6 +583,44 @@ TEST(GizmoDrag, EveryAimMakesOneUnit) {
         layoutOf(downCamera(), {0.0f, 0.0f, 0.0f}, 0.0f, GizmoParts::Move);
     EXPECT_FALSE(aimGizmo(light, GizmoHandle::Ring));
     EXPECT_FALSE(aimGizmo(light, GizmoHandle::Scale));
+}
+
+// the Y and X rings cross at +Z: beside the crossing the ring that runs on
+// there wins, and on it the earlier handle
+TEST(GizmoHover, TheNearestRingWinsWhereRingsCross) {
+    const auto layout = layoutOf(cornerCamera(), {}, 0.0f, GizmoParts::Turns);
+    const auto screen = projectGizmo(layout);
+    const auto atZ = unitZ() * (GizmoRingRadius * layout.length);
+    const auto crossing = pixelOf(layout, atZ);
+    // the Y ring leaves +Z along X, the X ring along Y
+    const auto alongYRing =
+        normalize(pixelOf(layout, atZ + unitX() * 0.01f) - crossing);
+    const auto alongXRing =
+        normalize(pixelOf(layout, atZ + unitY() * 0.01f) - crossing);
+
+    EXPECT_EQ(hoverGizmo(screen, crossing), GizmoHandle::Ring);
+    EXPECT_EQ(
+        hoverGizmo(screen, crossing + alongYRing * 4.0f),
+        GizmoHandle::Ring
+    );
+    EXPECT_EQ(
+        hoverGizmo(screen, crossing + alongXRing * 4.0f),
+        GizmoHandle::RingX
+    );
+}
+
+// the X and Z rings lay a box's axes along the + arrows
+TEST(GizmoHover, ATiltedBoxsSquaresLeaveTheShaftsFree) {
+    for(const auto q: {rotateZ(radians(90.0f)), rotateX(radians(-90.0f))}) {
+        const auto layout =
+            layoutGizmo(cornerCamera(), Viewport, {}, q, BoxParts).value();
+        const auto screen = projectGizmo(layout);
+        for(const auto arrow:
+            {GizmoHandle::MoveX, GizmoHandle::MoveY, GizmoHandle::MoveZ}) {
+            const auto& mark = screen.marks[at(arrow)];
+            EXPECT_EQ(hoverGizmo(screen, (mark.from + mark.to) * 0.5f), arrow);
+        }
+    }
 }
 
 TEST(GizmoHover, ATurnedBoxsSquaresLeaveTheShaftsFree) {
