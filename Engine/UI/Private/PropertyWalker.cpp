@@ -17,13 +17,18 @@ namespace
         PropertyTarget::Writer write;
     };
 
+    struct BuildContext {
+        const DirtyCallback& onDirty;
+        const ValueOverrides& overrides;
+    };
+
     Widget makeValue(
         Str label,
         const TypeOps& type,
         const PropertyMeta& meta,
         const ValueTarget& target,
         const void* member,
-        const DirtyCallback& onDirty
+        const BuildContext& context
     );
 
     ValueTarget memberOf(
@@ -57,7 +62,7 @@ namespace
         const ValueTarget& owner,
         const void* seed,
         const TypeDesc& desc,
-        const DirtyCallback& onDirty
+        const BuildContext& context
     ) {
         for(const auto* prop: desc.PropertiesInChain()) {
             const auto* accessor = prop->accessor.get();
@@ -67,7 +72,7 @@ namespace
                 prop->meta,
                 memberOf(owner, accessor),
                 accessor->Get(seed),
-                onDirty
+                context
             ));
         }
     }
@@ -140,9 +145,28 @@ namespace
         const PropertyMeta& meta,
         const ValueTarget& target,
         const void* member,
-        const DirtyCallback& onDirty
+        const BuildContext& context
     ) {
         const auto* info = &type;
+        const auto& onDirty = context.onDirty;
+
+        if(const auto found = context.overrides.find(info);
+           found != context.overrides.end()) {
+            return found->second(
+                ValueSite{
+                    .label = std::move(label),
+                    .value = member,
+                    .edit = [target, onDirty](const ValueChange& change) {
+                        const auto object = target.write();
+                        if(object == nullptr)
+                            return;
+
+                        change(object);
+                        onDirty();
+                    }
+                }
+            );
+        }
 
         if(info == getTypeOps<f32>()) {
             if(meta.uiRange.has_value()) {
@@ -171,6 +195,17 @@ namespace
         }
         if(info == getTypeOps<Vec4>()) {
             return makeField<Vec4, Float4Field>(label, target, member, onDirty);
+        }
+        if(info == getTypeOps<Quat>()) {
+            return Float4Field{
+                .label = std::move(label),
+                .onChanged = editThrough<Vec4>(
+                    target,
+                    onDirty,
+                    [](void* field, Vec4 v) { *static_cast<Quat*>(field) = v; }
+                ),
+                .v = *static_cast<const Quat*>(member)
+            };
         }
         if(info == getTypeOps<Str>()) {
             return SearchBar{
@@ -215,7 +250,7 @@ namespace
         }
         if(const auto* nested = nestedDesc(type)) {
             std::vector<Widget> children;
-            appendProperties(children, target, member, *nested, onDirty);
+            appendProperties(children, target, member, *nested, context);
 
             return Collapsing{
                 .label = std::move(label),
@@ -239,7 +274,7 @@ namespace
                     meta,
                     elementOf(target, *list, i),
                     list->constElement(member, i),
-                    onDirty
+                    context
                 ));
             }
             children.push_back(resizeButton("+", target, *list, 1, onDirty));
@@ -268,7 +303,8 @@ namespace Crowy
     Widget buildPropertyTree(
         CStr label,
         PropertyTarget target,
-        DirtyCallback onDirty
+        DirtyCallback onDirty,
+        const ValueOverrides& overrides
     ) {
         // getDesc made an empty desc: the registration was never linked
         CROWY_ASSERT(
@@ -287,7 +323,13 @@ namespace Crowy
 
         std::vector<Widget> children;
         const ValueTarget owner{.write = [target] { return target.Write(); }};
-        appendProperties(children, owner, seed, target.Desc(), onDirty);
+        appendProperties(
+            children,
+            owner,
+            seed,
+            target.Desc(),
+            BuildContext{onDirty, overrides}
+        );
 
         // the address as of this build; a row that moves before the next
         // build only loses its open state
@@ -303,12 +345,14 @@ namespace Crowy
         CStr label,
         void* target,
         const TypeDesc& desc,
-        DirtyCallback onDirty
+        DirtyCallback onDirty,
+        const ValueOverrides& overrides
     ) {
         return buildPropertyTree(
             label,
             PropertyTarget::Fixed(target, desc),
-            std::move(onDirty)
+            std::move(onDirty),
+            overrides
         );
     }
 }

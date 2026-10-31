@@ -270,9 +270,15 @@ namespace Crowy
     }
 
     template<>
+    std::optional<Quat> DOM::Value::getImpl<Quat>() const noexcept {
+        const auto v = getImpl<Vec4>();
+        return v.has_value() ? std::optional<Quat>(*v) : std::nullopt;
+    }
+
+    template<>
     std::optional<Transform> DOM::Value::getImpl<Transform>() const noexcept {
         auto pos = get<Vec3>("position");
-        auto rot = get<Vec4>("rotation");
+        auto rot = get<Quat>("rotation");
         auto scale = get<Vec3>("scale");
         if(!pos || !rot || !scale) {
             return std::nullopt;
@@ -315,6 +321,11 @@ namespace Crowy
         a.emplace_back(v.w);
 
         return a;
+    }
+
+    template<>
+    DOM::Value DOM::Value::fromImpl<Quat>(const Quat& v) {
+        return fromImpl<Vec4>(v);
     }
 
     template<>

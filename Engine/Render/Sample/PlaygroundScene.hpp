@@ -8,6 +8,7 @@
 #include "CommandPort.hpp"
 #include "EditorCamera.hpp"
 #include "EnumUtil.hpp"
+#include "EulerInspector.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
@@ -150,6 +151,8 @@ namespace Crowy
 
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
+        // before the panel, whose rotation fields point at it
+        EulerInspector eulerInspector;
         Widget panel = Column({});
         std::vector<InspectedTarget> inspected;
         // what the panel's debug section was built from

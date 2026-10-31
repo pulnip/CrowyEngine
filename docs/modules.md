@@ -41,7 +41,7 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `WorldRender` | mesh, light and camera components, extracted into a `RenderScene` and a `CameraSnapshot`; `MeshComponent` names its assets, `MeshRowComponent` draws a row the code built; `PrimitiveActors`, when the World provides it, names the actor each row draws | `MeshComponent.hpp`, `MeshRowComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp`, `PrimitiveActors.hpp` | Test |
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
 | `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in meshes and two material files opened and drawn |
-| `Editor` | editing a World: the session that selects actors by `ActorId` and moves them, the camera outside the World, picking against a `RenderScene`, the gizmo's layout, hover and drag | `WorldEditor.hpp`, `EditorGizmo.hpp`, `EditorPick.hpp`, `EditorCamera.hpp` | Test |
+| `Editor` | editing a World: the session that selects actors by `ActorId` and moves them, the camera outside the World, picking against a `RenderScene`, the gizmo's layout, hover and drag | `WorldEditor.hpp`, `EulerInspector.hpp`, `EditorGizmo.hpp`, `EditorPick.hpp`, `EditorCamera.hpp` | Test |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |
 | `Content` | image, mip, mesh and model (FBX) loading, image writing and comparison | `ImageLoader.hpp`, `MeshData.hpp`, `ModelLoader.hpp`, `ImageCompare.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
 

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "ClassRegistry.hpp"
+#include "LinearAlgebra.hpp"
 #include "PropertyWalker.hpp"
 
 namespace Crowy
@@ -30,6 +31,18 @@ struct WalkerBase {
 CROWY_STRUCT(WalkerBase)
     .AddProperty("exposure", &WalkerBase::exposure)
 CROWY_STRUCT_END(WalkerBase)
+// clang-format on
+
+struct WalkerTurned {
+    Quat rotation = unitQuat();
+    Vec4 tint = Vec4{0.1f, 0.2f, 0.3f, 0.4f};
+};
+
+// clang-format off
+CROWY_STRUCT(WalkerTurned)
+    .AddProperty("rotation", &WalkerTurned::rotation)
+    .AddProperty("tint", &WalkerTurned::tint)
+CROWY_STRUCT_END(WalkerTurned)
 // clang-format on
 
 // non-contiguous, and negative in a signed underlying type: the two things
@@ -473,4 +486,90 @@ TEST(PropertyWalker, AListEditToAGoneTargetIsDropped) {
     EXPECT_EQ(list.weights, (std::vector<f32>{0.5f, 1.0f}));
     EXPECT_EQ(list.parts[0].amount, 0.25f);
     EXPECT_EQ(dirty, 0);
+}
+
+namespace
+{
+    Widget buildTurned(
+        WalkerTurned& fixture,
+        const ValueOverrides& overrides = {}
+    ) {
+        return buildPropertyTree(
+            "Turned",
+            &fixture,
+            *getDesc<WalkerTurned>(),
+            [] {},
+            overrides
+        );
+    }
+}
+
+TEST(PropertyWalker, AQuatShowsItsFourNumbersLikeAnyVec4) {
+    ASSERT_TRUE(IsWalkerTurnedRegistered);
+    WalkerTurned fixture;
+    fixture.rotation = Quat{0.5f, 0.25f, -0.5f, 0.75f};
+    UIContext ctx;
+
+    auto tree = buildTurned(fixture);
+    auto& root = std::get<Collapsing>(tree);
+    auto& rotation = std::get<Float4Field>(root.children[0]);
+    EXPECT_EQ(rotation.v, (Vec4{0.5f, 0.25f, -0.5f, 0.75f}));
+
+    rotation.onChanged(ctx, Vec4{1.0f, 2.0f, 3.0f, 4.0f});
+    EXPECT_EQ(fixture.rotation, (Quat{1.0f, 2.0f, 3.0f, 4.0f}));
+}
+
+TEST(PropertyWalker, AnOverrideReplacesTheWidgetOfItsTypeOnly) {
+    WalkerTurned fixture;
+    UIContext ctx;
+    int dirty = 0;
+    Str seenLabel;
+    ValueOverrides overrides;
+    overrides[getTypeOps<Quat>()] = [&](const ValueSite& site) {
+        seenLabel = site.label;
+        return Text{.data = "replaced"};
+    };
+
+    auto tree = buildPropertyTree(
+        "Turned",
+        &fixture,
+        *getDesc<WalkerTurned>(),
+        [&dirty] { ++dirty; },
+        overrides
+    );
+    auto& root = std::get<Collapsing>(tree);
+    EXPECT_EQ(std::get<Text>(root.children[0]).data, "replaced");
+    EXPECT_EQ(seenLabel, "rotation");
+    EXPECT_TRUE(std::holds_alternative<Float4Field>(root.children[1]));
+    EXPECT_EQ(dirty, 0);
+}
+
+TEST(PropertyWalker, AnOverridesEditWritesTheValueAndNotifies) {
+    WalkerTurned fixture;
+    WalkerTurned* current = &fixture;
+    int dirty = 0;
+    ValueEdit edit;
+    ValueOverrides overrides;
+    overrides[getTypeOps<Quat>()] = [&](const ValueSite& site) {
+        edit = site.edit;
+        return Text{};
+    };
+    auto tree = buildPropertyTree(
+        "Turned",
+        PropertyTarget(
+            [&current]() -> const void* { return current; },
+            [&current]() -> void* { return current; },
+            *getDesc<WalkerTurned>()
+        ),
+        [&dirty] { ++dirty; },
+        overrides
+    );
+
+    edit([](void* value) { *static_cast<Quat*>(value) = rotateX(0.5f); });
+    EXPECT_EQ(fixture.rotation, Quat(rotateX(0.5f)));
+    EXPECT_EQ(dirty, 1);
+
+    current = nullptr;
+    edit([](void*) { FAIL() << "the value is gone"; });
+    EXPECT_EQ(dirty, 1);
 }

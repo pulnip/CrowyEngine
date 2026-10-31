@@ -468,12 +468,15 @@ namespace Crowy
             });
         };
 
+        const auto overrides = eulerInspector.Overrides();
+
         std::vector<Widget> sections{debugSection()};
         for(const auto& target: inspected) {
             sections.push_back(buildPropertyTree(
                 target.label.c_str(),
                 target.target,
-                refreshing(target.onChange)
+                refreshing(target.onChange),
+                overrides
             ));
         }
         if(const auto selection = editor->Selection()) {
@@ -482,7 +485,8 @@ namespace Crowy
                 selected.push_back(buildPropertyTree(
                     section.label.c_str(),
                     section.target,
-                    refreshing({})
+                    refreshing({}),
+                    overrides
                 ));
             }
             sections.push_back(

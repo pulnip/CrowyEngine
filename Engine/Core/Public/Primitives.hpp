@@ -393,9 +393,25 @@ namespace Crowy
         return lhs.x <= rhs.x && lhs.y <= rhs.y && lhs.z <= rhs.z;
     }
 
+    // xyzw, the same layout as Vec4; the two convert both ways
+    struct Quat {
+        f32 x = 0.0f, y = 0.0f, z = 0.0f, w = 1.0f;
+
+        constexpr Quat() noexcept = default;
+        constexpr Quat(f32 x, f32 y, f32 z, f32 w) noexcept
+            : x(x), y(y), z(z), w(w) {}
+        constexpr Quat(Vec4 v) noexcept
+            : x(v.x), y(v.y), z(v.z), w(v.w) {}
+
+        constexpr operator Vec4() const noexcept { return {x, y, z, w}; }
+    };
+    static_assert(std::is_trivially_copyable_v<Quat>);
+    static_assert(std::is_standard_layout_v<Quat>);
+    static_assert(sizeof(Quat) == sizeof(Vec4));
+
     struct Transform {
         Vec3 position = zeros();
-        Vec4 rotation = unitQuat();
+        Quat rotation = unitQuat();
         Vec3 scale = ones();
 
         static constexpr Transform Identity() noexcept { return Transform{}; }

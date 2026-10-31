@@ -59,6 +59,11 @@ TEST(Serialize, CompoundsRoundTrip) {
         Vec4(1.0f, 2.0f, 3.0f, 4.0f)
     );
 
+    EXPECT_EQ(
+        roundTrip(Quat(0.5f, 0.25f, -0.5f, 0.75f)),
+        Quat(0.5f, 0.25f, -0.5f, 0.75f)
+    );
+
     const auto size = roundTrip(Size2D{640, 480});
     EXPECT_EQ(size.x, 640u);
     EXPECT_EQ(size.y, 480u);
@@ -73,6 +78,15 @@ TEST(Serialize, CompoundsRoundTrip) {
     EXPECT_EQ(transform.position, Vec3(1.0f, 2.0f, 3.0f));
     EXPECT_EQ(transform.rotation, Vec4(0.0f, 0.0f, 1.0f, 0.0f));
     EXPECT_EQ(transform.scale, Vec3(2.0f, 2.0f, 2.0f));
+}
+
+TEST(Serialize, AQuatWritesAsItsFourNumbers) {
+    const Quat rotation(0.5f, 0.25f, -0.5f, 0.75f);
+    DOM::Value out;
+    getTypeOps<Quat>()->serialize(&rotation, out);
+
+    EXPECT_EQ(emitJson(out), emitJson(DOM::Value::from(Vec4(rotation))));
+    EXPECT_EQ(emitJson(out), "[0.5,0.25,-0.5,0.75]");
 }
 
 TEST(Serialize, EnumRoundTripsByName) {
