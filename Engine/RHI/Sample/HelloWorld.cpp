@@ -50,11 +50,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloWorld",
         .width = 800,
         .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<HelloWorld>(argc, argv, windowConfig);

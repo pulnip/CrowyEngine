@@ -8,8 +8,8 @@
 |---|---|---|
 | `OS` | 창, 스왑체인, `FramePacer`, 커맨드 리스트 풀, 입력, 프로파일러를 소유하고 루프를 돌린다 | [OS.hpp](../Engine/Platform/Public/OS.hpp), [OS.cpp](../Engine/Platform/Private/OS.cpp) |
 | `MainLoop` | 루프가 부르는 훅만 있는 인터페이스. 창이나 GPU 동기화는 모른다 | [MainLoop.hpp](../Engine/Platform/Public/MainLoop.hpp) |
-| `App` | `MainLoop` 구현. 타이머, hold/step, 캡처할 때 쓰는 고정 스텝 | [AppFramework.hpp](../Engine/RHI/Sample/AppFramework.hpp) |
-| `RenderApp` → `FrameHost` | 렌더러 샘플용. 훅을 전부 `FrameHost`에 넘기고 `FrameHost`가 프레임의 순서를 소유한다 | [RenderApp.hpp](../Engine/Render/Sample/RenderApp.hpp), [FrameHost.hpp](../Engine/Render/Sample/FrameHost.hpp) |
+| `App` | `MainLoop` 구현. 타이머, hold/step, 캡처할 때 쓰는 고정 스텝 | [AppFramework.hpp](../Engine/App/Public/AppFramework.hpp) |
+| `RenderApp` → `FrameHost` | 렌더러 샘플용. 훅을 전부 `FrameHost`에 넘기고 `FrameHost`가 프레임의 순서를 소유한다 | [RenderApp.hpp](../Engine/App/Public/RenderApp.hpp), [FrameHost.hpp](../Engine/App/Public/FrameHost.hpp) |
 
 이렇게 나누면 앱은 "이번 프레임에 뭘 할지"만 쓰면 된다.
 프레임 번호 매기기, in-flight 대기, 스왑체인 acquire/present, resize 전 GPU idle 대기는 전부 `OS`가 정해진 자리에서 한다.

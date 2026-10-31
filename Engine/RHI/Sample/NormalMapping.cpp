@@ -201,10 +201,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "NormalMapping",
         .width = 800,
         .height = 800,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<NormalMapping>(argc, argv, windowConfig);

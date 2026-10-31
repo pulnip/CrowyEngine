@@ -26,6 +26,8 @@ if(CROWY_ENABLE_PHYSICS)
     add_subdirectory(Physics)
 endif()
 add_subdirectory(Render)
+# 3-0b) the windowed app and its render host, on top of Render
+add_subdirectory(App)
 # 3-1) on top of Render
 add_subdirectory(Effects)
 # 3-2) the World's side of each subsystem

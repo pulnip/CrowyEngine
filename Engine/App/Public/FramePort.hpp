@@ -69,7 +69,6 @@ namespace Crowy
 
     private:
         DOM::Table status() const;
-        DOM::Table inputReport() const;
         void answerWaits();
     };
 }

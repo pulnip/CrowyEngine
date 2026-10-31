@@ -3,13 +3,6 @@
 #include "RHIDebugScope.hpp"
 #include "RHITexture.hpp"
 
-#if defined(_WIN32)
-extern "C" {
-__declspec(dllexport) extern const std::uint32_t D3D12SDKVersion = 619;
-__declspec(dllexport) extern const char* D3D12SDKPath = ".\\";
-}
-#endif
-
 namespace Crowy
 {
     void App::Render(CommandListPool& pool, RHISwapchain& swapchain) {

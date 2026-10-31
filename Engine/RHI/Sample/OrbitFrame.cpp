@@ -752,11 +752,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "OrbitFrame",
         .width = 1280,
         .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<OrbitFrame>(argc, argv, windowConfig);

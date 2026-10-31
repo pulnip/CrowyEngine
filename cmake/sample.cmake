@@ -9,8 +9,9 @@
 # with TEST (docs/testing.md): gpu for a check, render for a spike, app for
 # a host whose start and shutdown are the test. Without one it is built only.
 
-# App and the Main<T> entry template windowed executables are built on
-set(CROWY_APP_FRAMEWORK_DIR "${CMAKE_SOURCE_DIR}/Engine/RHI/Sample")
+# The D3D12 Agility SDK exports the loader looks up in the executable itself,
+# so a static library would let the linker drop them
+set(CROWY_D3D12_EXPORTS_SOURCE "${CMAKE_SOURCE_DIR}/Engine/App/Entry/D3D12Exports.cpp")
 
 function(crowy_declare_executable NAME)
     cmake_parse_arguments(ARG "FRAMEWORK" "TEST;FRAMES" "SOURCES;DEPENDS" ${ARGN})
@@ -34,18 +35,16 @@ function(crowy_declare_executable NAME)
     )
 
     if(ARG_FRAMEWORK)
-        target_sources(${NAME}
-        PRIVATE
-            "${CROWY_APP_FRAMEWORK_DIR}/AppFramework.cpp"
-        )
-        target_include_directories(${NAME}
-        PRIVATE
-            "${CROWY_APP_FRAMEWORK_DIR}"
-        )
         target_link_libraries(${NAME}
         PRIVATE
-            Crowy::Platform
+            Crowy::App
         )
+        if(WIN32)
+            target_sources(${NAME}
+            PRIVATE
+                "${CROWY_D3D12_EXPORTS_SOURCE}"
+            )
+        endif()
     endif()
 
     if(NOT ARG_TEST)

@@ -10,48 +10,11 @@ if(CROWY_ENABLE_PHYSICS)
 endif()
 add_subdirectory(Stage)
 
-# the render framework every windowed render sample, spike and the Island
-# build on; App itself comes from each executable's FRAMEWORK
-crowy_declare_sample_library(RenderApp
-    TEST_DIRECTORY Test
-    TEST_LABELS "unit"
-SOURCES
-    FlyCamera.cpp
-    FlyControl.cpp
-    FrameCaptures.cpp
-    FrameHost.cpp
-    FramePort.cpp
-    FrameStatsLog.cpp
-    OrbitCamera.cpp
-    RenderApp.cpp
-INCLUDE
-    "${CROWY_APP_FRAMEWORK_DIR}"
-PUBLIC
-    Crowy::Platform
-    Crowy::Remote
-    Crowy::Render
-PRIVATE
-    Crowy::Log
-TEST_DEPENDS
-    Crowy::WorldRender
-)
-
-# the ImGui overlays, apart so samples without a UI skip ImGui
-crowy_declare_sample_library(RenderOverlay
-SOURCES
-    PortStatusChip.cpp
-    StatsOverlay.cpp
-PUBLIC
-    Crowy::SampleRenderApp
-    Crowy::UI
-)
-
 crowy_declare_example(TenThousandBlocks
 SOURCES
     TenThousandBlocks.cpp
 DEPENDS
     Crowy::WorldRender
-    Crowy::SampleRenderApp
 )
 
 crowy_declare_example(CornellRoom
@@ -59,7 +22,6 @@ SOURCES
     CornellRoom.cpp
 DEPENDS
     Crowy::SampleScene
-    Crowy::SampleRenderApp
 )
 
 crowy_declare_example(Playground
@@ -72,7 +34,6 @@ DEPENDS
     Crowy::Reflection
     Crowy::Scene
     Crowy::WorldRender
-    Crowy::SampleRenderOverlay
 )
 
 crowy_declare_example(ToonPlayground
@@ -84,7 +45,6 @@ DEPENDS
     Crowy::Reflection
     Crowy::Scene
     Crowy::WorldRender
-    Crowy::SampleRenderOverlay
 )
 
 if(CROWY_ENABLE_PHYSICS)
@@ -100,7 +60,6 @@ if(CROWY_ENABLE_PHYSICS)
         Crowy::Reflection
         Crowy::SamplePhysicsSync
         Crowy::SamplePuzzle
-        Crowy::SampleRenderOverlay
     )
 endif()
 
@@ -114,7 +73,6 @@ SOURCES
 DEPENDS
     Crowy::Reflection
     Crowy::SampleEditor
-    Crowy::SampleRenderOverlay
     Crowy::SampleStage
 )
 set_source_files_properties(StageEditor.cpp

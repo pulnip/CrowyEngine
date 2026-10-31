@@ -8,7 +8,6 @@ DEPENDS
     Crowy::Effects
     Crowy::WorldEffects
     Crowy::WorldRender
-    Crowy::SampleRenderApp
 )
 
 # the Island's rain and wind probes held against the CPU

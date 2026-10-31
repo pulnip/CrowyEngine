@@ -125,10 +125,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloTexture",
         .width = 800,
         .height = 800,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<HelloTexture>(argc, argv, windowConfig);

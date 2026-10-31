@@ -7,7 +7,6 @@ SOURCES
 DEPENDS
     Crowy::Scene
     Crowy::WorldRender
-    Crowy::SampleRenderApp
 )
 
 add_subdirectory(Backlot)

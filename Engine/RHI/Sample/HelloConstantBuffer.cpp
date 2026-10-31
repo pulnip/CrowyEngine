@@ -65,11 +65,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloConstantBuffer",
         .width = 800,
         .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<HelloConstantBuffer>(argc, argv, windowConfig);

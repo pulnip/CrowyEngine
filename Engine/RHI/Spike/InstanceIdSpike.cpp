@@ -59,11 +59,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "InstanceIdSpike",
         .width = 800,
         .height = 600,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<InstanceIdSpike>(argc, argv, windowConfig);

@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "DOM.hpp"
@@ -50,6 +51,10 @@ namespace Crowy
         f64 pendingTimeoutSeconds = 5.0;
         f64 idleTimeoutSeconds = 5.0;
     };
+
+    // CROWY_COMMAND_PORT: unset is the default port with retries, 0 disables,
+    // N forces exactly that port, anything else warns and is unset
+    std::optional<CommandPortConfig> commandPortConfigFromEnvironment();
 
     struct CommandPortStatus {
         enum class Server : u8 { Disabled, Listening, BindFailed };

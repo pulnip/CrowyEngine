@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <filesystem>
 #include <print>
 #include <span>
 #include <utility>
@@ -166,6 +167,9 @@ namespace Crowy
     template<std::derived_from<App> T>
     int Main(int argc, char** argv, const WindowConfig& windowConfig) {
         RuntimeConfig runtimeConfig{.window = windowConfig};
+        if(argc > 0 && runtimeConfig.window.title == WindowConfig{}.title)
+            runtimeConfig.window.title =
+                std::filesystem::path(argv[0]).stem().string();
 
         try {
             const auto args =

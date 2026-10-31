@@ -7,5 +7,4 @@ SOURCES
 DEPENDS
     Crowy::Scene
     Crowy::WorldRender
-    Crowy::SampleRenderApp
 )

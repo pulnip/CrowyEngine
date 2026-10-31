@@ -4,8 +4,6 @@ crowy_declare_spike(VertexPullSpike
     TEST render
 SOURCES
     VertexPullSpike.cpp
-DEPENDS
-    Crowy::SampleRenderApp
 )
 
 # guards position invariance between the depth prepass and the opaque pass
@@ -14,8 +12,6 @@ crowy_declare_spike(PrepassEqualSpike
     TEST render
 SOURCES
     PrepassEqualSpike.cpp
-DEPENDS
-    Crowy::SampleRenderApp
 )
 
 # guards the standard pipeline's textures: a point-sampled palette, an atlas
@@ -25,6 +21,4 @@ crowy_declare_spike(TexturedSpike
     TEST render
 SOURCES
     TexturedSpike.cpp
-DEPENDS
-    Crowy::SampleRenderApp
 )

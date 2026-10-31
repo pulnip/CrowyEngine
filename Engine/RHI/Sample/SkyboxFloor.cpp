@@ -378,10 +378,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "SkyboxFloor",
         .width = 1280,
         .height = 720,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<SkyboxFloor>(argc, argv, windowConfig);

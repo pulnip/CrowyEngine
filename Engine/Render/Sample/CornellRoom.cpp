@@ -221,11 +221,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "CornellRoom",
         .width = 800,
         .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<CornellRoom>(argc, argv, windowConfig);

@@ -58,8 +58,8 @@ These override the global CLAUDE.md where they differ.
   static library wrapped by `crowy_whole_archive` (`cmake/util.cmake`); a
   plain one drops the object and the type silently goes missing.
 - Read `Engine/RHI/Sample` and its `.slang` for RHI usage, and
-  `Engine/Render/Sample` (`RenderApp`, `Playground`) for renderer work,
-  before reading wider.
+  `Engine/App` (`RenderApp`) with `Engine/Render/Sample` (`Playground`) for
+  renderer work, before reading wider.
 
 ## Building
 
@@ -75,8 +75,8 @@ powershell -NoProfile -File Tools/build.ps1 -Status
 - Poll until `running : False`, then read `build/build-log.txt`. A tool
   timeout is not a failure; the detached build continues.
 - A full Debug build is ~60 s, an incremental one ~15 s; every windowed
-  executable compiles `RHI/Sample/AppFramework.cpp` itself, so editing it
-  rebuilds them all. Ten minutes means wedged: check
+  executable links `Crowy::App`, so editing a header of it rebuilds them
+  all. Ten minutes means wedged: check
   `Get-Process ninja,clang-cl,lld-link`, never kill it.
 - One target per call, one build at a time. Windows PowerShell 5.1
   (`powershell`), never `pwsh`.

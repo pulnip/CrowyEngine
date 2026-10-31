@@ -190,11 +190,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "ShadowSampleSpike",
         .width = 1024,
         .height = 512,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = false,
     };
     return Main<ShadowSampleSpike>(argc, argv, windowConfig);
