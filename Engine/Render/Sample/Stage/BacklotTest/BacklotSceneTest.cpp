@@ -158,7 +158,7 @@ TEST(BacklotScene, TheSceneFileReloadsOverTheLaunch) {
     const auto& launched = backlotStage();
     const auto again =
         reloadStageDocument(launched, backlotRoot() / StageScenePath);
-    EXPECT_EQ(again.document.instances.size(), 1488u);
+    EXPECT_EQ(again.document.instances.size(), 1489u);
     EXPECT_EQ(again.document.quads.size(), 179u);
     EXPECT_EQ(again.document.lights.size(), 31u);
     EXPECT_EQ(again.document.cameras.size(), 8u);

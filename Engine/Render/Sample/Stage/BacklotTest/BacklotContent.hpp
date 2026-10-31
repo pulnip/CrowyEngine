@@ -15,33 +15,33 @@ namespace Crowy
         usize lights = 0;
     };
 
-    inline constexpr usize BacklotInstances = 1488;
+    inline constexpr usize BacklotInstances = 1489;
     inline constexpr usize BacklotQuads = 179;
     // every key shows the same quads
     inline constexpr usize BacklotKeyedQuads = 161;
     inline constexpr std::array BacklotKeys{
         BacklotKeyInventory{
             .key = "day",
-            .instances = 1328,
-            .triangles = 466462,
+            .instances = 1329,
+            .triangles = 469790,
             .lights = 0
         },
         BacklotKeyInventory{
             .key = "evening",
-            .instances = 1439,
-            .triangles = 469102,
+            .instances = 1440,
+            .triangles = 472430,
             .lights = 31
         },
         BacklotKeyInventory{
             .key = "sunset",
-            .instances = 1439,
-            .triangles = 469102,
+            .instances = 1440,
+            .triangles = 472430,
             .lights = 31
         },
         BacklotKeyInventory{
             .key = "night",
             .instances = BacklotInstances,
-            .triangles = 470566,
+            .triangles = 473894,
             .lights = 31
         },
     };

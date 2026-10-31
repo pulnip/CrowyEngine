@@ -136,7 +136,7 @@ TEST(BacklotDocument, AreasAndKeyedRowsMatchTheInventory) {
     EXPECT_EQ(perArea["Edges"], 10u);
     EXPECT_EQ(perArea["NE"], 367u);
     EXPECT_EQ(perArea["NW"], 337u);
-    EXPECT_EQ(perArea["SE"], 167u);
+    EXPECT_EQ(perArea["SE"], 168u);
     EXPECT_EQ(perArea["SW"], 144u);
     EXPECT_EQ(perArea["Street"], 254u);
 

@@ -1,4 +1,4 @@
 # StageEditor's goldens: the Backlot commit they were taken at and the
 # lighting keys pinned for every cut; the launch picture is StageEditor.<backend>.png
-backlot a6179efe7cc1fd52824c0b023a4f05606928bbfe
+backlot 3bf2b9b80dded6f5dc7052e4374ddf0c602f5e24
 keys day night
