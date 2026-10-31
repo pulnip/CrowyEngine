@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <type_traits>
 
 #include "EnumUtil.hpp"
@@ -60,6 +61,8 @@ namespace Crowy
     struct EnvironmentSnapshot {
         Vec3 skyAmbient = zeros();
         Vec3 groundAmbient = zeros();
+        // what the frame clears to; empty leaves the host's own clear
+        std::optional<Vec3> sky;
     };
 
     // One light as the shaders read it. Each Vec3 is followed by a 4-byte

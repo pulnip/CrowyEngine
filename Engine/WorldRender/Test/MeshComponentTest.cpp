@@ -93,6 +93,19 @@ TEST_F(MeshComponentTest, TheSampleSceneSavesBackAsItReads) {
     EXPECT_EQ(savedBack(path), readFileAsString(path));
 }
 
+TEST_F(MeshComponentTest, TheSampleSceneLightsItselfFromItsEnvironmentActor) {
+    loadSceneFile(world, toPath(CROWY_HELLO_SCENE_FILE));
+    world.Frame(0.0);
+
+    const auto& environment = scene.Environment();
+    EXPECT_EQ(environment.skyAmbient, (Vec3{0.123f, 0.174f, 0.262f}));
+    EXPECT_EQ(environment.groundAmbient, (Vec3{0.033f, 0.024f, 0.016f}));
+    ASSERT_TRUE(environment.sky.has_value());
+    EXPECT_EQ(*environment.sky, (Vec3{0.139f, 0.212f, 0.356f}));
+    ASSERT_EQ(scene.Lights().Count(), 1u);
+    EXPECT_EQ(scene.Lights().At(0).kind, LightKind::Directional);
+}
+
 TEST_F(MeshComponentTest, ThePlaygroundSavesBackAsItReads) {
     const auto path = toPath(CROWY_PLAYGROUND_SCENE_FILE);
 

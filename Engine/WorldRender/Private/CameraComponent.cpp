@@ -1,8 +1,5 @@
 #include "CameraComponent.hpp"
 
-#include <source_location>
-
-#include "Assert.hpp"
 #include "Component.hpp"
 #include "RenderCamera.hpp"
 #include "System.hpp"
@@ -12,25 +9,29 @@ namespace Crowy
 {
     namespace
     {
-        // two cameras would leave the snapshot to whichever changed last
-        void requireOneCamera(World& world, ActorId, CameraComponent&) {
-            usize cameras = 0;
-            world.Each<CameraComponent>([&](ActorId, const CameraComponent&) {
-                ++cameras;
+        ActorId activeCamera(World& world) {
+            auto active = ActorId::InvalidHandle();
+            world.Each<CameraComponent>([&](ActorId actor,
+                                            const CameraComponent&) {
+                if(!active.IsValid() ||
+                   world.FileId(actor) < world.FileId(active)) {
+                    active = actor;
+                }
             });
 
-            if(cameras > 1) {
-                detail::assertFail(
-                    "one camera",
-                    std::source_location::current(),
-                    "a World is seen through one camera"
-                );
-            }
+            return active;
         }
 
         void extractCamera(World& world, const FrameTime&) {
+            // the lowest FileId, found once a camera has changed
+            auto active = ActorId::InvalidHandle();
             world.EachChanged<CameraComponent>(
                 [&](ActorId actor, const CameraComponent& camera) {
+                    if(!active.IsValid())
+                        active = activeCamera(world);
+                    if(actor != active)
+                        return;
+
                     const auto position = world.WorldPosition(actor);
 
                     world.Service<CameraSnapshot>() = CameraSnapshot{
@@ -51,7 +52,6 @@ namespace Crowy
         .SetUIRange(0.35f, 2.4f)
         .AddProperty("nearZ", &CameraComponent::nearZ)
         .AddProperty("farZ", &CameraComponent::farZ)
-        .OnAdd(&requireOneCamera)
     CROWY_COMPONENT_END(CameraComponent)
 
     CROWY_SYSTEM(ExtractCamera, Extract, &extractCamera)

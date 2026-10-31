@@ -37,7 +37,7 @@
         },
         {
             "id": 2,
-            "name": "sun",
+            "name": "environment",
             "parent": null,
             "transform": {
                 "position": [
@@ -58,6 +58,24 @@
                 ]
             },
             "components": [
+                {
+                    "type": "EnvironmentComponent",
+                    "skyAmbient": [
+                        0.123,
+                        0.174,
+                        0.262
+                    ],
+                    "groundAmbient": [
+                        0.033,
+                        0.024,
+                        0.016
+                    ],
+                    "skyColor": [
+                        0.139,
+                        0.212,
+                        0.356
+                    ]
+                },
                 {
                     "type": "LightComponent",
                     "kind": "Directional",

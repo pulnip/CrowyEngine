@@ -98,6 +98,7 @@ TEST(RenderScene, ClearEmptiesEveryTable) {
     scene.Primitives().Add(PrimitiveSnapshot{.mesh = mesh});
     scene.Lights().Add(LightSnapshot{});
     scene.Environment().skyAmbient = ones();
+    scene.Environment().sky = ones();
 
     scene.Clear();
 
@@ -106,4 +107,5 @@ TEST(RenderScene, ClearEmptiesEveryTable) {
     EXPECT_TRUE(scene.Materials().IsEmpty());
     EXPECT_TRUE(scene.Lights().IsEmpty());
     EXPECT_EQ(scene.Environment().skyAmbient, zeros());
+    EXPECT_FALSE(scene.Environment().sky.has_value());
 }

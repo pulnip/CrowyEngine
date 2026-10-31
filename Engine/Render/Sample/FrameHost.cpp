@@ -350,6 +350,10 @@ namespace Crowy
         // flight keep reading the old walker's targets
         auto wanted =
             standardConfig(config, frameDebug, swapchain->GetFormat());
+        if(const auto& sky = scene.Environment().sky;
+           sky && !showsData(frameDebug.mode)) {
+            wanted.clearColor = toVec4(*sky, 1.0f);
+        }
         // the walker clears with this every frame; the list only keeps the
         // value its scene color was created with
         const auto sceneClear = wanted.clearColor;

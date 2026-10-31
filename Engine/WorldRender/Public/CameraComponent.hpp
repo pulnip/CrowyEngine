@@ -4,8 +4,8 @@
 
 namespace Crowy
 {
-    // at its actor, looking along its +Z; one per World, extracted into the
-    // CameraSnapshot the World provides
+    // at its actor, looking along its +Z; the World's camera with the lowest
+    // FileId is extracted into the CameraSnapshot the World provides
     struct CameraComponent {
         f32 fovY = 1.0471976f;
         f32 nearZ = 0.1f;

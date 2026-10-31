@@ -65,12 +65,59 @@ TEST(CameraComponent, AWorldWithoutACameraNeedsNoSnapshot) {
     world.Frame(0.0);
 }
 
-TEST(CameraComponentDeathTest, ASecondCameraStops) {
+namespace
+{
+    // a camera the scene file knows as `fileId`
+    ActorId addCamera(World& world, i64 fileId, f32 fovY) {
+        const auto actor = world.Spawn();
+        world.SetFileId(actor, fileId);
+        world.Add(actor, CameraComponent{.fovY = fovY});
+
+        return actor;
+    }
+}
+
+TEST(CameraComponent, TheLowestFileIdIsTheOneSeen) {
     CameraSnapshot snapshot;
     World world;
     world.Provide(snapshot);
-    world.Add(world.Spawn(), CameraComponent{});
-    world.Add(world.Spawn(), CameraComponent{});
+    addCamera(world, 7, 0.7f);
+    addCamera(world, 3, 0.3f);
+    addCamera(world, 5, 0.5f);
 
-    EXPECT_DEATH(world.Frame(0.0), "a World is seen through one camera");
+    world.Frame(0.0);
+    EXPECT_EQ(snapshot.fovY, 0.3f);
+}
+
+TEST(CameraComponent, AnotherCameraChangingWritesNothing) {
+    CameraSnapshot snapshot;
+    World world;
+    world.Provide(snapshot);
+    const auto active = addCamera(world, 1, 0.1f);
+    const auto other = addCamera(world, 2, 0.2f);
+    world.Frame(0.0);
+
+    snapshot.fovY = -1.0f;
+    world.SetLocalTransform(other, Transform{.position = {0.0f, 0.0f, 1.0f}});
+    world.Write<CameraComponent>(other)->fovY = 0.9f;
+    world.Frame(0.0);
+    EXPECT_EQ(snapshot.fovY, -1.0f);
+    EXPECT_EQ(snapshot.position, zeros());
+
+    world.Write<CameraComponent>(active)->fovY = 0.4f;
+    world.Frame(0.0);
+    EXPECT_EQ(snapshot.fovY, 0.4f);
+}
+
+TEST(CameraComponent, ACameraWithALowerFileIdTakesOverWhenItLands) {
+    CameraSnapshot snapshot;
+    World world;
+    world.Provide(snapshot);
+    addCamera(world, 5, 0.5f);
+    world.Frame(0.0);
+    EXPECT_EQ(snapshot.fovY, 0.5f);
+
+    addCamera(world, 2, 0.2f);
+    world.Frame(0.0);
+    EXPECT_EQ(snapshot.fovY, 0.2f);
 }

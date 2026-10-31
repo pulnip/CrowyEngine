@@ -38,9 +38,9 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `Effects` | GPU fields, compute kernels and particle effects | `EffectSystem.hpp`, `ParticleEffects.hpp`, `FieldPass.hpp`, [writing-an-effect.md](writing-an-effect.md) | Test; Sample: `Island`; Check |
 | `Physics` | Jolt behind a deterministic world | `PhysicsWorld.hpp`, `PhysicsRuntime.hpp` | Test; `Sample/Puzzle` |
 | `World` | actors, components, systems, the fixed phases and clocks, the transform hierarchy, `ScriptComponent` | `World.hpp`, `Component.hpp` (`CROWY_COMPONENT`), `System.hpp` (`CROWY_SYSTEM`) | Test |
-| `WorldRender` | mesh, light and camera components, extracted into a `RenderScene` and a `CameraSnapshot`; `MeshComponent` names its assets, `MeshRowComponent` draws a row the code built; `PrimitiveActors`, when the World provides it, names the actor each row draws | `MeshComponent.hpp`, `MeshRowComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp`, `PrimitiveActors.hpp` | Test |
+| `WorldRender` | mesh, light, camera and environment components, extracted into a `RenderScene` and a `CameraSnapshot`; `EnvironmentComponent` (one per World, its sun a `LightComponent` on the same actor) holds the ambient and the sky colour the frame clears to; a World may hold many cameras and the lowest `FileId` is the one seen; `MeshComponent` names its assets, `MeshRowComponent` draws a row the code built; `PrimitiveActors`, when the World provides it, names the actor each row draws | `MeshComponent.hpp`, `MeshRowComponent.hpp`, `LightComponent.hpp`, `CameraComponent.hpp`, `EnvironmentComponent.hpp`, `PrimitiveActors.hpp` | Test |
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
-| `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in meshes and two material files opened and drawn |
+| `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in meshes, two material files and its own environment opened and drawn |
 | `Editor` | editing a World: the session that selects actors by `ActorId` and moves them, the camera outside the World, picking against a `RenderScene`, the gizmo's layout, hover and drag | `WorldEditor.hpp`, `EulerInspector.hpp`, `EditorGizmo.hpp`, `EditorPick.hpp`, `EditorCamera.hpp` | Test |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |
 | `Content` | image, mip, mesh and model (FBX) loading, image writing and comparison | `ImageLoader.hpp`, `MeshData.hpp`, `ModelLoader.hpp`, `ImageCompare.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
@@ -50,6 +50,11 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 - Render does not see the World. `WorldRender` and `WorldEffects` see both
   and copy the World's state across at Extract; `Scene` sees the World and
   Serialization.
+- A scene file carries its environment: `EnvironmentComponent`'s sky colour
+  clears the lit views of the frame, and a World without one leaves the
+  clear and `RenderScene::Environment()` as the code set them. A camera
+  other than the lowest `FileId` writes no `CameraSnapshot`, and the
+  snapshot does not follow a hand-over when the camera seen is destroyed.
 - The World records what changed, and a frame where nothing did recomputes
   nothing. An actor's component or transform is a port and panel target
   found again at every access.
