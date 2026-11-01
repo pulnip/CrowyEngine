@@ -5,7 +5,6 @@ crowy_declare_spike(BacklotSceneSpike
 SOURCES
     BacklotSceneSpike.cpp
 DEPENDS
-    Crowy::Scene
-    Crowy::WorldRender
     Crowy::SampleRenderApp
+    Crowy::Session
 )

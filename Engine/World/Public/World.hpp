@@ -25,8 +25,6 @@ namespace Crowy
     // at the frame's Sync; a handle turns valid or invalid as the call returns.
     class World {
     private:
-        static constexpr f64 TimeScale = 1.0;
-
         // one component type: its rows, what Sync still owes them, and what
         // changed since the last Extract
         struct ComponentStore {
@@ -241,8 +239,10 @@ namespace Crowy
         }
 
         // runs every Phase in order, the FixedUpdate ones once per fixed tick
-        // the game clock owes
-        void Frame(f64 realSeconds);
+        // the game clock owes; the game runs as fast as the wall clock
+        void Frame(f64 realSeconds) { Frame(realSeconds, realSeconds); }
+        // the game clock advances by gameSeconds, which the caller scaled
+        void Frame(f64 realSeconds, f64 gameSeconds);
 
         // for a reader outside the phases, such as a GPU simulation recorded
         // after the frame: the fixed ticks so far, and the last Frame's

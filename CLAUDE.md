@@ -12,8 +12,9 @@ gate and scene load live.
 
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in their
-module's CMakeLists through the functions in `cmake/sample.cmake`. ctest
-labels: `unit`, `gpu` (checks), `render` (spikes), `app` (hosts),
+module's CMakeLists through the functions in `cmake/sample.cmake`, and the
+root a user runs under `Runtime/` (`Game`), which needs no
+`CROWY_ENABLE_TEST` and has no ctest entry. ctest labels: `unit`, `gpu` (checks), `render` (spikes), `app` (hosts),
 `scenario`, `content` (`docs/testing.md`); an executable without one is
 built only.
 
@@ -32,7 +33,8 @@ These override the global CLAUDE.md where they differ.
   the next line does, a plan, a date or a step. A protocol or format
   someone outside the repo reads goes in docs/, not in a header.
 - Format: every file is formatted whole (`clang-format -i`), new files
-  too; `Tools/format_check.ps1` fails on drift anywhere under `Engine/`.
+  too; `Tools/format_check.ps1` fails on drift anywhere under `Engine/` and
+  `Runtime/`.
 - Shared text, range and math helpers live in Core: StringUtil.hpp (join,
   parseNumber, replaceAll, consumePrefix, lower, equalsIgnoringCase,
   containsIgnoringCase, StringHashMap), PathUtil.hpp, FileUtil.hpp,

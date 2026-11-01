@@ -1,21 +1,21 @@
-# Fails when a C++ file under Engine/ differs from what clang-format makes
-# of it.
+# Fails when a C++ file under Engine/ or Runtime/ differs from what
+# clang-format makes of it.
 #
 # usage: Tools/format_check.ps1
 #
 # Same contract as Tools/format_check.sh: every .cpp, .hpp and .h below
-# Engine/ is checked with clang-format --dry-run -Werror.
+# Engine/ and Runtime/ is checked with clang-format --dry-run -Werror.
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$engine = Join-Path $repoRoot "Engine"
+$roots = @((Join-Path $repoRoot "Engine"), (Join-Path $repoRoot "Runtime"))
 
 $files = @(
-    Get-ChildItem -Path $engine -Recurse -File -Include *.cpp, *.hpp, *.h |
+    Get-ChildItem -Path $roots -Recurse -File -Include *.cpp, *.hpp, *.h |
         ForEach-Object { $_.FullName }
 )
 if ($files.Count -eq 0) {
-    Write-Host "FAIL: no C++ file under Engine"
+    Write-Host "FAIL: no C++ file under Engine or Runtime"
     exit 1
 }
 
@@ -54,5 +54,5 @@ if ($failed) {
     Write-Host "FAIL: $($drifted.Count) of $($files.Count) files differ; run clang-format -i on them"
     exit 1
 }
-Write-Host "format_check: $($files.Count) files in Engine match clang-format"
+Write-Host "format_check: $($files.Count) files in Engine and Runtime match clang-format"
 exit 0

@@ -41,6 +41,8 @@ namespace Crowy
         SystemFn run = nullptr;
         // systems of the same phase that run before this one
         SystemNames after;
+        // play, not editing: a World that only edits leaves it out
+        bool gameplay = false;
     };
 
     using SystemDescs = std::vector<SystemDesc>;
@@ -62,6 +64,9 @@ namespace Crowy
         void Add(SystemDesc system);
 
         const SystemDescs& All() const noexcept { return systems; }
+
+        // a registry of every system that is not gameplay
+        SystemRegistry WithoutGameplay() const;
     };
 
     class SystemBuilder {
@@ -72,6 +77,7 @@ namespace Crowy
         SystemBuilder(CStr name, Phase phase, SystemFn run);
 
         SystemBuilder& After(CStr name);
+        SystemBuilder& Gameplay();
 
         bool Build();
     };
