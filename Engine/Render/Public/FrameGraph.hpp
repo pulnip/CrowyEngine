@@ -33,7 +33,7 @@ namespace Crowy
     using FrameTargetDescs = std::vector<FrameTargetDesc>;
     using PassDescs = std::vector<PassDesc>;
 
-    // imported each frame: the swapchain image App::Render hands OnRecord
+    // imported each frame: the swapchain image OS hands OnRecord
     inline constexpr FrameTargetID BackBufferTarget = 0;
     inline constexpr FrameExtentID BackBufferExtent = 0;
 

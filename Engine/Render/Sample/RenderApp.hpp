@@ -2,15 +2,19 @@
 
 #include <optional>
 
-#include "AppFramework.hpp"
+#include "FrameClock.hpp"
 #include "FrameContent.hpp"
 #include "FrameHost.hpp"
+#include "Main.hpp"
+#include "MainLoop.hpp"
+#include "OS.hpp"
 #include "Primitives.hpp"
+#include "RuntimeConfig.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    class RenderApp: public App, public FrameContent {
+    class RenderApp: public MainLoop, public FrameContent {
     public:
         using Config = FrameHost::Config;
         using FrameStats = Crowy::FrameStats;
@@ -39,6 +43,11 @@ namespace Crowy
         void OnResize(u32 width, u32 height) override final;
 
     protected:
+        const RuntimeConfig& Runtime() const { return OS::Get()->Config(); }
+        // the pacer's: the one being recorded, or between frames the last
+        // that ended
+        u64 FrameNumber() const { return OS::Get()->Clock().Frame(); }
+
         // the lit views' clear, as a lighting key's sky, from the next frame;
         // the pipeline stays as it is
         void SetClearColor(Color color) noexcept { host.SetClearColor(color); }

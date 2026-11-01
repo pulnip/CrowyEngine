@@ -75,8 +75,8 @@ powershell -NoProfile -File Tools/build.ps1 -Status
 - Poll until `running : False`, then read `build/build-log.txt`. A tool
   timeout is not a failure; the detached build continues.
 - A full Debug build is ~60 s, an incremental one ~15 s; every windowed
-  executable compiles `RHI/Sample/AppFramework.cpp` itself, so editing it
-  rebuilds them all. Ten minutes means wedged: check
+  executable links `Crowy::Platform`, so editing a header of it rebuilds
+  them all. Ten minutes means wedged: check
   `Get-Process ninja,clang-cl,lld-link`, never kill it.
 - One target per call, one build at a time. Windows PowerShell 5.1
   (`powershell`), never `pwsh`.
@@ -125,7 +125,7 @@ or for a merge.
 | Render | `-L render`, `-R "^Playground$"` |
 | Effects GPU code or `.slang` | `-L gpu`, `-R "^Island$"` |
 | Physics, the puzzles, PhysicsSync | `-L scenario`, `-R "^PhysicsPlayground$"` |
-| The window path (OS, AppFramework, swapchain, RenderApp, UIRenderer, port verbs), a reflection registration, a CMake link | `-L app` |
+| The window path (OS, MainLoop, swapchain, RenderApp, UIRenderer, port verbs), a reflection registration, a CMake link | `-L app` |
 | Platform input, the OS event path | `-L app`, `Tools/input_checks.ps1` |
 | The Stage loader, a Backlot bump | `-L content`, `Tools/stage_cuts.ps1` |
 | A `Tools/` script | that script, by hand |

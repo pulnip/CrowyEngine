@@ -12,9 +12,12 @@
 
 #include "Assert.hpp"
 #include "CommandListPool.hpp"
+#include "FrameClock.hpp"
 #include "FramePacer.hpp"
 #include "FrameProfiler.hpp"
 #include "MainLoop.hpp"
+#include "RHICommandList.hpp"
+#include "RHIDebugScope.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIDevice.hpp"
 #include "RHIFrameScope.hpp"
@@ -91,6 +94,8 @@ namespace Crowy
 
     class OS::Impl {
     private:
+        RHIDevice& device;
+        const RuntimeConfig& config;
         SDLInitializer initializer;
         SDLWindow window;
         RHISwapchainRAII swapchain = nullptr;
@@ -101,6 +106,7 @@ namespace Crowy
         FramePacer framePacer;
         CommandListPool cmdListPool;
         FrameProfiler profiler;
+        FrameClock clock;
 
         bool imguiEnabled = false;
         std::optional<u64> exitAfterFrame;
@@ -111,8 +117,11 @@ namespace Crowy
         Impl(const RuntimeConfig&, RHIDevice&);
         ~Impl() = default;
 
-        void Run(MainLoop&, RHIDevice&);
+        void Run(MainLoop&);
 
+        RHIDevice& Device() const noexcept { return device; }
+        const RuntimeConfig& Config() const noexcept { return config; }
+        FrameClock& Clock() noexcept { return clock; }
         const InputProvider& GetInputProvider() const noexcept {
             return inputProvider;
         }
@@ -132,9 +141,9 @@ namespace Crowy
 
     private:
         // returns when the loop ends by itself; a throw leaves it mid-frame
-        void RunLoop(MainLoop&, RHIDevice&);
+        void RunLoop(MainLoop&);
         bool ProcessEvents(MainLoop&);
-        bool PumpHeld(MainLoop&, RHIDevice&);
+        bool PumpHeld(MainLoop&);
         void HandleWindowEvent(MainLoop&, const SDL_WindowEvent&);
         void ForwardInput(const SDL_Event&);
         void DeliverPushedInput();
@@ -142,8 +151,9 @@ namespace Crowy
         bool IsLookMotion(const SDL_Event&) const noexcept;
         void ApplyRelativeMouse(bool wanted);
 
-        void BeginFrame(RHIDevice&);
-        void EndFrame(RHIDevice&);
+        void BeginFrame();
+        void Record(MainLoop&);
+        void EndFrame();
     };
 
     OS::OS(const RuntimeConfig& config, RHIDevice& device)
@@ -152,12 +162,15 @@ namespace Crowy
     }
 
     OS::Impl::Impl(const RuntimeConfig& config, RHIDevice& device)
-        : initializer(config),
+        : device(device),
+          config(config),
+          initializer(config),
           window(windowOf(config)),
           inputProvider(!config.portInput),
           framePacer(device),
           cmdListPool(device),
           profiler(config, device),
+          clock(!config.captures.empty()),
           exitAfterFrame(config.exitAfterFrame),
           portInput(config.portInput) {
         RHITextureCreateDesc backBufferDesc{
@@ -183,11 +196,11 @@ namespace Crowy
         singleton = nullptr;
     }
 
-    void OS::Run(MainLoop& mainLoop, RHIDevice& device) {
-        impl->Run(mainLoop, device);
+    void OS::Run(MainLoop& mainLoop) {
+        impl->Run(mainLoop);
     }
 
-    void OS::Impl::Run(MainLoop& mainLoop, RHIDevice& device) {
+    void OS::Impl::Run(MainLoop& mainLoop) {
         mainLoop.OnInit(device, *swapchain);
 
         imguiEnabled = ImGui::GetCurrentContext() != nullptr;
@@ -199,7 +212,7 @@ namespace Crowy
         }
 
         try {
-            RunLoop(mainLoop, device);
+            RunLoop(mainLoop);
         }
         catch(...) {
             // the app is torn down right behind this, and it frees what the
@@ -223,7 +236,7 @@ namespace Crowy
         profiler.WriteReport();
     }
 
-    void OS::Impl::RunLoop(MainLoop& mainLoop, RHIDevice& device) {
+    void OS::Impl::RunLoop(MainLoop& mainLoop) {
         // set by a held iteration, which drops input on the way
         bool held = false;
 
@@ -232,8 +245,8 @@ namespace Crowy
         while(true) {
             mainLoop.NewFrame();
 
-            if(!mainLoop.ShouldAdvance()) {
-                if(!PumpHeld(mainLoop, device)) [[unlikely]]
+            if(!clock.Advance()) {
+                if(!PumpHeld(mainLoop)) [[unlikely]]
                     return;
                 held = true;
                 continue;
@@ -249,7 +262,7 @@ namespace Crowy
 
             const auto frame = framePacer.BeginFrame();
             profiler.BeginFrame(frame, framePacer.GetLastWaitTime());
-            mainLoop.OnFrameBegin(frame);
+            clock.BeginFrame(frame);
 
             {
                 FrameProfiler::Scope section(profiler, FrameSection::Events);
@@ -262,14 +275,16 @@ namespace Crowy
             {
                 FrameProfiler::Scope section(profiler, FrameSection::Update);
 
-                if(!mainLoop.Update()) [[unlikely]]
+                clock.Tick();
+                mainLoop.OnUpdate(clock.DeltaTime(), clock.ElapsedTime());
+                if(clock.QuitRequested()) [[unlikely]]
                     return;
                 ApplyRelativeMouse(mainLoop.WantsRelativeMouse());
             }
 
             {
                 FrameProfiler::Scope section(profiler, FrameSection::Acquire);
-                BeginFrame(device);
+                BeginFrame();
             }
 
             {
@@ -286,12 +301,12 @@ namespace Crowy
 
                     ImGui::NewFrame();
                 }
-                mainLoop.Render(cmdListPool, *swapchain);
+                Record(mainLoop);
             }
 
             {
                 FrameProfiler::Scope section(profiler, FrameSection::Submit);
-                EndFrame(device);
+                EndFrame();
             }
 
             mainLoop.OnFrameEnd(profiler.EndFrame(cmdListPool.GetFrameStats()));
@@ -344,7 +359,7 @@ namespace Crowy
         return keepRunning;
     }
 
-    bool OS::Impl::PumpHeld(MainLoop& mainLoop, RHIDevice& device) {
+    bool OS::Impl::PumpHeld(MainLoop& mainLoop) {
         // no frame's pool is open between frames, and a resize allocates
         const auto scope = device.CreateFrameScope();
         // a held loop gives the cursor back; a --port-input run holds none,
@@ -436,17 +451,44 @@ namespace Crowy
                inputProvider.IsRelativeMouse();
     }
 
-    void OS::Impl::BeginFrame(RHIDevice& device) {
+    void OS::Impl::BeginFrame() {
         if(swapchain != nullptr) [[unlikely]]
             swapchain->AcquireNextImage();
 
         cmdListPool.BeginFrame(framePacer.CurrentFrame());
     }
 
-    void OS::Impl::EndFrame(RHIDevice& device) {
+    void OS::Impl::Record(MainLoop& mainLoop) {
+        auto& cmdList = cmdListPool.Acquire();
+        cmdList.Begin();
+        const RHIColorAttachment backBuffer{
+            .texture = &swapchain->GetCurrentTexture()
+        };
+
+        {
+            RHIEventScope event(cmdList, "Frame");
+            mainLoop.OnRecord(cmdList, backBuffer);
+        }
+
+        cmdList.Close();
+    }
+
+    void OS::Impl::EndFrame() {
         auto cmdLists = cmdListPool.ExtractRecorded();
 
         framePacer.EndFrame(cmdLists, *swapchain.get());
+    }
+
+    RHIDevice& OS::Device() const noexcept {
+        return impl->Device();
+    }
+
+    const RuntimeConfig& OS::Config() const noexcept {
+        return impl->Config();
+    }
+
+    FrameClock& OS::Clock() noexcept {
+        return impl->Clock();
     }
 
     const InputProvider& OS::GetInputProvider() const noexcept {

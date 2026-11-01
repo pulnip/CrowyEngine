@@ -11,7 +11,7 @@ endif()
 add_subdirectory(Stage)
 
 # the render framework every windowed render sample, spike and the Island
-# build on; App itself comes from each executable's FRAMEWORK
+# build on
 crowy_declare_sample_library(RenderApp
     TEST_DIRECTORY Test
     TEST_LABELS "unit"
@@ -24,8 +24,6 @@ SOURCES
     FrameStatsLog.cpp
     OrbitCamera.cpp
     RenderApp.cpp
-INCLUDE
-    "${CROWY_APP_FRAMEWORK_DIR}"
 PUBLIC
     Crowy::Platform
     Crowy::Remote

@@ -1,18 +1,20 @@
 #include <array>
 
-#include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
+#include "Main.hpp"
 #include "MeshGenerator.hpp"
+#include "OS.hpp"
 #include "Primitives.hpp"
 #include "ProjectFile.hpp"
 #include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class NormalMapping: public App {
+    class NormalMapping: public MainLoop {
     private:
         RHIGraphicsPipelineStateRAII pso;
 
@@ -161,7 +163,7 @@ namespace Crowy
                 .cameraPos = eye,
                 .toLight = toLight
             };
-            const auto frameCB = Device().UploadTransient(uniforms);
+            const auto frameCB = OS::Get()->Device().UploadTransient(uniforms);
 
             std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
@@ -201,10 +203,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "NormalMapping",
         .width = 800,
         .height = 800,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<NormalMapping>(argc, argv, windowConfig);

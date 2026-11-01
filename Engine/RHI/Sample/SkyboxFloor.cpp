@@ -5,19 +5,21 @@
 #include <cmath>
 #include <numbers>
 
-#include "AppFramework.hpp"
 #include "ImageLoader.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
+#include "Main.hpp"
 #include "MeshGenerator.hpp"
+#include "OS.hpp"
 #include "Primitives.hpp"
 #include "ProjectFile.hpp"
 #include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class SkyboxFloor: public App {
+    class SkyboxFloor: public MainLoop {
     private:
         static constexpr RHIPixelFormat DEPTH_FORMAT =
             RHIPixelFormat::D32_FLOAT;
@@ -287,10 +289,10 @@ namespace Crowy
 
             // the sky rotates with the camera but never translates, which is
             // what keeps it infinitely far away
-            skyCB = Device().UploadTransient(
+            skyCB = OS::Get()->Device().UploadTransient(
                 SkyUniforms{.viewProj = proj * viewMat(zeros(), rot)}
             );
-            floorCB = Device().UploadTransient(
+            floorCB = OS::Get()->Device().UploadTransient(
                 FloorUniforms{
                     .viewProj = proj * viewMat(eye, rot),
                     .model = floorModel,
@@ -378,10 +380,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "SkyboxFloor",
         .width = 1280,
         .height = 720,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<SkyboxFloor>(argc, argv, windowConfig);

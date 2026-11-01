@@ -11,7 +11,7 @@ using namespace std::chrono_literals;
 
 namespace
 {
-    // App's fixed step: 1/60 s, rounded once to the clock's tick
+    // FrameClock's fixed step: 1/60 s, rounded once to the clock's tick
     constexpr auto Step = std::chrono::round<Timer::Duration>(
         std::chrono::duration<i64, std::ratio<1, 60>>(1)
     );

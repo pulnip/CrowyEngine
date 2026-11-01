@@ -1,11 +1,12 @@
 #include <array>
 
-#include "AppFramework.hpp"
+#include "Main.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class InstanceIdSpike: public App {
+    class InstanceIdSpike: public MainLoop {
         static constexpr u32 ROW_COUNT = 3;
         static constexpr u32 INSTANCES_PER_ROW = 4;
 
@@ -59,11 +60,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "InstanceIdSpike",
         .width = 800,
         .height = 600,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<InstanceIdSpike>(argc, argv, windowConfig);

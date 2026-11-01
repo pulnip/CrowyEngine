@@ -1,12 +1,13 @@
-#include "AppFramework.hpp"
 #include "ImageLoader.hpp"
+#include "Main.hpp"
 #include "Primitives.hpp"
 #include "ProjectFile.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class HelloTexture: public App {
+    class HelloTexture: public MainLoop {
         RHIGraphicsPipelineStateRAII pso;
         RHITextureRAII diffuse;
         RHITextureRAII normal;
@@ -125,10 +126,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloTexture",
         .width = 800,
         .height = 800,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<HelloTexture>(argc, argv, windowConfig);

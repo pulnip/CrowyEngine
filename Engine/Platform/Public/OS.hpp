@@ -9,6 +9,7 @@
 
 namespace Crowy
 {
+    class FrameClock;
     class MainLoop;
     class InputProvider;
 
@@ -26,7 +27,12 @@ namespace Crowy
         ~OS();
         CROWY_DECLARE_PINNED(OS)
 
-        void Run(MainLoop&, RHIDevice&);
+        void Run(MainLoop&);
+
+        RHIDevice& Device() const noexcept;
+        const RuntimeConfig& Config() const noexcept;
+        // the loop's time, hold gate, frame number and quit request
+        FrameClock& Clock() noexcept;
 
         inline static OS* Get() { return singleton; }
 

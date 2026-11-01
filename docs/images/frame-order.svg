@@ -67,11 +67,11 @@
 <text class="numt" x="337" y="153.5" text-anchor="middle">1</text>
 <text class="title mono" x="357" y="145">NewFrame()</text>
 <text class="sub" x="357" y="164">명령 포트 요청을 여기서 처리</text>
-<rect class="card ml" x="315" y="204" width="250" height="58" rx="10"/>
-<circle class="num ml" cx="337" cy="233" r="11"/>
-<text class="numt" x="337" y="237.5" text-anchor="middle">2</text>
-<text class="title mono" x="357" y="229">ShouldAdvance()</text>
-<text class="sub" x="357" y="248">false면 hold: 창만 살리고 ①로</text>
+<rect class="card os" x="20" y="204" width="250" height="58" rx="10"/>
+<circle class="num os" cx="42" cy="233" r="11"/>
+<text class="numt" x="42" y="237.5" text-anchor="middle">2</text>
+<text class="title mono" x="62" y="229">FrameClock.Advance()</text>
+<text class="sub" x="62" y="248">false면 hold: 창만 살리고 ①로</text>
 <rect class="card os" x="20" y="288" width="250" height="58" rx="10"/>
 <circle class="num os" cx="42" cy="317" r="11"/>
 <text class="numt" x="42" y="321.5" text-anchor="middle">3</text>
@@ -90,7 +90,7 @@
 <rect class="card ml" x="315" y="456" width="250" height="58" rx="10"/>
 <circle class="num ml" cx="337" cy="485" r="11"/>
 <text class="numt" x="337" y="489.5" text-anchor="middle">6</text>
-<text class="title mono" x="357" y="481">Update()</text>
+<text class="title mono" x="357" y="481">OnUpdate(dt, elapsed)</text>
 <text class="sub" x="357" y="500">씬이 World::Frame(dt) 호출</text>
 <rect class="card os" x="20" y="730" width="250" height="58" rx="10"/>
 <circle class="num os" cx="42" cy="759" r="11"/>
@@ -100,7 +100,7 @@
 <rect class="card ml" x="315" y="814" width="250" height="108" rx="10"/>
 <circle class="num ml" cx="337" cy="843" r="11"/>
 <text class="numt" x="337" y="847.5" text-anchor="middle">8</text>
-<text class="title mono" x="357" y="839">Render()</text>
+<text class="title mono" x="357" y="839">OnRecord()</text>
 <text class="sub" x="357" y="858">패스 기록</text>
 <rect class="card os" x="20" y="948" width="250" height="58" rx="10"/>
 <circle class="num os" cx="42" cy="977" r="11"/>
@@ -142,8 +142,8 @@
 <text class="pillt mono" x="455.0" y="911.0" text-anchor="middle">Tonemap</text>
 <rect class="pill r" x="493" y="896" width="58" height="22" rx="6"/>
 <text class="pillt mono" x="522.0" y="911.0" text-anchor="middle">Present</text>
-<path class="flow" d="M440 178 V204" marker-end="url(#ah-flow)"/>
-<path class="flow" d="M440 262 V275 H145 V288" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M440 178 V191 H145 V204" marker-end="url(#ah-flow)"/>
+<path class="flow" d="M145 262 V288" marker-end="url(#ah-flow)"/>
 <path class="flow" d="M145 346 V372" marker-end="url(#ah-flow)"/>
 <path class="flow" d="M270 401 H315" marker-end="url(#ah-flow)"/>
 <path class="flow" d="M440 430 V456" marker-end="url(#ah-flow)"/>
@@ -152,8 +152,7 @@
 <path class="flow" d="M145 788 V801 H440 V814" marker-end="url(#ah-flow)"/>
 <path class="flow" d="M440 922 V935 H145 V948" marker-end="url(#ah-flow)"/>
 <path class="flow" d="M145 1006 V1019 H440 V1032" marker-end="url(#ah-flow)"/>
-<path class="hold" d="M565 233 H587 V149 H565" marker-end="url(#ah-hold)"/>
-<text class="note ml" x="595" y="195">hold</text>
+<path class="hold" d="M270 233 H292 V149 H315" marker-end="url(#ah-hold)"/>
 <path class="snap" d="M836 704 V868 H565" marker-end="url(#ah-snap)"/>
 <text class="note w" x="824" y="738" text-anchor="end">RenderScene, CameraSnapshot</text>
 <text class="note" x="824" y="758" text-anchor="end">Render는 World를 모르고</text>

@@ -1,11 +1,14 @@
 #include <array>
 
-#include "AppFramework.hpp"
+#include "FrameClock.hpp"
+#include "Main.hpp"
+#include "OS.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class ShadowSampleSpike: public App {
+    class ShadowSampleSpike: public MainLoop {
         static constexpr CStr SHADER_PATH =
             "Engine/RHI/Spike/ShadowSampleSpike.slang";
         // not square, so a width and height swapped anywhere shows
@@ -97,7 +100,7 @@ namespace Crowy
             const SpikePush push{
                 .asTexture = depth->GetReadableID(),
                 .asDepthTexture = depth->GetReadableID(),
-                .parity = static_cast<u32>(FrameNumber() & 1)
+                .parity = static_cast<u32>(OS::Get()->Clock().Frame() & 1)
             };
 
             {
@@ -190,11 +193,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "ShadowSampleSpike",
         .width = 1024,
         .height = 512,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = false,
     };
     return Main<ShadowSampleSpike>(argc, argv, windowConfig);

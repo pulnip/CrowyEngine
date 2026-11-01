@@ -1,7 +1,8 @@
-#include "AppFramework.hpp"
 #include "EnumUtil.hpp"
 #include "IntMath.hpp"
 #include "LinearAlgebra.hpp"
+#include "Main.hpp"
+#include "OS.hpp"
 #include "Primitives.hpp"
 #include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
@@ -304,7 +305,7 @@ namespace Crowy
         }
     };
 
-    class BlackholeSimulation: public App {
+    class BlackholeSimulation: public MainLoop {
         // the g^3 doppler boost drives the disk well past 1, which UNORM clips
         static constexpr auto HDR_FORMAT = RHIPixelFormat::RGBA16_FLOAT;
         static constexpr auto DISK_FORMAT = RHIPixelFormat::RGBA8_UNORM;
@@ -481,7 +482,7 @@ namespace Crowy
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
-            simParamBuffer = Device().UploadTransient(simParam);
+            simParamBuffer = OS::Get()->Device().UploadTransient(simParam);
 
             // the simulation pass below is the disk's first reader
             const auto diskEdge = makeBarrier(
@@ -605,7 +606,7 @@ namespace Crowy
 
             // the OS waited for the GPU to go idle before calling this,
             // so the old targets can go right away
-            createTargets(Device(), width, height);
+            createTargets(OS::Get()->Device(), width, height);
         }
 
     private:
@@ -634,11 +635,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "BlackholeSimulation",
         .width = 1280,
         .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<BlackholeSimulation>(argc, argv, windowConfig);

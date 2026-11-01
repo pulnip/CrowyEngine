@@ -1,5 +1,5 @@
-#include "AppFramework.hpp"
 #include "EnumUtil.hpp"
+#include "Main.hpp"
 #include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
@@ -10,7 +10,7 @@ namespace
 
 namespace Crowy
 {
-    class Checkerboard: public App {
+    class Checkerboard: public MainLoop {
         RHIComputePipelineStateRAII pso;
         RHITextureRAII checkerboard;
 
@@ -108,11 +108,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "Checkerboard",
         .width = W,
         .height = H,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = false,
     };
     return Main<Checkerboard>(argc, argv, windowConfig);

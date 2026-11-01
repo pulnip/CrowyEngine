@@ -1,9 +1,10 @@
-#include "AppFramework.hpp"
+#include "Main.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class HelloWorld: public App {
+    class HelloWorld: public MainLoop {
         RHIGraphicsPipelineStateRAII pso;
 
         void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
@@ -50,11 +51,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloWorld",
         .width = 800,
         .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<HelloWorld>(argc, argv, windowConfig);

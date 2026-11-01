@@ -1,10 +1,12 @@
-#include "AppFramework.hpp"
+#include "Main.hpp"
+#include "OS.hpp"
 #include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 
 namespace Crowy
 {
-    class HelloConstantBuffer: public App {
+    class HelloConstantBuffer: public MainLoop {
         struct SceneData {
             Vec4 offset{0, 0, 0, 0};
         } sceneData;
@@ -40,7 +42,7 @@ namespace Crowy
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
-            const auto scene = Device().UploadTransient(sceneData);
+            const auto scene = OS::Get()->Device().UploadTransient(sceneData);
 
             std::array colorAttachments = {backBuffer};
             const std::array acquires{AcquireBackBuffer(backBuffer)};
@@ -65,11 +67,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "HelloConstantBuffer",
         .width = 800,
         .height = 800,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<HelloConstantBuffer>(argc, argv, windowConfig);

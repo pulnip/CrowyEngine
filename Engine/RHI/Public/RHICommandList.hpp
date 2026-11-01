@@ -352,6 +352,33 @@ namespace Crowy
         return barrier;
     }
 
+    // discards previous contents; a pass that loads them acquires
+    // Present → RenderTarget instead
+    inline RHITextureBarrier AcquireBackBuffer(
+        const RHIColorAttachment& backBuffer
+    ) {
+        CROWY_ASSERT(
+            backBuffer.loadAction != RHILoadAction::Load,
+            "discarding acquire but the pass loads previous contents"
+        );
+        return makeBarrier(
+            *backBuffer.texture,
+            RHIResourceUsage::Undefined,
+            RHIResourceUsage::RenderTarget
+        );
+    }
+
+    // Present ordering is the swapchain's guarantee, so no pair needed
+    inline RHITextureBarrier ReleaseBackBuffer(
+        const RHIColorAttachment& backBuffer
+    ) {
+        return makeBarrier(
+            *backBuffer.texture,
+            RHIResourceUsage::RenderTarget,
+            RHIResourceUsage::Present
+        );
+    }
+
     inline RHIViewport fullViewport(
         const RHITexture& texture,
         u32 mipLevel = 0

@@ -8,14 +8,16 @@
 
 #include <imgui.h>
 
-#include "AppFramework.hpp"
 #include "AsteroidBelt.hpp"
 #include "InputProvider.hpp"
 #include "Kepler.hpp"
 #include "LinearAlgebra.hpp"
+#include "Main.hpp"
+#include "OS.hpp"
 #include "OrbitDrawArgs.hpp"
 #include "OrbitTrail.hpp"
 #include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
 #include "RHIPipelineState.hpp"
 #include "UIRenderer.hpp"
 
@@ -50,7 +52,7 @@ namespace Crowy
     // The origin slides between Earth and the Sun in the shader, not the
     // camera, so at 0 the heliocentric ellipses come apart into Ptolemy's
     // epicycles.
-    class OrbitFrame: public App {
+    class OrbitFrame: public MainLoop {
         static constexpr f64 DAY_PER_SAMPLE = 1.0;
         static constexpr f64 START_DAY = 0.0;
 
@@ -564,7 +566,7 @@ namespace Crowy
             if(context.beltEnabled)
                 belt.Sample(trail->NewestDay(), beltScratch);
 
-            beltSlice = Device().UploadTransient(
+            beltSlice = OS::Get()->Device().UploadTransient(
                 std::span<const Vec3>(beltScratch),
                 static_cast<u32>(sizeof(Vec3))
             );
@@ -634,8 +636,9 @@ namespace Crowy
 
             UpdateBelt();
 
-            frameCB =
-                Device().UploadTransient(FrameUniforms{.viewProj = ViewProj()});
+            frameCB = OS::Get()->Device().UploadTransient(
+                FrameUniforms{.viewProj = ViewProj()}
+            );
 
             const auto trailEdge = trail->Record(cmdList);
             const auto beltEdge = RecordBelt(cmdList);
@@ -752,11 +755,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "OrbitFrame",
         .width = 1280,
         .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<OrbitFrame>(argc, argv, windowConfig);

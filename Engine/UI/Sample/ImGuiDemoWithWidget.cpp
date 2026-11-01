@@ -3,10 +3,11 @@
 
 #include <imgui.h>
 
-#include "AppFramework.hpp"
 #include "ClassRegistry.hpp"
+#include "Main.hpp"
 #include "Primitives.hpp"
 #include "PropertyWalker.hpp"
+#include "RHICommandList.hpp"
 #include "UIRenderer.hpp"
 
 enum class GalleryShape : Crowy::u8 { Triangle, Square, Hexagon };
@@ -49,7 +50,7 @@ namespace Crowy
         f64 frameTime = 0.0;
     };
 
-    class ImGuiDemoWithWidget: public App {
+    class ImGuiDemoWithWidget: public MainLoop {
     private:
         RAII<UIRenderer> uiRenderer = nullptr;
         UIContext context;
@@ -147,10 +148,8 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "ImGuiDemoWithWidget",
         .width = 1280,
         .height = 720,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<ImGuiDemoWithWidget>(argc, argv, windowConfig);

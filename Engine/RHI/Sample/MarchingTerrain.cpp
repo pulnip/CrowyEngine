@@ -2,8 +2,11 @@
 #include <print>
 #include <vector>
 
-#include "AppFramework.hpp"
+#include "FrameClock.hpp"
+#include "Main.hpp"
+#include "OS.hpp"
 #include "RHIBuffer.hpp"
+#include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
 #include "Terrain.hpp"
 #include "TerrainCamera.hpp"
@@ -16,7 +19,7 @@ namespace Crowy
 {
     // The CPU never learns the triangle count: a compute pass writes the draw
     // arguments for ExecuteIndirect, and only the counter comes back, late.
-    class MarchingTerrain: public App {
+    class MarchingTerrain: public MainLoop {
         // the defaults mesh ~99k triangles; this leaves room for cave sliders
         // without reserving the 1.5M the cell count would permit
         static constexpr u32 TRIANGLE_CAPACITY = 600'000;
@@ -221,7 +224,7 @@ namespace Crowy
                     cmdList.EndBlitPass();
 
                     counterCopyInFlight = true;
-                    counterCopyFrame = FrameNumber();
+                    counterCopyFrame = OS::Get()->Clock().Frame();
                 }
 
                 // the draw reads what the march just wrote; a frame
@@ -233,7 +236,7 @@ namespace Crowy
                 rebuildPending = false;
             }
 
-            frameCB = Device().UploadTransient(
+            frameCB = OS::Get()->Device().UploadTransient(
                 TerrainFrameUniforms{
                     .viewProj = camera.ViewProj(),
                     .toLight = {0.38f, 0.82f, 0.43f},
@@ -321,11 +324,9 @@ int main(int argc, char** argv) {
     using namespace Crowy;
 
     const WindowConfig windowConfig{
-        .title = "MarchingTerrain",
         .width = 1280,
         .height = 720,
         .format = RHIPixelFormat::RGBA8_UNORM,
-        .fullscreen = false,
         .resizable = true,
     };
     return Main<MarchingTerrain>(argc, argv, windowConfig);

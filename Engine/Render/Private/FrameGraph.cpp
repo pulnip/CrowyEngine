@@ -710,7 +710,7 @@ namespace Crowy
 
             colorScratch.clear();
             for(const auto& color: pass.colors) {
-                // any other back-buffer clear is black, as App::Render's
+                // any other back-buffer clear is black, as OS clears it
                 auto clearColor = Colors::Black;
                 if(color.target == desc.sceneColor)
                     clearColor = inputs.sceneClear;
