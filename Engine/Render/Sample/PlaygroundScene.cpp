@@ -22,7 +22,6 @@
 #include "Scene.hpp"
 #include "ShadingModel.hpp"
 #include "SnapshotCamera.hpp"
-#include "StandardFrame.hpp"
 #include "WorldEditorOverlay.hpp"
 
 namespace Crowy

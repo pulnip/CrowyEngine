@@ -1,27 +1,20 @@
 #include "FrameHost.hpp"
 
-#include <algorithm>
-#include <charconv>
 #include <cstdlib>
 #include <format>
 #include <span>
 #include <stdexcept>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include "ClassRegistry.hpp"
-#include "FrameSelector.hpp"
 #include "JsonLoader.hpp"
 #include "Log.hpp"
 #include "ProjectFile.hpp"
 #include "ProjectRoot.hpp"
-#include "RHIBuffer.hpp"
 #include "RHICommandList.hpp"
 #include "RHIDevice.hpp"
-#include "RHIPipelineState.hpp"
 #include "RHISwapchain.hpp"
-#include "RHITexture.hpp"
 #include "StringUtil.hpp"
 
 namespace Crowy
@@ -109,30 +102,20 @@ namespace Crowy
 
     FrameHost::~FrameHost() = default;
 
-    FrameHost::FrameHost(
-        FrameContent& content,
-        const Config& config,
-        CameraRAII camera
-    )
-        : content(content), config(config), camera(std::move(camera)) {}
+    FrameHost::FrameHost(const Config& config, CameraRAII camera)
+        : config(config), camera(std::move(camera)) {}
 
-    FrameGraphRAII FrameHost::describePipeline() {
+    FrameGraphRAII FrameHost::buildPipeline() {
         return std::make_unique<FrameGraph>(
             *device,
-            content.DescribePipeline(pipelineConfig),
+            describePipeline(pipelineConfig),
             swapchain->GetFormat(),
             swapchain->GetWidth(),
             swapchain->GetHeight()
         );
     }
 
-    void FrameHost::Init(
-        RHIDevice& device,
-        RHISwapchain& swapchain,
-        FrameLoop loop,
-        bool hold
-    ) {
-        frameNumber = loop.frame;
+    void FrameHost::init(RHIDevice& device, RHISwapchain& swapchain) {
         this->device = &device;
         this->swapchain = &swapchain;
 
@@ -172,14 +155,14 @@ namespace Crowy
             }
         );
         pipelineConfig = standardConfig(config, debug, swapchain.GetFormat());
-        pipeline = describePipeline();
+        pipeline = buildPipeline();
         captures = std::make_unique<FrameCaptures>(
             device,
             swapchain,
             pipeline,
-            frameNumber
+            [this] { return FrameNumber(); }
         );
-        framePort = std::make_unique<FramePort>(std::move(loop), *captures);
+        framePort = std::make_unique<FramePort>(*captures);
         renderer = std::make_unique<SceneRenderer>(
             device,
             SceneRendererDesc{
@@ -190,29 +173,29 @@ namespace Crowy
 
         frameInputs.bindMeshPass =
             [this](RHICommandList& cmdList, const ScenePush& push) {
-                content.BindPass(cmdList, push);
+                bindPass(cmdList, push);
             };
         frameInputs.recordOverlay = [this](RHICommandList& cmdList) {
-            content.RecordUI(cmdList);
+            recordUI(cmdList);
         };
 
-        content.InitUI(device, pipeline->Overlay());
+        initUI(device, pipeline->Overlay());
 
         applyDebugFromEnvironment();
 #if CROWY_DEBUG_BUILD
         openCommandPort();
 #endif
 
-        if(hold)
+        if(Runtime().hold)
             framePort->Hold();
         framePort->CheckPortInput();
 
         // after the port, so the scene can expose itself before the loop
-        content.BuildGeometry(*geometryPool);
+        buildGeometry(*geometryPool);
         geometryPool->LogAllocationStats();
 
         // after the geometry, because a snapshot carries the allocation
-        content.ExtractScene(scene);
+        extractScene(scene);
     }
 
     // CROWY_DEBUG: a JSON object applied to `debug` through its reflection,
@@ -271,7 +254,7 @@ namespace Crowy
 
         framePort->RegisterVerbs();
         captures->RegisterVerbs(*port);
-        stats.RegisterVerbs(*port, frameNumber);
+        stats.RegisterVerbs(*port, [this] { return FrameNumber(); });
         // every cached pipeline, recompiled from disk; a failed compile keeps
         // the old ones drawing and throws its diagnostic into the error reply
         port->RegisterVerb(
@@ -279,7 +262,7 @@ namespace Crowy
             {},
             [this](const DOM::Value&, Reply reply) {
                 const auto rebuild = renderer->ReloadPipelines();
-                const auto programs = content.ReloadShaders();
+                const auto programs = reloadShaders();
 
                 DOM::Table result;
                 result.emplace(
@@ -296,7 +279,7 @@ namespace Crowy
         );
     }
 
-    void FrameHost::NewFrame() {
+    void FrameHost::newFrame() {
         if(framePort->Port() == nullptr)
             return;
 
@@ -305,15 +288,15 @@ namespace Crowy
         framePort->Drain();
     }
 
-    void FrameHost::ProcessInput(const InputProvider& input) {
+    void FrameHost::processInput(const InputProvider& input) {
         relativeMouse = false;
         camera->PollInput(input);
-        content.PollInput(input);
+        pollInput(input);
     }
 
-    void FrameHost::Update(f64 deltaTime) {
+    void FrameHost::update(f64 deltaTime, f64) {
         camera->Update(deltaTime);
-        content.UpdateScene(deltaTime);
+        updateScene(deltaTime);
         // after the scene's own Sync, so what it let go leaves this frame
         meshes->Collect();
         materials->Collect();
@@ -337,7 +320,7 @@ namespace Crowy
         );
     }
 
-    void FrameHost::Record(
+    void FrameHost::record(
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
     ) {
@@ -361,10 +344,10 @@ namespace Crowy
         if(wanted != pipelineConfig) {
             wanted.clearColor = sceneClear;
             pipelineConfig = std::move(wanted);
-            auto rebuilt = describePipeline();
+            auto rebuilt = buildPipeline();
             CROWY_ASSERT(
                 rebuilt->Overlay() == pipeline->Overlay(),
-                "the UI's formats are frozen at InitUI"
+                "the UI's formats are frozen at initUI"
             );
             CROWY_ASSERT(
                 rebuilt->ViewCount() == renderer->ViewCount(),
@@ -389,7 +372,7 @@ namespace Crowy
         view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
         // every per-frame buffer settles before the first pass opens
-        content.UpdateFrameData();
+        updateFrameData();
 
         renderer->BeginFrame(scene, pipeline->ShadowMapSize());
         pipeline->Prepare(*renderer, scene, overrides);
@@ -406,11 +389,11 @@ namespace Crowy
         frameInputs.vertices = geometryPool->GetVertexBufferID();
         // both outside any pass: the pool's copies, then the UI's
         frameInputs.geometryAcquires = geometryPool->RecordUploads(cmdList);
-        frameInputs.overlayAcquires = content.PrepareUI(cmdList);
-        frameHooks = content.RecordSimulation(cmdList);
+        frameInputs.overlayAcquires = prepareUI(cmdList);
+        frameHooks = recordSimulation(cmdList);
         frameInputs.hooks = frameHooks;
         // resolved after any rebuild above, so a request keeps its name
-        frameInputs.frame = frameNumber();
+        frameInputs.frame = FrameNumber();
         frameInputs.captures = captures->TakeDue();
 
         pipeline->Record(cmdList, *renderer, frameInputs);
@@ -424,21 +407,21 @@ namespace Crowy
         reportCullStatsOnce();
     }
 
-    void FrameHost::FrameEnd(const FrameReport& report) {
+    void FrameHost::endFrame(const FrameReport& report) {
         CROWY_ASSERT(
-            report.frame == frameNumber(),
+            report.frame == FrameNumber(),
             "the profiler and the app count different frames"
         );
 
         stats.End(
-            frameNumber(),
+            FrameNumber(),
             report,
             scene.Primitives().Count(),
             renderer->PipelineCount()
         );
     }
 
-    void FrameHost::Resize(u32 width, u32 height) {
+    void FrameHost::resize(u32 width, u32 height) {
         pipeline->Resize(width, height);
     }
 

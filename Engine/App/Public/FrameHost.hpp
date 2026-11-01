@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "Camera.hpp"
@@ -10,19 +11,22 @@
 #include "DebugMode.hpp"
 #include "EnumUtil.hpp"
 #include "FrameCaptures.hpp"
-#include "FrameContent.hpp"
+#include "FrameClock.hpp"
 #include "FrameGraph.hpp"
 #include "FramePort.hpp"
 #include "FrameProfiler.hpp"
 #include "FrameStatsLog.hpp"
 #include "GeometryPool.hpp"
 #include "InputProvider.hpp"
+#include "MainLoop.hpp"
 #include "MaterialAsset.hpp"
 #include "MeshAsset.hpp"
+#include "OS.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 #include "RenderScene.hpp"
+#include "RuntimeConfig.hpp"
 #include "SceneRenderer.hpp"
 #include "Semantics.hpp"
 #include "StandardFrame.hpp"
@@ -58,7 +62,7 @@ namespace Crowy
             default;
     };
 
-    class FrameHost {
+    class FrameHost: public MainLoop {
     public:
         struct Config {
             RHIPixelFormat depthFormat = RHIPixelFormat::D32_FLOAT;
@@ -89,10 +93,7 @@ namespace Crowy
         static constexpr u32 ViewMain = 0;
 
     private:
-        FrameContent& content;
         Config config;
-        // the loop's last frame that ended, from Init on
-        FrameStatsLog::LastFrame frameNumber;
 
         RHIDevice* device = nullptr;
         RHISwapchain* swapchain = nullptr;
@@ -126,7 +127,7 @@ namespace Crowy
         FrameCapturesRAII captures;
         // its port opens in debug builds only; last, so its verbs go first
         FramePortRAII framePort;
-        // RecordSimulation's, alive until the walker has recorded
+        // recordSimulation's, alive until the walker has recorded
         std::vector<PassHook> frameHooks;
 
         // this frame's, asked by a look while it turns
@@ -134,31 +135,16 @@ namespace Crowy
         bool reportedCullStats = false;
 
     public:
-        ~FrameHost();
+        ~FrameHost() override;
         CROWY_DECLARE_PINNED(FrameHost)
 
-        FrameHost(
-            FrameContent& content,
-            const Config& config,
-            CameraRAII camera
-        );
+        FrameHost(const Config& config, CameraRAII camera);
 
-        // `hold` is --hold: the loop waits for the port from frame 1
-        void Init(
-            RHIDevice& device,
-            RHISwapchain& swapchain,
-            FrameLoop loop,
-            bool hold
-        );
-        void NewFrame();
-        void ProcessInput(const InputProvider& input);
-        void Update(f64 deltaTime);
-        void Record(
-            RHICommandList& cmdList,
-            const RHIColorAttachment& backBuffer
-        );
-        void FrameEnd(const FrameReport& report);
-        void Resize(u32 width, u32 height);
+    protected:
+        const RuntimeConfig& Runtime() const { return OS::Get()->Config(); }
+        // the pacer's: the one being recorded, or between frames the last
+        // that ended
+        u64 FrameNumber() const { return OS::Get()->Clock().Frame(); }
 
         // the lit views' clear, as a lighting key's sky, from the next frame;
         // the pipeline stays as it is
@@ -172,7 +158,6 @@ namespace Crowy
         // the cursor hidden for this frame, as a look turning the camera
         // asks; asked again every frame it holds
         void RequestRelativeMouse() noexcept { relativeMouse = true; }
-        bool WantsRelativeMouse() const noexcept { return relativeMouse; }
         // the back buffer of `frame` to `path` as a BMP, with the
         // capture_frame verb's checks; why not, empty once queued
         Str RequestCapture(Str path, u64 frame) {
@@ -204,8 +189,74 @@ namespace Crowy
             return pipeline->FindHook(hook);
         }
 
+        // Override to push a struct starting with the same members
+        // when a shader wants more root constants. Runs in every mesh pass.
+        virtual void bindPass(RHICommandList& cmdList, const ScenePush& push) {
+            cmdList.SetPushGraphicsConstants(push);
+        }
+
     private:
-        FrameGraphRAII describePipeline();
+        void init(RHIDevice& device, RHISwapchain& swapchain) override final;
+        void newFrame() override final;
+        void processInput(const InputProvider& input) override final;
+        void update(f64 deltaTime, f64 elapsedTime) override final;
+        bool wantsRelativeMouse() override final { return relativeMouse; }
+        void record(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override final;
+        void endFrame(const FrameReport& report) override final;
+        void resize(u32 width, u32 height) override final;
+
+        // once, from init; the pool queues the copies and the first frame
+        // records them
+        virtual void buildGeometry(GeometryPool& pool) = 0;
+
+        // The only sample code allowed to see both where a thing is in the
+        // world and what the renderer stores about it.
+        virtual void extractScene(RenderScene& scene) = 0;
+
+        // called again on every config change; an own desc clears scene color
+        // with config.clearColor and ends with appendPostChain(config.post)
+        virtual FrameGraphDesc describePipeline(
+            const StandardFrameConfig& frameConfig
+        ) {
+            return describeStandardFrame(frameConfig);
+        }
+
+        // The sample's own per-frame buffers, written here
+        // because the pass has not opened yet.
+        virtual void updateFrameData() {}
+
+        // input a sample reads beyond the camera's
+        virtual void pollInput(const InputProvider&) {}
+
+        // after the camera: the frame's time, or the fixed 1/60 step in a
+        // counted run and a frame capture's run
+        virtual void updateScene(f64) {}
+
+        // the formats of the pass the UI rides, frozen for the app's life
+        virtual void initUI(RHIDevice&, const OverlayFormats&) {}
+
+        // runs before the first pass; the acquires ride the overlay pass
+        virtual std::span<const RHITextureBarrier> prepareUI(RHICommandList&) {
+            return {};
+        }
+
+        // runs inside the overlay pass, after its draws
+        virtual void recordUI(RHICommandList&) {}
+
+        // after the reload_shaders verb rebuilt the renderer's pipelines: the
+        // sample's own programs; returns how many it rebuilt
+        virtual usize reloadShaders() { return 0; }
+
+        // runs before the first pass, after prepareUI: the sample's own
+        // GPU work, and one binding per hook pass of the running list
+        virtual std::vector<PassHook> recordSimulation(RHICommandList&) {
+            return {};
+        }
+
+        FrameGraphRAII buildPipeline();
         void openCommandPort();
         void applyDebugFromEnvironment();
         // a port write of debug.sceneView where nothing draws the view

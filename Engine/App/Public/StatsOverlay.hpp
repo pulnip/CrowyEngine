@@ -3,8 +3,8 @@
 #include <array>
 
 #include "FrameProfiler.hpp"
+#include "FrameStatsLog.hpp"
 #include "Primitives.hpp"
-#include "RenderApp.hpp"
 
 namespace Crowy
 {
@@ -17,6 +17,6 @@ namespace Crowy
         u64 lastGPUFrame = 0;
 
     public:
-        void Draw(const RenderApp::FrameStats& stats);
+        void Draw(const FrameStats& stats);
     };
 }

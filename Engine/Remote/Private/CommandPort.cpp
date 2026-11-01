@@ -4,6 +4,7 @@
 #include <array>
 #include <cctype>
 #include <chrono>
+#include <cstdlib>
 #include <exception>
 #include <format>
 #include <optional>
@@ -821,6 +822,32 @@ namespace Crowy
             impl->Complete(id, errorBody(std::move(message)));
         id = 0;
         port.reset();
+    }
+
+    std::optional<CommandPortConfig> commandPortConfigFromEnvironment() {
+        CommandPortConfig config;
+        const char* env = std::getenv("CROWY_COMMAND_PORT");
+        if(env == nullptr)
+            return config;
+
+        const StrView text = env;
+        const auto forced = parseNumber<u16>(text);
+        if(!forced) {
+            LOG_WARN(
+                "CROWY_COMMAND_PORT='{}' is not a port number; using the "
+                "default",
+                text
+            );
+
+            return config;
+        }
+        if(*forced == 0)
+            return std::nullopt;
+
+        config.port = *forced;
+        config.portRetries = 0;
+
+        return config;
     }
 
     CommandPort::CommandPort(const CommandPortConfig& config)

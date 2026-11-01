@@ -1,35 +1,17 @@
 #pragma once
 
-#include <functional>
-#include <memory>
 #include <vector>
 
 #include "CommandPort.hpp"
 #include "FrameCaptures.hpp"
-#include "FrameControl.hpp"
-#include "InputEvent.hpp"
-#include "InputProvider.hpp"
 #include "Primitives.hpp"
 #include "Semantics.hpp"
 
 namespace Crowy
 {
-    using CommandPortPtr = RAII<CommandPort>;
+    class FrameClock;
 
-    struct FrameLoop {
-        FrameControl& control;
-        // the last frame that ended
-        std::function<u64()> frame;
-        std::function<f64()> elapsedSeconds;
-        std::function<void()> requestQuit;
-        // what ping names the app
-        Str title;
-        // the input as the last frame saw it, for read_input
-        const InputProvider* input = nullptr;
-        std::function<InputStatus()> inputStatus;
-        // a --port-input run's way in; empty in any other
-        std::function<void(const InputEvent&)> pushInput;
-    };
+    using CommandPortPtr = RAII<CommandPort>;
 
     class FramePort {
     private:
@@ -38,7 +20,6 @@ namespace Crowy
             Reply reply;
         };
 
-        FrameLoop loop;
         const FrameCaptures& captures;
         // null when disabled, inert with Status().server == BindFailed when
         // no port could bind
@@ -52,7 +33,7 @@ namespace Crowy
         // the port's verbs point at it
         CROWY_DECLARE_PINNED(FramePort)
 
-        FramePort(FrameLoop loop, const FrameCaptures& captures);
+        explicit FramePort(const FrameCaptures& captures);
 
         // the port CROWY_COMMAND_PORT asks for, or none
         void Open();
@@ -68,8 +49,8 @@ namespace Crowy
         CommandPort* Port() noexcept { return port.get(); }
 
     private:
+        FrameClock& clock() const;
         DOM::Table status() const;
-        DOM::Table inputReport() const;
         void answerWaits();
     };
 }

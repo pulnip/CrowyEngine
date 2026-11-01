@@ -4,7 +4,7 @@
 
 namespace Crowy
 {
-    void StatsOverlay::Draw(const RenderApp::FrameStats& stats) {
+    void StatsOverlay::Draw(const FrameStats& stats) {
         using enum FrameSection;
 
         struct CpuRow {
