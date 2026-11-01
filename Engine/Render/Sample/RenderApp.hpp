@@ -30,18 +30,6 @@ namespace Crowy
 
         RenderApp(const Config& config, CameraRAII camera);
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override final;
-        void NewFrame() override final;
-        void ProcessInput(const InputProvider& input) override final;
-        void OnUpdate(f64 deltaTime, f64 elapsedTime) override final;
-        bool WantsRelativeMouse() override final;
-        void OnRecord(
-            RHICommandList& cmdList,
-            const RHIColorAttachment& backBuffer
-        ) override final;
-        void OnFrameEnd(const FrameReport& report) override final;
-        void OnResize(u32 width, u32 height) override final;
-
     protected:
         const RuntimeConfig& Runtime() const { return OS::Get()->Config(); }
         // the pacer's: the one being recorded, or between frames the last
@@ -89,5 +77,18 @@ namespace Crowy
         std::optional<HookPassFormats> FindHook(StrView hook) const noexcept {
             return host.FindHook(hook);
         }
+
+    private:
+        void init(RHIDevice& device, RHISwapchain& swapchain) override final;
+        void newFrame() override final;
+        void processInput(const InputProvider& input) override final;
+        void update(f64 deltaTime, f64 elapsedTime) override final;
+        bool wantsRelativeMouse() override final;
+        void record(
+            RHICommandList& cmdList,
+            const RHIColorAttachment& backBuffer
+        ) override final;
+        void endFrame(const FrameReport& report) override final;
+        void resize(u32 width, u32 height) override final;
     };
 }

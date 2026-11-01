@@ -201,7 +201,7 @@ namespace Crowy
     }
 
     void OS::Impl::Run(MainLoop& mainLoop) {
-        mainLoop.OnInit(device, *swapchain);
+        mainLoop.Init(device, *swapchain);
 
         imguiEnabled = ImGui::GetCurrentContext() != nullptr;
         if(imguiEnabled) {
@@ -276,7 +276,7 @@ namespace Crowy
                 FrameProfiler::Scope section(profiler, FrameSection::Update);
 
                 clock.Tick();
-                mainLoop.OnUpdate(clock.DeltaTime(), clock.ElapsedTime());
+                mainLoop.Update(clock.DeltaTime(), clock.ElapsedTime());
                 if(clock.QuitRequested()) [[unlikely]]
                     return;
                 ApplyRelativeMouse(mainLoop.WantsRelativeMouse());
@@ -309,7 +309,7 @@ namespace Crowy
                 EndFrame();
             }
 
-            mainLoop.OnFrameEnd(profiler.EndFrame(cmdListPool.GetFrameStats()));
+            mainLoop.EndFrame(profiler.EndFrame(cmdListPool.GetFrameStats()));
             if(profiler.ShouldStop()) [[unlikely]]
                 return;
             if(exitAfterFrame.has_value() && frame >= *exitAfterFrame)
@@ -397,7 +397,7 @@ namespace Crowy
             framePacer.WaitForIdle();
 
             swapchain->Resize(w, h);
-            mainLoop.OnResize(w, h);
+            mainLoop.Resize(w, h);
         }
         if(event.type == SDL_EVENT_WINDOW_FOCUS_LOST && !portInput)
             inputProvider.OnFocusLost(window.Handle());
@@ -467,7 +467,7 @@ namespace Crowy
 
         {
             RHIEventScope event(cmdList, "Frame");
-            mainLoop.OnRecord(cmdList, backBuffer);
+            mainLoop.Record(cmdList, backBuffer);
         }
 
         cmdList.Close();

@@ -42,8 +42,8 @@ namespace Crowy
                   std::make_unique<FlyCamera>(makeCamera())
               ) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             const auto floorMesh = MakePlane(Vec2{4.0f, 4.0f});
             const auto tileMesh = MakePlane(Vec2{0.25f, 0.25f});
             const auto cardMesh = MakePlane(-unitZ(), unitX(), 0.5f);
@@ -57,7 +57,7 @@ namespace Crowy
             card = valueOrThrow(pool.Add(cardMesh.vertices, cardMesh.indices));
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             // down and away from the camera, so shadows fall behind their
             // casters where the camera sees them
             scene.Lights().Add(
@@ -234,7 +234,6 @@ namespace Crowy
                 0.4f);
         }
 
-    private:
         static Config makeConfig() {
             return Config{
                 .clearColor = {0.12f, 0.16f, 0.24f, 1.0f},

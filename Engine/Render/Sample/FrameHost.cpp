@@ -190,13 +190,13 @@ namespace Crowy
 
         frameInputs.bindMeshPass =
             [this](RHICommandList& cmdList, const ScenePush& push) {
-                content.OnBindPass(cmdList, push);
+                content.BindPass(cmdList, push);
             };
         frameInputs.recordOverlay = [this](RHICommandList& cmdList) {
-            content.OnRecordUI(cmdList);
+            content.RecordUI(cmdList);
         };
 
-        content.OnInitUI(device, pipeline->Overlay());
+        content.InitUI(device, pipeline->Overlay());
 
         applyDebugFromEnvironment();
 #if CROWY_DEBUG_BUILD
@@ -208,7 +208,7 @@ namespace Crowy
         framePort->CheckPortInput();
 
         // after the port, so the scene can expose itself before the loop
-        content.OnBuildGeometry(*geometryPool);
+        content.BuildGeometry(*geometryPool);
         geometryPool->LogAllocationStats();
 
         // after the geometry, because a snapshot carries the allocation
@@ -279,7 +279,7 @@ namespace Crowy
             {},
             [this](const DOM::Value&, Reply reply) {
                 const auto rebuild = renderer->ReloadPipelines();
-                const auto programs = content.OnReloadShaders();
+                const auto programs = content.ReloadShaders();
 
                 DOM::Table result;
                 result.emplace(
@@ -308,12 +308,12 @@ namespace Crowy
     void FrameHost::ProcessInput(const InputProvider& input) {
         relativeMouse = false;
         camera->ProcessInput(input);
-        content.OnProcessInput(input);
+        content.PollInput(input);
     }
 
     void FrameHost::Update(f64 deltaTime) {
         camera->Update(deltaTime);
-        content.OnUpdateScene(deltaTime);
+        content.UpdateScene(deltaTime);
         // after the scene's own Sync, so what it let go leaves this frame
         meshes->Collect();
         materials->Collect();
@@ -341,7 +341,7 @@ namespace Crowy
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
     ) {
-        // one copy for the whole frame: OnPrepareUI below may write the
+        // one copy for the whole frame: PrepareUI below may write the
         // original, and the pipelines and the clear must agree
         const auto frameDebug = debug;
         const auto overrides = meshPassOverride(frameDebug);
@@ -364,11 +364,11 @@ namespace Crowy
             auto rebuilt = describePipeline();
             CROWY_ASSERT(
                 rebuilt->Overlay() == pipeline->Overlay(),
-                "the UI's formats are frozen at OnInitUI"
+                "the UI's formats are frozen at InitUI"
             );
             CROWY_ASSERT(
                 rebuilt->ViewCount() == renderer->ViewCount(),
-                "the renderer's view rows are sized at OnInit"
+                "the renderer's view rows are sized at Init"
             );
             pipeline = std::move(rebuilt);
         }
@@ -389,7 +389,7 @@ namespace Crowy
         view.cameraPosition = toVec4(camera->Position(), 1.0f);
 
         // every per-frame buffer settles before the first pass opens
-        content.OnUpdateFrameData();
+        content.UpdateFrameData();
 
         renderer->BeginFrame(scene, pipeline->ShadowMapSize());
         pipeline->Prepare(*renderer, scene, overrides);
@@ -406,8 +406,8 @@ namespace Crowy
         frameInputs.vertices = geometryPool->GetVertexBufferID();
         // both outside any pass: the pool's copies, then the UI's
         frameInputs.geometryAcquires = geometryPool->RecordUploads(cmdList);
-        frameInputs.overlayAcquires = content.OnPrepareUI(cmdList);
-        frameHooks = content.OnRecordSimulation(cmdList);
+        frameInputs.overlayAcquires = content.PrepareUI(cmdList);
+        frameHooks = content.RecordSimulation(cmdList);
         frameInputs.hooks = frameHooks;
         // resolved after any rebuild above, so a request keeps its name
         frameInputs.frame = frameNumber();

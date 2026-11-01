@@ -20,7 +20,7 @@ namespace Crowy
             u32 cellHeight;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             pso = device.CreatePipelineState(
                 RHIComputePipelineStateDesc{
                     .computeShader = {
@@ -42,7 +42,7 @@ namespace Crowy
             );
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {

@@ -221,7 +221,7 @@ namespace Crowy
             };
         }
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             this->device = &device;
 
             trail = std::make_unique<OrbitTrail>(
@@ -417,7 +417,7 @@ namespace Crowy
             ImGui::End();
         }
 
-        void ProcessInput(const InputProvider& input) override {
+        void processInput(const InputProvider& input) override {
             zoomInput = (input.IsKeyDown(KeyCode::Up) ? 1.0f : 0.0f) -
                         (input.IsKeyDown(KeyCode::Down) ? 1.0f : 0.0f);
             turnsInput = (input.IsKeyDown(KeyCode::Right) ? 1.0f : 0.0f) -
@@ -428,8 +428,8 @@ namespace Crowy
             resetPressed = input.IsKeyPressed(KeyCode::R);
         }
 
-        void OnUpdate(f64 deltaTime, f64) override {
-            // OrbitTrail wants exactly one Advance per Record, so OnRecord
+        void update(f64 deltaTime, f64) override {
+            // OrbitTrail wants exactly one Advance per Record, so Record
             // takes the step
             pendingSeconds += deltaTime;
 
@@ -606,7 +606,7 @@ namespace Crowy
             return release;
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
@@ -630,7 +630,7 @@ namespace Crowy
                 pendingSeconds = 0.0;
             }
 
-            // OnResize never fires at startup
+            // Resize never fires at startup
             viewportWidth = static_cast<f32>(backBuffer.texture->GetWidth());
             viewportHeight = static_cast<f32>(backBuffer.texture->GetHeight());
 

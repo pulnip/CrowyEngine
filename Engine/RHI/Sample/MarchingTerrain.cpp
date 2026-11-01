@@ -138,7 +138,7 @@ namespace Crowy
             };
         }
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             this->device = &device;
 
             surface =
@@ -171,11 +171,11 @@ namespace Crowy
             panel = std::make_unique<TerrainPanel>(ctx, MakeSampleStats());
         }
 
-        void ProcessInput(const InputProvider& input) override {
+        void processInput(const InputProvider& input) override {
             camera.ProcessInput(input);
         }
 
-        void OnUpdate(f64 deltaTime, f64) override {
+        void update(f64 deltaTime, f64) override {
             ctx.stats.frameTimeMs = deltaTime * 1000.0;
 
             CollectCounter();
@@ -188,7 +188,7 @@ namespace Crowy
             }
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
@@ -313,7 +313,7 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnResize(u32 width, u32 height) override {
+        void resize(u32 width, u32 height) override {
             CreateDepthBuffer(*device, width, height);
             camera.SetViewport(width, height);
         }

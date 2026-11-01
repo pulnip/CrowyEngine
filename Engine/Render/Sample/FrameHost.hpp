@@ -126,7 +126,7 @@ namespace Crowy
         FrameCapturesRAII captures;
         // its port opens in debug builds only; last, so its verbs go first
         FramePortRAII framePort;
-        // OnRecordSimulation's, alive until the walker has recorded
+        // RecordSimulation's, alive until the walker has recorded
         std::vector<PassHook> frameHooks;
 
         // this frame's, asked by a look while it turns

@@ -364,7 +364,7 @@ namespace Crowy
             f32 bloomStrength = 0.2f;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             diskGenerator = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
                     .topology = RHIPrimitiveTopology::TriangleStrip,
@@ -474,11 +474,11 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnUpdate(f64, f64 elapsedTime) override {
+        void update(f64, f64 elapsedTime) override {
             simParam.elapsedTimeSeconds = static_cast<f32>(elapsedTime);
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
@@ -599,7 +599,7 @@ namespace Crowy
             }
         }
 
-        void OnResize(u32 width, u32 height) override {
+        void resize(u32 width, u32 height) override {
             // a minimized window reports zero, which the swapchain also skips
             if(width == 0 || height == 0)
                 return;

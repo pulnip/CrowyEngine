@@ -67,12 +67,12 @@ namespace Crowy
               ),
               stage(std::move(stage)) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             geometry = addStageGeometry(pool, stage);
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             textures = uploadStageTextures(scene, Device(), stage);
             content.emplace(scene, stage, geometry, textures);
             session.emplace(
@@ -100,7 +100,7 @@ namespace Crowy
             );
         }
 
-        void OnProcessInput(const InputProvider& input) override {
+        void pollInput(const InputProvider& input) override {
             constexpr std::array CutKeys{
                 KeyCode::Num1,
                 KeyCode::Num2,
@@ -174,17 +174,14 @@ namespace Crowy
             }
         }
 
-        void OnUpdateScene(f64 seconds) override { session->Advance(seconds); }
+        void updateScene(f64 seconds) override { session->Advance(seconds); }
 
-        void OnUpdateFrameData() override {
+        void updateFrameData() override {
             const auto& io = ImGui::GetIO();
             session->Update(Vec2{io.DisplaySize.x, io.DisplaySize.y});
         }
 
-        void OnInitUI(
-            RHIDevice& device,
-            const OverlayFormats& formats
-        ) override {
+        void initUI(RHIDevice& device, const OverlayFormats& formats) override {
             // its own file, so no other sample's windows leak in or out
             constexpr CStr ImGuiSettings = "StageEditor.imgui.ini";
 
@@ -196,7 +193,7 @@ namespace Crowy
             ImGui::GetIO().IniFilename = ImGuiSettings;
         }
 
-        std::span<const RHITextureBarrier> OnPrepareUI(
+        std::span<const RHITextureBarrier> prepareUI(
             RHICommandList& cmdList
         ) override {
             constexpr CStr ToolbarHint =
@@ -220,11 +217,10 @@ namespace Crowy
             return uiRenderer->TextureAcquires();
         }
 
-        void OnRecordUI(RHICommandList& cmdList) override {
+        void recordUI(RHICommandList& cmdList) override {
             uiRenderer->Record(cmdList);
         }
 
-    private:
         static Config makeConfig(const LoadedStage& loaded) {
             const auto& document = loaded.document;
             const auto& key =

@@ -17,10 +17,10 @@ namespace Crowy
         HelloScene()
             : RenderApp(Config{}, std::make_unique<SnapshotCamera>()) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool&) override {}
+    private:
+        void buildGeometry(GeometryPool&) override {}
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             world.Provide(scene);
             world.Provide(Meshes());
             world.Provide(Materials());
@@ -33,7 +33,7 @@ namespace Crowy
             world.Frame(0.0);
         }
 
-        void OnUpdateScene(f64 seconds) override { world.Frame(seconds); }
+        void updateScene(f64 seconds) override { world.Frame(seconds); }
     };
 }
 

@@ -43,8 +43,8 @@ namespace Crowy
                   std::make_unique<FlyCamera>(makeCamera())
               ) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             const auto boxMesh = MakeBox(BlockHalfSize);
             const auto sphereMesh = MakeSphere(BlockHalfSize, 16, 8);
             // single-sided quad facing the start camera
@@ -58,7 +58,7 @@ namespace Crowy
                 valueOrThrow(pool.Add(planeMesh.vertices, planeMesh.indices));
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             // the shader colors by objectID and ignores the material,
             // so one row covers the whole lattice
             material = scene.Materials().Add(
@@ -102,9 +102,8 @@ namespace Crowy
             }
         }
 
-        void OnUpdateScene(f64 seconds) override { world.Frame(seconds); }
+        void updateScene(f64 seconds) override { world.Frame(seconds); }
 
-    private:
         static Config makeConfig() {
             return Config{
                 // the shader writes display values: kept as bytes, copied out

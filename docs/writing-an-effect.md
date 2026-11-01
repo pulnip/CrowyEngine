@@ -85,7 +85,7 @@ inline ParticleEffectDesc sparksDesc() {
 }
 ```
 
-`Engine/Effects/Sample/Island.cpp`의 `ExtractScene`에서 `effects->Add(sparksDesc());`
+`Engine/Effects/Sample/Island.cpp`의 `extractScene`에서 `effects->Add(sparksDesc());`
 한 줄을 더한다.
 
 - `origin`과 `size`: 이펙트가 있는 자리와, 거기서 닿는 거리(반지름, 반높이 같은 것)다.
@@ -107,9 +107,9 @@ inline ParticleEffectDesc sparksDesc() {
   상관없음), `Alpha`는 슬롯 순서대로 덮는다. 이펙트는 깊이를 쓰지 않으니 `Alpha`는 먼저
   그려진 이펙트를 앞뒤 없이 모두 덮는다. 그래서 `Alpha` 그리기는 `Additive`보다 앞에
   두고, `Alpha`가 있는 이펙트를 먼저 `Add`한다(Island의 순서는 `Island.cpp`의
-  `ExtractScene`에 있는 `Add` 호출 순서다).
+  `extractScene`에 있는 `Add` 호출 순서다).
 - 깊이는 장면에 대해 검사하고 쓰지 않는다. `Effects` 패스는 엔진의 표준 파이프라인에
-  없다. Island가 자기 `DescribePipeline`에서 유리(Translucent) 앞에 끼워 넣는 hook 패스다.
+  없다. Island가 자기 `describePipeline`에서 유리(Translucent) 앞에 끼워 넣는 hook 패스다.
 
 ## 3. 셰이더에서 쓸 수 있는 것
 

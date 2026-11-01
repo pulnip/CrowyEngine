@@ -9,7 +9,7 @@ namespace Crowy
     RenderApp::RenderApp(const Config& config, CameraRAII camera)
         : host(*this, config, std::move(camera)) {}
 
-    void RenderApp::OnInit(RHIDevice& device, RHISwapchain& swapchain) {
+    void RenderApp::init(RHIDevice& device, RHISwapchain& swapchain) {
         auto& clock = OS::Get()->Clock();
         std::function<void(const InputEvent&)> pushInput;
         if(Runtime().portInput) {
@@ -35,34 +35,34 @@ namespace Crowy
         );
     }
 
-    void RenderApp::NewFrame() {
+    void RenderApp::newFrame() {
         host.NewFrame();
     }
 
-    void RenderApp::ProcessInput(const InputProvider& input) {
+    void RenderApp::processInput(const InputProvider& input) {
         host.ProcessInput(input);
     }
 
-    void RenderApp::OnUpdate(f64 deltaTime, f64) {
+    void RenderApp::update(f64 deltaTime, f64) {
         host.Update(deltaTime);
     }
 
-    bool RenderApp::WantsRelativeMouse() {
+    bool RenderApp::wantsRelativeMouse() {
         return host.WantsRelativeMouse();
     }
 
-    void RenderApp::OnRecord(
+    void RenderApp::record(
         RHICommandList& cmdList,
         const RHIColorAttachment& backBuffer
     ) {
         host.Record(cmdList, backBuffer);
     }
 
-    void RenderApp::OnFrameEnd(const FrameReport& report) {
+    void RenderApp::endFrame(const FrameReport& report) {
         host.FrameEnd(report);
     }
 
-    void RenderApp::OnResize(u32 width, u32 height) {
+    void RenderApp::resize(u32 width, u32 height) {
         host.Resize(width, height);
     }
 }

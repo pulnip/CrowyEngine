@@ -218,8 +218,8 @@ namespace Crowy
             ~PhysicsPlayground() override = default;
             CROWY_DECLARE_PINNED(PhysicsPlayground)
 
-        protected:
-            void OnBuildGeometry(GeometryPool& pool) override {
+        private:
+            void buildGeometry(GeometryPool& pool) override {
                 const auto floorMesh =
                     MakePlane(Vec2{FloorHalf.x, FloorHalf.z});
                 box = valueOrThrow(
@@ -240,7 +240,7 @@ namespace Crowy
                 );
             }
 
-            void ExtractScene(RenderScene& scene) override {
+            void extractScene(RenderScene& scene) override {
                 addLight(scene);
                 // every row before any address is taken: the table is a
                 // vector, so a later Add could move the rows
@@ -276,7 +276,7 @@ namespace Crowy
                 }
             }
 
-            void OnProcessInput(const InputProvider& input) override {
+            void pollInput(const InputProvider& input) override {
                 constexpr auto RestartSolutionKey = KeyCode::R;
                 constexpr auto RestartControlKey = KeyCode::C;
                 constexpr auto FrameKey = KeyCode::F;
@@ -299,7 +299,7 @@ namespace Crowy
                     Debug().showStats = !Debug().showStats;
             }
 
-            void OnUpdateScene(f64 seconds) override {
+            void updateScene(f64 seconds) override {
                 // the puzzles hold at tick 0 this many frames, counted, not
                 // timed, so the capture at frame 60 is the same on any machine
                 constexpr u64 LeadInFrames = 90;
@@ -322,7 +322,7 @@ namespace Crowy
                 }
             }
 
-            void OnInitUI(
+            void initUI(
                 RHIDevice& device,
                 const OverlayFormats& formats
             ) override {
@@ -340,7 +340,7 @@ namespace Crowy
             }
 
             // the labels first, so the chip and the stats draw over them
-            std::span<const RHITextureBarrier> OnPrepareUI(
+            std::span<const RHITextureBarrier> prepareUI(
                 RHICommandList& cmdList
             ) override {
                 if(showLabels)
@@ -354,11 +354,10 @@ namespace Crowy
                 return uiRenderer->TextureAcquires();
             }
 
-            void OnRecordUI(RHICommandList& cmdList) override {
+            void recordUI(RHICommandList& cmdList) override {
                 uiRenderer->Record(cmdList);
             }
 
-        private:
             static Config makeConfig() {
                 return Config{
                     .clearColor = SkyRadiance,

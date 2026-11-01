@@ -58,7 +58,7 @@ namespace Crowy
 
         Widget panel;
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             uiRenderer =
                 std::make_unique<UIRenderer>(device, swapchain.GetFormat());
 
@@ -104,11 +104,11 @@ namespace Crowy
             );
         }
 
-        void OnUpdate(f64 deltaTime, f64) override {
+        void update(f64 deltaTime, f64) override {
             context.frameTime = deltaTime;
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {

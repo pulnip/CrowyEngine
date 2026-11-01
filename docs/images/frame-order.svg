@@ -90,7 +90,7 @@
 <rect class="card ml" x="315" y="456" width="250" height="58" rx="10"/>
 <circle class="num ml" cx="337" cy="485" r="11"/>
 <text class="numt" x="337" y="489.5" text-anchor="middle">6</text>
-<text class="title mono" x="357" y="481">OnUpdate(dt, elapsed)</text>
+<text class="title mono" x="357" y="481">Update(dt, elapsed)</text>
 <text class="sub" x="357" y="500">씬이 World::Frame(dt) 호출</text>
 <rect class="card os" x="20" y="730" width="250" height="58" rx="10"/>
 <circle class="num os" cx="42" cy="759" r="11"/>
@@ -100,7 +100,7 @@
 <rect class="card ml" x="315" y="814" width="250" height="108" rx="10"/>
 <circle class="num ml" cx="337" cy="843" r="11"/>
 <text class="numt" x="337" y="847.5" text-anchor="middle">8</text>
-<text class="title mono" x="357" y="839">OnRecord()</text>
+<text class="title mono" x="357" y="839">Record()</text>
 <text class="sub" x="357" y="858">패스 기록</text>
 <rect class="card os" x="20" y="948" width="250" height="58" rx="10"/>
 <circle class="num os" cx="42" cy="977" r="11"/>
@@ -110,7 +110,7 @@
 <rect class="card ml" x="315" y="1032" width="250" height="58" rx="10"/>
 <circle class="num ml" cx="337" cy="1061" r="11"/>
 <text class="numt" x="337" y="1065.5" text-anchor="middle">10</text>
-<text class="title mono" x="357" y="1057">OnFrameEnd(report)</text>
+<text class="title mono" x="357" y="1057">EndFrame(report)</text>
 <text class="sub" x="357" y="1076">측정값을 앱으로 밀어줌</text>
 <rect class="card w" x="610" y="456" width="250" height="248" rx="10"/>
 <text class="title mono" x="626" y="481">World::Frame(dt)</text>

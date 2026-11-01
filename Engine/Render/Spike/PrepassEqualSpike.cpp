@@ -42,8 +42,8 @@ namespace Crowy
                   std::make_unique<FlyCamera>(makeCamera())
               ) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             const auto sphereMesh = MakeSphere(1.0f, 48, 24);
             // most of its triangles cover less than a pixel
             const auto denseSphereMesh = MakeSphere(1.0f, 96, 48);
@@ -65,7 +65,7 @@ namespace Crowy
                 valueOrThrow(pool.Add(wallMesh.vertices, wallMesh.indices));
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             addPairs(scene);
             addDenseSpheres(scene);
             addBoxRows(scene);
@@ -89,7 +89,6 @@ namespace Crowy
             );
         }
 
-    private:
         static Config makeConfig() {
             return Config{
                 // the shader writes display values: kept as bytes, copied out

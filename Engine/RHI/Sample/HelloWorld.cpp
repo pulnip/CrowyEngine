@@ -7,7 +7,7 @@ namespace Crowy
     class HelloWorld: public MainLoop {
         RHIGraphicsPipelineStateRAII pso;
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             pso = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -25,7 +25,7 @@ namespace Crowy
             );
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {

@@ -182,7 +182,7 @@ namespace Crowy
         };
     }
 
-    void PlaygroundScene::ExtractScene(RenderScene& scene) {
+    void PlaygroundScene::extractScene(RenderScene& scene) {
         world.Provide(scene);
         world.Provide(Meshes());
         world.Provide(Materials());
@@ -201,7 +201,7 @@ namespace Crowy
             )
         );
         materials = loadMaterials(Materials());
-        OnRestyleMaterials(scene, materials, shading);
+        restyleMaterials(scene, materials, shading);
         // the actors' rows land, so the panel and the port find them
         world.Frame(0.0);
 
@@ -230,7 +230,7 @@ namespace Crowy
         panel = buildPanel();
     }
 
-    void PlaygroundScene::OnProcessInput(const InputProvider& input) {
+    void PlaygroundScene::pollInput(const InputProvider& input) {
         auto& debug = Debug();
         if(input.IsKeyPressed(PanelToggleKey)) {
             debug.showPanel = !debug.showPanel;
@@ -279,7 +279,7 @@ namespace Crowy
         }
     }
 
-    void PlaygroundScene::OnUpdateScene(f64 seconds) {
+    void PlaygroundScene::updateScene(f64 seconds) {
         const auto sceneViewRuns = SceneViewID() != 0;
         static_cast<ViewCamera&>(Camera()).Show(
             sceneViewRuns ? &sceneCamera : nullptr
@@ -301,7 +301,7 @@ namespace Crowy
         world.Frame(seconds);
     }
 
-    void PlaygroundScene::OnInitUI(
+    void PlaygroundScene::initUI(
         RHIDevice& device,
         const OverlayFormats& formats
     ) {
@@ -314,7 +314,7 @@ namespace Crowy
         );
     }
 
-    std::span<const RHITextureBarrier> PlaygroundScene::OnPrepareUI(
+    std::span<const RHITextureBarrier> PlaygroundScene::prepareUI(
         RHICommandList& cmdList
     ) {
         // their own windows, closed before the SetNextWindow* below land
@@ -396,7 +396,7 @@ namespace Crowy
         return uiRenderer->TextureAcquires();
     }
 
-    void PlaygroundScene::OnRecordUI(RHICommandList& cmdList) {
+    void PlaygroundScene::recordUI(RHICommandList& cmdList) {
         uiRenderer->Record(cmdList);
     }
 
@@ -505,7 +505,7 @@ namespace Crowy
     }
 
     Widget PlaygroundScene::debugSection() {
-        // OnRecord reads it every frame; no dirty consumer
+        // Record reads it every frame; no dirty consumer
         return buildPropertyTree(
             "debug",
             &Debug(),

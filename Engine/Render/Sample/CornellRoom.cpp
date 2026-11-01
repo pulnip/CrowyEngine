@@ -46,8 +46,8 @@ namespace Crowy
                   std::make_unique<OrbitCamera>(makeCamera())
               ) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             geometry.reserve(source.objects.size());
             for(const auto& object: source.objects) {
                 const auto mesh = bakeTransform(object);
@@ -58,7 +58,7 @@ namespace Crowy
             }
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             if(!source.lights.empty()) {
                 const auto& source = this->source.lights.front();
 
@@ -104,16 +104,14 @@ namespace Crowy
             }
         }
 
-        void OnUpdateFrameData() override {
+        void updateFrameData() override {
             light.cameraPos = Camera().Position();
             lightCB = Device().UploadTransient(light);
         }
 
-        void OnBindPass(
-            RHICommandList& cmdList,
-            const ScenePush& push
-        ) override {
-            RenderApp::OnBindPass(cmdList, push);
+    protected:
+        void bindPass(RHICommandList& cmdList, const ScenePush& push) override {
+            RenderApp::bindPass(cmdList, push);
             cmdList.SetGraphicsConstantBuffer(lightCB, LightCBSlot);
         }
 

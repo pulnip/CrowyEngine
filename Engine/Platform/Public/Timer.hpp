@@ -31,7 +31,7 @@ namespace Crowy
         void NewFrame() noexcept;
         // this frame took `step`, whatever the clock says
         void Step(Duration step) noexcept;
-        // the time since the last frame is nobody's: a hold, or OnInit
+        // the time since the last frame is nobody's: a hold, or Init
         void Rebase() noexcept;
 
         f64 GetDeltaTime() const noexcept;

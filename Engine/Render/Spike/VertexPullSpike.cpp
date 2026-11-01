@@ -32,8 +32,8 @@ namespace Crowy
                   std::make_unique<FlyCamera>(makeCamera())
               ) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             for(u32 i = 0; i < SlotCount; ++i) {
                 const auto mesh = makePolygon(FirstSideCount + i);
 
@@ -42,7 +42,7 @@ namespace Crowy
             }
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             // the shader colors by objectID, so one row covers every slot
             const auto material = scene.Materials().Add(
                 MaterialResource{.pipeline = makePipeline()}
@@ -79,7 +79,7 @@ namespace Crowy
 
         // a fullscreen pass between opaque and translucent that reads depth and
         // blends alpha 0 must leave the same bytes (FullscreenProof.slang)
-        FrameGraphDesc DescribePipeline(
+        FrameGraphDesc describePipeline(
             const StandardFrameConfig& config
         ) override {
             constexpr FrameTargetID SceneDepth = 1;
@@ -121,7 +121,6 @@ namespace Crowy
             return desc;
         }
 
-    private:
         static Config makeConfig() {
             return Config{
                 // the shader writes display values: kept as bytes, copied out

@@ -7,12 +7,12 @@
 | | 역할 | 파일 |
 |---|---|---|
 | `OS` | 창, 스왑체인, `FramePacer`, 커맨드 리스트 풀, 입력, 프로파일러, `FrameClock`(시간, hold 게이트, 프레임 번호, quit 요청, 캡처할 때 쓰는 고정 스텝)을 소유하고 루프를 돌린다 | [OS.hpp](../Engine/Platform/Public/OS.hpp), [OS.cpp](../Engine/Platform/Private/OS.cpp) |
-| `MainLoop` | 루프가 부르는 훅만 있는 인터페이스. 서브클래스는 프레임마다 달라지는 것(`OnUpdate`, `OnRecord`)만 구현한다. 창이나 GPU 동기화는 모른다 | [MainLoop.hpp](../Engine/Platform/Public/MainLoop.hpp) |
+| `MainLoop` | 루프가 부르는 훅만 있는 인터페이스. 서브클래스는 프레임마다 달라지는 것(`update`, `record`)만 구현한다. 창이나 GPU 동기화는 모른다 | [MainLoop.hpp](../Engine/Platform/Public/MainLoop.hpp) |
 | `RenderApp` → `FrameHost` | 렌더러 샘플용. 훅을 전부 `FrameHost`에 넘기고 `FrameHost`가 프레임의 순서를 소유한다 | [RenderApp.hpp](../Engine/Render/Sample/RenderApp.hpp), [FrameHost.hpp](../Engine/Render/Sample/FrameHost.hpp) |
 
 이렇게 나누면 앱은 "이번 프레임에 뭘 할지"만 쓰면 된다.
 프레임 번호 매기기, in-flight 대기, 스왑체인 acquire/present, resize 전 GPU idle 대기는 전부 `OS`가 정해진 자리에서 한다.
-그리고 그 결과는 `OnUpdate(dt, elapsed)`, `OnRecord(cmdList, backBuffer)`, `OnFrameEnd(FrameReport)`처럼 앱 쪽으로 밀어준다.
+그리고 그 결과는 `Update(dt, elapsed)`, `Record(cmdList, backBuffer)`, `EndFrame(FrameReport)`처럼 앱 쪽으로 밀어준다.
 앱이 `OS`에서 읽는 것은 장치, 설정, `FrameClock`뿐이고 `OS::Get()`으로 얻는다.
 
 진입점은 샘플마다 `Main<T>(argc, argv, WindowConfig)` 하나다([Main.hpp](../Engine/Platform/Public/Main.hpp)).
@@ -42,7 +42,7 @@
   Render는 그 결과만 본다.
   World는 바뀐 것만 기록하니까, 아무것도 안 바뀐 프레임은 다시 계산하는 게 없다.
 - **resize는 GPU를 비우고 처리한다.**
-  `OS`가 `framePacer.WaitForIdle()` 다음에 스왑체인 크기를 바꾸고 `OnResize`를 부른다.
+  `OS`가 `framePacer.WaitForIdle()` 다음에 스왑체인 크기를 바꾸고 `Resize`를 부른다.
   앱은 그 안에서 타깃을 바로 다시 만들어도 된다.
 
 ## 플랫폼 차이

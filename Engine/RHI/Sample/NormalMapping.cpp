@@ -49,7 +49,7 @@ namespace Crowy
             float ambient = 0.15f;
         };
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             pso = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -134,7 +134,7 @@ namespace Crowy
                 static_cast<f32>(swapchain.GetWidth()) / swapchain.GetHeight();
         }
 
-        void ProcessInput(const InputProvider& input) override {
+        void processInput(const InputProvider& input) override {
             if(!input.IsKeyDown(MouseButton::RButton))
                 return;
 
@@ -150,7 +150,7 @@ namespace Crowy
             boxRot = normalize(quat(axisAngle(axis, angle), boxRot));
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
@@ -193,7 +193,7 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnResize(u32 width, u32 height) override {
+        void resize(u32 width, u32 height) override {
             aspect = static_cast<f32>(width) / height;
         }
     };

@@ -46,7 +46,7 @@ namespace Crowy
             };
         }
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             depth = device.CreateTexture(
                 RHITextureCreateDesc{
                     .width = MAP_WIDTH,
@@ -88,7 +88,7 @@ namespace Crowy
             );
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {

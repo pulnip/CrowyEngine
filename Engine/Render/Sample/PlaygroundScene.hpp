@@ -184,31 +184,28 @@ namespace Crowy
         // DescribePipeline read
         static EditorCut MakeSceneCut();
 
+    private:
+        static CStr moduleOf(ChartShading chart);
+        // each close-up frames its station at eye height
+        static std::optional<CameraPose> poseOf(CameraBookmark bookmark);
+
         // after the scene file loads, before its rows land; `shading` is what
         // the toggle starts on
-        virtual void OnRestyleMaterials(
+        virtual void restyleMaterials(
             RenderScene&,
             const PlaygroundMaterials&,
             PlaygroundShading&
         ) {}
 
-        void OnBuildGeometry(GeometryPool&) override {}
-        void ExtractScene(RenderScene& scene) override;
-        void OnProcessInput(const InputProvider& input) override;
-        void OnUpdateScene(f64 seconds) override;
-        void OnInitUI(
-            RHIDevice& device,
-            const OverlayFormats& formats
-        ) override;
-        std::span<const RHITextureBarrier> OnPrepareUI(
+        void buildGeometry(GeometryPool&) override {}
+        void extractScene(RenderScene& scene) override;
+        void pollInput(const InputProvider& input) override;
+        void updateScene(f64 seconds) override;
+        void initUI(RHIDevice& device, const OverlayFormats& formats) override;
+        std::span<const RHITextureBarrier> prepareUI(
             RHICommandList& cmdList
         ) override;
-        void OnRecordUI(RHICommandList& cmdList) override;
-
-    private:
-        static CStr moduleOf(ChartShading chart);
-        // each close-up frames its station at eye height
-        static std::optional<CameraPose> poseOf(CameraBookmark bookmark);
+        void recordUI(RHICommandList& cmdList) override;
 
         Widget buildPanel();
         // the row's data by its handle, for the panel and the port alike

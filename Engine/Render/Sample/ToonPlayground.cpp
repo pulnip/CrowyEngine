@@ -126,8 +126,8 @@ namespace Crowy
         ToonPlayground()
             : PlaygroundScene(makeConfig()) {}
 
-    protected:
-        FrameGraphDesc DescribePipeline(
+    private:
+        FrameGraphDesc describePipeline(
             const StandardFrameConfig& config
         ) override {
             auto desc = describeStandardFrame(config);
@@ -177,7 +177,7 @@ namespace Crowy
             return desc;
         }
 
-        void OnRestyleMaterials(
+        void restyleMaterials(
             RenderScene& scene,
             const PlaygroundMaterials& materials,
             PlaygroundShading& shading
@@ -268,7 +268,6 @@ namespace Crowy
             );
         }
 
-    private:
         static Config makeConfig() {
             auto config = MakeConfig();
             config.post = toonPost();

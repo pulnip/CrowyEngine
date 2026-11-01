@@ -33,7 +33,7 @@ namespace Crowy
     using FrameTargetDescs = std::vector<FrameTargetDesc>;
     using PassDescs = std::vector<PassDesc>;
 
-    // imported each frame: the swapchain image OS hands OnRecord
+    // imported each frame: the swapchain image OS hands Record
     inline constexpr FrameTargetID BackBufferTarget = 0;
     inline constexpr FrameExtentID BackBufferExtent = 0;
 
@@ -200,7 +200,7 @@ namespace Crowy
         // sets a mesh pass's push; unset, the walker pushes it as it is
         std::move_only_function<void(RHICommandList&, const ScenePush&)>
             bindMeshPass;
-        // OnPrepareUI's, on the overlay pass's begin
+        // PrepareUI's, on the overlay pass's begin
         std::span<const RHITextureBarrier> overlayAcquires;
         // inside the overlay pass, after its draws
         std::move_only_function<void(RHICommandList&)> recordOverlay;

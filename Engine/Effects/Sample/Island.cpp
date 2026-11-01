@@ -79,8 +79,8 @@ namespace Crowy
         Island()
             : RenderApp(makeConfig(), std::make_unique<SnapshotCamera>()) {}
 
-    protected:
-        void OnBuildGeometry(GeometryPool& pool) override {
+    private:
+        void buildGeometry(GeometryPool& pool) override {
             // from under the sand out to where it has faded into the far sea
             const auto seaMesh = makeSeaGrid(3.5f, 280.0f, 256);
             const auto islandMesh = makeEllipsoid(IslandRadii);
@@ -100,7 +100,7 @@ namespace Crowy
             log = valueOrThrow(pool.Add(logMesh.vertices, logMesh.indices));
         }
 
-        void ExtractScene(RenderScene& scene) override {
+        void extractScene(RenderScene& scene) override {
             world.Provide(scene);
             world.Provide(static_cast<SnapshotCamera&>(Camera()).Snapshot());
 
@@ -231,7 +231,7 @@ namespace Crowy
             exposures.Expose("fire.transform", world.TransformTarget(fire));
         }
 
-        FrameGraphDesc DescribePipeline(
+        FrameGraphDesc describePipeline(
             const StandardFrameConfig& config
         ) override {
             auto desc = describeStandardFrame(config);
@@ -274,12 +274,12 @@ namespace Crowy
             return desc;
         }
 
-        void OnProcessInput(const InputProvider& input) override {
+        void pollInput(const InputProvider& input) override {
             if(fly.ProcessInput(input, makeCamera().lookSensitivity))
                 RequestRelativeMouse();
         }
 
-        void OnUpdateScene(f64 deltaTime) override {
+        void updateScene(f64 deltaTime) override {
             // a still camera writes nothing, so nothing is extracted for it
             if(fly.Moving()) {
                 world.SetLocalTransform(
@@ -295,9 +295,9 @@ namespace Crowy
         }
 
         // the effects' steps too, so spawn and update reload with the draws
-        usize OnReloadShaders() override { return effects->ReloadKernels(); }
+        usize reloadShaders() override { return effects->ReloadKernels(); }
 
-        std::vector<PassHook> OnRecordSimulation(
+        std::vector<PassHook> recordSimulation(
             RHICommandList& cmdList
         ) override {
             std::vector<PassHook> hooks;
@@ -331,7 +331,6 @@ namespace Crowy
             return hooks;
         }
 
-    private:
         static Config makeConfig() {
             return Config{
                 .clearColor = {ISLAND_FAR_SEA, 1.0f},

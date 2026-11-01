@@ -108,7 +108,7 @@ namespace Crowy
             );
         }
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             this->device = &device;
 
             // the sky never writes depth, so the floor always wins over it
@@ -240,7 +240,7 @@ namespace Crowy
             );
         }
 
-        void ProcessInput(const InputProvider& input) override {
+        void processInput(const InputProvider& input) override {
             // radian per pixel
             constexpr f32 SENSITIVITY = 0.003f;
             constexpr f32 PITCH_LIMIT = 0.5f * std::numbers::pi_v<f32> - 0.01f;
@@ -270,7 +270,7 @@ namespace Crowy
                 moveDir -= right;
         }
 
-        void OnUpdate(f64 deltaTime, f64) override {
+        void update(f64 deltaTime, f64) override {
             constexpr f32 SPEED = 5.0f;
 
             if(normSquared(moveDir) > 0.0f) {
@@ -280,7 +280,7 @@ namespace Crowy
             }
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
@@ -363,7 +363,7 @@ namespace Crowy
             cmdList.EndRenderPass(releases);
         }
 
-        void OnResize(u32 width, u32 height) override {
+        void resize(u32 width, u32 height) override {
             // a minimized window reports zero, which the swapchain also skips
             if(width == 0 || height == 0)
                 return;

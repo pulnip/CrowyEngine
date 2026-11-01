@@ -13,7 +13,7 @@ namespace Crowy
 
         RHIGraphicsPipelineStateRAII pso;
 
-        void OnInit(RHIDevice& device, RHISwapchain& swapchain) override {
+        void init(RHIDevice& device, RHISwapchain& swapchain) override {
             pso = device.CreatePipelineState(
                 RHIGraphicsPipelineStateDesc{
                     .topology = RHIPrimitiveTopology::TriangleList,
@@ -32,13 +32,13 @@ namespace Crowy
             );
         }
 
-        void OnUpdate(f64 dt, f64 et) override {
+        void update(f64 dt, f64 et) override {
             constexpr f32 scale = 0.5f;
             sceneData.offset.x = scale * std::cosf(et);
             sceneData.offset.y = scale * std::sinf(et);
         }
 
-        void OnRecord(
+        void record(
             RHICommandList& cmdList,
             const RHIColorAttachment& backBuffer
         ) override {
