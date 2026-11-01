@@ -150,8 +150,12 @@ ctest --test-dir build -C Debug -j 8
 - Windowed runs break on D3D12 debug-layer errors, and a spike compares
   its golden on every run; there is no separate "debug layer" pass.
   Goldens, baselines and cross-machine checks: `docs/testing.md`.
-- Fix only review findings that survived an independent refutation, one
-  defect per commit; style goes through clang-format, not a review fix.
+- Review is two audits (`docs/verification.md`): an internal one by an agent
+  that took no part in the work, and an external one by Codex. Fix an internal
+  finding only after another uninvolved agent confirms it, one defect per
+  commit. The session answers an external finding first and asks the owner
+  about what it cannot refute. Layout goes through clang-format, not a review
+  fix.
 
 ## Git
 
