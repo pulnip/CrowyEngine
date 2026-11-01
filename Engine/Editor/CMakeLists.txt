@@ -1,5 +1,6 @@
 crowy_declare_module(Editor
 PUBLIC
+    Crowy::App
     Crowy::Content
     Crowy::Core
     Crowy::Platform

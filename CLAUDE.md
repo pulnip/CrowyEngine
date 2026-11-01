@@ -13,8 +13,8 @@ gate and scene load live.
 Executables are Examples, `*Spike` (a picture pins a backend difference) or
 `*Check` (headless, exits nonzero on a wrong number), declared in their
 module's CMakeLists through the functions in `cmake/sample.cmake`, and the
-root a user runs under `Runtime/` (`Game`), which needs no
-`CROWY_ENABLE_TEST` and has no ctest entry. ctest labels: `unit`, `gpu` (checks), `render` (spikes), `app` (hosts),
+roots a user runs under `Runtime/` (`Game`, `Editor`), which need no
+`CROWY_ENABLE_TEST` and have no ctest entry. ctest labels: `unit`, `gpu` (checks), `render` (spikes), `app` (hosts),
 `scenario`, `content` (`docs/testing.md`); an executable without one is
 built only.
 

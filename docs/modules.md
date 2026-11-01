@@ -43,18 +43,22 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `WorldEffects` | an actor's position written into an effect's origin | `EffectComponent.hpp` | Test |
 | `Scene` | a World's actors saved to a scene file and loaded back | `Scene.hpp` | Test; Sample: `HelloScene`, a scene file of built-in meshes, two material files and its own environment opened and drawn; `Backlot/` (`BacklotImport.hpp`), the headless `ImportBacklot`, which reads Backlot's `scene.json` through Stage and writes the default lighting key as a scene file, material files, the models and images they name and a copy of the source scene under one content folder (`--backlot`, `--out`; default `Content/Backlot`), the only code in Scene that sees the Stage reader; Test, and a `content` test of the real set; Spike: `BacklotSceneSpike`, the imported `Content/Backlot/Backlot.json` opened and drawn |
 | `Session` | `WorldSession`: a World with the `RenderSession` it draws into and the services it asks for (`RenderScene`, the mesh and material stores, `PrimitiveActors`, a `CameraSnapshot`), built from the `RenderSession` handed to it, which it then owns, and a registry, loading one scene from a file or a DOM, destroyed together (the World first); `GameSession`: that on every system, plus the game clock (real time times a scale, nothing while paused) the World is advanced by | `WorldSession.hpp`, `GameSession.hpp` | Test; Spike: `BacklotSceneSpike` runs on a `GameSession` |
-| `Editor` | editing a World: the session that selects actors by `ActorId` and moves them, the camera outside the World, picking against a `RenderScene`, the gizmo's layout, hover and drag | `WorldEditor.hpp`, `EulerInspector.hpp`, `EditorGizmo.hpp`, `EditorPick.hpp`, `EditorCamera.hpp` | Test |
+| `Editor` | editing a World: the session that selects actors by `ActorId` and moves them, the camera outside the World, picking against a `RenderScene`, the gizmo's layout, hover and drag; `SceneViewEditor`: what a host adds to edit through a Scene View (the camera the view looks through, the `WorldEditor` on its image, the "Scene View" window, the overlay, the panel's selection section, the `sceneCamera` target), shared by `Playground` and `Runtime/Editor`; `ViewCamera`: the World's camera or the editor's | `SceneViewEditor.hpp`, `WorldEditor.hpp`, `EulerInspector.hpp`, `EditorGizmo.hpp`, `EditorPick.hpp`, `EditorCamera.hpp` | Test |
 | `Asset` | asset names by mount and normalized path (`engine:` or the content root), each loaded once | `AssetRef.hpp`, `AssetStore.hpp` | Test |
 | `Content` | image, mip, mesh and model (FBX) loading, image writing and comparison | `ImageLoader.hpp`, `MeshData.hpp`, `ModelLoader.hpp`, `ImageCompare.hpp` | Test; Check: `ImageCompareCheck`, the picture comparer the goldens use |
 
 ## Runtime
 
-`Runtime/`, beside `Engine/`, holds the roots a user runs. `Game` derives
-`FrameHost`, opens the scene file named on its command line on a
-`GameSession` and shows it through the scene's start camera. It is built
-whether or not `CROWY_ENABLE_TEST` is on, declared with
-`crowy_declare_runtime`, and has no ctest entry. A root knows `App` and
-`Session`. A scene with no environment actor draws a black sky.
+`Runtime/`, beside `Engine/`, holds the roots a user runs. Both derive
+`FrameHost`. `Game` opens the scene file named on its command line on a
+`GameSession` and shows it through the scene's start camera. `Editor` opens
+the same kind of file on a `WorldSession` over the systems that are not
+gameplay and edits it in memory through a Scene View and a panel
+(`SceneViewEditor`; it starts with both on, and `CROWY_DEBUG` overrides them).
+They are built whether or not `CROWY_ENABLE_TEST` is on, declared with
+`crowy_declare_runtime`, and have no ctest entry. A root knows `App` and
+`Session`, and `Editor` also the `Editor` module; the two do not know each
+other. A scene with no environment actor draws a black sky in both.
 
 ## What a module promises
 

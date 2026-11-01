@@ -4,6 +4,7 @@
 #include "Geometry/Projection.hpp"
 #include "LinearAlgebra.hpp"
 #include "Primitives.hpp"
+#include "RenderCamera.hpp"
 
 namespace Crowy
 {
@@ -17,6 +18,9 @@ namespace Crowy
 
         bool operator==(const EditorCut&) const = default;
     };
+
+    // the cut that looks where a snapshot's camera does, upright
+    EditorCut editorCutOf(const CameraSnapshot& snapshot);
 
     class EditorCamera final: public Camera {
     public:

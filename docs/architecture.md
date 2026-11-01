@@ -8,7 +8,7 @@
 |---|---|---|
 | `OS` | 창, 스왑체인, `FramePacer`, 커맨드 리스트 풀, 입력, 프로파일러, `FrameClock`(시간, hold 게이트, 프레임 번호, quit 요청, 캡처할 때 쓰는 고정 스텝)을 소유하고 루프를 돌린다 | [OS.hpp](../Engine/Platform/Public/OS.hpp), [OS.cpp](../Engine/Platform/Private/OS.cpp) |
 | `MainLoop` | 루프가 부르는 훅만 있는 인터페이스. 서브클래스는 프레임마다 달라지는 것(`update`, `record`)만 구현한다. 창이나 GPU 동기화는 모른다 | [MainLoop.hpp](../Engine/Platform/Public/MainLoop.hpp) |
-| `FrameHost` | `MainLoop`를 구현한 렌더러 호스트(`Engine/App`). 프레임의 순서를 소유하고, 내용은 자기 private 가상 함수(`buildGeometry`, `updateScene`, `recordUI`, ...)로 서브클래스에 묻는다. 그릴 `RenderSession`(씬과 메시, 텍스처, 머티리얼 저장소)도 `openSession`으로 서브클래스에 열어 달라고 하고 소유하지 않는다. 샘플은 `FrameHost`를 이은 `RenderApp`에서 이어받고, `RenderApp`이 기본 세션을 소유한다. 사용자가 실행하는 루트 `Runtime/Game`은 `FrameHost`를 바로 잇고 `GameSession`을 소유한다 | [FrameHost.hpp](../Engine/App/Public/FrameHost.hpp), [RenderApp.hpp](../Engine/Render/Sample/RenderApp.hpp) |
+| `FrameHost` | `MainLoop`를 구현한 렌더러 호스트(`Engine/App`). 프레임의 순서를 소유하고, 내용은 자기 private 가상 함수(`buildGeometry`, `updateScene`, `recordUI`, ...)로 서브클래스에 묻는다. 그릴 `RenderSession`(씬과 메시, 텍스처, 머티리얼 저장소)도 `openSession`으로 서브클래스에 열어 달라고 하고 소유하지 않는다. 샘플은 `FrameHost`를 이은 `RenderApp`에서 이어받고, `RenderApp`이 기본 세션을 소유한다. 사용자가 실행하는 루트 `Runtime/Game`과 `Runtime/Editor`는 `FrameHost`를 바로 잇고 `GameSession`, `WorldSession`을 소유한다 | [FrameHost.hpp](../Engine/App/Public/FrameHost.hpp), [RenderApp.hpp](../Engine/Render/Sample/RenderApp.hpp) |
 
 이렇게 나누면 앱은 "이번 프레임에 뭘 할지"만 쓰면 된다.
 프레임 번호 매기기, in-flight 대기, 스왑체인 acquire/present, resize 전 GPU idle 대기는 전부 `OS`가 정해진 자리에서 한다.

@@ -22,7 +22,6 @@
 #include "Scene.hpp"
 #include "ShadingModel.hpp"
 #include "SnapshotCamera.hpp"
-#include "WorldEditorOverlay.hpp"
 
 namespace Crowy
 {
@@ -85,58 +84,6 @@ namespace Crowy
             }
 
             return found;
-        }
-
-        // the World's camera, or the editor's while the Scene View runs
-        class ViewCamera final: public SnapshotCamera {
-        private:
-            const EditorCamera* shown = nullptr;
-
-        public:
-            void Show(const EditorCamera* camera) noexcept { shown = camera; }
-
-            Vec3 Position() const noexcept override {
-                return shown ? shown->Position() : SnapshotCamera::Position();
-            }
-            Mat4 View() const noexcept override {
-                return shown ? shown->View() : SnapshotCamera::View();
-            }
-            Mat4 Projection(f32 aspect) const noexcept override {
-                return shown ? shown->Projection(aspect)
-                             : SnapshotCamera::Projection(aspect);
-            }
-        };
-
-        // the scene as a button the size of the image, so a drag on it turns
-        // the camera instead of moving the window; nullopt with no room for it
-        std::optional<SceneImage> drawSceneView(u64 sceneView, ImVec2 size) {
-            constexpr auto Buttons = ImGuiButtonFlags_MouseButtonLeft |
-                                     ImGuiButtonFlags_MouseButtonRight |
-                                     ImGuiButtonFlags_MouseButtonMiddle;
-
-            // a zero side is a collapsed window, which the button asserts on
-            if(size.x <= 0.0f || size.y <= 0.0f)
-                return std::nullopt;
-
-            const auto origin = ImGui::GetCursorScreenPos();
-            ImGui::InvisibleButton("scene", size, Buttons);
-            // the scene's input is the scene's: the mouse over it, the keys
-            // too while a press on it holds the button
-            if(ImGui::IsItemHovered() || ImGui::IsItemActive())
-                ImGui::SetNextFrameWantCaptureMouse(false);
-            if(ImGui::IsItemActive())
-                ImGui::SetNextFrameWantCaptureKeyboard(false);
-
-            ImGui::GetWindowDrawList()->AddImage(
-                static_cast<ImTextureID>(sceneView),
-                origin,
-                ImVec2(origin.x + size.x, origin.y + size.y)
-            );
-
-            return SceneImage{
-                .origin = {origin.x, origin.y},
-                .size = {size.x, size.y}
-            };
         }
     }
 
@@ -211,7 +158,7 @@ namespace Crowy
             *world.Get<CameraComponent>(cameraActor);
         CROWY_ASSERT(
             lens.nearZ == start.nearZ && lens.farZ == start.farZ,
-            "the file's depth range is the one DescribePipeline read"
+            "the file's depth range is the one describePipeline read"
         );
         CROWY_ASSERT(
             world.LocalTransform(cameraActor).rotation ==
@@ -219,9 +166,9 @@ namespace Crowy
             "the file's camera looks where the fly look starts"
         );
 
-        sceneCamera.lookSensitivity = start.lookSensitivity;
-        sceneCamera.moveSpeed = start.moveSpeed;
-        editor.emplace(world, scene, sceneCamera, Port());
+        sceneView.emplace(world, scene, MakeSceneCut(), Port());
+        sceneView->Camera().lookSensitivity = start.lookSensitivity;
+        sceneView->Camera().moveSpeed = start.moveSpeed;
 
         // the lamp is off in the file, so the baseline never sees it
         inspect(scene, findActor(world, "sun"), findActor(world, "lamp"));
@@ -238,39 +185,11 @@ namespace Crowy
             debug.showStats = !debug.showStats;
         }
 
-        if(input.IsKeyPressed(KeyCode::Escape)) {
-            if(editor->Held() != GizmoHandle::None)
-                editor->Cancel();
-            else
-                editor->Select(std::nullopt);
-        }
-        // a press ImGui wanted never arrives here; a look is not a press. A
-        // press on a handle takes it, elsewhere it picks
-        if(sceneImage) {
-            const auto point = input.GetMousePos() - sceneImage->origin;
-            if(input.IsKeyPressed(MouseButton::LButton) &&
-               !input.IsKeyDown(MouseButton::RButton)) {
-                mouseHolds = editor->Grab(point);
-                if(!mouseHolds)
-                    editor->PickAt(point);
-            }
-            else if(mouseHolds && editor->Held() == GizmoHandle::None) {
-                // the port or Esc let go already
-                mouseHolds = false;
-            }
-            else if(mouseHolds && input.IsKeyDown(MouseButton::LButton)) {
-                editor->DragTo(point, input.IsKeyDown(KeyCode::Ctrl));
-            }
-            else if(mouseHolds) {
-                editor->Release();
-                mouseHolds = false;
-            }
-        }
-
+        const auto viewRuns = SceneViewID() != 0;
         // the cursor hides while it turns, so a look never meets a screen edge
-        if(SceneViewID() != 0) {
-            sceneCamera.PollInput(input);
-            if(input.IsKeyDown(MouseButton::RButton))
+        const auto looking = sceneView->PollInput(input, viewRuns);
+        if(viewRuns) {
+            if(looking)
                 RequestRelativeMouse();
         }
         else if(fly.PollInput(input, MakeCamera().lookSensitivity)) {
@@ -280,14 +199,13 @@ namespace Crowy
 
     void PlaygroundScene::updateScene(f64 seconds) {
         const auto sceneViewRuns = SceneViewID() != 0;
-        static_cast<ViewCamera&>(Camera()).Show(
-            sceneViewRuns ? &sceneCamera : nullptr
+        sceneView->Update(
+            seconds,
+            static_cast<ViewCamera&>(Camera()),
+            sceneViewRuns
         );
-        if(sceneViewRuns) {
-            sceneCamera.Update(seconds);
-        }
         // a still camera writes nothing, so nothing is extracted for it
-        else if(fly.Moving()) {
+        if(!sceneViewRuns && fly.Moving()) {
             world.SetLocalTransform(
                 cameraActor,
                 fly.Step(
@@ -336,45 +254,11 @@ namespace Crowy
             panel = buildPanel();
 
         // the running list's, not debug's, which the panel may flip mid-frame
-        sceneImage.reset();
-        if(const auto sceneView = SceneViewID(); sceneView != 0) {
-            // the image fills the window, so the window cannot size itself;
-            // right of where the panel opens, so a run without a saved
-            // layout has the two apart
-            ImGui::SetNextWindowPos(
-                ImVec2(376.0f, 8.0f),
-                ImGuiCond_FirstUseEver
-            );
-            ImGui::SetNextWindowSize(
-                ImVec2(640.0f, 400.0f),
-                ImGuiCond_FirstUseEver
-            );
-            if(ImGui::Begin("Scene View")) {
-                const auto size = ImGui::GetContentRegionAvail();
-                SetSceneViewSize(
-                    static_cast<u32>(std::max(size.x, 0.0f)),
-                    static_cast<u32>(std::max(size.y, 0.0f))
-                );
-                sceneImage = drawSceneView(sceneView, size);
-            }
-            ImGui::End();
+        if(const auto size = sceneView->DrawWindow(SceneViewID())) {
+            SetSceneViewSize(size->x, size->y);
         }
-        editor->Update(
-            sceneImage ? std::optional(sceneImage->size) : std::nullopt
-        );
-        if(editor->TakeInspectorDirty() | editor->TakeSelectionChanged())
+        if(sceneView->UpdateOverlay())
             uiContext.panelDirty = true;
-
-        if(sceneImage) {
-            drawWorldEditorOverlay(
-                *editor,
-                world,
-                Scene(),
-                sceneCamera,
-                sceneImage->origin,
-                sceneImage->size
-            );
-        }
 
         if(debug.showPanel) {
             // Prepare opens the shared "Crowy" window, whose saved rect
@@ -467,7 +351,7 @@ namespace Crowy
             });
         };
 
-        const auto overrides = eulerInspector.Overrides();
+        const auto overrides = sceneView->Overrides();
 
         std::vector<Widget> sections{debugSection()};
         for(const auto& target: inspected) {
@@ -478,27 +362,8 @@ namespace Crowy
                 overrides
             ));
         }
-        if(const auto selection = editor->Selection()) {
-            std::vector<Widget> selected;
-            for(const auto& section: editor->Sections()) {
-                selected.push_back(buildPropertyTree(
-                    section.label.c_str(),
-                    section.target,
-                    refreshing({}),
-                    overrides
-                ));
-            }
-            sections.push_back(
-                Collapsing{
-                    .label = std::format(
-                        "selection · {}",
-                        editor->DisplayName(*selection)
-                    ),
-                    .children = std::move(selected),
-                    .defaultOpen = true
-                }
-            );
-        }
+        if(auto selection = sceneView->SelectionSection(refreshing({})))
+            sections.push_back(std::move(*selection));
 
         return Column(std::move(sections));
     }
@@ -610,12 +475,6 @@ namespace Crowy
         }
 
         exposures = PortExposures(Port());
-        exposures.Expose(
-            "sceneCamera",
-            &sceneCamera,
-            *getDesc<EditorCamera>(),
-            [this] { sceneCamera.RecomputeView(); }
-        );
         for(const auto& target: inspected) {
             exposures.Expose(
                 target.portName,
@@ -641,10 +500,11 @@ namespace Crowy
             return;
 
         if(SceneViewID() != 0) {
-            sceneCamera.position = pose->position;
-            sceneCamera.yaw = pose->yaw;
-            sceneCamera.pitch = pose->pitch;
-            sceneCamera.RecomputeView();
+            auto& camera = sceneView->Camera();
+            camera.position = pose->position;
+            camera.yaw = pose->yaw;
+            camera.pitch = pose->pitch;
+            camera.RecomputeView();
             return;
         }
 

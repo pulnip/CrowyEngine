@@ -1,6 +1,7 @@
 #include "EditorCamera.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <numbers>
 #include <utility>
 
@@ -12,6 +13,22 @@ namespace Crowy
     namespace
     {
         constexpr f32 MaxPitch = std::numbers::pi_v<f32> / 2 - 0.01f;
+    }
+
+    EditorCut editorCutOf(const CameraSnapshot& snapshot) {
+        const auto forward = static_cast<Vec3>(inverseRigid(snapshot.view)[2]);
+
+        return EditorCut{
+            .name = "scene",
+            .position = snapshot.position,
+            .yaw = std::atan2(forward.x, forward.z),
+            .pitch = std::asin(std::clamp(-forward.y, -1.0f, 1.0f)),
+            .lens = {
+                .fovY = snapshot.fovY,
+                .nearZ = snapshot.nearZ,
+                .farZ = snapshot.farZ
+            }
+        };
     }
 
     EditorCamera::EditorCamera(const EditorCut& cut) noexcept {

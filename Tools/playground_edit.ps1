@@ -6,6 +6,10 @@
 # Every step is a property write the mouse makes too; the script exits 1 on
 # the first that fails.
 #
+# The exe may also be the Editor, which opens Playground's scene file with the
+# view on: the sun is read through the selection only, and the fresh run, view
+# and panel off, is held against the Game's picture of the same file.
+#
 # usage: Tools/playground_edit.ps1 [-Out captures/playground-edit] [-Exe build/bin/Debug/Playground.exe] [-Port 27540]
 #
 # Debug builds only (the port). Run from the repository root.
@@ -25,6 +29,10 @@ $tool = Join-Path (Split-Path -Parent $Exe) "ImageCompareCheck.exe"
 if (-not (Test-Path $tool)) {
     throw "the run compares a capture with $tool; build ImageCompareCheck first"
 }
+$app = [IO.Path]::GetFileNameWithoutExtension($Exe)
+$isEditor = $app -eq "Editor"
+$sceneFile = "Engine\Render\Sample\Playground\Playground.json"
+$sunTarget = if ($isEditor) { "selection" } else { "light.sun.transform" }
 $baseline = Join-Path $repoRoot "Engine\Render\Sample\Golden\Playground.dx12.png"
 $null = New-Item -ItemType Directory -Force -Path $Out
 $Out = (Resolve-Path $Out).Path
@@ -79,8 +87,8 @@ function Move-Handle([string]$Aim, [string]$Handle) {
     Set-PortProperty editor handle "None"
 }
 
-# Playground held, on `Port` alone
-function Start-Playground {
+# the app held, on `Port` alone
+function Start-App {
     $answers = $true
     try {
         $null = Invoke-Port ping
@@ -97,9 +105,11 @@ function Start-Playground {
     }
     $env:CROWY_COMMAND_PORT = "$Port"
     $env:CROWY_WINDOW_DISPLAY = "1"
-    [Environment]::SetEnvironmentVariable("CROWY_DEBUG", '{"sceneView":true}')
+    $debug = if ($isEditor) { $null } else { '{"sceneView":true}' }
+    [Environment]::SetEnvironmentVariable("CROWY_DEBUG", $debug)
+    $arguments = if ($isEditor) { @($sceneFile, "--hold") } else { @("--hold") }
     try {
-        $process = Start-Process -FilePath $Exe -ArgumentList "--hold" -PassThru -WorkingDirectory $repoRoot
+        $process = Start-Process -FilePath $Exe -ArgumentList $arguments -PassThru -WorkingDirectory $repoRoot
     }
     finally {
         foreach ($name in $saved.Keys) {
@@ -109,8 +119,8 @@ function Start-Playground {
     $null = $process.Handle
     try {
         $ping = Wait-Port 120
-        if ($ping.app -ne "Playground") {
-            throw "port $Port answers for '$($ping.app)', not Playground"
+        if ($ping.app -ne $app) {
+            throw "port $Port answers for '$($ping.app)', not $app"
         }
     }
     catch {
@@ -122,7 +132,7 @@ function Start-Playground {
     return $process
 }
 
-function Stop-Playground($Process) {
+function Stop-App($Process) {
     try {
         $null = Invoke-Port quit
         $null = Invoke-Port run
@@ -131,17 +141,17 @@ function Stop-Playground($Process) {
     }
     if (-not $Process.WaitForExit(30000)) {
         $Process.Kill()
-        throw "Playground did not quit"
+        throw "$app did not quit"
     }
     if ($Process.ExitCode -ne 0) {
-        throw "Playground exited $($Process.ExitCode)"
+        throw "$app exited $($Process.ExitCode)"
     }
 }
 
 $failed = $false
 $process = $null
 try {
-    $process = Start-Playground
+    $process = Start-App
     Step-Frames 3
 
     # 1. a click on the sphere
@@ -168,16 +178,17 @@ try {
     Assert-That ((Get-PortProperty editor selected) -ne $sphere) "a click at the old point misses the moved sphere"
 
     # 4. the sun on its ring: the selection and Playground's own light target
-    #    read one rotation, a quarter turn about world Y onto the file's
+    #    (the selection alone, for the Editor) read one rotation, a quarter turn
+    #    about world Y onto the file's
     Set-PortProperty editor selected "sun"
-    $sunBefore = @(Get-PortProperty light.sun.transform rotation)
+    $sunBefore = @(Get-PortProperty $sunTarget rotation)
     Set-PortProperty editor snap $true
     Move-Handle ring Ring
     Set-PortProperty editor snap $false
-    $sunNow = @(Get-PortProperty light.sun.transform rotation)
+    $sunNow = @(Get-PortProperty $sunTarget rotation)
     $sunSelected = @(Get-PortProperty selection rotation)
     $wanted = Get-QuatProduct @(0, 0.70710678, 0, 0.70710678) $sunBefore
-    Assert-That ((Test-NearAll $sunNow $sunSelected 0) -and (Test-NearAll $sunNow $wanted)) "the ring turned the sun a quarter about world Y, as light.sun.transform reads it"
+    Assert-That ((Test-NearAll $sunNow $sunSelected 0) -and (Test-NearAll $sunNow $wanted)) "the ring turned the sun a quarter about world Y, as $sunTarget reads it"
 
     # 5. nothing selected, then no view to press on
     Set-PortProperty editor selected ""
@@ -194,7 +205,7 @@ catch {
 finally {
     if ($process) {
         try {
-            Stop-Playground $process
+            Stop-App $process
         }
         catch {
             Write-Host $_
@@ -215,8 +226,33 @@ $savedDebug = [Environment]::GetEnvironmentVariable("CROWY_DEBUG")
 $env:CROWY_COMMAND_PORT = "0"
 $env:CROWY_WINDOW_DISPLAY = "1"
 try {
-    & (Join-Path $PSScriptRoot "smoke_run.ps1") $Exe $fresh | Out-Null
-    $smoked = $LASTEXITCODE
+    if ($isEditor) {
+        $game = Join-Path (Split-Path -Parent $Exe) "Game.exe"
+        if (-not (Test-Path $game)) {
+            throw "the Editor's baseline is the picture of $game; build it first"
+        }
+        $baseline = Join-Path $Out "game.png"
+        $gameCapture = Join-Path $Out "game.bmp"
+        & $game $sceneFile --capture-frame 60 $gameCapture --exit-after-frame 60 | Out-Null
+        $smoked = $LASTEXITCODE
+        if ($smoked -eq 0) {
+            [Environment]::SetEnvironmentVariable("CROWY_DEBUG", '{"sceneView":false,"showPanel":false}')
+            & $Exe $sceneFile --capture-frame 60 $fresh --exit-after-frame 60 | Out-Null
+            $smoked = $LASTEXITCODE
+        }
+        if ($smoked -eq 0) {
+            & $tool --convert $gameCapture $baseline | Out-Null
+            $smoked = $LASTEXITCODE
+        }
+        if ($smoked -eq 0) {
+            & $tool --convert $fresh ([IO.Path]::ChangeExtension($fresh, ".png")) | Out-Null
+            $smoked = $LASTEXITCODE
+        }
+    }
+    else {
+        & (Join-Path $PSScriptRoot "smoke_run.ps1") $Exe $fresh | Out-Null
+        $smoked = $LASTEXITCODE
+    }
 }
 finally {
     $env:CROWY_COMMAND_PORT = $savedPort

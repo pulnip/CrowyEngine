@@ -6,9 +6,7 @@
 #include <vector>
 
 #include "CommandPort.hpp"
-#include "EditorCamera.hpp"
 #include "EnumUtil.hpp"
-#include "EulerInspector.hpp"
 #include "FlyCamera.hpp"
 #include "InputProvider.hpp"
 #include "LinearAlgebra.hpp"
@@ -16,10 +14,10 @@
 #include "PrimitiveActors.hpp"
 #include "Primitives.hpp"
 #include "RenderApp.hpp"
+#include "SceneViewEditor.hpp"
 #include "StatsOverlay.hpp"
 #include "UIRenderer.hpp"
 #include "World.hpp"
-#include "WorldEditor.hpp"
 
 namespace Crowy
 {
@@ -105,12 +103,6 @@ namespace Crowy
         MaterialAssetHandle translucent;
     };
 
-    // the Scene View's image, window points
-    struct SceneImage {
-        Vec2 origin;
-        Vec2 size;
-    };
-
     // in metres, every box face on the 0.25 m grid the floor draws; nothing
     // floats
     class PlaygroundScene: public RenderApp {
@@ -142,17 +134,11 @@ namespace Crowy
         PrimitiveActors primitiveActors;
         // the map's primitives as actors; the RenderScene rows are its
         World world;
-        // outside the World: the Scene View looks through it and edits with it
-        EditorCamera sceneCamera{MakeSceneCut()};
-        std::optional<WorldEditor> editor;
-        std::optional<SceneImage> sceneImage;
-        // a hold the mouse took, which only the mouse drags and lets go
-        bool mouseHolds = false;
+        // before the panel, whose rotation fields point into it
+        std::optional<SceneViewEditor> sceneView;
 
         RAII<UIRenderer> uiRenderer;
         UIContext uiContext;
-        // before the panel, whose rotation fields point at it
-        EulerInspector eulerInspector;
         Widget panel = Column({});
         std::vector<InspectedTarget> inspected;
         // what the panel's debug section was built from
@@ -181,7 +167,7 @@ namespace Crowy
         // the start pose is the overview bookmark, which `current` starts on
         static FlyCamera::Config MakeCamera();
         // where the Scene View's camera starts, with the depth range
-        // DescribePipeline read
+        // describePipeline read
         static EditorCut MakeSceneCut();
 
     private:
