@@ -19,6 +19,7 @@ SOURCES
     FlyCamera.cpp
     FlyControl.cpp
     OrbitCamera.cpp
+    RenderApp.cpp
 PUBLIC
     Crowy::App
 PRIVATE

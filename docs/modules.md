@@ -34,8 +34,8 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 | `RHI` | the device, command lists, resources, barriers and shaders over D3D12 and Metal; `Common/` the shared definitions, `TestSupport/` the recording fakes | `RHIDevice.hpp`, `RHICommandList.hpp`, `Common/RHIDefinitions.hpp`, [rhi.md](rhi.md) | Test; Sample; Spike; Check |
 | `DX12RHI`, `MetalRHI` | the two backends, one per platform, chosen at build time | `Private/` only: `DX12Device.cpp`, `MetalDevice.cpp` | through RHI's |
 | `Shader` | the shared Slang root: scene data, view, lighting, fullscreen | the `.slang` files | |
-| `Render` | the render scene, the frame graph of passes, materials and pipelines, shadows, post, mesh and material assets, material files (`MaterialDesc`) | `SceneRenderer.hpp`, `RenderScene.hpp`, `FrameGraph.hpp`, `StandardFrame.hpp` | Test; Sample: `RenderApp`, the sample class on `FrameHost` (with `FlyCamera`, `OrbitCamera`), `Editor/` (StageEditor's session, frozen until the real editor replaces it), `Stage/`, `PhysicsSync/` and the examples, `Playground` first, which opens the scene file `Playground/Playground.json` of built-in meshes and material files; Spike |
-| `App` | the render host a windowed app runs: `FrameHost` is a `MainLoop` that owns the device-side frame (pipeline, renderer, geometry pool, stores, captures, stats) and asks its subclass for the content through private hooks; the command port's frame verbs and the `push_input`/`read_input` codec; the stats overlay and the port status chip. It knows no World | `FrameHost.hpp`, `FramePort.hpp`, `StatsOverlay.hpp` | Sample: `Render/Sample/RenderApp.hpp` |
+| `Render` | the render scene, `RenderSession` (the scene with the mesh, texture and material stores that fill it, destroyed together; the app that draws owns it), the frame graph of passes, materials and pipelines, shadows, post, mesh and material assets, material files (`MaterialDesc`) | `SceneRenderer.hpp`, `RenderScene.hpp`, `FrameGraph.hpp`, `StandardFrame.hpp` | Test; Sample: `RenderApp`, the sample class on `FrameHost` (with `FlyCamera`, `OrbitCamera`), `Editor/` (StageEditor's session, frozen until the real editor replaces it), `Stage/`, `PhysicsSync/` and the examples, `Playground` first, which opens the scene file `Playground/Playground.json` of built-in meshes and material files; Spike |
+| `App` | the render host a windowed app runs: `FrameHost` is a `MainLoop` that owns the device-side frame (pipeline, renderer, geometry pool, captures, stats) and draws the `RenderSession` its subclass opens and asks its subclass for the content through private hooks; the command port's frame verbs and the `push_input`/`read_input` codec; the stats overlay and the port status chip. It knows no World | `FrameHost.hpp`, `FramePort.hpp`, `StatsOverlay.hpp` | Sample: `Render/Sample/RenderApp.hpp` |
 | `Effects` | GPU fields, compute kernels and particle effects | `EffectSystem.hpp`, `ParticleEffects.hpp`, `FieldPass.hpp`, [writing-an-effect.md](writing-an-effect.md) | Test; Sample: `Island`; Check |
 | `Physics` | Jolt behind a deterministic world | `PhysicsWorld.hpp`, `PhysicsRuntime.hpp` | Test; `Sample/Puzzle` |
 | `World` | actors, components, systems, the fixed phases and clocks, the transform hierarchy, `ScriptComponent` | `World.hpp`, `Component.hpp` (`CROWY_COMPONENT`), `System.hpp` (`CROWY_SYSTEM`) | Test |
@@ -62,7 +62,8 @@ What a module links is the `PUBLIC` and `PRIVATE` lists in its
 - A scene save leaves out a component marked `Transient`, and a component
   with no reflected properties stops the save.
 - An `AssetStore` releases an asset at the `Collect` after its last handle
-  goes. Render's `MeshStore`, `TextureStore` and `MaterialStore` are three;
+  goes. Render's `MeshStore`, `TextureStore` and `MaterialStore` are three,
+  owned by a `RenderSession` with the `RenderScene`;
   `engine:Builtin/*` meshes (`Box`, `Sphere`, `Plane` facing +Y, `Quad`
   facing -Z, `Missing`), textures (`White`, `FlatNormal`, `Missing`) and
   materials (`Opaque`, `Translucent`, `Masked`, `Missing`) come from code,

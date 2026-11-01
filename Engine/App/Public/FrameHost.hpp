@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "AssetRoots.hpp"
 #include "Camera.hpp"
 #include "CommandPort.hpp"
 #include "DebugMode.hpp"
@@ -19,26 +20,21 @@
 #include "GeometryPool.hpp"
 #include "InputProvider.hpp"
 #include "MainLoop.hpp"
-#include "MaterialAsset.hpp"
-#include "MeshAsset.hpp"
 #include "OS.hpp"
 #include "Primitives.hpp"
 #include "RHIDefinitions.hpp"
 #include "RHIFWD.hpp"
 #include "RenderScene.hpp"
+#include "RenderSession.hpp"
 #include "RuntimeConfig.hpp"
 #include "SceneRenderer.hpp"
 #include "Semantics.hpp"
 #include "StandardFrame.hpp"
-#include "TextureAsset.hpp"
 
 namespace Crowy
 {
     using FrameGraphRAII = RAII<FrameGraph>;
     using GeometryPoolRAII = RAII<GeometryPool>;
-    using MaterialStoreRAII = RAII<MaterialStore>;
-    using MeshStoreRAII = RAII<MeshStore>;
-    using TextureStoreRAII = RAII<TextureStore>;
     using SceneRendererRAII = RAII<SceneRenderer>;
     using FrameCapturesRAII = RAII<FrameCaptures>;
     using FramePortRAII = RAII<FramePort>;
@@ -104,10 +100,8 @@ namespace Crowy
         Size2D sceneViewSize;
 
         GeometryPoolRAII geometryPool;
-        // after the pool it frees into, before the scene whose rows hold it
-        MeshStoreRAII meshes;
-        // after the device it retires into, before the materials that hold it
-        TextureStoreRAII textures;
+        // the subclass's, drawn from init on; it must die before the pool
+        RenderSession* session = nullptr;
         SceneRendererRAII renderer;
         // what DescribePipeline was last asked for, from config and the debug
         // view; a change rebuilds it
@@ -116,9 +110,6 @@ namespace Crowy
         // bindMeshPass and recordOverlay are set once; the rest, hooks
         // included, is refilled every frame
         FrameInputs frameInputs;
-        RenderScene scene;
-        // after the scene whose material rows it removes
-        MaterialStoreRAII materials;
         CameraRAII camera;
         // declared before the port, which points at it, so it outlives it
         RenderDebug debug;
@@ -166,10 +157,10 @@ namespace Crowy
 
         auto& Device() noexcept { return *device; }
         auto& Geometry() noexcept { return *geometryPool; }
-        auto& Meshes() noexcept { return *meshes; }
-        auto& Textures() noexcept { return *textures; }
-        auto& Materials() noexcept { return *materials; }
-        auto& Scene() noexcept { return scene; }
+        auto& Meshes() noexcept { return session->Meshes(); }
+        auto& Textures() noexcept { return session->Textures(); }
+        auto& Materials() noexcept { return session->Materials(); }
+        auto& Scene() noexcept { return session->Scene(); }
         auto& Renderer() noexcept { return *renderer; }
         const auto& Camera() const noexcept { return *camera; }
         auto& Camera() noexcept { return *camera; }
@@ -207,6 +198,14 @@ namespace Crowy
         ) override final;
         void endFrame(const FrameReport& report) override final;
         void resize(u32 width, u32 height) override final;
+
+        // once, from init, with the pool made and before buildGeometry: the
+        // session the host draws, which the subclass owns
+        virtual RenderSession& openSession(
+            RHIDevice& device,
+            GeometryPool& pool,
+            const AssetRoots& roots
+        ) = 0;
 
         // once, from init; the pool queues the copies and the first frame
         // records them

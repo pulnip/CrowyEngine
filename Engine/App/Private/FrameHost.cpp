@@ -130,30 +130,7 @@ namespace Crowy
             .engine = projectRoot() / "Engine",
             .content = resolveContentPath("")
         };
-        meshes = std::make_unique<MeshStore>(
-            [this, roots](const AssetRef& ref) {
-                return loadMeshAsset(*geometryPool, roots, ref);
-            },
-            [this](MeshAsset asset) {
-                releaseMeshAsset(*geometryPool, std::move(asset));
-            }
-        );
-        textures = std::make_unique<TextureStore>(
-            [this, roots](const AssetRef& ref) {
-                return loadTextureAsset(*this->device, roots, ref);
-            },
-            [this](TextureAsset asset) {
-                releaseTextureAsset(*this->device, std::move(asset));
-            }
-        );
-        materials = std::make_unique<MaterialStore>(
-            [this, roots](const AssetRef& ref) {
-                return loadMaterialAsset(scene, *textures, roots, ref);
-            },
-            [this](MaterialAsset asset) {
-                releaseMaterialAsset(scene, std::move(asset));
-            }
-        );
+        session = &openSession(device, *geometryPool, roots);
         pipelineConfig = standardConfig(config, debug, swapchain.GetFormat());
         pipeline = buildPipeline();
         captures = std::make_unique<FrameCaptures>(
@@ -195,7 +172,7 @@ namespace Crowy
         geometryPool->LogAllocationStats();
 
         // after the geometry, because a snapshot carries the allocation
-        extractScene(scene);
+        extractScene(session->Scene());
     }
 
     // CROWY_DEBUG: a JSON object applied to `debug` through its reflection,
@@ -298,9 +275,7 @@ namespace Crowy
         camera->Update(deltaTime);
         updateScene(deltaTime);
         // after the scene's own Sync, so what it let go leaves this frame
-        meshes->Collect();
-        materials->Collect();
-        textures->Collect();
+        session->Collect();
     }
 
     void FrameHost::reportCullStatsOnce() {
@@ -313,7 +288,7 @@ namespace Crowy
             "first frame: {} of {} primitives survived culling, "
             "{} draws in {} runs over {} pipelines",
             stats.Recorded().visiblePrimitives,
-            scene.Primitives().Count(),
+            session->Scene().Primitives().Count(),
             stats.Recorded().draws,
             stats.Recorded().runs,
             renderer->PipelineCount()
@@ -328,6 +303,7 @@ namespace Crowy
         // original, and the pipelines and the clear must agree
         const auto frameDebug = debug;
         const auto overrides = meshPassOverride(frameDebug);
+        auto& scene = session->Scene();
 
         // turning the prepass or the post list over is a new list; frames in
         // flight keep reading the old walker's targets
@@ -416,7 +392,7 @@ namespace Crowy
         stats.End(
             FrameNumber(),
             report,
-            scene.Primitives().Count(),
+            session->Scene().Primitives().Count(),
             renderer->PipelineCount()
         );
     }
