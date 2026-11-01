@@ -43,7 +43,7 @@ namespace Crowy
         f32 pitch = 0.0f;
     };
 
-    // a flown camera's input between ProcessInput and Step, apart from what
+    // a flown camera's input between PollInput and Step, apart from what
     // holds its transform
     class FlyState {
     public:
@@ -62,7 +62,7 @@ namespace Crowy
             : look(look) {}
 
         // true when it turned
-        bool ProcessInput(const InputProvider& input, f32 sensitivity);
+        bool PollInput(const InputProvider& input, f32 sensitivity);
 
         // a turn or a walk: Step changes the transform
         bool Moving() const noexcept;

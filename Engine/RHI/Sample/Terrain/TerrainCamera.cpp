@@ -21,7 +21,7 @@ namespace
 
 namespace Crowy
 {
-    void TerrainCamera::ProcessInput(const InputProvider& input) {
+    void TerrainCamera::PollInput(const InputProvider& input) {
         if(input.IsKeyDown(MouseButton::RButton)) {
             const auto dpos = input.GetMouseDPos();
             yaw += dpos.x * LOOK_SENSITIVITY;

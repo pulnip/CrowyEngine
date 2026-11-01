@@ -97,10 +97,10 @@ TEST(FlyControl, AFlownCameraActorViewsAsAFlyCameraDoes) {
         const auto seconds = steps[frame % steps.size()];
         input.Set(step.keys, step.look, step.mouse, step.wheel);
 
-        flyCamera.ProcessInput(input);
+        flyCamera.PollInput(input);
         flyCamera.Update(seconds);
 
-        fly.ProcessInput(input, config.lookSensitivity);
+        fly.PollInput(input, config.lookSensitivity);
         if(fly.Moving()) {
             world.SetLocalTransform(
                 actor,

@@ -102,7 +102,7 @@ namespace Crowy
         };
     }
 
-    bool FlyState::ProcessInput(const InputProvider& input, f32 sensitivity) {
+    bool FlyState::PollInput(const InputProvider& input, f32 sensitivity) {
         looked = flyLook(input, sensitivity, look.yaw, look.pitch);
         moveInput = flyMoveInput(input);
         speedScale = flySpeedScale(input, speedScale);

@@ -36,7 +36,7 @@ namespace Crowy
     public:
         explicit EditorCamera(const EditorCut& cut) noexcept;
 
-        void ProcessInput(const InputProvider& input) override;
+        void PollInput(const InputProvider& input) override;
         void Update(f64 deltaTime) override;
 
         Vec3 Position() const noexcept override { return position; }

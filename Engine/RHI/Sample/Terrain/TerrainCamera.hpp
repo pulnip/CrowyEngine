@@ -19,7 +19,7 @@ namespace Crowy
     public:
         // Input the UI is claiming is left alone, so typing a seed into the
         // panel does not also fly the camera away.
-        void ProcessInput(const InputProvider&);
+        void PollInput(const InputProvider&);
         void Update(f64 deltaTime);
         void SetViewport(u32 width, u32 height);
 

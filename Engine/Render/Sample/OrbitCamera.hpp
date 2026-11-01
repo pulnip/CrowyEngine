@@ -27,7 +27,7 @@ namespace Crowy
         explicit OrbitCamera(const Config& config) noexcept
             : config(config), yaw(config.yaw), pitch(config.pitch) {}
 
-        void ProcessInput(const InputProvider& input) override;
+        void PollInput(const InputProvider& input) override;
 
         Vec3 Position() const noexcept override;
         Mat4 View() const noexcept override;

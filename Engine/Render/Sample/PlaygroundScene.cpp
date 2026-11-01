@@ -270,11 +270,11 @@ namespace Crowy
 
         // the cursor hides while it turns, so a look never meets a screen edge
         if(SceneViewID() != 0) {
-            sceneCamera.ProcessInput(input);
+            sceneCamera.PollInput(input);
             if(input.IsKeyDown(MouseButton::RButton))
                 RequestRelativeMouse();
         }
-        else if(fly.ProcessInput(input, MakeCamera().lookSensitivity)) {
+        else if(fly.PollInput(input, MakeCamera().lookSensitivity)) {
             RequestRelativeMouse();
         }
     }

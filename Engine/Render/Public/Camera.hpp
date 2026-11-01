@@ -12,7 +12,7 @@ namespace Crowy
     public:
         CROWY_DECLARE_INTERFACE(Camera)
 
-        virtual void ProcessInput(const InputProvider& input) {}
+        virtual void PollInput(const InputProvider& input) {}
         virtual void Update(f64 deltaTime) {}
 
         virtual Vec3 Position() const noexcept = 0;

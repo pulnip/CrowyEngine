@@ -8,7 +8,7 @@
 
 namespace Crowy
 {
-    void OrbitCamera::ProcessInput(const InputProvider& input) {
+    void OrbitCamera::PollInput(const InputProvider& input) {
         if(!input.IsKeyDown(MouseButton::RButton))
             return;
 

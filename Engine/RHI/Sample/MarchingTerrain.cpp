@@ -172,7 +172,7 @@ namespace Crowy
         }
 
         void processInput(const InputProvider& input) override {
-            camera.ProcessInput(input);
+            camera.PollInput(input);
         }
 
         void update(f64 deltaTime, f64) override {

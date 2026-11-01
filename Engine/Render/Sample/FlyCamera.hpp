@@ -37,7 +37,7 @@ namespace Crowy
             RecomputeView();
         }
 
-        void ProcessInput(const InputProvider& input) override;
+        void PollInput(const InputProvider& input) override;
         void Update(f64 deltaTime) override;
 
         Vec3 Position() const noexcept override { return position; }

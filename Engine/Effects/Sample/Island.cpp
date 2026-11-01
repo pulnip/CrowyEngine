@@ -275,7 +275,7 @@ namespace Crowy
         }
 
         void pollInput(const InputProvider& input) override {
-            if(fly.ProcessInput(input, makeCamera().lookSensitivity))
+            if(fly.PollInput(input, makeCamera().lookSensitivity))
                 RequestRelativeMouse();
         }
 

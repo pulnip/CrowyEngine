@@ -18,7 +18,7 @@ namespace Crowy
         Snap(cut);
     }
 
-    void EditorCamera::ProcessInput(const InputProvider& input) {
+    void EditorCamera::PollInput(const InputProvider& input) {
         if(input.IsKeyDown(MouseButton::RButton)) {
             const auto delta = input.GetMouseDPos();
             if(delta.x != 0.0f || delta.y != 0.0f) {

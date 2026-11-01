@@ -2,8 +2,8 @@
 
 namespace Crowy
 {
-    void FlyCamera::ProcessInput(const InputProvider& input) {
-        if(fly.ProcessInput(input, config.lookSensitivity))
+    void FlyCamera::PollInput(const InputProvider& input) {
+        if(fly.PollInput(input, config.lookSensitivity))
             RecomputeView();
     }
 
