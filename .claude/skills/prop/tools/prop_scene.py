@@ -3,8 +3,9 @@
   python .claude/skills/prop/tools/prop_scene.py --mesh Props/Interact/FloorLever.fbx --materials Stone,Bronze,Iron,Glow
       [--az 35] [--el 20] [--dist 3] [--target 0,0.6,0] [--fov 40] [--no-floor] --out captures/prop/FloorLever.json
 
-The camera stands at the distance from the target, az degrees from the engine's -Z side toward +X,
-el degrees above the floor, and looks at the target with no roll (the engine's lookRotation).
+The camera stands at the distance from the target, az degrees from the prop's front toward its
+right side, el degrees above the floor, and looks at the target with no roll (the engine's
+lookRotation). The loader turns the front (Blender's +Y) to the engine's +Z, so az 0 stands on +Z.
 A material is a shop name (Props/Shop/<Name>.json) or a full asset ref.
 """
 
@@ -66,7 +67,7 @@ def build(args):
     offset = (
         args.dist * math.sin(az) * math.cos(el),
         args.dist * math.sin(el),
-        -args.dist * math.cos(az) * math.cos(el),
+        args.dist * math.cos(az) * math.cos(el),
     )
     position = (tx + offset[0], ty + offset[1], tz + offset[2])
     length = math.sqrt(sum(v * v for v in offset))
@@ -76,7 +77,9 @@ def build(args):
         actor(1, 'camera', position, look_rotation(direction), (1.0, 1.0, 1.0), [
             {'type': 'CameraComponent', 'fovY': round(math.radians(args.fov), 7), 'nearZ': 0.05, 'farZ': 100.0},
         ]),
-        actor(2, 'environment', (0.0, 0.0, 0.0), (0.5, 0.0, 0.0, 0.8660254), (1.0, 1.0, 1.0), [
+        # the sample scene's sun, turned to the prop's front with the camera
+        actor(2, 'environment', (0.0, 0.0, 0.0), multiply(quat_y(math.pi), (0.5, 0.0, 0.0, 0.8660254)),
+              (1.0, 1.0, 1.0), [
             {
                 'type': 'EnvironmentComponent',
                 'skyAmbient': [0.123, 0.174, 0.262],

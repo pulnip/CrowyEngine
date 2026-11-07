@@ -89,7 +89,7 @@ The engine captures a frame of a scene file; the window opens on display 1 and c
 powershell -NoProfile -File .claude/skills/prop/tools/still.ps1 -Mesh Props/Interact/FloorLever.fbx -Materials Stone,Bronze,Iron,Glow -Az 35 -El 20 -Dist 3 -Target 0,0.6,0 -Name FloorLever-r1
 ```
 
-It writes `captures/prop/<Name>.json` (the scene: camera, sun, floor, the prop), runs `Game.exe` with `--capture-frame 60 --exit-after-frame 60`, converts the BMP and prints `captures/prop/<Name>.png`. The camera orbits the target: `-Az 0` stands on the engine's -Z side looking at +Z, `-El` is degrees above the floor. The hero angle is az 35, el 20 at a distance that fills 60 to 70 % of the frame's height.
+It writes `captures/prop/<Name>.json` (the scene: camera, sun, floor, the prop), runs `Game.exe` with `--capture-frame 60 --exit-after-frame 60`, converts the BMP and prints `captures/prop/<Name>.png`. The camera orbits the target: `-Az 0` stands in front of the prop (the engine's +Z, where the loader turns Blender's +Y) looking back at it, a positive `-Az` swings toward the prop's right side (+X), `-El` is degrees above the floor. The hero angle is az 35, el 20 at a distance that fills 60 to 70 % of the frame's height.
 
 - `-Materials` is the card's `palette` in order: the engine binds materials by slot index, in the file's material order, and never reads the FBX's own material values.
 - `Mesh` is relative to `Content/`, forward slashes, no drive letter. The FBX must be there.
