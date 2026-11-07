@@ -2,6 +2,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <format>
 #include <map>
 #include <vector>
 
@@ -185,6 +186,126 @@ TEST(ModelLoader, AxisProbeNormalsPointOutward) {
             dot(triangle.corners[0].normal, centroidOf(triangle) - boxCenter),
             0.0f
         );
+    }
+}
+
+// the node probe's three boxes as Blender holds them, each in its own space
+TEST(ModelLoader, NodeProbeKeepsItsHierarchy) {
+    constexpr f32 Tolerance = 1e-4f;
+
+    const auto model = loadModel(testData / "NodeProbe.fbx");
+
+    ASSERT_EQ(model.nodes.size(), 3u);
+    const auto& base = model.nodes[0];
+    const auto& arm = model.nodes[1];
+    const auto& tip = model.nodes[2];
+    EXPECT_EQ(base.name, "Base");
+    EXPECT_EQ(arm.name, "Arm");
+    EXPECT_EQ(tip.name, "Tip");
+    EXPECT_EQ(base.parent, ModelNode::NoParent);
+    EXPECT_EQ(arm.parent, 0u);
+    EXPECT_EQ(tip.parent, 1u);
+
+    const auto expectNear = [](Vec3 actual, Vec3 expected) {
+        EXPECT_NEAR(actual.x, expected.x, Tolerance);
+        EXPECT_NEAR(actual.y, expected.y, Tolerance);
+        EXPECT_NEAR(actual.z, expected.z, Tolerance);
+    };
+    // a node's space is the file's with Z negated; the top node turns the
+    // file's front, +Y, to +Z and its up to +Y
+    expectNear(base.local.position, zeros());
+    expectNear(rotate(unitY(), base.local.rotation), unitZ());
+    expectNear(rotate(-unitZ(), base.local.rotation), unitY());
+    expectNear(arm.local.position, Vec3{0.1f, 0.0f, -0.1f});
+    expectNear(rotate(unitX(), arm.local.rotation), unitY());
+    expectNear(arm.local.scale, ones());
+    // the tip's mirror along its own X, however the file splits it
+    expectNear(
+        transformPoint(modelMat(tip.local), Vec3{1.0f, 1.0f, 1.0f}),
+        Vec3{-0.7f, 1.0f, 1.0f}
+    );
+
+    const auto expectBox =
+        [&](const ModelNode& node, StrView material, Vec3 low, Vec3 high) {
+            ASSERT_EQ(node.slots.size(), 1u) << node.name;
+            const auto& slot = node.slots.front();
+            EXPECT_EQ(slot.material, material);
+            EXPECT_EQ(slot.mesh.indices.size(), 36u);
+            expectNear(slot.bounds.center - slot.bounds.halfScale, low);
+            expectNear(slot.bounds.center + slot.bounds.halfScale, high);
+        };
+    expectBox(base, "Steel", Vec3{-0.2f, -0.2f, -0.1f}, Vec3{0.2f, 0.2f, 0.0f});
+    expectBox(
+        arm,
+        "Paint",
+        Vec3{0.0f, -0.025f, -0.05f},
+        Vec3{0.3f, 0.025f, 0.0f}
+    );
+    expectBox(tip, "Steel", Vec3{0.0f, -0.05f, -0.1f}, Vec3{0.1f, 0.05f, 0.0f});
+
+    ASSERT_EQ(model.slots.size(), 2u);
+    for(const auto& slot: model.slots) {
+        EXPECT_EQ(
+            slot.mesh.indices.size(),
+            slot.material == "Steel" ? 72u : 36u
+        ) << slot.material;
+    }
+}
+
+// each node's slots, carried up its chain of local transforms, are the root
+// slots' triangles with the same winding, the mirrored tip's included
+TEST(ModelLoader, NodeSlotsPlacedByTheirChainAreTheRootSlots) {
+    constexpr f32 Tolerance = 1e-4f;
+
+    const auto model = loadModel(testData / "NodeProbe.fbx");
+
+    std::vector<Mat4> toRoot;
+    std::map<Str, std::vector<Triangle>> placed;
+    for(const auto& node: model.nodes) {
+        const auto local = modelMat(node.local);
+        toRoot.push_back(
+            node.parent == ModelNode::NoParent ? local
+                                               : toRoot[node.parent] * local
+        );
+        const auto& matrix = toRoot.back();
+        for(const auto& slot: node.slots) {
+            for(auto triangle: trianglesOf(slot.mesh)) {
+                for(auto& corner: triangle.corners) {
+                    corner.position = transformPoint(matrix, corner.position);
+                    corner.normal = normalize(transformDirection(
+                        transpose(inverseAffine(matrix)),
+                        corner.normal
+                    ));
+                }
+                placed[slot.material].push_back(triangle);
+            }
+        }
+    }
+
+    const auto sameCorner = [](const Vertex& a, const Vertex& b) {
+        return norm(a.position - b.position) < Tolerance &&
+               norm(a.normal - b.normal) < Tolerance;
+    };
+    // a turn of the corners keeps the winding, a swap of two does not
+    const auto sameTriangle = [&](const Triangle& a, const Triangle& b) {
+        for(usize turn = 0; turn < 3; ++turn) {
+            if(sameCorner(a.corners[0], b.corners[turn]) &&
+               sameCorner(a.corners[1], b.corners[(turn + 1) % 3]) &&
+               sameCorner(a.corners[2], b.corners[(turn + 2) % 3]))
+                return true;
+        }
+        return false;
+    };
+
+    for(const auto& slot: model.slots) {
+        const auto& candidates = placed[slot.material];
+        const auto triangles = trianglesOf(slot.mesh);
+        EXPECT_EQ(candidates.size(), triangles.size()) << slot.material;
+        for(const auto& triangle: triangles) {
+            EXPECT_TRUE(std::ranges::any_of(candidates, [&](const Triangle& c) {
+                return sameTriangle(triangle, c);
+            })) << std::format("{} at {}", slot.material, centroidOf(triangle));
+        }
     }
 }
 

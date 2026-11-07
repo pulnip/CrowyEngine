@@ -5,6 +5,7 @@
 #include <cmath>
 #include <format>
 #include <memory>
+#include <ranges>
 #include <stdexcept>
 #include <vector>
 
@@ -33,6 +34,20 @@ namespace Crowy
                 static_cast<f32>(v.x),
                 static_cast<f32>(v.y),
                 static_cast<f32>(v.z)
+            };
+        }
+
+        constexpr Transform toTransform(const ufbx_transform& t) noexcept {
+            return Transform{
+                .position = toVec3(t.translation),
+                .rotation =
+                    Quat{
+                        static_cast<f32>(t.rotation.x),
+                        static_cast<f32>(t.rotation.y),
+                        static_cast<f32>(t.rotation.z),
+                        static_cast<f32>(t.rotation.w)
+                    },
+                .scale = toVec3(t.scale)
             };
         }
 
@@ -142,15 +157,37 @@ namespace Crowy
             Vertices corners;
         };
 
-        // a mirroring node transform swaps two corners to keep fronts clockwise
-        void addNode(const ufbx_node& node, SlotBuilders& slots) {
+        bool mirrors(const ufbx_node& node) {
+            return ufbx_matrix_determinant(&node.geometry_to_world) < 0.0;
+        }
+
+        // typed_id indexes scene.materials: a slot per material in that
+        // order, and one more for faces with none
+        SlotBuilders emptySlotsOf(const ufbx_scene& scene) {
+            SlotBuilders builders;
+            builders.reserve(scene.materials.count + 1);
+            for(const auto* material: scene.materials)
+                builders.push_back(
+                    SlotBuilder{.material = Str(toView(material->name))}
+                );
+            builders.push_back(SlotBuilder{});
+
+            return builders;
+        }
+
+        // a node whose chain to the root mirrors swaps two corners in any
+        // space, so its fronts are clockwise once placed
+        void addMesh(
+            const ufbx_node& node,
+            const ufbx_matrix& toSpace,
+            SlotBuilders& slots
+        ) {
             const auto& mesh = *node.mesh;
             if(!mesh.vertex_position.exists)
                 return;
 
-            const auto& toModel = node.geometry_to_world;
-            const auto normalToModel = ufbx_matrix_for_normals(&toModel);
-            const bool mirrors = ufbx_matrix_determinant(&toModel) < 0.0;
+            const auto normalToSpace = ufbx_matrix_for_normals(&toSpace);
+            const bool swaps = mirrors(node);
             const auto noMaterialSlot = static_cast<u32>(slots.size() - 1);
 
             // ufbx_triangulate_face needs room for the mesh's largest face
@@ -178,7 +215,7 @@ namespace Crowy
                     for(u32 t = 0; t < triangles; ++t) {
                         const auto* triangle = faceCorners.data() + 3 * t;
                         const auto order =
-                            mirrors
+                            swaps
                                 ? std::
                                       array{triangle[0], triangle[2], triangle[1]}
                                 : std::array{
@@ -188,7 +225,7 @@ namespace Crowy
                                   };
                         for(const auto corner: order)
                             corners.push_back(
-                                makeCorner(mesh, corner, toModel, normalToModel)
+                                makeCorner(mesh, corner, toSpace, normalToSpace)
                             );
                     }
                 }
@@ -293,37 +330,68 @@ namespace Crowy
 
             return slot;
         }
+
+        ModelSlots finishSlots(
+            SlotBuilders& builders,
+            const std::filesystem::path& path
+        ) {
+            ModelSlots slots;
+            for(auto& builder: builders) {
+                if(!builder.corners.empty())
+                    slots.push_back(finishSlot(std::move(builder), path));
+            }
+
+            return slots;
+        }
+
+        void addChildren(
+            const ufbx_node& parent,
+            u32 parentIndex,
+            const ufbx_scene& scene,
+            const std::filesystem::path& path,
+            ModelNodes& nodes
+        ) {
+            for(const auto* child: parent.children) {
+                ModelNode node{
+                    .name = Str(toView(child->name)),
+                    .parent = parentIndex,
+                    .local = toTransform(child->local_transform)
+                };
+                if(child->mesh != nullptr) {
+                    auto builders = emptySlotsOf(scene);
+                    addMesh(*child, child->geometry_to_node, builders);
+                    node.slots = finishSlots(builders, path);
+                }
+
+                const auto index = static_cast<u32>(nodes.size());
+                nodes.push_back(std::move(node));
+                addChildren(*child, index, scene, path, nodes);
+            }
+        }
     }
 
     ModelData loadModel(const std::filesystem::path& path) {
         const auto scene = loadScene(path);
 
-        // typed_id indexes scene->materials: a slot per material in that
-        // order, and one more for faces with none
-        SlotBuilders builders;
-        builders.reserve(scene->materials.count + 1);
-        for(const auto* material: scene->materials)
-            builders.push_back(
-                SlotBuilder{.material = Str(toView(material->name))}
-            );
-        builders.push_back(SlotBuilder{});
-
+        auto builders = emptySlotsOf(*scene);
         for(const auto* node: scene->nodes) {
             if(node->mesh != nullptr)
-                addNode(*node, builders);
+                addMesh(*node, node->geometry_to_world, builders);
         }
 
-        ModelData model;
-        for(auto& builder: builders) {
-            if(builder.corners.empty())
-                continue;
-
-            auto slot = finishSlot(std::move(builder), path);
-            model.bounds = model.slots.empty()
-                               ? slot.bounds
-                               : unionOf(model.bounds, slot.bounds);
-            model.slots.push_back(std::move(slot));
+        ModelData model{.slots = finishSlots(builders, path)};
+        if(!model.slots.empty()) {
+            model.bounds = model.slots.front().bounds;
+            for(const auto& slot: model.slots | std::views::drop(1))
+                model.bounds = unionOf(model.bounds, slot.bounds);
         }
+        addChildren(
+            *scene->root_node,
+            ModelNode::NoParent,
+            *scene,
+            path,
+            model.nodes
+        );
 
         return model;
     }
