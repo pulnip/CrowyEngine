@@ -1,0 +1,23 @@
+{
+    "name": "FloorLever",
+    "moving": [
+        {
+            "name": "Handle",
+            "kind": "hinge",
+            "anchor": [
+                0.0,
+                0.0,
+                0.45
+            ],
+            "axis": [
+                1.0,
+                0.0,
+                0.0
+            ],
+            "range": [
+                -35.0,
+                35.0
+            ]
+        }
+    ]
+}

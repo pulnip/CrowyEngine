@@ -14,6 +14,7 @@
 #include "MeshGenerator.hpp"
 #include "ModelLoader.hpp"
 #include "PathUtil.hpp"
+#include "ProjectRoot.hpp"
 
 using namespace Crowy;
 
@@ -307,6 +308,34 @@ TEST(ModelLoader, NodeSlotsPlacedByTheirChainAreTheRootSlots) {
             })) << std::format("{} at {}", slot.material, centroidOf(triangle));
         }
     }
+}
+
+// Tools/gen.py's output as the engine reads it: a moving part is the root's
+// child with its origin on the card's anchor, the slots in the card's palette
+TEST(ModelLoader, GeneratedPropPartSitsOnItsAnchor) {
+    constexpr f32 Tolerance = 1e-4f;
+
+    const auto model =
+        loadModel(projectRoot() / "Content/Props/Interact/FloorLever.fbx");
+
+    ASSERT_EQ(model.nodes.size(), 2u);
+    const auto& root = model.nodes[0];
+    const auto& handle = model.nodes[1];
+    EXPECT_EQ(root.name, "FloorLever");
+    EXPECT_EQ(handle.name, "Handle");
+    EXPECT_EQ(handle.parent, 0u);
+
+    // the card's anchor (0, 0, 0.45) is Z up
+    const auto anchor =
+        transformPoint(modelMat(root.local), handle.local.position);
+    EXPECT_NEAR(anchor.x, 0.0f, Tolerance);
+    EXPECT_NEAR(anchor.y, 0.45f, Tolerance);
+    EXPECT_NEAR(anchor.z, 0.0f, Tolerance);
+
+    const std::array palette{"Stone", "Bronze", "Iron", "Glow"};
+    ASSERT_EQ(model.slots.size(), palette.size());
+    for(usize i = 0; i < palette.size(); ++i)
+        EXPECT_EQ(model.slots[i].material, palette[i]);
 }
 
 TEST(ModelLoader, MissingFileThrows) {

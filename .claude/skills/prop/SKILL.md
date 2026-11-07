@@ -12,7 +12,7 @@ One concept sheet in, one prop out: built from code, its moving parts separate, 
 | Place | What |
 |---|---|
 | `.claude/skills/prop/` | This file, the method in `JOB_DESCRIPTION.md`, `CHECKLIST.md`, `PROMPTS.md`, `LESSONS.md`, `SHOP.md`, and `tools/`. |
-| `Tools/gen.py`, `Tools/Blender/` | The generator: a module per prop, built with the kit, exported as FBX with a preview sheet. Ported from `../Backlot/Tools/Blender/` with parts, anchors and shop materials added. If it is missing, porting it is the first job and nothing below runs. |
+| `Tools/gen.py`, `Tools/Blender/` | The generator: a module per prop, built with the kit, exported as FBX with a preview sheet. Ported from `../Backlot/Tools/Blender/` (library `propkit/`) with parts, anchors and shop materials added. `python Tools/gen.py <module>` runs it; `floor_lever` is the worked example. |
 | `Tools/Blender/assets/<module>.py` | One prop: its `SPEC` card and `build(kit)`. |
 | `Content/Props/<Family>/<Name>.fbx` | The export, plus `<Name>.prop.json` with the moving parts. |
 | `Content/Props/Shop/<Name>.json` | The shop: one engine material per name in `SHOP.md`. |
@@ -60,15 +60,15 @@ SPEC = {
 }
 
 def build(kit):
-    kit.add_block('Stone', 0.6, 0.6, 0.3, bevel=0.015)
+    kit.add_block('Stone', (-0.3, 0.3), (-0.4, 0.4), (0.0, 0.3), bevel=0.015)   # (low, high) on X, Y, Z
     with kit.part('Handle', anchor=(0.0, 0.0, 0.45)):            # its own object, origin at the anchor
-        kit.add_cylinder('Iron', radius=0.02, height=0.7, ...)
+        kit.add_cylinder('Iron', (0.0, 0.0, 0.45), (0.0, 0.0, 1.12), 0.02, segments=24)   # where it sits in the prop
 ```
 
 - Blender: Z up, front faces +Y, right side +X, metres. The loader converts to the engine's Y-up; `Engine/Content/Test/ModelLoaderTest.cpp` pins where each axis lands.
 - `moving[].kind` is `hinge` (degrees about `axis` through `anchor`), `slider` (metres along `axis`) or `spin` (free rotation, no range: gears, drums). The generator writes them to `<Name>.prop.json`; the engine's device components read that file, never the FBX.
-- A part that moves is its own object named as in `moving`, parented under the root, with its origin at the anchor. Everything that does not move merges into the root mesh.
-- A face is a shop name. The generator refuses a name the card's `palette` does not list.
+- A part that moves is its own object named as in `moving`, parented under the root, with its origin at the anchor. Everything that does not move merges into the root mesh. Inside `kit.part` shapes are written where they sit in the assembled prop; the generator refuses a `moving` name with no part, a part missing from `moving`, and a part whose anchor is not the card's.
+- A face is a shop name. The generator refuses a name the card's `palette` does not list, and a palette name no face uses, which would shift every later slot.
 
 ## Rules that decide whether it works
 

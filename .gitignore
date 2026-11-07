@@ -23,3 +23,8 @@ captures/
 build-bench/
 bench/
 bench-runs/
+
+# the prop generator's input hashes beside each FBX, and Blender's bytecode
+# (Tools/gen.py)
+.*.inputhash
+__pycache__/
