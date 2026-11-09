@@ -44,7 +44,7 @@ namespace Crowy
                             .skyAmbient = environment.skyAmbient,
                             .groundAmbient = environment.groundAmbient,
                             .sky = environment.skyColor
-                    };
+                        };
                 }
             );
         }
