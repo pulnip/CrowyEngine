@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "codex": {
+      "type": "stdio",
+      "command": "powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "RemoteSigned",
+        "-File",
+        "Tools\\CodexMcp.ps1"
+      ]
+    }
+  }
+}
