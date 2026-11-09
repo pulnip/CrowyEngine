@@ -28,8 +28,9 @@ $scene = Join-Path $outDir "$Name.json"
 $bmp = Join-Path $outDir "$Name.bmp"
 $png = Join-Path $outDir "$Name.png"
 
-$sceneArgs = @('-I', (Join-Path $tools 'prop_scene.py'), '--mesh', $Mesh, '--materials', $Materials,
+$sceneArgs = @('-I', (Join-Path $tools 'prop_scene.py'), '--mesh', $Mesh,
     '--az', $Az, '--el', $El, '--dist', $Dist, '--target', $Target, '--fov', $Fov, '--out', $scene)
+if ($Materials) { $sceneArgs += @('--materials', $Materials) }
 if ($NoFloor) { $sceneArgs += '--no-floor' }
 & python @sceneArgs
 if ($LASTEXITCODE -ne 0) { throw "prop_scene.py failed ($LASTEXITCODE)" }
